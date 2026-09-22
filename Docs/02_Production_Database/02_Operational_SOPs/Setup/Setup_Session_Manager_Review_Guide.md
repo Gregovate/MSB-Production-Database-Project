@@ -1,150 +1,223 @@
-# Setup Session Manager Review Guide
+# Setup Manager Review Guide
 
 | Document Control | Value |
 |---|---|
 | Document Type | Operator / Manager Procedure |
 | System | Production Database — Setup Session |
-| Audience | Setup Managers, reviewers, and administrators |
+| Audience | Setup Managers and reviewers |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-17 |
+| Last Reviewed | 2026-09-22 |
+| Keywords | Setup, reusable task, Verification Queue, Copy Task, prerequisites, Display Ownership, Extra Materials, Kit Inventory |
 
 ## Purpose
 
-Use this guide for the live Setup application and the Production-backed **2025 Historical Verification** session. This is real Production data.
+Use this guide while reviewing and correcting Setup tasks.
 
-## Open the Application
+It explains the normal, fastest way to do the work. You should not need engineering or database knowledge to use this guide.
+
+## Open Setup
 
 ```text
 https://my.sheboyganlights.org/setup/
-2025 — Historical Verification
-Client V0.3.13
 ```
 
-Refresh or reopen Setup if the client marker is stale or unexpected before making a governed change.
+Choose **2025 — Historical Verification** for the current shared review.
 
-## Safe Saving
+This is real Production data.
 
-Reusable task edits and annual review state are separate governed data surfaces. Pending reusable edits are protected by explicit Save / Discard / Stay behavior. Independent surfaces such as Physical Effort, Display/Container Material, Display Ownership, Kit Boxes, Extra Materials, Resources, Captains, prerequisites, expected Kit contents, and physical inventory use their own governed commands.
+## 1. Find Work That Still Needs Review
 
-## Annual vs Reusable vs Physical Knowledge
+1. Open the **Verification Queue**.
+2. Choose **Unverified** from the review-status dropdown.
+3. Open one task.
+4. Review and correct the reusable information.
+5. When the task is complete and correct, click **Mark Verified**.
 
-Annual 2025 information describes what happened or was planned in 2025.
+Before Mark Verified, check:
 
-Keep these facts separate:
+- Should this task exist every year?
+- Is **Active Reusable Task** correct?
+- Is the normal crew size entered?
+- Is the expected time entered?
+- Are the prerequisites correct?
+- Are the needed Displays assigned to the correct task?
+- Are the needed Kit Boxes assigned?
+- Are Extra Materials complete enough for planning?
+- Are Equipment / Resources complete enough for planning?
+- Are the important notes and procedure correct?
 
-```text
-annual Session fact         = what happened / was planned for one season
-reusable task requirement   = what normal Setup work requires
-expected Kit/source content = what should normally be available from a physical source
-physical inventory event    = what was actually counted/added/removed at a point in time
-```
+If a reusable task was created after 2025 and is not part of the 2025 historical Session, review the reusable task but do not invent 2025 history just to make **Mark Verified** available.
 
-Before changing reusable information, ask whether it is a normal rule to carry forward or only something that happened in 2025.
+## 2. Edit a Reusable Task
 
-## Add or Correct Reusable Tasks
+A reusable task describes work that normally comes back in future Setup seasons.
 
-Build reusable tasks at the practical work-package level used by crews. Do not create one task per Display merely to make inventory relationships easier.
+Use it for normal, repeatable Setup work.
 
-Reusable tasks can belong to Park Infrastructure / no LOR Stage, Stage-level / General, or a real Scene. Programming-only LOR groups are not separate Setup Scenes.
+Do not create one task for every Display just to make the inventory easier to organize.
 
-## Reusable Crew / Expected Duration
+### Important planning fields
 
-Use **Crew min** and **Crew max** for the normal reusable crew range.
+- **Crew min / Crew max** — normal crew size for this work.
+- **Expected hrs / Expected mins** — normal time the task usually takes.
+- **Completion point** — **Done when.** What must be true before the Captain can call the task finished?
+- **Readiness note** — **Can start when.** What must happen before this task can begin?
+- **Weather note** — **Weather limits.** What weather can delay or stop the task?
+- **Reusable notes** — **Important setup notes.** Keep useful year-to-year warnings, gotchas, and crew knowledge here.
 
-Enter normal expected duration with **Expected hrs** and **Expected mins (0–59)**. Examples:
+Examples:
 
-~~~text
-45 minutes  -> 0 hrs / 45 mins
-60 minutes  -> 1 hr  / 0 mins
-90 minutes  -> 1 hr  / 30 mins
-135 minutes -> 2 hrs / 15 mins
-~~~
+- Readiness: `Wait until grass cutting is complete before laying cords.`
+- Weather: `Do not use the high lift when wind is over 10 mph.`
+- Completion point: `Cords are plugged in and tested.`
+- Reusable notes: `Install the Racing Arch harness before the arches. Start with the Y at the outbound end.`
 
-The application stores the reusable duration as one total-minute value and converts it back to Hours / Minutes when the task is opened. Both fields blank means the duration remains missing. Minutes greater than 59 are rejected.
+Old copy/reconstruction history is not useful Captain information. Clean it out when the lasting instruction is known.
 
-This expected duration is reusable planning knowledge. It is not the annual actual-duration/progress-reporting field.
+## 3. Copy a Similar Task
 
-## Display / Container Material
+Use **Copy** / **Copy Task** when a new task is similar to one that already exists.
 
-Use **Uses Display / Container Material** when the task needs current LOR-derived Displays for its Stage or real Scene.
+After copying:
 
-```text
-Stage-level task
-    -> current Stage-level LOR Display groups
-    -> true child-Scene material excluded
+1. Open the new task.
+2. Change the task name and Stage/Scene if needed.
+3. Review crew and expected time.
+4. Review Completion point, Readiness, Weather, and Reusable notes.
+5. Review Resources, Displays, Kits, and Extra Materials.
+6. Add the correct prerequisites.
 
-real Scene task
-    -> exact current Display membership of that Scene
+Treat the copy as a starting point, not a finished task.
 
-resolved Displays
-    -> current Display-to-Container assignment
-```
+## 4. Change Task Order
 
-The Manager does not choose a separate Preview/programming group or maintain a competing ordinary Display list.
+To change the normal order, **drag the task to where it belongs**.
 
-### Display Ownership for subdivided work
+**Do not renumber every task by hand.**
 
-When only one reusable task is material-bearing in the scope, material resolution stays automatic.
+Normal drag moves/reorders the task.
 
-When several material-bearing reusable tasks share the same applicable scope, open **Display Ownership**. Each current resolved Display must have exactly one effective reusable task owner.
+If the up/down controls are easier for a small adjustment, those may also be used.
 
-You can click, Ctrl/Cmd-click, or Shift-click to select Displays. Drag selected Displays between task columns for normal scopes. For very large scopes, use **Move selected to** and **Move selected** instead of dragging across the full board.
+## 5. Add a Prerequisite
 
-The ownership screen shows **Coverage complete** when all resolved Displays have an effective owner.
+A prerequisite is a task that must happen before another task can start.
 
-Display Ownership does not change LOR membership and does not rewrite the Display's current Container.
+Fast method:
 
-## Kit Boxes
+1. Hold **Shift** before pressing the mouse button.
+2. Start with the **later task**.
+3. Drag it onto the **task that must happen first**.
+4. Release.
 
-Use **Kit Boxes** to assign existing physical Kit Box Containers to the reusable task.
+Remember:
 
-The picker is searchable. Assignments save immediately, assigned Kit names/IDs remain visible, and a wrong assignment can be removed directly.
+**Normal drag = move/reorder a task.**  
+**Shift-drag = add a prerequisite.**
 
-The same physical Kit Box may support multiple reusable tasks. Do not infer a Kit assignment from name alone. Task-to-Kit assignment answers which physical Kit is needed; it does not by itself say what is inside the Kit.
+You can also use the prerequisite controls in task detail when that is easier.
 
-## Task Extra Materials
+## 6. Assign Displays to the Correct Task
 
-Selected reusable tasks now include **Extra Materials Required by This Task**.
+Use **Uses Display / Container Material** when the task needs current Displays for its Stage or Scene.
 
-Managers may add/edit/remove a requirement and retain:
+If only one Setup Task in that Stage/Scene works with the Displays, Setup normally handles the Displays automatically.
 
-- material identity;
-- required quantity and UOM;
-- size, length/unit, and color where operationally important;
-- quantity qualifier such as Exact, Minimum, Conditional, or Spare;
-- verification state; and
-- requirement/use notes.
+If more than one Setup Task works with Displays in the same Stage or Scene, open **Display Ownership**.
 
-Expected source Containers are displayed separately. A task can require T-Posts even when those posts come from shared stock rather than the assigned Kit.
+The question is:
 
-Do not convert an unknown quantity/specification into a guessed value. Migrated `UNVERIFIED` / `NEEDS_REVIEW` rows are review queues, not automatically accepted truth.
+> Which Setup Task is responsible for each Display?
 
-## Kit Inventory
+### Select several Displays
 
-Open **Kit Inventory** from Setup or directly:
+- Click one Display to select it.
+- Hold **Ctrl** on Windows or **Cmd** on a Mac and click to add/remove individual Displays.
+- Hold **Shift** and click to select a range in the same task column.
+- Drag any selected Display to the correct task. The selected group moves together.
+- On a large list, choose the task under **Move selected to** and click **Move selected**.
+
+When the screen says **Coverage complete**, every Display in that review has a task.
+
+Display Ownership only tells Setup which task is responsible. It does not move the Display to another Container or change its LOR Stage/Scene.
+
+## 7. Equipment / Resources
+
+Use **Equipment / Resources** for reusable tools, equipment, vehicles, and similar things needed to do the work.
+
+Examples:
+
+- pliers;
+- adjustable wrenches;
+- lifts;
+- ToolCat.
+
+Search for an existing resource before creating a new one.
+
+Use **Manage Resource Catalog** only when the resource itself needs to be added or corrected.
+
+## 8. Extra Materials Required by This Task
+
+Use **Extra Materials Required by This Task** for materials the job needs.
+
+Examples:
+
+- T-Posts;
+- spacers;
+- bungees;
+- stakes;
+- bases.
+
+Correct quantity, size, length, color, or notes when you know them.
+
+If you do not know, do not guess.
+
+### Where the material comes from
+
+**Expected Source Containers** tell the crew where the material should normally be found.
+
+Keep these separate:
+
+- **Extra Material requirement** = what the task needs.
+- **Expected Source Container** = where the crew should expect to find it.
+
+A task can require T-Posts even when the posts come from shared stock instead of a Kit.
+
+## 9. Kit Boxes
+
+Use **Kit Boxes** on the task to choose the physical Kit that supports the work.
+
+A Kit may support more than one task.
+
+Do not assign bulk T-Post or bulk spacer stock as a Kit just because material comes from that Container.
+
+## 10. Kit Inventory
+
+Open:
 
 ```text
 https://my.sheboyganlights.org/setup/kit-inventory/
 ```
 
-Use **All / Assigned / Unassigned** to find the physical Kit. The selected Kit shows a compact summary, then **Expected Kit Contents** as the primary review table.
+Use Kit Inventory to review what should normally be in each physical Kit.
 
-Important distinctions:
+### Expected vs On Hand
 
-- **Expected** = normal expected Kit quantity/specification.
-- **On Hand** = current physical balance from inventory events.
-- **Setup task assignment** = current reusable task-to-Kit relationships.
-- **Displays stored in this Kit** = current `ref.display.container_id` truth, read-only here.
-- **Unverified Items / Remainders** = unresolved procedure/reconstruction text that has not been normalized/verified.
+- **Expected** = what should normally be in the Kit.
+- **On Hand** = what somebody physically counted.
 
-Managers use **Add expected item** or **Edit** only for expected-content definition. Editing expected contents does not change physical on-hand.
+**Do not enter an Expected quantity as On Hand unless somebody actually counted it.**
 
-For physical inventory, select one expected row and use **Count / Adjust**. An Initial Count establishes the first balance. Later Receipt, Return, Count Correction, Damage/Loss, Consumption, Transfer In/Out, or Other events change that balance without rewriting the expected definition. Record a reason/note when it helps explain the event.
+### Unverified Items / Remainders
 
-Do not enter an expected/planning quantity as a physical count unless the item was actually counted.
+Use **Unverified Items / Remainders** for information that is still unclear.
 
-## T-Post Inventory
+Do not guess where something belongs just to make the record look complete.
+
+The current goal is **review and correction**, not a complete warehouse inventory.
+
+## 11. T-Post Inventory
 
 Open:
 
@@ -152,71 +225,52 @@ Open:
 https://my.sheboyganlights.org/setup/t-post-inventory/
 ```
 
-T-Post Inventory records physical T-Posts by their actual storage Container. The left list separates shared/bulk stock from T-Posts intentionally stored with Kits/Displays.
+T-Post Inventory is separate from Kit Inventory.
 
-Each stock row represents one T-Post variant. **Planning / Known Qty** is optional reference evidence and is not the physical count. **Physical On Hand** comes only from inventory events.
+It separates shared/bulk T-Post stock from T-Posts intentionally stored with a Kit or Display.
 
-Managers use **Add new T-Post row** / **Edit stock definition** to correct the stock-row definition (length, size/stock note, verification, planning quantity). That action does not record inventory and does not change a task requirement.
+Use **Count physical stock** only when somebody actually counts or adjusts stock.
 
-Use **Count physical stock** for the selected row to establish or adjust actual on-hand. Initial Count establishes the first balance; later events are signed changes.
+Do not use a planning quantity as a physical count.
 
-A T-Post being stored with a Kit/Display is legitimate when that is the actual physical arrangement, but storage location does not assign the T-Post requirement to that Kit/Display/task. Requirement truth stays with the reusable task/installation scope.
+## 12. Spacers
 
-## Resources and Effort
+Shared/bulk spacer stock remains separate from Kit contents.
 
-Search for an existing resource first. Keep catalog identity/type/notes/active state separate from task-specific quantity, Required-vs-Preferred, and task notes.
+Some Kits legitimately contain fitted/custom spacers for that task. Do not assume every spacer belongs in the bulk spacer Containers.
 
-Use **Manage Resource Catalog** when the reusable catalog entry itself needs correction.
+## 13. Procedures
 
-## Prerequisites and Readiness
+When Setup shows a current published Setup procedure, review it when the task instructions may have changed.
 
-Keep hard predecessor, preferred order, and readiness condition separate.
+If the procedure is wrong or incomplete, correct the responsible source/published instruction through the established procedure workflow rather than hiding the correction only in a task note.
 
-For fast prerequisite entry, hold **Shift** before left-button-down on the dependent task, drag it onto the prerequisite, and release. Normal drag without Shift remains task movement/reorder.
+## 14. Saving and Moving Between Tasks
 
-Task detail contains one canonical prerequisite list with Add / Up / Down / Remove controls. Circular dependencies are rejected.
+If Setup warns that you have unsaved changes, choose the option that matches what you intend:
 
-## Procedures
+- **Save** — keep the change.
+- **Discard** — throw away the unsaved change.
+- **Stay** — remain on the task and keep editing.
 
-Where the application shows a current published Setup PDF, review whether it still matches the work. If an editable source is corrected, update the current published PDF before treating the instruction as current.
+Do not click through a warning without reading it.
 
-## Current Live Boundary
+## 15. If Something Does Not Make Sense
 
-Production-operational now includes:
+Do not work around bad information.
 
-- Production-backed 2025 review;
-- reusable task create/copy/update/delete where governed safeguards allow;
-- active-task identity and dirty-edit protection;
-- Stage/real-Scene scope organization;
-- automatic LOR-derived Display/Container resolution;
-- explicit Display Ownership for multi-task scopes;
-- many-to-many physical Kit Box assignment;
-- structured reusable-task Extra Material requirements;
-- expected Kit contents and Remainders;
-- standalone Kit Inventory and T-Post Inventory;
-- append-only physical inventory events/balances;
-- resource/effort/prerequisite maintenance;
-- reusable Resource Catalog maintenance;
-- Procedure/document context; and
-- protected authenticated browser access.
+If a task, Display assignment, Kit, Extra Material, T-Post source, spacer source, resource, or procedure clearly does not make sense, stop and flag it for review.
 
-Still incomplete/separate:
+Unknown is better than a confident guess that becomes bad planning information.
 
-- final reusable Catalog acceptance and disposable 2026 seed proof;
-- structured readiness gating;
-- Pick List generation and staged release scheduling;
-- Container/Display movement/scanning writes; and
-- park-location execution evidence.
+## Current Goal
 
-## 2025 to 2026 Transition
+There is not yet a real 2026 Setup Session.
 
-There is currently no 2026 Setup Session. Every active reusable task is seeded into a new annual Session, so final Catalog acceptance remains required immediately before real 2026 creation.
+The current job is to improve the reusable Setup tasks so the real 2026 schedule and future Pick Lists start with better information.
 
-Do not force a reusable task into 2025 merely to make the historical Plan look complete.
+## Related Operator Instructions
 
-## Related Documents
-
-- [Setup operator portal](../../01_System_Architecture/12_Setup_and_Deployment/README.md)
-- [2025 review procedure](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Review_2025_Setup_History.md)
-- [Setup engineering handoff](../../01_System_Architecture/12_Setup_and_Deployment/engineering/README.md)
-- `Setup/Acceptance/Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md`
+- [Setup and Deployment](../../01_System_Architecture/12_Setup_and_Deployment/README.md)
+- [Review and Correct the 2025 Setup History](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Review_2025_Setup_History.md)
+- [Setup Operator Procedure Index](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/README.md)
