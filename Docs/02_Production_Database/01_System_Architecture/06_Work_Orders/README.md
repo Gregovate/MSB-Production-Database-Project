@@ -83,12 +83,13 @@ The authoritative public instructions are [Submit a Work Order Request](../../02
 
 ## Operational Flow
 
-There are two entry paths:
+Current entry paths are:
 
-1. **Public Work Order Request Form -> manager triage -> active Work Order**
-2. **Test Session -> automatically generated active Work Order**
+1. **Public Work Order Request Form -> Work Order Intake -> manager triage -> active Work Order when promoted**
+2. **Authenticated Setup field finding -> Work Order Intake with Setup context prefilled -> manager triage -> active Work Order when promoted**
+3. **Test Session -> automatically generated active Work Order**
 
-Test Session-generated Work Orders bypass Work Order Intake triage.
+Human-reported findings go through Intake because the report may require clarification, correction, deduplication, or a non-Work-Order disposition. Test Session-generated Work Orders bypass Intake because the governed test result already established a defined failure.
 
 Once an active Work Order exists, the normal operational flow is:
 
