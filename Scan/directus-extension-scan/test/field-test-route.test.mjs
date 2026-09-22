@@ -201,6 +201,9 @@ test('field harness is scan-first and exposes operator-friendly GPS/location fee
   assert.match(body, /location_confirmation_method/);
   assert.match(body, /last_gps_fix/);
   assert.match(body, /Developer \/ Test Tools/);
+  assert.match(body, /inputmode="none"/);
+  assert.match(body, /function applyScanKeyboardMode\(\)/);
+  assert.match(body, /SCAN READY — on-screen keyboard suppressed/);
 });
 
 test('harness documentation assigns #219/#122 ownership and defers offline architecture', () => {
