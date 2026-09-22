@@ -82,6 +82,43 @@ The browser launcher preserves the same disposable-clone/Production-after safety
 
 When the terminal prints `SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY`, perform the feature-specific operator checklist. Press ENTER only after the review is complete so the same bounded process performs cleanup and Production-after proof.
 
+
+### Integrated 2026 Setup dress rehearsal
+
+For the pre-Production #122 launch rehearsal, use the same disposable browser launcher with the optional second Production Crew persona against the same disposable clone.
+
+The controlled checklist is:
+
+`Setup/Acceptance/Setup_2026_Disposable_Dress_Rehearsal.md`
+
+The preparation SQL is:
+
+`Setup/Acceptance/setup_122_2026_dress_rehearsal_seed.sql`
+
+It creates the disposable 2026 Session/annual snapshot but intentionally creates no work days, crews, assignments, progress, movement, or Work Order Intake records. Those browser actions are the rehearsal.
+
+Example invocation shape:
+
+```powershell
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
+  -PreviewPort <manager-port> `
+  -PreviewEmail <manager-email> `
+  -CrewPreviewPort <crew-port> `
+  -CrewPreviewEmail <production-crew-email> `
+  -CandidateSha <exact-rehearsal-sha> `
+  -TargetRef issue-122-2026-dress-rehearsal `
+  -ExpectedVersion V0.3.16-stale-ownership-cleanup `
+  -MigrationPaths @(
+    'Setup/Database/053_add_production_crew_report_work_duration.sql',
+    'Setup/Database/054_add_setup_context_work_order_intake.sql'
+  ) `
+  -ValidationPaths @(
+    'Setup/Acceptance/setup_122_2026_dress_rehearsal_seed.sql'
+  )
+```
+
+Both browser identities operate against the same disposable PostgreSQL clone. The runner verifies that the Production Crew identity can read Setup but cannot invoke a Manager scheduling mutation.
+
 ## Legacy feature-specific wrappers
 
 Older Setup acceptance files remain historical evidence for the feature that created them. They contain hard-coded candidate SHAs, migration sets, or feature checks and must not be copied or patched for new work when the reusable launchers above can express the candidate.
