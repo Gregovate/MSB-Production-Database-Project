@@ -37,7 +37,7 @@ Work through the list one task at a time.
 Ask these questions:
 
 - Should this task exist every year?
-- Is **Active Reusable Task** correct?
+- Is **Active Reusable Task** correct? If normal yearly work is inactive, it will not be included when a future Setup Session is created.
 - Is the normal crew size entered?
 - Is the expected time entered?
 - Are the prerequisites correct?
@@ -101,6 +101,20 @@ Do not guess to make a task look complete.
 Some reusable tasks were created after the 2025 work and are not part of the 2025 historical Session.
 
 Review and correct the reusable task, but **do not create fake 2025 history just to make Mark Verified available**.
+
+## Run the Material Audit
+
+Use **Material Audit** as the final completeness check before the real 2026 Setup Session is created.
+
+Review all three sections:
+
+- **Future Session Readiness** — make sure normal yearly tasks that should carry forward are active.
+- **Display / LOR Ownership** — assign unresolved Displays to the correct Setup Task.
+- **Kit Assignment Coverage** — assign the Kit/support Container when one task owns it, or record the correct shared/bulk-stock reason when that is the real situation.
+
+The audit checks completeness. It does not decide whether a task should exist or whether the information is actually correct.
+
+Fix the real problem instead of entering something only to make the audit disappear.
 
 ## Current Goal
 
