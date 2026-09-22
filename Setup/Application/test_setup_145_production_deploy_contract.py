@@ -14,7 +14,7 @@ def test_setup_145_production_wrapper_is_repo_governed_and_pinned() -> None:
     assert "1b08bdd26156b67ba89ea484fdc035b0b09ffc28" in wrapper
     assert "80f6ebbcbf2946eddb1b3fe04383a2d43f61b845" in wrapper
     assert "5fbe22f7af8218a0d9ca29ca25d7d53e389e7042" in wrapper
-    assert "e12e8f89a3f698e243ca061f02c185fa5c1d78ee" in wrapper
+    assert "2fbdcaef96891192f2c2fb71f59de9c4602010e8" in wrapper
     assert "git status --porcelain" in wrapper
     assert "merge-base --is-ancestor" in wrapper
     assert "hash-object $ServerScript" in wrapper
@@ -33,6 +33,7 @@ def test_setup_145_server_runner_obeys_production_runbook_order_and_scope() -> N
     assert 'EXPECTED_SETUP_VERSION="V0.3.16-stale-ownership-cleanup"' in server
     assert 'MIGRATION_REL="Setup/Database/052_add_stale_display_ownership_cleanup.sql"' in server
     assert 'MIGRATION_BLOB="5fbe22f7af8218a0d9ca29ca25d7d53e389e7042"' in server
+    assert 'fetch origin "$TARGET_REF:refs/remotes/origin/$TARGET_REF"' in server
 
     detached = server.index("--- Detached exact-candidate regression in Production runtime ---")
     freeze = server.index("--- Freeze Setup writes for bounded Production mutation window ---")

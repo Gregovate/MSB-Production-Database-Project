@@ -244,7 +244,7 @@ echo "2026 Setup Session preflight: PASS (0 rows)"
 
 echo
 echo "--- Fetch and verify merged main + exact accepted target ---"
-sudo git -C "$REPO_ROOT" fetch origin "$TARGET_REF"
+sudo git -C "$REPO_ROOT" fetch origin "$TARGET_REF:refs/remotes/origin/$TARGET_REF"
 sudo git -C "$REPO_ROOT" cat-file -e "$TARGET_SHA^{commit}"
 sudo git -C "$REPO_ROOT" cat-file -e "$MERGE_SHA^{commit}"
 
