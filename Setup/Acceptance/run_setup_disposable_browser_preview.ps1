@@ -47,7 +47,7 @@ if ($LASTEXITCODE -ne 0) {
 if ($PreviewPort -lt 1024 -or $PreviewPort -gt 65535) {
     throw 'PreviewPort must be between 1024 and 65535.'
 }
-if ($PreviewPort -in @(8055, 8790, 8792, 8794)) {
+if ($PreviewPort -in @(8055, 8790, 8792, 8794, 8796)) {
     throw "PreviewPort $PreviewPort conflicts with a governed Production listener."
 }
 if ($PreviewEmail -notmatch '^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+$') {
@@ -62,7 +62,7 @@ if ($crewPreviewEnabled) {
     if ($CrewPreviewPort -lt 1024 -or $CrewPreviewPort -gt 65535) {
         throw 'CrewPreviewPort must be between 1024 and 65535.'
     }
-    if ($CrewPreviewPort -in @(8055, 8790, 8792, 8794)) {
+    if ($CrewPreviewPort -in @(8055, 8790, 8792, 8794, 8796)) {
         throw "CrewPreviewPort $CrewPreviewPort conflicts with a governed Production listener."
     }
     if ($CrewPreviewPort -eq $PreviewPort) {
