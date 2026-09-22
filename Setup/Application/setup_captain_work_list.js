@@ -204,7 +204,14 @@ function taskCard(assignment, task, enrichment, crew) {
   const done = task.completion_point || 'Completion point not yet documented.';
   const resourceText = task.resource_summary || 'No structured Equipment / Resource requirement recorded.';
   const reportHref = '../?season_year=' + encodeURIComponent(state.year)
-    + '&view=perform&setup_session_task_id=' + encodeURIComponent(task.setup_session_task_id);
+    + '&view=perform&setup_session_task_id=' + encodeURIComponent(task.setup_session_task_id)
+    + '&setup_work_day_id=' + encodeURIComponent(assignment.setup_work_day_id)
+    + '&setup_work_day_task_id=' + encodeURIComponent(assignment.setup_work_day_task_id)
+    + '&shift_code=' + encodeURIComponent(assignment.shift_code || 'ALL_DAY')
+    + '&crew_id=' + encodeURIComponent(assignment.setup_work_day_crew_id || '')
+    + '&crew_code=' + encodeURIComponent(assignment.crew_lane || crew?.crew_code || '')
+    + '&work_date=' + encodeURIComponent(assignment.work_date || '');
+  const problemHref = reportHref + '&report_problem=1';
   const blocked = String(task.readiness_state || '').toUpperCase() === 'NOT_READY'
     || !task.prerequisites_complete;
   const complete = Boolean(task.effective_complete);
@@ -238,6 +245,7 @@ function taskCard(assignment, task, enrichment, crew) {
         + procedureMarkup(task, enrichment) + '</div></div>'
     + '</div>'
     + '<div class="task-actions no-print"><a class="primary" href="' + reportHref + '">Report Work</a>'
+    + '<a class="secondary-link" href="' + problemHref + '">Report Problem / Suggest Change</a>'
     + (task.setup_task_id != null
       ? '<a class="secondary-link" href="../?season_year=' + encodeURIComponent(state.year)
           + '&view=review&setup_task_id=' + encodeURIComponent(task.setup_task_id) + '">Open Setup Task</a>'
