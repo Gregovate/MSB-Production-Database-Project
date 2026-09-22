@@ -210,8 +210,9 @@
       <div class="setup-display-owner-card${reviewClass}${selectedClass}"
            data-display-id="${row.display_id}"
            data-owner-task-id="${row.owner_setup_task_id ?? ''}"
+           data-ownership-state="${escapeHtml(row.ownership_state || '')}"
            draggable="${canManage ? 'true' : 'false'}"
-           ${canManage ? 'tabindex="0" role="option"' : ''}
+           ${canManage ? 'tabindex="0" role="option" title="Right-click an assigned Display to unassign it."' : ''}
            aria-selected="${selected ? 'true' : 'false'}">
         <strong>Display ${escapeHtml(row.display_id)} — ${escapeHtml(row.display_name || '')}</strong>
         <span>${escapeHtml(containerText)}</span>
@@ -305,7 +306,17 @@
         <strong>Stale ownership rows requiring review</strong>
         <div class="muted">These rows are owned by tasks in this scope but the Display is no longer in the resolver source set.</div>
         ${(data.stale_assignments || []).map((row) => `
-          <div>Display ${escapeHtml(row.display_id)} — ${escapeHtml(row.owner_task_name || `Task ${row.setup_task_id}`)}</div>
+          <div class="setup-display-owner-stale-row">
+            <span>Display ${escapeHtml(row.display_id)} — ${escapeHtml(row.owner_task_name || `Task ${row.setup_task_id}`)}</span>
+            ${canManage ? `
+              <button
+                type="button"
+                class="secondary setup-display-stale-remove"
+                data-display-id="${escapeHtml(row.display_id)}"
+                data-owner-task-id="${escapeHtml(row.setup_task_id)}"
+              >Remove stale ownership</button>
+            ` : ''}
+          </div>
         `).join('')}
       </div>
     ` : '';
@@ -351,6 +362,15 @@
     content.querySelector('#setup-display-ownership-sort')?.addEventListener('change', (event) => {
       state.sortMode = String(event.target.value || 'name');
       renderOwnershipBoard(state.context);
+    });
+    content.querySelectorAll('.setup-display-stale-remove').forEach((button) => {
+      button.addEventListener('click', () => {
+        clearOwnership(
+          Number(button.dataset.displayId || 0),
+          Number(button.dataset.ownerTaskId || 0),
+          { stale: true }
+        );
+      });
     });
     updateSelectionUi();
   }
@@ -458,6 +478,40 @@
     }
   }
 
+  async function clearOwnership(displayId, expectedTaskId, { stale = false } = {}) {
+    const taskId = Number(appState.selectedTaskId || 0);
+    if (!taskId || !displayId || !expectedTaskId || !appState.access?.can_manage_setup) return;
+    const action = stale ? 'Remove the stale Setup ownership row' : 'Unassign this Display from its current Setup task';
+    const consequence = stale
+      ? 'This does not change LOR membership, Display status, or Container assignment.'
+      : 'The Display will remain in the current LOR source set and will be shown as Missing owner until you assign it again.';
+    if (!window.confirm(`${action} for Display ${displayId}?\n\n${consequence}`)) return;
+
+    try {
+      setBusy(true);
+      const payload = await api(
+        `api/setup/tasks/${taskId}/display-ownership/${Number(displayId)}`,
+        commandOptions('DELETE', {
+          season_year: Number(appState.seasonYear),
+          expected_setup_task_id: Number(expectedTaskId)
+        })
+      );
+      state.context = payload.context || {};
+      await refreshMaterialFlags();
+      clearSelection();
+      updateControl(state.context);
+      updateMaterialCounts(state.context);
+      renderOwnershipBoard(state.context);
+      setAlert(stale ? `Stale Display ${displayId} ownership removed.` : `Display ${displayId} unassigned.`, 'ok');
+    } catch (error) {
+      await loadOwnership(taskId);
+      setAlert(error.message || error, 'error');
+      window.alert(error.message || error);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function moveDisplays(displayIds, targetTaskId) {
     const taskId = Number(appState.selectedTaskId || 0);
     const ids = normalizeDisplayIds(displayIds);
@@ -512,6 +566,17 @@
   function moveDisplay(displayId, targetTaskId) {
     return moveDisplays([displayId], targetTaskId);
   }
+
+  document.addEventListener('contextmenu', (event) => {
+    const card = event.target.closest('#setup-display-ownership-dialog .setup-display-owner-card');
+    if (!card || !appState.access?.can_manage_setup) return;
+    if (String(card.dataset.ownershipState || '') !== 'ASSIGNED') return;
+    const displayId = Number(card.dataset.displayId || 0);
+    const ownerTaskId = Number(card.dataset.ownerTaskId || 0);
+    if (!displayId || !ownerTaskId) return;
+    event.preventDefault();
+    clearOwnership(displayId, ownerTaskId);
+  });
 
   document.addEventListener('click', (event) => {
     const card = event.target.closest('#setup-display-ownership-dialog .setup-display-owner-card[draggable="true"]');
