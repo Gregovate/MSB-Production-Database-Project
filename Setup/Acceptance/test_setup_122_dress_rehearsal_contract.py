@@ -67,6 +67,8 @@ def test_122_rehearsal_composes_launch_spine_surfaces() -> None:
     assert "setup_work_order_intake_api" in backend
     assert 'id="captain-work-list-link"' in production
     assert 'id="pick-list-link"' in production
+    assert "DISPOSABLE 2026 DRESS REHEARSAL" in production
+    assert "V0.3.17-2026-dress-rehearsal-candidate" in backend
     assert "setup_work_day_task_id=" in captain
     assert "Report Problem / Suggest Change" in captain
     assert "api/setup/material-readiness?season_year=" in pick
