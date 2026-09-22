@@ -811,10 +811,14 @@ async function loadNextTaskExecution(details) {
         <section><h4>Material / Current Location</h4>${assets.length ? `<ul>${assets.join('')}</ul>` : '<p class="muted">No Displays or support Containers are mapped to this reusable task yet.</p>'}</section>
         <section><h4>Published Setup Procedure</h4>${docs.length ? docs.map((doc) => `<p><a target="_blank" rel="noopener" href="api/setup/tasks/${taskId}/procedure/current?name=${encodeURIComponent(doc.name || '')}">${escapeHtml(doc.name || 'Open current PDF')}</a></p>`).join('') : `<p class="muted">No published Setup PDF resolved for this task scope.${nextIsSitewide(task) ? ' Site-wide Procedures belong in Display Folders\\Site Infrastructure\\Procedures\\Setup.' : ''}</p>`}</section>
       </div>
-      <section class="next-progress-history"><h4>Progress history</h4>${progress.length ? progress.map((p) => `<div>${escapeHtml(formatTimestamp(p.recorded_at))} · Crew ${p.crew_count}${p.completed_quantity ? ` · ${p.completed_quantity} completed` : ''}${p.completed_units ? ` · ${escapeHtml(p.completed_units)}` : ''}${p.progress_note ? ` · ${escapeHtml(p.progress_note)}` : ''}${p.marks_task_complete ? ' · COMPLETE' : ''}</div>`).join('') : '<div class="muted">No progress recorded yet.</div>'}</section>
+      <section class="next-progress-history"><h4>Progress history</h4>${progress.length ? progress.map((p) => `<div>${escapeHtml(formatTimestamp(p.recorded_at))} · Crew ${p.crew_count}${p.duration_minutes ? ` · ${escapeHtml(formatMinutes(p.duration_minutes))}` : ' · Duration not recorded'}${p.completed_quantity ? ` · ${p.completed_quantity} completed` : ''}${p.completed_units ? ` · ${escapeHtml(p.completed_units)}` : ''}${p.progress_note ? ` · ${escapeHtml(p.progress_note)}` : ''}${p.marks_task_complete ? ' · COMPLETE' : ''}</div>`).join('') : '<div class="muted">No progress recorded yet.</div>'}</section>
       ${task.execution_status === 'COMPLETE' ? `<div class="next-complete-banner">Completed ${escapeHtml(formatTimestamp(task.actual_completed_at))}${task.completed_by_name ? ` by ${escapeHtml(task.completed_by_name)}` : ''}${task.completion_note ? ` · ${escapeHtml(task.completion_note)}` : ''}</div>` : `
       <form class="next-completion-form" data-session-task-id="${sessionTaskId}">
         <label>Crew size<input class="next-crew" type="number" min="1" required></label>
+        <div class="compact-grid">
+          <label>Hours<input class="next-duration-hours" type="number" min="0" step="1" value="0" required></label>
+          <label>Minutes<input class="next-duration-minutes" type="number" min="0" max="59" step="1" value="0" required></label>
+        </div>
         <label>Completed quantity <span class="muted">(optional, e.g. 3 trees)</span><input class="next-quantity" type="number" min="1"></label>
         <label>Which units / what was completed <span class="muted">(optional)</span><input class="next-units" type="text" placeholder="Example: Trees 1, 3, 4"></label>
         <label>Progress / completion note <span class="muted">(optional)</span><textarea class="next-note" rows="2"></textarea></label>
@@ -834,11 +838,23 @@ async function submitNextProgress(event) {
   const form = event.currentTarget;
   const sessionTaskId = Number(form.dataset.sessionTaskId);
   const crew = Number(form.querySelector('.next-crew').value || 0);
+  const hours = Number(form.querySelector('.next-duration-hours').value || 0);
+  const minutes = Number(form.querySelector('.next-duration-minutes').value || 0);
   if (crew < 1) return;
+  if (!Number.isInteger(hours) || hours < 0 || !Number.isInteger(minutes) || minutes < 0 || minutes > 59) {
+    window.alert('Enter elapsed work time as whole Hours and Minutes (0–59).');
+    return;
+  }
+  const durationMinutes = (hours * 60) + minutes;
+  if (durationMinutes <= 0) {
+    window.alert('Elapsed work time must be greater than zero.');
+    return;
+  }
   try {
     await api(`api/setup/session-tasks/${sessionTaskId}/progress`, commandOptions('POST', {
       shift_code: 'ALL_DAY',
       crew_count: crew,
+      duration_minutes: durationMinutes,
       completed_quantity: nullableInteger(form.querySelector('.next-quantity').value),
       completed_units: form.querySelector('.next-units').value.trim() || null,
       progress_note: form.querySelector('.next-note').value.trim() || null,
