@@ -543,6 +543,75 @@ export default {
               font-weight: bold;
             }
             .small { font-size: 13px; }
+            details.card { padding: 0; }
+            details.card > summary {
+              cursor: pointer;
+              font-size: 20px;
+              font-weight: bold;
+              padding: 18px;
+              list-style-position: inside;
+            }
+            details.card[open] > summary { border-bottom: 1px solid #39435a; }
+            .details-body { padding: 18px; }
+            .status-pill {
+              display: inline-block;
+              padding: 5px 9px;
+              border-radius: 999px;
+              background: #39435a;
+              font-size: 13px;
+              font-weight: bold;
+            }
+            .save-feedback {
+              border: 2px solid #4a5568;
+              border-radius: 10px;
+              padding: 14px;
+              margin-bottom: 12px;
+              font-size: 18px;
+              font-weight: bold;
+            }
+            .save-feedback.good {
+              border-color: #4c9f5e;
+              background: #14351c;
+              color: #b9f4c2;
+            }
+            .save-feedback.bad {
+              border-color: #b45353;
+              background: #3a1717;
+              color: #ffd0d0;
+            }
+            .candidate-buttons {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+              gap: 8px;
+              margin-top: 10px;
+            }
+            .candidate-buttons button { margin-bottom: 0; }
+            .check-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+              gap: 8px;
+              margin-bottom: 12px;
+            }
+            .check-grid label {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              padding: 10px;
+              border: 1px solid #4a5568;
+              border-radius: 8px;
+              margin: 0;
+              font-weight: normal;
+            }
+            .check-grid input {
+              width: auto;
+              margin: 0;
+              padding: 0;
+            }
+            #scanInput {
+              border-width: 2px;
+              font-size: 19px;
+            }
+            .section-note { margin-top: 8px; }
           </style>
         </head>
         <body>
@@ -561,89 +630,29 @@ export default {
           </div>
 
           <div class="card">
-            <h2>1. Known field reference</h2>
-            <label for="expectedReference">Where are you intentionally testing?</label>
-            <select id="expectedReference">
-              <option value="">Select expected GPX reference (optional)</option>
-            </select>
-            <div class="muted small">
-              Select the place you believe you are standing at. The harness will still rank all nearby references independently.
-              No automatic PASS/FAIL distance threshold is applied.
-            </div>
-
-            <label for="operatorLocationComment" style="margin-top:14px;">Operator location comment</label>
-            <textarea
-              id="operatorLocationComment"
-              rows="3"
-              placeholder="Record where you believe this scan should resolve, or any field context you want preserved with the observation."
-              style="width:100%; box-sizing:border-box; padding:12px; font-size:16px; border-radius:8px; border:1px solid #4a5568; margin-bottom:10px;"
-            ></textarea>
-            <div class="muted small">
-              This is your field judgment. It is saved separately from the selected GPX reference and from the GPS-derived nearest-location ranking.
-            </div>
-          </div>
-
-          <div class="card">
-            <h2>2. Tablet GPS</h2>
+            <h2>Field status</h2>
             <div class="grid">
               <button id="startGps" type="button">Start high-accuracy GPS</button>
-              <button id="captureGps" type="button" class="secondary" disabled>Capture GPS-only sample</button>
+              <button id="captureGps" type="button" class="secondary" disabled>Save GPS-only sample</button>
             </div>
             <div id="gpsError" class="bad"></div>
             <div class="grid">
-              <div><div class="muted">Latitude / Longitude</div><div id="gpsLatLon" class="value">No fix</div></div>
+              <div><div class="muted">GPS status</div><div id="gpsState" class="value">NOT STARTED</div></div>
               <div><div class="muted">Reported accuracy</div><div id="gpsAccuracy" class="value">—</div></div>
               <div><div class="muted">Fix age</div><div id="gpsAge" class="value">—</div></div>
-              <div><div class="muted">Nearest reference</div><div id="gpsNearest" class="value">—</div></div>
               <div><div class="muted">Connectivity</div><div id="connectivityState" class="value">Checking…</div></div>
+              <div><div class="muted">Latitude / Longitude</div><div id="gpsLatLon" class="value">No fix</div></div>
+              <div><div class="muted">Likely location</div><div id="gpsNearest" class="value">—</div></div>
             </div>
-            <div id="gpsCandidates" class="small muted"></div>
+            <div id="gpsCandidates" class="small muted section-note">Start GPS to see the three nearest location candidates.</div>
+            <div id="gpsCandidateButtons" class="candidate-buttons"></div>
+            <button id="addLocationFromCandidates" type="button" class="secondary" disabled style="margin-top:10px;">None of these / Add location</button>
+            <div id="locationConfirmationStatus" class="muted small" aria-live="polite">No location confirmed for the next scan.</div>
           </div>
 
-          <div class="card">
-            <h2>3. Provisional field-reference observations</h2>
-            <div class="warning">
-              <strong>DISPOSABLE REFERENCE EVIDENCE.</strong>
-              These observations are raw field evidence only. They do not update the GPX file, Production GIS, Stage/Scene identity, or PostgreSQL.
-              Multiple observations with the same provisional name remain separate raw points; this page does not average them.
-            </div>
-            <div class="grid">
-              <div>
-                <label for="fieldReferenceName">Provisional reference name</label>
-                <input id="fieldReferenceName" autocomplete="off" placeholder="Example: Elf Choir east-side stake" />
-              </div>
-              <div>
-                <label for="fieldReferenceArea">Stage / area context (optional)</label>
-                <input id="fieldReferenceArea" autocomplete="off" placeholder="Example: 08-Elf Choir-EC" />
-              </div>
-              <div>
-                <label for="fieldReferenceEnvironment">Environment</label>
-                <select id="fieldReferenceEnvironment">
-                  <option value="">Not recorded</option>
-                  <option value="OPEN_SKY">Open sky</option>
-                  <option value="TREE_COVER">Tree cover</option>
-                  <option value="STRUCTURE_ADJACENT">Structure-adjacent</option>
-                  <option value="OTHER">Other</option>
-                </select>
-              </div>
-            </div>
-            <label for="fieldReferenceComment">Field-reference comment</label>
-            <textarea id="fieldReferenceComment" rows="2" placeholder="Describe the physical point or why this reference may be useful."></textarea>
-            <label for="fieldReferenceEnvironmentNote">Environment note (optional)</label>
-            <textarea id="fieldReferenceEnvironmentNote" rows="2" placeholder="Trees, trailer, structure, open area, or other conditions affecting GPS."></textarea>
-            <div class="grid">
-              <button id="captureFieldReference" type="button" disabled>Capture current GPS as field reference</button>
-              <button id="loadPreviewFix" type="button" class="secondary">Load controlled preview fix</button>
-            </div>
-            <div id="fieldReferenceStatus" class="muted small"></div>
-            <div class="muted small">
-              “Load controlled preview fix” is for pre-field UI acceptance only. Preview fixes are exported with
-              <code>fix_source=CONTROLLED_PREVIEW</code> and must not be treated as physical GPS evidence.
-            </div>
-          </div>
-
-          <div class="card">
-            <h2>4. Scan while standing at the test point</h2>
+          <div class="card" id="scanCard">
+            <h2>Scan</h2>
+            <div id="saveFeedback" class="save-feedback muted" aria-live="assertive">READY FOR SCAN</div>
             <div class="grid">
               <div>
                 <label for="inputMethod">Input method</label>
@@ -658,57 +667,145 @@ export default {
                 <form id="scanForm">
                   <input id="scanInput" autocomplete="off" autofocus placeholder="Scan DISP:, CONT:, CTRL:, LOC: or full scan URL" />
                 </form>
+                <div id="scanFocusState" class="good small">SCAN READY</div>
               </div>
             </div>
-            <div id="scanStatus" class="muted"></div>
+            <div id="scanStatus" class="muted">A scan can still be saved if GPS is unavailable; the save message will say NO CURRENT GPS.</div>
             <a id="normalRoute" class="btn secondary disabled" target="_blank" rel="noopener">Verify normal Scan route</a>
-            <div class="muted small">
-              In this harness Enter records the scan instead of redirecting. Use “Verify normal Scan route” afterward when you want to confirm normal routing separately.
-            </div>
           </div>
 
-          <div class="card">
-            <h2>5. Session evidence</h2>
-            <div id="sessionSummary" class="muted">No observations yet.</div>
-            <div id="fieldReferenceSummary" class="muted small" style="margin-top:8px;">No field-reference observations yet.</div>
-            <div style="overflow-x:auto; margin-top:12px;">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Field reference</th>
-                    <th>Source</th>
-                    <th>Area</th>
-                    <th>Environment</th>
-                    <th>GPS</th>
-                    <th>Accuracy</th>
-                    <th>Time</th>
-                  </tr>
-                </thead>
-                <tbody id="fieldReferenceRows"></tbody>
-              </table>
+          <details class="card" id="knownLocationDetails">
+            <summary>Known location / notes</summary>
+            <div class="details-body">
+              <label for="expectedReference">Confirm or test a known location</label>
+              <select id="expectedReference">
+                <option value="">No confirmed location</option>
+              </select>
+              <button id="clearExpectedReference" type="button" class="secondary">Clear confirmed location</button>
+              <div class="muted small">
+                The live GPS estimate remains independent. Use this when you know the meaningful location or want to test an existing GPX/reference point.
+              </div>
+
+              <label for="operatorLocationComment" style="margin-top:14px;">Operator location comment</label>
+              <textarea
+                id="operatorLocationComment"
+                rows="3"
+                placeholder="Examples: beginning of stage, end of stage, drop point, overlapping area, or anything useful about where you are."
+              ></textarea>
             </div>
-            <div style="overflow-x:auto; margin-top:18px;">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Scan</th>
-                    <th>Expected</th>
-                    <th>Operator comment</th>
-                    <th>Nearest</th>
-                    <th>Expected rank</th>
-                    <th>GPS accuracy</th>
-                  </tr>
-                </thead>
-                <tbody id="observationRows"></tbody>
-              </table>
+          </details>
+
+          <details class="card" id="fieldReferenceDetails">
+            <summary>Add / Check a Location Point</summary>
+            <div class="details-body">
+              <div class="warning">
+                <strong>FIELD EVIDENCE ONLY.</strong>
+                Saving a location sample does not move or overwrite the GPX/GIS source.
+              </div>
+              <div class="grid">
+                <div>
+                  <label for="fieldReferenceName">Location point name</label>
+                  <input id="fieldReferenceName" autocomplete="off" placeholder="Example: Who Forest north end" />
+                </div>
+                <div>
+                  <label for="fieldReferenceArea">Stage / area (optional)</label>
+                  <input id="fieldReferenceArea" list="referenceAreaChoices" autocomplete="off" placeholder="Choose or type an area" />
+                  <datalist id="referenceAreaChoices"></datalist>
+                </div>
+                <div>
+                  <label for="fieldReferenceSampleRole">What are you marking?</label>
+                  <select id="fieldReferenceSampleRole">
+                    <option value="">Not specified</option>
+                    <option value="CENTER">Center</option>
+                    <option value="START">Start</option>
+                    <option value="END">End</option>
+                    <option value="EDGE">Edge</option>
+                    <option value="ENTRANCE">Entrance</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="muted small" style="margin-bottom:8px;">Conditions — select every condition that applies.</div>
+              <div class="check-grid">
+                <label><input id="envOpenSky" type="checkbox" value="OPEN_SKY" /> Open sky</label>
+                <label><input id="envTreeCover" type="checkbox" value="TREE_COVER" /> Tree cover</label>
+                <label><input id="envVehicle" type="checkbox" value="INSIDE_VEHICLE" /> Inside vehicle / Toolcat cab</label>
+                <label><input id="envStructure" type="checkbox" value="STRUCTURE_ADJACENT" /> Near structure</label>
+                <label><input id="envOther" type="checkbox" value="OTHER" /> Other</label>
+              </div>
+
+              <label for="fieldReferenceComment">Location comment</label>
+              <textarea id="fieldReferenceComment" rows="2" placeholder="Describe the point, boundary, overlap, or why it would be useful."></textarea>
+              <label for="fieldReferenceEnvironmentNote">Condition note (optional)</label>
+              <textarea id="fieldReferenceEnvironmentNote" rows="2" placeholder="Anything else affecting the observation."></textarea>
+
+              <div class="grid">
+                <button id="captureFieldReference" type="button" disabled>SAVE LOCATION SAMPLE</button>
+                <button id="clearFieldReference" type="button" class="secondary">NEW / CLEAR</button>
+              </div>
+              <div id="fieldReferenceStatus" class="muted small" aria-live="polite"></div>
             </div>
-            <div class="grid" style="margin-top:12px;">
-              <button id="exportJson" type="button" class="secondary">Export JSON</button>
-              <button id="exportCsv" type="button" class="secondary">Export CSV</button>
-              <button id="clearSession" type="button" class="danger">Clear local test data</button>
+          </details>
+
+          <details class="card">
+            <summary>Session evidence / export</summary>
+            <div class="details-body">
+              <div id="sessionSummary" class="muted">No observations yet.</div>
+              <div id="fieldReferenceSummary" class="muted small" style="margin-top:8px;">No location samples yet.</div>
+
+              <div style="overflow-x:auto; margin-top:12px;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Location sample</th>
+                      <th>Source</th>
+                      <th>Area</th>
+                      <th>Role / conditions</th>
+                      <th>GPS</th>
+                      <th>Accuracy</th>
+                      <th>Time</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fieldReferenceRows"></tbody>
+                </table>
+              </div>
+
+              <div style="overflow-x:auto; margin-top:18px;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Scan</th>
+                      <th>Confirmed/test location</th>
+                      <th>Operator comment</th>
+                      <th>Nearest</th>
+                      <th>Rank</th>
+                      <th>GPS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="observationRows"></tbody>
+                </table>
+              </div>
+
+              <div class="grid" style="margin-top:12px;">
+                <button id="exportJson" type="button" class="secondary">Export JSON</button>
+                <button id="exportCsv" type="button" class="secondary">Export CSV</button>
+                <button id="clearSession" type="button" class="danger">Clear local test data</button>
+              </div>
             </div>
-          </div>
+          </details>
+
+          <details class="card">
+            <summary>Developer / Test Tools</summary>
+            <div class="details-body">
+              <button id="loadPreviewFix" type="button" class="secondary">Use test location</button>
+              <div class="muted small">
+                This inserts a controlled non-physical GPS fix for UI testing. It is exported as
+                <code>fix_source=CONTROLLED_PREVIEW</code> and must never be treated as park evidence.
+              </div>
+            </div>
+          </details>
 
           <script>
             const referencePoints = [{"name":"04-Food Collection-FC","lat":43.7777955,"lon":-87.74358339},{"name":"01-Front Entrance-FE","lat":43.77752968,"lon":-87.74151575},{"name":"00-HWY 42-HW","lat":43.77792811,"lon":-87.74186506},{"name":"05-Festive Trees-FT","lat":43.77833036,"lon":-87.74354104},{"name":"05a-Mega Star-MS","lat":43.7785483,"lon":-87.74319754},{"name":"06-Post Office-PO","lat":43.77874564,"lon":-87.74423908},{"name":"07a-Who Forest-WF","lat":43.77948868,"lon":-87.74573914},{"name":"08-Elf Choir-EC","lat":43.77942108,"lon":-87.74623869},{"name":"09-Global Warming-GW","lat":43.77977361,"lon":-87.74652366},{"name":"10-Stars-ST","lat":43.78026391,"lon":-87.74678012},{"name":"11-Sledders-SL","lat":43.78038637,"lon":-87.74757818},{"name":"13-Winter Wonderland-WW","lat":43.77984397,"lon":-87.74782959},{"name":"14-Icicle Tunnel-IT","lat":43.7789102,"lon":-87.74828739},{"name":"15-Church-Bells-CH","lat":43.77852769,"lon":-87.74910923},{"name":"16-Northern Lights-NL","lat":43.77721337,"lon":-87.74888248},{"name":"17-Candyland-CL","lat":43.77680829,"lon":-87.74697976},{"name":"18-Dancing Forest-DF","lat":43.77649806,"lon":-87.74559202},{"name":"19-Santa's Workshop-SW","lat":43.77683742,"lon":-87.74577019},{"name":"20-Snow Storm-SS","lat":43.77625492,"lon":-87.74475721},{"name":"21-Polar Bear Playground-PB","lat":43.77604286,"lon":-87.74487442},{"name":"22-Glistening Grove-GG","lat":43.77573908,"lon":-87.74390953},{"name":"23-Peanuts-PN","lat":43.77577894,"lon":-87.74294278},{"name":"24-Traditional Christmas-TC","lat":43.77591889,"lon":-87.74289151},{"name":"25-Racing Arches-RA","lat":43.77636681,"lon":-87.74226992},{"name":"26-Magic Igloo-MI","lat":43.77714554,"lon":-87.74166344},{"name":"02-Triangle-TR","lat":43.77709198,"lon":-87.74208111},{"name":"03-Welcome Area-WA","lat":43.77741945,"lon":-87.7426539},{"name":"03a-Mega Cube-MC","lat":43.77756775,"lon":-87.7426221},{"name":"30-Santa's Station-QV","lat":43.78175546,"lon":-87.74664227},{"name":"30-Santa's Station Entrance","lat":43.78063504,"lon":-87.74542583},{"name":"07-Whoville-WV","lat":43.77955255,"lon":-87.74491109}];
@@ -725,22 +822,37 @@ export default {
             };
 
             const expectedReference = document.getElementById('expectedReference');
+            const clearExpectedReference = document.getElementById('clearExpectedReference');
             const operatorLocationComment = document.getElementById('operatorLocationComment');
             const startGps = document.getElementById('startGps');
             const captureGps = document.getElementById('captureGps');
             const gpsError = document.getElementById('gpsError');
+            const gpsState = document.getElementById('gpsState');
             const gpsLatLon = document.getElementById('gpsLatLon');
             const gpsAccuracy = document.getElementById('gpsAccuracy');
             const gpsAge = document.getElementById('gpsAge');
             const gpsNearest = document.getElementById('gpsNearest');
             const gpsCandidates = document.getElementById('gpsCandidates');
+            const gpsCandidateButtons = document.getElementById('gpsCandidateButtons');
+            const addLocationFromCandidates = document.getElementById('addLocationFromCandidates');
+            const locationConfirmationStatus = document.getElementById('locationConfirmationStatus');
             const connectivityState = document.getElementById('connectivityState');
+            const fieldReferenceDetails = document.getElementById('fieldReferenceDetails');
             const fieldReferenceName = document.getElementById('fieldReferenceName');
             const fieldReferenceArea = document.getElementById('fieldReferenceArea');
-            const fieldReferenceEnvironment = document.getElementById('fieldReferenceEnvironment');
+            const referenceAreaChoices = document.getElementById('referenceAreaChoices');
+            const fieldReferenceSampleRole = document.getElementById('fieldReferenceSampleRole');
             const fieldReferenceComment = document.getElementById('fieldReferenceComment');
             const fieldReferenceEnvironmentNote = document.getElementById('fieldReferenceEnvironmentNote');
             const captureFieldReference = document.getElementById('captureFieldReference');
+            const clearFieldReference = document.getElementById('clearFieldReference');
+            const environmentChecks = [
+              document.getElementById('envOpenSky'),
+              document.getElementById('envTreeCover'),
+              document.getElementById('envVehicle'),
+              document.getElementById('envStructure'),
+              document.getElementById('envOther')
+            ];
             const loadPreviewFix = document.getElementById('loadPreviewFix');
             const fieldReferenceStatus = document.getElementById('fieldReferenceStatus');
             const fieldReferenceSummary = document.getElementById('fieldReferenceSummary');
@@ -748,7 +860,9 @@ export default {
             const inputMethod = document.getElementById('inputMethod');
             const scanForm = document.getElementById('scanForm');
             const scanInput = document.getElementById('scanInput');
+            const scanFocusState = document.getElementById('scanFocusState');
             const scanStatus = document.getElementById('scanStatus');
+            const saveFeedback = document.getElementById('saveFeedback');
             const normalRoute = document.getElementById('normalRoute');
             const sessionSummary = document.getElementById('sessionSummary');
             const observationRows = document.getElementById('observationRows');
@@ -756,9 +870,14 @@ export default {
             const exportCsv = document.getElementById('exportCsv');
             const clearSession = document.getElementById('clearSession');
 
+            const GPS_STALE_MS = 5000;
+            const GPS_LOST_MS = 15000;
             let watchId = null;
             let latestPosition = null;
             let gpsStartedAt = null;
+            let confirmedLocationMethod = null;
+            let confirmedLocationAt = null;
+            let saveFeedbackTimer = null;
 
             function newId() {
               if (window.crypto && typeof window.crypto.randomUUID === 'function') {
@@ -769,7 +888,7 @@ export default {
 
             function newSession() {
               return {
-                schema_version: 2,
+                schema_version: 3,
                 session_id: newId(),
                 started_at: new Date().toISOString(),
                 reference_source: SOURCE,
@@ -791,7 +910,7 @@ export default {
                 if (!Array.isArray(parsed.field_reference_observations)) {
                   parsed.field_reference_observations = [];
                 }
-                parsed.schema_version = 2;
+                parsed.schema_version = 3;
                 return parsed;
               } catch (err) {
                 return newSession();
@@ -849,7 +968,20 @@ export default {
               }
             }
 
+            function renderReferenceAreaChoices() {
+              referenceAreaChoices.innerHTML = '';
+              referencePoints
+                .slice()
+                .sort(function(a, b) { return a.name.localeCompare(b.name); })
+                .forEach(function(point) {
+                  const option = document.createElement('option');
+                  option.value = point.name;
+                  referenceAreaChoices.appendChild(option);
+                });
+            }
+
             renderExpectedReferenceOptions();
+            renderReferenceAreaChoices();
 
             function toRadians(value) {
               return value * Math.PI / 180;
@@ -928,19 +1060,81 @@ export default {
               };
             }
 
+            function gpsStateSnapshot() {
+              if (!latestPosition) return watchId != null ? 'WAITING' : 'NOT_STARTED';
+              const gps = positionSnapshot(latestPosition);
+              if (!gps) return 'NO_FIX';
+              if (gps.fix_source === 'CONTROLLED_PREVIEW') return 'TEST';
+              if (gps.fix_age_ms <= GPS_STALE_MS) return 'LIVE';
+              if (gps.fix_age_ms <= GPS_LOST_MS) return 'STALE';
+              return 'LOST';
+            }
+
+            function currentGpsSnapshot() {
+              const state = gpsStateSnapshot();
+              if (state !== 'LIVE' && state !== 'TEST') return null;
+              return positionSnapshot(latestPosition);
+            }
+
+            function renderCandidateButtons(ranked, enabled) {
+              gpsCandidateButtons.innerHTML = '';
+              ranked.slice(0, 3).forEach(function(item, index) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'secondary';
+                button.disabled = !enabled;
+                button.textContent =
+                  (index === 0 ? 'Likely: ' : '') +
+                  item.name + ' · ' + item.distance_ft.toFixed(1) + ' ft';
+                button.addEventListener('click', function() {
+                  confirmLocation(item.reference_id, 'LIVE_TOP_' + (index + 1));
+                });
+                gpsCandidateButtons.appendChild(button);
+              });
+            }
+
             function renderGps() {
-              if (!latestPosition) return;
+              const state = gpsStateSnapshot();
+              gpsState.textContent = state.replace('_', ' ');
+              gpsState.className = 'value ' + (
+                state === 'LIVE' ? 'good' :
+                state === 'TEST' ? 'muted' :
+                state === 'STALE' || state === 'LOST' || state === 'NO_FIX' ? 'bad' : 'muted'
+              );
+
+              if (!latestPosition) {
+                gpsLatLon.textContent = 'No fix';
+                gpsAccuracy.textContent = '—';
+                gpsAge.textContent = '—';
+                gpsNearest.textContent = '—';
+                gpsCandidates.textContent = state === 'WAITING' ? 'Waiting for GPS fix…' : 'Start GPS to see nearby locations.';
+                gpsCandidateButtons.innerHTML = '';
+                captureGps.disabled = true;
+                captureFieldReference.disabled = true;
+                addLocationFromCandidates.disabled = true;
+                return;
+              }
+
               const gps = positionSnapshot(latestPosition);
               const ranked = rankedReferences(gps.latitude, gps.longitude);
+              const current = state === 'LIVE' || state === 'TEST';
+
               gpsLatLon.textContent = gps.latitude.toFixed(7) + ', ' + gps.longitude.toFixed(7);
               gpsAccuracy.textContent = gps.accuracy_ft == null ? 'Unknown' : gps.accuracy_ft.toFixed(1) + ' ft';
               gpsAge.textContent = (gps.fix_age_ms / 1000).toFixed(1) + ' sec';
-              gpsNearest.textContent = referenceLabel(ranked[0]) + ' · ' + ranked[0].distance_ft.toFixed(1) + ' ft';
-              gpsCandidates.textContent = 'Nearest 5: ' + ranked.slice(0, 5).map(function(item, index) {
-                return (index + 1) + '. ' + referenceLabel(item) + ' (' + item.distance_ft.toFixed(1) + ' ft)';
-              }).join(' · ');
-              captureGps.disabled = false;
-              captureFieldReference.disabled = false;
+              gpsNearest.textContent =
+                (current ? '' : 'LAST FIX · ') +
+                referenceLabel(ranked[0]) + ' · ' + ranked[0].distance_ft.toFixed(1) + ' ft';
+              gpsCandidates.textContent =
+                (current ? 'Three nearest candidates: ' : 'Last-fix candidates (GPS is not current): ') +
+                ranked.slice(0, 3).map(function(item, index) {
+                  return (index + 1) + '. ' + referenceLabel(item) + ' (' + item.distance_ft.toFixed(1) + ' ft)';
+                }).join(' · ');
+
+              renderCandidateButtons(ranked, current);
+              captureGps.disabled = !current;
+              captureFieldReference.disabled = !current;
+              addLocationFromCandidates.disabled = !current;
             }
 
             function startGpsWatch() {
@@ -963,6 +1157,7 @@ export default {
                 },
                 function(error) {
                   gpsError.textContent = 'GPS error ' + error.code + ': ' + error.message;
+                  renderGps();
                   startGps.disabled = false;
                   startGps.textContent = 'Retry high-accuracy GPS';
                   if (watchId != null) {
@@ -1009,25 +1204,79 @@ export default {
                 '. This is UI test data, not physical GPS evidence.';
             }
 
+            function selectedEnvironmentFlags() {
+              return environmentChecks
+                .filter(function(input) { return input.checked; })
+                .map(function(input) { return input.value; });
+            }
+
+            function clearFieldReferenceForm() {
+              fieldReferenceName.value = '';
+              fieldReferenceArea.value = '';
+              fieldReferenceSampleRole.value = '';
+              fieldReferenceComment.value = '';
+              fieldReferenceEnvironmentNote.value = '';
+              environmentChecks.forEach(function(input) { input.checked = false; });
+              fieldReferenceStatus.textContent = 'Location sample form cleared.';
+            }
+
+            function showSaveFeedback(message, isGood) {
+              if (saveFeedbackTimer != null) {
+                window.clearTimeout(saveFeedbackTimer);
+                saveFeedbackTimer = null;
+              }
+              saveFeedback.textContent = message;
+              saveFeedback.className = 'save-feedback ' + (isGood ? 'good' : 'bad');
+              saveFeedbackTimer = window.setTimeout(function() {
+                saveFeedback.textContent = 'READY FOR SCAN';
+                saveFeedback.className = 'save-feedback muted';
+              }, 4500);
+            }
+
+            function confirmLocation(referenceId, method) {
+              const point = referenceCandidates().find(function(item) {
+                return item.reference_id === referenceId;
+              }) || null;
+              if (!point) return;
+              expectedReference.value = point.reference_id;
+              confirmedLocationMethod = method || 'MANUAL';
+              confirmedLocationAt = new Date().toISOString();
+              locationConfirmationStatus.textContent =
+                'Confirmed for next scan: ' + referenceLabel(point) + '.';
+              scheduleScanInputFocus();
+            }
+
+            function clearConfirmedLocation() {
+              expectedReference.value = '';
+              confirmedLocationMethod = null;
+              confirmedLocationAt = null;
+              locationConfirmationStatus.textContent = 'No location confirmed for the next scan.';
+              scheduleScanInputFocus();
+            }
+
             function captureFieldReferenceObservation() {
-              const gps = positionSnapshot(latestPosition);
+              const gps = currentGpsSnapshot();
               const provisionalName = fieldReferenceName.value.trim();
               if (!gps) {
-                fieldReferenceStatus.textContent = 'Start GPS or load a controlled preview fix first.';
+                fieldReferenceStatus.textContent = 'GPS must be LIVE before saving a location sample.';
+                showSaveFeedback('NOT SAVED — NO CURRENT GPS', false);
                 return;
               }
               if (!provisionalName) {
-                fieldReferenceStatus.textContent = 'Enter a provisional field-reference name first.';
+                fieldReferenceStatus.textContent = 'Enter a location point name first.';
                 fieldReferenceName.focus();
                 return;
               }
 
+              const flags = selectedEnvironmentFlags();
               const observation = {
                 field_reference_observation_id: newId(),
                 provisional_name: provisionalName,
                 area_context: fieldReferenceArea.value.trim() || null,
+                sample_role: fieldReferenceSampleRole.value || null,
                 operator_comment: fieldReferenceComment.value.trim() || null,
-                environment_context: fieldReferenceEnvironment.value || null,
+                environment_context: flags.length ? flags[0] : null,
+                environment_flags: flags,
                 environment_note: fieldReferenceEnvironmentNote.value.trim() || null,
                 recorded_at: new Date().toISOString(),
                 gps: gps,
@@ -1043,8 +1292,12 @@ export default {
               renderGps();
               renderSession();
               fieldReferenceStatus.textContent =
-                'Recorded raw field-reference observation “' + provisionalName + '” (' +
-                gps.fix_source + '). Multiple observations with this name remain separate raw points.';
+                'SAVED — location sample “' + provisionalName + '”. Use NEW / CLEAR before entering a different point.';
+              showSaveFeedback(
+                'SAVED — LOCATION SAMPLE · ' + provisionalName + ' · GPS ' +
+                (gps.accuracy_ft == null ? 'accuracy unknown' : gps.accuracy_ft.toFixed(1) + ' ft'),
+                true
+              );
               scheduleScanInputFocus();
             }
 
@@ -1107,7 +1360,9 @@ export default {
             }
 
             function recordObservation(kind, rawScan) {
-              const gps = positionSnapshot(latestPosition);
+              const gpsStatusValue = gpsStateSnapshot();
+              const lastGpsFix = latestPosition ? positionSnapshot(latestPosition) : null;
+              const gps = currentGpsSnapshot();
               const ranked = gps ? rankedReferences(gps.latitude, gps.longitude) : [];
               const expected = expectedResult(ranked);
               const parsed = rawScan ? canonicalScan(rawScan) : null;
@@ -1126,10 +1381,14 @@ export default {
                 expected_reference: expected.name,
                 expected_reference_latitude: expected.latitude,
                 expected_reference_longitude: expected.longitude,
+                location_confirmation_method: confirmedLocationMethod,
+                location_confirmed_at: confirmedLocationAt,
                 operator_location_comment: operatorLocationComment.value.trim() || null,
                 expected_rank: expected.rank,
                 expected_distance_ft: expected.distance_ft,
+                gps_status: gpsStatusValue,
                 gps: gps,
+                last_gps_fix: gps ? null : lastGpsFix,
                 connectivity: connectivitySnapshot(),
                 gps_acquisition_elapsed_ms: gpsStartedAt == null || !gps ? null : Number(latestPosition.timestamp) - gpsStartedAt,
                 nearest_references: ranked.slice(0, 5)
@@ -1141,10 +1400,18 @@ export default {
 
               if (kind === 'SCAN') {
                 if (parsed) {
-                  scanStatus.textContent = 'Recorded ' + parsed.canonical + (gps ? ' with GPS evidence.' : ' without a GPS fix.');
+                  const gpsText = gps
+                    ? 'GPS ' + (gps.accuracy_ft == null ? 'accuracy unknown' : gps.accuracy_ft.toFixed(1) + ' ft')
+                    : 'NO CURRENT GPS';
+                  const locationText = expected.name ? ' · ' + expected.name : '';
+                  showSaveFeedback('SAVED — ' + parsed.canonical + ' · ' + gpsText + locationText, !!gps);
+                  scanStatus.textContent =
+                    'Recorded ' + parsed.canonical +
+                    (gps ? ' with current GPS evidence.' : ' without a current GPS fix; last-fix evidence is preserved when available.');
                   normalRoute.href = '/scan/' + encodeURIComponent(parsed.type) + '/' + encodeURIComponent(parsed.key);
                   normalRoute.classList.remove('disabled');
                 } else {
+                  showSaveFeedback('SAVED RAW INPUT — UNRECOGNIZED IDENTITY', false);
                   scanStatus.textContent = 'Recorded raw scan, but it did not match a recognized TYPE:key or /scan/TYPE/key value.';
                   normalRoute.removeAttribute('href');
                   normalRoute.classList.add('disabled');
@@ -1175,7 +1442,10 @@ export default {
                     escapeHtml(gps.fix_source || 'BROWSER_GEOLOCATION') + '</span></td>' +
                   '<td>' + escapeHtml(obs.area_context || '—') + '</td>' +
                   '<td>' + escapeHtml(
-                    (obs.environment_context || '—') +
+                    (obs.sample_role ? obs.sample_role + ' · ' : '') +
+                    ((obs.environment_flags && obs.environment_flags.length)
+                      ? obs.environment_flags.join(' + ')
+                      : (obs.environment_context || '—')) +
                     (obs.environment_note ? ' · ' + obs.environment_note : '')
                   ) + '</td>' +
                   '<td>' + escapeHtml(
@@ -1261,9 +1531,9 @@ export default {
                 'source_waypoint_count','selected_waypoint_count',
                 'expected_reference_id','expected_reference_source_type','expected_reference',
                 'expected_reference_latitude','expected_reference_longitude',
-                'field_reference_name','field_reference_area_context','field_reference_operator_comment',
-                'field_reference_environment_context','field_reference_environment_note','gps_fix_source',
-                'operator_location_comment','expected_rank','expected_distance_ft',
+                'field_reference_name','field_reference_area_context','field_reference_sample_role','field_reference_operator_comment',
+                'field_reference_environment_context','field_reference_environment_flags','field_reference_environment_note','gps_fix_source',
+                'location_confirmation_method','location_confirmed_at','gps_status','operator_location_comment','expected_rank','expected_distance_ft',
                 'latitude','longitude','accuracy_ft','fix_timestamp','fix_age_ms','gps_acquisition_elapsed_ms',
                 'browser_online','effective_type','downlink_mbps','rtt_ms','save_data',
                 'nearest_1_source','nearest_1','nearest_1_distance_ft',
@@ -1287,7 +1557,8 @@ export default {
                   session.reference_source && session.reference_source.selected_waypoint_count,
                   obs.expected_reference_id, obs.expected_reference_source_type, obs.expected_reference,
                   obs.expected_reference_latitude, obs.expected_reference_longitude,
-                  null, null, null, null, null, gps.fix_source,
+                  null, null, null, null, null, null, null, gps.fix_source,
+                  obs.location_confirmation_method, obs.location_confirmed_at, obs.gps_status,
                   obs.operator_location_comment, obs.expected_rank, obs.expected_distance_ft,
                   gps.latitude, gps.longitude, gps.accuracy_ft, gps.fix_timestamp, gps.fix_age_ms,
                   obs.gps_acquisition_elapsed_ms,
@@ -1312,9 +1583,11 @@ export default {
                   session.reference_source && session.reference_source.source_waypoint_count,
                   session.reference_source && session.reference_source.selected_waypoint_count,
                   null, null, null, null, null,
-                  obs.provisional_name, obs.area_context, obs.operator_comment,
-                  obs.environment_context, obs.environment_note, gps.fix_source,
-                  null, null, null,
+                  obs.provisional_name, obs.area_context, obs.sample_role, obs.operator_comment,
+                  obs.environment_context,
+                  obs.environment_flags && obs.environment_flags.join('|'),
+                  obs.environment_note, gps.fix_source,
+                  null, null, null, null, null, null,
                   gps.latitude, gps.longitude, gps.accuracy_ft, gps.fix_timestamp, gps.fix_age_ms,
                   obs.gps_acquisition_elapsed_ms,
                   connectivity.browser_online, connectivity.effective_type, connectivity.downlink_mbps,
@@ -1342,8 +1615,13 @@ export default {
               window.setTimeout(focusScanInput, 250);
             }
 
-            function isUnfocusedPageSurface(target) {
-              return !target || target === document.body || target === document.documentElement;
+            function isTextEntryTarget(target) {
+              if (!target || !target.tagName || target === scanInput) return false;
+              const tag = String(target.tagName).toUpperCase();
+              if (tag === 'TEXTAREA') return true;
+              if (tag !== 'INPUT') return false;
+              const type = String(target.type || 'text').toLowerCase();
+              return ['text','search','url','email','number','tel','password'].includes(type);
             }
 
             startGps.addEventListener('click', function() {
@@ -1352,14 +1630,43 @@ export default {
             });
             captureGps.addEventListener('click', function() {
               recordObservation('GPS_SAMPLE', null);
+              showSaveFeedback('SAVED — GPS SAMPLE', true);
               scheduleScanInputFocus();
             });
             captureFieldReference.addEventListener('click', captureFieldReferenceObservation);
+            clearFieldReference.addEventListener('click', function() {
+              clearFieldReferenceForm();
+              fieldReferenceName.focus();
+            });
             loadPreviewFix.addEventListener('click', function() {
               loadControlledPreviewFix();
               scheduleScanInputFocus();
             });
+            clearExpectedReference.addEventListener('click', clearConfirmedLocation);
+            addLocationFromCandidates.addEventListener('click', function() {
+              clearConfirmedLocation();
+              fieldReferenceDetails.open = true;
+              const gps = currentGpsSnapshot();
+              if (gps) {
+                const ranked = rankedReferences(gps.latitude, gps.longitude);
+                if (!fieldReferenceArea.value && ranked[0]) fieldReferenceArea.value = ranked[0].name;
+              }
+              fieldReferenceName.focus();
+            });
             expectedReference.addEventListener('change', function() {
+              if (expectedReference.value) {
+                confirmedLocationMethod = 'KNOWN_LOCATION_DROPDOWN';
+                confirmedLocationAt = new Date().toISOString();
+                const point = referenceCandidates().find(function(item) {
+                  return item.reference_id === expectedReference.value;
+                });
+                locationConfirmationStatus.textContent =
+                  point ? 'Confirmed for next scan: ' + referenceLabel(point) + '.' : 'Known location selected.';
+              } else {
+                confirmedLocationMethod = null;
+                confirmedLocationAt = null;
+                locationConfirmationStatus.textContent = 'No location confirmed for the next scan.';
+              }
               if (latestPosition && latestPosition._msbSource === 'CONTROLLED_PREVIEW') {
                 loadControlledPreviewFix();
               }
@@ -1371,6 +1678,18 @@ export default {
             fieldReferenceArea.addEventListener('blur', scheduleScanInputFocus);
             fieldReferenceComment.addEventListener('blur', scheduleScanInputFocus);
             fieldReferenceEnvironmentNote.addEventListener('blur', scheduleScanInputFocus);
+            fieldReferenceSampleRole.addEventListener('change', scheduleScanInputFocus);
+            environmentChecks.forEach(function(input) {
+              input.addEventListener('change', scheduleScanInputFocus);
+            });
+            scanInput.addEventListener('focus', function() {
+              scanFocusState.textContent = 'SCAN READY';
+              scanFocusState.className = 'good small';
+            });
+            scanInput.addEventListener('blur', function() {
+              scanFocusState.textContent = 'SCAN FIELD NOT FOCUSED — Zebra still works from buttons/dropdowns; finish any text entry first.';
+              scanFocusState.className = 'muted small';
+            });
             scanForm.addEventListener('submit', function(event) {
               event.preventDefault();
               const raw = scanInput.value.trim();
@@ -1384,7 +1703,10 @@ export default {
               localStorage.removeItem(STORAGE_KEY);
               session = newSession();
               fieldReferenceStatus.textContent = '';
+              clearConfirmedLocation();
+              clearFieldReferenceForm();
               renderExpectedReferenceOptions();
+              renderReferenceAreaChoices();
               renderFieldReferences();
               renderGps();
               renderSession();
@@ -1397,7 +1719,7 @@ export default {
                 event.ctrlKey ||
                 event.metaKey ||
                 event.altKey ||
-                !isUnfocusedPageSurface(event.target)
+                isTextEntryTarget(event.target)
               ) {
                 return;
               }
@@ -1431,6 +1753,8 @@ export default {
 
             renderConnectivity();
             renderExpectedReferenceOptions();
+            renderReferenceAreaChoices();
+            renderGps();
             renderFieldReferences();
             renderSession();
             scheduleScanInputFocus();
