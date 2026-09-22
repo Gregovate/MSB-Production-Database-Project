@@ -104,7 +104,6 @@ Example invocation shape:
   -PreviewPort <manager-port> `
   -PreviewEmail <manager-email> `
   -CrewPreviewPort <crew-port> `
-  -CrewPreviewEmail <production-crew-email> `
   -CandidateSha <exact-rehearsal-sha> `
   -TargetRef issue-122-2026-dress-rehearsal `
   -ExpectedVersion V0.3.16-stale-ownership-cleanup `
@@ -117,7 +116,7 @@ Example invocation shape:
   )
 ```
 
-Both browser identities operate against the same disposable PostgreSQL clone. The runner verifies that the Production Crew identity can read Setup but cannot invoke a Manager scheduling mutation.
+Both browser identities operate against the same disposable PostgreSQL clone. If `-CrewPreviewEmail` is omitted, the server runner selects an active Production Crew identity from the disposable clone and prints the selected email in the review output. The runner verifies that identity has Production Crew authority, can read Setup, cannot manage Setup, and cannot invoke a Manager scheduling mutation.
 
 ## Legacy feature-specific wrappers
 
