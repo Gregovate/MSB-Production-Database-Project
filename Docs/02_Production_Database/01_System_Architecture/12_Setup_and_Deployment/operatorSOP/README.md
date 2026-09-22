@@ -14,9 +14,7 @@ Use this page to find the Setup instruction for the job you are doing.
 
 Open Setup:
 
-```text
-https://my.sheboyganlights.org/setup/
-```
+[**Open the Setup application**](https://my.sheboyganlights.org/setup/)
 
 ## Current Review Work
 
@@ -50,3 +48,11 @@ The goal now is to improve the reusable Setup tasks before the real 2026 Setup S
 This is **review and correction**, not a complete warehouse inventory.
 
 For a plain-English overview of the whole Setup area, go back to [Setup and Deployment](../README.md).
+
+
+## Direct Links
+
+- [Open Setup](https://my.sheboyganlights.org/setup/)
+- [Open Kit Inventory](https://my.sheboyganlights.org/setup/kit-inventory/)
+- [Open T-Post Inventory](https://my.sheboyganlights.org/setup/t-post-inventory/)
+- [Open Setup / Takedown Procedures](https://my.sheboyganlights.org/procedures/)
