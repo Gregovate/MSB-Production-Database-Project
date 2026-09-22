@@ -56,8 +56,8 @@ if ($PreviewEmail -notmatch '^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+$') {
 
 $crewPreviewEnabled = ($CrewPreviewPort -ne 0) -or (-not [string]::IsNullOrWhiteSpace($CrewPreviewEmail))
 if ($crewPreviewEnabled) {
-    if ($CrewPreviewPort -eq 0 -or [string]::IsNullOrWhiteSpace($CrewPreviewEmail)) {
-        throw 'CrewPreviewPort and CrewPreviewEmail must be supplied together.'
+    if ($CrewPreviewPort -eq 0) {
+        throw 'CrewPreviewPort is required when a Production Crew preview is requested.'
     }
     if ($CrewPreviewPort -lt 1024 -or $CrewPreviewPort -gt 65535) {
         throw 'CrewPreviewPort must be between 1024 and 65535.'
@@ -68,7 +68,8 @@ if ($crewPreviewEnabled) {
     if ($CrewPreviewPort -eq $PreviewPort) {
         throw 'CrewPreviewPort must differ from PreviewPort.'
     }
-    if ($CrewPreviewEmail -notmatch '^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+$') {
+    if (-not [string]::IsNullOrWhiteSpace($CrewPreviewEmail) -and
+        $CrewPreviewEmail -notmatch '^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+$') {
         throw 'CrewPreviewEmail is not a valid email address.'
     }
 }
@@ -161,7 +162,9 @@ try {
     )
     if ($crewPreviewEnabled) {
         $manifestLines += "crew_preview_port`t$CrewPreviewPort"
-        $manifestLines += "crew_preview_email`t$CrewPreviewEmail"
+        if (-not [string]::IsNullOrWhiteSpace($CrewPreviewEmail)) {
+            $manifestLines += "crew_preview_email`t$CrewPreviewEmail"
+        }
     }
     if (-not [string]::IsNullOrWhiteSpace($ExpectedVersion)) {
         $manifestLines += "expected_version`t$ExpectedVersion"
@@ -191,7 +194,7 @@ try {
     if ($crewPreviewEnabled) {
         Write-Host "Crew port:       $CrewPreviewPort"
         Write-Host "Crew URL:        $crewBrowserUrl"
-        Write-Host "Crew user:       $CrewPreviewEmail"
+        Write-Host "Crew user:       $(if ([string]::IsNullOrWhiteSpace($CrewPreviewEmail)) { '<auto-select active Production Crew>' } else { $CrewPreviewEmail })"
     }
     Write-Host "Expected version:$ExpectedVersion"
     Write-Host "Migrations:      $($MigrationPaths.Count)"
