@@ -60,7 +60,8 @@ test('field acceptance route exercises real browser GPS and HID capture primitiv
   assert.match(response.body, /document\.addEventListener\('keydown'/);
   assert.match(response.body, /Operator location comment/);
   assert.match(response.body, /operator_location_comment/);
-  assert.match(response.body, /expectedReference\.addEventListener\('change', function\(\) \{\s+if \(latestPosition && latestPosition\._msbSource === 'CONTROLLED_PREVIEW'\) \{\s+loadControlledPreviewFix\(\);\s+\}\s+scheduleScanInputFocus\(\);\s+\}\);/);
+  assert.match(response.body, /function confirmLocation\(referenceId, method\)/);
+  assert.match(response.body, /function isTextEntryTarget\(target\)/);
   assert.match(response.body, /inputMethod\.addEventListener\('change', scheduleScanInputFocus\)/);
   assert.match(response.body, /operatorLocationComment\.addEventListener\('blur', scheduleScanInputFocus\)/);
   assert.match(response.body, /Verify normal Scan route/);
@@ -112,16 +113,18 @@ test('field acceptance route captures disposable raw field-reference observation
   const { response, databaseCalled } = await renderRoute('/field-test');
 
   assert.equal(databaseCalled, false);
-  assert.match(response.body, /Provisional field-reference observations/);
+  assert.match(response.body, /Add \/ Check a Location Point/);
   assert.match(response.body, /field_reference_observations:\s*\[\]/);
   assert.match(response.body, /function captureFieldReferenceObservation\(\)/);
   assert.match(response.body, /provisional_name:/);
   assert.match(response.body, /area_context:/);
   assert.match(response.body, /environment_context:/);
+  assert.match(response.body, /environment_flags:/);
+  assert.match(response.body, /sample_role:/);
   assert.match(response.body, /environment_note:/);
   assert.match(response.body, /operator_comment:/);
   assert.match(response.body, /gps_acquisition_elapsed_ms:/);
-  assert.match(response.body, /Multiple observations with this name remain separate raw points/);
+  assert.match(response.body, /SAVED — location sample/);
 });
 
 test('field references remain provenance-distinct and participate in ranking without averaging', async () => {
@@ -141,7 +144,7 @@ test('field references remain provenance-distinct and participate in ranking wit
 test('controlled preview fix is explicitly marked as non-physical evidence', async () => {
   const { response } = await renderRoute('/field-test');
 
-  assert.match(response.body, /Load controlled preview fix/);
+  assert.match(response.body, /Use test location/);
   assert.match(response.body, /CONTROLLED_PREVIEW/);
   assert.match(response.body, /UI test data, not physical GPS evidence/);
   assert.match(response.body, /fix_source:/);
@@ -154,12 +157,46 @@ test('field-reference evidence survives JSON CSV export and clear-all flow', asy
   assert.match(response.body, /'field_reference_observation_id'/);
   assert.match(response.body, /'field_reference_name'/);
   assert.match(response.body, /'field_reference_area_context'/);
+  assert.match(response.body, /'field_reference_sample_role'/);
   assert.match(response.body, /'field_reference_environment_context'/);
+  assert.match(response.body, /'field_reference_environment_flags'/);
   assert.match(response.body, /'field_reference_environment_note'/);
   assert.match(response.body, /'gps_fix_source'/);
+  assert.match(response.body, /'location_confirmation_method'/);
+  assert.match(response.body, /'location_confirmed_at'/);
+  assert.match(response.body, /'gps_status'/);
   assert.match(response.body, /'nearest_1_source'/);
   assert.match(response.body, /localStorage\.removeItem\(STORAGE_KEY\)/);
   assert.match(response.body, /renderFieldReferences\(\)/);
+});
+
+test('field harness is scan-first and exposes operator-friendly GPS/location feedback', async () => {
+  const { response } = await renderRoute('/field-test');
+  const body = response.body;
+
+  const scanIndex = body.indexOf('<h2>Scan</h2>');
+  const knownLocationIndex = body.indexOf('<summary>Known location / notes</summary>');
+  const addLocationIndex = body.indexOf('<summary>Add / Check a Location Point</summary>');
+
+  assert.ok(scanIndex >= 0);
+  assert.ok(knownLocationIndex > scanIndex);
+  assert.ok(addLocationIndex > scanIndex);
+
+  assert.match(body, /GPS status/);
+  assert.match(body, /GPS_STALE_MS = 5000/);
+  assert.match(body, /GPS_LOST_MS = 15000/);
+  assert.match(body, /Three nearest candidates/);
+  assert.match(body, /None of these \/ Add location/);
+  assert.match(body, /SAVED —/);
+  assert.match(body, /NO CURRENT GPS/);
+  assert.match(body, /Clear confirmed location/);
+  assert.match(body, /NEW \/ CLEAR/);
+  assert.match(body, /Inside vehicle \/ Toolcat cab/);
+  assert.match(body, /Tree cover/);
+  assert.match(body, /environmentChecks/);
+  assert.match(body, /location_confirmation_method/);
+  assert.match(body, /last_gps_fix/);
+  assert.match(body, /Developer \/ Test Tools/);
 });
 
 test('harness documentation assigns #219/#122 ownership and defers offline architecture', () => {
