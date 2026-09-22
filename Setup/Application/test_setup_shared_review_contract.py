@@ -17,7 +17,7 @@ def test_shared_2025_review_is_explicitly_permanent_and_year_bounded() -> None:
     ).read_text(encoding="utf-8")
 
     assert "this is real production data" in guide.lower()
-    assert "2025 Historical Verification" in guide
+    assert "2025 — Historical Verification" in guide
     assert "Annual 2025 information describes what happened or was planned in 2025." in guide
     assert "There is currently no 2026 Setup Session." in guide
     assert "Do not force a reusable task into 2025" in guide
