@@ -37,7 +37,7 @@ This is real Production data.
 Before Mark Verified, check:
 
 - Should this task exist every year?
-- Is **Active Reusable Task** correct?
+- Is **Active Reusable Task** correct? If normal yearly work is inactive, it will not be included when a future Setup Session is created.
 - Is the normal crew size entered?
 - Is the expected time entered?
 - Are the prerequisites correct?
@@ -255,7 +255,39 @@ If Setup warns that you have unsaved changes, choose the option that matches wha
 
 Do not click through a warning without reading it.
 
-## 15. If Something Does Not Make Sense
+## 15. Run the Material Audit
+
+Use **Material Audit** before the real 2026 Setup Session is created.
+
+The audit checks for missing Setup information. It does not decide whether a task or assignment is correct.
+
+### Future Session Readiness
+
+If a reusable task is inactive, it will not be included when a future Setup Session is created.
+
+Review inactive tasks and decide whether that is intentional.
+
+### Display / LOR Ownership
+
+If Displays are not assigned to a Setup Task where assignment is needed, use the audit correction action to open **Display Ownership**.
+
+You may need to:
+
+- assign the Displays to an existing task;
+- create a missing practical Setup Task; or
+- correct an earlier task decision.
+
+Use **Ctrl/Cmd-click**, **Shift-click**, and group movement so you do not move Displays one at a time.
+
+### Kit Assignment Coverage
+
+If a Kit/support Container is not assigned, decide why.
+
+- If one or more Setup Tasks need it, assign the Container to the correct task(s).
+- If it is intentionally shared/bulk stock, use the audit review action to record that reason.
+- Do not invent a task assignment just to clear the audit.
+
+## 16. If Something Does Not Make Sense
 
 Do not work around bad information.
 
