@@ -49,9 +49,9 @@ def test_setup_145_server_runner_obeys_production_runbook_order_and_scope() -> N
     assert 'sudo systemctl stop "$SETUP_SERVICE"' in server
     assert 'pg_dump -U "$DB_ACTOR" -d "$PROD_DB" -Fc > "$BACKUP_FILE"' in server
     assert 'pg_restore --list < "$BACKUP_FILE"' in server
-    assert "cat "$BACKUP_FILE" |" not in server
+    assert 'cat "$BACKUP_FILE" |' not in server
     assert 'psql_prod < "$M052"' in server
-    assert "cat "$M052" |" not in server
+    assert 'cat "$M052" |' not in server
 
     assert "ref.clear_setup_task_display_owner(text,bigint,bigint)" in server
     assert "GRANT" not in server
