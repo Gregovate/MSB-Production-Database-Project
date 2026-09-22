@@ -202,7 +202,7 @@ if [[ ! "$PREVIEW_PORT" =~ ^[0-9]+$ ]] || (( PREVIEW_PORT < 1024 || PREVIEW_PORT
     echo "FAIL: preview port must be an integer from 1024 through 65535"
     exit 5
 fi
-if [[ "$PREVIEW_PORT" == "8055" || "$PREVIEW_PORT" == "8790" || "$PREVIEW_PORT" == "8792" || "$PREVIEW_PORT" == "8794" ]]; then
+if [[ "$PREVIEW_PORT" == "8055" || "$PREVIEW_PORT" == "8790" || "$PREVIEW_PORT" == "8792" || "$PREVIEW_PORT" == "8794" || "$PREVIEW_PORT" == "8796" ]]; then
     echo "FAIL: preview port conflicts with a governed Production listener"
     exit 6
 fi
@@ -219,7 +219,7 @@ if [[ -n "$CREW_PREVIEW_PORT" ]]; then
         echo "FAIL: crew preview port must be an integer from 1024 through 65535"
         exit 8
     fi
-    if [[ "$CREW_PREVIEW_PORT" == "8055" || "$CREW_PREVIEW_PORT" == "8790" || "$CREW_PREVIEW_PORT" == "8792" || "$CREW_PREVIEW_PORT" == "8794" ]]; then
+    if [[ "$CREW_PREVIEW_PORT" == "8055" || "$CREW_PREVIEW_PORT" == "8790" || "$CREW_PREVIEW_PORT" == "8792" || "$CREW_PREVIEW_PORT" == "8794" || "$CREW_PREVIEW_PORT" == "8796" ]]; then
         echo "FAIL: crew preview port conflicts with a governed Production listener"
         exit 8
     fi
