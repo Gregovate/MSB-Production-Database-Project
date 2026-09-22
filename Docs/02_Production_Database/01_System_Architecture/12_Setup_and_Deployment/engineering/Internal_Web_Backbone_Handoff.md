@@ -7,7 +7,7 @@
 | Consuming System | `Gregovate/MSB-Internal-Web-Backbone` |
 | Status | IMPLEMENTED — Backbone PR #11 merged; live publish/verification pending |
 | Owner | MSB Production Database / Setup documentation owner |
-| Last Reviewed | 2026-09-07 |
+| Last Reviewed | 2026-09-22 |
 
 ## Purpose
 
@@ -55,7 +55,11 @@ Detailed Manager guide:
 Docs/02_Production_Database/02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md
 ```
 
-These source documents remain in the open Setup PR stack and are not yet on Production Database `main`. Backbone therefore does **not** link ordinary users to those GitHub `main` paths yet. The live application is the stable current operator entry point.
+These source documents are now on Production Database `main`.
+
+PR **#223** rewrote the Setup operator instructions in plain language using live Manager feedback. The canonical Setup README remains the documentation target for Backbone; do not create a second editable copy.
+
+Backbone issue **#10** records the current Production-page integration. Its source includes a **Setup Documentation — Review Guide & Procedures** destination that points to the canonical Setup README on Production Database `main`. The live Backbone publish/verification of that Production-page revision remains a separate Backbone responsibility.
 
 ## Preferred Application Entry Point
 
@@ -199,7 +203,7 @@ Those remain outside the current accepted Production-ready boundary.
 
 ## Backbone Implementation
 
-Backbone PR **#11** merged to `main` on 2026-09-07.
+Backbone PR **#11** merged the initial Setup application action on 2026-09-07. Backbone issue **#10** records the later source work that also adds the canonical Setup documentation destination.
 
 Implemented source:
 
@@ -207,14 +211,15 @@ Implemented source:
 my/committees/production/index.html
 ```
 
-The Production page now includes:
+Current Backbone issue #10 source direction includes three Setup-related destinations:
 
 - **Review 2025 Setup — Live Review / Training** -> `https://my.sheboyganlights.org/setup/`;
-- plain-English 2025 review/training purpose text;
-- the existing Procedure application retained as the field Setup/Takedown/Inspection destination; and
-- visible version indicator `Production Portal v1.2 — Updated 2026-09-07`.
+- **Setup Documentation — Review Guide & Procedures** -> the canonical Setup README on Production Database `main`;
+- **Open Procedures — Setup / Takedown / Inspection** -> `https://my.sheboyganlights.org/procedures/`.
 
-Live publish remains pending the Backbone controlled publisher dry-run and verified one-file deployment.
+Because the documentation destination points to the canonical README on `main`, future source-document improvements do not require a duplicate Backbone copy of the procedure.
+
+The Backbone issue still records controlled live publish/verification as pending. Do not claim the deployed Production page is current until that issue is verified.
 
 ## Acceptance Criteria
 
@@ -232,7 +237,7 @@ Backbone integration is VERIFIED only when all applicable checks pass:
 ## Backbone State
 
 ```text
-IMPLEMENTED — PR #11 merged; live publish/verification pending
+IMPLEMENTED IN SOURCE — canonical Setup docs current on Production Database main; Backbone live publish/verification pending under issue #10
 ```
 
 After deployed intranet verification, change this state to `VERIFIED` and record the acceptance evidence.
