@@ -186,6 +186,10 @@ test('field harness is scan-first and exposes operator-friendly GPS/location fee
   assert.match(body, /GPS_STALE_MS = 5000/);
   assert.match(body, /GPS_LOST_MS = 15000/);
   assert.match(body, /Three nearest candidates/);
+  assert.match(body, /function rankedMeaningfulLocations\(lat, lon\)/);
+  assert.match(body, /supporting_observation_count/);
+  assert.match(body, /gpsWatchErrorActive/);
+  assert.match(body, /currently #/);
   assert.match(body, /None of these \/ Add location/);
   assert.match(body, /SAVED —/);
   assert.match(body, /NO CURRENT GPS/);
