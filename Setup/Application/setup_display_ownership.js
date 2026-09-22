@@ -305,7 +305,17 @@
         <strong>Stale ownership rows requiring review</strong>
         <div class="muted">These rows are owned by tasks in this scope but the Display is no longer in the resolver source set.</div>
         ${(data.stale_assignments || []).map((row) => `
-          <div>Display ${escapeHtml(row.display_id)} — ${escapeHtml(row.owner_task_name || `Task ${row.setup_task_id}`)}</div>
+          <div class="setup-display-owner-stale-row">
+            <span>Display ${escapeHtml(row.display_id)} — ${escapeHtml(row.owner_task_name || `Task ${row.setup_task_id}`)}</span>
+            ${canManage ? `
+              <button
+                type="button"
+                class="secondary setup-display-stale-remove"
+                data-display-id="${escapeHtml(row.display_id)}"
+                data-owner-task-id="${escapeHtml(row.setup_task_id)}"
+              >Remove stale ownership</button>
+            ` : ''}
+          </div>
         `).join('')}
       </div>
     ` : '';
@@ -351,6 +361,14 @@
     content.querySelector('#setup-display-ownership-sort')?.addEventListener('change', (event) => {
       state.sortMode = String(event.target.value || 'name');
       renderOwnershipBoard(state.context);
+    });
+    content.querySelectorAll('.setup-display-stale-remove').forEach((button) => {
+      button.addEventListener('click', () => {
+        removeStaleOwnership(
+          Number(button.dataset.displayId || 0),
+          Number(button.dataset.ownerTaskId || 0)
+        );
+      });
     });
     updateSelectionUi();
   }
@@ -451,6 +469,38 @@
       renderOwnershipBoard(state.context);
       setAlert('Display ownership initialized. The target task was made material-bearing automatically. Move Displays to the reusable task that actually owns each work package.', 'ok');
     } catch (error) {
+      setAlert(error.message || error, 'error');
+      window.alert(error.message || error);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeStaleOwnership(displayId, expectedTaskId) {
+    const taskId = Number(appState.selectedTaskId || 0);
+    if (!taskId || !displayId || !expectedTaskId || !appState.access?.can_manage_setup) return;
+    if (!window.confirm(
+      `Remove the stale Setup ownership row for Display ${displayId}?\n\nThis does not change LOR membership, Display status, or Container assignment.`
+    )) return;
+
+    try {
+      setBusy(true);
+      const payload = await api(
+        `api/setup/tasks/${taskId}/display-ownership/${Number(displayId)}/stale`,
+        commandOptions('DELETE', {
+          season_year: Number(appState.seasonYear),
+          expected_setup_task_id: Number(expectedTaskId)
+        })
+      );
+      state.context = payload.context || {};
+      await refreshMaterialFlags();
+      clearSelection();
+      updateControl(state.context);
+      updateMaterialCounts(state.context);
+      renderOwnershipBoard(state.context);
+      setAlert(`Stale Display ${displayId} ownership removed.`, 'ok');
+    } catch (error) {
+      await loadOwnership(taskId);
       setAlert(error.message || error, 'error');
       window.alert(error.message || error);
     } finally {
