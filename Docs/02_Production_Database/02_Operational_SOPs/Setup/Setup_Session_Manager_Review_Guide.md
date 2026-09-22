@@ -150,6 +150,14 @@ The question is:
 - Drag any selected Display to the correct task. The selected group moves together.
 - On a large list, choose the task under **Move selected to** and click **Move selected**.
 
+### Unassign a Display
+
+If a Display was assigned to the wrong Setup Task, **right-click the assigned Display card and choose/confirm Unassign**.
+
+Unassign removes only the Setup ownership row. It does not change LOR membership, Display status, or the Display's Container.
+
+A current LOR Display that is unassigned will immediately show as **Missing owner** until it is assigned to the correct Setup Task.
+
 When the screen says **Coverage complete**, every Display in that review has a task.
 
 Display Ownership only tells Setup which task is responsible. It does not move the Display to another Container or change its LOR Stage/Scene.
