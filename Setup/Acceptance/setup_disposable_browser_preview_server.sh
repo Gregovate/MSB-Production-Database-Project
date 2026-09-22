@@ -19,6 +19,8 @@ TARGET_SHA=""
 TARGET_REF=""
 PREVIEW_PORT=""
 PREVIEW_EMAIL=""
+CREW_PREVIEW_PORT=""
+CREW_PREVIEW_EMAIL=""
 EXPECTED_VERSION=""
 MIGRATIONS=()
 VALIDATIONS=()
@@ -32,6 +34,8 @@ while IFS=$'\t' read -r kind value extra; do
         target_ref) TARGET_REF="$value" ;;
         preview_port) PREVIEW_PORT="$value" ;;
         preview_email) PREVIEW_EMAIL="$value" ;;
+        crew_preview_port) CREW_PREVIEW_PORT="$value" ;;
+        crew_preview_email) CREW_PREVIEW_EMAIL="$value" ;;
         expected_version) EXPECTED_VERSION="$value" ;;
         migration) MIGRATIONS+=("$value") ;;
         validation) VALIDATIONS+=("$value") ;;
@@ -43,6 +47,13 @@ done < "$MANIFEST"
 : "${TARGET_REF:?manifest target_ref is required}"
 : "${PREVIEW_PORT:?manifest preview_port is required}"
 : "${PREVIEW_EMAIL:?manifest preview_email is required}"
+
+if [[ -n "$CREW_PREVIEW_PORT" || -n "$CREW_PREVIEW_EMAIL" ]]; then
+    [[ -n "$CREW_PREVIEW_PORT" && -n "$CREW_PREVIEW_EMAIL" ]] || {
+        echo "FAIL: crew_preview_port and crew_preview_email must be supplied together"
+        exit 3
+    }
+fi
 
 for rel in "${MIGRATIONS[@]}" "${VALIDATIONS[@]}"; do
     [[ -z "$rel" ]] && continue
@@ -63,11 +74,14 @@ CANDIDATE_WORKTREE="/tmp/msb-setup-browser-preview-candidate-${STAMP}"
 REPORT_DIR="$HOME/setup-acceptance-reports"
 REPORT="$REPORT_DIR/Setup_Disposable_Browser_Preview_${STAMP}.txt"
 PREVIEW_LOG="/tmp/Setup_Disposable_Browser_Preview_Flask_${STAMP}.log"
+CREW_PREVIEW_LOG="/tmp/Setup_Disposable_Browser_Preview_Crew_Flask_${STAMP}.log"
 PREVIEW_ENTRY=""
 PREVIEW_PGID=""
+CREW_PREVIEW_PGID=""
 PROD_BEFORE=""
 SETUP_HEAD_BEFORE=""
 PREVIEW_OWNED_PORT=0
+CREW_PREVIEW_OWNED_PORT=0
 PYCACHE="/tmp/msb-setup-browser-preview-pycache-${STAMP}"
 
 mkdir -p "$REPORT_DIR"
@@ -78,8 +92,12 @@ echo "Authority: Gregovate/MSB-Server-Management — docs/server/Pre_Production_
 echo "Disposable standard: docs/server/PostgreSQL_Disposable_Acceptance_Standard.md"
 echo "Candidate SHA: $TARGET_SHA"
 echo "Target ref:    $TARGET_REF"
-echo "Preview port:  $PREVIEW_PORT"
-echo "Preview user:  $PREVIEW_EMAIL"
+echo "Manager port:  $PREVIEW_PORT"
+echo "Manager user:  $PREVIEW_EMAIL"
+if [[ -n "$CREW_PREVIEW_PORT" ]]; then
+    echo "Crew port:     $CREW_PREVIEW_PORT"
+    echo "Crew user:     $CREW_PREVIEW_EMAIL"
+fi
 echo "Expected ver:  ${EXPECTED_VERSION:-not pinned}"
 echo "Migrations:    ${#MIGRATIONS[@]}"
 echo "Validations:   ${#VALIDATIONS[@]}"
@@ -116,6 +134,11 @@ cleanup() {
         sudo -u fieldwiring -H kill -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true
         sleep 1
         sudo -u fieldwiring -H kill -KILL -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true
+    fi
+    if [[ -n "$CREW_PREVIEW_PGID" ]]; then
+        sudo -u fieldwiring -H kill -- -"$CREW_PREVIEW_PGID" >/dev/null 2>&1 || true
+        sleep 1
+        sudo -u fieldwiring -H kill -KILL -- -"$CREW_PREVIEW_PGID" >/dev/null 2>&1 || true
     fi
     sudo docker rm -f "$TEST_CONTAINER" >/dev/null 2>&1 || true
     if sudo git -C "$REPO_ROOT" worktree list --porcelain 2>/dev/null | grep -Fq "worktree $CANDIDATE_WORKTREE"; then
@@ -158,8 +181,15 @@ cleanup() {
         echo "FAIL: preview-owned TCP port $PREVIEW_PORT is still listening after cleanup"
         status=99
     fi
+    if [[ "$CREW_PREVIEW_OWNED_PORT" -eq 1 ]] && ss -ltnH "sport = :$CREW_PREVIEW_PORT" | grep -q .; then
+        echo "FAIL: crew preview-owned TCP port $CREW_PREVIEW_PORT is still listening after cleanup"
+        status=99
+    fi
 
     echo "Preview Flask log retained at: $PREVIEW_LOG"
+    if [[ -n "$CREW_PREVIEW_PORT" ]]; then
+        echo "Crew Flask log retained at:    $CREW_PREVIEW_LOG"
+    fi
     echo "Preview report retained at:    $REPORT"
     echo "Exit status: $status"
     exit "$status"
@@ -183,6 +213,28 @@ fi
 if ss -ltnH "sport = :$PREVIEW_PORT" | grep -q .; then
     echo "FAIL: preview port $PREVIEW_PORT is already listening on msb-prod-db"
     exit 8
+fi
+if [[ -n "$CREW_PREVIEW_PORT" ]]; then
+    if [[ ! "$CREW_PREVIEW_PORT" =~ ^[0-9]+$ ]] || (( CREW_PREVIEW_PORT < 1024 || CREW_PREVIEW_PORT > 65535 )); then
+        echo "FAIL: crew preview port must be an integer from 1024 through 65535"
+        exit 8
+    fi
+    if [[ "$CREW_PREVIEW_PORT" == "8055" || "$CREW_PREVIEW_PORT" == "8790" || "$CREW_PREVIEW_PORT" == "8792" || "$CREW_PREVIEW_PORT" == "8794" ]]; then
+        echo "FAIL: crew preview port conflicts with a governed Production listener"
+        exit 8
+    fi
+    if [[ "$CREW_PREVIEW_PORT" == "$PREVIEW_PORT" ]]; then
+        echo "FAIL: crew preview port must differ from Manager preview port"
+        exit 8
+    fi
+    if [[ ! "$CREW_PREVIEW_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$ ]]; then
+        echo "FAIL: crew preview email is invalid"
+        exit 8
+    fi
+    if ss -ltnH "sport = :$CREW_PREVIEW_PORT" | grep -q .; then
+        echo "FAIL: crew preview port $CREW_PREVIEW_PORT is already listening on msb-prod-db"
+        exit 8
+    fi
 fi
 if ! sudo docker inspect "$PROD_CONTAINER" >/dev/null 2>&1; then
     echo "FAIL: Production PostgreSQL container was not found"
@@ -346,6 +398,14 @@ if [[ "$MANAGE_OK" != "t" ]]; then
     echo "FAIL: preview operator $PREVIEW_EMAIL lacks Setup Manager capability"
     exit 20
 fi
+if [[ -n "$CREW_PREVIEW_EMAIL" ]]; then
+    CREW_CAPS="$(psql_test -qAt -F '|' -c "SELECT can_read_setup, can_manage_setup FROM ref.setup_browser_capabilities('$CREW_PREVIEW_EMAIL');")"
+    if [[ "$CREW_CAPS" != "t|f" ]]; then
+        echo "FAIL: crew preview identity $CREW_PREVIEW_EMAIL must be a Setup reader without Manager capability; observed '$CREW_CAPS'"
+        exit 20
+    fi
+    echo "Crew preview authorization boundary: PASS (read=yes, manage=no)"
+fi
 
 TEST_IP="$(sudo docker inspect "$TEST_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
 if [[ -z "$TEST_IP" ]]; then
@@ -378,6 +438,31 @@ if [[ ! "$PREVIEW_PGID" =~ ^[0-9]+$ ]]; then
 fi
 PREVIEW_OWNED_PORT=1
 
+if [[ -n "$CREW_PREVIEW_PORT" ]]; then
+    echo
+    echo "--- Start Production Crew preview against the same disposable clone ---"
+    CREW_PREVIEW_PGID="$(sudo -u fieldwiring -H env \
+        SETUP_DATABASE_DSN="$DSN" \
+        FIELDWIRING_DATABASE_DSN="$DSN" \
+        PROCEDURE_DATABASE_DSN="$DSN" \
+        MSB_SETUP_PREVIEW_APP_DIR="$APP_DIR" \
+        MSB_SETUP_PREVIEW_OPERATOR_EMAIL="$CREW_PREVIEW_EMAIL" \
+        MSB_SETUP_PREVIEW_HOST="127.0.0.1" \
+        MSB_SETUP_PREVIEW_PORT="$CREW_PREVIEW_PORT" \
+        MSB_SETUP_PREVIEW_ENTRY="$PREVIEW_ENTRY" \
+        MSB_SETUP_PREVIEW_LOG="$CREW_PREVIEW_LOG" \
+        bash -c '
+            cd /tmp
+            setsid /opt/fieldwiring/.venv/bin/python "$MSB_SETUP_PREVIEW_ENTRY" > "$MSB_SETUP_PREVIEW_LOG" 2>&1 &
+            echo $!
+        ')"
+    if [[ ! "$CREW_PREVIEW_PGID" =~ ^[0-9]+$ ]]; then
+        echo "FAIL: crew preview process did not return a PID"
+        exit 22
+    fi
+    CREW_PREVIEW_OWNED_PORT=1
+fi
+
 preview_ready=0
 for _ in $(seq 1 60); do
     if curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health" >/dev/null 2>&1; then
@@ -392,6 +477,22 @@ if [[ "$preview_ready" -ne 1 ]]; then
     exit 23
 fi
 
+if [[ -n "$CREW_PREVIEW_PORT" ]]; then
+    crew_preview_ready=0
+    for _ in $(seq 1 60); do
+        if curl -fsS "http://127.0.0.1:$CREW_PREVIEW_PORT/api/health" >/dev/null 2>&1; then
+            crew_preview_ready=1
+            break
+        fi
+        sleep 0.5
+    done
+    if [[ "$crew_preview_ready" -ne 1 ]]; then
+        echo "FAIL: crew preview did not become healthy"
+        tail -n 120 "$CREW_PREVIEW_LOG" || true
+        exit 23
+    fi
+fi
+
 HEALTH="$(curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health")"
 echo "Preview health: $HEALTH"
 if [[ -n "$EXPECTED_VERSION" ]]; then
@@ -403,15 +504,34 @@ if [[ -n "$EXPECTED_VERSION" ]]; then
     echo "Preview version pin: PASS ($HEALTH_VERSION)"
 fi
 curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/setup/access" >/dev/null
-echo "Preview authorization: PASS"
+echo "Manager preview authorization: PASS"
+if [[ -n "$CREW_PREVIEW_PORT" ]]; then
+    curl -fsS "http://127.0.0.1:$CREW_PREVIEW_PORT/api/setup/access" >/dev/null
+    CREW_SCHEDULE_CODE="$(curl -sS -o /tmp/setup-crew-schedule-denial-$STAMP.json -w '%{http_code}' \
+        -X POST "http://127.0.0.1:$CREW_PREVIEW_PORT/api/setup/scheduling-board/work-days" \
+        -H 'Content-Type: application/json' \
+        -H 'X-MSB-Setup-Command: 1' \
+        --data '{}')"
+    if [[ "$CREW_SCHEDULE_CODE" != "403" ]]; then
+        echo "FAIL: Production Crew scheduling mutation returned HTTP $CREW_SCHEDULE_CODE instead of 403"
+        cat /tmp/setup-crew-schedule-denial-$STAMP.json || true
+        rm -f /tmp/setup-crew-schedule-denial-$STAMP.json
+        exit 24
+    fi
+    rm -f /tmp/setup-crew-schedule-denial-$STAMP.json
+    echo "Production Crew scheduling negative path: PASS (403)"
+fi
 
 cat <<CHECKLIST
 
 SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY
-Browser URL through SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/
+Manager URL through SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/
+Manager identity: $PREVIEW_EMAIL
+$(if [[ -n "$CREW_PREVIEW_PORT" ]]; then
+    printf 'Production Crew URL: http://127.0.0.1:%s/\nProduction Crew identity: %s\n' "$CREW_PREVIEW_PORT" "$CREW_PREVIEW_EMAIL"
+fi)
 Candidate SHA: $TARGET_SHA
 Candidate ref: $TARGET_REF
-Preview identity: $PREVIEW_EMAIL
 Expected version: ${EXPECTED_VERSION:-not pinned}
 
 The exact candidate is running against a disposable current-Production database clone.
