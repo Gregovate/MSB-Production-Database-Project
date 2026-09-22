@@ -48,6 +48,13 @@ def test_readiness_preserves_detached_display_semantics() -> None:
     assert 'key = ("CONTAINER", int(container_id))' in repo
 
 
+
+def test_readiness_surfaces_season_only_material_authority_gap() -> None:
+    repo = read("setup_material_readiness_repository.py")
+    assert "SEASON_ONLY_NO_REUSABLE_MATERIAL_AUTHORITY" in repo
+    assert "SEASON_ONLY_MATERIAL_AUTHORITY" in repo
+    assert "Review whether physical material is required before relying on the Pick List." in repo
+
 def test_readiness_keeps_unverified_or_unsourced_extra_material_visible() -> None:
     repo = read("setup_material_readiness_repository.py")
     assert "Required Extra Material has no active expected-source Container." in repo
