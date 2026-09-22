@@ -2,8 +2,8 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT PRODUCTION DEPENDENCY — CTRL physical scan accepted; tablet HID focus repair pending |
-| Current revision | 2026-09-04 |
+| Status | CURRENT PRODUCTION DEPENDENCY — CTRL physical scan accepted; PR #121 HID focus repair deployed; physical no-tap focus retest pending |
+| Current revision | 2026-09-20 |
 | Owner | MSB Database Administrator |
 | Production host | `msb-prod-db` |
 | Production runtime path | `/opt/directus/extensions/directus-extension-scan/` |
@@ -32,17 +32,13 @@ Directus executes:
 dist/index.js
 ```
 
-The current Server Management runbook records this accepted production SHA-256, including the FieldWiring and Procedures Display-hub actions and the Controller Inventory handoff:
+The current deployed Scan artifact is the PR #121 HID-focus repair, merged as `0540d3b702de68d10d78ff8e17e8bca317a9a51f`:
 
 ```text
-3457efa15f461b774ef20462f57807d36cb848cac67bdcffcc2a8284c2dc2f96
+c11e39e99b720f90ecd9a226c0358e3dbc1fa9d51e7a0490f9cc0cd4875474a9
 ```
 
-The immediately preceding Scan artifact is retained at:
-
-```text
-/home/msbadmin/backups/directus-scan/pre-ctrl-20260903T112856Z/index.js
-```
+The exact current rollback artifact/path is a Server Management runtime fact and must be taken from the current Server Management Scan deployment/recovery runbook. Do not reuse the older Sept. 3 `pre-ctrl` artifact merely because it appears in historical acceptance records.
 
 The accepted application/business source is version-controlled under:
 
@@ -207,7 +203,7 @@ https://my.sheboyganlights.org/fieldwiring/controllers?controller_id=<controller
 
 The deployed Scan route adds `/scan/CTRL/:key`, validates that the key is a positive integer permanent Controller ID, and redirects to that existing Controller Inventory entry point. The Controller browser initializes its Search control from `controller_id`, filters the list, and opens the exact detail panel.
 
-The route does not query Controller tables or duplicate Controller details/actions inside Scan. Production manual entry of both the full Scan URL and compact canonical value passed on 2026-09-03. A printed Controller `1031` label then passed phone-camera full-URL routing and Zebra DS3678-ER compact-value/Enter routing. The tablet required the operator to tap the entry field first, exposing a Scan input-focus defect. The exact phone OS and useful scan distance were not recorded.
+The route does not query Controller tables or duplicate Controller details/actions inside Scan. Production manual entry of both the full Scan URL and compact canonical value passed on 2026-09-03. A printed Controller `1031` label then passed phone-camera full-URL routing and Zebra DS3678-ER compact-value/Enter routing. That physical test exposed the initial-focus defect. PR #121 repaired startup/page-restore HID focus and first-character/Enter fallback behavior and is deployed in the current live artifact. A post-deployment physical no-tap tablet acceptance is not present in the durable record, so that physical focus verification remains deferred. The exact phone OS and useful scan distance from the earlier physical test were not recorded.
 
 ## Future Setup/Deployment Scan Platform Boundary
 
@@ -255,11 +251,12 @@ A server path does not transfer business-rule authority to the Server Management
 
 ## Current Stop Point
 
-As of 2026-09-03:
+As of 2026-09-20:
 
 - current scan application source is recovered in Git;
 - FieldWiring Scan Integration is accepted production work;
-- current accepted live scan artifact hash is `3457efa15f461b774ef20462f57807d36cb848cac67bdcffcc2a8284c2dc2f96`;
+- PR #121 HID-focus repair is deployed from merge commit `0540d3b702de68d10d78ff8e17e8bca317a9a51f`;
+- current accepted live scan artifact hash is `c11e39e99b720f90ecd9a226c0358e3dbc1fa9d51e7a0490f9cc0cd4875474a9`;
 - the Directus public-origin correction is accepted production behavior;
 - the `/scan/` Synology route is production-operational;
 - standalone Procedure field access and its Display-hub action are production-operational;
@@ -267,7 +264,7 @@ As of 2026-09-03:
 - the deployed CTRL route hands permanent `controller_id` to the existing Controller Inventory Search/detail experience;
 - manual full-URL and compact CTRL inputs are production-accepted;
 - physical Controller-label, phone-camera, and Zebra end-to-end routing are accepted for Controller 1031;
-- tablet initial HID focus, OS-specific camera classification, and useful-distance recording remain pending;
+- physical post-repair no-tap HID focus acceptance, OS-specific camera classification, and useful-distance recording remain pending;
 - the broader Container/Location Setup/Deployment workflow remains separate engineering scope; and
 - no schema or physical QR change is part of this bounded integration.
 
