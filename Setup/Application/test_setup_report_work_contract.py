@@ -40,11 +40,11 @@ def test_132_replaces_old_progress_command_without_broad_table_dml() -> None:
     sql = MIGRATION.read_text(encoding="utf-8")
 
     assert "DROP FUNCTION ops.record_setup_task_progress(" in sql
+    normalized = "".join(sql.split())
     assert (
         "ops.record_setup_task_progress("
-        "
-    text,bigint,bigint,text,integer,integer,integer,text,text,boolean"
-    ) in sql
+        "text,bigint,bigint,text,integer,integer,integer,text,text,boolean)"
+    ) in normalized
     assert "GRANT EXECUTE ON FUNCTION ops.record_setup_task_progress" in sql
     assert "GRANT INSERT ON" not in sql
     assert "GRANT UPDATE ON" not in sql
