@@ -48,6 +48,13 @@ def test_readiness_preserves_detached_display_semantics() -> None:
     assert 'key = ("CONTAINER", int(container_id))' in repo
 
 
+
+def test_readiness_surfaces_season_only_material_authority_gap() -> None:
+    repo = read("setup_material_readiness_repository.py")
+    assert "SEASON_ONLY_NO_REUSABLE_MATERIAL_AUTHORITY" in repo
+    assert "SEASON_ONLY_MATERIAL_AUTHORITY" in repo
+    assert "Review whether physical material is required before relying on the Pick List." in repo
+
 def test_readiness_keeps_unverified_or_unsourced_extra_material_visible() -> None:
     repo = read("setup_material_readiness_repository.py")
     assert "Required Extra Material has no active expected-source Container." in repo
@@ -66,3 +73,27 @@ def test_production_host_registers_material_readiness_blueprint() -> None:
     host = read("production_backend.py")
     assert "from setup_material_readiness_api import setup_material_readiness_api" in host
     assert "app.register_blueprint(setup_material_readiness_api)" in host
+
+
+def test_206_pick_list_surface_is_read_only_and_schedule_driven() -> None:
+    backend = read("production_backend.py")
+    html = read("pick_list.html")
+    ui = read("setup_pick_list.js")
+    css = read("setup_pick_list.css")
+    production_html = read("production.html")
+    production_ui = read("setup_production.js")
+
+    assert '@app.get("/pick-list")' in backend
+    assert "setup_pick_list.css" in backend
+    assert "setup_pick_list.js" in backend
+    assert "api/setup/material-readiness?season_year=" in ui
+    assert "Physical items to pull / stage" in html
+    assert "Needs review before relying on this Pick List" in html
+    assert "Changing the schedule changes this list" in html
+    assert "@media print" in css
+    assert "commandOptions(" not in ui
+    assert "method: 'POST'" not in ui
+    assert "method: 'PATCH'" not in ui
+    assert "method: 'DELETE'" not in ui
+    assert 'id="pick-list-link"' in production_html
+    assert "pick-list/" in production_ui
