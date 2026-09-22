@@ -108,31 +108,38 @@ def test_display_write_api_stays_manager_only_and_uses_governed_command() -> Non
     assert "UPDATE ref.setup_task_display" not in assignment
 
 
-def test_stale_display_ownership_has_governed_manager_cleanup() -> None:
+def test_display_ownership_can_be_unassigned_or_cleared_when_stale() -> None:
     migration = (DB_DIR / "052_add_stale_display_ownership_cleanup.sql").read_text(encoding="utf-8")
     assignment = read_app("setup_assignment_layer.py")
     api = read_app("setup_display_ownership_api.py")
     ui = read_app("setup_display_ownership.js")
 
-    assert "ref.clear_stale_setup_task_display_owner" in migration
+    assert "ref.clear_setup_task_display_owner" in migration
     assert "ref.setup_management_actor(p_email, false)" in migration
     assert "p_expected_setup_task_id" in migration
     assert "DELETE FROM ref.setup_task_display" in migration
     assert "requires_display_material" not in migration
     assert "ops.setup_session" not in migration
-    assert "clear_stale_display_owner" in assignment
+
+    assert "clear_display_owner" in assignment
+    assert "ownership_state" in assignment
+    assert '"ASSIGNED"' in assignment
     assert "stale_assignments" in assignment
-    assert "row is no longer stale in the current resolver scope" in assignment
-    assert "ref.clear_stale_setup_task_display_owner" in assignment
-    assert "/display-ownership/<int:display_id>/stale" in api
+    assert "explicit current assignment or stale row" in assignment
+    assert "ref.clear_setup_task_display_owner" in assignment
+
+    assert '@setup_display_ownership_api.delete(' in api
+    assert '"/api/setup/tasks/<int:context_setup_task_id>/display-ownership/<int:display_id>"' in api
     assert "require_setup_command()" in api
     assert "require_manager()" in api
     assert "expected_setup_task_id" in api
+
+    assert ">Unassign</button>" in ui
     assert "Remove stale ownership" in ui
     assert "commandOptions('DELETE'" in ui
     assert "expected_setup_task_id" in ui
+    assert "shown as Missing owner until you assign it again" in ui
     assert "does not change LOR membership, Display status, or Container assignment" in ui
-
 
 def test_audit_deep_link_opens_once_and_does_not_reopen_after_close_reset() -> None:
     client = read_app("setup_production.js")
