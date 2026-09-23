@@ -106,7 +106,7 @@ def test_procedure_inventory_writes_shareable_html_and_csv(tmp_path: Path) -> No
 
     html_text = html_path.read_text(encoding="utf-8")
     assert "<h1>MSB Procedure Inventory</h1>" in html_text
-    assert "one archived legacy procedure may legitimately be split" in html_text
+    assert "A single archived legacy procedure may legitimately be split" in html_text
     assert "Magic Igloo Frame.gdoc" in html_text
     assert "Magic Igloo Interior Lighting.pdf" in html_text
     assert "Procedures\\Setup\\SourceDocs" in html_text
