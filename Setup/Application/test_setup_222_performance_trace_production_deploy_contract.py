@@ -13,7 +13,7 @@ def test_222_wrapper_is_source_only_and_pinned() -> None:
 
     assert "$ExpectedBranch = 'main'" in wrapper
     assert "1b08bdd26156b67ba89ea484fdc035b0b09ffc28" in wrapper
-    assert "f1cc1f0befd7e15d22f07b5594b069f507d8cdcd" in wrapper
+    assert "64835504962247d7a09c1146e5e77d8e19948559" in wrapper
     assert "63715597c0d64d5ec5da4db16284e2e65115fe39" in wrapper
     assert "merge-base --is-ancestor" in wrapper
     assert "hash-object $ServerScript" in wrapper
@@ -28,7 +28,7 @@ def test_222_runner_obeys_source_only_runbook_and_mutates_no_database() -> None:
     server = read_accept("setup_222_performance_trace_production_deploy_server.sh")
 
     assert 'EXPECTED_LIVE_SHA="1b08bdd26156b67ba89ea484fdc035b0b09ffc28"' in server
-    assert 'TARGET_SHA="f1cc1f0befd7e15d22f07b5594b069f507d8cdcd"' in server
+    assert 'TARGET_SHA="64835504962247d7a09c1146e5e77d8e19948559"' in server
     assert 'EXPECTED_PRE_VERSION="V0.3.16-stale-ownership-cleanup"' in server
     assert 'EXPECTED_POST_VERSION="V0.3.17-performance-trace"' in server
     assert "Setup_Source_Only_Application_Deployment_Runbook.md" in server
