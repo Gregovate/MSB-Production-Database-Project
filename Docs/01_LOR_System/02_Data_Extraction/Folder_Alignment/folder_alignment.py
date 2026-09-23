@@ -51,6 +51,13 @@ STRUCTURED_REQUIRED = (
     "Wiring/BackgroundStage/SourceDocs",
     "Wiring/MusicalStage/SourceDocs",
 )
+PROCEDURE_REQUIRED = (
+    "Procedures",
+    "Procedures/Setup",
+    "Procedures/Setup/Archive",
+    "Procedures/Setup/images",
+    "Procedures/Setup/SourceDocs",
+)
 GENERIC_WORDS = {
     "setup", "set", "up", "instructions", "instruction", "procedure", "procedures",
     "take", "down", "takedown", "google", "docs", "pdf", "gdoc", "gslides",
@@ -593,6 +600,10 @@ def missing_contract(scope: Scope) -> list[str]:
     return [p for p in STRUCTURED_REQUIRED if not (scope.path / Path(p)).is_dir()]
 
 
+def missing_procedure_contract(scope: Scope) -> list[str]:
+    return [p for p in PROCEDURE_REQUIRED if not (scope.path / Path(p)).is_dir()]
+
+
 def _direct_files(folder: Path, suffix: str) -> tuple[Path, ...]:
     if not folder.is_dir():
         return ()
@@ -647,7 +658,7 @@ def write_procedure_inventory(
         ),
     ):
         inv = procedure_inventory(scope)
-        rows.append((scope, inv, missing_contract(scope)))
+        rows.append((scope, inv, missing_procedure_contract(scope)))
 
     with csv_path.open("w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
