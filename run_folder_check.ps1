@@ -81,7 +81,50 @@ if ($AlignmentExitCode -eq 0) {
     $HtmlPaths = [System.Collections.Generic.List[string]]::new()
 
     foreach ($line in $RunOutput) {
-        if ($line -match '^\[INFO\] (?:HTML|Procedure Inventory HTML):\s+(.+\.html)\s*) {
+        if ($line -match '^\[INFO\] (?:HTML|Procedure Inventory HTML):\s+(.+\.html)\s*
+            $candidate = $Matches[1].Trim()
+            if (-not $HtmlPaths.Contains($candidate)) {
+                $HtmlPaths.Add($candidate)
+            }
+        }
+    }
+
+    # Backward-compatible fallback only when an explicit output directory was
+    # supplied and the Python script did not print an HTML path.
+    if ($HtmlPaths.Count -eq 0 -and
+        -not [string]::IsNullOrWhiteSpace($OutputDir) -and
+        (Test-Path -LiteralPath $OutputDir -PathType Container)) {
+
+        $FallbackReports = Get-ChildItem -LiteralPath $OutputDir -File -Filter '*.html' |
+            Where-Object {
+                $_.LastWriteTime -ge $RunStarted.AddSeconds(-2)
+            } |
+            Sort-Object LastWriteTime
+
+        foreach ($report in $FallbackReports) {
+            if (-not $HtmlPaths.Contains($report.FullName)) {
+                $HtmlPaths.Add($report.FullName)
+            }
+        }
+    }
+
+    if ($HtmlPaths.Count -eq 0) {
+        Write-Warning "Folder Alignment completed, but no generated HTML report path was returned."
+    }
+    else {
+        foreach ($HtmlPath in $HtmlPaths) {
+            if (Test-Path -LiteralPath $HtmlPath -PathType Leaf) {
+                Write-Host "[INFO] Opening HTML report: $HtmlPath"
+                Start-Process $HtmlPath
+            }
+            else {
+                Write-Warning "Generated HTML report was not found: $HtmlPath"
+            }
+        }
+    }
+}
+
+exit $AlignmentExitCode) {
             $candidate = $Matches[1].Trim()
             if (-not $HtmlPaths.Contains($candidate)) {
                 $HtmlPaths.Add($candidate)
