@@ -106,6 +106,51 @@ Do not add step numbers only to make files sort correctly unless the work truly 
 
 If an existing current name is already clear and correct, do not rename it merely to make every folder look identical.
 
+## Folder Structure — Do Not Change These System Folders
+
+Stage, Sub-stage, and Scene documentation scopes use the same controlled folder pattern.
+
+The marker/readme filename is:
+
+```text
+_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+```
+
+**Do not edit, rename, move, or delete this marker file.** The MSB applications use these markers to recognize approved folders.
+
+Do not delete or rename folders merely because they are empty or because a report shows no current file there.
+
+A normal structured scope contains:
+
+```text
+<Stage / Sub-stage / Scene>\
+├── marker
+├── PreviewBackground\
+├── Photos\
+│   ├── Current\
+│   └── Historical\
+├── Procedures\
+│   ├── marker
+│   ├── Inspection\
+│   ├── Setup\
+│   │   ├── Archive\       original/historical source; do not edit
+│   │   ├── images\        Setup instruction pictures
+│   │   ├── SourceDocs\    editable Google Docs
+│   │   └── *.pdf           current field PDF(s), directly in Setup
+│   └── Takedown\
+│       ├── Archive\
+│       ├── images\
+│       └── SourceDocs\
+└── Wiring\
+    ├── marker
+    ├── BackgroundStage\
+    │   └── SourceDocs\
+    └── MusicalStage\
+        └── SourceDocs\
+```
+
+A Sub-stage is nested under its owning Stage. A Scene is nested under its owning Stage or Sub-stage when it is an approved documentation scope. Do not create a new Scene folder merely because an LOR Scene exists.
+
 ## Migrating a Legacy Google Doc into SourceDocs
 
 When the only editable Setup procedure is a legacy `.gdoc` in `Procedures\Setup\Archive`, do **not** migrate it by copying or moving the `.gdoc` shortcut file in Windows Explorer. A `.gdoc` file is only a Google Drive shortcut/metadata file; copying it does not create the new Google-native document that is required for the new editable source.
