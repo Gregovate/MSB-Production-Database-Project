@@ -128,7 +128,7 @@ def test_procedure_inventory_writes_shareable_html_and_csv(tmp_path: Path) -> No
     assert "<h2>Do Not Change the Folder Structure</h2>" in html_text
     assert "_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt" in html_text
     assert "Big Picture — same idea as the office whiteboard" in html_text
-    assert "SAME controlled folder structure" in html_text
+    assert "SAME folder structure" in html_text
     assert "Stage folder" in html_text
     assert "Sub-stage folder" in html_text
     assert "Scene folder" in html_text
