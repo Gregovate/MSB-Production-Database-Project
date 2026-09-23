@@ -51,7 +51,7 @@ def test_222_runner_regresses_before_and_after_source_promotion() -> None:
     detached = server.index("--- Detached exact-target regression in Production runtime ---")
     promote = server.index("This step: advance /opt/msb-setup")
     restart = server.index("--- Restart only msb-setup.service and verify V0.3.17 ---")
-    trace = server.index("--- Validate trace headers and journal emission ---")
+    trace = server.index("--- Validate compact trace headers and exception journal emission ---")
     live = server.index("--- Live Setup regression ---")
 
     assert detached < promote < restart < trace < live
