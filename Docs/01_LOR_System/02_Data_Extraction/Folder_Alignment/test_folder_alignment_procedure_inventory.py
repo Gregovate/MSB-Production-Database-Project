@@ -131,7 +131,11 @@ def test_procedure_inventory_writes_shareable_html_and_csv(tmp_path: Path) -> No
     assert "same folder structure" in html_text
     assert "Stage folder" in html_text
     assert "Sub-stage folder" in html_text
+    assert "03a-Mega Cube-MC" in html_text
+    assert "07a-Who Forest-WF" in html_text
+    assert "technical or planning reasons" in html_text
     assert "Scene folder" in html_text
+    assert "can be set up independently" in html_text
     assert "current field procedure(s)" in html_text
     assert "A single archived legacy procedure may legitimately be split" in html_text
     assert "Magic Igloo Frame.gdoc" in html_text
