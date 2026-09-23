@@ -836,9 +836,9 @@ code{font-family:Consolas,monospace;overflow-wrap:anywhere}
         "│   ├── BackgroundStage\\SourceDocs\\\n"
         "│   └── MusicalStage\\SourceDocs\\\n"
         "├── &lt;Sub-stage&gt;\\       ← when used\n"
-        "│   └── SAME controlled folder structure\n"
+        "│   └── SAME folder structure\n"
         "└── &lt;Scene&gt;\\           ← when it is an approved documentation scope\n"
-        "    └── SAME controlled folder structure</pre>",
+        "    └── SAME folder structure</pre>",
         "<p><strong>Think of the Stage as the big box on the office whiteboard.</strong> "
         "Sub-stages and approved Scene folders sit inside that Stage and carry their own Procedure/Wiring/PreviewBackground structure when needed.</p>",
         "<h3>Stage folder</h3>",
