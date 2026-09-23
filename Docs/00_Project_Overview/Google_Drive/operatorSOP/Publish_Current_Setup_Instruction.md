@@ -76,6 +76,100 @@ The Google-native document in `SourceDocs` is the authoritative editable working
 
 The document in `Archive` is the historical/original source and should not be edited after a SourceDocs copy has been created.
 
+## File Naming for Current Setup Procedures
+
+Use a clear filename that tells a volunteer which Stage or Scene the procedure belongs to and what work it covers.
+
+For one general Setup procedure, use:
+
+```text
+<Stage or Scene number>-<Stage or Scene name> Setup
+```
+
+Example:
+
+```text
+26-Magic Igloo Setup
+```
+
+When one old procedure is split into several current procedures, keep the same Stage/Scene identity and add the job or component name:
+
+```text
+26-Magic Igloo Setup - Frame
+26-Magic Igloo Setup - Skins
+26-Magic Igloo Setup - Interior Lighting
+```
+
+Use the same base filename for the editable Google Doc and the published PDF. Windows/Google Drive may display the editable Google-native document as a `.gdoc` shortcut; the published field copy is a `.pdf`.
+
+Do not add step numbers only to make files sort correctly unless the work truly has a required order. Prefer a short descriptive job name that a volunteer can understand.
+
+If an existing current name is already clear and correct, do not rename it merely to make every folder look identical.
+
+## Folder Structure — Do Not Change These System Folders
+
+Stage, Sub-stage, and Scene documentation scopes use the same controlled folder pattern.
+
+The marker/readme filename is:
+
+```text
+_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt
+```
+
+**Do not edit, rename, move, or delete this marker file.** The MSB applications use these markers to recognize approved folders.
+
+Do not delete or rename folders merely because they are empty or because a report shows no current file there.
+
+A normal structured scope contains:
+
+```text
+<Stage / Sub-stage / Scene>\
+├── marker
+├── PreviewBackground\
+├── Photos\
+│   ├── Current\
+│   └── Historical\
+├── Procedures\
+│   ├── marker
+│   ├── Inspection\
+│   ├── Setup\
+│   │   ├── Archive\       original/historical source; do not edit
+│   │   ├── images\        Setup instruction pictures
+│   │   ├── SourceDocs\    editable Google Docs
+│   │   └── *.pdf           current field PDF(s), directly in Setup
+│   └── Takedown\
+│       ├── Archive\
+│       ├── images\
+│       └── SourceDocs\
+└── Wiring\
+    ├── marker
+    ├── BackgroundStage\
+    │   └── SourceDocs\
+    └── MusicalStage\
+        └── SourceDocs\
+```
+
+A Sub-stage is nested under its owning Stage. A Scene is nested under its owning Stage or Sub-stage when it is an approved documentation scope. Do not create a new Scene folder merely because an LOR Scene exists.
+
+### Why a Sub-stage Exists
+
+A Sub-stage is used when part of a Stage needs to be managed separately for technical or planning reasons.
+
+Examples include:
+
+- `03a-Mega Cube-MC` for the Mega Cube;
+- `07a-Who Forest-WF` for the Who Forest.
+
+A Sub-stage may have its own Setup procedures, wiring, Setup schedule, crew needs, and resource requirements while still belonging to the larger Stage.
+
+### Why a Scene Folder Exists
+
+A Scene folder is used when a Scene within a Stage can be set up independently from the rest of that Stage.
+
+Because that Scene can be worked on separately, it may need its own Setup procedures, wiring, schedule, crew, and resource information.
+
+Not every LOR Scene automatically gets a Google Drive Scene documentation folder. Use the existing approved folder structure and do not create a new Scene folder just because a Scene name appears in LOR.
+
 ## Migrating a Legacy Google Doc into SourceDocs
 
 When the only editable Setup procedure is a legacy `.gdoc` in `Procedures\Setup\Archive`, do **not** migrate it by copying or moving the `.gdoc` shortcut file in Windows Explorer. A `.gdoc` file is only a Google Drive shortcut/metadata file; copying it does not create the new Google-native document that is required for the new editable source.
