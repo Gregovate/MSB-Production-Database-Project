@@ -12,9 +12,9 @@ def test_222_wrapper_is_source_only_and_pinned() -> None:
     wrapper = read_accept("run_setup_222_performance_trace_production_deploy.ps1")
 
     assert "$ExpectedBranch = 'main'" in wrapper
-    assert "1b08bdd26156b67ba89ea484fdc035b0b09ffc28" in wrapper
     assert "64835504962247d7a09c1146e5e77d8e19948559" in wrapper
-    assert "59a01d1cbd87f6044a7d2b3a3badcf728b4e38a2" in wrapper
+    assert "912c5891de9335f3ccc9079fd594acaf3450227e" in wrapper
+    assert "1465f9685b3078b840fef5ff227ed03a6bb8eba8" in wrapper
     assert "merge-base --is-ancestor" in wrapper
     assert "hash-object $ServerScript" in wrapper
     assert "scp -r $localBundle" in wrapper
@@ -27,9 +27,9 @@ def test_222_wrapper_is_source_only_and_pinned() -> None:
 def test_222_runner_obeys_source_only_runbook_and_mutates_no_database() -> None:
     server = read_accept("setup_222_performance_trace_production_deploy_server.sh")
 
-    assert 'EXPECTED_LIVE_SHA="1b08bdd26156b67ba89ea484fdc035b0b09ffc28"' in server
-    assert 'TARGET_SHA="64835504962247d7a09c1146e5e77d8e19948559"' in server
-    assert 'EXPECTED_PRE_VERSION="V0.3.16-stale-ownership-cleanup"' in server
+    assert 'EXPECTED_LIVE_SHA="64835504962247d7a09c1146e5e77d8e19948559"' in server
+    assert 'TARGET_SHA="912c5891de9335f3ccc9079fd594acaf3450227e"' in server
+    assert 'EXPECTED_PRE_VERSION="V0.3.17-performance-trace"' in server
     assert 'EXPECTED_POST_VERSION="V0.3.17-performance-trace"' in server
     assert "Setup_Source_Only_Application_Deployment_Runbook.md" in server
     assert "Database mutation: NONE" in server
@@ -68,7 +68,8 @@ def test_222_runner_validates_real_journal_trace_without_operator_data_payloads(
     assert "X-MSB-Request-ID" in server
     assert "performance-probe@invalid.local" in server
     assert "journalctl -u" in server
-    assert "SETUP_PERF request_id=" in server
+    assert "SETUP_PERF_EVENT kind=ERROR request_id=" in server
+    assert "__performance_trace_probe__" in server
     assert "request.get_data" not in server
     assert "request.get_json" not in server
 
