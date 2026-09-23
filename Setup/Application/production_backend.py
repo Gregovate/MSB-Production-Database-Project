@@ -7,9 +7,13 @@ not exposed by this WSGI application.
 """
 from __future__ import annotations
 
+import logging
 import os
+import threading
+import time
+import uuid
 
-from flask import Flask, abort, jsonify, send_from_directory
+from flask import Flask, abort, g, jsonify, request, send_from_directory
 
 from backend import BASE_DIR
 from setup_api import setup_api
@@ -31,7 +35,26 @@ from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.16-stale-ownership-cleanup"
+PRODUCTION_VERSION = "V0.3.17-performance-trace"
+
+# #222 lightweight Production request instrumentation.
+#
+# This deliberately measures only protected Setup API request handling. It does
+# not issue database queries, add network calls, inspect request bodies, or log
+# query-string/form values. The authenticated Cloudflare email is logged so
+# operator reports can be correlated to the exact server-side requests that
+# occurred at the same time.
+_SETUP_PERF_LOCK = threading.Lock()
+_SETUP_PERF_ACTIVE_REQUESTS = 0
+_SETUP_PERF_PREFIX = "SETUP_PERF"
+_SETUP_OPERATOR_HEADER = "Cf-Access-Authenticated-User-Email"
+_SETUP_PERF_LOGGER = logging.getLogger("msb.setup.performance")
+_SETUP_PERF_LOGGER.setLevel(logging.INFO)
+_SETUP_PERF_LOGGER.propagate = False
+if not _SETUP_PERF_LOGGER.handlers:
+    _setup_perf_handler = logging.StreamHandler()
+    _setup_perf_handler.setFormatter(logging.Formatter("%(message)s"))
+    _SETUP_PERF_LOGGER.addHandler(_setup_perf_handler)
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
@@ -144,6 +167,78 @@ app.register_blueprint(setup_assignment_api)
 app.register_blueprint(setup_prerequisite_order_api)
 app.register_blueprint(setup_planning_summary_api)
 app.register_blueprint(setup_scheduling_board_api)
+
+
+def _setup_perf_is_traced_request() -> bool:
+    return request.path.startswith("/api/setup/")
+
+
+def _setup_perf_increment_active() -> int:
+    global _SETUP_PERF_ACTIVE_REQUESTS
+    with _SETUP_PERF_LOCK:
+        _SETUP_PERF_ACTIVE_REQUESTS += 1
+        return _SETUP_PERF_ACTIVE_REQUESTS
+
+
+def _setup_perf_current_active() -> int:
+    with _SETUP_PERF_LOCK:
+        return _SETUP_PERF_ACTIVE_REQUESTS
+
+
+def _setup_perf_decrement_active() -> None:
+    global _SETUP_PERF_ACTIVE_REQUESTS
+    with _SETUP_PERF_LOCK:
+        _SETUP_PERF_ACTIVE_REQUESTS = max(0, _SETUP_PERF_ACTIVE_REQUESTS - 1)
+
+
+@app.before_request
+def setup_performance_trace_start() -> None:
+    if not _setup_perf_is_traced_request():
+        return
+
+    g.setup_perf_started = time.perf_counter()
+    g.setup_perf_request_id = uuid.uuid4().hex[:12]
+    g.setup_perf_active = _setup_perf_increment_active()
+
+
+@app.after_request
+def setup_performance_trace_finish(response):
+    started = getattr(g, "setup_perf_started", None)
+    request_id = getattr(g, "setup_perf_request_id", None)
+    if started is None or request_id is None:
+        return response
+
+    elapsed_ms = (time.perf_counter() - started) * 1000.0
+    route = request.url_rule.rule if request.url_rule is not None else "<unmatched>"
+    operator = (request.headers.get(_SETUP_OPERATOR_HEADER) or "<unauthenticated>").strip().lower()
+    response_bytes = response.content_length if response.content_length is not None else -1
+    active = _setup_perf_current_active()
+
+    response.headers["Server-Timing"] = f"app;dur={elapsed_ms:.1f}"
+    response.headers["X-MSB-Request-ID"] = request_id
+
+    _SETUP_PERF_LOGGER.info(
+        "%s request_id=%s operator=%s method=%s route=%s status=%s app_ms=%.1f "
+        "response_bytes=%s pid=%s thread=%s active_in_worker=%s",
+        _SETUP_PERF_PREFIX,
+        request_id,
+        operator,
+        request.method,
+        route,
+        response.status_code,
+        elapsed_ms,
+        response_bytes,
+        os.getpid(),
+        threading.get_ident(),
+        active,
+    )
+    return response
+
+
+@app.teardown_request
+def setup_performance_trace_teardown(_error) -> None:
+    if getattr(g, "setup_perf_started", None) is not None:
+        _setup_perf_decrement_active()
 
 
 def _no_store(response):
