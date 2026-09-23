@@ -11,7 +11,7 @@ $ServerScript = Join-Path $ScriptDir 'setup_222_performance_trace_production_dep
 $ExpectedBranch = 'main'
 $ExpectedLiveSha = '1b08bdd26156b67ba89ea484fdc035b0b09ffc28'
 $AcceptedTargetSha = '64835504962247d7a09c1146e5e77d8e19948559'
-$AcceptedServerRunnerBlob = '63715597c0d64d5ec5da4db16284e2e65115fe39'
+$AcceptedServerRunnerBlob = '59a01d1cbd87f6044a7d2b3a3badcf728b4e38a2'
 
 if (-not (Test-Path -LiteralPath $ServerScript -PathType Leaf)) {
     throw "Required #222 Production deployment runner is missing: $ServerScript"
