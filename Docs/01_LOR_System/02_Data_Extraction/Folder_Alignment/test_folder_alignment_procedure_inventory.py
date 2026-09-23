@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import importlib.util
+import sys
 from pathlib import Path
 
 
@@ -13,6 +14,7 @@ MODULE_PATH = (
 SPEC = importlib.util.spec_from_file_location("folder_alignment_under_test", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 folder_alignment = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = folder_alignment
 SPEC.loader.exec_module(folder_alignment)
 
 
