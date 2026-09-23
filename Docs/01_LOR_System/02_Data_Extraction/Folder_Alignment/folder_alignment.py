@@ -823,6 +823,24 @@ code{font-family:Consolas,monospace;overflow-wrap:anywhere}
         "<p>Stage, Sub-stage, and Scene documentation use the same basic structure. "
         "A Sub-stage lives inside its owning Stage. A Scene normally lives inside its owning Stage or Sub-stage. "
         "When a Sub-stage or Scene is a real documentation scope, it gets the same helper folders shown below.</p>",
+        "<h3>Big Picture — same idea as the office whiteboard</h3>",
+        "<pre>&lt;Stage&gt;\\\n"
+        "├── PreviewBackground\\\n"
+        "├── Procedures\\\n"
+        "│   └── Setup\\\n"
+        "│       ├── Archive\\       ← original instructions; DO NOT EDIT\n"
+        "│       ├── images\\        ← pictures used in the instructions\n"
+        "│       ├── SourceDocs\\    ← editable Google Docs\n"
+        "│       └── *.pdf            ← current field copy for phones/tablets\n"
+        "├── Wiring\\\n"
+        "│   ├── BackgroundStage\\SourceDocs\\\n"
+        "│   └── MusicalStage\\SourceDocs\\\n"
+        "├── &lt;Sub-stage&gt;\\       ← when used\n"
+        "│   └── SAME controlled folder structure\n"
+        "└── &lt;Scene&gt;\\           ← when it is an approved documentation scope\n"
+        "    └── SAME controlled folder structure</pre>",
+        "<p><strong>Think of the Stage as the big box on the office whiteboard.</strong> "
+        "Sub-stages and approved Scene folders sit inside that Stage and carry their own Procedure/Wiring/PreviewBackground structure when needed.</p>",
         "<h3>Stage folder</h3>",
         "<pre>&lt;NN-Stage Name-XY&gt;\\\n"
         "├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt\n"
