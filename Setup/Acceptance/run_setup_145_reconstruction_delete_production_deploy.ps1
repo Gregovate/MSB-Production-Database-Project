@@ -12,7 +12,7 @@ $ExpectedBranch = 'main'
 $AcceptedCandidateSha = '4ff33a16a4a22e77972ac832edb678ed467df2a0'
 $MigrationPath = 'Setup/Database/055_fix_setup_reconstruction_delete_annual_dependencies.sql'
 $AcceptedMigrationBlob = '9126d5e9e9732fa0d3941e505d9bf7176119b3df'
-$AcceptedServerRunnerBlob = '899f3a2c27a97a32a523bcaf33f25bf9264b0dab'
+$AcceptedServerRunnerBlob = '322428bef9b0aad2dcdbbea954385a5b377b1ba8'
 
 if (-not (Test-Path -LiteralPath $ServerScript -PathType Leaf)) {
     throw "Required #145 Production deployment runner is missing: $ServerScript"
