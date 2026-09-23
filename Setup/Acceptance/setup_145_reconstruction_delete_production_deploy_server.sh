@@ -29,6 +29,7 @@ REPORT="$REPORT_DIR/Setup_145_Reconstruction_Delete_Production_Deploy_$STAMP.txt
 CANDIDATE_WORKTREE="/tmp/msb-setup-145-delete-candidate-$STAMP"
 FUNCTION_ROLLBACK_SQL="/tmp/msb-setup-145-delete-function-rollback-$STAMP.sql"
 DETACHED_PYCACHE="/tmp/msb-setup-145-delete-pycache-$STAMP"
+LIVE_PYCACHE="/tmp/msb-setup-145-delete-live-pycache-$STAMP"
 
 OLD_SETUP_HEAD=""
 INITIAL_FINGERPRINT=""
@@ -142,7 +143,7 @@ cleanup() {
         sudo git -C "$REPO_ROOT" worktree remove --force "$CANDIDATE_WORKTREE" >/dev/null 2>&1 || true
     fi
     sudo git -C "$REPO_ROOT" worktree prune >/dev/null 2>&1 || true
-    sudo rm -rf "$DETACHED_PYCACHE" >/dev/null 2>&1 || true
+    sudo rm -rf "$DETACHED_PYCACHE" "$LIVE_PYCACHE" >/dev/null 2>&1 || true
     rm -f "$FUNCTION_ROLLBACK_SQL" >/dev/null 2>&1 || true
     rm -rf "$SCRIPT_DIR" >/dev/null 2>&1 || true
 
@@ -394,6 +395,12 @@ if [[ "$SETUP_POST" != *"\"status\":\"ok\""*    || "$SETUP_POST" != *"\"data_mod
     exit 18
 fi
 echo "SETUP HEALTH / VERSION: PASS"
+
+echo
+echo "--- Live Setup regression after DB-only migration ---"
+sudo -u fieldwiring -H env PYTHONPYCACHEPREFIX="$LIVE_PYCACHE" bash -c \
+    "cd '$SETUP_ROOT' && '$PYTHON' -m pytest -q -p no:cacheprovider Setup/Application"
+echo "LIVE SETUP REGRESSION: PASS"
 
 FINAL_SETUP_HEAD="$(sudo git -C "$SETUP_ROOT" rev-parse HEAD)"
 FINAL_FINGERPRINT="$(setup_fingerprint)"
