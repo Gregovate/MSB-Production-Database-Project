@@ -76,6 +76,36 @@ The Google-native document in `SourceDocs` is the authoritative editable working
 
 The document in `Archive` is the historical/original source and should not be edited after a SourceDocs copy has been created.
 
+## File Naming for Current Setup Procedures
+
+Use a clear filename that tells a volunteer which Stage or Scene the procedure belongs to and what work it covers.
+
+For one general Setup procedure, use:
+
+```text
+<Stage or Scene number>-<Stage or Scene name> Setup
+```
+
+Example:
+
+```text
+26-Magic Igloo Setup
+```
+
+When one old procedure is split into several current procedures, keep the same Stage/Scene identity and add the job or component name:
+
+```text
+26-Magic Igloo Setup - Frame
+26-Magic Igloo Setup - Skins
+26-Magic Igloo Setup - Interior Lighting
+```
+
+Use the same base filename for the editable Google Doc and the published PDF. Windows/Google Drive may display the editable Google-native document as a `.gdoc` shortcut; the published field copy is a `.pdf`.
+
+Do not add step numbers only to make files sort correctly unless the work truly has a required order. Prefer a short descriptive job name that a volunteer can understand.
+
+If an existing current name is already clear and correct, do not rename it merely to make every folder look identical.
+
 ## Migrating a Legacy Google Doc into SourceDocs
 
 When the only editable Setup procedure is a legacy `.gdoc` in `Procedures\Setup\Archive`, do **not** migrate it by copying or moving the `.gdoc` shortcut file in Windows Explorer. A `.gdoc` file is only a Google Drive shortcut/metadata file; copying it does not create the new Google-native document that is required for the new editable source.
