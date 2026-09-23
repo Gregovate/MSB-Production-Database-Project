@@ -5,8 +5,10 @@ Status: IMPLEMENTATION CANDIDATE — DO NOT APPLY TO PRODUCTION WITHOUT REVIEW
 Revision: 2026-09-22
 
 Purpose:
-  Repair the governed reusable-task delete command after migration 050 added
-  ops.setup_session_task_dependency.
+  Repair the governed reusable-task delete command for task-owned relationships
+  added after migration 019:
+  - migration 032 added reusable task Extra Material requirements and source rows;
+  - migration 050 added annual setup_session_task_dependency rows.
 
 Observed failure:
   Deleting a reconstruction mistake such as reusable "See Work Order 372"
@@ -16,8 +18,12 @@ Observed failure:
 
 Boundary:
   - preserve every existing hard-delete guard;
+  - after those guards pass, remove task-owned reconstruction relationships in
+    explicit FK-safe order, including Extra Material source/requirement rows;
   - delete only annual dependency rows attached to annual shells for the
     reusable task after all work/progress/movement evidence guards pass;
+  - preserve shared Catalog objects (Displays, Containers, Resources, people,
+    Extra Material catalog rows); delete only their task relationship rows;
   - keep unknown/future relationships fail-closed;
   - no CASCADE;
   - no broad fieldwiring_app table DML.
@@ -30,6 +36,12 @@ BEGIN
     IF to_regclass('ops.setup_session_task_dependency') IS NULL THEN
         RAISE EXCEPTION
             'ops.setup_session_task_dependency is required before #145 delete-order repair';
+    END IF;
+
+    IF to_regclass('ref.setup_task_extra_material') IS NULL
+       OR to_regclass('ref.setup_task_extra_material_source') IS NULL THEN
+        RAISE EXCEPTION
+            'Setup Extra Material task relationship tables are required before #145 delete-order repair';
     END IF;
 
     IF to_regprocedure('ref.delete_setup_reconstruction_task(text,bigint)') IS NULL THEN
@@ -204,6 +216,21 @@ BEGIN
     DELETE FROM ref.setup_task_resource tr
      WHERE tr.setup_task_id = p_setup_task_id;
     GET DIAGNOSTICS v_resources = ROW_COUNT;
+
+    /* Migration 032 added task-owned Extra Material requirements with source
+       rows beneath them. These are reusable task relationship/configuration
+       rows, not independent historical evidence. Delete the source children
+       first, then the task requirement rows. Shared Containers and the
+       ref.setup_extra_material catalog remain untouched. */
+    DELETE FROM ref.setup_task_extra_material_source src
+     WHERE src.setup_task_extra_material_id IN (
+               SELECT tm.setup_task_extra_material_id
+               FROM ref.setup_task_extra_material tm
+               WHERE tm.setup_task_id = p_setup_task_id
+           );
+
+    DELETE FROM ref.setup_task_extra_material tm
+     WHERE tm.setup_task_id = p_setup_task_id;
 
     /* Do not CASCADE. A new/future relationship not inventoried here must stop
        the delete through its normal FK instead of being silently discarded. */
