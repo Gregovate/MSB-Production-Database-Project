@@ -49,7 +49,7 @@ $OutputDir = if ($env:MSB_FOLDER_ALIGNMENT_OUTPUT_DIR) {
     $env:MSB_FOLDER_ALIGNMENT_OUTPUT_DIR
 }
 else {
-    $DefaultOutputDir
+    $null
 }
 
 # Explicit command-line --output-dir overrides the environment/default value.
@@ -64,8 +64,14 @@ Write-Host "[INFO] Folder Alignment: $AlignmentScript"
 Write-Host "[INFO] Python: $($PythonCommand.Source)"
 
 $RunStarted = Get-Date
+$RunOutput = [System.Collections.Generic.List[string]]::new()
 
-& $PythonCommand.Source $AlignmentScript @PythonArgs @args
+& $PythonCommand.Source $AlignmentScript @PythonArgs @args 2>&1 |
+ForEach-Object {
+    $line = [string]$_
+    $RunOutput.Add($line)
+    Write-Host $line
+}
 $AlignmentExitCode = $LASTEXITCODE
 
 if ($null -eq $AlignmentExitCode) {
@@ -73,34 +79,49 @@ if ($null -eq $AlignmentExitCode) {
 }
 
 if ($AlignmentExitCode -eq 0) {
+    $HtmlPaths = [System.Collections.Generic.List[string]]::new()
 
-    if (Test-Path -LiteralPath $OutputDir -PathType Container) {
-
-        # Prefer an HTML file created/updated during this run.
-        $HtmlReport = Get-ChildItem -LiteralPath $OutputDir -File -Filter '*.html' |
-        Where-Object {
-            $_.LastWriteTime -ge $RunStarted.AddSeconds(-2)
-        } |
-        Sort-Object LastWriteTime -Descending |
-        Select-Object -First 1
-
-        # Fallback to newest HTML report in the directory.
-        if (-not $HtmlReport) {
-            $HtmlReport = Get-ChildItem -LiteralPath $OutputDir -File -Filter '*.html' |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object -First 1
-        }
-
-        if ($HtmlReport) {
-            Write-Host "[INFO] Opening HTML report: $($HtmlReport.FullName)"
-            Start-Process $HtmlReport.FullName
-        }
-        else {
-            Write-Warning "Folder Alignment completed, but no HTML report was found in: $OutputDir"
+    foreach ($line in $RunOutput) {
+        if ($line -match '^\[INFO\] (?:HTML|Procedure Inventory HTML):\s+(.+\.html)\s*) {
+            $candidate = $Matches[1].Trim()
+            if (-not $HtmlPaths.Contains($candidate)) {
+                $HtmlPaths.Add($candidate)
+            }
         }
     }
+
+    # Backward-compatible fallback only when an explicit output directory was
+    # supplied and the Python script did not print an HTML path.
+    if ($HtmlPaths.Count -eq 0 -and
+        -not [string]::IsNullOrWhiteSpace($OutputDir) -and
+        (Test-Path -LiteralPath $OutputDir -PathType Container)) {
+
+        $FallbackReports = Get-ChildItem -LiteralPath $OutputDir -File -Filter '*.html' |
+            Where-Object {
+                $_.LastWriteTime -ge $RunStarted.AddSeconds(-2)
+            } |
+            Sort-Object LastWriteTime
+
+        foreach ($report in $FallbackReports) {
+            if (-not $HtmlPaths.Contains($report.FullName)) {
+                $HtmlPaths.Add($report.FullName)
+            }
+        }
+    }
+
+    if ($HtmlPaths.Count -eq 0) {
+        Write-Warning "Folder Alignment completed, but no generated HTML report path was returned."
+    }
     else {
-        Write-Warning "Folder Alignment completed, but the output folder was not found: $OutputDir"
+        foreach ($HtmlPath in $HtmlPaths) {
+            if (Test-Path -LiteralPath $HtmlPath -PathType Leaf) {
+                Write-Host "[INFO] Opening HTML report: $HtmlPath"
+                Start-Process $HtmlPath
+            }
+            else {
+                Write-Warning "Generated HTML report was not found: $HtmlPath"
+            }
+        }
     }
 }
 
