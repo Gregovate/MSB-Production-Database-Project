@@ -125,6 +125,12 @@ def test_procedure_inventory_writes_shareable_html_and_csv(tmp_path: Path) -> No
     assert "File → Download → PDF Document (.pdf)" in html_text
     assert "Do not edit or delete the Archive original" in html_text
     assert "26-Magic Igloo Setup - Frame" in html_text
+    assert "<h2>Do Not Change the Folder Structure</h2>" in html_text
+    assert "_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt" in html_text
+    assert "Stage folder" in html_text
+    assert "Sub-stage folder" in html_text
+    assert "Scene folder" in html_text
+    assert "current field procedure(s)" in html_text
     assert "A single archived legacy procedure may legitimately be split" in html_text
     assert "Magic Igloo Frame.gdoc" in html_text
     assert "Magic Igloo Interior Lighting.pdf" in html_text
