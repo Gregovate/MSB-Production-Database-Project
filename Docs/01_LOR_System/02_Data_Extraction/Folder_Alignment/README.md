@@ -61,6 +61,8 @@ For design, resolver/classification behavior, report model, regression fixtures,
 
 Folder Alignment owns the **read-only comparison and worklist** for LOR-aligned Stage/Sub-stage/Scene documentation.
 
+The same run also generates a separate **Procedure Inventory** for the resolved structured scopes. That inventory lists current Setup PDFs, editable SourceDocs `.gdoc` files, preserved Archive `.gdoc` files, their Drive-relative locations, and missing documented Procedure folders. It is an inventory, not a one-to-one migration matcher; a legacy procedure may be split into multiple current component procedures.
+
 `41 Park Infrastructure-PI` is a governed non-LOR exception outside that hierarchy. Setup and Deployment owns the tasks assigned to that scope, while Google Drive / Display Folder procedures own its physical documentation structure.
 
 Google Drive / Display Folder procedures own the human changes made after reviewing the worklist. Do not duplicate those maintenance procedures here.
