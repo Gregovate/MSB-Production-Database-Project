@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path, PureWindowsPath
 
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 DEFAULT_DB = Path(r"G:\Shared drives\MSB Database\database\lor_output_v7_scene.db")
 DEFAULT_ROOT = Path(r"G:\Shared drives\Display Folders")
 #DEFAULT_OUTPUT = Path(r"G:\Shared drives\MSB Database\Database Previews V6.6.4\reports\google-drive-alignment")
@@ -637,6 +637,20 @@ def _paths_text(paths: tuple[Path, ...], root: Path) -> str:
     return "; ".join(rel(path, root) for path in paths)
 
 
+def file_modified_text(path: Path) -> str:
+    """Return the local filesystem modified time reported by Google Drive for Desktop."""
+    try:
+        return datetime.fromtimestamp(path.stat().st_mtime).astimezone().strftime(
+            "%Y-%m-%d %H:%M %Z"
+        )
+    except (OSError, OverflowError, ValueError):
+        return "Unavailable"
+
+
+def _modified_text(paths: tuple[Path, ...]) -> str:
+    return "; ".join(file_modified_text(path) for path in paths)
+
+
 def write_procedure_inventory(
     output: Path,
     root: Path,
@@ -670,12 +684,15 @@ def write_procedure_inventory(
             "published_pdf_expected_folder",
             "published_pdf_count",
             "published_pdf_paths",
+            "published_pdf_modified",
             "sourcedoc_expected_folder",
             "sourcedoc_gdoc_count",
             "sourcedoc_gdoc_paths",
+            "sourcedoc_gdoc_modified",
             "archive_expected_folder",
             "archive_gdoc_count",
             "archive_gdoc_paths",
+            "archive_gdoc_modified",
             "missing_required_folders",
         ])
         for scope, inv, missing in rows:
@@ -688,12 +705,15 @@ def write_procedure_inventory(
                 rel(setup_root, root),
                 len(inv.published_pdfs),
                 _paths_text(inv.published_pdfs, root),
+                _modified_text(inv.published_pdfs),
                 rel(setup_root / "SourceDocs", root),
                 len(inv.source_gdocs),
                 _paths_text(inv.source_gdocs, root),
+                _modified_text(inv.source_gdocs),
                 rel(setup_root / "Archive", root),
                 len(inv.archive_gdocs),
                 _paths_text(inv.archive_gdocs, root),
+                _modified_text(inv.archive_gdocs),
                 "; ".join(missing),
             ])
 
@@ -732,7 +752,9 @@ code{font-family:Consolas,monospace;overflow-wrap:anywhere}
                 + html.escape(rel(item, root))
                 + "</code> "
                 + file_link(item)
-                + "</div>"
+                + "<br><span class='quiet'>Modified: "
+                + html.escape(file_modified_text(item))
+                + "</span></div>"
             )
         return "".join(parts)
 
@@ -749,6 +771,7 @@ code{font-family:Consolas,monospace;overflow-wrap:anywhere}
         "<code>Procedures\\Setup\\Archive</code>.</p>",
         "<p><strong>Important:</strong> document counts do not need to match. "
         "A single archived legacy procedure may legitimately be split into multiple SourceDocs and multiple published PDFs.</p>",
+        "<p class='quiet'>Modified timestamps are the filesystem Last Modified values reported on the machine running the inventory (Google Drive for Desktop on the normal Windows workflow).</p>",
         "<h2>Inventory Summary</h2>",
         "<table><tr><th>Measure</th><th>Scopes</th></tr>",
         f"<tr><td>Structured Stage/Sub-stage/Scene scopes inventoried</td><td>{total}</td></tr>",
