@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import importlib.util
+import os
 import sys
 from pathlib import Path
 
@@ -36,6 +37,18 @@ def _scope(tmp_path: Path) -> object:
     (setup / "Magic Igloo Frame.pdf").write_bytes(b"pdf")
     (setup / "Magic Igloo Skins.pdf").write_bytes(b"pdf")
     (setup / "Magic Igloo Interior Lighting.pdf").write_bytes(b"pdf")
+
+    fixed_mtime = 1_700_000_000
+    for item in (
+        archive / "26 Magic Igloo Setup Procedure.gdoc",
+        source / "Magic Igloo Frame.gdoc",
+        source / "Magic Igloo Skins.gdoc",
+        source / "Magic Igloo Interior Lighting.gdoc",
+        setup / "Magic Igloo Frame.pdf",
+        setup / "Magic Igloo Skins.pdf",
+        setup / "Magic Igloo Interior Lighting.pdf",
+    ):
+        os.utime(item, (fixed_mtime, fixed_mtime))
 
     return (
         root,
@@ -110,6 +123,10 @@ def test_procedure_inventory_writes_shareable_html_and_csv(tmp_path: Path) -> No
     assert "Magic Igloo Frame.gdoc" in html_text
     assert "Magic Igloo Interior Lighting.pdf" in html_text
     assert "Procedures\\Setup\\SourceDocs" in html_text
+    assert "Modified:" in html_text
+    assert folder_alignment.file_modified_text(
+        scope.path / "Procedures" / "Setup" / "SourceDocs" / "Magic Igloo Frame.gdoc"
+    ) in html_text
 
     with csv_path.open("r", encoding="utf-8-sig", newline="") as handle:
         rows = list(csv.DictReader(handle))
@@ -119,3 +136,6 @@ def test_procedure_inventory_writes_shareable_html_and_csv(tmp_path: Path) -> No
     assert rows[0]["sourcedoc_gdoc_count"] == "3"
     assert rows[0]["published_pdf_count"] == "3"
     assert "Magic Igloo Frame.gdoc" in rows[0]["sourcedoc_gdoc_paths"]
+    assert rows[0]["published_pdf_modified"]
+    assert rows[0]["sourcedoc_gdoc_modified"]
+    assert rows[0]["archive_gdoc_modified"]
