@@ -868,6 +868,9 @@ code{font-family:Consolas,monospace;overflow-wrap:anywhere}
         "    └── MusicalStage\\\n"
         "        └── SourceDocs\\</pre>",
         "<h3>Sub-stage folder</h3>",
+        "<p>A <strong>Sub-stage</strong> is used when part of a Stage needs to be managed separately for technical or planning reasons. "
+        "Examples are <code>03a-Mega Cube-MC</code> for the Mega Cube and <code>07a-Who Forest-WF</code> for the Who Forest. "
+        "A Sub-stage may have its own Setup procedures, wiring, Setup schedule, crew needs, and resource requirements, while still belonging to the larger Stage.</p>",
         "<pre>&lt;NN-Stage Name-XY&gt;\\\n"
         "└── &lt;NNa-Sub-stage Name-XY&gt;\\\n"
         "    ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt\n"
@@ -881,6 +884,9 @@ code{font-family:Consolas,monospace;overflow-wrap:anywhere}
         "    ├── Procedures\\Takedown\\Archive\\, images\\, SourceDocs\\\n"
         "    └── Wiring\\BackgroundStage\\SourceDocs\\ and Wiring\\MusicalStage\\SourceDocs\\</pre>",
         "<h3>Scene folder</h3>",
+        "<p>A <strong>Scene</strong> is a part of a Stage that can be set up independently from the rest of that Stage. "
+        "Because it can be worked on separately, it may need its own Setup procedures, wiring, schedule, crew, and resource information. "
+        "Use a Scene folder only when that Scene is an approved documentation scope; not every LOR Scene automatically gets its own folder.</p>",
         "<pre>&lt;NN-Stage Name-XY&gt;\\\n"
         "└── &lt;NN-Scene Name&gt;\\\n"
         "    ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt\n"
