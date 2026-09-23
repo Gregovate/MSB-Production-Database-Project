@@ -736,6 +736,9 @@ th{background:#eee}.note{background:#fff8d6;border:1px solid #d5a400;padding:10p
 code{font-family:Consolas,monospace;overflow-wrap:anywhere}
 .file{margin:3px 0}.file a{margin-left:6px}
 .scope-col{width:20%}.files-col{width:23%}.missing-col{width:11%}
+.instructions{background:#eef6ff;border:2px solid #6b8fb8;padding:14px 18px;margin:18px 0 24px}
+.instructions h2{margin-top:0;border-bottom:0}.instructions li{margin:8px 0;line-height:1.35}
+.instructions .warning{background:#fff3cd;border-left:4px solid #d39e00;padding:8px 10px;margin:12px 0}
 """
 
     def render_files(paths: tuple[Path, ...], expected: Path) -> str:
@@ -772,6 +775,42 @@ code{font-family:Consolas,monospace;overflow-wrap:anywhere}
         "<p><strong>Important:</strong> document counts do not need to match. "
         "A single archived legacy procedure may legitimately be split into multiple SourceDocs and multiple published PDFs.</p>",
         "<p class='quiet'>Modified timestamps are the filesystem Last Modified values reported on the machine running the inventory (Google Drive for Desktop on the normal Windows workflow).</p>",
+        "<div class='instructions'>",
+        "<h2>How to Update a Setup Procedure</h2>",
+        "<p>Work on one Stage or Scene at a time. Use the file list below to find the correct folders.</p>",
+        "<ol>",
+        "<li><strong>Start with the original.</strong> Look in <code>Procedures\\Setup\\Archive</code>. "
+        "The file in Archive is the original instruction. <strong>Do not edit the Archive file.</strong></li>",
+        "<li><strong>Open the archived Google Doc.</strong> Click <strong>Open</strong> beside the Archive <code>.gdoc</code> file. "
+        "It should open in Google Docs.</li>",
+        "<li><strong>Make the working copy in Google Docs.</strong> In Google Docs, click <strong>File → Make a copy</strong>. "
+        "Do not copy the <code>.gdoc</code> file with Windows Explorer.</li>",
+        "<li><strong>Save the copy in SourceDocs.</strong> In the Make a copy window, choose the same Stage or Scene folder, then "
+        "<code>Procedures\\Setup\\SourceDocs</code>. This new Google Doc is the file you will edit from now on.</li>",
+        "<li><strong>Name the working copy clearly.</strong> Use the Stage or Scene number and name, followed by <strong>Setup</strong>. "
+        "Example: <code>26-Magic Igloo Setup</code>. If the old instruction is split into several procedures, add the job name, for example "
+        "<code>26-Magic Igloo Setup - Frame</code>, <code>26-Magic Igloo Setup - Skins</code>, and "
+        "<code>26-Magic Igloo Setup - Interior Lighting</code>.</li>",
+        "<li><strong>Edit only the SourceDocs copy.</strong> Make all corrections and improvements in the copy under "
+        "<code>SourceDocs</code>. Leave the Archive original unchanged.</li>",
+        "<li><strong>Split large procedures when it helps the crew.</strong> If one old document contains several large jobs, it is OK to create "
+        "separate SourceDocs for those jobs. The number of new procedures does not have to match the number of archived originals.</li>",
+        "<li><strong>Keep the instructions focused on the physical work.</strong> As the new Setup system starts supplying Display names, "
+        "equipment, materials, and other lists, remove duplicate lists from the procedure only after the new system has been checked and is ready to replace them.</li>",
+        "<li><strong>Create the field PDF when the edits are finished.</strong> While the finished working copy is open in Google Docs, click "
+        "<strong>File → Download → PDF Document (.pdf)</strong>.</li>",
+        "<li><strong>Find the downloaded PDF.</strong> Open your computer's <strong>Downloads</strong> folder in Windows File Explorer.</li>",
+        "<li><strong>Move the PDF to the current Setup folder.</strong> Cut the downloaded PDF, then go back to the same Stage or Scene in Google Drive and paste it directly into "
+        "<code>Procedures\\Setup</code>. <strong>Do not put the current PDF in SourceDocs or Archive.</strong></li>",
+        "<li><strong>Use the same title for the source and PDF.</strong> Example: "
+        "<code>26-Magic Igloo Setup - Frame.gdoc</code> in SourceDocs should publish as "
+        "<code>26-Magic Igloo Setup - Frame.pdf</code> in Setup.</li>",
+        "<li><strong>Check your work.</strong> Re-run this Procedure Inventory. Make sure the editable Google Doc appears under SourceDocs and the PDF appears under Published Setup PDFs. "
+        "Then open the Procedures system and confirm the PDF is the file the crew sees.</li>",
+        "</ol>",
+        "<div class='warning'><strong>Do not edit or delete the Archive original.</strong> Archive is the preserved historical copy. "
+        "SourceDocs is the editable working copy. The PDF directly in <code>Procedures\\Setup</code> is the read-only field copy used on phones and tablets.</div>",
+        "</div>",
         "<h2>Inventory Summary</h2>",
         "<table><tr><th>Measure</th><th>Scopes</th></tr>",
         f"<tr><td>Structured Stage/Sub-stage/Scene scopes inventoried</td><td>{total}</td></tr>",
