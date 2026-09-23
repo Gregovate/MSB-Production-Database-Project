@@ -20,7 +20,7 @@ import html
 import os
 import re
 import sqlite3
-from collections import Counter, defaultdict
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path, PureWindowsPath
@@ -85,13 +85,10 @@ class LegacyFile:
 
 
 @dataclass(frozen=True)
-class SetupProcedureStatus:
-    status: str
+class ProcedureInventory:
     archive_gdocs: tuple[Path, ...]
     source_gdocs: tuple[Path, ...]
     published_pdfs: tuple[Path, ...]
-    unpublished_source_gdocs: tuple[Path, ...]
-    published_without_source_pdfs: tuple[Path, ...]
 
 
 def norm(value: str | None) -> str:
@@ -600,64 +597,197 @@ def _direct_files(folder: Path, suffix: str) -> tuple[Path, ...]:
     if not folder.is_dir():
         return ()
     try:
-        files = [
+        items = [
             item
             for item in folder.iterdir()
             if item.is_file() and item.suffix.casefold() == suffix.casefold()
         ]
     except OSError:
         return ()
-    return tuple(sorted(files, key=lambda item: item.name.casefold()))
+    return tuple(sorted(items, key=lambda item: item.name.casefold()))
 
 
-def _procedure_name_key(path: Path) -> str:
-    text = path.stem.casefold()
-    text = re.sub(r"\b(setup|procedure|procedures|instruction|instructions)\b", " ", text)
-    return norm(text)
+def procedure_inventory(scope: Scope) -> ProcedureInventory:
+    """Inventory Setup procedure files without guessing document equivalence.
 
-
-def setup_procedure_status(scope: Scope) -> SetupProcedureStatus:
+    One archived legacy source may intentionally be split into multiple current
+    SourceDocs and multiple published PDFs. Counts and locations are therefore
+    reported independently; filenames are not paired one-to-one.
+    """
     setup_root = scope.path / "Procedures" / "Setup"
-    archive_gdocs = _direct_files(setup_root / "Archive", ".gdoc")
-    source_gdocs = _direct_files(setup_root / "SourceDocs", ".gdoc")
-    published_pdfs = _direct_files(setup_root, ".pdf")
-
-    source_keys = {_procedure_name_key(path) for path in source_gdocs}
-    pdf_keys = {_procedure_name_key(path) for path in published_pdfs}
-
-    unpublished_source_gdocs = tuple(
-        path for path in source_gdocs
-        if _procedure_name_key(path) not in pdf_keys
-    )
-    published_without_source_pdfs = tuple(
-        path for path in published_pdfs
-        if _procedure_name_key(path) not in source_keys
-    )
-
-    if source_gdocs:
-        if not published_pdfs or unpublished_source_gdocs:
-            status = "IN_PROGRESS"
-        else:
-            status = "SOURCE_AND_PUBLISHED"
-    elif archive_gdocs:
-        status = "NEEDS_EDITABLE_COPY"
-    elif published_pdfs:
-        status = "PUBLISHED_NO_EDITABLE_SOURCE"
-    else:
-        status = "NO_SETUP_PROCEDURE_FILES"
-
-    return SetupProcedureStatus(
-        status=status,
-        archive_gdocs=archive_gdocs,
-        source_gdocs=source_gdocs,
-        published_pdfs=published_pdfs,
-        unpublished_source_gdocs=unpublished_source_gdocs,
-        published_without_source_pdfs=published_without_source_pdfs,
+    return ProcedureInventory(
+        archive_gdocs=_direct_files(setup_root / "Archive", ".gdoc"),
+        source_gdocs=_direct_files(setup_root / "SourceDocs", ".gdoc"),
+        published_pdfs=_direct_files(setup_root, ".pdf"),
     )
 
 
-def _join_names(paths: tuple[Path, ...]) -> str:
-    return "; ".join(path.name for path in paths)
+def _paths_text(paths: tuple[Path, ...], root: Path) -> str:
+    return "; ".join(rel(path, root) for path in paths)
+
+
+def write_procedure_inventory(
+    output: Path,
+    root: Path,
+    scopes: list[Scope],
+    stamp: str,
+) -> tuple[Path, Path]:
+    """Write a shareable read-only Setup Procedure Inventory."""
+
+    html_path = output / f"procedure-inventory-{stamp}.html"
+    csv_path = output / f"procedure-inventory-{stamp}.csv"
+
+    rows = []
+    for scope in sorted(
+        scopes,
+        key=lambda item: (
+            item.stage_id,
+            0 if item.scope_type == "STAGE" else 1 if item.scope_type == "SUB_STAGE" else 2,
+            str(item.path).casefold(),
+        ),
+    ):
+        inv = procedure_inventory(scope)
+        rows.append((scope, inv, missing_contract(scope)))
+
+    with csv_path.open("w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f)
+        w.writerow([
+            "stage_id",
+            "scope_type",
+            "scope_name",
+            "scope_path",
+            "published_pdf_expected_folder",
+            "published_pdf_count",
+            "published_pdf_paths",
+            "sourcedoc_expected_folder",
+            "sourcedoc_gdoc_count",
+            "sourcedoc_gdoc_paths",
+            "archive_expected_folder",
+            "archive_gdoc_count",
+            "archive_gdoc_paths",
+            "missing_required_folders",
+        ])
+        for scope, inv, missing in rows:
+            setup_root = scope.path / "Procedures" / "Setup"
+            w.writerow([
+                scope.stage_id,
+                scope.scope_type,
+                scope.scope_name,
+                rel(scope.path, root),
+                rel(setup_root, root),
+                len(inv.published_pdfs),
+                _paths_text(inv.published_pdfs, root),
+                rel(setup_root / "SourceDocs", root),
+                len(inv.source_gdocs),
+                _paths_text(inv.source_gdocs, root),
+                rel(setup_root / "Archive", root),
+                len(inv.archive_gdocs),
+                _paths_text(inv.archive_gdocs, root),
+                "; ".join(missing),
+            ])
+
+    total = len(rows)
+    with_published = sum(bool(inv.published_pdfs) for _scope, inv, _missing in rows)
+    with_source = sum(bool(inv.source_gdocs) for _scope, inv, _missing in rows)
+    with_archive = sum(bool(inv.archive_gdocs) for _scope, inv, _missing in rows)
+    no_setup_files = sum(
+        not (inv.published_pdfs or inv.source_gdocs or inv.archive_gdocs)
+        for _scope, inv, _missing in rows
+    )
+
+    css = """
+body{font-family:Segoe UI,Arial,sans-serif;margin:24px;color:#222;max-width:1600px}
+h1{margin-bottom:5px}h2{margin-top:30px;border-bottom:2px solid #777;padding-bottom:5px}
+table{border-collapse:collapse;width:100%;margin:8px 0 22px;font-size:14px;table-layout:fixed}
+th,td{border:1px solid #ccc;padding:7px;vertical-align:top;text-align:left}
+th{background:#eee}.note{background:#fff8d6;border:1px solid #d5a400;padding:10px}
+.quiet{color:#666}.missing{color:#9a2f00;font-weight:700}.present{color:#176b22;font-weight:700}
+code{font-family:Consolas,monospace;overflow-wrap:anywhere}
+.file{margin:3px 0}.file a{margin-left:6px}
+.scope-col{width:20%}.files-col{width:23%}.missing-col{width:11%}
+"""
+
+    def render_files(paths: tuple[Path, ...], expected: Path) -> str:
+        parts = [
+            "<div class='quiet'>Expected folder: "
+            f"<code>{html.escape(rel(expected, root))}</code></div>"
+        ]
+        if not paths:
+            parts.append("<div class='missing'>No matching files found in this location.</div>")
+            return "".join(parts)
+        for item in paths:
+            parts.append(
+                "<div class='file'><code>"
+                + html.escape(rel(item, root))
+                + "</code> "
+                + file_link(item)
+                + "</div>"
+            )
+        return "".join(parts)
+
+    out = [
+        "<!doctype html><html><head><meta charset='utf-8'>",
+        "<title>MSB Procedure Inventory</title>",
+        f"<style>{css}</style></head><body>",
+        "<h1>MSB Procedure Inventory</h1>",
+        "<p class='note'><strong>READ-ONLY.</strong> This report inventories existing Setup procedure documents. "
+        "It does not move, copy, rename, publish, or decide whether a procedure is required for a scope.</p>",
+        "<p>The documented Setup locations are: current field PDFs directly in "
+        "<code>Procedures\\Setup</code>, editable working Google Docs in "
+        "<code>Procedures\\Setup\\SourceDocs</code>, and preserved original/historical Google Docs in "
+        "<code>Procedures\\Setup\\Archive</code>.</p>",
+        "<p><strong>Important:</strong> document counts do not need to match. "
+        "A single archived legacy procedure may legitimately be split into multiple SourceDocs and multiple published PDFs.</p>",
+        "<h2>Inventory Summary</h2>",
+        "<table><tr><th>Measure</th><th>Scopes</th></tr>",
+        f"<tr><td>Structured Stage/Sub-stage/Scene scopes inventoried</td><td>{total}</td></tr>",
+        f"<tr><td>Scopes with published Setup PDF(s)</td><td>{with_published}</td></tr>",
+        f"<tr><td>Scopes with editable SourceDocs .gdoc file(s)</td><td>{with_source}</td></tr>",
+        f"<tr><td>Scopes with archived .gdoc original(s)</td><td>{with_archive}</td></tr>",
+        f"<tr><td>Scopes with no Setup procedure files in any of the three locations</td><td>{no_setup_files}</td></tr>",
+        "</table>",
+    ]
+
+    by_stage: dict[str, list[tuple[Scope, ProcedureInventory, list[str]]]] = defaultdict(list)
+    for row in rows:
+        by_stage[row[0].stage_id].append(row)
+
+    for sid in sorted(by_stage):
+        stage_rows = by_stage[sid]
+        stage_scope = next((scope for scope, _inv, _missing in stage_rows if scope.scope_type == "STAGE"), None)
+        title = stage_scope.scope_name if stage_scope else f"Stage {sid}"
+        out.append(f"<h2>Stage {html.escape(sid)} — {html.escape(title)}</h2>")
+        out.append(
+            "<table><tr>"
+            "<th class='scope-col'>Scope</th>"
+            "<th class='files-col'>Published Setup PDFs</th>"
+            "<th class='files-col'>Editable SourceDocs .gdoc</th>"
+            "<th class='files-col'>Archived original .gdoc</th>"
+            "<th class='missing-col'>Missing documented folders</th>"
+            "</tr>"
+        )
+        for scope, inv, missing in stage_rows:
+            setup_root = scope.path / "Procedures" / "Setup"
+            missing_html = (
+                "<div class='missing'>" + "<br>".join(html.escape(item) for item in missing) + "</div>"
+                if missing
+                else "<span class='present'>None</span>"
+            )
+            out.append(
+                "<tr>"
+                f"<td><strong>{html.escape(scope.scope_type.replace('_', ' ').title())}</strong><br>"
+                f"{html.escape(scope.scope_name)}<br><code>{html.escape(rel(scope.path, root))}</code></td>"
+                f"<td>{render_files(inv.published_pdfs, setup_root)}</td>"
+                f"<td>{render_files(inv.source_gdocs, setup_root / 'SourceDocs')}</td>"
+                f"<td>{render_files(inv.archive_gdocs, setup_root / 'Archive')}</td>"
+                f"<td>{missing_html}</td>"
+                "</tr>"
+            )
+        out.append("</table>")
+
+    out.append("</body></html>")
+    html_path.write_text("".join(out), encoding="utf-8")
+    return html_path, csv_path
 
 
 def write_reports(output: Path, root: Path, db: Path, previews, scopes, scope_issues, legacy_by_stage, unassigned, provenance):
@@ -672,40 +802,9 @@ def write_reports(output: Path, root: Path, db: Path, previews, scopes, scope_is
 
     with csv_path.open("w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
-        w.writerow([
-            "stage_id",
-            "scope_type",
-            "scope_name",
-            "scope_path",
-            "missing_required",
-            "setup_procedure_status",
-            "archive_gdoc_count",
-            "archive_gdocs",
-            "sourcedoc_gdoc_count",
-            "sourcedoc_gdocs",
-            "published_pdf_count",
-            "published_pdfs",
-            "unpublished_source_gdocs",
-            "published_without_source_pdfs",
-        ])
+        w.writerow(["stage_id", "scope_type", "scope_name", "scope_path", "missing_required"])
         for scope in sorted(scopes, key=lambda s: (s.stage_id, s.scope_type, str(s.path).casefold())):
-            procedure = setup_procedure_status(scope)
-            w.writerow([
-                scope.stage_id,
-                scope.scope_type,
-                scope.scope_name,
-                rel(scope.path, root),
-                "; ".join(missing_contract(scope)),
-                procedure.status,
-                len(procedure.archive_gdocs),
-                _join_names(procedure.archive_gdocs),
-                len(procedure.source_gdocs),
-                _join_names(procedure.source_gdocs),
-                len(procedure.published_pdfs),
-                _join_names(procedure.published_pdfs),
-                _join_names(procedure.unpublished_source_gdocs),
-                _join_names(procedure.published_without_source_pdfs),
-            ])
+            w.writerow([scope.stage_id, scope.scope_type, scope.scope_name, rel(scope.path, root), "; ".join(missing_contract(scope))])
 
     css = """
 body{font-family:Segoe UI,Arial,sans-serif;margin:24px;color:#222;max-width:1450px}
@@ -716,47 +815,10 @@ th,td{border:1px solid #ccc;padding:7px;vertical-align:top;text-align:left}th{ba
 .file code{white-space:normal;overflow-wrap:anywhere}.action{font-weight:700}.note{background:#fff8d6;border:1px solid #d5a400;padding:10px}
 .attention{background:#fff4e5;border-left:4px solid #d98a00;padding:8px 12px;margin:8px 0 16px}.quiet{color:#666}.ok{color:#176b22;font-weight:700}
 .scope{margin-left:20px}code{font-family:Consolas,monospace;overflow-wrap:anywhere}details{margin:18px 0}
-.proc-summary td:first-child,.proc-summary th:first-child{width:32%}
-.proc-files{margin:2px 0}.proc-files a{margin-left:6px}.status{font-weight:700}
-.status-SOURCE_AND_PUBLISHED{color:#176b22}.status-IN_PROGRESS{color:#a35f00}
-.status-NEEDS_EDITABLE_COPY,.status-PUBLISHED_NO_EDITABLE_SOURCE{color:#9a2f00}
-.status-NO_SETUP_PROCEDURE_FILES{color:#666}
 """
     out = ["<!doctype html><html><head><meta charset='utf-8'><title>MSB Folder Alignment Worklist</title>", f"<style>{css}</style></head><body>"]
     out.append("<h1>MSB Folder Alignment Worklist</h1>")
     out.append("<p class='note'><strong>READ-ONLY.</strong> Work one Stage at a time. Review each legacy file, then move it only when the suggested destination is correct.</p>")
-
-    procedure_by_scope = {
-        str(scope.path).casefold(): setup_procedure_status(scope)
-        for scope in scopes
-    }
-    procedure_counts = Counter(item.status for item in procedure_by_scope.values())
-    procedure_labels = {
-        "SOURCE_AND_PUBLISHED": "Source + published present",
-        "IN_PROGRESS": "In progress / source not fully published",
-        "NEEDS_EDITABLE_COPY": "Needs editable SourceDocs copy",
-        "PUBLISHED_NO_EDITABLE_SOURCE": "Published PDF but no editable SourceDocs source",
-        "NO_SETUP_PROCEDURE_FILES": "No Setup Procedure files found",
-    }
-
-    out.append("<h2>Setup Procedure Migration Summary</h2>")
-    out.append(
-        "<p>This section tracks the documentation migration workflow only. "
-        "It does not declare that a Procedure is operationally correct or required for every scope.</p>"
-    )
-    out.append("<table><tr><th>Migration state</th><th>Scopes</th></tr>")
-    for status in (
-        "SOURCE_AND_PUBLISHED",
-        "IN_PROGRESS",
-        "NEEDS_EDITABLE_COPY",
-        "PUBLISHED_NO_EDITABLE_SOURCE",
-        "NO_SETUP_PROCEDURE_FILES",
-    ):
-        out.append(
-            f"<tr><td class='status status-{status}'>{html.escape(procedure_labels[status])}</td>"
-            f"<td>{procedure_counts.get(status, 0)}</td></tr>"
-        )
-    out.append("</table>")
 
     stage_ids = sorted(set(scopes_by_stage) | set(legacy_by_stage) | set(scope_issues))
     for sid in stage_ids:
@@ -766,65 +828,6 @@ th,td{border:1px solid #ccc;padding:7px;vertical-align:top;text-align:left}th{ba
         out.append(f"<h2>Stage {html.escape(sid)} — {html.escape(stage_name)}</h2>")
 
         stage_legacy = legacy_by_stage.get(sid, [])
-
-        def render_procedure_files(paths: tuple[Path, ...]) -> str:
-            if not paths:
-                return "<span class='quiet'>None</span>"
-            rows = []
-            for path in paths:
-                rows.append(
-                    "<div class='proc-files'><code>"
-                    + html.escape(path.name)
-                    + "</code> "
-                    + file_link(path)
-                    + "</div>"
-                )
-            return "".join(rows)
-
-        out.append("<h3>Setup Procedure Migration</h3>")
-        out.append(
-            "<table class='proc-summary'><tr>"
-            "<th>Scope</th><th>Status</th><th>Archive originals (.gdoc)</th>"
-            "<th>Editable SourceDocs (.gdoc)</th><th>Published field PDFs</th>"
-            "<th>Migration notes</th></tr>"
-        )
-        for proc_scope in sorted(
-            stage_scopes,
-            key=lambda item: (
-                0 if item.scope_type == "STAGE" else 1 if item.scope_type == "SUB_STAGE" else 2,
-                str(item.path).casefold(),
-            ),
-        ):
-            procedure = procedure_by_scope[str(proc_scope.path).casefold()]
-            label = procedure_labels[procedure.status]
-            notes = []
-            if procedure.unpublished_source_gdocs:
-                notes.append(
-                    "SourceDocs awaiting same-name PDF: "
-                    + ", ".join(path.name for path in procedure.unpublished_source_gdocs)
-                )
-            if procedure.published_without_source_pdfs:
-                notes.append(
-                    "Published PDF without same-name SourceDocs source: "
-                    + ", ".join(path.name for path in procedure.published_without_source_pdfs)
-                )
-            if procedure.status == "NEEDS_EDITABLE_COPY":
-                notes.append("Archive original exists; create/edit the working copy in SourceDocs.")
-            if procedure.status == "NO_SETUP_PROCEDURE_FILES":
-                notes.append("No Setup Procedure files found; may be valid if this scope does not need one.")
-            out.append(
-                "<tr>"
-                f"<td><strong>{html.escape(proc_scope.scope_type.replace('_', ' ').title())}</strong><br>"
-                f"{html.escape(proc_scope.scope_name)}<br><code>{html.escape(rel(proc_scope.path, root))}</code></td>"
-                f"<td class='status status-{procedure.status}'>{html.escape(label)}</td>"
-                f"<td>{render_procedure_files(procedure.archive_gdocs)}</td>"
-                f"<td>{render_procedure_files(procedure.source_gdocs)}</td>"
-                f"<td>{render_procedure_files(procedure.published_pdfs)}</td>"
-                f"<td>{html.escape(' '.join(notes)) if notes else '<span class=\'quiet\'>No migration note.</span>'}</td>"
-                "</tr>"
-            )
-        out.append("</table>")
-
         scope_items: dict[str, list[LegacyFile]] = defaultdict(list)
         stage_items: list[LegacyFile] = []
         for item in stage_legacy:
@@ -950,8 +953,17 @@ def main() -> int:
         output_dir, args.drive_root, args.db, previews, scopes, scope_issues,
         legacy_by_stage, unassigned, provenance,
     )
+    procedure_stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    procedure_html, procedure_csv = write_procedure_inventory(
+        output_dir,
+        args.drive_root,
+        scopes,
+        procedure_stamp,
+    )
     print(f"[INFO] HTML: {html_path}", flush=True)
     print(f"[INFO] CSV: {csv_path}", flush=True)
+    print(f"[INFO] Procedure Inventory HTML: {procedure_html}", flush=True)
+    print(f"[INFO] Procedure Inventory CSV:  {procedure_csv}", flush=True)
     return 0
 
 
