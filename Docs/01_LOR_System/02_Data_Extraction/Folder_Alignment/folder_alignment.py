@@ -739,6 +739,9 @@ code{font-family:Consolas,monospace;overflow-wrap:anywhere}
 .instructions{background:#eef6ff;border:2px solid #6b8fb8;padding:14px 18px;margin:18px 0 24px}
 .instructions h2{margin-top:0;border-bottom:0}.instructions li{margin:8px 0;line-height:1.35}
 .instructions .warning{background:#fff3cd;border-left:4px solid #d39e00;padding:8px 10px;margin:12px 0}
+.folder-contract{background:#f7f7f7;border:2px solid #777;padding:14px 18px;margin:18px 0 24px}
+.folder-contract h2{margin-top:0;border-bottom:0}.folder-contract pre{background:white;border:1px solid #ccc;padding:12px;overflow:auto}
+.folder-contract .danger{background:#fdecec;border-left:5px solid #b42318;padding:10px 12px;margin:12px 0;font-weight:700}
 """
 
     def render_files(paths: tuple[Path, ...], expected: Path) -> str:
@@ -810,6 +813,70 @@ code{font-family:Consolas,monospace;overflow-wrap:anywhere}
         "</ol>",
         "<div class='warning'><strong>Do not edit or delete the Archive original.</strong> Archive is the preserved historical copy. "
         "SourceDocs is the editable working copy. The PDF directly in <code>Procedures\\Setup</code> is the read-only field copy used on phones and tablets.</div>",
+        "</div>",
+        "<div class='folder-contract'>",
+        "<h2>Do Not Change the Folder Structure</h2>",
+        "<div class='danger'>DO NOT edit, rename, move, or delete any file named "
+        "<code>_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt</code>. "
+        "These marker/readme files tell the MSB applications which folders are approved. "
+        "Do not delete folders or files just to make this report look cleaner.</div>",
+        "<p>Stage, Sub-stage, and Scene documentation use the same basic structure. "
+        "A Sub-stage lives inside its owning Stage. A Scene normally lives inside its owning Stage or Sub-stage. "
+        "When a Sub-stage or Scene is a real documentation scope, it gets the same helper folders shown below.</p>",
+        "<h3>Stage folder</h3>",
+        "<pre>&lt;NN-Stage Name-XY&gt;\\\n"
+        "├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt\n"
+        "├── PreviewBackground\\\n"
+        "│   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt  (when used as a controlled LOR background source)\n"
+        "├── Photos\\\n"
+        "│   ├── Current\\\n"
+        "│   └── Historical\\\n"
+        "├── Procedures\\\n"
+        "│   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt\n"
+        "│   ├── Inspection\\\n"
+        "│   ├── Setup\\\n"
+        "│   │   ├── Archive\\        ← original / historical Google Docs; DO NOT EDIT\n"
+        "│   │   ├── images\\         ← pictures used by Setup instructions\n"
+        "│   │   ├── SourceDocs\\     ← editable Google Docs used going forward\n"
+        "│   │   └── *.pdf             ← current read-only field procedure(s) go DIRECTLY in Setup\n"
+        "│   └── Takedown\\\n"
+        "│       ├── Archive\\\n"
+        "│       ├── images\\\n"
+        "│       └── SourceDocs\\\n"
+        "└── Wiring\\\n"
+        "    ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt\n"
+        "    ├── BackgroundStage\\\n"
+        "    │   └── SourceDocs\\\n"
+        "    └── MusicalStage\\\n"
+        "        └── SourceDocs\\</pre>",
+        "<h3>Sub-stage folder</h3>",
+        "<pre>&lt;NN-Stage Name-XY&gt;\\\n"
+        "└── &lt;NNa-Sub-stage Name-XY&gt;\\\n"
+        "    ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt\n"
+        "    ├── PreviewBackground\\\n"
+        "    ├── Photos\\Current\\ and Photos\\Historical\\\n"
+        "    ├── Procedures\\Inspection\\\n"
+        "    ├── Procedures\\Setup\\Archive\\\n"
+        "    ├── Procedures\\Setup\\images\\\n"
+        "    ├── Procedures\\Setup\\SourceDocs\\\n"
+        "    ├── Procedures\\Setup\\*.pdf   ← current field procedure(s)\n"
+        "    ├── Procedures\\Takedown\\Archive\\, images\\, SourceDocs\\\n"
+        "    └── Wiring\\BackgroundStage\\SourceDocs\\ and Wiring\\MusicalStage\\SourceDocs\\</pre>",
+        "<h3>Scene folder</h3>",
+        "<pre>&lt;NN-Stage Name-XY&gt;\\\n"
+        "└── &lt;NN-Scene Name&gt;\\\n"
+        "    ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt\n"
+        "    ├── PreviewBackground\\\n"
+        "    ├── Photos\\Current\\ and Photos\\Historical\\\n"
+        "    ├── Procedures\\Inspection\\\n"
+        "    ├── Procedures\\Setup\\Archive\\\n"
+        "    ├── Procedures\\Setup\\images\\\n"
+        "    ├── Procedures\\Setup\\SourceDocs\\\n"
+        "    ├── Procedures\\Setup\\*.pdf   ← current field procedure(s)\n"
+        "    ├── Procedures\\Takedown\\Archive\\, images\\, SourceDocs\\\n"
+        "    └── Wiring\\BackgroundStage\\SourceDocs\\ and Wiring\\MusicalStage\\SourceDocs\\</pre>",
+        "<p><strong>Important:</strong> not every LOR Scene is automatically a Google Drive Scene documentation folder. "
+        "Use the existing approved Stage/Sub-stage/Scene structure. Do not create, rename, move, or delete a scope folder because a name looks similar.</p>",
         "</div>",
         "<h2>Inventory Summary</h2>",
         "<table><tr><th>Measure</th><th>Scopes</th></tr>",
