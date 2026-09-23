@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
+import subprocess
+
+import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -23,3 +27,28 @@ def test_folder_alignment_launcher_opens_exact_paths_emitted_by_python() -> None
     assert "$HtmlPaths" in launcher
     assert "Test-Path -LiteralPath $HtmlPath -PathType Leaf" in launcher
     assert "Start-Process $HtmlPath" in launcher
+
+
+def test_folder_alignment_launcher_parses_in_powershell_when_available() -> None:
+    powershell = shutil.which("powershell") or shutil.which("pwsh")
+    if not powershell:
+        pytest.skip("PowerShell is not available in this test environment.")
+
+    command = (
+        "$errors=$null; "
+        "[System.Management.Automation.Language.Parser]::ParseFile("
+        f"'{str(LAUNCHER).replace("'", "''")}', "
+        "[ref]$null, [ref]$errors) > $null; "
+        "if ($errors.Count -gt 0) { "
+        "$errors | ForEach-Object { Write-Error $_.Message }; exit 1 "
+        "}"
+    )
+
+    completed = subprocess.run(
+        [powershell, "-NoProfile", "-Command", command],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr or completed.stdout
