@@ -34,11 +34,11 @@ def test_folder_alignment_launcher_parses_in_powershell_when_available() -> None
     if not powershell:
         pytest.skip("PowerShell is not available in this test environment.")
 
+    escaped_path = str(LAUNCHER).replace("'", "''")
     command = (
-        "$errors=$null; "
+        "$tokens=$null; $errors=$null; "
         "[System.Management.Automation.Language.Parser]::ParseFile("
-        f"'{str(LAUNCHER).replace("'", "''")}', "
-        "[ref]$null, [ref]$errors) > $null; "
+        f"'{escaped_path}', [ref]$tokens, [ref]$errors) > $null; "
         "if ($errors.Count -gt 0) { "
         "$errors | ForEach-Object { Write-Error $_.Message }; exit 1 "
         "}"
