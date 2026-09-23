@@ -10,9 +10,9 @@ PYTHON="/opt/fieldwiring/.venv/bin/python"
 SETUP_SERVICE="msb-setup.service"
 
 TARGET_REF="main"
-EXPECTED_LIVE_SHA="1b08bdd26156b67ba89ea484fdc035b0b09ffc28"
-TARGET_SHA="64835504962247d7a09c1146e5e77d8e19948559"
-EXPECTED_PRE_VERSION="V0.3.16-stale-ownership-cleanup"
+EXPECTED_LIVE_SHA="64835504962247d7a09c1146e5e77d8e19948559"
+TARGET_SHA="912c5891de9335f3ccc9079fd594acaf3450227e"
+EXPECTED_PRE_VERSION="V0.3.17-performance-trace"
 EXPECTED_POST_VERSION="V0.3.17-performance-trace"
 
 REPORT_DIR="/home/msbadmin/setup-deployment-reports"
@@ -169,7 +169,7 @@ fi
 SETUP_PRE="$(curl -fsS http://192.168.5.9:8794/api/health)"
 echo "Pre-deploy Setup health: $SETUP_PRE"
 if [[ "$SETUP_PRE" != *"\"status\":\"ok\""*    || "$SETUP_PRE" != *"\"data_mode\":\"postgres\""*    || "$SETUP_PRE" != *"\"version\":\"$EXPECTED_PRE_VERSION\""* ]]; then
-    echo "FAIL: current Setup runtime is not the verified V0.3.16 state"
+    echo "FAIL: current Setup runtime is not the verified V0.3.17 trace state"
     exit 8
 fi
 
@@ -231,26 +231,33 @@ if [[ "$SETUP_POST" != *"\"status\":\"ok\""*    || "$SETUP_POST" != *"\"data_mod
 fi
 
 echo
-echo "--- Validate trace headers and journal emission ---"
+echo "--- Validate compact trace headers and exception journal emission ---"
 PROBE_START="$(date --iso-8601=seconds)"
-curl -sS -D "$PROBE_HEADERS" -o "$PROBE_BODY"     -H 'Cf-Access-Authenticated-User-Email: performance-probe@invalid.local'     http://192.168.5.9:8794/api/setup/access
+PROBE_CODE="$(curl -sS -D "$PROBE_HEADERS" -o "$PROBE_BODY" -w '%{http_code}' \
+    -H 'Cf-Access-Authenticated-User-Email: performance-probe@invalid.local' \
+    http://192.168.5.9:8794/api/setup/__performance_trace_probe__)"
+if [[ "$PROBE_CODE" != "404" ]]; then
+    echo "FAIL: expected trace error probe HTTP 404, got $PROBE_CODE"
+    exit 16
+fi
 if ! grep -qi '^Server-Timing: app;dur=' "$PROBE_HEADERS"; then
     echo "FAIL: Setup API response did not include Server-Timing"
     cat "$PROBE_HEADERS"
-    exit 16
+    exit 17
 fi
 PROBE_REQUEST_ID="$(awk -F': ' 'tolower($1)=="x-msb-request-id"{gsub("\r","",$2); print $2}' "$PROBE_HEADERS" | tail -1)"
 if [[ -z "$PROBE_REQUEST_ID" ]]; then
     echo "FAIL: Setup API response did not include X-MSB-Request-ID"
-    exit 17
-fi
-sleep 1
-if ! journalctl -u "$SETUP_SERVICE" --since "$PROBE_START" --no-pager     | grep -F "SETUP_PERF request_id=$PROBE_REQUEST_ID operator=performance-probe@invalid.local" >/dev/null; then
-    echo "FAIL: performance probe did not reach msb-setup.service journal"
-    journalctl -u "$SETUP_SERVICE" --since "$PROBE_START" --no-pager || true
     exit 18
 fi
-echo "PERFORMANCE TRACE HEADERS / JOURNAL: PASS ($PROBE_REQUEST_ID)"
+sleep 1
+if ! journalctl -u "$SETUP_SERVICE" --since "$PROBE_START" --no-pager \
+    | grep -F "SETUP_PERF_EVENT kind=ERROR request_id=$PROBE_REQUEST_ID operator=performance-probe@invalid.local" >/dev/null; then
+    echo "FAIL: compact performance error probe did not reach msb-setup.service journal"
+    journalctl -u "$SETUP_SERVICE" --since "$PROBE_START" --no-pager || true
+    exit 19
+fi
+echo "COMPACT PERFORMANCE TRACE HEADERS / JOURNAL: PASS ($PROBE_REQUEST_ID)"
 
 echo
 echo "--- Live Setup regression ---"
@@ -262,13 +269,13 @@ echo "Fingerprint before source deployment: $PROD_BEFORE"
 echo "Fingerprint after source deployment:  $POST_SOURCE_FINGERPRINT"
 if [[ "$POST_SOURCE_FINGERPRINT" != "$PROD_BEFORE" ]]; then
     echo "FAIL: source-only #222 deployment changed governed Setup data"
-    exit 19
+    exit 20
 fi
 
 FINAL_2026="$(setup_2026_count)"
 if [[ "$FINAL_2026" != "0" ]]; then
     echo "FAIL: a real 2026 Setup Session exists after #222 deployment"
-    exit 20
+    exit 21
 fi
 
 SUCCESS=1
@@ -276,5 +283,5 @@ echo
 echo "SETUP_222_PERFORMANCE_TRACE_PRODUCTION_DEPLOYMENT_PASS"
 echo "Prior / rollback SHA: $OLD_HEAD"
 echo "Deployed exact SHA:   $TARGET_SHA"
-echo "Trace journal marker: SETUP_PERF"
+echo "Trace journal markers: SETUP_PERF_EVENT / SETUP_PERF_SUMMARY"
 echo "Deployment report:    $REPORT"
