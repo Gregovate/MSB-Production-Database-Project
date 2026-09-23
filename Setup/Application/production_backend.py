@@ -7,6 +7,7 @@ not exposed by this WSGI application.
 """
 from __future__ import annotations
 
+import logging
 import os
 import threading
 import time
@@ -47,6 +48,13 @@ _SETUP_PERF_LOCK = threading.Lock()
 _SETUP_PERF_ACTIVE_REQUESTS = 0
 _SETUP_PERF_PREFIX = "SETUP_PERF"
 _SETUP_OPERATOR_HEADER = "Cf-Access-Authenticated-User-Email"
+_SETUP_PERF_LOGGER = logging.getLogger("msb.setup.performance")
+_SETUP_PERF_LOGGER.setLevel(logging.INFO)
+_SETUP_PERF_LOGGER.propagate = False
+if not _SETUP_PERF_LOGGER.handlers:
+    _setup_perf_handler = logging.StreamHandler()
+    _setup_perf_handler.setFormatter(logging.Formatter("%(message)s"))
+    _SETUP_PERF_LOGGER.addHandler(_setup_perf_handler)
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
@@ -209,7 +217,7 @@ def setup_performance_trace_finish(response):
     response.headers["Server-Timing"] = f"app;dur={elapsed_ms:.1f}"
     response.headers["X-MSB-Request-ID"] = request_id
 
-    app.logger.info(
+    _SETUP_PERF_LOGGER.info(
         "%s request_id=%s operator=%s method=%s route=%s status=%s app_ms=%.1f "
         "response_bytes=%s pid=%s thread=%s active_in_worker=%s",
         _SETUP_PERF_PREFIX,
