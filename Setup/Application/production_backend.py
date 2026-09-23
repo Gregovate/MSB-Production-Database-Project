@@ -47,6 +47,9 @@ PRODUCTION_VERSION = "V0.3.17-performance-trace"
 _SETUP_PERF_LOCK = threading.Lock()
 _SETUP_PERF_ACTIVE_REQUESTS = 0
 _SETUP_PERF_PREFIX = "SETUP_PERF"
+_SETUP_PERF_SUMMARY_SECONDS = 60.0
+_SETUP_PERF_SLOW_MS = 250.0
+_SETUP_PERF_WINDOWS: dict[str, dict] = {}
 _SETUP_OPERATOR_HEADER = "Cf-Access-Authenticated-User-Email"
 _SETUP_PERF_LOGGER = logging.getLogger("msb.setup.performance")
 _SETUP_PERF_LOGGER.setLevel(logging.INFO)
@@ -191,6 +194,71 @@ def _setup_perf_decrement_active() -> None:
         _SETUP_PERF_ACTIVE_REQUESTS = max(0, _SETUP_PERF_ACTIVE_REQUESTS - 1)
 
 
+def _setup_perf_new_window(started: float) -> dict:
+    return {
+        "started": started,
+        "requests": 0,
+        "total_ms": 0.0,
+        "response_bytes": 0,
+        "max_active": 0,
+        "routes": {},
+    }
+
+
+def _setup_perf_record_summary(
+    *,
+    operator: str,
+    method: str,
+    route: str,
+    elapsed_ms: float,
+    response_bytes: int,
+    active: int,
+) -> str | None:
+    now = time.perf_counter()
+    with _SETUP_PERF_LOCK:
+        window = _SETUP_PERF_WINDOWS.setdefault(operator, _setup_perf_new_window(now))
+        window["requests"] += 1
+        window["total_ms"] += elapsed_ms
+        window["response_bytes"] += max(0, response_bytes)
+        window["max_active"] = max(window["max_active"], active)
+
+        route_key = f"{method} {route}"
+        route_stats = window["routes"].setdefault(
+            route_key,
+            {"count": 0, "total_ms": 0.0, "max_ms": 0.0, "response_bytes": 0},
+        )
+        route_stats["count"] += 1
+        route_stats["total_ms"] += elapsed_ms
+        route_stats["max_ms"] = max(route_stats["max_ms"], elapsed_ms)
+        route_stats["response_bytes"] += max(0, response_bytes)
+
+        window_seconds = now - window["started"]
+        if window_seconds < _SETUP_PERF_SUMMARY_SECONDS:
+            return None
+
+        route_parts = []
+        for key, stats in sorted(
+            window["routes"].items(),
+            key=lambda item: (-item[1]["count"], item[0]),
+        ):
+            average_ms = stats["total_ms"] / stats["count"]
+            route_parts.append(
+                f"{key}|n={stats['count']}|avg_ms={average_ms:.1f}|"
+                f"max_ms={stats['max_ms']:.1f}|bytes={stats['response_bytes']}"
+            )
+
+        average_ms = window["total_ms"] / window["requests"]
+        summary = (
+            f"{_SETUP_PERF_PREFIX}_SUMMARY operator={operator} pid={os.getpid()} "
+            f"window_s={window_seconds:.1f} requests={window['requests']} "
+            f"avg_ms={average_ms:.1f} max_active={window['max_active']} "
+            f"response_bytes={window['response_bytes']} routes="
+            + ";".join(route_parts)
+        )
+        _SETUP_PERF_WINDOWS[operator] = _setup_perf_new_window(now)
+        return summary
+
+
 @app.before_request
 def setup_performance_trace_start() -> None:
     if not _setup_perf_is_traced_request():
@@ -217,21 +285,44 @@ def setup_performance_trace_finish(response):
     response.headers["Server-Timing"] = f"app;dur={elapsed_ms:.1f}"
     response.headers["X-MSB-Request-ID"] = request_id
 
-    _SETUP_PERF_LOGGER.info(
-        "%s request_id=%s operator=%s method=%s route=%s status=%s app_ms=%.1f "
-        "response_bytes=%s pid=%s thread=%s active_in_worker=%s",
-        _SETUP_PERF_PREFIX,
-        request_id,
-        operator,
-        request.method,
-        route,
-        response.status_code,
-        elapsed_ms,
-        response_bytes,
-        os.getpid(),
-        threading.get_ident(),
-        active,
+    event_kind = None
+    if response.status_code >= 400:
+        event_kind = "ERROR"
+    elif request.method != "GET":
+        event_kind = "WRITE"
+    elif elapsed_ms >= _SETUP_PERF_SLOW_MS:
+        event_kind = "SLOW"
+
+    if event_kind is not None:
+        _SETUP_PERF_LOGGER.info(
+            "%s_EVENT kind=%s request_id=%s operator=%s method=%s route=%s "
+            "status=%s app_ms=%.1f response_bytes=%s pid=%s thread=%s "
+            "active_in_worker=%s",
+            _SETUP_PERF_PREFIX,
+            event_kind,
+            request_id,
+            operator,
+            request.method,
+            route,
+            response.status_code,
+            elapsed_ms,
+            response_bytes,
+            os.getpid(),
+            threading.get_ident(),
+            active,
+        )
+
+    summary = _setup_perf_record_summary(
+        operator=operator,
+        method=request.method,
+        route=route,
+        elapsed_ms=elapsed_ms,
+        response_bytes=response_bytes,
+        active=active,
     )
+    if summary is not None:
+        _SETUP_PERF_LOGGER.info(summary)
+
     return response
 
 

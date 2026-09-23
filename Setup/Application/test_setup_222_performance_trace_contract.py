@@ -63,6 +63,8 @@ def test_setup_performance_trace_exposes_browser_correlation_headers() -> None:
     assert 'app;dur=' in text
     assert 'response.headers["X-MSB-Request-ID"]' in text
     assert "SETUP_PERF" in text
+    assert "_SETUP_PERF_SUMMARY_SECONDS = 60.0" in text
+    assert "_SETUP_PERF_SLOW_MS = 250.0" in text
 
 
 def test_setup_performance_trace_has_dedicated_info_logger() -> None:
@@ -73,6 +75,23 @@ def test_setup_performance_trace_has_dedicated_info_logger() -> None:
     assert "_SETUP_PERF_LOGGER.propagate = False" in text
     assert "logging.StreamHandler()" in text
     assert "_SETUP_PERF_LOGGER.info(" in text
+
+
+def test_setup_performance_trace_summarizes_fast_gets_and_keeps_exceptions() -> None:
+    text = source()
+
+    assert "def _setup_perf_record_summary(" in text
+    assert "SETUP_PERF_SUMMARY" in text or '"_SUMMARY' in text
+    assert 'event_kind = "ERROR"' in text
+    assert 'event_kind = "WRITE"' in text
+    assert 'event_kind = "SLOW"' in text
+    assert 'request.method != "GET"' in text
+    assert "elapsed_ms >= _SETUP_PERF_SLOW_MS" in text
+    assert 'route_stats["count"] += 1' in text
+    assert 'route_stats["total_ms"] += elapsed_ms' in text
+    assert 'window["max_active"] = max(window["max_active"], active)' in text
+    assert "response_bytes" in text
+    assert "_SETUP_PERF_WINDOWS[operator] = _setup_perf_new_window(now)" in text
 
 
 def test_setup_performance_trace_version_is_distinct() -> None:
