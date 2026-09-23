@@ -9,8 +9,8 @@ $RepoRoot = (Resolve-Path (Join-Path $ScriptDir '..\..')).Path
 $ServerScript = Join-Path $ScriptDir 'setup_222_performance_trace_production_deploy_server.sh'
 
 $ExpectedBranch = 'main'
-$ExpectedLiveSha = '1b08bdd26156b67ba89ea484fdc035b0b09ffc28'
-$AcceptedTargetSha = '64835504962247d7a09c1146e5e77d8e19948559'
+$ExpectedLiveSha = '64835504962247d7a09c1146e5e77d8e19948559'
+$AcceptedTargetSha = '912c5891de9335f3ccc9079fd594acaf3450227e'
 $AcceptedServerRunnerBlob = '59a01d1cbd87f6044a7d2b3a3badcf728b4e38a2'
 
 if (-not (Test-Path -LiteralPath $ServerScript -PathType Leaf)) {
