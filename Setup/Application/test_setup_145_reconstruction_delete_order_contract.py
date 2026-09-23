@@ -52,3 +52,25 @@ def test_145_delete_order_keeps_narrow_application_authority() -> None:
     assert "GRANT DELETE ON ops.setup_session_task_dependency" not in sql
     assert "GRANT DELETE ON ops.setup_session_task" not in sql
     assert "GRANT DELETE ON ref.setup_task" not in sql
+
+
+def test_145_delete_order_cleans_post_019_extra_material_relationships() -> None:
+    sql = MIGRATION.read_text(encoding="utf-8")
+
+    source_delete = sql.index("DELETE FROM ref.setup_task_extra_material_source")
+    requirement_delete = sql.index("DELETE FROM ref.setup_task_extra_material tm")
+    task_delete = sql.index("DELETE FROM ref.setup_task t")
+
+    assert source_delete < requirement_delete < task_delete
+    assert "WHERE tm.setup_task_id = p_setup_task_id" in sql
+    assert "ref.setup_task_extra_material" in sql
+    assert "ref.setup_task_extra_material_source" in sql
+    assert "DELETE FROM ref.setup_extra_material" not in sql
+    assert "DELETE FROM ref.container" not in sql
+
+
+def test_145_delete_order_does_not_grant_direct_extra_material_delete() -> None:
+    sql = MIGRATION.read_text(encoding="utf-8")
+
+    assert "GRANT DELETE ON ref.setup_task_extra_material" not in sql
+    assert "GRANT DELETE ON ref.setup_task_extra_material_source" not in sql
