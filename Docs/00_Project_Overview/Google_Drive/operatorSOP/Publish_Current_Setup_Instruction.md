@@ -151,6 +151,25 @@ A normal structured scope contains:
 
 A Sub-stage is nested under its owning Stage. A Scene is nested under its owning Stage or Sub-stage when it is an approved documentation scope. Do not create a new Scene folder merely because an LOR Scene exists.
 
+### Why a Sub-stage Exists
+
+A Sub-stage is used when part of a Stage needs to be managed separately for technical or planning reasons.
+
+Examples include:
+
+- `03a-Mega Cube-MC` for the Mega Cube;
+- `07a-Who Forest-WF` for the Who Forest.
+
+A Sub-stage may have its own Setup procedures, wiring, Setup schedule, crew needs, and resource requirements while still belonging to the larger Stage.
+
+### Why a Scene Folder Exists
+
+A Scene folder is used when a Scene within a Stage can be set up independently from the rest of that Stage.
+
+Because that Scene can be worked on separately, it may need its own Setup procedures, wiring, schedule, crew, and resource information.
+
+Not every LOR Scene automatically gets a Google Drive Scene documentation folder. Use the existing approved folder structure and do not create a new Scene folder just because a Scene name appears in LOR.
+
 ## Migrating a Legacy Google Doc into SourceDocs
 
 When the only editable Setup procedure is a legacy `.gdoc` in `Procedures\Setup\Archive`, do **not** migrate it by copying or moving the `.gdoc` shortcut file in Windows Explorer. A `.gdoc` file is only a Google Drive shortcut/metadata file; copying it does not create the new Google-native document that is required for the new editable source.
