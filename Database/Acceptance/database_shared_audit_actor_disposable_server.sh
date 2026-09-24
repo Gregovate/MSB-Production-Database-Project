@@ -24,7 +24,7 @@ TEST_PASSWORD="audit-actor-${$}-$(date +%s)"
 DUMP_FILE="/tmp/msb-database-audit-actor-${STAMP}-${$}.dump"
 CANDIDATE_WORKTREE="/tmp/msb-database-audit-actor-candidate-${STAMP}"
 PYCACHE="/tmp/msb-database-audit-actor-pycache-${STAMP}"
-REPORT_DIR="$HOME/setup-acceptance-reports"
+REPORT_DIR="$HOME/database-acceptance-reports"
 REPORT="$REPORT_DIR/Database_Shared_Audit_Actor_Disposable_${STAMP}.txt"
 PROD_BEFORE=""
 
@@ -121,8 +121,58 @@ fi
 echo "Production audit-function fingerprint before: $PROD_BEFORE"
 
 echo
+echo "--- Verify native Directus audit-policy coverage ---"
+DIRECTUS_GAPS="$(sudo docker exec "$PROD_CONTAINER" \
+    psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "
+        WITH shared_update_tables AS (
+            SELECT DISTINCT
+                n.nspname AS schema_name,
+                c.relname AS table_name,
+                c.oid AS table_oid
+            FROM pg_trigger AS t
+            JOIN pg_proc AS p
+              ON p.oid = t.tgfoid
+            JOIN pg_class AS c
+              ON c.oid = t.tgrelid
+            JOIN pg_namespace AS n
+              ON n.oid = c.relnamespace
+            WHERE NOT t.tgisinternal
+              AND p.proname IN ('set_actor_on_update','set_updated_fields')
+        )
+        SELECT s.schema_name || '.' || s.table_name
+        FROM shared_update_tables AS s
+        WHERE has_table_privilege('directus_app', s.table_oid, 'UPDATE')
+          AND (
+              NOT EXISTS (
+                  SELECT 1
+                  FROM ref.audit_collection_policy AS a
+                  WHERE a.schema_name = s.schema_name
+                    AND a.collection_name = s.table_name
+                    AND a.active_flag = true
+                    AND a.update_actor_enabled = true
+              )
+              OR NOT EXISTS (
+                  SELECT 1
+                  FROM information_schema.columns AS col
+                  WHERE col.table_schema = s.schema_name
+                    AND col.table_name = s.table_name
+                    AND col.column_name = 'updated_by_person_id'
+              )
+          )
+        ORDER BY 1;
+    ")"
+
+if [[ -n "$DIRECTUS_GAPS" ]]; then
+    echo "FAIL: Directus-writable shared-audit tables lack active update-actor policy/person audit coverage:"
+    printf '%s\n' "$DIRECTUS_GAPS"
+    exit 20
+fi
+echo "PASS: Directus-writable shared-audit tables have active update-actor policy/person coverage"
+
+echo
 echo "--- Fetch exact database candidate ---"
 sudo git -C "$REPO_ROOT" fetch origin main
+MAIN_SHA="$(sudo git -C "$REPO_ROOT" rev-parse FETCH_HEAD)"
 sudo git -C "$REPO_ROOT" fetch origin "$TARGET_REF"
 FETCHED_TARGET="$(sudo git -C "$REPO_ROOT" rev-parse FETCH_HEAD)"
 sudo git -C "$REPO_ROOT" cat-file -e "$TARGET_SHA^{commit}"
@@ -130,8 +180,8 @@ if [[ "$FETCHED_TARGET" != "$TARGET_SHA" ]]; then
     echo "FAIL: fetched target ref is $FETCHED_TARGET, expected exact candidate $TARGET_SHA"
     exit 16
 fi
-if ! sudo git -C "$REPO_ROOT" merge-base --is-ancestor origin/main "$TARGET_SHA"; then
-    echo "FAIL: exact candidate is not a forward descendant of current origin/main"
+if ! sudo git -C "$REPO_ROOT" merge-base --is-ancestor "$MAIN_SHA" "$TARGET_SHA"; then
+    echo "FAIL: exact candidate is not a forward descendant of fetched current main $MAIN_SHA"
     exit 17
 fi
 sudo git -C "$REPO_ROOT" worktree add --detach "$CANDIDATE_WORKTREE" "$TARGET_SHA"
