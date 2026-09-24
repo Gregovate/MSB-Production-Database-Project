@@ -268,7 +268,7 @@ while IFS= read -r grant_stmt || [[ -n "$grant_stmt" ]]; do
     [[ -z "$grant_stmt" ]] && continue
     grant_index=$((grant_index + 1))
     echo "Grant replay [$grant_index]: $grant_stmt"
-    if ! psql_test -c "$grant_stmt"; then
+    if ! psql_test -c "$grant_stmt" </dev/null; then
         echo "FAIL: application-role function grant replay failed at statement $grant_index"
         exit 23
     fi
