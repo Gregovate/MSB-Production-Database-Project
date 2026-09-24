@@ -479,8 +479,10 @@ def test_122_b1a_blocking_toggle_hides_only_hard_blockers() -> None:
     assert "WAITING_ON_WORK_ORDER' && task?.linked_work_order_gate" in ui
     assert "function board205ReadinessOnly(task)" in ui
     assert "if (board205BlockingEnabled() && hardBlocked) return false;" in ui
-    assert "hard blockers hidden · readiness always visible" in ui
-    assert "hard-blocked work included · readiness always visible" in ui
+    assert "hard blockers hidden" in ui
+    assert "hard-blocked work included" in ui
+    assert "readiness soft-visible" in ui
+    assert "Ready only" in ui
     assert "BLOCKING IGNORED FOR PLANNING" not in ui
 
     # Finder toggle remains non-mutating.
