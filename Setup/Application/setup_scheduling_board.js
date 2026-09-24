@@ -562,6 +562,10 @@ function board205CurrentReusableScope(task) {
   };
 }
 
+function board205DefaultReadinessState(readinessNote) {
+  return String(readinessNote || '').trim() ? 'NOT_READY' : 'READY';
+}
+
 function board205CatalogDependencyRows(task) {
   return (task?.dependencies || []).map((dep, index) => ({
     setup_session_task_id: null,
@@ -627,6 +631,7 @@ function board205ApplyHistoricalCatalogOverlay() {
       effort_level: current.effort_level ?? annual?.effort_level ?? null,
       completion_point: current.completion_point,
       readiness_note: current.readiness_note,
+      readiness_state: board205DefaultReadinessState(current.readiness_note),
       weather_note: current.weather_note,
       reusable_notes: current.reusable_notes,
       reusable_active_flag: true,
@@ -638,7 +643,9 @@ function board205ApplyHistoricalCatalogOverlay() {
       reusable_updated_by: current.reusable_updated_by,
       reusable_updated_by_person_id: current.reusable_updated_by_person_id,
       reusable_updated_by_display: current.reusable_updated_by_display,
-      board_status: annual?.board_status || 'CATALOG_ONLY',
+      board_status: board205DefaultReadinessState(current.readiness_note) === 'NOT_READY'
+        ? 'BLOCKED'
+        : (annual?.board_status || 'CATALOG_ONLY'),
       effective_complete: annual?.effective_complete || false,
       progress_entries: annual?.progress_entries || 0
     };
