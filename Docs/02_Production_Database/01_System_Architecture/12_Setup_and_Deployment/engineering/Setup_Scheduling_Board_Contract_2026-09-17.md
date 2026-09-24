@@ -193,6 +193,8 @@ When a Manager drills from the Task Finder into a reusable task to correct durab
 
 The compact **Edit Planning Info** dialog is a governed editing surface. If its fields have changed and the Manager chooses **Open Full Reusable Task**, those edits must be saved successfully **before** the drill-down occurs. A failed save leaves the Manager in the compact editor; navigation must not silently discard the draft.
 
+The full reusable task editor has **one reusable save action**. Physical Effort is reusable planning knowledge and is saved by **Save Reusable Task** together with the reusable definition fields. A separate **Save Effort** button is not part of the operator contract.
+
 A reusable-task correction opened from the finder is therefore a temporary drill-down, not a workflow reset into the Reusable Task Catalog.
 
 The full reusable task editor keeps the established dirty-edit protection. If reusable or annual fields are dirty, browser Back, **Back to Task Finder**, Setup-tab changes, season changes, and other internal navigation must use the same explicit **Save and continue / Discard and continue / Stay on this task** decision. Browser-history routing with `pushState` / `popstate` is not allowed to bypass that warning.
