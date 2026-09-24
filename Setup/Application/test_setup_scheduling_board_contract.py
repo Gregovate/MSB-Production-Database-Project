@@ -474,7 +474,8 @@ def test_122_b1a_blocking_toggle_hides_only_hard_blockers() -> None:
     assert "Blocking OFF" in ui
     assert "function board205HasHardBlock(task)" in ui
     assert "task.prerequisites_complete === false" in ui
-    assert "task.linked_work_order_gate" in ui
+    assert "return task.prerequisites_complete === false;" in ui
+    assert "WAITING_ON_WORK_ORDER' && task?.linked_work_order_gate" in ui
     assert "function board205ReadinessOnly(task)" in ui
     assert "if (board205BlockingEnabled() && hardBlocked) return false;" in ui
     assert "hard blockers hidden · readiness always visible" in ui
@@ -667,3 +668,21 @@ def test_122_b1a_catalog_prerequisites_begin_hard_blocked() -> None:
     assert "prerequisite_complete: false" in ui
     assert "Reusable prerequisites therefore begin as hard blockers." in ui
     assert "const blockerDetails = board205BlockerDetails(task, deps);" in ui
+
+
+def test_122_b1a_work_order_gate_is_visible_and_blocks_downstream() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    # Gate task itself remains visible while its Work Order is open.
+    assert "WAITING_ON_WORK_ORDER' && task?.linked_work_order_gate) return 'READY';" in ui
+
+    # Blocking ON hides the subsequent task only when its prerequisite edge
+    # remains incomplete.
+    assert "return task.prerequisites_complete === false;" in ui
+    assert "if (board205BlockingEnabled() && hardBlocked) return false;" in ui
+
+    # Work Order completion still participates in prerequisite completion through
+    # the repository's dependency calculation, not finder-local mutation.
+    repo = read_app("setup_scheduling_board_repository.py")
+    assert "pst.linked_work_order_gate" in repo
+    assert "pwo.date_completed IS NOT NULL" in repo
