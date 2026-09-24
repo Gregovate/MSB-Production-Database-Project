@@ -402,7 +402,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
     assert "setup_scheduling_board.css?v=2026-09-23.4" in html
-    assert "setup_scheduling_board.js?v=2026-09-23.4" in html
+    assert "setup_scheduling_board.js?v=2026-09-24.1" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
@@ -586,7 +586,7 @@ def test_122_b1a_reusable_task_audit_is_visible() -> None:
     assert "<strong>Audit:</strong>" in ui
     assert "reusable-task-audit" in html
     assert "Created ${createdAt} by ${createdBy} · Last updated ${updatedAt} by ${updatedBy}" in production
-    assert "setup_production.js?v=2026-09-23.3" in html
+    assert "setup_production.js?v=2026-09-24.1" in html
 
 
 def test_122_b1a_historical_overlay_preserves_fresh_board_audit_after_write() -> None:
