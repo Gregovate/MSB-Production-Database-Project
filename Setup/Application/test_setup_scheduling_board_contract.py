@@ -587,3 +587,38 @@ def test_122_b1a_reusable_task_audit_is_visible() -> None:
     assert "reusable-task-audit" in html
     assert "Created ${createdAt} by ${createdBy} · Last updated ${updatedAt} by ${updatedBy}" in production
     assert "setup_production.js?v=2026-09-23.3" in html
+
+
+def test_122_b1a_historical_finder_uses_current_catalog_without_fabricating_2025_rows() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "function board205ApplyHistoricalCatalogOverlay()" in ui
+    assert "currentTasks = (appState.tasks || []).filter((task) => Boolean(task.active_flag))" in ui
+    assert "catalog_only: !annual" in ui
+    assert "annual_present: Boolean(annual)" in ui
+    assert "CATALOG ONLY · NOT IN 2025" in ui
+    assert "Current reusable Catalog task · no 2025 annual occurrence was created." in ui
+    assert "setup-board205-open-reusable-task" in ui
+
+    # The overlay is browser-only projection. It must not call a write API or
+    # create an annual occurrence just to make current Catalog work visible.
+    overlay = ui.split("function board205ApplyHistoricalCatalogOverlay()", 1)[1].split(
+        "function board205TaskCard(task)", 1
+    )[0]
+    assert "api(" not in overlay
+    assert "commandOptions(" not in overlay
+    assert "season-tasks" not in overlay
+
+
+def test_122_b1a_finder_uses_reusable_task_id_not_planned_order_as_identity() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "Task ${board205Esc(task.setup_task_id ?? 'annual-only')}" in ui
+    assert "2025 order ${board205Esc(task.planned_order)}" in ui
+    assert "<span>${board205Esc(task.planned_order ?? '—')} · ${board205Esc(task.task_name)}</span>" not in ui
+
+
+def test_122_b1a_historical_catalog_overlay_excludes_inactive_reusable_tasks() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "filter((task) => Boolean(task.active_flag))" in ui
