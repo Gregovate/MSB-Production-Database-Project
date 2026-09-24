@@ -20,7 +20,8 @@ def test_catalog_delete_uses_existing_governed_fail_closed_command():
     assert "deleteSelectedCatalogTask" in js
     assert "reconstruction-delete" in js
     assert "commandOptions('DELETE', {})" in js
-    assert "reported work" in js\n    assert "material assignments" in js
+    assert "reported work" in js
+    assert "material assignments" in js
     assert "event.stopImmediatePropagation()" in js
     assert "showView('library')" in js
 
