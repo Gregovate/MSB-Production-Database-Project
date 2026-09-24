@@ -572,15 +572,14 @@ This rule is database-authoritative, not merely a browser convention.
 
 Until real work is reported against a task, an authorized Manager must be able to fully delete it even if it has already been seeded into the 2026 annual Session, ordered, assigned to a work day/crew, or connected by planning-only dependencies.
 
-For an unworked reusable task, governed deletion removes:
+For an unworked reusable task, governed deletion may remove:
 
 - the reusable Catalog definition;
 - its unworked 2026 annual occurrence;
-- planning-only work-day assignments;
-- annual/reusable planning dependencies owned by that task; and
-- task-owned reusable configuration that is safe to delete under the governed command.
+- planning-only work-day assignments; and
+- annual/reusable planning dependencies owned by that task.
 
-For an unworked 2026-only task, governed deletion removes the annual occurrence and its planning-only relationships.
+For an unworked 2026-only task, governed deletion may remove the annual occurrence and its planning-only relationships.
 
 The following do **not** by themselves block deletion:
 
@@ -591,7 +590,11 @@ The following do **not** by themselves block deletion:
 - readiness state;
 - prerequisite/dependency links.
 
-Once actual work/progress/completion or other accepted task execution evidence exists, hard delete must fail closed and preserve the 2026 record.
+Material ownership/assignment is **not** disposable planning state. A task that still owns or has assigned physical material must not be deleted until those relationships are explicitly resolved. At minimum this includes governed Display ownership and KIT/support Container assignments; any later physical-material assignment authority must follow the same rule.
+
+The delete command must fail closed when such material assignments remain. The Manager must first move/reassign/clear them through the existing material-assignment workflow. The delete operation must not silently discard material ownership as cleanup.
+
+Once actual work/progress/completion or other accepted task execution evidence exists, hard delete must also fail closed and preserve the 2026 record.
 
 No browser direct table DML is permitted; deletion remains an explicit governed Manager action.
 
