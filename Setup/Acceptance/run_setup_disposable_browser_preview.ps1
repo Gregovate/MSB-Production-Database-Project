@@ -9,7 +9,8 @@ param(
     [string]$PreviewEmail = 'gliebig@sheboyganlights.org',
     [string]$ExpectedVersion = '',
     [string[]]$MigrationPaths = @(),
-    [string[]]$ValidationPaths = @()
+    [string[]]$ValidationPaths = @(),
+    [switch]$AllowConcurrentProductionWrites
 )
 
 $ErrorActionPreference = 'Stop'
@@ -64,11 +65,19 @@ function Assert-SafeCandidatePath {
     if ([System.IO.Path]::IsPathRooted($Path) -or $Path.Contains('..') -or $Path.Contains("`t") -or $Path.Contains("`r") -or $Path.Contains("`n")) {
         throw "Unsafe $Kind candidate-relative path: $Path"
     }
-    if ($Kind -eq 'migration' -and -not $Path.StartsWith('Setup/Database/')) {
-        throw "Migration path must be under Setup/Database/: $Path"
+    if ($Kind -eq 'migration') {
+        $isSetupMigration = $Path.StartsWith('Setup/Database/')
+        $isApprovedSharedMigration = $Path -eq 'Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql'
+        if (-not ($isSetupMigration -or $isApprovedSharedMigration)) {
+            throw "Migration path must be under Setup/Database/ or explicitly approved shared database repair: $Path"
+        }
     }
-    if ($Kind -eq 'validation' -and -not $Path.StartsWith('Setup/Acceptance/')) {
-        throw "Validation path must be under Setup/Acceptance/: $Path"
+    if ($Kind -eq 'validation') {
+        $isSetupValidation = $Path.StartsWith('Setup/Acceptance/')
+        $isApprovedSharedValidation = $Path -eq 'Database/Acceptance/database_shared_audit_actor_disposable_validation.sql'
+        if (-not ($isSetupValidation -or $isApprovedSharedValidation)) {
+            throw "Validation path must be under Setup/Acceptance/ or explicitly approved shared database validation: $Path"
+        }
     }
 
     & git -C $repo cat-file -e "${CandidateSha}:$Path" 2>$null
@@ -129,7 +138,8 @@ try {
         "candidate_sha`t$CandidateSha",
         "target_ref`t$TargetRef",
         "preview_port`t$PreviewPort",
-        "preview_email`t$PreviewEmail"
+        "preview_email`t$PreviewEmail",
+        "allow_concurrent_production_writes`t$($AllowConcurrentProductionWrites.IsPresent.ToString().ToLowerInvariant())"
     )
     if (-not [string]::IsNullOrWhiteSpace($ExpectedVersion)) {
         $manifestLines += "expected_version`t$ExpectedVersion"
@@ -157,11 +167,16 @@ try {
     Write-Host "Browser URL:     $browserUrl"
     Write-Host "Preview user:    $PreviewEmail"
     Write-Host "Expected version:$ExpectedVersion"
+    Write-Host "Concurrent Prod: $($AllowConcurrentProductionWrites.IsPresent)"
     Write-Host "Migrations:      $($MigrationPaths.Count)"
     Write-Host "Validations:     $($ValidationPaths.Count)"
     Write-Host
-    Write-Host 'Production database contract: pg_dump + SELECT only.'
-    Write-Host 'All migration/API/browser writes: disposable current-Production clone only.'
+    Write-Host 'Production database contract: pg_dump + SELECT only from this preview harness.'
+    if ($AllowConcurrentProductionWrites) {
+        Write-Host 'Concurrent Production application edits are allowed; fingerprint drift will be reported, not failed.'
+        Write-Host 'NOTE: the disposable clone is a point-in-time snapshot. Production edits made after preview start are NOT visible in this preview.'
+    }
+    Write-Host 'All migration/API/browser writes from the preview: disposable current-Production clone only.'
     Write-Host 'Keep this PowerShell window open for the complete review and cleanup.'
     Write-Host
 

@@ -172,6 +172,23 @@ For season-only work, the correction remains annual-only.
 
 Once actual work exists, the annual planned context is historical and the scheduler must no longer rewrite it. Later reusable lessons belong through governed post-season/reconciliation workflows.
 
+## Scheduling Audit Visibility
+
+Scheduling and reusable planning edits are accountability-sensitive. The Scheduling UI must therefore expose the existing database audit identity in a compact operator-readable form rather than requiring backend forensics.
+
+At minimum, Manager-facing planning/task context should make available:
+
+```text
+Created <time> by <person>
+Last updated <time> by <person>
+```
+
+The displayed identity must come from the governed database audit fields and must reflect the authenticated person who actually performed the write. A changed `updated_at` paired with a stale prior `updated_by` / `updated_by_person_id` is a database audit failure, not acceptable UI behavior.
+
+This requirement does not mean every Setup screen must display all six audit columns. Scheduling exposes the useful human summary because knowing who changed planning information and when is operationally important.
+
+Historical attribution that predates an audit defect is not part of the 2026 Scheduling launch repair. The launch-critical requirement is correct attribution for writes going forward.
+
 ## Chronological Setup Day Number
 
 Normal operator use does not manually assign Setup Day Number.

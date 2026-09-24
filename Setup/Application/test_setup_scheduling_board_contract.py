@@ -195,8 +195,14 @@ def test_205_finder_uses_task_time_minimum_crew_and_effort() -> None:
     assert "task.normal_crew_min" in ui
     assert "task.expected_duration_minutes" in ui
     assert "task.effort_level" in ui
-    assert "Available Now / Needs Continuation" in ui
-    assert "Outstanding / Blocked" in ui
+    assert "setup-board205-stage-filter" in ui
+    assert "setup-board205-scene-filter" in ui
+    assert "setup-board205-sort" in ui
+    assert "setup-board205-status-ready" in ui
+    assert "setup-board205-status-blocked" not in ui
+    assert "setup-board205-status-waiting" not in ui
+    assert 'placeholder="e.g. locate"' in ui
+    assert "task-name search checks all statuses" in ui
     assert "task.stage_name" in ui
 
 
@@ -340,7 +346,8 @@ def test_205_season_task_editor_is_in_annual_plan_not_reusable_catalog() -> None
     assert "Add Season Task" in ui
     assert "THIS SEASON ONLY" in ui
     assert "It does not enter the Reusable Task Catalog" in ui
-    assert "Existing Work Order ID" in ui
+    assert "Existing Work Order<select" in ui
+    assert "No Work Order" in ui
     assert "Work Order completion satisfies this gate" in ui
     assert "Insert after / prerequisite" in ui
     assert "Block downstream task" in ui
@@ -394,8 +401,375 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-18.4" in html
-    assert "setup_scheduling_board.js?v=2026-09-18.4" in html
+    assert "setup_scheduling_board.css?v=2026-09-23.4" in html
+    assert "setup_scheduling_board.js?v=2026-09-23.4" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
+
+
+def test_122_b1a_historical_verification_keeps_planning_edits_but_blocks_actual_scheduling() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "function board205HistoricalReviewMode()" in ui
+    assert "HISTORICAL_VERIFICATION" in ui
+    assert "const canScheduleDays = Boolean(session) && canManage && !historicalReview;" in ui
+    assert "dayForm.hidden = !canScheduleDays" in ui
+    assert "boardPane.hidden = historicalReview" in ui
+    assert "&& !historicalReview" in ui
+    assert "Historical Verification — no date/crew scheduling here." in ui
+
+    # Legitimate annual/planning corrections remain available in 2025.
+    assert "setup-board205-toggle-readiness" in ui
+    assert "setup-board205-edit-planning-info" in ui
+    assert "setup-board205-edit-season-task" in ui
+    assert "setup-board205-plan-up" not in ui
+    assert "setup-board205-plan-down" not in ui
+    assert "if (addSeason) addSeason.disabled = !session;" in ui
+
+
+def test_122_b1a_finder_has_stage_scene_sort_and_search_across_statuses() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    for token in (
+        "setup-board205-stage-filter",
+        "setup-board205-scene-filter",
+        "setup-board205-sort",
+        "setup-board205-status-ready",
+        "setup-board205-status-scheduled",
+        "setup-board205-status-complete",
+        "setup-board205-status-deferred",
+        "setup-board205-finder-summary",
+        "board205SyncFinderSceneOptions",
+        "board205FinderCompare",
+    ):
+        assert token in ui
+
+    # A nonblank Task-name search bypasses ordinary status checkboxes. Blocking
+    # ON hides only hard blockers; readiness remains visible for judgement.
+    assert "if (board205BlockingEnabled() && hardBlocked) return false;" in ui
+    assert "if (!search && !hardBlocked && !statuses.has(family)) return false;" in ui
+    assert "task-name search checks all statuses" in ui
+    assert "const taskName = String(task.task_name || '').toLowerCase();" in ui
+    assert "if (!taskName.includes(search)) return false;" in ui
+    assert 'placeholder="e.g. locate"' in ui
+
+
+def test_122_b1a_finder_explains_blocker_classes() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "function board205BlockerDetails(task, deps)" in ui
+    assert "Hard predecessor" in ui
+    assert "Readiness condition · soft" in ui
+    assert "Work Order gate" in ui
+    assert "Complete first:" in ui
+    assert "keep visible for operator judgement; mark Ready when the condition is actually met." in ui
+    assert "clear when that Work Order is completed." in ui
+
+
+def test_122_b1a_blocking_toggle_hides_only_hard_blockers() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "setup-board205-blocking-toggle" in ui
+    assert "Blocking ON" in ui
+    assert "Blocking OFF" in ui
+    assert "function board205HasHardBlock(task)" in ui
+    assert "task.prerequisites_complete === false" in ui
+    assert "return task.prerequisites_complete === false;" in ui
+    assert "WAITING_ON_WORK_ORDER' && task?.linked_work_order_gate" in ui
+    assert "function board205ReadinessOnly(task)" in ui
+    assert "if (board205BlockingEnabled() && hardBlocked) return false;" in ui
+    assert "hard blockers hidden · readiness always visible" in ui
+    assert "hard-blocked work included · readiness always visible" in ui
+    assert "BLOCKING IGNORED FOR PLANNING" not in ui
+
+    # Finder toggle remains non-mutating.
+    toggle_section = ui.split("function board205BlockingEnabled()", 1)[1].split(
+        "function board205FinderStageRows()", 1
+    )[0]
+    assert "api(" not in toggle_section
+    assert "commandOptions(" not in toggle_section
+
+def test_122_b1a_stage_sort_puts_numbered_stages_before_site_wide() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "const aSiteWide = a.stage_id == null ? 1 : 0;" in ui
+    assert "const bSiteWide = b.stage_id == null ? 1 : 0;" in ui
+    assert "if (aSiteWide !== bSiteWide) return aSiteWide - bSiteWide;" in ui
+    assert "const aSceneLevel = a.lor_scene_id == null ? 0 : 1;" in ui
+    assert "const bSceneLevel = b.lor_scene_id == null ? 0 : 1;" in ui
+
+
+def test_122_b1a_task_search_is_name_only_not_resource_or_blocker_text() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    queue = ui.split("function board205QueueTasks()", 1)[1].split(
+        "function board205RenderQueue()", 1
+    )[0]
+
+    assert "task.task_name" in queue
+    assert "task.resource_summary" not in queue
+    assert "task.readiness_note" not in queue
+    assert "prerequisite_task_name" not in queue
+    assert "linked_work_order_id" not in queue
+
+
+def test_122_b1a_finder_shows_and_edits_reusable_notes() -> None:
+    repo = read_app("setup_scheduling_board_repository.py")
+    api = read_app("setup_scheduling_board_api.py")
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "rt.reusable_notes" in repo
+    assert "task.reusable_notes" in ui
+    assert "Reusable notes:" in ui
+    assert "setup-board205-planning-reusable-notes" in ui
+    assert "reusable_notes: document.getElementById('setup-board205-planning-reusable-notes')" in ui
+    assert 'reusable_notes=optional_text(payload.get("reusable_notes"))' in api
+    assert "reusable_notes: str | None" in repo
+    assert "SELECT * FROM ref.update_setup_task(" in repo
+    assert "Reusable Notes update returned no result" in repo
+
+
+def test_122_b1a_finder_does_not_duplicate_annual_order_controls() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    next_pass = read_app("setup_next_pass.js")
+
+    assert "setup-board205-plan-up" not in ui
+    assert "setup-board205-plan-down" not in ui
+    assert "board205MoveAnnualOrder" not in ui
+    assert "Setup Planning Queue" in next_pass
+    assert "persistAnnualPlanningOrder" in next_pass
+
+
+def test_122_b1a_finder_uses_current_reusable_prerequisites() -> None:
+    repo = read_app("setup_scheduling_board_repository.py")
+
+    # Reusable tasks must follow the current Catalog prerequisite graph, not a
+    # stale REUSABLE_BASELINE copy captured in the 2025 annual snapshot.
+    assert "FROM ref.setup_task_dependency rd" in repo
+    assert "st.task_origin = 'REUSABLE'" in repo
+    assert "'REUSABLE_CURRENT'::text AS dependency_origin" in repo
+    assert "Ignore stale REUSABLE_BASELINE copies for reusable tasks." in repo
+
+    # Season-only / explicit annual edges remain supported separately.
+    assert "st.task_origin = 'SEASON_ONLY'" in repo
+    assert "ad.dependency_origin = 'ANNUAL'" in repo
+
+
+def test_122_b1a_finder_filters_stay_visible_while_results_scroll() -> None:
+    css = read_app("setup_scheduling_board.css")
+
+    block = css.split(".setup-board205-filters {", 1)[1].split("}", 1)[0]
+    assert "position: sticky" in block
+    assert "top: 0" in block
+    assert "z-index: 4" in block
+
+
+def test_122_b1a_reusable_task_audit_is_visible() -> None:
+    scheduling_repo = read_app("setup_scheduling_board_repository.py")
+    base_repo = read_app("setup_repository.py")
+    ui = read_app("setup_scheduling_board.js")
+    production = read_app("setup_production.js")
+    html = read_app("production.html")
+
+    for source in (scheduling_repo, base_repo):
+        assert "created_by_person_id" in source
+        assert "updated_by_person_id" in source
+        assert "reusable_created_at" in source
+        assert "reusable_created_by_display" in source
+        assert "reusable_updated_at" in source
+        assert "reusable_updated_by_display" in source
+        assert "LEFT JOIN ref.person created_actor" in source
+        assert "LEFT JOIN ref.person updated_actor" in source
+
+    assert "function board205AuditLine(task)" in ui
+    assert "<strong>Audit:</strong>" in ui
+    assert "reusable-task-audit" in html
+    assert "Created ${createdAt} by ${createdBy} · Last updated ${updatedAt} by ${updatedBy}" in production
+    assert "setup_production.js?v=2026-09-23.3" in html
+
+
+def test_122_b1a_historical_overlay_preserves_fresh_board_audit_after_write() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    overlay = ui.split("function board205ApplyHistoricalCatalogOverlay()", 1)[1].split(
+        "function board205TaskCard(task)", 1
+    )[0]
+
+    # board205Load() fetches a fresh Scheduling Board row after governed writes.
+    # Historical Verification then overlays current Catalog planning fields from
+    # appState.tasks. Audit fields must prefer the fresh board row or the older
+    # page-level task cache will visually restore the prior actor/timestamp until
+    # a full browser reload.
+    assert "annual?.reusable_created_at ?? current.reusable_created_at" in overlay
+    assert "annual?.reusable_created_by_display ?? current.reusable_created_by_display" in overlay
+    assert "annual?.reusable_updated_at ?? current.reusable_updated_at" in overlay
+    assert "annual?.reusable_updated_by ?? current.reusable_updated_by" in overlay
+    assert "annual?.reusable_updated_by_person_id ?? current.reusable_updated_by_person_id" in overlay
+    assert "annual?.reusable_updated_by_display ?? current.reusable_updated_by_display" in overlay
+
+    assert "reusable_updated_at: current.reusable_updated_at," not in overlay
+    assert "reusable_updated_by_display: current.reusable_updated_by_display," not in overlay
+
+
+def test_122_b1a_historical_finder_uses_current_catalog_without_fabricating_2025_rows() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "function board205ApplyHistoricalCatalogOverlay()" in ui
+    assert "currentTasks = (appState.tasks || []).filter((task) => Boolean(task.active_flag))" in ui
+    assert "catalog_only: !annual" in ui
+    assert "annual_present: Boolean(annual)" in ui
+    assert "CATALOG ONLY · NOT IN 2025" in ui
+    assert "Current reusable Catalog task · no 2025 annual occurrence was created." in ui
+    assert "setup-board205-open-reusable-task" in ui
+
+    # The overlay is browser-only projection. It must not call a write API or
+    # create an annual occurrence just to make current Catalog work visible.
+    overlay = ui.split("function board205ApplyHistoricalCatalogOverlay()", 1)[1].split(
+        "function board205TaskCard(task)", 1
+    )[0]
+    assert "api(" not in overlay
+    assert "commandOptions(" not in overlay
+    assert "season-tasks" not in overlay
+
+
+def test_122_b1a_finder_uses_reusable_task_id_not_planned_order_as_identity() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "Task ${board205Esc(task.setup_task_id ?? 'annual-only')}" in ui
+    assert "2025 order ${board205Esc(task.planned_order)}" in ui
+    assert "<span>${board205Esc(task.planned_order ?? '—')} · ${board205Esc(task.task_name)}</span>" not in ui
+
+
+def test_122_b1a_historical_catalog_overlay_excludes_inactive_reusable_tasks() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "filter((task) => Boolean(task.active_flag))" in ui
+
+
+def test_122_b1a_readiness_note_defaults_to_not_ready() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    sql = read_db("050_add_setup_scheduling_board_foundation.sql")
+
+    assert "function board205DefaultReadinessState(readinessNote)" in ui
+    assert "String(readinessNote || '').trim() ? 'NOT_READY' : 'READY'" in ui
+    assert "readiness_state: board205DefaultReadinessState(current.readiness_note)" in ui
+    assert "function board205ReadinessOnly(task)" in ui
+    assert "canManage && !task.catalog_only && task.readiness_note" in ui
+    assert "if (!task || !task.setup_session_task_id || !appState.access?.can_manage_setup) return;" in ui
+
+    # Real annual seeding already follows the same rule: a reusable readiness
+    # condition starts NOT_READY until explicitly cleared for that season.
+    assert "WHEN nullif(btrim(coalesce(NEW.annual_readiness_note, v_task.readiness_note)), '') IS NULL" in sql
+    assert "ELSE 'NOT_READY'" in sql
+
+
+def test_122_readiness_note_invariant_is_enforced_in_database() -> None:
+    sql = read_db("056_enforce_setup_readiness_note_not_ready.sql")
+
+    assert "CREATE OR REPLACE FUNCTION ops.enforce_setup_readiness_note_state()" in sql
+    assert "NEW.annual_readiness_state := CASE" in sql
+    assert "WHEN v_note IS NULL THEN 'READY'" in sql
+    assert "ELSE 'NOT_READY'" in sql
+    assert "BEFORE INSERT OR UPDATE ON ops.setup_session_task" in sql
+
+    assert "CREATE OR REPLACE FUNCTION ops.sync_reusable_readiness_to_current_sessions()" in sql
+    assert "ss.session_status IN ('PLANNING','ACTIVE')" in sql
+    assert "st.task_origin = 'REUSABLE'" in sql
+    assert "st.actual_started_at IS NULL" in sql
+    assert "st.actual_completed_at IS NULL" in sql
+    assert "FROM ops.setup_task_progress p" in sql
+    assert "AFTER UPDATE OF readiness_note ON ref.setup_task" in sql
+
+    # Historical Verification is intentionally excluded because only
+    # PLANNING / ACTIVE sessions are synchronized.
+    assert "ss.session_status IN ('PLANNING','ACTIVE')" in sql
+
+
+def test_122_b1a_catalog_prerequisites_begin_hard_blocked() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "prerequisite_complete: false" in ui
+    assert "Reusable prerequisites therefore begin as hard blockers." in ui
+    assert "catalog_dependencies: currentDependencies" in ui
+    assert "prerequisites_complete: !hasHardPrerequisite" in ui
+    assert "board_status: hasHardPrerequisite ? 'BLOCKED' : 'CATALOG_ONLY'" in ui
+    assert "2025 completion does not satisfy future prerequisites." in ui
+    assert "const blockerDetails = board205BlockerDetails(task, deps);" in ui
+
+
+def test_122_b1a_work_order_gate_is_visible_and_blocks_downstream() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    # Gate task itself remains visible while its Work Order is open.
+    assert "WAITING_ON_WORK_ORDER' && task?.linked_work_order_gate) return 'READY';" in ui
+
+    # Blocking ON hides the subsequent task only when its prerequisite edge
+    # remains incomplete.
+    assert "return task.prerequisites_complete === false;" in ui
+    assert "if (board205BlockingEnabled() && hardBlocked) return false;" in ui
+
+    # Work Order completion still participates in prerequisite completion through
+    # the repository's dependency calculation, not finder-local mutation.
+    repo = read_app("setup_scheduling_board_repository.py")
+    assert "pst.linked_work_order_gate" in repo
+    assert "pwo.date_completed IS NOT NULL" in repo
+
+
+def test_122_b1a_work_order_selector_uses_live_lookup() -> None:
+    repo = read_app("setup_scheduling_board_repository.py")
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "FROM ops.setup_scheduling_work_order_gate wo" in repo
+    assert "wo.work_order_id" in repo
+    assert "wo.problem" in repo
+    assert "wo.date_completed" in repo
+    assert '"work_orders": work_orders' in repo
+
+    assert "setupBoard205State.board.work_orders" in ui
+    assert "WO ${wo.work_order_id} · ${status}" in ui
+    assert "setup-board205-season-work-order" in ui
+    assert "type=\"number\"" not in ui.split(
+        'id="setup-board205-season-work-order"', 1
+    )[1].split("</label>", 1)[0]
+
+    # Completion remains live database state, not a manual Setup checkbox.
+    assert "pwo.date_completed IS NOT NULL" in repo
+
+
+def test_122_b1a_historical_catalog_uses_fresh_season_dependency_baseline() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    overlay = ui.split("function board205ApplyHistoricalCatalogOverlay()", 1)[1].split(
+        "function board205TaskCard(task)", 1
+    )[0]
+
+    assert "const currentDependencies = board205CatalogDependencyRows(current);" in overlay
+    assert "const hasHardPrerequisite = currentDependencies.length > 0;" in overlay
+    assert "catalog_dependencies: currentDependencies" in overlay
+    assert "prerequisites_complete: !hasHardPrerequisite" in overlay
+    assert "board.dependencies = [];" in overlay
+    assert "2025 completion does not satisfy future prerequisites." in overlay
+
+    card = ui.split("function board205TaskCard(task)", 1)[1].split(
+        "function board205QueueTasks()", 1
+    )[0]
+    assert "const catalogReview = historicalReview" in card
+    assert "task.catalog_dependencies || []" in card
+    assert "HARD BLOCKED" in card
+    assert "CURRENT CATALOG" in card
+
+
+def test_122_b1a_finder_can_collapse_secondary_filters() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "finderCompact: null" in ui
+    assert "function board205ApplyFinderCompact()" in ui
+    assert "setup-board205-filter-density" in ui
+    assert "More filters" in ui
+    assert "Compact filters" in ui
+    assert "setup-board205-secondary-filters" in ui
+    assert "setupBoard205State.finderCompact = historicalReview" in ui
+    assert ".setup-board205-filters.compact .setup-board205-secondary-filters" in css
+    assert ".setup-board205-filters.compact .setup-board205-blocking-help" in css

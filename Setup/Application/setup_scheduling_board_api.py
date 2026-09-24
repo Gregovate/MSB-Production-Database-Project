@@ -280,6 +280,7 @@ def api_setup_scheduling_board_planning_info(
         readiness_note=optional_text(payload.get("readiness_note")),
         weather_note=optional_text(payload.get("weather_note")),
         completion_point=optional_text(payload.get("completion_point")),
+        reusable_notes=optional_text(payload.get("reusable_notes")),
     )
     return jsonify(planning_info=result)
 
