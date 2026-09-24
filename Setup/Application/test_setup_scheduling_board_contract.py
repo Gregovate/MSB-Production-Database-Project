@@ -267,8 +267,36 @@ def test_205_scheduler_can_correct_planning_info_before_execution() -> None:
     assert "Actual work exists for this annual task; planning information is historical" in sql
     assert "/planning-info" in api
     assert "Edit Planning Info" in ui
-    assert "Updates reusable task knowledge and refreshes this annual snapshot." in ui
+    assert "Updates current reusable planning knowledge. Historical 2025 facts are not changed." in ui
     assert "Readiness condition" in ui
+
+
+def test_122_b1a_pre2026_compact_editor_writes_reusable_catalog_only() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "board205OpenPlanningInfoDialog(taskId || null, reusableTaskId || null)" in ui
+    assert "const reusablePlanning = board205HistoricalReviewMode() && reusableTaskId;" in ui
+    assert "api/setup/tasks/${reusableTaskId}" in ui
+    assert "api/setup/tasks/${reusableTaskId}/effort" in ui
+    assert "Reusable planning information updated." in ui
+    assert "setup-board205-open-full-reusable" in ui
+    assert "Open Full Reusable Task" in ui
+
+    block = ui.split("const reusablePlanning = board205HistoricalReviewMode() && reusableTaskId;", 1)[1].split(
+        "} else {", 1
+    )[0]
+    assert "season-tasks/" not in block
+    assert "annual_" not in block
+
+
+def test_122_b1a_pre2026_finder_hides_deferred_and_filters_soft_readiness() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "setup-board205-ready-only" in ui
+    assert 'id="setup-board205-ready-only" type="checkbox" checked' in ui
+    assert "if (readyOnly && task.readiness_state === 'NOT_READY') return false;" in ui
+    assert "setup-board205-status-deferred" not in ui
+    assert "DEFERRED: 'setup-board205-status-deferred'" not in ui
 
 
 def test_205_short_crew_requires_deliberate_confirmation_but_is_not_prohibited() -> None:
@@ -438,7 +466,7 @@ def test_122_b1a_finder_has_stage_scene_sort_and_search_across_statuses() -> Non
         "setup-board205-status-ready",
         "setup-board205-status-scheduled",
         "setup-board205-status-complete",
-        "setup-board205-status-deferred",
+        "setup-board205-ready-only",
         "setup-board205-finder-summary",
         "board205SyncFinderSceneOptions",
         "board205FinderCompare",
@@ -614,19 +642,29 @@ def test_122_b1a_historical_overlay_preserves_fresh_board_audit_after_write() ->
     assert "reusable_updated_by_display: current.reusable_updated_by_display," not in overlay
 
 
-def test_122_b1a_historical_finder_uses_current_catalog_without_fabricating_2025_rows() -> None:
+def test_122_b1a_current_catalog_is_single_pre2026_task_finder_authority() -> None:
     ui = read_app("setup_scheduling_board.js")
 
     assert "function board205ApplyHistoricalCatalogOverlay()" in ui
     assert "currentTasks = (appState.tasks || []).filter((task) => Boolean(task.active_flag))" in ui
-    assert "catalog_only: !annual" in ui
-    assert "annual_present: Boolean(annual)" in ui
-    assert "CATALOG ONLY · NOT IN 2025" in ui
-    assert "Current reusable Catalog task · no 2025 annual occurrence was created." in ui
-    assert "setup-board205-open-reusable-task" in ui
+    assert "baseline_plan_order: current.baseline_plan_order" in ui
+    assert "Current Reusable Task Finder — Pre-2026 Planning" in ui
+    assert "Pre-2026 planning — current reusable Catalog." in ui
+    assert "Historical 2025 facts remain in Verification" in ui
 
-    # The overlay is browser-only projection. It must not call a write API or
-    # create an annual occurrence just to make current Catalog work visible.
+    # The current planning finder must not make 2025 membership/order part of
+    # the operator-facing task identity.
+    assert "CATALOG ONLY · NOT IN 2025" not in ui
+    assert "Current reusable Catalog task · no 2025 annual occurrence was created." not in ui
+    assert "2025 order ${board205Esc(task.planned_order)}" not in ui
+    assert "2025 annual name:" not in ui
+
+    # Compact planning edit is primary; full Catalog detail is secondary.
+    assert "setup-board205-edit-planning-info" in ui
+    assert "setup-board205-open-reusable-task" not in ui
+    assert "setup-board205-open-full-reusable" in ui
+
+    # Overlay is still a read projection and must not fabricate annual rows.
     overlay = ui.split("function board205ApplyHistoricalCatalogOverlay()", 1)[1].split(
         "function board205TaskCard(task)", 1
     )[0]
@@ -635,11 +673,13 @@ def test_122_b1a_historical_finder_uses_current_catalog_without_fabricating_2025
     assert "season-tasks" not in overlay
 
 
-def test_122_b1a_finder_uses_reusable_task_id_not_planned_order_as_identity() -> None:
+def test_122_b1a_finder_uses_reusable_task_id_and_reusable_plan_order() -> None:
     ui = read_app("setup_scheduling_board.js")
 
     assert "Task ${board205Esc(task.setup_task_id ?? 'annual-only')}" in ui
-    assert "2025 order ${board205Esc(task.planned_order)}" in ui
+    assert "const reusablePlanning = board205HistoricalReviewMode()" in ui
+    assert "task.baseline_plan_order" in ui
+    assert "task.planned_order ?? task.baseline_plan_order" in ui
     assert "<span>${board205Esc(task.planned_order ?? '—')} · ${board205Esc(task.task_name)}</span>" not in ui
 
 
@@ -657,7 +697,7 @@ def test_122_b1a_readiness_note_defaults_to_not_ready() -> None:
     assert "String(readinessNote || '').trim() ? 'NOT_READY' : 'READY'" in ui
     assert "readiness_state: board205DefaultReadinessState(current.readiness_note)" in ui
     assert "function board205ReadinessOnly(task)" in ui
-    assert "canManage && !task.catalog_only && task.readiness_note" in ui
+    assert "canManage && !historicalReview && !task.catalog_only && task.readiness_note" in ui
     assert "if (!task || !task.setup_session_task_id || !appState.access?.can_manage_setup) return;" in ui
 
     # Real annual seeding already follows the same rule: a reusable readiness
