@@ -199,8 +199,8 @@ def test_205_finder_uses_task_time_minimum_crew_and_effort() -> None:
     assert "setup-board205-scene-filter" in ui
     assert "setup-board205-sort" in ui
     assert "setup-board205-status-ready" in ui
-    assert "setup-board205-status-blocked" in ui
-    assert "setup-board205-status-waiting" in ui
+    assert "setup-board205-status-blocked" not in ui
+    assert "setup-board205-status-waiting" not in ui
     assert 'placeholder="e.g. locate"' in ui
     assert "task-name search checks all statuses" in ui
     assert "task.stage_name" in ui
@@ -422,8 +422,8 @@ def test_122_b1a_historical_verification_keeps_planning_edits_but_blocks_actual_
     assert "setup-board205-toggle-readiness" in ui
     assert "setup-board205-edit-planning-info" in ui
     assert "setup-board205-edit-season-task" in ui
-    assert "setup-board205-plan-up" in ui
-    assert "setup-board205-plan-down" in ui
+    assert "setup-board205-plan-up" not in ui
+    assert "setup-board205-plan-down" not in ui
     assert "if (addSeason) addSeason.disabled = !session;" in ui
 
 
@@ -435,8 +435,6 @@ def test_122_b1a_finder_has_stage_scene_sort_and_search_across_statuses() -> Non
         "setup-board205-scene-filter",
         "setup-board205-sort",
         "setup-board205-status-ready",
-        "setup-board205-status-blocked",
-        "setup-board205-status-waiting",
         "setup-board205-status-scheduled",
         "setup-board205-status-complete",
         "setup-board205-status-deferred",
@@ -446,9 +444,10 @@ def test_122_b1a_finder_has_stage_scene_sort_and_search_across_statuses() -> Non
     ):
         assert token in ui
 
-    # A nonblank Task search bypasses status-checkbox filtering so blocked or
-    # already-scheduled matches never appear to be missing.
-    assert "if (!search && !statuses.has(board205FinderEffectiveStatusFamily(task))) return false;" in ui
+    # A nonblank Task-name search bypasses ordinary status checkboxes, but
+    # Blocking ON still hides blocked/waiting work.
+    assert "if (board205BlockingEnabled() && isBlocked) return false;" in ui
+    assert "if (!search && !isBlocked && !statuses.has(family)) return false;" in ui
     assert "task-name search checks all statuses" in ui
     assert "const taskName = String(task.task_name || '').toLowerCase();" in ui
     assert "if (!taskName.includes(search)) return false;" in ui
@@ -475,11 +474,13 @@ def test_122_b1a_blocking_toggle_is_non_mutating_planning_mode() -> None:
     assert "Blocking OFF" in ui
     assert "function board205BlockingEnabled()" in ui
     assert "function board205FinderStatusFamily(task)" in ui
-    assert "function board205FinderEffectiveStatusFamily(task)" in ui
-    assert "family === 'BLOCKED' || family === 'WAITING'" in ui
-    assert "return 'READY';" in ui
-    assert "BLOCKING IGNORED FOR PLANNING" in ui
-    assert "blocker facts still shown" in ui
+    assert "const isBlocked = family === 'BLOCKED' || family === 'WAITING';" in ui
+    assert "if (board205BlockingEnabled() && isBlocked) return false;" in ui
+    assert "blocked work included" in ui
+    assert "blocked work hidden" in ui
+    assert "BLOCKING IGNORED FOR PLANNING" not in ui
+    assert "setup-board205-status-blocked" not in ui
+    assert "setup-board205-status-waiting" not in ui
 
     # The toggle is finder-local state only. It must not call any governed
     # readiness/dependency/Work Order mutation API.
@@ -488,7 +489,6 @@ def test_122_b1a_blocking_toggle_is_non_mutating_planning_mode() -> None:
     )[0]
     assert "api(" not in toggle_section
     assert "commandOptions(" not in toggle_section
-
 
 def test_122_b1a_stage_sort_puts_numbered_stages_before_site_wide() -> None:
     ui = read_app("setup_scheduling_board.js")
@@ -512,3 +512,23 @@ def test_122_b1a_task_search_is_name_only_not_resource_or_blocker_text() -> None
     assert "task.readiness_note" not in queue
     assert "prerequisite_task_name" not in queue
     assert "linked_work_order_id" not in queue
+
+
+def test_122_b1a_finder_shows_reusable_notes() -> None:
+    repo = read_app("setup_scheduling_board_repository.py")
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "rt.reusable_notes" in repo
+    assert "task.reusable_notes" in ui
+    assert "Reusable notes:" in ui
+
+
+def test_122_b1a_finder_does_not_duplicate_annual_order_controls() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    next_pass = read_app("setup_next_pass.js")
+
+    assert "setup-board205-plan-up" not in ui
+    assert "setup-board205-plan-down" not in ui
+    assert "board205MoveAnnualOrder" not in ui
+    assert "Setup Planning Queue" in next_pass
+    assert "persistAnnualPlanningOrder" in next_pass
