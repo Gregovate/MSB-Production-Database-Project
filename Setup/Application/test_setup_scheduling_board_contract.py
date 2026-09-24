@@ -444,10 +444,10 @@ def test_122_b1a_finder_has_stage_scene_sort_and_search_across_statuses() -> Non
     ):
         assert token in ui
 
-    # A nonblank Task-name search bypasses ordinary status checkboxes, but
-    # Blocking ON still hides blocked/waiting work.
-    assert "if (board205BlockingEnabled() && isBlocked) return false;" in ui
-    assert "if (!search && !isBlocked && !statuses.has(family)) return false;" in ui
+    # A nonblank Task-name search bypasses ordinary status checkboxes. Blocking
+    # ON hides only hard blockers; readiness remains visible for judgement.
+    assert "if (board205BlockingEnabled() && hardBlocked) return false;" in ui
+    assert "if (!search && !hardBlocked && !statuses.has(family)) return false;" in ui
     assert "task-name search checks all statuses" in ui
     assert "const taskName = String(task.task_name || '').toLowerCase();" in ui
     assert "if (!taskName.includes(search)) return false;" in ui
@@ -459,31 +459,29 @@ def test_122_b1a_finder_explains_blocker_classes() -> None:
 
     assert "function board205BlockerDetails(task, deps)" in ui
     assert "Hard predecessor" in ui
-    assert "Readiness condition" in ui
+    assert "Readiness condition · soft" in ui
     assert "Work Order gate" in ui
     assert "Complete first:" in ui
-    assert "clear when that outside condition is actually met." in ui
+    assert "keep visible for operator judgement; mark Ready when the condition is actually met." in ui
     assert "clear when that Work Order is completed." in ui
 
 
-def test_122_b1a_blocking_toggle_is_non_mutating_planning_mode() -> None:
+def test_122_b1a_blocking_toggle_hides_only_hard_blockers() -> None:
     ui = read_app("setup_scheduling_board.js")
 
     assert "setup-board205-blocking-toggle" in ui
     assert "Blocking ON" in ui
     assert "Blocking OFF" in ui
-    assert "function board205BlockingEnabled()" in ui
-    assert "function board205FinderStatusFamily(task)" in ui
-    assert "const isBlocked = family === 'BLOCKED' || family === 'WAITING';" in ui
-    assert "if (board205BlockingEnabled() && isBlocked) return false;" in ui
-    assert "blocked work included" in ui
-    assert "blocked work hidden" in ui
+    assert "function board205HasHardBlock(task)" in ui
+    assert "task.prerequisites_complete === false" in ui
+    assert "task.linked_work_order_gate" in ui
+    assert "function board205ReadinessOnly(task)" in ui
+    assert "if (board205BlockingEnabled() && hardBlocked) return false;" in ui
+    assert "hard blockers hidden · readiness always visible" in ui
+    assert "hard-blocked work included · readiness always visible" in ui
     assert "BLOCKING IGNORED FOR PLANNING" not in ui
-    assert "setup-board205-status-blocked" not in ui
-    assert "setup-board205-status-waiting" not in ui
 
-    # The toggle is finder-local state only. It must not call any governed
-    # readiness/dependency/Work Order mutation API.
+    # Finder toggle remains non-mutating.
     toggle_section = ui.split("function board205BlockingEnabled()", 1)[1].split(
         "function board205FinderStageRows()", 1
     )[0]
@@ -661,3 +659,11 @@ def test_122_readiness_note_invariant_is_enforced_in_database() -> None:
     # Historical Verification is intentionally excluded because only
     # PLANNING / ACTIVE sessions are synchronized.
     assert "ss.session_status IN ('PLANNING','ACTIVE')" in sql
+
+
+def test_122_b1a_catalog_prerequisites_begin_hard_blocked() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "prerequisite_complete: false" in ui
+    assert "Reusable prerequisites therefore begin as hard blockers." in ui
+    assert "const blockerDetails = board205BlockerDetails(task, deps);" in ui
