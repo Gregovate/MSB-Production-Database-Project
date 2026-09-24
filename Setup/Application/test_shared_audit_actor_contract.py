@@ -79,6 +79,8 @@ def test_database_wide_disposable_validation_covers_contract_and_actor_replaceme
     sql = DB_VALIDATION.read_text(encoding="utf-8")
 
     assert "Stale UPDATE audit COALESCE pattern remains in %" in sql
+    assert "p.prosrc ~* 'COALESCE[[:space:]]*[(][[:space:]]*NEW[.]updated_by'" in sql
+    assert "\\\\([[:space:]]*NEW\\\\.updated_by" not in sql
     assert "Shared audit table lacks complete six-field Foundation contract" in sql
     assert "Shared UPDATE audit table lacks active update-actor policy" in sql
     assert "ops.work_order_status_history is missing shared INSERT actor trigger" in sql
