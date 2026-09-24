@@ -72,8 +72,12 @@ function Assert-SafeCandidatePath {
             throw "Migration path must be under Setup/Database/ or explicitly approved shared database repair: $Path"
         }
     }
-    if ($Kind -eq 'validation' -and -not $Path.StartsWith('Setup/Acceptance/')) {
-        throw "Validation path must be under Setup/Acceptance/: $Path"
+    if ($Kind -eq 'validation') {
+        $isSetupValidation = $Path.StartsWith('Setup/Acceptance/')
+        $isApprovedSharedValidation = $Path -eq 'Database/Acceptance/database_shared_audit_actor_disposable_validation.sql'
+        if (-not ($isSetupValidation -or $isApprovedSharedValidation)) {
+            throw "Validation path must be under Setup/Acceptance/ or explicitly approved shared database validation: $Path"
+        }
     }
 
     & git -C $repo cat-file -e "${CandidateSha}:$Path" 2>$null
