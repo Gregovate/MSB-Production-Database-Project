@@ -631,7 +631,7 @@ def test_122_b1a_readiness_note_defaults_to_not_ready() -> None:
     assert "function board205DefaultReadinessState(readinessNote)" in ui
     assert "String(readinessNote || '').trim() ? 'NOT_READY' : 'READY'" in ui
     assert "readiness_state: board205DefaultReadinessState(current.readiness_note)" in ui
-    assert "board205DefaultReadinessState(current.readiness_note) === 'NOT_READY'" in ui
+    assert "function board205ReadinessOnly(task)" in ui
     assert "canManage && !task.catalog_only && task.readiness_note" in ui
     assert "if (!task || !task.setup_session_task_id || !appState.access?.can_manage_setup) return;" in ui
 
@@ -668,6 +668,10 @@ def test_122_b1a_catalog_prerequisites_begin_hard_blocked() -> None:
 
     assert "prerequisite_complete: false" in ui
     assert "Reusable prerequisites therefore begin as hard blockers." in ui
+    assert "catalog_dependencies: currentDependencies" in ui
+    assert "prerequisites_complete: !hasHardPrerequisite" in ui
+    assert "board_status: hasHardPrerequisite ? 'BLOCKED' : 'CATALOG_ONLY'" in ui
+    assert "2025 completion does not satisfy future prerequisites." in ui
     assert "const blockerDetails = board205BlockerDetails(task, deps);" in ui
 
 
@@ -708,3 +712,41 @@ def test_122_b1a_work_order_selector_uses_live_lookup() -> None:
 
     # Completion remains live database state, not a manual Setup checkbox.
     assert "pwo.date_completed IS NOT NULL" in repo
+
+
+def test_122_b1a_historical_catalog_uses_fresh_season_dependency_baseline() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    overlay = ui.split("function board205ApplyHistoricalCatalogOverlay()", 1)[1].split(
+        "function board205TaskCard(task)", 1
+    )[0]
+
+    assert "const currentDependencies = board205CatalogDependencyRows(current);" in overlay
+    assert "const hasHardPrerequisite = currentDependencies.length > 0;" in overlay
+    assert "catalog_dependencies: currentDependencies" in overlay
+    assert "prerequisites_complete: !hasHardPrerequisite" in overlay
+    assert "board.dependencies = [];" in overlay
+    assert "2025 completion does not satisfy future prerequisites." in overlay
+
+    card = ui.split("function board205TaskCard(task)", 1)[1].split(
+        "function board205QueueTasks()", 1
+    )[0]
+    assert "const catalogReview = historicalReview" in card
+    assert "task.catalog_dependencies || []" in card
+    assert "HARD BLOCKED" in card
+    assert "CURRENT CATALOG" in card
+
+
+def test_122_b1a_finder_can_collapse_secondary_filters() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "finderCompact: null" in ui
+    assert "function board205ApplyFinderCompact()" in ui
+    assert "setup-board205-filter-density" in ui
+    assert "More filters" in ui
+    assert "Compact filters" in ui
+    assert "setup-board205-secondary-filters" in ui
+    assert "setupBoard205State.finderCompact = historicalReview" in ui
+    assert ".setup-board205-filters.compact .setup-board205-secondary-filters" in css
+    assert ".setup-board205-filters.compact .setup-board205-blocking-help" in css
