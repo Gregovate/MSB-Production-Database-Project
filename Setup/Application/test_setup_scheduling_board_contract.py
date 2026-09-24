@@ -447,7 +447,10 @@ def test_122_b1a_finder_has_stage_scene_sort_and_search_across_statuses() -> Non
     # A nonblank Task search bypasses status-checkbox filtering so blocked or
     # already-scheduled matches never appear to be missing.
     assert "if (!search && !statuses.has(board205FinderEffectiveStatusFamily(task))) return false;" in ui
-    assert "Task search checks all statuses" in ui
+    assert "task-name search checks all statuses" in ui
+    assert "const taskName = String(task.task_name || '').toLowerCase();" in ui
+    assert "if (!taskName.includes(search)) return false;" in ui
+    assert 'placeholder="e.g. locate"' in ui
 
 
 def test_122_b1a_finder_explains_blocker_classes() -> None:
@@ -483,3 +486,27 @@ def test_122_b1a_blocking_toggle_is_non_mutating_planning_mode() -> None:
     )[0]
     assert "api(" not in toggle_section
     assert "commandOptions(" not in toggle_section
+
+
+def test_122_b1a_stage_sort_puts_numbered_stages_before_site_wide() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "const aSiteWide = a.stage_id == null ? 1 : 0;" in ui
+    assert "const bSiteWide = b.stage_id == null ? 1 : 0;" in ui
+    assert "if (aSiteWide !== bSiteWide) return aSiteWide - bSiteWide;" in ui
+    assert "const aSceneLevel = a.lor_scene_id == null ? 0 : 1;" in ui
+    assert "const bSceneLevel = b.lor_scene_id == null ? 0 : 1;" in ui
+
+
+def test_122_b1a_task_search_is_name_only_not_resource_or_blocker_text() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    queue = ui.split("function board205QueueTasks()", 1)[1].split(
+        "function board205RenderQueue()", 1
+    )[0]
+
+    assert "task.task_name" in queue
+    assert "task.resource_summary" not in queue
+    assert "task.readiness_note" not in queue
+    assert "prerequisite_task_name" not in queue
+    assert "linked_work_order_id" not in queue
