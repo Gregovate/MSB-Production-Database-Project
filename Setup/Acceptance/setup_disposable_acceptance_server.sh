@@ -197,20 +197,79 @@ psql_test() { sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINE
 echo
 echo "--- Recreate current Production application-role boundary ---"
 psql_test -c "CREATE ROLE fieldwiring_app LOGIN PASSWORD '$APP_PASSWORD';"
+
 sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "
-    SELECT format('GRANT USAGE ON SCHEMA %I TO fieldwiring_app;', n.nspname)
-    FROM pg_namespace n
-    WHERE n.nspname IN ('ref','lor_snap','ops','public') AND has_schema_privilege('fieldwiring_app', n.oid, 'USAGE')
-    UNION ALL
-    SELECT format('GRANT SELECT ON TABLE %I.%I TO fieldwiring_app;', n.nspname, c.relname)
-    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE n.nspname IN ('ref','lor_snap','ops','public') AND c.relkind IN ('r','v','m','f','p') AND has_table_privilege('fieldwiring_app', c.oid, 'SELECT')
-    UNION ALL
-    SELECT format('GRANT EXECUTE ON FUNCTION %I.%I(%s) TO fieldwiring_app;', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid))
-    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname IN ('ref','ops') AND p.prokind IN ('f','w') AND has_function_privilege('fieldwiring_app', p.oid, 'EXECUTE');
+    SELECT grant_stmt
+    FROM (
+        SELECT 10 AS ord,
+               format('GRANT USAGE ON SCHEMA %I TO fieldwiring_app;', n.nspname) AS grant_stmt
+        FROM pg_namespace AS n
+        CROSS JOIN LATERAL aclexplode(n.nspacl) AS acl
+        JOIN pg_roles AS grantee ON grantee.oid = acl.grantee
+        WHERE n.nspname IN ('ref','lor_snap','ops','public')
+          AND grantee.rolname = 'fieldwiring_app'
+          AND acl.privilege_type = 'USAGE'
+
+        UNION ALL
+
+        SELECT 20 AS ord,
+               format('GRANT SELECT ON TABLE %I.%I TO fieldwiring_app;', n.nspname, c.relname)
+        FROM pg_class AS c
+        JOIN pg_namespace AS n ON n.oid = c.relnamespace
+        CROSS JOIN LATERAL aclexplode(c.relacl) AS acl
+        JOIN pg_roles AS grantee ON grantee.oid = acl.grantee
+        WHERE n.nspname IN ('ref','lor_snap','ops','public')
+          AND c.relkind IN ('r','v','m','f','p')
+          AND grantee.rolname = 'fieldwiring_app'
+          AND acl.privilege_type = 'SELECT'
+
+        UNION ALL
+
+        SELECT 30 AS ord,
+               format(
+                   'REVOKE ALL ON FUNCTION %I.%I(%s) FROM PUBLIC;',
+                   n.nspname,
+                   p.proname,
+                   pg_get_function_identity_arguments(p.oid)
+               )
+        FROM pg_proc AS p
+        JOIN pg_namespace AS n ON n.oid = p.pronamespace
+        WHERE n.nspname IN ('ref','ops')
+          AND p.prokind IN ('f','w')
+          AND p.proacl IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM aclexplode(p.proacl) AS public_acl
+              WHERE public_acl.grantee = 0
+                AND public_acl.privilege_type = 'EXECUTE'
+          )
+
+        UNION ALL
+
+        SELECT 40 AS ord,
+               format(
+                   'GRANT EXECUTE ON FUNCTION %I.%I(%s) TO fieldwiring_app;',
+                   n.nspname,
+                   p.proname,
+                   pg_get_function_identity_arguments(p.oid)
+               )
+        FROM pg_proc AS p
+        JOIN pg_namespace AS n ON n.oid = p.pronamespace
+        CROSS JOIN LATERAL aclexplode(p.proacl) AS acl
+        JOIN pg_roles AS grantee ON grantee.oid = acl.grantee
+        WHERE n.nspname IN ('ref','ops')
+          AND p.prokind IN ('f','w')
+          AND grantee.rolname = 'fieldwiring_app'
+          AND acl.privilege_type = 'EXECUTE'
+    ) AS grants
+    ORDER BY ord, grant_stmt;
 " > "$GRANTS_FILE"
-test -s "$GRANTS_FILE"
+
+if [[ ! -s "$GRANTS_FILE" ]]; then
+    echo "FAIL: Production ACL extraction returned no fieldwiring_app boundary"
+    exit 23
+fi
+
 grant_index=0
 while IFS= read -r grant_stmt || [[ -n "$grant_stmt" ]]; do
     [[ -z "$grant_stmt" ]] && continue
@@ -221,7 +280,51 @@ while IFS= read -r grant_stmt || [[ -n "$grant_stmt" ]]; do
         exit 23
     fi
 done < "$GRANTS_FILE"
+
 psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"
+
+psql_test <<'SQL'
+DO $boundary$
+BEGIN
+    IF NOT has_schema_privilege('fieldwiring_app', 'ref', 'USAGE')
+       OR NOT has_schema_privilege('fieldwiring_app', 'ops', 'USAGE')
+       OR NOT has_schema_privilege('fieldwiring_app', 'lor_snap', 'USAGE') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app lacks required schema USAGE';
+    END IF;
+
+    IF NOT has_table_privilege('fieldwiring_app', 'ref.setup_task', 'SELECT')
+       OR NOT has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'SELECT') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app lacks required Setup SELECT boundary';
+    END IF;
+
+    IF NOT has_function_privilege(
+        'fieldwiring_app',
+        'ref.setup_browser_capabilities(text)',
+        'EXECUTE'
+    ) THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app cannot execute Setup capability function';
+    END IF;
+
+    IF has_function_privilege(
+        'fieldwiring_app',
+        'ref.setup_management_actor(text,boolean)',
+        'EXECUTE'
+    ) THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app can execute internal Setup actor helper';
+    END IF;
+
+    IF has_table_privilege('fieldwiring_app', 'ref.setup_task', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ref.setup_task', 'UPDATE')
+       OR has_table_privilege('fieldwiring_app', 'ref.setup_task', 'DELETE')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'UPDATE')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'DELETE') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app unexpectedly has broad Setup DML';
+    END IF;
+END
+$boundary$;
+SQL
+echo "Production-equivalent fieldwiring_app boundary replay: PASS"
 
 echo
 echo "--- Apply candidate migrations to disposable clone only ---"
