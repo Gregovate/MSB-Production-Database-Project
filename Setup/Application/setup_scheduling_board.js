@@ -3,7 +3,7 @@
    Reusable Task Catalog or the #132 Report Work implementation. */
 
 const setupBoard205State = {
-  board: { session: null, work_days: [], crews: [], captain_candidates: [], tasks: [], assignments: [], dependencies: [] },
+  board: { session: null, work_days: [], crews: [], captain_candidates: [], work_orders: [], tasks: [], assignments: [], dependencies: [] },
   dragged: null,
   editSeasonTaskId: null,
   editPlanningTaskId: null,
@@ -321,7 +321,8 @@ function board205TaskDependencies(taskId) {
 function board205WorkOrderBadge(task) {
   if (!task?.linked_work_order_id) return '';
   const complete = Boolean(task.linked_work_order_completed_at);
-  return `<span class="setup-board205-badge ${complete ? '' : 'waiting'}">WO ${board205Esc(task.linked_work_order_id)} · ${complete ? 'complete' : 'open'}</span>`;
+  const problem = String(task.linked_work_order_problem || '').trim();
+  return `<span class="setup-board205-badge ${complete ? '' : 'waiting'}" title="${board205Esc(problem)}">WO ${board205Esc(task.linked_work_order_id)} · ${complete ? 'complete' : 'open'}${problem ? ` · ${board205Esc(problem)}` : ''}</span>`;
 }
 
 function board205HistoricalReviewMode() {
@@ -1149,7 +1150,7 @@ function board205Render() {
 async function board205Load() {
   try {
     const payload = await api(`api/setup/scheduling-board?season_year=${encodeURIComponent(appState.seasonYear)}`);
-    setupBoard205State.board = payload.board || { session: null, work_days: [], crews: [], captain_candidates: [], tasks: [], assignments: [], dependencies: [] };
+    setupBoard205State.board = payload.board || { session: null, work_days: [], crews: [], captain_candidates: [], work_orders: [], tasks: [], assignments: [], dependencies: [] };
     board205ApplyHistoricalCatalogOverlay();
     board205Render();
   } catch (error) {
@@ -1342,6 +1343,16 @@ function board205PopulateDialogSelects() {
   if (prior) prior.innerHTML = taskOptions;
   if (downstream) downstream.innerHTML = taskOptions;
   board205PopulateScenes();
+  const workOrderSelect = document.getElementById('setup-board205-season-work-order');
+  if (workOrderSelect) {
+    workOrderSelect.innerHTML = '<option value="">No Work Order</option>'
+      + (setupBoard205State.board.work_orders || []).map((wo) => {
+          const status = wo.date_completed ? 'COMPLETE' : 'OPEN';
+          const problem = String(wo.problem || '').trim();
+          const label = `WO ${wo.work_order_id} · ${status}${problem ? ` · ${problem}` : ''}`;
+          return `<option value="${wo.work_order_id}">${board205Esc(label)}</option>`;
+        }).join('');
+  }
 }
 
 function board205PopulateCrewSelect(dayId, selectedCrewId = null) {
@@ -1781,7 +1792,7 @@ function board205InstallView() {
           <label>Stage<select id="setup-board205-season-stage"></select></label>
           <label>Scene<select id="setup-board205-season-scene"></select></label>
           <label>Type<select id="setup-board205-season-type"><option value="WORK">Work</option><option value="GATE">Stop / Gate</option><option value="SUPPORT">Support</option><option value="UNLOAD_CONTAINER">Unload Container</option></select></label>
-          <label>Existing Work Order ID<input id="setup-board205-season-work-order" type="number" min="1"></label>
+          <label>Existing Work Order<select id="setup-board205-season-work-order"><option value="">No Work Order</option></select></label>
           <label class="checkbox-label"><input id="setup-board205-season-gate" type="checkbox"> Work Order completion satisfies this gate</label>
           <span></span>
           <label>Crew min<input id="setup-board205-season-crew-min" type="number" min="0"></label>
