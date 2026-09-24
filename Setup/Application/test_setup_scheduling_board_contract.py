@@ -514,13 +514,20 @@ def test_122_b1a_task_search_is_name_only_not_resource_or_blocker_text() -> None
     assert "linked_work_order_id" not in queue
 
 
-def test_122_b1a_finder_shows_reusable_notes() -> None:
+def test_122_b1a_finder_shows_and_edits_reusable_notes() -> None:
     repo = read_app("setup_scheduling_board_repository.py")
+    api = read_app("setup_scheduling_board_api.py")
     ui = read_app("setup_scheduling_board.js")
 
     assert "rt.reusable_notes" in repo
     assert "task.reusable_notes" in ui
     assert "Reusable notes:" in ui
+    assert "setup-board205-planning-reusable-notes" in ui
+    assert "reusable_notes: document.getElementById('setup-board205-planning-reusable-notes')" in ui
+    assert 'reusable_notes=optional_text(payload.get("reusable_notes"))' in api
+    assert "reusable_notes: str | None" in repo
+    assert "SELECT * FROM ref.update_setup_task(" in repo
+    assert "Reusable Notes update returned no result" in repo
 
 
 def test_122_b1a_finder_does_not_duplicate_annual_order_controls() -> None:
@@ -532,3 +539,27 @@ def test_122_b1a_finder_does_not_duplicate_annual_order_controls() -> None:
     assert "board205MoveAnnualOrder" not in ui
     assert "Setup Planning Queue" in next_pass
     assert "persistAnnualPlanningOrder" in next_pass
+
+
+def test_122_b1a_finder_uses_current_reusable_prerequisites() -> None:
+    repo = read_app("setup_scheduling_board_repository.py")
+
+    # Reusable tasks must follow the current Catalog prerequisite graph, not a
+    # stale REUSABLE_BASELINE copy captured in the 2025 annual snapshot.
+    assert "FROM ref.setup_task_dependency rd" in repo
+    assert "st.task_origin = 'REUSABLE'" in repo
+    assert "'REUSABLE_CURRENT'::text AS dependency_origin" in repo
+    assert "Ignore stale REUSABLE_BASELINE copies for reusable tasks." in repo
+
+    # Season-only / explicit annual edges remain supported separately.
+    assert "st.task_origin = 'SEASON_ONLY'" in repo
+    assert "ad.dependency_origin = 'ANNUAL'" in repo
+
+
+def test_122_b1a_finder_filters_stay_visible_while_results_scroll() -> None:
+    css = read_app("setup_scheduling_board.css")
+
+    block = css.split(".setup-board205-filters {", 1)[1].split("}", 1)[0]
+    assert "position: sticky" in block
+    assert "top: 0" in block
+    assert "z-index: 4" in block
