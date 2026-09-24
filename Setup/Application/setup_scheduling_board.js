@@ -1477,7 +1477,7 @@ function board205InstallView() {
           <h3 id="setup-board205-finder-title">Needs Scheduling</h3>
           <div id="setup-board205-historical-note" class="notice" hidden>
             <strong>Historical Verification — no date/crew scheduling here.</strong>
-            Use the 2025 annual work set to find tasks and correct planning knowledge. Readiness, planning info, annual order, and applicable annual-task corrections remain available. Work days, crews, and scheduled assignments are intentionally disabled; those will be rehearsed in disposable 2026.
+            Use the 2025 annual work set to find tasks and correct planning knowledge. Readiness, planning info, and applicable annual-task corrections remain available here. Annual ordering remains in the Setup Planning Queue. Work days, crews, and scheduled assignments are intentionally disabled; those will be rehearsed in disposable 2026.
           </div>
           <div id="setup-board205-filters" class="setup-board205-filters setup-board205-finder">
             <label>Stage / area<select id="setup-board205-stage-filter"><option value="">All Stages / areas</option></select></label>
