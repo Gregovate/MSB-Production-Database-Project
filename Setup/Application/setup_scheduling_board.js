@@ -467,8 +467,19 @@ function board205FinderCompare(a, b, mode) {
   );
 
   if (mode === 'STAGE') {
+    // Real Stage work sorts first in Stage-number order. Site-wide /
+    // Infrastructure has no Stage key and belongs after the numbered Stages,
+    // not before Stage 00.
+    const aSiteWide = a.stage_id == null ? 1 : 0;
+    const bSiteWide = b.stage_id == null ? 1 : 0;
+    if (aSiteWide !== bSiteWide) return aSiteWide - bSiteWide;
+
+    const aSceneLevel = a.lor_scene_id == null ? 0 : 1;
+    const bSceneLevel = b.lor_scene_id == null ? 0 : 1;
+
     return textCompare(a.stage_key, b.stage_key)
       || textCompare(a.stage_name, b.stage_name)
+      || aSceneLevel - bSceneLevel
       || textCompare(a.scene_name, b.scene_name)
       || planOrder(a) - planOrder(b)
       || Number(a.setup_session_task_id) - Number(b.setup_session_task_id);
