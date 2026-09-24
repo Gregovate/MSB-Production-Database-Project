@@ -214,8 +214,12 @@
   }
 
   function syncDirtyIndicators() {
-    syncButtonLabel('save-reusable-task', 'Save Reusable Task', 'Save Reusable Task • Unsaved', reusableDirty());
-    syncButtonLabel('save-task-effort', 'Save Effort', 'Save Effort • Unsaved', effortDirty());
+    syncButtonLabel(
+      'save-reusable-task',
+      'Save Reusable Task',
+      'Save Reusable Task • Unsaved',
+      reusableDirty() || effortDirty()
+    );
     syncButtonLabel('save-annual-review', 'Save Annual Review', 'Save Annual Review • Unsaved', annualDirty());
   }
 
@@ -237,42 +241,36 @@
     if (!await ensureServerBuild()) return false;
 
     const preservedAnnual = preserveAnnualDraft ? annualDraft() : null;
+    const reusableNeedsSave = reusableDirty();
+    const effortNeedsSave = effortDirty();
+    const effortValue = effortFormValue();
+
     try {
       setBusy(true);
-      await api(`api/setup/tasks/${task.setup_task_id}`, commandOptions('PATCH', reusableFormState({ strictDuration: true })));
-      await reloadTasks(task.setup_task_id);
+
+      if (reusableNeedsSave) {
+        await api(
+          `api/setup/tasks/${task.setup_task_id}`,
+          commandOptions('PATCH', reusableFormState({ strictDuration: true }))
+        );
+      }
+
+      if (effortNeedsSave) {
+        await api(
+          `api/setup/tasks/${task.setup_task_id}/effort`,
+          commandOptions('PATCH', { effort_level: effortValue })
+        );
+      }
+
+      if (reusableNeedsSave || effortNeedsSave) {
+        await reloadTasks(task.setup_task_id);
+      }
+
       if (preservedAnnual && Number(appState.selectedTaskId) === Number(task.setup_task_id)) {
         restoreAnnualDraft(preservedAnnual);
       }
+
       if (announce) setAlert(`Reusable task ${task.setup_task_id} saved to Production.`, 'ok');
-      return true;
-    } catch (error) {
-      setAlert(error.message || error, 'error');
-      window.alert(error.message || error);
-      return false;
-    } finally {
-      setBusy(false);
-      syncDirtyIndicators();
-    }
-  }
-
-  async function persistEffortEdit(effortValue, { announce = true, preserveAnnualDraft = true } = {}) {
-    const task = selectedTask();
-    if (!task || !appState.access?.can_manage_setup) return false;
-    if (!await ensureServerBuild()) return false;
-
-    const preservedAnnual = preserveAnnualDraft ? annualDraft() : null;
-    try {
-      setBusy(true);
-      await api(
-        `api/setup/tasks/${task.setup_task_id}/effort`,
-        commandOptions('PATCH', { effort_level: effortValue })
-      );
-      await reloadTasks(task.setup_task_id);
-      if (preservedAnnual && Number(appState.selectedTaskId) === Number(task.setup_task_id)) {
-        restoreAnnualDraft(preservedAnnual);
-      }
-      if (announce) setAlert('Reusable effort saved before continuing.', 'ok');
       return true;
     } catch (error) {
       setAlert(error.message || error, 'error');
@@ -325,7 +323,7 @@
       'mark-unverified': 'UNVERIFIED'
     };
 
-    if (reusableDirty()) {
+    if (reusableDirty() || effortDirty()) {
       const reusableSaved = await persistReusableEdits({ announce: false, preserveAnnualDraft: true });
       if (!reusableSaved) return;
     }
@@ -333,19 +331,9 @@
   }
 
   async function saveDirtySurfaces() {
-    const hadEffortDraft = effortDirty();
-    const pendingEffort = hadEffortDraft ? effortFormValue() : null;
-
-    if (reusableDirty()) {
+    if (reusableDirty() || effortDirty()) {
       const reusableSaved = await persistReusableEdits({ announce: false, preserveAnnualDraft: true });
       if (!reusableSaved) return false;
-    }
-    if (hadEffortDraft) {
-      const effortSaved = await persistEffortEdit(
-        pendingEffort,
-        { announce: false, preserveAnnualDraft: true }
-      );
-      if (!effortSaved) return false;
     }
     if (annualDirty()) {
       const annualSaved = await persistAnnualReview(null, { announce: false });
