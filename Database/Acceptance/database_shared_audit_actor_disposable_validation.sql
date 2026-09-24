@@ -1,33 +1,32 @@
 \set ON_ERROR_STOP on
 
 /*
-Database-wide disposable validation for shared UPDATE audit attribution.
-Runs only on a disposable current-Production clone and rolls back all fixture DML.
+Database-wide disposable validation for the shared audit contract.
+Runs only on a disposable current-Production clone.
+
+The migration under test may add missing audit columns/policies/triggers in the
+clone. Fixture DML below is rolled back. Historical Production audit values are
+not reconstructed or rewritten.
 */
 
 BEGIN;
 
-DO $validation$
+DO $contract$
 DECLARE
-    v_person_1 integer;
-    v_person_2 integer;
-    v_uuid_1 uuid;
-    v_uuid_2 uuid;
-    v_name_1 text;
-    v_name_2 text;
-    v_actual_person integer;
-    v_actual_name text;
     v_bad_function text;
+    v_bad_table text;
 BEGIN
     IF to_regprocedure('ref.resolve_actor()') IS NULL
+       OR to_regprocedure('ref.set_actor_on_insert()') IS NULL
        OR to_regprocedure('ref.set_actor_on_update()') IS NULL
-       OR to_regprocedure('ref.set_updated_fields()') IS NULL THEN
-        RAISE EXCEPTION 'Shared database audit actor functions are missing';
+       OR to_regprocedure('ref.set_updated_fields()') IS NULL
+       OR to_regprocedure('ref.sync_audit_collection_policy()') IS NULL THEN
+        RAISE EXCEPTION 'Shared database audit functions are missing';
     END IF;
 
     /*
       No UPDATE trigger function may retain the stale-actor COALESCE pattern.
-      The INSERT actor function is intentionally outside this check.
+      INSERT is intentionally outside this check because INSERT has no OLD row.
     */
     SELECT n.nspname || '.' || p.proname
       INTO v_bad_function
@@ -46,6 +45,163 @@ BEGIN
             v_bad_function;
     END IF;
 
+    /*
+      Every table participating in the shared actor-trigger system must now
+      contain the complete Foundation audit contract.
+    */
+    WITH shared_audit_tables AS (
+        SELECT DISTINCT
+            n.nspname AS schema_name,
+            c.relname AS table_name
+        FROM pg_trigger AS t
+        JOIN pg_proc AS p
+          ON p.oid = t.tgfoid
+        JOIN pg_class AS c
+          ON c.oid = t.tgrelid
+        JOIN pg_namespace AS n
+          ON n.oid = c.relnamespace
+        WHERE NOT t.tgisinternal
+          AND n.nspname IN ('ref', 'ops', 'stage')
+          AND p.proname IN (
+              'set_actor_on_insert',
+              'set_actor_on_update',
+              'set_updated_fields'
+          )
+    )
+    SELECT s.schema_name || '.' || s.table_name
+      INTO v_bad_table
+    FROM shared_audit_tables AS s
+    WHERE EXISTS (
+        SELECT 1
+        FROM (
+            VALUES
+                ('created_at'),
+                ('created_by'),
+                ('created_by_person_id'),
+                ('updated_at'),
+                ('updated_by'),
+                ('updated_by_person_id')
+        ) AS required(column_name)
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM information_schema.columns AS col
+            WHERE col.table_schema = s.schema_name
+              AND col.table_name = s.table_name
+              AND col.column_name = required.column_name
+        )
+    )
+    ORDER BY s.schema_name, s.table_name
+    LIMIT 1;
+
+    IF v_bad_table IS NOT NULL THEN
+        RAISE EXCEPTION
+            'Shared audit table lacks complete six-field Foundation contract: %',
+            v_bad_table;
+    END IF;
+
+    /*
+      Any table using a shared UPDATE actor trigger must have an active update
+      actor policy. ref.sync_audit_collection_policy() is the enrollment
+      mechanism; this assertion prevents future table additions from silently
+      missing that step.
+    */
+    WITH shared_update_tables AS (
+        SELECT DISTINCT
+            n.nspname AS schema_name,
+            c.relname AS table_name
+        FROM pg_trigger AS t
+        JOIN pg_proc AS p
+          ON p.oid = t.tgfoid
+        JOIN pg_class AS c
+          ON c.oid = t.tgrelid
+        JOIN pg_namespace AS n
+          ON n.oid = c.relnamespace
+        WHERE NOT t.tgisinternal
+          AND n.nspname IN ('ref', 'ops', 'stage')
+          AND p.proname IN ('set_actor_on_update', 'set_updated_fields')
+    )
+    SELECT s.schema_name || '.' || s.table_name
+      INTO v_bad_table
+    FROM shared_update_tables AS s
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM ref.audit_collection_policy AS a
+        WHERE a.schema_name = s.schema_name
+          AND a.collection_name = s.table_name
+          AND a.active_flag = true
+          AND a.update_actor_enabled = true
+    )
+    ORDER BY s.schema_name, s.table_name
+    LIMIT 1;
+
+    IF v_bad_table IS NOT NULL THEN
+        RAISE EXCEPTION
+            'Shared UPDATE audit table lacks active update-actor policy: %',
+            v_bad_table;
+    END IF;
+
+    /*
+      Known legacy gaps discovered by #122 must be structurally complete.
+    */
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_trigger AS t
+        JOIN pg_proc AS p ON p.oid = t.tgfoid
+        WHERE t.tgrelid = 'ops.work_order_status_history'::regclass
+          AND NOT t.tgisinternal
+          AND p.proname = 'set_actor_on_insert'
+    ) THEN
+        RAISE EXCEPTION
+            'ops.work_order_status_history is missing shared INSERT actor trigger';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conrelid = 'ops.work_order_status_history'::regclass
+          AND conname = 'fk_wosh_created_by_person'
+    ) OR NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conrelid = 'ops.work_order_status_history'::regclass
+          AND conname = 'fk_wosh_updated_by_person'
+    ) THEN
+        RAISE EXCEPTION
+            'ops.work_order_status_history is missing audit-person foreign keys';
+    END IF;
+
+    /*
+      The synchronizer itself must require the complete six-field contract.
+    */
+    SELECT 'ref.sync_audit_collection_policy'
+      INTO v_bad_function
+    WHERE pg_get_functiondef('ref.sync_audit_collection_policy()'::regprocedure)
+          NOT LIKE '%has_created_at%'
+       OR pg_get_functiondef('ref.sync_audit_collection_policy()'::regprocedure)
+          NOT LIKE '%has_updated_at%'
+       OR pg_get_functiondef('ref.sync_audit_collection_policy()'::regprocedure)
+          NOT LIKE '%has_created_by_person_id%'
+       OR pg_get_functiondef('ref.sync_audit_collection_policy()'::regprocedure)
+          NOT LIKE '%has_updated_by_person_id%';
+
+    IF v_bad_function IS NOT NULL THEN
+        RAISE EXCEPTION
+            'Audit policy synchronizer does not enforce complete six-field contract';
+    END IF;
+END
+$contract$;
+
+DO $validation$
+DECLARE
+    v_person_1 integer;
+    v_person_2 integer;
+    v_uuid_1 uuid;
+    v_uuid_2 uuid;
+    v_name_1 text;
+    v_name_2 text;
+    v_actual_person integer;
+    v_actual_name text;
+BEGIN
     SELECT p.person_id, p.directus_user_id, p.preferred_name
       INTO v_person_1, v_uuid_1, v_name_1
     FROM ref.person AS p
@@ -71,6 +227,9 @@ BEGIN
     CREATE TEMP TABLE audit_actor_probe (
         probe_id integer PRIMARY KEY,
         payload text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        created_by text NOT NULL DEFAULT current_user,
+        created_by_person_id integer,
         updated_at timestamptz NOT NULL DEFAULT now(),
         updated_by text NOT NULL DEFAULT current_user,
         updated_by_person_id integer
@@ -83,17 +242,29 @@ BEGIN
     INSERT INTO audit_actor_probe(
         probe_id,
         payload,
+        created_by,
+        created_by_person_id,
         updated_by,
         updated_by_person_id
     )
-    VALUES (1, 'initial', v_name_1, v_person_1);
+    VALUES (
+        1,
+        'initial',
+        v_name_1,
+        v_person_1,
+        v_name_1,
+        v_person_1
+    );
 
     /*
       Actor 1 updates, then actor 2 updates the same row. The second actor must
       replace the first even though OLD contains non-null audit values.
     */
     PERFORM pg_catalog.set_config('app.directus_user_uuid', v_uuid_1::text, true);
-    UPDATE audit_actor_probe SET payload = 'actor-1' WHERE probe_id = 1;
+
+    UPDATE audit_actor_probe
+       SET payload = 'actor-1'
+     WHERE probe_id = 1;
 
     SELECT updated_by_person_id, updated_by
       INTO v_actual_person, v_actual_name
@@ -108,7 +279,10 @@ BEGIN
     END IF;
 
     PERFORM pg_catalog.set_config('app.directus_user_uuid', v_uuid_2::text, true);
-    UPDATE audit_actor_probe SET payload = 'actor-2' WHERE probe_id = 1;
+
+    UPDATE audit_actor_probe
+       SET payload = 'actor-2'
+     WHERE probe_id = 1;
 
     SELECT updated_by_person_id, updated_by
       INTO v_actual_person, v_actual_name
@@ -128,6 +302,9 @@ BEGIN
     CREATE TEMP TABLE audit_updated_fields_probe (
         probe_id integer PRIMARY KEY,
         payload text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        created_by text NOT NULL DEFAULT current_user,
+        created_by_person_id integer,
         updated_at timestamptz NOT NULL DEFAULT now(),
         updated_by text NOT NULL DEFAULT current_user,
         updated_by_person_id integer
@@ -140,12 +317,22 @@ BEGIN
     INSERT INTO audit_updated_fields_probe(
         probe_id,
         payload,
+        created_by,
+        created_by_person_id,
         updated_by,
         updated_by_person_id
     )
-    VALUES (1, 'initial', v_name_1, v_person_1);
+    VALUES (
+        1,
+        'initial',
+        v_name_1,
+        v_person_1,
+        v_name_1,
+        v_person_1
+    );
 
     PERFORM pg_catalog.set_config('app.directus_user_uuid', v_uuid_2::text, true);
+
     UPDATE audit_updated_fields_probe
        SET payload = 'actor-2'
      WHERE probe_id = 1;
@@ -180,6 +367,9 @@ $role_setup$;
 CREATE TEMP TABLE directus_audit_probe (
     probe_id integer PRIMARY KEY,
     payload text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    created_by text NOT NULL,
+    created_by_person_id integer,
     updated_at timestamptz NOT NULL DEFAULT now(),
     updated_by text NOT NULL,
     updated_by_person_id integer
@@ -192,12 +382,16 @@ FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_update();
 INSERT INTO directus_audit_probe(
     probe_id,
     payload,
+    created_by,
+    created_by_person_id,
     updated_by,
     updated_by_person_id
 )
 SELECT
     1,
     'initial',
+    p.preferred_name,
+    p.person_id,
     p.preferred_name,
     p.person_id
 FROM ref.person AS p
