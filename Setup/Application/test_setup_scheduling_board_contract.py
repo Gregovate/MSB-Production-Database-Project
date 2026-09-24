@@ -436,7 +436,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "setup_next_pass.js" in html
 
 
-def test_122_b1a_historical_verification_keeps_planning_edits_but_blocks_actual_scheduling() -> None:
+def test_122_b1a_pre2026_current_catalog_allows_planning_edits_but_blocks_actual_scheduling() -> None:
     ui = read_app("setup_scheduling_board.js")
 
     assert "function board205HistoricalReviewMode()" in ui
@@ -444,16 +444,16 @@ def test_122_b1a_historical_verification_keeps_planning_edits_but_blocks_actual_
     assert "const canScheduleDays = Boolean(session) && canManage && !historicalReview;" in ui
     assert "dayForm.hidden = !canScheduleDays" in ui
     assert "boardPane.hidden = historicalReview" in ui
-    assert "&& !historicalReview" in ui
-    assert "Historical Verification — no date/crew scheduling here." in ui
+    assert "Current Reusable Task Finder — Pre-2026 Planning" in ui
+    assert "Pre-2026 planning — current reusable Catalog." in ui
 
-    # Legitimate annual/planning corrections remain available in 2025.
-    assert "setup-board205-toggle-readiness" in ui
+    # Pre-2026 planning edits durable reusable knowledge. Annual readiness and
+    # season-task actions remain suppressed until a real annual Session exists.
     assert "setup-board205-edit-planning-info" in ui
-    assert "setup-board205-edit-season-task" in ui
+    assert "canManage && !historicalReview && !task.catalog_only && task.readiness_note" in ui
+    assert "canManage && !historicalReview && seasonOnly" in ui
     assert "setup-board205-plan-up" not in ui
     assert "setup-board205-plan-down" not in ui
-    assert "if (addSeason) addSeason.disabled = !session;" in ui
 
 
 def test_122_b1a_finder_has_stage_scene_sort_and_search_across_statuses() -> None:
@@ -509,7 +509,7 @@ def test_122_b1a_blocking_toggle_hides_only_hard_blockers() -> None:
     assert "if (board205BlockingEnabled() && hardBlocked) return false;" in ui
     assert "hard blockers hidden" in ui
     assert "hard-blocked work included" in ui
-    assert "readiness soft-visible" in ui
+    assert "Readiness stays a soft blocker" in ui
     assert "Ready only" in ui
     assert "BLOCKING IGNORED FOR PLANNING" not in ui
 
