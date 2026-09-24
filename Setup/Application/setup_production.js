@@ -374,6 +374,15 @@ function selectTask(taskId) {
   el('edit-weather').value = task.weather_note || '';
   el('edit-reusable-notes').value = task.reusable_notes || '';
 
+  const audit = el('reusable-task-audit');
+  if (audit) {
+    const createdBy = task.reusable_created_by_display || task.reusable_created_by || 'unknown actor';
+    const updatedBy = task.reusable_updated_by_display || task.reusable_updated_by || 'unknown actor';
+    const createdAt = formatTimestamp(task.reusable_created_at) || 'unknown time';
+    const updatedAt = formatTimestamp(task.reusable_updated_at) || 'unknown time';
+    audit.textContent = `Created ${createdAt} by ${createdBy} · Last updated ${updatedAt} by ${updatedBy}`;
+  }
+
   const annualAvailable = task.setup_session_task_id != null;
   el('annual-legend').textContent = `${appState.seasonYear} Annual Historical Actual`;
   el('annual-execution-status').value = task.execution_status || '';
