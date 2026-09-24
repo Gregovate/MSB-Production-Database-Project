@@ -173,6 +173,15 @@ function sortedTasks(tasks = appState.tasks) {
 }
 
 function showView(name) {
+  const season = currentSeasonRecord();
+  if (
+    name === 'review'
+    && season
+    && season.session_status !== 'HISTORICAL_VERIFICATION'
+  ) {
+    name = el('schedule-view') ? 'schedule' : 'library';
+  }
+
   document.querySelectorAll('.tab').forEach((button) => {
     button.classList.toggle('active', button.dataset.view === name);
   });
@@ -371,6 +380,19 @@ function sortedStages() {
 
 function currentSeasonRecord() {
   return appState.seasons.find((season) => Number(season.season_year) === Number(appState.seasonYear));
+}
+
+function applySeasonReviewSurface() {
+  const historical = currentSeasonRecord()?.session_status === 'HISTORICAL_VERIFICATION';
+  const reviewTab = document.querySelector('.tab[data-view="review"]');
+  if (reviewTab) reviewTab.hidden = !historical;
+
+  const summary = el('summary-grid');
+  if (summary) summary.hidden = !historical;
+
+  if (!historical && currentSetupViewName() === 'review') {
+    showView(el('schedule-view') ? 'schedule' : 'library');
+  }
 }
 
 function renderSummary() {
@@ -737,6 +759,7 @@ async function loadSeason(year) {
   appState.seasonYear = Number(year);
   renderSeasonOptions();
   const season = currentSeasonRecord();
+  applySeasonReviewSurface();
   el('review-season-label').textContent = `${appState.seasonYear} season`;
   el('app-subhead').textContent = season?.session_status === 'HISTORICAL_VERIFICATION'
     ? `${appState.seasonYear} historical verification — shared Production data`
@@ -777,10 +800,10 @@ async function loadSeason(year) {
 }
 
 function chooseInitialSeason() {
-  const historical = appState.seasons.find((season) => season.session_status === 'HISTORICAL_VERIFICATION');
-  if (historical) return Number(historical.season_year);
   const activeWithSession = appState.seasons.find((season) => season.active_flag && season.setup_session_id);
   if (activeWithSession) return Number(activeWithSession.season_year);
+  const historical = appState.seasons.find((season) => season.session_status === 'HISTORICAL_VERIFICATION');
+  if (historical) return Number(historical.season_year);
   const anySession = appState.seasons.find((season) => season.setup_session_id);
   if (anySession) return Number(anySession.season_year);
   return appState.seasons.length ? Number(appState.seasons[0].season_year) : null;
