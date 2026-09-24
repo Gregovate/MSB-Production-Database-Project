@@ -190,5 +190,5 @@ def test_reusable_disposable_grant_replay_identifies_the_exact_failing_statement
         server = read_acceptance(name)
         assert 'echo "Grant replay [$grant_index]: $grant_stmt"' in server
         assert 'psql_test -c "$grant_stmt"' in server
-        assert "application-role grant replay failed at statement" in server
+        assert "application-role function grant replay failed at statement" in server
         assert 'psql_test < "$GRANTS_FILE"' not in server
