@@ -39,11 +39,16 @@ def test_reusable_browser_preview_is_parameterized_and_version_pinnable() -> Non
         "[string]$ExpectedVersion",
         "[string[]]$MigrationPaths",
         "[string[]]$ValidationPaths",
+        "[switch]$AllowConcurrentProductionWrites",
     ):
         assert token in launcher
 
     assert "expected_version`t$ExpectedVersion" in launcher
+    assert "allow_concurrent_production_writes`t$($AllowConcurrentProductionWrites.IsPresent.ToString().ToLowerInvariant())" in launcher
     assert 'EXPECTED_VERSION=""' in server
+    assert 'ALLOW_CONCURRENT_PRODUCTION_WRITES="false"' in server
+    assert 'allow_concurrent_production_writes) ALLOW_CONCURRENT_PRODUCTION_WRITES="$value" ;;' in server
+    assert "PASS WITH CONCURRENT ACTIVITY" in server
     assert "Preview version pin: PASS" in server
     assert "SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY" in server
 
@@ -123,3 +128,15 @@ def test_candidate_paths_are_restricted_to_feature_owned_directories() -> None:
         assert "Setup/Database/" in launcher
         assert "Setup/Acceptance/" in launcher
         assert "Unsafe $Kind candidate-relative path" in launcher
+
+
+def test_reusable_browser_preview_concurrent_production_mode_is_explicit_and_default_strict() -> None:
+    launcher = read_acceptance("run_setup_disposable_browser_preview.ps1")
+    server = read_acceptance("setup_disposable_browser_preview_server.sh")
+
+    assert "[switch]$AllowConcurrentProductionWrites" in launcher
+    assert 'ALLOW_CONCURRENT_PRODUCTION_WRITES="false"' in server
+    assert 'if [[ "$ALLOW_CONCURRENT_PRODUCTION_WRITES" == "true" ]]' in server
+    assert "PASS WITH CONCURRENT ACTIVITY" in server
+    assert "FAIL: Production Setup fingerprint changed during browser preview" in server
+    assert "The preview clone is a point-in-time snapshot" in server
