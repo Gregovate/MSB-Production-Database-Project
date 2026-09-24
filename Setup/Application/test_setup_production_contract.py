@@ -231,3 +231,28 @@ def test_production_api_contains_protected_read_and_command_surfaces() -> None:
         "/api/setup/material-audit/kits/<int:container_id>/shared-non-task",
     ):
         assert expected in rules
+
+
+def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
+    production = (APP_DIR / "setup_production.js").read_text(encoding="utf-8")
+    next_pass = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
+    html = (APP_DIR / "production.html").read_text(encoding="utf-8")
+
+    assert "function setupCommitCurrentRouteState()" in production
+    assert "window.history.replaceState" in production
+    assert "window.history.pushState" in production
+    assert "window.addEventListener('popstate'" in production
+    assert "setupMayLeaveCurrentView" in production
+    assert "msbSetupHasDirtyEdits" in production
+    assert "setupPopstateUndo" in production
+    assert "setupPopstateReplay" in production
+    assert "window.history.go(-delta)" in production
+    assert "window.history.go(pending.delta)" in production
+    assert "['review', 'library', 'extra-materials', 'movement', 'schedule', 'perform']" in production
+    assert "navigateSetupView(button.dataset.view)" in production
+    assert "navigateSetupView('schedule')" in next_pass
+    assert "navigateSetupView('perform')" in next_pass
+    assert "setup_production.js?v=2026-09-24.3" in html
+    assert "setup_next_pass.js?v=2026-09-24.1" in html
+    assert "setup_scheduling_board.js?v=2026-09-24.3" in html
+

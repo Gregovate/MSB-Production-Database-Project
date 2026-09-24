@@ -177,7 +177,142 @@ function showView(name) {
     button.classList.toggle('active', button.dataset.view === name);
   });
   document.querySelectorAll('.view').forEach((view) => view.classList.remove('active-view'));
-  el(`${name}-view`).classList.add('active-view');
+  const target = el(`${name}-view`);
+  if (target) target.classList.add('active-view');
+}
+
+function currentSetupViewName() {
+  const active = document.querySelector('.view.active-view');
+  return active?.id?.endsWith('-view') ? active.id.slice(0, -5) : 'review';
+}
+
+let setupHistoryIndex = Number(window.history.state?.setupHistoryIndex ?? 0);
+let setupPopstateUndo = false;
+let setupPopstateReplay = false;
+let setupPendingHistoryMove = null;
+
+async function setupMayLeaveCurrentView(actionLabel) {
+  if (typeof window.msbSetupResolveDirtyBeforeNavigation !== 'function') return true;
+  return window.msbSetupResolveDirtyBeforeNavigation(actionLabel);
+}
+
+function setupNavigationActionLabel(route) {
+  const view = String(route?.view || 'review');
+  if (view === 'schedule') return 'returning to the Task Finder';
+  if (view === 'review') return 'opening reusable task detail';
+  if (view === 'library') return 'opening the Reusable Task Catalog';
+  if (view === 'perform') return 'opening Perform Work';
+  if (view === 'extra-materials') return 'opening Extra Materials / Inventory';
+  if (view === 'movement') return 'opening Movement / Scanning';
+  return 'continuing';
+}
+
+function setupRouteUrl(route) {
+  const params = new URLSearchParams(window.location.search);
+  params.delete('view');
+  params.delete('setup_task_id');
+  params.delete('correction');
+
+  const view = String(route?.view || 'review');
+  params.set('view', view);
+  if (route?.taskId != null) params.set('setup_task_id', String(route.taskId));
+
+  const query = params.toString();
+  return `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash || ''}`;
+}
+
+function setupCaptureCurrentRoute() {
+  const view = currentSetupViewName();
+  const route = { view };
+
+  if (view === 'review' && appState.selectedTaskId != null) {
+    route.taskId = Number(appState.selectedTaskId);
+  }
+  if (view === 'schedule' && typeof board205CaptureFinderState === 'function') {
+    route.finder = board205CaptureFinderState();
+  }
+  return route;
+}
+
+function setupCommitCurrentRouteState() {
+  const route = setupCaptureCurrentRoute();
+  const stateIndex = Number(window.history.state?.setupHistoryIndex);
+  if (Number.isFinite(stateIndex)) setupHistoryIndex = stateIndex;
+  window.history.replaceState(
+    { setupRoute: route, setupHistoryIndex },
+    '',
+    setupRouteUrl(route)
+  );
+  return route;
+}
+
+function setupSetFinderReturnVisible(visible) {
+  const button = el('setup-return-to-finder');
+  if (button) button.hidden = !Boolean(visible);
+}
+
+async function setupRestoreRoute(route) {
+  const requested = route && typeof route === 'object' ? route : { view: 'review' };
+  const view = String(requested.view || 'review');
+
+  setupSetFinderReturnVisible(false);
+  showView(view);
+
+  if (view === 'schedule' && typeof loadNextSchedule === 'function') {
+    await loadNextSchedule();
+    if (requested.finder && typeof board205RestoreFinderState === 'function') {
+      board205RestoreFinderState(requested.finder);
+    }
+  } else if (view === 'perform' && typeof loadNextExecution === 'function') {
+    await loadNextExecution();
+  }
+
+  if (view === 'review' && requested.taskId != null && taskById(requested.taskId)) {
+    selectTask(Number(requested.taskId));
+    setupSetFinderReturnVisible(Boolean(requested.returnToFinder));
+  }
+}
+
+async function navigateSetupView(name) {
+  const route = { view: String(name || 'review') };
+  if (!await setupMayLeaveCurrentView(setupNavigationActionLabel(route))) return false;
+
+  setupCommitCurrentRouteState();
+  setupHistoryIndex += 1;
+  window.history.pushState(
+    { setupRoute: route, setupHistoryIndex },
+    '',
+    setupRouteUrl(route)
+  );
+  await setupRestoreRoute(route);
+  return true;
+}
+
+async function setupNavigateToReusableTaskFromFinder(taskId) {
+  const route = {
+    view: 'review',
+    taskId: Number(taskId),
+    returnToFinder: true
+  };
+  if (!await setupMayLeaveCurrentView('opening the full reusable task')) return false;
+
+  setupCommitCurrentRouteState();
+  setupHistoryIndex += 1;
+  window.history.pushState(
+    { setupRoute: route, setupHistoryIndex },
+    '',
+    setupRouteUrl(route)
+  );
+  await setupRestoreRoute(route);
+  return true;
+}
+
+function setupRouteFromLocation() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    view: params.get('view') || 'review',
+    taskId: Number(params.get('setup_task_id') || 0) || null
+  };
 }
 
 function applyAccess() {
@@ -416,10 +551,17 @@ async function saveReusableTask() {
     weather_note: el('edit-weather').value.trim(),
     reusable_notes: el('edit-reusable-notes').value.trim()
   };
+  const effort = el('edit-effort-level')?.value || null;
 
   try {
     setBusy(true);
     await api(`api/setup/tasks/${task.setup_task_id}`, commandOptions('PATCH', payload));
+    if ((task.effort_level || null) !== effort) {
+      await api(
+        `api/setup/tasks/${task.setup_task_id}/effort`,
+        commandOptions('PATCH', { effort_level: effort })
+      );
+    }
     setAlert(`Reusable task ${task.setup_task_id} saved to Production.`, 'ok');
     await reloadTasks(task.setup_task_id);
   } catch (error) {
@@ -650,7 +792,7 @@ function consumePendingCorrection(name) {
   return true;
 }
 
-function applyRequestedRoute() {
+async function applyRequestedRoute() {
   const params = new URLSearchParams(window.location.search);
   const requestedView = params.get('view');
   const requestedTaskId = Number(params.get('setup_task_id') || 0);
@@ -660,8 +802,9 @@ function applyRequestedRoute() {
     appState.pendingCorrection = requestedCorrection;
   }
 
-  if (requestedView && ['review', 'library', 'extra-materials', 'movement'].includes(requestedView)) {
-    showView(requestedView);
+  const allowedViews = ['review', 'library', 'extra-materials', 'movement', 'schedule', 'perform'];
+  if (requestedView && allowedViews.includes(requestedView)) {
+    await setupRestoreRoute({ view: requestedView });
   }
   if (requestedTaskId && taskById(requestedTaskId)) {
     if (!requestedView || !['review', 'library'].includes(requestedView)) {
@@ -708,7 +851,8 @@ async function initialize() {
       throw new Error('No Setup season is available.');
     }
     await loadSeason(appState.seasonYear);
-    applyRequestedRoute();
+    await applyRequestedRoute();
+    setupCommitCurrentRouteState();
   } catch (error) {
     setAlert(error.message || error, 'error');
     el('access-badge').textContent = 'Setup access unavailable';
@@ -718,7 +862,66 @@ async function initialize() {
 }
 
 document.querySelectorAll('.tab').forEach((button) => {
-  button.addEventListener('click', () => showView(button.dataset.view));
+  button.addEventListener('click', () => {
+    void navigateSetupView(button.dataset.view);
+  });
+});
+
+el('setup-return-to-finder')?.addEventListener('click', () => {
+  void (async () => {
+    if (!await setupMayLeaveCurrentView('returning to the Task Finder')) return;
+    const route = window.history.state?.setupRoute;
+    if (route?.returnToFinder) {
+      window.history.back();
+      return;
+    }
+    await navigateSetupView('schedule');
+  })();
+});
+
+window.addEventListener('popstate', (event) => {
+  const route = event.state?.setupRoute || setupRouteFromLocation();
+  const targetIndexRaw = Number(event.state?.setupHistoryIndex);
+  const targetIndex = Number.isFinite(targetIndexRaw) ? targetIndexRaw : setupHistoryIndex;
+
+  if (setupPopstateReplay) {
+    setupPopstateReplay = false;
+    setupHistoryIndex = targetIndex;
+    setupPendingHistoryMove = null;
+    void setupRestoreRoute(route);
+    return;
+  }
+
+  if (setupPopstateUndo) {
+    setupPopstateUndo = false;
+    const pending = setupPendingHistoryMove;
+    if (!pending) return;
+
+    void (async () => {
+      const allowed = await setupMayLeaveCurrentView(setupNavigationActionLabel(pending.route));
+      if (!allowed) {
+        setupPendingHistoryMove = null;
+        return;
+      }
+      setupPopstateReplay = true;
+      window.history.go(pending.delta);
+    })();
+    return;
+  }
+
+  const delta = targetIndex - setupHistoryIndex;
+  const hasDirty = typeof window.msbSetupHasDirtyEdits === 'function'
+    && window.msbSetupHasDirtyEdits();
+
+  if (delta !== 0 && hasDirty) {
+    setupPendingHistoryMove = { delta, route, targetIndex };
+    setupPopstateUndo = true;
+    window.history.go(-delta);
+    return;
+  }
+
+  setupHistoryIndex = targetIndex;
+  void setupRestoreRoute(route);
 });
 el('material-audit-link')?.addEventListener('click', () => { window.location.href = 'material-audit/'; });
 el('season-select').addEventListener('change', () => loadSeason(el('season-select').value));

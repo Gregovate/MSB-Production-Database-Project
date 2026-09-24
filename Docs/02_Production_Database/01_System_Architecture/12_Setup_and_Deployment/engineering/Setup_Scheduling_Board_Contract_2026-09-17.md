@@ -153,6 +153,54 @@ Time ≥ 4h -> what are the longer jobs?
 
 Blank remains Any. A two-sided numeric range is intentionally deferred unless 2026 use demonstrates a need.
 
+## Pre-2026 Task-Finder Authority
+
+Before the real annual Setup Session exists, the active **Reusable Task Catalog** is the single current task-definition authority and the single current task-finder population.
+
+The existing 2025 Session was a temporary construction/verification marker used while building the new Setup system. **There is no authoritative 2025 Setup schedule history.** It has no continuing operational planning or historical authority. It must not:
+
+- determine whether a current reusable task is visible;
+- add `NOT IN 2025` identity/badges to current work;
+- supply the current reusable Plan order;
+- act as a proxy for a current-year Ready / Not Ready decision; or
+- force the operator into the full Reusable Task Catalog merely to edit routine planning fields.
+
+Pre-2026 **Plan order** uses reusable Catalog order. With **All Stages / areas**, the whole-Setup `ref.setup_task.baseline_plan_order` is authoritative. When the finder is narrowed to a Stage or Site-wide scope, the operator-visible reusable step `display_order` is authoritative within that scope (for example 10/20/30/40/50), with `baseline_plan_order` as fallback. After a real annual Session exists, `ops.setup_session_task.planned_order` becomes that season's whole-Setup ordering authority.
+
+The normal pre-2026 correction path is the compact **Edit Planning Info** dialog for crew guidance, expected Hours/Minutes, Effort, Readiness note, Weather note, Completion point, and Reusable notes. **Open Full Reusable Task** is the secondary drill-down for deeper information such as Resources, material ownership, Captain knowledge, Procedure context, and other full-record maintenance.
+
+The pre-2026 finder does not expose annual-only states such as Deferred as primary planning filters when there is no defined operator action using them. Underlying historical/annual values remain preserved for compatibility.
+
+## Finder Readiness Visibility and Drill-down Navigation
+
+Readiness remains a **soft blocker**. A readiness condition does not become a hard scheduling prerequisite merely because the finder offers a readiness visibility control.
+
+The finder may provide a **Ready only** visibility toggle so an operator can temporarily hide tasks whose current readiness state is `NOT_READY` while scanning practical candidates. Turning that visibility filter off must immediately restore those soft-blocked tasks. The control changes only what the finder shows; it does not rewrite readiness state, prerequisite state, or scheduling eligibility.
+
+When a Manager drills from the Task Finder into a reusable task to correct durable Catalog knowledge, that drill-down must preserve the operator's planning context. Returning to the Task Finder—through either an explicit **Back to Task Finder** action or browser Back—must restore the same:
+
+- Stage / area;
+- Scene / scope;
+- sort mode;
+- task-name search;
+- Blocking ON/OFF state;
+- readiness visibility state;
+- status filters;
+- Time / Crew comparators and values;
+- Effort filter;
+- compact/expanded finder presentation; and
+- practical scroll position.
+
+The compact **Edit Planning Info** dialog is a governed editing surface. If its fields have changed and the Manager chooses **Open Full Reusable Task**, those edits must be saved successfully **before** the drill-down occurs. A failed save leaves the Manager in the compact editor; navigation must not silently discard the draft.
+
+The full reusable task editor has **one reusable save action**. Physical Effort is reusable planning knowledge and is saved by **Save Reusable Task** together with the reusable definition fields. A separate **Save Effort** button is not part of the operator contract.
+
+A reusable-task correction opened from the finder is therefore a temporary drill-down, not a workflow reset into the Reusable Task Catalog.
+
+The full reusable task editor keeps the established dirty-edit protection. If reusable or annual fields are dirty, browser Back, **Back to Task Finder**, Setup-tab changes, season changes, and other internal navigation must use the same explicit **Save and continue / Discard and continue / Stay on this task** decision. Browser-history routing with `pushState` / `popstate` is not allowed to bypass that warning.
+
+Setup tab/view navigation should participate in browser history so Back/Forward can move between Setup views instead of unexpectedly abandoning the operator's current Setup workflow after internal navigation.
+
 ## Scheduler Planning-Info Correction
 
 The Scheduling Board is often where missing/TBD planning knowledge becomes obvious.
@@ -166,7 +214,10 @@ Before actual work exists, a Manager may use **Edit Planning Info** directly fro
 - weather note;
 - completion point.
 
-For reusable-origin work, this is an explicit reusable-knowledge correction and the current annual snapshot is refreshed at the same time.
+For reusable-origin work, this is an explicit reusable-knowledge correction.
+
+- **Before the real annual Session exists**, Edit Planning Info updates the reusable Catalog only. The 2025 construction-marker rows are not rewritten merely to support current planning.
+- **After a real annual Session exists**, the accepted annual planning command may refresh that current season's annual snapshot together with the reusable knowledge where the workflow explicitly calls for both.
 
 For season-only work, the correction remains annual-only.
 

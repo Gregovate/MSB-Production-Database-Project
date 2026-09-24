@@ -66,16 +66,18 @@ def test_return_control_has_distinct_theme_safe_navigation_treatment():
     assert "color: #ffffff" in css
 
 
-def test_effort_save_alignment_uses_primary_button_and_field_baseline():
+def test_effort_uses_single_reusable_task_save_action():
     html = read("production.html")
-    js = read("setup_catalog_effort.js")
-    css = read("setup_training_review_refinement.css")
-    assert 'id="save-task-effort" type="button">Save Effort</button>' in html
-    assert "button.classList.remove('secondary')" in js
-    assert "#setup-effort-editor-row" in css
-    assert "grid-template-columns: minmax(0, 1fr) auto" in css
-    assert "align-items: end" in css
-    assert "Effort saves separately from Save Reusable Task." not in js
+    effort_js = read("setup_catalog_effort.js")
+    production_js = read("setup_production.js")
+
+    assert 'id="edit-effort-level"' in html
+    assert 'id="save-reusable-task" type="button">Save Reusable Task</button>' in html
+    assert 'id="save-task-effort"' not in html
+    assert "saveSelectedSetupEffort" not in effort_js
+    assert "placeSetupEffortSaveControl" not in effort_js
+    assert "const effort = el('edit-effort-level')?.value || null;" in production_js
+    assert "api/setup/tasks/${task.setup_task_id}/effort" in production_js
 
 
 def test_catalog_delete_reuses_existing_back_control_position():

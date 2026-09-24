@@ -33,6 +33,7 @@
     'edit-actual-duration',
     'edit-annual-notes'
   ]);
+  const effortFieldId = 'edit-effort-level';
 
   let replayDepth = 0;
   window.msbSetupClientBuild = CLIENT_BUILD;
@@ -81,6 +82,29 @@
     };
   }
 
+  function restoreReusableDraft(values) {
+    if (!values) return;
+    el('edit-task-name').value = values.task_name ?? '';
+    el('edit-stage-id').value = values.stage_id ?? '';
+    el('edit-action-type').value = values.task_action_type || 'WORK';
+    el('edit-display-order').value = values.display_order ?? 100;
+    el('edit-active-flag').checked = Boolean(values.active_flag);
+    el('edit-crew-min').value = values.normal_crew_min ?? '';
+    el('edit-crew-max').value = values.normal_crew_max ?? '';
+
+    const total = values.expected_duration_minutes == null
+      ? null
+      : Number(values.expected_duration_minutes);
+    el('edit-duration-hours').value = total == null ? '' : Math.floor(total / 60);
+    el('edit-duration-minute-remainder').value = total == null ? '' : total % 60;
+
+    el('edit-completion').value = values.completion_point ?? '';
+    el('edit-readiness').value = values.readiness_note ?? '';
+    el('edit-weather').value = values.weather_note ?? '';
+    el('edit-reusable-notes').value = values.reusable_notes ?? '';
+    syncDirtyIndicators();
+  }
+
   function annualFormState() {
     return {
       actual_crew_count: normalizeNullableInteger(el('edit-actual-crew').value),
@@ -115,12 +139,29 @@
     return Boolean(task && !sameState(annualFormState(), annualTaskState(task)));
   }
 
-  function anyDirty() {
-    return reusableDirty() || annualDirty();
+  function effortFormValue() {
+    const value = String(el(effortFieldId)?.value || '').trim().toUpperCase();
+    return value || null;
   }
+
+  function effortTaskValue(task) {
+    const value = String(task?.effort_level || '').trim().toUpperCase();
+    return value || null;
+  }
+
+  function effortDirty() {
+    const task = selectedTask();
+    return Boolean(task && effortFormValue() !== effortTaskValue(task));
+  }
+
+  function anyDirty() {
+    return reusableDirty() || effortDirty() || annualDirty();
+  }
+
   function dirtyDescription() {
     const parts = [];
     if (reusableDirty()) parts.push('reusable task');
+    if (effortDirty()) parts.push('physical effort');
     if (annualDirty()) parts.push(`${appState.seasonYear || 'annual'} review`);
     return parts.join(' and ') || 'task';
   }
@@ -173,7 +214,12 @@
   }
 
   function syncDirtyIndicators() {
-    syncButtonLabel('save-reusable-task', 'Save Reusable Task', 'Save Reusable Task • Unsaved', reusableDirty());
+    syncButtonLabel(
+      'save-reusable-task',
+      'Save Reusable Task',
+      'Save Reusable Task • Unsaved',
+      reusableDirty() || effortDirty()
+    );
     syncButtonLabel('save-annual-review', 'Save Annual Review', 'Save Annual Review • Unsaved', annualDirty());
   }
 
@@ -195,13 +241,35 @@
     if (!await ensureServerBuild()) return false;
 
     const preservedAnnual = preserveAnnualDraft ? annualDraft() : null;
+    const reusableNeedsSave = reusableDirty();
+    const effortNeedsSave = effortDirty();
+    const effortValue = effortFormValue();
+
     try {
       setBusy(true);
-      await api(`api/setup/tasks/${task.setup_task_id}`, commandOptions('PATCH', reusableFormState({ strictDuration: true })));
-      await reloadTasks(task.setup_task_id);
+
+      if (reusableNeedsSave) {
+        await api(
+          `api/setup/tasks/${task.setup_task_id}`,
+          commandOptions('PATCH', reusableFormState({ strictDuration: true }))
+        );
+      }
+
+      if (effortNeedsSave) {
+        await api(
+          `api/setup/tasks/${task.setup_task_id}/effort`,
+          commandOptions('PATCH', { effort_level: effortValue })
+        );
+      }
+
+      if (reusableNeedsSave || effortNeedsSave) {
+        await reloadTasks(task.setup_task_id);
+      }
+
       if (preservedAnnual && Number(appState.selectedTaskId) === Number(task.setup_task_id)) {
         restoreAnnualDraft(preservedAnnual);
       }
+
       if (announce) setAlert(`Reusable task ${task.setup_task_id} saved to Production.`, 'ok');
       return true;
     } catch (error) {
@@ -255,7 +323,7 @@
       'mark-unverified': 'UNVERIFIED'
     };
 
-    if (reusableDirty()) {
+    if (reusableDirty() || effortDirty()) {
       const reusableSaved = await persistReusableEdits({ announce: false, preserveAnnualDraft: true });
       if (!reusableSaved) return;
     }
@@ -263,7 +331,7 @@
   }
 
   async function saveDirtySurfaces() {
-    if (reusableDirty()) {
+    if (reusableDirty() || effortDirty()) {
       const reusableSaved = await persistReusableEdits({ announce: false, preserveAnnualDraft: true });
       if (!reusableSaved) return false;
     }
@@ -335,11 +403,11 @@
   function installInputTracking() {
     window.addEventListener('input', (event) => {
       const id = event.target?.id;
-      if (reusableFieldIds.has(id) || annualFieldIds.has(id)) syncDirtyIndicators();
+      if (reusableFieldIds.has(id) || annualFieldIds.has(id) || id === effortFieldId) syncDirtyIndicators();
     }, true);
     window.addEventListener('change', (event) => {
       const id = event.target?.id;
-      if (reusableFieldIds.has(id) || annualFieldIds.has(id)) syncDirtyIndicators();
+      if (reusableFieldIds.has(id) || annualFieldIds.has(id) || id === effortFieldId) syncDirtyIndicators();
     }, true);
   }
 
@@ -443,6 +511,13 @@
       event.returnValue = '';
     });
   }
+
+  // Shared navigation contract: internal pushState/popstate navigation must
+  // use the same save/discard/stay decision as legacy tab/task click guards.
+  window.msbSetupHasDirtyEdits = anyDirty;
+  window.msbSetupResolveDirtyBeforeNavigation = resolveDirtyBeforeNavigation;
+  window.msbSetupCaptureReusableDraft = () => reusableFormState();
+  window.msbSetupRestoreReusableDraft = restoreReusableDraft;
 
   installBuildBadge();
   installSelectionRefreshWrapper();
