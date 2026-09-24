@@ -84,6 +84,21 @@ def test_production_client_has_no_browser_local_prototype_state() -> None:
     assert "kit-boxes" in texts[-1]
 
 
+def test_122_real_planning_season_hides_historical_verification_surface() -> None:
+    production = (APP_DIR / "setup_production.js").read_text(encoding="utf-8")
+
+    assert "function applySeasonReviewSurface()" in production
+    assert "reviewTab.hidden = !historical" in production
+    assert "summary.hidden = !historical" in production
+    assert "season.session_status !== 'HISTORICAL_VERIFICATION'" in production
+    assert "name = el('schedule-view') ? 'schedule' : 'library';" in production
+
+    chooser = production.split("function chooseInitialSeason()", 1)[1].split(
+        "function consumePendingCorrection", 1
+    )[0]
+    assert chooser.index("activeWithSession") < chooser.index("historical")
+
+
 def test_production_runtime_declares_gunicorn() -> None:
     requirements = (APP_DIR / "requirements.txt").read_text(encoding="utf-8")
     assert "gunicorn>=26,<27" in requirements
@@ -252,7 +267,7 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "navigateSetupView(button.dataset.view)" in production
     assert "navigateSetupView('schedule')" in next_pass
     assert "navigateSetupView('perform')" in next_pass
-    assert "setup_production.js?v=2026-09-24.3" in html
+    assert "setup_production.js?v=2026-09-24.4" in html
     assert "setup_next_pass.js?v=2026-09-24.1" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.4" in html
+    assert "setup_scheduling_board.js?v=2026-09-24.5" in html
 
