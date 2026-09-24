@@ -140,3 +140,15 @@ def test_reusable_browser_preview_concurrent_production_mode_is_explicit_and_def
     assert "PASS WITH CONCURRENT ACTIVITY" in server
     assert "FAIL: Production Setup fingerprint changed during browser preview" in server
     assert "The preview clone is a point-in-time snapshot" in server
+
+
+def test_browser_preview_allows_only_the_approved_shared_audit_repair() -> None:
+    launcher = read_acceptance("run_setup_disposable_browser_preview.ps1")
+
+    assert "$isSetupMigration = $Path.StartsWith('Setup/Database/')" in launcher
+    assert "$isApprovedSharedMigration = $Path -eq 'Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql'" in launcher
+    assert "explicitly approved shared database repair" in launcher
+    assert "Database/Basic_Query_Tools_Dev/" not in launcher.replace(
+        "Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql",
+        "",
+    )
