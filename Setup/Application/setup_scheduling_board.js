@@ -630,19 +630,11 @@ function board205QueueTasks() {
       }
 
       if (search) {
-        const deps = board205TaskDependencies(task.setup_session_task_id);
-        const haystack = [
-          task.task_name,
-          task.stage_key,
-          task.stage_name,
-          task.scene_name,
-          task.readiness_note,
-          task.resource_summary,
-          board205StatusLabel(task.board_status),
-          ...deps.map((dep) => dep.prerequisite_task_name),
-          task.linked_work_order_id ? `WO ${task.linked_work_order_id}` : ''
-        ].filter(Boolean).join(' ').toLowerCase();
-        if (!haystack.includes(search)) return false;
+        // "Task" means task name. Keep this finder literal and predictable:
+        // typing "locate" returns annual tasks whose task_name contains locate,
+        // regardless of blocker/status. Stage/Scene/etc. have their own filters.
+        const taskName = String(task.task_name || '').toLowerCase();
+        if (!taskName.includes(search)) return false;
       }
 
       if (minutesValue != null) {
@@ -672,7 +664,7 @@ function board205RenderQueue() {
   if (summary) {
     summary.textContent = `${tasks.length} of ${(setupBoard205State.board.tasks || []).length} annual tasks`
       + ` · Blocking ${board205BlockingEnabled() ? 'ON' : 'OFF'}`
-      + (search ? ' · Task search checks all statuses' : '')
+      + (search ? ' · task-name search checks all statuses' : '')
       + (!board205BlockingEnabled() ? ' · blocker facts still shown' : '');
   }
   target.innerHTML = tasks.length
@@ -1531,7 +1523,7 @@ function board205InstallView() {
               <option value="DURATION">Expected duration</option>
               <option value="CREW">Minimum crew</option>
             </select></label>
-            <label class="setup-board205-search">Task<input id="setup-board205-task-search" type="search" placeholder="Search all statuses: task, Stage, Scene, blocker, resource, WO"></label>
+            <label class="setup-board205-search">Task name<input id="setup-board205-task-search" type="search" placeholder="e.g. locate"></label>
             <label class="setup-board205-blocking-toggle"><input id="setup-board205-blocking-toggle" type="checkbox" checked> Blocking ON</label>
             <div class="setup-board205-blocking-help">ON honors hard predecessor / readiness / Work Order blocking for finder availability. OFF treats those tasks as planning candidates without changing the underlying blocker facts.</div>
             <fieldset class="setup-board205-status-filter">
