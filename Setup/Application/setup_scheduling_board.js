@@ -934,7 +934,7 @@ function board205RenderQueue() {
     const noun = board205HistoricalReviewMode() ? 'current reusable tasks' : 'annual tasks';
     summary.textContent = `${tasks.length} of ${(setupBoard205State.board.tasks || []).length} ${noun}`
       + ` · Blocking ${board205BlockingEnabled() ? 'ON' : 'OFF'}`
-      + (board205ReadyOnlyEnabled() ? ' · Ready only' : ' · readiness soft-visible')
+      + (board205ReadyOnlyEnabled() ? ' · Ready only' : ' · soft readiness shown')
       + (search ? ' · task-name search checks all statuses' : '')
       + (!board205BlockingEnabled()
         ? ' · hard-blocked work included'
@@ -1858,7 +1858,7 @@ function board205InstallView() {
           <h3 id="setup-board205-finder-title">Current Reusable Task Finder</h3>
           <div id="setup-board205-historical-note" class="notice" hidden>
             <strong>Pre-2026 planning — current reusable Catalog.</strong>
-            Use the current reusable tasks to review crew guidance, expected time, readiness, notes, and plan order. Historical 2025 facts remain in Verification and do not define this task list. Work days, crews, and assignments remain disabled until the real annual Session is created.
+            Use the current reusable tasks to review crew guidance, expected time, readiness, notes, and plan order. The 2025 construction marker does not define this task list or current planning state. Work days, crews, and assignments remain disabled until the real annual Session is created.
           </div>
           <div id="setup-board205-filters" class="setup-board205-filters setup-board205-finder">
             <label>Stage / area<select id="setup-board205-stage-filter"><option value="">All Stages / areas</option></select></label>
@@ -1873,14 +1873,14 @@ function board205InstallView() {
             </select></label>
             <label class="setup-board205-search">Task name<input id="setup-board205-task-search" type="search" placeholder="e.g. locate"></label>
             <label class="setup-board205-blocking-toggle"><input id="setup-board205-blocking-toggle" type="checkbox" checked> Blocking ON</label>
-            <label class="setup-board205-readiness-toggle"><input id="setup-board205-ready-only" type="checkbox" checked> Ready only</label>
             <button id="setup-board205-filter-density" type="button" class="small secondary" aria-expanded="true">Compact filters</button>
             <div class="setup-board205-blocking-help">ON hides tasks whose hard predecessor is incomplete. A Work Order gate task itself stays visible; the task after it remains hard-blocked until the Work Order clears. Readiness stays a soft blocker; use Ready only when you want to temporarily hide NOT READY work.</div>
             <div class="setup-board205-secondary-filters">
             <fieldset class="setup-board205-status-filter">
-              <legend>Status shown when Task name is blank</legend>
+              <legend>Status / readiness shown when Task name is blank</legend>
               <label><input id="setup-board205-status-ready" type="checkbox" checked> Ready / needs continuation</label>
               <label><input id="setup-board205-status-scheduled" type="checkbox"> Scheduled</label>
+              <label><input id="setup-board205-ready-only" type="checkbox"> Ready only</label>
               <label><input id="setup-board205-status-complete" type="checkbox"> Complete</label>
             </fieldset>
             <label class="setup-board205-numeric-filter">Time
@@ -1981,18 +1981,23 @@ function board205InstallView() {
     board205ApplyFinderCompact();
   });
 
-  document.querySelectorAll('#setup-board205-filters input, #setup-board205-filters select').forEach((control) => {
-    control.addEventListener(control.type === 'search' ? 'input' : 'change', () => {
-      if (control.id === 'setup-board205-stage-filter') board205SyncFinderSceneOptions();
-      if (control.id === 'setup-board205-blocking-toggle') {
-        const label = control.closest('label');
-        if (label) {
-          label.lastChild.textContent = control.checked ? ' Blocking ON' : ' Blocking OFF';
-        }
+  const finderFilters = document.getElementById('setup-board205-filters');
+  finderFilters?.addEventListener('change', (event) => {
+    const control = event.target?.closest?.('input,select');
+    if (!control || !finderFilters.contains(control)) return;
+    if (control.id === 'setup-board205-stage-filter') board205SyncFinderSceneOptions();
+    if (control.id === 'setup-board205-blocking-toggle') {
+      const label = control.closest('label');
+      if (label) {
+        label.lastChild.textContent = control.checked ? ' Blocking ON' : ' Blocking OFF';
       }
-      board205RenderQueue();
-    });
-    if (control.type === 'number') control.addEventListener('input', board205RenderQueue);
+    }
+    board205RenderQueue();
+  });
+  finderFilters?.addEventListener('input', (event) => {
+    const control = event.target?.closest?.('input');
+    if (!control || !finderFilters.contains(control)) return;
+    if (control.type === 'search' || control.type === 'number') board205RenderQueue();
   });
   document.getElementById('setup-board205-day-form').addEventListener('submit', board205AddWorkDay);
   document.getElementById('setup-board205-show-history').addEventListener('change', board205RenderBoard);
