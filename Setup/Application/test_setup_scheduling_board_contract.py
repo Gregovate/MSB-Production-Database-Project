@@ -346,7 +346,8 @@ def test_205_season_task_editor_is_in_annual_plan_not_reusable_catalog() -> None
     assert "Add Season Task" in ui
     assert "THIS SEASON ONLY" in ui
     assert "It does not enter the Reusable Task Catalog" in ui
-    assert "Existing Work Order ID" in ui
+    assert "Existing Work Order<select" in ui
+    assert "No Work Order" in ui
     assert "Work Order completion satisfies this gate" in ui
     assert "Insert after / prerequisite" in ui
     assert "Block downstream task" in ui
@@ -685,4 +686,25 @@ def test_122_b1a_work_order_gate_is_visible_and_blocks_downstream() -> None:
     # the repository's dependency calculation, not finder-local mutation.
     repo = read_app("setup_scheduling_board_repository.py")
     assert "pst.linked_work_order_gate" in repo
+    assert "pwo.date_completed IS NOT NULL" in repo
+
+
+def test_122_b1a_work_order_selector_uses_live_lookup() -> None:
+    repo = read_app("setup_scheduling_board_repository.py")
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "FROM ops.setup_scheduling_work_order_gate wo" in repo
+    assert "wo.work_order_id" in repo
+    assert "wo.problem" in repo
+    assert "wo.date_completed" in repo
+    assert '"work_orders": work_orders' in repo
+
+    assert "setupBoard205State.board.work_orders" in ui
+    assert "WO ${wo.work_order_id} · ${status}" in ui
+    assert "setup-board205-season-work-order" in ui
+    assert "type=\"number\"" not in ui.split(
+        'id="setup-board205-season-work-order"', 1
+    )[1].split("</label>", 1)[0]
+
+    # Completion remains live database state, not a manual Setup checkbox.
     assert "pwo.date_completed IS NOT NULL" in repo
