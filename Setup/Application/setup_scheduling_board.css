@@ -108,6 +108,30 @@
   color: var(--muted, #64748b);
 }
 
+
+.setup-board205-secondary-filters {
+  flex: 1 0 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: end;
+}
+
+.setup-board205-filters.compact {
+  margin-bottom: 0.35rem;
+  padding-block: 0.45rem;
+}
+
+.setup-board205-filters.compact .setup-board205-secondary-filters,
+.setup-board205-filters.compact .setup-board205-blocking-help {
+  display: none;
+}
+
+.setup-board205-filters.compact label {
+  font-size: 0.78rem;
+}
+
+
 .setup-board205-status-filter {
   display: flex;
   flex: 1 1 100%;
