@@ -349,6 +349,7 @@ function board205FinderStatusFamily(task) {
   if (status === 'CATALOG_ONLY') return 'READY';
   if (status === 'READY_TO_SCHEDULE' || status === 'NEEDS_SCHEDULING_AGAIN') return 'READY';
   if (status === 'BLOCKED') return 'BLOCKED';
+  if (status === 'WAITING_ON_WORK_ORDER' && task?.linked_work_order_gate) return 'READY';
   if (status === 'WAITING_ON_WORK_ORDER') return 'WAITING';
   if (status === 'SCHEDULED') return 'SCHEDULED';
   if (status === 'COMPLETE') return 'COMPLETE';
@@ -358,12 +359,11 @@ function board205FinderStatusFamily(task) {
 
 function board205HasHardBlock(task) {
   if (!task) return false;
-  if (task.prerequisites_complete === false) return true;
-  return Boolean(
-    task.linked_work_order_gate
-    && task.linked_work_order_id
-    && !task.linked_work_order_completed_at
-  );
+
+  // A hard block belongs on the subsequent task whose prerequisite is not
+  // complete. The Work Order gate task itself remains visible so the operator
+  // can see what is waiting and why.
+  return task.prerequisites_complete === false;
 }
 
 function board205ReadinessOnly(task) {
@@ -1702,7 +1702,7 @@ function board205InstallView() {
             </select></label>
             <label class="setup-board205-search">Task name<input id="setup-board205-task-search" type="search" placeholder="e.g. locate"></label>
             <label class="setup-board205-blocking-toggle"><input id="setup-board205-blocking-toggle" type="checkbox" checked> Blocking ON</label>
-            <div class="setup-board205-blocking-help">ON hides hard blockers (incomplete hard predecessor / open Work Order). OFF includes them. Readiness is a soft blocker and always stays visible for operator judgement.</div>
+            <div class="setup-board205-blocking-help">ON hides tasks whose hard predecessor is incomplete. A Work Order gate task itself stays visible; the task after it remains hard-blocked until the Work Order clears. Readiness is soft and always stays visible for operator judgement.</div>
             <fieldset class="setup-board205-status-filter">
               <legend>Status shown when Task name is blank</legend>
               <label><input id="setup-board205-status-ready" type="checkbox" checked> Ready / needs continuation</label>
