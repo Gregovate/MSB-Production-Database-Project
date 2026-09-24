@@ -87,6 +87,29 @@
   flex: 1 1 12rem;
 }
 
+.setup-board205-blocking-toggle {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 800;
+}
+
+.setup-board205-blocking-toggle input {
+  min-height: auto;
+}
+
+.setup-board205-blocking-help {
+  flex: 1 1 18rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--muted, #64748b);
+}
+
+.setup-board205-blocking-ignored {
+  border-style: dashed;
+  font-weight: 900;
+}
+
 .setup-board205-status-filter {
   display: flex;
   flex: 1 1 100%;
