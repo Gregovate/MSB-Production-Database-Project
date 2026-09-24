@@ -21,6 +21,18 @@ def read_acceptance(name: str) -> str:
     return (ACCEPTANCE_DIR / name).read_text(encoding="utf-8")
 
 
+def test_122_launch_preserves_catalog_review_state_by_session_type() -> None:
+    sql = read_db("058_preserve_catalog_review_on_annual_launch.sql")
+    validation = read_acceptance("setup_122_2026_launch_unblock_disposable_validation.sql")
+
+    assert "WHEN v_status = 'HISTORICAL_VERIFICATION' THEN 'UNVERIFIED'" in sql
+    assert "WHEN s.session_status = 'HISTORICAL_VERIFICATION' THEN 'UNVERIFIED'" in sql
+    assert "ELSE 'VERIFIED'" in sql
+    assert "this does not rewrite existing annual history" in sql
+    assert "reset accepted reusable Catalog work to UNVERIFIED" in validation
+    assert "Historical verification Session did not preserve UNVERIFIED semantics" in validation
+
+
 def test_205_migration_separates_reusable_and_season_only_annual_work() -> None:
     sql = read_db("050_add_setup_scheduling_board_foundation.sql")
     for token in (
