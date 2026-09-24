@@ -201,7 +201,8 @@ def test_205_finder_uses_task_time_minimum_crew_and_effort() -> None:
     assert "setup-board205-status-ready" in ui
     assert "setup-board205-status-blocked" in ui
     assert "setup-board205-status-waiting" in ui
-    assert "Search all statuses" in ui
+    assert 'placeholder="e.g. locate"' in ui
+    assert "task-name search checks all statuses" in ui
     assert "task.stage_name" in ui
 
 
@@ -411,7 +412,8 @@ def test_122_b1a_historical_verification_keeps_planning_edits_but_blocks_actual_
 
     assert "function board205HistoricalReviewMode()" in ui
     assert "HISTORICAL_VERIFICATION" in ui
-    assert "dayForm.hidden = historicalReview" in ui
+    assert "const canScheduleDays = Boolean(session) && canManage && !historicalReview;" in ui
+    assert "dayForm.hidden = !canScheduleDays" in ui
     assert "boardPane.hidden = historicalReview" in ui
     assert "&& !historicalReview" in ui
     assert "Historical Verification — no date/crew scheduling here." in ui
