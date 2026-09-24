@@ -773,3 +773,45 @@ def test_122_b1a_finder_can_collapse_secondary_filters() -> None:
     assert "setupBoard205State.finderCompact = historicalReview" in ui
     assert ".setup-board205-filters.compact .setup-board205-secondary-filters" in css
     assert ".setup-board205-filters.compact .setup-board205-blocking-help" in css
+
+
+def test_122_b1a_finder_ready_only_is_visibility_not_hard_blocking() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert 'id="setup-board205-ready-only"' in ui
+    assert "function board205ReadyOnlyEnabled()" in ui
+    assert "readyOnly && task.readiness_state === 'NOT_READY'" in ui
+    assert "Readiness stays a soft blocker" in ui
+    assert "board205FinderStatusFamily(task)" in ui
+    assert "return 'READY';" in ui
+
+
+def test_122_b1a_finder_drilldown_preserves_and_restores_operator_context() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    production = read_app("setup_production.js")
+    html = read_app("production.html")
+
+    assert "function board205CaptureFinderState()" in ui
+    assert "function board205RestoreFinderState(state)" in ui
+    for token in (
+        "stage:",
+        "scene:",
+        "sort:",
+        "search:",
+        "blocking:",
+        "readyOnly:",
+        "statusReady:",
+        "timeOp:",
+        "crewOp:",
+        "effort:",
+        "scrollY:",
+    ):
+        assert token in ui
+
+    assert "setupNavigateToReusableTaskFromFinder(reusableTaskId)" in ui
+    assert 'id="setup-return-to-finder"' in html
+    assert "setupCommitCurrentRouteState()" in production
+    assert "returnToFinder: true" in production
+    assert "window.history.back()" in production
+    assert "board205RestoreFinderState(requested.finder)" in production
+
