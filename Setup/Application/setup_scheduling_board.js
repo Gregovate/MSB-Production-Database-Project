@@ -1633,21 +1633,50 @@ function board205PlanningMinutes() {
   return total > 0 ? total : null;
 }
 
-async function board205SubmitPlanningInfo(event) {
-  event.preventDefault();
+function board205PlanningDraft() {
+  return {
+    normal_crew_min: nullableInteger(document.getElementById('setup-board205-planning-crew-min').value),
+    normal_crew_max: nullableInteger(document.getElementById('setup-board205-planning-crew-max').value),
+    expected_duration_minutes: board205PlanningMinutes(),
+    effort_level: document.getElementById('setup-board205-planning-effort').value || null,
+    readiness_note: document.getElementById('setup-board205-planning-readiness').value.trim() || null,
+    weather_note: document.getElementById('setup-board205-planning-weather').value.trim() || null,
+    completion_point: document.getElementById('setup-board205-planning-completion').value.trim() || null,
+    reusable_notes: document.getElementById('setup-board205-planning-reusable-notes')?.value.trim() || null
+  };
+}
 
+function board205PlanningTaskState(task) {
+  return {
+    normal_crew_min: task?.normal_crew_min == null ? null : Number(task.normal_crew_min),
+    normal_crew_max: task?.normal_crew_max == null ? null : Number(task.normal_crew_max),
+    expected_duration_minutes: task?.expected_duration_minutes == null ? null : Number(task.expected_duration_minutes),
+    effort_level: task?.effort_level || null,
+    readiness_note: String(task?.readiness_note || '').trim() || null,
+    weather_note: String(task?.weather_note || '').trim() || null,
+    completion_point: String(task?.completion_point || '').trim() || null,
+    reusable_notes: String(task?.reusable_notes || '').trim() || null
+  };
+}
+
+function board205PlanningInfoDirty() {
   const sessionTaskId = setupBoard205State.editPlanningTaskId;
   const reusableTaskId = setupBoard205State.editPlanningReusableTaskId;
-  if (!sessionTaskId && !reusableTaskId) return;
+  const task = sessionTaskId
+    ? board205Task(sessionTaskId)
+    : (setupBoard205State.board.tasks || []).find(
+        (row) => Number(row.setup_task_id) === Number(reusableTaskId)
+      );
+  if (!task) return false;
+  return JSON.stringify(board205PlanningDraft()) !== JSON.stringify(board205PlanningTaskState(task));
+}
 
-  const crewMin = nullableInteger(document.getElementById('setup-board205-planning-crew-min').value);
-  const crewMax = nullableInteger(document.getElementById('setup-board205-planning-crew-max').value);
-  const duration = board205PlanningMinutes();
-  const effort = document.getElementById('setup-board205-planning-effort').value || null;
-  const readiness = document.getElementById('setup-board205-planning-readiness').value.trim() || null;
-  const weather = document.getElementById('setup-board205-planning-weather').value.trim() || null;
-  const completion = document.getElementById('setup-board205-planning-completion').value.trim() || null;
-  const reusableNotes = document.getElementById('setup-board205-planning-reusable-notes')?.value.trim() || null;
+async function board205PersistPlanningInfo({ closeDialog = true, announce = true } = {}) {
+  const sessionTaskId = setupBoard205State.editPlanningTaskId;
+  const reusableTaskId = setupBoard205State.editPlanningReusableTaskId;
+  if (!sessionTaskId && !reusableTaskId) return false;
+
+  const draft = board205PlanningDraft();
 
   try {
     setBusy(true);
@@ -1663,56 +1692,51 @@ async function board205SubmitPlanningInfo(event) {
         task_action_type: current.task_action_type || 'WORK',
         display_order: current.display_order ?? 100,
         active_flag: Boolean(current.active_flag),
-        normal_crew_min: crewMin,
-        normal_crew_max: crewMax,
-        expected_duration_minutes: duration,
-        completion_point: completion,
-        readiness_note: readiness,
-        weather_note: weather,
-        reusable_notes: reusableNotes
+        normal_crew_min: draft.normal_crew_min,
+        normal_crew_max: draft.normal_crew_max,
+        expected_duration_minutes: draft.expected_duration_minutes,
+        completion_point: draft.completion_point,
+        readiness_note: draft.readiness_note,
+        weather_note: draft.weather_note,
+        reusable_notes: draft.reusable_notes
       }));
 
-      if ((current.effort_level || null) !== effort) {
+      if ((current.effort_level || null) !== draft.effort_level) {
         await api(
           `api/setup/tasks/${reusableTaskId}/effort`,
-          commandOptions('PATCH', { effort_level: effort })
+          commandOptions('PATCH', { effort_level: draft.effort_level })
         );
       }
 
-      current.normal_crew_min = crewMin;
-      current.normal_crew_max = crewMax;
-      current.expected_duration_minutes = duration;
-      current.effort_level = effort;
-      current.completion_point = completion;
-      current.readiness_note = readiness;
-      current.weather_note = weather;
-      current.reusable_notes = reusableNotes;
-
-      document.getElementById('setup-board205-planning-dialog').close();
+      // Refresh the shared task cache before any drill-down so full detail
+      // opens with the just-saved values and authoritative audit attribution.
+      await reloadTasks(reusableTaskId);
       await board205Load();
-      setAlert('Reusable planning information updated.', 'ok');
+      if (announce) setAlert('Reusable planning information updated.', 'ok');
     } else {
       await api(`api/setup/scheduling-board/season-tasks/${sessionTaskId}/planning-info`, commandOptions('PATCH', {
-        normal_crew_min: crewMin,
-        normal_crew_max: crewMax,
-        expected_duration_minutes: duration,
-        effort_level: effort,
-        readiness_note: readiness,
-        weather_note: weather,
-        completion_point: completion,
-        reusable_notes: reusableNotes
+        ...draft
       }));
-
-      document.getElementById('setup-board205-planning-dialog').close();
       await board205Load();
-      setAlert('Scheduling planning information updated.', 'ok');
+      if (announce) setAlert('Scheduling planning information updated.', 'ok');
     }
+
+    if (closeDialog) {
+      document.getElementById('setup-board205-planning-dialog')?.close();
+    }
+    return true;
   } catch (error) {
     setAlert(error.message || error, 'error');
     window.alert(error.message || error);
+    return false;
   } finally {
     setBusy(false);
   }
+}
+
+async function board205SubmitPlanningInfo(event) {
+  event.preventDefault();
+  await board205PersistPlanningInfo();
 }
 
 function board205OpenSeasonTaskDialog(sessionTaskId = null) {
@@ -2021,15 +2045,24 @@ function board205InstallView() {
   });
   document.getElementById('setup-board205-planning-form').addEventListener('submit', board205SubmitPlanningInfo);
   document.getElementById('setup-board205-open-full-reusable')?.addEventListener('click', () => {
-    const reusableTaskId = setupBoard205State.editPlanningReusableTaskId;
-    if (!reusableTaskId) return;
-    document.getElementById('setup-board205-planning-dialog')?.close();
-    if (typeof setupNavigateToReusableTaskFromFinder === 'function') {
-      void setupNavigateToReusableTaskFromFinder(reusableTaskId);
-    } else {
-      showView('review');
-      selectTask(reusableTaskId);
-    }
+    void (async () => {
+      const reusableTaskId = setupBoard205State.editPlanningReusableTaskId;
+      if (!reusableTaskId) return;
+
+      if (board205PlanningInfoDirty()) {
+        const saved = await board205PersistPlanningInfo({ closeDialog: false, announce: false });
+        if (!saved) return;
+        setAlert('Planning edits saved before opening the full reusable task.', 'ok');
+      }
+
+      document.getElementById('setup-board205-planning-dialog')?.close();
+      if (typeof setupNavigateToReusableTaskFromFinder === 'function') {
+        await setupNavigateToReusableTaskFromFinder(reusableTaskId);
+      } else {
+        showView('review');
+        selectTask(reusableTaskId);
+      }
+    })();
   });
   document.getElementById('setup-board205-season-form').addEventListener('submit', board205SubmitSeasonTask);
   document.getElementById('setup-board205-season-stage').addEventListener('change', board205PopulateScenes);
