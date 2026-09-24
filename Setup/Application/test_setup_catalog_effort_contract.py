@@ -47,6 +47,16 @@ def test_effort_editor_and_catalog_badge_are_present():
     assert "setup-effort-badge" in js
 
 
+def test_effort_save_reloads_authoritative_task_audit_fields():
+    js = text(BASE / "setup_catalog_effort.js")
+    assert "await reloadTasks(task.setup_task_id);" in js
+    assert "audit" in js.lower()
+    save_start = js.index("async function saveSelectedSetupEffort()")
+    save_end = js.index("if (typeof renderLibrary === 'function')", save_start)
+    save_block = js[save_start:save_end]
+    assert "renderLibrary();" not in save_block
+
+
 def test_effort_save_control_is_primary_inline_and_has_no_extra_explanation():
     html = text(BASE / "production.html")
     js = text(BASE / "setup_catalog_effort.js")
