@@ -793,9 +793,9 @@ function board205QueueTasks() {
       const family = board205FinderStatusFamily(task);
       const hardBlocked = board205HasHardBlock(task);
 
-      // Blocking ON hides only hard blockers: incomplete hard predecessors or
-      // open Work Order gates. Readiness is deliberately soft and remains
-      // visible so the operator can decide whether the outside condition is met.
+      // Blocking ON hides only tasks whose hard prerequisite is incomplete.
+      // A Work Order gate task itself remains visible; downstream tasks are
+      // blocked through their prerequisite edge. Readiness remains soft/visible.
       if (board205BlockingEnabled() && hardBlocked) return false;
 
       // When Task name is blank, the ordinary status checkboxes control
