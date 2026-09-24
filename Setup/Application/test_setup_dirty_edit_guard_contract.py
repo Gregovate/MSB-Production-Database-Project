@@ -15,9 +15,9 @@ def guard_source() -> str:
 def test_dirty_guard_asset_is_loaded_and_protected_before_layout_refinement():
     html = read("production.html")
     host = read("production_backend.py")
-    guard_index = html.index("setup_catalog_dirty_guard.js?v=2026-09-24.3")
+    guard_index = html.index("setup_catalog_dirty_guard.js?v=2026-09-24.4")
     compact_index = html.index("setup_task_detail_compact.js?v=2026-09-11.1")
-    effort_index = html.index("setup_catalog_effort.js?v=2026-09-09.3")
+    effort_index = html.index("setup_catalog_effort.js?v=2026-09-24.4")
     assert guard_index > effort_index
     assert compact_index > guard_index
     assert '"setup_catalog_dirty_guard.js"' in host
@@ -109,6 +109,9 @@ def test_navigation_uses_explicit_save_discard_cancel_decision():
     assert "beforeunload" in js
     assert "window.msbSetupHasDirtyEdits = anyDirty;" in js
     assert "window.msbSetupResolveDirtyBeforeNavigation = resolveDirtyBeforeNavigation;" in js
+    assert "window.msbSetupCaptureReusableDraft = () => reusableFormState();" in js
+    assert "window.msbSetupRestoreReusableDraft = restoreReusableDraft;" in js
+    assert "function restoreReusableDraft(values)" in js
     assert "return reusableDirty() || effortDirty() || annualDirty();" in js
     assert "const hadEffortDraft = effortDirty();" in js
 
