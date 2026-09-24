@@ -147,6 +147,10 @@
 
 .setup-board205-main.finder-only .setup-board205-backlog {
   max-width: none;
+  max-height: none;
+  overflow-y: visible;
+  overscroll-behavior: auto;
+  scrollbar-gutter: auto;
 }
 
 .setup-board205-blocker-detail {
