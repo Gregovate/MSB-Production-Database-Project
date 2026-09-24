@@ -589,6 +589,29 @@ def test_122_b1a_reusable_task_audit_is_visible() -> None:
     assert "setup_production.js?v=2026-09-23.3" in html
 
 
+def test_122_b1a_historical_overlay_preserves_fresh_board_audit_after_write() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    overlay = ui.split("function board205ApplyHistoricalCatalogOverlay()", 1)[1].split(
+        "function board205TaskCard(task)", 1
+    )[0]
+
+    # board205Load() fetches a fresh Scheduling Board row after governed writes.
+    # Historical Verification then overlays current Catalog planning fields from
+    # appState.tasks. Audit fields must prefer the fresh board row or the older
+    # page-level task cache will visually restore the prior actor/timestamp until
+    # a full browser reload.
+    assert "annual?.reusable_created_at ?? current.reusable_created_at" in overlay
+    assert "annual?.reusable_created_by_display ?? current.reusable_created_by_display" in overlay
+    assert "annual?.reusable_updated_at ?? current.reusable_updated_at" in overlay
+    assert "annual?.reusable_updated_by ?? current.reusable_updated_by" in overlay
+    assert "annual?.reusable_updated_by_person_id ?? current.reusable_updated_by_person_id" in overlay
+    assert "annual?.reusable_updated_by_display ?? current.reusable_updated_by_display" in overlay
+
+    assert "reusable_updated_at: current.reusable_updated_at," not in overlay
+    assert "reusable_updated_by_display: current.reusable_updated_by_display," not in overlay
+
+
 def test_122_b1a_historical_finder_uses_current_catalog_without_fabricating_2025_rows() -> None:
     ui = read_app("setup_scheduling_board.js")
 
