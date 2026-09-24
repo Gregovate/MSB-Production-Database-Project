@@ -47,13 +47,18 @@ def test_effort_editor_and_catalog_badge_are_present():
     assert "setup-effort-badge" in js
 
 
-def test_effort_save_reloads_authoritative_task_audit_fields():
+def test_effort_save_reloads_audit_without_discarding_unsaved_reusable_edits():
     js = text(BASE / "setup_catalog_effort.js")
+    assert "window.msbSetupCaptureReusableDraft()" in js
     assert "await reloadTasks(task.setup_task_id);" in js
-    assert "audit" in js.lower()
+    assert "window.msbSetupRestoreReusableDraft(reusableDraft);" in js
+    assert "Save Effort must never discard unrelated typed edits." in js
+    assert "audit attribution refreshes" in js
     save_start = js.index("async function saveSelectedSetupEffort()")
     save_end = js.index("if (typeof renderLibrary === 'function')", save_start)
     save_block = js[save_start:save_end]
+    assert save_block.index("msbSetupCaptureReusableDraft") < save_block.index("await reloadTasks(task.setup_task_id);")
+    assert save_block.index("await reloadTasks(task.setup_task_id);") < save_block.index("msbSetupRestoreReusableDraft")
     assert "renderLibrary();" not in save_block
 
 
