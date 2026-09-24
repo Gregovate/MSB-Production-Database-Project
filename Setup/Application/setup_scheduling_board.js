@@ -335,6 +335,17 @@ function board205BlockingEnabled() {
 
 function board205FinderStatusFamily(task) {
   const status = String(task?.board_status || '').toUpperCase();
+
+  // Readiness is a soft blocker: keep the task in the ordinary candidate
+  // population so an operator can decide whether the condition is satisfied.
+  if (
+    status === 'BLOCKED'
+    && task?.readiness_state === 'NOT_READY'
+    && task?.prerequisites_complete !== false
+  ) {
+    return 'READY';
+  }
+
   if (status === 'CATALOG_ONLY') return 'READY';
   if (status === 'READY_TO_SCHEDULE' || status === 'NEEDS_SCHEDULING_AGAIN') return 'READY';
   if (status === 'BLOCKED') return 'BLOCKED';
@@ -343,6 +354,23 @@ function board205FinderStatusFamily(task) {
   if (status === 'COMPLETE') return 'COMPLETE';
   if (status === 'DEFERRED') return 'DEFERRED';
   return 'OTHER';
+}
+
+function board205HasHardBlock(task) {
+  if (!task) return false;
+  if (task.prerequisites_complete === false) return true;
+  return Boolean(
+    task.linked_work_order_gate
+    && task.linked_work_order_id
+    && !task.linked_work_order_completed_at
+  );
+}
+
+function board205ReadinessOnly(task) {
+  return Boolean(
+    task?.readiness_state === 'NOT_READY'
+    && !board205HasHardBlock(task)
+  );
 }
 
 function board205FinderStageRows() {
@@ -533,8 +561,8 @@ function board205BlockerDetails(task, deps) {
   }
   if (task?.readiness_state === 'NOT_READY') {
     details.push({
-      label: 'Readiness condition',
-      text: `${task.readiness_note || 'Marked Not Ready'} · clear when that outside condition is actually met.`
+      label: 'Readiness condition · soft',
+      text: `${task.readiness_note || 'Marked Not Ready'} · keep visible for operator judgement; mark Ready when the condition is actually met.`
     });
   }
   if (
@@ -681,7 +709,8 @@ function board205TaskCard(task) {
     && !task.effective_complete
     && !isGate
     && task.board_status !== 'DEFERRED';
-  const blocked = task.board_status === 'BLOCKED';
+  const hardBlocked = board205HasHardBlock(task);
+  const readinessOnly = board205ReadinessOnly(task);
   const seasonOnly = task.task_origin === 'SEASON_ONLY';
   const depText = deps.length
     ? deps.map((dep) => task.catalog_only
@@ -702,7 +731,13 @@ function board205TaskCard(task) {
         ${task.catalog_only ? '<span class="setup-board205-badge season-only">CATALOG ONLY · NOT IN 2025</span>' : ''}
         ${seasonOnly ? '<span class="setup-board205-badge season-only">THIS SEASON ONLY</span>' : ''}
         ${isGate ? '<span class="setup-board205-badge">GATE</span>' : ''}
-        <span class="setup-board205-badge ${blocked ? 'blocked' : task.board_status === 'WAITING_ON_WORK_ORDER' ? 'waiting' : ''}">${board205Esc(task.catalog_only ? 'CURRENT CATALOG' : board205StatusLabel(task.board_status))}</span>
+        <span class="setup-board205-badge ${hardBlocked ? 'blocked' : readinessOnly ? 'waiting' : ''}">${board205Esc(
+          task.catalog_only
+            ? 'CURRENT CATALOG'
+            : readinessOnly
+              ? 'NOT READY'
+              : board205StatusLabel(task.board_status)
+        )}</span>
         <span class="setup-board205-badge effort-${board205Esc(String(task.effort_level || 'unknown').toLowerCase())}">${board205Esc(board205Effort(task))}</span>
         ${board205WorkOrderBadge(task)}
       </div>
@@ -749,16 +784,17 @@ function board205QueueTasks() {
   return [...(setupBoard205State.board.tasks || [])]
     .filter((task) => {
       const family = board205FinderStatusFamily(task);
-      const isBlocked = family === 'BLOCKED' || family === 'WAITING';
+      const hardBlocked = board205HasHardBlock(task);
 
-      // Blocking is a visibility choice only. ON hides blocked/waiting work;
-      // OFF includes it without mutating prerequisite/readiness/Work Order facts.
-      if (board205BlockingEnabled() && isBlocked) return false;
+      // Blocking ON hides only hard blockers: incomplete hard predecessors or
+      // open Work Order gates. Readiness is deliberately soft and remains
+      // visible so the operator can decide whether the outside condition is met.
+      if (board205BlockingEnabled() && hardBlocked) return false;
 
-      // When Task name is blank, the normal status checkboxes control the
-      // non-blocked categories. With Blocking OFF, blocked/waiting work is
+      // When Task name is blank, the ordinary status checkboxes control
+      // non-hard-blocked candidates. With Blocking OFF, hard-blocked work is
       // included automatically.
-      if (!search && !isBlocked && !statuses.has(family)) return false;
+      if (!search && !hardBlocked && !statuses.has(family)) return false;
 
       if (stageValue === 'SITE_WIDE') {
         if (task.stage_id != null) return false;
@@ -809,7 +845,9 @@ function board205RenderQueue() {
     summary.textContent = `${tasks.length} of ${(setupBoard205State.board.tasks || []).length} ${noun}`
       + ` · Blocking ${board205BlockingEnabled() ? 'ON' : 'OFF'}`
       + (search ? ' · task-name search checks all statuses' : '')
-      + (!board205BlockingEnabled() ? ' · blocked work included' : ' · blocked work hidden');
+      + (!board205BlockingEnabled()
+        ? ' · hard-blocked work included · readiness always visible'
+        : ' · hard blockers hidden · readiness always visible');
   }
   target.innerHTML = tasks.length
     ? tasks.map(board205TaskCard).join('')
@@ -1662,7 +1700,7 @@ function board205InstallView() {
             </select></label>
             <label class="setup-board205-search">Task name<input id="setup-board205-task-search" type="search" placeholder="e.g. locate"></label>
             <label class="setup-board205-blocking-toggle"><input id="setup-board205-blocking-toggle" type="checkbox" checked> Blocking ON</label>
-            <div class="setup-board205-blocking-help">ON hides blocked / Work-Order-waiting tasks. OFF includes them. The underlying blocker facts are never changed.</div>
+            <div class="setup-board205-blocking-help">ON hides hard blockers (incomplete hard predecessor / open Work Order). OFF includes them. Readiness is a soft blocker and always stays visible for operator judgement.</div>
             <fieldset class="setup-board205-status-filter">
               <legend>Status shown when Task name is blank</legend>
               <label><input id="setup-board205-status-ready" type="checkbox" checked> Ready / needs continuation</label>
