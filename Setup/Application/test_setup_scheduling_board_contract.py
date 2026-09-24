@@ -384,7 +384,7 @@ def test_205_board_exposes_required_candidate_states() -> None:
 
 def test_205_season_task_editor_is_in_annual_plan_not_reusable_catalog() -> None:
     ui = read_app("setup_scheduling_board.js")
-    assert "Add Season Task" in ui
+    assert "Add Task" in ui
     assert "THIS SEASON ONLY" in ui
     assert "It does not enter the Reusable Task Catalog" in ui
     assert "Existing Work Order<select" in ui
@@ -443,7 +443,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
     assert "setup_scheduling_board.css?v=2026-09-24.2" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.3" in html
+    assert "setup_scheduling_board.js?v=2026-09-24.4" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
@@ -912,3 +912,32 @@ def test_122_b1a_finder_drilldown_preserves_and_restores_operator_context() -> N
     assert "window.history.back()" in production
     assert "board205RestoreFinderState(requested.finder)" in production
 
+
+
+def test_122_real_2026_session_creation_and_add_intent_are_explicit() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    assert "setup-board205-create-session" in ui
+    assert "Create the real" in ui
+    assert "api/setup/sessions" in ui
+    assert "session_status: 'PLANNING'" in ui
+    assert "setup-board205-add-intent-dialog" in ui
+    assert "Reusable Setup Task — every year" in ui
+    assert "Season Task Only — this season" in ui
+    assert "There is no default" in ui
+    assert "board205ChooseReusableTask" in ui
+    assert "board205ChooseSeasonOnlyTask" in ui
+
+
+def test_122_season_only_unworked_task_delete_is_governed() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    api = read_app("setup_scheduling_board_api.py")
+    repository = read_app("setup_scheduling_board_repository.py")
+    migration = (ROOT.parent / "Database" / "057_enable_2026_unworked_task_deletion.sql").read_text(encoding="utf-8")
+    assert "setup-board205-delete-season-task" in ui
+    assert "commandOptions('DELETE')" in ui
+    assert '@setup_scheduling_board_api.delete(' in api
+    assert "delete_season_task" in api
+    assert "ops.delete_unworked_setup_season_task" in repository
+    assert "CREATE OR REPLACE FUNCTION ops.delete_unworked_setup_season_task" in migration
+    assert "reported work/progress" in migration
+    assert "DELETE FROM ops.setup_work_day_task" in migration
