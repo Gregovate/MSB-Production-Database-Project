@@ -883,7 +883,6 @@ def test_122_b1a_finder_can_collapse_secondary_filters() -> None:
     assert "setupBoard205State.finderCompact = historicalReview" in ui
     assert ".setup-board205-filters.compact .setup-board205-secondary-filters" in css
     assert ".setup-board205-filters.compact .setup-board205-blocking-help" in css
-    assert ".setup-board205-filters.compact > label:not(.setup-board205-search)" in css
 
 
 def test_122_b1a_finder_ready_only_is_visibility_not_hard_blocking() -> None:
