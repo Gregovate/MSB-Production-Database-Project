@@ -153,6 +153,30 @@ Time ≥ 4h -> what are the longer jobs?
 
 Blank remains Any. A two-sided numeric range is intentionally deferred unless 2026 use demonstrates a need.
 
+## Finder Readiness Visibility and Drill-down Navigation
+
+Readiness remains a **soft blocker**. A readiness condition does not become a hard scheduling prerequisite merely because the finder offers a readiness visibility control.
+
+The finder may provide a **Ready only** visibility toggle so an operator can temporarily hide tasks whose current readiness state is `NOT_READY` while scanning practical candidates. Turning that visibility filter off must immediately restore those soft-blocked tasks. The control changes only what the finder shows; it does not rewrite readiness state, prerequisite state, or scheduling eligibility.
+
+When a Manager drills from the Task Finder into a reusable task to correct durable Catalog knowledge, that drill-down must preserve the operator's planning context. Returning to the Task Finder—through either an explicit **Back to Task Finder** action or browser Back—must restore the same:
+
+- Stage / area;
+- Scene / scope;
+- sort mode;
+- task-name search;
+- Blocking ON/OFF state;
+- readiness visibility state;
+- status filters;
+- Time / Crew comparators and values;
+- Effort filter;
+- compact/expanded finder presentation; and
+- practical scroll position.
+
+A reusable-task correction opened from the finder is therefore a temporary drill-down, not a workflow reset into the Reusable Task Catalog.
+
+Setup tab/view navigation should participate in browser history so Back/Forward can move between Setup views instead of unexpectedly abandoning the operator's current Setup workflow after internal navigation.
+
 ## Scheduler Planning-Info Correction
 
 The Scheduling Board is often where missing/TBD planning knowledge becomes obvious.
