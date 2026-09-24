@@ -162,6 +162,24 @@ class SetupSchedulingBoardRepository:
                     coalesce(captains.captain_person_ids, ARRAY[]::integer[]) AS reusable_captain_person_ids,
                     rt.baseline_plan_order,
                     rt.reusable_notes,
+                    rt.created_at AS reusable_created_at,
+                    rt.created_by AS reusable_created_by,
+                    rt.created_by_person_id AS reusable_created_by_person_id,
+                    coalesce(
+                        nullif(btrim(created_actor.preferred_name), ''),
+                        nullif(btrim(pg_catalog.concat_ws(' ', created_actor.first_name, created_actor.last_name)), ''),
+                        nullif(btrim(created_actor.email), ''),
+                        rt.created_by
+                    ) AS reusable_created_by_display,
+                    rt.updated_at AS reusable_updated_at,
+                    rt.updated_by AS reusable_updated_by,
+                    rt.updated_by_person_id AS reusable_updated_by_person_id,
+                    coalesce(
+                        nullif(btrim(updated_actor.preferred_name), ''),
+                        nullif(btrim(pg_catalog.concat_ws(' ', updated_actor.first_name, updated_actor.last_name)), ''),
+                        nullif(btrim(updated_actor.email), ''),
+                        rt.updated_by
+                    ) AS reusable_updated_by_display,
                     rt.active_flag AS reusable_active_flag,
                     coalesce(rt.requires_display_material, false) AS requires_display_material,
                     coalesce(resources.resource_count, 0) AS resource_count,
@@ -217,6 +235,10 @@ class SetupSchedulingBoardRepository:
                 FROM ops.setup_session_task st
                 LEFT JOIN ref.setup_task rt
                   ON rt.setup_task_id = st.setup_task_id
+                LEFT JOIN ref.person created_actor
+                  ON created_actor.person_id = rt.created_by_person_id
+                LEFT JOIN ref.person updated_actor
+                  ON updated_actor.person_id = rt.updated_by_person_id
                 LEFT JOIN ref.stage s
                   ON s.stage_id = st.annual_stage_id
                 LEFT JOIN ref.lor_scene ls
