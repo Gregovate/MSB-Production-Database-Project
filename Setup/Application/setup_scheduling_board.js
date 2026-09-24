@@ -7,7 +7,8 @@ const setupBoard205State = {
   dragged: null,
   editSeasonTaskId: null,
   editPlanningTaskId: null,
-  scheduleTarget: null
+  scheduleTarget: null,
+  finderCompact: null
 };
 
 const SETUP_BOARD205_TYPICAL_AM_MINUTES = 180;
@@ -332,6 +333,17 @@ function board205HistoricalReviewMode() {
 function board205BlockingEnabled() {
   const toggle = document.getElementById('setup-board205-blocking-toggle');
   return toggle ? Boolean(toggle.checked) : true;
+}
+
+function board205ApplyFinderCompact() {
+  const filters = document.getElementById('setup-board205-filters');
+  const button = document.getElementById('setup-board205-filter-density');
+  if (!filters || !button) return;
+
+  const compact = Boolean(setupBoard205State.finderCompact);
+  filters.classList.toggle('compact', compact);
+  button.textContent = compact ? 'More filters' : 'Compact filters';
+  button.setAttribute('aria-expanded', compact ? 'false' : 'true');
 }
 
 function board205FinderStatusFamily(task) {
@@ -1132,6 +1144,10 @@ function board205Render() {
     ? `${appState.seasonYear} Task Finder — Historical Verification`
     : 'Needs Scheduling';
   if (workspace) workspace.classList.toggle('finder-only', historicalReview);
+  if (setupBoard205State.finderCompact == null) {
+    setupBoard205State.finderCompact = historicalReview;
+  }
+  board205ApplyFinderCompact();
   if (!session) {
     if (noSession) noSession.hidden = false;
     if (workspace) workspace.hidden = true;
@@ -1713,7 +1729,9 @@ function board205InstallView() {
             </select></label>
             <label class="setup-board205-search">Task name<input id="setup-board205-task-search" type="search" placeholder="e.g. locate"></label>
             <label class="setup-board205-blocking-toggle"><input id="setup-board205-blocking-toggle" type="checkbox" checked> Blocking ON</label>
+            <button id="setup-board205-filter-density" type="button" class="small secondary" aria-expanded="true">Compact filters</button>
             <div class="setup-board205-blocking-help">ON hides tasks whose hard predecessor is incomplete. A Work Order gate task itself stays visible; the task after it remains hard-blocked until the Work Order clears. Readiness is soft and always stays visible for operator judgement.</div>
+            <div class="setup-board205-secondary-filters">
             <fieldset class="setup-board205-status-filter">
               <legend>Status shown when Task name is blank</legend>
               <label><input id="setup-board205-status-ready" type="checkbox" checked> Ready / needs continuation</label>
@@ -1733,6 +1751,7 @@ function board205InstallView() {
               <option value="MODERATE">Moderate</option>
               <option value="HEAVY">Heavy</option>
             </select></label>
+            </div>
           </div>
           <div id="setup-board205-finder-summary" class="muted"></div>
           <div id="setup-board205-queue" class="setup-board205-queue"></div>
@@ -1812,6 +1831,11 @@ function board205InstallView() {
       </form>
     </dialog>
   `;
+
+  document.getElementById('setup-board205-filter-density')?.addEventListener('click', () => {
+    setupBoard205State.finderCompact = !Boolean(setupBoard205State.finderCompact);
+    board205ApplyFinderCompact();
+  });
 
   document.querySelectorAll('#setup-board205-filters input, #setup-board205-filters select').forEach((control) => {
     control.addEventListener(control.type === 'search' ? 'input' : 'change', () => {
