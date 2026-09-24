@@ -639,3 +639,24 @@ def test_122_b1a_readiness_note_defaults_to_not_ready() -> None:
     # condition starts NOT_READY until explicitly cleared for that season.
     assert "WHEN nullif(btrim(coalesce(NEW.annual_readiness_note, v_task.readiness_note)), '') IS NULL" in sql
     assert "ELSE 'NOT_READY'" in sql
+
+
+def test_122_readiness_note_invariant_is_enforced_in_database() -> None:
+    sql = read_db("056_enforce_setup_readiness_note_not_ready.sql")
+
+    assert "CREATE OR REPLACE FUNCTION ops.enforce_setup_readiness_note_state()" in sql
+    assert "NEW.annual_readiness_state := CASE" in sql
+    assert "WHEN v_note IS NULL THEN 'READY'" in sql
+    assert "ELSE 'NOT_READY'" in sql
+    assert "BEFORE INSERT OR UPDATE ON ops.setup_session_task" in sql
+
+    assert "CREATE OR REPLACE FUNCTION ops.sync_reusable_readiness_to_current_sessions()" in sql
+    assert "ss.session_status IN ('PLANNING','ACTIVE')" in sql
+    assert "st.task_origin = 'REUSABLE'" in sql
+    assert "st.actual_started_at IS NULL" in sql
+    assert "st.actual_completed_at IS NULL" in sql
+    assert "FROM ops.setup_task_progress p" in sql
+    assert "AFTER UPDATE OF readiness_note ON ref.setup_task" in sql
+
+    # Historical Verification is intentionally not rewritten by Catalog edits.
+    assert "HISTORICAL_VERIFICATION" in sql
