@@ -89,6 +89,9 @@ def test_database_wide_disposable_validation_covers_contract_and_actor_replaceme
     assert "set_actor_on_update failed to replace prior updater" in sql
     assert "set_updated_fields failed to replace prior updater" in sql
     assert "SET LOCAL ROLE directus_app;" in sql
+    assert "GRANT USAGE ON SCHEMA ref TO directus_app;" in sql
+    assert "GRANT EXECUTE ON FUNCTION ref.resolve_actor() TO directus_app;" in sql
+    assert "GRANT SELECT ON ref.person TO directus_app;" in sql
     assert "same-directus-actor" in sql
     assert "Native Directus same-actor payload was not preserved" in sql
     assert "ROLLBACK;" in sql
