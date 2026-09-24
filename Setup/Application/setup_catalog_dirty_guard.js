@@ -444,6 +444,11 @@
     });
   }
 
+  // Shared navigation contract: internal pushState/popstate navigation must
+  // use the same save/discard/stay decision as legacy tab/task click guards.
+  window.msbSetupHasDirtyEdits = anyDirty;
+  window.msbSetupResolveDirtyBeforeNavigation = resolveDirtyBeforeNavigation;
+
   installBuildBadge();
   installSelectionRefreshWrapper();
   installInputTracking();
