@@ -930,12 +930,14 @@ function board205Render() {
   const historicalNote = document.getElementById('setup-board205-historical-note');
   const finderTitle = document.getElementById('setup-board205-finder-title');
   const historicalReview = Boolean(session) && board205HistoricalReviewMode();
+  const canManage = Boolean(appState.access?.can_manage_setup);
 
   if (addSeason) addSeason.disabled = !session;
   if (dayForm) {
-    dayForm.hidden = historicalReview;
+    const canScheduleDays = Boolean(session) && canManage && !historicalReview;
+    dayForm.hidden = !canScheduleDays;
     dayForm.querySelectorAll('input,button,select').forEach((control) => {
-      control.disabled = !session || historicalReview;
+      control.disabled = !canScheduleDays;
     });
   }
   if (boardPane) boardPane.hidden = historicalReview;
@@ -1497,7 +1499,7 @@ function board205InstallView() {
           </div>
           <button id="setup-board205-add-season-task" type="button" class="manager-only">Add Season Task</button>
         </div>
-        <form id="setup-board205-day-form" class="setup-board205-day-form manager-only">
+        <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
           <label>Date<input id="setup-board205-work-date" type="date" required></label>
           <div class="setup-board205-auto-day-note">Setup Day # is assigned automatically in chronological order.</div>
           <label class="setup-board205-volunteer-note">Volunteer / capacity note<input id="setup-board205-volunteer-note" type="text" placeholder="Optional, e.g. strong Saturday turnout expected"></label>
