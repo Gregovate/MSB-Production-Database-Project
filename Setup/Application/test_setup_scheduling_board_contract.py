@@ -214,8 +214,27 @@ def test_205_finder_uses_task_time_minimum_crew_and_effort() -> None:
     assert "setup-board205-status-blocked" not in ui
     assert "setup-board205-status-waiting" not in ui
     assert 'placeholder="e.g. locate"' in ui
-    assert "task-name search checks all statuses" in ui
+    assert "task-name search keeps status filters" in ui
     assert "task.stage_name" in ui
+
+
+def test_122_work_order_picker_is_searchable() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "Search Work Orders" in ui
+    assert "setup-board205-season-work-order-search" in ui
+    assert 'placeholder="WO # or problem text"' in ui
+    assert "function board205PopulateWorkOrderOptions(" in ui
+    assert "haystack.includes(search)" in ui
+
+
+def test_122_scheduled_task_drops_out_of_default_needs_scheduling_queue() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "if (!hardBlocked && !statuses.has(family)) return false;" in ui
+    assert "task-name search keeps status filters" in ui
+    assert 'id="setup-board205-status-scheduled" type="checkbox"' in ui
+    assert 'id="setup-board205-status-scheduled" type="checkbox" checked' not in ui
 
 
 def test_205_heavy_work_is_captain_aware_warning_not_prohibition() -> None:
@@ -502,8 +521,8 @@ def test_122_b1a_finder_has_stage_scene_sort_and_search_across_statuses() -> Non
     # A nonblank Task-name search bypasses ordinary status checkboxes. Blocking
     # ON hides only hard blockers; readiness remains visible for judgement.
     assert "if (board205BlockingEnabled() && hardBlocked) return false;" in ui
-    assert "if (!search && !hardBlocked && !statuses.has(family)) return false;" in ui
-    assert "task-name search checks all statuses" in ui
+    assert "if (!hardBlocked && !statuses.has(family)) return false;" in ui
+    assert "task-name search keeps status filters" in ui
     assert "const taskName = String(task.task_name || '').toLowerCase();" in ui
     assert "if (!taskName.includes(search)) return false;" in ui
     assert 'placeholder="e.g. locate"' in ui
