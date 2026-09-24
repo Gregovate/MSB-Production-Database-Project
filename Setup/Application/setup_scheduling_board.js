@@ -1571,18 +1571,30 @@ async function board205AddWorkDay(event) {
 }
 
 
-function board205OpenPlanningInfoDialog(sessionTaskId) {
-  const task = board205Task(sessionTaskId);
+function board205OpenPlanningInfoDialog(sessionTaskId = null, reusableTaskId = null) {
+  const reusableId = Number(reusableTaskId || 0) || null;
+  const task = sessionTaskId
+    ? board205Task(sessionTaskId)
+    : (setupBoard205State.board.tasks || []).find(
+        (row) => Number(row.setup_task_id) === Number(reusableId)
+      );
   const dialog = document.getElementById('setup-board205-planning-dialog');
   const form = document.getElementById('setup-board205-planning-form');
   if (!task || !dialog || !form) return;
 
-  setupBoard205State.editPlanningTaskId = sessionTaskId;
+  setupBoard205State.editPlanningTaskId = sessionTaskId || null;
+  setupBoard205State.editPlanningReusableTaskId = Number(task.setup_task_id || reusableId || 0) || null;
+
   form.reset();
   document.getElementById('setup-board205-planning-heading').textContent = `Edit Planning Info — ${task.task_name}`;
-  document.getElementById('setup-board205-planning-origin').textContent = task.task_origin === 'REUSABLE'
-    ? 'Updates reusable task knowledge and refreshes this annual snapshot.'
-    : 'Updates this season-only annual task only.';
+
+  const reusablePlanning = board205HistoricalReviewMode() && task.task_origin === 'REUSABLE';
+  document.getElementById('setup-board205-planning-origin').textContent = reusablePlanning
+    ? 'Updates current reusable planning knowledge. Historical 2025 facts are not changed.'
+    : task.task_origin === 'REUSABLE'
+      ? 'Updates reusable task knowledge and the current annual planning snapshot.'
+      : 'Updates this season-only annual task only.';
+
   document.getElementById('setup-board205-planning-crew-min').value = task.normal_crew_min ?? '';
   document.getElementById('setup-board205-planning-crew-max').value = task.normal_crew_max ?? '';
   const total = Number(task.expected_duration_minutes || 0);
@@ -1592,12 +1604,19 @@ function board205OpenPlanningInfoDialog(sessionTaskId) {
   document.getElementById('setup-board205-planning-readiness').value = task.readiness_note || '';
   document.getElementById('setup-board205-planning-weather').value = task.weather_note || '';
   document.getElementById('setup-board205-planning-completion').value = task.completion_point || '';
+
   const reusableNotesRow = document.getElementById('setup-board205-planning-reusable-notes-row');
   const reusableNotes = document.getElementById('setup-board205-planning-reusable-notes');
   if (reusableNotesRow && reusableNotes) {
     reusableNotesRow.hidden = task.task_origin !== 'REUSABLE';
     reusableNotes.value = task.reusable_notes || '';
   }
+
+  const fullTask = document.getElementById('setup-board205-open-full-reusable');
+  if (fullTask) {
+    fullTask.hidden = task.task_origin !== 'REUSABLE' || !setupBoard205State.editPlanningReusableTaskId;
+  }
+
   dialog.showModal();
 }
 
@@ -1610,24 +1629,78 @@ function board205PlanningMinutes() {
 
 async function board205SubmitPlanningInfo(event) {
   event.preventDefault();
+
   const sessionTaskId = setupBoard205State.editPlanningTaskId;
-  if (!sessionTaskId) return;
+  const reusableTaskId = setupBoard205State.editPlanningReusableTaskId;
+  if (!sessionTaskId && !reusableTaskId) return;
+
+  const crewMin = nullableInteger(document.getElementById('setup-board205-planning-crew-min').value);
+  const crewMax = nullableInteger(document.getElementById('setup-board205-planning-crew-max').value);
+  const duration = board205PlanningMinutes();
+  const effort = document.getElementById('setup-board205-planning-effort').value || null;
+  const readiness = document.getElementById('setup-board205-planning-readiness').value.trim() || null;
+  const weather = document.getElementById('setup-board205-planning-weather').value.trim() || null;
+  const completion = document.getElementById('setup-board205-planning-completion').value.trim() || null;
+  const reusableNotes = document.getElementById('setup-board205-planning-reusable-notes')?.value.trim() || null;
 
   try {
     setBusy(true);
-    await api(`api/setup/scheduling-board/season-tasks/${sessionTaskId}/planning-info`, commandOptions('PATCH', {
-      normal_crew_min: nullableInteger(document.getElementById('setup-board205-planning-crew-min').value),
-      normal_crew_max: nullableInteger(document.getElementById('setup-board205-planning-crew-max').value),
-      expected_duration_minutes: board205PlanningMinutes(),
-      effort_level: document.getElementById('setup-board205-planning-effort').value || null,
-      readiness_note: document.getElementById('setup-board205-planning-readiness').value.trim() || null,
-      weather_note: document.getElementById('setup-board205-planning-weather').value.trim() || null,
-      completion_point: document.getElementById('setup-board205-planning-completion').value.trim() || null,
-      reusable_notes: document.getElementById('setup-board205-planning-reusable-notes')?.value.trim() || null
-    }));
-    document.getElementById('setup-board205-planning-dialog').close();
-    await board205Load();
-    setAlert('Scheduling planning information updated.', 'ok');
+
+    const reusablePlanning = board205HistoricalReviewMode() && reusableTaskId;
+    if (reusablePlanning) {
+      const current = taskById(reusableTaskId);
+      if (!current) throw new Error('Reusable task is not available in the current Catalog.');
+
+      await api(`api/setup/tasks/${reusableTaskId}`, commandOptions('PATCH', {
+        task_name: current.task_name,
+        stage_id: current.stage_id,
+        task_action_type: current.task_action_type || 'WORK',
+        display_order: current.display_order ?? 100,
+        active_flag: Boolean(current.active_flag),
+        normal_crew_min: crewMin,
+        normal_crew_max: crewMax,
+        expected_duration_minutes: duration,
+        completion_point: completion,
+        readiness_note: readiness,
+        weather_note: weather,
+        reusable_notes: reusableNotes
+      }));
+
+      if ((current.effort_level || null) !== effort) {
+        await api(
+          `api/setup/tasks/${reusableTaskId}/effort`,
+          commandOptions('PATCH', { effort_level: effort })
+        );
+      }
+
+      current.normal_crew_min = crewMin;
+      current.normal_crew_max = crewMax;
+      current.expected_duration_minutes = duration;
+      current.effort_level = effort;
+      current.completion_point = completion;
+      current.readiness_note = readiness;
+      current.weather_note = weather;
+      current.reusable_notes = reusableNotes;
+
+      document.getElementById('setup-board205-planning-dialog').close();
+      await board205Load();
+      setAlert('Reusable planning information updated.', 'ok');
+    } else {
+      await api(`api/setup/scheduling-board/season-tasks/${sessionTaskId}/planning-info`, commandOptions('PATCH', {
+        normal_crew_min: crewMin,
+        normal_crew_max: crewMax,
+        expected_duration_minutes: duration,
+        effort_level: effort,
+        readiness_note: readiness,
+        weather_note: weather,
+        completion_point: completion,
+        reusable_notes: reusableNotes
+      }));
+
+      document.getElementById('setup-board205-planning-dialog').close();
+      await board205Load();
+      setAlert('Scheduling planning information updated.', 'ok');
+    }
   } catch (error) {
     setAlert(error.message || error, 'error');
     window.alert(error.message || error);
