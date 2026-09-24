@@ -25,7 +25,7 @@
       appState.access?.can_manage_setup
       && task?.setup_task_id != null
     );
-    const deleteTitle = 'Delete a mistaken reusable task while cleaning the reconstructed Catalog. The database refuses deletion when protected planning or execution history exists.';
+    const deleteTitle = 'Delete an unworked reusable task. Planning-only 2026 state does not block deletion; reported work and material assignments do.';
 
     if (button.textContent !== 'Delete Task') button.textContent = 'Delete Task';
     if (button.title !== deleteTitle) button.title = deleteTitle;
@@ -60,7 +60,7 @@
     const confirmed = window.confirm(
       `Delete "${task.task_name}" completely from the Reusable Task Catalog?\n\n`
       + 'Use this for reconstruction mistakes, duplicates, and bad task definitions that must not be propagated into 2026. '
-      + 'The database will refuse deletion if the task has protected planning or execution history.\n\n'
+      + 'The database will refuse deletion if actual work has been reported or material assignments still need to be moved.\n\n'
       + 'This cannot be undone.'
     );
     if (!confirmed) return;
