@@ -114,6 +114,16 @@ BEGIN
     IF EXISTS (
         SELECT 1
         FROM ops.setup_session_task st
+        WHERE st.setup_session_id = v_session_id
+          AND st.task_origin = 'REUSABLE'
+          AND st.verification_state <> 'VERIFIED'
+    ) THEN
+        RAISE EXCEPTION '2026 planning Session reset accepted reusable Catalog work to UNVERIFIED';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM ops.setup_session_task st
         JOIN ref.setup_task t ON t.setup_task_id = st.setup_task_id
         WHERE st.setup_session_id = v_session_id
           AND st.task_origin = 'REUSABLE'
@@ -221,6 +231,33 @@ BEGIN
 
     IF v_reusable_session_task_id IS NULL THEN
         RAISE EXCEPTION 'New reusable task did not automatically enter open 2026 Session';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM ops.setup_session_task st
+        WHERE st.setup_session_task_id = v_reusable_session_task_id
+          AND st.verification_state = 'VERIFIED'
+    ) THEN
+        RAISE EXCEPTION 'New reusable task entered the 2026 planning Session as UNVERIFIED';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM ops.setup_session ss
+        WHERE ss.season_year = 2025
+          AND ss.session_status = 'HISTORICAL_VERIFICATION'
+    ) AND NOT EXISTS (
+        SELECT 1
+        FROM ops.setup_session_task st
+        JOIN ops.setup_session ss
+          ON ss.setup_session_id = st.setup_session_id
+        WHERE ss.season_year = 2025
+          AND ss.session_status = 'HISTORICAL_VERIFICATION'
+          AND st.setup_task_id = v_reusable_task_id
+          AND st.verification_state = 'UNVERIFIED'
+    ) THEN
+        RAISE EXCEPTION 'Historical verification Session did not preserve UNVERIFIED semantics for new reusable work';
     END IF;
 
     PERFORM *
