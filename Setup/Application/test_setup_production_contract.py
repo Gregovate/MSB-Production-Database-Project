@@ -242,11 +242,17 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "window.history.replaceState" in production
     assert "window.history.pushState" in production
     assert "window.addEventListener('popstate'" in production
+    assert "setupMayLeaveCurrentView" in production
+    assert "msbSetupHasDirtyEdits" in production
+    assert "setupPopstateUndo" in production
+    assert "setupPopstateReplay" in production
+    assert "window.history.go(-delta)" in production
+    assert "window.history.go(pending.delta)" in production
     assert "['review', 'library', 'extra-materials', 'movement', 'schedule', 'perform']" in production
     assert "navigateSetupView(button.dataset.view)" in production
     assert "navigateSetupView('schedule')" in next_pass
     assert "navigateSetupView('perform')" in next_pass
-    assert "setup_production.js?v=2026-09-24.1" in html
+    assert "setup_production.js?v=2026-09-24.2" in html
     assert "setup_next_pass.js?v=2026-09-24.1" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.2" in html
+    assert "setup_scheduling_board.js?v=2026-09-24.3" in html
 
