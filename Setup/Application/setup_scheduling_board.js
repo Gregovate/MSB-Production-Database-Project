@@ -314,7 +314,12 @@ function board205HistoricalReviewMode() {
   return String(setupBoard205State.board.session?.session_status || '').toUpperCase() === 'HISTORICAL_VERIFICATION';
 }
 
-function board205FinderStatusFamily(task) {
+function board205BlockingEnabled() {
+  const toggle = document.getElementById('setup-board205-blocking-toggle');
+  return toggle ? Boolean(toggle.checked) : true;
+}
+
+function board205FinderEffectiveStatusFamily(task) {
   const status = String(task?.board_status || '').toUpperCase();
   if (status === 'READY_TO_SCHEDULE' || status === 'NEEDS_SCHEDULING_AGAIN') return 'READY';
   if (status === 'BLOCKED') return 'BLOCKED';
@@ -323,6 +328,14 @@ function board205FinderStatusFamily(task) {
   if (status === 'COMPLETE') return 'COMPLETE';
   if (status === 'DEFERRED') return 'DEFERRED';
   return 'OTHER';
+}
+
+function board205FinderEffectiveStatusFamily(task) {
+  const family = board205FinderStatusFamily(task);
+  if (!board205BlockingEnabled() && (family === 'BLOCKED' || family === 'WAITING')) {
+    return 'READY';
+  }
+  return family;
 }
 
 function board205FinderStageRows() {
@@ -538,6 +551,8 @@ function board205TaskCard(task) {
     ? deps.map((dep) => `${dep.prerequisite_complete ? '✓' : '○'} ${dep.prerequisite_task_name}`).join('; ')
     : 'No annual prerequisite';
   const blockerDetails = board205BlockerDetails(task, deps);
+  const blockingIgnored = !board205BlockingEnabled()
+    && (task.board_status === 'BLOCKED' || task.board_status === 'WAITING_ON_WORK_ORDER');
 
   return `
     <article class="setup-board205-task-card"
@@ -548,6 +563,7 @@ function board205TaskCard(task) {
         ${seasonOnly ? '<span class="setup-board205-badge season-only">THIS SEASON ONLY</span>' : ''}
         ${isGate ? '<span class="setup-board205-badge">GATE</span>' : ''}
         <span class="setup-board205-badge ${blocked ? 'blocked' : task.board_status === 'WAITING_ON_WORK_ORDER' ? 'waiting' : ''}">${board205Esc(board205StatusLabel(task.board_status))}</span>
+        ${blockingIgnored ? '<span class="setup-board205-badge setup-board205-blocking-ignored">BLOCKING IGNORED FOR PLANNING</span>' : ''}
         <span class="setup-board205-badge effort-${board205Esc(String(task.effort_level || 'unknown').toLowerCase())}">${board205Esc(board205Effort(task))}</span>
         ${board205WorkOrderBadge(task)}
       </div>
@@ -588,7 +604,7 @@ function board205QueueTasks() {
     .filter((task) => {
       // Search deliberately spans every status bucket. A matching blocked or
       // scheduled task must never look like it does not exist.
-      if (!search && !statuses.has(board205FinderStatusFamily(task))) return false;
+      if (!search && !statuses.has(board205FinderEffectiveStatusFamily(task))) return false;
 
       if (stageValue === 'SITE_WIDE') {
         if (task.stage_id != null) return false;
@@ -644,7 +660,9 @@ function board205RenderQueue() {
   const search = (document.getElementById('setup-board205-task-search')?.value || '').trim();
   if (summary) {
     summary.textContent = `${tasks.length} of ${(setupBoard205State.board.tasks || []).length} annual tasks`
-      + (search ? ' · Task search checks all statuses' : '');
+      + ` · Blocking ${board205BlockingEnabled() ? 'ON' : 'OFF'}`
+      + (search ? ' · Task search checks all statuses' : '')
+      + (!board205BlockingEnabled() ? ' · blocker facts still shown' : '');
   }
   target.innerHTML = tasks.length
     ? tasks.map(board205TaskCard).join('')
@@ -1501,6 +1519,8 @@ function board205InstallView() {
               <option value="CREW">Minimum crew</option>
             </select></label>
             <label class="setup-board205-search">Task<input id="setup-board205-task-search" type="search" placeholder="Search all statuses: task, Stage, Scene, blocker, resource, WO"></label>
+            <label class="setup-board205-blocking-toggle"><input id="setup-board205-blocking-toggle" type="checkbox" checked> Blocking ON</label>
+            <div class="setup-board205-blocking-help">ON honors hard predecessor / readiness / Work Order blocking for finder availability. OFF treats those tasks as planning candidates without changing the underlying blocker facts.</div>
             <fieldset class="setup-board205-status-filter">
               <legend>Status shown when Task search is blank</legend>
               <label><input id="setup-board205-status-ready" type="checkbox" checked> Ready / needs continuation</label>
@@ -1604,6 +1624,12 @@ function board205InstallView() {
   document.querySelectorAll('#setup-board205-filters input, #setup-board205-filters select').forEach((control) => {
     control.addEventListener(control.type === 'search' ? 'input' : 'change', () => {
       if (control.id === 'setup-board205-stage-filter') board205SyncFinderSceneOptions();
+      if (control.id === 'setup-board205-blocking-toggle') {
+        const label = control.closest('label');
+        if (label) {
+          label.lastChild.textContent = control.checked ? ' Blocking ON' : ' Blocking OFF';
+        }
+      }
       board205RenderQueue();
     });
     if (control.type === 'number') control.addEventListener('input', board205RenderQueue);
