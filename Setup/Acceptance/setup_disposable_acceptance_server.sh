@@ -211,7 +211,16 @@ sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR
     WHERE n.nspname IN ('ref','ops') AND p.prokind IN ('f','w') AND has_function_privilege('fieldwiring_app', p.oid, 'EXECUTE');
 " > "$GRANTS_FILE"
 test -s "$GRANTS_FILE"
-psql_test < "$GRANTS_FILE"
+grant_index=0
+while IFS= read -r grant_stmt || [[ -n "$grant_stmt" ]]; do
+    [[ -z "$grant_stmt" ]] && continue
+    grant_index=$((grant_index + 1))
+    echo "Grant replay [$grant_index]: $grant_stmt"
+    if ! psql_test -c "$grant_stmt"; then
+        echo "FAIL: application-role grant replay failed at statement $grant_index"
+        exit 23
+    fi
+done < "$GRANTS_FILE"
 psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"
 
 echo
