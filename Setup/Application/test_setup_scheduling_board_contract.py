@@ -632,6 +632,8 @@ def test_122_b1a_readiness_note_defaults_to_not_ready() -> None:
     assert "String(readinessNote || '').trim() ? 'NOT_READY' : 'READY'" in ui
     assert "readiness_state: board205DefaultReadinessState(current.readiness_note)" in ui
     assert "board205DefaultReadinessState(current.readiness_note) === 'NOT_READY'" in ui
+    assert "canManage && !task.catalog_only && task.readiness_note" in ui
+    assert "if (!task || !task.setup_session_task_id || !appState.access?.can_manage_setup) return;" in ui
 
     # Real annual seeding already follows the same rule: a reusable readiness
     # condition starts NOT_READY until explicitly cleared for that season.
