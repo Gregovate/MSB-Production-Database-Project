@@ -20,7 +20,7 @@ def test_catalog_delete_uses_existing_governed_fail_closed_command():
     assert "deleteSelectedCatalogTask" in js
     assert "reconstruction-delete" in js
     assert "commandOptions('DELETE', {})" in js
-    assert "protected planning or execution history" in js
+    assert "reported work" in js\n    assert "material assignments" in js
     assert "event.stopImmediatePropagation()" in js
     assert "showView('library')" in js
 
@@ -44,5 +44,5 @@ def test_catalog_delete_returns_through_existing_catalog_origin_control():
 def test_cleanup_assets_are_cache_busted_together():
     html = (ROOT / "production.html").read_text(encoding="utf-8")
     assert 'setup_training_review_refinement.css?v=2026-09-09.3' in html
-    assert 'setup_training_review_refinement.js?v=2026-09-09.3' in html
+    assert 'setup_training_review_refinement.js?v=2026-09-24.4' in html
     assert 'setup_catalog_effort.js?v=2026-09-24.5' in html
