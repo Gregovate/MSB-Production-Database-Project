@@ -587,6 +587,15 @@ def test_122_b1a_finder_uses_current_reusable_prerequisites() -> None:
     assert "ad.dependency_origin = 'ANNUAL'" in repo
 
 
+def test_122_b1a_task_search_is_visually_distinct() -> None:
+    css = read_app("setup_scheduling_board.css")
+
+    assert ".setup-board205-finder .setup-board205-search input {" in css
+    assert "border-width: 2px;" in css
+    assert "background: color-mix(" in css
+    assert ".setup-board205-finder .setup-board205-search input:focus {" in css
+
+
 def test_122_b1a_finder_filters_stay_visible_while_results_scroll() -> None:
     css = read_app("setup_scheduling_board.css")
 
