@@ -658,5 +658,6 @@ def test_122_readiness_note_invariant_is_enforced_in_database() -> None:
     assert "FROM ops.setup_task_progress p" in sql
     assert "AFTER UPDATE OF readiness_note ON ref.setup_task" in sql
 
-    # Historical Verification is intentionally not rewritten by Catalog edits.
-    assert "HISTORICAL_VERIFICATION" in sql
+    # Historical Verification is intentionally excluded because only
+    # PLANNING / ACTIVE sessions are synchronized.
+    assert "ss.session_status IN ('PLANNING','ACTIVE')" in sql
