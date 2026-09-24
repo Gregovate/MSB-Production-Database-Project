@@ -429,8 +429,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-24.1" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.1" in html
+    assert "setup_scheduling_board.css?v=2026-09-24.2" in html
+    assert "setup_scheduling_board.js?v=2026-09-24.2" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
@@ -520,6 +520,36 @@ def test_122_b1a_blocking_toggle_hides_only_hard_blockers() -> None:
     assert "api(" not in toggle_section
     assert "commandOptions(" not in toggle_section
 
+def test_122_b1a_plan_sort_uses_visible_reusable_step_order_inside_scope() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "display_order: current.display_order" in ui
+    assert "const stageFilter = document.getElementById('setup-board205-stage-filter')?.value || '';" in ui
+    assert "task.display_order ?? task.baseline_plan_order" in ui
+    assert "return stepOrder(a) - stepOrder(b)" in ui
+    assert "|| baselineOrder(a) - baselineOrder(b)" in ui
+
+
+def test_122_b1a_finder_controls_rerender_through_delegated_events() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "const finderFilters = document.getElementById('setup-board205-filters');" in ui
+    assert "finderFilters?.addEventListener('change'" in ui
+    assert "finderFilters?.addEventListener('input'" in ui
+    assert "board205RenderQueue();" in ui
+
+
+def test_122_b1a_ready_only_is_expanded_and_soft_visible_by_default() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert '<input id="setup-board205-ready-only" type="checkbox"> Ready only' in ui
+    assert '<input id="setup-board205-ready-only" type="checkbox" checked>' not in ui
+    status = ui.split('<fieldset class="setup-board205-status-filter">', 1)[1].split('</fieldset>', 1)[0]
+    assert status.index("setup-board205-status-scheduled") < status.index("setup-board205-ready-only")
+    assert status.index("setup-board205-ready-only") < status.index("setup-board205-status-complete")
+    assert "soft readiness shown" in ui
+
+
 def test_122_b1a_stage_sort_puts_numbered_stages_before_site_wide() -> None:
     ui = read_app("setup_scheduling_board.js")
 
@@ -587,12 +617,14 @@ def test_122_b1a_finder_uses_current_reusable_prerequisites() -> None:
     assert "ad.dependency_origin = 'ANNUAL'" in repo
 
 
-def test_122_b1a_task_search_is_visually_distinct() -> None:
+def test_122_b1a_task_search_and_filter_panel_are_visually_distinct() -> None:
     css = read_app("setup_scheduling_board.css")
 
+    assert ".setup-board205-filters {" in css
+    assert "border: 2px solid color-mix(" in css
+    assert "background: color-mix(" in css
     assert ".setup-board205-finder .setup-board205-search input {" in css
     assert "border-width: 2px;" in css
-    assert "background: color-mix(" in css
     assert ".setup-board205-finder .setup-board205-search input:focus {" in css
 
 
