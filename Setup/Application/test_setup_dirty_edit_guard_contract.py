@@ -103,6 +103,8 @@ def test_navigation_uses_explicit_save_discard_cancel_decision():
     assert "resolveDirtyBeforeNavigation('returning to the Reusable Task Catalog')" in js
     assert "changing Setup seasons" in js
     assert "beforeunload" in js
+    assert "window.msbSetupHasDirtyEdits = anyDirty;" in js
+    assert "window.msbSetupResolveDirtyBeforeNavigation = resolveDirtyBeforeNavigation;" in js
 
 
 def test_prerequisite_reload_path_is_guarded_too():
