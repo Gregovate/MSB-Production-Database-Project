@@ -11,6 +11,7 @@ PYTHON="/opt/fieldwiring/.venv/bin/python"
 
 TARGET_SHA="${1:?candidate SHA is required}"
 TARGET_REF="${2:?target ref is required}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 MIGRATION_REL="Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql"
 VALIDATION_REL="Database/Acceptance/database_shared_audit_actor_disposable_validation.sql"
@@ -55,6 +56,7 @@ cleanup() {
     sudo git -C "$REPO_ROOT" worktree prune >/dev/null 2>&1 || true
     rm -f "$DUMP_FILE" >/dev/null 2>&1 || true
     sudo rm -rf "$PYCACHE" >/dev/null 2>&1 || true
+    rm -rf "$SCRIPT_DIR" >/dev/null 2>&1 || true
 
     echo "--- Production shared-audit after-check ---"
     if [[ -n "$PROD_BEFORE" ]]; then
@@ -120,7 +122,8 @@ echo "Production audit-function fingerprint before: $PROD_BEFORE"
 
 echo
 echo "--- Fetch exact database candidate ---"
-sudo git -C "$REPO_ROOT" fetch origin main "$TARGET_REF"
+sudo git -C "$REPO_ROOT" fetch origin main
+sudo git -C "$REPO_ROOT" fetch origin "$TARGET_REF"
 FETCHED_TARGET="$(sudo git -C "$REPO_ROOT" rev-parse FETCH_HEAD)"
 sudo git -C "$REPO_ROOT" cat-file -e "$TARGET_SHA^{commit}"
 if [[ "$FETCHED_TARGET" != "$TARGET_SHA" ]]; then
