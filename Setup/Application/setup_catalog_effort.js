@@ -81,7 +81,12 @@ async function saveSelectedSetupEffort() {
   if (!task || !appState.access?.can_manage_setup) return;
   const select = el('edit-effort-level');
   if (!select) return;
+
   const effort = select.value || null;
+  const reusableDraft = typeof window.msbSetupCaptureReusableDraft === 'function'
+    ? window.msbSetupCaptureReusableDraft()
+    : null;
+
   try {
     setBusy(true);
     await api(
@@ -91,10 +96,17 @@ async function saveSelectedSetupEffort() {
     setupEffortState.set(Number(task.setup_task_id), effort);
     task.effort_level = effort;
 
-    // Effort is durable reusable Catalog knowledge stored on ref.setup_task.
-    // Reload the authoritative task row after the governed command so audit
-    // timestamp/actor fields refresh together with the effort value.
+    // Reload the authoritative task row so audit attribution refreshes, then
+    // restore any other reusable-field drafts that the operator had not yet
+    // chosen to save. Save Effort must never discard unrelated typed edits.
     await reloadTasks(task.setup_task_id);
+    if (
+      reusableDraft
+      && Number(appState.selectedTaskId) === Number(task.setup_task_id)
+      && typeof window.msbSetupRestoreReusableDraft === 'function'
+    ) {
+      window.msbSetupRestoreReusableDraft(reusableDraft);
+    }
 
     setAlert(`Reusable effort saved: ${setupEffortLabel(effort)}.`, 'ok');
   } catch (error) {
