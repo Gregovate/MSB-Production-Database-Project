@@ -198,42 +198,32 @@ echo
 echo "--- Recreate current Production application-role boundary ---"
 psql_test -c "CREATE ROLE fieldwiring_app LOGIN PASSWORD '$APP_PASSWORD';"
 
+# Reproduce the established Setup disposable read boundary. The accepted Setup
+# browser-preview tooling intentionally grants read-only access across the
+# application schemas in the disposable clone while keeping all writes behind
+# narrow SECURITY DEFINER command functions.
+psql_test <<'SQL'
+GRANT USAGE ON SCHEMA ref, ops, lor_snap TO fieldwiring_app;
+GRANT SELECT ON ALL TABLES IN SCHEMA ref, ops, lor_snap TO fieldwiring_app;
+SQL
+
+# Preserve the real Production function boundary: replay PUBLIC revokes and
+# fieldwiring_app EXECUTE grants from catalog ACLs. This keeps internal helpers
+# inaccessible and avoids inventing command privileges in the clone.
 sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "
     SELECT grant_stmt
     FROM (
-        SELECT 10 AS ord,
-               format('GRANT USAGE ON SCHEMA %I TO fieldwiring_app;', n.nspname) AS grant_stmt
-        FROM pg_namespace AS n
-        CROSS JOIN LATERAL aclexplode(n.nspacl) AS acl
-        JOIN pg_roles AS grantee ON grantee.oid = acl.grantee
-        WHERE n.nspname IN ('ref','lor_snap','ops','public')
-          AND grantee.rolname = 'fieldwiring_app'
-          AND acl.privilege_type = 'USAGE'
-
-        UNION ALL
-
-        SELECT 20 AS ord,
-               format('GRANT SELECT ON TABLE %I.%I TO fieldwiring_app;', n.nspname, c.relname)
-        FROM pg_class AS c
-        JOIN pg_namespace AS n ON n.oid = c.relnamespace
-        CROSS JOIN LATERAL aclexplode(c.relacl) AS acl
-        JOIN pg_roles AS grantee ON grantee.oid = acl.grantee
-        WHERE n.nspname IN ('ref','lor_snap','ops','public')
-          AND c.relkind IN ('r','v','m','f','p')
-          AND grantee.rolname = 'fieldwiring_app'
-          AND acl.privilege_type = 'SELECT'
-
-        UNION ALL
-
-        SELECT 30 AS ord,
-               format(
-                   'REVOKE ALL ON FUNCTION %I.%I(%s) FROM PUBLIC;',
-                   n.nspname,
-                   p.proname,
-                   pg_get_function_identity_arguments(p.oid)
-               )
+        SELECT
+            10 AS ord,
+            format(
+                'REVOKE ALL ON FUNCTION %I.%I(%s) FROM PUBLIC;',
+                n.nspname,
+                p.proname,
+                pg_get_function_identity_arguments(p.oid)
+            ) AS grant_stmt
         FROM pg_proc AS p
-        JOIN pg_namespace AS n ON n.oid = p.pronamespace
+        JOIN pg_namespace AS n
+          ON n.oid = p.pronamespace
         WHERE n.nspname IN ('ref','ops')
           AND p.prokind IN ('f','w')
           AND p.proacl IS NOT NULL
@@ -246,17 +236,20 @@ sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR
 
         UNION ALL
 
-        SELECT 40 AS ord,
-               format(
-                   'GRANT EXECUTE ON FUNCTION %I.%I(%s) TO fieldwiring_app;',
-                   n.nspname,
-                   p.proname,
-                   pg_get_function_identity_arguments(p.oid)
-               )
+        SELECT
+            20 AS ord,
+            format(
+                'GRANT EXECUTE ON FUNCTION %I.%I(%s) TO fieldwiring_app;',
+                n.nspname,
+                p.proname,
+                pg_get_function_identity_arguments(p.oid)
+            )
         FROM pg_proc AS p
-        JOIN pg_namespace AS n ON n.oid = p.pronamespace
+        JOIN pg_namespace AS n
+          ON n.oid = p.pronamespace
         CROSS JOIN LATERAL aclexplode(p.proacl) AS acl
-        JOIN pg_roles AS grantee ON grantee.oid = acl.grantee
+        JOIN pg_roles AS grantee
+          ON grantee.oid = acl.grantee
         WHERE n.nspname IN ('ref','ops')
           AND p.prokind IN ('f','w')
           AND grantee.rolname = 'fieldwiring_app'
@@ -266,7 +259,7 @@ sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR
 " > "$GRANTS_FILE"
 
 if [[ ! -s "$GRANTS_FILE" ]]; then
-    echo "FAIL: Production ACL extraction returned no fieldwiring_app boundary"
+    echo "FAIL: Production function ACL extraction returned no Setup command boundary"
     exit 23
 fi
 
@@ -276,12 +269,28 @@ while IFS= read -r grant_stmt || [[ -n "$grant_stmt" ]]; do
     grant_index=$((grant_index + 1))
     echo "Grant replay [$grant_index]: $grant_stmt"
     if ! psql_test -c "$grant_stmt"; then
-        echo "FAIL: application-role grant replay failed at statement $grant_index"
+        echo "FAIL: application-role function grant replay failed at statement $grant_index"
         exit 23
     fi
 done < "$GRANTS_FILE"
 
 psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"
+
+echo "--- Production role/ACL diagnostic (read-only) ---"
+sudo docker exec "$PROD_CONTAINER" psql -X -P pager=off -U "$DB_ACTOR" -d "$PROD_DB" -c "
+    SELECT
+        member_role.rolname AS member_role,
+        granted_role.rolname AS inherited_role,
+        member_role.rolinherit
+    FROM pg_auth_members AS m
+    JOIN pg_roles AS member_role
+      ON member_role.oid = m.member
+    JOIN pg_roles AS granted_role
+      ON granted_role.oid = m.roleid
+    WHERE member_role.rolname = 'fieldwiring_app'
+       OR granted_role.rolname = 'fieldwiring_app'
+    ORDER BY member_role.rolname, granted_role.rolname;
+" || true
 
 psql_test <<'SQL'
 DO $boundary$
@@ -324,7 +333,7 @@ BEGIN
 END
 $boundary$;
 SQL
-echo "Production-equivalent fieldwiring_app boundary replay: PASS"
+echo "Established Setup disposable read boundary + Production command ACL replay: PASS"
 
 echo
 echo "--- Apply candidate migrations to disposable clone only ---"
