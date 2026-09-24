@@ -563,3 +563,27 @@ def test_122_b1a_finder_filters_stay_visible_while_results_scroll() -> None:
     assert "position: sticky" in block
     assert "top: 0" in block
     assert "z-index: 4" in block
+
+
+def test_122_b1a_reusable_task_audit_is_visible() -> None:
+    scheduling_repo = read_app("setup_scheduling_board_repository.py")
+    base_repo = read_app("setup_repository.py")
+    ui = read_app("setup_scheduling_board.js")
+    production = read_app("setup_production.js")
+    html = read_app("production.html")
+
+    for source in (scheduling_repo, base_repo):
+        assert "created_by_person_id" in source
+        assert "updated_by_person_id" in source
+        assert "reusable_created_at" in source
+        assert "reusable_created_by_display" in source
+        assert "reusable_updated_at" in source
+        assert "reusable_updated_by_display" in source
+        assert "LEFT JOIN ref.person created_actor" in source
+        assert "LEFT JOIN ref.person updated_actor" in source
+
+    assert "function board205AuditLine(task)" in ui
+    assert "<strong>Audit:</strong>" in ui
+    assert "reusable-task-audit" in html
+    assert "Created ${createdAt} by ${createdBy} · Last updated ${updatedAt} by ${updatedBy}" in production
+    assert "setup_production.js?v=2026-09-23.3" in html
