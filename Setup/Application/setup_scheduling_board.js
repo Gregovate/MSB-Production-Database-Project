@@ -1287,6 +1287,12 @@ function board205OpenPlanningInfoDialog(sessionTaskId) {
   document.getElementById('setup-board205-planning-readiness').value = task.readiness_note || '';
   document.getElementById('setup-board205-planning-weather').value = task.weather_note || '';
   document.getElementById('setup-board205-planning-completion').value = task.completion_point || '';
+  const reusableNotesRow = document.getElementById('setup-board205-planning-reusable-notes-row');
+  const reusableNotes = document.getElementById('setup-board205-planning-reusable-notes');
+  if (reusableNotesRow && reusableNotes) {
+    reusableNotesRow.hidden = task.task_origin !== 'REUSABLE';
+    reusableNotes.value = task.reusable_notes || '';
+  }
   dialog.showModal();
 }
 
@@ -1311,7 +1317,8 @@ async function board205SubmitPlanningInfo(event) {
       effort_level: document.getElementById('setup-board205-planning-effort').value || null,
       readiness_note: document.getElementById('setup-board205-planning-readiness').value.trim() || null,
       weather_note: document.getElementById('setup-board205-planning-weather').value.trim() || null,
-      completion_point: document.getElementById('setup-board205-planning-completion').value.trim() || null
+      completion_point: document.getElementById('setup-board205-planning-completion').value.trim() || null,
+      reusable_notes: document.getElementById('setup-board205-planning-reusable-notes')?.value.trim() || null
     }));
     document.getElementById('setup-board205-planning-dialog').close();
     await board205Load();
@@ -1557,6 +1564,7 @@ function board205InstallView() {
         <label>Readiness condition<textarea id="setup-board205-planning-readiness" rows="2"></textarea></label>
         <label>Weather note<textarea id="setup-board205-planning-weather" rows="2"></textarea></label>
         <label>Complete when<textarea id="setup-board205-planning-completion" rows="2"></textarea></label>
+        <label id="setup-board205-planning-reusable-notes-row">Reusable notes<textarea id="setup-board205-planning-reusable-notes" rows="4"></textarea></label>
         <menu><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Save Planning Info</button></menu>
       </form>
     </dialog>
