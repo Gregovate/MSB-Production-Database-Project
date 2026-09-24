@@ -460,3 +460,26 @@ def test_122_b1a_finder_explains_blocker_classes() -> None:
     assert "Complete first:" in ui
     assert "clear when that outside condition is actually met." in ui
     assert "clear when that Work Order is completed." in ui
+
+
+def test_122_b1a_blocking_toggle_is_non_mutating_planning_mode() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "setup-board205-blocking-toggle" in ui
+    assert "Blocking ON" in ui
+    assert "Blocking OFF" in ui
+    assert "function board205BlockingEnabled()" in ui
+    assert "function board205FinderStatusFamily(task)" in ui
+    assert "function board205FinderEffectiveStatusFamily(task)" in ui
+    assert "family === 'BLOCKED' || family === 'WAITING'" in ui
+    assert "return 'READY';" in ui
+    assert "BLOCKING IGNORED FOR PLANNING" in ui
+    assert "blocker facts still shown" in ui
+
+    # The toggle is finder-local state only. It must not call any governed
+    # readiness/dependency/Work Order mutation API.
+    toggle_section = ui.split("function board205BlockingEnabled()", 1)[1].split(
+        "function board205FinderStageRows()", 1
+    )[0]
+    assert "api(" not in toggle_section
+    assert "commandOptions(" not in toggle_section
