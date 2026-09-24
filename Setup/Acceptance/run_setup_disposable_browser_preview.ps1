@@ -9,7 +9,8 @@ param(
     [string]$PreviewEmail = 'gliebig@sheboyganlights.org',
     [string]$ExpectedVersion = '',
     [string[]]$MigrationPaths = @(),
-    [string[]]$ValidationPaths = @()
+    [string[]]$ValidationPaths = @(),
+    [switch]$AllowConcurrentProductionWrites
 )
 
 $ErrorActionPreference = 'Stop'
@@ -129,7 +130,8 @@ try {
         "candidate_sha`t$CandidateSha",
         "target_ref`t$TargetRef",
         "preview_port`t$PreviewPort",
-        "preview_email`t$PreviewEmail"
+        "preview_email`t$PreviewEmail",
+        "allow_concurrent_production_writes`t$($AllowConcurrentProductionWrites.IsPresent.ToString().ToLowerInvariant())"
     )
     if (-not [string]::IsNullOrWhiteSpace($ExpectedVersion)) {
         $manifestLines += "expected_version`t$ExpectedVersion"
@@ -157,11 +159,16 @@ try {
     Write-Host "Browser URL:     $browserUrl"
     Write-Host "Preview user:    $PreviewEmail"
     Write-Host "Expected version:$ExpectedVersion"
+    Write-Host "Concurrent Prod: $($AllowConcurrentProductionWrites.IsPresent)"
     Write-Host "Migrations:      $($MigrationPaths.Count)"
     Write-Host "Validations:     $($ValidationPaths.Count)"
     Write-Host
-    Write-Host 'Production database contract: pg_dump + SELECT only.'
-    Write-Host 'All migration/API/browser writes: disposable current-Production clone only.'
+    Write-Host 'Production database contract: pg_dump + SELECT only from this preview harness.'
+    if ($AllowConcurrentProductionWrites) {
+        Write-Host 'Concurrent Production application edits are allowed; fingerprint drift will be reported, not failed.'
+        Write-Host 'NOTE: the disposable clone is a point-in-time snapshot. Production edits made after preview start are NOT visible in this preview.'
+    }
+    Write-Host 'All migration/API/browser writes from the preview: disposable current-Production clone only.'
     Write-Host 'Keep this PowerShell window open for the complete review and cleanup.'
     Write-Host
 
