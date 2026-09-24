@@ -186,6 +186,27 @@ function currentSetupViewName() {
   return active?.id?.endsWith('-view') ? active.id.slice(0, -5) : 'review';
 }
 
+let setupHistoryIndex = Number(window.history.state?.setupHistoryIndex ?? 0);
+let setupPopstateUndo = false;
+let setupPopstateReplay = false;
+let setupPendingHistoryMove = null;
+
+async function setupMayLeaveCurrentView(actionLabel) {
+  if (typeof window.msbSetupResolveDirtyBeforeNavigation !== 'function') return true;
+  return window.msbSetupResolveDirtyBeforeNavigation(actionLabel);
+}
+
+function setupNavigationActionLabel(route) {
+  const view = String(route?.view || 'review');
+  if (view === 'schedule') return 'returning to the Task Finder';
+  if (view === 'review') return 'opening reusable task detail';
+  if (view === 'library') return 'opening the Reusable Task Catalog';
+  if (view === 'perform') return 'opening Perform Work';
+  if (view === 'extra-materials') return 'opening Extra Materials / Inventory';
+  if (view === 'movement') return 'opening Movement / Scanning';
+  return 'continuing';
+}
+
 function setupRouteUrl(route) {
   const params = new URLSearchParams(window.location.search);
   params.delete('view');
@@ -215,7 +236,13 @@ function setupCaptureCurrentRoute() {
 
 function setupCommitCurrentRouteState() {
   const route = setupCaptureCurrentRoute();
-  window.history.replaceState({ setupRoute: route }, '', setupRouteUrl(route));
+  const stateIndex = Number(window.history.state?.setupHistoryIndex);
+  if (Number.isFinite(stateIndex)) setupHistoryIndex = stateIndex;
+  window.history.replaceState(
+    { setupRoute: route, setupHistoryIndex },
+    '',
+    setupRouteUrl(route)
+  );
   return route;
 }
 
@@ -247,21 +274,37 @@ async function setupRestoreRoute(route) {
 }
 
 async function navigateSetupView(name) {
-  setupCommitCurrentRouteState();
   const route = { view: String(name || 'review') };
-  window.history.pushState({ setupRoute: route }, '', setupRouteUrl(route));
+  if (!await setupMayLeaveCurrentView(setupNavigationActionLabel(route))) return false;
+
+  setupCommitCurrentRouteState();
+  setupHistoryIndex += 1;
+  window.history.pushState(
+    { setupRoute: route, setupHistoryIndex },
+    '',
+    setupRouteUrl(route)
+  );
   await setupRestoreRoute(route);
+  return true;
 }
 
 async function setupNavigateToReusableTaskFromFinder(taskId) {
-  setupCommitCurrentRouteState();
   const route = {
     view: 'review',
     taskId: Number(taskId),
     returnToFinder: true
   };
-  window.history.pushState({ setupRoute: route }, '', setupRouteUrl(route));
+  if (!await setupMayLeaveCurrentView('opening the full reusable task')) return false;
+
+  setupCommitCurrentRouteState();
+  setupHistoryIndex += 1;
+  window.history.pushState(
+    { setupRoute: route, setupHistoryIndex },
+    '',
+    setupRouteUrl(route)
+  );
   await setupRestoreRoute(route);
+  return true;
 }
 
 function setupRouteFromLocation() {
@@ -818,16 +861,59 @@ document.querySelectorAll('.tab').forEach((button) => {
 });
 
 el('setup-return-to-finder')?.addEventListener('click', () => {
-  const route = window.history.state?.setupRoute;
-  if (route?.returnToFinder) {
-    window.history.back();
-    return;
-  }
-  void navigateSetupView('schedule');
+  void (async () => {
+    if (!await setupMayLeaveCurrentView('returning to the Task Finder')) return;
+    const route = window.history.state?.setupRoute;
+    if (route?.returnToFinder) {
+      window.history.back();
+      return;
+    }
+    await navigateSetupView('schedule');
+  })();
 });
 
 window.addEventListener('popstate', (event) => {
   const route = event.state?.setupRoute || setupRouteFromLocation();
+  const targetIndexRaw = Number(event.state?.setupHistoryIndex);
+  const targetIndex = Number.isFinite(targetIndexRaw) ? targetIndexRaw : setupHistoryIndex;
+
+  if (setupPopstateReplay) {
+    setupPopstateReplay = false;
+    setupHistoryIndex = targetIndex;
+    setupPendingHistoryMove = null;
+    void setupRestoreRoute(route);
+    return;
+  }
+
+  if (setupPopstateUndo) {
+    setupPopstateUndo = false;
+    const pending = setupPendingHistoryMove;
+    if (!pending) return;
+
+    void (async () => {
+      const allowed = await setupMayLeaveCurrentView(setupNavigationActionLabel(pending.route));
+      if (!allowed) {
+        setupPendingHistoryMove = null;
+        return;
+      }
+      setupPopstateReplay = true;
+      window.history.go(pending.delta);
+    })();
+    return;
+  }
+
+  const delta = targetIndex - setupHistoryIndex;
+  const hasDirty = typeof window.msbSetupHasDirtyEdits === 'function'
+    && window.msbSetupHasDirtyEdits();
+
+  if (delta !== 0 && hasDirty) {
+    setupPendingHistoryMove = { delta, route, targetIndex };
+    setupPopstateUndo = true;
+    window.history.go(-delta);
+    return;
+  }
+
+  setupHistoryIndex = targetIndex;
   void setupRestoreRoute(route);
 });
 el('material-audit-link')?.addEventListener('click', () => { window.location.href = 'material-audit/'; });
