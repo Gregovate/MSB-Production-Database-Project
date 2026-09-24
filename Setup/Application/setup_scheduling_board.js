@@ -673,14 +673,19 @@ function board205ApplyHistoricalCatalogOverlay() {
       weather_note: current.weather_note,
       reusable_notes: current.reusable_notes,
       reusable_active_flag: true,
-      reusable_created_at: current.reusable_created_at,
-      reusable_created_by: current.reusable_created_by,
-      reusable_created_by_person_id: current.reusable_created_by_person_id,
-      reusable_created_by_display: current.reusable_created_by_display,
-      reusable_updated_at: current.reusable_updated_at,
-      reusable_updated_by: current.reusable_updated_by,
-      reusable_updated_by_person_id: current.reusable_updated_by_person_id,
-      reusable_updated_by_display: current.reusable_updated_by_display,
+      // The Scheduling Board query joins the current reusable Catalog row and
+      // therefore carries authoritative audit fields from this request.
+      // Historical Catalog overlay data in appState.tasks can be older than a
+      // just-completed governed write, so never replace fresh board audit data
+      // with that page-level cache.
+      reusable_created_at: annual?.reusable_created_at ?? current.reusable_created_at,
+      reusable_created_by: annual?.reusable_created_by ?? current.reusable_created_by,
+      reusable_created_by_person_id: annual?.reusable_created_by_person_id ?? current.reusable_created_by_person_id,
+      reusable_created_by_display: annual?.reusable_created_by_display ?? current.reusable_created_by_display,
+      reusable_updated_at: annual?.reusable_updated_at ?? current.reusable_updated_at,
+      reusable_updated_by: annual?.reusable_updated_by ?? current.reusable_updated_by,
+      reusable_updated_by_person_id: annual?.reusable_updated_by_person_id ?? current.reusable_updated_by_person_id,
+      reusable_updated_by_display: annual?.reusable_updated_by_display ?? current.reusable_updated_by_display,
       catalog_dependencies: currentDependencies,
       prerequisites_complete: !hasHardPrerequisite,
       // Historical Verification is being used as a safe shell to review the
