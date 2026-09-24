@@ -618,8 +618,14 @@ function installNextTabs() {
   performButton.className = 'tab'; performButton.dataset.view = 'perform'; performButton.type = 'button'; performButton.textContent = 'Perform Work';
   tabs.insertBefore(scheduleButton, movementButton);
   tabs.insertBefore(performButton, movementButton);
-  scheduleButton.addEventListener('click', async () => { showView('schedule'); await loadNextSchedule(); });
-  performButton.addEventListener('click', async () => { showView('perform'); await loadNextExecution(); });
+  scheduleButton.addEventListener('click', async () => {
+    if (typeof navigateSetupView === 'function') await navigateSetupView('schedule');
+    else { showView('schedule'); await loadNextSchedule(); }
+  });
+  performButton.addEventListener('click', async () => {
+    if (typeof navigateSetupView === 'function') await navigateSetupView('perform');
+    else { showView('perform'); await loadNextExecution(); }
+  });
 
   const main = document.querySelector('main');
   const schedule = document.createElement('section');
