@@ -553,7 +553,8 @@ def test_122_b1a_finder_shows_and_edits_reusable_notes() -> None:
     assert "task.reusable_notes" in ui
     assert "Reusable notes:" in ui
     assert "setup-board205-planning-reusable-notes" in ui
-    assert "reusable_notes: document.getElementById('setup-board205-planning-reusable-notes')" in ui
+    assert "const reusableNotes = document.getElementById('setup-board205-planning-reusable-notes')" in ui
+    assert "reusable_notes: reusableNotes" in ui
     assert 'reusable_notes=optional_text(payload.get("reusable_notes"))' in api
     assert "reusable_notes: str | None" in repo
     assert "SELECT * FROM ref.update_setup_task(" in repo
