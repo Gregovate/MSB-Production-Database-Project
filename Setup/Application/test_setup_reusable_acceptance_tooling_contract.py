@@ -77,17 +77,35 @@ def test_reusable_acceptance_preserves_final_postgis_readiness_contract() -> Non
         assert "final post-init ready state" in server
 
 
-def test_reusable_acceptance_mirrors_current_setup_application_privileges_safely() -> None:
+def test_reusable_acceptance_replays_direct_production_acls_and_public_function_revokes() -> None:
     for name in (
         "setup_disposable_acceptance_server.sh",
         "setup_disposable_browser_preview_server.sh",
     ):
         server = read_acceptance(name)
-        assert "has_schema_privilege('fieldwiring_app'" in server
-        assert "has_table_privilege('fieldwiring_app'" in server
-        assert "has_function_privilege('fieldwiring_app', p.oid, 'EXECUTE')" in server
-        assert "p.prokind IN ('f','w')" in server
+        assert "aclexplode(n.nspacl)" in server
+        assert "aclexplode(c.relacl)" in server
+        assert "aclexplode(p.proacl)" in server
+        assert "grantee.rolname = 'fieldwiring_app'" in server
+        assert "acl.privilege_type = 'USAGE'" in server
+        assert "acl.privilege_type = 'SELECT'" in server
+        assert "acl.privilege_type = 'EXECUTE'" in server
+        assert "public_acl.grantee = 0" in server
+        assert "REVOKE ALL ON FUNCTION %I.%I(%s) FROM PUBLIC;" in server
         assert "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on" in server
+
+        # The reconstructed clone must prove both required access and forbidden
+        # broad/internal access before any candidate migration or browser start.
+        assert "Preview fieldwiring_app lacks required schema USAGE" in server
+        assert "Preview fieldwiring_app lacks required Setup SELECT boundary" in server
+        assert "Preview fieldwiring_app cannot execute Setup capability function" in server
+        assert "Preview fieldwiring_app can execute internal Setup actor helper" in server
+        assert "Preview fieldwiring_app unexpectedly has broad Setup DML" in server
+        assert "Production-equivalent fieldwiring_app boundary replay: PASS" in server
+
+        # Do not return to the effective-privilege introspection that failed to
+        # reconstruct the real role boundary after --no-acl restore.
+        assert "has_function_privilege('fieldwiring_app', p.oid, 'EXECUTE')" not in server
 
 
 def test_reusable_acceptance_cleanup_and_production_after_check_are_mandatory() -> None:
