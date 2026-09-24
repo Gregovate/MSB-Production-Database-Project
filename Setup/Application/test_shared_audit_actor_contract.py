@@ -11,6 +11,12 @@ DB_VALIDATION = (
 SETUP_VALIDATION = (
     ROOT / "Setup" / "Acceptance" / "setup_122_shared_audit_actor_disposable_validation.sql"
 )
+DB_SERVER = (
+    ROOT / "Database" / "Acceptance" / "database_shared_audit_actor_disposable_server.sh"
+)
+DB_WRAPPER = (
+    ROOT / "Database" / "Acceptance" / "run_database_shared_audit_actor_disposable_acceptance.ps1"
+)
 
 
 def test_database_wide_update_actor_repair_covers_both_shared_update_functions() -> None:
@@ -52,3 +58,29 @@ def test_setup_consumer_validation_uses_browser_command_actor_path_only() -> Non
     assert "Database/Acceptance/database_shared_audit_actor_disposable_validation.sql" in sql
     assert "SETUP_122_SHARED_AUDIT_BROWSER_COMMAND_VALIDATION_PASS" in sql
     assert "Explicit Directus-style audit stamp was not preserved" not in sql
+
+
+def test_database_wide_disposable_runner_uses_current_production_clone_without_app_role_dependency() -> None:
+    server = DB_SERVER.read_text(encoding="utf-8")
+    wrapper = DB_WRAPPER.read_text(encoding="utf-8")
+
+    assert 'PROD_CONTAINER="msb-postgres"' in server
+    assert 'IMAGE="postgis/postgis:16-3.5"' in server
+    assert 'NETWORK="msb-stack_default"' in server
+    assert 'pg_dump -U "$DB_ACTOR" -d "$PROD_DB" -Fc > "$DUMP_FILE"' in server
+    assert 'pg_restore -U "$DB_ACTOR" -d "$TEST_DB" --no-owner --no-acl --exit-on-error < "$DUMP_FILE"' in server
+    assert "cat /proc/1/comm" in server
+    assert '[[ "$pid1" == "postgres" ]]' in server
+    assert 'psql_test < "$CANDIDATE_WORKTREE/$MIGRATION_REL"' in server
+    assert 'psql_test < "$CANDIDATE_WORKTREE/$VALIDATION_REL"' in server
+    assert "fieldwiring_app" not in server
+    assert "GRANTS_FILE" not in server
+    assert "Production shared audit function definitions unchanged" in server
+    assert 'rm -rf "$SCRIPT_DIR"' in server
+
+    assert "ssh -tt" in wrapper
+    assert "ServerAliveInterval=15" in wrapper
+    assert "Start-Process" not in wrapper
+    assert "Tee-Object" not in wrapper
+    assert "ssh -f" not in wrapper
+    assert "Production access: pg_dump + SELECT only." in wrapper
