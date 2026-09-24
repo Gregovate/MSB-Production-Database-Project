@@ -157,7 +157,7 @@ Blank remains Any. A two-sided numeric range is intentionally deferred unless 20
 
 Before the real annual Setup Session exists, the active **Reusable Task Catalog** is the single current task-definition authority and the single current task-finder population.
 
-The existing 2025 Historical Verification Session remains historical evidence only. It must not:
+The existing 2025 Session was a temporary construction/verification marker used while building the new Setup system. **There is no authoritative 2025 Setup schedule history.** It has no continuing operational planning or historical authority. It must not:
 
 - determine whether a current reusable task is visible;
 - add `NOT IN 2025` identity/badges to current work;
@@ -210,7 +210,7 @@ Before actual work exists, a Manager may use **Edit Planning Info** directly fro
 
 For reusable-origin work, this is an explicit reusable-knowledge correction.
 
-- **Before the real annual Session exists**, Edit Planning Info updates the reusable Catalog only. Historical 2025 annual rows are not rewritten merely to support current planning.
+- **Before the real annual Session exists**, Edit Planning Info updates the reusable Catalog only. The 2025 construction-marker rows are not rewritten merely to support current planning.
 - **After a real annual Session exists**, the accepted annual planning command may refresh that current season's annual snapshot together with the reusable knowledge where the workflow explicitly calls for both.
 
 For season-only work, the correction remains annual-only.
