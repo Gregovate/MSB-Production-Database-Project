@@ -17,9 +17,9 @@ def read_db(name: str) -> str:
 def test_training_ux_assets_are_loaded_after_live_review_fixes():
     html = read("production.html")
     live_index = html.index("setup_live_review_fixes.js?v=2026-09-08.3")
-    training_index = html.index("setup_training_ux.js?v=2026-09-08.1")
+    training_index = html.index("setup_training_ux.js?v=2026-09-24.2")
     assigned_index = html.index("setup_assigned_review.js?v=2026-09-08.2")
-    refinement_index = html.index("setup_training_review_refinement.js?v=2026-09-09.3")
+    refinement_index = html.index("setup_training_review_refinement.js?v=2026-09-24.4")
     assert "setup_training_ux.css?v=2026-09-08.1" in html
     assert "setup_training_review_refinement.css?v=2026-09-09.3" in html
     assert training_index > live_index
@@ -216,7 +216,7 @@ def test_reconstruction_delete_is_visible_for_catalog_only_tasks_in_historical_m
     assert "attributeFilter: ['hidden']" in refinement_js
     assert "reconstruction-delete" in base_js
     assert "commandOptions('DELETE', {})" in base_js
-    assert "work-day, progress, movement, planning, or actual execution history" in base_js
+    assert "actual work/progress or movement evidence" in base_js\n    assert "Material assignments must be moved or reassigned first" in base_js
     assert "#delete-reconstruction-task.danger" in css
 
 
