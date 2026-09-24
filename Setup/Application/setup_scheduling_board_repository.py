@@ -896,9 +896,9 @@ class SetupSchedulingBoardRepository:
             )
             result = self._one(cur, "Scheduling planning-info update returned no result")
 
-            /* Reusable Notes are durable Catalog knowledge. Reuse the existing
-               governed ref.update_setup_task() command instead of adding broad
-               table DML or a second notes authority. */
+            # Reusable Notes are durable Catalog knowledge. Reuse the existing
+            # governed ref.update_setup_task() command instead of adding broad
+            # table DML or a second notes authority.
             if result.get("task_origin") == "REUSABLE":
                 cur.execute(
                     """
