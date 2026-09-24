@@ -335,6 +335,7 @@ function board205BlockingEnabled() {
 
 function board205FinderStatusFamily(task) {
   const status = String(task?.board_status || '').toUpperCase();
+  if (status === 'CATALOG_ONLY') return 'READY';
   if (status === 'READY_TO_SCHEDULE' || status === 'NEEDS_SCHEDULING_AGAIN') return 'READY';
   if (status === 'BLOCKED') return 'BLOCKED';
   if (status === 'WAITING_ON_WORK_ORDER') return 'WAITING';
@@ -549,9 +550,122 @@ function board205BlockerDetails(task, deps) {
   return details;
 }
 
+function board205CurrentReusableScope(task) {
+  if (!task) return { stage_id: null, lor_scene_id: null, scene_name: null };
+  const scope = (typeof setupNextState !== 'undefined' && setupNextState.taskScopes)
+    ? setupNextState.taskScopes.get(Number(task.setup_task_id))
+    : null;
+  return {
+    stage_id: scope?.stage_id ?? task.stage_id ?? null,
+    lor_scene_id: scope?.lor_scene_id ?? task.lor_scene_id ?? null,
+    scene_name: scope?.scene_name ?? task.scene_name ?? null
+  };
+}
+
+function board205CatalogDependencyRows(task) {
+  return (task?.dependencies || []).map((dep, index) => ({
+    setup_session_task_id: null,
+    prerequisite_setup_session_task_id: null,
+    dependency_origin: 'REUSABLE_CURRENT',
+    dependency_note: dep.dependency_note || null,
+    sort_order: Number(dep.sort_order ?? ((index + 1) * 10)),
+    prerequisite_task_name: dep.task_name || `Task ${dep.setup_task_id}`,
+    prerequisite_task_origin: 'REUSABLE',
+    prerequisite_execution_status: null,
+    prerequisite_work_order_id: null,
+    prerequisite_work_order_completed_at: null,
+    prerequisite_complete: true,
+    prerequisite_setup_task_id: dep.setup_task_id
+  }));
+}
+
+function board205ApplyHistoricalCatalogOverlay() {
+  const board = setupBoard205State.board || {};
+  if (String(board.session?.session_status || '').toUpperCase() !== 'HISTORICAL_VERIFICATION') return;
+
+  const annualByReusableId = new Map(
+    (board.tasks || [])
+      .filter((task) => task.setup_task_id != null && task.task_origin === 'REUSABLE')
+      .map((task) => [Number(task.setup_task_id), task])
+  );
+  const annualDependencies = new Map();
+  for (const dep of board.dependencies || []) {
+    const key = Number(dep.setup_session_task_id);
+    if (!annualDependencies.has(key)) annualDependencies.set(key, []);
+    annualDependencies.get(key).push(dep);
+  }
+
+  const currentTasks = (appState.tasks || []).filter((task) => Boolean(task.active_flag));
+  const merged = [];
+  const mergedDependencies = [];
+
+  for (const current of currentTasks) {
+    const reusableId = Number(current.setup_task_id);
+    const annual = annualByReusableId.get(reusableId) || null;
+    const scope = board205CurrentReusableScope(current);
+    const stage = (appState.stages || []).find((row) => Number(row.stage_id) === Number(scope.stage_id));
+    const annualName = annual?.task_name || null;
+
+    const row = {
+      ...(annual || {}),
+      setup_session_task_id: annual?.setup_session_task_id ?? null,
+      setup_task_id: reusableId,
+      task_origin: 'REUSABLE',
+      catalog_only: !annual,
+      annual_present: Boolean(annual),
+      annual_snapshot_task_name: annualName,
+      task_name: current.task_name,
+      task_action_type: current.task_action_type || annual?.task_action_type || 'WORK',
+      stage_id: scope.stage_id,
+      stage_key: stage?.stage_key ?? current.stage_key ?? annual?.stage_key ?? null,
+      stage_name: stage?.stage_name ?? current.stage_name ?? annual?.stage_name ?? null,
+      lor_scene_id: scope.lor_scene_id,
+      scene_name: scope.scene_name,
+      normal_crew_min: current.normal_crew_min,
+      normal_crew_max: current.normal_crew_max,
+      expected_duration_minutes: current.expected_duration_minutes,
+      effort_level: current.effort_level ?? annual?.effort_level ?? null,
+      completion_point: current.completion_point,
+      readiness_note: current.readiness_note,
+      weather_note: current.weather_note,
+      reusable_notes: current.reusable_notes,
+      reusable_active_flag: true,
+      reusable_created_at: current.reusable_created_at,
+      reusable_created_by: current.reusable_created_by,
+      reusable_created_by_person_id: current.reusable_created_by_person_id,
+      reusable_created_by_display: current.reusable_created_by_display,
+      reusable_updated_at: current.reusable_updated_at,
+      reusable_updated_by: current.reusable_updated_by,
+      reusable_updated_by_person_id: current.reusable_updated_by_person_id,
+      reusable_updated_by_display: current.reusable_updated_by_display,
+      board_status: annual?.board_status || 'CATALOG_ONLY',
+      effective_complete: annual?.effective_complete || false,
+      progress_entries: annual?.progress_entries || 0
+    };
+    merged.push(row);
+
+    if (annual?.setup_session_task_id != null) {
+      for (const dep of annualDependencies.get(Number(annual.setup_session_task_id)) || []) {
+        mergedDependencies.push(dep);
+      }
+    } else {
+      // Catalog-only tasks have current reusable prerequisites but no 2025
+      // execution state. Show the sequence without pretending those edges are
+      // incomplete annual blockers.
+      row.catalog_dependencies = board205CatalogDependencyRows(current);
+    }
+  }
+
+  board.historical_annual_task_count = (board.tasks || []).length;
+  board.tasks = merged;
+  board.dependencies = mergedDependencies;
+  board.catalog_overlay = true;
+}
 
 function board205TaskCard(task) {
-  const deps = board205TaskDependencies(task.setup_session_task_id);
+  const deps = task.catalog_only
+    ? (task.catalog_dependencies || [])
+    : board205TaskDependencies(task.setup_session_task_id);
   const isGate = task.task_action_type === 'GATE';
   const canManage = Boolean(appState.access?.can_manage_setup);
   const historicalReview = board205HistoricalReviewMode();
@@ -563,23 +677,32 @@ function board205TaskCard(task) {
   const blocked = task.board_status === 'BLOCKED';
   const seasonOnly = task.task_origin === 'SEASON_ONLY';
   const depText = deps.length
-    ? deps.map((dep) => `${dep.prerequisite_complete ? '✓' : '○'} ${dep.prerequisite_task_name}`).join('; ')
-    : 'No annual prerequisite';
-  const blockerDetails = board205BlockerDetails(task, deps);
+    ? deps.map((dep) => task.catalog_only
+      ? dep.prerequisite_task_name
+      : `${dep.prerequisite_complete ? '✓' : '○'} ${dep.prerequisite_task_name}`
+    ).join('; ')
+    : (task.catalog_only ? 'No reusable prerequisite' : 'No annual prerequisite');
+  const blockerDetails = task.catalog_only ? [] : board205BlockerDetails(task, deps);
 
   return `
     <article class="setup-board205-task-card"
-      data-session-task-id="${task.setup_session_task_id}"
+      data-session-task-id="${task.setup_session_task_id ?? ''}"
+      data-reusable-task-id="${task.setup_task_id ?? ''}"
       draggable="${canSchedule ? 'true' : 'false'}">
       <div class="setup-board205-task-title">
-        <span>${board205Esc(task.planned_order ?? '—')} · ${board205Esc(task.task_name)}</span>
+        <span>Task ${board205Esc(task.setup_task_id ?? 'annual-only')} · ${board205Esc(task.task_name)}</span>
+        ${task.annual_present && task.planned_order != null ? `<span class="setup-board205-badge">2025 order ${board205Esc(task.planned_order)}</span>` : ''}
+        ${task.catalog_only ? '<span class="setup-board205-badge season-only">CATALOG ONLY · NOT IN 2025</span>' : ''}
         ${seasonOnly ? '<span class="setup-board205-badge season-only">THIS SEASON ONLY</span>' : ''}
         ${isGate ? '<span class="setup-board205-badge">GATE</span>' : ''}
-        <span class="setup-board205-badge ${blocked ? 'blocked' : task.board_status === 'WAITING_ON_WORK_ORDER' ? 'waiting' : ''}">${board205Esc(board205StatusLabel(task.board_status))}</span>
+        <span class="setup-board205-badge ${blocked ? 'blocked' : task.board_status === 'WAITING_ON_WORK_ORDER' ? 'waiting' : ''}">${board205Esc(task.catalog_only ? 'CURRENT CATALOG' : board205StatusLabel(task.board_status))}</span>
         <span class="setup-board205-badge effort-${board205Esc(String(task.effort_level || 'unknown').toLowerCase())}">${board205Esc(board205Effort(task))}</span>
         ${board205WorkOrderBadge(task)}
       </div>
       <div class="setup-board205-meta">${board205Esc(board205Scope(task))}</div>
+      ${task.annual_present && task.annual_snapshot_task_name && task.annual_snapshot_task_name !== task.task_name
+        ? `<div class="setup-board205-meta"><strong>2025 annual name:</strong> ${board205Esc(task.annual_snapshot_task_name)}</div>`
+        : ''}
       <div class="setup-board205-meta"><strong>Min crew:</strong> ${board205Esc(task.normal_crew_min ?? 'TBD')} · <strong>Expected:</strong> ${board205Esc(board205Duration(task.expected_duration_minutes))}</div>
       ${task.resource_summary ? `<div class="setup-board205-meta"><strong>Resources:</strong> ${board205Esc(task.resource_summary)}</div>` : ''}
       ${task.reusable_notes ? `<div class="setup-board205-meta setup-board205-reusable-notes"><strong>Reusable notes:</strong> ${board205Esc(task.reusable_notes)}</div>` : ''}
@@ -587,11 +710,16 @@ function board205TaskCard(task) {
       <div class="setup-board205-meta"><strong>Hard predecessor(s):</strong> ${board205Esc(depText)}</div>
       ${task.readiness_note ? `<div class="setup-board205-readiness ${task.readiness_state === 'NOT_READY' ? 'not-ready' : 'ready'}"><strong>Readiness:</strong> ${board205Esc(task.readiness_note)} · <strong>${board205Esc(task.readiness_state || 'READY')}</strong></div>` : ''}
       ${blockerDetails.map((detail) => `<div class="setup-board205-warning setup-board205-blocker-detail"><strong>${board205Esc(detail.label)}:</strong> ${board205Esc(detail.text)}</div>`).join('')}
-      ${historicalReview ? '<div class="setup-board205-lock">Historical Verification · planning corrections remain available; date/crew scheduling is disabled.</div>' : ''}
+      ${historicalReview
+        ? `<div class="setup-board205-lock">${task.catalog_only
+            ? 'Current reusable Catalog task · no 2025 annual occurrence was created.'
+            : 'Historical Verification · planning corrections remain available; date/crew scheduling is disabled.'}</div>`
+        : ''}
       <div class="setup-board205-card-actions">
         ${canSchedule ? '<button type="button" class="small setup-board205-schedule-task">Schedule…</button>' : ''}
         ${canManage && task.readiness_note ? `<button type="button" class="small secondary setup-board205-toggle-readiness">${task.readiness_state === 'NOT_READY' ? 'Mark Ready' : 'Mark Not Ready'}</button>` : ''}
-        ${canManage && !task.progress_entries && !task.effective_complete ? '<button type="button" class="small secondary setup-board205-edit-planning-info">Edit Planning Info</button>' : ''}
+        ${canManage && task.catalog_only ? '<button type="button" class="small secondary setup-board205-open-reusable-task">Open Reusable Task</button>' : ''}
+        ${canManage && !task.catalog_only && !task.progress_entries && !task.effective_complete ? '<button type="button" class="small secondary setup-board205-edit-planning-info">Edit Planning Info</button>' : ''}
         ${canManage && seasonOnly ? '<button type="button" class="small secondary setup-board205-edit-season-task">Edit season task</button>' : ''}
       </div>
     </article>`;
@@ -670,20 +798,27 @@ function board205RenderQueue() {
   const summary = document.getElementById('setup-board205-finder-summary');
   const search = (document.getElementById('setup-board205-task-search')?.value || '').trim();
   if (summary) {
-    summary.textContent = `${tasks.length} of ${(setupBoard205State.board.tasks || []).length} annual tasks`
+    const noun = board205HistoricalReviewMode() ? 'current reusable tasks' : 'annual tasks';
+    summary.textContent = `${tasks.length} of ${(setupBoard205State.board.tasks || []).length} ${noun}`
       + ` · Blocking ${board205BlockingEnabled() ? 'ON' : 'OFF'}`
       + (search ? ' · task-name search checks all statuses' : '')
       + (!board205BlockingEnabled() ? ' · blocked work included' : ' · blocked work hidden');
   }
   target.innerHTML = tasks.length
     ? tasks.map(board205TaskCard).join('')
-    : '<div class="setup-board205-empty">No annual tasks match the selected filters.</div>';
+    : `<div class="setup-board205-empty">No ${board205HistoricalReviewMode() ? 'current reusable' : 'annual'} tasks match the selected filters.</div>`;
 
   target.querySelectorAll('.setup-board205-task-card').forEach((card) => {
-    const taskId = Number(card.dataset.sessionTaskId);
-    const task = board205Task(taskId);
+    const sessionTaskId = Number(card.dataset.sessionTaskId || 0);
+    const reusableTaskId = Number(card.dataset.reusableTaskId || 0);
+    const task = sessionTaskId
+      ? board205Task(sessionTaskId)
+      : (setupBoard205State.board.tasks || []).find(
+          (row) => Number(row.setup_task_id) === reusableTaskId && row.catalog_only
+        );
+    const taskId = sessionTaskId;
     card.addEventListener('dragstart', (event) => {
-      if (!task || task.task_action_type === 'GATE') return;
+      if (!task || !taskId || task.task_action_type === 'GATE') return;
       setupBoard205State.dragged = { kind: 'task', id: taskId };
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', JSON.stringify(setupBoard205State.dragged));
@@ -704,6 +839,11 @@ function board205RenderQueue() {
     });
     card.querySelector('.setup-board205-edit-season-task')?.addEventListener('click', () => {
       board205OpenSeasonTaskDialog(taskId);
+    });
+    card.querySelector('.setup-board205-open-reusable-task')?.addEventListener('click', () => {
+      if (!reusableTaskId) return;
+      showView('review');
+      selectTask(reusableTaskId);
     });
   });
 }
@@ -963,6 +1103,7 @@ async function board205Load() {
   try {
     const payload = await api(`api/setup/scheduling-board?season_year=${encodeURIComponent(appState.seasonYear)}`);
     setupBoard205State.board = payload.board || { session: null, work_days: [], crews: [], captain_candidates: [], tasks: [], assignments: [], dependencies: [] };
+    board205ApplyHistoricalCatalogOverlay();
     board205Render();
   } catch (error) {
     setAlert(error.message || error, 'error');
