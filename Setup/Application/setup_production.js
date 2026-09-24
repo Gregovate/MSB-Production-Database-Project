@@ -551,10 +551,17 @@ async function saveReusableTask() {
     weather_note: el('edit-weather').value.trim(),
     reusable_notes: el('edit-reusable-notes').value.trim()
   };
+  const effort = el('edit-effort-level')?.value || null;
 
   try {
     setBusy(true);
     await api(`api/setup/tasks/${task.setup_task_id}`, commandOptions('PATCH', payload));
+    if ((task.effort_level || null) !== effort) {
+      await api(
+        `api/setup/tasks/${task.setup_task_id}/effort`,
+        commandOptions('PATCH', { effort_level: effort })
+      );
+    }
     setAlert(`Reusable task ${task.setup_task_id} saved to Production.`, 'ok');
     await reloadTasks(task.setup_task_id);
   } catch (error) {
