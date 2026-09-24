@@ -148,7 +148,26 @@ def test_browser_preview_allows_only_the_approved_shared_audit_repair() -> None:
     assert "$isSetupMigration = $Path.StartsWith('Setup/Database/')" in launcher
     assert "$isApprovedSharedMigration = $Path -eq 'Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql'" in launcher
     assert "explicitly approved shared database repair" in launcher
+    assert "$isSetupValidation = $Path.StartsWith('Setup/Acceptance/')" in launcher
+    assert "$isApprovedSharedValidation = $Path -eq 'Database/Acceptance/database_shared_audit_actor_disposable_validation.sql'" in launcher
+    assert "explicitly approved shared database validation" in launcher
     assert "Database/Basic_Query_Tools_Dev/" not in launcher.replace(
         "Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql",
         "",
     )
+    assert "Database/Acceptance/" not in launcher.replace(
+        "Database/Acceptance/database_shared_audit_actor_disposable_validation.sql",
+        "",
+    )
+
+
+def test_reusable_disposable_grant_replay_identifies_the_exact_failing_statement() -> None:
+    for name in (
+        "setup_disposable_acceptance_server.sh",
+        "setup_disposable_browser_preview_server.sh",
+    ):
+        server = read_acceptance(name)
+        assert 'echo "Grant replay [$grant_index]: $grant_stmt"' in server
+        assert 'psql_test -c "$grant_stmt"' in server
+        assert "application-role grant replay failed at statement" in server
+        assert 'psql_test < "$GRANTS_FILE"' not in server
