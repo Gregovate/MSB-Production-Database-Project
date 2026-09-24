@@ -269,5 +269,5 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "navigateSetupView('perform')" in next_pass
     assert "setup_production.js?v=2026-09-24.4" in html
     assert "setup_next_pass.js?v=2026-09-24.1" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.5" in html
+    assert "setup_scheduling_board.js?v=2026-09-24.6" in html
 
