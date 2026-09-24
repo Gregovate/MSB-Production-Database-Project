@@ -293,7 +293,8 @@ def test_122_b1a_pre2026_finder_hides_deferred_and_filters_soft_readiness() -> N
     ui = read_app("setup_scheduling_board.js")
 
     assert "setup-board205-ready-only" in ui
-    assert 'id="setup-board205-ready-only" type="checkbox" checked' in ui
+    assert 'id="setup-board205-ready-only" type="checkbox"> Ready only' in ui
+    assert 'id="setup-board205-ready-only" type="checkbox" checked' not in ui
     assert "if (readyOnly && task.readiness_state === 'NOT_READY') return false;" in ui
     assert "setup-board205-status-deferred" not in ui
     assert "DEFERRED: 'setup-board205-status-deferred'" not in ui
@@ -692,7 +693,7 @@ def test_122_b1a_current_catalog_is_single_pre2026_task_finder_authority() -> No
     assert "baseline_plan_order: current.baseline_plan_order" in ui
     assert "Current Reusable Task Finder — Pre-2026 Planning" in ui
     assert "Pre-2026 planning — current reusable Catalog." in ui
-    assert "Historical 2025 facts remain in Verification" in ui
+    assert "The 2025 construction marker does not define this task list or current planning state." in ui
 
     # The current planning finder must not make 2025 membership/order part of
     # the operator-facing task identity.
