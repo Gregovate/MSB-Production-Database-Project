@@ -161,6 +161,7 @@ class SetupSchedulingBoardRepository:
                     st.annual_weather_note AS weather_note,
                     coalesce(captains.captain_person_ids, ARRAY[]::integer[]) AS reusable_captain_person_ids,
                     rt.baseline_plan_order,
+                    rt.reusable_notes,
                     rt.active_flag AS reusable_active_flag,
                     coalesce(rt.requires_display_material, false) AS requires_display_material,
                     coalesce(resources.resource_count, 0) AS resource_count,
