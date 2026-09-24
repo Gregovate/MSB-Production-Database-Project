@@ -7,27 +7,6 @@ function setupEffortLabel(value) {
   return normalized || 'Not reviewed';
 }
 
-function placeSetupEffortSaveControl() {
-  const select = el('edit-effort-level');
-  const button = el('save-task-effort');
-  const label = select?.closest('label');
-  if (!select || !button || !label) return;
-  if (el('setup-effort-editor-row')) return;
-
-  const row = document.createElement('div');
-  row.id = 'setup-effort-editor-row';
-  row.className = 'compact-grid';
-
-  const actions = document.createElement('div');
-  actions.className = 'action-row manager-only setup-effort-save-actions';
-
-  button.classList.remove('secondary');
-  label.parentElement.insertBefore(row, label);
-  row.appendChild(label);
-  actions.appendChild(button);
-  row.appendChild(actions);
-}
-
 function applySetupEffortToTasks() {
   for (const task of appState.tasks || []) {
     task.effort_level = setupEffortState.get(Number(task.setup_task_id)) ?? null;
@@ -38,8 +17,6 @@ function applySetupEffortAccess() {
   const editable = Boolean(appState.access?.can_manage_setup);
   const select = el('edit-effort-level');
   if (select) select.disabled = !editable;
-  const button = el('save-task-effort');
-  if (button) button.disabled = !editable;
 }
 
 function applySetupEffortBadges() {
@@ -76,46 +53,6 @@ async function loadSetupEfforts({ rerender = true } = {}) {
   else applySetupEffortBadges();
 }
 
-async function saveSelectedSetupEffort() {
-  const task = taskById(appState.selectedTaskId);
-  if (!task || !appState.access?.can_manage_setup) return;
-  const select = el('edit-effort-level');
-  if (!select) return;
-
-  const effort = select.value || null;
-  const reusableDraft = typeof window.msbSetupCaptureReusableDraft === 'function'
-    ? window.msbSetupCaptureReusableDraft()
-    : null;
-
-  try {
-    setBusy(true);
-    await api(
-      `api/setup/tasks/${task.setup_task_id}/effort`,
-      commandOptions('PATCH', { effort_level: effort })
-    );
-    setupEffortState.set(Number(task.setup_task_id), effort);
-    task.effort_level = effort;
-
-    // Reload the authoritative task row so audit attribution refreshes, then
-    // restore any other reusable-field drafts that the operator had not yet
-    // chosen to save. Save Effort must never discard unrelated typed edits.
-    await reloadTasks(task.setup_task_id);
-    if (
-      reusableDraft
-      && Number(appState.selectedTaskId) === Number(task.setup_task_id)
-      && typeof window.msbSetupRestoreReusableDraft === 'function'
-    ) {
-      window.msbSetupRestoreReusableDraft(reusableDraft);
-    }
-
-    setAlert(`Reusable effort saved: ${setupEffortLabel(effort)}.`, 'ok');
-  } catch (error) {
-    setAlert(error.message || error, 'error');
-  } finally {
-    setBusy(false);
-  }
-}
-
 if (typeof renderLibrary === 'function') {
   const setupEffortBaseRenderLibrary = renderLibrary;
   renderLibrary = function renderLibraryWithSetupEffort(...args) {
@@ -143,11 +80,7 @@ if (typeof reloadTasks === 'function') {
   };
 }
 
-placeSetupEffortSaveControl();
-el('save-task-effort')?.addEventListener('click', saveSelectedSetupEffort);
-
 window.addEventListener('load', () => {
-  placeSetupEffortSaveControl();
   applySetupEffortAccess();
   loadSetupEfforts().catch((error) => {
     console.error('Setup effort metadata could not be loaded', error);
