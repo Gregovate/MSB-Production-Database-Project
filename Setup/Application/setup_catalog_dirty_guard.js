@@ -82,6 +82,29 @@
     };
   }
 
+  function restoreReusableDraft(values) {
+    if (!values) return;
+    el('edit-task-name').value = values.task_name ?? '';
+    el('edit-stage-id').value = values.stage_id ?? '';
+    el('edit-action-type').value = values.task_action_type || 'WORK';
+    el('edit-display-order').value = values.display_order ?? 100;
+    el('edit-active-flag').checked = Boolean(values.active_flag);
+    el('edit-crew-min').value = values.normal_crew_min ?? '';
+    el('edit-crew-max').value = values.normal_crew_max ?? '';
+
+    const total = values.expected_duration_minutes == null
+      ? null
+      : Number(values.expected_duration_minutes);
+    el('edit-duration-hours').value = total == null ? '' : Math.floor(total / 60);
+    el('edit-duration-minute-remainder').value = total == null ? '' : total % 60;
+
+    el('edit-completion').value = values.completion_point ?? '';
+    el('edit-readiness').value = values.readiness_note ?? '';
+    el('edit-weather').value = values.weather_note ?? '';
+    el('edit-reusable-notes').value = values.reusable_notes ?? '';
+    syncDirtyIndicators();
+  }
+
   function annualFormState() {
     return {
       actual_crew_count: normalizeNullableInteger(el('edit-actual-crew').value),
@@ -505,6 +528,8 @@
   // use the same save/discard/stay decision as legacy tab/task click guards.
   window.msbSetupHasDirtyEdits = anyDirty;
   window.msbSetupResolveDirtyBeforeNavigation = resolveDirtyBeforeNavigation;
+  window.msbSetupCaptureReusableDraft = () => reusableFormState();
+  window.msbSetupRestoreReusableDraft = restoreReusableDraft;
 
   installBuildBadge();
   installSelectionRefreshWrapper();
