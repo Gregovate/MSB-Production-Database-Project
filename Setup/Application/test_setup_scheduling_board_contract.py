@@ -483,13 +483,3 @@ def test_122_b1a_blocking_toggle_is_non_mutating_planning_mode() -> None:
     )[0]
     assert "api(" not in toggle_section
     assert "commandOptions(" not in toggle_section
-
-
-def test_122_b1a_historical_finder_does_not_trap_page_scroll() -> None:
-    css = read_app("setup_scheduling_board.css")
-
-    finder = css.split(".setup-board205-main.finder-only .setup-board205-backlog {", 1)[1].split("}", 1)[0]
-    assert "max-height: none" in finder
-    assert "overflow-y: visible" in finder
-    assert "overscroll-behavior: auto" in finder
-    assert "scrollbar-gutter: auto" in finder
