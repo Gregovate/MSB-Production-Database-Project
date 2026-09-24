@@ -165,7 +165,7 @@ The existing 2025 Session was a temporary construction/verification marker used 
 - act as a proxy for a current-year Ready / Not Ready decision; or
 - force the operator into the full Reusable Task Catalog merely to edit routine planning fields.
 
-Pre-2026 **Plan order** means `ref.setup_task.baseline_plan_order`. After a real annual Session exists, `ops.setup_session_task.planned_order` becomes that season's ordering authority.
+Pre-2026 **Plan order** uses reusable Catalog order. With **All Stages / areas**, the whole-Setup `ref.setup_task.baseline_plan_order` is authoritative. When the finder is narrowed to a Stage or Site-wide scope, the operator-visible reusable step `display_order` is authoritative within that scope (for example 10/20/30/40/50), with `baseline_plan_order` as fallback. After a real annual Session exists, `ops.setup_session_task.planned_order` becomes that season's whole-Setup ordering authority.
 
 The normal pre-2026 correction path is the compact **Edit Planning Info** dialog for crew guidance, expected Hours/Minutes, Effort, Readiness note, Weather note, Completion point, and Reusable notes. **Open Full Reusable Task** is the secondary drill-down for deeper information such as Resources, material ownership, Captain knowledge, Procedure context, and other full-record maintenance.
 
