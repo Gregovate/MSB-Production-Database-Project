@@ -284,6 +284,20 @@ function board205Duration(minutes) {
     : `${minutes} min`;
 }
 
+function board205AuditWhen(value) {
+  if (!value) return 'unknown time';
+  if (typeof formatTimestamp === 'function') return formatTimestamp(value);
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString();
+}
+
+function board205AuditLine(task) {
+  if (!task || task.task_origin !== 'REUSABLE') return '';
+  const createdBy = task.reusable_created_by_display || task.reusable_created_by || 'unknown actor';
+  const updatedBy = task.reusable_updated_by_display || task.reusable_updated_by || 'unknown actor';
+  return `Created ${board205AuditWhen(task.reusable_created_at)} by ${createdBy} · Last updated ${board205AuditWhen(task.reusable_updated_at)} by ${updatedBy}`;
+}
+
 function board205Crew(task) {
   if (task.normal_crew_min == null && task.normal_crew_max == null) return 'Crew not reviewed';
   if (task.normal_crew_min != null && task.normal_crew_max != null) {
@@ -569,6 +583,7 @@ function board205TaskCard(task) {
       <div class="setup-board205-meta"><strong>Min crew:</strong> ${board205Esc(task.normal_crew_min ?? 'TBD')} · <strong>Expected:</strong> ${board205Esc(board205Duration(task.expected_duration_minutes))}</div>
       ${task.resource_summary ? `<div class="setup-board205-meta"><strong>Resources:</strong> ${board205Esc(task.resource_summary)}</div>` : ''}
       ${task.reusable_notes ? `<div class="setup-board205-meta setup-board205-reusable-notes"><strong>Reusable notes:</strong> ${board205Esc(task.reusable_notes)}</div>` : ''}
+      ${canManage && task.task_origin === 'REUSABLE' ? `<div class="setup-board205-meta setup-board205-audit"><strong>Audit:</strong> ${board205Esc(board205AuditLine(task))}</div>` : ''}
       <div class="setup-board205-meta"><strong>Hard predecessor(s):</strong> ${board205Esc(depText)}</div>
       ${task.readiness_note ? `<div class="setup-board205-readiness ${task.readiness_state === 'NOT_READY' ? 'not-ready' : 'ready'}"><strong>Readiness:</strong> ${board205Esc(task.readiness_note)} · <strong>${board205Esc(task.readiness_state || 'READY')}</strong></div>` : ''}
       ${blockerDetails.map((detail) => `<div class="setup-board205-warning setup-board205-blocker-detail"><strong>${board205Esc(detail.label)}:</strong> ${board205Esc(detail.text)}</div>`).join('')}
