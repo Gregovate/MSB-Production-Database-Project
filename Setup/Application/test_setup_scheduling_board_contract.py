@@ -932,7 +932,7 @@ def test_122_season_only_unworked_task_delete_is_governed() -> None:
     ui = read_app("setup_scheduling_board.js")
     api = read_app("setup_scheduling_board_api.py")
     repository = read_app("setup_scheduling_board_repository.py")
-    migration = (ROOT.parent / "Database" / "057_enable_2026_unworked_task_deletion.sql").read_text(encoding="utf-8")
+    migration = read_db("057_enable_2026_unworked_task_deletion.sql")
     assert "setup-board205-delete-season-task" in ui
     assert "commandOptions('DELETE')" in ui
     assert '@setup_scheduling_board_api.delete(' in api
