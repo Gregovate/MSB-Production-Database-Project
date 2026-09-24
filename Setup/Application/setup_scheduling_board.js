@@ -1218,6 +1218,7 @@ function board205Render() {
     addSeason.disabled = !session || historicalReview || !canManage;
   }
   if (createSession) {
+    createSession.textContent = `Create ${appState.seasonYear} Setup Session`;
     createSession.hidden = Boolean(session) || !canAdmin;
     createSession.disabled = Boolean(session) || !canAdmin;
   }
@@ -1995,7 +1996,7 @@ function board205InstallView() {
         <strong>No annual Setup Session exists for this season.</strong>
         <p class="muted">The reusable Catalog is ready. A Setup Administrator can create the real annual Session here; creation seeds every active reusable task once and does not schedule any work by itself.</p>
         <div class="action-row">
-          <button id="setup-board205-create-session" type="button" class="admin-only" hidden>Create ${appState.seasonYear} Setup Session</button>
+          <button id="setup-board205-create-session" type="button" class="admin-only" hidden>Create Setup Session</button>
         </div>
       </div>
 
@@ -2101,9 +2102,9 @@ function board205InstallView() {
           <button id="setup-board205-add-reusable" type="button">
             Reusable Setup Task — every year
           </button>
-          <p class="muted">Creates permanent reusable Catalog work and automatically adds it to the open ${appState.seasonYear} Session.</p>
+          <p class="muted">Creates permanent reusable Catalog work and automatically adds it to the open annual Session.</p>
           <button id="setup-board205-add-season-only" type="button" class="secondary">
-            ${appState.seasonYear} Only — this season
+            Season Task Only — this season
           </button>
           <p class="muted">Creates annual work only. It does not enter the Reusable Task Catalog.</p>
         </div>
