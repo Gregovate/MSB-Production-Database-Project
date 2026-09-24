@@ -400,6 +400,15 @@ WHERE p.directus_user_id IS NOT NULL
 ORDER BY p.person_id
 LIMIT 1;
 
+/*
+The disposable clone is restored with --no-acl, so recreate only the minimum
+Production-equivalent privilege boundary needed for this native Directus actor
+probe. Production grants directus_app schema access; the probe also pins
+resolve_actor() execution explicitly rather than relying on default PUBLIC
+function privileges.
+*/
+GRANT USAGE ON SCHEMA ref TO directus_app;
+GRANT EXECUTE ON FUNCTION ref.resolve_actor() TO directus_app;
 GRANT SELECT ON ref.person TO directus_app;
 GRANT SELECT, UPDATE ON directus_audit_probe TO directus_app;
 
