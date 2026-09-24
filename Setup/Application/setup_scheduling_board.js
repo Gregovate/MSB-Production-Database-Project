@@ -7,6 +7,7 @@ const setupBoard205State = {
   dragged: null,
   editSeasonTaskId: null,
   editPlanningTaskId: null,
+  editPlanningReusableTaskId: null,
   scheduleTarget: null,
   finderCompact: null
 };
@@ -352,7 +353,6 @@ function board205CaptureFinderState() {
     readyOnly: checked('setup-board205-ready-only'),
     statusReady: checked('setup-board205-status-ready'),
     statusScheduled: checked('setup-board205-status-scheduled'),
-    statusDeferred: checked('setup-board205-status-deferred'),
     statusComplete: checked('setup-board205-status-complete'),
     timeOp: value('setup-board205-time-op'),
     time: value('setup-board205-time-filter'),
@@ -391,7 +391,6 @@ function board205RestoreFinderState(state) {
   setChecked('setup-board205-ready-only', state.readyOnly);
   setChecked('setup-board205-status-ready', state.statusReady);
   setChecked('setup-board205-status-scheduled', state.statusScheduled);
-  setChecked('setup-board205-status-deferred', state.statusDeferred);
   setChecked('setup-board205-status-complete', state.statusComplete);
   setValue('setup-board205-time-op', state.timeOp);
   setValue('setup-board205-time-filter', state.time);
@@ -572,7 +571,6 @@ function board205FinderSelectedStatuses() {
   const ids = {
     READY: 'setup-board205-status-ready',
     SCHEDULED: 'setup-board205-status-scheduled',
-    DEFERRED: 'setup-board205-status-deferred',
     COMPLETE: 'setup-board205-status-complete'
   };
   return new Set(
@@ -583,7 +581,13 @@ function board205FinderSelectedStatuses() {
 }
 
 function board205FinderCompare(a, b, mode) {
-  const planOrder = (task) => task.planned_order == null ? 999999 : Number(task.planned_order);
+  const reusablePlanning = board205HistoricalReviewMode() && Boolean(setupBoard205State.board.catalog_overlay);
+  const planOrder = (task) => {
+    const value = reusablePlanning
+      ? task.baseline_plan_order
+      : (task.planned_order ?? task.baseline_plan_order);
+    return value == null ? 999999 : Number(value);
+  };
   const textCompare = (left, right) => String(left || '').localeCompare(
     String(right || ''),
     undefined,
