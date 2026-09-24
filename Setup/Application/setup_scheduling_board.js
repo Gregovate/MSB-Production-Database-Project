@@ -330,14 +330,6 @@ function board205FinderStatusFamily(task) {
   return 'OTHER';
 }
 
-function board205FinderEffectiveStatusFamily(task) {
-  const family = board205FinderStatusFamily(task);
-  if (!board205BlockingEnabled() && (family === 'BLOCKED' || family === 'WAITING')) {
-    return 'READY';
-  }
-  return family;
-}
-
 function board205FinderStageRows() {
   const rows = new Map();
   for (const task of setupBoard205State.board.tasks || []) {
@@ -445,8 +437,6 @@ function board205SyncFinderOptions() {
 function board205FinderSelectedStatuses() {
   const ids = {
     READY: 'setup-board205-status-ready',
-    BLOCKED: 'setup-board205-status-blocked',
-    WAITING: 'setup-board205-status-waiting',
     SCHEDULED: 'setup-board205-status-scheduled',
     DEFERRED: 'setup-board205-status-deferred',
     COMPLETE: 'setup-board205-status-complete'
@@ -491,7 +481,7 @@ function board205FinderCompare(a, b, mode) {
   }
   if (mode === 'STATUS') {
     const rank = { READY: 1, BLOCKED: 2, WAITING: 3, SCHEDULED: 4, DEFERRED: 5, COMPLETE: 6, OTHER: 9 };
-    return (rank[board205FinderEffectiveStatusFamily(a)] || 9) - (rank[board205FinderEffectiveStatusFamily(b)] || 9)
+    return (rank[board205FinderStatusFamily(a)] || 9) - (rank[board205FinderStatusFamily(b)] || 9)
       || textCompare(a.stage_key, b.stage_key)
       || planOrder(a) - planOrder(b)
       || Number(a.setup_session_task_id) - Number(b.setup_session_task_id);
@@ -562,8 +552,6 @@ function board205TaskCard(task) {
     ? deps.map((dep) => `${dep.prerequisite_complete ? '✓' : '○'} ${dep.prerequisite_task_name}`).join('; ')
     : 'No annual prerequisite';
   const blockerDetails = board205BlockerDetails(task, deps);
-  const blockingIgnored = !board205BlockingEnabled()
-    && (task.board_status === 'BLOCKED' || task.board_status === 'WAITING_ON_WORK_ORDER');
 
   return `
     <article class="setup-board205-task-card"
@@ -574,13 +562,13 @@ function board205TaskCard(task) {
         ${seasonOnly ? '<span class="setup-board205-badge season-only">THIS SEASON ONLY</span>' : ''}
         ${isGate ? '<span class="setup-board205-badge">GATE</span>' : ''}
         <span class="setup-board205-badge ${blocked ? 'blocked' : task.board_status === 'WAITING_ON_WORK_ORDER' ? 'waiting' : ''}">${board205Esc(board205StatusLabel(task.board_status))}</span>
-        ${blockingIgnored ? '<span class="setup-board205-badge setup-board205-blocking-ignored">BLOCKING IGNORED FOR PLANNING</span>' : ''}
         <span class="setup-board205-badge effort-${board205Esc(String(task.effort_level || 'unknown').toLowerCase())}">${board205Esc(board205Effort(task))}</span>
         ${board205WorkOrderBadge(task)}
       </div>
       <div class="setup-board205-meta">${board205Esc(board205Scope(task))}</div>
       <div class="setup-board205-meta"><strong>Min crew:</strong> ${board205Esc(task.normal_crew_min ?? 'TBD')} · <strong>Expected:</strong> ${board205Esc(board205Duration(task.expected_duration_minutes))}</div>
       ${task.resource_summary ? `<div class="setup-board205-meta"><strong>Resources:</strong> ${board205Esc(task.resource_summary)}</div>` : ''}
+      ${task.reusable_notes ? `<div class="setup-board205-meta setup-board205-reusable-notes"><strong>Reusable notes:</strong> ${board205Esc(task.reusable_notes)}</div>` : ''}
       <div class="setup-board205-meta"><strong>Hard predecessor(s):</strong> ${board205Esc(depText)}</div>
       ${task.readiness_note ? `<div class="setup-board205-readiness ${task.readiness_state === 'NOT_READY' ? 'not-ready' : 'ready'}"><strong>Readiness:</strong> ${board205Esc(task.readiness_note)} · <strong>${board205Esc(task.readiness_state || 'READY')}</strong></div>` : ''}
       ${blockerDetails.map((detail) => `<div class="setup-board205-warning setup-board205-blocker-detail"><strong>${board205Esc(detail.label)}:</strong> ${board205Esc(detail.text)}</div>`).join('')}
@@ -590,9 +578,6 @@ function board205TaskCard(task) {
         ${canManage && task.readiness_note ? `<button type="button" class="small secondary setup-board205-toggle-readiness">${task.readiness_state === 'NOT_READY' ? 'Mark Ready' : 'Mark Not Ready'}</button>` : ''}
         ${canManage && !task.progress_entries && !task.effective_complete ? '<button type="button" class="small secondary setup-board205-edit-planning-info">Edit Planning Info</button>' : ''}
         ${canManage && seasonOnly ? '<button type="button" class="small secondary setup-board205-edit-season-task">Edit season task</button>' : ''}
-        ${canManage ? `
-          <button type="button" class="small secondary setup-board205-plan-up">Plan ↑</button>
-          <button type="button" class="small secondary setup-board205-plan-down">Plan ↓</button>` : ''}
       </div>
     </article>`;
 }
@@ -613,9 +598,17 @@ function board205QueueTasks() {
 
   return [...(setupBoard205State.board.tasks || [])]
     .filter((task) => {
-      // Search deliberately spans every status bucket. A matching blocked or
-      // scheduled task must never look like it does not exist.
-      if (!search && !statuses.has(board205FinderEffectiveStatusFamily(task))) return false;
+      const family = board205FinderStatusFamily(task);
+      const isBlocked = family === 'BLOCKED' || family === 'WAITING';
+
+      // Blocking is a visibility choice only. ON hides blocked/waiting work;
+      // OFF includes it without mutating prerequisite/readiness/Work Order facts.
+      if (board205BlockingEnabled() && isBlocked) return false;
+
+      // When Task name is blank, the normal status checkboxes control the
+      // non-blocked categories. With Blocking OFF, blocked/waiting work is
+      // included automatically.
+      if (!search && !isBlocked && !statuses.has(family)) return false;
 
       if (stageValue === 'SITE_WIDE') {
         if (task.stage_id != null) return false;
@@ -665,7 +658,7 @@ function board205RenderQueue() {
     summary.textContent = `${tasks.length} of ${(setupBoard205State.board.tasks || []).length} annual tasks`
       + ` · Blocking ${board205BlockingEnabled() ? 'ON' : 'OFF'}`
       + (search ? ' · task-name search checks all statuses' : '')
-      + (!board205BlockingEnabled() ? ' · blocker facts still shown' : '');
+      + (!board205BlockingEnabled() ? ' · blocked work included' : ' · blocked work hidden');
   }
   target.innerHTML = tasks.length
     ? tasks.map(board205TaskCard).join('')
@@ -697,8 +690,6 @@ function board205RenderQueue() {
     card.querySelector('.setup-board205-edit-season-task')?.addEventListener('click', () => {
       board205OpenSeasonTaskDialog(taskId);
     });
-    card.querySelector('.setup-board205-plan-up')?.addEventListener('click', () => board205MoveAnnualOrder(taskId, -1));
-    card.querySelector('.setup-board205-plan-down')?.addEventListener('click', () => board205MoveAnnualOrder(taskId, 1));
   });
 }
 
@@ -1124,30 +1115,6 @@ async function board205RemoveAssignment(item) {
   }
 }
 
-async function board205MoveAnnualOrder(taskId, direction) {
-  const task = board205Task(taskId);
-  if (!task) return;
-  const tasks = [...(setupBoard205State.board.tasks || [])]
-    .sort((a, b) => Number(a.planned_order ?? 999999) - Number(b.planned_order ?? 999999));
-  const index = tasks.findIndex((row) => Number(row.setup_session_task_id) === Number(taskId));
-  const neighbor = tasks[index + direction];
-  if (!neighbor) return;
-  const desired = direction < 0
-    ? Number(neighbor.planned_order ?? 0) - 1
-    : Number(neighbor.planned_order ?? 0) + 1;
-  try {
-    await api(`api/setup/session-tasks/${taskId}/planned-order`, commandOptions('PATCH', {
-      planned_order: Math.max(0, desired),
-      plan_change_reason: 'Annual Scheduling Board reorder'
-    }));
-    await board205Load();
-  } catch (error) {
-    setAlert(error.message || error, 'error');
-    window.alert(error.message || error);
-  }
-}
-
-
 function board205PopulateDialogSelects() {
   const daySelect = document.getElementById('setup-board205-schedule-day');
   if (daySelect) {
@@ -1525,12 +1492,10 @@ function board205InstallView() {
             </select></label>
             <label class="setup-board205-search">Task name<input id="setup-board205-task-search" type="search" placeholder="e.g. locate"></label>
             <label class="setup-board205-blocking-toggle"><input id="setup-board205-blocking-toggle" type="checkbox" checked> Blocking ON</label>
-            <div class="setup-board205-blocking-help">ON honors hard predecessor / readiness / Work Order blocking for finder availability. OFF treats those tasks as planning candidates without changing the underlying blocker facts.</div>
+            <div class="setup-board205-blocking-help">ON hides blocked / Work-Order-waiting tasks. OFF includes them. The underlying blocker facts are never changed.</div>
             <fieldset class="setup-board205-status-filter">
-              <legend>Status shown when Task search is blank</legend>
+              <legend>Status shown when Task name is blank</legend>
               <label><input id="setup-board205-status-ready" type="checkbox" checked> Ready / needs continuation</label>
-              <label><input id="setup-board205-status-blocked" type="checkbox" checked> Blocked</label>
-              <label><input id="setup-board205-status-waiting" type="checkbox" checked> Waiting on Work Order</label>
               <label><input id="setup-board205-status-scheduled" type="checkbox"> Scheduled</label>
               <label><input id="setup-board205-status-deferred" type="checkbox"> Deferred</label>
               <label><input id="setup-board205-status-complete" type="checkbox"> Complete</label>
