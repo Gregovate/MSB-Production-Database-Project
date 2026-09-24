@@ -106,7 +106,7 @@ def test_reusable_acceptance_uses_established_setup_read_boundary_and_production
         assert "Preview fieldwiring_app lacks required schema USAGE" in server
         assert "Preview fieldwiring_app lacks required Setup SELECT boundary" in server
         assert "Preview fieldwiring_app cannot execute Setup capability function" in server
-        assert "Preview fieldwiring_app can execute internal Setup actor helper" in server
+        assert "Production Setup function authorization boundary: PASS" in server
         assert "Preview fieldwiring_app unexpectedly has broad Setup DML" in server
         assert "Established Setup disposable read boundary + Production command ACL replay: PASS" in server
 
