@@ -216,7 +216,8 @@ def test_reconstruction_delete_is_visible_for_catalog_only_tasks_in_historical_m
     assert "attributeFilter: ['hidden']" in refinement_js
     assert "reconstruction-delete" in base_js
     assert "commandOptions('DELETE', {})" in base_js
-    assert "actual work/progress or movement evidence" in base_js\n    assert "Material assignments must be moved or reassigned first" in base_js
+    assert "actual work/progress or movement evidence" in base_js
+    assert "Material assignments must be moved or reassigned first" in base_js
     assert "#delete-reconstruction-task.danger" in css
 
 
