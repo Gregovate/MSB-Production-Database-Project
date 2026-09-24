@@ -36,10 +36,54 @@ def test_database_wide_update_actor_repair_covers_both_shared_update_functions()
     assert "COALESCE(NEW.updated_by_person_id, v_person_id)" not in sql
 
 
-def test_database_wide_disposable_validation_covers_actor_replacement_and_directus() -> None:
+def test_database_wide_repair_completes_known_legacy_audit_schema_without_backfill() -> None:
+    sql = REPAIR.read_text(encoding="utf-8")
+
+    assert "ALTER TABLE ref.task_type" in sql
+    assert "ALTER TABLE ref.work_area" in sql
+    assert "ALTER TABLE ops.work_order_status_history" in sql
+    assert "ADD COLUMN IF NOT EXISTS created_by text" in sql
+    assert "ADD COLUMN IF NOT EXISTS updated_by text" in sql
+    assert "ADD COLUMN IF NOT EXISTS created_at timestamptz" in sql
+    assert "ADD COLUMN IF NOT EXISTS created_by_person_id bigint" in sql
+    assert "ADD COLUMN IF NOT EXISTS updated_at timestamptz" in sql
+    assert "ADD COLUMN IF NOT EXISTS updated_by_person_id bigint" in sql
+    assert "fk_wosh_created_by_person" in sql
+    assert "fk_wosh_updated_by_person" in sql
+    assert "trg_work_order_status_history_set_actor_insert" in sql
+
+    # The approved scope is forward-only. Do not fabricate historical actors or
+    # timestamps simply to fill newly added columns.
+    assert "UPDATE ref.task_type" not in sql
+    assert "UPDATE ref.work_area" not in sql
+    assert "UPDATE ops.work_order_status_history" not in sql
+    assert "No DEFAULT and no historical UPDATE are intentional" in sql
+
+
+def test_policy_synchronizer_requires_complete_six_field_foundation_contract() -> None:
+    sql = REPAIR.read_text(encoding="utf-8")
+
+    assert "CREATE OR REPLACE FUNCTION ref.sync_audit_collection_policy()" in sql
+    assert "has_created_at" in sql
+    assert "has_created_by" in sql
+    assert "has_created_by_person_id" in sql
+    assert "has_updated_at" in sql
+    assert "has_updated_by" in sql
+    assert "has_updated_by_person_id" in sql
+    assert "SELECT *" in sql
+    assert "FROM ref.sync_audit_collection_policy();" in sql
+    assert "Existing policy rows are not overwritten" in sql
+
+
+def test_database_wide_disposable_validation_covers_contract_and_actor_replacement() -> None:
     sql = DB_VALIDATION.read_text(encoding="utf-8")
 
     assert "Stale UPDATE audit COALESCE pattern remains in %" in sql
+    assert "Shared audit table lacks complete six-field Foundation contract" in sql
+    assert "Shared UPDATE audit table lacks active update-actor policy" in sql
+    assert "ops.work_order_status_history is missing shared INSERT actor trigger" in sql
+    assert "ops.work_order_status_history is missing audit-person foreign keys" in sql
+    assert "Audit policy synchronizer does not enforce complete six-field contract" in sql
     assert "set_actor_on_update failed to replace prior updater" in sql
     assert "set_updated_fields failed to replace prior updater" in sql
     assert "SET LOCAL ROLE directus_app;" in sql
@@ -60,7 +104,7 @@ def test_setup_consumer_validation_uses_browser_command_actor_path_only() -> Non
     assert "Explicit Directus-style audit stamp was not preserved" not in sql
 
 
-def test_database_wide_disposable_runner_uses_current_production_clone_without_app_role_dependency() -> None:
+def test_database_wide_disposable_runner_tests_repair_against_known_production_gaps() -> None:
     server = DB_SERVER.read_text(encoding="utf-8")
     wrapper = DB_WRAPPER.read_text(encoding="utf-8")
 
@@ -75,11 +119,20 @@ def test_database_wide_disposable_runner_uses_current_production_clone_without_a
     assert 'psql_test < "$CANDIDATE_WORKTREE/$VALIDATION_REL"' in server
     assert "fieldwiring_app" not in server
     assert "GRANTS_FILE" not in server
+
+    # Production may contain the exact gaps this candidate is intended to
+    # repair. Observe them read-only; do not fail before the disposable clone
+    # receives the candidate.
+    assert "Observe current Production Directus/shared-audit gaps" in server
+    assert "known Directus/shared-audit gaps that this candidate must close" in server
+    assert "exit 20" not in server
+
     assert "has_table_privilege('directus_app', s.table_oid, 'UPDATE')" in server
     assert "ref.audit_collection_policy" in server
+    assert "created_by_person_id" in server
     assert "updated_by_person_id" in server
-    assert "Directus-writable shared-audit tables have active update-actor policy/person coverage" in server
-    assert "Production shared audit function definitions unchanged" in server
+    assert "Production shared audit contract unchanged" in server
+    assert "prod_audit_fingerprint" in server
     assert 'rm -rf "$SCRIPT_DIR"' in server
 
     assert "ssh -tt" in wrapper
