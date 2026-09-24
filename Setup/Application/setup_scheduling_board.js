@@ -724,7 +724,7 @@ function board205TaskCard(task) {
         : ''}
       <div class="setup-board205-card-actions">
         ${canSchedule ? '<button type="button" class="small setup-board205-schedule-task">Schedule…</button>' : ''}
-        ${canManage && task.readiness_note ? `<button type="button" class="small secondary setup-board205-toggle-readiness">${task.readiness_state === 'NOT_READY' ? 'Mark Ready' : 'Mark Not Ready'}</button>` : ''}
+        ${canManage && !task.catalog_only && task.readiness_note ? `<button type="button" class="small secondary setup-board205-toggle-readiness">${task.readiness_state === 'NOT_READY' ? 'Mark Ready' : 'Mark Not Ready'}</button>` : ''}
         ${canManage && task.catalog_only ? '<button type="button" class="small secondary setup-board205-open-reusable-task">Open Reusable Task</button>' : ''}
         ${canManage && !task.catalog_only && !task.progress_entries && !task.effective_complete ? '<button type="button" class="small secondary setup-board205-edit-planning-info">Edit Planning Info</button>' : ''}
         ${canManage && seasonOnly ? '<button type="button" class="small secondary setup-board205-edit-season-task">Edit season task</button>' : ''}
@@ -1125,7 +1125,7 @@ loadNextSchedule = board205Load;
 
 
 async function board205SetReadiness(task) {
-  if (!task || !appState.access?.can_manage_setup) return;
+  if (!task || !task.setup_session_task_id || !appState.access?.can_manage_setup) return;
   const ready = task.readiness_state === 'NOT_READY';
   try {
     setBusy(true);
