@@ -590,9 +590,9 @@ The following do **not** by themselves block deletion:
 - readiness state;
 - prerequisite/dependency links.
 
-Material ownership/assignment is **not** disposable planning state. A task that still owns or has assigned physical material must not be deleted until those relationships are explicitly resolved. At minimum this includes governed Display ownership and KIT/support Container assignments; any later physical-material assignment authority must follow the same rule.
+Material ownership/assignment is **not** disposable planning state. Preserve the existing operator rule: a task that still owns or has assigned physical material must not be deleted until those relationships are explicitly resolved through the existing material-assignment workflow. At minimum this includes governed Display ownership and KIT/support Container assignments; any later physical-material assignment authority must follow the same rule.
 
-The delete command must fail closed when such material assignments remain. The Manager must first move/reassign/clear them through the existing material-assignment workflow. The delete operation must not silently discard material ownership as cleanup.
+The normal 2026 delete command must fail closed when such material assignments remain. It must not silently discard material ownership as cleanup. The Manager first moves/reassigns/clears the material, then retries deletion.
 
 Once actual work/progress/completion or other accepted task execution evidence exists, hard delete must also fail closed and preserve the 2026 record.
 
