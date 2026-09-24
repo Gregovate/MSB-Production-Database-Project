@@ -335,6 +335,84 @@ function board205BlockingEnabled() {
   return toggle ? Boolean(toggle.checked) : true;
 }
 
+function board205ReadyOnlyEnabled() {
+  return Boolean(document.getElementById('setup-board205-ready-only')?.checked);
+}
+
+function board205CaptureFinderState() {
+  const value = (id) => document.getElementById(id)?.value ?? '';
+  const checked = (id) => Boolean(document.getElementById(id)?.checked);
+
+  return {
+    stage: value('setup-board205-stage-filter'),
+    scene: value('setup-board205-scene-filter'),
+    sort: value('setup-board205-sort'),
+    search: value('setup-board205-task-search'),
+    blocking: checked('setup-board205-blocking-toggle'),
+    readyOnly: checked('setup-board205-ready-only'),
+    statusReady: checked('setup-board205-status-ready'),
+    statusScheduled: checked('setup-board205-status-scheduled'),
+    statusDeferred: checked('setup-board205-status-deferred'),
+    statusComplete: checked('setup-board205-status-complete'),
+    timeOp: value('setup-board205-time-op'),
+    time: value('setup-board205-time-filter'),
+    crewOp: value('setup-board205-crew-op'),
+    crew: value('setup-board205-crew-filter'),
+    effort: value('setup-board205-effort-filter'),
+    compact: Boolean(setupBoard205State.finderCompact),
+    scrollY: Math.max(0, Number(window.scrollY || 0))
+  };
+}
+
+function board205RestoreFinderState(state) {
+  if (!state || typeof state !== 'object') return;
+
+  const setValue = (id, value) => {
+    const control = document.getElementById(id);
+    if (control == null || value == null) return;
+    const text = String(value);
+    if (control.tagName === 'SELECT') {
+      if ([...control.options].some((option) => option.value === text)) control.value = text;
+    } else {
+      control.value = text;
+    }
+  };
+  const setChecked = (id, value) => {
+    const control = document.getElementById(id);
+    if (control && value != null) control.checked = Boolean(value);
+  };
+
+  setValue('setup-board205-stage-filter', state.stage);
+  board205SyncFinderSceneOptions();
+  setValue('setup-board205-scene-filter', state.scene);
+  setValue('setup-board205-sort', state.sort);
+  setValue('setup-board205-task-search', state.search);
+  setChecked('setup-board205-blocking-toggle', state.blocking);
+  setChecked('setup-board205-ready-only', state.readyOnly);
+  setChecked('setup-board205-status-ready', state.statusReady);
+  setChecked('setup-board205-status-scheduled', state.statusScheduled);
+  setChecked('setup-board205-status-deferred', state.statusDeferred);
+  setChecked('setup-board205-status-complete', state.statusComplete);
+  setValue('setup-board205-time-op', state.timeOp);
+  setValue('setup-board205-time-filter', state.time);
+  setValue('setup-board205-crew-op', state.crewOp);
+  setValue('setup-board205-crew-filter', state.crew);
+  setValue('setup-board205-effort-filter', state.effort);
+
+  setupBoard205State.finderCompact = Boolean(state.compact);
+  board205ApplyFinderCompact();
+
+  const blockingLabel = document.getElementById('setup-board205-blocking-toggle')?.closest('label');
+  if (blockingLabel) {
+    blockingLabel.lastChild.textContent = board205BlockingEnabled() ? ' Blocking ON' : ' Blocking OFF';
+  }
+
+  board205RenderQueue();
+
+  const top = Math.max(0, Number(state.scrollY || 0));
+  window.requestAnimationFrame(() => window.scrollTo({ top, left: 0, behavior: 'auto' }));
+}
+
 function board205ApplyFinderCompact() {
   const filters = document.getElementById('setup-board205-filters');
   const button = document.getElementById('setup-board205-filter-density');
@@ -791,6 +869,7 @@ function board205QueueTasks() {
   const crewValue = Number(document.getElementById('setup-board205-crew-filter')?.value || 0);
   const crewOp = document.getElementById('setup-board205-crew-op')?.value || 'LTE';
   const effort = document.getElementById('setup-board205-effort-filter')?.value || '';
+  const readyOnly = board205ReadyOnlyEnabled();
   const statuses = board205FinderSelectedStatuses();
 
   return [...(setupBoard205State.board.tasks || [])]
@@ -802,6 +881,10 @@ function board205QueueTasks() {
       // A Work Order gate task itself remains visible; downstream tasks are
       // blocked through their prerequisite edge. Readiness remains soft/visible.
       if (board205BlockingEnabled() && hardBlocked) return false;
+
+      // Readiness remains a soft blocker. Ready only changes finder visibility
+      // only; it does not rewrite readiness state or make readiness a hard gate.
+      if (readyOnly && task.readiness_state === 'NOT_READY') return false;
 
       // When Task name is blank, the ordinary status checkboxes control
       // non-hard-blocked candidates. With Blocking OFF, hard-blocked work is
@@ -856,10 +939,11 @@ function board205RenderQueue() {
     const noun = board205HistoricalReviewMode() ? 'current reusable tasks' : 'annual tasks';
     summary.textContent = `${tasks.length} of ${(setupBoard205State.board.tasks || []).length} ${noun}`
       + ` · Blocking ${board205BlockingEnabled() ? 'ON' : 'OFF'}`
+      + (board205ReadyOnlyEnabled() ? ' · Ready only' : ' · readiness soft-visible')
       + (search ? ' · task-name search checks all statuses' : '')
       + (!board205BlockingEnabled()
-        ? ' · hard-blocked work included · readiness always visible'
-        : ' · hard blockers hidden · readiness always visible');
+        ? ' · hard-blocked work included'
+        : ' · hard blockers hidden');
   }
   target.innerHTML = tasks.length
     ? tasks.map(board205TaskCard).join('')
@@ -899,8 +983,12 @@ function board205RenderQueue() {
     });
     card.querySelector('.setup-board205-open-reusable-task')?.addEventListener('click', () => {
       if (!reusableTaskId) return;
-      showView('review');
-      selectTask(reusableTaskId);
+      if (typeof setupNavigateToReusableTaskFromFinder === 'function') {
+        void setupNavigateToReusableTaskFromFinder(reusableTaskId);
+      } else {
+        showView('review');
+        selectTask(reusableTaskId);
+      }
     });
   });
 }
@@ -1726,8 +1814,9 @@ function board205InstallView() {
             </select></label>
             <label class="setup-board205-search">Task name<input id="setup-board205-task-search" type="search" placeholder="e.g. locate"></label>
             <label class="setup-board205-blocking-toggle"><input id="setup-board205-blocking-toggle" type="checkbox" checked> Blocking ON</label>
+            <label class="setup-board205-readiness-toggle"><input id="setup-board205-ready-only" type="checkbox"> Ready only</label>
             <button id="setup-board205-filter-density" type="button" class="small secondary" aria-expanded="true">Compact filters</button>
-            <div class="setup-board205-blocking-help">ON hides tasks whose hard predecessor is incomplete. A Work Order gate task itself stays visible; the task after it remains hard-blocked until the Work Order clears. Readiness is soft and always stays visible for operator judgement.</div>
+            <div class="setup-board205-blocking-help">ON hides tasks whose hard predecessor is incomplete. A Work Order gate task itself stays visible; the task after it remains hard-blocked until the Work Order clears. Readiness stays a soft blocker; use Ready only when you want to temporarily hide NOT READY work.</div>
             <div class="setup-board205-secondary-filters">
             <fieldset class="setup-board205-status-filter">
               <legend>Status shown when Task name is blank</legend>
