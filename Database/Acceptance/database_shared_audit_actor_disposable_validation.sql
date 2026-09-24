@@ -35,7 +35,7 @@ BEGIN
       ON n.oid = p.pronamespace
     WHERE p.prorettype = 'trigger'::regtype
       AND p.proname <> 'set_actor_on_insert'
-      AND p.prosrc ~* 'COALESCE[[:space:]]*\\([[:space:]]*NEW\\.updated_by'
+      AND p.prosrc ~* 'COALESCE[[:space:]]*[(][[:space:]]*NEW[.]updated_by'
     ORDER BY n.nspname, p.proname
     LIMIT 1;
 
