@@ -136,8 +136,19 @@
 }
 
 .setup-board205-filters.compact .setup-board205-secondary-filters,
-.setup-board205-filters.compact .setup-board205-blocking-help {
-  display: none;
+.setup-board205-filters.compact .setup-board205-blocking-help,
+.setup-board205-filters.compact > label:not(.setup-board205-search) {
+  display: none !important;
+}
+
+.setup-board205-filters.compact {
+  display: flex;
+  align-items: end;
+  gap: 0.55rem;
+}
+
+.setup-board205-filters.compact .setup-board205-search {
+  flex: 1 1 auto;
 }
 
 .setup-board205-filters.compact label {
