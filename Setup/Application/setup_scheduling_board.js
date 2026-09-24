@@ -895,10 +895,10 @@ function board205QueueTasks() {
       // only; it does not rewrite readiness state or make readiness a hard gate.
       if (readyOnly && task.readiness_state === 'NOT_READY') return false;
 
-      // When Task name is blank, the ordinary status checkboxes control
-      // non-hard-blocked candidates. With Blocking OFF, hard-blocked work is
-      // included automatically.
-      if (!search && !hardBlocked && !statuses.has(family)) return false;
+      // Task-name search narrows the current finder population; it does not
+      // resurrect tasks that moved into a different status such as SCHEDULED.
+      // With Blocking OFF, hard-blocked work is still included automatically.
+      if (!hardBlocked && !statuses.has(family)) return false;
 
       if (stageValue === 'SITE_WIDE') {
         if (task.stage_id != null) return false;
@@ -949,7 +949,7 @@ function board205RenderQueue() {
     summary.textContent = `${tasks.length} of ${(setupBoard205State.board.tasks || []).length} ${noun}`
       + ` · Blocking ${board205BlockingEnabled() ? 'ON' : 'OFF'}`
       + (board205ReadyOnlyEnabled() ? ' · Ready only' : ' · soft readiness shown')
-      + (search ? ' · task-name search checks all statuses' : '')
+      + (search ? ' · task-name search keeps status filters' : '')
       + (!board205BlockingEnabled()
         ? ' · hard-blocked work included'
         : ' · hard blockers hidden');
@@ -1454,15 +1454,39 @@ function board205PopulateDialogSelects() {
   if (prior) prior.innerHTML = taskOptions;
   if (downstream) downstream.innerHTML = taskOptions;
   board205PopulateScenes();
-  const workOrderSelect = document.getElementById('setup-board205-season-work-order');
-  if (workOrderSelect) {
-    workOrderSelect.innerHTML = '<option value="">No Work Order</option>'
-      + (setupBoard205State.board.work_orders || []).map((wo) => {
-          const status = wo.date_completed ? 'COMPLETE' : 'OPEN';
-          const problem = String(wo.problem || '').trim();
-          const label = `WO ${wo.work_order_id} · ${status}${problem ? ` · ${problem}` : ''}`;
-          return `<option value="${wo.work_order_id}">${board205Esc(label)}</option>`;
-        }).join('');
+  board205PopulateWorkOrderOptions();
+}
+
+function board205PopulateWorkOrderOptions(selectedId = null) {
+  const select = document.getElementById('setup-board205-season-work-order');
+  if (!select) return;
+
+  const search = String(
+    document.getElementById('setup-board205-season-work-order-search')?.value || ''
+  ).trim().toLowerCase();
+  const selected = selectedId == null ? String(select.value || '') : String(selectedId || '');
+
+  const rows = (setupBoard205State.board.work_orders || []).filter((wo) => {
+    if (!search) return true;
+    const status = wo.date_completed ? 'complete' : 'open';
+    const haystack = [
+      wo.work_order_id,
+      `wo ${wo.work_order_id}`,
+      status,
+      wo.problem || ''
+    ].join(' ').toLowerCase();
+    return haystack.includes(search);
+  });
+
+  select.innerHTML = '<option value="">No Work Order</option>' + rows.map((wo) => {
+    const status = wo.date_completed ? 'COMPLETE' : 'OPEN';
+    const problem = String(wo.problem || '').trim();
+    const label = `WO ${wo.work_order_id} · ${status}${problem ? ` · ${problem}` : ''}`;
+    return `<option value="${wo.work_order_id}">${board205Esc(label)}</option>`;
+  }).join('');
+
+  if (selected && [...select.options].some((option) => option.value === selected)) {
+    select.value = selected;
   }
 }
 
@@ -1877,7 +1901,8 @@ function board205OpenSeasonTaskDialog(sessionTaskId = null) {
     board205PopulateScenes();
     document.getElementById('setup-board205-season-scene').value = task.lor_scene_id ?? '';
     document.getElementById('setup-board205-season-type').value = task.task_action_type || 'WORK';
-    document.getElementById('setup-board205-season-work-order').value = task.linked_work_order_id ?? '';
+    document.getElementById('setup-board205-season-work-order-search').value = '';
+    board205PopulateWorkOrderOptions(task.linked_work_order_id ?? '');
     document.getElementById('setup-board205-season-gate').checked = Boolean(task.linked_work_order_gate);
     document.getElementById('setup-board205-season-crew-min').value = task.normal_crew_min ?? '';
     document.getElementById('setup-board205-season-crew-max').value = task.normal_crew_max ?? '';
@@ -2125,6 +2150,7 @@ function board205InstallView() {
           <label>Stage<select id="setup-board205-season-stage"></select></label>
           <label>Scene<select id="setup-board205-season-scene"></select></label>
           <label>Type<select id="setup-board205-season-type"><option value="WORK">Work</option><option value="GATE">Stop / Gate</option><option value="SUPPORT">Support</option><option value="UNLOAD_CONTAINER">Unload Container</option></select></label>
+          <label>Search Work Orders<input id="setup-board205-season-work-order-search" type="search" placeholder="WO # or problem text" autocomplete="off"></label>
           <label>Existing Work Order<select id="setup-board205-season-work-order"><option value="">No Work Order</option></select></label>
           <label class="checkbox-label"><input id="setup-board205-season-gate" type="checkbox"> Work Order completion satisfies this gate</label>
           <span></span>
@@ -2149,6 +2175,10 @@ function board205InstallView() {
   document.getElementById('setup-board205-filter-density')?.addEventListener('click', () => {
     setupBoard205State.finderCompact = !Boolean(setupBoard205State.finderCompact);
     board205ApplyFinderCompact();
+  });
+
+  document.getElementById('setup-board205-season-work-order-search')?.addEventListener('input', () => {
+    board205PopulateWorkOrderOptions();
   });
 
   const finderFilters = document.getElementById('setup-board205-filters');
