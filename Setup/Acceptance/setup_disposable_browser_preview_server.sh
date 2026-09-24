@@ -20,6 +20,7 @@ TARGET_REF=""
 PREVIEW_PORT=""
 PREVIEW_EMAIL=""
 EXPECTED_VERSION=""
+ALLOW_CONCURRENT_PRODUCTION_WRITES="false"
 MIGRATIONS=()
 VALIDATIONS=()
 
@@ -33,6 +34,7 @@ while IFS=$'\t' read -r kind value extra; do
         preview_port) PREVIEW_PORT="$value" ;;
         preview_email) PREVIEW_EMAIL="$value" ;;
         expected_version) EXPECTED_VERSION="$value" ;;
+        allow_concurrent_production_writes) ALLOW_CONCURRENT_PRODUCTION_WRITES="$value" ;;
         migration) MIGRATIONS+=("$value") ;;
         validation) VALIDATIONS+=("$value") ;;
         *) echo "FAIL: unsupported manifest key: $kind"; exit 3 ;;
@@ -43,6 +45,11 @@ done < "$MANIFEST"
 : "${TARGET_REF:?manifest target_ref is required}"
 : "${PREVIEW_PORT:?manifest preview_port is required}"
 : "${PREVIEW_EMAIL:?manifest preview_email is required}"
+
+if [[ "$ALLOW_CONCURRENT_PRODUCTION_WRITES" != "true" && "$ALLOW_CONCURRENT_PRODUCTION_WRITES" != "false" ]]; then
+    echo "FAIL: allow_concurrent_production_writes must be true or false"
+    exit 3
+fi
 
 for rel in "${MIGRATIONS[@]}" "${VALIDATIONS[@]}"; do
     [[ -z "$rel" ]] && continue
@@ -81,6 +88,7 @@ echo "Target ref:    $TARGET_REF"
 echo "Preview port:  $PREVIEW_PORT"
 echo "Preview user:  $PREVIEW_EMAIL"
 echo "Expected ver:  ${EXPECTED_VERSION:-not pinned}"
+echo "Concurrent Production writes allowed: $ALLOW_CONCURRENT_PRODUCTION_WRITES"
 echo "Migrations:    ${#MIGRATIONS[@]}"
 echo "Validations:   ${#VALIDATIONS[@]}"
 echo "Report:        $REPORT"
@@ -130,9 +138,18 @@ cleanup() {
         PROD_AFTER="$(prod_fingerprint 2>/dev/null)"
         echo "Production Setup fingerprint before: $PROD_BEFORE"
         echo "Production Setup fingerprint after:  $PROD_AFTER"
-        if [[ -z "$PROD_AFTER" || "$PROD_AFTER" != "$PROD_BEFORE" ]]; then
-            echo "FAIL: Production Setup fingerprint changed during browser preview"
+        if [[ -z "$PROD_AFTER" ]]; then
+            echo "FAIL: Production Setup fingerprint after-check was empty"
             status=97
+        elif [[ "$PROD_AFTER" != "$PROD_BEFORE" ]]; then
+            if [[ "$ALLOW_CONCURRENT_PRODUCTION_WRITES" == "true" ]]; then
+                echo "INFO: Production Setup fingerprint changed during browser preview"
+                echo "PASS WITH CONCURRENT ACTIVITY: fingerprint drift is allowed for this explicitly concurrent review"
+                echo "NOTE: the preview clone remained the point-in-time database captured at preview start"
+            else
+                echo "FAIL: Production Setup fingerprint changed during browser preview"
+                status=97
+            fi
         else
             echo "PASS: Production Setup fingerprint unchanged"
         fi
@@ -415,7 +432,9 @@ Preview identity: $PREVIEW_EMAIL
 Expected version: ${EXPECTED_VERSION:-not pinned}
 
 The exact candidate is running against a disposable current-Production database clone.
-All browser writes are disposable. Production Setup remains untouched.
+All browser writes from this preview are disposable.
+Concurrent Production application writes allowed: $ALLOW_CONCURRENT_PRODUCTION_WRITES
+The preview clone is a point-in-time snapshot; later Production edits are not visible until a new preview is started.
 
 Perform the feature-specific operator checklist now.
 When review is complete, return to this terminal and press ENTER.
