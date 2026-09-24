@@ -819,9 +819,7 @@ function board205TaskCard(task) {
       draggable="${canSchedule ? 'true' : 'false'}">
       <div class="setup-board205-task-title">
         <span>Task ${board205Esc(task.setup_task_id ?? 'annual-only')} · ${board205Esc(task.task_name)}</span>
-        ${task.annual_present && task.planned_order != null ? `<span class="setup-board205-badge">2025 order ${board205Esc(task.planned_order)}</span>` : ''}
-        ${task.catalog_only ? '<span class="setup-board205-badge season-only">CATALOG ONLY · NOT IN 2025</span>' : ''}
-        ${seasonOnly ? '<span class="setup-board205-badge season-only">THIS SEASON ONLY</span>' : ''}
+        ${!catalogReview && seasonOnly ? '<span class="setup-board205-badge season-only">THIS SEASON ONLY</span>' : ''}
         ${isGate ? '<span class="setup-board205-badge">GATE</span>' : ''}
         <span class="setup-board205-badge ${hardBlocked ? 'blocked' : readinessOnly ? 'waiting' : ''}">${board205Esc(
           catalogReview
@@ -836,9 +834,6 @@ function board205TaskCard(task) {
         ${board205WorkOrderBadge(task)}
       </div>
       <div class="setup-board205-meta">${board205Esc(board205Scope(task))}</div>
-      ${task.annual_present && task.annual_snapshot_task_name && task.annual_snapshot_task_name !== task.task_name
-        ? `<div class="setup-board205-meta"><strong>2025 annual name:</strong> ${board205Esc(task.annual_snapshot_task_name)}</div>`
-        : ''}
       <div class="setup-board205-meta"><strong>Min crew:</strong> ${board205Esc(task.normal_crew_min ?? 'TBD')} · <strong>Expected:</strong> ${board205Esc(board205Duration(task.expected_duration_minutes))}</div>
       ${task.resource_summary ? `<div class="setup-board205-meta"><strong>Resources:</strong> ${board205Esc(task.resource_summary)}</div>` : ''}
       ${task.reusable_notes ? `<div class="setup-board205-meta setup-board205-reusable-notes"><strong>Reusable notes:</strong> ${board205Esc(task.reusable_notes)}</div>` : ''}
@@ -1216,7 +1211,7 @@ function board205Render() {
   if (boardPane) boardPane.hidden = historicalReview;
   if (historicalNote) historicalNote.hidden = !historicalReview;
   if (finderTitle) finderTitle.textContent = historicalReview
-    ? `${appState.seasonYear} Task Finder — Historical Verification`
+    ? 'Current Reusable Task Finder — Pre-2026 Planning'
     : 'Needs Scheduling';
   if (workspace) workspace.classList.toggle('finder-only', historicalReview);
   if (setupBoard205State.finderCompact == null) {
@@ -1858,11 +1853,11 @@ function board205InstallView() {
 
       <div id="setup-board205-workspace" class="setup-board205-main">
         <section class="card setup-board205-backlog">
-          <div class="eyebrow">Annual work set</div>
-          <h3 id="setup-board205-finder-title">Needs Scheduling</h3>
+          <div class="eyebrow">Current reusable Catalog</div>
+          <h3 id="setup-board205-finder-title">Current Reusable Task Finder</h3>
           <div id="setup-board205-historical-note" class="notice" hidden>
-            <strong>Historical Verification — no date/crew scheduling here.</strong>
-            Use the 2025 annual work set to find tasks and correct planning knowledge. Readiness, planning info, and applicable annual-task corrections remain available here. Annual ordering remains in the Setup Planning Queue. Work days, crews, and scheduled assignments are intentionally disabled; those will be rehearsed in disposable 2026.
+            <strong>Pre-2026 planning — current reusable Catalog.</strong>
+            Use the current reusable tasks to review crew guidance, expected time, readiness, notes, and plan order. Historical 2025 facts remain in Verification and do not define this task list. Work days, crews, and assignments remain disabled until the real annual Session is created.
           </div>
           <div id="setup-board205-filters" class="setup-board205-filters setup-board205-finder">
             <label>Stage / area<select id="setup-board205-stage-filter"><option value="">All Stages / areas</option></select></label>
@@ -1877,7 +1872,7 @@ function board205InstallView() {
             </select></label>
             <label class="setup-board205-search">Task name<input id="setup-board205-task-search" type="search" placeholder="e.g. locate"></label>
             <label class="setup-board205-blocking-toggle"><input id="setup-board205-blocking-toggle" type="checkbox" checked> Blocking ON</label>
-            <label class="setup-board205-readiness-toggle"><input id="setup-board205-ready-only" type="checkbox"> Ready only</label>
+            <label class="setup-board205-readiness-toggle"><input id="setup-board205-ready-only" type="checkbox" checked> Ready only</label>
             <button id="setup-board205-filter-density" type="button" class="small secondary" aria-expanded="true">Compact filters</button>
             <div class="setup-board205-blocking-help">ON hides tasks whose hard predecessor is incomplete. A Work Order gate task itself stays visible; the task after it remains hard-blocked until the Work Order clears. Readiness stays a soft blocker; use Ready only when you want to temporarily hide NOT READY work.</div>
             <div class="setup-board205-secondary-filters">
@@ -1885,7 +1880,6 @@ function board205InstallView() {
               <legend>Status shown when Task name is blank</legend>
               <label><input id="setup-board205-status-ready" type="checkbox" checked> Ready / needs continuation</label>
               <label><input id="setup-board205-status-scheduled" type="checkbox"> Scheduled</label>
-              <label><input id="setup-board205-status-deferred" type="checkbox"> Deferred</label>
               <label><input id="setup-board205-status-complete" type="checkbox"> Complete</label>
             </fieldset>
             <label class="setup-board205-numeric-filter">Time
@@ -1947,7 +1941,7 @@ function board205InstallView() {
         <label>Weather note<textarea id="setup-board205-planning-weather" rows="2"></textarea></label>
         <label>Complete when<textarea id="setup-board205-planning-completion" rows="2"></textarea></label>
         <label id="setup-board205-planning-reusable-notes-row">Reusable notes<textarea id="setup-board205-planning-reusable-notes" rows="4"></textarea></label>
-        <menu><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Save Planning Info</button></menu>
+        <menu><button id="setup-board205-open-full-reusable" type="button" class="secondary" hidden>Open Full Reusable Task</button><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Save Planning Info</button></menu>
       </form>
     </dialog>
 
@@ -2010,6 +2004,17 @@ function board205InstallView() {
     board205PopulateCrewSelect(Number(event.currentTarget.value || 0));
   });
   document.getElementById('setup-board205-planning-form').addEventListener('submit', board205SubmitPlanningInfo);
+  document.getElementById('setup-board205-open-full-reusable')?.addEventListener('click', () => {
+    const reusableTaskId = setupBoard205State.editPlanningReusableTaskId;
+    if (!reusableTaskId) return;
+    document.getElementById('setup-board205-planning-dialog')?.close();
+    if (typeof setupNavigateToReusableTaskFromFinder === 'function') {
+      void setupNavigateToReusableTaskFromFinder(reusableTaskId);
+    } else {
+      showView('review');
+      selectTask(reusableTaskId);
+    }
+  });
   document.getElementById('setup-board205-season-form').addEventListener('submit', board205SubmitSeasonTask);
   document.getElementById('setup-board205-season-stage').addEventListener('change', board205PopulateScenes);
   view.querySelectorAll('.setup-board205-dialog-cancel').forEach((button) => {
