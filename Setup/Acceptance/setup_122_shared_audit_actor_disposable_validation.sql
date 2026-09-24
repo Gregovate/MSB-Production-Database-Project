@@ -95,30 +95,13 @@ BEGIN
     END IF;
 
     /*
-      Simulate Directus pre-stamping both fields. Even though actor 1 is in the
-      transaction context, explicitly changed actor-2 values must be preserved.
+      Native Directus payload behavior is database-wide infrastructure and is
+      validated separately by:
+      Database/Acceptance/database_shared_audit_actor_disposable_validation.sql
     */
-    PERFORM pg_catalog.set_config('app.directus_user_uuid', v_uuid_1::text, true);
-
-    UPDATE ref.setup_task t
-       SET updated_by = v_name_2,
-           updated_by_person_id = v_person_2
-     WHERE t.setup_task_id = v_task_id;
-
-    SELECT t.updated_by_person_id, t.updated_by
-      INTO v_actual_person, v_actual_name
-    FROM ref.setup_task t
-    WHERE t.setup_task_id = v_task_id;
-
-    IF v_actual_person IS DISTINCT FROM v_person_2
-       OR v_actual_name IS DISTINCT FROM v_name_2 THEN
-        RAISE EXCEPTION
-            'Explicit Directus-style audit stamp was not preserved: expected %/% got %/%',
-            v_person_2, v_name_2, v_actual_person, v_actual_name;
-    END IF;
 END
 $validation$;
 
 ROLLBACK;
 
-SELECT 'SETUP_122_SHARED_AUDIT_ACTOR_DISPOSABLE_VALIDATION_PASS' AS result;
+SELECT 'SETUP_122_SHARED_AUDIT_BROWSER_COMMAND_VALIDATION_PASS' AS result;
