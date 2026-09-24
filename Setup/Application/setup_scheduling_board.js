@@ -174,6 +174,10 @@ function board205TodayKey() {
 
 function board205PastDayNeedsAttention(day) {
   if (!day || String(day.work_date) >= board205TodayKey()) return true;
+
+  const status = String(day.day_status || '').toUpperCase();
+  if (status !== 'COMPLETE' && status !== 'CANCELLED') return true;
+
   const assignments = (setupBoard205State.board.assignments || []).filter(
     (item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id)
   );
