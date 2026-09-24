@@ -195,8 +195,13 @@ def test_205_finder_uses_task_time_minimum_crew_and_effort() -> None:
     assert "task.normal_crew_min" in ui
     assert "task.expected_duration_minutes" in ui
     assert "task.effort_level" in ui
-    assert "Available Now / Needs Continuation" in ui
-    assert "Outstanding / Blocked" in ui
+    assert "setup-board205-stage-filter" in ui
+    assert "setup-board205-scene-filter" in ui
+    assert "setup-board205-sort" in ui
+    assert "setup-board205-status-ready" in ui
+    assert "setup-board205-status-blocked" in ui
+    assert "setup-board205-status-waiting" in ui
+    assert "Search all statuses" in ui
     assert "task.stage_name" in ui
 
 
@@ -394,8 +399,64 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-18.4" in html
-    assert "setup_scheduling_board.js?v=2026-09-18.4" in html
+    assert "setup_scheduling_board.css?v=2026-09-23.2" in html
+    assert "setup_scheduling_board.js?v=2026-09-23.2" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
+
+
+def test_122_b1a_historical_verification_keeps_planning_edits_but_blocks_actual_scheduling() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "function board205HistoricalReviewMode()" in ui
+    assert "HISTORICAL_VERIFICATION" in ui
+    assert "dayForm.hidden = historicalReview" in ui
+    assert "boardPane.hidden = historicalReview" in ui
+    assert "&& !historicalReview" in ui
+    assert "Historical Verification — no date/crew scheduling here." in ui
+
+    # Legitimate annual/planning corrections remain available in 2025.
+    assert "setup-board205-toggle-readiness" in ui
+    assert "setup-board205-edit-planning-info" in ui
+    assert "setup-board205-edit-season-task" in ui
+    assert "setup-board205-plan-up" in ui
+    assert "setup-board205-plan-down" in ui
+    assert "if (addSeason) addSeason.disabled = !session;" in ui
+
+
+def test_122_b1a_finder_has_stage_scene_sort_and_search_across_statuses() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    for token in (
+        "setup-board205-stage-filter",
+        "setup-board205-scene-filter",
+        "setup-board205-sort",
+        "setup-board205-status-ready",
+        "setup-board205-status-blocked",
+        "setup-board205-status-waiting",
+        "setup-board205-status-scheduled",
+        "setup-board205-status-complete",
+        "setup-board205-status-deferred",
+        "setup-board205-finder-summary",
+        "board205SyncFinderSceneOptions",
+        "board205FinderCompare",
+    ):
+        assert token in ui
+
+    # A nonblank Task search bypasses status-checkbox filtering so blocked or
+    # already-scheduled matches never appear to be missing.
+    assert "if (!search && !statuses.has(board205FinderStatusFamily(task))) return false;" in ui
+    assert "Task search checks all statuses" in ui
+
+
+def test_122_b1a_finder_explains_blocker_classes() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "function board205BlockerDetails(task, deps)" in ui
+    assert "Hard predecessor" in ui
+    assert "Readiness condition" in ui
+    assert "Work Order gate" in ui
+    assert "Complete first:" in ui
+    assert "clear when that outside condition is actually met." in ui
+    assert "clear when that Work Order is completed." in ui
