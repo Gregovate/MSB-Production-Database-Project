@@ -635,13 +635,6 @@ function board205ApplyHistoricalCatalogOverlay() {
       .filter((task) => task.setup_task_id != null && task.task_origin === 'REUSABLE')
       .map((task) => [Number(task.setup_task_id), task])
   );
-  const annualDependencies = new Map();
-  for (const dep of board.dependencies || []) {
-    const key = Number(dep.setup_session_task_id);
-    if (!annualDependencies.has(key)) annualDependencies.set(key, []);
-    annualDependencies.get(key).push(dep);
-  }
-
   const currentTasks = (appState.tasks || []).filter((task) => Boolean(task.active_flag));
   const merged = [];
   const mergedDependencies = [];
@@ -652,6 +645,8 @@ function board205ApplyHistoricalCatalogOverlay() {
     const scope = board205CurrentReusableScope(current);
     const stage = (appState.stages || []).find((row) => Number(row.stage_id) === Number(scope.stage_id));
     const annualName = annual?.task_name || null;
+    const currentDependencies = board205CatalogDependencyRows(current);
+    const hasHardPrerequisite = currentDependencies.length > 0;
 
     const row = {
       ...(annual || {}),
@@ -686,39 +681,34 @@ function board205ApplyHistoricalCatalogOverlay() {
       reusable_updated_by: current.reusable_updated_by,
       reusable_updated_by_person_id: current.reusable_updated_by_person_id,
       reusable_updated_by_display: current.reusable_updated_by_display,
-      board_status: board205DefaultReadinessState(current.readiness_note) === 'NOT_READY'
-        ? 'BLOCKED'
-        : (annual?.board_status || 'CATALOG_ONLY'),
+      catalog_dependencies: currentDependencies,
+      prerequisites_complete: !hasHardPrerequisite,
+      // Historical Verification is being used as a safe shell to review the
+      // current reusable Catalog before 2026 exists. Start from a fresh-season
+      // baseline: 2025 completion does not satisfy future prerequisites.
+      board_status: hasHardPrerequisite ? 'BLOCKED' : 'CATALOG_ONLY',
       effective_complete: annual?.effective_complete || false,
       progress_entries: annual?.progress_entries || 0
     };
     merged.push(row);
-
-    if (annual?.setup_session_task_id != null) {
-      for (const dep of annualDependencies.get(Number(annual.setup_session_task_id)) || []) {
-        mergedDependencies.push(dep);
-      }
-    } else {
-      // Catalog-only tasks have current reusable prerequisites but no 2025
-      // execution state. Show the sequence without pretending those edges are
-      // incomplete annual blockers.
-      row.catalog_dependencies = board205CatalogDependencyRows(current);
-    }
   }
 
   board.historical_annual_task_count = (board.tasks || []).length;
   board.tasks = merged;
-  board.dependencies = mergedDependencies;
+  board.dependencies = [];
   board.catalog_overlay = true;
 }
 
 function board205TaskCard(task) {
-  const deps = task.catalog_only
+  const historicalReview = board205HistoricalReviewMode();
+  const catalogReview = historicalReview
+    && Boolean(setupBoard205State.board.catalog_overlay)
+    && task.task_origin === 'REUSABLE';
+  const deps = catalogReview
     ? (task.catalog_dependencies || [])
     : board205TaskDependencies(task.setup_session_task_id);
   const isGate = task.task_action_type === 'GATE';
   const canManage = Boolean(appState.access?.can_manage_setup);
-  const historicalReview = board205HistoricalReviewMode();
   const canSchedule = canManage
     && !historicalReview
     && !task.effective_complete
@@ -728,11 +718,11 @@ function board205TaskCard(task) {
   const readinessOnly = board205ReadinessOnly(task);
   const seasonOnly = task.task_origin === 'SEASON_ONLY';
   const depText = deps.length
-    ? deps.map((dep) => task.catalog_only
+    ? deps.map((dep) => catalogReview
       ? dep.prerequisite_task_name
       : `${dep.prerequisite_complete ? '✓' : '○'} ${dep.prerequisite_task_name}`
     ).join('; ')
-    : (task.catalog_only ? 'No reusable prerequisite' : 'No annual prerequisite');
+    : (catalogReview ? 'No reusable prerequisite' : 'No annual prerequisite');
   const blockerDetails = board205BlockerDetails(task, deps);
 
   return `
@@ -747,11 +737,13 @@ function board205TaskCard(task) {
         ${seasonOnly ? '<span class="setup-board205-badge season-only">THIS SEASON ONLY</span>' : ''}
         ${isGate ? '<span class="setup-board205-badge">GATE</span>' : ''}
         <span class="setup-board205-badge ${hardBlocked ? 'blocked' : readinessOnly ? 'waiting' : ''}">${board205Esc(
-          task.catalog_only
-            ? 'CURRENT CATALOG'
-            : readinessOnly
-              ? 'NOT READY'
-              : board205StatusLabel(task.board_status)
+          catalogReview
+            ? hardBlocked
+              ? 'HARD BLOCKED'
+              : readinessOnly
+                ? 'NOT READY'
+                : 'CURRENT CATALOG'
+            : board205StatusLabel(task.board_status)
         )}</span>
         <span class="setup-board205-badge effort-${board205Esc(String(task.effort_level || 'unknown').toLowerCase())}">${board205Esc(board205Effort(task))}</span>
         ${board205WorkOrderBadge(task)}
