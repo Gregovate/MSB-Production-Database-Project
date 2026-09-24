@@ -65,8 +65,12 @@ function Assert-SafeCandidatePath {
     if ([System.IO.Path]::IsPathRooted($Path) -or $Path.Contains('..') -or $Path.Contains("`t") -or $Path.Contains("`r") -or $Path.Contains("`n")) {
         throw "Unsafe $Kind candidate-relative path: $Path"
     }
-    if ($Kind -eq 'migration' -and -not $Path.StartsWith('Setup/Database/')) {
-        throw "Migration path must be under Setup/Database/: $Path"
+    if ($Kind -eq 'migration') {
+        $isSetupMigration = $Path.StartsWith('Setup/Database/')
+        $isApprovedSharedMigration = $Path -eq 'Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql'
+        if (-not ($isSetupMigration -or $isApprovedSharedMigration)) {
+            throw "Migration path must be under Setup/Database/ or explicitly approved shared database repair: $Path"
+        }
     }
     if ($Kind -eq 'validation' -and -not $Path.StartsWith('Setup/Acceptance/')) {
         throw "Validation path must be under Setup/Acceptance/: $Path"
