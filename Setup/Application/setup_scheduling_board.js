@@ -582,10 +582,18 @@ function board205FinderSelectedStatuses() {
 
 function board205FinderCompare(a, b, mode) {
   const reusablePlanning = board205HistoricalReviewMode() && Boolean(setupBoard205State.board.catalog_overlay);
-  const planOrder = (task) => {
+  const stageFilter = document.getElementById('setup-board205-stage-filter')?.value || '';
+  const taskIdentity = (task) => Number(task.setup_task_id ?? task.setup_session_task_id ?? 0);
+  const baselineOrder = (task) => {
     const value = reusablePlanning
       ? task.baseline_plan_order
       : (task.planned_order ?? task.baseline_plan_order);
+    return value == null ? 999999 : Number(value);
+  };
+  const stepOrder = (task) => {
+    const value = reusablePlanning && stageFilter
+      ? (task.display_order ?? task.baseline_plan_order)
+      : (task.planned_order ?? task.baseline_plan_order ?? task.display_order);
     return value == null ? 999999 : Number(value);
   };
   const textCompare = (left, right) => String(left || '').localeCompare(
@@ -609,39 +617,40 @@ function board205FinderCompare(a, b, mode) {
       || textCompare(a.stage_name, b.stage_name)
       || aSceneLevel - bSceneLevel
       || textCompare(a.scene_name, b.scene_name)
-      || planOrder(a) - planOrder(b)
-      || Number(a.setup_session_task_id) - Number(b.setup_session_task_id);
+      || baselineOrder(a) - baselineOrder(b)
+      || taskIdentity(a) - taskIdentity(b);
   }
   if (mode === 'NAME') {
     return textCompare(a.task_name, b.task_name)
       || textCompare(a.stage_key, b.stage_key)
-      || Number(a.setup_session_task_id) - Number(b.setup_session_task_id);
+      || taskIdentity(a) - taskIdentity(b);
   }
   if (mode === 'STATUS') {
     const rank = { READY: 1, BLOCKED: 2, WAITING: 3, SCHEDULED: 4, DEFERRED: 5, COMPLETE: 6, OTHER: 9 };
     return (rank[board205FinderStatusFamily(a)] || 9) - (rank[board205FinderStatusFamily(b)] || 9)
       || textCompare(a.stage_key, b.stage_key)
-      || planOrder(a) - planOrder(b)
-      || Number(a.setup_session_task_id) - Number(b.setup_session_task_id);
+      || baselineOrder(a) - baselineOrder(b)
+      || taskIdentity(a) - taskIdentity(b);
   }
   if (mode === 'DURATION') {
     const ad = a.expected_duration_minutes == null ? 999999 : Number(a.expected_duration_minutes);
     const bd = b.expected_duration_minutes == null ? 999999 : Number(b.expected_duration_minutes);
     return ad - bd
-      || planOrder(a) - planOrder(b)
-      || Number(a.setup_session_task_id) - Number(b.setup_session_task_id);
+      || baselineOrder(a) - baselineOrder(b)
+      || taskIdentity(a) - taskIdentity(b);
   }
   if (mode === 'CREW') {
     const ac = a.normal_crew_min == null ? 999999 : Number(a.normal_crew_min);
     const bc = b.normal_crew_min == null ? 999999 : Number(b.normal_crew_min);
     return ac - bc
-      || planOrder(a) - planOrder(b)
-      || Number(a.setup_session_task_id) - Number(b.setup_session_task_id);
+      || baselineOrder(a) - baselineOrder(b)
+      || taskIdentity(a) - taskIdentity(b);
   }
 
-  return planOrder(a) - planOrder(b)
+  return stepOrder(a) - stepOrder(b)
+    || baselineOrder(a) - baselineOrder(b)
     || textCompare(a.stage_key, b.stage_key)
-    || Number(a.setup_session_task_id) - Number(b.setup_session_task_id);
+    || taskIdentity(a) - taskIdentity(b);
 }
 
 function board205BlockerDetails(task, deps) {
@@ -740,6 +749,7 @@ function board205ApplyHistoricalCatalogOverlay() {
       annual_snapshot_task_name: annualName,
       task_name: current.task_name,
       task_action_type: current.task_action_type || annual?.task_action_type || 'WORK',
+      display_order: current.display_order ?? annual?.display_order ?? null,
       baseline_plan_order: current.baseline_plan_order ?? annual?.baseline_plan_order ?? null,
       stage_id: scope.stage_id,
       stage_key: stage?.stage_key ?? current.stage_key ?? annual?.stage_key ?? null,
