@@ -846,17 +846,12 @@ function board205TaskCard(task) {
       <div class="setup-board205-meta"><strong>Hard predecessor(s):</strong> ${board205Esc(depText)}</div>
       ${task.readiness_note ? `<div class="setup-board205-readiness ${task.readiness_state === 'NOT_READY' ? 'not-ready' : 'ready'}"><strong>Readiness:</strong> ${board205Esc(task.readiness_note)} · <strong>${board205Esc(task.readiness_state || 'READY')}</strong></div>` : ''}
       ${blockerDetails.map((detail) => `<div class="setup-board205-warning setup-board205-blocker-detail"><strong>${board205Esc(detail.label)}:</strong> ${board205Esc(detail.text)}</div>`).join('')}
-      ${historicalReview
-        ? `<div class="setup-board205-lock">${task.catalog_only
-            ? 'Current reusable Catalog task · no 2025 annual occurrence was created.'
-            : 'Historical Verification · planning corrections remain available; date/crew scheduling is disabled.'}</div>`
-        : ''}
       <div class="setup-board205-card-actions">
         ${canSchedule ? '<button type="button" class="small setup-board205-schedule-task">Schedule…</button>' : ''}
-        ${canManage && !task.catalog_only && task.readiness_note ? `<button type="button" class="small secondary setup-board205-toggle-readiness">${task.readiness_state === 'NOT_READY' ? 'Mark Ready' : 'Mark Not Ready'}</button>` : ''}
-        ${canManage && task.catalog_only ? '<button type="button" class="small secondary setup-board205-open-reusable-task">Open Reusable Task</button>' : ''}
-        ${canManage && !task.catalog_only && !task.progress_entries && !task.effective_complete ? '<button type="button" class="small secondary setup-board205-edit-planning-info">Edit Planning Info</button>' : ''}
-        ${canManage && seasonOnly ? '<button type="button" class="small secondary setup-board205-edit-season-task">Edit season task</button>' : ''}
+        ${canManage && !historicalReview && !task.catalog_only && task.readiness_note ? `<button type="button" class="small secondary setup-board205-toggle-readiness">${task.readiness_state === 'NOT_READY' ? 'Mark Ready' : 'Mark Not Ready'}</button>` : ''}
+        ${canManage && historicalReview && task.task_origin === 'REUSABLE' ? '<button type="button" class="small setup-board205-edit-planning-info">Edit Planning Info</button>' : ''}
+        ${canManage && !historicalReview && !task.catalog_only && !task.progress_entries && !task.effective_complete ? '<button type="button" class="small secondary setup-board205-edit-planning-info">Edit Planning Info</button>' : ''}
+        ${canManage && !historicalReview && seasonOnly ? '<button type="button" class="small secondary setup-board205-edit-season-task">Edit season task</button>' : ''}
       </div>
     </article>`;
 }
@@ -980,19 +975,10 @@ function board205RenderQueue() {
       board205SetReadiness(task);
     });
     card.querySelector('.setup-board205-edit-planning-info')?.addEventListener('click', () => {
-      board205OpenPlanningInfoDialog(taskId);
+      board205OpenPlanningInfoDialog(taskId || null, reusableTaskId || null);
     });
     card.querySelector('.setup-board205-edit-season-task')?.addEventListener('click', () => {
       board205OpenSeasonTaskDialog(taskId);
-    });
-    card.querySelector('.setup-board205-open-reusable-task')?.addEventListener('click', () => {
-      if (!reusableTaskId) return;
-      if (typeof setupNavigateToReusableTaskFromFinder === 'function') {
-        void setupNavigateToReusableTaskFromFinder(reusableTaskId);
-      } else {
-        showView('review');
-        selectTask(reusableTaskId);
-      }
     });
   });
 }
