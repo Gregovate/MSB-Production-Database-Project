@@ -90,7 +90,12 @@ async function saveSelectedSetupEffort() {
     );
     setupEffortState.set(Number(task.setup_task_id), effort);
     task.effort_level = effort;
-    renderLibrary();
+
+    // Effort is durable reusable Catalog knowledge stored on ref.setup_task.
+    // Reload the authoritative task row after the governed command so audit
+    // timestamp/actor fields refresh together with the effort value.
+    await reloadTasks(task.setup_task_id);
+
     setAlert(`Reusable effort saved: ${setupEffortLabel(effort)}.`, 'ok');
   } catch (error) {
     setAlert(error.message || error, 'error');
