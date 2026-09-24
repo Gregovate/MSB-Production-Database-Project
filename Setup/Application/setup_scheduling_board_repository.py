@@ -64,6 +64,7 @@ class SetupSchedulingBoardRepository:
                     "work_days": [],
                     "crews": [],
                     "captain_candidates": [],
+                    "work_orders": [],
                     "tasks": [],
                     "assignments": [],
                     "dependencies": [],
@@ -124,6 +125,24 @@ class SetupSchedulingBoardRepository:
                 """
             )
             captain_candidates = [dict(row) for row in cur.fetchall()]
+
+            cur.execute(
+                """
+                SELECT
+                    wo.work_order_id,
+                    wo.problem,
+                    wo.date_completed,
+                    CASE
+                        WHEN wo.date_completed IS NULL THEN 'OPEN'
+                        ELSE 'COMPLETE'
+                    END AS work_order_status
+                FROM ops.setup_scheduling_work_order_gate wo
+                ORDER BY
+                    CASE WHEN wo.date_completed IS NULL THEN 0 ELSE 1 END,
+                    wo.work_order_id DESC
+                """
+            )
+            work_orders = [dict(row) for row in cur.fetchall()]
 
             cur.execute(
                 """
@@ -628,6 +647,7 @@ class SetupSchedulingBoardRepository:
             "work_days": work_days,
             "crews": crews,
             "captain_candidates": captain_candidates,
+            "work_orders": work_orders,
             "tasks": tasks,
             "assignments": assignments,
             "dependencies": dependencies,
