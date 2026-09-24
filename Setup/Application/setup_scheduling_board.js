@@ -319,7 +319,7 @@ function board205BlockingEnabled() {
   return toggle ? Boolean(toggle.checked) : true;
 }
 
-function board205FinderEffectiveStatusFamily(task) {
+function board205FinderStatusFamily(task) {
   const status = String(task?.board_status || '').toUpperCase();
   if (status === 'READY_TO_SCHEDULE' || status === 'NEEDS_SCHEDULING_AGAIN') return 'READY';
   if (status === 'BLOCKED') return 'BLOCKED';
@@ -480,7 +480,7 @@ function board205FinderCompare(a, b, mode) {
   }
   if (mode === 'STATUS') {
     const rank = { READY: 1, BLOCKED: 2, WAITING: 3, SCHEDULED: 4, DEFERRED: 5, COMPLETE: 6, OTHER: 9 };
-    return (rank[board205FinderStatusFamily(a)] || 9) - (rank[board205FinderStatusFamily(b)] || 9)
+    return (rank[board205FinderEffectiveStatusFamily(a)] || 9) - (rank[board205FinderEffectiveStatusFamily(b)] || 9)
       || textCompare(a.stage_key, b.stage_key)
       || planOrder(a) - planOrder(b)
       || Number(a.setup_session_task_id) - Number(b.setup_session_task_id);
