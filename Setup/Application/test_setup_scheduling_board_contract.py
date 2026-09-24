@@ -446,7 +446,7 @@ def test_122_b1a_finder_has_stage_scene_sort_and_search_across_statuses() -> Non
 
     # A nonblank Task search bypasses status-checkbox filtering so blocked or
     # already-scheduled matches never appear to be missing.
-    assert "if (!search && !statuses.has(board205FinderStatusFamily(task))) return false;" in ui
+    assert "if (!search && !statuses.has(board205FinderEffectiveStatusFamily(task))) return false;" in ui
     assert "Task search checks all statuses" in ui
 
 
