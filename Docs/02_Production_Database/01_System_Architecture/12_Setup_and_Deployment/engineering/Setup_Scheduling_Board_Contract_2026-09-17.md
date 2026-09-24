@@ -153,6 +153,24 @@ Time ≥ 4h -> what are the longer jobs?
 
 Blank remains Any. A two-sided numeric range is intentionally deferred unless 2026 use demonstrates a need.
 
+## Pre-2026 Task-Finder Authority
+
+Before the real annual Setup Session exists, the active **Reusable Task Catalog** is the single current task-definition authority and the single current task-finder population.
+
+The existing 2025 Historical Verification Session remains historical evidence only. It must not:
+
+- determine whether a current reusable task is visible;
+- add `NOT IN 2025` identity/badges to current work;
+- supply the current reusable Plan order;
+- act as a proxy for a current-year Ready / Not Ready decision; or
+- force the operator into the full Reusable Task Catalog merely to edit routine planning fields.
+
+Pre-2026 **Plan order** means `ref.setup_task.baseline_plan_order`. After a real annual Session exists, `ops.setup_session_task.planned_order` becomes that season's ordering authority.
+
+The normal pre-2026 correction path is the compact **Edit Planning Info** dialog for crew guidance, expected Hours/Minutes, Effort, Readiness note, Weather note, Completion point, and Reusable notes. **Open Full Reusable Task** is the secondary drill-down for deeper information such as Resources, material ownership, Captain knowledge, Procedure context, and other full-record maintenance.
+
+The pre-2026 finder does not expose annual-only states such as Deferred as primary planning filters when there is no defined operator action using them. Underlying historical/annual values remain preserved for compatibility.
+
 ## Finder Readiness Visibility and Drill-down Navigation
 
 Readiness remains a **soft blocker**. A readiness condition does not become a hard scheduling prerequisite merely because the finder offers a readiness visibility control.
@@ -190,7 +208,10 @@ Before actual work exists, a Manager may use **Edit Planning Info** directly fro
 - weather note;
 - completion point.
 
-For reusable-origin work, this is an explicit reusable-knowledge correction and the current annual snapshot is refreshed at the same time.
+For reusable-origin work, this is an explicit reusable-knowledge correction.
+
+- **Before the real annual Session exists**, Edit Planning Info updates the reusable Catalog only. Historical 2025 annual rows are not rewritten merely to support current planning.
+- **After a real annual Session exists**, the accepted annual planning command may refresh that current season's annual snapshot together with the reusable knowledge where the workflow explicitly calls for both.
 
 For season-only work, the correction remains annual-only.
 
