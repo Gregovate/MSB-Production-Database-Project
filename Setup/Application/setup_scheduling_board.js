@@ -1204,14 +1204,23 @@ function board205Render() {
   const noSession = document.getElementById('setup-board205-no-session');
   const workspace = document.getElementById('setup-board205-workspace');
   const addSeason = document.getElementById('setup-board205-add-season-task');
+  const createSession = document.getElementById('setup-board205-create-session');
   const dayForm = document.getElementById('setup-board205-day-form');
   const boardPane = document.getElementById('setup-board205-board-pane');
   const historicalNote = document.getElementById('setup-board205-historical-note');
   const finderTitle = document.getElementById('setup-board205-finder-title');
   const historicalReview = Boolean(session) && board205HistoricalReviewMode();
   const canManage = Boolean(appState.access?.can_manage_setup);
+  const canAdmin = Boolean(appState.access?.can_admin_setup);
 
-  if (addSeason) addSeason.disabled = !session;
+  if (addSeason) {
+    addSeason.hidden = !session || historicalReview || !canManage;
+    addSeason.disabled = !session || historicalReview || !canManage;
+  }
+  if (createSession) {
+    createSession.hidden = Boolean(session) || !canAdmin;
+    createSession.disabled = Boolean(session) || !canAdmin;
+  }
   if (dayForm) {
     const canScheduleDays = Boolean(session) && canManage && !historicalReview;
     dayForm.hidden = !canScheduleDays;
@@ -1739,6 +1748,105 @@ async function board205SubmitPlanningInfo(event) {
   await board205PersistPlanningInfo();
 }
 
+async function board205CreateAnnualSession() {
+  const year = Number(appState.seasonYear);
+  if (!appState.access?.can_admin_setup || !Number.isInteger(year)) return;
+  if (setupBoard205State.board.session) return;
+
+  const activeCount = (appState.tasks || []).filter((task) => task.active_flag).length;
+  const confirmed = window.confirm(
+    `Create the real ${year} Setup Session now?\n\n`
+    + `This seeds every active reusable Catalog task into ${year} exactly once`
+    + (activeCount ? ` (currently ${activeCount} active reusable tasks).` : '.')
+    + '\n\nAfter creation you can begin adding work days and scheduling. '
+    + 'Normal planning remains editable; actual reported work becomes protected history.\n\n'
+    + 'Create the annual Session?'
+  );
+  if (!confirmed) return;
+
+  try {
+    setBusy(true);
+    const result = await api('api/setup/sessions', commandOptions('POST', {
+      season_year: year,
+      session_status: 'PLANNING'
+    }));
+    const seasonsPayload = await api('api/setup/seasons');
+    appState.seasons = seasonsPayload.seasons || [];
+    await loadSeason(year);
+    await board205Load();
+    const seeded = result.setup_session?.seeded_task_count;
+    setAlert(
+      `${year} Setup Session created${seeded == null ? '' : ` with ${seeded} reusable task(s)`}. You can start scheduling now.`,
+      'ok'
+    );
+  } catch (error) {
+    setAlert(error.message || error, 'error');
+    window.alert(error.message || error);
+  } finally {
+    setBusy(false);
+  }
+}
+
+function board205OpenAddTaskIntentDialog() {
+  if (!setupBoard205State.board.session || !appState.access?.can_manage_setup) return;
+  document.getElementById('setup-board205-add-intent-dialog')?.showModal();
+}
+
+async function board205ChooseReusableTask() {
+  document.getElementById('setup-board205-add-intent-dialog')?.close();
+  if (typeof navigateSetupView === 'function') {
+    await navigateSetupView('library');
+  } else {
+    showView('library');
+  }
+
+  if (typeof acceptanceOpenAddTask === 'function') {
+    acceptanceOpenAddTask(null, null);
+  } else {
+    document.getElementById('show-add-task')?.click();
+  }
+  setAlert(
+    `Reusable task: this becomes permanent Catalog work and is automatically added to the open ${appState.seasonYear} Setup Session.`,
+    'ok'
+  );
+}
+
+function board205ChooseSeasonOnlyTask() {
+  document.getElementById('setup-board205-add-intent-dialog')?.close();
+  board205OpenSeasonTaskDialog();
+}
+
+async function board205DeleteSeasonTask() {
+  const sessionTaskId = setupBoard205State.editSeasonTaskId;
+  const task = board205Task(sessionTaskId);
+  if (!task || task.task_origin !== 'SEASON_ONLY' || !appState.access?.can_manage_setup) return;
+
+  const confirmed = window.confirm(
+    `Delete "${task.task_name}" from ${appState.seasonYear}?\n\n`
+    + 'This task is THIS SEASON ONLY. Planning-only day/crew assignments and prerequisite links will be removed with it.\n\n'
+    + 'The database will refuse deletion if actual work/progress or execution evidence has been reported.\n\n'
+    + 'Delete this season-only task?'
+  );
+  if (!confirmed) return;
+
+  try {
+    setBusy(true);
+    await api(
+      `api/setup/scheduling-board/season-tasks/${sessionTaskId}`,
+      commandOptions('DELETE')
+    );
+    document.getElementById('setup-board205-season-dialog')?.close();
+    setupBoard205State.editSeasonTaskId = null;
+    await board205Load();
+    setAlert('Unworked season-only Setup task deleted.', 'ok');
+  } catch (error) {
+    setAlert(error.message || error, 'error');
+    window.alert(error.message || error);
+  } finally {
+    setBusy(false);
+  }
+}
+
 function board205OpenSeasonTaskDialog(sessionTaskId = null) {
   const dialog = document.getElementById('setup-board205-season-dialog');
   const form = document.getElementById('setup-board205-season-form');
@@ -1749,6 +1857,8 @@ function board205OpenSeasonTaskDialog(sessionTaskId = null) {
 
   const heading = document.getElementById('setup-board205-season-heading');
   const chain = document.getElementById('setup-board205-season-chain');
+  const deleteButton = document.getElementById('setup-board205-delete-season-task');
+  if (deleteButton) deleteButton.hidden = sessionTaskId == null;
   if (sessionTaskId == null) {
     heading.textContent = `Add ${appState.seasonYear} Season Task`;
     chain.hidden = false;
@@ -1871,7 +1981,7 @@ function board205InstallView() {
             <h2>Setup Scheduling Board</h2>
             <p class="muted">Plan only the next practical work days. Annual execution may teach the reusable Catalog later, but this board never changes reusable knowledge automatically.</p>
           </div>
-          <button id="setup-board205-add-season-task" type="button" class="manager-only">Add Season Task</button>
+          <button id="setup-board205-add-season-task" type="button" class="manager-only">Add Task</button>
         </div>
         <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
           <label>Date<input id="setup-board205-work-date" type="date" required></label>
@@ -1883,7 +1993,10 @@ function board205InstallView() {
 
       <div id="setup-board205-no-session" class="card" hidden>
         <strong>No annual Setup Session exists for this season.</strong>
-        <p class="muted">That is expected until the annual-session gate is accepted. The Reusable Catalog remains separate.</p>
+        <p class="muted">The reusable Catalog is ready. A Setup Administrator can create the real annual Session here; creation seeds every active reusable task once and does not schedule any work by itself.</p>
+        <div class="action-row">
+          <button id="setup-board205-create-session" type="button" class="admin-only" hidden>Create ${appState.seasonYear} Setup Session</button>
+        </div>
       </div>
 
       <div id="setup-board205-workspace" class="setup-board205-main">
@@ -1980,10 +2093,28 @@ function board205InstallView() {
       </form>
     </dialog>
 
+    <dialog id="setup-board205-add-intent-dialog" class="setup-board205-dialog">
+      <form method="dialog">
+        <h3>What kind of task is this?</h3>
+        <p class="muted">Choose deliberately. There is no default because these choices have different long-term meaning.</p>
+        <div class="setup-board205-choice-stack">
+          <button id="setup-board205-add-reusable" type="button">
+            Reusable Setup Task — every year
+          </button>
+          <p class="muted">Creates permanent reusable Catalog work and automatically adds it to the open ${appState.seasonYear} Session.</p>
+          <button id="setup-board205-add-season-only" type="button" class="secondary">
+            ${appState.seasonYear} Only — this season
+          </button>
+          <p class="muted">Creates annual work only. It does not enter the Reusable Task Catalog.</p>
+        </div>
+        <menu><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button></menu>
+      </form>
+    </dialog>
+
     <dialog id="setup-board205-season-dialog" class="setup-board205-dialog">
       <form id="setup-board205-season-form">
         <h3 id="setup-board205-season-heading">Add Season Task</h3>
-        <p class="muted">Season-only work belongs to this annual Setup Session. It does not enter the Reusable Task Catalog unless explicitly reconciled and confirmed later.</p>
+        <p class="muted"><strong>THIS SEASON ONLY.</strong> This work belongs only to the annual Setup Session and does not enter the Reusable Task Catalog.</p>
         <label>Task name<input id="setup-board205-season-name" type="text" required></label>
         <div class="setup-board205-form-grid">
           <label>Stage<select id="setup-board205-season-stage"></select></label>
@@ -2005,7 +2136,7 @@ function board205InstallView() {
           <label>Insert after / prerequisite<select id="setup-board205-season-prereq"></select></label>
           <label>Block downstream task<select id="setup-board205-season-downstream"></select></label>
         </div>
-        <menu><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Save Season Task</button></menu>
+        <menu><button id="setup-board205-delete-season-task" type="button" class="danger" hidden>Delete Season Task</button><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Save Season Task</button></menu>
       </form>
     </dialog>
   `;
@@ -2038,7 +2169,11 @@ function board205InstallView() {
   document.querySelectorAll('.setup-board205-backlog, .setup-board205-board').forEach((pane) => {
     pane.addEventListener('dragover', (event) => board205AutoScrollPane(pane, event), true);
   });
-  document.getElementById('setup-board205-add-season-task').addEventListener('click', () => board205OpenSeasonTaskDialog());
+  document.getElementById('setup-board205-add-season-task').addEventListener('click', board205OpenAddTaskIntentDialog);
+  document.getElementById('setup-board205-create-session')?.addEventListener('click', board205CreateAnnualSession);
+  document.getElementById('setup-board205-add-reusable')?.addEventListener('click', () => { void board205ChooseReusableTask(); });
+  document.getElementById('setup-board205-add-season-only')?.addEventListener('click', board205ChooseSeasonOnlyTask);
+  document.getElementById('setup-board205-delete-season-task')?.addEventListener('click', () => { void board205DeleteSeasonTask(); });
   document.getElementById('setup-board205-schedule-dialog-form').addEventListener('submit', board205SubmitScheduleDialog);
   document.getElementById('setup-board205-schedule-day').addEventListener('change', (event) => {
     board205PopulateCrewSelect(Number(event.currentTarget.value || 0));
