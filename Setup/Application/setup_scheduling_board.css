@@ -65,6 +65,9 @@
 }
 
 .setup-board205-filters {
+  position: sticky;
+  top: 0;
+  z-index: 4;
   margin: 0.65rem 0 0.85rem;
   padding: 0.65rem;
   border: 1px solid var(--border, #d9e0e8);
