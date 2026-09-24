@@ -566,6 +566,35 @@ Once actual work/progress exists for the assignment:
 
 This rule is database-authoritative, not merely a browser convention.
 
+## 2026 Task Deletion Boundary
+
+2026 is the first authoritative Setup-history year. Planning state is not historical execution evidence.
+
+Until real work is reported against a task, an authorized Manager must be able to fully delete it even if it has already been seeded into the 2026 annual Session, ordered, assigned to a work day/crew, or connected by planning-only dependencies.
+
+For an unworked reusable task, governed deletion removes:
+
+- the reusable Catalog definition;
+- its unworked 2026 annual occurrence;
+- planning-only work-day assignments;
+- annual/reusable planning dependencies owned by that task; and
+- task-owned reusable configuration that is safe to delete under the governed command.
+
+For an unworked 2026-only task, governed deletion removes the annual occurrence and its planning-only relationships.
+
+The following do **not** by themselves block deletion:
+
+- annual membership;
+- planned order;
+- planned date;
+- crew/work-day assignment;
+- readiness state;
+- prerequisite/dependency links.
+
+Once actual work/progress/completion or other accepted task execution evidence exists, hard delete must fail closed and preserve the 2026 record.
+
+No browser direct table DML is permitted; deletion remains an explicit governed Manager action.
+
 ## Season-Only Annual Tasks
 
 A one-off annual task does **not** belong in `ref.setup_task` merely because the scheduler needs to place it.
