@@ -289,6 +289,18 @@ def test_122_b1a_pre2026_compact_editor_writes_reusable_catalog_only() -> None:
     assert "annual_" not in block
 
 
+def test_122_b1a_open_full_reusable_saves_compact_edits_first() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "function board205PlanningInfoDirty()" in ui
+    assert "async function board205PersistPlanningInfo(" in ui
+    assert "if (board205PlanningInfoDirty()) {" in ui
+    assert "board205PersistPlanningInfo({ closeDialog: false, announce: false })" in ui
+    assert "Planning edits saved before opening the full reusable task." in ui
+    assert "await reloadTasks(reusableTaskId);" in ui
+    assert "await setupNavigateToReusableTaskFromFinder(reusableTaskId);" in ui
+
+
 def test_122_b1a_pre2026_finder_hides_deferred_and_filters_soft_readiness() -> None:
     ui = read_app("setup_scheduling_board.js")
 
@@ -431,7 +443,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
     assert "setup_scheduling_board.css?v=2026-09-24.2" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.2" in html
+    assert "setup_scheduling_board.js?v=2026-09-24.3" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
@@ -659,7 +671,7 @@ def test_122_b1a_reusable_task_audit_is_visible() -> None:
     assert "<strong>Audit:</strong>" in ui
     assert "reusable-task-audit" in html
     assert "Created ${createdAt} by ${createdBy} · Last updated ${updatedAt} by ${updatedBy}" in production
-    assert "setup_production.js?v=2026-09-24.1" in html
+    assert "setup_production.js?v=2026-09-24.2" in html
 
 
 def test_122_b1a_historical_overlay_preserves_fresh_board_audit_after_write() -> None:
