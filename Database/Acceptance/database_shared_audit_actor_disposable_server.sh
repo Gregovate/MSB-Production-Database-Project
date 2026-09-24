@@ -31,13 +31,79 @@ PROD_BEFORE=""
 mkdir -p "$REPORT_DIR"
 exec > >(tee "$REPORT") 2>&1
 
-prod_function_fingerprint() {
+prod_audit_fingerprint() {
     sudo docker exec "$PROD_CONTAINER" \
         psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "
+            WITH function_state AS (
+                SELECT string_agg(
+                    p.proname || ':' || md5(pg_get_functiondef(p.oid)),
+                    '|' ORDER BY p.proname
+                ) AS value
+                FROM pg_proc AS p
+                JOIN pg_namespace AS n
+                  ON n.oid = p.pronamespace
+                WHERE n.nspname = 'ref'
+                  AND p.proname IN (
+                      'resolve_actor',
+                      'set_actor_on_insert',
+                      'set_actor_on_update',
+                      'set_updated_fields',
+                      'sync_audit_collection_policy'
+                  )
+            ),
+            policy_state AS (
+                SELECT string_agg(
+                    row_to_json(a)::text,
+                    '|' ORDER BY a.audit_collection_policy_id
+                ) AS value
+                FROM ref.audit_collection_policy AS a
+            ),
+            target_column_state AS (
+                SELECT string_agg(
+                    concat_ws(
+                        ':',
+                        c.table_schema,
+                        c.table_name,
+                        c.ordinal_position::text,
+                        c.column_name,
+                        c.data_type,
+                        c.is_nullable,
+                        coalesce(c.column_default, '')
+                    ),
+                    '|' ORDER BY c.table_schema, c.table_name, c.ordinal_position
+                ) AS value
+                FROM information_schema.columns AS c
+                WHERE (c.table_schema, c.table_name) IN (
+                    ('ops', 'work_order_status_history'),
+                    ('ref', 'task_type'),
+                    ('ref', 'work_area')
+                )
+            ),
+            trigger_state AS (
+                SELECT string_agg(
+                    n.nspname || '.' || c.relname || ':' ||
+                    t.tgname || ':' || pg_get_triggerdef(t.oid, true),
+                    '|' ORDER BY n.nspname, c.relname, t.tgname
+                ) AS value
+                FROM pg_trigger AS t
+                JOIN pg_proc AS p
+                  ON p.oid = t.tgfoid
+                JOIN pg_class AS c
+                  ON c.oid = t.tgrelid
+                JOIN pg_namespace AS n
+                  ON n.oid = c.relnamespace
+                WHERE NOT t.tgisinternal
+                  AND p.proname IN (
+                      'set_actor_on_insert',
+                      'set_actor_on_update',
+                      'set_updated_fields'
+                  )
+            )
             SELECT md5(
-                pg_get_functiondef('ref.resolve_actor()'::regprocedure) ||
-                pg_get_functiondef('ref.set_actor_on_update()'::regprocedure) ||
-                pg_get_functiondef('ref.set_updated_fields()'::regprocedure)
+                coalesce((SELECT value FROM function_state), '') || '|' ||
+                coalesce((SELECT value FROM policy_state), '') || '|' ||
+                coalesce((SELECT value FROM target_column_state), '') || '|' ||
+                coalesce((SELECT value FROM trigger_state), '')
             );
         "
 }
@@ -58,19 +124,19 @@ cleanup() {
     sudo rm -rf "$PYCACHE" >/dev/null 2>&1 || true
     rm -rf "$SCRIPT_DIR" >/dev/null 2>&1 || true
 
-    echo "--- Production shared-audit after-check ---"
+    echo "--- Production audit-contract after-check ---"
     if [[ -n "$PROD_BEFORE" ]]; then
-        PROD_AFTER="$(prod_function_fingerprint 2>/dev/null)"
-        echo "Production audit-function fingerprint before: $PROD_BEFORE"
-        echo "Production audit-function fingerprint after:  $PROD_AFTER"
+        PROD_AFTER="$(prod_audit_fingerprint 2>/dev/null)"
+        echo "Production audit-contract fingerprint before: $PROD_BEFORE"
+        echo "Production audit-contract fingerprint after:  $PROD_AFTER"
         if [[ -z "$PROD_AFTER" || "$PROD_AFTER" != "$PROD_BEFORE" ]]; then
-            echo "FAIL: Production shared audit function definitions changed"
+            echo "FAIL: Production shared audit contract changed"
             status=97
         else
-            echo "PASS: Production shared audit function definitions unchanged"
+            echo "PASS: Production shared audit contract unchanged"
         fi
     else
-        echo "SKIP: Production audit-function fingerprint was not captured before failure"
+        echo "SKIP: Production audit-contract fingerprint was not captured before failure"
     fi
 
     echo "Report retained at: $REPORT"
@@ -113,15 +179,15 @@ if [[ -n "$(sudo git -C "$REPO_ROOT" status --porcelain)" ]]; then
     exit 14
 fi
 
-PROD_BEFORE="$(prod_function_fingerprint)"
+PROD_BEFORE="$(prod_audit_fingerprint)"
 if [[ -z "$PROD_BEFORE" ]]; then
-    echo "FAIL: Production shared audit function fingerprint was empty"
+    echo "FAIL: Production audit-contract fingerprint was empty"
     exit 15
 fi
-echo "Production audit-function fingerprint before: $PROD_BEFORE"
+echo "Production audit-contract fingerprint before: $PROD_BEFORE"
 
 echo
-echo "--- Verify native Directus audit-policy coverage ---"
+echo "--- Observe current Production Directus/shared-audit gaps ---"
 DIRECTUS_GAPS="$(sudo docker exec "$PROD_CONTAINER" \
     psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "
         WITH shared_update_tables AS (
@@ -151,23 +217,35 @@ DIRECTUS_GAPS="$(sudo docker exec "$PROD_CONTAINER" \
                     AND a.active_flag = true
                     AND a.update_actor_enabled = true
               )
-              OR NOT EXISTS (
+              OR EXISTS (
                   SELECT 1
-                  FROM information_schema.columns AS col
-                  WHERE col.table_schema = s.schema_name
-                    AND col.table_name = s.table_name
-                    AND col.column_name = 'updated_by_person_id'
+                  FROM (
+                      VALUES
+                          ('created_at'),
+                          ('created_by'),
+                          ('created_by_person_id'),
+                          ('updated_at'),
+                          ('updated_by'),
+                          ('updated_by_person_id')
+                  ) AS required(column_name)
+                  WHERE NOT EXISTS (
+                      SELECT 1
+                      FROM information_schema.columns AS col
+                      WHERE col.table_schema = s.schema_name
+                        AND col.table_name = s.table_name
+                        AND col.column_name = required.column_name
+                  )
               )
           )
         ORDER BY 1;
     ")"
 
 if [[ -n "$DIRECTUS_GAPS" ]]; then
-    echo "FAIL: Directus-writable shared-audit tables lack active update-actor policy/person audit coverage:"
+    echo "INFO: current Production contains known Directus/shared-audit gaps that this candidate must close in the disposable clone:"
     printf '%s\n' "$DIRECTUS_GAPS"
-    exit 20
+else
+    echo "INFO: current Production has no Directus/shared-audit gaps under this check"
 fi
-echo "PASS: Directus-writable shared-audit tables have active update-actor policy/person coverage"
 
 echo
 echo "--- Fetch exact database candidate ---"
