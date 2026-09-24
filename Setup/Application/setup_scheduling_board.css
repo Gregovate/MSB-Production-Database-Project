@@ -90,6 +90,18 @@
   flex: 1 1 12rem;
 }
 
+.setup-board205-finder .setup-board205-search input {
+  border-width: 2px;
+  border-color: color-mix(in srgb, var(--accent, #0b6ea8) 58%, var(--border, #d9e0e8));
+  background: color-mix(in srgb, var(--accent, #0b6ea8) 10%, var(--panel, #fff));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent, #0b6ea8) 10%, transparent);
+}
+
+.setup-board205-finder .setup-board205-search input:focus {
+  border-color: var(--accent, #0b6ea8);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #0b6ea8) 22%, transparent);
+}
+
 .setup-board205-blocking-toggle {
   display: inline-flex !important;
   align-items: center;
