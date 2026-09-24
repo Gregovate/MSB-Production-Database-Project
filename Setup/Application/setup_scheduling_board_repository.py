@@ -300,6 +300,40 @@ class SetupSchedulingBoardRepository:
                       AND tm.active_flag
                 ) extra ON true
                 LEFT JOIN LATERAL (
+                    WITH required AS (
+                        /* Reusable-origin annual tasks follow the CURRENT reusable
+                           prerequisite graph. The 2025 annual baseline snapshot can
+                           be stale after Manager prerequisite corrections. */
+                        SELECT pst.setup_session_task_id AS prerequisite_setup_session_task_id
+                        FROM ref.setup_task_dependency rd
+                        LEFT JOIN ops.setup_session_task pst
+                          ON pst.setup_session_id = st.setup_session_id
+                         AND pst.setup_task_id = rd.prerequisite_setup_task_id
+                        WHERE st.task_origin = 'REUSABLE'
+                          AND rd.setup_task_id = st.setup_task_id
+
+                        UNION ALL
+
+                        /* Preserve season-only and explicit annual-only edges.
+                           Ignore stale REUSABLE_BASELINE copies for reusable tasks. */
+                        SELECT ad.prerequisite_setup_session_task_id
+                        FROM ops.setup_session_task_dependency ad
+                        LEFT JOIN ops.setup_session_task apst
+                          ON apst.setup_session_task_id = ad.prerequisite_setup_session_task_id
+                        WHERE ad.setup_session_task_id = st.setup_session_task_id
+                          AND (
+                              st.task_origin = 'SEASON_ONLY'
+                              OR (
+                                  ad.dependency_origin = 'ANNUAL'
+                                  AND NOT EXISTS (
+                                      SELECT 1
+                                      FROM ref.setup_task_dependency rd
+                                      WHERE rd.setup_task_id = st.setup_task_id
+                                        AND rd.prerequisite_setup_task_id = apst.setup_task_id
+                                  )
+                              )
+                          )
+                    )
                     SELECT
                         count(*) AS prerequisite_count,
                         bool_and(
@@ -311,12 +345,11 @@ class SetupSchedulingBoardRepository:
                                 ELSE false
                             END
                         ) AS prerequisites_complete
-                    FROM ops.setup_session_task_dependency d
-                    JOIN ops.setup_session_task pst
-                      ON pst.setup_session_task_id = d.prerequisite_setup_session_task_id
+                    FROM required r
+                    LEFT JOIN ops.setup_session_task pst
+                      ON pst.setup_session_task_id = r.prerequisite_setup_session_task_id
                     LEFT JOIN ops.setup_scheduling_work_order_gate pwo
                       ON pwo.work_order_id = pst.linked_work_order_id
-                    WHERE d.setup_session_task_id = st.setup_session_task_id
                 ) dep ON true
                 LEFT JOIN LATERAL (
                     SELECT
@@ -486,36 +519,85 @@ class SetupSchedulingBoardRepository:
 
             cur.execute(
                 """
-                SELECT
-                    d.setup_session_task_id,
-                    d.prerequisite_setup_session_task_id,
-                    d.dependency_origin,
-                    d.dependency_note,
-                    d.sort_order,
-                    pst.annual_task_name AS prerequisite_task_name,
-                    pst.task_origin AS prerequisite_task_origin,
-                    pst.execution_status AS prerequisite_execution_status,
-                    pst.linked_work_order_id AS prerequisite_work_order_id,
-                    pwo.date_completed AS prerequisite_work_order_completed_at,
-                    CASE
-                        WHEN pst.execution_status = 'COMPLETE' THEN true
-                        WHEN pst.linked_work_order_gate
-                             AND pst.linked_work_order_id IS NOT NULL
-                             AND pwo.date_completed IS NOT NULL THEN true
-                        ELSE false
-                    END AS prerequisite_complete
-                FROM ops.setup_session_task_dependency d
-                JOIN ops.setup_session_task st
-                  ON st.setup_session_task_id = d.setup_session_task_id
-                JOIN ops.setup_session_task pst
-                  ON pst.setup_session_task_id = d.prerequisite_setup_session_task_id
-                LEFT JOIN ops.setup_scheduling_work_order_gate pwo
-                  ON pwo.work_order_id = pst.linked_work_order_id
-                WHERE st.setup_session_id = %s
-                ORDER BY d.setup_session_task_id, d.sort_order,
-                         d.prerequisite_setup_session_task_id
+                WITH reusable_current AS (
+                    SELECT
+                        st.setup_session_task_id,
+                        pst.setup_session_task_id AS prerequisite_setup_session_task_id,
+                        'REUSABLE_CURRENT'::text AS dependency_origin,
+                        rd.dependency_note,
+                        rd.sort_order,
+                        pt.task_name AS prerequisite_task_name,
+                        'REUSABLE'::text AS prerequisite_task_origin,
+                        pst.execution_status AS prerequisite_execution_status,
+                        pst.linked_work_order_id AS prerequisite_work_order_id,
+                        pwo.date_completed AS prerequisite_work_order_completed_at,
+                        CASE
+                            WHEN pst.execution_status = 'COMPLETE' THEN true
+                            WHEN pst.linked_work_order_gate
+                                 AND pst.linked_work_order_id IS NOT NULL
+                                 AND pwo.date_completed IS NOT NULL THEN true
+                            ELSE false
+                        END AS prerequisite_complete
+                    FROM ops.setup_session_task st
+                    JOIN ref.setup_task_dependency rd
+                      ON rd.setup_task_id = st.setup_task_id
+                    JOIN ref.setup_task pt
+                      ON pt.setup_task_id = rd.prerequisite_setup_task_id
+                    LEFT JOIN ops.setup_session_task pst
+                      ON pst.setup_session_id = st.setup_session_id
+                     AND pst.setup_task_id = rd.prerequisite_setup_task_id
+                    LEFT JOIN ops.setup_scheduling_work_order_gate pwo
+                      ON pwo.work_order_id = pst.linked_work_order_id
+                    WHERE st.setup_session_id = %s
+                      AND st.task_origin = 'REUSABLE'
+                ),
+                annual_explicit AS (
+                    SELECT
+                        ad.setup_session_task_id,
+                        ad.prerequisite_setup_session_task_id,
+                        ad.dependency_origin,
+                        ad.dependency_note,
+                        ad.sort_order,
+                        pst.annual_task_name AS prerequisite_task_name,
+                        pst.task_origin AS prerequisite_task_origin,
+                        pst.execution_status AS prerequisite_execution_status,
+                        pst.linked_work_order_id AS prerequisite_work_order_id,
+                        pwo.date_completed AS prerequisite_work_order_completed_at,
+                        CASE
+                            WHEN pst.execution_status = 'COMPLETE' THEN true
+                            WHEN pst.linked_work_order_gate
+                                 AND pst.linked_work_order_id IS NOT NULL
+                                 AND pwo.date_completed IS NOT NULL THEN true
+                            ELSE false
+                        END AS prerequisite_complete
+                    FROM ops.setup_session_task_dependency ad
+                    JOIN ops.setup_session_task st
+                      ON st.setup_session_task_id = ad.setup_session_task_id
+                    JOIN ops.setup_session_task pst
+                      ON pst.setup_session_task_id = ad.prerequisite_setup_session_task_id
+                    LEFT JOIN ops.setup_scheduling_work_order_gate pwo
+                      ON pwo.work_order_id = pst.linked_work_order_id
+                    WHERE st.setup_session_id = %s
+                      AND (
+                          st.task_origin = 'SEASON_ONLY'
+                          OR (
+                              ad.dependency_origin = 'ANNUAL'
+                              AND NOT EXISTS (
+                                  SELECT 1
+                                  FROM ref.setup_task_dependency rd
+                                  WHERE rd.setup_task_id = st.setup_task_id
+                                    AND rd.prerequisite_setup_task_id = pst.setup_task_id
+                              )
+                          )
+                      )
+                )
+                SELECT * FROM reusable_current
+                UNION ALL
+                SELECT * FROM annual_explicit
+                ORDER BY setup_session_task_id, sort_order,
+                         prerequisite_setup_session_task_id NULLS LAST
                 """,
-                (session["setup_session_id"],),
+                (session["setup_session_id"], session["setup_session_id"]),
             )
             dependencies = [dict(row) for row in cur.fetchall()]
 
@@ -791,6 +873,7 @@ class SetupSchedulingBoardRepository:
         readiness_note: str | None,
         weather_note: str | None,
         completion_point: str | None,
+        reusable_notes: str | None,
     ) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
@@ -812,6 +895,48 @@ class SetupSchedulingBoardRepository:
                 ),
             )
             result = self._one(cur, "Scheduling planning-info update returned no result")
+
+            /* Reusable Notes are durable Catalog knowledge. Reuse the existing
+               governed ref.update_setup_task() command instead of adding broad
+               table DML or a second notes authority. */
+            if result.get("task_origin") == "REUSABLE":
+                cur.execute(
+                    """
+                    SELECT task_name, stage_id, task_action_type, display_order,
+                           active_flag, normal_crew_min, normal_crew_max,
+                           expected_duration_minutes, completion_point,
+                           readiness_note, weather_note
+                    FROM ref.setup_task
+                    WHERE setup_task_id = %s
+                    """,
+                    (result["setup_task_id"],),
+                )
+                current = self._one(cur, "Reusable Setup task was not found")
+                cur.execute(
+                    """
+                    SELECT * FROM ref.update_setup_task(
+                        %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                    )
+                    """,
+                    (
+                        email,
+                        result["setup_task_id"],
+                        current["task_name"],
+                        current["stage_id"],
+                        current["task_action_type"],
+                        current["display_order"],
+                        current["active_flag"],
+                        current["normal_crew_min"],
+                        current["normal_crew_max"],
+                        current["expected_duration_minutes"],
+                        current["completion_point"],
+                        current["readiness_note"],
+                        current["weather_note"],
+                        reusable_notes,
+                    ),
+                )
+                self._one(cur, "Reusable Notes update returned no result")
+
             conn.commit()
             return result
 
