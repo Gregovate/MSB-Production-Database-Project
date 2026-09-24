@@ -39,7 +39,8 @@ if ($LASTEXITCODE -ne 0) {
     throw "Merged main does not contain accepted browser-reviewed target $AcceptedTargetSha"
 }
 
-$serverBlob = (& git -C $RepoRoot hash-object $ServerScript).Trim()
+$serverObject = "HEAD:Setup/Acceptance/setup_122_plan_schedule_source_only_production_deploy_server.sh"
+$serverBlob = (& git -C $RepoRoot rev-parse $serverObject).Trim()
 if ($LASTEXITCODE -ne 0 -or $serverBlob -ne $AcceptedServerRunnerBlob) {
     throw "Production server-runner identity mismatch. Expected blob $AcceptedServerRunnerBlob, got '$serverBlob'."
 }
