@@ -397,6 +397,21 @@ done < "$GRANTS_FILE"
 
 psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"
 
+echo "--- Production Setup function-boundary proof (read-only) ---"
+PROD_CAPABILITY_EXEC="$(sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "SELECT has_function_privilege('fieldwiring_app','ref.setup_browser_capabilities(text)','EXECUTE');")"
+PROD_UPDATE_EXEC="$(sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "SELECT has_function_privilege('fieldwiring_app','ref.update_setup_task(text,bigint,text,integer,text,integer,boolean,integer,integer,integer,text,text,text,text)','EXECUTE');")"
+PROD_INTERNAL_EXEC="$(sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "SELECT has_function_privilege('fieldwiring_app','ref.setup_management_actor(text,boolean)','EXECUTE');")"
+
+echo "Production capability EXECUTE: $PROD_CAPABILITY_EXEC"
+echo "Production update-task EXECUTE:  $PROD_UPDATE_EXEC"
+echo "Production internal-helper EXECUTE: $PROD_INTERNAL_EXEC"
+
+if [[ "$PROD_CAPABILITY_EXEC" != "t" || "$PROD_UPDATE_EXEC" != "t" || "$PROD_INTERNAL_EXEC" != "f" ]]; then
+    echo "FAIL: Production Setup function authorization boundary is not the documented contract"
+    exit 23
+fi
+echo "Production Setup function authorization boundary: PASS"
+
 echo "--- Production role/ACL diagnostic (read-only) ---"
 sudo docker exec "$PROD_CONTAINER" psql -X -P pager=off -U "$DB_ACTOR" -d "$PROD_DB" -c "
     SELECT
@@ -435,13 +450,12 @@ BEGIN
         RAISE EXCEPTION 'Preview fieldwiring_app cannot execute Setup capability function';
     END IF;
 
-    IF has_function_privilege(
-        'fieldwiring_app',
-        'ref.setup_management_actor(text,boolean)',
-        'EXECUTE'
-    ) THEN
-        RAISE EXCEPTION 'Preview fieldwiring_app can execute internal Setup actor helper';
-    END IF;
+    /*
+      Function ACLs are stripped by pg_restore --no-acl, so PostgreSQL's
+      default PUBLIC EXECUTE makes the disposable clone unsuitable as the
+      authority for the internal-helper EXECUTE assertion. The exact Production
+      boundary is proved read-only immediately above instead.
+    */
 
     IF has_table_privilege('fieldwiring_app', 'ref.setup_task', 'INSERT')
        OR has_table_privilege('fieldwiring_app', 'ref.setup_task', 'UPDATE')
