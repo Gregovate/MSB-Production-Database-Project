@@ -164,6 +164,92 @@ BEGIN
 END
 $validation$;
 
+/*
+Native Directus does not use the browser-command app.directus_user_uuid path.
+Its audit hook stamps updated_by / updated_by_person_id in the DML payload.
+Prove that a same-person repeat update is preserved correctly as directus_app.
+*/
+DO $role_setup$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'directus_app') THEN
+        CREATE ROLE directus_app NOLOGIN;
+    END IF;
+END
+$role_setup$;
+
+CREATE TEMP TABLE directus_audit_probe (
+    probe_id integer PRIMARY KEY,
+    payload text NOT NULL,
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    updated_by text NOT NULL,
+    updated_by_person_id integer
+) ON COMMIT DROP;
+
+CREATE TRIGGER trg_directus_audit_probe
+BEFORE UPDATE ON directus_audit_probe
+FOR EACH ROW EXECUTE FUNCTION ref.set_actor_on_update();
+
+INSERT INTO directus_audit_probe(
+    probe_id,
+    payload,
+    updated_by,
+    updated_by_person_id
+)
+SELECT
+    1,
+    'initial',
+    p.preferred_name,
+    p.person_id
+FROM ref.person AS p
+WHERE p.directus_user_id IS NOT NULL
+  AND nullif(btrim(p.preferred_name), '') IS NOT NULL
+ORDER BY p.person_id
+LIMIT 1;
+
+GRANT SELECT ON ref.person TO directus_app;
+GRANT SELECT, UPDATE ON directus_audit_probe TO directus_app;
+
+SELECT pg_catalog.set_config('app.directus_user_uuid', '', true);
+
+SET LOCAL ROLE directus_app;
+
+UPDATE directus_audit_probe AS d
+   SET payload = 'same-directus-actor',
+       updated_by = d.updated_by,
+       updated_by_person_id = d.updated_by_person_id
+ WHERE d.probe_id = 1;
+
+RESET ROLE;
+
+DO $directus_assert$
+DECLARE
+    v_person integer;
+    v_name text;
+    v_expected_person integer;
+    v_expected_name text;
+BEGIN
+    SELECT d.updated_by_person_id, d.updated_by
+      INTO v_person, v_name
+    FROM directus_audit_probe AS d
+    WHERE d.probe_id = 1;
+
+    SELECT p.person_id, p.preferred_name
+      INTO v_expected_person, v_expected_name
+    FROM ref.person AS p
+    WHERE p.directus_user_id IS NOT NULL
+      AND nullif(btrim(p.preferred_name), '') IS NOT NULL
+    ORDER BY p.person_id
+    LIMIT 1;
+
+    IF v_person IS DISTINCT FROM v_expected_person
+       OR v_name IS DISTINCT FROM v_expected_name THEN
+        RAISE EXCEPTION
+            'Native Directus same-actor payload was not preserved: expected %/% got %/%',
+            v_expected_person, v_expected_name, v_person, v_name;
+    END IF;
+END
+$directus_assert$;
+
 ROLLBACK;
 
 SELECT 'DATABASE_SHARED_AUDIT_ACTOR_DISPOSABLE_VALIDATION_PASS' AS result;
