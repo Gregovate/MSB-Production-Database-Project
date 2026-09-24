@@ -75,6 +75,10 @@ def test_database_wide_disposable_runner_uses_current_production_clone_without_a
     assert 'psql_test < "$CANDIDATE_WORKTREE/$VALIDATION_REL"' in server
     assert "fieldwiring_app" not in server
     assert "GRANTS_FILE" not in server
+    assert "has_table_privilege('directus_app', s.table_oid, 'UPDATE')" in server
+    assert "ref.audit_collection_policy" in server
+    assert "updated_by_person_id" in server
+    assert "Directus-writable shared-audit tables have active update-actor policy/person coverage" in server
     assert "Production shared audit function definitions unchanged" in server
     assert 'rm -rf "$SCRIPT_DIR"' in server
 
