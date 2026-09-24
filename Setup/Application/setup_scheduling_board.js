@@ -606,7 +606,9 @@ function board205CatalogDependencyRows(task) {
     prerequisite_execution_status: null,
     prerequisite_work_order_id: null,
     prerequisite_work_order_completed_at: null,
-    prerequisite_complete: true,
+    // Before an annual Session exists there is no completed annual predecessor.
+    // Reusable prerequisites therefore begin as hard blockers.
+    prerequisite_complete: false,
     prerequisite_setup_task_id: dep.setup_task_id
   }));
 }
@@ -718,7 +720,7 @@ function board205TaskCard(task) {
       : `${dep.prerequisite_complete ? '✓' : '○'} ${dep.prerequisite_task_name}`
     ).join('; ')
     : (task.catalog_only ? 'No reusable prerequisite' : 'No annual prerequisite');
-  const blockerDetails = task.catalog_only ? [] : board205BlockerDetails(task, deps);
+  const blockerDetails = board205BlockerDetails(task, deps);
 
   return `
     <article class="setup-board205-task-card"
