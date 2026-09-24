@@ -740,6 +740,7 @@ function board205ApplyHistoricalCatalogOverlay() {
       annual_snapshot_task_name: annualName,
       task_name: current.task_name,
       task_action_type: current.task_action_type || annual?.task_action_type || 'WORK',
+      baseline_plan_order: current.baseline_plan_order ?? annual?.baseline_plan_order ?? null,
       stage_id: scope.stage_id,
       stage_key: stage?.stage_key ?? current.stage_key ?? annual?.stage_key ?? null,
       stage_name: stage?.stage_name ?? current.stage_name ?? annual?.stage_name ?? null,
