@@ -853,6 +853,21 @@ class SetupSchedulingBoardRepository:
             conn.commit()
             return result
 
+    def delete_season_task(
+        self,
+        *,
+        email: str,
+        session_task_id: int,
+    ) -> dict[str, Any]:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM ops.delete_unworked_setup_season_task(%s,%s)",
+                (email, session_task_id),
+            )
+            result = self._one(cur, "Season-only Setup task delete returned no result")
+            conn.commit()
+            return result
+
     def update_annual_task(
         self,
         *,
