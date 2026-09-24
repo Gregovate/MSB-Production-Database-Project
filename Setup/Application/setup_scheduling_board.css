@@ -105,11 +105,6 @@
   color: var(--muted, #64748b);
 }
 
-.setup-board205-blocking-ignored {
-  border-style: dashed;
-  font-weight: 900;
-}
-
 .setup-board205-status-filter {
   display: flex;
   flex: 1 1 100%;
