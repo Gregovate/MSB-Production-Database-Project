@@ -45,4 +45,4 @@ def test_cleanup_assets_are_cache_busted_together():
     html = (ROOT / "production.html").read_text(encoding="utf-8")
     assert 'setup_training_review_refinement.css?v=2026-09-09.3' in html
     assert 'setup_training_review_refinement.js?v=2026-09-09.3' in html
-    assert 'setup_catalog_effort.js?v=2026-09-09.3' in html
+    assert 'setup_catalog_effort.js?v=2026-09-24.5' in html
