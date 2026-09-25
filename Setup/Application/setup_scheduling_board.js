@@ -9,7 +9,8 @@ const setupBoard205State = {
   editPlanningTaskId: null,
   editPlanningReusableTaskId: null,
   scheduleTarget: null,
-  finderCompact: null
+  finderCompact: null,
+  materialLookaheadCache: new Map()
 };
 
 const SETUP_BOARD205_TYPICAL_AM_MINUTES = 180;
@@ -397,6 +398,11 @@ function board205TaskDependencies(taskId) {
 function board205DownstreamMaterialTasks(task) {
   if (!task?.setup_session_task_id || board205HistoricalReviewMode()) return [];
 
+  const taskId = Number(task.setup_session_task_id);
+  if (setupBoard205State.materialLookaheadCache.has(taskId)) {
+    return setupBoard205State.materialLookaheadCache.get(taskId);
+  }
+
   const tasksById = new Map(
     (setupBoard205State.board.tasks || []).map((row) => [
       Number(row.setup_session_task_id),
@@ -436,11 +442,13 @@ function board205DownstreamMaterialTasks(task) {
     }
   }
 
-  return [...found.values()].sort((a, b) => (
+  const result = [...found.values()].sort((a, b) => (
     Number(a.planned_order ?? a.baseline_plan_order ?? 999999)
       - Number(b.planned_order ?? b.baseline_plan_order ?? 999999)
     || Number(a.setup_session_task_id) - Number(b.setup_session_task_id)
   ));
+  setupBoard205State.materialLookaheadCache.set(taskId, result);
+  return result;
 }
 
 function board205MaterialLookahead(task) {
@@ -1442,6 +1450,7 @@ async function board205Load() {
   try {
     const payload = await api(`api/setup/scheduling-board?season_year=${encodeURIComponent(appState.seasonYear)}`);
     setupBoard205State.board = payload.board || { session: null, work_days: [], crews: [], captain_candidates: [], work_orders: [], tasks: [], assignments: [], dependencies: [] };
+    setupBoard205State.materialLookaheadCache.clear();
     board205ApplyHistoricalCatalogOverlay();
     board205Render();
   } catch (error) {
