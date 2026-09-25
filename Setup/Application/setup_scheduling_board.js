@@ -1146,7 +1146,7 @@ function board205Day(day) {
       <div class="setup-board205-crew-label" data-crew-id="${crew.setup_work_day_crew_id}">
         <div class="setup-board205-crew-title-row">
           <strong>Crew ${board205Esc(crew.crew_code)}</strong>
-          ${canManage ? `<div class="setup-board205-crew-actions"><button type="button" class="small secondary setup-board205-save-crew">Save</button>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
+          ${canManage ? `<div class="setup-board205-crew-actions"><button type="button" class="small setup-board205-save-crew">Save</button>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
         </div>
         <label class="setup-board205-crew-captain">Captain
           <select class="setup-board205-crew-captain-select">${board205CaptainOptions(crew.captain_person_id)}</select>
@@ -2120,7 +2120,6 @@ function board205InstallView() {
           </div>
           <div id="setup-board205-kpis" class="setup-board205-kpis" aria-live="polite"></div>
           <div class="setup-board205-toolbar-actions">
-            <button id="setup-board205-print" type="button" class="secondary">Print Schedule</button>
             <button id="setup-board205-add-season-task" type="button" class="manager-only">Add Task</button>
           </div>
         </div>
@@ -2198,7 +2197,10 @@ function board205InstallView() {
               <h3>Rolling Work Days</h3>
               <p class="muted">Each work day starts with Crew A. Add crews only when needed. Schedule in AM/PM shifts; planned headcount is optional by crew and shift. Historical actual assignments are locked.</p>
             </div>
-            <label class="setup-board205-history-toggle"><input id="setup-board205-show-history" type="checkbox"> Show prior / completed work days</label>
+            <div class="setup-board205-board-actions">
+              <label class="setup-board205-history-toggle"><input id="setup-board205-show-history" type="checkbox"> Show prior / completed work days</label>
+              <button id="setup-board205-print" type="button">Print Schedule</button>
+            </div>
           </div>
           <div id="setup-board205-days" class="setup-board205-days"></div>
         </section>
