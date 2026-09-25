@@ -4,9 +4,10 @@
 |---|---|
 | Document Type | Engineering Contract / Live Review Finding |
 | System | Production Database — Setup and Deployment |
-| Status | CURRENT DESIGN AUTHORITY — task predecessor interaction accepted in V0.3.9; structured readiness pending |
+| Status | CURRENT DESIGN AUTHORITY — predecessor interaction accepted; 2026 annual Session live; structured readiness still separate follow-on |
 | Owner | MSB Production Database engineering |
-| Related Work | Issue #122; Issue #145; Issue #151 |
+| Last Reviewed | 2026-09-25 |
+| Related Work | Issue #122; Issue #145 (complete); Issue #151 |
 
 ## Purpose
 
@@ -280,13 +281,13 @@ A task is normally done earlier for convenience but can safely move
 
 Use Shift-drag or the manual prerequisite editor only for the **HARD PREDECESSOR** case.
 
-## 2026 Session Gate
+## 2026 Session Gate — SATISFIED
 
-**Do not create the 2026 Setup Session until the reconstructed reusable Catalog and predecessor/readiness model are ready enough for planning.**
+The historical launch gate was completed. Issue #145 is closed, the real 2026 Setup Session is live, and reusable prerequisites have seeded into the annual dependency graph.
 
-This gate includes Issue #145: every active reusable task is seeded into a newly created annual Setup Session, so confirmed reconstruction duplicates must be removed or deactivated before 2026 creation.
+Current rule: reusable hard predecessors remain durable baseline knowledge; annual 2026 dependencies may diverge for season-specific work without rewriting the reusable graph. Readiness remains distinct from hard predecessors. Do not use the existence of the live Session as a reason to collapse readiness into prerequisite semantics.
 
-Issue #151 completes efficient hard-predecessor editing; it does not complete structured readiness or the Catalog-cleanup gate.
+Issue #151 completed efficient hard-predecessor editing; structured readiness remains a separate follow-on design/implementation concern.
 
 ## Remaining Implementation Gate — Structured Readiness
 
