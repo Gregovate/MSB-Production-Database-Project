@@ -208,31 +208,38 @@ function board205TodayKey() {
   return `${year}-${month}-${day}`;
 }
 
-function board205PastDayNeedsAttention(day) {
-  if (!day || String(day.work_date) >= board205TodayKey()) return true;
-
-  const status = String(day.day_status || '').toUpperCase();
-  if (status !== 'COMPLETE' && status !== 'CANCELLED') return true;
-
-  const assignments = (setupBoard205State.board.assignments || []).filter(
+function board205DayAssignments(day) {
+  if (!day) return [];
+  return (setupBoard205State.board.assignments || []).filter(
     (item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id)
   );
-  return assignments.some((item) => {
-    if (!item.historical_locked) return true;
+}
+
+function board205DayViewState(day) {
+  const assignments = board205DayAssignments(day);
+  if (!assignments.length) return 'EMPTY';
+
+  const status = String(day.day_status || '').toUpperCase();
+  if (status === 'COMPLETE' || status === 'CANCELLED') return 'COMPLETED';
+
+  const hasUnfinished = assignments.some((item) => {
     const task = board205Task(item.setup_session_task_id);
-    if (!task || task.effective_complete) return false;
-    return Number(task.future_assignment_count || 0) === 0;
+    return !task || !task.effective_complete;
   });
+  return hasUnfinished ? 'UNFINISHED' : 'COMPLETED';
 }
 
 function board205VisibleDays() {
-  const showHistory = Boolean(document.getElementById('setup-board205-show-history')?.checked);
-  const today = board205TodayKey();
-  return (setupBoard205State.board.work_days || []).filter((day) => (
-    showHistory
-    || String(day.work_date) >= today
-    || board205PastDayNeedsAttention(day)
-  ));
+  const showUnfinished = document.getElementById('setup-board205-show-unfinished-days')?.checked !== false;
+  const showCompleted = Boolean(document.getElementById('setup-board205-show-completed-days')?.checked);
+  const showEmpty = Boolean(document.getElementById('setup-board205-show-empty-days')?.checked);
+
+  return (setupBoard205State.board.work_days || []).filter((day) => {
+    const state = board205DayViewState(day);
+    if (state === 'UNFINISHED') return showUnfinished;
+    if (state === 'COMPLETED') return showCompleted;
+    return showEmpty;
+  });
 }
 
 function board205AutoScrollPane(pane, event) {
@@ -1150,7 +1157,12 @@ function board205Cell(day, shift, crew) {
 
 
 function board205Day(day) {
-  const dayClass = Number(day.iso_day_of_week) === 6 ? 'saturday' : Number(day.iso_day_of_week) === 7 ? 'sunday' : '';
+  const dayClass = [
+    Number(day.iso_day_of_week) === 6 ? 'saturday' : '',
+    Number(day.iso_day_of_week) === 7 ? 'sunday' : '',
+    Number(day.setup_day_number) % 2 === 0 ? 'day-band-even' : 'day-band-odd',
+    board205DayViewState(day) === 'COMPLETED' ? 'completed-day' : ''
+  ].filter(Boolean).join(' ');
   const dayNote = [day.volunteer_note, day.weather_note, day.notes].filter(Boolean).join(' · ');
   const crews = board205CrewsForDay(day.setup_work_day_id);
   const canManage = Boolean(appState.access?.can_manage_setup);
@@ -1209,7 +1221,7 @@ function board205RenderBoard() {
   const days = board205VisibleDays();
   target.innerHTML = days.length
     ? days.map(board205Day).join('')
-    : '<div class="setup-board205-empty">No current/future or unresolved prior Setup work days are visible. Use Show prior / completed work days to review history.</div>';
+    : '<div class="setup-board205-empty">No work days match the selected Day view filters.</div>';
 
   target.querySelectorAll('.setup-board205-cell').forEach((cell) => {
     cell.addEventListener('dragover', (event) => {
@@ -1727,6 +1739,8 @@ async function board205AddWorkDay(event) {
       volunteer_note: volunteerNote
     }));
     form.reset();
+    const showEmptyDays = document.getElementById('setup-board205-show-empty-days');
+    if (showEmptyDays) showEmptyDays.checked = true;
     await board205Load();
   } catch (error) {
     setAlert(error.message || error, 'error');
@@ -2213,7 +2227,12 @@ function board205InstallView() {
                 <button id="setup-board205-print" type="button" class="small">Print Schedule</button>
               </div>
               <p class="muted">Each work day starts with Crew A. Add crews only when needed. Schedule in AM/PM shifts; planned headcount is optional by crew and shift. Historical actual assignments are locked.</p>
-              <label class="setup-board205-history-toggle"><input id="setup-board205-show-history" type="checkbox"> Show prior / completed work days</label>
+              <div class="setup-board205-day-filters" aria-label="Day view">
+                <strong>Day view</strong>
+                <label><input id="setup-board205-show-unfinished-days" type="checkbox" checked> Scheduled / unfinished</label>
+                <label><input id="setup-board205-show-completed-days" type="checkbox"> Completed</label>
+                <label><input id="setup-board205-show-empty-days" type="checkbox"> Empty days</label>
+              </div>
             </div>
             <div id="setup-board205-days" class="setup-board205-days"></div>
           </section>
@@ -2331,7 +2350,9 @@ function board205InstallView() {
     if (control.type === 'search' || control.type === 'number') board205RenderQueue();
   });
   document.getElementById('setup-board205-day-form').addEventListener('submit', board205AddWorkDay);
-  document.getElementById('setup-board205-show-history').addEventListener('change', board205RenderBoard);
+  document.querySelectorAll('.setup-board205-day-filters input').forEach((control) => {
+    control.addEventListener('change', board205RenderBoard);
+  });
   document.querySelectorAll('.setup-board205-backlog, .setup-board205-board').forEach((pane) => {
     pane.addEventListener('dragover', (event) => board205AutoScrollPane(pane, event), true);
   });
