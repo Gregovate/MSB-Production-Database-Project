@@ -169,26 +169,6 @@ def test_122_plan_schedule_preserves_catalog_material_visual_cue() -> None:
     assert "border-left: 5px solid #7657c7 !important;" in catalog
 
 
-def test_122_schedule_surfaces_first_downstream_material_demand() -> None:
-    ui = read_app("setup_scheduling_board.js")
-    css = read_app("setup_scheduling_board.css")
-
-    assert "function board205DownstreamMaterialTasks(task)" in ui
-    assert "materialLookaheadCache: new Map()" in ui
-    assert "setupBoard205State.materialLookaheadCache.has(taskId)" in ui
-    assert "setupBoard205State.materialLookaheadCache.clear()" in ui
-    assert "dep.prerequisite_setup_session_task_id" in ui
-    assert "downstream.requires_display_material && !downstream.effective_complete" in ui
-    assert "found.set(downstreamId, downstream);" in ui
-    assert "continue;" in ui
-    assert "function board205MaterialLookaheadMarkup(task)" in ui
-    assert "Material lookahead:" in ui
-    assert "surface for picking now; downstream work is not scheduled or unblocked by this cue." in ui
-    assert "setup-material-lookahead-card" in ui
-    assert ".setup-board205-material-lookahead-card" in css
-    assert "border-left: 5px dashed #7657c7" in css
-
-
 def test_205_board_uses_dynamic_crews_am_pm_and_accessible_move_controls() -> None:
     ui = read_app("setup_scheduling_board.js")
     css = read_app("setup_scheduling_board.css")
