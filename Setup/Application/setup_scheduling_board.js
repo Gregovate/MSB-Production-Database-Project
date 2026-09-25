@@ -9,7 +9,9 @@ const setupBoard205State = {
   editPlanningTaskId: null,
   editPlanningReusableTaskId: null,
   scheduleTarget: null,
-  finderCompact: null
+  finderCompact: null,
+  workDaySelection: new Set(),
+  workDayCalendarMonth: null
 };
 
 const SETUP_BOARD205_TYPICAL_AM_MINUTES = 180;
@@ -213,6 +215,112 @@ function board205DayAssignments(day) {
   return (setupBoard205State.board.assignments || []).filter(
     (item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id)
   );
+}
+
+function board205ExistingWorkDayDates() {
+  return new Set(
+    (setupBoard205State.board.work_days || [])
+      .map((day) => String(day.work_date || '').slice(0, 10))
+      .filter(Boolean)
+  );
+}
+
+function board205CalendarMonthStart() {
+  if (setupBoard205State.workDayCalendarMonth) {
+    return new Date(setupBoard205State.workDayCalendarMonth + '-01T00:00:00Z');
+  }
+  const today = new Date();
+  const seasonYear = Number(appState.seasonYear);
+  const existing = (setupBoard205State.board.work_days || [])
+    .map((day) => String(day.work_date || '').slice(0, 7))
+    .filter((value) => value.startsWith(String(seasonYear) + '-'))
+    .sort();
+  const month = existing.at(-1)
+    || (today.getUTCFullYear() === seasonYear
+      ? String(seasonYear) + '-' + String(today.getUTCMonth() + 1).padStart(2, '0')
+      : String(seasonYear) + '-01');
+  setupBoard205State.workDayCalendarMonth = month;
+  return new Date(month + '-01T00:00:00Z');
+}
+
+function board205RenderWorkDayCalendar() {
+  const target = document.getElementById('setup-board205-work-day-calendar');
+  const summary = document.getElementById('setup-board205-work-day-selection');
+  const submit = document.getElementById('setup-board205-add-work-days');
+  if (!target || !summary || !submit) return;
+
+  const existing = board205ExistingWorkDayDates();
+  for (const date of [...setupBoard205State.workDaySelection]) {
+    if (existing.has(date)) setupBoard205State.workDaySelection.delete(date);
+  }
+
+  const monthStart = board205CalendarMonthStart();
+  const year = monthStart.getUTCFullYear();
+  const month = monthStart.getUTCMonth();
+  const firstDow = monthStart.getUTCDay();
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const monthLabel = monthStart.toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  });
+
+  const cells = [];
+  for (let blank = 0; blank < firstDow; blank += 1) {
+    cells.push('<span class="setup-board205-calendar-blank" aria-hidden="true"></span>');
+  }
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = String(year) + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    const alreadyExists = existing.has(date);
+    const selected = setupBoard205State.workDaySelection.has(date);
+    const weekday = new Date(date + 'T00:00:00Z').toLocaleDateString(undefined, {
+      weekday: 'long',
+      timeZone: 'UTC'
+    });
+    cells.push(
+      '<button type="button" class="setup-board205-calendar-day' + (selected ? ' selected' : '') + (alreadyExists ? ' existing' : '') + '" data-work-date="' + date + '" aria-pressed="' + (selected ? 'true' : 'false') + '" ' + (alreadyExists ? 'disabled aria-disabled="true"' : '') + ' title="' + (alreadyExists ? 'Work Day already exists' : 'Select ' + weekday + ', ' + date) + '"><span>' + day + '</span>' + (alreadyExists ? '<small>Work Day</small>' : '') + '</button>'
+    );
+  }
+
+  target.innerHTML =
+    '<div class="setup-board205-calendar-head">' +
+      '<button id="setup-board205-calendar-prev" type="button" class="small secondary" aria-label="Previous month">‹</button>' +
+      '<strong>' + board205Esc(monthLabel) + '</strong>' +
+      '<button id="setup-board205-calendar-next" type="button" class="small secondary" aria-label="Next month">›</button>' +
+    '</div>' +
+    '<div class="setup-board205-calendar-weekdays" aria-hidden="true">' +
+      '<span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>' +
+    '</div>' +
+    '<div class="setup-board205-calendar-grid">' + cells.join('') + '</div>';
+
+  const selectedDates = [...setupBoard205State.workDaySelection].sort();
+  summary.textContent = selectedDates.length
+    ? String(selectedDates.length) + ' date' + (selectedDates.length === 1 ? '' : 's') + ' selected: ' + selectedDates.join(', ')
+    : 'Select one or more dates. Tap a selected date again to remove it.';
+  submit.disabled = !selectedDates.length;
+
+  target.querySelector('#setup-board205-calendar-prev')?.addEventListener('click', () => {
+    const prior = new Date(Date.UTC(year, month - 1, 1));
+    setupBoard205State.workDayCalendarMonth = String(prior.getUTCFullYear()) + '-' + String(prior.getUTCMonth() + 1).padStart(2, '0');
+    board205RenderWorkDayCalendar();
+  });
+  target.querySelector('#setup-board205-calendar-next')?.addEventListener('click', () => {
+    const next = new Date(Date.UTC(year, month + 1, 1));
+    setupBoard205State.workDayCalendarMonth = String(next.getUTCFullYear()) + '-' + String(next.getUTCMonth() + 1).padStart(2, '0');
+    board205RenderWorkDayCalendar();
+  });
+  target.querySelectorAll('.setup-board205-calendar-day:not(:disabled)').forEach((button) => {
+    button.addEventListener('click', () => {
+      const date = button.dataset.workDate;
+      if (!date || board205ExistingWorkDayDates().has(date)) return;
+      if (setupBoard205State.workDaySelection.has(date)) {
+        setupBoard205State.workDaySelection.delete(date);
+      } else {
+        setupBoard205State.workDaySelection.add(date);
+      }
+      board205RenderWorkDayCalendar();
+    });
+  });
 }
 
 function board205DayViewState(day) {
@@ -1370,6 +1478,7 @@ function board205Render() {
   board205SyncFinderOptions();
   board205RenderQueue();
   if (!historicalReview) {
+    board205RenderWorkDayCalendar();
     board205RenderBoard();
     board205PopulateDialogSelects();
   }
@@ -1722,29 +1831,52 @@ async function board205SubmitScheduleDialog(event) {
 async function board205AddWorkDay(event) {
   event.preventDefault();
   const form = event.currentTarget;
-  const date = document.getElementById('setup-board205-work-date').value;
   const volunteerNote = document.getElementById('setup-board205-volunteer-note').value.trim() || null;
-  if (!date) return;
+  const existing = board205ExistingWorkDayDates();
+  const dates = [...setupBoard205State.workDaySelection]
+    .filter((date) => !existing.has(date))
+    .sort();
+  if (!dates.length) return;
 
-  const parts = date.split('-').map(Number);
-  const dow = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])).getUTCDay();
-  if (dow === 0 && !window.confirm('This is a Sunday. MSB normally avoids Sunday Setup work. Add it deliberately anyway?')) return;
+  const sundays = dates.filter((date) => new Date(date + 'T00:00:00Z').getUTCDay() === 0);
+  if (
+    sundays.length
+    && !window.confirm(
+      sundays.join(', ') + (sundays.length === 1 ? ' is a Sunday' : ' are Sundays') +
+      '. MSB normally avoids Sunday Setup work. Add ' +
+      (sundays.length === 1 ? 'it' : 'them') + ' deliberately anyway?'
+    )
+  ) return;
 
+  let created = 0;
   try {
     setBusy(true);
-    await api('api/setup/scheduling-board/work-days', commandOptions('POST', {
-      season_year: Number(appState.seasonYear),
-      work_date: date,
-      setup_day_number: null,
-      day_status: 'PLANNED',
-      volunteer_note: volunteerNote
-    }));
+    for (const date of dates) {
+      if (board205ExistingWorkDayDates().has(date)) continue;
+      await api('api/setup/scheduling-board/work-days', commandOptions('POST', {
+        season_year: Number(appState.seasonYear),
+        work_date: date,
+        setup_day_number: null,
+        day_status: 'PLANNED',
+        volunteer_note: volunteerNote
+      }));
+      created += 1;
+    }
+    setupBoard205State.workDaySelection.clear();
     form.reset();
     const showEmptyDays = document.getElementById('setup-board205-show-empty-days');
     if (showEmptyDays) showEmptyDays.checked = true;
     await board205Load();
+    setAlert(String(created) + ' Work Day' + (created === 1 ? '' : 's') + ' added.', 'ok');
   } catch (error) {
-    setAlert(error.message || error, 'error');
+    setupBoard205State.workDaySelection.clear();
+    await board205Load();
+    setAlert(
+      created
+        ? String(created) + ' Work Day' + (created === 1 ? '' : 's') + ' added before the next date failed: ' + (error.message || error)
+        : (error.message || error),
+      'error'
+    );
     window.alert(error.message || error);
   } finally {
     setBusy(false);
@@ -2213,10 +2345,16 @@ function board205InstallView() {
               </div>
             </div>
             <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
-              <label>Date<input id="setup-board205-work-date" type="date" required></label>
-              <div class="setup-board205-auto-day-note">Setup Day # is assigned automatically in chronological order.</div>
-              <label class="setup-board205-volunteer-note">Volunteer / capacity note<input id="setup-board205-volunteer-note" type="text" placeholder="Optional, e.g. strong Saturday turnout expected"></label>
-              <button type="submit">Add Work Day</button>
+              <div class="setup-board205-work-day-picker">
+                <div class="setup-board205-work-day-picker-copy">
+                  <strong>Add Work Days</strong>
+                  <span class="setup-board205-auto-day-note">Tap dates to select or deselect them. Existing Work Days are disabled. Setup Day # is assigned automatically in chronological order.</span>
+                </div>
+                <div id="setup-board205-work-day-calendar" class="setup-board205-work-day-calendar" aria-label="Select Work Day dates"></div>
+                <div id="setup-board205-work-day-selection" class="muted" aria-live="polite"></div>
+              </div>
+              <label class="setup-board205-volunteer-note">Volunteer / capacity note<input id="setup-board205-volunteer-note" type="text" placeholder="Optional; applied to all selected dates"></label>
+              <button id="setup-board205-add-work-days" type="submit" disabled>Add Selected Work Days</button>
             </form>
           </section>
 
