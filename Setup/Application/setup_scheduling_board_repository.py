@@ -164,6 +164,7 @@ class SetupSchedulingBoardRepository:
                     st.completed_by_person_id,
                     CASE
                         WHEN st.task_origin = 'REUSABLE'
+                             AND current_session.session_status IN ('PLANNING','ACTIVE')
                             THEN coalesce(rt.task_name, st.annual_task_name)
                         ELSE st.annual_task_name
                     END AS task_name,
@@ -256,6 +257,8 @@ class SetupSchedulingBoardRepository:
                         ELSE 'READY_TO_SCHEDULE'
                     END AS board_status
                 FROM ops.setup_session_task st
+                JOIN ops.setup_session current_session
+                  ON current_session.setup_session_id = st.setup_session_id
                 LEFT JOIN ref.setup_task rt
                   ON rt.setup_task_id = st.setup_task_id
                 LEFT JOIN ref.person created_actor
@@ -503,6 +506,7 @@ class SetupSchedulingBoardRepository:
                     st.setup_task_id,
                     CASE
                         WHEN st.task_origin = 'REUSABLE'
+                             AND current_session.session_status IN ('PLANNING','ACTIVE')
                             THEN coalesce(rt_assignment.task_name, st.annual_task_name)
                         ELSE st.annual_task_name
                     END AS task_name,
@@ -542,6 +546,8 @@ class SetupSchedulingBoardRepository:
                   ON wd.setup_work_day_id = wdt.setup_work_day_id
                 JOIN ops.setup_session_task st
                   ON st.setup_session_task_id = wdt.setup_session_task_id
+                JOIN ops.setup_session current_session
+                  ON current_session.setup_session_id = st.setup_session_id
                 LEFT JOIN ops.setup_work_day_crew c
                   ON c.setup_work_day_crew_id = wdt.setup_work_day_crew_id
                 LEFT JOIN ref.setup_task rt_assignment
@@ -611,6 +617,7 @@ class SetupSchedulingBoardRepository:
                         ad.sort_order,
                         CASE
                             WHEN pst.task_origin = 'REUSABLE'
+                                 AND current_session.session_status IN ('PLANNING','ACTIVE')
                                 THEN coalesce(prt.task_name, pst.annual_task_name)
                             ELSE pst.annual_task_name
                         END AS prerequisite_task_name,
@@ -628,6 +635,8 @@ class SetupSchedulingBoardRepository:
                     FROM ops.setup_session_task_dependency ad
                     JOIN ops.setup_session_task st
                       ON st.setup_session_task_id = ad.setup_session_task_id
+                    JOIN ops.setup_session current_session
+                      ON current_session.setup_session_id = st.setup_session_id
                     JOIN ops.setup_session_task pst
                       ON pst.setup_session_task_id = ad.prerequisite_setup_session_task_id
                     LEFT JOIN ref.setup_task prt
