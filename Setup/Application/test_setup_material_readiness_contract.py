@@ -97,3 +97,22 @@ def test_206_pick_list_surface_is_read_only_and_schedule_driven() -> None:
     assert "method: 'DELETE'" not in ui
     assert 'id="pick-list-link"' in production_html
     assert "pick-list/" in production_ui
+
+
+
+def test_early_demand_uses_annual_prerequisites_without_scheduling_mutation() -> None:
+    repo = read("setup_material_readiness_repository.py")
+    projection = read("setup_material_readiness_projection.py")
+    assert "ref.setup_task_dependency" in repo
+    assert "ops.setup_session_task_dependency" in repo
+    assert "downstream_material_frontier" in repo
+    assert '"demand_origin": "DOWNSTREAM_FROM_SCHEDULE"' in repo
+    assert "scheduled_trigger_setup_session_task_id" in repo
+    assert "def downstream_material_frontier(" in projection
+    for forbidden in (
+        "create_setup_work_day_assignment",
+        "set_setup_annual_task_readiness",
+        "execution_status = 'COMPLETE'",
+        "UPDATE ops.setup_session_task",
+    ):
+        assert forbidden not in repo
