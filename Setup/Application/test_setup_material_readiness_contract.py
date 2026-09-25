@@ -88,7 +88,8 @@ def test_206_pick_list_surface_is_read_only_and_schedule_driven() -> None:
     assert "api/setup/material-readiness?season_year=" in ui
     assert "Physical items to pull / stage" in html
     assert "Needs review before relying on this Pick List" in html
-    assert "Changing the schedule changes this list" in html
+    assert "Generated from the live Scheduling Board" in html
+    assert "A workshop scan records that an item was actually picked/moved" in html
     assert "@media print" in css
     assert "commandOptions(" not in ui
     assert "method: 'POST'" not in ui
@@ -119,13 +120,15 @@ def test_early_demand_uses_annual_prerequisites_without_scheduling_mutation() ->
 
 
 
-def test_live_pick_list_surface_prioritizes_outstanding_physical_picks() -> None:
+def test_live_pick_list_surface_exposes_needs_pick_and_picked_states() -> None:
     html = read("pick_list.html")
     ui = read("setup_pick_list.js")
     assert "Live 2026 Setup" in html
     assert "Rolling Pick List" in html
     assert 'id="pick-status-filter"' in html
-    assert "Outstanding picks" in html
+    assert '<option value="ALL">All demanded items</option>' in html
+    assert '<option value="OUTSTANDING">Needs pick</option>' in html
+    assert '<option value="MOVED">Picked / moved</option>' in html
     assert "A workshop scan records that an item was actually picked/moved" in html
     assert "function itemMoved(item)" in ui
     assert "last_movement_event_id" in ui
