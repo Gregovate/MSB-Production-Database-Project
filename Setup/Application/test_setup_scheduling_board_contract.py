@@ -374,6 +374,10 @@ def test_205_short_crew_requires_deliberate_confirmation_but_is_not_prohibited()
     assert "setup-board205-short-crew-warning" in ui
     assert ".setup-board205-short-crew-warning" in css
     assert "board205ConfirmPlacement" in ui
+    assert "board205PlacementCrewCount" in ui
+    assert ".setup-board205-crew-label[data-crew-id=" in ui
+    assert "board205CrewCapacityWarnings" in ui
+    assert "Save this crew size anyway?" in ui
     assert "Schedule this task anyway?" in ui
 
 
@@ -498,7 +502,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
     assert "setup_scheduling_board.css?v=2026-09-24.5" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.7" in html
+    assert "setup_scheduling_board.js?v=2026-09-24.8" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
