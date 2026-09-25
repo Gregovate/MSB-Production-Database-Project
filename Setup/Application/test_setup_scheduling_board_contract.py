@@ -589,7 +589,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
     assert "setup_scheduling_board.css?v=2026-09-25.2" in html
-    assert "setup_scheduling_board.js?v=2026-09-25.2" in html
+    assert "setup_scheduling_board.js?v=2026-09-25.3" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
@@ -1022,7 +1022,7 @@ def test_122_b1a_finder_can_collapse_secondary_filters() -> None:
     assert "More filters" in ui
     assert "Compact filters" in ui
     assert "setup-board205-secondary-filters" in ui
-    assert "setupBoard205State.finderCompact = historicalReview" in ui
+    assert "setupBoard205State.finderCompact = true" in ui
     assert ".setup-board205-filters.compact .setup-board205-secondary-filters" in css
     assert ".setup-board205-filters.compact .setup-board205-blocking-help" in css
 
