@@ -267,8 +267,12 @@ async function setupRestoreRoute(route) {
   setupSetFinderReturnVisible(false);
   showView(view);
 
-  if (view === 'schedule' && typeof loadNextSchedule === 'function') {
-    await loadNextSchedule();
+  if (view === 'schedule') {
+    if (typeof board205Load === 'function') {
+      await board205Load();
+    } else if (typeof loadNextSchedule === 'function') {
+      await loadNextSchedule();
+    }
     if (requested.finder && typeof board205RestoreFinderState === 'function') {
       board205RestoreFinderState(requested.finder);
     }
