@@ -96,6 +96,8 @@ Only after explicit operator acceptance switch to the Server Management `Product
 
 ## Current Production Acceptance Records
 
+- `Setup_122_2026_Scheduling_Board_Production_Acceptance_2026-09-25.md` — #122 real 2026 annual Session launch and accepted Scheduling Board baseline.
+
 - `Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md`
 - `Setup_Resource_Upsert_Repair_Production_Acceptance_2026-09-13.md`
 - `Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md` — #184 durable Extra Material / Kit Inventory / T-Post subsystem plus completed #167 one-time reconstruction.
