@@ -67,7 +67,7 @@ function board205PlacementWarnings(task, crewId, shift) {
   }
 
   const crew = board205CrewRow(crewId);
-  const planned = board205PlannedCrewForShift(crew, shift);
+  const planned = board205PlacementCrewCount(crewId, shift);
   const minCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
   if (planned != null && minCrew != null && planned < minCrew) {
     const period = shift === 'MORNING' ? 'AM' : shift === 'AFTERNOON' ? 'PM' : 'selected';
@@ -147,6 +147,42 @@ function board205PlannedCrewForShift(crew, shift) {
       ? crew.pm_planned_crew_count
       : null;
   return raw == null ? null : Number(raw);
+}
+
+function board205PlacementCrewCount(crewId, shift) {
+  const crewNode = document.querySelector(
+    `.setup-board205-crew-label[data-crew-id="${Number(crewId)}"]`
+  );
+  const selector = shift === 'MORNING'
+    ? '.setup-board205-crew-am'
+    : shift === 'AFTERNOON'
+      ? '.setup-board205-crew-pm'
+      : null;
+  if (crewNode && selector) {
+    const value = crewNode.querySelector(selector)?.value;
+    if (value !== '' && value != null) return Number(value);
+  }
+  return board205PlannedCrewForShift(board205CrewRow(crewId), shift);
+}
+
+function board205CrewCapacityWarnings(crewId, amCount, pmCount) {
+  const warnings = [];
+  for (const item of board205CrewSequence(crewId)) {
+    const task = board205Task(item.setup_session_task_id);
+    if (!task || task.normal_crew_min == null) continue;
+    const minCrew = Number(task.normal_crew_min);
+    const planned = item.shift_code === 'MORNING'
+      ? amCount
+      : item.shift_code === 'AFTERNOON'
+        ? pmCount
+        : null;
+    if (planned == null || planned >= minCrew) continue;
+    const period = item.shift_code === 'MORNING' ? 'AM' : 'PM';
+    warnings.push(
+      `${task.task_name}: planned ${period} crew ${planned} / task minimum ${minCrew} — short by ${minCrew - planned}.`
+    );
+  }
+  return warnings;
 }
 
 function board205Effort(task) {
@@ -1334,11 +1370,23 @@ async function board205SaveCrew(crewId, crewNode) {
   const captainPersonId = nullableInteger(
     crewNode.querySelector('.setup-board205-crew-captain-select')?.value
   );
+  const amCount = nullableInteger(crewNode.querySelector('.setup-board205-crew-am')?.value);
+  const pmCount = nullableInteger(crewNode.querySelector('.setup-board205-crew-pm')?.value);
+  const capacityWarnings = board205CrewCapacityWarnings(crewId, amCount, pmCount);
+  if (
+    capacityWarnings.length
+    && !window.confirm(
+      `SHORT CREW:\n\n${capacityWarnings.join('\n')}\n\nSave this crew size anyway?`
+    )
+  ) {
+    return;
+  }
+
   try {
     setBusy(true);
     await api(`api/setup/scheduling-board/crews/${crewId}`, commandOptions('PATCH', {
-      am_planned_crew_count: nullableInteger(crewNode.querySelector('.setup-board205-crew-am')?.value),
-      pm_planned_crew_count: nullableInteger(crewNode.querySelector('.setup-board205-crew-pm')?.value),
+      am_planned_crew_count: amCount,
+      pm_planned_crew_count: pmCount,
       captain_person_id: captainPersonId
     }));
     await board205MaybeLearnCaptainForCrewAssignments(crewId, captainPersonId);
