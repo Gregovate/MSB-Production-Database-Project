@@ -77,9 +77,13 @@ def test_next_pass_browser_exposes_prerequisite_schedule_and_captain_execution()
     assert "api/setup/tasks/${taskId}/procedure/current" in text
     assert "Crew size" in text
     assert "Completed quantity" in text
-    assert "Which units / what was completed" in text
-    assert "Progress / completion note" in text
-    assert "Entire task complete" in text
+    assert "Which units" in text
+    assert "What was done / what remains" in text
+    assert "next-duration-hours" in text
+    assert "next-duration-minutes" in text
+    assert "next-percent-complete" in text
+    assert "100% completes the annual task" in text
+    assert "next-mark-complete" not in text
     assert "api/setup/session-tasks/${sessionTaskId}/progress" in text
 
 
