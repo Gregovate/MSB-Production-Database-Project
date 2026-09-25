@@ -109,6 +109,18 @@
   display: none !important;
 }
 
+#review-view.reusable-detail-mode .workspace {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#review-view.reusable-detail-mode .detail-card {
+  position: static;
+}
+
+#review-view.reusable-detail-mode .split-section {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .add-task-form {
   margin: 1rem 0 1.25rem;
   padding: 1rem;
