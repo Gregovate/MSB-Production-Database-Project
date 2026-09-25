@@ -407,19 +407,34 @@ def api_setup_record_progress(setup_session_task_id: int) -> tuple[Response, int
     require_setup_command()
     _base_repo, email, _access = require_reader()
     payload = json_body()
+
     crew = nullable_int(payload.get("crew_count"), "crew_count")
     if crew is None:
         raise SetupCommandError("crew_count is required")
+
+    duration = nullable_int(payload.get("duration_minutes"), "duration_minutes")
+    if duration is None or duration <= 0:
+        raise SetupCommandError("duration_minutes must be greater than zero")
+
+    percent = nullable_int(payload.get("percent_complete"), "percent_complete")
+    if percent is None or percent < 1 or percent > 100:
+        raise SetupCommandError("percent_complete must be between 1 and 100")
+
     result = repo().record_progress(
         email=email,
         session_task_id=setup_session_task_id,
+        assignment_id=nullable_int(
+            payload.get("setup_work_day_task_id"),
+            "setup_work_day_task_id",
+        ),
         work_day_id=nullable_int(payload.get("setup_work_day_id"), "setup_work_day_id"),
-        shift=str(payload.get("shift_code") or "ALL_DAY"),
+        shift=(str(payload.get("shift_code") or "").strip() or None),
         crew_count=crew,
+        duration_minutes=duration,
+        percent_complete=percent,
         quantity=nullable_int(payload.get("completed_quantity"), "completed_quantity"),
         units=(str(payload.get("completed_units") or "").strip() or None),
         note=(str(payload.get("progress_note") or "").strip() or None),
-        mark_complete=bool(payload.get("mark_complete", False)),
     )
     return jsonify(progress=result), 201
 
