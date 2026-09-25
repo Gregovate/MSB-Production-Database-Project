@@ -250,15 +250,17 @@
     `;
     summary.insertAdjacentElement('beforebegin', search);
 
-    document.getElementById('setup-task-search').addEventListener('input', () => {
-      renderReviewList();
-      renderLibrary();
-    });
+    const applyActiveSearch = () => {
+      const view = typeof currentSetupViewName === 'function' ? currentSetupViewName() : '';
+      if (view === 'review') applyReviewSearch();
+      if (view === 'library') applyLibrarySearch();
+    };
+
+    document.getElementById('setup-task-search').addEventListener('input', applyActiveSearch);
     document.getElementById('setup-task-search-clear').addEventListener('click', () => {
       const input = document.getElementById('setup-task-search');
       input.value = '';
-      renderReviewList();
-      renderLibrary();
+      applyActiveSearch();
       input.focus();
     });
   }
@@ -267,11 +269,12 @@
     const target = document.getElementById('review-list');
     if (!target) return;
     const query = normalizedSearch();
+    const taskMap = new Map((appState.tasks || []).map((task) => [Number(task.setup_task_id), task]));
     const rows = [...target.querySelectorAll('.task-row')];
     let visible = 0;
 
     rows.forEach((row) => {
-      const task = taskById(Number(row.dataset.taskId));
+      const task = taskMap.get(Number(row.dataset.taskId)) || null;
       const show = !query || taskMatchesSearch(task);
       row.hidden = !show;
       if (show) visible += 1;
@@ -290,11 +293,12 @@
     const target = document.getElementById('library-list');
     if (!target) return;
     const query = normalizedSearch();
+    const taskMap = new Map((appState.tasks || []).map((task) => [Number(task.setup_task_id), task]));
 
     const rows = [...target.querySelectorAll('[data-task-id].next-task-row, .library-task')];
     rows.forEach((row) => {
       const taskId = Number(row.dataset.taskId || row.querySelector('.open-task')?.dataset.taskId || 0);
-      const task = taskById(taskId);
+      const task = taskMap.get(taskId) || null;
       row.hidden = Boolean(query) && !taskMatchesSearch(task);
     });
 
