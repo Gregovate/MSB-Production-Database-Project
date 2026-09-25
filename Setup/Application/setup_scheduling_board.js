@@ -498,6 +498,7 @@ function board205FinderStageRows() {
 function board205SyncFinderSceneOptions() {
   const stage = document.getElementById('setup-board205-stage-filter');
   const scene = document.getElementById('setup-board205-scene-filter');
+  const sceneLabel = document.getElementById('setup-board205-scene-label');
   if (!stage || !scene) return;
 
   const previous = scene.value;
@@ -506,6 +507,7 @@ function board205SyncFinderSceneOptions() {
     scene.innerHTML = '<option value="">All scope details</option>';
     scene.value = '';
     scene.disabled = true;
+    if (sceneLabel) sceneLabel.hidden = true;
     return;
   }
 
@@ -544,7 +546,9 @@ function board205SyncFinderSceneOptions() {
   }
 
   scene.innerHTML = options.join('');
-  scene.disabled = false;
+  const hasUsefulScopeChoice = options.length > 1;
+  scene.disabled = !hasUsefulScopeChoice;
+  if (sceneLabel) sceneLabel.hidden = !hasUsefulScopeChoice;
   scene.value = [...scene.options].some((option) => option.value === previous) ? previous : '';
 }
 
@@ -1203,6 +1207,24 @@ function board205RenderBoard() {
   });
 }
 
+function board205RenderKpis() {
+  const target = document.getElementById('setup-board205-kpis');
+  if (!target) return;
+  const tasks = setupBoard205State.board.tasks || [];
+  const total = tasks.length;
+  const scheduled = tasks.filter((task) => Number(task.unworked_assignment_count || 0) > 0).length;
+  const complete = tasks.filter((task) => Boolean(task.effective_complete)).length;
+  const inProgress = tasks.filter((task) => task.execution_status === 'IN_PROGRESS').length;
+  const pct = (count) => total ? Math.round((count / total) * 100) : 0;
+
+  target.innerHTML = [
+    `<span><strong>${total}</strong> tasks</span>`,
+    `<span><strong>${scheduled}</strong> scheduled · ${pct(scheduled)}%</span>`,
+    inProgress ? `<span><strong>${inProgress}</strong> in progress · ${pct(inProgress)}%</span>` : '',
+    `<span><strong>${complete}</strong> complete · ${pct(complete)}%</span>`
+  ].filter(Boolean).join('<span class="setup-board205-kpi-sep">·</span>');
+}
+
 function board205Render() {
   const session = setupBoard205State.board.session;
   const noSession = document.getElementById('setup-board205-no-session');
@@ -1243,6 +1265,7 @@ function board205Render() {
     setupBoard205State.finderCompact = historicalReview;
   }
   board205ApplyFinderCompact();
+  board205RenderKpis();
   if (!session) {
     if (noSession) noSession.hidden = false;
     if (workspace) workspace.hidden = true;
@@ -1446,15 +1469,24 @@ function board205PopulateDialogSelects() {
     )).join('');
   }
 
-  const taskOptions = '<option value="">— none —</option>' + (setupBoard205State.board.tasks || []).map((task) => (
+  board205PopulateScenes();
+  board205PopulateSeasonPlacementOptions();
+  board205PopulateWorkOrderOptions();
+}
+
+function board205PopulateSeasonPlacementOptions() {
+  const stageValue = document.getElementById('setup-board205-season-stage')?.value || '';
+  const stageId = stageValue ? Number(stageValue) : null;
+  const tasks = (setupBoard205State.board.tasks || []).filter((task) => (
+    stageId == null ? task.stage_id == null : Number(task.stage_id) === stageId
+  ));
+  const options = '<option value="">— none —</option>' + tasks.map((task) => (
     `<option value="${task.setup_session_task_id}">${board205Esc(task.planned_order ?? '—')} — ${board205Esc(task.task_name)}</option>`
   )).join('');
   const prior = document.getElementById('setup-board205-season-prereq');
   const downstream = document.getElementById('setup-board205-season-downstream');
-  if (prior) prior.innerHTML = taskOptions;
-  if (downstream) downstream.innerHTML = taskOptions;
-  board205PopulateScenes();
-  board205PopulateWorkOrderOptions();
+  if (prior) prior.innerHTML = options;
+  if (downstream) downstream.innerHTML = options;
 }
 
 function board205PopulateWorkOrderOptions(selectedId = null) {
@@ -1468,20 +1500,17 @@ function board205PopulateWorkOrderOptions(selectedId = null) {
 
   const rows = (setupBoard205State.board.work_orders || []).filter((wo) => {
     if (!search) return true;
-    const status = wo.date_completed ? 'complete' : 'open';
     const haystack = [
       wo.work_order_id,
       `wo ${wo.work_order_id}`,
-      status,
       wo.problem || ''
     ].join(' ').toLowerCase();
     return haystack.includes(search);
   });
 
   select.innerHTML = '<option value="">No Work Order</option>' + rows.map((wo) => {
-    const status = wo.date_completed ? 'COMPLETE' : 'OPEN';
     const problem = String(wo.problem || '').trim();
-    const label = `WO ${wo.work_order_id} · ${status}${problem ? ` · ${problem}` : ''}`;
+    const label = `WO ${wo.work_order_id}${problem ? ` · ${problem}` : ''}`;
     return `<option value="${wo.work_order_id}">${board205Esc(label)}</option>`;
   }).join('');
 
@@ -2006,11 +2035,11 @@ function board205InstallView() {
     <div id="setup-board205-root" class="setup-board205-shell">
       <div class="card">
         <div class="setup-board205-toolbar">
-          <div>
+          <div class="setup-board205-title">
             <div class="eyebrow">Rolling annual dispatch · historical learning</div>
             <h2>Setup Scheduling Board</h2>
-            <p class="muted">Plan only the next practical work days. Annual execution may teach the reusable Catalog later, but this board never changes reusable knowledge automatically.</p>
           </div>
+          <div id="setup-board205-kpis" class="setup-board205-kpis" aria-live="polite"></div>
           <button id="setup-board205-add-season-task" type="button" class="manager-only">Add Task</button>
         </div>
         <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
@@ -2038,16 +2067,18 @@ function board205InstallView() {
             Use the current reusable tasks to review crew guidance, expected time, readiness, notes, and plan order. The 2025 construction marker does not define this task list or current planning state. Work days, crews, and assignments remain disabled until the real annual Session is created.
           </div>
           <div id="setup-board205-filters" class="setup-board205-filters setup-board205-finder">
-            <label>Stage / area<select id="setup-board205-stage-filter"><option value="">All Stages / areas</option></select></label>
-            <label>Scene / scope<select id="setup-board205-scene-filter" disabled><option value="">All scope details</option></select></label>
-            <label>Sort<select id="setup-board205-sort">
-              <option value="PLAN">Plan order</option>
-              <option value="STAGE">Stage / Scene</option>
-              <option value="NAME">Task name</option>
-              <option value="STATUS">Status</option>
-              <option value="DURATION">Expected duration</option>
-              <option value="CREW">Minimum crew</option>
-            </select></label>
+            <div class="setup-board205-primary-filters">
+              <label>Stage / area<select id="setup-board205-stage-filter"><option value="">All Stages / areas</option></select></label>
+              <label>Sort<select id="setup-board205-sort">
+                <option value="PLAN">Plan order</option>
+                <option value="STAGE">Stage / Scene</option>
+                <option value="NAME">Task name</option>
+                <option value="STATUS">Status</option>
+                <option value="DURATION">Expected duration</option>
+                <option value="CREW">Minimum crew</option>
+              </select></label>
+            </div>
+            <label id="setup-board205-scene-label" hidden>Scene / scope<select id="setup-board205-scene-filter" disabled><option value="">All scope details</option></select></label>
             <label class="setup-board205-search">Task name<input id="setup-board205-task-search" type="search" placeholder="e.g. locate"></label>
             <label class="setup-board205-blocking-toggle"><input id="setup-board205-blocking-toggle" type="checkbox" checked> Blocking ON</label>
             <button id="setup-board205-filter-density" type="button" class="small secondary" aria-expanded="true">Compact filters</button>
@@ -2149,9 +2180,11 @@ function board205InstallView() {
         <div class="setup-board205-form-grid">
           <label>Stage<select id="setup-board205-season-stage"></select></label>
           <label>Scene<select id="setup-board205-season-scene"></select></label>
-          <label>Type<select id="setup-board205-season-type"><option value="WORK">Work</option><option value="GATE">Stop / Gate</option><option value="SUPPORT">Support</option><option value="UNLOAD_CONTAINER">Unload Container</option></select></label>
-          <label>Search Work Orders<input id="setup-board205-season-work-order-search" type="search" placeholder="WO # or problem text" autocomplete="off"></label>
-          <label>Existing Work Order<select id="setup-board205-season-work-order"><option value="">No Work Order</option></select></label>
+          <label>Type<select id="setup-board205-season-type"><option value="WORK">Setup Work</option><option value="GATE">Wait / Gate</option><option value="SUPPORT">Support / Prep</option><option value="UNLOAD_CONTAINER">Unload Container</option></select></label>
+          <div class="setup-board205-work-order-picker">
+            <label>Find open Work Order<input id="setup-board205-season-work-order-search" type="search" placeholder="WO # or problem text" autocomplete="off"></label>
+            <label>Matching Work Order<select id="setup-board205-season-work-order"><option value="">No Work Order</option></select></label>
+          </div>
           <label class="checkbox-label"><input id="setup-board205-season-gate" type="checkbox"> Work Order completion satisfies this gate</label>
           <span></span>
           <label>Crew min<input id="setup-board205-season-crew-min" type="number" min="0"></label>
@@ -2164,8 +2197,8 @@ function board205InstallView() {
         <label>Readiness / hold note<textarea id="setup-board205-season-readiness" rows="2"></textarea></label>
         <label>Annual notes<textarea id="setup-board205-season-notes" rows="3"></textarea></label>
         <div id="setup-board205-season-chain" class="setup-board205-form-grid">
-          <label>Insert after / prerequisite<select id="setup-board205-season-prereq"></select></label>
-          <label>Block downstream task<select id="setup-board205-season-downstream"></select></label>
+          <label>Place after / requires<select id="setup-board205-season-prereq"></select></label>
+          <label>Optional downstream task to block<select id="setup-board205-season-downstream"></select></label>
         </div>
         <menu><button id="setup-board205-delete-season-task" type="button" class="danger" hidden>Delete Season Task</button><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Save Season Task</button></menu>
       </form>
@@ -2235,7 +2268,10 @@ function board205InstallView() {
     })();
   });
   document.getElementById('setup-board205-season-form').addEventListener('submit', board205SubmitSeasonTask);
-  document.getElementById('setup-board205-season-stage').addEventListener('change', board205PopulateScenes);
+  document.getElementById('setup-board205-season-stage').addEventListener('change', () => {
+    board205PopulateScenes();
+    board205PopulateSeasonPlacementOptions();
+  });
   view.querySelectorAll('.setup-board205-dialog-cancel').forEach((button) => {
     button.addEventListener('click', () => button.closest('dialog')?.close());
   });
