@@ -9,13 +9,20 @@
 <body>
 <header class="page-header">
   <div>
-    <div class="eyebrow">2026 Setup dress rehearsal</div>
-    <h1>Pick List</h1>
-    <p id="status-line">Loading scheduled physical demand…</p>
+    <div class="eyebrow">Live 2026 Setup</div>
+    <h1>Rolling Pick List</h1>
+    <p id="status-line">Loading live scheduled material demand…</p>
   </div>
   <div class="controls no-print">
     <label>Season <select id="season-select"></select></label>
     <label>Needed for <select id="date-filter"><option value="">All scheduled dates</option></select></label>
+    <label>Status
+      <select id="pick-status-filter">
+        <option value="OUTSTANDING">Outstanding picks</option>
+        <option value="ALL">All demanded items</option>
+        <option value="MOVED">Already scanned / moved</option>
+      </select>
+    </label>
     <button id="print-button" type="button">Print</button>
     <button id="back-button" type="button">Back to Setup</button>
   </div>
@@ -29,14 +36,14 @@
   </section>
   <section class="panel">
     <div class="section-heading">
-      <div><div class="eyebrow">Generated from the current schedule</div><h2>Physical items to pull / stage</h2></div>
+      <div><div class="eyebrow">Generated from the live Scheduling Board</div><h2>Physical items to pull / stage</h2></div>
       <div id="generated-at" class="muted"></div>
     </div>
     <div id="pick-list"></div>
   </section>
 </main>
 <footer class="no-print">
-  <p>Read-only view. Changing the schedule changes this list; it does not create movement history.</p>
+  <p>Read-only demand view. A workshop scan records that an item was actually picked/moved; appearing here does not.</p>
 </footer>
 <script src="assets/setup_pick_list.js?v=2026-09-22.1"></script>
 </body>
