@@ -178,6 +178,7 @@ class SetupSchedulingBoardRepository:
                     st.annual_readiness_state AS readiness_state,
                     st.annual_weather_note AS weather_note,
                     coalesce(captains.captain_person_ids, ARRAY[]::integer[]) AS reusable_captain_person_ids,
+                    rt.display_order,
                     rt.baseline_plan_order,
                     rt.reusable_notes,
                     rt.created_at AS reusable_created_at,
