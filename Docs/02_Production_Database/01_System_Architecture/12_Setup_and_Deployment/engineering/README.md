@@ -13,7 +13,7 @@ Operator-facing instructions are separate under [`../operatorSOP/`](../operatorS
 
 ## 2026 Launch Status
 
-The real 2026 Setup Session has been created and is now the active annual planning/execution context. The accepted Scheduling Board application target is `06a6536d92db5c7352beeed496563ed9bfdb7146` with health version `V0.3.17-performance-trace`.
+The real 2026 Setup Session has been created and is now the active annual planning/execution context. The initial accepted Scheduling Board launch target was `06a6536d92db5c7352beeed496563ed9bfdb7146`. A post-launch reusable-task navigation regression was then corrected and Production accepted at live Setup SHA `55e097e7bb3b807793893defc939c9a23fc4ec5d` with health version `V0.3.18-scheduling-board`.
 
 The launch deployment installed migrations 057/058 after the exact candidate passed the full Setup/Application regression (458/458) and disposable browser acceptance. The Scheduling Board preserves the accepted Catalog/Plan ordering, lavender material-task cue, Day-view filters, completed/cancelled-day handling, performance improvements, and current scheduling behavior.
 
@@ -31,23 +31,24 @@ actual work/history = preserved operational evidence
 Broad Work Day deletion was not introduced. #206 / PR #216 continues to own early physical material-demand expansion and Pick List resolution; that work must not be folded back into the Scheduling Board.
 
 
-## #145 Material Completeness Audit Candidate
+## #145 Material Completeness / Catalog Gate — COMPLETE
 
-The authorized #145 feature branch adds a Manager-only whole-Catalog Display/LOR ownership audit, Kit assignment coverage audit, and one explicit reviewed shared/non-task Kit disposition. The candidate contract is documented in [Setup_Material_Completeness_Audit_2026-09-20.md](Setup_Material_Completeness_Audit_2026-09-20.md).
+Issue #145 is complete and closed. The Manager Material Completeness Audit, Display/LOR ownership correction paths, reviewed shared/non-task Kit disposition, and reconstruction-safe Delete Task behavior were Production accepted before the real 2026 annual launch. The durable audit contract remains documented in [Setup_Material_Completeness_Audit_2026-09-20.md](Setup_Material_Completeness_Audit_2026-09-20.md).
 
-This candidate is **not Production accepted**. Production migration/deployment and real 2026 Session creation remain forbidden until the required disposable/browser acceptance and #122 authorization gates are complete.
+The real 2026 Setup Session has since been created under #122 and is live. Material Audit remains a Manager correction/review tool during the season; it is no longer a pre-creation gate for the already-existing 2026 Session.
 
 ## Current Production State
 
 ```text
 protected application = https://my.sheboyganlights.org/setup/
-accepted Scheduling Board target = 06a6536d92db5c7352beeed496563ed9bfdb7146
-version = V0.3.17-performance-trace
+initial Scheduling Board launch target = 06a6536d92db5c7352beeed496563ed9bfdb7146
+current live Setup SHA = 55e097e7bb3b807793893defc939c9a23fc4ec5d
+version = V0.3.18-scheduling-board
 2025 Setup Session = historical / verification evidence
 2026 Setup Session = LIVE annual planning/execution context
 ```
 
-Current governed Setup fingerprint captured immediately before/after the #204 source-only deployment:
+Historical governed Setup fingerprint from the #204 source-only deployment:
 
 ```text
 7dd32f21ca9a455329de54e8799f01b5
@@ -172,18 +173,22 @@ V0.3.13 Display ownership + physical Kit Box assignment
 #204     reusable expected duration entered as Hours / Minutes; stored as total minutes
 ```
 
-Also preserve the Stage/Scene resolver, 2025 historical/sandbox boundary, current Display/Container authority, narrow governed write commands, existing analytics integration/privacy boundary, and no real 2026 Session until launch gates pass.
+Also preserve the Stage/Scene resolver, the 2025 historical/verification boundary, current Display/Container authority, narrow governed write commands, and the existing analytics integration/privacy boundary. The real 2026 Session is now live; do not recreate it or reintroduce pre-launch assumptions that treat 2025 as the current planning context.
 
-## Remaining Launch Sequence
+## Current Post-Launch Sequence
 
-#184 and #167 are complete. The controlling sequence is now:
+#145, #184, and #167 are complete, and the real 2026 Setup Session is live. #122 remains the commanding Setup issue. Remaining work resumes from real 2026 annual/schedule identities:
 
 ```text
-#145 FINAL reusable-Catalog acceptance + disposable 2026 seed proof
-  -> #122 real 2026 Setup Session + scheduling / Pick List launch gate
+#175 Captain Work List / Procedure context
+#132 Report Work
+#172 Report Problem / Suggest Change
+#206 Pick List / material readiness
+#222 performance protection in parallel
+#219 / GIS / writable movement later where required
 ```
 
-#145 is the final Catalog content/seed acceptance checkpoint after the task/material structure has been shaped. #122 owns the real annual Session, scheduling, Pick List, and operator-output launch gate.
+Do not recreate the annual Session, revive disposable pre-launch scheduler assumptions, or move #206 physical-demand logic into the Scheduling Board.
 
 ## Runtime / Rollback
 
@@ -191,7 +196,7 @@ Server/runtime authority remains `Gregovate/MSB-Server-Management`.
 
 The accepted #184 and #167 rollback archives are retained. Restoration is a governed database operation and must reconcile legitimate post-deployment work; do not use those archives as casual UI rollback points.
 
-The live application is pinned to the browser-accepted #204 candidate `052d31dd4e68e13f2997f723778b88eddf9c53cf`. The immediate source-only rollback point is `5040fa282410b729d93e58a8299e48e4ee214809`.
+The current live Setup application is `55e097e7bb3b807793893defc939c9a23fc4ec5d` (`V0.3.18-scheduling-board`). Its immediate source-only rollback point from the post-launch scheduler fix is the accepted launch target `06a6536d92db5c7352beeed496563ed9bfdb7146`. Older #184/#167/#204 rollback evidence remains historical recovery evidence for those deployments and must not be treated as the current source rollback point.
 
 ## Resume Checklist
 
@@ -214,4 +219,8 @@ Before the next Setup change:
 - [Detailed Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
 - [Kit Inventory / T-Post Production Acceptance](../../../../../Setup/Acceptance/Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md)
 - [Setup Assignment Layer V0.3.13 Production Acceptance](../../../../../Setup/Acceptance/Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md)
-\n\n## #205 Scheduling Board\n\n- [Setup Scheduling Board Contract — 2026-09-17](Setup_Scheduling_Board_Contract_2026-09-17.md) — annual Day Number/DOW board, four crew lanes, season-only annual work, Work Order gates, historical assignment stickiness, and reusable-learning boundary.\n
+
+
+## #205 Scheduling Board
+
+- [Setup Scheduling Board Contract — 2026-09-17](Setup_Scheduling_Board_Contract_2026-09-17.md) — Production-accepted annual Day Number/DOW board, crew/shift scheduling, season-only annual work, Work Order gates, historical assignment stickiness, and reusable-learning boundary.

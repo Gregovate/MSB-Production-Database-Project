@@ -4,12 +4,14 @@
 |---|---|
 | Document Type | Engineering Live-Review Work Ledger |
 | System | Production Database — Setup Session |
-| Status | CURRENT WORK LEDGER — engineering/disposable gate green; browser approval pending; Production unchanged |
+| Status | HISTORICAL WORK LEDGER — superseded by accepted Production workflow and live 2026 Session |
 | Owner | MSB Production Database engineering |
 | Last Reviewed | 2026-09-08 |
 | Related Work | Issue #122; draft PR #125 |
 
 ## Purpose
+
+> **Current authority:** This document is retained as design/review history. For current annual scheduling behavior and acceptance state, use [Setup Scheduling Board Contract — 2026-09-17](Setup_Scheduling_Board_Contract_2026-09-17.md) and the [Setup engineering portal](README.md).
 
 Preserve the exact current Setup live-review workstream, review rules, accepted candidate evidence, candidate-versus-Production boundary, unresolved work, and resume point while reviewing the real 2025 Historical Verification session.
 
