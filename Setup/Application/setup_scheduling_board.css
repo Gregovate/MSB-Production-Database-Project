@@ -588,3 +588,73 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* #122 2026 launch review: keep the actual work-day board visible at normal zoom. */
+.setup-board205-shell {
+  gap: 0.65rem;
+}
+
+.setup-board205-toolbar {
+  gap: 0.7rem;
+  margin-bottom: 0.4rem;
+  align-items: center;
+}
+
+.setup-board205-title h2 {
+  margin-block: 0.15rem;
+}
+
+.setup-board205-kpis {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  align-items: baseline;
+  font-size: 0.86rem;
+  color: var(--muted, #64748b);
+}
+
+.setup-board205-kpis strong {
+  color: var(--text, #111827);
+}
+
+.setup-board205-kpi-sep {
+  opacity: 0.65;
+}
+
+.setup-board205-day-form {
+  padding: 0.55rem 0.65rem;
+}
+
+.setup-board205-primary-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(6.5rem, 0.8fr);
+  gap: 0.55rem;
+  flex: 1 0 100%;
+}
+
+.setup-board205-primary-filters label,
+.setup-board205-primary-filters select {
+  min-width: 0;
+  width: 100%;
+}
+
+.setup-board205-work-order-picker {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(14rem, 1.4fr);
+  gap: 0.6rem;
+}
+
+@media (max-width: 760px) {
+  .setup-board205-kpis {
+    justify-content: flex-start;
+  }
+
+  .setup-board205-primary-filters,
+  .setup-board205-work-order-picker {
+    grid-template-columns: 1fr;
+  }
+}
