@@ -785,6 +785,92 @@ function nextLocationText(item) {
   return 'Location not yet recorded';
 }
 
+function nextCanSubmitFieldFinding() {
+  const access = appState.access || {};
+  return Boolean(
+    access.can_manage_setup
+    || access.role_name === 'Production Crew'
+    || (access.policy_names || []).includes('Production Crew')
+  );
+}
+
+function nextProblemRouteContext() {
+  const route = new URLSearchParams(window.location.search);
+  const assignmentId = Number(route.get('setup_work_day_task_id') || 0);
+  const workDayId = Number(route.get('setup_work_day_id') || 0);
+  const shiftRaw = String(route.get('shift_code') || '').toUpperCase();
+  return {
+    setup_work_day_task_id: assignmentId > 0 ? assignmentId : null,
+    setup_work_day_id: workDayId > 0 ? workDayId : null,
+    shift_code: ['MORNING', 'AFTERNOON', 'ALL_DAY'].includes(shiftRaw) ? shiftRaw : null
+  };
+}
+
+function nextProblemIntakeMarkup(sessionTaskId) {
+  if (!nextCanSubmitFieldFinding()) return '';
+  const route = new URLSearchParams(window.location.search);
+  const open = route.get('report_problem') === '1';
+  return `
+    <section class="next-problem-intake">
+      <button type="button" class="secondary next-problem-toggle">
+        Report Problem / Suggest Change
+      </button>
+      <form class="next-problem-form" data-session-task-id="${sessionTaskId}" ${open ? '' : 'hidden'}>
+        <p class="muted">
+          Setup already supplies the task, Stage/Scene, scheduled day/shift/crew, season, and reporter identity when known.
+          This submits to <strong>Work Order Intake for Manager triage</strong>; it does not create an active Work Order.
+        </p>
+        <label>What did you find?
+          <textarea class="next-problem-text" rows="3" maxlength="255" required></textarea>
+        </label>
+        <label>What do you think should change? <span class="muted">(optional)</span>
+          <textarea class="next-suggestion-text" rows="2"></textarea>
+        </label>
+        <button type="submit">Send to Manager Triage</button>
+        <div class="next-problem-result" aria-live="polite"></div>
+      </form>
+    </section>`;
+}
+
+function wireNextProblemIntake(body) {
+  const toggle = body.querySelector('.next-problem-toggle');
+  const form = body.querySelector('.next-problem-form');
+  toggle?.addEventListener('click', () => {
+    if (form) form.hidden = !form.hidden;
+  });
+  form?.addEventListener('submit', submitNextProblemIntake);
+}
+
+async function submitNextProblemIntake(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const sessionTaskId = Number(form.dataset.sessionTaskId);
+  const problem = form.querySelector('.next-problem-text').value.trim();
+  if (!problem) return;
+  const context = nextProblemRouteContext();
+  const result = form.querySelector('.next-problem-result');
+  try {
+    const payload = await api(
+      `api/setup/session-tasks/${sessionTaskId}/problem-intake`,
+      commandOptions('POST', {
+        problem,
+        suggested_change: form.querySelector('.next-suggestion-text').value.trim() || null,
+        setup_work_day_task_id: context.setup_work_day_task_id,
+        setup_work_day_id: context.setup_work_day_id,
+        shift_code: context.shift_code
+      })
+    );
+    const intakeId = payload.intake?.intake_id;
+    result.textContent = intakeId
+      ? `Submitted to Work Order Intake #${intakeId} for Manager triage.`
+      : 'Submitted to Work Order Intake for Manager triage.';
+    form.querySelector('.next-problem-text').value = '';
+    form.querySelector('.next-suggestion-text').value = '';
+  } catch (error) {
+    result.textContent = error.message || error;
+  }
+}
+
 async function loadNextTaskExecution(details) {
   const taskId = Number(details.dataset.taskId);
   const sessionTaskId = Number(details.dataset.sessionTaskId);
@@ -827,9 +913,11 @@ async function loadNextTaskExecution(details) {
         <label class="checkbox-label"><input class="next-mark-complete" type="checkbox"> Entire task complete</label>
         <button type="submit">Save Progress / Completion</button>
       </form>`}
+      ${nextProblemIntakeMarkup(sessionTaskId)}
     `;
     details.dataset.loaded = '1';
     body.querySelector('.next-completion-form')?.addEventListener('submit', submitNextProgress);
+    wireNextProblemIntake(body);
   } catch (error) {
     body.innerHTML = `<strong>Task field context could not be loaded.</strong><div class="muted">${escapeHtml(error.message || error)}</div>`;
   }

@@ -22,7 +22,10 @@ Current PostgreSQL schema, constraints, procedures, and triggers are implementat
 
 ## Work Entry Paths
 
-There are two current operational entry paths.
+There are two lifecycle classes with multiple intake sources:
+
+1. human-reported findings/requests -> Work Order Intake -> Manager triage -> active Work Order when promoted;
+2. governed deterministic Test Session failure -> active Work Order directly.
 
 ### Public Work Order Request
 
@@ -34,6 +37,14 @@ The form currently uses numeric Priority values 1 through 5 as an intake estimat
 
 The attached Google Apps Script is part of this integration. Before changing question titles, answer values, branching, or form structure, inspect that script and the downstream intake mapping.
 
+### Authenticated Setup Field Finding
+
+During active Setup work, trusted Production Crew may submit **Report Problem / Suggest Change** from the known annual-task/schedule context.
+
+The Setup application writes to the existing Work Order Intake lifecycle, not directly to an active Work Order. It supplies task/Stage/Scene/season/work-day/shift/crew and authenticated reporter context automatically where known, preserving stable identities in the intake source payload. The reporter supplies the observation and may optionally suggest a correction.
+
+This is intentionally different from the public form, where the reporter must supply location/context because the application does not already know it.
+
 ### Test Session Repair
 
 A display Test Session can generate a repair Work Order automatically. That Work Order is already active and does not pass through Work Order Intake triage.
@@ -42,7 +53,9 @@ A Test Session-generated Work Order must be completed before the related contain
 
 ## Triage
 
-Manager triage applies only to Work Order Requests submitted through the public form.
+Manager triage applies to human-reported Work Order Intake records, including public Work Order Requests and authenticated Setup field findings.
+
+A human field finding may be valid evidence but still represent a misunderstanding, duplicate, wrong owner, or a correction that does not justify an active Work Order. Only Manager **Promote** creates the active Work Order.
 
 During triage the manager validates or corrects the information required for an actionable Work Order, including as applicable:
 
