@@ -195,7 +195,10 @@
               ${item.label ? `<div class="item-label">${esc(item.label)}</div>` : ''}
               <div class="pick-state">${pickStatusHtml(item)}</div>
             </td>
-            <td class="location-cell">${esc(item.home_location_code || 'Not recorded')}</td>
+            <td class="location-cell">
+              <div class="home-location-code">${esc(item.home_location_code || 'Not recorded')}</div>
+              ${item.home_location_code ? `<div class="home-location-payload">LOC:${esc(item.home_location_code)}</div>` : ''}
+            </td>
             <td class="destination-cell">${esc(destinationText(reasons))}</td>
             <td class="date-cell"><strong>${esc(formatDate(dates.pickBy))}</strong></td>
             <td class="date-cell">${esc(formatDate(dates.neededFor))}</td>
