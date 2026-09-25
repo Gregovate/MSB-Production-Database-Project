@@ -316,6 +316,7 @@ def test_production_api_contains_protected_read_and_command_surfaces() -> None:
 def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     production = (APP_DIR / "setup_production.js").read_text(encoding="utf-8")
     next_pass = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
+    acceptance = (APP_DIR / "setup_acceptance_fixes.js").read_text(encoding="utf-8")
     html = (APP_DIR / "production.html").read_text(encoding="utf-8")
 
     assert "function setupCommitCurrentRouteState()" in production
@@ -343,6 +344,10 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "function setReusableAddTaskFormOpen(open)" in production
     assert "setReusableAddTaskFormOpen(false);" in production
     assert "if (trigger) trigger.hidden = Boolean(open);" in production
+    assert 'id="add-task-form" class="add-task-form" hidden' in html
+    assert 'id="add-task-form" class="add-task-form manager-only" hidden' not in html
+    assert "setReusableAddTaskFormOpen(true)" in acceptance
+    assert "setReusableAddTaskFormOpen(false)" in acceptance
     assert "setup_production.js?v=2026-09-25.3" in html
     assert "setup_next_pass.js?v=2026-09-25.2" in html
     assert "setup_scheduling_board.js?v=2026-09-25.4" in html
