@@ -45,6 +45,8 @@ def test_live_review_restores_task_and_stage_search() -> None:
     assert "taskMatchesSearch" in js
     assert "renderReviewListWithLiveSearch" in js
     assert "renderLibraryWithLiveSearch" in js
+    assert "applyActiveSearch" in js
+    assert "taskMap = new Map" in js
     for field in ("task_name", "stage_key", "stage_name", "scene_name", "task_action_type"):
         assert field in js
 
@@ -58,7 +60,7 @@ def test_changed_live_review_assets_use_fresh_cache_keys() -> None:
         "setup_resource_review.css?v=2026-09-11.2",
         "setup_resource_review.js?v=2026-09-11.2",
         "setup_live_review_fixes.css?v=2026-09-08.3",
-        "setup_live_review_fixes.js?v=2026-09-08.3",
+        "setup_live_review_fixes.js?v=2026-09-24.1",
     ):
         assert asset in html
 
