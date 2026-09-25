@@ -46,15 +46,16 @@
 
 .setup-board205-main {
   display: grid;
-  grid-template-columns: minmax(18rem, 0.72fr) minmax(36rem, 2fr);
-  gap: 1rem;
+  grid-template-columns: minmax(22rem, 0.95fr) minmax(34rem, 1.55fr);
+  gap: 0.75rem;
   align-items: start;
 }
 
 .setup-board205-backlog,
 .setup-board205-board {
   min-width: 0;
-  max-height: calc(100vh - 10.5rem);
+  height: calc(100vh - 7.25rem);
+  max-height: none;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -62,13 +63,14 @@
 
 .setup-board205-backlog {
   min-width: 0;
+  padding-top: 0.75rem;
 }
 
 .setup-board205-filters {
   position: sticky;
   top: 0;
   z-index: 4;
-  margin: 0.65rem 0 0.85rem;
+  margin: 0.2rem 0 0.55rem;
   padding: 0.65rem;
   border: 2px solid color-mix(in srgb, var(--accent, #0b6ea8) 42%, var(--border, #d9e0e8));
   border-radius: 0.65rem;
@@ -605,6 +607,7 @@
 
   .setup-board205-backlog,
   .setup-board205-board {
+    height: auto;
     max-height: none;
     overflow-y: visible;
     scrollbar-gutter: auto;
