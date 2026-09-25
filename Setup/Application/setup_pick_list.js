@@ -40,7 +40,7 @@
       return `Current Setup observation: ${[o.current_stage_key, o.current_stage_name].filter(Boolean).join(' — ')}`;
     }
     if (o.current_location_note) return `Current Setup observation: ${o.current_location_note}`;
-    return `Home / storage: ${item.home_location_code || 'not recorded'} · No current Setup movement observation`;
+    return `Home / storage: ${item.home_location_code || 'not recorded'} · Not yet observed/moved in this Setup Session`;
   }
 
   function reasonText(r) {
@@ -124,14 +124,18 @@
           <article class="pick-item">
             <div class="pick-item-head">
               <div>
-                <div class="identity">${esc(item.identity)}${item.label ? ` · ${esc(item.label)}` : ''}</div>
-                <div class="meta">${esc(item.physical_type)} · ${esc(observationText(item))}</div>
+                <div class="identity">${esc(item.identity)}</div>
+                ${item.label ? `<div class="item-label">${esc(item.label)}</div>` : ''}
+                <div class="meta">${esc(observationText(item))}</div>
               </div>
               <div class="meta">${esc(item.location_evidence_status || '')}</div>
             </div>
-            <ul class="reason-list">
-              ${reasons.map(r => `<li>${esc(reasonText(r))}</li>`).join('')}
-            </ul>
+            <details class="reasons">
+              <summary>${reasons.length} schedule/material reason${reasons.length === 1 ? '' : 's'}</summary>
+              <ul class="reason-list">
+                ${reasons.map(r => `<li>${esc(reasonText(r))}</li>`).join('')}
+              </ul>
+            </details>
           </article>`).join('')}
       </section>`).join('');
 
