@@ -37,7 +37,7 @@ Open **Plan / Schedule** for the live 2026 Session.
 
 The Scheduling Board does not define the #206 Pick List/material-demand workflow.
 
-## 3. Find Work That Still Needs Review
+## 2. Find Work That Still Needs Review
 
 1. Open the **Verification Queue**.
 2. Choose **Unverified** from the review-status dropdown.
