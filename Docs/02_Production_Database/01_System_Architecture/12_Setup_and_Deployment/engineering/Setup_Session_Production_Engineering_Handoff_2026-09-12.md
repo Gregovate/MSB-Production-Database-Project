@@ -4,26 +4,26 @@
 |---|---|
 | Document Type | Engineering Handoff |
 | System | Production Database — Setup Session |
-| Status | CURRENT HANDOFF — #204 expected-duration UI accepted in Production |
+| Status | CURRENT HANDOFF — real 2026 Setup Session and Scheduling Board live |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-17 |
+| Last Reviewed | 2026-09-25 |
 
 ## Purpose
 
-Preserve the current accepted Setup Session Production state and the remaining launch sequence after completion of the durable Kit/Extra Material/T-Post subsystem and its one-time legacy reconstruction.
+Preserve the current accepted Setup Session Production state after the real 2026 annual launch, including the reusable/annual boundary, live Scheduling Board baseline, accepted material foundation, and the remaining downstream workstreams that now consume real 2026 annual identities.
 
 ## Current Production Runtime
 
 ```text
 protected application = https://my.sheboyganlights.org/setup/
-live /opt/msb-setup SHA = 052d31dd4e68e13f2997f723778b88eddf9c53cf
-version = V0.3.13-assignment-layer
+live /opt/msb-setup SHA = 55e097e7bb3b807793893defc939c9a23fc4ec5d
+version = V0.3.18-scheduling-board
 service = msb-setup.service
 listener = 192.168.5.9:8794
-2025 Setup Session = HISTORICAL_VERIFICATION / SANDBOX
-2026 Setup Sessions = 0
-physical inventory events = 0
-governed Setup fingerprint = 7dd32f21ca9a455329de54e8799f01b5
+2025 Setup Session = HISTORICAL_VERIFICATION / historical evidence
+2026 Setup Session = LIVE / PLANNING
+Scheduling Board = live / Production accepted
+real 2026 scheduling = started
 ```
 
 Server/runtime authority remains `Gregovate/MSB-Server-Management`.
@@ -37,7 +37,7 @@ Server/runtime authority remains `Gregovate/MSB-Server-Management`.
 - Display assignment does not rewrite LOR membership or the Display's current Container.
 - Physical Kit Boxes are explicitly assigned many-to-many to reusable tasks through `relationship_type='KIT'`.
 - Existing SUPPORT / REQUIRED_CONTAINER relationships remain separate.
-- No 2026 Setup Session exists.
+- The real 2026 Setup Session now exists and is the current annual planning/execution context.
 
 ## Accepted Durable Inventory — #184
 
@@ -134,22 +134,26 @@ Procedure-derived reconstructed values remain reviewable. Do not convert an expe
 
 Preserve V0.3.7 dirty-edit/client-build protections, V0.3.8 compact task detail, V0.3.9 prerequisite behavior, V0.3.10 Resource Catalog behavior plus migration 031 repair, V0.3.11 active-task identity, V0.3.13 assignment behavior, the Stage/Scene resolver, current Display/Container authority, the #184 durable inventory contract, and the accepted #167 reconstructed data.
 
-## Remaining Pre-Launch Sequence
+## Current Post-Launch Resume Sequence
 
-The controlling sequence is now:
+#145 is complete and closed. The real 2026 Setup Session and Scheduling Board are live under #122. Remaining work must refresh from current `main` and consume real 2026 annual/schedule identities:
 
 ```text
-#145 FINAL reusable-Catalog acceptance + disposable 2026 seed proof
-  -> #122 real 2026 Setup Session + scheduling / Pick List launch gate
+#175 Captain Work List / Procedure context
+#132 Report Work
+#172 Report Problem / Suggest Change
+#206 Pick List / material readiness
+#222 performance protection in parallel
+#219 / GIS / writable movement later where required
 ```
 
-#145 remains the final Catalog content/seed acceptance gate. #122 remains the real annual Setup Session / scheduling / Pick List launch gate.
+Do not recreate the annual Session, treat 2025 as the current planning authority, or restore disposable pre-launch scheduler assumptions.
 
 ## Runtime / Rollback Boundary
 
 The accepted rollback archives above are governed database recovery points. Do not restore them merely to undo a UI/documentation problem or without reconciling legitimate post-deployment Production work.
 
-The live Setup checkout is pinned to `052d31dd4e68e13f2997f723778b88eddf9c53cf`. For this source-only change, rollback is the prior exact SHA `5040fa282410b729d93e58a8299e48e4ee214809` plus restart of only `msb-setup.service` under the Server Management runbook.
+The current live Setup checkout is `55e097e7bb3b807793893defc939c9a23fc4ec5d` (`V0.3.18-scheduling-board`). The immediate source-only rollback point for the post-launch scheduler fix is `06a6536d92db5c7352beeed496563ed9bfdb7146` plus restart of only `msb-setup.service` under the Server Management runbook. Older rollback archives in this handoff remain valid historical evidence for the deployments that created them, not the current source rollback point.
 
 ## Engineering Resume
 
@@ -159,9 +163,9 @@ Before changing Setup:
 2. read Project Rules;
 3. read the Setup engineering README and this handoff;
 4. read the Supporting Information Contract;
-5. preserve V0.3.7 through V0.3.13 plus #184/#167 inventory behavior/data;
-6. keep 2025 as the proving ground and create no real 2026 Setup Session until the remaining gates pass;
-7. continue `#145 FINAL -> #122`; and
+5. preserve the accepted V0.3.7 through V0.3.13 foundations plus #184/#167 inventory behavior/data and the accepted live Scheduling Board baseline;
+6. use the live 2026 Session for annual planning/execution and retain 2025 only as historical/verification evidence;
+7. resume downstream #175/#132/#172/#206 work from real 2026 identities rather than rebuilding a disposable pre-launch world; and
 8. use Server Management for disposable acceptance, browser review, and Production deployment authority.
 
 ## Related Current Evidence
