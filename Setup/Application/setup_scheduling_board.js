@@ -1478,7 +1478,7 @@ function board205Render() {
     : 'Needs Scheduling';
   if (workspace) workspace.classList.toggle('finder-only', historicalReview);
   if (setupBoard205State.finderCompact == null) {
-    setupBoard205State.finderCompact = historicalReview;
+    setupBoard205State.finderCompact = true;
   }
   board205ApplyFinderCompact();
   board205RenderKpis();
