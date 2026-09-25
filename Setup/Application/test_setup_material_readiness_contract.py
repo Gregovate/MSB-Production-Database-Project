@@ -55,11 +55,13 @@ def test_readiness_surfaces_season_only_material_authority_gap() -> None:
     assert "SEASON_ONLY_MATERIAL_AUTHORITY" in repo
     assert "Review whether physical material is required before relying on the Pick List." in repo
 
-def test_readiness_keeps_unverified_or_unsourced_extra_material_visible() -> None:
+def test_readiness_keeps_unsourced_extra_material_as_exception_without_audit_verification_blockers() -> None:
     repo = read("setup_material_readiness_repository.py")
     assert "Required Extra Material has no active expected-source Container." in repo
-    assert "Extra Material requirement is not VERIFIED for Pick List use." in repo
-    assert "Expected-source Container is not VERIFIED for Pick List use." in repo
+    assert "Extra Material requirement is not VERIFIED for Pick List use." not in repo
+    assert "Expected-source Container is not VERIFIED for Pick List use." not in repo
+    assert "source_verification_state" in repo
+    assert "requirement_verification_state" in repo
 
 
 def test_projection_implements_d_minus_one_and_reason_preservation() -> None:
@@ -85,9 +87,11 @@ def test_206_pick_list_surface_is_read_only_and_schedule_driven() -> None:
     assert '@app.get("/pick-list")' in backend
     assert "setup_pick_list.css" in backend
     assert "setup_pick_list.js" in backend
+    assert "qrcode.min.js" in backend
+    assert "assets/qrcode.min.js" in html
     assert "api/setup/material-readiness?season_year=" in ui
     assert "Physical items to pull / stage" in html
-    assert "Needs review before relying on this Pick List" in html
+    assert "Material data exceptions" in html
     assert "Generated from the live Scheduling Board" in html
     assert "A workshop scan records that an item was actually picked/moved" in html
     assert "@media print" in css
@@ -120,7 +124,7 @@ def test_early_demand_uses_annual_prerequisites_without_scheduling_mutation() ->
 
 
 
-def test_live_pick_list_surface_exposes_needs_pick_and_picked_states() -> None:
+def test_live_pick_list_surface_exposes_operational_columns_needs_pick_picked_and_qr() -> None:
     html = read("pick_list.html")
     ui = read("setup_pick_list.js")
     assert "Live 2026 Setup" in html
@@ -130,6 +134,11 @@ def test_live_pick_list_surface_exposes_needs_pick_and_picked_states() -> None:
     assert '<option value="OUTSTANDING">Needs pick</option>' in html
     assert '<option value="MOVED">Picked / moved</option>' in html
     assert "A workshop scan records that an item was actually picked/moved" in html
+    for heading in ("Container / Display", "Home Location", "Destination", "Pick By", "Needed For", "QR Code"):
+        assert heading in ui
+    assert "https://db.sheboyganlights.org/scan/" in ui
+    assert "new QRCode(" in ui
+    assert "QRCode.CorrectLevel.M" in ui
     assert "function itemMoved(item)" in ui
     assert "last_movement_event_id" in ui
     assert "<strong>Home:</strong>" in ui
