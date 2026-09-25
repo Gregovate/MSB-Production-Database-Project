@@ -246,6 +246,20 @@
   min-width: 0;
 }
 
+.setup-board205-material-lookahead-card {
+  border-left: 5px dashed #7657c7;
+}
+
+.setup-board205-material-lookahead {
+  margin-top: 0.4rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px dashed #7657c7;
+  border-radius: 0.42rem;
+  background: color-mix(in srgb, #7657c7 9%, var(--panel, #fff));
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
 .setup-board205-task-card[draggable="true"],
 .setup-board205-assignment[draggable="true"] {
   cursor: grab;
