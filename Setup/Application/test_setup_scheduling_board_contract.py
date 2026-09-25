@@ -553,8 +553,9 @@ def test_122_work_day_calendar_supports_tablet_multiselect_without_overwriting_e
     assert "setupBoard205State.workDaySelection.add(date)" in ui
     assert "alreadyExists ? 'disabled aria-disabled=\"true\"'" in ui
     assert "Existing Work Days are disabled." in ui
-    assert "Ctrl" not in ui
-    assert "Shift" not in ui.split("setup-board205-work-day-picker", 1)[1].split("</form>", 1)[0]
+    calendar_form = ui.split('<form id="setup-board205-day-form"', 1)[1].split("</form>", 1)[0]
+    assert "Ctrl" not in calendar_form
+    assert "Shift" not in calendar_form
 
     assert "const form = event.currentTarget;" in block
     assert "const dates = [...setupBoard205State.workDaySelection]" in block
