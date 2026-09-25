@@ -286,6 +286,14 @@
   margin-bottom: 0.25rem;
 }
 
+.setup-board205-board-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.65rem;
+}
+
 .setup-board205-history-toggle {
   display: inline-flex;
   align-items: center;
