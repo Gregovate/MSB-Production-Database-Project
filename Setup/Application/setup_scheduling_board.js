@@ -2126,25 +2126,6 @@ function board205InstallView() {
 
   view.innerHTML = `
     <div id="setup-board205-root" class="setup-board205-shell">
-      <div class="card">
-        <div class="setup-board205-toolbar">
-          <div class="setup-board205-title">
-            <div class="eyebrow">Rolling annual dispatch · historical learning</div>
-            <h2>Setup Scheduling Board</h2>
-          </div>
-          <div id="setup-board205-kpis" class="setup-board205-kpis" aria-live="polite"></div>
-          <div class="setup-board205-toolbar-actions">
-            <button id="setup-board205-add-season-task" type="button" class="manager-only">Add Task</button>
-          </div>
-        </div>
-        <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
-          <label>Date<input id="setup-board205-work-date" type="date" required></label>
-          <div class="setup-board205-auto-day-note">Setup Day # is assigned automatically in chronological order.</div>
-          <label class="setup-board205-volunteer-note">Volunteer / capacity note<input id="setup-board205-volunteer-note" type="text" placeholder="Optional, e.g. strong Saturday turnout expected"></label>
-          <button type="submit">Add Work Day</button>
-        </form>
-      </div>
-
       <div id="setup-board205-no-session" class="card" hidden>
         <strong>No annual Setup Session exists for this season.</strong>
         <p class="muted">The reusable Catalog is ready. A Setup Administrator can create the real annual Session here; creation seeds every active reusable task once and does not schedule any work by itself.</p>
@@ -2204,18 +2185,39 @@ function board205InstallView() {
           <div id="setup-board205-queue" class="setup-board205-queue"></div>
         </section>
 
-        <section id="setup-board205-board-pane" class="card setup-board205-board">
-          <div class="eyebrow">Setup Day Number · DOW · Date</div>
-          <div class="setup-board205-board-heading">
-            <div class="setup-board205-board-title-row">
-              <h3>Rolling Work Days</h3>
-              <button id="setup-board205-print" type="button" class="small">Print Schedule</button>
+        <div class="setup-board205-right">
+          <section class="card setup-board205-planning-header">
+            <div class="setup-board205-toolbar">
+              <div class="setup-board205-title">
+                <div class="eyebrow">Rolling annual dispatch · historical learning</div>
+                <h2>Setup Scheduling Board</h2>
+              </div>
+              <div id="setup-board205-kpis" class="setup-board205-kpis" aria-live="polite"></div>
+              <div class="setup-board205-toolbar-actions">
+                <button id="setup-board205-add-season-task" type="button" class="manager-only">Add Task</button>
+              </div>
             </div>
-            <p class="muted">Each work day starts with Crew A. Add crews only when needed. Schedule in AM/PM shifts; planned headcount is optional by crew and shift. Historical actual assignments are locked.</p>
-            <label class="setup-board205-history-toggle"><input id="setup-board205-show-history" type="checkbox"> Show prior / completed work days</label>
-          </div>
-          <div id="setup-board205-days" class="setup-board205-days"></div>
-        </section>
+            <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
+              <label>Date<input id="setup-board205-work-date" type="date" required></label>
+              <div class="setup-board205-auto-day-note">Setup Day # is assigned automatically in chronological order.</div>
+              <label class="setup-board205-volunteer-note">Volunteer / capacity note<input id="setup-board205-volunteer-note" type="text" placeholder="Optional, e.g. strong Saturday turnout expected"></label>
+              <button type="submit">Add Work Day</button>
+            </form>
+          </section>
+
+          <section id="setup-board205-board-pane" class="card setup-board205-board">
+            <div class="eyebrow">Setup Day Number · DOW · Date</div>
+            <div class="setup-board205-board-heading">
+              <div class="setup-board205-board-title-row">
+                <h3>Rolling Work Days</h3>
+                <button id="setup-board205-print" type="button" class="small">Print Schedule</button>
+              </div>
+              <p class="muted">Each work day starts with Crew A. Add crews only when needed. Schedule in AM/PM shifts; planned headcount is optional by crew and shift. Historical actual assignments are locked.</p>
+              <label class="setup-board205-history-toggle"><input id="setup-board205-show-history" type="checkbox"> Show prior / completed work days</label>
+            </div>
+            <div id="setup-board205-days" class="setup-board205-days"></div>
+          </section>
+        </div>
       </div>
     </div>
 
