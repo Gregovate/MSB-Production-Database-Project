@@ -216,11 +216,11 @@ function board205DayAssignments(day) {
 }
 
 function board205DayViewState(day) {
-  const assignments = board205DayAssignments(day);
-  if (!assignments.length) return 'EMPTY';
-
   const status = String(day.day_status || '').toUpperCase();
   if (status === 'COMPLETE' || status === 'CANCELLED') return 'COMPLETED';
+
+  const assignments = board205DayAssignments(day);
+  if (!assignments.length) return 'EMPTY';
 
   const hasUnfinished = assignments.some((item) => {
     const task = board205Task(item.setup_session_task_id);
@@ -916,7 +916,7 @@ function board205TaskCard(task) {
   const blockerDetails = board205BlockerDetails(task, deps);
 
   return `
-    <article class="setup-board205-task-card"
+    <article class="setup-board205-task-card ${task.requires_display_material ? 'setup-material-task' : ''}"
       data-session-task-id="${task.setup_session_task_id ?? ''}"
       data-reusable-task-id="${task.setup_task_id ?? ''}"
       draggable="${canSchedule ? 'true' : 'false'}">
@@ -1108,7 +1108,7 @@ function board205AssignmentCard(item) {
   const shortBy = understaffed ? minCrew - planned : 0;
   const heavyWarning = board205HeavyWarning(item);
   return `
-    <article class="setup-board205-assignment ${locked ? 'locked' : ''} ${understaffed ? 'short-crew' : ''}"
+    <article class="setup-board205-assignment ${task.requires_display_material ? 'setup-material-task' : ''} ${locked ? 'locked' : ''} ${understaffed ? 'short-crew' : ''}"
       data-assignment-id="${item.setup_work_day_task_id}"
       draggable="${canManage && !locked ? 'true' : 'false'}">
       <div class="setup-board205-task-title">
@@ -1161,7 +1161,8 @@ function board205Day(day) {
     Number(day.iso_day_of_week) === 6 ? 'saturday' : '',
     Number(day.iso_day_of_week) === 7 ? 'sunday' : '',
     Number(day.setup_day_number) % 2 === 0 ? 'day-band-even' : 'day-band-odd',
-    board205DayViewState(day) === 'COMPLETED' ? 'completed-day' : ''
+    board205DayViewState(day) === 'COMPLETED' ? 'completed-day' : '',
+    String(day.day_status || '').toUpperCase() === 'CANCELLED' ? 'cancelled-day' : ''
   ].filter(Boolean).join(' ');
   const dayNote = [day.volunteer_note, day.weather_note, day.notes].filter(Boolean).join(' · ');
   const crews = board205CrewsForDay(day.setup_work_day_id);
@@ -2230,7 +2231,7 @@ function board205InstallView() {
               <div class="setup-board205-day-filters" aria-label="Day view">
                 <strong>Day view</strong>
                 <label><input id="setup-board205-show-unfinished-days" type="checkbox" checked> Scheduled / unfinished</label>
-                <label><input id="setup-board205-show-completed-days" type="checkbox"> Completed</label>
+                <label><input id="setup-board205-show-completed-days" type="checkbox"> Completed / cancelled</label>
                 <label><input id="setup-board205-show-empty-days" type="checkbox"> Empty days</label>
               </div>
             </div>
