@@ -356,27 +356,96 @@ class SetupMaterialReadinessRepository:
                 },
             }
 
-        assignments = self._scheduled_work(int(session["setup_session_id"]))
-        reusable_task_ids = sorted({
+        setup_session_id = int(session["setup_session_id"])
+        assignments = self._scheduled_work(setup_session_id)
+        tasks_by_session_id, downstream_by_prerequisite = self._annual_demand_graph(
+            setup_session_id
+        )
+        all_reusable_task_ids = sorted({
             int(row["setup_task_id"])
-            for row in assignments
+            for row in tasks_by_session_id.values()
             if row.get("setup_task_id") is not None
         })
         extra_by_task: dict[int, list[dict[str, Any]]] = defaultdict(list)
-        for row in self._extra_material_rows(reusable_task_ids, season_year):
+        for row in self._extra_material_rows(all_reusable_task_ids, season_year):
             extra_by_task[int(row["setup_task_id"])].append(row)
 
         next_repo = SetupNextRepository(self.dsn)
+        context_by_task: dict[int, dict[str, Any]] = {}
+        for task_id in all_reusable_task_ids:
+            try:
+                context_by_task[task_id] = next_repo.field_context(
+                    task_id=task_id, season_year=season_year
+                )
+            except SetupNextRepositoryError as exc:
+                raise SetupMaterialReadinessRepositoryError(str(exc)) from exc
+
+        for task in tasks_by_session_id.values():
+            task_id = task.get("setup_task_id")
+            context = context_by_task.get(int(task_id)) if task_id is not None else None
+            task["material_bearing"] = bool(
+                context
+                and (
+                    context.get("displays")
+                    or context.get("support_containers")
+                    or extra_by_task.get(int(task_id))
+                )
+            )
+
+        demand_assignments: list[dict[str, Any]] = []
+        for assignment in assignments:
+            direct = dict(assignment)
+            direct["demand_origin"] = "DIRECT_SCHEDULE"
+            direct["scheduled_trigger_setup_work_day_task_id"] = assignment[
+                "setup_work_day_task_id"
+            ]
+            direct["scheduled_trigger_setup_session_task_id"] = assignment[
+                "setup_session_task_id"
+            ]
+            direct["scheduled_trigger_setup_task_id"] = assignment.get("setup_task_id")
+            direct["scheduled_trigger_task_name"] = assignment.get("task_name")
+            demand_assignments.append(direct)
+
+            for target in downstream_material_frontier(
+                int(assignment["setup_session_task_id"]),
+                tasks_by_session_id,
+                downstream_by_prerequisite,
+            ):
+                expanded = dict(assignment)
+                expanded.update({
+                    "setup_session_task_id": target["setup_session_task_id"],
+                    "setup_task_id": target.get("setup_task_id"),
+                    "task_origin": target.get("task_origin"),
+                    "task_name": target.get("task_name"),
+                    "stage_id": target.get("stage_id"),
+                    "stage_key": target.get("stage_key"),
+                    "stage_name": target.get("stage_name"),
+                    "lor_scene_id": target.get("lor_scene_id"),
+                    "scene_name": target.get("scene_name"),
+                    "demand_origin": "DOWNSTREAM_FROM_SCHEDULE",
+                    "scheduled_trigger_setup_work_day_task_id": assignment[
+                        "setup_work_day_task_id"
+                    ],
+                    "scheduled_trigger_setup_session_task_id": assignment[
+                        "setup_session_task_id"
+                    ],
+                    "scheduled_trigger_setup_task_id": assignment.get("setup_task_id"),
+                    "scheduled_trigger_task_name": assignment.get("task_name"),
+                })
+                demand_assignments.append(expanded)
+
         demand_rows: list[dict[str, Any]] = []
         unresolved: list[dict[str, Any]] = []
         scheduled_work: list[dict[str, Any]] = []
 
-        for assignment in assignments:
+        for assignment in demand_assignments:
             scheduled = dict(assignment)
+            is_direct_schedule = assignment.get("demand_origin") == "DIRECT_SCHEDULE"
             task_id = assignment.get("setup_task_id")
             if task_id is None:
                 scheduled["material_resolution_status"] = "SEASON_ONLY_NO_REUSABLE_MATERIAL_AUTHORITY"
-                scheduled_work.append(scheduled)
+                if is_direct_schedule:
+                    scheduled_work.append(scheduled)
                 unresolved.append({
                     **self._demand_base(assignment),
                     "requirement_type": "SEASON_ONLY_MATERIAL_AUTHORITY",
@@ -387,18 +456,15 @@ class SetupMaterialReadinessRepository:
                 })
                 continue
 
-            try:
-                context = next_repo.field_context(task_id=int(task_id), season_year=season_year)
-            except SetupNextRepositoryError as exc:
-                raise SetupMaterialReadinessRepositoryError(str(exc)) from exc
-
+            context = context_by_task[int(task_id)]
             material_resolution = dict(context.get("material_resolution") or {})
             scheduled["material_resolution"] = material_resolution
             scheduled["material_resolution_status"] = (
                 material_resolution.get("ownership_status")
                 or ("REVIEW_REQUIRED" if material_resolution.get("warning") else "COMPLETE")
             )
-            scheduled_work.append(scheduled)
+            if is_direct_schedule:
+                scheduled_work.append(scheduled)
 
             if scheduled["material_resolution_status"] == "REVIEW_REQUIRED":
                 unresolved.append({
