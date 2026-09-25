@@ -13,7 +13,10 @@ from typing import Any, Iterator
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-from setup_material_readiness_projection import project_physical_demand
+from setup_material_readiness_projection import (
+    downstream_material_frontier,
+    project_physical_demand,
+)
 from setup_next_repository import SetupNextRepository, SetupNextRepositoryError
 
 
@@ -85,6 +88,93 @@ class SetupMaterialReadinessRepository:
                 (setup_session_id,),
             )
             return [dict(row) for row in cur.fetchall()]
+
+
+    def _annual_demand_graph(
+        self, setup_session_id: int
+    ) -> tuple[dict[int, dict[str, Any]], dict[int, list[int]]]:
+        """Read the annual prerequisite graph used by the Scheduling Board."""
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    st.setup_session_task_id,
+                    st.setup_task_id,
+                    st.task_origin,
+                    st.annual_task_name AS task_name,
+                    st.annual_stage_id AS stage_id,
+                    s.stage_key,
+                    s.stage_name,
+                    st.annual_lor_scene_id AS lor_scene_id,
+                    ls.scene_name,
+                    st.execution_status,
+                    st.planned_order
+                FROM ops.setup_session_task AS st
+                LEFT JOIN ref.stage AS s ON s.stage_id = st.annual_stage_id
+                LEFT JOIN ref.lor_scene AS ls ON ls.lor_scene_id = st.annual_lor_scene_id
+                WHERE st.setup_session_id = %s
+                  AND st.included_flag
+                """,
+                (setup_session_id,),
+            )
+            tasks = {
+                int(row["setup_session_task_id"]): dict(row)
+                for row in cur.fetchall()
+            }
+            cur.execute(
+                """
+                WITH reusable_current AS (
+                    SELECT
+                        st.setup_session_task_id,
+                        pst.setup_session_task_id AS prerequisite_setup_session_task_id
+                    FROM ops.setup_session_task AS st
+                    JOIN ref.setup_task_dependency AS rd
+                      ON rd.setup_task_id = st.setup_task_id
+                    JOIN ops.setup_session_task AS pst
+                      ON pst.setup_session_id = st.setup_session_id
+                     AND pst.setup_task_id = rd.prerequisite_setup_task_id
+                    WHERE st.setup_session_id = %s
+                      AND st.task_origin = 'REUSABLE'
+                      AND st.included_flag
+                      AND pst.included_flag
+                ),
+                annual_explicit AS (
+                    SELECT
+                        ad.setup_session_task_id,
+                        ad.prerequisite_setup_session_task_id
+                    FROM ops.setup_session_task_dependency AS ad
+                    JOIN ops.setup_session_task AS st
+                      ON st.setup_session_task_id = ad.setup_session_task_id
+                    JOIN ops.setup_session_task AS pst
+                      ON pst.setup_session_task_id = ad.prerequisite_setup_session_task_id
+                    WHERE st.setup_session_id = %s
+                      AND st.included_flag
+                      AND pst.included_flag
+                      AND (
+                          st.task_origin = 'SEASON_ONLY'
+                          OR (
+                              ad.dependency_origin = 'ANNUAL'
+                              AND NOT EXISTS (
+                                  SELECT 1
+                                  FROM ref.setup_task_dependency AS rd
+                                  WHERE rd.setup_task_id = st.setup_task_id
+                                    AND rd.prerequisite_setup_task_id = pst.setup_task_id
+                              )
+                          )
+                      )
+                )
+                SELECT * FROM reusable_current
+                UNION ALL
+                SELECT * FROM annual_explicit
+                """,
+                (setup_session_id, setup_session_id),
+            )
+            downstream: dict[int, list[int]] = defaultdict(list)
+            for row in cur.fetchall():
+                prerequisite_id = int(row["prerequisite_setup_session_task_id"])
+                downstream[prerequisite_id].append(int(row["setup_session_task_id"]))
+        return tasks, dict(downstream)
+
 
     def _extra_material_rows(self, task_ids: list[int], season_year: int) -> list[dict[str, Any]]:
         if not task_ids:
