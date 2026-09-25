@@ -804,8 +804,8 @@ async function loadSeason(year) {
 }
 
 function chooseInitialSeason() {
-  const activeWithSession = appState.seasons.find((season) => season.active_flag && season.setup_session_id);
-  if (activeWithSession) return Number(activeWithSession.season_year);
+  const activeSeason = appState.seasons.find((season) => season.active_flag);
+  if (activeSeason) return Number(activeSeason.season_year);
   const historical = appState.seasons.find((season) => season.session_status === 'HISTORICAL_VERIFICATION');
   if (historical) return Number(historical.season_year);
   const anySession = appState.seasons.find((season) => season.setup_session_id);
