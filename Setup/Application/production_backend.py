@@ -7,6 +7,7 @@ not exposed by this WSGI application.
 """
 from __future__ import annotations
 
+import gzip
 import logging
 import os
 import threading
@@ -49,6 +50,7 @@ _SETUP_PERF_ACTIVE_REQUESTS = 0
 _SETUP_PERF_PREFIX = "SETUP_PERF"
 _SETUP_PERF_SUMMARY_SECONDS = 60.0
 _SETUP_PERF_SLOW_MS = 250.0
+_SETUP_JSON_GZIP_MIN_BYTES = 16 * 1024
 _SETUP_PERF_WINDOWS: dict[str, dict] = {}
 _SETUP_OPERATOR_HEADER = "Cf-Access-Authenticated-User-Email"
 _SETUP_PERF_LOGGER = logging.getLogger("msb.setup.performance")
@@ -259,6 +261,36 @@ def _setup_perf_record_summary(
         return summary
 
 
+def _setup_maybe_gzip_json(response):
+    """Compress large protected Setup JSON responses for slow field links."""
+    if request.method == "HEAD" or response.status_code in (204, 304):
+        return response
+    if response.headers.get("Content-Encoding"):
+        return response
+
+    content_type = (response.headers.get("Content-Type") or "").lower()
+    if not content_type.startswith("application/json"):
+        return response
+
+    accepted = (request.headers.get("Accept-Encoding") or "").lower()
+    if "gzip" not in accepted:
+        return response
+
+    data = response.get_data()
+    if len(data) < _SETUP_JSON_GZIP_MIN_BYTES:
+        return response
+
+    compressed = gzip.compress(data, compresslevel=5, mtime=0)
+    if len(compressed) >= len(data):
+        return response
+
+    response.set_data(compressed)
+    response.headers["Content-Encoding"] = "gzip"
+    response.headers["Content-Length"] = str(len(compressed))
+    response.vary.add("Accept-Encoding")
+    return response
+
+
 @app.before_request
 def setup_performance_trace_start() -> None:
     if not _setup_perf_is_traced_request():
@@ -276,6 +308,7 @@ def setup_performance_trace_finish(response):
     if started is None or request_id is None:
         return response
 
+    response = _setup_maybe_gzip_json(response)
     elapsed_ms = (time.perf_counter() - started) * 1000.0
     route = request.url_rule.rule if request.url_rule is not None else "<unmatched>"
     operator = (request.headers.get(_SETUP_OPERATOR_HEADER) or "<unauthenticated>").strip().lower()
