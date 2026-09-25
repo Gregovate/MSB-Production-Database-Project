@@ -105,6 +105,10 @@
   text-decoration: none;
 }
 
+.add-task-form[hidden] {
+  display: none !important;
+}
+
 .add-task-form {
   margin: 1rem 0 1.25rem;
   padding: 1rem;
