@@ -151,6 +151,7 @@ PICK_LIST_ASSETS = frozenset(
     {
         "setup_pick_list.css",
         "setup_pick_list.js",
+        "qrcode.min.js",
     }
 )
 
