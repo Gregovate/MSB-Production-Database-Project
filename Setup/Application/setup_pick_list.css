@@ -10,7 +10,7 @@ button,select{font:inherit;padding:.55rem .7rem}.panel{border:1px solid color-mi
 .section-heading{display:flex;justify-content:space-between;gap:1rem;align-items:start}.pick-group{margin-top:1.25rem}
 .pick-group>h3{padding-bottom:.35rem;border-bottom:2px solid color-mix(in srgb,CanvasText 30%,transparent)}
 .pick-item{break-inside:avoid;border:1px solid color-mix(in srgb,CanvasText 18%,transparent);border-radius:.55rem;padding:.75rem;margin:.55rem 0}
-.pick-item-head{display:flex;justify-content:space-between;gap:.75rem;align-items:start}.identity{font-weight:800;font-size:1.65rem;line-height:1.1}.item-label{font-weight:700;font-size:1.1rem;margin-top:.15rem}.meta,.muted{opacity:.72}.reasons{margin-top:.55rem}.reasons summary{cursor:pointer;font-weight:600}
+.pick-item-head{display:flex;justify-content:space-between;gap:.75rem;align-items:start}.pick-route{display:grid;gap:.15rem;margin-top:.45rem}.identity{font-weight:800;font-size:1.65rem;line-height:1.1}.item-label{font-weight:700;font-size:1.1rem;margin-top:.15rem}.meta,.muted{opacity:.72}.reasons{margin-top:.55rem}.reasons summary{cursor:pointer;font-weight:600}
 .reason-list{margin:.55rem 0 0;padding-left:1.25rem}.reason-list li{margin:.25rem 0}
 .unresolved{border-left:4px solid currentColor;padding:.55rem .7rem;margin:.45rem 0;background:color-mix(in srgb,CanvasText 4%,Canvas)}
 .empty{padding:1.5rem 0;opacity:.7;text-align:center}
