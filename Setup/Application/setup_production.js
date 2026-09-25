@@ -658,7 +658,7 @@ async function createReusableTask(event) {
     const result = await api('api/setup/tasks', commandOptions('POST', payload));
     const newId = result.setup_task?.setup_task_id;
     setAlert(`Reusable task ${newId || ''} created in Production.`, 'ok');
-    el('add-task-form').hidden = true;
+    setReusableAddTaskFormOpen(false);
     el('add-task-form').reset();
     el('add-display-order').value = '100';
     await reloadTasks(newId || null);
@@ -968,8 +968,16 @@ el('save-annual-review').addEventListener('click', () => saveAnnualReview());
 el('mark-verified').addEventListener('click', () => saveAnnualReview('VERIFIED'));
 el('mark-correction').addEventListener('click', () => saveAnnualReview('NEEDS_CORRECTION'));
 el('mark-unverified').addEventListener('click', () => saveAnnualReview('UNVERIFIED'));
-el('show-add-task').addEventListener('click', () => { el('add-task-form').hidden = false; });
-el('cancel-add-task').addEventListener('click', () => { el('add-task-form').hidden = true; });
+function setReusableAddTaskFormOpen(open) {
+  const form = el('add-task-form');
+  const trigger = el('show-add-task');
+  if (form) form.hidden = !open;
+  if (trigger) trigger.hidden = Boolean(open);
+}
+
+setReusableAddTaskFormOpen(false);
+el('show-add-task').addEventListener('click', () => { setReusableAddTaskFormOpen(true); });
+el('cancel-add-task').addEventListener('click', () => { setReusableAddTaskFormOpen(false); });
 el('add-task-form').addEventListener('submit', createReusableTask);
 
 window.addEventListener('DOMContentLoaded', () => {
