@@ -41,11 +41,10 @@ This candidate is **not Production accepted**. Production migration/deployment a
 
 ```text
 protected application = https://my.sheboyganlights.org/setup/
-live /opt/msb-setup SHA = 052d31dd4e68e13f2997f723778b88eddf9c53cf
-version = V0.3.13-assignment-layer
-2025 Setup Session = HISTORICAL_VERIFICATION / SANDBOX
-2026 Setup Sessions = 0
-physical inventory events after reconstruction = 0
+accepted Scheduling Board target = 06a6536d92db5c7352beeed496563ed9bfdb7146
+version = V0.3.17-performance-trace
+2025 Setup Session = historical / verification evidence
+2026 Setup Session = LIVE annual planning/execution context
 ```
 
 Current governed Setup fingerprint captured immediately before/after the #204 source-only deployment:
@@ -203,8 +202,8 @@ Before the next Setup change:
 3. read `Setup_Session_Production_Engineering_Handoff_2026-09-12.md`;
 4. read `Setup_Task_Supporting_Information_Contract_2026-09-11.md`;
 5. preserve accepted V0.3.7 through V0.3.13 plus #184/#167 inventory behavior/data;
-6. keep 2025 as the proving ground until the remaining launch gates pass;
-7. continue with `#145 FINAL -> #122`;
+6. use the live 2026 Session for annual planning/execution and retain 2025 only as historical/verification evidence;
+7. preserve the accepted Scheduling Board baseline and keep #206 Pick List/material-demand work in its owning workstream;
 8. use `Gregovate/MSB-Server-Management` for runtime/deployment/browser-review authority; and
 9. update controlled docs and acceptance evidence whenever accepted behavior or the resume point changes.
 
