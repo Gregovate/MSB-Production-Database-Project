@@ -169,6 +169,25 @@ def test_122_plan_schedule_preserves_catalog_material_visual_cue() -> None:
     assert "border-left: 5px solid #7657c7 !important;" in catalog
 
 
+def test_122_reusable_rename_syncs_same_season_annual_name() -> None:
+    sql = read_db("059_sync_reusable_task_name_to_open_annual.sql")
+    validation = read_acceptance("setup_122_reusable_name_authority_disposable_validation.sql")
+
+    assert "AFTER UPDATE OF task_name ON ref.setup_task" in sql
+    assert "OLD.task_name IS DISTINCT FROM NEW.task_name" in sql
+    assert "SET annual_task_name = NEW.task_name" in sql
+    assert "ss.session_status IN ('PLANNING', 'ACTIVE')" in sql
+    assert "st.task_origin = 'REUSABLE'" in sql
+    assert "Open annual Setup Session still contains reusable task-name drift" in sql
+
+    assert "ref.update_setup_task(" in validation
+    assert "ss.session_status IN ('PLANNING', 'ACTIVE')" in validation
+    assert "ss.session_status = 'HISTORICAL_VERIFICATION'" in validation
+    assert "Historical Verification annual name was rewritten" in validation
+    assert "ROLLBACK;" in validation
+    assert "SETUP_122_REUSABLE_NAME_AUTHORITY_DISPOSABLE_VALIDATION_PASS" in validation
+
+
 def test_122_scheduler_uses_current_reusable_task_name_authority() -> None:
     repo = read_app("setup_scheduling_board_repository.py")
     ui = read_app("setup_scheduling_board.js")
