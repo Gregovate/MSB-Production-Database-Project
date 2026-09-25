@@ -12,6 +12,8 @@
 
 Preserve the current accepted Setup Session Production state after the real 2026 annual launch, including the reusable/annual boundary, live Scheduling Board baseline, accepted material foundation, and the remaining downstream workstreams that now consume real 2026 annual identities.
 
+This handoff and the Setup engineering `README.md` are the current resume authorities. The 2026-09-07 and 2026-09-11 handoffs are retained as historical acceptance records and are explicitly superseded for current runtime/launch status.
+
 ## Current Production Runtime
 
 ```text
