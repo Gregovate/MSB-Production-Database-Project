@@ -29,6 +29,22 @@
   background: var(--soft, #f5f8fb);
 }
 
+.setup-board205-day-form:not(.expanded) {
+  padding: 0.45rem 0.6rem;
+}
+
+.setup-board205-work-day-collapsed {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.setup-board205-work-day-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .setup-board205-day-form label {
   min-width: 9rem;
 }
