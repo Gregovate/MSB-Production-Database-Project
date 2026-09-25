@@ -101,6 +101,36 @@ def test_122_real_planning_season_hides_historical_verification_surface() -> Non
     assert "activeWithSession" not in chooser
 
 
+def test_large_setup_json_can_be_gzip_compressed() -> None:
+    import gzip
+    import json
+
+    import production_backend
+
+    payload = json.dumps({"tasks": [{"task_name": "Locate Power and Network", "notes": "x" * 200}] * 200})
+    with production_backend.app.test_request_context(
+        "/api/setup/scheduling-board",
+        headers={"Accept-Encoding": "gzip"},
+    ):
+        response = production_backend.app.response_class(payload, mimetype="application/json")
+        compressed = production_backend._setup_maybe_gzip_json(response)
+
+    assert compressed.headers["Content-Encoding"] == "gzip"
+    assert "Accept-Encoding" in compressed.headers["Vary"]
+    assert len(compressed.get_data()) < len(payload.encode("utf-8"))
+    assert gzip.decompress(compressed.get_data()).decode("utf-8") == payload
+
+
+def test_small_or_unadvertised_setup_json_is_not_forced_to_gzip() -> None:
+    import production_backend
+
+    with production_backend.app.test_request_context("/api/setup/access"):
+        response = production_backend.app.response_class('{"ok":true}', mimetype="application/json")
+        unchanged = production_backend._setup_maybe_gzip_json(response)
+
+    assert "Content-Encoding" not in unchanged.headers
+
+
 def test_production_runtime_declares_gunicorn() -> None:
     requirements = (APP_DIR / "requirements.txt").read_text(encoding="utf-8")
     assert "gunicorn>=26,<27" in requirements
