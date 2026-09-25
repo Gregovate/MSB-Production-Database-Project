@@ -2361,7 +2361,7 @@ function board205InstallView() {
             </div>
             <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
               <div class="setup-board205-work-day-collapsed">
-                <button id="setup-board205-toggle-work-days" type="button" class="small secondary" aria-expanded="false">+ Add Work Days</button>
+                <button id="setup-board205-toggle-work-days" type="button" class="small" aria-expanded="false">+ Add Work Days</button>
                 <span class="setup-board205-auto-day-note">Open only when you need to add dates.</span>
               </div>
               <div id="setup-board205-work-day-picker-body" class="setup-board205-work-day-picker" hidden>
