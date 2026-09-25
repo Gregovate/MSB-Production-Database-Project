@@ -196,8 +196,10 @@ def test_122_scheduler_uses_current_reusable_task_name_authority() -> None:
     # but the operator-facing task name must always follow the current reusable
     # Catalog name. Season-only work still owns its annual name.
     assert "WHEN st.task_origin = 'REUSABLE'" in repo
+    assert "current_session.session_status IN ('PLANNING','ACTIVE')" in repo
     assert "THEN coalesce(rt.task_name, st.annual_task_name)" in repo
     assert "THEN coalesce(rt_assignment.task_name, st.annual_task_name)" in repo
+    assert "JOIN ops.setup_session current_session" in repo
     assert "LEFT JOIN ref.setup_task rt_assignment" in repo
     assert "WHEN pst.task_origin = 'REUSABLE'" in repo
     assert "THEN coalesce(prt.task_name, pst.annual_task_name)" in repo
