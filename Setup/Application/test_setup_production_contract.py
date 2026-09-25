@@ -295,7 +295,8 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     schedule_route = production.split("if (view === 'schedule') {", 1)[1].split(
         "} else if (view === 'perform'", 1
     )[0]
-    assert "loadNextSchedule" not in schedule_route
+    assert "else if (typeof loadNextSchedule === 'function')" not in schedule_route
+    assert "await loadNextSchedule();" not in schedule_route
     assert "if (!appState.access?.can_read_setup)" in production
     assert "msbSetupHasDirtyEdits" in production
     assert "setupPopstateUndo" in production
