@@ -242,12 +242,25 @@ function installSetupHowItWorks() {
   const tabs = document.querySelector('.tabs');
   if (!tabs || document.getElementById('help-view')) return;
 
+  const pickListButton = document.createElement('button');
+  pickListButton.id = 'setup-pick-list-link';
+  pickListButton.className = 'tab';
+  pickListButton.type = 'button';
+  pickListButton.textContent = 'Pick List';
+  pickListButton.addEventListener('click', () => {
+    const query = appState.seasonYear == null
+      ? ''
+      : '?season_year=' + encodeURIComponent(appState.seasonYear);
+    window.location.href = 'pick-list/' + query;
+  });
+
   const helpButton = document.createElement('button');
   helpButton.className = 'tab';
   helpButton.dataset.view = 'help';
   helpButton.type = 'button';
   helpButton.textContent = 'How Setup Works';
   helpButton.addEventListener('click', () => showView('help'));
+  tabs.appendChild(pickListButton);
   tabs.appendChild(helpButton);
 
   const helpView = document.createElement('section');
