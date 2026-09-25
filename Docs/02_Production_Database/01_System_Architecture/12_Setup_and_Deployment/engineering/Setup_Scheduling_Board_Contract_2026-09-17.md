@@ -622,19 +622,25 @@ A season-only task can become reusable only through a later explicit reusable-re
 
 ## Annual Task Snapshot
 
-An annual occurrence retains the planning fields used for that season rather than continuously dereferencing mutable reusable values.
+An annual occurrence retains the planning fields used for that season rather than continuously dereferencing every mutable reusable value.
 
-The annual snapshot includes the applicable task name, scope, task type, normal crew guidance, expected duration, completion point, readiness/weather guidance, and annual notes.
+**Task name is the exception for reusable-origin work.** A reusable task has one canonical current name in `ref.setup_task.task_name`. Every operator-facing annual/scheduler surface must show that current reusable name so the Catalog, Task Finder, scheduled assignment, prerequisite display, Work List, Report Work, and related downstream surfaces cannot drift into competing labels for the same `setup_task_id`.
 
-This enables a truthful comparison later:
+`ops.setup_session_task.annual_task_name` remains authoritative for **SEASON_ONLY** work. For reusable-origin annual rows it may remain stored as seed/provenance data, but it must not override the current reusable task name in operator presentation.
+
+The annual snapshot continues to preserve season planning values such as scope, task type, normal crew guidance, expected duration, completion point, readiness/weather guidance, and annual notes.
+
+This enables a truthful comparison later without creating two names for one reusable task:
 
 ```text
-what reusable knowledge said when the season was planned
-vs.
-what the annual season actually used
+current reusable task identity/name
++
+what annual planning guidance was used
 vs.
 what happened in the field
 ```
+
+A reusable rename is therefore a durable identity-label correction, not an annual planning override. The scheduler does not provide a separate reusable-name editor; Managers rename reusable work through the Reusable Task Catalog / governed reusable-task edit path, and the corrected name must appear on refresh everywhere that reusable task is referenced.
 
 The reusable Catalog remains separately editable under its normal Manager authority.
 
