@@ -382,6 +382,10 @@
   opacity: 0.82;
 }
 
+.setup-board205-day.cancelled-day .setup-board205-day-header {
+  border-style: dashed;
+}
+
 .setup-board205-day-header strong {
   font-size: 1.05rem;
 }
