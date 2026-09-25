@@ -131,6 +131,27 @@ def test_small_or_unadvertised_setup_json_is_not_forced_to_gzip() -> None:
     assert "Content-Encoding" not in unchanged.headers
 
 
+def test_122_setup_startup_waits_for_full_script_graph_and_uses_real_theme_logo() -> None:
+    html = (APP_DIR / "production.html").read_text(encoding="utf-8")
+    production = (APP_DIR / "setup_production.js").read_text(encoding="utf-8")
+    theme = (APP_DIR / "setup_theme.js").read_text(encoding="utf-8")
+    theme_css = (APP_DIR / "setup_theme.css").read_text(encoding="utf-8")
+    base_css = (APP_DIR / "setup.css").read_text(encoding="utf-8")
+
+    assert '<body class="setup-booting" aria-busy="true">' in html
+    assert 'id="screen-logo"' in html
+    assert "window.addEventListener('DOMContentLoaded'" in production
+    assert "void initialize();" in production
+    assert "document.body.classList.remove('setup-booting')" in production
+    assert "document.body.setAttribute('aria-busy', 'false')" in production
+    assert "initialize();\n" not in production.split("window.addEventListener('DOMContentLoaded'", 1)[0][-50:]
+    assert "msb-white-logo-600-plain.svg" in theme
+    assert "msb-blue-logo-600-plain.svg" in theme
+    assert "setupSyncThemeLogo()" in theme
+    assert "filter: brightness" not in theme_css
+    assert "body.setup-booting main" in base_css
+
+
 def test_production_runtime_declares_gunicorn() -> None:
     requirements = (APP_DIR / "requirements.txt").read_text(encoding="utf-8")
     assert "gunicorn>=26,<27" in requirements
@@ -307,7 +328,7 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "navigateSetupView(button.dataset.view)" in production
     assert "navigateSetupView('schedule')" in next_pass
     assert "navigateSetupView('perform')" in next_pass
-    assert "setup_production.js?v=2026-09-24.7" in html
+    assert "setup_production.js?v=2026-09-24.8" in html
     assert "setup_next_pass.js?v=2026-09-24.1" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.10" in html
+    assert "setup_scheduling_board.js?v=2026-09-24.11" in html
 
