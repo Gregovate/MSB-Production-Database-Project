@@ -94,6 +94,11 @@ def test_122_real_planning_season_hides_historical_verification_surface() -> Non
     assert "const historical = currentSeasonRecord()?.session_status === 'HISTORICAL_VERIFICATION';" in production
     assert "if (!historical && currentSetupViewName() === 'review')" in production
     assert "showView(el('schedule-view') ? 'schedule' : 'library');" in production
+    assert "reviewView.classList.toggle('reusable-detail-mode', !historical)" in production
+    assert "reviewListCard.hidden = !historical" in production
+    assert "annualFieldset.hidden = !historical" in production
+    assert "verificationPill.hidden = !historical" in production
+    assert "setup_production.css?v=2026-09-25.2" in html
     show_view = production.split("function showView(name)", 1)[1].split(
         "function currentSetupViewName()", 1
     )[0]
@@ -348,7 +353,7 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert 'id="add-task-form" class="add-task-form manager-only" hidden' not in html
     assert "setReusableAddTaskFormOpen(true)" in acceptance
     assert "setReusableAddTaskFormOpen(false)" in acceptance
-    assert "setup_production.js?v=2026-09-25.3" in html
+    assert "setup_production.js?v=2026-09-25.4" in html
     assert "setup_next_pass.js?v=2026-09-25.2" in html
     assert "setup_scheduling_board.js?v=2026-09-25.4" in html
 
