@@ -11,7 +11,8 @@ const setupBoard205State = {
   scheduleTarget: null,
   finderCompact: null,
   workDaySelection: new Set(),
-  workDayCalendarMonth: null
+  workDayCalendarMonth: null,
+  workDayPickerExpanded: false
 };
 
 const SETUP_BOARD205_TYPICAL_AM_MINUTES = 180;
@@ -243,7 +244,20 @@ function board205CalendarMonthStart() {
   return new Date(month + '-01T00:00:00Z');
 }
 
+function board205ApplyWorkDayPickerExpanded() {
+  const form = document.getElementById('setup-board205-day-form');
+  const body = document.getElementById('setup-board205-work-day-picker-body');
+  const toggle = document.getElementById('setup-board205-toggle-work-days');
+  if (!form || !body || !toggle) return;
+  const expanded = Boolean(setupBoard205State.workDayPickerExpanded);
+  form.classList.toggle('expanded', expanded);
+  body.hidden = !expanded;
+  toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  toggle.textContent = expanded ? 'Hide Work Day Calendar' : '+ Add Work Days';
+}
+
 function board205RenderWorkDayCalendar() {
+  board205ApplyWorkDayPickerExpanded();
   const target = document.getElementById('setup-board205-work-day-calendar');
   const summary = document.getElementById('setup-board205-work-day-selection');
   const submit = document.getElementById('setup-board205-add-work-days');
@@ -1864,6 +1878,7 @@ async function board205AddWorkDay(event) {
     }
     setupBoard205State.workDaySelection.clear();
     form.reset();
+    setupBoard205State.workDayPickerExpanded = false;
     const showEmptyDays = document.getElementById('setup-board205-show-empty-days');
     if (showEmptyDays) showEmptyDays.checked = true;
     await board205Load();
@@ -2345,16 +2360,23 @@ function board205InstallView() {
               </div>
             </div>
             <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
-              <div class="setup-board205-work-day-picker">
+              <div class="setup-board205-work-day-collapsed">
+                <button id="setup-board205-toggle-work-days" type="button" class="small secondary" aria-expanded="false">+ Add Work Days</button>
+                <span class="setup-board205-auto-day-note">Open only when you need to add dates.</span>
+              </div>
+              <div id="setup-board205-work-day-picker-body" class="setup-board205-work-day-picker" hidden>
                 <div class="setup-board205-work-day-picker-copy">
                   <strong>Add Work Days</strong>
                   <span class="setup-board205-auto-day-note">Tap dates to select or deselect them. Existing Work Days are disabled. Setup Day # is assigned automatically in chronological order.</span>
                 </div>
                 <div id="setup-board205-work-day-calendar" class="setup-board205-work-day-calendar" aria-label="Select Work Day dates"></div>
                 <div id="setup-board205-work-day-selection" class="muted" aria-live="polite"></div>
+                <label class="setup-board205-volunteer-note">Volunteer / capacity note<input id="setup-board205-volunteer-note" type="text" placeholder="Optional; applied to all selected dates"></label>
+                <div class="setup-board205-work-day-actions">
+                  <button id="setup-board205-add-work-days" type="submit" disabled>Add Selected Work Days</button>
+                  <button id="setup-board205-cancel-work-days" type="button" class="secondary">Cancel</button>
+                </div>
               </div>
-              <label class="setup-board205-volunteer-note">Volunteer / capacity note<input id="setup-board205-volunteer-note" type="text" placeholder="Optional; applied to all selected dates"></label>
-              <button id="setup-board205-add-work-days" type="submit" disabled>Add Selected Work Days</button>
             </form>
           </section>
 
@@ -2489,6 +2511,16 @@ function board205InstallView() {
     if (control.type === 'search' || control.type === 'number') board205RenderQueue();
   });
   document.getElementById('setup-board205-day-form').addEventListener('submit', board205AddWorkDay);
+  document.getElementById('setup-board205-toggle-work-days')?.addEventListener('click', () => {
+    setupBoard205State.workDayPickerExpanded = !setupBoard205State.workDayPickerExpanded;
+    board205ApplyWorkDayPickerExpanded();
+  });
+  document.getElementById('setup-board205-cancel-work-days')?.addEventListener('click', () => {
+    setupBoard205State.workDaySelection.clear();
+    document.getElementById('setup-board205-day-form')?.reset();
+    setupBoard205State.workDayPickerExpanded = false;
+    board205RenderWorkDayCalendar();
+  });
   document.querySelectorAll('.setup-board205-day-filters input').forEach((control) => {
     control.addEventListener('change', board205RenderBoard);
   });
