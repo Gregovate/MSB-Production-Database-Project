@@ -176,6 +176,54 @@ class SetupMaterialReadinessRepository:
         return tasks, dict(downstream)
 
 
+
+    def _material_bearing_session_task_ids(
+        self, setup_session_id: int
+    ) -> set[int]:
+        """Return annual tasks with real reusable material authority."""
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT st.setup_session_task_id
+                FROM ops.setup_session_task AS st
+                JOIN ref.setup_task AS t ON t.setup_task_id = st.setup_task_id
+                WHERE st.setup_session_id = %s
+                  AND st.included_flag
+                  AND (
+                      EXISTS (
+                          SELECT 1
+                          FROM ref.setup_task_display AS td
+                          WHERE td.setup_task_id = t.setup_task_id
+                      )
+                      OR (
+                          t.lor_scene_id IS NOT NULL
+                          AND EXISTS (
+                              SELECT 1
+                              FROM ref.lor_scene_display AS lsd
+                              WHERE lsd.lor_scene_id = t.lor_scene_id
+                          )
+                      )
+                      OR EXISTS (
+                          SELECT 1
+                          FROM ref.setup_task_container_support AS tc
+                          WHERE tc.setup_task_id = t.setup_task_id
+                      )
+                      OR EXISTS (
+                          SELECT 1
+                          FROM ref.setup_task_extra_material AS tm
+                          JOIN ref.setup_extra_material AS m
+                            ON m.setup_extra_material_id = tm.setup_extra_material_id
+                          WHERE tm.setup_task_id = t.setup_task_id
+                            AND tm.active_flag
+                            AND m.active_flag
+                      )
+                  )
+                """,
+                (setup_session_id,),
+            )
+            return {int(row["setup_session_task_id"]) for row in cur.fetchall()}
+
+
     def _extra_material_rows(self, task_ids: list[int], season_year: int) -> list[dict[str, Any]]:
         if not task_ids:
             return []
@@ -374,36 +422,11 @@ class SetupMaterialReadinessRepository:
         tasks_by_session_id, downstream_by_prerequisite = self._annual_demand_graph(
             setup_session_id
         )
-        all_reusable_task_ids = sorted({
-            int(row["setup_task_id"])
-            for row in tasks_by_session_id.values()
-            if row.get("setup_task_id") is not None
-        })
-        extra_by_task: dict[int, list[dict[str, Any]]] = defaultdict(list)
-        for row in self._extra_material_rows(all_reusable_task_ids, season_year):
-            extra_by_task[int(row["setup_task_id"])].append(row)
-
-        next_repo = SetupNextRepository(self.dsn)
-        context_by_task: dict[int, dict[str, Any]] = {}
-        for task_id in all_reusable_task_ids:
-            try:
-                context_by_task[task_id] = next_repo.field_context(
-                    task_id=task_id, season_year=season_year
-                )
-            except SetupNextRepositoryError as exc:
-                raise SetupMaterialReadinessRepositoryError(str(exc)) from exc
-
-        for task in tasks_by_session_id.values():
-            task_id = task.get("setup_task_id")
-            context = context_by_task.get(int(task_id)) if task_id is not None else None
-            task["material_bearing"] = bool(
-                context
-                and (
-                    context.get("displays")
-                    or context.get("support_containers")
-                    or extra_by_task.get(int(task_id))
-                )
-            )
+        material_bearing_session_ids = self._material_bearing_session_task_ids(
+            setup_session_id
+        )
+        for session_task_id, task in tasks_by_session_id.items():
+            task["material_bearing"] = session_task_id in material_bearing_session_ids
 
         demand_assignments: list[dict[str, Any]] = []
         for assignment in assignments:
@@ -446,6 +469,25 @@ class SetupMaterialReadinessRepository:
                     "scheduled_trigger_task_name": assignment.get("task_name"),
                 })
                 demand_assignments.append(expanded)
+
+        demand_task_ids = sorted({
+            int(row["setup_task_id"])
+            for row in demand_assignments
+            if row.get("setup_task_id") is not None
+        })
+        extra_by_task: dict[int, list[dict[str, Any]]] = defaultdict(list)
+        for row in self._extra_material_rows(demand_task_ids, season_year):
+            extra_by_task[int(row["setup_task_id"])].append(row)
+
+        next_repo = SetupNextRepository(self.dsn)
+        context_by_task: dict[int, dict[str, Any]] = {}
+        for task_id in demand_task_ids:
+            try:
+                context_by_task[task_id] = next_repo.field_context(
+                    task_id=task_id, season_year=season_year
+                )
+            except SetupNextRepositoryError as exc:
+                raise SetupMaterialReadinessRepositoryError(str(exc)) from exc
 
         demand_rows: list[dict[str, Any]] = []
         unresolved: list[dict[str, Any]] = []
