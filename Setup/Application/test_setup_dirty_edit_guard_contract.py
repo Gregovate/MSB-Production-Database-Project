@@ -89,8 +89,8 @@ def test_reusable_save_preserves_pending_annual_fields_across_reload():
 
 def test_client_build_is_visible_and_write_paths_fail_closed_on_mismatch():
     js = guard_source()
-    assert "V0.3.17-performance-trace" in js
-    assert "Client V0.3.17" in js
+    assert "V0.3.18-scheduling-board" in js
+    assert "Client V0.3.18" in js
     assert "setup-client-build-badge" in js
     assert "window.msbSetupClientBuild = CLIENT_BUILD" in js
     assert "async function ensureServerBuild()" in js
