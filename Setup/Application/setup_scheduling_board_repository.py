@@ -162,7 +162,11 @@ class SetupSchedulingBoardRepository:
                     st.actual_duration_minutes,
                     st.completion_note,
                     st.completed_by_person_id,
-                    st.annual_task_name AS task_name,
+                    CASE
+                        WHEN st.task_origin = 'REUSABLE'
+                            THEN coalesce(rt.task_name, st.annual_task_name)
+                        ELSE st.annual_task_name
+                    END AS task_name,
                     st.annual_task_action_type AS task_action_type,
                     st.annual_stage_id AS stage_id,
                     s.stage_key,
@@ -497,7 +501,11 @@ class SetupSchedulingBoardRepository:
                     wdt.notes,
                     st.task_origin,
                     st.setup_task_id,
-                    st.annual_task_name AS task_name,
+                    CASE
+                        WHEN st.task_origin = 'REUSABLE'
+                            THEN coalesce(rt_assignment.task_name, st.annual_task_name)
+                        ELSE st.annual_task_name
+                    END AS task_name,
                     st.annual_task_action_type AS task_action_type,
                     st.annual_stage_id AS stage_id,
                     s.stage_key,
@@ -536,6 +544,8 @@ class SetupSchedulingBoardRepository:
                   ON st.setup_session_task_id = wdt.setup_session_task_id
                 LEFT JOIN ops.setup_work_day_crew c
                   ON c.setup_work_day_crew_id = wdt.setup_work_day_crew_id
+                LEFT JOIN ref.setup_task rt_assignment
+                  ON rt_assignment.setup_task_id = st.setup_task_id
                 LEFT JOIN ref.stage s
                   ON s.stage_id = st.annual_stage_id
                 LEFT JOIN ref.lor_scene ls
@@ -599,7 +609,11 @@ class SetupSchedulingBoardRepository:
                         ad.dependency_origin,
                         ad.dependency_note,
                         ad.sort_order,
-                        pst.annual_task_name AS prerequisite_task_name,
+                        CASE
+                            WHEN pst.task_origin = 'REUSABLE'
+                                THEN coalesce(prt.task_name, pst.annual_task_name)
+                            ELSE pst.annual_task_name
+                        END AS prerequisite_task_name,
                         pst.task_origin AS prerequisite_task_origin,
                         pst.execution_status AS prerequisite_execution_status,
                         pst.linked_work_order_id AS prerequisite_work_order_id,
@@ -616,6 +630,8 @@ class SetupSchedulingBoardRepository:
                       ON st.setup_session_task_id = ad.setup_session_task_id
                     JOIN ops.setup_session_task pst
                       ON pst.setup_session_task_id = ad.prerequisite_setup_session_task_id
+                    LEFT JOIN ref.setup_task prt
+                      ON prt.setup_task_id = pst.setup_task_id
                     LEFT JOIN ops.setup_scheduling_work_order_gate pwo
                       ON pwo.work_order_id = pst.linked_work_order_id
                     WHERE st.setup_session_id = %s
