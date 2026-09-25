@@ -80,7 +80,7 @@ def test_206_pick_list_surface_is_read_only_and_schedule_driven() -> None:
     html = read("pick_list.html")
     ui = read("setup_pick_list.js")
     css = read("setup_pick_list.css")
-    scheduling_ui = read("setup_scheduling_board.js")
+    navigation_ui = read("setup_review_usability.js")
 
     assert '@app.get("/pick-list")' in backend
     assert "setup_pick_list.css" in backend
@@ -94,8 +94,9 @@ def test_206_pick_list_surface_is_read_only_and_schedule_driven() -> None:
     assert "method: 'POST'" not in ui
     assert "method: 'PATCH'" not in ui
     assert "method: 'DELETE'" not in ui
-    assert 'id="setup-board205-pick-list"' in scheduling_ui
-    assert "pick-list/" in scheduling_ui
+    assert "setup-pick-list-link" in navigation_ui
+    assert "pick-list/" in navigation_ui
+    assert navigation_ui.index("Pick List") < navigation_ui.index("How Setup Works")
 
 
 
