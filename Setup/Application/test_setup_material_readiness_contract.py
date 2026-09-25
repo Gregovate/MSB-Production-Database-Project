@@ -172,3 +172,15 @@ def test_pick_list_separates_physical_rows_and_emphasizes_home_location() -> Non
     assert "border-spacing:0 .75rem" in css
     assert "border-top:2px solid" in css
     assert "border-left:2px solid" in css
+
+
+
+def test_pick_list_defaults_to_physical_rack_walk_order() -> None:
+    ui = read("setup_pick_list.js")
+    assert "function rackLocationParts(locationCode)" in ui
+    assert "function compareHomeLocations(a, b)" in ui
+    assert ".sort(compareHomeLocations)" in ui
+    assert "left.row.localeCompare" in ui
+    assert "left.column - right.column" in ui
+    assert "left.level.localeCompare" in ui
+    assert "left.slot - right.slot" in ui
