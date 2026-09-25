@@ -47,6 +47,8 @@ def test_live_review_restores_task_and_stage_search() -> None:
     assert "renderLibraryWithLiveSearch" in js
     assert "applyActiveSearch" in js
     assert "taskMap = new Map" in js
+    assert "search.hidden = view === 'schedule'" in js
+    assert "showViewWithSearchVisibility" in js
     for field in ("task_name", "stage_key", "stage_name", "scene_name", "task_action_type"):
         assert field in js
 
