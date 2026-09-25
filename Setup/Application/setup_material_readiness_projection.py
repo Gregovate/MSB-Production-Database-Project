@@ -18,18 +18,33 @@ def downstream_material_frontier(
 ) -> list[dict[str, Any]]:
     """Return the bounded downstream material-demand frontier for scheduled work.
 
-    Traverse annual prerequisite edges through non-material precursor work.
-    Material-bearing descendants are demand targets. Traversal may continue
+    Traverse annual prerequisite edges only when the scheduled trigger itself
+    is non-material precursor work. Material-bearing descendants in the immediate
+    downstream material wave become early demand targets. Traversal may continue
     through contiguous material-bearing descendants, but it does not cross from
-    a material-bearing task into a later non-material phase. This exposes the
-    whole immediate material wave without turning one early schedule assignment
-    into unbounded demand for the rest of a dependency chain.
+    a material-bearing task into a later non-material phase.
+
+    If the scheduled trigger itself is material-bearing, no downstream expansion
+    occurs; its direct material demand is already visible through the normal
+    resolver.
 
     COMPLETE and DEFERRED descendants do not create demand. COMPLETE nodes may
     still be traversed when they are non-material prerequisites; DEFERRED nodes
     stop their branch.
     """
     start_id = int(start_session_task_id)
+    start_task = tasks_by_session_id.get(start_id)
+    if start_task is None:
+        return []
+
+    # If the scheduled task already owns physical material, its own direct
+    # demand is sufficient. Early downstream expansion exists only to bridge
+    # non-material precursors (for example Locate/Layout) to the first
+    # material wave that must be visible before those downstream tasks can be
+    # scheduled.
+    if bool(start_task.get("material_bearing")):
+        return []
+
     queue: list[tuple[int, bool]] = [(start_id, False)]
     visited: set[tuple[int, bool]] = set()
     found: dict[int, dict[str, Any]] = {}
