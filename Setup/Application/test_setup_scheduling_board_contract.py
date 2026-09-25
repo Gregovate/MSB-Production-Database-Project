@@ -512,6 +512,8 @@ def test_205_scheduling_board_javascript_has_no_stray_async_prefixes() -> None:
     ui = read_app("setup_scheduling_board.js")
     assert "\nasync \nasync function " not in ui
     assert "board205InstallView();" in ui
+    assert "document.getElementById('schedule-view')?.classList.contains('active-view')" in ui
+    assert "void board205Load();" in ui
     assert "Setup Scheduling Board" in ui
 
 
@@ -523,7 +525,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
     assert "setup_scheduling_board.css?v=2026-09-24.6" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.9" in html
+    assert "setup_scheduling_board.js?v=2026-09-24.10" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
