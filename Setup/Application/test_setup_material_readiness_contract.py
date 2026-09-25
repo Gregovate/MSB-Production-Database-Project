@@ -116,3 +116,20 @@ def test_early_demand_uses_annual_prerequisites_without_scheduling_mutation() ->
         "UPDATE ops.setup_session_task",
     ):
         assert forbidden not in repo
+
+
+
+def test_live_pick_list_surface_prioritizes_outstanding_physical_picks() -> None:
+    html = read("pick_list.html")
+    ui = read("setup_pick_list.js")
+    assert "Live 2026 Setup" in html
+    assert "Rolling Pick List" in html
+    assert 'id="pick-status-filter"' in html
+    assert "Outstanding picks" in html
+    assert "A workshop scan records that an item was actually picked/moved" in html
+    assert "function itemMoved(item)" in ui
+    assert "last_movement_event_id" in ui
+    assert "<strong>Home:</strong>" in ui
+    assert "<strong>Destination:</strong>" in ui
+    assert "Destination not resolved from scheduled work" in ui
+    assert "Not yet scanned / moved in this Setup Session" in ui
