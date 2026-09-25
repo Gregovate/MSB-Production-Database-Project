@@ -275,23 +275,23 @@
 }
 
 .setup-board205-board-heading {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.setup-board205-board-title-row {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  align-items: end;
   gap: 0.75rem;
 }
 
 .setup-board205-board-heading h3 {
-  margin-bottom: 0.25rem;
+  margin: 0;
 }
 
-.setup-board205-board-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.65rem;
+.setup-board205-board-heading p {
+  margin: 0;
 }
 
 .setup-board205-history-toggle {
