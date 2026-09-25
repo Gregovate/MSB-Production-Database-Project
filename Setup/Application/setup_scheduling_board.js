@@ -2369,3 +2369,6 @@ loadSeason = async function loadSeasonWithSchedulingBoard(year) {
 };
 
 board205InstallView();
+if (document.getElementById('schedule-view')?.classList.contains('active-view')) {
+  void board205Load();
+}
