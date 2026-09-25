@@ -169,6 +169,44 @@
     return {pickBy, neededFor};
   }
 
+  function rackLocationParts(locationCode) {
+    const code = String(locationCode || '').trim().toUpperCase();
+    const match = /^R([A-Z]+)(\d+)-([A-Z]+)(?:-(\d+))?$/.exec(code);
+    if (!match) {
+      return {
+        rack: false,
+        row: code || '\uffff',
+        column: Number.MAX_SAFE_INTEGER,
+        level: '\uffff',
+        slot: Number.MAX_SAFE_INTEGER,
+        raw: code
+      };
+    }
+    return {
+      rack: true,
+      row: match[1],
+      column: Number(match[2]),
+      level: match[3],
+      slot: match[4] == null ? Number.MAX_SAFE_INTEGER : Number(match[4]),
+      raw: code
+    };
+  }
+
+  function compareHomeLocations(a, b) {
+    const left = rackLocationParts(a.home_location_code);
+    const right = rackLocationParts(b.home_location_code);
+    if (left.rack !== right.rack) return left.rack ? -1 : 1;
+    const rowCompare = left.row.localeCompare(right.row, undefined, {numeric: true});
+    if (rowCompare) return rowCompare;
+    if (left.column !== right.column) return left.column - right.column;
+    const levelCompare = left.level.localeCompare(right.level, undefined, {numeric: true});
+    if (levelCompare) return levelCompare;
+    if (left.slot !== right.slot) return left.slot - right.slot;
+    const rawCompare = left.raw.localeCompare(right.raw, undefined, {numeric: true});
+    if (rawCompare) return rawCompare;
+    return Number(a.physical_id || 0) - Number(b.physical_id || 0);
+  }
+
   function renderItems(date) {
     const status = pickStatusFilter?.value || 'ALL';
     const items = (readiness?.physical_items || []).filter((item) => {
@@ -176,7 +214,7 @@
       if (status === 'OUTSTANDING') return !itemMoved(item);
       if (status === 'MOVED') return itemMoved(item);
       return true;
-    });
+    }).sort(compareHomeLocations);
 
     if (!items.length) {
       pickList.innerHTML = '<div class="empty">No physical demand resolves from the selected scheduled work.</div>';
