@@ -186,14 +186,13 @@ def test_direct_material_schedule_does_not_cross_later_non_material_phase():
     assert downstream_material_frontier(1, tasks, {1: [2], 2: [3]}) == []
 
 
-def test_direct_material_schedule_keeps_contiguous_material_wave_visible():
+def test_direct_material_schedule_does_not_expand_to_later_material_tasks():
     tasks = {
-        1: demand_task(1, material=True, order=1),
-        2: demand_task(2, material=True, order=2),
-        3: demand_task(3, material=True, order=3),
+        1: demand_task(1, material=True, order=1),   # Setup Mt Crumpit Scaffold
+        2: demand_task(2, material=True, order=2),   # Setup Mt Crumpit Panels
+        3: demand_task(3, material=True, order=3),   # Setup Who House & Who People
     }
-    found = downstream_material_frontier(1, tasks, {1: [2], 2: [3]})
-    assert [task["setup_session_task_id"] for task in found] == [2, 3]
+    assert downstream_material_frontier(1, tasks, {1: [2], 2: [3]}) == []
 
 
 def test_complete_material_target_is_not_demand_but_wave_remains_bounded():
