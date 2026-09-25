@@ -2392,7 +2392,7 @@ function board205InstallView() {
                 <strong>Day view</strong>
                 <label><input id="setup-board205-show-unfinished-days" type="checkbox" checked> Scheduled / unfinished</label>
                 <label><input id="setup-board205-show-completed-days" type="checkbox"> Completed / cancelled</label>
-                <label><input id="setup-board205-show-empty-days" type="checkbox"> Empty days</label>
+                <label><input id="setup-board205-show-empty-days" type="checkbox" checked> Empty days</label>
               </div>
             </div>
             <div id="setup-board205-days" class="setup-board205-days"></div>
