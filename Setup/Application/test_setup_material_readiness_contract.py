@@ -159,3 +159,16 @@ def test_later_demand_reports_existing_pick_state_without_error() -> None:
     assert "currentLocationText(item)" in ui
     assert "Current location not resolved" in ui
     assert ">NEEDS PICK<" in ui
+
+
+
+def test_pick_list_separates_physical_rows_and_emphasizes_home_location() -> None:
+    ui = read("setup_pick_list.js")
+    css = read("setup_pick_list.css")
+    assert 'class="home-location-code"' in ui
+    assert "LOC:" in ui
+    assert "font-size:1.45rem" in css
+    assert "font-weight:900" in css
+    assert "border-spacing:0 .75rem" in css
+    assert "border-top:2px solid" in css
+    assert "border-left:2px solid" in css
