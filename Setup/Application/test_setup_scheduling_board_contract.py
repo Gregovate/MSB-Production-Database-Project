@@ -441,7 +441,9 @@ def test_205_scheduler_panes_scroll_independently_with_drag_edge_autoscroll() ->
     assert ".setup-board205-backlog," in css
     assert ".setup-board205-board {" in css
     assert "overflow-y: auto" in css
-    assert "max-height: calc(100vh - 10.5rem)" in css
+    assert "height: calc(100vh - 7.25rem)" in css
+    assert "grid-template-columns: minmax(22rem, 0.95fr) minmax(34rem, 1.55fr)" in css
+    assert "margin: 0.2rem 0 0.55rem" in css
     assert "overflow-y: visible" in css
 
 
@@ -528,7 +530,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-24.8" in html
+    assert "setup_scheduling_board.css?v=2026-09-24.9" in html
     assert "setup_scheduling_board.js?v=2026-09-24.13" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
