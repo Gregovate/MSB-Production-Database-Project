@@ -315,6 +315,29 @@
   margin: 0;
 }
 
+.setup-board205-day-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.8rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.5rem;
+  background: var(--soft, #f5f8fb);
+  font-size: 0.82rem;
+}
+
+.setup-board205-day-filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+}
+
+.setup-board205-day-filters input {
+  min-height: auto;
+}
+
 .setup-board205-history-toggle {
   display: inline-flex;
   align-items: center;
@@ -345,6 +368,18 @@
   padding: 0.8rem 0.95rem;
   background: var(--soft, #f5f8fb);
   border-bottom: 1px solid var(--border, #d9e0e8);
+}
+
+.setup-board205-day.day-band-odd .setup-board205-day-header {
+  background: color-mix(in srgb, var(--accent, #0b6ea8) 7%, var(--panel, #fff));
+}
+
+.setup-board205-day.day-band-even .setup-board205-day-header {
+  background: color-mix(in srgb, var(--accent, #0b6ea8) 14%, var(--panel, #fff));
+}
+
+.setup-board205-day.completed-day .setup-board205-day-header {
+  opacity: 0.82;
 }
 
 .setup-board205-day-header strong {
@@ -736,7 +771,7 @@
   #schedule-view dialog,
   #schedule-view .setup-board205-backlog,
   #schedule-view .setup-board205-day-form,
-  #schedule-view .setup-board205-history-toggle,
+  #schedule-view .setup-board205-day-filters,
   #schedule-view .setup-board205-board-heading p,
   #schedule-view button,
   #schedule-view .setup-board205-cell-empty {
