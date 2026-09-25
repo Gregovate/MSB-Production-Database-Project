@@ -2193,14 +2193,12 @@ function board205InstallView() {
         <section id="setup-board205-board-pane" class="card setup-board205-board">
           <div class="eyebrow">Setup Day Number · DOW · Date</div>
           <div class="setup-board205-board-heading">
-            <div>
+            <div class="setup-board205-board-title-row">
               <h3>Rolling Work Days</h3>
-              <p class="muted">Each work day starts with Crew A. Add crews only when needed. Schedule in AM/PM shifts; planned headcount is optional by crew and shift. Historical actual assignments are locked.</p>
+              <button id="setup-board205-print" type="button" class="small">Print Schedule</button>
             </div>
-            <div class="setup-board205-board-actions">
-              <label class="setup-board205-history-toggle"><input id="setup-board205-show-history" type="checkbox"> Show prior / completed work days</label>
-              <button id="setup-board205-print" type="button">Print Schedule</button>
-            </div>
+            <p class="muted">Each work day starts with Crew A. Add crews only when needed. Schedule in AM/PM shifts; planned headcount is optional by crew and shift. Historical actual assignments are locked.</p>
+            <label class="setup-board205-history-toggle"><input id="setup-board205-show-history" type="checkbox"> Show prior / completed work days</label>
           </div>
           <div id="setup-board205-days" class="setup-board205-days"></div>
         </section>
