@@ -92,10 +92,16 @@ def test_122_real_planning_season_hides_historical_verification_surface() -> Non
     assert "summary.hidden = !historical" in production
     assert "season.session_status !== 'HISTORICAL_VERIFICATION'" in production
     assert "name = el('schedule-view') ? 'schedule' : 'library';" in production
-    assert "const allowReusableDetail = Boolean(options.allowReusableDetail);" in production
-    assert "&& !allowReusableDetail" in production
-    assert "allowReusableDetail: view === 'review' && requested.taskId != null" in production
-    assert "showView('review', { allowReusableDetail: true });" in production
+    show_view = production.split("function showView(name)", 1)[1].split(
+        "function currentSetupViewName()", 1
+    )[0]
+    assert "session_status" not in show_view
+    assert "HISTORICAL_VERIFICATION" not in show_view
+    assert "showView(view);" in production
+    assert "showView('review');" in production
+    assert "showView('review');" in next_pass
+    assert "allowReusableDetail" not in production
+    assert "allowReusableDetail" not in next_pass
 
     chooser = production.split("function chooseInitialSeason()", 1)[1].split(
         "function consumePendingCorrection", 1
@@ -335,7 +341,7 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "function setReusableAddTaskFormOpen(open)" in production
     assert "setReusableAddTaskFormOpen(false);" in production
     assert "if (trigger) trigger.hidden = Boolean(open);" in production
-    assert "setup_production.js?v=2026-09-25.2" in html
-    assert "setup_next_pass.js?v=2026-09-25.1" in html
+    assert "setup_production.js?v=2026-09-25.3" in html
+    assert "setup_next_pass.js?v=2026-09-25.2" in html
     assert "setup_scheduling_board.js?v=2026-09-25.4" in html
 
