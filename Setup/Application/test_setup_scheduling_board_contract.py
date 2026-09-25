@@ -586,6 +586,7 @@ def test_205_scheduling_board_javascript_has_no_stray_async_prefixes() -> None:
 def test_205_production_host_registers_board_without_replacing_report_work() -> None:
     host = read_app("production_backend.py")
     html = read_app("production.html")
+    ui = read_app("setup_scheduling_board.js")
     assert "setup_scheduling_board_api" in host
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
