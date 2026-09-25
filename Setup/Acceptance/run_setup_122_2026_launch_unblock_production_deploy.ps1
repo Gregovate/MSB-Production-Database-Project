@@ -10,7 +10,7 @@ $ServerScript = Join-Path $ScriptDir 'setup_122_2026_launch_unblock_production_d
 
 $ExpectedBranch = 'main'
 $AcceptedTargetSha = '06a6536d92db5c7352beeed496563ed9bfdb7146'
-$AcceptedServerRunnerBlob = '8209a237a386c754309c8177321443e974e65e48'
+$AcceptedServerRunnerBlob = '144528c0d0df195ad2dd43cd352078926c055456'
 $Migration057Path = 'Setup/Database/057_enable_2026_unworked_task_deletion.sql'
 $Migration057Blob = '053570d192345caa5708ccc61f69674c17c25989'
 $Migration058Path = 'Setup/Database/058_preserve_catalog_review_on_annual_launch.sql'
