@@ -529,7 +529,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
     assert "setup_scheduling_board.css?v=2026-09-24.8" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.12" in html
+    assert "setup_scheduling_board.js?v=2026-09-24.13" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
@@ -621,12 +621,20 @@ def test_122_b1a_blocking_toggle_hides_only_hard_blockers() -> None:
 
 def test_122_b1a_plan_sort_uses_visible_reusable_step_order_inside_scope() -> None:
     ui = read_app("setup_scheduling_board.js")
+    repository = read_app("setup_scheduling_board_repository.py")
 
+    assert "rt.display_order," in repository
     assert "display_order: current.display_order" in ui
     assert "const stageFilter = document.getElementById('setup-board205-stage-filter')?.value || '';" in ui
-    assert "task.display_order ?? task.baseline_plan_order" in ui
-    assert "return stepOrder(a) - stepOrder(b)" in ui
-    assert "|| baselineOrder(a) - baselineOrder(b)" in ui
+    assert "const useReusableStepOrder = Boolean(stageFilter) && task.task_origin === 'REUSABLE';" in ui
+    assert "task.display_order ?? task.baseline_plan_order ?? task.planned_order" in ui
+    assert "const scopeCompare = (left, right) => {" in ui
+    assert "left.lor_scene_id == null ? 0 : 1" in ui
+    assert "textCompare(left.scene_name, right.scene_name)" in ui
+    assert "if (stageFilter) {" in ui
+    assert "return scopeCompare(a, b)" in ui
+    assert "|| stepOrder(a) - stepOrder(b)" in ui
+    assert "reusablePlanning && stageFilter" not in ui
 
 
 def test_122_b1a_finder_controls_rerender_through_delegated_events() -> None:
