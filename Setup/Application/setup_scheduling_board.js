@@ -394,6 +394,67 @@ function board205TaskDependencies(taskId) {
   );
 }
 
+function board205DownstreamMaterialTasks(task) {
+  if (!task?.setup_session_task_id || board205HistoricalReviewMode()) return [];
+
+  const tasksById = new Map(
+    (setupBoard205State.board.tasks || []).map((row) => [
+      Number(row.setup_session_task_id),
+      row
+    ])
+  );
+  const downstreamByPrerequisite = new Map();
+  for (const dep of setupBoard205State.board.dependencies || []) {
+    const prerequisiteId = Number(dep.prerequisite_setup_session_task_id || 0);
+    const downstreamId = Number(dep.setup_session_task_id || 0);
+    if (!prerequisiteId || !downstreamId) continue;
+    if (!downstreamByPrerequisite.has(prerequisiteId)) {
+      downstreamByPrerequisite.set(prerequisiteId, []);
+    }
+    downstreamByPrerequisite.get(prerequisiteId).push(downstreamId);
+  }
+
+  const found = new Map();
+  const visited = new Set([Number(task.setup_session_task_id)]);
+  const queue = [...(downstreamByPrerequisite.get(Number(task.setup_session_task_id)) || [])];
+
+  while (queue.length) {
+    const downstreamId = Number(queue.shift() || 0);
+    if (!downstreamId || visited.has(downstreamId)) continue;
+    visited.add(downstreamId);
+
+    const downstream = tasksById.get(downstreamId);
+    if (!downstream) continue;
+
+    if (downstream.requires_display_material && !downstream.effective_complete) {
+      found.set(downstreamId, downstream);
+      continue;
+    }
+
+    for (const nextId of downstreamByPrerequisite.get(downstreamId) || []) {
+      if (!visited.has(Number(nextId))) queue.push(Number(nextId));
+    }
+  }
+
+  return [...found.values()].sort((a, b) => (
+    Number(a.planned_order ?? a.baseline_plan_order ?? 999999)
+      - Number(b.planned_order ?? b.baseline_plan_order ?? 999999)
+    || Number(a.setup_session_task_id) - Number(b.setup_session_task_id)
+  ));
+}
+
+function board205MaterialLookahead(task) {
+  if (!task || task.requires_display_material || task.effective_complete) return [];
+  return board205DownstreamMaterialTasks(task);
+}
+
+function board205MaterialLookaheadMarkup(task) {
+  const downstream = board205MaterialLookahead(task);
+  if (!downstream.length) return '';
+  const names = downstream.map((row) => row.task_name).join('; ');
+  return `<div class="setup-board205-material-lookahead"><strong>Material lookahead:</strong> ${board205Esc(names)} · surface for picking now; downstream work is not scheduled or unblocked by this cue.</div>`;
+}
+
 function board205WorkOrderBadge(task) {
   if (!task?.linked_work_order_id) return '';
   const complete = Boolean(task.linked_work_order_completed_at);
@@ -916,7 +977,7 @@ function board205TaskCard(task) {
   const blockerDetails = board205BlockerDetails(task, deps);
 
   return `
-    <article class="setup-board205-task-card ${task.requires_display_material ? 'setup-material-task' : ''}"
+    <article class="setup-board205-task-card ${task.requires_display_material ? 'setup-material-task' : board205MaterialLookahead(task).length ? 'setup-material-lookahead-card' : ''}"
       data-session-task-id="${task.setup_session_task_id ?? ''}"
       data-reusable-task-id="${task.setup_task_id ?? ''}"
       draggable="${canSchedule ? 'true' : 'false'}">
@@ -938,6 +999,7 @@ function board205TaskCard(task) {
       </div>
       <div class="setup-board205-meta">${board205Esc(board205Scope(task))}</div>
       <div class="setup-board205-meta"><strong>Min crew:</strong> ${board205Esc(task.normal_crew_min ?? 'TBD')} · <strong>Expected:</strong> ${board205Esc(board205Duration(task.expected_duration_minutes))}</div>
+      ${board205MaterialLookaheadMarkup(task)}
       ${task.resource_summary ? `<div class="setup-board205-meta"><strong>Resources:</strong> ${board205Esc(task.resource_summary)}</div>` : ''}
       ${task.reusable_notes ? `<div class="setup-board205-meta setup-board205-reusable-notes"><strong>Reusable notes:</strong> ${board205Esc(task.reusable_notes)}</div>` : ''}
       ${canManage && task.task_origin === 'REUSABLE' ? `<div class="setup-board205-meta setup-board205-audit"><strong>Audit:</strong> ${board205Esc(board205AuditLine(task))}</div>` : ''}
@@ -1108,7 +1170,7 @@ function board205AssignmentCard(item) {
   const shortBy = understaffed ? minCrew - planned : 0;
   const heavyWarning = board205HeavyWarning(item);
   return `
-    <article class="setup-board205-assignment ${task.requires_display_material ? 'setup-material-task' : ''} ${locked ? 'locked' : ''} ${understaffed ? 'short-crew' : ''}"
+    <article class="setup-board205-assignment ${task.requires_display_material ? 'setup-material-task' : board205MaterialLookahead(task).length ? 'setup-material-lookahead-card' : ''} ${locked ? 'locked' : ''} ${understaffed ? 'short-crew' : ''}"
       data-assignment-id="${item.setup_work_day_task_id}"
       draggable="${canManage && !locked ? 'true' : 'false'}">
       <div class="setup-board205-task-title">
@@ -1121,6 +1183,7 @@ function board205AssignmentCard(item) {
       <div class="setup-board205-meta">${board205Esc(board205Scope(item))}</div>
       <div class="setup-board205-meta">Min crew ${board205Esc(minCrew ?? 'TBD')} · ${board205Esc(board205Duration(task.expected_duration_minutes))}</div>
       <div class="setup-board205-meta"><strong>Crew Captain:</strong> ${board205Esc(crew?.captain_display_name || 'TBD')}</div>
+      ${board205MaterialLookaheadMarkup(task)}
       ${task.readiness_state === 'NOT_READY' ? `<div class="setup-board205-warning">⚠ Readiness not met: ${board205Esc(task.readiness_note || 'annual readiness condition')}</div>` : ''}
       ${understaffed ? `<div class="setup-board205-warning setup-board205-short-crew-warning"><strong>SHORT CREW</strong> · Planned ${board205Esc(item.shift_code === 'MORNING' ? 'AM' : 'PM')} ${board205Esc(planned)} / minimum ${board205Esc(minCrew)} · short by ${board205Esc(shortBy)}.</div>` : ''}
       ${heavyWarning ? `<div class="setup-board205-warning">⚠ ${board205Esc(heavyWarning)}</div>` : ''}
