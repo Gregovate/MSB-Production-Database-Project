@@ -164,9 +164,26 @@ def test_122_plan_schedule_preserves_catalog_material_visual_cue() -> None:
     catalog = read_app("setup_catalog_effort.js")
 
     assert "coalesce(rt.requires_display_material, false) AS requires_display_material" in repo
-    assert "task.requires_display_material ? 'setup-material-task' : ''" in ui
+    assert "task.requires_display_material ? 'setup-material-task'" in ui
     assert ".setup-material-task {" in catalog
     assert "border-left: 5px solid #7657c7 !important;" in catalog
+
+
+def test_122_schedule_surfaces_first_downstream_material_demand() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "function board205DownstreamMaterialTasks(task)" in ui
+    assert "dep.prerequisite_setup_session_task_id" in ui
+    assert "downstream.requires_display_material && !downstream.effective_complete" in ui
+    assert "found.set(downstreamId, downstream);" in ui
+    assert "continue;" in ui
+    assert "function board205MaterialLookaheadMarkup(task)" in ui
+    assert "Material lookahead:" in ui
+    assert "surface for picking now; downstream work is not scheduled or unblocked by this cue." in ui
+    assert "setup-material-lookahead-card" in ui
+    assert ".setup-board205-material-lookahead-card" in css
+    assert "border-left: 5px dashed #7657c7" in css
 
 
 def test_205_board_uses_dynamic_crews_am_pm_and_accessible_move_controls() -> None:
@@ -554,8 +571,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-24.12" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.16" in html
+    assert "setup_scheduling_board.css?v=2026-09-24.13" in html
+    assert "setup_scheduling_board.js?v=2026-09-24.17" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
