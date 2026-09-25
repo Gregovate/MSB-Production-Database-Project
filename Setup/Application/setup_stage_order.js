@@ -78,7 +78,7 @@ function setupInstallStageOrderControls() {
 
   const performFilter = el('next-perform-filter');
   const performHeader = performFilter?.closest('.section-title');
-  if (performHeader && !el('next-perform-order-mode')) {
+  if (!setupNextState?.performAssignmentMode && performHeader && !el('next-perform-order-mode')) {
     const label = document.createElement('label');
     label.className = 'setup-stage-order-control';
     label.innerHTML = 'View order <select id="next-perform-order-mode"><option value="STAGE">Stage</option><option value="PLANNED">Planned order</option></select>';
@@ -158,6 +158,7 @@ function setupApplyPlanningStageView() {
 }
 
 function setupApplyPerformStageView() {
+  if (setupNextState?.performAssignmentMode) return;
   const target = el('next-perform-list');
   if (!target) return;
   target.querySelectorAll('.setup-stage-order-heading, .setup-stage-scope-heading').forEach((node) => node.remove());
