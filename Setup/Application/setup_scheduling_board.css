@@ -48,13 +48,14 @@
   display: grid;
   grid-template-columns: minmax(22rem, 0.95fr) minmax(34rem, 1.55fr);
   gap: 0.75rem;
-  align-items: start;
+  align-items: stretch;
+  height: calc(100vh - 6.25rem);
+  min-height: 38rem;
 }
 
 .setup-board205-backlog,
 .setup-board205-board {
   min-width: 0;
-  height: calc(100vh - 7.25rem);
   max-height: none;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -62,8 +63,26 @@
 }
 
 .setup-board205-backlog {
+  height: 100%;
+  padding-top: 0.6rem;
+}
+
+.setup-board205-right {
   min-width: 0;
-  padding-top: 0.75rem;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.setup-board205-planning-header {
+  min-width: 0;
+}
+
+.setup-board205-board {
+  min-height: 0;
+  height: auto;
 }
 
 .setup-board205-filters {
@@ -603,6 +622,14 @@
 @media (max-width: 1100px) {
   .setup-board205-main {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+  }
+
+  .setup-board205-right {
+    height: auto;
+    display: grid;
+    grid-template-rows: auto auto;
   }
 
   .setup-board205-backlog,
@@ -719,17 +746,19 @@
   #schedule-view,
   #setup-board205-root,
   #setup-board205-workspace,
+  #setup-board205-right,
   #setup-board205-board-pane {
     display: block !important;
     width: 100% !important;
     max-width: none !important;
+    height: auto !important;
   }
 
   #setup-board205-workspace {
     grid-template-columns: 1fr !important;
   }
 
-  #setup-board205-root > .card:first-child,
+  .setup-board205-planning-header,
   #setup-board205-board-pane,
   .setup-board205-day,
   .setup-board205-assignment {
