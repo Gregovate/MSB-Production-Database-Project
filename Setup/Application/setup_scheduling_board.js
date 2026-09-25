@@ -2356,6 +2356,7 @@ function board205InstallView() {
               </div>
               <div id="setup-board205-kpis" class="setup-board205-kpis" aria-live="polite"></div>
               <div class="setup-board205-toolbar-actions">
+                <button id="setup-board205-pick-list" type="button" class="secondary">Pick List</button>
                 <button id="setup-board205-add-season-task" type="button" class="manager-only">Add Task</button>
               </div>
             </div>
@@ -2528,6 +2529,12 @@ function board205InstallView() {
     pane.addEventListener('dragover', (event) => board205AutoScrollPane(pane, event), true);
   });
   document.getElementById('setup-board205-print')?.addEventListener('click', () => window.print());
+  document.getElementById('setup-board205-pick-list')?.addEventListener('click', () => {
+    const query = appState.seasonYear == null
+      ? ''
+      : '?season_year=' + encodeURIComponent(appState.seasonYear);
+    window.location.href = 'pick-list/' + query;
+  });
   document.getElementById('setup-board205-add-season-task').addEventListener('click', board205OpenAddTaskIntentDialog);
   document.getElementById('setup-board205-create-session')?.addEventListener('click', board205CreateAnnualSession);
   document.getElementById('setup-board205-add-reusable')?.addEventListener('click', () => { void board205ChooseReusableTask(); });

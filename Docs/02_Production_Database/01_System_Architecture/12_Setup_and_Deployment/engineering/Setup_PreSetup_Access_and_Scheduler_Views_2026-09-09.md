@@ -4,11 +4,13 @@
 |---|---|
 | Document Type | Engineering Planning-Workflow Contract |
 | System | Production Database — Setup Session |
-| Status | CURRENT DESIGN DIRECTION — operator-confirmed; not yet implemented |
+| Status | HISTORICAL DESIGN INPUT — superseded by the live 2026 Scheduling Board workflow |
 | Owner | MSB Production Database engineering |
 | Related Work | Issue #122; Setup Smart Scheduler Workflow; Setup Planning Operating Model; Setup Pick List Tablet Workflow |
 
 ## Purpose
+
+> **Current authority:** This document is retained as design/review history. For current annual scheduling behavior and acceptance state, use [Setup Scheduling Board Contract — 2026-09-17](Setup_Scheduling_Board_Contract_2026-09-17.md) and the [Setup engineering portal](README.md).
 
 Capture two operator-confirmed requirements exposed during the 2022/2025/current-catalog reconciliation:
 

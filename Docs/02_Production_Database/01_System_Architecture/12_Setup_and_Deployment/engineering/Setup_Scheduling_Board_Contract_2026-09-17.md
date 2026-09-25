@@ -4,10 +4,11 @@
 |---|---|
 | Document Type | Engineering Planning / Execution Contract |
 | System | Production Database — Setup Session |
-| Status | IMPLEMENTATION CANDIDATE — #205 disposable acceptance required |
+| Status | PRODUCTION ACCEPTED — real 2026 annual Session and Scheduling Board live |
 | Owner | MSB Production Database engineering |
-| Related Work | #122, #132, #145, #172, #175, #205 |
-| Candidate Branch | `agent/setup-205-scheduling-board` |
+| Last Reviewed | 2026-09-25 |
+| Related Work | #122, #132, #145 (complete), #172, #175, #205 |
+| Historical Implementation Branch | `agent/setup-205-scheduling-board` |
 
 ## Purpose
 
@@ -766,17 +767,23 @@ The proposal does not directly mutate reusable knowledge.
 
 Some older controlled Setup documents still contain the superseded Captain/Alternate-only work-report authorization wording. #132/#172/#175 implementation/closeout must reconcile those documents. #205 must preserve the data/context needed for the accepted Production Crew workflow and must not reintroduce the obsolete restriction.
 
-## Migration Boundary
+## Migration / Live Boundary
 
-Migration 050 is the #205 candidate foundation.
+Migration 050 was the #205 foundation and was intentionally incapable of creating the real 2026 Setup Session by itself. The historical #145 Catalog/seed gate was completed, the governed #122 launch path subsequently created the real 2026 Session, and Production scheduling is now live.
 
-The existing schedule tables currently have no accepted real 2026 operational schedule, so #205 can correct scheduling identity/constraints before the first real annual launch.
+Current authority:
 
-Migration 050 must nevertheless be safe against any existing historical/review rows and must not create the real 2026 Setup Session.
+```text
+Reusable Catalog = durable recurring knowledge
+2026 annual Session = current planning/execution state
+schedule assignment = planning intent
+reported work = execution history
+#206 = physical material-demand / Pick List authority
+```
 
-The real 2026 Session remains gated by #145 FINAL and the accepted disposable 2026 seed proof.
+Do not recreate the annual Session, restore pre-launch `2026 = absent` assumptions, or make schedule drag/drop mutate physical movement truth.
 
-## Acceptance Direction
+## Acceptance Direction / Preserved Contract
 
 Disposable acceptance must prove at minimum:
 
