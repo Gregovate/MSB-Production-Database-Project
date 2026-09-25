@@ -608,15 +608,6 @@ class SetupMaterialReadinessRepository:
                     "source_expected_quantity": extra.get("expected_quantity"),
                     "source_verification_state": extra.get("source_verification_state"),
                 })
-                if str(extra.get("source_verification_state") or "") != "VERIFIED":
-                    unresolved.append({
-                        **self._demand_base(assignment),
-                        "requirement_type": "EXTRA_MATERIAL_SOURCE_VERIFICATION",
-                        "extra_material_id": extra.get("setup_extra_material_id"),
-                        "extra_material_name": material_name,
-                        "container_id": container_id,
-                        "message": "Expected-source Container is not VERIFIED for Pick List use.",
-                    })
 
             seen_requirements: set[int] = set()
             for extra in extra_by_task.get(int(task_id), []):
@@ -633,14 +624,6 @@ class SetupMaterialReadinessRepository:
                         "quantity_required": extra.get("quantity_required"),
                         "quantity_uom": extra.get("quantity_uom"),
                         "message": "Required Extra Material has no active expected-source Container.",
-                    })
-                if str(extra.get("requirement_verification_state") or "") != "VERIFIED":
-                    unresolved.append({
-                        **self._demand_base(assignment),
-                        "requirement_type": "EXTRA_MATERIAL_VERIFICATION",
-                        "extra_material_id": extra.get("setup_extra_material_id"),
-                        "extra_material_name": extra.get("material_name"),
-                        "message": "Extra Material requirement is not VERIFIED for Pick List use.",
                     })
 
         physical_items = project_physical_demand(demand_rows)
