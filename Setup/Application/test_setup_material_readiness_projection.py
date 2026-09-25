@@ -174,3 +174,37 @@ def test_expanded_reason_preserves_scheduled_trigger_identity():
     assert reason["demand_origin"] == "DOWNSTREAM_FROM_SCHEDULE"
     assert reason["scheduled_trigger_task_name"] == "Locate Power & Network"
     assert reason["scheduled_trigger_setup_work_day_task_id"] == 71
+
+
+
+def test_direct_material_schedule_does_not_cross_later_non_material_phase():
+    tasks = {
+        1: demand_task(1, material=True, order=1),
+        2: demand_task(2, order=2),
+        3: demand_task(3, material=True, order=3),
+    }
+    assert downstream_material_frontier(1, tasks, {1: [2], 2: [3]}) == []
+
+
+def test_direct_material_schedule_keeps_contiguous_material_wave_visible():
+    tasks = {
+        1: demand_task(1, material=True, order=1),
+        2: demand_task(2, material=True, order=2),
+        3: demand_task(3, material=True, order=3),
+    }
+    found = downstream_material_frontier(1, tasks, {1: [2], 2: [3]})
+    assert [task["setup_session_task_id"] for task in found] == [2, 3]
+
+
+def test_complete_material_target_is_not_demand_but_wave_remains_bounded():
+    tasks = {
+        1: demand_task(1, order=1),
+        2: demand_task(2, material=True, status="COMPLETE", order=2),
+        3: demand_task(3, material=True, order=3),
+        4: demand_task(4, order=4),
+        5: demand_task(5, material=True, order=5),
+    }
+    found = downstream_material_frontier(
+        1, tasks, {1: [2], 2: [3], 3: [4], 4: [5]}
+    )
+    assert [task["setup_session_task_id"] for task in found] == [3]
