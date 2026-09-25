@@ -91,9 +91,12 @@ function setupYearGuardRenderBanner() {
   if (!banner) return;
 
   const historical = session?.session_status === 'HISTORICAL_VERIFICATION';
-  banner.innerHTML = historical
-    ? `<strong>${year} Historical Review / Training</strong><span>Saved changes are permanent ${year} Setup records. Operational dates are limited to ${year}. This session does not create or schedule a future season. Future-baseline promotion is Administrator-only.</span>`
-    : `<strong>${year} Setup Session</strong><span>Operational dates are limited to ${year}. Future-baseline promotion is Administrator-only.</span>`;
+  if (!historical) {
+    banner.remove();
+    return;
+  }
+
+  banner.innerHTML = `<strong>${year} Historical Review / Training</strong><span>Saved changes are permanent ${year} Setup records. Operational dates are limited to ${year}. This session does not create or schedule a future season. Future-baseline promotion is Administrator-only.</span>`;
 }
 
 function applySetupSessionYearGuard() {

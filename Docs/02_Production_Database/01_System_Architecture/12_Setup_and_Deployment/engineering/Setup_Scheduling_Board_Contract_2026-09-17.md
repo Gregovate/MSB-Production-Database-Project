@@ -4,10 +4,11 @@
 |---|---|
 | Document Type | Engineering Planning / Execution Contract |
 | System | Production Database — Setup Session |
-| Status | IMPLEMENTATION CANDIDATE — #205 disposable acceptance required |
+| Status | PRODUCTION ACCEPTED — real 2026 annual Session and Scheduling Board live |
 | Owner | MSB Production Database engineering |
-| Related Work | #122, #132, #145, #172, #175, #205 |
-| Candidate Branch | `agent/setup-205-scheduling-board` |
+| Last Reviewed | 2026-09-25 |
+| Related Work | #122, #132, #145 (complete), #172, #175, #205 |
+| Historical Implementation Branch | `agent/setup-205-scheduling-board` |
 
 ## Purpose
 
@@ -153,6 +154,54 @@ Time ≥ 4h -> what are the longer jobs?
 
 Blank remains Any. A two-sided numeric range is intentionally deferred unless 2026 use demonstrates a need.
 
+## Pre-2026 Task-Finder Authority
+
+Before the real annual Setup Session exists, the active **Reusable Task Catalog** is the single current task-definition authority and the single current task-finder population.
+
+The existing 2025 Session was a temporary construction/verification marker used while building the new Setup system. **There is no authoritative 2025 Setup schedule history.** It has no continuing operational planning or historical authority. It must not:
+
+- determine whether a current reusable task is visible;
+- add `NOT IN 2025` identity/badges to current work;
+- supply the current reusable Plan order;
+- act as a proxy for a current-year Ready / Not Ready decision; or
+- force the operator into the full Reusable Task Catalog merely to edit routine planning fields.
+
+Pre-2026 **Plan order** uses reusable Catalog order. With **All Stages / areas**, the whole-Setup `ref.setup_task.baseline_plan_order` is authoritative. When the finder is narrowed to a Stage or Site-wide scope, the operator-visible reusable step `display_order` is authoritative within that scope (for example 10/20/30/40/50), with `baseline_plan_order` as fallback. After a real annual Session exists, `ops.setup_session_task.planned_order` becomes that season's whole-Setup ordering authority.
+
+The normal pre-2026 correction path is the compact **Edit Planning Info** dialog for crew guidance, expected Hours/Minutes, Effort, Readiness note, Weather note, Completion point, and Reusable notes. **Open Full Reusable Task** is the secondary drill-down for deeper information such as Resources, material ownership, Captain knowledge, Procedure context, and other full-record maintenance.
+
+The pre-2026 finder does not expose annual-only states such as Deferred as primary planning filters when there is no defined operator action using them. Underlying historical/annual values remain preserved for compatibility.
+
+## Finder Readiness Visibility and Drill-down Navigation
+
+Readiness remains a **soft blocker**. A readiness condition does not become a hard scheduling prerequisite merely because the finder offers a readiness visibility control.
+
+The finder may provide a **Ready only** visibility toggle so an operator can temporarily hide tasks whose current readiness state is `NOT_READY` while scanning practical candidates. Turning that visibility filter off must immediately restore those soft-blocked tasks. The control changes only what the finder shows; it does not rewrite readiness state, prerequisite state, or scheduling eligibility.
+
+When a Manager drills from the Task Finder into a reusable task to correct durable Catalog knowledge, that drill-down must preserve the operator's planning context. Returning to the Task Finder—through either an explicit **Back to Task Finder** action or browser Back—must restore the same:
+
+- Stage / area;
+- Scene / scope;
+- sort mode;
+- task-name search;
+- Blocking ON/OFF state;
+- readiness visibility state;
+- status filters;
+- Time / Crew comparators and values;
+- Effort filter;
+- compact/expanded finder presentation; and
+- practical scroll position.
+
+The compact **Edit Planning Info** dialog is a governed editing surface. If its fields have changed and the Manager chooses **Open Full Reusable Task**, those edits must be saved successfully **before** the drill-down occurs. A failed save leaves the Manager in the compact editor; navigation must not silently discard the draft.
+
+The full reusable task editor has **one reusable save action**. Physical Effort is reusable planning knowledge and is saved by **Save Reusable Task** together with the reusable definition fields. A separate **Save Effort** button is not part of the operator contract.
+
+A reusable-task correction opened from the finder is therefore a temporary drill-down, not a workflow reset into the Reusable Task Catalog.
+
+The full reusable task editor keeps the established dirty-edit protection. If reusable or annual fields are dirty, browser Back, **Back to Task Finder**, Setup-tab changes, season changes, and other internal navigation must use the same explicit **Save and continue / Discard and continue / Stay on this task** decision. Browser-history routing with `pushState` / `popstate` is not allowed to bypass that warning.
+
+Setup tab/view navigation should participate in browser history so Back/Forward can move between Setup views instead of unexpectedly abandoning the operator's current Setup workflow after internal navigation.
+
 ## Scheduler Planning-Info Correction
 
 The Scheduling Board is often where missing/TBD planning knowledge becomes obvious.
@@ -166,11 +215,31 @@ Before actual work exists, a Manager may use **Edit Planning Info** directly fro
 - weather note;
 - completion point.
 
-For reusable-origin work, this is an explicit reusable-knowledge correction and the current annual snapshot is refreshed at the same time.
+For reusable-origin work, this is an explicit reusable-knowledge correction.
+
+- **Before the real annual Session exists**, Edit Planning Info updates the reusable Catalog only. The 2025 construction-marker rows are not rewritten merely to support current planning.
+- **After a real annual Session exists**, the accepted annual planning command may refresh that current season's annual snapshot together with the reusable knowledge where the workflow explicitly calls for both.
 
 For season-only work, the correction remains annual-only.
 
 Once actual work exists, the annual planned context is historical and the scheduler must no longer rewrite it. Later reusable lessons belong through governed post-season/reconciliation workflows.
+
+## Scheduling Audit Visibility
+
+Scheduling and reusable planning edits are accountability-sensitive. The Scheduling UI must therefore expose the existing database audit identity in a compact operator-readable form rather than requiring backend forensics.
+
+At minimum, Manager-facing planning/task context should make available:
+
+```text
+Created <time> by <person>
+Last updated <time> by <person>
+```
+
+The displayed identity must come from the governed database audit fields and must reflect the authenticated person who actually performed the write. A changed `updated_at` paired with a stale prior `updated_by` / `updated_by_person_id` is a database audit failure, not acceptable UI behavior.
+
+This requirement does not mean every Setup screen must display all six audit columns. Scheduling exposes the useful human summary because knowing who changed planning information and when is operationally important.
+
+Historical attribution that predates an audit defect is not part of the 2026 Scheduling launch repair. The launch-critical requirement is correct attribution for writes going forward.
 
 ## Chronological Setup Day Number
 
@@ -498,6 +567,38 @@ Once actual work/progress exists for the assignment:
 
 This rule is database-authoritative, not merely a browser convention.
 
+## 2026 Task Deletion Boundary
+
+2026 is the first authoritative Setup-history year. Planning state is not historical execution evidence.
+
+Until real work is reported against a task, an authorized Manager must be able to fully delete it even if it has already been seeded into the 2026 annual Session, ordered, assigned to a work day/crew, or connected by planning-only dependencies.
+
+For an unworked reusable task, governed deletion may remove:
+
+- the reusable Catalog definition;
+- its unworked 2026 annual occurrence;
+- planning-only work-day assignments; and
+- annual/reusable planning dependencies owned by that task.
+
+For an unworked 2026-only task, governed deletion may remove the annual occurrence and its planning-only relationships.
+
+The following do **not** by themselves block deletion:
+
+- annual membership;
+- planned order;
+- planned date;
+- crew/work-day assignment;
+- readiness state;
+- prerequisite/dependency links.
+
+Material ownership/assignment is **not** disposable planning state. Preserve the existing operator rule: a task that still owns or has assigned physical material must not be deleted until those relationships are explicitly resolved through the existing material-assignment workflow. At minimum this includes governed Display ownership and KIT/support Container assignments; any later physical-material assignment authority must follow the same rule.
+
+The normal 2026 delete command must fail closed when such material assignments remain. It must not silently discard material ownership as cleanup. The Manager first moves/reassigns/clears the material, then retries deletion.
+
+Once actual work/progress/completion or other accepted task execution evidence exists, hard delete must also fail closed and preserve the 2026 record.
+
+No browser direct table DML is permitted; deletion remains an explicit governed Manager action.
+
 ## Season-Only Annual Tasks
 
 A one-off annual task does **not** belong in `ref.setup_task` merely because the scheduler needs to place it.
@@ -666,17 +767,23 @@ The proposal does not directly mutate reusable knowledge.
 
 Some older controlled Setup documents still contain the superseded Captain/Alternate-only work-report authorization wording. #132/#172/#175 implementation/closeout must reconcile those documents. #205 must preserve the data/context needed for the accepted Production Crew workflow and must not reintroduce the obsolete restriction.
 
-## Migration Boundary
+## Migration / Live Boundary
 
-Migration 050 is the #205 candidate foundation.
+Migration 050 was the #205 foundation and was intentionally incapable of creating the real 2026 Setup Session by itself. The historical #145 Catalog/seed gate was completed, the governed #122 launch path subsequently created the real 2026 Session, and Production scheduling is now live.
 
-The existing schedule tables currently have no accepted real 2026 operational schedule, so #205 can correct scheduling identity/constraints before the first real annual launch.
+Current authority:
 
-Migration 050 must nevertheless be safe against any existing historical/review rows and must not create the real 2026 Setup Session.
+```text
+Reusable Catalog = durable recurring knowledge
+2026 annual Session = current planning/execution state
+schedule assignment = planning intent
+reported work = execution history
+#206 = physical material-demand / Pick List authority
+```
 
-The real 2026 Session remains gated by #145 FINAL and the accepted disposable 2026 seed proof.
+Do not recreate the annual Session, restore pre-launch `2026 = absent` assumptions, or make schedule drag/drop mutate physical movement truth.
 
-## Acceptance Direction
+## Acceptance Direction / Preserved Contract
 
 Disposable acceptance must prove at minimum:
 

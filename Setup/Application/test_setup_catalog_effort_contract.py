@@ -35,29 +35,19 @@ def test_effort_api_uses_governed_command_not_table_dml():
     assert "DELETE FROM ref.setup_task" not in api
 
 
-def test_effort_editor_and_catalog_badge_are_present():
+def test_effort_editor_is_part_of_reusable_task_save():
     html = text(BASE / "production.html")
     js = text(BASE / "setup_catalog_effort.js")
+    production = text(BASE / "setup_production.js")
+
     assert 'id="edit-effort-level"' in html
-    assert 'id="save-task-effort"' in html
+    assert 'id="save-task-effort"' not in html
     assert "LIGHT" in html and "MODERATE" in html and "HEAVY" in html
     assert "Effort:" in js
     assert "can_manage_setup" in js
-    assert "setup_effort_badge" not in js  # class stays hyphenated for CSS/DOM consistency
     assert "setup-effort-badge" in js
+    assert "async function saveSelectedSetupEffort()" not in js
+    assert "placeSetupEffortSaveControl" not in js
+    assert "api/setup/tasks/${task.setup_task_id}/effort" in production
+    assert "const effort = el('edit-effort-level')?.value || null;" in production
 
-
-def test_effort_save_control_is_primary_inline_and_has_no_extra_explanation():
-    html = text(BASE / "production.html")
-    js = text(BASE / "setup_catalog_effort.js")
-    css = text(BASE / "setup_training_review_refinement.css")
-    assert 'id="save-task-effort" type="button">Save Effort</button>' in html
-    assert "function placeSetupEffortSaveControl()" in js
-    assert "setup-effort-editor-row" in js
-    assert "actions.appendChild(button)" in js
-    assert "button.classList.remove('secondary')" in js
-    assert "Effort saves separately from Save Reusable Task." not in js
-    assert "#setup-effort-editor-row" in css
-    assert "align-items: end" in css
-    assert "padding-top: 0" in css
-    assert "placeSetupEffortSaveControl();" in js

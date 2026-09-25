@@ -15,9 +15,9 @@ def guard_source() -> str:
 def test_dirty_guard_asset_is_loaded_and_protected_before_layout_refinement():
     html = read("production.html")
     host = read("production_backend.py")
-    guard_index = html.index("setup_catalog_dirty_guard.js?v=2026-09-20.1")
+    guard_index = html.index("setup_catalog_dirty_guard.js?v=2026-09-25.1")
     compact_index = html.index("setup_task_detail_compact.js?v=2026-09-11.1")
-    effort_index = html.index("setup_catalog_effort.js?v=2026-09-09.3")
+    effort_index = html.index("setup_catalog_effort.js?v=2026-09-24.5")
     assert guard_index > effort_index
     assert compact_index > guard_index
     assert '"setup_catalog_dirty_guard.js"' in host
@@ -58,7 +58,12 @@ def test_dirty_guard_tracks_only_main_reusable_and_annual_save_surfaces():
     ):
         assert field_id in js
 
-    assert "edit-effort-level" not in js
+    assert "const effortFieldId = 'edit-effort-level';" in js
+    assert "function effortDirty()" in js
+    assert "api/setup/tasks/${task.setup_task_id}/effort" in js
+    assert "async function persistEffortEdit(" not in js
+    assert "Save Effort • Unsaved" not in js
+    assert "reusableDirty() || effortDirty()" in js
     assert "edit-requires-display-material" not in js
     assert "setup-resource-select" not in js
     assert "setup-captain-person" not in js
@@ -84,8 +89,8 @@ def test_reusable_save_preserves_pending_annual_fields_across_reload():
 
 def test_client_build_is_visible_and_write_paths_fail_closed_on_mismatch():
     js = guard_source()
-    assert "V0.3.16-stale-ownership-cleanup" in js
-    assert "Client V0.3.16" in js
+    assert "V0.3.18-scheduling-board" in js
+    assert "Client V0.3.18" in js
     assert "setup-client-build-badge" in js
     assert "window.msbSetupClientBuild = CLIENT_BUILD" in js
     assert "async function ensureServerBuild()" in js
@@ -103,6 +108,13 @@ def test_navigation_uses_explicit_save_discard_cancel_decision():
     assert "resolveDirtyBeforeNavigation('returning to the Reusable Task Catalog')" in js
     assert "changing Setup seasons" in js
     assert "beforeunload" in js
+    assert "window.msbSetupHasDirtyEdits = anyDirty;" in js
+    assert "window.msbSetupResolveDirtyBeforeNavigation = resolveDirtyBeforeNavigation;" in js
+    assert "window.msbSetupCaptureReusableDraft = () => reusableFormState();" in js
+    assert "window.msbSetupRestoreReusableDraft = restoreReusableDraft;" in js
+    assert "function restoreReusableDraft(values)" in js
+    assert "return reusableDirty() || effortDirty() || annualDirty();" in js
+    assert "if (reusableDirty() || effortDirty())" in js
 
 
 def test_prerequisite_reload_path_is_guarded_too():

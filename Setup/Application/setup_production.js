@@ -177,7 +177,148 @@ function showView(name) {
     button.classList.toggle('active', button.dataset.view === name);
   });
   document.querySelectorAll('.view').forEach((view) => view.classList.remove('active-view'));
-  el(`${name}-view`).classList.add('active-view');
+  const target = el(`${name}-view`);
+  if (target) target.classList.add('active-view');
+}
+
+function currentSetupViewName() {
+  const active = document.querySelector('.view.active-view');
+  return active?.id?.endsWith('-view') ? active.id.slice(0, -5) : 'review';
+}
+
+let setupHistoryIndex = Number(window.history.state?.setupHistoryIndex ?? 0);
+let setupPopstateUndo = false;
+let setupPopstateReplay = false;
+let setupPendingHistoryMove = null;
+
+async function setupMayLeaveCurrentView(actionLabel) {
+  if (typeof window.msbSetupResolveDirtyBeforeNavigation !== 'function') return true;
+  return window.msbSetupResolveDirtyBeforeNavigation(actionLabel);
+}
+
+function setupNavigationActionLabel(route) {
+  const view = String(route?.view || 'review');
+  if (view === 'schedule') return 'returning to the Task Finder';
+  if (view === 'review') return 'opening reusable task detail';
+  if (view === 'library') return 'opening the Reusable Task Catalog';
+  if (view === 'perform') return 'opening Perform Work';
+  if (view === 'extra-materials') return 'opening Extra Materials / Inventory';
+  if (view === 'movement') return 'opening Movement / Scanning';
+  return 'continuing';
+}
+
+function setupRouteUrl(route) {
+  const params = new URLSearchParams(window.location.search);
+  params.delete('view');
+  params.delete('setup_task_id');
+  params.delete('correction');
+
+  const view = String(route?.view || 'review');
+  params.set('view', view);
+  if (route?.taskId != null) params.set('setup_task_id', String(route.taskId));
+
+  const query = params.toString();
+  return `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash || ''}`;
+}
+
+function setupCaptureCurrentRoute() {
+  const view = currentSetupViewName();
+  const route = { view };
+
+  if (view === 'review' && appState.selectedTaskId != null) {
+    route.taskId = Number(appState.selectedTaskId);
+  }
+  if (view === 'schedule' && typeof board205CaptureFinderState === 'function') {
+    route.finder = board205CaptureFinderState();
+  }
+  return route;
+}
+
+function setupCommitCurrentRouteState() {
+  const route = setupCaptureCurrentRoute();
+  const stateIndex = Number(window.history.state?.setupHistoryIndex);
+  if (Number.isFinite(stateIndex)) setupHistoryIndex = stateIndex;
+  window.history.replaceState(
+    { setupRoute: route, setupHistoryIndex },
+    '',
+    setupRouteUrl(route)
+  );
+  return route;
+}
+
+function setupSetFinderReturnVisible(visible) {
+  const button = el('setup-return-to-finder');
+  if (button) button.hidden = !Boolean(visible);
+}
+
+async function setupRestoreRoute(route) {
+  const requested = route && typeof route === 'object' ? route : { view: 'review' };
+  const view = String(requested.view || 'review');
+
+  setupSetFinderReturnVisible(false);
+  showView(view);
+
+  if (view === 'schedule') {
+    // The #205 Scheduling Board is the canonical Plan / Schedule renderer.
+    // Do not fall back to the obsolete async loadNextSchedule() during startup:
+    // production.js initializes before later scripts finish loading, so that
+    // legacy renderer can race the Scheduling Board DOM replacement.
+    if (typeof board205Load === 'function') {
+      await board205Load();
+    }
+    if (requested.finder && typeof board205RestoreFinderState === 'function') {
+      board205RestoreFinderState(requested.finder);
+    }
+  } else if (view === 'perform' && typeof loadNextExecution === 'function') {
+    await loadNextExecution();
+  }
+
+  if (view === 'review' && requested.taskId != null && taskById(requested.taskId)) {
+    selectTask(Number(requested.taskId));
+    setupSetFinderReturnVisible(Boolean(requested.returnToFinder));
+  }
+}
+
+async function navigateSetupView(name) {
+  const route = { view: String(name || 'review') };
+  if (!await setupMayLeaveCurrentView(setupNavigationActionLabel(route))) return false;
+
+  setupCommitCurrentRouteState();
+  setupHistoryIndex += 1;
+  window.history.pushState(
+    { setupRoute: route, setupHistoryIndex },
+    '',
+    setupRouteUrl(route)
+  );
+  await setupRestoreRoute(route);
+  return true;
+}
+
+async function setupNavigateToReusableTaskFromFinder(taskId) {
+  const route = {
+    view: 'review',
+    taskId: Number(taskId),
+    returnToFinder: true
+  };
+  if (!await setupMayLeaveCurrentView('opening the full reusable task')) return false;
+
+  setupCommitCurrentRouteState();
+  setupHistoryIndex += 1;
+  window.history.pushState(
+    { setupRoute: route, setupHistoryIndex },
+    '',
+    setupRouteUrl(route)
+  );
+  await setupRestoreRoute(route);
+  return true;
+}
+
+function setupRouteFromLocation() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    view: params.get('view') || 'review',
+    taskId: Number(params.get('setup_task_id') || 0) || null
+  };
 }
 
 function applyAccess() {
@@ -236,6 +377,28 @@ function sortedStages() {
 
 function currentSeasonRecord() {
   return appState.seasons.find((season) => Number(season.season_year) === Number(appState.seasonYear));
+}
+
+function applySeasonReviewSurface() {
+  const historical = currentSeasonRecord()?.session_status === 'HISTORICAL_VERIFICATION';
+  const reviewTab = document.querySelector('.tab[data-view="review"]');
+  if (reviewTab) reviewTab.hidden = !historical;
+
+  const summary = el('summary-grid');
+  if (summary) summary.hidden = !historical;
+
+  const reviewView = el('review-view');
+  const reviewListCard = reviewView?.querySelector('.list-card');
+  const annualFieldset = el('annual-fieldset');
+  const verificationPill = el('detail-verification');
+  if (reviewView) reviewView.classList.toggle('reusable-detail-mode', !historical);
+  if (reviewListCard) reviewListCard.hidden = !historical;
+  if (annualFieldset) annualFieldset.hidden = !historical;
+  if (verificationPill) verificationPill.hidden = !historical;
+
+  if (!historical && currentSetupViewName() === 'review') {
+    showView(el('schedule-view') ? 'schedule' : 'library');
+  }
 }
 
 function renderSummary() {
@@ -374,6 +537,15 @@ function selectTask(taskId) {
   el('edit-weather').value = task.weather_note || '';
   el('edit-reusable-notes').value = task.reusable_notes || '';
 
+  const audit = el('reusable-task-audit');
+  if (audit) {
+    const createdBy = task.reusable_created_by_display || task.reusable_created_by || 'unknown actor';
+    const updatedBy = task.reusable_updated_by_display || task.reusable_updated_by || 'unknown actor';
+    const createdAt = formatTimestamp(task.reusable_created_at) || 'unknown time';
+    const updatedAt = formatTimestamp(task.reusable_updated_at) || 'unknown time';
+    audit.textContent = `Created ${createdAt} by ${createdBy} · Last updated ${updatedAt} by ${updatedBy}`;
+  }
+
   const annualAvailable = task.setup_session_task_id != null;
   el('annual-legend').textContent = `${appState.seasonYear} Annual Historical Actual`;
   el('annual-execution-status').value = task.execution_status || '';
@@ -407,10 +579,17 @@ async function saveReusableTask() {
     weather_note: el('edit-weather').value.trim(),
     reusable_notes: el('edit-reusable-notes').value.trim()
   };
+  const effort = el('edit-effort-level')?.value || null;
 
   try {
     setBusy(true);
     await api(`api/setup/tasks/${task.setup_task_id}`, commandOptions('PATCH', payload));
+    if ((task.effort_level || null) !== effort) {
+      await api(
+        `api/setup/tasks/${task.setup_task_id}/effort`,
+        commandOptions('PATCH', { effort_level: effort })
+      );
+    }
     setAlert(`Reusable task ${task.setup_task_id} saved to Production.`, 'ok');
     await reloadTasks(task.setup_task_id);
   } catch (error) {
@@ -475,7 +654,7 @@ async function createReusableTask(event) {
     const result = await api('api/setup/tasks', commandOptions('POST', payload));
     const newId = result.setup_task?.setup_task_id;
     setAlert(`Reusable task ${newId || ''} created in Production.`, 'ok');
-    el('add-task-form').hidden = true;
+    setReusableAddTaskFormOpen(false);
     el('add-task-form').reset();
     el('add-display-order').value = '100';
     await reloadTasks(newId || null);
@@ -586,6 +765,7 @@ async function loadSeason(year) {
   appState.seasonYear = Number(year);
   renderSeasonOptions();
   const season = currentSeasonRecord();
+  applySeasonReviewSurface();
   el('review-season-label').textContent = `${appState.seasonYear} season`;
   el('app-subhead').textContent = season?.session_status === 'HISTORICAL_VERIFICATION'
     ? `${appState.seasonYear} historical verification — shared Production data`
@@ -626,16 +806,10 @@ async function loadSeason(year) {
 }
 
 function chooseInitialSeason() {
-  const requestedYear = Number(new URLSearchParams(window.location.search).get('season_year') || 0);
-  const requestedSeason = requestedYear
-    ? appState.seasons.find((season) => Number(season.season_year) === requestedYear)
-    : null;
-  if (requestedSeason) return Number(requestedSeason.season_year);
-
+  const activeSeason = appState.seasons.find((season) => season.active_flag);
+  if (activeSeason) return Number(activeSeason.season_year);
   const historical = appState.seasons.find((season) => season.session_status === 'HISTORICAL_VERIFICATION');
   if (historical) return Number(historical.season_year);
-  const activeWithSession = appState.seasons.find((season) => season.active_flag && season.setup_session_id);
-  if (activeWithSession) return Number(activeWithSession.season_year);
   const anySession = appState.seasons.find((season) => season.setup_session_id);
   if (anySession) return Number(anySession.season_year);
   return appState.seasons.length ? Number(appState.seasons[0].season_year) : null;
@@ -647,7 +821,7 @@ function consumePendingCorrection(name) {
   return true;
 }
 
-function applyRequestedRoute() {
+async function applyRequestedRoute() {
   const params = new URLSearchParams(window.location.search);
   const requestedView = params.get('view');
   const requestedTaskId = Number(params.get('setup_task_id') || 0);
@@ -657,8 +831,9 @@ function applyRequestedRoute() {
     appState.pendingCorrection = requestedCorrection;
   }
 
-  if (requestedView && ['review', 'library', 'extra-materials', 'movement'].includes(requestedView)) {
-    showView(requestedView);
+  const allowedViews = ['review', 'library', 'extra-materials', 'movement', 'schedule', 'perform'];
+  if (requestedView && allowedViews.includes(requestedView)) {
+    await setupRestoreRoute({ view: requestedView });
   }
   if (requestedTaskId && taskById(requestedTaskId)) {
     if (!requestedView || !['review', 'library'].includes(requestedView)) {
@@ -705,21 +880,81 @@ async function initialize() {
       throw new Error('No Setup season is available.');
     }
     await loadSeason(appState.seasonYear);
-    applyRequestedRoute();
+    await applyRequestedRoute();
+    setupCommitCurrentRouteState();
   } catch (error) {
     setAlert(error.message || error, 'error');
-    el('access-badge').textContent = 'Setup access unavailable';
+    if (!appState.access?.can_read_setup) {
+      el('access-badge').textContent = 'Setup access unavailable';
+    }
   } finally {
     setBusy(false);
+    document.body.classList.remove('setup-booting');
+    document.body.setAttribute('aria-busy', 'false');
   }
 }
 
 document.querySelectorAll('.tab').forEach((button) => {
-  button.addEventListener('click', () => showView(button.dataset.view));
+  button.addEventListener('click', () => {
+    void navigateSetupView(button.dataset.view);
+  });
 });
-el('captain-work-list-link')?.addEventListener('click', () => {
-  const query = appState.seasonYear == null ? '' : '?season_year=' + encodeURIComponent(appState.seasonYear);
-  window.location.href = 'captain-work-list/' + query;
+
+el('setup-return-to-finder')?.addEventListener('click', () => {
+  void (async () => {
+    if (!await setupMayLeaveCurrentView('returning to the Task Finder')) return;
+    const route = window.history.state?.setupRoute;
+    if (route?.returnToFinder) {
+      window.history.back();
+      return;
+    }
+    await navigateSetupView('schedule');
+  })();
+});
+
+window.addEventListener('popstate', (event) => {
+  const route = event.state?.setupRoute || setupRouteFromLocation();
+  const targetIndexRaw = Number(event.state?.setupHistoryIndex);
+  const targetIndex = Number.isFinite(targetIndexRaw) ? targetIndexRaw : setupHistoryIndex;
+
+  if (setupPopstateReplay) {
+    setupPopstateReplay = false;
+    setupHistoryIndex = targetIndex;
+    setupPendingHistoryMove = null;
+    void setupRestoreRoute(route);
+    return;
+  }
+
+  if (setupPopstateUndo) {
+    setupPopstateUndo = false;
+    const pending = setupPendingHistoryMove;
+    if (!pending) return;
+
+    void (async () => {
+      const allowed = await setupMayLeaveCurrentView(setupNavigationActionLabel(pending.route));
+      if (!allowed) {
+        setupPendingHistoryMove = null;
+        return;
+      }
+      setupPopstateReplay = true;
+      window.history.go(pending.delta);
+    })();
+    return;
+  }
+
+  const delta = targetIndex - setupHistoryIndex;
+  const hasDirty = typeof window.msbSetupHasDirtyEdits === 'function'
+    && window.msbSetupHasDirtyEdits();
+
+  if (delta !== 0 && hasDirty) {
+    setupPendingHistoryMove = { delta, route, targetIndex };
+    setupPopstateUndo = true;
+    window.history.go(-delta);
+    return;
+  }
+
+  setupHistoryIndex = targetIndex;
+  void setupRestoreRoute(route);
 });
 el('material-audit-link')?.addEventListener('click', () => { window.location.href = 'material-audit/'; });
 el('season-select').addEventListener('change', () => loadSeason(el('season-select').value));
@@ -729,8 +964,18 @@ el('save-annual-review').addEventListener('click', () => saveAnnualReview());
 el('mark-verified').addEventListener('click', () => saveAnnualReview('VERIFIED'));
 el('mark-correction').addEventListener('click', () => saveAnnualReview('NEEDS_CORRECTION'));
 el('mark-unverified').addEventListener('click', () => saveAnnualReview('UNVERIFIED'));
-el('show-add-task').addEventListener('click', () => { el('add-task-form').hidden = false; });
-el('cancel-add-task').addEventListener('click', () => { el('add-task-form').hidden = true; });
+function setReusableAddTaskFormOpen(open) {
+  const form = el('add-task-form');
+  const trigger = el('show-add-task');
+  if (form) form.hidden = !open;
+  if (trigger) trigger.hidden = Boolean(open);
+}
+
+setReusableAddTaskFormOpen(false);
+el('show-add-task').addEventListener('click', () => { setReusableAddTaskFormOpen(true); });
+el('cancel-add-task').addEventListener('click', () => { setReusableAddTaskFormOpen(false); });
 el('add-task-form').addEventListener('submit', createReusableTask);
 
-initialize();
+window.addEventListener('DOMContentLoaded', () => {
+  void initialize();
+}, { once: true });
