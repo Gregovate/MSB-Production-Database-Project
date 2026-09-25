@@ -882,7 +882,9 @@ async function initialize() {
     setupCommitCurrentRouteState();
   } catch (error) {
     setAlert(error.message || error, 'error');
-    el('access-badge').textContent = 'Setup access unavailable';
+    if (!appState.access?.can_read_setup) {
+      el('access-badge').textContent = 'Setup access unavailable';
+    }
   } finally {
     setBusy(false);
   }
