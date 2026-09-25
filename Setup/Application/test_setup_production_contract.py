@@ -92,6 +92,10 @@ def test_122_real_planning_season_hides_historical_verification_surface() -> Non
     assert "summary.hidden = !historical" in production
     assert "season.session_status !== 'HISTORICAL_VERIFICATION'" in production
     assert "name = el('schedule-view') ? 'schedule' : 'library';" in production
+    assert "const allowReusableDetail = Boolean(options.allowReusableDetail);" in production
+    assert "&& !allowReusableDetail" in production
+    assert "allowReusableDetail: view === 'review' && requested.taskId != null" in production
+    assert "showView('review', { allowReusableDetail: true });" in production
 
     chooser = production.split("function chooseInitialSeason()", 1)[1].split(
         "function consumePendingCorrection", 1
