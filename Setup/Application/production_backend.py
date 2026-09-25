@@ -7,6 +7,7 @@ not exposed by this WSGI application.
 """
 from __future__ import annotations
 
+import gzip
 import logging
 import os
 import threading
@@ -36,7 +37,7 @@ from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.17-performance-trace"
+PRODUCTION_VERSION = "V0.3.18-scheduling-board"
 
 # #222 lightweight Production request instrumentation.
 #
@@ -50,6 +51,7 @@ _SETUP_PERF_ACTIVE_REQUESTS = 0
 _SETUP_PERF_PREFIX = "SETUP_PERF"
 _SETUP_PERF_SUMMARY_SECONDS = 60.0
 _SETUP_PERF_SLOW_MS = 250.0
+_SETUP_JSON_GZIP_MIN_BYTES = 16 * 1024
 _SETUP_PERF_WINDOWS: dict[str, dict] = {}
 _SETUP_OPERATOR_HEADER = "Cf-Access-Authenticated-User-Email"
 _SETUP_PERF_LOGGER = logging.getLogger("msb.setup.performance")
@@ -139,16 +141,16 @@ PLANNING_SUMMARY_ASSETS = frozenset(
         "setup_planning_summary.js",
     }
 )
-PICK_LIST_ASSETS = frozenset(
-    {
-        "setup_pick_list.css",
-        "setup_pick_list.js",
-    }
-)
 MATERIAL_AUDIT_ASSETS = frozenset(
     {
         "setup_material_audit.css",
         "setup_material_audit.js",
+    }
+)
+PICK_LIST_ASSETS = frozenset(
+    {
+        "setup_pick_list.css",
+        "setup_pick_list.js",
     }
 )
 
@@ -267,6 +269,36 @@ def _setup_perf_record_summary(
         return summary
 
 
+def _setup_maybe_gzip_json(response):
+    """Compress large protected Setup JSON responses for slow field links."""
+    if request.method == "HEAD" or response.status_code in (204, 304):
+        return response
+    if response.headers.get("Content-Encoding"):
+        return response
+
+    content_type = (response.headers.get("Content-Type") or "").lower()
+    if not content_type.startswith("application/json"):
+        return response
+
+    accepted = (request.headers.get("Accept-Encoding") or "").lower()
+    if "gzip" not in accepted:
+        return response
+
+    data = response.get_data()
+    if len(data) < _SETUP_JSON_GZIP_MIN_BYTES:
+        return response
+
+    compressed = gzip.compress(data, compresslevel=5, mtime=0)
+    if len(compressed) >= len(data):
+        return response
+
+    response.set_data(compressed)
+    response.headers["Content-Encoding"] = "gzip"
+    response.headers["Content-Length"] = str(len(compressed))
+    response.vary.add("Accept-Encoding")
+    return response
+
+
 @app.before_request
 def setup_performance_trace_start() -> None:
     if not _setup_perf_is_traced_request():
@@ -284,6 +316,7 @@ def setup_performance_trace_finish(response):
     if started is None or request_id is None:
         return response
 
+    response = _setup_maybe_gzip_json(response)
     elapsed_ms = (time.perf_counter() - started) * 1000.0
     route = request.url_rule.rule if request.url_rule is not None else "<unmatched>"
     operator = (request.headers.get(_SETUP_OPERATOR_HEADER) or "<unauthenticated>").strip().lower()
@@ -368,21 +401,6 @@ def planning_summary_asset(name: str):
     return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
 
 
-@app.get("/pick-list")
-@app.get("/pick-list/")
-def pick_list():
-    """Read-only scheduled physical-demand Pick List."""
-    return _no_store(send_from_directory(BASE_DIR, "pick_list.html"))
-
-
-@app.get("/pick-list/assets/<path:name>")
-def pick_list_asset(name: str):
-    if name not in PICK_LIST_ASSETS:
-        abort(404)
-    mimetype = "application/javascript" if name.casefold().endswith(".js") else None
-    return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
-
-
 @app.get("/material-audit")
 @app.get("/material-audit/")
 def material_audit():
@@ -453,3 +471,18 @@ if __name__ == "__main__":
         port=int(os.environ.get("PORT", "8780")),
         debug=False,
     )
+
+@app.get("/pick-list")
+@app.get("/pick-list/")
+def pick_list():
+    """Read-only scheduled physical-demand Pick List."""
+    return _no_store(send_from_directory(BASE_DIR, "pick_list.html"))
+
+
+@app.get("/pick-list/assets/<path:name>")
+def pick_list_asset(name: str):
+    if name not in PICK_LIST_ASSETS:
+        abort(404)
+    mimetype = "application/javascript" if name.casefold().endswith(".js") else None
+    return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
+

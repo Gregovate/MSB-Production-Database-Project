@@ -137,9 +137,8 @@ class SetupSchedulingBoardRepository:
                         ELSE 'COMPLETE'
                     END AS work_order_status
                 FROM ops.setup_scheduling_work_order_gate wo
-                ORDER BY
-                    CASE WHEN wo.date_completed IS NULL THEN 0 ELSE 1 END,
-                    wo.work_order_id DESC
+                WHERE wo.date_completed IS NULL
+                ORDER BY wo.work_order_id DESC
                 """
             )
             work_orders = [dict(row) for row in cur.fetchall()]
@@ -179,6 +178,7 @@ class SetupSchedulingBoardRepository:
                     st.annual_readiness_state AS readiness_state,
                     st.annual_weather_note AS weather_note,
                     coalesce(captains.captain_person_ids, ARRAY[]::integer[]) AS reusable_captain_person_ids,
+                    rt.display_order,
                     rt.baseline_plan_order,
                     rt.reusable_notes,
                     rt.created_at AS reusable_created_at,
@@ -850,6 +850,21 @@ class SetupSchedulingBoardRepository:
                 ),
             )
             result = self._one(cur, "Season-only Setup task command returned no result")
+            conn.commit()
+            return result
+
+    def delete_season_task(
+        self,
+        *,
+        email: str,
+        session_task_id: int,
+    ) -> dict[str, Any]:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM ops.delete_unworked_setup_season_task(%s,%s)",
+                (email, session_task_id),
+            )
+            result = self._one(cur, "Season-only Setup task delete returned no result")
             conn.commit()
             return result
 

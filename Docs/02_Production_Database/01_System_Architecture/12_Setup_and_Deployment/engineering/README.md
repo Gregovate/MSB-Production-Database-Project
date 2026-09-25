@@ -5,11 +5,31 @@
 | Document Type | Engineering Handoff Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
-| Status | CURRENT HANDOFF — #204 expected-duration UI accepted in Production; #145 Catalog review continues |
+| Status | CURRENT HANDOFF — real 2026 Setup Session launched; Scheduling Board live |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-17 |
+| Last Reviewed | 2026-09-25 |
 
 Operator-facing instructions are separate under [`../operatorSOP/`](../operatorSOP/README.md).
+
+## 2026 Launch Status
+
+The real 2026 Setup Session has been created and is now the active annual planning/execution context. The accepted Scheduling Board application target is `06a6536d92db5c7352beeed496563ed9bfdb7146` with health version `V0.3.17-performance-trace`.
+
+The launch deployment installed migrations 057/058 after the exact candidate passed the full Setup/Application regression (458/458) and disposable browser acceptance. The Scheduling Board preserves the accepted Catalog/Plan ordering, lavender material-task cue, Day-view filters, completed/cancelled-day handling, performance improvements, and current scheduling behavior.
+
+The Work Day calendar is collapsed by default so it does not consume scheduling space. **+ Add Work Days** is a visually primary action; its calendar supports tablet-friendly click/tap multi-select without Ctrl/Shift, disables dates that already exist, and does not overwrite existing Work Days.
+
+The durable boundary remains:
+
+```text
+Reusable Catalog = recurring Setup knowledge
+2026 annual Session = this season's planning/execution set
+season-only work = 2026 only unless explicitly promoted
+actual work/history = preserved operational evidence
+```
+
+Broad Work Day deletion was not introduced. #206 / PR #216 continues to own early physical material-demand expansion and Pick List resolution; that work must not be folded back into the Scheduling Board.
+
 
 ## #145 Material Completeness Audit Candidate
 
@@ -21,11 +41,10 @@ This candidate is **not Production accepted**. Production migration/deployment a
 
 ```text
 protected application = https://my.sheboyganlights.org/setup/
-live /opt/msb-setup SHA = 052d31dd4e68e13f2997f723778b88eddf9c53cf
-version = V0.3.13-assignment-layer
-2025 Setup Session = HISTORICAL_VERIFICATION / SANDBOX
-2026 Setup Sessions = 0
-physical inventory events after reconstruction = 0
+accepted Scheduling Board target = 06a6536d92db5c7352beeed496563ed9bfdb7146
+version = V0.3.17-performance-trace
+2025 Setup Session = historical / verification evidence
+2026 Setup Session = LIVE annual planning/execution context
 ```
 
 Current governed Setup fingerprint captured immediately before/after the #204 source-only deployment:
@@ -183,8 +202,8 @@ Before the next Setup change:
 3. read `Setup_Session_Production_Engineering_Handoff_2026-09-12.md`;
 4. read `Setup_Task_Supporting_Information_Contract_2026-09-11.md`;
 5. preserve accepted V0.3.7 through V0.3.13 plus #184/#167 inventory behavior/data;
-6. keep 2025 as the proving ground until the remaining launch gates pass;
-7. continue with `#145 FINAL -> #122`;
+6. use the live 2026 Session for annual planning/execution and retain 2025 only as historical/verification evidence;
+7. preserve the accepted Scheduling Board baseline and keep #206 Pick List/material-demand work in its owning workstream;
 8. use `Gregovate/MSB-Server-Management` for runtime/deployment/browser-review authority; and
 9. update controlled docs and acceptance evidence whenever accepted behavior or the resume point changes.
 

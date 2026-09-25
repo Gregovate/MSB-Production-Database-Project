@@ -9,7 +9,10 @@ const setupBoard205State = {
   editPlanningTaskId: null,
   editPlanningReusableTaskId: null,
   scheduleTarget: null,
-  finderCompact: null
+  finderCompact: null,
+  workDaySelection: new Set(),
+  workDayCalendarMonth: null,
+  workDayPickerExpanded: false
 };
 
 const SETUP_BOARD205_TYPICAL_AM_MINUTES = 180;
@@ -67,7 +70,7 @@ function board205PlacementWarnings(task, crewId, shift) {
   }
 
   const crew = board205CrewRow(crewId);
-  const planned = board205PlannedCrewForShift(crew, shift);
+  const planned = board205PlacementCrewCount(crewId, shift);
   const minCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
   if (planned != null && minCrew != null && planned < minCrew) {
     const period = shift === 'MORNING' ? 'AM' : shift === 'AFTERNOON' ? 'PM' : 'selected';
@@ -149,6 +152,42 @@ function board205PlannedCrewForShift(crew, shift) {
   return raw == null ? null : Number(raw);
 }
 
+function board205PlacementCrewCount(crewId, shift) {
+  const crewNode = document.querySelector(
+    `.setup-board205-crew-label[data-crew-id="${Number(crewId)}"]`
+  );
+  const selector = shift === 'MORNING'
+    ? '.setup-board205-crew-am'
+    : shift === 'AFTERNOON'
+      ? '.setup-board205-crew-pm'
+      : null;
+  if (crewNode && selector) {
+    const value = crewNode.querySelector(selector)?.value;
+    if (value !== '' && value != null) return Number(value);
+  }
+  return board205PlannedCrewForShift(board205CrewRow(crewId), shift);
+}
+
+function board205CrewCapacityWarnings(crewId, amCount, pmCount) {
+  const warnings = [];
+  for (const item of board205CrewSequence(crewId)) {
+    const task = board205Task(item.setup_session_task_id);
+    if (!task || task.normal_crew_min == null) continue;
+    const minCrew = Number(task.normal_crew_min);
+    const planned = item.shift_code === 'MORNING'
+      ? amCount
+      : item.shift_code === 'AFTERNOON'
+        ? pmCount
+        : null;
+    if (planned == null || planned >= minCrew) continue;
+    const period = item.shift_code === 'MORNING' ? 'AM' : 'PM';
+    warnings.push(
+      `${task.task_name}: planned ${period} crew ${planned} / task minimum ${minCrew} — short by ${minCrew - planned}.`
+    );
+  }
+  return warnings;
+}
+
 function board205Effort(task) {
   return task?.effort_level ? String(task.effort_level).toUpperCase() : 'EFFORT TBD';
 }
@@ -172,27 +211,157 @@ function board205TodayKey() {
   return `${year}-${month}-${day}`;
 }
 
-function board205PastDayNeedsAttention(day) {
-  if (!day || String(day.work_date) >= board205TodayKey()) return true;
-  const assignments = (setupBoard205State.board.assignments || []).filter(
+function board205DayAssignments(day) {
+  if (!day) return [];
+  return (setupBoard205State.board.assignments || []).filter(
     (item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id)
   );
-  return assignments.some((item) => {
-    if (!item.historical_locked) return true;
-    const task = board205Task(item.setup_session_task_id);
-    if (!task || task.effective_complete) return false;
-    return Number(task.future_assignment_count || 0) === 0;
+}
+
+function board205ExistingWorkDayDates() {
+  return new Set(
+    (setupBoard205State.board.work_days || [])
+      .map((day) => String(day.work_date || '').slice(0, 10))
+      .filter(Boolean)
+  );
+}
+
+function board205CalendarMonthStart() {
+  if (setupBoard205State.workDayCalendarMonth) {
+    return new Date(setupBoard205State.workDayCalendarMonth + '-01T00:00:00Z');
+  }
+  const today = new Date();
+  const seasonYear = Number(appState.seasonYear);
+  const existing = (setupBoard205State.board.work_days || [])
+    .map((day) => String(day.work_date || '').slice(0, 7))
+    .filter((value) => value.startsWith(String(seasonYear) + '-'))
+    .sort();
+  const month = existing.at(-1)
+    || (today.getUTCFullYear() === seasonYear
+      ? String(seasonYear) + '-' + String(today.getUTCMonth() + 1).padStart(2, '0')
+      : String(seasonYear) + '-01');
+  setupBoard205State.workDayCalendarMonth = month;
+  return new Date(month + '-01T00:00:00Z');
+}
+
+function board205ApplyWorkDayPickerExpanded() {
+  const form = document.getElementById('setup-board205-day-form');
+  const body = document.getElementById('setup-board205-work-day-picker-body');
+  const toggle = document.getElementById('setup-board205-toggle-work-days');
+  if (!form || !body || !toggle) return;
+  const expanded = Boolean(setupBoard205State.workDayPickerExpanded);
+  form.classList.toggle('expanded', expanded);
+  body.hidden = !expanded;
+  toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  toggle.textContent = expanded ? 'Hide Work Day Calendar' : '+ Add Work Days';
+}
+
+function board205RenderWorkDayCalendar() {
+  board205ApplyWorkDayPickerExpanded();
+  const target = document.getElementById('setup-board205-work-day-calendar');
+  const summary = document.getElementById('setup-board205-work-day-selection');
+  const submit = document.getElementById('setup-board205-add-work-days');
+  if (!target || !summary || !submit) return;
+
+  const existing = board205ExistingWorkDayDates();
+  for (const date of [...setupBoard205State.workDaySelection]) {
+    if (existing.has(date)) setupBoard205State.workDaySelection.delete(date);
+  }
+
+  const monthStart = board205CalendarMonthStart();
+  const year = monthStart.getUTCFullYear();
+  const month = monthStart.getUTCMonth();
+  const firstDow = monthStart.getUTCDay();
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const monthLabel = monthStart.toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  });
+
+  const cells = [];
+  for (let blank = 0; blank < firstDow; blank += 1) {
+    cells.push('<span class="setup-board205-calendar-blank" aria-hidden="true"></span>');
+  }
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = String(year) + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+    const alreadyExists = existing.has(date);
+    const selected = setupBoard205State.workDaySelection.has(date);
+    const weekday = new Date(date + 'T00:00:00Z').toLocaleDateString(undefined, {
+      weekday: 'long',
+      timeZone: 'UTC'
+    });
+    cells.push(
+      '<button type="button" class="setup-board205-calendar-day' + (selected ? ' selected' : '') + (alreadyExists ? ' existing' : '') + '" data-work-date="' + date + '" aria-pressed="' + (selected ? 'true' : 'false') + '" ' + (alreadyExists ? 'disabled aria-disabled="true"' : '') + ' title="' + (alreadyExists ? 'Work Day already exists' : 'Select ' + weekday + ', ' + date) + '"><span>' + day + '</span>' + (alreadyExists ? '<small>Work Day</small>' : '') + '</button>'
+    );
+  }
+
+  target.innerHTML =
+    '<div class="setup-board205-calendar-head">' +
+      '<button id="setup-board205-calendar-prev" type="button" class="small secondary" aria-label="Previous month">‹</button>' +
+      '<strong>' + board205Esc(monthLabel) + '</strong>' +
+      '<button id="setup-board205-calendar-next" type="button" class="small secondary" aria-label="Next month">›</button>' +
+    '</div>' +
+    '<div class="setup-board205-calendar-weekdays" aria-hidden="true">' +
+      '<span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>' +
+    '</div>' +
+    '<div class="setup-board205-calendar-grid">' + cells.join('') + '</div>';
+
+  const selectedDates = [...setupBoard205State.workDaySelection].sort();
+  summary.textContent = selectedDates.length
+    ? String(selectedDates.length) + ' date' + (selectedDates.length === 1 ? '' : 's') + ' selected: ' + selectedDates.join(', ')
+    : 'Select one or more dates. Tap a selected date again to remove it.';
+  submit.disabled = !selectedDates.length;
+
+  target.querySelector('#setup-board205-calendar-prev')?.addEventListener('click', () => {
+    const prior = new Date(Date.UTC(year, month - 1, 1));
+    setupBoard205State.workDayCalendarMonth = String(prior.getUTCFullYear()) + '-' + String(prior.getUTCMonth() + 1).padStart(2, '0');
+    board205RenderWorkDayCalendar();
+  });
+  target.querySelector('#setup-board205-calendar-next')?.addEventListener('click', () => {
+    const next = new Date(Date.UTC(year, month + 1, 1));
+    setupBoard205State.workDayCalendarMonth = String(next.getUTCFullYear()) + '-' + String(next.getUTCMonth() + 1).padStart(2, '0');
+    board205RenderWorkDayCalendar();
+  });
+  target.querySelectorAll('.setup-board205-calendar-day:not(:disabled)').forEach((button) => {
+    button.addEventListener('click', () => {
+      const date = button.dataset.workDate;
+      if (!date || board205ExistingWorkDayDates().has(date)) return;
+      if (setupBoard205State.workDaySelection.has(date)) {
+        setupBoard205State.workDaySelection.delete(date);
+      } else {
+        setupBoard205State.workDaySelection.add(date);
+      }
+      board205RenderWorkDayCalendar();
+    });
   });
 }
 
+function board205DayViewState(day) {
+  const status = String(day.day_status || '').toUpperCase();
+  if (status === 'COMPLETE' || status === 'CANCELLED') return 'COMPLETED';
+
+  const assignments = board205DayAssignments(day);
+  if (!assignments.length) return 'EMPTY';
+
+  const hasUnfinished = assignments.some((item) => {
+    const task = board205Task(item.setup_session_task_id);
+    return !task || !task.effective_complete;
+  });
+  return hasUnfinished ? 'UNFINISHED' : 'COMPLETED';
+}
+
 function board205VisibleDays() {
-  const showHistory = Boolean(document.getElementById('setup-board205-show-history')?.checked);
-  const today = board205TodayKey();
-  return (setupBoard205State.board.work_days || []).filter((day) => (
-    showHistory
-    || String(day.work_date) >= today
-    || board205PastDayNeedsAttention(day)
-  ));
+  const showUnfinished = document.getElementById('setup-board205-show-unfinished-days')?.checked !== false;
+  const showCompleted = Boolean(document.getElementById('setup-board205-show-completed-days')?.checked);
+  const showEmpty = Boolean(document.getElementById('setup-board205-show-empty-days')?.checked);
+
+  return (setupBoard205State.board.work_days || []).filter((day) => {
+    const state = board205DayViewState(day);
+    if (state === 'UNFINISHED') return showUnfinished;
+    if (state === 'COMPLETED') return showCompleted;
+    return showEmpty;
+  });
 }
 
 function board205AutoScrollPane(pane, event) {
@@ -207,17 +376,44 @@ function board205AutoScrollPane(pane, event) {
   }
 }
 
-function board205AmCarryoverMinutes(crewId) {
+function board205AmCapacity(crewId) {
   const items = board205CrewSequence(crewId).filter((item) => item.shift_code === 'MORNING');
-  if (!items.length) return 0;
+  if (!items.length) {
+    return { total: 0, remaining: SETUP_BOARD205_TYPICAL_AM_MINUTES, carryover: 0, known: true };
+  }
+
   let total = 0;
   for (const item of items) {
     const task = board205Task(item.setup_session_task_id) || item;
     const minutes = Number(task.expected_duration_minutes || 0);
-    if (minutes <= 0) return null;
+    if (minutes <= 0) {
+      return { total: null, remaining: null, carryover: null, known: false };
+    }
     total += minutes;
   }
-  return Math.max(total - SETUP_BOARD205_TYPICAL_AM_MINUTES, 0);
+
+  return {
+    total,
+    remaining: Math.max(SETUP_BOARD205_TYPICAL_AM_MINUTES - total, 0),
+    carryover: Math.max(total - SETUP_BOARD205_TYPICAL_AM_MINUTES, 0),
+    known: true
+  };
+}
+
+function board205AmCapacityNote(crewId) {
+  const capacity = board205AmCapacity(crewId);
+  const hasMorningWork = board205CrewSequence(crewId).some((item) => item.shift_code === 'MORNING');
+  if (!hasMorningWork) return '';
+  if (!capacity.known) {
+    return '<div class="setup-board205-capacity-note">AM remaining time unknown — one or more tasks have no reviewed duration.</div>';
+  }
+  if (capacity.carryover > 0) {
+    return `<div class="setup-board205-capacity-note">≈ ${board205Esc(board205Duration(capacity.carryover))} over the typical AM window.</div>`;
+  }
+  if (capacity.remaining > 0) {
+    return `<div class="setup-board205-capacity-note">≈ ${board205Esc(board205Duration(capacity.remaining))} remains in AM.</div>`;
+  }
+  return '<div class="setup-board205-capacity-note">AM work fills the typical ≈ 9–12 window.</div>';
 }
 
 function board205AssignmentSortKey(item) {
@@ -494,6 +690,7 @@ function board205FinderStageRows() {
 function board205SyncFinderSceneOptions() {
   const stage = document.getElementById('setup-board205-stage-filter');
   const scene = document.getElementById('setup-board205-scene-filter');
+  const sceneLabel = document.getElementById('setup-board205-scene-label');
   if (!stage || !scene) return;
 
   const previous = scene.value;
@@ -502,6 +699,7 @@ function board205SyncFinderSceneOptions() {
     scene.innerHTML = '<option value="">All scope details</option>';
     scene.value = '';
     scene.disabled = true;
+    if (sceneLabel) sceneLabel.hidden = true;
     return;
   }
 
@@ -540,7 +738,9 @@ function board205SyncFinderSceneOptions() {
   }
 
   scene.innerHTML = options.join('');
-  scene.disabled = false;
+  const hasUsefulScopeChoice = options.length > 1;
+  scene.disabled = !hasUsefulScopeChoice;
+  if (sceneLabel) sceneLabel.hidden = !hasUsefulScopeChoice;
   scene.value = [...scene.options].some((option) => option.value === previous) ? previous : '';
 }
 
@@ -591,8 +791,9 @@ function board205FinderCompare(a, b, mode) {
     return value == null ? 999999 : Number(value);
   };
   const stepOrder = (task) => {
-    const value = reusablePlanning && stageFilter
-      ? (task.display_order ?? task.baseline_plan_order)
+    const useReusableStepOrder = Boolean(stageFilter) && task.task_origin === 'REUSABLE';
+    const value = useReusableStepOrder
+      ? (task.display_order ?? task.baseline_plan_order ?? task.planned_order)
       : (task.planned_order ?? task.baseline_plan_order ?? task.display_order);
     return value == null ? 999999 : Number(value);
   };
@@ -601,6 +802,12 @@ function board205FinderCompare(a, b, mode) {
     undefined,
     { numeric: true, sensitivity: 'base' }
   );
+  const scopeCompare = (left, right) => {
+    const leftScene = left.lor_scene_id == null ? 0 : 1;
+    const rightScene = right.lor_scene_id == null ? 0 : 1;
+    return leftScene - rightScene
+      || textCompare(left.scene_name, right.scene_name);
+  };
 
   if (mode === 'STAGE') {
     // Real Stage work sorts first in Stage-number order. Site-wide /
@@ -643,6 +850,13 @@ function board205FinderCompare(a, b, mode) {
     const ac = a.normal_crew_min == null ? 999999 : Number(a.normal_crew_min);
     const bc = b.normal_crew_min == null ? 999999 : Number(b.normal_crew_min);
     return ac - bc
+      || baselineOrder(a) - baselineOrder(b)
+      || taskIdentity(a) - taskIdentity(b);
+  }
+
+  if (stageFilter) {
+    return scopeCompare(a, b)
+      || stepOrder(a) - stepOrder(b)
       || baselineOrder(a) - baselineOrder(b)
       || taskIdentity(a) - taskIdentity(b);
   }
@@ -824,7 +1038,7 @@ function board205TaskCard(task) {
   const blockerDetails = board205BlockerDetails(task, deps);
 
   return `
-    <article class="setup-board205-task-card"
+    <article class="setup-board205-task-card ${task.requires_display_material ? 'setup-material-task' : ''}"
       data-session-task-id="${task.setup_session_task_id ?? ''}"
       data-reusable-task-id="${task.setup_task_id ?? ''}"
       draggable="${canSchedule ? 'true' : 'false'}">
@@ -891,10 +1105,10 @@ function board205QueueTasks() {
       // only; it does not rewrite readiness state or make readiness a hard gate.
       if (readyOnly && task.readiness_state === 'NOT_READY') return false;
 
-      // When Task name is blank, the ordinary status checkboxes control
-      // non-hard-blocked candidates. With Blocking OFF, hard-blocked work is
-      // included automatically.
-      if (!search && !hardBlocked && !statuses.has(family)) return false;
+      // Task-name search narrows the current finder population; it does not
+      // resurrect tasks that moved into a different status such as SCHEDULED.
+      // With Blocking OFF, hard-blocked work is still included automatically.
+      if (!hardBlocked && !statuses.has(family)) return false;
 
       if (stageValue === 'SITE_WIDE') {
         if (task.stage_id != null) return false;
@@ -945,7 +1159,7 @@ function board205RenderQueue() {
     summary.textContent = `${tasks.length} of ${(setupBoard205State.board.tasks || []).length} ${noun}`
       + ` · Blocking ${board205BlockingEnabled() ? 'ON' : 'OFF'}`
       + (board205ReadyOnlyEnabled() ? ' · Ready only' : ' · soft readiness shown')
-      + (search ? ' · task-name search checks all statuses' : '')
+      + (search ? ' · task-name search keeps status filters' : '')
       + (!board205BlockingEnabled()
         ? ' · hard-blocked work included'
         : ' · hard blockers hidden');
@@ -1016,7 +1230,7 @@ function board205AssignmentCard(item) {
   const shortBy = understaffed ? minCrew - planned : 0;
   const heavyWarning = board205HeavyWarning(item);
   return `
-    <article class="setup-board205-assignment ${locked ? 'locked' : ''} ${understaffed ? 'short-crew' : ''}"
+    <article class="setup-board205-assignment ${task.requires_display_material ? 'setup-material-task' : ''} ${locked ? 'locked' : ''} ${understaffed ? 'short-crew' : ''}"
       data-assignment-id="${item.setup_work_day_task_id}"
       draggable="${canManage && !locked ? 'true' : 'false'}">
       <div class="setup-board205-task-title">
@@ -1046,15 +1260,17 @@ function board205AssignmentCard(item) {
 
 function board205Cell(day, shift, crew) {
   const items = board205AssignmentsFor(day.setup_work_day_id, shift, crew.setup_work_day_crew_id);
-  const carryover = shift === 'AFTERNOON'
-    ? board205AmCarryoverMinutes(crew.setup_work_day_crew_id)
-    : 0;
-  const carryoverNote = shift === 'AFTERNOON' && carryover > 0
-    ? `<div class="setup-board205-carryover">≈ ${board205Esc(board205Duration(carryover))} of AM work carries past lunch into PM.</div>`
+  const amCapacity = board205AmCapacity(crew.setup_work_day_crew_id);
+  const capacityNote = shift === 'MORNING'
+    ? board205AmCapacityNote(crew.setup_work_day_crew_id)
+    : '';
+  const carryoverNote = shift === 'AFTERNOON' && amCapacity.known && amCapacity.carryover > 0
+    ? `<div class="setup-board205-carryover">≈ ${board205Esc(board205Duration(amCapacity.carryover))} of AM work carries past lunch into PM.</div>`
     : '';
   return `
     <div class="setup-board205-cell"
       data-day-id="${day.setup_work_day_id}" data-shift="${shift}" data-crew-id="${crew.setup_work_day_crew_id}">
+      ${capacityNote}
       ${carryoverNote}
       ${items.length ? items.map(board205AssignmentCard).join('') : '<div class="setup-board205-cell-empty">Drop work here</div>'}
     </div>`;
@@ -1063,7 +1279,13 @@ function board205Cell(day, shift, crew) {
 
 
 function board205Day(day) {
-  const dayClass = Number(day.iso_day_of_week) === 6 ? 'saturday' : Number(day.iso_day_of_week) === 7 ? 'sunday' : '';
+  const dayClass = [
+    Number(day.iso_day_of_week) === 6 ? 'saturday' : '',
+    Number(day.iso_day_of_week) === 7 ? 'sunday' : '',
+    Number(day.setup_day_number) % 2 === 0 ? 'day-band-even' : 'day-band-odd',
+    board205DayViewState(day) === 'COMPLETED' ? 'completed-day' : '',
+    String(day.day_status || '').toUpperCase() === 'CANCELLED' ? 'cancelled-day' : ''
+  ].filter(Boolean).join(' ');
   const dayNote = [day.volunteer_note, day.weather_note, day.notes].filter(Boolean).join(' · ');
   const crews = board205CrewsForDay(day.setup_work_day_id);
   const canManage = Boolean(appState.access?.can_manage_setup);
@@ -1071,15 +1293,17 @@ function board205Day(day) {
     const legacy = board205AssignmentsFor(day.setup_work_day_id, 'ALL_DAY', crew.setup_work_day_crew_id);
     return `
       <div class="setup-board205-crew-label" data-crew-id="${crew.setup_work_day_crew_id}">
-        <strong>Crew ${board205Esc(crew.crew_code)}</strong>
+        <div class="setup-board205-crew-title-row">
+          <strong>Crew ${board205Esc(crew.crew_code)}</strong>
+          ${canManage ? `<div class="setup-board205-crew-actions"><button type="button" class="small setup-board205-save-crew">Save</button>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
+        </div>
         <label class="setup-board205-crew-captain">Captain
           <select class="setup-board205-crew-captain-select">${board205CaptainOptions(crew.captain_person_id)}</select>
         </label>
         <div class="setup-board205-crew-counts">
-          <label>AM <input class="setup-board205-crew-am" type="number" min="0" value="${board205Esc(crew.am_planned_crew_count ?? '')}" placeholder="—"></label>
-          <label>PM <input class="setup-board205-crew-pm" type="number" min="0" value="${board205Esc(crew.pm_planned_crew_count ?? '')}" placeholder="—"></label>
+          <label>AM Crew <input class="setup-board205-crew-am" type="number" min="0" value="${board205Esc(crew.am_planned_crew_count ?? '')}" placeholder="—"></label>
+          <label>PM Crew <input class="setup-board205-crew-pm" type="number" min="0" value="${board205Esc(crew.pm_planned_crew_count ?? '')}" placeholder="—"></label>
         </div>
-        ${canManage ? `<div class="setup-board205-crew-actions"><button type="button" class="small secondary setup-board205-save-crew">Save</button>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
       </div>
       ${board205Cell(day, 'MORNING', crew)}
       ${board205Cell(day, 'AFTERNOON', crew)}
@@ -1105,7 +1329,7 @@ function board205Day(day) {
       </div>
       <div class="setup-board205-table-wrap">
         <div class="setup-board205-grid">
-          <div class="setup-board205-grid-head">Crew / Captain / planned availability</div>
+          <div class="setup-board205-grid-head">Crew / Captain / Volunteers</div>
           <div class="setup-board205-grid-head">AM <span class="setup-board205-shift-hint">≈ 9–12</span></div>
           <div class="setup-board205-grid-head">PM <span class="setup-board205-shift-hint">after lunch ≈ 1 PM</span></div>
           ${crewRows}
@@ -1120,7 +1344,7 @@ function board205RenderBoard() {
   const days = board205VisibleDays();
   target.innerHTML = days.length
     ? days.map(board205Day).join('')
-    : '<div class="setup-board205-empty">No current/future or unresolved prior Setup work days are visible. Use Show prior / completed work days to review history.</div>';
+    : '<div class="setup-board205-empty">No work days match the selected Day view filters.</div>';
 
   target.querySelectorAll('.setup-board205-cell').forEach((cell) => {
     cell.addEventListener('dragover', (event) => {
@@ -1199,19 +1423,47 @@ function board205RenderBoard() {
   });
 }
 
+function board205RenderKpis() {
+  const target = document.getElementById('setup-board205-kpis');
+  if (!target) return;
+  const tasks = setupBoard205State.board.tasks || [];
+  const total = tasks.length;
+  const scheduled = tasks.filter((task) => Number(task.unworked_assignment_count || 0) > 0).length;
+  const complete = tasks.filter((task) => Boolean(task.effective_complete)).length;
+  const inProgress = tasks.filter((task) => task.execution_status === 'IN_PROGRESS').length;
+  const pct = (count) => total ? Math.round((count / total) * 100) : 0;
+
+  target.innerHTML = [
+    `<span><strong>${total}</strong> tasks</span>`,
+    `<span><strong>${scheduled}</strong> scheduled · ${pct(scheduled)}%</span>`,
+    inProgress ? `<span><strong>${inProgress}</strong> in progress · ${pct(inProgress)}%</span>` : '',
+    `<span><strong>${complete}</strong> complete · ${pct(complete)}%</span>`
+  ].filter(Boolean).join('<span class="setup-board205-kpi-sep">·</span>');
+}
+
 function board205Render() {
   const session = setupBoard205State.board.session;
   const noSession = document.getElementById('setup-board205-no-session');
   const workspace = document.getElementById('setup-board205-workspace');
   const addSeason = document.getElementById('setup-board205-add-season-task');
+  const createSession = document.getElementById('setup-board205-create-session');
   const dayForm = document.getElementById('setup-board205-day-form');
   const boardPane = document.getElementById('setup-board205-board-pane');
   const historicalNote = document.getElementById('setup-board205-historical-note');
   const finderTitle = document.getElementById('setup-board205-finder-title');
   const historicalReview = Boolean(session) && board205HistoricalReviewMode();
   const canManage = Boolean(appState.access?.can_manage_setup);
+  const canAdmin = Boolean(appState.access?.can_admin_setup);
 
-  if (addSeason) addSeason.disabled = !session;
+  if (addSeason) {
+    addSeason.hidden = !session || historicalReview || !canManage;
+    addSeason.disabled = !session || historicalReview || !canManage;
+  }
+  if (createSession) {
+    createSession.textContent = `Create ${appState.seasonYear} Setup Session`;
+    createSession.hidden = Boolean(session) || !canAdmin;
+    createSession.disabled = Boolean(session) || !canAdmin;
+  }
   if (dayForm) {
     const canScheduleDays = Boolean(session) && canManage && !historicalReview;
     dayForm.hidden = !canScheduleDays;
@@ -1226,9 +1478,10 @@ function board205Render() {
     : 'Needs Scheduling';
   if (workspace) workspace.classList.toggle('finder-only', historicalReview);
   if (setupBoard205State.finderCompact == null) {
-    setupBoard205State.finderCompact = historicalReview;
+    setupBoard205State.finderCompact = true;
   }
   board205ApplyFinderCompact();
+  board205RenderKpis();
   if (!session) {
     if (noSession) noSession.hidden = false;
     if (workspace) workspace.hidden = true;
@@ -1239,6 +1492,7 @@ function board205Render() {
   board205SyncFinderOptions();
   board205RenderQueue();
   if (!historicalReview) {
+    board205RenderWorkDayCalendar();
     board205RenderBoard();
     board205PopulateDialogSelects();
   }
@@ -1297,11 +1551,23 @@ async function board205SaveCrew(crewId, crewNode) {
   const captainPersonId = nullableInteger(
     crewNode.querySelector('.setup-board205-crew-captain-select')?.value
   );
+  const amCount = nullableInteger(crewNode.querySelector('.setup-board205-crew-am')?.value);
+  const pmCount = nullableInteger(crewNode.querySelector('.setup-board205-crew-pm')?.value);
+  const capacityWarnings = board205CrewCapacityWarnings(crewId, amCount, pmCount);
+  if (
+    capacityWarnings.length
+    && !window.confirm(
+      `SHORT CREW:\n\n${capacityWarnings.join('\n')}\n\nSave this crew size anyway?`
+    )
+  ) {
+    return;
+  }
+
   try {
     setBusy(true);
     await api(`api/setup/scheduling-board/crews/${crewId}`, commandOptions('PATCH', {
-      am_planned_crew_count: nullableInteger(crewNode.querySelector('.setup-board205-crew-am')?.value),
-      pm_planned_crew_count: nullableInteger(crewNode.querySelector('.setup-board205-crew-pm')?.value),
+      am_planned_crew_count: amCount,
+      pm_planned_crew_count: pmCount,
       captain_person_id: captainPersonId
     }));
     await board205MaybeLearnCaptainForCrewAssignments(crewId, captainPersonId);
@@ -1432,23 +1698,53 @@ function board205PopulateDialogSelects() {
     )).join('');
   }
 
-  const taskOptions = '<option value="">— none —</option>' + (setupBoard205State.board.tasks || []).map((task) => (
+  board205PopulateScenes();
+  board205PopulateSeasonPlacementOptions();
+  board205PopulateWorkOrderOptions();
+}
+
+function board205PopulateSeasonPlacementOptions() {
+  const stageValue = document.getElementById('setup-board205-season-stage')?.value || '';
+  const stageId = stageValue ? Number(stageValue) : null;
+  const tasks = (setupBoard205State.board.tasks || []).filter((task) => (
+    stageId == null ? task.stage_id == null : Number(task.stage_id) === stageId
+  ));
+  const options = '<option value="">— none —</option>' + tasks.map((task) => (
     `<option value="${task.setup_session_task_id}">${board205Esc(task.planned_order ?? '—')} — ${board205Esc(task.task_name)}</option>`
   )).join('');
   const prior = document.getElementById('setup-board205-season-prereq');
   const downstream = document.getElementById('setup-board205-season-downstream');
-  if (prior) prior.innerHTML = taskOptions;
-  if (downstream) downstream.innerHTML = taskOptions;
-  board205PopulateScenes();
-  const workOrderSelect = document.getElementById('setup-board205-season-work-order');
-  if (workOrderSelect) {
-    workOrderSelect.innerHTML = '<option value="">No Work Order</option>'
-      + (setupBoard205State.board.work_orders || []).map((wo) => {
-          const status = wo.date_completed ? 'COMPLETE' : 'OPEN';
-          const problem = String(wo.problem || '').trim();
-          const label = `WO ${wo.work_order_id} · ${status}${problem ? ` · ${problem}` : ''}`;
-          return `<option value="${wo.work_order_id}">${board205Esc(label)}</option>`;
-        }).join('');
+  if (prior) prior.innerHTML = options;
+  if (downstream) downstream.innerHTML = options;
+}
+
+function board205PopulateWorkOrderOptions(selectedId = null) {
+  const select = document.getElementById('setup-board205-season-work-order');
+  if (!select) return;
+
+  const search = String(
+    document.getElementById('setup-board205-season-work-order-search')?.value || ''
+  ).trim().toLowerCase();
+  const selected = selectedId == null ? String(select.value || '') : String(selectedId || '');
+
+  const rows = (setupBoard205State.board.work_orders || []).filter((wo) => {
+    if (!search) return true;
+    const haystack = [
+      wo.work_order_id,
+      `wo ${wo.work_order_id}`,
+      wo.problem || ''
+    ].join(' ').toLowerCase();
+    return haystack.includes(search);
+  });
+
+  select.innerHTML = '<option value="">No Work Order</option>' + rows.map((wo) => {
+    const problem = String(wo.problem || '').trim();
+    const label = `WO ${wo.work_order_id}${problem ? ` · ${problem}` : ''}`;
+    return `<option value="${wo.work_order_id}">${board205Esc(label)}</option>`;
+  }).join('');
+
+  if (selected && [...select.options].some((option) => option.value === selected)) {
+    select.value = selected;
   }
 }
 
@@ -1549,27 +1845,53 @@ async function board205SubmitScheduleDialog(event) {
 async function board205AddWorkDay(event) {
   event.preventDefault();
   const form = event.currentTarget;
-  const date = document.getElementById('setup-board205-work-date').value;
   const volunteerNote = document.getElementById('setup-board205-volunteer-note').value.trim() || null;
-  if (!date) return;
+  const existing = board205ExistingWorkDayDates();
+  const dates = [...setupBoard205State.workDaySelection]
+    .filter((date) => !existing.has(date))
+    .sort();
+  if (!dates.length) return;
 
-  const parts = date.split('-').map(Number);
-  const dow = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2])).getUTCDay();
-  if (dow === 0 && !window.confirm('This is a Sunday. MSB normally avoids Sunday Setup work. Add it deliberately anyway?')) return;
+  const sundays = dates.filter((date) => new Date(date + 'T00:00:00Z').getUTCDay() === 0);
+  if (
+    sundays.length
+    && !window.confirm(
+      sundays.join(', ') + (sundays.length === 1 ? ' is a Sunday' : ' are Sundays') +
+      '. MSB normally avoids Sunday Setup work. Add ' +
+      (sundays.length === 1 ? 'it' : 'them') + ' deliberately anyway?'
+    )
+  ) return;
 
+  let created = 0;
   try {
     setBusy(true);
-    await api('api/setup/scheduling-board/work-days', commandOptions('POST', {
-      season_year: Number(appState.seasonYear),
-      work_date: date,
-      setup_day_number: null,
-      day_status: 'PLANNED',
-      volunteer_note: volunteerNote
-    }));
+    for (const date of dates) {
+      if (board205ExistingWorkDayDates().has(date)) continue;
+      await api('api/setup/scheduling-board/work-days', commandOptions('POST', {
+        season_year: Number(appState.seasonYear),
+        work_date: date,
+        setup_day_number: null,
+        day_status: 'PLANNED',
+        volunteer_note: volunteerNote
+      }));
+      created += 1;
+    }
+    setupBoard205State.workDaySelection.clear();
     form.reset();
+    setupBoard205State.workDayPickerExpanded = false;
+    const showEmptyDays = document.getElementById('setup-board205-show-empty-days');
+    if (showEmptyDays) showEmptyDays.checked = true;
     await board205Load();
+    setAlert(String(created) + ' Work Day' + (created === 1 ? '' : 's') + ' added.', 'ok');
   } catch (error) {
-    setAlert(error.message || error, 'error');
+    setupBoard205State.workDaySelection.clear();
+    await board205Load();
+    setAlert(
+      created
+        ? String(created) + ' Work Day' + (created === 1 ? '' : 's') + ' added before the next date failed: ' + (error.message || error)
+        : (error.message || error),
+      'error'
+    );
     window.alert(error.message || error);
   } finally {
     setBusy(false);
@@ -1739,6 +2061,105 @@ async function board205SubmitPlanningInfo(event) {
   await board205PersistPlanningInfo();
 }
 
+async function board205CreateAnnualSession() {
+  const year = Number(appState.seasonYear);
+  if (!appState.access?.can_admin_setup || !Number.isInteger(year)) return;
+  if (setupBoard205State.board.session) return;
+
+  const activeCount = (appState.tasks || []).filter((task) => task.active_flag).length;
+  const confirmed = window.confirm(
+    `Create the real ${year} Setup Session now?\n\n`
+    + `This seeds every active reusable Catalog task into ${year} exactly once`
+    + (activeCount ? ` (currently ${activeCount} active reusable tasks).` : '.')
+    + '\n\nAfter creation you can begin adding work days and scheduling. '
+    + 'Normal planning remains editable; actual reported work becomes protected history.\n\n'
+    + 'Create the annual Session?'
+  );
+  if (!confirmed) return;
+
+  try {
+    setBusy(true);
+    const result = await api('api/setup/sessions', commandOptions('POST', {
+      season_year: year,
+      session_status: 'PLANNING'
+    }));
+    const seasonsPayload = await api('api/setup/seasons');
+    appState.seasons = seasonsPayload.seasons || [];
+    await loadSeason(year);
+    await board205Load();
+    const seeded = result.setup_session?.seeded_task_count;
+    setAlert(
+      `${year} Setup Session created${seeded == null ? '' : ` with ${seeded} reusable task(s)`}. You can start scheduling now.`,
+      'ok'
+    );
+  } catch (error) {
+    setAlert(error.message || error, 'error');
+    window.alert(error.message || error);
+  } finally {
+    setBusy(false);
+  }
+}
+
+function board205OpenAddTaskIntentDialog() {
+  if (!setupBoard205State.board.session || !appState.access?.can_manage_setup) return;
+  document.getElementById('setup-board205-add-intent-dialog')?.showModal();
+}
+
+async function board205ChooseReusableTask() {
+  document.getElementById('setup-board205-add-intent-dialog')?.close();
+  if (typeof navigateSetupView === 'function') {
+    await navigateSetupView('library');
+  } else {
+    showView('library');
+  }
+
+  if (typeof acceptanceOpenAddTask === 'function') {
+    acceptanceOpenAddTask(null, null);
+  } else {
+    document.getElementById('show-add-task')?.click();
+  }
+  setAlert(
+    `Reusable task: this becomes permanent Catalog work and is automatically added to the open ${appState.seasonYear} Setup Session.`,
+    'ok'
+  );
+}
+
+function board205ChooseSeasonOnlyTask() {
+  document.getElementById('setup-board205-add-intent-dialog')?.close();
+  board205OpenSeasonTaskDialog();
+}
+
+async function board205DeleteSeasonTask() {
+  const sessionTaskId = setupBoard205State.editSeasonTaskId;
+  const task = board205Task(sessionTaskId);
+  if (!task || task.task_origin !== 'SEASON_ONLY' || !appState.access?.can_manage_setup) return;
+
+  const confirmed = window.confirm(
+    `Delete "${task.task_name}" from ${appState.seasonYear}?\n\n`
+    + 'This task is THIS SEASON ONLY. Planning-only day/crew assignments and prerequisite links will be removed with it.\n\n'
+    + 'The database will refuse deletion if actual work/progress or execution evidence has been reported.\n\n'
+    + 'Delete this season-only task?'
+  );
+  if (!confirmed) return;
+
+  try {
+    setBusy(true);
+    await api(
+      `api/setup/scheduling-board/season-tasks/${sessionTaskId}`,
+      commandOptions('DELETE')
+    );
+    document.getElementById('setup-board205-season-dialog')?.close();
+    setupBoard205State.editSeasonTaskId = null;
+    await board205Load();
+    setAlert('Unworked season-only Setup task deleted.', 'ok');
+  } catch (error) {
+    setAlert(error.message || error, 'error');
+    window.alert(error.message || error);
+  } finally {
+    setBusy(false);
+  }
+}
+
 function board205OpenSeasonTaskDialog(sessionTaskId = null) {
   const dialog = document.getElementById('setup-board205-season-dialog');
   const form = document.getElementById('setup-board205-season-form');
@@ -1749,6 +2170,8 @@ function board205OpenSeasonTaskDialog(sessionTaskId = null) {
 
   const heading = document.getElementById('setup-board205-season-heading');
   const chain = document.getElementById('setup-board205-season-chain');
+  const deleteButton = document.getElementById('setup-board205-delete-season-task');
+  if (deleteButton) deleteButton.hidden = sessionTaskId == null;
   if (sessionTaskId == null) {
     heading.textContent = `Add ${appState.seasonYear} Season Task`;
     chain.hidden = false;
@@ -1762,7 +2185,8 @@ function board205OpenSeasonTaskDialog(sessionTaskId = null) {
     board205PopulateScenes();
     document.getElementById('setup-board205-season-scene').value = task.lor_scene_id ?? '';
     document.getElementById('setup-board205-season-type').value = task.task_action_type || 'WORK';
-    document.getElementById('setup-board205-season-work-order').value = task.linked_work_order_id ?? '';
+    document.getElementById('setup-board205-season-work-order-search').value = '';
+    board205PopulateWorkOrderOptions(task.linked_work_order_id ?? '');
     document.getElementById('setup-board205-season-gate').checked = Boolean(task.linked_work_order_gate);
     document.getElementById('setup-board205-season-crew-min').value = task.normal_crew_min ?? '';
     document.getElementById('setup-board205-season-crew-max').value = task.normal_crew_max ?? '';
@@ -1864,26 +2288,12 @@ function board205InstallView() {
 
   view.innerHTML = `
     <div id="setup-board205-root" class="setup-board205-shell">
-      <div class="card">
-        <div class="setup-board205-toolbar">
-          <div>
-            <div class="eyebrow">Rolling annual dispatch · historical learning</div>
-            <h2>Setup Scheduling Board</h2>
-            <p class="muted">Plan only the next practical work days. Annual execution may teach the reusable Catalog later, but this board never changes reusable knowledge automatically.</p>
-          </div>
-          <button id="setup-board205-add-season-task" type="button" class="manager-only">Add Season Task</button>
-        </div>
-        <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
-          <label>Date<input id="setup-board205-work-date" type="date" required></label>
-          <div class="setup-board205-auto-day-note">Setup Day # is assigned automatically in chronological order.</div>
-          <label class="setup-board205-volunteer-note">Volunteer / capacity note<input id="setup-board205-volunteer-note" type="text" placeholder="Optional, e.g. strong Saturday turnout expected"></label>
-          <button type="submit">Add Work Day</button>
-        </form>
-      </div>
-
       <div id="setup-board205-no-session" class="card" hidden>
         <strong>No annual Setup Session exists for this season.</strong>
-        <p class="muted">That is expected until the annual-session gate is accepted. The Reusable Catalog remains separate.</p>
+        <p class="muted">The reusable Catalog is ready. A Setup Administrator can create the real annual Session here; creation seeds every active reusable task once and does not schedule any work by itself.</p>
+        <div class="action-row">
+          <button id="setup-board205-create-session" type="button" class="admin-only" hidden>Create Setup Session</button>
+        </div>
       </div>
 
       <div id="setup-board205-workspace" class="setup-board205-main">
@@ -1895,16 +2305,18 @@ function board205InstallView() {
             Use the current reusable tasks to review crew guidance, expected time, readiness, notes, and plan order. The 2025 construction marker does not define this task list or current planning state. Work days, crews, and assignments remain disabled until the real annual Session is created.
           </div>
           <div id="setup-board205-filters" class="setup-board205-filters setup-board205-finder">
-            <label>Stage / area<select id="setup-board205-stage-filter"><option value="">All Stages / areas</option></select></label>
-            <label>Scene / scope<select id="setup-board205-scene-filter" disabled><option value="">All scope details</option></select></label>
-            <label>Sort<select id="setup-board205-sort">
-              <option value="PLAN">Plan order</option>
-              <option value="STAGE">Stage / Scene</option>
-              <option value="NAME">Task name</option>
-              <option value="STATUS">Status</option>
-              <option value="DURATION">Expected duration</option>
-              <option value="CREW">Minimum crew</option>
-            </select></label>
+            <div class="setup-board205-primary-filters">
+              <label>Stage / area<select id="setup-board205-stage-filter"><option value="">All Stages / areas</option></select></label>
+              <label>Sort<select id="setup-board205-sort">
+                <option value="PLAN">Plan order</option>
+                <option value="STAGE">Stage / Scene</option>
+                <option value="NAME">Task name</option>
+                <option value="STATUS">Status</option>
+                <option value="DURATION">Expected duration</option>
+                <option value="CREW">Minimum crew</option>
+              </select></label>
+            </div>
+            <label id="setup-board205-scene-label" hidden>Scene / scope<select id="setup-board205-scene-filter" disabled><option value="">All scope details</option></select></label>
             <label class="setup-board205-search">Task name<input id="setup-board205-task-search" type="search" placeholder="e.g. locate"></label>
             <label class="setup-board205-blocking-toggle"><input id="setup-board205-blocking-toggle" type="checkbox" checked> Blocking ON</label>
             <button id="setup-board205-filter-density" type="button" class="small secondary" aria-expanded="true">Compact filters</button>
@@ -1935,17 +2347,57 @@ function board205InstallView() {
           <div id="setup-board205-queue" class="setup-board205-queue"></div>
         </section>
 
-        <section id="setup-board205-board-pane" class="card setup-board205-board">
-          <div class="eyebrow">Setup Day Number · DOW · Date</div>
-          <div class="setup-board205-board-heading">
-            <div>
-              <h3>Rolling Work Days</h3>
-              <p class="muted">Each work day starts with Crew A. Add crews only when needed. Schedule in AM/PM shifts; planned headcount is optional by crew and shift. Historical actual assignments are locked.</p>
+        <div class="setup-board205-right">
+          <section class="card setup-board205-planning-header">
+            <div class="setup-board205-toolbar">
+              <div class="setup-board205-title">
+                <div class="eyebrow">Rolling annual dispatch · historical learning</div>
+                <h2>Setup Scheduling Board</h2>
+              </div>
+              <div id="setup-board205-kpis" class="setup-board205-kpis" aria-live="polite"></div>
+              <div class="setup-board205-toolbar-actions">
+                <button id="setup-board205-add-season-task" type="button" class="manager-only">Add Task</button>
+              </div>
             </div>
-            <label class="setup-board205-history-toggle"><input id="setup-board205-show-history" type="checkbox"> Show prior / completed work days</label>
-          </div>
-          <div id="setup-board205-days" class="setup-board205-days"></div>
-        </section>
+            <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
+              <div class="setup-board205-work-day-collapsed">
+                <button id="setup-board205-toggle-work-days" type="button" class="small" aria-expanded="false">+ Add Work Days</button>
+                <span class="setup-board205-auto-day-note">Open only when you need to add dates.</span>
+              </div>
+              <div id="setup-board205-work-day-picker-body" class="setup-board205-work-day-picker" hidden>
+                <div class="setup-board205-work-day-picker-copy">
+                  <strong>Add Work Days</strong>
+                  <span class="setup-board205-auto-day-note">Tap dates to select or deselect them. Existing Work Days are disabled. Setup Day # is assigned automatically in chronological order.</span>
+                </div>
+                <div id="setup-board205-work-day-calendar" class="setup-board205-work-day-calendar" aria-label="Select Work Day dates"></div>
+                <div id="setup-board205-work-day-selection" class="muted" aria-live="polite"></div>
+                <label class="setup-board205-volunteer-note">Volunteer / capacity note<input id="setup-board205-volunteer-note" type="text" placeholder="Optional; applied to all selected dates"></label>
+                <div class="setup-board205-work-day-actions">
+                  <button id="setup-board205-add-work-days" type="submit" disabled>Add Selected Work Days</button>
+                  <button id="setup-board205-cancel-work-days" type="button" class="secondary">Cancel</button>
+                </div>
+              </div>
+            </form>
+          </section>
+
+          <section id="setup-board205-board-pane" class="card setup-board205-board">
+            <div class="eyebrow">Setup Day Number · DOW · Date</div>
+            <div class="setup-board205-board-heading">
+              <div class="setup-board205-board-title-row">
+                <h3>Rolling Work Days</h3>
+                <button id="setup-board205-print" type="button" class="small">Print Schedule</button>
+              </div>
+              <p class="muted">Each work day starts with Crew A. Add crews only when needed. Schedule in AM/PM shifts; planned headcount is optional by crew and shift. Historical actual assignments are locked.</p>
+              <div class="setup-board205-day-filters" aria-label="Day view">
+                <strong>Day view</strong>
+                <label><input id="setup-board205-show-unfinished-days" type="checkbox" checked> Scheduled / unfinished</label>
+                <label><input id="setup-board205-show-completed-days" type="checkbox"> Completed / cancelled</label>
+                <label><input id="setup-board205-show-empty-days" type="checkbox" checked> Empty days</label>
+              </div>
+            </div>
+            <div id="setup-board205-days" class="setup-board205-days"></div>
+          </section>
+        </div>
       </div>
     </div>
 
@@ -1980,16 +2432,37 @@ function board205InstallView() {
       </form>
     </dialog>
 
+    <dialog id="setup-board205-add-intent-dialog" class="setup-board205-dialog">
+      <form method="dialog">
+        <h3>What kind of task is this?</h3>
+        <p class="muted">Choose deliberately. There is no default because these choices have different long-term meaning.</p>
+        <div class="setup-board205-choice-stack">
+          <button id="setup-board205-add-reusable" type="button">
+            Reusable Setup Task — every year
+          </button>
+          <p class="muted">Creates permanent reusable Catalog work and automatically adds it to the open annual Session.</p>
+          <button id="setup-board205-add-season-only" type="button" class="secondary">
+            Season Task Only — this season
+          </button>
+          <p class="muted">Creates annual work only. It does not enter the Reusable Task Catalog.</p>
+        </div>
+        <menu><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button></menu>
+      </form>
+    </dialog>
+
     <dialog id="setup-board205-season-dialog" class="setup-board205-dialog">
       <form id="setup-board205-season-form">
         <h3 id="setup-board205-season-heading">Add Season Task</h3>
-        <p class="muted">Season-only work belongs to this annual Setup Session. It does not enter the Reusable Task Catalog unless explicitly reconciled and confirmed later.</p>
+        <p class="muted"><strong>THIS SEASON ONLY.</strong> This work belongs only to the annual Setup Session and does not enter the Reusable Task Catalog.</p>
         <label>Task name<input id="setup-board205-season-name" type="text" required></label>
         <div class="setup-board205-form-grid">
           <label>Stage<select id="setup-board205-season-stage"></select></label>
           <label>Scene<select id="setup-board205-season-scene"></select></label>
-          <label>Type<select id="setup-board205-season-type"><option value="WORK">Work</option><option value="GATE">Stop / Gate</option><option value="SUPPORT">Support</option><option value="UNLOAD_CONTAINER">Unload Container</option></select></label>
-          <label>Existing Work Order<select id="setup-board205-season-work-order"><option value="">No Work Order</option></select></label>
+          <label>Type<select id="setup-board205-season-type"><option value="WORK">Setup Work</option><option value="GATE">Wait / Gate</option><option value="SUPPORT">Support / Prep</option><option value="UNLOAD_CONTAINER">Unload Container</option></select></label>
+          <div class="setup-board205-work-order-picker">
+            <label>Find open Work Order<input id="setup-board205-season-work-order-search" type="search" placeholder="WO # or problem text" autocomplete="off"></label>
+            <label>Matching Work Order<select id="setup-board205-season-work-order"><option value="">No Work Order</option></select></label>
+          </div>
           <label class="checkbox-label"><input id="setup-board205-season-gate" type="checkbox"> Work Order completion satisfies this gate</label>
           <span></span>
           <label>Crew min<input id="setup-board205-season-crew-min" type="number" min="0"></label>
@@ -2002,10 +2475,10 @@ function board205InstallView() {
         <label>Readiness / hold note<textarea id="setup-board205-season-readiness" rows="2"></textarea></label>
         <label>Annual notes<textarea id="setup-board205-season-notes" rows="3"></textarea></label>
         <div id="setup-board205-season-chain" class="setup-board205-form-grid">
-          <label>Insert after / prerequisite<select id="setup-board205-season-prereq"></select></label>
-          <label>Block downstream task<select id="setup-board205-season-downstream"></select></label>
+          <label>Place after / requires<select id="setup-board205-season-prereq"></select></label>
+          <label>Optional downstream task to block<select id="setup-board205-season-downstream"></select></label>
         </div>
-        <menu><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Save Season Task</button></menu>
+        <menu><button id="setup-board205-delete-season-task" type="button" class="danger" hidden>Delete Season Task</button><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Save Season Task</button></menu>
       </form>
     </dialog>
   `;
@@ -2013,6 +2486,10 @@ function board205InstallView() {
   document.getElementById('setup-board205-filter-density')?.addEventListener('click', () => {
     setupBoard205State.finderCompact = !Boolean(setupBoard205State.finderCompact);
     board205ApplyFinderCompact();
+  });
+
+  document.getElementById('setup-board205-season-work-order-search')?.addEventListener('input', () => {
+    board205PopulateWorkOrderOptions();
   });
 
   const finderFilters = document.getElementById('setup-board205-filters');
@@ -2034,11 +2511,28 @@ function board205InstallView() {
     if (control.type === 'search' || control.type === 'number') board205RenderQueue();
   });
   document.getElementById('setup-board205-day-form').addEventListener('submit', board205AddWorkDay);
-  document.getElementById('setup-board205-show-history').addEventListener('change', board205RenderBoard);
+  document.getElementById('setup-board205-toggle-work-days')?.addEventListener('click', () => {
+    setupBoard205State.workDayPickerExpanded = !setupBoard205State.workDayPickerExpanded;
+    board205ApplyWorkDayPickerExpanded();
+  });
+  document.getElementById('setup-board205-cancel-work-days')?.addEventListener('click', () => {
+    setupBoard205State.workDaySelection.clear();
+    document.getElementById('setup-board205-day-form')?.reset();
+    setupBoard205State.workDayPickerExpanded = false;
+    board205RenderWorkDayCalendar();
+  });
+  document.querySelectorAll('.setup-board205-day-filters input').forEach((control) => {
+    control.addEventListener('change', board205RenderBoard);
+  });
   document.querySelectorAll('.setup-board205-backlog, .setup-board205-board').forEach((pane) => {
     pane.addEventListener('dragover', (event) => board205AutoScrollPane(pane, event), true);
   });
-  document.getElementById('setup-board205-add-season-task').addEventListener('click', () => board205OpenSeasonTaskDialog());
+  document.getElementById('setup-board205-print')?.addEventListener('click', () => window.print());
+  document.getElementById('setup-board205-add-season-task').addEventListener('click', board205OpenAddTaskIntentDialog);
+  document.getElementById('setup-board205-create-session')?.addEventListener('click', board205CreateAnnualSession);
+  document.getElementById('setup-board205-add-reusable')?.addEventListener('click', () => { void board205ChooseReusableTask(); });
+  document.getElementById('setup-board205-add-season-only')?.addEventListener('click', board205ChooseSeasonOnlyTask);
+  document.getElementById('setup-board205-delete-season-task')?.addEventListener('click', () => { void board205DeleteSeasonTask(); });
   document.getElementById('setup-board205-schedule-dialog-form').addEventListener('submit', board205SubmitScheduleDialog);
   document.getElementById('setup-board205-schedule-day').addEventListener('change', (event) => {
     board205PopulateCrewSelect(Number(event.currentTarget.value || 0));
@@ -2065,7 +2559,10 @@ function board205InstallView() {
     })();
   });
   document.getElementById('setup-board205-season-form').addEventListener('submit', board205SubmitSeasonTask);
-  document.getElementById('setup-board205-season-stage').addEventListener('change', board205PopulateScenes);
+  document.getElementById('setup-board205-season-stage').addEventListener('change', () => {
+    board205PopulateScenes();
+    board205PopulateSeasonPlacementOptions();
+  });
   view.querySelectorAll('.setup-board205-dialog-cancel').forEach((button) => {
     button.addEventListener('click', () => button.closest('dialog')?.close());
   });
@@ -2080,3 +2577,6 @@ loadSeason = async function loadSeasonWithSchedulingBoard(year) {
 };
 
 board205InstallView();
+if (document.getElementById('schedule-view')?.classList.contains('active-view')) {
+  void board205Load();
+}

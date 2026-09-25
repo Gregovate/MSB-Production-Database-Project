@@ -51,7 +51,7 @@ def test_corrected_assignment_layer_installs_after_existing_resolver_and_ownersh
     ownership_index = backend.index("install_setup_display_ownership()")
     correction_index = backend.index("install_setup_assignment_layer()")
     assert resolver_index < ownership_index < correction_index
-    assert "V0.3.17-performance-trace" in backend
+    assert "V0.3.18-scheduling-board" in backend
     assert "app.register_blueprint(setup_display_ownership_api)" in backend
     assert "app.register_blueprint(setup_assignment_api)" in backend
 

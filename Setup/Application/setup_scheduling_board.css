@@ -29,12 +29,143 @@
   background: var(--soft, #f5f8fb);
 }
 
+.setup-board205-day-form:not(.expanded) {
+  padding: 0.45rem 0.6rem;
+}
+
+.setup-board205-work-day-collapsed {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.setup-board205-work-day-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .setup-board205-day-form label {
   min-width: 9rem;
 }
 
 .setup-board205-day-form .setup-board205-volunteer-note {
   flex: 1 1 18rem;
+}
+
+.setup-board205-work-day-picker {
+  flex: 1 1 28rem;
+  display: grid;
+  gap: 0.45rem;
+  min-width: min(100%, 22rem);
+}
+
+.setup-board205-work-day-picker-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.75rem;
+}
+
+.setup-board205-work-day-picker-copy .setup-board205-auto-day-note {
+  max-width: none;
+}
+
+.setup-board205-work-day-calendar {
+  width: min(100%, 34rem);
+  padding: 0.55rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.6rem;
+  background: var(--panel, #fff);
+}
+
+.setup-board205-calendar-head {
+  display: grid;
+  grid-template-columns: 2.75rem 1fr 2.75rem;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.45rem;
+  text-align: center;
+}
+
+.setup-board205-calendar-head button {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0.3rem;
+  font-size: 1.25rem;
+}
+
+.setup-board205-calendar-weekdays,
+.setup-board205-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(2.6rem, 1fr));
+  gap: 0.25rem;
+}
+
+.setup-board205-calendar-weekdays {
+  margin-bottom: 0.25rem;
+  color: var(--muted, #64748b);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-align: center;
+}
+
+.setup-board205-calendar-day,
+.setup-board205-calendar-blank {
+  min-height: 3.2rem;
+}
+
+.setup-board205-calendar-day {
+  display: grid;
+  place-content: center;
+  gap: 0.1rem;
+  min-width: 0;
+  padding: 0.3rem 0.15rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.45rem;
+  background: var(--panel, #fff);
+  color: inherit;
+  touch-action: manipulation;
+}
+
+.setup-board205-calendar-day span {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.setup-board205-calendar-day small {
+  font-size: 0.58rem;
+  line-height: 1;
+}
+
+.setup-board205-calendar-day.selected {
+  border-width: 3px;
+  border-color: var(--accent, #0b6ea8);
+  background: color-mix(in srgb, var(--accent, #0b6ea8) 18%, var(--panel, #fff));
+}
+
+.setup-board205-calendar-day.existing:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-style: dashed;
+  background: var(--soft, #f5f8fb);
+}
+
+@media (max-width: 720px) {
+  .setup-board205-work-day-calendar {
+    width: 100%;
+  }
+
+  .setup-board205-calendar-weekdays,
+  .setup-board205-calendar-grid {
+    grid-template-columns: repeat(7, minmax(2.35rem, 1fr));
+    gap: 0.18rem;
+  }
+
+  .setup-board205-calendar-day,
+  .setup-board205-calendar-blank {
+    min-height: 3rem;
+  }
 }
 
 .setup-board205-auto-day-note {
@@ -46,29 +177,50 @@
 
 .setup-board205-main {
   display: grid;
-  grid-template-columns: minmax(18rem, 0.72fr) minmax(36rem, 2fr);
-  gap: 1rem;
-  align-items: start;
+  grid-template-columns: minmax(22rem, 0.95fr) minmax(34rem, 1.55fr);
+  gap: 0.75rem;
+  align-items: stretch;
+  height: calc(100vh - 6.25rem);
+  min-height: 38rem;
 }
 
 .setup-board205-backlog,
 .setup-board205-board {
   min-width: 0;
-  max-height: calc(100vh - 10.5rem);
+  max-height: none;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
 
 .setup-board205-backlog {
+  height: 100%;
+  padding-top: 0.6rem;
+}
+
+.setup-board205-right {
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.setup-board205-planning-header {
+  min-width: 0;
+}
+
+.setup-board205-board {
+  min-height: 0;
+  height: auto;
 }
 
 .setup-board205-filters {
   position: sticky;
   top: 0;
   z-index: 4;
-  margin: 0.65rem 0 0.85rem;
+  margin: 0.2rem 0 0.55rem;
   padding: 0.65rem;
   border: 2px solid color-mix(in srgb, var(--accent, #0b6ea8) 42%, var(--border, #d9e0e8));
   border-radius: 0.65rem;
@@ -275,15 +427,46 @@
 }
 
 .setup-board205-board-heading {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.setup-board205-board-title-row {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  align-items: end;
   gap: 0.75rem;
 }
 
 .setup-board205-board-heading h3 {
-  margin-bottom: 0.25rem;
+  margin: 0;
+}
+
+.setup-board205-board-heading p {
+  margin: 0;
+}
+
+.setup-board205-day-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.8rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.5rem;
+  background: var(--soft, #f5f8fb);
+  font-size: 0.82rem;
+}
+
+.setup-board205-day-filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+}
+
+.setup-board205-day-filters input {
+  min-height: auto;
 }
 
 .setup-board205-history-toggle {
@@ -316,6 +499,22 @@
   padding: 0.8rem 0.95rem;
   background: var(--soft, #f5f8fb);
   border-bottom: 1px solid var(--border, #d9e0e8);
+}
+
+.setup-board205-day.day-band-odd .setup-board205-day-header {
+  background: color-mix(in srgb, var(--accent, #0b6ea8) 7%, var(--panel, #fff));
+}
+
+.setup-board205-day.day-band-even .setup-board205-day-header {
+  background: color-mix(in srgb, var(--accent, #0b6ea8) 14%, var(--panel, #fff));
+}
+
+.setup-board205-day.completed-day .setup-board205-day-header {
+  opacity: 0.82;
+}
+
+.setup-board205-day.cancelled-day .setup-board205-day-header {
+  border-style: dashed;
 }
 
 .setup-board205-day-header strong {
@@ -412,13 +611,30 @@
   padding: 0.25rem 0.35rem;
 }
 
+.setup-board205-crew-title-row,
+.setup-board205-toolbar-actions,
 .setup-board205-crew-actions,
 .setup-board205-day-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
   align-items: center;
+}
+
+.setup-board205-crew-title-row {
+  justify-content: space-between;
+}
+
+.setup-board205-toolbar-actions {
+  justify-content: flex-end;
+}
+
+.setup-board205-day-actions {
   margin-top: 0.4rem;
+}
+
+.setup-board205-crew-actions {
+  margin-top: 0;
 }
 
 .setup-board205-legacy-label {
@@ -452,6 +668,7 @@
   padding: 0.35rem;
 }
 
+.setup-board205-capacity-note,
 .setup-board205-carryover {
   margin-bottom: 0.42rem;
   padding: 0.35rem 0.45rem;
@@ -575,10 +792,19 @@
 @media (max-width: 1100px) {
   .setup-board205-main {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+  }
+
+  .setup-board205-right {
+    height: auto;
+    display: grid;
+    grid-template-rows: auto auto;
   }
 
   .setup-board205-backlog,
   .setup-board205-board {
+    height: auto;
     max-height: none;
     overflow-y: visible;
     scrollbar-gutter: auto;
@@ -586,5 +812,166 @@
 
   .setup-board205-form-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+
+/* #122 2026 launch review: keep the actual work-day board visible at normal zoom. */
+.setup-board205-shell {
+  gap: 0.65rem;
+}
+
+.setup-board205-toolbar {
+  gap: 0.7rem;
+  margin-bottom: 0.4rem;
+  align-items: center;
+}
+
+.setup-board205-title h2 {
+  margin-block: 0.15rem;
+}
+
+.setup-board205-kpis {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  align-items: baseline;
+  font-size: 0.86rem;
+  color: var(--muted, #64748b);
+}
+
+.setup-board205-kpis strong {
+  color: var(--text, #111827);
+}
+
+.setup-board205-kpi-sep {
+  opacity: 0.65;
+}
+
+.setup-board205-day-form {
+  padding: 0.55rem 0.65rem;
+}
+
+.setup-board205-primary-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(6.5rem, 0.8fr);
+  gap: 0.55rem;
+  flex: 1 0 100%;
+}
+
+.setup-board205-primary-filters label,
+.setup-board205-primary-filters select {
+  min-width: 0;
+  width: 100%;
+}
+
+.setup-board205-work-order-picker {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(14rem, 1.4fr);
+  gap: 0.6rem;
+}
+
+@media (max-width: 760px) {
+  .setup-board205-kpis {
+    justify-content: flex-start;
+  }
+
+  .setup-board205-primary-filters,
+  .setup-board205-work-order-picker {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 0.35in;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  header,
+  #app-alert,
+  nav.tabs,
+  #summary-grid,
+  .setup-live-search,
+  .view:not(#schedule-view),
+  #schedule-view dialog,
+  #schedule-view .setup-board205-backlog,
+  #schedule-view .setup-board205-day-form,
+  #schedule-view .setup-board205-day-filters,
+  #schedule-view .setup-board205-board-heading p,
+  #schedule-view button,
+  #schedule-view .setup-board205-cell-empty {
+    display: none !important;
+  }
+
+  #schedule-view,
+  #setup-board205-root,
+  #setup-board205-workspace,
+  #setup-board205-right,
+  #setup-board205-board-pane {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+  }
+
+  #setup-board205-workspace {
+    grid-template-columns: 1fr !important;
+  }
+
+  .setup-board205-planning-header,
+  #setup-board205-board-pane,
+  .setup-board205-day,
+  .setup-board205-assignment {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+
+  .setup-board205-table-wrap {
+    overflow: visible !important;
+  }
+
+  .setup-board205-grid {
+    min-width: 0 !important;
+    grid-template-columns: minmax(8rem, 0.72fr) repeat(2, minmax(12rem, 1fr));
+  }
+
+  .setup-board205-kpis {
+    display: flex !important;
+    color: #000 !important;
+  }
+
+  .setup-board205-kpis strong,
+  .setup-board205-grid-head,
+  .setup-board205-crew-label,
+  .setup-board205-cell,
+  .setup-board205-assignment,
+  .setup-board205-meta,
+  .setup-board205-day-note,
+  .setup-board205-shift-hint {
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  .setup-board205-crew-captain select,
+  .setup-board205-crew-counts input {
+    border: 0 !important;
+    background: transparent !important;
+    color: #000 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .setup-board205-assignment {
+    border: 1px solid #777 !important;
   }
 }

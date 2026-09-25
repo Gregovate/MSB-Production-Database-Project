@@ -84,6 +84,92 @@ def test_production_client_has_no_browser_local_prototype_state() -> None:
     assert "kit-boxes" in texts[-1]
 
 
+def test_122_real_planning_season_hides_historical_verification_surface() -> None:
+    production = (APP_DIR / "setup_production.js").read_text(encoding="utf-8")
+    next_pass = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
+    html = (APP_DIR / "production.html").read_text(encoding="utf-8")
+
+    assert "function applySeasonReviewSurface()" in production
+    assert "reviewTab.hidden = !historical" in production
+    assert "summary.hidden = !historical" in production
+    assert "const historical = currentSeasonRecord()?.session_status === 'HISTORICAL_VERIFICATION';" in production
+    assert "if (!historical && currentSetupViewName() === 'review')" in production
+    assert "showView(el('schedule-view') ? 'schedule' : 'library');" in production
+    assert "reviewView.classList.toggle('reusable-detail-mode', !historical)" in production
+    assert "reviewListCard.hidden = !historical" in production
+    assert "annualFieldset.hidden = !historical" in production
+    assert "verificationPill.hidden = !historical" in production
+    assert "setup_production.css?v=2026-09-25.2" in html
+    show_view = production.split("function showView(name)", 1)[1].split(
+        "function currentSetupViewName()", 1
+    )[0]
+    assert "session_status" not in show_view
+    assert "HISTORICAL_VERIFICATION" not in show_view
+    assert "showView(view);" in production
+    assert "showView('review');" in production
+    assert "showView('review');" in next_pass
+    assert "allowReusableDetail" not in production
+    assert "allowReusableDetail" not in next_pass
+
+    chooser = production.split("function chooseInitialSeason()", 1)[1].split(
+        "function consumePendingCorrection", 1
+    )[0]
+    assert "const activeSeason = appState.seasons.find((season) => season.active_flag);" in chooser
+    assert chooser.index("activeSeason") < chooser.index("historical")
+    assert "activeWithSession" not in chooser
+
+
+def test_large_setup_json_can_be_gzip_compressed() -> None:
+    import gzip
+    import json
+
+    import production_backend
+
+    payload = json.dumps({"tasks": [{"task_name": "Locate Power and Network", "notes": "x" * 200}] * 200})
+    with production_backend.app.test_request_context(
+        "/api/setup/scheduling-board",
+        headers={"Accept-Encoding": "gzip"},
+    ):
+        response = production_backend.app.response_class(payload, mimetype="application/json")
+        compressed = production_backend._setup_maybe_gzip_json(response)
+
+    assert compressed.headers["Content-Encoding"] == "gzip"
+    assert "Accept-Encoding" in compressed.headers["Vary"]
+    assert len(compressed.get_data()) < len(payload.encode("utf-8"))
+    assert gzip.decompress(compressed.get_data()).decode("utf-8") == payload
+
+
+def test_small_or_unadvertised_setup_json_is_not_forced_to_gzip() -> None:
+    import production_backend
+
+    with production_backend.app.test_request_context("/api/setup/access"):
+        response = production_backend.app.response_class('{"ok":true}', mimetype="application/json")
+        unchanged = production_backend._setup_maybe_gzip_json(response)
+
+    assert "Content-Encoding" not in unchanged.headers
+
+
+def test_122_setup_startup_waits_for_full_script_graph_and_uses_real_theme_logo() -> None:
+    html = (APP_DIR / "production.html").read_text(encoding="utf-8")
+    production = (APP_DIR / "setup_production.js").read_text(encoding="utf-8")
+    theme = (APP_DIR / "setup_theme.js").read_text(encoding="utf-8")
+    theme_css = (APP_DIR / "setup_theme.css").read_text(encoding="utf-8")
+    base_css = (APP_DIR / "setup.css").read_text(encoding="utf-8")
+
+    assert '<body class="setup-booting" aria-busy="true">' in html
+    assert 'id="screen-logo"' in html
+    assert "window.addEventListener('DOMContentLoaded'" in production
+    assert "void initialize();" in production
+    assert "document.body.classList.remove('setup-booting')" in production
+    assert "document.body.setAttribute('aria-busy', 'false')" in production
+    assert "initialize();\n" not in production.split("window.addEventListener('DOMContentLoaded'", 1)[0][-50:]
+    assert "msb-white-logo-600-plain.svg" in theme
+    assert "msb-blue-logo-600-plain.svg" in theme
+    assert "setupSyncThemeLogo()" in theme
+    assert "filter: brightness" not in theme_css
+    assert "body.setup-booting main" in base_css
+
+
 def test_production_runtime_declares_gunicorn() -> None:
     requirements = (APP_DIR / "requirements.txt").read_text(encoding="utf-8")
     assert "gunicorn>=26,<27" in requirements
@@ -105,7 +191,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.3.17-performance-trace"
+    assert payload["version"] == "V0.3.18-scheduling-board"
     assert health.headers["Cache-Control"] == "no-store, max-age=0"
 
     for asset in (
@@ -236,6 +322,7 @@ def test_production_api_contains_protected_read_and_command_surfaces() -> None:
 def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     production = (APP_DIR / "setup_production.js").read_text(encoding="utf-8")
     next_pass = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
+    acceptance = (APP_DIR / "setup_acceptance_fixes.js").read_text(encoding="utf-8")
     html = (APP_DIR / "production.html").read_text(encoding="utf-8")
 
     assert "function setupCommitCurrentRouteState()" in production
@@ -243,6 +330,14 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "window.history.pushState" in production
     assert "window.addEventListener('popstate'" in production
     assert "setupMayLeaveCurrentView" in production
+    assert "typeof board205Load === 'function'" in production
+    assert "await board205Load();" in production
+    schedule_route = production.split("if (view === 'schedule') {", 1)[1].split(
+        "} else if (view === 'perform'", 1
+    )[0]
+    assert "else if (typeof loadNextSchedule === 'function')" not in schedule_route
+    assert "await loadNextSchedule();" not in schedule_route
+    assert "if (!appState.access?.can_read_setup)" in production
     assert "msbSetupHasDirtyEdits" in production
     assert "setupPopstateUndo" in production
     assert "setupPopstateReplay" in production
@@ -252,7 +347,14 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "navigateSetupView(button.dataset.view)" in production
     assert "navigateSetupView('schedule')" in next_pass
     assert "navigateSetupView('perform')" in next_pass
-    assert "setup_production.js?v=2026-09-24.3" in html
-    assert "setup_next_pass.js?v=2026-09-24.1" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.3" in html
+    assert "function setReusableAddTaskFormOpen(open)" in production
+    assert "setReusableAddTaskFormOpen(false);" in production
+    assert "if (trigger) trigger.hidden = Boolean(open);" in production
+    assert 'id="add-task-form" class="add-task-form" hidden' in html
+    assert 'id="add-task-form" class="add-task-form manager-only" hidden' not in html
+    assert "setReusableAddTaskFormOpen(true)" in acceptance
+    assert "setReusableAddTaskFormOpen(false)" in acceptance
+    assert "setup_production.js?v=2026-09-25.4" in html
+    assert "setup_next_pass.js?v=2026-09-25.2" in html
+    assert "setup_scheduling_board.js?v=2026-09-25.5" in html
 

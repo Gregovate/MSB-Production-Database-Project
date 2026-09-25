@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Setup Session</title>
-  <link rel="stylesheet" href="setup.css?v=2026-09-07.1">
+  <link rel="stylesheet" href="setup.css?v=2026-09-24.2">
   <link rel="stylesheet" href="setup_review_clarity.css?v=2026-09-07.1">
-  <link rel="stylesheet" href="setup_theme.css?v=2026-09-07.1">
-  <link rel="stylesheet" href="setup_production.css?v=2026-09-17.1">
+  <link rel="stylesheet" href="setup_theme.css?v=2026-09-24.1">
+  <link rel="stylesheet" href="setup_production.css?v=2026-09-25.2">
   <link rel="stylesheet" href="setup_resource_review.css?v=2026-09-11.2">
   <link rel="stylesheet" href="setup_resource_picker_compact.css?v=2026-09-11.2">
   <link rel="stylesheet" href="setup_review_usability.css?v=2026-09-07.2">
@@ -25,12 +25,12 @@
   <link rel="stylesheet" href="setup_display_ownership.css?v=2026-09-12.3">
   <link rel="stylesheet" href="setup_kit_box_assignment.css?v=2026-09-12.1">
   <link rel="stylesheet" href="setup_extra_materials.css?v=2026-09-13.1">
-  <link rel="stylesheet" href="setup_scheduling_board.css?v=2026-09-24.2">
+  <link rel="stylesheet" href="setup_scheduling_board.css?v=2026-09-25.2">
 </head>
-<body>
+<body class="setup-booting" aria-busy="true">
 <header class="site-header">
   <div class="brand">
-    <img src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
+    <img id="screen-logo" src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
     <div class="brand-copy">
       <h1>Setup Session</h1>
       <div id="app-subhead" class="subhead">Shared Setup planning and verification</div>
@@ -192,7 +192,7 @@
       </div>
       <div class="hint">Annual verification state is intentionally not shown as a property of the reusable task.</div>
 
-      <form id="add-task-form" class="add-task-form manager-only" hidden>
+      <form id="add-task-form" class="add-task-form" hidden>
         <div class="compact-grid three">
           <label>Stage / Site-wide scope<select id="add-stage-id"></select></label>
           <label>Task type
@@ -342,22 +342,22 @@
 </footer>
 
 <script src="setup_analytics.js?v=2026-09-07.1"></script>
-<script src="setup_theme.js?v=2026-09-07.1"></script>
-<script src="setup_production.js?v=2026-09-24.3"></script>
+<script src="setup_theme.js?v=2026-09-24.1"></script>
+<script src="setup_production.js?v=2026-09-25.4"></script>
 <script src="setup_resource_review.js?v=2026-09-11.2"></script>
 <script src="setup_review_usability.js?v=2026-09-07.2"></script>
-<script src="setup_next_pass.js?v=2026-09-24.1"></script>
+<script src="setup_next_pass.js?v=2026-09-25.2"></script>
 <script src="setup_predecessor_drag.js?v=2026-09-11.1"></script>
 <script src="setup_stage_order.js?v=2026-09-10.1"></script>
-<script src="setup_acceptance_fixes.js?v=2026-09-07.1"></script>
-<script src="setup_session_year_guard.js?v=2026-09-07.1"></script>
-<script src="setup_live_review_fixes.js?v=2026-09-08.3"></script>
-<script src="setup_operational_search.js?v=2026-09-10.1"></script>
-<script src="setup_training_ux.js?v=2026-09-08.1"></script>
+<script src="setup_acceptance_fixes.js?v=2026-09-25.1"></script>
+<script src="setup_session_year_guard.js?v=2026-09-24.1"></script>
+<script src="setup_live_review_fixes.js?v=2026-09-24.2"></script>
+<script src="setup_operational_search.js?v=2026-09-24.1"></script>
+<script src="setup_training_ux.js?v=2026-09-24.2"></script>
 <script src="setup_assigned_review.js?v=2026-09-08.2"></script>
-<script src="setup_training_review_refinement.js?v=2026-09-09.3"></script>
+<script src="setup_training_review_refinement.js?v=2026-09-24.4"></script>
 <script src="setup_catalog_effort.js?v=2026-09-24.5"></script>
-<script src="setup_catalog_dirty_guard.js?v=2026-09-24.5"></script>
+<script src="setup_catalog_dirty_guard.js?v=2026-09-25.1"></script>
 <script src="setup_prerequisite_editor.js?v=2026-09-11.1"></script>
 <script src="setup_task_detail_compact.js?v=2026-09-11.1"></script>
 <script src="setup_resource_picker_compact.js?v=2026-09-15.1"></script>
@@ -366,7 +366,7 @@
 <script src="setup_display_ownership_large_scope_fix.js?v=2026-09-12.1"></script>
 <script src="setup_kit_box_assignment.js?v=2026-09-12.1"></script>
 <script src="setup_extra_materials.js?v=2026-09-15.2"></script>
-<script src="setup_planning_summary.js?v=2026-09-17.1"></script>
-<script src="setup_scheduling_board.js?v=2026-09-24.3"></script>
+<script src="setup_planning_summary.js?v=2026-09-25.1"></script>
+<script src="setup_scheduling_board.js?v=2026-09-25.5"></script>
 </body>
 </html>

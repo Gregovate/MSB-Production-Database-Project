@@ -223,6 +223,21 @@ def api_setup_scheduling_board_season_task_create() -> tuple[Response, int]:
     return jsonify(season_task=result), 201
 
 
+@setup_scheduling_board_api.delete(
+    "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>"
+)
+def api_setup_scheduling_board_season_task_delete(
+    setup_session_task_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    result = repo().delete_season_task(
+        email=email,
+        session_task_id=setup_session_task_id,
+    )
+    return jsonify(season_task=result)
+
+
 @setup_scheduling_board_api.patch(
     "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>"
 )

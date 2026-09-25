@@ -21,6 +21,18 @@ def read_acceptance(name: str) -> str:
     return (ACCEPTANCE_DIR / name).read_text(encoding="utf-8")
 
 
+def test_122_launch_preserves_catalog_review_state_by_session_type() -> None:
+    sql = read_db("058_preserve_catalog_review_on_annual_launch.sql")
+    validation = read_acceptance("setup_122_2026_launch_unblock_disposable_validation.sql")
+
+    assert "WHEN v_status = 'HISTORICAL_VERIFICATION' THEN 'UNVERIFIED'" in sql
+    assert "WHEN s.session_status = 'HISTORICAL_VERIFICATION' THEN 'UNVERIFIED'" in sql
+    assert "ELSE 'VERIFIED'" in sql
+    assert "this does not rewrite existing annual history" in sql
+    assert "reset accepted reusable Catalog work to UNVERIFIED" in validation
+    assert "Historical verification Session did not preserve UNVERIFIED semantics" in validation
+
+
 def test_205_migration_separates_reusable_and_season_only_annual_work() -> None:
     sql = read_db("050_add_setup_scheduling_board_foundation.sql")
     for token in (
@@ -146,6 +158,17 @@ def test_205_work_day_number_is_persisted_and_dow_is_derived() -> None:
     assert "Setup Day # is assigned automatically in chronological order." in ui
 
 
+def test_122_plan_schedule_preserves_catalog_material_visual_cue() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    repo = read_app("setup_scheduling_board_repository.py")
+    catalog = read_app("setup_catalog_effort.js")
+
+    assert "coalesce(rt.requires_display_material, false) AS requires_display_material" in repo
+    assert "task.requires_display_material ? 'setup-material-task'" in ui
+    assert ".setup-material-task {" in catalog
+    assert "border-left: 5px solid #7657c7 !important;" in catalog
+
+
 def test_205_board_uses_dynamic_crews_am_pm_and_accessible_move_controls() -> None:
     ui = read_app("setup_scheduling_board.js")
     css = read_app("setup_scheduling_board.css")
@@ -202,9 +225,52 @@ def test_205_finder_uses_task_time_minimum_crew_and_effort() -> None:
     assert "setup-board205-status-blocked" not in ui
     assert "setup-board205-status-waiting" not in ui
     assert 'placeholder="e.g. locate"' in ui
-    assert "task-name search checks all statuses" in ui
+    assert "task-name search keeps status filters" in ui
     assert "task.stage_name" in ui
 
+
+def test_122_work_order_picker_is_searchable() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    repo = read_app("setup_scheduling_board_repository.py")
+
+    assert "Find open Work Order" in ui
+    assert "setup-board205-season-work-order-search" in ui
+    assert "WHERE wo.date_completed IS NULL" in repo
+    assert 'placeholder="WO # or problem text"' in ui
+    assert "function board205PopulateWorkOrderOptions(" in ui
+    assert "haystack.includes(search)" in ui
+
+
+def test_122_scheduled_task_drops_out_of_default_needs_scheduling_queue() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "if (!hardBlocked && !statuses.has(family)) return false;" in ui
+    assert "task-name search keeps status filters" in ui
+    assert 'id="setup-board205-status-scheduled" type="checkbox"' in ui
+    assert 'id="setup-board205-status-scheduled" type="checkbox" checked' not in ui
+
+
+def test_122_planning_screen_uses_compact_operational_kpis_and_stage_scoped_placement() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "function board205RenderKpis()" in ui
+    assert "scheduled · " in ui
+    assert "complete · " in ui
+    assert "setup-board205-primary-filters" in ui
+    assert "setup-board205-scene-label" in ui
+    assert "function board205PopulateSeasonPlacementOptions()" in ui
+    assert "Number(task.stage_id) === stageId" in ui
+    assert "grid-template-columns: minmax(0, 1.55fr) minmax(6.5rem, 0.8fr)" in css
+
+
+def test_122_season_task_type_labels_explain_operator_meaning() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert ">Setup Work<" in ui
+    assert ">Wait / Gate<" in ui
+    assert ">Support / Prep<" in ui
+    assert ">Unload Container<" in ui
 
 def test_205_heavy_work_is_captain_aware_warning_not_prohibition() -> None:
     ui = read_app("setup_scheduling_board.js")
@@ -218,10 +284,34 @@ def test_205_heavy_work_is_captain_aware_warning_not_prohibition() -> None:
 def test_205_am_to_pm_spillover_is_advisory_not_a_third_shift() -> None:
     ui = read_app("setup_scheduling_board.js")
     assert "SETUP_BOARD205_TYPICAL_AM_MINUTES = 180" in ui
+    assert "function board205AmCapacity(crewId)" in ui
+    assert "remains in AM" in ui
+    assert "over the typical AM window" in ui
     assert "of AM work carries past lunch into PM" in ui
+    assert "AM work fills the typical ≈ 9–12 window." in ui
     assert "≈ 9–12" in ui
     assert "after lunch ≈ 1 PM" in ui
     assert '<option value="ALL_DAY">All Day</option>' not in ui
+
+
+def test_122_schedule_board_compacts_crew_controls_and_prints_operational_board() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "Crew / Captain / Volunteers" in ui
+    assert ">AM Crew <" in ui
+    assert ">PM Crew <" in ui
+    assert "setup-board205-crew-title-row" in ui
+    assert '<button type="button" class="small setup-board205-save-crew">Save</button>' in ui
+    assert "secondary setup-board205-save-crew" not in ui
+    assert "setup-board205-print" in ui
+    assert "Print Schedule" in ui
+    assert "setup-board205-board-title-row" in ui
+    assert "window.print()" in ui
+    assert ".setup-board205-board-title-row" in css
+    assert "@media print" in css
+    assert "#schedule-view .setup-board205-backlog" in css
+    assert ".setup-board205-kpis" in css
 
 
 def test_205_readiness_is_annual_state_separate_from_hard_predecessors() -> None:
@@ -320,6 +410,10 @@ def test_205_short_crew_requires_deliberate_confirmation_but_is_not_prohibited()
     assert "setup-board205-short-crew-warning" in ui
     assert ".setup-board205-short-crew-warning" in css
     assert "board205ConfirmPlacement" in ui
+    assert "board205PlacementCrewCount" in ui
+    assert ".setup-board205-crew-label[data-crew-id=" in ui
+    assert "board205CrewCapacityWarnings" in ui
+    assert "Save this crew size anyway?" in ui
     assert "Schedule this task anyway?" in ui
 
 
@@ -339,15 +433,26 @@ def test_205_scheduled_work_uses_scheduled_bucket_even_when_readiness_is_blocked
     assert "unworked_assignment_count" in repo
 
 
-def test_205_rolling_board_hides_resolved_prior_days_by_default() -> None:
+def test_205_rolling_board_filters_days_by_operational_state() -> None:
     ui = read_app("setup_scheduling_board.js")
-    assert "setup-board205-show-history" in ui
-    assert "Show prior / completed work days" in ui
-    assert "board205PastDayNeedsAttention" in ui
-    assert "board205VisibleDays" in ui
-    assert "item.historical_locked" in ui
-    assert "task.future_assignment_count" in ui
+    css = read_app("setup_scheduling_board.css")
 
+    assert "function board205DayViewState(day)" in ui
+    assert "if (status === 'COMPLETE' || status === 'CANCELLED') return 'COMPLETED';" in ui
+    assert "if (!assignments.length) return 'EMPTY';" in ui
+    assert "return hasUnfinished ? 'UNFINISHED' : 'COMPLETED';" in ui
+    assert "Completed / cancelled" in ui
+    assert "cancelled-day" in ui
+    assert 'id="setup-board205-show-unfinished-days" type="checkbox" checked' in ui
+    assert 'id="setup-board205-show-completed-days" type="checkbox"' in ui
+    assert 'id="setup-board205-show-empty-days" type="checkbox"' in ui
+    assert "Scheduled / unfinished" in ui
+    assert "if (showEmptyDays) showEmptyDays.checked = true;" in ui
+    assert "setup-board205-show-history" not in ui
+    assert "day-band-odd" in ui
+    assert "day-band-even" in ui
+    assert ".setup-board205-day.day-band-odd .setup-board205-day-header" in css
+    assert ".setup-board205-day.day-band-even .setup-board205-day-header" in css
 
 def test_205_scheduler_panes_scroll_independently_with_drag_edge_autoscroll() -> None:
     ui = read_app("setup_scheduling_board.js")
@@ -357,7 +462,12 @@ def test_205_scheduler_panes_scroll_independently_with_drag_edge_autoscroll() ->
     assert ".setup-board205-backlog," in css
     assert ".setup-board205-board {" in css
     assert "overflow-y: auto" in css
-    assert "max-height: calc(100vh - 10.5rem)" in css
+    assert "height: calc(100vh - 6.25rem)" in css
+    assert "grid-template-columns: minmax(22rem, 0.95fr) minmax(34rem, 1.55fr)" in css
+    assert ".setup-board205-right {" in css
+    assert "grid-template-rows: auto minmax(0, 1fr)" in css
+    assert "setup-board205-planning-header" in ui
+    assert "margin: 0.2rem 0 0.55rem" in css
     assert "overflow-y: visible" in css
 
 
@@ -384,14 +494,14 @@ def test_205_board_exposes_required_candidate_states() -> None:
 
 def test_205_season_task_editor_is_in_annual_plan_not_reusable_catalog() -> None:
     ui = read_app("setup_scheduling_board.js")
-    assert "Add Season Task" in ui
+    assert "Add Task" in ui
     assert "THIS SEASON ONLY" in ui
     assert "It does not enter the Reusable Task Catalog" in ui
-    assert "Existing Work Order<select" in ui
+    assert "Matching Work Order<select" in ui
     assert "No Work Order" in ui
     assert "Work Order completion satisfies this gate" in ui
-    assert "Insert after / prerequisite" in ui
-    assert "Block downstream task" in ui
+    assert "Place after / requires" in ui
+    assert "Optional downstream task to block" in ui
     assert "setup-board205-season-effort" in ui
 
 
@@ -418,32 +528,72 @@ def test_205_api_uses_governed_manager_commands_for_plan_mutations() -> None:
     assert "DELETE FROM ops.setup_work_day_task" not in repository
 
 
-def test_205_work_day_form_survives_async_submit() -> None:
+def test_122_work_day_calendar_supports_tablet_multiselect_without_overwriting_existing_days() -> None:
     ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
     block = ui.split("async function board205AddWorkDay(event)", 1)[1].split(
-        "function board205OpenSeasonTaskDialog", 1
+        "function board205OpenPlanningInfoDialog", 1
     )[0]
+
+    assert "workDaySelection: new Set()" in ui
+    assert "function board205RenderWorkDayCalendar()" in ui
+    assert "workDayPickerExpanded: false" in ui
+    assert "function board205ApplyWorkDayPickerExpanded()" in ui
+    assert 'id="setup-board205-toggle-work-days"' in ui
+    assert 'id="setup-board205-toggle-work-days" type="button" class="small"' in ui
+    assert 'id="setup-board205-toggle-work-days" type="button" class="small secondary"' not in ui
+    assert 'aria-expanded="false">+ Add Work Days' in ui
+    assert 'id="setup-board205-work-day-picker-body"' in ui
+    assert "body.hidden = !expanded;" in ui
+    assert "setupBoard205State.workDayPickerExpanded = false;" in ui
+    assert 'id="setup-board205-cancel-work-days"' in ui
+    assert ".setup-board205-day-form:not(.expanded)" in css
+    assert "function board205ExistingWorkDayDates()" in ui
+    assert "setup-board205-work-day-calendar" in ui
+    assert "setup-board205-calendar-day:not(:disabled)" in ui
+    assert "setupBoard205State.workDaySelection.delete(date)" in ui
+    assert "setupBoard205State.workDaySelection.add(date)" in ui
+    assert "alreadyExists ? 'disabled aria-disabled=\"true\"'" in ui
+    assert "Existing Work Days are disabled." in ui
+    calendar_form = ui.split('<form id="setup-board205-day-form"', 1)[1].split("</form>", 1)[0]
+    assert "Ctrl" not in calendar_form
+    assert "Shift" not in calendar_form
+
     assert "const form = event.currentTarget;" in block
+    assert "const dates = [...setupBoard205State.workDaySelection]" in block
+    assert ".filter((date) => !existing.has(date))" in block
+    assert "for (const date of dates)" in block
+    assert "if (board205ExistingWorkDayDates().has(date)) continue;" in block
     assert "form.reset();" in block
     assert "event.currentTarget.reset();" not in block
+    assert "setupBoard205State.workDaySelection.clear();" in block
+
+    assert "touch-action: manipulation;" in css
+    assert ".setup-board205-calendar-day.selected" in css
+    assert ".setup-board205-calendar-day.existing:disabled" in css
+    assert "@media (max-width: 720px)" in css
 
 
 def test_205_scheduling_board_javascript_has_no_stray_async_prefixes() -> None:
     ui = read_app("setup_scheduling_board.js")
     assert "\nasync \nasync function " not in ui
     assert "board205InstallView();" in ui
+    assert "document.getElementById('schedule-view')?.classList.contains('active-view')" in ui
+    assert "void board205Load();" in ui
     assert "Setup Scheduling Board" in ui
 
 
 def test_205_production_host_registers_board_without_replacing_report_work() -> None:
     host = read_app("production_backend.py")
     html = read_app("production.html")
+    ui = read_app("setup_scheduling_board.js")
     assert "setup_scheduling_board_api" in host
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-24.2" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.3" in html
+    assert "setup_scheduling_board.css?v=2026-09-25.2" in html
+    assert "setup_scheduling_board.js?v=2026-09-25.5" in html
+    assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
@@ -489,8 +639,8 @@ def test_122_b1a_finder_has_stage_scene_sort_and_search_across_statuses() -> Non
     # A nonblank Task-name search bypasses ordinary status checkboxes. Blocking
     # ON hides only hard blockers; readiness remains visible for judgement.
     assert "if (board205BlockingEnabled() && hardBlocked) return false;" in ui
-    assert "if (!search && !hardBlocked && !statuses.has(family)) return false;" in ui
-    assert "task-name search checks all statuses" in ui
+    assert "if (!hardBlocked && !statuses.has(family)) return false;" in ui
+    assert "task-name search keeps status filters" in ui
     assert "const taskName = String(task.task_name || '').toLowerCase();" in ui
     assert "if (!taskName.includes(search)) return false;" in ui
     assert 'placeholder="e.g. locate"' in ui
@@ -535,12 +685,20 @@ def test_122_b1a_blocking_toggle_hides_only_hard_blockers() -> None:
 
 def test_122_b1a_plan_sort_uses_visible_reusable_step_order_inside_scope() -> None:
     ui = read_app("setup_scheduling_board.js")
+    repository = read_app("setup_scheduling_board_repository.py")
 
+    assert "rt.display_order," in repository
     assert "display_order: current.display_order" in ui
     assert "const stageFilter = document.getElementById('setup-board205-stage-filter')?.value || '';" in ui
-    assert "task.display_order ?? task.baseline_plan_order" in ui
-    assert "return stepOrder(a) - stepOrder(b)" in ui
-    assert "|| baselineOrder(a) - baselineOrder(b)" in ui
+    assert "const useReusableStepOrder = Boolean(stageFilter) && task.task_origin === 'REUSABLE';" in ui
+    assert "task.display_order ?? task.baseline_plan_order ?? task.planned_order" in ui
+    assert "const scopeCompare = (left, right) => {" in ui
+    assert "left.lor_scene_id == null ? 0 : 1" in ui
+    assert "textCompare(left.scene_name, right.scene_name)" in ui
+    assert "if (stageFilter) {" in ui
+    assert "return scopeCompare(a, b)" in ui
+    assert "|| stepOrder(a) - stepOrder(b)" in ui
+    assert "reusablePlanning && stageFilter" not in ui
 
 
 def test_122_b1a_finder_controls_rerender_through_delegated_events() -> None:
@@ -671,7 +829,7 @@ def test_122_b1a_reusable_task_audit_is_visible() -> None:
     assert "<strong>Audit:</strong>" in ui
     assert "reusable-task-audit" in html
     assert "Created ${createdAt} by ${createdBy} · Last updated ${updatedAt} by ${updatedBy}" in production
-    assert "setup_production.js?v=2026-09-24.3" in html
+    assert "setup_production.js?v=2026-09-25.4" in html
 
 
 def test_122_b1a_historical_overlay_preserves_fresh_board_audit_after_write() -> None:
@@ -824,7 +982,8 @@ def test_122_b1a_work_order_selector_uses_live_lookup() -> None:
     assert '"work_orders": work_orders' in repo
 
     assert "setupBoard205State.board.work_orders" in ui
-    assert "WO ${wo.work_order_id} · ${status}" in ui
+    assert "WO ${wo.work_order_id}${problem ? ` · ${problem}` : ''}" in ui
+    assert "WHERE wo.date_completed IS NULL" in repo
     assert "setup-board205-season-work-order" in ui
     assert "type=\"number\"" not in ui.split(
         'id="setup-board205-season-work-order"', 1
@@ -867,7 +1026,7 @@ def test_122_b1a_finder_can_collapse_secondary_filters() -> None:
     assert "More filters" in ui
     assert "Compact filters" in ui
     assert "setup-board205-secondary-filters" in ui
-    assert "setupBoard205State.finderCompact = historicalReview" in ui
+    assert "setupBoard205State.finderCompact = true" in ui
     assert ".setup-board205-filters.compact .setup-board205-secondary-filters" in css
     assert ".setup-board205-filters.compact .setup-board205-blocking-help" in css
 
@@ -912,3 +1071,32 @@ def test_122_b1a_finder_drilldown_preserves_and_restores_operator_context() -> N
     assert "window.history.back()" in production
     assert "board205RestoreFinderState(requested.finder)" in production
 
+
+
+def test_122_real_2026_session_creation_and_add_intent_are_explicit() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    assert "setup-board205-create-session" in ui
+    assert "Create the real" in ui
+    assert "api/setup/sessions" in ui
+    assert "session_status: 'PLANNING'" in ui
+    assert "setup-board205-add-intent-dialog" in ui
+    assert "Reusable Setup Task — every year" in ui
+    assert "Season Task Only — this season" in ui
+    assert "There is no default" in ui
+    assert "board205ChooseReusableTask" in ui
+    assert "board205ChooseSeasonOnlyTask" in ui
+
+
+def test_122_season_only_unworked_task_delete_is_governed() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    api = read_app("setup_scheduling_board_api.py")
+    repository = read_app("setup_scheduling_board_repository.py")
+    migration = read_db("057_enable_2026_unworked_task_deletion.sql")
+    assert "setup-board205-delete-season-task" in ui
+    assert "commandOptions('DELETE')" in ui
+    assert '@setup_scheduling_board_api.delete(' in api
+    assert "delete_season_task" in api
+    assert "ops.delete_unworked_setup_season_task" in repository
+    assert "CREATE OR REPLACE FUNCTION ops.delete_unworked_setup_season_task" in migration
+    assert "reported work/progress" in migration
+    assert "DELETE FROM ops.setup_work_day_task" in migration
