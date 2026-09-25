@@ -39,14 +39,27 @@
     return Boolean(item?.current_observation?.last_movement_event_id);
   }
 
+  function formatObservedAt(value) {
+    if (!value) return '';
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString();
+  }
+
+  function currentLocationText(item) {
+    const o = item.current_observation || {};
+    if (o.current_stage_key || o.current_stage_name) {
+      const stage = [o.current_stage_key, o.current_stage_name].filter(Boolean).join(' — ');
+      return o.current_location_note ? `${stage} · ${o.current_location_note}` : stage;
+    }
+    if (o.current_location_note) return o.current_location_note;
+    return 'Current location not resolved';
+  }
+
   function observationText(item) {
     const o = item.current_observation || {};
-    if (!itemMoved(item)) return 'Not yet scanned / moved in this Setup Session';
-    if (o.current_stage_key || o.current_stage_name) {
-      return `Last observed: ${[o.current_stage_key, o.current_stage_name].filter(Boolean).join(' — ')}`;
-    }
-    if (o.current_location_note) return `Last observed: ${o.current_location_note}`;
-    return 'Already scanned / moved in this Setup Session';
+    if (!itemMoved(item)) return 'NEEDS PICK · Not yet scanned / moved in this Setup Session';
+    const when = formatObservedAt(o.last_observed_at);
+    return `PICKED · ${when || 'time unavailable'} · ${currentLocationText(item)}`;
   }
 
   function destinationText(reasons) {
@@ -110,7 +123,7 @@
 
   function renderItems(date) {
     const all = readiness?.physical_items || [];
-    const status = pickStatusFilter?.value || 'OUTSTANDING';
+    const status = pickStatusFilter?.value || 'ALL';
     const items = all.filter((item) => {
       if (!itemReasonsForDate(item, date).length) return false;
       if (status === 'OUTSTANDING') return !itemMoved(item);
