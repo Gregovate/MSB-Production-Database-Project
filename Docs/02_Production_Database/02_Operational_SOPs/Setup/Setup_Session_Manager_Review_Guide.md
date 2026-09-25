@@ -290,7 +290,7 @@ Do not click through a warning without reading it.
 
 ## 16. Run the Material Audit
 
-Use **Material Audit** before the real 2026 Setup Session is created.
+Use **Material Audit** to review reusable Setup completeness and material relationships. The real 2026 Session is already live; the audit remains useful for correcting durable reusable information.
 
 The audit checks for missing Setup information. It does not decide whether a task or assignment is correct.
 
