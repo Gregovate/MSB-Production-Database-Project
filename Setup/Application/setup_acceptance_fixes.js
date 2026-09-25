@@ -41,7 +41,8 @@ function acceptanceNextSequence(stageId, sceneId) {
 function acceptanceOpenAddTask(stageId = null, sceneId = null) {
   acceptanceEnsureAddSceneSelector();
   const form = el('add-task-form');
-  form.hidden = false;
+  if (typeof setReusableAddTaskFormOpen === 'function') setReusableAddTaskFormOpen(true);
+  else form.hidden = false;
   el('add-stage-id').value = stageId == null ? '' : String(stageId);
   acceptancePopulateAddScenes(sceneId);
   el('add-display-order').value = String(acceptanceNextSequence(stageId, sceneId));
@@ -112,7 +113,8 @@ async function acceptanceCreateReusableTask(event) {
       lor_scene_id: sceneId
     }));
 
-    el('add-task-form').hidden = true;
+    if (typeof setReusableAddTaskFormOpen === 'function') setReusableAddTaskFormOpen(false);
+    else el('add-task-form').hidden = true;
     el('add-task-form').reset();
     el('add-display-order').value = '100';
     await reloadTasks(newId);

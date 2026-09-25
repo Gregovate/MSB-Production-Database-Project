@@ -6,7 +6,7 @@
 | System | Production Database — Setup Session |
 | Status | CURRENT — operator-confirmed execution/reporting requirement |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-22 |
+| Last Reviewed | 2026-09-08 |
 | Related Work | Issue #122; Issue #132; PR #125 |
 
 ## Purpose
@@ -46,26 +46,13 @@ This is a major reason Setup is not equivalent to a conventional project-managem
 
 ## Work Reporting Responsibility
 
-The normal operating expectation may still be that a crew Captain records the work for that crew/task period, but **Captain assignment is not the authorization boundary**.
-
-The accepted 2026 authorization model is:
-
-```text
-Production Crew
-    -> perform governed Setup work
-    -> report actual crew / elapsed duration / progress
-    -> explicitly complete operational work when actually complete
-
-Manager / Administrator
-    -> all Production Crew reporting capability
-    -> plus governed reusable/business-definition maintenance
-```
-
-There is no required Captain/Supervisor Directus role for ordinary work reporting.
+The normal field expectation is that the **Captain of the crew** records the work performed for that crew/task period.
 
 The report must be easy enough to complete from the field without reconstructing the day later.
 
-Authenticated reporter identity is captured automatically through the existing actor/audit boundary. The reporter must not type their own identity into each report.
+The authenticated reporter identity should be captured automatically through the existing actor/audit boundary. The Captain should not have to type their own name into every report.
+
+Managers may retain governed override/report capability.
 
 ## Current Implemented Progress Model
 
@@ -234,13 +221,11 @@ Where the historical evidence supports separate work periods, preserve them as s
 
 ## Authorization Boundary
 
-The original migration 009 Captain/Alternate/Manager execution gate is superseded for 2026 field reporting.
+The existing Setup execution model already distinguishes field execution from broad Manager maintenance. Current migration 009 states that progress/completion commands are available to Managers or a person explicitly assigned as CAPTAIN/ALTERNATE for the reusable task.
 
-A trusted authenticated **Production Crew** member may record legitimate Setup execution facts without Manager confirmation and without being designated Captain/Alternate. Manager/Administrator accounts may do the same.
+Keep that governed model.
 
-This reporting authority does **not** grant Production Crew reusable-Catalog, scheduling, Kit-definition, Procedure-maintenance, or other Manager business-rule authority.
-
-Keep the narrow SECURITY DEFINER command boundary and automatic actor attribution. Do not grant broad direct table DML merely to support field reporting.
+The browser/API should not broaden direct table DML merely to add duration reporting.
 
 ## Acceptance Criteria
 
@@ -249,7 +234,7 @@ A complete implementation should prove:
 - positive per-progress duration validation;
 - duration appears in progress history;
 - repeated progress reports can be recorded across several work days for one task;
-- Production Crew plus Manager/Administrator reporting authorization is enforced without making Captain assignment the security gate;
+- Captain/Alternate/Manager execution authorization remains intact;
 - authenticated reporter identity is stamped automatically;
 - partial progress does not mark a task complete;
 - task completion remains explicit;

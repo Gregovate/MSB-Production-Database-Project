@@ -48,7 +48,7 @@
         const button = document.createElement('button');
         button.id = 'planning-summary-launch';
         button.type = 'button';
-        button.className = 'secondary';
+        button.className = 'planning-summary-launch-button';
         button.textContent = 'Print Planning Summary…';
         button.addEventListener('click', () => openPlanningSummary());
         (tools || header).append(button);

@@ -1,4 +1,6 @@
 const SETUP_THEME_KEY = 'msb-theme';
+const SETUP_LIGHT_LOGO = 'https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg';
+const SETUP_DARK_LOGO = 'https://webassets.sheboyganlights.org/images/branding/msb-white-logo-600-plain.svg';
 
 function setupSavedTheme() {
   try {
@@ -22,12 +24,19 @@ function setupSyncThemeButton() {
   button.textContent = setupCurrentTheme() === 'dark' ? 'Light mode' : 'Dark mode';
 }
 
+function setupSyncThemeLogo() {
+  const logo = document.getElementById('screen-logo');
+  if (!logo) return;
+  logo.src = setupCurrentTheme() === 'dark' ? SETUP_DARK_LOGO : SETUP_LIGHT_LOGO;
+}
+
 function setupConfigureTheme() {
   const saved = setupSavedTheme();
   if (saved) {
     document.documentElement.dataset.theme = saved;
   }
   setupSyncThemeButton();
+  setupSyncThemeLogo();
 
   const button = document.getElementById('theme-toggle');
   if (!button) return;
@@ -40,6 +49,7 @@ function setupConfigureTheme() {
       // Theme still applies for this page even if storage is unavailable.
     }
     setupSyncThemeButton();
+    setupSyncThemeLogo();
   });
 }
 

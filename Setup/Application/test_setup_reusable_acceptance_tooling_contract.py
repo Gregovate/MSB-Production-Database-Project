@@ -39,11 +39,16 @@ def test_reusable_browser_preview_is_parameterized_and_version_pinnable() -> Non
         "[string]$ExpectedVersion",
         "[string[]]$MigrationPaths",
         "[string[]]$ValidationPaths",
+        "[switch]$AllowConcurrentProductionWrites",
     ):
         assert token in launcher
 
     assert "expected_version`t$ExpectedVersion" in launcher
+    assert "allow_concurrent_production_writes`t$($AllowConcurrentProductionWrites.IsPresent.ToString().ToLowerInvariant())" in launcher
     assert 'EXPECTED_VERSION=""' in server
+    assert 'ALLOW_CONCURRENT_PRODUCTION_WRITES="false"' in server
+    assert 'allow_concurrent_production_writes) ALLOW_CONCURRENT_PRODUCTION_WRITES="$value" ;;' in server
+    assert "PASS WITH CONCURRENT ACTIVITY" in server
     assert "Preview version pin: PASS" in server
     assert "SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY" in server
 
@@ -72,17 +77,41 @@ def test_reusable_acceptance_preserves_final_postgis_readiness_contract() -> Non
         assert "final post-init ready state" in server
 
 
-def test_reusable_acceptance_mirrors_current_setup_application_privileges_safely() -> None:
+def test_reusable_acceptance_uses_established_setup_read_boundary_and_production_command_acls() -> None:
     for name in (
         "setup_disposable_acceptance_server.sh",
         "setup_disposable_browser_preview_server.sh",
     ):
         server = read_acceptance(name)
-        assert "has_schema_privilege('fieldwiring_app'" in server
-        assert "has_table_privilege('fieldwiring_app'" in server
-        assert "has_function_privilege('fieldwiring_app', p.oid, 'EXECUTE')" in server
-        assert "p.prokind IN ('f','w')" in server
+
+        # Accepted Setup disposable previews use a broad read-only application
+        # surface across the business schemas while preserving narrow command
+        # writes. Do not infer schema/table grants from a --no-acl clone.
+        assert "GRANT USAGE ON SCHEMA ref, ops, lor_snap TO fieldwiring_app;" in server
+        assert "GRANT SELECT ON ALL TABLES IN SCHEMA ref, ops, lor_snap TO fieldwiring_app;" in server
+
+        # Command EXECUTE and PUBLIC revokes still come from current Production
+        # catalog ACLs so new governed commands remain synchronized.
+        assert "aclexplode(p.proacl)" in server
+        assert "grantee.rolname = 'fieldwiring_app'" in server
+        assert "acl.privilege_type = 'EXECUTE'" in server
+        assert "public_acl.grantee = 0" in server
+        assert "REVOKE ALL ON FUNCTION %I.%I(%s) FROM PUBLIC;" in server
         assert "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on" in server
+        assert "Production role/ACL diagnostic (read-only)" in server
+        assert "pg_auth_members" in server
+
+        # The reconstructed clone must prove both required access and forbidden
+        # broad/internal write access before any candidate migration/browser.
+        assert "Preview fieldwiring_app lacks required schema USAGE" in server
+        assert "Preview fieldwiring_app lacks required Setup SELECT boundary" in server
+        assert "Preview fieldwiring_app cannot execute Setup capability function" in server
+        if name == "setup_disposable_browser_preview_server.sh":
+            assert "Production Setup function authorization boundary: PASS" in server
+        else:
+            assert "Preview fieldwiring_app can execute internal Setup actor helper" in server
+        assert "Preview fieldwiring_app unexpectedly has broad Setup DML" in server
+        assert "Established Setup disposable read boundary + Production command ACL replay: PASS" in server
 
 
 def test_reusable_acceptance_cleanup_and_production_after_check_are_mandatory() -> None:
@@ -123,3 +152,46 @@ def test_candidate_paths_are_restricted_to_feature_owned_directories() -> None:
         assert "Setup/Database/" in launcher
         assert "Setup/Acceptance/" in launcher
         assert "Unsafe $Kind candidate-relative path" in launcher
+
+
+def test_reusable_browser_preview_concurrent_production_mode_is_explicit_and_default_strict() -> None:
+    launcher = read_acceptance("run_setup_disposable_browser_preview.ps1")
+    server = read_acceptance("setup_disposable_browser_preview_server.sh")
+
+    assert "[switch]$AllowConcurrentProductionWrites" in launcher
+    assert 'ALLOW_CONCURRENT_PRODUCTION_WRITES="false"' in server
+    assert 'if [[ "$ALLOW_CONCURRENT_PRODUCTION_WRITES" == "true" ]]' in server
+    assert "PASS WITH CONCURRENT ACTIVITY" in server
+    assert "FAIL: Production Setup fingerprint changed during browser preview" in server
+    assert "The preview clone is a point-in-time snapshot" in server
+
+
+def test_browser_preview_allows_only_the_approved_shared_audit_repair() -> None:
+    launcher = read_acceptance("run_setup_disposable_browser_preview.ps1")
+
+    assert "$isSetupMigration = $Path.StartsWith('Setup/Database/')" in launcher
+    assert "$isApprovedSharedMigration = $Path -eq 'Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql'" in launcher
+    assert "explicitly approved shared database repair" in launcher
+    assert "$isSetupValidation = $Path.StartsWith('Setup/Acceptance/')" in launcher
+    assert "$isApprovedSharedValidation = $Path -eq 'Database/Acceptance/database_shared_audit_actor_disposable_validation.sql'" in launcher
+    assert "explicitly approved shared database validation" in launcher
+    assert "Database/Basic_Query_Tools_Dev/" not in launcher.replace(
+        "Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql",
+        "",
+    )
+    assert "Database/Acceptance/" not in launcher.replace(
+        "Database/Acceptance/database_shared_audit_actor_disposable_validation.sql",
+        "",
+    )
+
+
+def test_reusable_disposable_grant_replay_identifies_the_exact_failing_statement() -> None:
+    for name in (
+        "setup_disposable_acceptance_server.sh",
+        "setup_disposable_browser_preview_server.sh",
+    ):
+        server = read_acceptance(name)
+        assert 'echo "Grant replay [$grant_index]: $grant_stmt"' in server
+        assert 'psql_test -c "$grant_stmt" </dev/null' in server
+        assert "application-role function grant replay failed at statement" in server
+        assert 'psql_test < "$GRANTS_FILE"' not in server

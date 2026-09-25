@@ -5,9 +5,9 @@
 | Document Type | Internal Web Backbone Integration Handoff |
 | Source System | Production Database — Setup and Deployment |
 | Consuming System | `Gregovate/MSB-Internal-Web-Backbone` |
-| Status | VERIFIED — live Production portal and Setup documentation link confirmed 2026-09-22 |
+| Status | CURRENT HANDOFF — source Setup state reconciled to live 2026 annual operation |
 | Owner | MSB Production Database / Setup documentation owner |
-| Last Reviewed | 2026-09-22 |
+| Last Reviewed | 2026-09-25 |
 
 ## Purpose
 
@@ -29,11 +29,12 @@ Accepted source-side checks include:
 Synology /setup/ route                = operational
 public Setup health                   = PASS
 Cloudflare-authenticated browser use  = PASS
-2025 Production data rendering        = PASS
+2025 historical data rendering        = PASS
+2026 annual Session / Scheduling      = LIVE / Production accepted
 post-deployment invariants            = PASS
 ```
 
-The **runtime is accepted**, but the Setup UI/workflow remains in live evaluation while Managers use the real 2025 Historical Verification session. Backbone navigation should therefore present the application as available for current 2025 review/training without implying that all Setup features are final.
+The **runtime and 2026 Scheduling Board are accepted**. The real 2026 Setup Session is now the current annual planning/execution context. 2025 Historical Verification remains available only for intentional historical/review work. Backbone navigation must lead with current 2026 Setup work rather than presenting 2025 review/training as the primary Setup action.
 
 ## Canonical Operator Portal
 
@@ -113,9 +114,13 @@ The obsolete static artifact may be removed later through the Backbone repositor
 
 Primary current task:
 
-- **Review and Correct the 2025 Setup History** — Managers/reviewers use the real Production-backed 2025 Historical Verification session to verify annual history, add/correct reusable tasks and resources, improve reusable Setup knowledge, ask questions, and suggest workflow/UI improvements before the 2026 Setup Session is created.
+- **Schedule 2026 Setup Work** — Managers use the live 2026 Setup Session and **Plan / Schedule** for current annual planning.
 
-Canonical source procedure:
+Secondary historical/review task:
+
+- **Review and Correct the 2025 Setup History** — use the Production-backed 2025 Historical Verification session only when historical/review evidence is intentionally needed.
+
+Canonical historical-review procedure:
 
 ```text
 operatorSOP/Review_2025_Setup_History.md
@@ -125,27 +130,27 @@ Useful supporting action link:
 
 - **Open Setup Application** — `https://my.sheboyganlights.org/setup/`
 
-Future Setup task choices should be added only after the corresponding workflow is production-operational and documented in the source subsystem.
+Additional Setup task choices should be added only after the corresponding workflow is production-operational and documented in the source subsystem.
 
 ## Suggested Plain-Language Copy
 
 Primary card/action title:
 
 ```text
-Review 2025 Setup
+Schedule 2026 Setup
 ```
 
 Description:
 
-> Review what happened during 2025 Setup, correct what you know, add missing reusable tasks or resources, and help improve the Setup workflow before the 2026 plan is created.
+> Plan current 2026 Setup work, add Work Days, and schedule the next practical crew assignments.
 
-Secondary label/status when useful:
+Secondary historical action when useful:
 
 ```text
-Live review / training
+Review 2025 Setup History
 ```
 
-Do not label the application as a prototype or as fully finalized. The accurate operator meaning is that it is live Production software currently being evaluated through real 2025 review work.
+Do not label the application as a prototype. The accurate operator meaning is that the annual scheduling spine is live Production software; additional Work List, Report Work, problem-intake, Pick List, and movement capabilities continue under their owning workstreams.
 
 ## Search / Discovery Metadata
 
@@ -153,9 +158,11 @@ Useful search terms:
 
 ```text
 Setup
+2026 Setup
+Plan / Schedule
+Work Day
 2025 Setup
 Historical Verification
-Setup training
 review Setup history
 add Setup task
 Setup resources
@@ -221,15 +228,16 @@ Implemented source:
 my/committees/production/index.html
 ```
 
-Current Backbone issue #10 source direction includes three Setup-related destinations:
+Live browser evidence from 2026-09-22 showed the then-current Backbone Setup destinations as **Review 2025 Setup**, **Setup Documentation**, and **Open Procedures**. That evidence is historical portal state, not current Setup workflow authority.
 
-- **Review 2025 Setup — Live Review / Training** -> `https://my.sheboyganlights.org/setup/`;
-- **Setup Documentation — Review Guide & Procedures** -> the canonical Setup README on Production Database `main`;
-- **Open Procedures — Setup / Takedown / Inspection** -> `https://my.sheboyganlights.org/procedures/`.
+Current source-system direction is:
 
-Because the documentation destination points to the canonical README on `main`, future source-document improvements do not require a duplicate Backbone copy of the procedure.
+- **Schedule 2026 Setup** -> `https://my.sheboyganlights.org/setup/`;
+- **Setup Documentation** -> the canonical Setup README on Production Database `main`;
+- **Open Procedures — Setup / Takedown / Inspection** -> `https://my.sheboyganlights.org/procedures/`;
+- retain **Review 2025 Setup History** only as a secondary historical/review destination where useful.
 
-Live browser evidence supplied by Greg on 2026-09-22 confirms the Production portal is published and the Setup Documentation link reaches the current canonical README.
+Because the documentation destination points to the canonical README on `main`, future source-document improvements do not require a duplicate Backbone copy of the procedure. If the live Backbone portal still shows the old 2025-first label, that is a Backbone presentation follow-up; it does not change current Setup authority.
 
 ## Acceptance Criteria
 
@@ -237,7 +245,7 @@ Backbone integration is VERIFIED only when all applicable checks pass:
 
 1. the Production index/task navigation includes an appropriate Setup action;
 2. the action points to `https://my.sheboyganlights.org/setup/`;
-3. the 2025 historical review purpose is understandable in plain language;
+3. the primary action reflects the live 2026 Setup workflow, while 2025 historical review remains clearly secondary;
 4. the obsolete static Setup/Takedown page is not linked or promoted;
 5. engineering/acceptance/database source paths are absent from normal operator navigation;
 6. no duplicate editable copy of the source operator procedure is created in Backbone;

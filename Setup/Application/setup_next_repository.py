@@ -177,7 +177,6 @@ class SetupNextRepository:
                        st.execution_status, st.verification_state, st.planned_order,
                        st.planned_date, st.plan_change_reason,
                        st.actual_started_at, st.actual_completed_at, st.actual_crew_count,
-                       st.actual_duration_minutes,
                        st.completion_note, st.completed_by_person_id,
                        nullif(btrim(concat_ws(' ', cp.first_name, cp.last_name)), '') AS completed_by_name,
                        t.task_name, t.task_action_type, t.display_order,
@@ -189,8 +188,6 @@ class SetupNextRepository:
                        coalesce(dep.prerequisite_count, 0) AS prerequisite_count,
                        coalesce(progress.progress_entries, 0) AS progress_entries,
                        coalesce(progress.completed_quantity, 0) AS completed_quantity,
-                       coalesce(progress.reported_duration_minutes, 0) AS reported_duration_minutes,
-                       coalesce(progress.person_minutes, 0) AS person_minutes,
                        coalesce(schedule.scheduled_count, 0) AS scheduled_count
                 FROM ops.setup_session_task st
                 JOIN ops.setup_session ss ON ss.setup_session_id = st.setup_session_id
@@ -209,9 +206,7 @@ class SetupNextRepository:
                 ) dep ON true
                 LEFT JOIN LATERAL (
                     SELECT count(*) AS progress_entries,
-                           sum(coalesce(p.completed_quantity, 0)) AS completed_quantity,
-                           sum(coalesce(p.duration_minutes, 0)) AS reported_duration_minutes,
-                           sum(coalesce(p.duration_minutes, 0) * p.crew_count) AS person_minutes
+                           sum(coalesce(p.completed_quantity, 0)) AS completed_quantity
                     FROM ops.setup_task_progress p
                     WHERE p.setup_session_task_id = st.setup_session_task_id
                 ) progress ON true
@@ -232,7 +227,6 @@ class SetupNextRepository:
             cur.execute("""
                 SELECT p.setup_task_progress_id, p.setup_session_task_id,
                        p.setup_work_day_id, wd.work_date, p.shift_code, p.crew_count,
-                       p.duration_minutes,
                        p.completed_quantity, p.completed_units, p.progress_note,
                        p.marks_task_complete, p.recorded_at,
                        nullif(btrim(concat_ws(' ', actor.first_name, actor.last_name)), '') AS recorded_by_name
@@ -324,16 +318,15 @@ class SetupNextRepository:
 
     def record_progress(self, *, email: str, session_task_id: int,
                         work_day_id: int | None, shift: str, crew_count: int,
-                        duration_minutes: int, quantity: int | None,
-                        units: str | None, note: str | None,
+                        quantity: int | None, units: str | None, note: str | None,
                         mark_complete: bool) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
                 SELECT * FROM ops.record_setup_task_progress(
-                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                    %s,%s,%s,%s,%s,%s,%s,%s,%s
                 )
             """, (email, session_task_id, work_day_id, shift, crew_count,
-                    duration_minutes, quantity, units, note, mark_complete))
+                    quantity, units, note, mark_complete))
             result = self._one(cur, "Setup progress command returned no result")
             conn.commit()
             return result

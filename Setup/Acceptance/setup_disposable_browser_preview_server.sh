@@ -20,6 +20,7 @@ TARGET_REF=""
 PREVIEW_PORT=""
 PREVIEW_EMAIL=""
 EXPECTED_VERSION=""
+ALLOW_CONCURRENT_PRODUCTION_WRITES="false"
 MIGRATIONS=()
 VALIDATIONS=()
 
@@ -33,6 +34,7 @@ while IFS=$'\t' read -r kind value extra; do
         preview_port) PREVIEW_PORT="$value" ;;
         preview_email) PREVIEW_EMAIL="$value" ;;
         expected_version) EXPECTED_VERSION="$value" ;;
+        allow_concurrent_production_writes) ALLOW_CONCURRENT_PRODUCTION_WRITES="$value" ;;
         migration) MIGRATIONS+=("$value") ;;
         validation) VALIDATIONS+=("$value") ;;
         *) echo "FAIL: unsupported manifest key: $kind"; exit 3 ;;
@@ -43,6 +45,11 @@ done < "$MANIFEST"
 : "${TARGET_REF:?manifest target_ref is required}"
 : "${PREVIEW_PORT:?manifest preview_port is required}"
 : "${PREVIEW_EMAIL:?manifest preview_email is required}"
+
+if [[ "$ALLOW_CONCURRENT_PRODUCTION_WRITES" != "true" && "$ALLOW_CONCURRENT_PRODUCTION_WRITES" != "false" ]]; then
+    echo "FAIL: allow_concurrent_production_writes must be true or false"
+    exit 3
+fi
 
 for rel in "${MIGRATIONS[@]}" "${VALIDATIONS[@]}"; do
     [[ -z "$rel" ]] && continue
@@ -81,6 +88,7 @@ echo "Target ref:    $TARGET_REF"
 echo "Preview port:  $PREVIEW_PORT"
 echo "Preview user:  $PREVIEW_EMAIL"
 echo "Expected ver:  ${EXPECTED_VERSION:-not pinned}"
+echo "Concurrent Production writes allowed: $ALLOW_CONCURRENT_PRODUCTION_WRITES"
 echo "Migrations:    ${#MIGRATIONS[@]}"
 echo "Validations:   ${#VALIDATIONS[@]}"
 echo "Report:        $REPORT"
@@ -130,9 +138,18 @@ cleanup() {
         PROD_AFTER="$(prod_fingerprint 2>/dev/null)"
         echo "Production Setup fingerprint before: $PROD_BEFORE"
         echo "Production Setup fingerprint after:  $PROD_AFTER"
-        if [[ -z "$PROD_AFTER" || "$PROD_AFTER" != "$PROD_BEFORE" ]]; then
-            echo "FAIL: Production Setup fingerprint changed during browser preview"
+        if [[ -z "$PROD_AFTER" ]]; then
+            echo "FAIL: Production Setup fingerprint after-check was empty"
             status=97
+        elif [[ "$PROD_AFTER" != "$PROD_BEFORE" ]]; then
+            if [[ "$ALLOW_CONCURRENT_PRODUCTION_WRITES" == "true" ]]; then
+                echo "INFO: Production Setup fingerprint changed during browser preview"
+                echo "PASS WITH CONCURRENT ACTIVITY: fingerprint drift is allowed for this explicitly concurrent review"
+                echo "NOTE: the preview clone remained the point-in-time database captured at preview start"
+            else
+                echo "FAIL: Production Setup fingerprint changed during browser preview"
+                status=97
+            fi
         else
             echo "PASS: Production Setup fingerprint unchanged"
         fi
@@ -301,29 +318,157 @@ psql_test() {
 echo
 echo "--- Recreate current Production application-role boundary ---"
 psql_test -c "CREATE ROLE fieldwiring_app LOGIN PASSWORD '$APP_PASSWORD';"
+
+# Reproduce the established Setup disposable read boundary. The accepted Setup
+# browser-preview tooling intentionally grants read-only access across the
+# application schemas in the disposable clone while keeping all writes behind
+# narrow SECURITY DEFINER command functions.
+psql_test <<'SQL'
+GRANT USAGE ON SCHEMA ref, ops, lor_snap TO fieldwiring_app;
+GRANT SELECT ON ALL TABLES IN SCHEMA ref, ops, lor_snap TO fieldwiring_app;
+SQL
+
+# Preserve the real Production function boundary: replay PUBLIC revokes and
+# fieldwiring_app EXECUTE grants from catalog ACLs. This keeps internal helpers
+# inaccessible and avoids inventing command privileges in the clone.
 sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "
-    SELECT format('GRANT USAGE ON SCHEMA %I TO fieldwiring_app;', n.nspname)
-    FROM pg_namespace n
-    WHERE n.nspname IN ('ref','lor_snap','ops','public')
-      AND has_schema_privilege('fieldwiring_app', n.oid, 'USAGE')
-    UNION ALL
-    SELECT format('GRANT SELECT ON TABLE %I.%I TO fieldwiring_app;', n.nspname, c.relname)
-    FROM pg_class c
-    JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE n.nspname IN ('ref','lor_snap','ops','public')
-      AND c.relkind IN ('r','v','m','f','p')
-      AND has_table_privilege('fieldwiring_app', c.oid, 'SELECT')
-    UNION ALL
-    SELECT format('GRANT EXECUTE ON FUNCTION %I.%I(%s) TO fieldwiring_app;', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid))
-    FROM pg_proc p
-    JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname IN ('ref','ops')
-      AND p.prokind IN ('f','w')
-      AND has_function_privilege('fieldwiring_app', p.oid, 'EXECUTE');
+    SELECT grant_stmt
+    FROM (
+        SELECT
+            10 AS ord,
+            format(
+                'REVOKE ALL ON FUNCTION %I.%I(%s) FROM PUBLIC;',
+                n.nspname,
+                p.proname,
+                pg_get_function_identity_arguments(p.oid)
+            ) AS grant_stmt
+        FROM pg_proc AS p
+        JOIN pg_namespace AS n
+          ON n.oid = p.pronamespace
+        WHERE n.nspname IN ('ref','ops')
+          AND p.prokind IN ('f','w')
+          AND p.proacl IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM aclexplode(p.proacl) AS public_acl
+              WHERE public_acl.grantee = 0
+                AND public_acl.privilege_type = 'EXECUTE'
+          )
+
+        UNION ALL
+
+        SELECT
+            20 AS ord,
+            format(
+                'GRANT EXECUTE ON FUNCTION %I.%I(%s) TO fieldwiring_app;',
+                n.nspname,
+                p.proname,
+                pg_get_function_identity_arguments(p.oid)
+            )
+        FROM pg_proc AS p
+        JOIN pg_namespace AS n
+          ON n.oid = p.pronamespace
+        CROSS JOIN LATERAL aclexplode(p.proacl) AS acl
+        JOIN pg_roles AS grantee
+          ON grantee.oid = acl.grantee
+        WHERE n.nspname IN ('ref','ops')
+          AND p.prokind IN ('f','w')
+          AND grantee.rolname = 'fieldwiring_app'
+          AND acl.privilege_type = 'EXECUTE'
+    ) AS grants
+    ORDER BY ord, grant_stmt;
 " > "$GRANTS_FILE"
-test -s "$GRANTS_FILE"
-psql_test < "$GRANTS_FILE"
+
+if [[ ! -s "$GRANTS_FILE" ]]; then
+    echo "FAIL: Production function ACL extraction returned no Setup command boundary"
+    exit 23
+fi
+
+grant_index=0
+while IFS= read -r grant_stmt || [[ -n "$grant_stmt" ]]; do
+    [[ -z "$grant_stmt" ]] && continue
+    grant_index=$((grant_index + 1))
+    echo "Grant replay [$grant_index]: $grant_stmt"
+    if ! psql_test -c "$grant_stmt" </dev/null; then
+        echo "FAIL: application-role function grant replay failed at statement $grant_index"
+        exit 23
+    fi
+done < "$GRANTS_FILE"
+
 psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"
+
+echo "--- Production Setup function-boundary proof (read-only) ---"
+PROD_CAPABILITY_EXEC="$(sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "SELECT has_function_privilege('fieldwiring_app','ref.setup_browser_capabilities(text)','EXECUTE');")"
+PROD_UPDATE_EXEC="$(sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "SELECT has_function_privilege('fieldwiring_app','ref.update_setup_task(text,bigint,text,integer,text,integer,boolean,integer,integer,integer,text,text,text,text)','EXECUTE');")"
+PROD_INTERNAL_EXEC="$(sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "SELECT has_function_privilege('fieldwiring_app','ref.setup_management_actor(text,boolean)','EXECUTE');")"
+
+echo "Production capability EXECUTE: $PROD_CAPABILITY_EXEC"
+echo "Production update-task EXECUTE:  $PROD_UPDATE_EXEC"
+echo "Production internal-helper EXECUTE: $PROD_INTERNAL_EXEC"
+
+if [[ "$PROD_CAPABILITY_EXEC" != "t" || "$PROD_UPDATE_EXEC" != "t" || "$PROD_INTERNAL_EXEC" != "f" ]]; then
+    echo "FAIL: Production Setup function authorization boundary is not the documented contract"
+    exit 23
+fi
+echo "Production Setup function authorization boundary: PASS"
+
+echo "--- Production role/ACL diagnostic (read-only) ---"
+sudo docker exec "$PROD_CONTAINER" psql -X -P pager=off -U "$DB_ACTOR" -d "$PROD_DB" -c "
+    SELECT
+        member_role.rolname AS member_role,
+        granted_role.rolname AS inherited_role,
+        member_role.rolinherit
+    FROM pg_auth_members AS m
+    JOIN pg_roles AS member_role
+      ON member_role.oid = m.member
+    JOIN pg_roles AS granted_role
+      ON granted_role.oid = m.roleid
+    WHERE member_role.rolname = 'fieldwiring_app'
+       OR granted_role.rolname = 'fieldwiring_app'
+    ORDER BY member_role.rolname, granted_role.rolname;
+" || true
+
+psql_test <<'SQL'
+DO $boundary$
+BEGIN
+    IF NOT has_schema_privilege('fieldwiring_app', 'ref', 'USAGE')
+       OR NOT has_schema_privilege('fieldwiring_app', 'ops', 'USAGE')
+       OR NOT has_schema_privilege('fieldwiring_app', 'lor_snap', 'USAGE') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app lacks required schema USAGE';
+    END IF;
+
+    IF NOT has_table_privilege('fieldwiring_app', 'ref.setup_task', 'SELECT')
+       OR NOT has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'SELECT') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app lacks required Setup SELECT boundary';
+    END IF;
+
+    IF NOT has_function_privilege(
+        'fieldwiring_app',
+        'ref.setup_browser_capabilities(text)',
+        'EXECUTE'
+    ) THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app cannot execute Setup capability function';
+    END IF;
+
+    /*
+      Function ACLs are stripped by pg_restore --no-acl, so PostgreSQL's
+      default PUBLIC EXECUTE makes the disposable clone unsuitable as the
+      authority for the internal-helper EXECUTE assertion. The exact Production
+      boundary is proved read-only immediately above instead.
+    */
+
+    IF has_table_privilege('fieldwiring_app', 'ref.setup_task', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ref.setup_task', 'UPDATE')
+       OR has_table_privilege('fieldwiring_app', 'ref.setup_task', 'DELETE')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'UPDATE')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'DELETE') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app unexpectedly has broad Setup DML';
+    END IF;
+END
+$boundary$;
+SQL
+echo "Established Setup disposable read boundary + Production command ACL replay: PASS"
 
 echo
 echo "--- Apply candidate migrations to disposable clone only ---"
@@ -415,7 +560,9 @@ Preview identity: $PREVIEW_EMAIL
 Expected version: ${EXPECTED_VERSION:-not pinned}
 
 The exact candidate is running against a disposable current-Production database clone.
-All browser writes are disposable. Production Setup remains untouched.
+All browser writes from this preview are disposable.
+Concurrent Production application writes allowed: $ALLOW_CONCURRENT_PRODUCTION_WRITES
+The preview clone is a point-in-time snapshot; later Production edits are not visible until a new preview is started.
 
 Perform the feature-specific operator checklist now.
 When review is complete, return to this terminal and press ENTER.

@@ -1,6 +1,6 @@
 # Setup Session Application
 
-Status: **PRODUCTION RUNTIME OPERATIONAL — V0.3.13 + DURABLE KIT / EXTRA MATERIAL / T-POST INVENTORY ACCEPTED**
+Status: **PRODUCTION RUNTIME OPERATIONAL — 2026 ANNUAL SETUP SESSION LIVE**
 
 The protected application is live at:
 
@@ -14,18 +14,18 @@ Production entry point:
 Setup/Application/production_backend.py
 ```
 
-Current reported version and deployed source:
+Current reported version and accepted 2026 Scheduling Board application target:
 
 ```text
-V0.3.13-assignment-layer
-1e0e2d2c3ffbcafc2ffef2bb4a98c81d600e8b1b
+V0.3.17-performance-trace
+06a6536d92db5c7352beeed496563ed9bfdb7146
 ```
 
 The health/version string intentionally remains V0.3.13; #184/#167 extended the durable material/inventory subsystem without starting a new annual Session version line.
 
 ## Current Production Meaning
 
-The 2025 Setup Session is real Production data and remains the historical/sandbox proving ground. There is no 2026 Setup Session yet.
+The 2025 Setup Session remains historical/verification evidence. The real 2026 Setup Session has now been created and is the active annual planning/scheduling context.
 
 Managers/reviewers can maintain reusable tasks, resources, prerequisites, Display/Container material participation, explicit Display ownership, physical Kit Box assignments, and structured reusable-task Extra Material requirements.
 
@@ -109,19 +109,15 @@ Permanent source checkout:
 /opt/msb-setup
 ```
 
-Current live source is the accepted #167 data candidate `1e0e2d2...`. Later branch commits contain deployment harness fixes and closeout documentation only and are not a new live application target.
+The accepted 2026 Scheduling Board application target is `06a6536d92db5c7352beeed496563ed9bfdb7146`. Migrations 057/058 and the governed #122 launch deployment tooling established the 2026 launch boundary; later closeout-only commits do not redefine the accepted application target.
 
 Validated rollback archives from #184 and #167 Production deployments are retained under `/home/msbadmin/backups/setup-184/` and `/home/msbadmin/backups/setup-167/`. Do not restore them merely to undo a UI/documentation problem or without reconciling legitimate post-deployment Production work.
 
 ## Current Boundaries
 
-Still outside the accepted live workflow:
+The annual Session and Scheduling Board are live. Continue to preserve the boundary between reusable Catalog knowledge and 2026 annual planning/execution. Season-only work belongs in the annual Session unless explicitly promoted to reusable knowledge.
 
-- final reusable Catalog acceptance / disposable 2026 seed proof;
-- structured external/site readiness;
-- Pick List generation and staged release scheduling;
-- Container/Display movement/scanning writes; and
-- park-location execution evidence.
+Pick List / early physical material-demand expansion remains owned by #206 / PR #216 and is not part of Scheduling Board closeout. Movement/scanning and park-location semantics remain under their existing owning workstreams.
 
 ## Engineering Resume
 
@@ -130,8 +126,8 @@ Before changing the application:
 1. read Project Rules;
 2. read the Setup engineering README and current handoff;
 3. preserve the accepted V0.3.7 through V0.3.13 behavior plus durable #184/#167 inventory state;
-4. keep 2025 as the proving ground until the remaining gates pass;
-5. continue `#145 FINAL -> #122`;
+4. treat 2026 as the live annual planning/execution Session and 2025 as historical/verification evidence;
+5. preserve the accepted Scheduling Board behavior and keep #206 Pick List work in its owning workstream;
 6. use Server Management for live runtime and deployment authority.
 
 ## Related Documentation

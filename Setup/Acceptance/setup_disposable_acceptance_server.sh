@@ -197,22 +197,143 @@ psql_test() { sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINE
 echo
 echo "--- Recreate current Production application-role boundary ---"
 psql_test -c "CREATE ROLE fieldwiring_app LOGIN PASSWORD '$APP_PASSWORD';"
+
+# Reproduce the established Setup disposable read boundary. The accepted Setup
+# browser-preview tooling intentionally grants read-only access across the
+# application schemas in the disposable clone while keeping all writes behind
+# narrow SECURITY DEFINER command functions.
+psql_test <<'SQL'
+GRANT USAGE ON SCHEMA ref, ops, lor_snap TO fieldwiring_app;
+GRANT SELECT ON ALL TABLES IN SCHEMA ref, ops, lor_snap TO fieldwiring_app;
+SQL
+
+# Preserve the real Production function boundary: replay PUBLIC revokes and
+# fieldwiring_app EXECUTE grants from catalog ACLs. This keeps internal helpers
+# inaccessible and avoids inventing command privileges in the clone.
 sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "
-    SELECT format('GRANT USAGE ON SCHEMA %I TO fieldwiring_app;', n.nspname)
-    FROM pg_namespace n
-    WHERE n.nspname IN ('ref','lor_snap','ops','public') AND has_schema_privilege('fieldwiring_app', n.oid, 'USAGE')
-    UNION ALL
-    SELECT format('GRANT SELECT ON TABLE %I.%I TO fieldwiring_app;', n.nspname, c.relname)
-    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE n.nspname IN ('ref','lor_snap','ops','public') AND c.relkind IN ('r','v','m','f','p') AND has_table_privilege('fieldwiring_app', c.oid, 'SELECT')
-    UNION ALL
-    SELECT format('GRANT EXECUTE ON FUNCTION %I.%I(%s) TO fieldwiring_app;', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid))
-    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname IN ('ref','ops') AND p.prokind IN ('f','w') AND has_function_privilege('fieldwiring_app', p.oid, 'EXECUTE');
+    SELECT grant_stmt
+    FROM (
+        SELECT
+            10 AS ord,
+            format(
+                'REVOKE ALL ON FUNCTION %I.%I(%s) FROM PUBLIC;',
+                n.nspname,
+                p.proname,
+                pg_get_function_identity_arguments(p.oid)
+            ) AS grant_stmt
+        FROM pg_proc AS p
+        JOIN pg_namespace AS n
+          ON n.oid = p.pronamespace
+        WHERE n.nspname IN ('ref','ops')
+          AND p.prokind IN ('f','w')
+          AND p.proacl IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM aclexplode(p.proacl) AS public_acl
+              WHERE public_acl.grantee = 0
+                AND public_acl.privilege_type = 'EXECUTE'
+          )
+
+        UNION ALL
+
+        SELECT
+            20 AS ord,
+            format(
+                'GRANT EXECUTE ON FUNCTION %I.%I(%s) TO fieldwiring_app;',
+                n.nspname,
+                p.proname,
+                pg_get_function_identity_arguments(p.oid)
+            )
+        FROM pg_proc AS p
+        JOIN pg_namespace AS n
+          ON n.oid = p.pronamespace
+        CROSS JOIN LATERAL aclexplode(p.proacl) AS acl
+        JOIN pg_roles AS grantee
+          ON grantee.oid = acl.grantee
+        WHERE n.nspname IN ('ref','ops')
+          AND p.prokind IN ('f','w')
+          AND grantee.rolname = 'fieldwiring_app'
+          AND acl.privilege_type = 'EXECUTE'
+    ) AS grants
+    ORDER BY ord, grant_stmt;
 " > "$GRANTS_FILE"
-test -s "$GRANTS_FILE"
-psql_test < "$GRANTS_FILE"
+
+if [[ ! -s "$GRANTS_FILE" ]]; then
+    echo "FAIL: Production function ACL extraction returned no Setup command boundary"
+    exit 23
+fi
+
+grant_index=0
+while IFS= read -r grant_stmt || [[ -n "$grant_stmt" ]]; do
+    [[ -z "$grant_stmt" ]] && continue
+    grant_index=$((grant_index + 1))
+    echo "Grant replay [$grant_index]: $grant_stmt"
+    if ! psql_test -c "$grant_stmt" </dev/null; then
+        echo "FAIL: application-role function grant replay failed at statement $grant_index"
+        exit 23
+    fi
+done < "$GRANTS_FILE"
+
 psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"
+
+echo "--- Production role/ACL diagnostic (read-only) ---"
+sudo docker exec "$PROD_CONTAINER" psql -X -P pager=off -U "$DB_ACTOR" -d "$PROD_DB" -c "
+    SELECT
+        member_role.rolname AS member_role,
+        granted_role.rolname AS inherited_role,
+        member_role.rolinherit
+    FROM pg_auth_members AS m
+    JOIN pg_roles AS member_role
+      ON member_role.oid = m.member
+    JOIN pg_roles AS granted_role
+      ON granted_role.oid = m.roleid
+    WHERE member_role.rolname = 'fieldwiring_app'
+       OR granted_role.rolname = 'fieldwiring_app'
+    ORDER BY member_role.rolname, granted_role.rolname;
+" || true
+
+psql_test <<'SQL'
+DO $boundary$
+BEGIN
+    IF NOT has_schema_privilege('fieldwiring_app', 'ref', 'USAGE')
+       OR NOT has_schema_privilege('fieldwiring_app', 'ops', 'USAGE')
+       OR NOT has_schema_privilege('fieldwiring_app', 'lor_snap', 'USAGE') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app lacks required schema USAGE';
+    END IF;
+
+    IF NOT has_table_privilege('fieldwiring_app', 'ref.setup_task', 'SELECT')
+       OR NOT has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'SELECT') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app lacks required Setup SELECT boundary';
+    END IF;
+
+    IF NOT has_function_privilege(
+        'fieldwiring_app',
+        'ref.setup_browser_capabilities(text)',
+        'EXECUTE'
+    ) THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app cannot execute Setup capability function';
+    END IF;
+
+    IF has_function_privilege(
+        'fieldwiring_app',
+        'ref.setup_management_actor(text,boolean)',
+        'EXECUTE'
+    ) THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app can execute internal Setup actor helper';
+    END IF;
+
+    IF has_table_privilege('fieldwiring_app', 'ref.setup_task', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ref.setup_task', 'UPDATE')
+       OR has_table_privilege('fieldwiring_app', 'ref.setup_task', 'DELETE')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'UPDATE')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'DELETE') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app unexpectedly has broad Setup DML';
+    END IF;
+END
+$boundary$;
+SQL
+echo "Established Setup disposable read boundary + Production command ACL replay: PASS"
 
 echo
 echo "--- Apply candidate migrations to disposable clone only ---"

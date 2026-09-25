@@ -410,16 +410,12 @@ def api_setup_record_progress(setup_session_task_id: int) -> tuple[Response, int
     crew = nullable_int(payload.get("crew_count"), "crew_count")
     if crew is None:
         raise SetupCommandError("crew_count is required")
-    duration = nullable_int(payload.get("duration_minutes"), "duration_minutes")
-    if duration is None or duration <= 0:
-        raise SetupCommandError("duration_minutes must be greater than zero")
     result = repo().record_progress(
         email=email,
         session_task_id=setup_session_task_id,
         work_day_id=nullable_int(payload.get("setup_work_day_id"), "setup_work_day_id"),
         shift=str(payload.get("shift_code") or "ALL_DAY"),
         crew_count=crew,
-        duration_minutes=duration,
         quantity=nullable_int(payload.get("completed_quantity"), "completed_quantity"),
         units=(str(payload.get("completed_units") or "").strip() or None),
         note=(str(payload.get("progress_note") or "").strip() or None),

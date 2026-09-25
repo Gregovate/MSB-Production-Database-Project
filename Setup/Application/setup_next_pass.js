@@ -618,8 +618,14 @@ function installNextTabs() {
   performButton.className = 'tab'; performButton.dataset.view = 'perform'; performButton.type = 'button'; performButton.textContent = 'Perform Work';
   tabs.insertBefore(scheduleButton, movementButton);
   tabs.insertBefore(performButton, movementButton);
-  scheduleButton.addEventListener('click', async () => { showView('schedule'); await loadNextSchedule(); });
-  performButton.addEventListener('click', async () => { showView('perform'); await loadNextExecution(); });
+  scheduleButton.addEventListener('click', async () => {
+    if (typeof navigateSetupView === 'function') await navigateSetupView('schedule');
+    else { showView('schedule'); await loadNextSchedule(); }
+  });
+  performButton.addEventListener('click', async () => {
+    if (typeof navigateSetupView === 'function') await navigateSetupView('perform');
+    else { showView('perform'); await loadNextExecution(); }
+  });
 
   const main = document.querySelector('main');
   const schedule = document.createElement('section');
@@ -779,35 +785,6 @@ function nextLocationText(item) {
   return 'Location not yet recorded';
 }
 
-function nextReportWorkRoute() {
-  const route = new URLSearchParams(window.location.search);
-  const workDayId = Number(route.get('setup_work_day_id') || 0);
-  const assignmentId = Number(route.get('setup_work_day_task_id') || 0);
-  const crewId = Number(route.get('crew_id') || 0);
-  const shiftRaw = String(route.get('shift_code') || '').toUpperCase();
-  const shiftCode = ['MORNING', 'AFTERNOON', 'ALL_DAY'].includes(shiftRaw) ? shiftRaw : 'ALL_DAY';
-  return {
-    setup_work_day_id: workDayId > 0 ? workDayId : null,
-    setup_work_day_task_id: assignmentId > 0 ? assignmentId : null,
-    crew_id: crewId > 0 ? crewId : null,
-    work_date: route.get('work_date') || null,
-    crew_code: route.get('crew_code') || null,
-    shift_code: shiftCode
-  };
-}
-
-function nextReportWorkContextMarkup() {
-  const context = nextReportWorkRoute();
-  if (!context.setup_work_day_id && !context.work_date && !context.crew_code) return '';
-  const parts = [
-    context.work_date ? 'Work day ' + escapeHtml(context.work_date) : null,
-    context.shift_code ? escapeHtml(context.shift_code.replaceAll('_', ' ')) : null,
-    context.crew_code ? 'Crew ' + escapeHtml(context.crew_code) : null
-  ].filter(Boolean);
-  return '<div class="next-report-context"><strong>Reporting against scheduled context:</strong> '
-    + parts.join(' · ') + '</div>';
-}
-
 async function loadNextTaskExecution(details) {
   const taskId = Number(details.dataset.taskId);
   const sessionTaskId = Number(details.dataset.sessionTaskId);
@@ -840,15 +817,10 @@ async function loadNextTaskExecution(details) {
         <section><h4>Material / Current Location</h4>${assets.length ? `<ul>${assets.join('')}</ul>` : '<p class="muted">No Displays or support Containers are mapped to this reusable task yet.</p>'}</section>
         <section><h4>Published Setup Procedure</h4>${docs.length ? docs.map((doc) => `<p><a target="_blank" rel="noopener" href="api/setup/tasks/${taskId}/procedure/current?name=${encodeURIComponent(doc.name || '')}">${escapeHtml(doc.name || 'Open current PDF')}</a></p>`).join('') : `<p class="muted">No published Setup PDF resolved for this task scope.${nextIsSitewide(task) ? ' Site-wide Procedures belong in Display Folders\\Site Infrastructure\\Procedures\\Setup.' : ''}</p>`}</section>
       </div>
-      <section class="next-progress-history"><h4>Progress history</h4>${progress.length ? progress.map((p) => `<div>${escapeHtml(formatTimestamp(p.recorded_at))} · Crew ${p.crew_count}${p.duration_minutes ? ` · ${escapeHtml(formatMinutes(p.duration_minutes))}` : ' · Duration not recorded'}${p.completed_quantity ? ` · ${p.completed_quantity} completed` : ''}${p.completed_units ? ` · ${escapeHtml(p.completed_units)}` : ''}${p.progress_note ? ` · ${escapeHtml(p.progress_note)}` : ''}${p.marks_task_complete ? ' · COMPLETE' : ''}</div>`).join('') : '<div class="muted">No progress recorded yet.</div>'}</section>
+      <section class="next-progress-history"><h4>Progress history</h4>${progress.length ? progress.map((p) => `<div>${escapeHtml(formatTimestamp(p.recorded_at))} · Crew ${p.crew_count}${p.completed_quantity ? ` · ${p.completed_quantity} completed` : ''}${p.completed_units ? ` · ${escapeHtml(p.completed_units)}` : ''}${p.progress_note ? ` · ${escapeHtml(p.progress_note)}` : ''}${p.marks_task_complete ? ' · COMPLETE' : ''}</div>`).join('') : '<div class="muted">No progress recorded yet.</div>'}</section>
       ${task.execution_status === 'COMPLETE' ? `<div class="next-complete-banner">Completed ${escapeHtml(formatTimestamp(task.actual_completed_at))}${task.completed_by_name ? ` by ${escapeHtml(task.completed_by_name)}` : ''}${task.completion_note ? ` · ${escapeHtml(task.completion_note)}` : ''}</div>` : `
       <form class="next-completion-form" data-session-task-id="${sessionTaskId}">
-        ${nextReportWorkContextMarkup()}
         <label>Crew size<input class="next-crew" type="number" min="1" required></label>
-        <div class="compact-grid">
-          <label>Hours<input class="next-duration-hours" type="number" min="0" step="1" value="0" required></label>
-          <label>Minutes<input class="next-duration-minutes" type="number" min="0" max="59" step="1" value="0" required></label>
-        </div>
         <label>Completed quantity <span class="muted">(optional, e.g. 3 trees)</span><input class="next-quantity" type="number" min="1"></label>
         <label>Which units / what was completed <span class="muted">(optional)</span><input class="next-units" type="text" placeholder="Example: Trees 1, 3, 4"></label>
         <label>Progress / completion note <span class="muted">(optional)</span><textarea class="next-note" rows="2"></textarea></label>
@@ -868,25 +840,11 @@ async function submitNextProgress(event) {
   const form = event.currentTarget;
   const sessionTaskId = Number(form.dataset.sessionTaskId);
   const crew = Number(form.querySelector('.next-crew').value || 0);
-  const hours = Number(form.querySelector('.next-duration-hours').value || 0);
-  const minutes = Number(form.querySelector('.next-duration-minutes').value || 0);
   if (crew < 1) return;
-  if (!Number.isInteger(hours) || hours < 0 || !Number.isInteger(minutes) || minutes < 0 || minutes > 59) {
-    window.alert('Enter elapsed work time as whole Hours and Minutes (0–59).');
-    return;
-  }
-  const durationMinutes = (hours * 60) + minutes;
-  if (durationMinutes <= 0) {
-    window.alert('Elapsed work time must be greater than zero.');
-    return;
-  }
-  const routeContext = nextReportWorkRoute();
   try {
     await api(`api/setup/session-tasks/${sessionTaskId}/progress`, commandOptions('POST', {
-      setup_work_day_id: routeContext.setup_work_day_id,
-      shift_code: routeContext.shift_code,
+      shift_code: 'ALL_DAY',
       crew_count: crew,
-      duration_minutes: durationMinutes,
       completed_quantity: nullableInteger(form.querySelector('.next-quantity').value),
       completed_units: form.querySelector('.next-units').value.trim() || null,
       progress_note: form.querySelector('.next-note').value.trim() || null,

@@ -28,16 +28,17 @@
       .toLocaleLowerCase();
   }
 
-  function taskMatchesSearch(task) {
-    const query = searchQuery();
+  function taskMatchesSearch(task, query = searchQuery()) {
     return !query || taskSearchText(task).includes(query);
   }
 
-  function sessionTaskById(sessionTaskId) {
-    if (typeof setupNextState === 'undefined') return null;
-    return (setupNextState.executionTasks || []).find(
-      (task) => Number(task.setup_session_task_id) === Number(sessionTaskId)
-    ) || null;
+  function sessionTaskMap() {
+    if (typeof setupNextState === 'undefined') return new Map();
+    return new Map(
+      (setupNextState.executionTasks || []).map(
+        (task) => [Number(task.setup_session_task_id), task]
+      )
+    );
   }
 
   function syncFlatStageScopeHeadings(target, visibleRows) {
@@ -76,12 +77,13 @@
     const target = document.getElementById('next-planning-backlog');
     if (!target) return;
     const query = searchQuery();
+    const tasksById = sessionTaskMap();
     const rows = [...target.querySelectorAll('.next-plan-row')];
     const visibleRows = [];
 
     rows.forEach((row) => {
-      const task = sessionTaskById(Number(row.dataset.sessionTaskId));
-      const show = !query || taskMatchesSearch(task);
+      const task = tasksById.get(Number(row.dataset.sessionTaskId)) || null;
+      const show = !query || taskMatchesSearch(task, query);
       setSearchVisible(row, show);
       if (show) visibleRows.push(row);
     });
@@ -98,8 +100,8 @@
     if (select) {
       const options = [...select.options];
       options.forEach((option) => {
-        const task = sessionTaskById(Number(option.value));
-        const hide = Boolean(query) && !taskMatchesSearch(task);
+        const task = tasksById.get(Number(option.value)) || null;
+        const hide = Boolean(query) && !taskMatchesSearch(task, query);
         option.hidden = hide;
         option.disabled = hide;
       });
@@ -114,12 +116,13 @@
     const target = document.getElementById('next-perform-list');
     if (!target) return;
     const query = searchQuery();
+    const tasksById = sessionTaskMap();
     const rows = [...target.querySelectorAll('.next-perform-task')];
     const visibleRows = [];
 
     rows.forEach((row) => {
-      const task = sessionTaskById(Number(row.dataset.sessionTaskId));
-      const show = !query || taskMatchesSearch(task);
+      const task = tasksById.get(Number(row.dataset.sessionTaskId)) || null;
+      const show = !query || taskMatchesSearch(task, query);
       setSearchVisible(row, show);
       if (show) visibleRows.push(row);
     });
@@ -152,23 +155,23 @@
   }
 
   function installOperationalSearchListeners() {
+    const applyActiveOperationalSearch = () => {
+      const view = typeof currentSetupViewName === 'function' ? currentSetupViewName() : '';
+      if (view === 'schedule') applyPlanningSearch();
+      if (view === 'perform') applyPerformSearch();
+    };
+
     const input = document.getElementById('setup-task-search');
     if (input && input.dataset.operationalSearchInstalled !== '1') {
       input.dataset.operationalSearchInstalled = '1';
-      input.addEventListener('input', () => {
-        applyPlanningSearch();
-        applyPerformSearch();
-      });
+      input.addEventListener('input', applyActiveOperationalSearch);
     }
 
     const clear = document.getElementById('setup-task-search-clear');
     if (clear && clear.dataset.operationalSearchInstalled !== '1') {
       clear.dataset.operationalSearchInstalled = '1';
       clear.addEventListener('click', () => {
-        requestAnimationFrame(() => {
-          applyPlanningSearch();
-          applyPerformSearch();
-        });
+        requestAnimationFrame(applyActiveOperationalSearch);
       });
     }
   }

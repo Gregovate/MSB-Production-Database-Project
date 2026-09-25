@@ -7,9 +7,14 @@ not exposed by this WSGI application.
 """
 from __future__ import annotations
 
+import gzip
+import logging
 import os
+import threading
+import time
+import uuid
 
-from flask import Flask, abort, jsonify, send_from_directory
+from flask import Flask, abort, g, jsonify, request, send_from_directory
 
 from backend import BASE_DIR
 from setup_api import setup_api
@@ -31,7 +36,30 @@ from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.16-stale-ownership-cleanup"
+PRODUCTION_VERSION = "V0.3.18-scheduling-board"
+
+# #222 lightweight Production request instrumentation.
+#
+# This deliberately measures only protected Setup API request handling. It does
+# not issue database queries, add network calls, inspect request bodies, or log
+# query-string/form values. The authenticated Cloudflare email is logged so
+# operator reports can be correlated to the exact server-side requests that
+# occurred at the same time.
+_SETUP_PERF_LOCK = threading.Lock()
+_SETUP_PERF_ACTIVE_REQUESTS = 0
+_SETUP_PERF_PREFIX = "SETUP_PERF"
+_SETUP_PERF_SUMMARY_SECONDS = 60.0
+_SETUP_PERF_SLOW_MS = 250.0
+_SETUP_JSON_GZIP_MIN_BYTES = 16 * 1024
+_SETUP_PERF_WINDOWS: dict[str, dict] = {}
+_SETUP_OPERATOR_HEADER = "Cf-Access-Authenticated-User-Email"
+_SETUP_PERF_LOGGER = logging.getLogger("msb.setup.performance")
+_SETUP_PERF_LOGGER.setLevel(logging.INFO)
+_SETUP_PERF_LOGGER.propagate = False
+if not _SETUP_PERF_LOGGER.handlers:
+    _setup_perf_handler = logging.StreamHandler()
+    _setup_perf_handler.setFormatter(logging.Formatter("%(message)s"))
+    _SETUP_PERF_LOGGER.addHandler(_setup_perf_handler)
 PRODUCTION_ASSETS = frozenset(
     {
         "setup.css",
@@ -144,6 +172,197 @@ app.register_blueprint(setup_assignment_api)
 app.register_blueprint(setup_prerequisite_order_api)
 app.register_blueprint(setup_planning_summary_api)
 app.register_blueprint(setup_scheduling_board_api)
+
+
+def _setup_perf_is_traced_request() -> bool:
+    return request.path.startswith("/api/setup/")
+
+
+def _setup_perf_increment_active() -> int:
+    global _SETUP_PERF_ACTIVE_REQUESTS
+    with _SETUP_PERF_LOCK:
+        _SETUP_PERF_ACTIVE_REQUESTS += 1
+        return _SETUP_PERF_ACTIVE_REQUESTS
+
+
+def _setup_perf_current_active() -> int:
+    with _SETUP_PERF_LOCK:
+        return _SETUP_PERF_ACTIVE_REQUESTS
+
+
+def _setup_perf_decrement_active() -> None:
+    global _SETUP_PERF_ACTIVE_REQUESTS
+    with _SETUP_PERF_LOCK:
+        _SETUP_PERF_ACTIVE_REQUESTS = max(0, _SETUP_PERF_ACTIVE_REQUESTS - 1)
+
+
+def _setup_perf_new_window(started: float) -> dict:
+    return {
+        "started": started,
+        "requests": 0,
+        "total_ms": 0.0,
+        "response_bytes": 0,
+        "max_active": 0,
+        "routes": {},
+    }
+
+
+def _setup_perf_record_summary(
+    *,
+    operator: str,
+    method: str,
+    route: str,
+    elapsed_ms: float,
+    response_bytes: int,
+    active: int,
+) -> str | None:
+    now = time.perf_counter()
+    with _SETUP_PERF_LOCK:
+        window = _SETUP_PERF_WINDOWS.setdefault(operator, _setup_perf_new_window(now))
+        window["requests"] += 1
+        window["total_ms"] += elapsed_ms
+        window["response_bytes"] += max(0, response_bytes)
+        window["max_active"] = max(window["max_active"], active)
+
+        route_key = f"{method} {route}"
+        route_stats = window["routes"].setdefault(
+            route_key,
+            {"count": 0, "total_ms": 0.0, "max_ms": 0.0, "response_bytes": 0},
+        )
+        route_stats["count"] += 1
+        route_stats["total_ms"] += elapsed_ms
+        route_stats["max_ms"] = max(route_stats["max_ms"], elapsed_ms)
+        route_stats["response_bytes"] += max(0, response_bytes)
+
+        window_seconds = now - window["started"]
+        if window_seconds < _SETUP_PERF_SUMMARY_SECONDS:
+            return None
+
+        route_parts = []
+        for key, stats in sorted(
+            window["routes"].items(),
+            key=lambda item: (-item[1]["count"], item[0]),
+        ):
+            average_ms = stats["total_ms"] / stats["count"]
+            route_parts.append(
+                f"{key}|n={stats['count']}|avg_ms={average_ms:.1f}|"
+                f"max_ms={stats['max_ms']:.1f}|bytes={stats['response_bytes']}"
+            )
+
+        average_ms = window["total_ms"] / window["requests"]
+        summary = (
+            f"{_SETUP_PERF_PREFIX}_SUMMARY operator={operator} pid={os.getpid()} "
+            f"window_s={window_seconds:.1f} requests={window['requests']} "
+            f"avg_ms={average_ms:.1f} max_active={window['max_active']} "
+            f"response_bytes={window['response_bytes']} routes="
+            + ";".join(route_parts)
+        )
+        _SETUP_PERF_WINDOWS[operator] = _setup_perf_new_window(now)
+        return summary
+
+
+def _setup_maybe_gzip_json(response):
+    """Compress large protected Setup JSON responses for slow field links."""
+    if request.method == "HEAD" or response.status_code in (204, 304):
+        return response
+    if response.headers.get("Content-Encoding"):
+        return response
+
+    content_type = (response.headers.get("Content-Type") or "").lower()
+    if not content_type.startswith("application/json"):
+        return response
+
+    accepted = (request.headers.get("Accept-Encoding") or "").lower()
+    if "gzip" not in accepted:
+        return response
+
+    data = response.get_data()
+    if len(data) < _SETUP_JSON_GZIP_MIN_BYTES:
+        return response
+
+    compressed = gzip.compress(data, compresslevel=5, mtime=0)
+    if len(compressed) >= len(data):
+        return response
+
+    response.set_data(compressed)
+    response.headers["Content-Encoding"] = "gzip"
+    response.headers["Content-Length"] = str(len(compressed))
+    response.vary.add("Accept-Encoding")
+    return response
+
+
+@app.before_request
+def setup_performance_trace_start() -> None:
+    if not _setup_perf_is_traced_request():
+        return
+
+    g.setup_perf_started = time.perf_counter()
+    g.setup_perf_request_id = uuid.uuid4().hex[:12]
+    g.setup_perf_active = _setup_perf_increment_active()
+
+
+@app.after_request
+def setup_performance_trace_finish(response):
+    started = getattr(g, "setup_perf_started", None)
+    request_id = getattr(g, "setup_perf_request_id", None)
+    if started is None or request_id is None:
+        return response
+
+    response = _setup_maybe_gzip_json(response)
+    elapsed_ms = (time.perf_counter() - started) * 1000.0
+    route = request.url_rule.rule if request.url_rule is not None else "<unmatched>"
+    operator = (request.headers.get(_SETUP_OPERATOR_HEADER) or "<unauthenticated>").strip().lower()
+    response_bytes = response.content_length if response.content_length is not None else -1
+    active = _setup_perf_current_active()
+
+    response.headers["Server-Timing"] = f"app;dur={elapsed_ms:.1f}"
+    response.headers["X-MSB-Request-ID"] = request_id
+
+    event_kind = None
+    if response.status_code >= 400:
+        event_kind = "ERROR"
+    elif request.method != "GET":
+        event_kind = "WRITE"
+    elif elapsed_ms >= _SETUP_PERF_SLOW_MS:
+        event_kind = "SLOW"
+
+    if event_kind is not None:
+        _SETUP_PERF_LOGGER.info(
+            "%s_EVENT kind=%s request_id=%s operator=%s method=%s route=%s "
+            "status=%s app_ms=%.1f response_bytes=%s pid=%s thread=%s "
+            "active_in_worker=%s",
+            _SETUP_PERF_PREFIX,
+            event_kind,
+            request_id,
+            operator,
+            request.method,
+            route,
+            response.status_code,
+            elapsed_ms,
+            response_bytes,
+            os.getpid(),
+            threading.get_ident(),
+            active,
+        )
+
+    summary = _setup_perf_record_summary(
+        operator=operator,
+        method=request.method,
+        route=route,
+        elapsed_ms=elapsed_ms,
+        response_bytes=response_bytes,
+        active=active,
+    )
+    if summary is not None:
+        _SETUP_PERF_LOGGER.info(summary)
+
+    return response
+
+
+@app.teardown_request
+def setup_performance_trace_teardown(_error) -> None:
+    if getattr(g, "setup_perf_started", None) is not None:
+        _setup_perf_decrement_active()
 
 
 def _no_store(response):

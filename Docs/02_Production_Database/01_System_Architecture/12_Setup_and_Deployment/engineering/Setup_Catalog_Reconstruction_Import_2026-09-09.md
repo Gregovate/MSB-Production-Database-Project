@@ -4,11 +4,13 @@
 |---|---|
 | Document Type | Engineering Reconstruction / Import Contract |
 | System | Production Database — Setup Session |
-| Status | IMPLEMENTATION CANDIDATE — disposable Production-clone acceptance required before Production consideration |
+| Status | HISTORICAL RECONSTRUCTION CONTRACT — migrations 023/024 are past reconstruction work; #145 is complete |
 | Owner | MSB Production Database engineering |
 | Related Work | Issue #122; Setup Catalog Reconciliation Workflow; Setup Smart Scheduler Workflow |
 
 ## Purpose
+
+> **Historical record:** Retained for reconstruction provenance and decision history. Current Setup authority is the live reusable Catalog, real 2026 annual Session, #122, and the current engineering portal/handoff.
 
 Define the controlled conversion of the reviewed 2022/2025 reconstruction workbook into the reusable Setup catalog that will become the basis for future Setup planning before a 2026 Setup Session is created.
 
