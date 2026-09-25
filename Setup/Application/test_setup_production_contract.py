@@ -87,6 +87,7 @@ def test_production_client_has_no_browser_local_prototype_state() -> None:
 def test_122_real_planning_season_hides_historical_verification_surface() -> None:
     production = (APP_DIR / "setup_production.js").read_text(encoding="utf-8")
     next_pass = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
+    html = (APP_DIR / "production.html").read_text(encoding="utf-8")
 
     assert "function applySeasonReviewSurface()" in production
     assert "reviewTab.hidden = !historical" in production
