@@ -169,6 +169,21 @@ def test_122_plan_schedule_preserves_catalog_material_visual_cue() -> None:
     assert "border-left: 5px solid #7657c7 !important;" in catalog
 
 
+def test_122_scheduler_uses_current_reusable_task_name_authority() -> None:
+    repo = read_app("setup_scheduling_board_repository.py")
+
+    # Reusable-origin annual rows keep an annual snapshot for planning/history,
+    # but the operator-facing task name must always follow the current reusable
+    # Catalog name. Season-only work still owns its annual name.
+    assert "WHEN st.task_origin = 'REUSABLE'" in repo
+    assert "THEN coalesce(rt.task_name, st.annual_task_name)" in repo
+    assert "THEN coalesce(rt_assignment.task_name, st.annual_task_name)" in repo
+    assert "LEFT JOIN ref.setup_task rt_assignment" in repo
+    assert "WHEN pst.task_origin = 'REUSABLE'" in repo
+    assert "THEN coalesce(prt.task_name, pst.annual_task_name)" in repo
+    assert "LEFT JOIN ref.setup_task prt" in repo
+
+
 def test_205_board_uses_dynamic_crews_am_pm_and_accessible_move_controls() -> None:
     ui = read_app("setup_scheduling_board.js")
     css = read_app("setup_scheduling_board.css")
