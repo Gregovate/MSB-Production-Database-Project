@@ -71,16 +71,12 @@ setup_fingerprint() {
                           FROM ref.setup_task_display td), '') || '|' ||
                 coalesce((SELECT string_agg(row_to_json(tc)::text, '' ORDER BY tc.setup_task_id, tc.container_id)
                           FROM ref.setup_task_container_support tc), '') || '|' ||
-                coalesce((SELECT string_agg(row_to_json(em)::text, '' ORDER BY em.setup_task_extra_material_id)
-                          FROM ref.setup_task_extra_material em), '') || '|' ||
                 coalesce((SELECT string_agg(row_to_json(s)::text, '' ORDER BY s.setup_session_id)
                           FROM ops.setup_session s), '') || '|' ||
                 coalesce((SELECT string_agg(row_to_json(st)::text, '' ORDER BY st.setup_session_task_id)
                           FROM ops.setup_session_task st), '') || '|' ||
                 coalesce((SELECT string_agg(row_to_json(wd)::text, '' ORDER BY wd.setup_work_day_id)
-                          FROM ops.setup_work_day wd), '') || '|' ||
-                coalesce((SELECT string_agg(row_to_json(wdt)::text, '' ORDER BY wdt.setup_work_day_task_id)
-                          FROM ops.setup_work_day_task wdt), '')
+                          FROM ops.setup_work_day wd), '')
             );
         "
 }
