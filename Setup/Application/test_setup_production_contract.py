@@ -258,6 +258,8 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "window.history.pushState" in production
     assert "window.addEventListener('popstate'" in production
     assert "setupMayLeaveCurrentView" in production
+    assert "typeof board205Load === 'function'" in production
+    assert "await board205Load();" in production
     assert "msbSetupHasDirtyEdits" in production
     assert "setupPopstateUndo" in production
     assert "setupPopstateReplay" in production
