@@ -1,4 +1,8 @@
-from setup_material_readiness_projection import project_physical_demand, target_staged_by
+from setup_material_readiness_projection import (
+    downstream_material_frontier,
+    project_physical_demand,
+    target_staged_by,
+)
 
 
 def row(**updates):
@@ -99,3 +103,74 @@ def test_extra_material_source_allocation_and_spec_are_preserved():
     assert reason["length_value"] == "6.000"
     assert reason["length_unit"] == "FT"
     assert reason["source_verification_state"] == "VERIFIED"
+
+
+
+def demand_task(session_id, *, material=False, status="NOT_STARTED", order=1):
+    return {
+        "setup_session_task_id": session_id,
+        "material_bearing": material,
+        "execution_status": status,
+        "planned_order": order,
+    }
+
+
+def test_precursor_chain_surfaces_downstream_material_frontier():
+    tasks = {
+        1: demand_task(1, order=1),       # Locate
+        2: demand_task(2, order=2),       # Layout
+        3: demand_task(3, material=True, order=3),  # Setup
+    }
+    found = downstream_material_frontier(1, tasks, {1: [2], 2: [3]})
+    assert [task["setup_session_task_id"] for task in found] == [3]
+
+
+def test_material_frontier_includes_parallel_and_contiguous_material_work():
+    tasks = {
+        1: demand_task(1, order=1),
+        2: demand_task(2, order=2),
+        3: demand_task(3, material=True, order=3),
+        4: demand_task(4, material=True, order=4),
+        5: demand_task(5, material=True, order=5),
+    }
+    found = downstream_material_frontier(
+        1, tasks, {1: [2], 2: [3, 4], 3: [5]}
+    )
+    assert [task["setup_session_task_id"] for task in found] == [3, 4, 5]
+
+
+def test_material_frontier_does_not_cross_into_later_non_material_phase():
+    tasks = {
+        1: demand_task(1, order=1),
+        2: demand_task(2, material=True, order=2),
+        3: demand_task(3, order=3),
+        4: demand_task(4, material=True, order=4),
+    }
+    found = downstream_material_frontier(1, tasks, {1: [2], 2: [3], 3: [4]})
+    assert [task["setup_session_task_id"] for task in found] == [2]
+
+
+def test_deferred_branch_does_not_create_early_material_demand():
+    tasks = {
+        1: demand_task(1, order=1),
+        2: demand_task(2, status="DEFERRED", order=2),
+        3: demand_task(3, material=True, order=3),
+    }
+    assert downstream_material_frontier(1, tasks, {1: [2], 2: [3]}) == []
+
+
+def test_expanded_reason_preserves_scheduled_trigger_identity():
+    items = project_physical_demand([
+        row(
+            task_name="Setup Panels",
+            demand_origin="DOWNSTREAM_FROM_SCHEDULE",
+            scheduled_trigger_setup_work_day_task_id=71,
+            scheduled_trigger_setup_session_task_id=81,
+            scheduled_trigger_setup_task_id=91,
+            scheduled_trigger_task_name="Locate Power & Network",
+        )
+    ])
+    reason = items[0]["reasons"][0]
+    assert reason["demand_origin"] == "DOWNSTREAM_FROM_SCHEDULE"
+    assert reason["scheduled_trigger_task_name"] == "Locate Power & Network"
+    assert reason["scheduled_trigger_setup_work_day_task_id"] == 71
