@@ -889,6 +889,8 @@ async function initialize() {
     }
   } finally {
     setBusy(false);
+    document.body.classList.remove('setup-booting');
+    document.body.setAttribute('aria-busy', 'false');
   }
 }
 
@@ -966,4 +968,6 @@ el('show-add-task').addEventListener('click', () => { el('add-task-form').hidden
 el('cancel-add-task').addEventListener('click', () => { el('add-task-form').hidden = true; });
 el('add-task-form').addEventListener('submit', createReusableTask);
 
-initialize();
+window.addEventListener('DOMContentLoaded', () => {
+  void initialize();
+}, { once: true });
