@@ -247,17 +247,44 @@ function board205AutoScrollPane(pane, event) {
   }
 }
 
-function board205AmCarryoverMinutes(crewId) {
+function board205AmCapacity(crewId) {
   const items = board205CrewSequence(crewId).filter((item) => item.shift_code === 'MORNING');
-  if (!items.length) return 0;
+  if (!items.length) {
+    return { total: 0, remaining: SETUP_BOARD205_TYPICAL_AM_MINUTES, carryover: 0, known: true };
+  }
+
   let total = 0;
   for (const item of items) {
     const task = board205Task(item.setup_session_task_id) || item;
     const minutes = Number(task.expected_duration_minutes || 0);
-    if (minutes <= 0) return null;
+    if (minutes <= 0) {
+      return { total: null, remaining: null, carryover: null, known: false };
+    }
     total += minutes;
   }
-  return Math.max(total - SETUP_BOARD205_TYPICAL_AM_MINUTES, 0);
+
+  return {
+    total,
+    remaining: Math.max(SETUP_BOARD205_TYPICAL_AM_MINUTES - total, 0),
+    carryover: Math.max(total - SETUP_BOARD205_TYPICAL_AM_MINUTES, 0),
+    known: true
+  };
+}
+
+function board205AmCapacityNote(crewId) {
+  const capacity = board205AmCapacity(crewId);
+  const hasMorningWork = board205CrewSequence(crewId).some((item) => item.shift_code === 'MORNING');
+  if (!hasMorningWork) return '';
+  if (!capacity.known) {
+    return '<div class="setup-board205-capacity-note">AM remaining time unknown — one or more tasks have no reviewed duration.</div>';
+  }
+  if (capacity.carryover > 0) {
+    return `<div class="setup-board205-capacity-note">≈ ${board205Esc(board205Duration(capacity.carryover))} over the typical AM window.</div>`;
+  }
+  if (capacity.remaining > 0) {
+    return `<div class="setup-board205-capacity-note">≈ ${board205Esc(board205Duration(capacity.remaining))} remains in AM.</div>`;
+  }
+  return '<div class="setup-board205-capacity-note">AM work fills the typical ≈ 9–12 window.</div>';
 }
 
 function board205AssignmentSortKey(item) {
@@ -1090,15 +1117,17 @@ function board205AssignmentCard(item) {
 
 function board205Cell(day, shift, crew) {
   const items = board205AssignmentsFor(day.setup_work_day_id, shift, crew.setup_work_day_crew_id);
-  const carryover = shift === 'AFTERNOON'
-    ? board205AmCarryoverMinutes(crew.setup_work_day_crew_id)
-    : 0;
-  const carryoverNote = shift === 'AFTERNOON' && carryover > 0
-    ? `<div class="setup-board205-carryover">≈ ${board205Esc(board205Duration(carryover))} of AM work carries past lunch into PM.</div>`
+  const amCapacity = board205AmCapacity(crew.setup_work_day_crew_id);
+  const capacityNote = shift === 'MORNING'
+    ? board205AmCapacityNote(crew.setup_work_day_crew_id)
+    : '';
+  const carryoverNote = shift === 'AFTERNOON' && amCapacity.known && amCapacity.carryover > 0
+    ? `<div class="setup-board205-carryover">≈ ${board205Esc(board205Duration(amCapacity.carryover))} of AM work carries past lunch into PM.</div>`
     : '';
   return `
     <div class="setup-board205-cell"
       data-day-id="${day.setup_work_day_id}" data-shift="${shift}" data-crew-id="${crew.setup_work_day_crew_id}">
+      ${capacityNote}
       ${carryoverNote}
       ${items.length ? items.map(board205AssignmentCard).join('') : '<div class="setup-board205-cell-empty">Drop work here</div>'}
     </div>`;
@@ -1115,15 +1144,17 @@ function board205Day(day) {
     const legacy = board205AssignmentsFor(day.setup_work_day_id, 'ALL_DAY', crew.setup_work_day_crew_id);
     return `
       <div class="setup-board205-crew-label" data-crew-id="${crew.setup_work_day_crew_id}">
-        <strong>Crew ${board205Esc(crew.crew_code)}</strong>
+        <div class="setup-board205-crew-title-row">
+          <strong>Crew ${board205Esc(crew.crew_code)}</strong>
+          ${canManage ? `<div class="setup-board205-crew-actions"><button type="button" class="small secondary setup-board205-save-crew">Save</button>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
+        </div>
         <label class="setup-board205-crew-captain">Captain
           <select class="setup-board205-crew-captain-select">${board205CaptainOptions(crew.captain_person_id)}</select>
         </label>
         <div class="setup-board205-crew-counts">
-          <label>AM <input class="setup-board205-crew-am" type="number" min="0" value="${board205Esc(crew.am_planned_crew_count ?? '')}" placeholder="—"></label>
-          <label>PM <input class="setup-board205-crew-pm" type="number" min="0" value="${board205Esc(crew.pm_planned_crew_count ?? '')}" placeholder="—"></label>
+          <label>AM Crew <input class="setup-board205-crew-am" type="number" min="0" value="${board205Esc(crew.am_planned_crew_count ?? '')}" placeholder="—"></label>
+          <label>PM Crew <input class="setup-board205-crew-pm" type="number" min="0" value="${board205Esc(crew.pm_planned_crew_count ?? '')}" placeholder="—"></label>
         </div>
-        ${canManage ? `<div class="setup-board205-crew-actions"><button type="button" class="small secondary setup-board205-save-crew">Save</button>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
       </div>
       ${board205Cell(day, 'MORNING', crew)}
       ${board205Cell(day, 'AFTERNOON', crew)}
@@ -1149,7 +1180,7 @@ function board205Day(day) {
       </div>
       <div class="setup-board205-table-wrap">
         <div class="setup-board205-grid">
-          <div class="setup-board205-grid-head">Crew / Captain / planned availability</div>
+          <div class="setup-board205-grid-head">Crew / Captain / Volunteers</div>
           <div class="setup-board205-grid-head">AM <span class="setup-board205-shift-hint">≈ 9–12</span></div>
           <div class="setup-board205-grid-head">PM <span class="setup-board205-shift-hint">after lunch ≈ 1 PM</span></div>
           ${crewRows}
@@ -2088,7 +2119,10 @@ function board205InstallView() {
             <h2>Setup Scheduling Board</h2>
           </div>
           <div id="setup-board205-kpis" class="setup-board205-kpis" aria-live="polite"></div>
-          <button id="setup-board205-add-season-task" type="button" class="manager-only">Add Task</button>
+          <div class="setup-board205-toolbar-actions">
+            <button id="setup-board205-print" type="button" class="secondary">Print Schedule</button>
+            <button id="setup-board205-add-season-task" type="button" class="manager-only">Add Task</button>
+          </div>
         </div>
         <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
           <label>Date<input id="setup-board205-work-date" type="date" required></label>
@@ -2285,6 +2319,7 @@ function board205InstallView() {
   document.querySelectorAll('.setup-board205-backlog, .setup-board205-board').forEach((pane) => {
     pane.addEventListener('dragover', (event) => board205AutoScrollPane(pane, event), true);
   });
+  document.getElementById('setup-board205-print')?.addEventListener('click', () => window.print());
   document.getElementById('setup-board205-add-season-task').addEventListener('click', board205OpenAddTaskIntentDialog);
   document.getElementById('setup-board205-create-session')?.addEventListener('click', board205CreateAnnualSession);
   document.getElementById('setup-board205-add-reusable')?.addEventListener('click', () => { void board205ChooseReusableTask(); });
