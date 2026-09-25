@@ -626,21 +626,34 @@ An annual occurrence retains the planning fields used for that season rather tha
 
 **Task name is the exception for reusable-origin work.** A reusable task has one canonical current name in `ref.setup_task.task_name`. Every operator-facing annual/scheduler surface must show that current reusable name so the Catalog, Task Finder, scheduled assignment, prerequisite display, Work List, Report Work, and related downstream surfaces cannot drift into competing labels for the same `setup_task_id`.
 
-`ops.setup_session_task.annual_task_name` remains authoritative for **SEASON_ONLY** work. For reusable-origin annual rows it may remain stored as seed/provenance data, but it must not override the current reusable task name in operator presentation.
+While an annual Session is **PLANNING** or **ACTIVE**, a reusable rename must also synchronize the linked `ops.setup_session_task.annual_task_name` in that same open season. This keeps the stored annual occurrence and every downstream consumer aligned, not merely the current browser presentation.
+
+```text
+rename reusable task
+    -> ref.setup_task.task_name
+    -> same reusable setup_task_id in PLANNING/ACTIVE annual Session
+    -> annual_task_name updated to the same value
+```
+
+Once a season is **COMPLETE**, its annual name is historical and must not be rewritten by a later reusable rename. The separate `HISTORICAL_VERIFICATION` construction/review Session is likewise not a current-season synchronization target.
+
+`ops.setup_session_task.annual_task_name` remains independently authoritative for **SEASON_ONLY** work because those rows have no reusable source task.
 
 The annual snapshot continues to preserve season planning values such as scope, task type, normal crew guidance, expected duration, completion point, readiness/weather guidance, and annual notes.
 
-This enables a truthful comparison later without creating two names for one reusable task:
+This enables a truthful comparison later without creating two current names for one reusable task:
 
 ```text
 current reusable task identity/name
++
+same-season synchronized annual identity label
 +
 what annual planning guidance was used
 vs.
 what happened in the field
 ```
 
-A reusable rename is therefore a durable identity-label correction, not an annual planning override. The scheduler does not provide a separate reusable-name editor; Managers rename reusable work through the Reusable Task Catalog / governed reusable-task edit path, and the corrected name must appear on refresh everywhere that reusable task is referenced.
+A reusable rename is therefore a durable identity-label correction, not an annual planning override. The scheduler does not provide a separate reusable-name editor; Managers rename reusable work through the Reusable Task Catalog / governed reusable-task edit path. The database synchronizes the same-season annual label, and operator reads also resolve the current reusable name defensively so stale data cannot reintroduce a second label.
 
 The reusable Catalog remains separately editable under its normal Manager authority.
 
