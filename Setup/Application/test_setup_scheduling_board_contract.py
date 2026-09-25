@@ -273,10 +273,30 @@ def test_205_heavy_work_is_captain_aware_warning_not_prohibition() -> None:
 def test_205_am_to_pm_spillover_is_advisory_not_a_third_shift() -> None:
     ui = read_app("setup_scheduling_board.js")
     assert "SETUP_BOARD205_TYPICAL_AM_MINUTES = 180" in ui
+    assert "function board205AmCapacity(crewId)" in ui
+    assert "remains in AM" in ui
+    assert "over the typical AM window" in ui
     assert "of AM work carries past lunch into PM" in ui
+    assert "AM work fills the typical ≈ 9–12 window." in ui
     assert "≈ 9–12" in ui
     assert "after lunch ≈ 1 PM" in ui
     assert '<option value="ALL_DAY">All Day</option>' not in ui
+
+
+def test_122_schedule_board_compacts_crew_controls_and_prints_operational_board() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "Crew / Captain / Volunteers" in ui
+    assert ">AM Crew <" in ui
+    assert ">PM Crew <" in ui
+    assert "setup-board205-crew-title-row" in ui
+    assert "setup-board205-print" in ui
+    assert "Print Schedule" in ui
+    assert "window.print()" in ui
+    assert "@media print" in css
+    assert "#schedule-view .setup-board205-backlog" in css
+    assert ".setup-board205-kpis" in css
 
 
 def test_205_readiness_is_annual_state_separate_from_hard_predecessors() -> None:
@@ -502,8 +522,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-24.5" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.8" in html
+    assert "setup_scheduling_board.css?v=2026-09-24.6" in html
+    assert "setup_scheduling_board.js?v=2026-09-24.9" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
