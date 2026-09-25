@@ -20,7 +20,7 @@ It explains the normal, fastest way to do the work. You should not need engineer
 
 [**Open the Setup application**](https://my.sheboyganlights.org/setup/)
 
-For current annual work, use the live **2026 Setup Session** and open **Plan / Schedule**. Use **2025 — Historical Verification** only when you intentionally need historical/review evidence.
+For current annual work, use the live **2026 Setup Session** and open **Plan / Schedule**. Use **2025 — Historical Verification** only when you intentionally need historical/review evidence. **This is real Production data** and remains permanently year-bounded to the 2025 historical review; do not treat it as the current 2026 schedule.
 
 ## 1. Schedule 2026 Work
 
