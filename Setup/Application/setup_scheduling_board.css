@@ -37,6 +37,121 @@
   flex: 1 1 18rem;
 }
 
+.setup-board205-work-day-picker {
+  flex: 1 1 28rem;
+  display: grid;
+  gap: 0.45rem;
+  min-width: min(100%, 22rem);
+}
+
+.setup-board205-work-day-picker-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.75rem;
+}
+
+.setup-board205-work-day-picker-copy .setup-board205-auto-day-note {
+  max-width: none;
+}
+
+.setup-board205-work-day-calendar {
+  width: min(100%, 34rem);
+  padding: 0.55rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.6rem;
+  background: var(--panel, #fff);
+}
+
+.setup-board205-calendar-head {
+  display: grid;
+  grid-template-columns: 2.75rem 1fr 2.75rem;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.45rem;
+  text-align: center;
+}
+
+.setup-board205-calendar-head button {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0.3rem;
+  font-size: 1.25rem;
+}
+
+.setup-board205-calendar-weekdays,
+.setup-board205-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(2.6rem, 1fr));
+  gap: 0.25rem;
+}
+
+.setup-board205-calendar-weekdays {
+  margin-bottom: 0.25rem;
+  color: var(--muted, #64748b);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-align: center;
+}
+
+.setup-board205-calendar-day,
+.setup-board205-calendar-blank {
+  min-height: 3.2rem;
+}
+
+.setup-board205-calendar-day {
+  display: grid;
+  place-content: center;
+  gap: 0.1rem;
+  min-width: 0;
+  padding: 0.3rem 0.15rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.45rem;
+  background: var(--panel, #fff);
+  color: inherit;
+  touch-action: manipulation;
+}
+
+.setup-board205-calendar-day span {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.setup-board205-calendar-day small {
+  font-size: 0.58rem;
+  line-height: 1;
+}
+
+.setup-board205-calendar-day.selected {
+  border-width: 3px;
+  border-color: var(--accent, #0b6ea8);
+  background: color-mix(in srgb, var(--accent, #0b6ea8) 18%, var(--panel, #fff));
+}
+
+.setup-board205-calendar-day.existing:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-style: dashed;
+  background: var(--soft, #f5f8fb);
+}
+
+@media (max-width: 720px) {
+  .setup-board205-work-day-calendar {
+    width: 100%;
+  }
+
+  .setup-board205-calendar-weekdays,
+  .setup-board205-calendar-grid {
+    grid-template-columns: repeat(7, minmax(2.35rem, 1fr));
+    gap: 0.18rem;
+  }
+
+  .setup-board205-calendar-day,
+  .setup-board205-calendar-blank {
+    min-height: 3rem;
+  }
+}
+
 .setup-board205-auto-day-note {
   align-self: center;
   color: var(--muted, #64748b);
