@@ -255,7 +255,7 @@ function wireNextLibrary() {
   });
   document.querySelectorAll('.open-task').forEach((button) => {
     button.addEventListener('click', () => {
-      showView('review', { allowReusableDetail: true });
+      showView('review');
       selectTask(Number(button.dataset.taskId));
     });
   });
