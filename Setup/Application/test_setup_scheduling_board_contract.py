@@ -528,14 +528,38 @@ def test_205_api_uses_governed_manager_commands_for_plan_mutations() -> None:
     assert "DELETE FROM ops.setup_work_day_task" not in repository
 
 
-def test_205_work_day_form_survives_async_submit() -> None:
+def test_122_work_day_calendar_supports_tablet_multiselect_without_overwriting_existing_days() -> None:
     ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
     block = ui.split("async function board205AddWorkDay(event)", 1)[1].split(
-        "function board205OpenSeasonTaskDialog", 1
+        "function board205OpenPlanningInfoDialog", 1
     )[0]
+
+    assert "workDaySelection: new Set()" in ui
+    assert "function board205RenderWorkDayCalendar()" in ui
+    assert "function board205ExistingWorkDayDates()" in ui
+    assert "setup-board205-work-day-calendar" in ui
+    assert "setup-board205-calendar-day:not(:disabled)" in ui
+    assert "setupBoard205State.workDaySelection.delete(date)" in ui
+    assert "setupBoard205State.workDaySelection.add(date)" in ui
+    assert "alreadyExists ? 'disabled aria-disabled=\"true\"'" in ui
+    assert "Existing Work Days are disabled." in ui
+    assert "Ctrl" not in ui
+    assert "Shift" not in ui.split("setup-board205-work-day-picker", 1)[1].split("</form>", 1)[0]
+
     assert "const form = event.currentTarget;" in block
+    assert "const dates = [...setupBoard205State.workDaySelection]" in block
+    assert ".filter((date) => !existing.has(date))" in block
+    assert "for (const date of dates)" in block
+    assert "if (board205ExistingWorkDayDates().has(date)) continue;" in block
     assert "form.reset();" in block
     assert "event.currentTarget.reset();" not in block
+    assert "setupBoard205State.workDaySelection.clear();" in block
+
+    assert "touch-action: manipulation;" in css
+    assert ".setup-board205-calendar-day.selected" in css
+    assert ".setup-board205-calendar-day.existing:disabled" in css
+    assert "@media (max-width: 720px)" in css
 
 
 def test_205_scheduling_board_javascript_has_no_stray_async_prefixes() -> None:
@@ -554,8 +578,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-24.14" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.19" in html
+    assert "setup_scheduling_board.css?v=2026-09-25.1" in html
+    assert "setup_scheduling_board.js?v=2026-09-25.1" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
