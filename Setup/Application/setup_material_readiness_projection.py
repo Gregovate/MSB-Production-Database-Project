@@ -10,6 +10,53 @@ from datetime import date, timedelta
 from typing import Any, Iterable
 
 
+def reachable_material_targets(
+    start_session_task_id: int,
+    tasks_by_session_id: dict[int, dict[str, Any]],
+    downstream_by_prerequisite: dict[int, list[int]],
+) -> list[dict[str, Any]]:
+    """Return every incomplete material-bearing reusable task downstream.
+
+    The scheduled task is included when it is itself material-bearing.  A
+    completed task does not create new demand, but traversal continues through
+    it so later downstream material is still surfaced.  A DEFERRED task stops
+    that branch because the operator has explicitly postponed that work.
+    """
+    start_id = int(start_session_task_id)
+    queue = [start_id]
+    visited: set[int] = set()
+    found: dict[int, dict[str, Any]] = {}
+
+    while queue:
+        current_id = int(queue.pop(0))
+        if current_id in visited:
+            continue
+        visited.add(current_id)
+
+        task = tasks_by_session_id.get(current_id)
+        if task is None:
+            continue
+        if str(task.get("execution_status") or "").upper() == "DEFERRED":
+            continue
+
+        if bool(task.get("material_bearing")) and not bool(task.get("effective_complete")):
+            found[current_id] = task
+
+        for downstream_id in downstream_by_prerequisite.get(current_id, []):
+            downstream_id = int(downstream_id)
+            if downstream_id not in visited:
+                queue.append(downstream_id)
+
+    return sorted(
+        found.values(),
+        key=lambda task: (
+            int(task.get("planned_order") or 10**9),
+            int(task.get("display_order") or 10**9),
+            int(task.get("setup_session_task_id") or 0),
+        ),
+    )
+
+
 def target_staged_by(work_date: str) -> str:
     """Return the normal D-1 staging target for an ISO work date."""
     return (date.fromisoformat(work_date) - timedelta(days=1)).isoformat()
@@ -78,6 +125,11 @@ def project_physical_demand(rows: Iterable[dict[str, Any]]) -> list[dict[str, An
             "requirement_notes": row.get("requirement_notes"),
             "source_expected_quantity": row.get("source_expected_quantity"),
             "source_verification_state": row.get("source_verification_state"),
+            "demand_origin": row.get("demand_origin") or "DIRECT_SCHEDULE",
+            "scheduled_trigger_setup_work_day_task_id": row.get("scheduled_trigger_setup_work_day_task_id"),
+            "scheduled_trigger_setup_session_task_id": row.get("scheduled_trigger_setup_session_task_id"),
+            "scheduled_trigger_setup_task_id": row.get("scheduled_trigger_setup_task_id"),
+            "scheduled_trigger_task_name": row.get("scheduled_trigger_task_name"),
         }
         item["reasons"].append(reason)
 
