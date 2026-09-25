@@ -1234,7 +1234,7 @@ function board205AssignmentCard(item) {
       data-assignment-id="${item.setup_work_day_task_id}"
       draggable="${canManage && !locked ? 'true' : 'false'}">
       <div class="setup-board205-task-title">
-        <span>${board205Esc(item.task_name)}</span>
+        <span>${board205Esc(task.task_name || item.task_name)}</span>
         ${task.task_origin === 'SEASON_ONLY' ? '<span class="setup-board205-badge season-only">THIS SEASON ONLY</span>' : ''}
         <span class="setup-board205-badge effort-${board205Esc(String(task.effort_level || 'unknown').toLowerCase())}">${board205Esc(board205Effort(task))}</span>
         ${understaffed ? '<span class="setup-board205-badge short-crew-badge">SHORT CREW</span>' : ''}
