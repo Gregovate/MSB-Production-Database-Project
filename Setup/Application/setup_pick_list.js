@@ -45,6 +45,19 @@
     return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString();
   }
 
+  function formatDate(value) {
+    if (!value) return '—';
+    const parsed = new Date(`${value}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime())) return String(value);
+    return parsed.toLocaleDateString(undefined, {
+      weekday: 'short',
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'UTC'
+    });
+  }
+
   function currentLocationText(item) {
     const o = item.current_observation || {};
     if (o.current_stage_key || o.current_stage_name) {
@@ -55,18 +68,20 @@
     return 'Current location not resolved';
   }
 
-  function observationText(item) {
+  function pickStatusHtml(item) {
+    if (!itemMoved(item)) {
+      return '<span class="pick-status needs-pick">NEEDS PICK</span>';
+    }
     const o = item.current_observation || {};
-    if (!itemMoved(item)) return 'NEEDS PICK · Not yet scanned / moved in this Setup Session';
-    const when = formatObservedAt(o.last_observed_at);
-    return `PICKED · ${when || 'time unavailable'} · ${currentLocationText(item)}`;
+    const when = formatObservedAt(o.last_observed_at) || 'time unavailable';
+    return `<span class="pick-status picked">PICKED</span><span class="pick-status-detail">${esc(when)} · ${esc(currentLocationText(item))}</span>`;
   }
 
   function destinationText(reasons) {
     const destinations = [...new Set(
       reasons.map(stageScene).filter(value => value && value !== 'Site-wide / no Stage')
     )];
-    if (!destinations.length) return 'Destination not resolved from scheduled work';
+    if (!destinations.length) return 'Destination not resolved';
     return destinations.join(' · ');
   }
 
@@ -84,13 +99,38 @@
     return parts.join(' — ');
   }
 
+  function qrPayload(item) {
+    const type = item.physical_type === 'DISPLAY' ? 'DISP' : 'CONT';
+    return `https://db.sheboyganlights.org/scan/${type}/${item.physical_id}`;
+  }
+
+  function renderQrCodes() {
+    document.querySelectorAll('.pick-qr[data-payload]').forEach((target) => {
+      const payload = target.dataset.payload || '';
+      target.innerHTML = '';
+      if (!payload) return;
+      if (typeof QRCode !== 'function') {
+        target.textContent = 'QR unavailable';
+        return;
+      }
+      new QRCode(target, {
+        text: payload,
+        width: 92,
+        height: 92,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    });
+  }
+
   function populateDates() {
     const current = dateFilter.value;
     const dates = [...new Set((readiness?.physical_items || [])
       .flatMap(i => (i.reasons || []).map(r => r.work_date))
       .filter(Boolean))].sort();
     dateFilter.innerHTML = '<option value="">All scheduled dates</option>' +
-      dates.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('');
+      dates.map(d => `<option value="${esc(d)}">${esc(formatDate(d))}</option>`).join('');
     if (dates.includes(current)) dateFilter.value = current;
   }
 
@@ -98,10 +138,10 @@
     const s = readiness?.summary || {};
     const cards = [
       ['Scheduled assignments', s.scheduled_assignment_count ?? 0],
+      ['Needs pick', items.filter(i => !itemMoved(i)).length],
+      ['Picked / moved', items.filter(itemMoved).length],
       ['Physical items', items.length],
-      ['Containers', items.filter(i => i.physical_type === 'CONTAINER').length],
-      ['Detached displays', items.filter(i => i.physical_type === 'DISPLAY').length],
-      ['Unresolved', unresolved.length]
+      ['Material exceptions', unresolved.length]
     ];
     summary.innerHTML = cards.map(([label, value]) =>
       `<div class="summary-card"><strong>${esc(value)}</strong><span>${esc(label)}</span></div>`
@@ -114,68 +154,86 @@
     unresolvedSection.hidden = unresolved.length === 0;
     unresolvedList.innerHTML = unresolved.map(r => `
       <div class="unresolved">
-        <strong>${esc(r.message || r.requirement_type || 'Unresolved requirement')}</strong>
+        <strong>${esc(r.message || r.requirement_type || 'Material data exception')}</strong>
         <div>${esc(stageScene(r))} — ${esc(r.task_name || 'Unnamed task')}</div>
         <div class="meta">Day ${esc(r.setup_day_number ?? '?')} · ${esc(r.work_date || '')} · ${esc(r.shift_code || '')} · Crew ${esc(r.crew_lane || '?')}</div>
       </div>`).join('');
     return unresolved;
   }
 
+  function itemDates(item, reasons, selectedDate) {
+    const pickBy = selectedDate
+      ? (reasons.map(r => r.target_staged_by).filter(Boolean).sort()[0] || item.target_staged_by)
+      : item.target_staged_by;
+    const neededFor = selectedDate || item.earliest_needed_for_work;
+    return {pickBy, neededFor};
+  }
+
   function renderItems(date) {
-    const all = readiness?.physical_items || [];
     const status = pickStatusFilter?.value || 'ALL';
-    const items = all.filter((item) => {
+    const items = (readiness?.physical_items || []).filter((item) => {
       if (!itemReasonsForDate(item, date).length) return false;
       if (status === 'OUTSTANDING') return !itemMoved(item);
       if (status === 'MOVED') return itemMoved(item);
       return true;
     });
-    const groups = new Map();
-
-    for (const item of items) {
-      const reasons = itemReasonsForDate(item, date);
-      const staged = date
-        ? (reasons.map(r => r.target_staged_by).filter(Boolean).sort()[0] || item.target_staged_by)
-        : item.target_staged_by;
-      const needed = date || item.earliest_needed_for_work;
-      const key = `${staged}|${needed}`;
-      if (!groups.has(key)) groups.set(key, { staged, needed, items: [] });
-      groups.get(key).items.push({ item, reasons });
-    }
 
     if (!items.length) {
       pickList.innerHTML = '<div class="empty">No physical demand resolves from the selected scheduled work.</div>';
       return items;
     }
 
-    pickList.innerHTML = [...groups.values()].sort((a,b) =>
-      `${a.staged}|${a.needed}`.localeCompare(`${b.staged}|${b.needed}`)
-    ).map(group => `
-      <section class="pick-group">
-        <h3>Stage by ${esc(group.staged || '—')} · Needed for ${esc(group.needed || '—')}</h3>
-        ${group.items.map(({item, reasons}) => `
-          <article class="pick-item">
-            <div class="pick-item-head">
-              <div>
-                <div class="identity">${esc(item.identity)}</div>
-                ${item.label ? `<div class="item-label">${esc(item.label)}</div>` : ''}
-                <div class="pick-route">
-                  <div><strong>Home:</strong> ${esc(item.home_location_code || 'not recorded')}</div>
-                  <div><strong>Destination:</strong> ${esc(destinationText(reasons))}</div>
-                </div>
-                <div class="meta">${esc(observationText(item))}</div>
-              </div>
-              <div class="meta">${esc(item.location_evidence_status || '')}</div>
-            </div>
-            <details class="reasons">
-              <summary>${reasons.length} schedule/material reason${reasons.length === 1 ? '' : 's'}</summary>
-              <ul class="reason-list">
-                ${reasons.map(r => `<li>${esc(reasonText(r))}</li>`).join('')}
-              </ul>
-            </details>
-          </article>`).join('')}
-      </section>`).join('');
+    const rows = items.map((item) => {
+      const reasons = itemReasonsForDate(item, date);
+      const dates = itemDates(item, reasons, date);
+      const payload = qrPayload(item);
+      return `
+        <tbody class="pick-record">
+          <tr class="pick-row">
+            <td class="pick-identity-cell">
+              <div class="identity">${esc(item.identity)}</div>
+              ${item.label ? `<div class="item-label">${esc(item.label)}</div>` : ''}
+              <div class="pick-state">${pickStatusHtml(item)}</div>
+            </td>
+            <td class="location-cell">${esc(item.home_location_code || 'Not recorded')}</td>
+            <td class="destination-cell">${esc(destinationText(reasons))}</td>
+            <td class="date-cell"><strong>${esc(formatDate(dates.pickBy))}</strong></td>
+            <td class="date-cell">${esc(formatDate(dates.neededFor))}</td>
+            <td class="qr-cell">
+              <div class="pick-qr" data-payload="${esc(payload)}" aria-label="QR for ${esc(item.identity)}"></div>
+            </td>
+          </tr>
+          <tr class="pick-reasons-row">
+            <td colspan="6">
+              <details class="reasons">
+                <summary>${reasons.length} reason${reasons.length === 1 ? '' : 's'} this item is needed</summary>
+                <ul class="reason-list">
+                  ${reasons.map(r => `<li>${esc(reasonText(r))}</li>`).join('')}
+                </ul>
+              </details>
+            </td>
+          </tr>
+        </tbody>`;
+    }).join('');
 
+    pickList.innerHTML = `
+      <div class="pick-table-wrap">
+        <table class="pick-table">
+          <thead>
+            <tr>
+              <th>Container / Display</th>
+              <th>Home Location</th>
+              <th>Destination</th>
+              <th>Pick By</th>
+              <th>Needed For</th>
+              <th>QR Code</th>
+            </tr>
+          </thead>
+          ${rows}
+        </table>
+      </div>`;
+
+    renderQrCodes();
     return items;
   }
 
