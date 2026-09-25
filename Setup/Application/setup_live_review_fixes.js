@@ -250,6 +250,11 @@
     `;
     summary.insertAdjacentElement('beforebegin', search);
 
+    const syncSearchVisibility = () => {
+      const view = typeof currentSetupViewName === 'function' ? currentSetupViewName() : '';
+      search.hidden = view === 'schedule';
+    };
+
     const applyActiveSearch = () => {
       const view = typeof currentSetupViewName === 'function' ? currentSetupViewName() : '';
       if (view === 'review') applyReviewSearch();
@@ -263,6 +268,19 @@
       applyActiveSearch();
       input.focus();
     });
+
+    syncSearchVisibility();
+
+    if (typeof showView === 'function' && !showView.__setupSearchVisibilityWrapped) {
+      const priorShowViewForSearch = showView;
+      const wrappedShowView = function showViewWithSearchVisibility(name) {
+        const result = priorShowViewForSearch(name);
+        syncSearchVisibility();
+        return result;
+      };
+      wrappedShowView.__setupSearchVisibilityWrapped = true;
+      showView = wrappedShowView;
+    }
   }
 
   function applyReviewSearch() {
