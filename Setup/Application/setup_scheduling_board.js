@@ -662,8 +662,9 @@ function board205FinderCompare(a, b, mode) {
     return value == null ? 999999 : Number(value);
   };
   const stepOrder = (task) => {
-    const value = reusablePlanning && stageFilter
-      ? (task.display_order ?? task.baseline_plan_order)
+    const useReusableStepOrder = Boolean(stageFilter) && task.task_origin === 'REUSABLE';
+    const value = useReusableStepOrder
+      ? (task.display_order ?? task.baseline_plan_order ?? task.planned_order)
       : (task.planned_order ?? task.baseline_plan_order ?? task.display_order);
     return value == null ? 999999 : Number(value);
   };
@@ -672,6 +673,12 @@ function board205FinderCompare(a, b, mode) {
     undefined,
     { numeric: true, sensitivity: 'base' }
   );
+  const scopeCompare = (left, right) => {
+    const leftScene = left.lor_scene_id == null ? 0 : 1;
+    const rightScene = right.lor_scene_id == null ? 0 : 1;
+    return leftScene - rightScene
+      || textCompare(left.scene_name, right.scene_name);
+  };
 
   if (mode === 'STAGE') {
     // Real Stage work sorts first in Stage-number order. Site-wide /
@@ -714,6 +721,13 @@ function board205FinderCompare(a, b, mode) {
     const ac = a.normal_crew_min == null ? 999999 : Number(a.normal_crew_min);
     const bc = b.normal_crew_min == null ? 999999 : Number(b.normal_crew_min);
     return ac - bc
+      || baselineOrder(a) - baselineOrder(b)
+      || taskIdentity(a) - taskIdentity(b);
+  }
+
+  if (stageFilter) {
+    return scopeCompare(a, b)
+      || stepOrder(a) - stepOrder(b)
       || baselineOrder(a) - baselineOrder(b)
       || taskIdentity(a) - taskIdentity(b);
   }
