@@ -141,6 +141,17 @@ def project_physical_demand(rows: Iterable[dict[str, Any]]) -> list[dict[str, An
             "requirement_notes": row.get("requirement_notes"),
             "source_expected_quantity": row.get("source_expected_quantity"),
             "source_verification_state": row.get("source_verification_state"),
+            "demand_origin": row.get("demand_origin") or "DIRECT_SCHEDULE",
+            "scheduled_trigger_setup_work_day_task_id": row.get(
+                "scheduled_trigger_setup_work_day_task_id"
+            ),
+            "scheduled_trigger_setup_session_task_id": row.get(
+                "scheduled_trigger_setup_session_task_id"
+            ),
+            "scheduled_trigger_setup_task_id": row.get(
+                "scheduled_trigger_setup_task_id"
+            ),
+            "scheduled_trigger_task_name": row.get("scheduled_trigger_task_name"),
         }
         item["reasons"].append(reason)
 
