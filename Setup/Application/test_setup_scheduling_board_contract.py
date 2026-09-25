@@ -220,6 +220,7 @@ def test_205_finder_uses_task_time_minimum_crew_and_effort() -> None:
 
 def test_122_work_order_picker_is_searchable() -> None:
     ui = read_app("setup_scheduling_board.js")
+    repo = read_app("setup_scheduling_board_repository.py")
 
     assert "Find open Work Order" in ui
     assert "setup-board205-season-work-order-search" in ui
@@ -883,7 +884,8 @@ def test_122_b1a_work_order_selector_uses_live_lookup() -> None:
     assert '"work_orders": work_orders' in repo
 
     assert "setupBoard205State.board.work_orders" in ui
-    assert "WO ${wo.work_order_id} · ${status}" in ui
+    assert "WO ${wo.work_order_id}${problem ? ` · ${problem}` : ''}" in ui
+    assert "WHERE wo.date_completed IS NULL" in repo
     assert "setup-board205-season-work-order" in ui
     assert "type=\"number\"" not in ui.split(
         'id="setup-board205-season-work-order"', 1
