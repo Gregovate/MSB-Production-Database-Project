@@ -171,6 +171,7 @@ def test_122_plan_schedule_preserves_catalog_material_visual_cue() -> None:
 
 def test_122_scheduler_uses_current_reusable_task_name_authority() -> None:
     repo = read_app("setup_scheduling_board_repository.py")
+    ui = read_app("setup_scheduling_board.js")
 
     # Reusable-origin annual rows keep an annual snapshot for planning/history,
     # but the operator-facing task name must always follow the current reusable
@@ -182,6 +183,7 @@ def test_122_scheduler_uses_current_reusable_task_name_authority() -> None:
     assert "WHEN pst.task_origin = 'REUSABLE'" in repo
     assert "THEN coalesce(prt.task_name, pst.annual_task_name)" in repo
     assert "LEFT JOIN ref.setup_task prt" in repo
+    assert "task.task_name || item.task_name" in ui
 
 
 def test_205_board_uses_dynamic_crews_am_pm_and_accessible_move_controls() -> None:
