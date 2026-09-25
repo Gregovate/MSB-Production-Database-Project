@@ -537,6 +537,15 @@ def test_122_work_day_calendar_supports_tablet_multiselect_without_overwriting_e
 
     assert "workDaySelection: new Set()" in ui
     assert "function board205RenderWorkDayCalendar()" in ui
+    assert "workDayPickerExpanded: false" in ui
+    assert "function board205ApplyWorkDayPickerExpanded()" in ui
+    assert 'id="setup-board205-toggle-work-days"' in ui
+    assert 'aria-expanded="false">+ Add Work Days' in ui
+    assert 'id="setup-board205-work-day-picker-body"' in ui
+    assert "body.hidden = !expanded;" in ui
+    assert "setupBoard205State.workDayPickerExpanded = false;" in ui
+    assert 'id="setup-board205-cancel-work-days"' in ui
+    assert ".setup-board205-day-form:not(.expanded)" in css
     assert "function board205ExistingWorkDayDates()" in ui
     assert "setup-board205-work-day-calendar" in ui
     assert "setup-board205-calendar-day:not(:disabled)" in ui
@@ -578,8 +587,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-25.1" in html
-    assert "setup_scheduling_board.js?v=2026-09-25.1" in html
+    assert "setup_scheduling_board.css?v=2026-09-25.2" in html
+    assert "setup_scheduling_board.js?v=2026-09-25.2" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
