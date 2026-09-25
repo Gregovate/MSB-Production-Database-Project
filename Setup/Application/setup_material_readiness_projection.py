@@ -52,9 +52,7 @@ def downstream_material_frontier(
         if current_id != start_id and is_material and status != "COMPLETE":
             found[current_id] = task
 
-        next_wave_started = material_wave_started or (
-            current_id != start_id and is_material
-        )
+        next_wave_started = material_wave_started or is_material
         for downstream_id in downstream_by_prerequisite.get(current_id, []):
             downstream = tasks_by_session_id.get(int(downstream_id))
             if downstream is None:
