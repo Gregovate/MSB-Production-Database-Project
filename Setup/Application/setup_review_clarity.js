@@ -231,7 +231,7 @@ renderLibrary = function renderReusableTaskCatalog() {
 
   libraryList.querySelectorAll('.open-task').forEach((button) => {
     button.addEventListener('click', () => {
-      showView('review', { allowReusableDetail: true });
+      showView('review');
       selectTask(button.dataset.taskId);
     });
   });
