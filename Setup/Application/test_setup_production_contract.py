@@ -292,6 +292,10 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "setupMayLeaveCurrentView" in production
     assert "typeof board205Load === 'function'" in production
     assert "await board205Load();" in production
+    schedule_route = production.split("if (view === 'schedule') {", 1)[1].split(
+        "} else if (view === 'perform'", 1
+    )[0]
+    assert "loadNextSchedule" not in schedule_route
     assert "if (!appState.access?.can_read_setup)" in production
     assert "msbSetupHasDirtyEdits" in production
     assert "setupPopstateUndo" in production
@@ -302,7 +306,7 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "navigateSetupView(button.dataset.view)" in production
     assert "navigateSetupView('schedule')" in next_pass
     assert "navigateSetupView('perform')" in next_pass
-    assert "setup_production.js?v=2026-09-24.6" in html
+    assert "setup_production.js?v=2026-09-24.7" in html
     assert "setup_next_pass.js?v=2026-09-24.1" in html
     assert "setup_scheduling_board.js?v=2026-09-24.8" in html
 
