@@ -96,7 +96,9 @@ def test_122_real_planning_season_hides_historical_verification_surface() -> Non
     chooser = production.split("function chooseInitialSeason()", 1)[1].split(
         "function consumePendingCorrection", 1
     )[0]
-    assert chooser.index("activeWithSession") < chooser.index("historical")
+    assert "const activeSeason = appState.seasons.find((season) => season.active_flag);" in chooser
+    assert chooser.index("activeSeason") < chooser.index("historical")
+    assert "activeWithSession" not in chooser
 
 
 def test_production_runtime_declares_gunicorn() -> None:
@@ -260,6 +262,7 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "setupMayLeaveCurrentView" in production
     assert "typeof board205Load === 'function'" in production
     assert "await board205Load();" in production
+    assert "if (!appState.access?.can_read_setup)" in production
     assert "msbSetupHasDirtyEdits" in production
     assert "setupPopstateUndo" in production
     assert "setupPopstateReplay" in production
