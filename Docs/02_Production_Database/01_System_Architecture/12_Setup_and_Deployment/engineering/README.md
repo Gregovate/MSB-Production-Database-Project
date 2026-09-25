@@ -5,11 +5,31 @@
 | Document Type | Engineering Handoff Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
-| Status | CURRENT HANDOFF — #204 expected-duration UI accepted in Production; #145 Catalog review continues |
+| Status | CURRENT HANDOFF — real 2026 Setup Session launched; Scheduling Board live |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-17 |
+| Last Reviewed | 2026-09-25 |
 
 Operator-facing instructions are separate under [`../operatorSOP/`](../operatorSOP/README.md).
+
+## 2026 Launch Status
+
+The real 2026 Setup Session has been created and is now the active annual planning/execution context. The accepted Scheduling Board application target is `06a6536d92db5c7352beeed496563ed9bfdb7146` with health version `V0.3.17-performance-trace`.
+
+The launch deployment installed migrations 057/058 after the exact candidate passed the full Setup/Application regression (458/458) and disposable browser acceptance. The Scheduling Board preserves the accepted Catalog/Plan ordering, lavender material-task cue, Day-view filters, completed/cancelled-day handling, performance improvements, and current scheduling behavior.
+
+The Work Day calendar is collapsed by default so it does not consume scheduling space. **+ Add Work Days** is a visually primary action; its calendar supports tablet-friendly click/tap multi-select without Ctrl/Shift, disables dates that already exist, and does not overwrite existing Work Days.
+
+The durable boundary remains:
+
+```text
+Reusable Catalog = recurring Setup knowledge
+2026 annual Session = this season's planning/execution set
+season-only work = 2026 only unless explicitly promoted
+actual work/history = preserved operational evidence
+```
+
+Broad Work Day deletion was not introduced. #206 / PR #216 continues to own early physical material-demand expansion and Pick List resolution; that work must not be folded back into the Scheduling Board.
+
 
 ## #145 Material Completeness Audit Candidate
 
