@@ -172,12 +172,14 @@ function sortedTasks(tasks = appState.tasks) {
   });
 }
 
-function showView(name) {
+function showView(name, options = {}) {
   const season = currentSeasonRecord();
+  const allowReusableDetail = Boolean(options.allowReusableDetail);
   if (
     name === 'review'
     && season
     && season.session_status !== 'HISTORICAL_VERIFICATION'
+    && !allowReusableDetail
   ) {
     name = el('schedule-view') ? 'schedule' : 'library';
   }
@@ -265,7 +267,9 @@ async function setupRestoreRoute(route) {
   const view = String(requested.view || 'review');
 
   setupSetFinderReturnVisible(false);
-  showView(view);
+  showView(view, {
+    allowReusableDetail: view === 'review' && requested.taskId != null
+  });
 
   if (view === 'schedule') {
     // The #205 Scheduling Board is the canonical Plan / Schedule renderer.
@@ -497,7 +501,7 @@ function renderLibrary() {
 
   document.querySelectorAll('.open-task').forEach((button) => {
     button.addEventListener('click', () => {
-      showView('review');
+      showView('review', { allowReusableDetail: true });
       selectTask(Number(button.dataset.taskId));
     });
   });
