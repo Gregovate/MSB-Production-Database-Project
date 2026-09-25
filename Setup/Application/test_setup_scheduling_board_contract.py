@@ -158,6 +158,17 @@ def test_205_work_day_number_is_persisted_and_dow_is_derived() -> None:
     assert "Setup Day # is assigned automatically in chronological order." in ui
 
 
+def test_122_plan_schedule_preserves_catalog_material_visual_cue() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    repo = read_app("setup_scheduling_board_repository.py")
+    catalog = read_app("setup_catalog_effort.js")
+
+    assert "coalesce(rt.requires_display_material, false) AS requires_display_material" in repo
+    assert "task.requires_display_material ? 'setup-material-task' : ''" in ui
+    assert ".setup-material-task {" in catalog
+    assert "border-left: 5px solid #7657c7 !important;" in catalog
+
+
 def test_205_board_uses_dynamic_crews_am_pm_and_accessible_move_controls() -> None:
     ui = read_app("setup_scheduling_board.js")
     css = read_app("setup_scheduling_board.css")
@@ -427,8 +438,11 @@ def test_205_rolling_board_filters_days_by_operational_state() -> None:
     css = read_app("setup_scheduling_board.css")
 
     assert "function board205DayViewState(day)" in ui
+    assert "if (status === 'COMPLETE' || status === 'CANCELLED') return 'COMPLETED';" in ui
     assert "if (!assignments.length) return 'EMPTY';" in ui
     assert "return hasUnfinished ? 'UNFINISHED' : 'COMPLETED';" in ui
+    assert "Completed / cancelled" in ui
+    assert "cancelled-day" in ui
     assert 'id="setup-board205-show-unfinished-days" type="checkbox" checked' in ui
     assert 'id="setup-board205-show-completed-days" type="checkbox"' in ui
     assert 'id="setup-board205-show-empty-days" type="checkbox"' in ui
@@ -540,8 +554,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-24.11" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.15" in html
+    assert "setup_scheduling_board.css?v=2026-09-24.12" in html
+    assert "setup_scheduling_board.js?v=2026-09-24.16" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
