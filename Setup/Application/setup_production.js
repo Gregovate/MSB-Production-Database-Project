@@ -387,6 +387,15 @@ function applySeasonReviewSurface() {
   const summary = el('summary-grid');
   if (summary) summary.hidden = !historical;
 
+  const reviewView = el('review-view');
+  const reviewListCard = reviewView?.querySelector('.list-card');
+  const annualFieldset = el('annual-fieldset');
+  const verificationPill = el('detail-verification');
+  if (reviewView) reviewView.classList.toggle('reusable-detail-mode', !historical);
+  if (reviewListCard) reviewListCard.hidden = !historical;
+  if (annualFieldset) annualFieldset.hidden = !historical;
+  if (verificationPill) verificationPill.hidden = !historical;
+
   if (!historical && currentSetupViewName() === 'review') {
     showView(el('schedule-view') ? 'schedule' : 'library');
   }
