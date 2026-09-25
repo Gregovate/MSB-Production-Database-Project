@@ -268,10 +268,12 @@ async function setupRestoreRoute(route) {
   showView(view);
 
   if (view === 'schedule') {
+    // The #205 Scheduling Board is the canonical Plan / Schedule renderer.
+    // Do not fall back to the obsolete async loadNextSchedule() during startup:
+    // production.js initializes before later scripts finish loading, so that
+    // legacy renderer can race the Scheduling Board DOM replacement.
     if (typeof board205Load === 'function') {
       await board205Load();
-    } else if (typeof loadNextSchedule === 'function') {
-      await loadNextSchedule();
     }
     if (requested.finder && typeof board205RestoreFinderState === 'function') {
       board205RestoreFinderState(requested.finder);
