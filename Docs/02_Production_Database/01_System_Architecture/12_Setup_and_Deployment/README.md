@@ -7,7 +7,7 @@
 | Audience | MSB reviewers, managers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-22 |
+| Last Reviewed | 2026-09-25 |
 | Keywords | Setup, reusable task, verification, Display Ownership, Kit, Extra Materials, T-Post, prerequisites |
 
 Use this page to decide **what you are trying to do in Setup** and where to go next.
@@ -16,15 +16,17 @@ Use this page to decide **what you are trying to do in Setup** and where to go n
 
 [**Open the Setup application**](https://my.sheboyganlights.org/setup/)
 
-The current shared review is **2025 — Historical Verification** and uses real Production data.
+The real **2026 Setup Session is live** and is the current annual planning/scheduling context.
 
-There is not yet a real 2026 Setup Session. The work now is to clean up the reusable Setup tasks so the 2026 schedule starts with good information.
+**2025 — Historical Verification** remains available as historical/review evidence. Do not use the 2025 view as the current schedule.
 
 ## What Do You Need to Do?
 
 | I need to... | Start here |
 |---|---|
-| Finish reviewing tasks that still need work | [Review and Correct the 2025 Setup History](operatorSOP/Review_2025_Setup_History.md) |
+| Schedule 2026 Setup work | Open **Plan / Schedule** in [Setup](https://my.sheboyganlights.org/setup/) |
+| Add one or more 2026 Work Days | In **Plan / Schedule**, click **+ Add Work Days**, tap/click the dates, then add the selected dates |
+| Review historical 2025 verification evidence | [Review and Correct the 2025 Setup History](operatorSOP/Review_2025_Setup_History.md) |
 | Learn the Setup Manager controls | [Setup Manager Review Guide](../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md) |
 | Review what should be in a Kit | [Open the Kit Inventory instructions](#kit-boxes-and-kit-inventory) |
 | Count or correct T-Post stock | [Open the T-Post Inventory instructions](#t-post-inventory) |
@@ -84,9 +86,9 @@ If something is unknown, **do not guess**. Leave it for review or use **Unverifi
 
 *The **Unverified** filter is the fastest way to find review work that remains.*
 
-## Final Completeness Check — Material Audit
+## Material Audit
 
-Use **Material Audit** before the real 2026 Setup Session is created.
+Use **Material Audit** when reviewing reusable Setup completeness and material relationships. The real 2026 Session has already been created; the audit remains a correction/review tool rather than a pre-creation gate.
 
 It checks whether important Setup information is complete. It does **not** decide whether the work itself is correct.
 
