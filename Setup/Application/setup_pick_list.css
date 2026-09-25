@@ -1,0 +1,18 @@
+:root{font-family:Arial,Helvetica,sans-serif;line-height:1.4;color-scheme:light dark}
+body{margin:0;background:Canvas;color:CanvasText}
+.page-header,main,footer{max-width:1180px;margin:0 auto;padding:1rem}
+.page-header{display:flex;gap:1rem;align-items:end;justify-content:space-between}
+h1,h2,h3,p{margin-top:0}.eyebrow{text-transform:uppercase;letter-spacing:.08em;font-size:.75rem;opacity:.7}
+.controls{display:flex;flex-wrap:wrap;gap:.6rem;align-items:end}.controls label{display:grid;gap:.2rem;font-size:.85rem}
+button,select{font:inherit;padding:.55rem .7rem}.panel{border:1px solid color-mix(in srgb,CanvasText 20%,transparent);border-radius:.65rem;padding:1rem;margin-bottom:1rem}
+.warning-panel{border-width:2px}.summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.55rem;margin-bottom:1rem}
+.summary-card{border:1px solid color-mix(in srgb,CanvasText 18%,transparent);border-radius:.55rem;padding:.7rem}.summary-card strong{display:block;font-size:1.25rem}
+.section-heading{display:flex;justify-content:space-between;gap:1rem;align-items:start}.pick-group{margin-top:1.25rem}
+.pick-group>h3{padding-bottom:.35rem;border-bottom:2px solid color-mix(in srgb,CanvasText 30%,transparent)}
+.pick-item{break-inside:avoid;border:1px solid color-mix(in srgb,CanvasText 18%,transparent);border-radius:.55rem;padding:.75rem;margin:.55rem 0}
+.pick-item-head{display:flex;justify-content:space-between;gap:.75rem;align-items:start}.identity{font-weight:700;font-size:1.05rem}.meta,.muted{opacity:.72}
+.reason-list{margin:.55rem 0 0;padding-left:1.25rem}.reason-list li{margin:.25rem 0}
+.unresolved{border-left:4px solid currentColor;padding:.55rem .7rem;margin:.45rem 0;background:color-mix(in srgb,CanvasText 4%,Canvas)}
+.empty{padding:1.5rem 0;opacity:.7;text-align:center}
+@media(max-width:760px){.page-header{display:block}.controls{margin-top:1rem}.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.pick-item-head{display:block}}
+@media print{@page{margin:.4in}.no-print{display:none!important}body{background:#fff;color:#000}.page-header,main{max-width:none;padding:0}.panel,.summary-card,.pick-item{border-color:#777}.pick-group,.pick-item{break-inside:avoid}}
