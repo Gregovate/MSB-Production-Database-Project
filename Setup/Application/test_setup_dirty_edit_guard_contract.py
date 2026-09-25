@@ -15,7 +15,7 @@ def guard_source() -> str:
 def test_dirty_guard_asset_is_loaded_and_protected_before_layout_refinement():
     html = read("production.html")
     host = read("production_backend.py")
-    guard_index = html.index("setup_catalog_dirty_guard.js?v=2026-09-24.5")
+    guard_index = html.index("setup_catalog_dirty_guard.js?v=2026-09-25.1")
     compact_index = html.index("setup_task_detail_compact.js?v=2026-09-11.1")
     effort_index = html.index("setup_catalog_effort.js?v=2026-09-24.5")
     assert guard_index > effort_index
