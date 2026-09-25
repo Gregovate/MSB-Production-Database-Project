@@ -174,6 +174,9 @@ def test_122_schedule_surfaces_first_downstream_material_demand() -> None:
     css = read_app("setup_scheduling_board.css")
 
     assert "function board205DownstreamMaterialTasks(task)" in ui
+    assert "materialLookaheadCache: new Map()" in ui
+    assert "setupBoard205State.materialLookaheadCache.has(taskId)" in ui
+    assert "setupBoard205State.materialLookaheadCache.clear()" in ui
     assert "dep.prerequisite_setup_session_task_id" in ui
     assert "downstream.requires_display_material && !downstream.effective_complete" in ui
     assert "found.set(downstreamId, downstream);" in ui
