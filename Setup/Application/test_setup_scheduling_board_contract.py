@@ -221,8 +221,9 @@ def test_205_finder_uses_task_time_minimum_crew_and_effort() -> None:
 def test_122_work_order_picker_is_searchable() -> None:
     ui = read_app("setup_scheduling_board.js")
 
-    assert "Search Work Orders" in ui
+    assert "Find open Work Order" in ui
     assert "setup-board205-season-work-order-search" in ui
+    assert "WHERE wo.date_completed IS NULL" in repo
     assert 'placeholder="WO # or problem text"' in ui
     assert "function board205PopulateWorkOrderOptions(" in ui
     assert "haystack.includes(search)" in ui
@@ -236,6 +237,28 @@ def test_122_scheduled_task_drops_out_of_default_needs_scheduling_queue() -> Non
     assert 'id="setup-board205-status-scheduled" type="checkbox"' in ui
     assert 'id="setup-board205-status-scheduled" type="checkbox" checked' not in ui
 
+
+def test_122_planning_screen_uses_compact_operational_kpis_and_stage_scoped_placement() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "function board205RenderKpis()" in ui
+    assert "scheduled · " in ui
+    assert "complete · " in ui
+    assert "setup-board205-primary-filters" in ui
+    assert "setup-board205-scene-label" in ui
+    assert "function board205PopulateSeasonPlacementOptions()" in ui
+    assert "Number(task.stage_id) === stageId" in ui
+    assert "grid-template-columns: minmax(0, 1.55fr) minmax(6.5rem, 0.8fr)" in css
+
+
+def test_122_season_task_type_labels_explain_operator_meaning() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert ">Setup Work<" in ui
+    assert ">Wait / Gate<" in ui
+    assert ">Support / Prep<" in ui
+    assert ">Unload Container<" in ui
 
 def test_205_heavy_work_is_captain_aware_warning_not_prohibition() -> None:
     ui = read_app("setup_scheduling_board.js")
@@ -419,11 +442,11 @@ def test_205_season_task_editor_is_in_annual_plan_not_reusable_catalog() -> None
     assert "Add Task" in ui
     assert "THIS SEASON ONLY" in ui
     assert "It does not enter the Reusable Task Catalog" in ui
-    assert "Existing Work Order<select" in ui
+    assert "Matching Work Order<select" in ui
     assert "No Work Order" in ui
     assert "Work Order completion satisfies this gate" in ui
-    assert "Insert after / prerequisite" in ui
-    assert "Block downstream task" in ui
+    assert "Place after / requires" in ui
+    assert "Optional downstream task to block" in ui
     assert "setup-board205-season-effort" in ui
 
 
@@ -474,8 +497,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-24.4" in html
-    assert "setup_scheduling_board.js?v=2026-09-24.6" in html
+    assert "setup_scheduling_board.css?v=2026-09-24.5" in html
+    assert "setup_scheduling_board.js?v=2026-09-24.7" in html
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
     assert "setup_next_pass.js" in html
