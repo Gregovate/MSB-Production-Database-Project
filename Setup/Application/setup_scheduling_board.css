@@ -412,13 +412,30 @@
   padding: 0.25rem 0.35rem;
 }
 
+.setup-board205-crew-title-row,
+.setup-board205-toolbar-actions,
 .setup-board205-crew-actions,
 .setup-board205-day-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
   align-items: center;
+}
+
+.setup-board205-crew-title-row {
+  justify-content: space-between;
+}
+
+.setup-board205-toolbar-actions {
+  justify-content: flex-end;
+}
+
+.setup-board205-day-actions {
   margin-top: 0.4rem;
+}
+
+.setup-board205-crew-actions {
+  margin-top: 0;
 }
 
 .setup-board205-legacy-label {
@@ -452,6 +469,7 @@
   padding: 0.35rem;
 }
 
+.setup-board205-capacity-note,
 .setup-board205-carryover {
   margin-bottom: 0.42rem;
   padding: 0.35rem 0.45rem;
@@ -656,5 +674,94 @@
   .setup-board205-primary-filters,
   .setup-board205-work-order-picker {
     grid-template-columns: 1fr;
+  }
+}
+
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 0.35in;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  header,
+  #app-alert,
+  nav.tabs,
+  #summary-grid,
+  .setup-live-search,
+  .view:not(#schedule-view),
+  #schedule-view dialog,
+  #schedule-view .setup-board205-backlog,
+  #schedule-view .setup-board205-day-form,
+  #schedule-view .setup-board205-history-toggle,
+  #schedule-view .setup-board205-board-heading p,
+  #schedule-view button,
+  #schedule-view .setup-board205-cell-empty {
+    display: none !important;
+  }
+
+  #schedule-view,
+  #setup-board205-root,
+  #setup-board205-workspace,
+  #setup-board205-board-pane {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  #setup-board205-workspace {
+    grid-template-columns: 1fr !important;
+  }
+
+  #setup-board205-root > .card:first-child,
+  #setup-board205-board-pane,
+  .setup-board205-day,
+  .setup-board205-assignment {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+
+  .setup-board205-table-wrap {
+    overflow: visible !important;
+  }
+
+  .setup-board205-grid {
+    min-width: 0 !important;
+    grid-template-columns: minmax(8rem, 0.72fr) repeat(2, minmax(12rem, 1fr));
+  }
+
+  .setup-board205-kpis {
+    display: flex !important;
+    color: #000 !important;
+  }
+
+  .setup-board205-kpis strong,
+  .setup-board205-grid-head,
+  .setup-board205-crew-label,
+  .setup-board205-cell,
+  .setup-board205-assignment,
+  .setup-board205-meta,
+  .setup-board205-day-note,
+  .setup-board205-shift-hint {
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  .setup-board205-crew-captain select,
+  .setup-board205-crew-counts input {
+    border: 0 !important;
+    background: transparent !important;
+    color: #000 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .setup-board205-assignment {
+    border: 1px solid #777 !important;
   }
 }
