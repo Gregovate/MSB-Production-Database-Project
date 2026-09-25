@@ -328,6 +328,19 @@ class SetupMaterialReadinessRepository:
             "stage_name": assignment.get("stage_name"),
             "lor_scene_id": assignment.get("lor_scene_id"),
             "scene_name": assignment.get("scene_name"),
+            "demand_origin": assignment.get("demand_origin") or "DIRECT_SCHEDULE",
+            "scheduled_trigger_setup_work_day_task_id": assignment.get(
+                "scheduled_trigger_setup_work_day_task_id"
+            ),
+            "scheduled_trigger_setup_session_task_id": assignment.get(
+                "scheduled_trigger_setup_session_task_id"
+            ),
+            "scheduled_trigger_setup_task_id": assignment.get(
+                "scheduled_trigger_setup_task_id"
+            ),
+            "scheduled_trigger_task_name": assignment.get(
+                "scheduled_trigger_task_name"
+            ),
         }
 
     def material_readiness(self, season_year: int) -> dict[str, Any]:
