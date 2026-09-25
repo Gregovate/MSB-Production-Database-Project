@@ -4,6 +4,7 @@
   const qs = new URLSearchParams(location.search);
   const seasonSelect = document.getElementById('season-select');
   const dateFilter = document.getElementById('date-filter');
+  const pickStatusFilter = document.getElementById('pick-status-filter');
   const summary = document.getElementById('summary');
   const pickList = document.getElementById('pick-list');
   const unresolvedSection = document.getElementById('unresolved-section');
@@ -34,13 +35,26 @@
     return [stage, reason.scene_name].filter(Boolean).join(' / ') || 'Site-wide / no Stage';
   }
 
+  function itemMoved(item) {
+    return Boolean(item?.current_observation?.last_movement_event_id);
+  }
+
   function observationText(item) {
     const o = item.current_observation || {};
+    if (!itemMoved(item)) return 'Not yet scanned / moved in this Setup Session';
     if (o.current_stage_key || o.current_stage_name) {
-      return `Current Setup observation: ${[o.current_stage_key, o.current_stage_name].filter(Boolean).join(' — ')}`;
+      return `Last observed: ${[o.current_stage_key, o.current_stage_name].filter(Boolean).join(' — ')}`;
     }
-    if (o.current_location_note) return `Current Setup observation: ${o.current_location_note}`;
-    return `Home / storage: ${item.home_location_code || 'not recorded'} · Not yet observed/moved in this Setup Session`;
+    if (o.current_location_note) return `Last observed: ${o.current_location_note}`;
+    return 'Already scanned / moved in this Setup Session';
+  }
+
+  function destinationText(reasons) {
+    const destinations = [...new Set(
+      reasons.map(stageScene).filter(value => value && value !== 'Site-wide / no Stage')
+    )];
+    if (!destinations.length) return 'Destination not resolved from scheduled work';
+    return destinations.join(' · ');
   }
 
   function reasonText(r) {
@@ -96,7 +110,13 @@
 
   function renderItems(date) {
     const all = readiness?.physical_items || [];
-    const items = all.filter(item => itemReasonsForDate(item, date).length > 0);
+    const status = pickStatusFilter?.value || 'OUTSTANDING';
+    const items = all.filter((item) => {
+      if (!itemReasonsForDate(item, date).length) return false;
+      if (status === 'OUTSTANDING') return !itemMoved(item);
+      if (status === 'MOVED') return itemMoved(item);
+      return true;
+    });
     const groups = new Map();
 
     for (const item of items) {
@@ -126,6 +146,10 @@
               <div>
                 <div class="identity">${esc(item.identity)}</div>
                 ${item.label ? `<div class="item-label">${esc(item.label)}</div>` : ''}
+                <div class="pick-route">
+                  <div><strong>Home:</strong> ${esc(item.home_location_code || 'not recorded')}</div>
+                  <div><strong>Destination:</strong> ${esc(destinationText(reasons))}</div>
+                </div>
                 <div class="meta">${esc(observationText(item))}</div>
               </div>
               <div class="meta">${esc(item.location_evidence_status || '')}</div>
@@ -150,13 +174,13 @@
     renderSummary(items, unresolved);
     generatedAt.textContent = `Generated ${new Date().toLocaleString()}`;
     statusLine.textContent = readiness.session
-      ? `Connected live view of ${readiness.session.season_year} scheduled physical demand.`
+      ? `Live ${readiness.session.season_year} schedule → physical Pick List.`
       : 'No Setup Session exists for this season.';
   }
 
   async function load() {
     const year = seasonSelect.value;
-    statusLine.textContent = 'Loading scheduled physical demand…';
+    statusLine.textContent = 'Loading live scheduled material demand…';
     const response = await fetch(`../api/setup/material-readiness?season_year=${encodeURIComponent(year)}`, {cache: 'no-store'});
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
@@ -181,6 +205,7 @@
     load().catch(showError);
   });
   dateFilter.addEventListener('change', render);
+  pickStatusFilter?.addEventListener('change', render);
   document.getElementById('print-button').addEventListener('click', () => window.print());
   document.getElementById('back-button').addEventListener('click', () => {
     location.href = `../?season_year=${encodeURIComponent(seasonSelect.value)}`;
