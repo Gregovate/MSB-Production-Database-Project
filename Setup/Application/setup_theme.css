@@ -35,10 +35,6 @@
     --theme-notice-bg: #342d16;
     --theme-notice-border: #6e5f24;
   }
-
-  html:not([data-theme="light"]) .brand img {
-    filter: brightness(1.12) contrast(.95);
-  }
 }
 
 html[data-theme="light"] {
@@ -69,10 +65,6 @@ html[data-theme="dark"] {
   --theme-dependency: #c2ccd8;
   --theme-notice-bg: #342d16;
   --theme-notice-border: #6e5f24;
-}
-
-html[data-theme="dark"] .brand img {
-  filter: brightness(1.12) contrast(.95);
 }
 
 input,
