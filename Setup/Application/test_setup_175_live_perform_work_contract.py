@@ -42,6 +42,16 @@ def test_perform_work_defaults_to_signed_in_captain_when_scheduled() -> None:
         assert token in ui
 
 
+def test_captain_filter_remembers_explicit_operator_choice() -> None:
+    ui = read_app("setup_next_pass.js")
+
+    assert "performCaptainFilterKey" in ui
+    assert "msb.setup.performCaptainFilter.v1." in ui
+    assert "window.localStorage.getItem" in ui
+    assert "window.localStorage.setItem" in ui
+    assert "nextStorePerformCaptainFilter(setupNextState.performCaptainFilter)" in ui
+
+
 def test_report_work_requires_actual_crew_duration_and_percent() -> None:
     ui = read_app("setup_next_pass.js")
 
@@ -73,6 +83,27 @@ def test_report_work_surfaces_one_editable_actual_work_date() -> None:
     assert "recorded_at" not in ui.split(
         '<form class="next-completion-form next-report-work-form"', 1
     )[1].split("</form>", 1)[0]
+
+
+def test_manager_can_correct_existing_work_report_without_replacing_identity() -> None:
+    ui = read_app("setup_next_pass.js")
+    api = read_app("setup_next_api.py")
+    repo = read_app("setup_next_repository.py")
+    sql = (DB_DIR / "061_add_live_assignment_report_work.sql").read_text(encoding="utf-8")
+
+    assert "Correct report" in ui
+    assert "next-progress-correction-form" in ui
+    assert "api/setup/progress/${progressId}" in ui
+    assert '@setup_next_api.patch("/api/setup/progress/<int:setup_task_progress_id>")' in api
+    correction_api = api.split("def api_setup_correct_progress", 1)[1]
+    assert "require_manager()" in correction_api
+    assert "repo().correct_progress" in correction_api
+    assert "def correct_progress" in repo
+    assert "CREATE OR REPLACE FUNCTION ops.correct_setup_task_progress" in sql
+    assert "FROM ref.setup_management_actor(p_email, false)" in sql
+    assert "WHERE p.setup_task_progress_id = p_setup_task_progress_id" in sql
+    assert "actual_duration_minutes = v_total_duration" in sql
+    assert "PERFORM ops.refresh_setup_session_task_schedule_state(v_session_task_id)" in sql
 
 
 def test_incomplete_report_requires_remaining_work_note() -> None:
@@ -188,6 +219,7 @@ def test_live_report_work_database_contract() -> None:
     assert "WHEN p_percent_complete = 100 THEN 'COMPLETE'" in sql
     assert "ELSE 'IN_PROGRESS'" in sql
     assert "PERFORM ops.refresh_setup_session_task_schedule_state" in sql
+    assert "manager_progress_correction_ready" in sql
     assert "actual_started_at = coalesce(st.actual_started_at, v_recorded_at)" not in sql
     assert "WHEN p_percent_complete = 100 THEN v_recorded_at" not in sql
 
@@ -195,8 +227,8 @@ def test_live_report_work_database_contract() -> None:
 def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
-    assert "setup_next_pass.css?v=2026-09-26.8" in html
-    assert "setup_next_pass.js?v=2026-09-26.8" in html
+    assert "setup_next_pass.css?v=2026-09-26.10" in html
+    assert "setup_next_pass.js?v=2026-09-26.10" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
     assert "setup_acceptance_fixes.js?v=2026-09-26.1" in html
     assert "setup_scheduling_board.css?v=2026-09-26.1" in html
