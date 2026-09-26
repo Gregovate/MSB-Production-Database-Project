@@ -38,6 +38,22 @@ class SetupMaterialReadinessRepository:
         finally:
             conn.close()
 
+    @contextmanager
+    def write_connect(self) -> Iterator[Any]:
+        conn = psycopg2.connect(self.dsn)
+        try:
+            conn.set_session(readonly=False, autocommit=False)
+            yield conn
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _one(cur: Any, message: str) -> dict[str, Any]:
+        row = cur.fetchone()
+        if row is None:
+            raise SetupMaterialReadinessRepositoryError(message)
+        return dict(row)
+
     def _scheduled_work(self, setup_session_id: int) -> list[dict[str, Any]]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
@@ -282,6 +298,74 @@ class SetupMaterialReadinessRepository:
                 (season_year, task_ids),
             )
             return [dict(row) for row in cur.fetchall()]
+
+    def _pick_list_overrides(
+        self, setup_session_id: int
+    ) -> list[dict[str, Any]]:
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    o.setup_pick_list_override_id,
+                    o.setup_session_id,
+                    o.container_id,
+                    o.pick_by_date::text AS pick_by_date,
+                    o.needed_for_date::text AS needed_for_date,
+                    o.override_reason,
+                    o.active_flag,
+                    o.created_at,
+                    o.updated_at,
+                    c.description AS container_description,
+                    c.location_code AS home_location_code,
+                    coalesce(
+                        nullif(btrim(concat_ws(' ', p.first_name, p.last_name)), ''),
+                        o.created_by
+                    ) AS requested_by_display
+                FROM ops.setup_pick_list_override AS o
+                JOIN ref.container AS c
+                  ON c.container_id = o.container_id
+                LEFT JOIN ref.person AS p
+                  ON p.person_id = o.created_by_person_id
+                WHERE o.setup_session_id = %s
+                  AND o.active_flag
+                ORDER BY o.pick_by_date, c.location_code, o.container_id
+                """,
+                (setup_session_id,),
+            )
+            return [dict(row) for row in cur.fetchall()]
+
+    def set_pick_list_override(
+        self,
+        *,
+        email: str,
+        season_year: int,
+        container_id: int,
+        pick_by_date: str | None,
+        needed_for_date: str | None,
+        reason: str | None,
+        active: bool,
+    ) -> dict[str, Any]:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT *
+                FROM ops.set_setup_pick_list_override(
+                    %s,%s,%s,%s::date,%s::date,%s,%s
+                )
+                """,
+                (
+                    email,
+                    season_year,
+                    container_id,
+                    pick_by_date,
+                    needed_for_date,
+                    reason,
+                    active,
+                ),
+            )
+            result = self._one(cur, "Pick List override command returned no result")
+            conn.commit()
+            return result
 
     def _observation_state(
         self,
@@ -627,6 +711,101 @@ class SetupMaterialReadinessRepository:
                     })
 
         physical_items = project_physical_demand(demand_rows)
+        item_by_key = {
+            (item["physical_type"], int(item["physical_id"])): item
+            for item in physical_items
+        }
+        overrides = self._pick_list_overrides(setup_session_id)
+        for override in overrides:
+            container_id = int(override["container_id"])
+            key = ("CONTAINER", container_id)
+            pick_by = str(override["pick_by_date"])
+            needed_for = override.get("needed_for_date")
+            effective_needed = str(needed_for or pick_by)
+            override_reason = {
+                "setup_work_day_task_id": None,
+                "setup_session_task_id": None,
+                "setup_task_id": None,
+                "task_name": None,
+                "setup_day_number": None,
+                "work_date": effective_needed,
+                "target_staged_by": pick_by,
+                "shift_code": None,
+                "crew_lane": None,
+                "stage_id": None,
+                "stage_key": None,
+                "stage_name": None,
+                "lor_scene_id": None,
+                "scene_name": None,
+                "reason_type": "MANAGER_OVERRIDE",
+                "reason_label": "Manager early-pick override",
+                "reason_detail": override.get("override_reason"),
+                "display_ids": [],
+                "display_names": [],
+                "extra_material_id": None,
+                "extra_material_name": None,
+                "quantity_required": None,
+                "quantity_uom": None,
+                "quantity_qualifier": None,
+                "size_text": None,
+                "length_value": None,
+                "length_unit": None,
+                "color": None,
+                "requirement_notes": None,
+                "source_expected_quantity": None,
+                "source_verification_state": None,
+                "demand_origin": "MANAGER_OVERRIDE",
+                "scheduled_trigger_setup_work_day_task_id": None,
+                "scheduled_trigger_setup_session_task_id": None,
+                "scheduled_trigger_setup_task_id": None,
+                "scheduled_trigger_task_name": None,
+                "manager_override_id": override["setup_pick_list_override_id"],
+                "manager_override_pick_by": pick_by,
+                "manager_override_needed_for": needed_for,
+                "manager_override_reason": override.get("override_reason"),
+                "manager_override_actor": override.get("requested_by_display"),
+            }
+            override_meta = {
+                "setup_pick_list_override_id": override["setup_pick_list_override_id"],
+                "pick_by_date": pick_by,
+                "needed_for_date": needed_for,
+                "override_reason": override.get("override_reason"),
+                "requested_by_display": override.get("requested_by_display"),
+                "created_at": override.get("created_at"),
+            }
+            item = item_by_key.get(key)
+            if item is None:
+                item = {
+                    "physical_type": "CONTAINER",
+                    "physical_id": container_id,
+                    "identity": f"CONT:{container_id}",
+                    "label": override.get("container_description") or f"Container {container_id}",
+                    "home_location_code": override.get("home_location_code"),
+                    "earliest_needed_for_work": effective_needed,
+                    "target_staged_by": pick_by,
+                    "reasons": [override_reason],
+                    "manager_overrides": [override_meta],
+                    "override_only": True,
+                }
+                physical_items.append(item)
+                item_by_key[key] = item
+            else:
+                item.setdefault("manager_overrides", []).append(override_meta)
+                item["reasons"].append(override_reason)
+                item["override_only"] = False
+                if pick_by < str(item["target_staged_by"]):
+                    item["target_staged_by"] = pick_by
+                if needed_for and str(needed_for) < str(item["earliest_needed_for_work"]):
+                    item["earliest_needed_for_work"] = str(needed_for)
+
+        physical_items.sort(
+            key=lambda item: (
+                str(item["target_staged_by"]),
+                str(item["earliest_needed_for_work"]),
+                0 if item["physical_type"] == "CONTAINER" else 1,
+                int(item["physical_id"]),
+            )
+        )
         container_ids = [int(item["physical_id"]) for item in physical_items if item["physical_type"] == "CONTAINER"]
         display_ids = [int(item["physical_id"]) for item in physical_items if item["physical_type"] == "DISPLAY"]
         state = self._observation_state(
@@ -650,6 +829,7 @@ class SetupMaterialReadinessRepository:
             "session": dict(session),
             "scheduled_work": scheduled_work,
             "physical_items": physical_items,
+            "pick_list_overrides": overrides,
             "unresolved_requirements": unresolved,
             "summary": {
                 "scheduled_assignment_count": len(assignments),
