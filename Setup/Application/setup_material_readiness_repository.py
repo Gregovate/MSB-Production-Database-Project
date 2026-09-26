@@ -25,6 +25,10 @@ class SetupMaterialReadinessRepositoryError(RuntimeError):
     pass
 
 
+class SetupMaterialReadinessConflictError(RuntimeError):
+    pass
+
+
 class SetupMaterialReadinessRepository:
     def __init__(self, dsn: str):
         self.dsn = (dsn or "").strip()
@@ -364,7 +368,7 @@ class SetupMaterialReadinessRepository:
                 None,
             )
             if existing is not None and not existing.get("manager_overrides"):
-                raise SetupMaterialReadinessRepositoryError(
+                raise SetupMaterialReadinessConflictError(
                     "Container is already on the Pick List from scheduled material demand; "
                     "a Manager override is not needed."
                 )
