@@ -421,3 +421,53 @@
   background: #fff7df;
   color: #4a3510;
 }
+
+
+/* #175 field reporting: keep the high-frequency actual-work fields together.
+   The generic completion form predates Hours/Minutes/% and otherwise spreads
+   these four values vertically across a large field card. */
+.next-report-work-form {
+  grid-template-columns: minmax(0, 0.35fr) minmax(0, 0.65fr);
+}
+
+.next-report-work-form .next-report-work-grid {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(85px, 120px) minmax(85px, 120px) minmax(85px, 120px) minmax(100px, 140px);
+  justify-content: start;
+  align-items: end;
+}
+
+.next-report-work-form .next-report-note {
+  grid-column: 1 / -1;
+}
+
+.next-report-work-form .next-report-quantity {
+  grid-column: 1;
+}
+
+.next-report-work-form .next-report-units {
+  grid-column: 2;
+}
+
+.next-report-work-form > button,
+.next-report-work-form > .muted {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+  .next-report-work-form {
+    grid-template-columns: 1fr;
+  }
+
+  .next-report-work-form .next-report-work-grid {
+    grid-template-columns: repeat(2, minmax(90px, 1fr));
+  }
+
+  .next-report-work-form .next-report-note,
+  .next-report-work-form .next-report-quantity,
+  .next-report-work-form .next-report-units,
+  .next-report-work-form > button,
+  .next-report-work-form > .muted {
+    grid-column: 1;
+  }
+}
