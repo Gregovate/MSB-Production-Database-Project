@@ -39,6 +39,12 @@ def test_d_minus_one_target():
     assert target_staged_by("2026-10-06") == "2026-10-05"
 
 
+def test_pick_by_never_lands_on_sunday():
+    # Monday work would normally stage Sunday; operationally Saturday is the
+    # last pick day before Monday work.
+    assert target_staged_by("2026-09-28") == "2026-09-26"
+
+
 def test_shared_container_is_deduplicated_and_keeps_all_reasons():
     items = project_physical_demand([
         row(),
