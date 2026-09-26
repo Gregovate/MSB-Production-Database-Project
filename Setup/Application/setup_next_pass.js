@@ -794,6 +794,25 @@ function nextPerformDay(dayId) {
   ) || null;
 }
 
+function nextEnsurePerformToolbar() {
+  const list = el('next-perform-list');
+  if (!list) return null;
+
+  let toolbar = list.previousElementSibling;
+  if (!toolbar?.classList?.contains('next-perform-toolbar')) {
+    toolbar = document.createElement('div');
+    toolbar.className = 'next-perform-toolbar';
+    toolbar.innerHTML = `
+      <label>Captain
+        <select id="next-perform-captain-filter" aria-label="Filter Perform Work by Captain"></select>
+      </label>
+      <span id="next-perform-filter-summary" class="muted"></span>
+    `;
+    list.insertAdjacentElement('beforebegin', toolbar);
+  }
+  return toolbar;
+}
+
 function nextPerformScheduledCaptains() {
   const board = setupNextState.performBoard || {};
   const assignmentCrewIds = new Set(
@@ -848,17 +867,12 @@ function nextRenderPerformCaptainFilter() {
   if (!select) return;
   nextEnsurePerformCaptainFilter();
 
-  const email = String(appState.access?.authenticated_email || '').trim().toLowerCase();
   const captains = nextPerformScheduledCaptains();
   select.innerHTML = [
     '<option value="ALL">All scheduled work</option>',
-    ...captains.map((captain) => {
-      const isMe = email && String(captain.email || '').trim().toLowerCase() === email;
-      const label = isMe
-        ? `My scheduled work — ${captain.display_name}`
-        : captain.display_name;
-      return `<option value="CAPTAIN:${captain.person_id}">${escapeHtml(label)}</option>`;
-    })
+    ...captains.map((captain) => (
+      `<option value="CAPTAIN:${captain.person_id}">${escapeHtml(captain.display_name)}</option>`
+    ))
   ].join('');
   select.value = setupNextState.performCaptainFilter;
 
@@ -936,6 +950,7 @@ function renderNextExecution() {
   const target = el('next-perform-list');
   if (!target) return;
   const board = setupNextState.performBoard || {};
+  nextEnsurePerformToolbar();
   nextRenderPerformCaptainFilter();
   const allAssignments = (board.assignments || []).slice();
   const assignments = nextFilterPerformAssignments(allAssignments);
