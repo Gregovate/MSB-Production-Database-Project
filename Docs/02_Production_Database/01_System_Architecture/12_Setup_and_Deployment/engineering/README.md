@@ -13,7 +13,7 @@ Operator-facing instructions are separate under [`../operatorSOP/`](../operatorS
 
 ## 2026 Launch Status
 
-The real 2026 Setup Session has been created and is now the active annual planning/execution context. The initial accepted Scheduling Board launch target was `06a6536d92db5c7352beeed496563ed9bfdb7146`. A post-launch reusable-task navigation regression was then corrected and Production accepted at live Setup SHA `55e097e7bb3b807793893defc939c9a23fc4ec5d` with health version `V0.3.18-scheduling-board`.
+The real 2026 Setup Session has been created and is now the active annual planning/execution context. The initial accepted Scheduling Board launch target was `06a6536d92db5c7352beeed496563ed9bfdb7146`. The current Production runtime is `24dd851b6ceed879ca96170db648476a8307a775` (`V0.3.19-pick-list`), with the rolling #206 Pick List accepted and migration 060 installed.
 
 The launch deployment installed migrations 057/058 after the exact candidate passed the full Setup/Application regression (458/458) and disposable browser acceptance. The Scheduling Board preserves the accepted Catalog/Plan ordering, lavender material-task cue, Day-view filters, completed/cancelled-day handling, performance improvements, and current scheduling behavior.
 
@@ -28,7 +28,7 @@ season-only work = 2026 only unless explicitly promoted
 actual work/history = preserved operational evidence
 ```
 
-Broad Work Day deletion was not introduced. #206 / PR #216 continues to own early physical material-demand expansion and Pick List resolution; that work must not be folded back into the Scheduling Board.
+Broad Work Day deletion was not introduced. #206 / PR #216 delivered the Production rolling physical Pick List and early-demand resolution. #206 remains open for tablet validation, full-season / Master material-list scope, movement planning, and named park-location/GIS handoff; those responsibilities must not be folded back into the Scheduling Board.
 
 
 ## #145 Material Completeness / Catalog Gate — COMPLETE
@@ -42,9 +42,10 @@ The real 2026 Setup Session has since been created under #122 and is live. Mater
 ```text
 protected application = https://my.sheboyganlights.org/setup/
 initial Scheduling Board launch target = 06a6536d92db5c7352beeed496563ed9bfdb7146
-current live Setup SHA = 55e097e7bb3b807793893defc939c9a23fc4ec5d
-version = V0.3.18-scheduling-board
-current corrective migration = 059 reusable task-name synchronization
+current live Setup SHA = 24dd851b6ceed879ca96170db648476a8307a775
+version = V0.3.19-pick-list
+current accepted migrations = 059 reusable task-name synchronization + 060 Pick List Manager override
+current Setup fingerprint = 96b399ee872c1fe980d6f69a1ad34157
 current annual reusable-name mismatches = 0
 2025 Setup Session = historical / verification evidence
 2026 Setup Session = LIVE annual planning/execution context
