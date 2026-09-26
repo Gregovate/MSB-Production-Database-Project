@@ -2,7 +2,7 @@
 MSB Setup Session — live Report Work / continuation execution
 Issues: #132, #175, #122
 Status: IMPLEMENTATION CANDIDATE — DO NOT APPLY TO PRODUCTION WITHOUT REVIEW
-Revision: 2026-09-25
+Revision: 2026-09-26
 
 Purpose:
   - allow Production Crew (plus Managers/Administrators) to report actual Setup work;
@@ -31,7 +31,7 @@ BEGIN
 
     IF to_regprocedure('ref.setup_browser_capabilities(text)') IS NULL
        OR to_regprocedure('ops.record_setup_task_progress(text,bigint,bigint,text,integer,integer,text,text,boolean)') IS NULL THEN
-        RAISE EXCEPTION 'Current Setup authorization/progress command is required before migration 059';
+        RAISE EXCEPTION 'Current Setup authorization/progress command is required before migration 061';
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fieldwiring_app') THEN
