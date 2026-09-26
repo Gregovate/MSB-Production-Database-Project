@@ -12,7 +12,8 @@ const setupNextState = {
   executionTasks: [],
   performBoard: { session: null, work_days: [], crews: [], tasks: [], assignments: [] },
   performAssignmentMode: true,
-  performCaptainFilter: null
+  performCaptainFilter: null,
+  performCaptainFilterKey: null
 };
 
 function nextIsSitewide(task) {
@@ -843,6 +844,28 @@ function nextPerformScheduledCaptains() {
   );
 }
 
+function nextPerformCaptainFilterStorageKey() {
+  const email = String(appState.access?.authenticated_email || 'unknown').trim().toLowerCase();
+  const season = Number(appState.seasonYear) || 'none';
+  return `msb.setup.performCaptainFilter.v1.${email}.${season}`;
+}
+
+function nextStoredPerformCaptainFilter() {
+  try {
+    return window.localStorage.getItem(nextPerformCaptainFilterStorageKey());
+  } catch (_error) {
+    return null;
+  }
+}
+
+function nextStorePerformCaptainFilter(value) {
+  try {
+    window.localStorage.setItem(nextPerformCaptainFilterStorageKey(), value);
+  } catch (_error) {
+    // Browser storage is only a convenience; filtering must still work without it.
+  }
+}
+
 function nextPerformDefaultCaptainFilter() {
   const email = String(appState.access?.authenticated_email || '').trim().toLowerCase();
   if (!email) return 'ALL';
@@ -853,12 +876,22 @@ function nextPerformDefaultCaptainFilter() {
 }
 
 function nextEnsurePerformCaptainFilter() {
+  const storageKey = nextPerformCaptainFilterStorageKey();
+  if (setupNextState.performCaptainFilterKey !== storageKey) {
+    setupNextState.performCaptainFilterKey = storageKey;
+    setupNextState.performCaptainFilter = null;
+  }
+
   const valid = new Set([
     'ALL',
     ...nextPerformScheduledCaptains().map((captain) => `CAPTAIN:${captain.person_id}`)
   ]);
+
   if (!setupNextState.performCaptainFilter || !valid.has(setupNextState.performCaptainFilter)) {
-    setupNextState.performCaptainFilter = nextPerformDefaultCaptainFilter();
+    const stored = nextStoredPerformCaptainFilter();
+    setupNextState.performCaptainFilter = stored && valid.has(stored)
+      ? stored
+      : nextPerformDefaultCaptainFilter();
   }
 }
 
@@ -880,6 +913,7 @@ function nextRenderPerformCaptainFilter() {
     select.dataset.performCaptainFilterInstalled = '1';
     select.addEventListener('change', () => {
       setupNextState.performCaptainFilter = select.value || 'ALL';
+      nextStorePerformCaptainFilter(setupNextState.performCaptainFilter);
       renderNextExecution();
     });
   }
