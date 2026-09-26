@@ -321,13 +321,13 @@ class SetupMaterialReadinessRepository:
                     c.location_code AS home_location_code,
                     coalesce(
                         nullif(btrim(concat_ws(' ', p.first_name, p.last_name)), ''),
-                        o.created_by
+                        o.updated_by
                     ) AS requested_by_display
                 FROM ops.setup_pick_list_override AS o
                 JOIN ref.container AS c
                   ON c.container_id = o.container_id
                 LEFT JOIN ref.person AS p
-                  ON p.person_id = o.created_by_person_id
+                  ON p.person_id = o.updated_by_person_id
                 WHERE o.setup_session_id = %s
                   AND o.active_flag
                 ORDER BY o.pick_by_date, c.location_code, o.container_id
@@ -777,7 +777,7 @@ class SetupMaterialReadinessRepository:
                 "destination_note": override.get("destination_note"),
                 "override_reason": override.get("override_reason"),
                 "requested_by_display": override.get("requested_by_display"),
-                "created_at": override.get("created_at"),
+                "updated_at": override.get("updated_at"),
             }
             item = item_by_key.get(key)
             if item is None:
