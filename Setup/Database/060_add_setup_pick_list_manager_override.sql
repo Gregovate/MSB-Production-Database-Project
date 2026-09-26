@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS ops.setup_pick_list_override (
     container_id integer NOT NULL,
     pick_by_date date NOT NULL,
     needed_for_date date,
-    destination_note text NOT NULL,
+    destination_stage_id integer NOT NULL,
     override_reason text NOT NULL,
     active_flag boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS ops.setup_pick_list_override (
     CONSTRAINT fk_setup_pick_list_override_container
         FOREIGN KEY (container_id)
         REFERENCES ref.container(container_id),
+    CONSTRAINT fk_setup_pick_list_override_destination_stage
+        FOREIGN KEY (destination_stage_id)
+        REFERENCES ref.stage(stage_id),
     CONSTRAINT fk_setup_pick_list_override_created_by_person
         FOREIGN KEY (created_by_person_id)
         REFERENCES ref.person(person_id),
@@ -31,8 +34,6 @@ CREATE TABLE IF NOT EXISTS ops.setup_pick_list_override (
         REFERENCES ref.person(person_id),
     CONSTRAINT uq_setup_pick_list_override_session_container
         UNIQUE (setup_session_id, container_id),
-    CONSTRAINT ck_setup_pick_list_override_destination
-        CHECK (btrim(destination_note) <> ''),
     CONSTRAINT ck_setup_pick_list_override_reason
         CHECK (btrim(override_reason) <> '')
 );
@@ -62,7 +63,7 @@ CREATE OR REPLACE FUNCTION ops.set_setup_pick_list_override(
     p_container_id integer,
     p_pick_by_date date,
     p_needed_for_date date,
-    p_destination_note text,
+    p_destination_stage_id integer,
     p_override_reason text,
     p_active boolean DEFAULT true
 )
@@ -72,7 +73,7 @@ RETURNS TABLE (
     container_id integer,
     pick_by_date date,
     needed_for_date date,
-    destination_note text,
+    destination_stage_id integer,
     override_reason text,
     active_flag boolean,
     operator_display_name text
@@ -87,7 +88,6 @@ DECLARE
     v_display_name text;
     v_session_id bigint;
     v_override_id bigint;
-    v_destination text := nullif(btrim(p_destination_note), '');
     v_reason text := nullif(btrim(p_override_reason), '');
 BEGIN
     SELECT a.directus_user_id, a.person_id, a.display_name
@@ -136,9 +136,18 @@ BEGIN
             RAISE EXCEPTION USING ERRCODE = '22023',
                 MESSAGE = 'Needed For date cannot be before Pick By date';
         END IF;
-        IF v_destination IS NULL THEN
+        IF p_destination_stage_id IS NULL THEN
             RAISE EXCEPTION USING ERRCODE = '22023',
-                MESSAGE = 'Destination is required for a Manager Pick List override';
+                MESSAGE = 'Destination Stage is required for a Manager Pick List override';
+        END IF;
+        IF NOT EXISTS (
+            SELECT 1
+            FROM ref.stage s
+            WHERE s.stage_id = p_destination_stage_id
+              AND s.stage_key IS NOT NULL
+        ) THEN
+            RAISE EXCEPTION USING ERRCODE = '23503',
+                MESSAGE = 'Destination Stage was not found';
         END IF;
         IF v_reason IS NULL THEN
             RAISE EXCEPTION USING ERRCODE = '22023',
@@ -158,7 +167,7 @@ BEGIN
             container_id,
             pick_by_date,
             needed_for_date,
-            destination_note,
+            destination_stage_id,
             override_reason,
             active_flag
         ) VALUES (
@@ -166,7 +175,7 @@ BEGIN
             p_container_id,
             p_pick_by_date,
             p_needed_for_date,
-            v_destination,
+            p_destination_stage_id,
             v_reason,
             true
         )
@@ -174,7 +183,7 @@ BEGIN
         DO UPDATE SET
             pick_by_date = EXCLUDED.pick_by_date,
             needed_for_date = EXCLUDED.needed_for_date,
-            destination_note = EXCLUDED.destination_note,
+            destination_stage_id = EXCLUDED.destination_stage_id,
             override_reason = EXCLUDED.override_reason,
             active_flag = true
         RETURNING ops.setup_pick_list_override.setup_pick_list_override_id
@@ -211,7 +220,7 @@ BEGIN
         o.container_id,
         o.pick_by_date,
         o.needed_for_date,
-        o.destination_note,
+        o.destination_stage_id,
         o.override_reason,
         o.active_flag,
         v_display_name
@@ -221,10 +230,10 @@ END;
 $function$;
 
 REVOKE ALL ON FUNCTION ops.set_setup_pick_list_override(
-    text,integer,integer,date,date,text,text,boolean
+    text,integer,integer,date,date,integer,text,boolean
 ) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ops.set_setup_pick_list_override(
-    text,integer,integer,date,date,text,text,boolean
+    text,integer,integer,date,date,integer,text,boolean
 ) TO fieldwiring_app;
 
 GRANT SELECT ON ops.setup_pick_list_override TO fieldwiring_app;
@@ -235,5 +244,5 @@ SELECT
     to_regclass('ops.setup_pick_list_override') IS NOT NULL
         AS pick_list_override_table_ready,
     to_regprocedure(
-        'ops.set_setup_pick_list_override(text,integer,integer,date,date,text,text,boolean)'
+        'ops.set_setup_pick_list_override(text,integer,integer,date,date,integer,text,boolean)'
     ) IS NOT NULL AS pick_list_override_command_ready;
