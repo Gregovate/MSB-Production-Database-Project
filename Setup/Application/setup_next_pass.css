@@ -411,3 +411,13 @@
 #setup-perform-print-sheet {
   display: none;
 }
+
+
+.next-procedure-warning {
+  margin: 0;
+  padding: 0.65rem;
+  border: 1px solid #d6a84b;
+  border-radius: 0.45rem;
+  background: #fff7df;
+  color: #4a3510;
+}
