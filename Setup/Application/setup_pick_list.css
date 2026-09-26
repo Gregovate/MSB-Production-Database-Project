@@ -17,7 +17,7 @@ button,select{font:inherit;padding:.55rem .7rem}
 .manager-override-panel{border-style:dashed}
 .manager-override-form{display:grid;grid-template-columns:minmax(260px,1.35fr) minmax(150px,.8fr) minmax(150px,.8fr) minmax(220px,1.3fr) minmax(260px,1.7fr) auto;gap:.65rem;align-items:end}
 .manager-override-form label{display:grid;gap:.2rem;font-size:.84rem;font-weight:700}
-.manager-override-form input{font:inherit;padding:.55rem .6rem;min-width:0}
+.manager-override-form input,.manager-override-form select{font:inherit;padding:.55rem .6rem;min-width:0}
 .override-container-field{position:relative}
 .container-search-results{position:absolute;z-index:20;top:100%;left:0;right:0;max-height:19rem;overflow:auto;border:1px solid color-mix(in srgb,CanvasText 28%,transparent);border-radius:.45rem;background:Canvas;box-shadow:0 .45rem 1.2rem color-mix(in srgb,#000 28%,transparent)}
 .container-search-result{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid color-mix(in srgb,CanvasText 12%,transparent);border-radius:0;background:Canvas;color:CanvasText;padding:.65rem .75rem}
@@ -94,6 +94,6 @@ button,select{font:inherit;padding:.55rem .7rem}
   .destination-cell{font-size:9pt;line-height:1.1;font-weight:800}
   .date-cell{font-size:8pt;line-height:1.1}
   .qr-cell{vertical-align:middle}
-  .pick-qr{width:58px;height:58px;padding:2px}
-  .pick-qr canvas,.pick-qr img,.pick-qr svg{width:54px!important;height:54px!important;max-width:54px!important;max-height:54px!important}
+  .pick-qr{width:68px;height:68px;padding:2px}
+  .pick-qr canvas,.pick-qr img,.pick-qr svg{width:64px!important;height:64px!important;max-width:64px!important;max-height:64px!important}
 }
