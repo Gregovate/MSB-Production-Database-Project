@@ -655,6 +655,29 @@ what happened in the field
 
 A reusable rename is therefore a durable identity-label correction, not an annual planning override. The scheduler does not provide a separate reusable-name editor; Managers rename reusable work through the Reusable Task Catalog / governed reusable-task edit path. The database synchronizes the same-season annual label, and operator reads also resolve the current reusable name defensively so stale data cannot reintroduce a second label.
 
+### Season rollover authority
+
+Do not create a separate Setup-only calendar rollover flag. Annual operational season identity already belongs to `ref.season`, including `season_year`, start/end dates, and `active_flag`.
+
+The intended rollover is deliberate:
+
+```text
+ref.season active year
+    = current operational season
+
+matching Setup Session PLANNING / ACTIVE
+    = current annual planning/execution/cleanup remains mutable
+
+activate next ref.season
+    -> establish next operational season
+    -> create/seed that season's Setup Session through the governed command
+
+prior Setup Session COMPLETE
+    = freeze prior annual record as history
+```
+
+For the 2026 -> 2027 transition, cleanup may continue through the off-season while 2026 remains the active operational season and its Setup Session remains open. Do not introduce a January 1 trigger merely to force rollover.
+
 The reusable Catalog remains separately editable under its normal Manager authority.
 
 ## Annual Dependencies
