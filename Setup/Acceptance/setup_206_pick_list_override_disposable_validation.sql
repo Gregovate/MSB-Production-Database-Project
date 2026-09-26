@@ -6,6 +6,7 @@ DO $validation$
 DECLARE
     v_session_id bigint;
     v_container_id integer;
+    v_destination_stage_id integer;
     v_override_id bigint;
     v_operator text;
 BEGIN
@@ -14,7 +15,7 @@ BEGIN
     END IF;
 
     IF to_regprocedure(
-        'ops.set_setup_pick_list_override(text,integer,integer,date,date,text,text,boolean)'
+        'ops.set_setup_pick_list_override(text,integer,integer,date,date,integer,text,boolean)'
     ) IS NULL THEN
         RAISE EXCEPTION 'Pick List override command is missing';
     END IF;
@@ -46,6 +47,17 @@ BEGIN
         RAISE EXCEPTION 'No unobserved Container is available for disposable override validation';
     END IF;
 
+    SELECT s.stage_id
+      INTO v_destination_stage_id
+    FROM ref.stage s
+    WHERE s.stage_key IS NOT NULL
+    ORDER BY s.park_order NULLS LAST, s.sub_order NULLS LAST, s.stage_key
+    LIMIT 1;
+
+    IF v_destination_stage_id IS NULL THEN
+        RAISE EXCEPTION 'No governed destination Stage is available for disposable override validation';
+    END IF;
+
     BEGIN
         PERFORM ops.set_setup_pick_list_override(
             'gliebig@sheboyganlights.org',
@@ -53,7 +65,7 @@ BEGIN
             v_container_id,
             DATE '2026-09-27',
             DATE '2026-09-28',
-            'Disposable Sunday rejection destination',
+            v_destination_stage_id,
             '[PREVIEW ONLY] Sunday Pick By rejection',
             true
         );
@@ -73,7 +85,7 @@ BEGIN
         v_container_id,
         DATE '2026-12-29',
         DATE '2026-12-30',
-        'Disposable validation destination',
+        v_destination_stage_id,
         '[PREVIEW ONLY] #206 Manager early-pick override validation',
         true
     ) r;
@@ -90,7 +102,7 @@ BEGIN
           AND o.container_id = v_container_id
           AND o.pick_by_date = DATE '2026-12-29'
           AND o.needed_for_date = DATE '2026-12-30'
-          AND o.destination_note = 'Disposable validation destination'
+          AND o.destination_stage_id = v_destination_stage_id
           AND o.active_flag
           AND o.created_by_person_id IS NOT NULL
           AND o.updated_by_person_id IS NOT NULL
@@ -148,7 +160,7 @@ BEGIN
 
     IF NOT has_function_privilege(
         'fieldwiring_app',
-        'ops.set_setup_pick_list_override(text,integer,integer,date,date,text,text,boolean)',
+        'ops.set_setup_pick_list_override(text,integer,integer,date,date,integer,text,boolean)',
         'EXECUTE'
     ) THEN
         RAISE EXCEPTION 'fieldwiring_app cannot execute governed Pick List override command';
