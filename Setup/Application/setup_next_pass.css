@@ -471,3 +471,36 @@
     grid-column: 1;
   }
 }
+
+
+.next-perform-toolbar {
+  display: flex;
+  align-items: end;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin: 0.85rem 0 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.55rem;
+  background: var(--soft, #f5f8fb);
+}
+
+.next-perform-toolbar label {
+  display: grid;
+  gap: 0.25rem;
+  min-width: min(320px, 100%);
+}
+
+.next-perform-toolbar select {
+  min-height: 2.4rem;
+}
+
+@media (max-width: 760px) {
+  .next-perform-toolbar {
+    align-items: stretch;
+  }
+
+  .next-perform-toolbar label {
+    width: 100%;
+  }
+}
