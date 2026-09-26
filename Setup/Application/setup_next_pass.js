@@ -966,15 +966,19 @@ async function loadNextTaskExecution(details, focusReport = false) {
   body.hidden = false;
   body.innerHTML = '<div class="muted">Loading scheduled work context…</div>';
   try {
-    const [contextPayload, resourcePayload, progressPayload, procedurePayload] = await Promise.all([
+    const [contextPayload, resourcePayload, progressPayload, procedureResult] = await Promise.all([
       api(`api/setup/tasks/${taskId}/field-context?season_year=${encodeURIComponent(appState.seasonYear)}`),
       api(`api/setup/tasks/${taskId}/resources`),
       api(`api/setup/session-tasks/${sessionTaskId}/progress`),
       api(`api/setup/tasks/${taskId}/procedure`)
+        .then((payload) => ({ payload, error: null }))
+        .catch((error) => ({ payload: null, error }))
     ]);
     const context = contextPayload.context || {};
     const resources = resourcePayload.resources || [];
     const progress = progressPayload.progress || [];
+    const procedurePayload = procedureResult.payload || {};
+    const procedureError = procedureResult.error;
     const docs = procedurePayload.instructions?.current_documents || procedurePayload.instructions?.documents || [];
     const assets = [
       ...(context.displays || []).map((item) => `<li>Display ${item.display_id} — ${escapeHtml(item.display_name)}${item.container_id ? ` · Container ${item.container_id}` : ''} · <strong>${escapeHtml(nextLocationText(item))}</strong></li>`),
@@ -1001,7 +1005,11 @@ async function loadNextTaskExecution(details, focusReport = false) {
           <p><strong>Expected crew:</strong> ${escapeHtml(formatCrew(task))} · <strong>Expected time:</strong> ${escapeHtml(formatMinutes(task?.expected_duration_minutes))}</p></section>
         <section><h4>Equipment / Resources</h4>${resources.length ? `<ul>${resources.map((r) => `<li>${escapeHtml(r.resource_name)} · Qty ${r.quantity_required} · ${escapeHtml(r.requirement_type)}</li>`).join('')}</ul>` : '<p class="muted">No structured resource requirement recorded.</p>'}</section>
         <section><h4>Material / Current Location</h4>${assets.length ? `<ul>${assets.join('')}</ul>` : '<p class="muted">No Displays or support Containers are mapped to this task.</p>'}</section>
-        <section><h4>Published Setup Procedure</h4>${docs.length ? docs.map((doc) => `<p><a target="_blank" rel="noopener" href="api/setup/tasks/${taskId}/procedure/current?name=${encodeURIComponent(doc.name || '')}">${escapeHtml(doc.name || 'Open current PDF')}</a></p>`).join('') : '<p class="muted">No current Setup Procedure is resolved for this task.</p>'}</section>
+        <section><h4>Published Setup Procedure</h4>${docs.length
+          ? docs.map((doc) => `<p><a target="_blank" rel="noopener" href="api/setup/tasks/${taskId}/procedure/current?name=${encodeURIComponent(doc.name || '')}">${escapeHtml(doc.name || 'Open current PDF')}</a></p>`).join('')
+          : procedureError
+            ? `<p class="next-procedure-warning"><strong>Procedure context unavailable.</strong> ${escapeHtml(procedureError.message || procedureError)} Report Work remains available.</p>`
+            : '<p class="muted">No current Setup Procedure is resolved for this task.</p>'}</section>
       </div>
       <section class="next-progress-history"><h4>Progress history</h4>${progress.length ? progress.map((p) => `<div>${escapeHtml(p.work_date || formatTimestamp(p.recorded_at))} · Crew ${p.crew_count}${p.duration_minutes ? ` · ${escapeHtml(formatMinutes(p.duration_minutes))}` : ''}${p.percent_complete ? ` · ${p.percent_complete}% complete` : ''}${p.progress_note ? ` · ${escapeHtml(p.progress_note)}` : ''}</div>`).join('') : '<div class="muted">No progress recorded yet.</div>'}</section>
       ${complete ? '<div class="next-complete-banner">This annual task is complete.</div>' : `
