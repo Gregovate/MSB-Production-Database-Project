@@ -226,7 +226,9 @@ class SetupNextRepository:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
                 SELECT p.setup_task_progress_id, p.setup_session_task_id,
-                       p.setup_work_day_id, wd.work_date, p.shift_code, p.crew_count,
+                       p.setup_work_day_id, p.setup_work_day_task_id,
+                       wd.work_date, p.shift_code, p.crew_count,
+                       p.duration_minutes, p.percent_complete,
                        p.completed_quantity, p.completed_units, p.progress_note,
                        p.marks_task_complete, p.recorded_at,
                        nullif(btrim(concat_ws(' ', actor.first_name, actor.last_name)), '') AS recorded_by_name
@@ -317,16 +319,29 @@ class SetupNextRepository:
         return {"displays": displays, "support_containers": containers}
 
     def record_progress(self, *, email: str, session_task_id: int,
-                        work_day_id: int | None, shift: str, crew_count: int,
-                        quantity: int | None, units: str | None, note: str | None,
-                        mark_complete: bool) -> dict[str, Any]:
+                        assignment_id: int | None, work_day_id: int | None,
+                        shift: str | None, crew_count: int,
+                        duration_minutes: int, percent_complete: int,
+                        quantity: int | None, units: str | None,
+                        note: str | None) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
                 SELECT * FROM ops.record_setup_task_progress(
-                    %s,%s,%s,%s,%s,%s,%s,%s,%s
+                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
                 )
-            """, (email, session_task_id, work_day_id, shift, crew_count,
-                    quantity, units, note, mark_complete))
+            """, (
+                email,
+                session_task_id,
+                crew_count,
+                duration_minutes,
+                percent_complete,
+                quantity,
+                units,
+                note,
+                assignment_id,
+                work_day_id,
+                shift,
+            ))
             result = self._one(cur, "Setup progress command returned no result")
             conn.commit()
             return result
