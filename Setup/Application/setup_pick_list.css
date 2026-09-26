@@ -14,6 +14,15 @@ button,select{font:inherit;padding:.55rem .7rem}
 .meta,.muted{opacity:.72}.empty{padding:1.5rem 0;opacity:.7;text-align:center}
 .unresolved{border-left:3px solid currentColor;padding:.45rem .65rem;margin:.4rem 0;background:color-mix(in srgb,CanvasText 4%,Canvas)}
 
+.manager-override-panel{border-style:dashed}
+.manager-override-form{display:grid;grid-template-columns:minmax(130px,.7fr) minmax(150px,.8fr) minmax(150px,.8fr) minmax(220px,1.3fr) minmax(260px,1.7fr) auto;gap:.65rem;align-items:end}
+.manager-override-form label{display:grid;gap:.2rem;font-size:.84rem;font-weight:700}
+.manager-override-form input{font:inherit;padding:.55rem .6rem;min-width:0}
+.override-reason-field{min-width:0}
+.override-state{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin-top:.45rem}
+.override-badge{font-size:.72rem;font-weight:800;letter-spacing:.04em;border:1px dashed currentColor;border-radius:999px;padding:.12rem .42rem}
+.small{font-size:.8rem;padding:.25rem .45rem}
+
 .pick-table-wrap{overflow-x:auto}
 .pick-table{width:100%;min-width:1050px;border-collapse:separate;border-spacing:0 .75rem}
 .pick-table th{text-align:left;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;opacity:.75;padding:.55rem .6rem;border-bottom:2px solid color-mix(in srgb,CanvasText 32%,transparent)}
@@ -34,9 +43,17 @@ button,select{font:inherit;padding:.55rem .7rem}
 .reasons summary{cursor:pointer;font-weight:600;font-size:.85rem;opacity:.82}
 .reason-list{margin:.45rem 0 0;padding-left:1.25rem}.reason-list li{margin:.25rem 0}
 
+@media(max-width:1100px){
+  .manager-override-form{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .override-reason-field{grid-column:1/-1}
+}
 @media(max-width:900px){
   .page-header{display:block}.controls{margin-top:1rem}.summary{grid-template-columns:repeat(2,minmax(0,1fr))}
   .pick-table{min-width:900px}
+}
+@media(max-width:620px){
+  .manager-override-form{grid-template-columns:1fr}
+  .override-reason-field{grid-column:auto}
 }
 @media print{
   @page{margin:.35in;size:landscape}
