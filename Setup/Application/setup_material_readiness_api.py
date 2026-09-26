@@ -66,7 +66,10 @@ def api_setup_material_readiness_override_set() -> tuple[Response, int]:
         container_id=required_int(payload.get("container_id"), "container_id"),
         pick_by_date=optional_text(payload.get("pick_by_date")),
         needed_for_date=optional_text(payload.get("needed_for_date")),
-        destination_note=optional_text(payload.get("destination_note")),
+        destination_stage_id=required_int(
+            payload.get("destination_stage_id"),
+            "destination_stage_id",
+        ),
         reason=optional_text(payload.get("override_reason")),
         active=True,
     )
@@ -86,7 +89,7 @@ def api_setup_material_readiness_override_remove(container_id: int) -> Response:
         container_id=container_id,
         pick_by_date=None,
         needed_for_date=None,
-        destination_note=None,
+        destination_stage_id=None,
         reason=None,
         active=False,
     )
