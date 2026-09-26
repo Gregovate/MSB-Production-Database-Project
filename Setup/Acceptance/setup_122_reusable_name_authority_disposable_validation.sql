@@ -3,9 +3,9 @@ Setup #122 — reusable task name authority disposable validation
 Current-Production clone only.
 
 Proves:
-  1. every PLANNING/ACTIVE reusable annual occurrence matches ref.setup_task;
-  2. a governed reusable rename synchronizes same-season annual names;
-  3. HISTORICAL_VERIFICATION annual rows are not rewritten by that rename;
+  1. the newest non-historical annual Setup Session matches ref.setup_task names;
+  2. a governed reusable rename synchronizes that current annual occurrence;
+  3. older annual Sessions and HISTORICAL_VERIFICATION are not rewritten;
   4. the transaction rolls back the clone-only rename fixture.
 ============================================================================ */
 
@@ -41,10 +41,16 @@ BEGIN
         JOIN ref.setup_task t
           ON t.setup_task_id = st.setup_task_id
         WHERE st.task_origin = 'REUSABLE'
-          AND ss.session_status IN ('PLANNING', 'ACTIVE')
+          AND ss.session_status <> 'HISTORICAL_VERIFICATION'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM ops.setup_session newer
+              WHERE newer.session_status <> 'HISTORICAL_VERIFICATION'
+                AND newer.season_year > ss.season_year
+          )
           AND st.annual_task_name IS DISTINCT FROM t.task_name
     ) THEN
-        RAISE EXCEPTION 'Open annual reusable task-name drift exists before rename fixture';
+        RAISE EXCEPTION 'Current annual reusable task-name drift exists before rename fixture';
     END IF;
 
     SELECT lower(u.email)
@@ -98,13 +104,19 @@ BEGIN
           ON ss.setup_session_id = st.setup_session_id
         WHERE st.setup_task_id = t.setup_task_id
           AND st.task_origin = 'REUSABLE'
-          AND ss.session_status IN ('PLANNING', 'ACTIVE')
+          AND ss.session_status <> 'HISTORICAL_VERIFICATION'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM ops.setup_session newer
+              WHERE newer.session_status <> 'HISTORICAL_VERIFICATION'
+                AND newer.season_year > ss.season_year
+          )
     )
     ORDER BY t.setup_task_id
     LIMIT 1;
 
     IF v_task_id IS NULL THEN
-        RAISE EXCEPTION 'No reusable task linked to a PLANNING/ACTIVE Setup Session was found';
+        RAISE EXCEPTION 'No reusable task linked to the current annual Setup Session was found';
     END IF;
 
     SELECT st.annual_task_name
@@ -145,10 +157,16 @@ BEGIN
           ON ss.setup_session_id = st.setup_session_id
         WHERE st.setup_task_id = v_task_id
           AND st.task_origin = 'REUSABLE'
-          AND ss.session_status IN ('PLANNING', 'ACTIVE')
+          AND ss.session_status <> 'HISTORICAL_VERIFICATION'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM ops.setup_session newer
+              WHERE newer.session_status <> 'HISTORICAL_VERIFICATION'
+                AND newer.season_year > ss.season_year
+          )
           AND st.annual_task_name IS DISTINCT FROM v_test_name
     ) THEN
-        RAISE EXCEPTION 'Governed reusable rename did not synchronize an open annual occurrence';
+        RAISE EXCEPTION 'Governed reusable rename did not synchronize the current annual occurrence';
     END IF;
 
     IF v_historical_before IS NOT NULL THEN
