@@ -312,7 +312,9 @@ class SetupMaterialReadinessRepository:
                     o.container_id,
                     o.pick_by_date::text AS pick_by_date,
                     o.needed_for_date::text AS needed_for_date,
-                    o.destination_note,
+                    o.destination_stage_id,
+                    ds.stage_key AS destination_stage_key,
+                    ds.stage_name AS destination_stage_name,
                     o.override_reason,
                     o.active_flag,
                     o.created_at,
@@ -326,6 +328,8 @@ class SetupMaterialReadinessRepository:
                 FROM ops.setup_pick_list_override AS o
                 JOIN ref.container AS c
                   ON c.container_id = o.container_id
+                JOIN ref.stage AS ds
+                  ON ds.stage_id = o.destination_stage_id
                 LEFT JOIN ref.person AS p
                   ON p.person_id = o.updated_by_person_id
                 WHERE o.setup_session_id = %s
@@ -344,7 +348,7 @@ class SetupMaterialReadinessRepository:
         container_id: int,
         pick_by_date: str | None,
         needed_for_date: str | None,
-        destination_note: str | None,
+        destination_stage_id: int | None,
         reason: str | None,
         active: bool,
     ) -> dict[str, Any]:
@@ -362,7 +366,7 @@ class SetupMaterialReadinessRepository:
                     container_id,
                     pick_by_date,
                     needed_for_date,
-                    destination_note,
+                    destination_stage_id,
                     reason,
                     active,
                 ),
@@ -744,7 +748,18 @@ class SetupMaterialReadinessRepository:
                 "scene_name": None,
                 "reason_type": "MANAGER_OVERRIDE",
                 "reason_label": "Manager early-pick override",
-                "override_destination": override.get("destination_note"),
+                "override_destination_stage_id": override.get("destination_stage_id"),
+                "override_destination": (
+                    " — ".join(
+                        value
+                        for value in (
+                            override.get("destination_stage_key"),
+                            override.get("destination_stage_name"),
+                        )
+                        if value
+                    )
+                    or "Destination Stage"
+                ),
                 "reason_detail": override.get("override_reason"),
                 "display_ids": [],
                 "display_names": [],
@@ -775,7 +790,9 @@ class SetupMaterialReadinessRepository:
                 "setup_pick_list_override_id": override["setup_pick_list_override_id"],
                 "pick_by_date": pick_by,
                 "needed_for_date": needed_for,
-                "destination_note": override.get("destination_note"),
+                "destination_stage_id": override.get("destination_stage_id"),
+                "destination_stage_key": override.get("destination_stage_key"),
+                "destination_stage_name": override.get("destination_stage_name"),
                 "override_reason": override.get("override_reason"),
                 "requested_by_display": override.get("requested_by_display"),
                 "updated_at": override.get("updated_at"),
