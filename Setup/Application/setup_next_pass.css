@@ -509,3 +509,29 @@
     width: 100%;
   }
 }
+
+
+.next-report-quantity-details {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--border, #d9e0e8);
+  padding-top: 0.5rem;
+}
+
+.next-report-quantity-details > summary {
+  cursor: pointer;
+  color: var(--muted, #64748b);
+  font-weight: 600;
+}
+
+.next-report-quantity-grid {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.35fr) minmax(180px, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+}
+
+@media (max-width: 760px) {
+  .next-report-quantity-grid {
+    grid-template-columns: 1fr;
+  }
+}
