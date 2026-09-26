@@ -18,13 +18,14 @@
   const overrideContainerResults = document.getElementById('override-container-results');
   const overridePickBy = document.getElementById('override-pick-by');
   const overrideNeededFor = document.getElementById('override-needed-for');
-  const overrideDestination = document.getElementById('override-destination');
+  const overrideDestinationStage = document.getElementById('override-destination-stage');
   const overrideReason = document.getElementById('override-reason');
   const overrideMessage = document.getElementById('override-message');
 
   let readiness = null;
   let access = null;
   let containerCatalog = [];
+  let stageCatalog = [];
 
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, c => ({
@@ -137,6 +138,19 @@
       const nameCompare = left.localeCompare(right, undefined, {numeric: true});
       return nameCompare || Number(a.container_id || 0) - Number(b.container_id || 0);
     });
+  }
+
+  async function loadDestinationStages() {
+    if (!access?.can_manage_setup || !overrideDestinationStage) return;
+    const response = await fetch('../api/setup/stages', {cache: 'no-store'});
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    stageCatalog = Array.isArray(data.stages) ? data.stages : [];
+    overrideDestinationStage.innerHTML =
+      '<option value="">Select destination Stage</option>' +
+      stageCatalog.map((stage) => (
+        `<option value="${esc(stage.stage_id)}">${esc(stage.stage_key)} — ${esc(stage.stage_name || 'Unnamed Stage')}</option>`
+      )).join('');
   }
 
   function applyAccess() {
@@ -395,7 +409,7 @@
           container_id: containerId,
           pick_by_date: overridePickBy.value,
           needed_for_date: overrideNeededFor.value || null,
-          destination_note: overrideDestination.value.trim(),
+          destination_stage_id: Number(overrideDestinationStage.value),
           override_reason: overrideReason.value.trim()
         })
       );
@@ -406,7 +420,7 @@
       overrideContainerSearch.value = '';
       overrideContainerResults.hidden = true;
       overrideContainerResults.innerHTML = '';
-      overrideDestination.value = '';
+      overrideDestinationStage.value = '';
       overrideReason.value = '';
       await load();
     } catch (error) {
@@ -540,7 +554,7 @@
     if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
     access = data.access || {};
     applyAccess();
-    await loadContainerCatalog();
+    await Promise.all([loadContainerCatalog(), loadDestinationStages()]);
   }
 
   const season = seasonFromUrl();
