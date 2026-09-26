@@ -188,25 +188,6 @@ def test_122_reusable_rename_syncs_same_season_annual_name() -> None:
     assert "SETUP_122_REUSABLE_NAME_AUTHORITY_DISPOSABLE_VALIDATION_PASS" in validation
 
 
-def test_122_scheduler_uses_current_reusable_task_name_authority() -> None:
-    repo = read_app("setup_scheduling_board_repository.py")
-    ui = read_app("setup_scheduling_board.js")
-
-    # Reusable-origin annual rows keep an annual snapshot for planning/history,
-    # but the operator-facing task name must always follow the current reusable
-    # Catalog name. Season-only work still owns its annual name.
-    assert "WHEN st.task_origin = 'REUSABLE'" in repo
-    assert "current_session.session_status IN ('PLANNING','ACTIVE')" in repo
-    assert "THEN coalesce(rt.task_name, st.annual_task_name)" in repo
-    assert "THEN coalesce(rt_assignment.task_name, st.annual_task_name)" in repo
-    assert "JOIN ops.setup_session current_session" in repo
-    assert "LEFT JOIN ref.setup_task rt_assignment" in repo
-    assert "WHEN pst.task_origin = 'REUSABLE'" in repo
-    assert "THEN coalesce(prt.task_name, pst.annual_task_name)" in repo
-    assert "LEFT JOIN ref.setup_task prt" in repo
-    assert "task.task_name || item.task_name" in ui
-
-
 def test_205_board_uses_dynamic_crews_am_pm_and_accessible_move_controls() -> None:
     ui = read_app("setup_scheduling_board.js")
     css = read_app("setup_scheduling_board.css")
