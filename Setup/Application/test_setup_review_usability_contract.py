@@ -34,7 +34,7 @@ def test_plain_english_manager_help_covers_current_live_workflows() -> None:
         "Scheduling model",
         "Pick Lists",
         "live annual Session",
-        "Manager early-pick Container override",
+        "early-pick Container override",
         "Movement and scanning",
         "Morning",
         "Afternoon",
