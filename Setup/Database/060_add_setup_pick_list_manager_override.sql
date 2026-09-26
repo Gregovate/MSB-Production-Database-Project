@@ -191,6 +191,7 @@ BEGIN
            SET active_flag = false
          WHERE o.setup_session_id = v_session_id
            AND o.container_id = p_container_id
+           AND o.active_flag
         RETURNING o.setup_pick_list_override_id INTO v_override_id;
 
         IF v_override_id IS NULL THEN
