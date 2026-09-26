@@ -450,6 +450,47 @@ def api_setup_record_progress(setup_session_task_id: int) -> tuple[Response, int
     return jsonify(progress=result), 201
 
 
+@setup_next_api.patch("/api/setup/progress/<int:setup_task_progress_id>")
+def api_setup_correct_progress(setup_task_progress_id: int) -> tuple[Response, int]:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+
+    crew = nullable_int(payload.get("crew_count"), "crew_count")
+    if crew is None or crew <= 0:
+        raise SetupCommandError("crew_count must be at least 1")
+
+    duration = nullable_int(payload.get("duration_minutes"), "duration_minutes")
+    if duration is None or duration <= 0:
+        raise SetupCommandError("duration_minutes must be greater than zero")
+
+    percent = nullable_int(payload.get("percent_complete"), "percent_complete")
+    if percent is None or percent < 1 or percent > 100:
+        raise SetupCommandError("percent_complete must be between 1 and 100")
+
+    performed_text = str(payload.get("performed_on") or "").strip()
+    try:
+        performed_on = date.fromisoformat(performed_text)
+    except ValueError as exc:
+        raise SetupCommandError("Work completed on date is required") from exc
+
+    if performed_on > date.today():
+        raise SetupCommandError("Work completed on date cannot be in the future")
+
+    result = repo().correct_progress(
+        email=email,
+        progress_id=setup_task_progress_id,
+        performed_on=performed_on.isoformat(),
+        crew_count=crew,
+        duration_minutes=duration,
+        percent_complete=percent,
+        quantity=nullable_int(payload.get("completed_quantity"), "completed_quantity"),
+        units=(str(payload.get("completed_units") or "").strip() or None),
+        note=(str(payload.get("progress_note") or "").strip() or None),
+    )
+    return jsonify(progress=result), 200
+
+
 @setup_next_api.errorhandler(SetupAuthenticationError)
 def setup_next_authentication_error(exc: SetupAuthenticationError) -> tuple[Response, int]:
     return jsonify(
