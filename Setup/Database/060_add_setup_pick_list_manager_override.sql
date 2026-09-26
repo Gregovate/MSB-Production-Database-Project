@@ -98,7 +98,7 @@ BEGIN
       INTO v_session_id
     FROM ops.setup_session ss
     WHERE ss.season_year = p_season_year
-      AND ss.session_status <> 'COMPLETE';
+      AND ss.session_status NOT IN ('COMPLETE', 'HISTORICAL_VERIFICATION');
 
     IF v_session_id IS NULL THEN
         RAISE EXCEPTION USING ERRCODE = 'P0002',
