@@ -161,6 +161,45 @@ BEGIN
         RAISE EXCEPTION 'Progress row did not preserve exact assignment / duration / percent evidence';
     END IF;
 
+    /*
+      Manager correction must preserve the same progress identity / assignment
+      link while recalculating derived annual effort.
+    */
+    PERFORM *
+    FROM ops.correct_setup_task_progress(
+        v_manager_email,
+        v_progress_id,
+        v_old_work_date,
+        2,
+        50,
+        50,
+        NULL,
+        NULL,
+        'Disposable validation: corrected partial work; remaining work needs continuation.'
+    );
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM ops.setup_task_progress p
+        WHERE p.setup_task_progress_id = v_progress_id
+          AND p.setup_work_day_task_id = v_assignment_id
+          AND p.performed_on = v_old_work_date
+          AND p.duration_minutes = 50
+          AND p.percent_complete = 50
+          AND p.progress_note LIKE 'Disposable validation: corrected%'
+    ) THEN
+        RAISE EXCEPTION 'Manager correction did not preserve/correct the existing progress row';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM ops.setup_session_task st
+        WHERE st.setup_session_task_id = v_session_task_id
+          AND st.actual_duration_minutes = 50
+    ) THEN
+        RAISE EXCEPTION 'Manager correction did not recalculate annual actual duration';
+    END IF;
+
     SELECT st.execution_status
       INTO v_execution_status
     FROM ops.setup_session_task st
