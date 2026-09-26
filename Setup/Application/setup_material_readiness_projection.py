@@ -87,8 +87,11 @@ def downstream_material_frontier(
 
 
 def target_staged_by(work_date: str) -> str:
-    """Return the normal D-1 staging target for an ISO work date."""
-    return (date.fromisoformat(work_date) - timedelta(days=1)).isoformat()
+    """Return the normal D-1 staging target, never assigning a Sunday pick."""
+    target = date.fromisoformat(work_date) - timedelta(days=1)
+    if target.weekday() == 6:  # Sunday -> Saturday
+        target -= timedelta(days=1)
+    return target.isoformat()
 
 
 def project_physical_demand(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
