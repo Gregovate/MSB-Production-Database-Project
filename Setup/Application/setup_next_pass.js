@@ -1158,8 +1158,13 @@ async function loadNextTaskExecution(details, focusReport = false) {
           <label>% complete<input class="next-percent-complete" type="number" min="1" max="100" step="1" value="${Math.max(lastPercent, 1)}" required></label>
         </div>
         <label class="next-report-note">What was done / what remains<textarea class="next-note" rows="3" placeholder="Required when the task is not 100% complete"></textarea></label>
-        <label class="next-report-quantity">Completed quantity <span class="muted">(optional)</span><input class="next-quantity" type="number" min="1"></label>
-        <label class="next-report-units">Which units <span class="muted">(optional)</span><input class="next-units" type="text"></label>
+        <details class="next-report-quantity-details">
+          <summary>Add quantity detail (optional)</summary>
+          <div class="next-report-quantity-grid">
+            <label class="next-report-quantity">Completed quantity<input class="next-quantity" type="number" min="1"></label>
+            <label class="next-report-units">Which units<input class="next-units" type="text"></label>
+          </div>
+        </details>
         <button type="submit">Save Work Report</button>
         <div class="muted">100% completes the annual task. Anything below 100% records partial work and leaves the task In Progress.</div>
       </form>`}
