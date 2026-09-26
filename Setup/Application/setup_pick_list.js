@@ -60,7 +60,13 @@
 
   function itemReasonsForDate(item, date) {
     const reasons = Array.isArray(item.reasons) ? item.reasons : [];
-    return date ? reasons.filter(r => r.work_date === date) : reasons;
+    if (!date) return reasons;
+    return reasons.filter((reason) => {
+      if (reason.reason_type === 'MANAGER_OVERRIDE') {
+        return reason.manager_override_needed_for === date;
+      }
+      return reason.work_date === date;
+    });
   }
 
   function stageScene(reason) {
@@ -177,7 +183,11 @@
   function populateDates() {
     const current = dateFilter.value;
     const dates = [...new Set((readiness?.physical_items || [])
-      .flatMap(i => (i.reasons || []).map(r => r.work_date))
+      .flatMap(i => (i.reasons || []).map((r) => (
+        r.reason_type === 'MANAGER_OVERRIDE'
+          ? r.manager_override_needed_for
+          : r.work_date
+      )))
       .filter(Boolean))].sort();
     dateFilter.innerHTML = '<option value="">All scheduled dates</option>' +
       dates.map(d => `<option value="${esc(d)}">${esc(formatDate(d))}</option>`).join('');
