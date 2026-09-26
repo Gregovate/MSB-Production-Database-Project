@@ -352,6 +352,23 @@ class SetupMaterialReadinessRepository:
         reason: str | None,
         active: bool,
     ) -> dict[str, Any]:
+        if active:
+            readiness = self.material_readiness(season_year)
+            existing = next(
+                (
+                    item
+                    for item in readiness.get("physical_items") or []
+                    if item.get("physical_type") == "CONTAINER"
+                    and int(item.get("physical_id") or 0) == int(container_id)
+                ),
+                None,
+            )
+            if existing is not None and not existing.get("manager_overrides"):
+                raise SetupMaterialReadinessRepositoryError(
+                    "Container is already on the Pick List from scheduled material demand; "
+                    "a Manager override is not needed."
+                )
+
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
