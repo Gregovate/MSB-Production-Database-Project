@@ -143,7 +143,7 @@
         r.override_destination || '',
         timing,
         r.manager_override_reason || r.reason_detail || '',
-        r.manager_override_actor ? `Added by ${r.manager_override_actor}` : ''
+        r.manager_override_actor ? `Set by ${r.manager_override_actor}` : ''
       ].filter(Boolean).join(' — ');
     }
 
