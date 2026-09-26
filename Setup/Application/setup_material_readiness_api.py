@@ -14,6 +14,7 @@ from setup_api import (
     setup_database_dsn,
 )
 from setup_material_readiness_repository import (
+    SetupMaterialReadinessConflictError,
     SetupMaterialReadinessRepository,
     SetupMaterialReadinessRepositoryError,
 )
@@ -111,6 +112,13 @@ def material_readiness_command_error(
     exc: SetupCommandError,
 ) -> tuple[Response, int]:
     return jsonify(error=str(exc), engineering_error=str(exc)), 403
+
+
+@setup_material_readiness_api.errorhandler(SetupMaterialReadinessConflictError)
+def material_readiness_conflict_error(
+    exc: SetupMaterialReadinessConflictError,
+) -> tuple[Response, int]:
+    return jsonify(error=str(exc), engineering_error=str(exc)), 409
 
 
 @setup_material_readiness_api.errorhandler(SetupMaterialReadinessRepositoryError)
