@@ -791,7 +791,18 @@ function nextPerformAssignmentCard(assignment) {
   const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
   const crew = nextPerformCrew(assignment);
   const captain = crew?.captain_display_name || 'Captain TBD';
-  const status = task.execution_status || 'PLANNED';
+  const executionStatus = String(task.execution_status || 'PLANNED').toUpperCase();
+  const boardStatus = String(task.board_status || '').toUpperCase();
+  const status = executionStatus === 'COMPLETE' || executionStatus === 'IN_PROGRESS'
+    ? executionStatus
+    : boardStatus === 'SCHEDULED'
+      ? 'SCHEDULED'
+      : boardStatus === 'NEEDS_SCHEDULING_AGAIN'
+        ? 'IN_PROGRESS'
+        : executionStatus;
+  const readinessWarning = task.readiness_state === 'NOT_READY'
+    ? `<div class="next-perform-readiness-warning"><strong>Readiness condition:</strong> ${escapeHtml(task.readiness_note || 'Marked Not Ready')} <span class="muted">· soft planning condition; actual work may still be reported</span></div>`
+    : '';
   return `
     <details class="next-perform-task next-perform-assignment"
       data-assignment-id="${assignment.setup_work_day_task_id}"
@@ -807,6 +818,7 @@ function nextPerformAssignmentCard(assignment) {
         Crew ${escapeHtml(assignment.crew_lane || '—')} · ${escapeHtml(captain)}
         · Planned crew ${escapeHtml(assignment.planned_crew_count ?? 'TBD')}
       </div>
+      ${readinessWarning}
       <div class="next-perform-actions">
         <button type="button" class="small secondary next-print-task">Print Task</button>
         <button type="button" class="small next-report-work">Report Work</button>
@@ -862,15 +874,73 @@ function renderNextExecution() {
       details.open = true;
       await loadNextTaskExecution(details, true);
     });
-    details.querySelector('.next-print-task')?.addEventListener('click', (event) => {
+    details.querySelector('.next-print-task')?.addEventListener('click', async (event) => {
       event.preventDefault();
-      details.open = true;
-      window.print();
+      await printNextPerformTask(details);
     });
     details.addEventListener('toggle', () => {
-      if (details.open && !details.dataset.loaded) loadNextTaskExecution(details, false);
+      if (details.open && !details.dataset.loaded && details.dataset.loading !== '1') {
+        loadNextTaskExecution(details, false);
+      }
     });
   });
+}
+
+async function printNextPerformTask(details) {
+  details.open = true;
+  if (!details.dataset.loaded) {
+    await loadNextTaskExecution(details, false);
+  }
+  if (details.dataset.loaded !== '1') {
+    window.alert('Task context could not be loaded, so the task cover sheet cannot be printed.');
+    return;
+  }
+
+  const assignmentId = Number(details.dataset.assignmentId);
+  const sessionTaskId = Number(details.dataset.sessionTaskId);
+  const assignment = (setupNextState.performBoard.assignments || []).find(
+    (item) => Number(item.setup_work_day_task_id) === assignmentId
+  );
+  const task = nextPerformTask(sessionTaskId) || assignment;
+  const day = assignment ? nextPerformDay(assignment.setup_work_day_id) : null;
+  const crew = assignment ? nextPerformCrew(assignment) : null;
+  const taskContext = details.querySelector('.next-perform-grid');
+  const existing = document.getElementById('setup-perform-print-sheet');
+  existing?.remove();
+
+  const sheet = document.createElement('section');
+  sheet.id = 'setup-perform-print-sheet';
+  sheet.innerHTML = `
+    <header class="setup-perform-print-header">
+      <div>
+        <div class="eyebrow">Captain / field execution</div>
+        <h1>Setup Task Cover Sheet</h1>
+      </div>
+      <div class="setup-perform-print-generated"><strong>Generated:</strong> ${escapeHtml(new Date().toLocaleString())}</div>
+    </header>
+    <h2>${escapeHtml(assignment?.task_name || task?.task_name || 'Setup task')}</h2>
+    <div class="setup-perform-print-meta">
+      <div><strong>Scope:</strong> ${escapeHtml(nextTaskScopeLabel(assignment || task || {}))}</div>
+      <div><strong>Scheduled:</strong> Setup Day ${escapeHtml(day?.setup_day_number ?? '—')} · ${escapeHtml(day?.work_date || assignment?.work_date || '')} · ${escapeHtml(assignment?.shift_code === 'MORNING' ? 'AM' : assignment?.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}</div>
+      <div><strong>Crew / Captain:</strong> Crew ${escapeHtml(crew?.crew_code || assignment?.crew_lane || '—')} · ${escapeHtml(crew?.captain_display_name || 'Captain TBD')}</div>
+      <div><strong>Assignment ID:</strong> ${escapeHtml(assignmentId)}</div>
+    </div>
+    ${task?.readiness_state === 'NOT_READY' ? `<div class="setup-perform-print-warning"><strong>Readiness condition:</strong> ${escapeHtml(task.readiness_note || 'Marked Not Ready')}</div>` : ''}
+    ${taskContext ? taskContext.outerHTML : ''}
+    <section class="setup-perform-print-notes">
+      <h3>Field notes / corrections / problems</h3>
+      <div class="setup-perform-print-lines"></div>
+    </section>
+  `;
+  document.body.appendChild(sheet);
+  document.body.classList.add('setup-print-perform-task');
+
+  const cleanup = () => {
+    document.body.classList.remove('setup-print-perform-task');
+    document.getElementById('setup-perform-print-sheet')?.remove();
+  };
+  window.addEventListener('afterprint', cleanup, { once: true });
+  window.print();
 }
 
 function nextLocationText(item) {
@@ -881,6 +951,8 @@ function nextLocationText(item) {
 }
 
 async function loadNextTaskExecution(details, focusReport = false) {
+  if (details.dataset.loading === '1') return;
+  details.dataset.loading = '1';
   const taskId = Number(details.dataset.taskId);
   const sessionTaskId = Number(details.dataset.sessionTaskId);
   const assignmentId = Number(details.dataset.assignmentId);
@@ -955,6 +1027,8 @@ async function loadNextTaskExecution(details, focusReport = false) {
     if (focusReport && form) form.querySelector('.next-crew')?.focus();
   } catch (error) {
     body.innerHTML = `<strong>Scheduled work context could not be loaded.</strong><div class="muted">${escapeHtml(error.message || error)}</div>`;
+  } finally {
+    delete details.dataset.loading;
   }
 }
 
