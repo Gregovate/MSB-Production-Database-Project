@@ -4,10 +4,12 @@ Revision: 2026-09-25
 
 Purpose:
   - ref.setup_task.task_name is the canonical current name for reusable work;
-  - while an annual Setup Session is PLANNING or ACTIVE, the linked reusable
-    annual occurrence must carry the same name;
-  - completed/historical annual evidence must not be renamed retroactively;
-  - repair any existing live open-session name drift before installing the
+  - the newest non-historical Setup Session remains the current/open annual
+    season until a later annual Setup Session is actually created;
+  - reusable renames synchronize into that current annual occurrence;
+  - once the next annual Setup Session exists, the prior year's annual name is
+    frozen as historical evidence;
+  - repair any existing current-session name drift before installing the
     durable synchronization trigger.
 
 This migration does not alter task identity, scope, planning order, execution
@@ -36,8 +38,9 @@ BEGIN
 END
 $preflight$;
 
-/* Repair current drift only for live annual planning/execution Sessions.
-   HISTORICAL_VERIFICATION and COMPLETE rows remain historical evidence. */
+/* Repair drift only in the current annual Setup Session. The current annual
+   Session is the newest non-HISTORICAL_VERIFICATION Session. It remains the
+   synchronization target until a later annual Setup Session is created. */
 UPDATE ops.setup_session_task st
    SET annual_task_name = t.task_name
 FROM ops.setup_session ss,
@@ -45,7 +48,13 @@ FROM ops.setup_session ss,
 WHERE ss.setup_session_id = st.setup_session_id
   AND t.setup_task_id = st.setup_task_id
   AND st.task_origin = 'REUSABLE'
-  AND ss.session_status IN ('PLANNING', 'ACTIVE')
+  AND ss.session_status <> 'HISTORICAL_VERIFICATION'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM ops.setup_session newer
+      WHERE newer.session_status <> 'HISTORICAL_VERIFICATION'
+        AND newer.season_year > ss.season_year
+  )
   AND st.annual_task_name IS DISTINCT FROM t.task_name;
 
 CREATE OR REPLACE FUNCTION ref.sync_setup_task_name_to_open_annual_sessions()
@@ -61,7 +70,13 @@ BEGIN
     WHERE ss.setup_session_id = st.setup_session_id
       AND st.task_origin = 'REUSABLE'
       AND st.setup_task_id = NEW.setup_task_id
-      AND ss.session_status IN ('PLANNING', 'ACTIVE')
+      AND ss.session_status <> 'HISTORICAL_VERIFICATION'
+      AND NOT EXISTS (
+          SELECT 1
+          FROM ops.setup_session newer
+          WHERE newer.session_status <> 'HISTORICAL_VERIFICATION'
+            AND newer.season_year > ss.season_year
+      )
       AND st.annual_task_name IS DISTINCT FROM NEW.task_name;
 
     RETURN NEW;
@@ -89,10 +104,16 @@ BEGIN
         JOIN ref.setup_task t
           ON t.setup_task_id = st.setup_task_id
         WHERE st.task_origin = 'REUSABLE'
-          AND ss.session_status IN ('PLANNING', 'ACTIVE')
+          AND ss.session_status <> 'HISTORICAL_VERIFICATION'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM ops.setup_session newer
+              WHERE newer.session_status <> 'HISTORICAL_VERIFICATION'
+                AND newer.season_year > ss.season_year
+          )
           AND st.annual_task_name IS DISTINCT FROM t.task_name
     ) THEN
-        RAISE EXCEPTION 'Open annual Setup Session still contains reusable task-name drift';
+        RAISE EXCEPTION 'Current annual Setup Session still contains reusable task-name drift';
     END IF;
 END
 $validation$;
