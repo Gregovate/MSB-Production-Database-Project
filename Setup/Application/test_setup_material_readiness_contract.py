@@ -167,8 +167,9 @@ def test_pick_list_separates_physical_rows_and_emphasizes_home_location() -> Non
     css = read("setup_pick_list.css")
     assert 'class="home-location-code"' in ui
     assert "LOC:" in ui
-    assert "font-size:1.45rem" in css
+    assert "font-size:1.72rem" in css
     assert "font-weight:900" in css
+    assert ".destination-cell{font-size:1.22rem" in css
     assert "border-spacing:0 .75rem" in css
     assert "border-top:2px solid" in css
     assert "border-left:2px solid" in css
@@ -235,3 +236,33 @@ def test_manager_override_ui_is_explicit_and_dedupes_into_normal_pick_rows() -> 
     assert "override_destination" in ui
     assert "manager_override_needed_for" in ui
     assert "reason.reason_type === 'MANAGER_OVERRIDE'" in ui
+
+
+
+def test_pick_list_qr_renderer_does_not_force_canvas_and_image_visible_together() -> None:
+    css = read("setup_pick_list.css")
+    assert ".pick-qr canvas,.pick-qr img,.pick-qr svg{width:96px!important" in css
+    assert "display:block!important" not in css
+
+
+def test_manager_override_container_selection_is_name_first_search() -> None:
+    html = read("pick_list.html")
+    ui = read("setup_pick_list.js")
+    assert 'id="override-container-search"' in html
+    assert 'placeholder="Search by Container name"' in html
+    assert 'id="override-container-id" type="hidden"' in html
+    assert "../api/setup/containers/source-options" in ui
+    assert "containerSearchText(row)" in ui
+    assert "container_description" in ui
+    assert "home_location_code" in ui
+    assert "Select a Container from the search results." in ui
+
+
+def test_pick_list_sunday_rule_applies_to_schedule_and_manager_override() -> None:
+    projection = read("setup_material_readiness_projection.py")
+    migration = (DB_DIR / "060_add_setup_pick_list_manager_override.sql").read_text(encoding="utf-8")
+    ui = read("setup_pick_list.js")
+    assert "if target.weekday() == 6" in projection
+    assert "Pick By cannot be Sunday; use Saturday or another day" in migration
+    assert "function noSundayPickDate(value)" in ui
+    assert "Sunday is not a pick day. Pick By moved to Saturday" in ui
