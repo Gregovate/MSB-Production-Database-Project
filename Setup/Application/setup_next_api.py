@@ -1,6 +1,7 @@
 """Protected API for Setup V0.3 organization, planning, scheduling, and Captain execution."""
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -420,6 +421,15 @@ def api_setup_record_progress(setup_session_task_id: int) -> tuple[Response, int
     if percent is None or percent < 1 or percent > 100:
         raise SetupCommandError("percent_complete must be between 1 and 100")
 
+    performed_text = str(payload.get("performed_on") or "").strip()
+    try:
+        performed_on = date.fromisoformat(performed_text)
+    except ValueError as exc:
+        raise SetupCommandError("Work completed on date is required") from exc
+
+    if performed_on > date.today():
+        raise SetupCommandError("Work completed on date cannot be in the future")
+
     result = repo().record_progress(
         email=email,
         session_task_id=setup_session_task_id,
@@ -429,6 +439,7 @@ def api_setup_record_progress(setup_session_task_id: int) -> tuple[Response, int
         ),
         work_day_id=nullable_int(payload.get("setup_work_day_id"), "setup_work_day_id"),
         shift=(str(payload.get("shift_code") or "").strip() or None),
+        performed_on=performed_on.isoformat(),
         crew_count=crew,
         duration_minutes=duration,
         percent_complete=percent,
