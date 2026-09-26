@@ -219,7 +219,7 @@ REVOKE ALL ON FUNCTION ops.set_setup_pick_list_override(
     text,integer,integer,date,date,text,text,boolean
 ) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ops.set_setup_pick_list_override(
-    text,integer,integer,date,date,text,boolean
+    text,integer,integer,date,date,text,text,boolean
 ) TO fieldwiring_app;
 
 GRANT SELECT ON ops.setup_pick_list_override TO fieldwiring_app;
