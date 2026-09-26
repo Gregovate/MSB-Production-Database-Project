@@ -26,6 +26,22 @@ def test_perform_work_is_scheduled_assignment_projection() -> None:
     assert "next-perform-filter" not in ui
 
 
+def test_perform_work_defaults_to_signed_in_captain_when_scheduled() -> None:
+    ui = read_app("setup_next_pass.js")
+
+    for token in (
+        'id="next-perform-captain-filter"',
+        "captain_person_id",
+        "captain_candidates",
+        "authenticated_email",
+        "My scheduled work",
+        "All scheduled work",
+        "nextPerformDefaultCaptainFilter",
+        "nextFilterPerformAssignments",
+    ):
+        assert token in ui
+
+
 def test_report_work_requires_actual_crew_duration_and_percent() -> None:
     ui = read_app("setup_next_pass.js")
 
@@ -138,8 +154,8 @@ def test_live_report_work_database_contract() -> None:
 def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
-    assert "setup_next_pass.css?v=2026-09-26.3" in html
-    assert "setup_next_pass.js?v=2026-09-26.3" in html
+    assert "setup_next_pass.css?v=2026-09-26.4" in html
+    assert "setup_next_pass.js?v=2026-09-26.4" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
     assert "setup_acceptance_fixes.js?v=2026-09-26.1" in html
     assert "setup_scheduling_board.css?v=2026-09-26.1" in html
