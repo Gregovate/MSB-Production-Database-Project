@@ -15,9 +15,16 @@ button,select{font:inherit;padding:.55rem .7rem}
 .unresolved{border-left:3px solid currentColor;padding:.45rem .65rem;margin:.4rem 0;background:color-mix(in srgb,CanvasText 4%,Canvas)}
 
 .manager-override-panel{border-style:dashed}
-.manager-override-form{display:grid;grid-template-columns:minmax(130px,.7fr) minmax(150px,.8fr) minmax(150px,.8fr) minmax(220px,1.3fr) minmax(260px,1.7fr) auto;gap:.65rem;align-items:end}
+.manager-override-form{display:grid;grid-template-columns:minmax(260px,1.35fr) minmax(150px,.8fr) minmax(150px,.8fr) minmax(220px,1.3fr) minmax(260px,1.7fr) auto;gap:.65rem;align-items:end}
 .manager-override-form label{display:grid;gap:.2rem;font-size:.84rem;font-weight:700}
 .manager-override-form input{font:inherit;padding:.55rem .6rem;min-width:0}
+.override-container-field{position:relative}
+.container-search-results{position:absolute;z-index:20;top:100%;left:0;right:0;max-height:19rem;overflow:auto;border:1px solid color-mix(in srgb,CanvasText 28%,transparent);border-radius:.45rem;background:Canvas;box-shadow:0 .45rem 1.2rem color-mix(in srgb,#000 28%,transparent)}
+.container-search-result{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid color-mix(in srgb,CanvasText 12%,transparent);border-radius:0;background:Canvas;color:CanvasText;padding:.65rem .75rem}
+.container-search-result:hover,.container-search-result:focus{background:color-mix(in srgb,CanvasText 9%,Canvas)}
+.container-search-result strong{display:block;font-size:.98rem}
+.container-search-result span{display:block;margin-top:.12rem;font-size:.78rem;opacity:.72}
+.container-search-empty{padding:.7rem .75rem;opacity:.7}
 .override-reason-field{min-width:0}
 .override-state{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin-top:.45rem}
 .override-badge{font-size:.72rem;font-weight:800;letter-spacing:.04em;border:1px dashed currentColor;border-radius:999px;padding:.12rem .42rem}
@@ -34,11 +41,11 @@ button,select{font:inherit;padding:.55rem .7rem}
 .pick-state{margin-top:.45rem;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
 .pick-status{font-weight:800;font-size:.76rem;letter-spacing:.03em;border:1px solid currentColor;border-radius:999px;padding:.12rem .42rem}
 .pick-status-detail{font-size:.84rem;opacity:.78}
-.location-cell,.destination-cell{font-weight:650}.home-location-code{font-size:1.45rem;font-weight:900;line-height:1.05;letter-spacing:.02em;white-space:nowrap}.home-location-payload{margin-top:.28rem;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.78rem;opacity:.62;white-space:nowrap}
+.location-cell{font-weight:700}.destination-cell{font-size:1.22rem;font-weight:800;line-height:1.18}.home-location-code{font-size:1.72rem;font-weight:900;line-height:1.02;letter-spacing:.025em;white-space:nowrap}.home-location-payload{margin-top:.3rem;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.82rem;opacity:.62;white-space:nowrap}
 .date-cell{white-space:nowrap}
 .qr-cell{text-align:center}
-.pick-qr{width:100px;height:100px;margin:0 auto;padding:4px;background:#fff;box-sizing:border-box}
-.pick-qr canvas,.pick-qr img,.pick-qr svg{display:block!important;width:92px!important;height:92px!important;margin:0!important}
+.pick-qr{width:104px;height:104px;margin:0 auto;padding:4px;background:#fff;box-sizing:border-box;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.pick-qr canvas,.pick-qr img,.pick-qr svg{width:96px!important;height:96px!important;margin:0!important;max-width:96px!important;max-height:96px!important}
 .pick-reasons-row td{padding:.35rem .75rem .7rem;background:color-mix(in srgb,CanvasText 3%,Canvas)}
 .reasons summary{cursor:pointer;font-weight:600;font-size:.85rem;opacity:.82}
 .reason-list{margin:.45rem 0 0;padding-left:1.25rem}.reason-list li{margin:.25rem 0}
@@ -68,9 +75,10 @@ button,select{font:inherit;padding:.55rem .7rem}
   .pick-table{border-spacing:0 .16in}
   .pick-table th,.pick-table td{padding:.32rem .4rem;border-color:#666}
   .pick-identity-cell .identity{font-size:14pt}
-  .home-location-code{font-size:15pt}
+  .home-location-code{font-size:17pt}
   .home-location-payload{font-size:8pt}
+  .destination-cell{font-size:12pt}
   .pick-reasons-row{display:none}
   .pick-qr{width:82px;height:82px}
-  .pick-qr canvas,.pick-qr img,.pick-qr svg{width:74px!important;height:74px!important}
+  .pick-qr canvas,.pick-qr img,.pick-qr svg{width:74px!important;height:74px!important;max-width:74px!important;max-height:74px!important}
 }
