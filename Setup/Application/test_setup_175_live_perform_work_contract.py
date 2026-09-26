@@ -79,7 +79,7 @@ def test_report_work_surfaces_one_editable_actual_work_date() -> None:
     assert 'class="next-performed-on"' in ui
     assert 'value="${escapeHtml(day?.work_date || assignment?.work_date || \'\')}"' in ui
     assert "performed_on: performedOn" in ui
-    assert "p.performed_on || p.work_date" in ui
+    assert "progress.performed_on || progress.work_date" in ui
     assert "recorded_at" not in ui.split(
         '<form class="next-completion-form next-report-work-form"', 1
     )[1].split("</form>", 1)[0]
