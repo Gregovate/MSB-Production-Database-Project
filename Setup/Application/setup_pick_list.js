@@ -94,6 +94,14 @@
     overrideContainerResults.innerHTML = '';
   }
 
+  function demandedContainerIds() {
+    return new Set(
+      (readiness?.physical_items || [])
+        .filter((item) => item.physical_type === 'CONTAINER')
+        .map((item) => Number(item.physical_id))
+    );
+  }
+
   function renderContainerSearchResults() {
     if (!overrideContainerSearch || !overrideContainerResults) return;
     overrideContainerId.value = '';
@@ -104,9 +112,17 @@
       return;
     }
 
-    const matches = containerCatalog
-      .filter((row) => containerSearchText(row).includes(query))
+    const demanded = demandedContainerIds();
+    const matching = containerCatalog
+      .filter((row) => containerSearchText(row).includes(query));
+    const matches = matching
+      .filter((row) => !demanded.has(Number(row.container_id)))
       .slice(0, 12);
+
+    let emptyMessage = 'No matching Containers';
+    if (!matches.length && matching.length) {
+      emptyMessage = 'All matching Containers are already on the Pick List.';
+    }
 
     overrideContainerResults.innerHTML = matches.length
       ? matches.map((row) => `
@@ -114,7 +130,7 @@
             <strong>${esc(row.container_description || `Container ${row.container_id}`)}</strong>
             <span>CONT:${esc(row.container_id)}${row.home_location_code ? ` · Home ${esc(row.home_location_code)}` : ''}</span>
           </button>`).join('')
-      : '<div class="container-search-empty">No matching Containers</div>';
+      : `<div class="container-search-empty">${esc(emptyMessage)}</div>`;
     overrideContainerResults.hidden = false;
 
     overrideContainerResults.querySelectorAll('.container-search-result').forEach((button) => {
@@ -235,6 +251,43 @@
     }
     if (!destinations.size) return 'Destination not resolved';
     return [...destinations].join(' · ');
+  }
+
+  function compactStageScene(reason) {
+    const stage = reason.stage_name || reason.stage_key || '';
+    return [stage, reason.scene_name].filter(Boolean).join(' / ') || 'Site-wide';
+  }
+
+  function compactOverrideDestination(value) {
+    const text = String(value || '');
+    const split = text.indexOf(' — ');
+    return split >= 0 ? text.slice(split + 3) : text;
+  }
+
+  function destinationPrintText(reasons) {
+    const destinations = new Set();
+    for (const reason of reasons) {
+      if (reason.reason_type === 'MANAGER_OVERRIDE' && reason.override_destination) {
+        destinations.add(compactOverrideDestination(reason.override_destination));
+        continue;
+      }
+      const stage = compactStageScene(reason);
+      if (stage && stage !== 'Site-wide') destinations.add(stage);
+    }
+    if (!destinations.size) return 'Unresolved';
+    return [...destinations].join(' · ');
+  }
+
+  function formatDatePrint(value) {
+    if (!value) return '—';
+    const parsed = new Date(`${value}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime())) return String(value);
+    return parsed.toLocaleDateString(undefined, {
+      weekday: 'short',
+      month: 'numeric',
+      day: 'numeric',
+      timeZone: 'UTC'
+    });
   }
 
   function reasonText(r) {
@@ -478,9 +531,22 @@
               <div class="home-location-code">${esc(item.home_location_code || 'Not recorded')}</div>
               ${item.home_location_code ? `<div class="home-location-payload">LOC:${esc(item.home_location_code)}</div>` : ''}
             </td>
-            <td class="destination-cell">${esc(destinationText(reasons))}</td>
-            <td class="date-cell"><strong>${esc(formatDate(dates.pickBy))}</strong></td>
-            <td class="date-cell">${esc(dates.neededForText)}</td>
+            <td class="destination-cell">
+              <span class="screen-value">${esc(destinationText(reasons))}</span>
+              <span class="print-value">${esc(destinationPrintText(reasons))}</span>
+            </td>
+            <td class="date-cell">
+              <strong class="screen-value">${esc(formatDate(dates.pickBy))}</strong>
+              <strong class="print-value">${esc(formatDatePrint(dates.pickBy))}</strong>
+            </td>
+            <td class="date-cell">
+              <span class="screen-value">${esc(dates.neededForText)}</span>
+              <span class="print-value">${esc(
+                dates.neededForText === 'Manager override'
+                  ? 'Override'
+                  : formatDatePrint(dates.neededFor)
+              )}</span>
+            </td>
             <td class="qr-cell">
               <div class="pick-qr" data-payload="${esc(payload)}" aria-label="QR for ${esc(item.identity)}"></div>
             </td>
