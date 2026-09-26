@@ -311,6 +311,7 @@ class SetupMaterialReadinessRepository:
                     o.container_id,
                     o.pick_by_date::text AS pick_by_date,
                     o.needed_for_date::text AS needed_for_date,
+                    o.destination_note,
                     o.override_reason,
                     o.active_flag,
                     o.created_at,
@@ -342,6 +343,7 @@ class SetupMaterialReadinessRepository:
         container_id: int,
         pick_by_date: str | None,
         needed_for_date: str | None,
+        destination_note: str | None,
         reason: str | None,
         active: bool,
     ) -> dict[str, Any]:
@@ -350,7 +352,7 @@ class SetupMaterialReadinessRepository:
                 """
                 SELECT *
                 FROM ops.set_setup_pick_list_override(
-                    %s,%s,%s,%s::date,%s::date,%s,%s
+                    %s,%s,%s,%s::date,%s::date,%s,%s,%s
                 )
                 """,
                 (
@@ -359,6 +361,7 @@ class SetupMaterialReadinessRepository:
                     container_id,
                     pick_by_date,
                     needed_for_date,
+                    destination_note,
                     reason,
                     active,
                 ),
@@ -739,6 +742,7 @@ class SetupMaterialReadinessRepository:
                 "scene_name": None,
                 "reason_type": "MANAGER_OVERRIDE",
                 "reason_label": "Manager early-pick override",
+                "override_destination": override.get("destination_note"),
                 "reason_detail": override.get("override_reason"),
                 "display_ids": [],
                 "display_names": [],
@@ -769,6 +773,7 @@ class SetupMaterialReadinessRepository:
                 "setup_pick_list_override_id": override["setup_pick_list_override_id"],
                 "pick_by_date": pick_by,
                 "needed_for_date": needed_for,
+                "destination_note": override.get("destination_note"),
                 "override_reason": override.get("override_reason"),
                 "requested_by_display": override.get("requested_by_display"),
                 "created_at": override.get("created_at"),
