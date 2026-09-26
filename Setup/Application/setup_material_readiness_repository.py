@@ -495,6 +495,7 @@ class SetupMaterialReadinessRepository:
                 "session": None,
                 "scheduled_work": [],
                 "physical_items": [],
+                "pick_list_overrides": [],
                 "unresolved_requirements": [],
                 "summary": {
                     "scheduled_assignment_count": 0,
