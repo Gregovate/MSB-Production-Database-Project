@@ -197,7 +197,8 @@ def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_a
     assert "UNIQUE (setup_session_id, container_id)" in migration
     assert "pick_by_date date NOT NULL" in migration
     assert "needed_for_date date" in migration
-    assert "destination_note text NOT NULL" in migration
+    assert "destination_stage_id integer NOT NULL" in migration
+    assert "REFERENCES ref.stage(stage_id)" in migration
     assert "override_reason text NOT NULL" in migration
     assert "ref.setup_management_actor(p_email, false)" in migration
     assert "SECURITY DEFINER" in migration
@@ -227,13 +228,16 @@ def test_manager_override_ui_is_explicit_and_dedupes_into_normal_pick_rows() -> 
     assert 'id="override-container-id"' in html
     assert 'id="override-pick-by"' in html
     assert 'id="override-needed-for"' in html
-    assert 'id="override-destination"' in html
+    assert 'id="override-destination-stage"' in html
+    assert "Select destination Stage" in html
     assert 'id="override-reason"' in html
     assert "This does not schedule work or mark the Container picked." in html
     assert "MANAGER OVERRIDE" in ui
     assert "Cancel Override" in ui
     assert "Schedule-derived demand, if any, will remain." in ui
     assert "override_destination" in ui
+    assert "../api/setup/stages" in ui
+    assert "destination_stage_id" in ui
     assert "manager_override_needed_for" in ui
     assert "reason.reason_type === 'MANAGER_OVERRIDE'" in ui
 
@@ -266,3 +270,25 @@ def test_pick_list_sunday_rule_applies_to_schedule_and_manager_override() -> Non
     assert "Pick By cannot be Sunday; use Saturday or another day" in migration
     assert "function noSundayPickDate(value)" in ui
     assert "Sunday is not a pick day. Pick By moved to Saturday" in ui
+
+
+
+def test_manager_override_destination_uses_governed_stage_authority() -> None:
+    html = read("pick_list.html")
+    ui = read("setup_pick_list.js")
+    api = read("setup_material_readiness_api.py")
+    repo = read("setup_material_readiness_repository.py")
+    migration = (DB_DIR / "060_add_setup_pick_list_manager_override.sql").read_text(encoding="utf-8")
+
+    assert 'id="override-destination-stage"' in html
+    assert 'type="text" required placeholder="e.g. Food Collection / Mt Crumpit"' not in html
+    assert "../api/setup/stages" in ui
+    assert "loadDestinationStages" in ui
+    assert "destination_stage_id: Number(overrideDestinationStage.value)" in ui
+    assert 'payload.get("destination_stage_id")' in api
+    assert "JOIN ref.stage AS ds" in repo
+    assert "destination_stage_key" in repo
+    assert "destination_stage_name" in repo
+    assert "destination_stage_id integer NOT NULL" in migration
+    assert "Destination Stage is required for a Manager Pick List override" in migration
+    assert "Destination Stage was not found" in migration
