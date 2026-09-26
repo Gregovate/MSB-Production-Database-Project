@@ -1,8 +1,9 @@
-"""Read-only material-readiness resolver for Setup #206.
+"""Material-readiness resolver for Setup #206.
 
-This repository consumes the accepted #205 schedule and existing reusable
-material authorities.  It deliberately performs no movement writes and does
-not invent a second mutable current-location field.
+The read path consumes the accepted schedule and existing reusable material
+authorities. The only write path is the narrow governed Manager early-pick
+override command. It performs no movement writes, does not schedule work, and
+does not invent a second mutable current-location field.
 """
 from __future__ import annotations
 
