@@ -128,6 +128,7 @@ BEGIN
     FROM ops.record_setup_task_progress(
         v_manager_email,
         v_session_task_id,
+        v_old_work_date,    -- actual work date (may differ from scheduled date)
         2,                  -- actual crew
         45,                 -- elapsed minutes
         50,                 -- cumulative percent complete
@@ -150,6 +151,7 @@ BEGIN
           AND p.setup_session_task_id = v_session_task_id
           AND p.setup_work_day_task_id = v_assignment_id
           AND p.setup_work_day_id = v_work_day_id
+          AND p.performed_on = v_old_work_date
           AND p.shift_code = v_shift
           AND p.crew_count = 2
           AND p.duration_minutes = 45
@@ -177,8 +179,12 @@ BEGIN
           AND wdt.setup_work_day_id = v_work_day_id
           AND wd.work_date = v_old_work_date
           AND wdt.actual_crew_count = 2
-          AND wdt.started_at IS NOT NULL
-          AND wdt.completed_at IS NULL
+          AND EXISTS (
+              SELECT 1
+              FROM ops.setup_task_progress p
+              WHERE p.setup_work_day_task_id = v_assignment_id
+                AND p.performed_on = v_old_work_date
+          )
     ) THEN
         RAISE EXCEPTION 'Original assignment did not become partial historical evidence';
     END IF;
@@ -291,7 +297,13 @@ BEGIN
           ON wd.setup_work_day_id = wdt.setup_work_day_id
         WHERE wdt.setup_work_day_task_id = v_assignment_id
           AND wd.work_date = v_old_work_date
-          AND wdt.started_at IS NOT NULL
+          AND wdt.actual_crew_count = 2
+          AND EXISTS (
+              SELECT 1
+              FROM ops.setup_task_progress p
+              WHERE p.setup_work_day_task_id = v_assignment_id
+                AND p.performed_on = v_old_work_date
+          )
     ) THEN
         RAISE EXCEPTION 'Creating the continuation rewrote the original historical assignment';
     END IF;
