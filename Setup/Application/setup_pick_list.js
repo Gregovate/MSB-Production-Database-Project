@@ -50,7 +50,12 @@
 
   function applyAccess() {
     if (!overridePanel) return;
-    overridePanel.hidden = !Boolean(access?.can_manage_setup && readiness?.session);
+    const status = String(readiness?.session?.session_status || '').toUpperCase();
+    overridePanel.hidden = !Boolean(
+      access?.can_manage_setup
+      && readiness?.session
+      && !['COMPLETE', 'HISTORICAL_VERIFICATION'].includes(status)
+    );
   }
 
   function seasonFromUrl() {
