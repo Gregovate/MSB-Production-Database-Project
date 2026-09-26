@@ -622,19 +622,66 @@ A season-only task can become reusable only through a later explicit reusable-re
 
 ## Annual Task Snapshot
 
-An annual occurrence retains the planning fields used for that season rather than continuously dereferencing mutable reusable values.
+An annual occurrence retains the planning fields used for that season rather than continuously dereferencing every mutable reusable value.
 
-The annual snapshot includes the applicable task name, scope, task type, normal crew guidance, expected duration, completion point, readiness/weather guidance, and annual notes.
+**Task name is the exception for reusable-origin work.** A reusable task has one canonical current name in `ref.setup_task.task_name`. Every operator-facing annual/scheduler surface must show that current reusable name so the Catalog, Task Finder, scheduled assignment, prerequisite display, Work List, Report Work, and related downstream surfaces cannot drift into competing labels for the same `setup_task_id`.
 
-This enables a truthful comparison later:
+While an annual Session is **PLANNING** or **ACTIVE**, a reusable rename must also synchronize the linked `ops.setup_session_task.annual_task_name` in that same open season. This keeps the stored annual occurrence and every downstream consumer aligned, not merely the current browser presentation.
 
 ```text
-what reusable knowledge said when the season was planned
-vs.
-what the annual season actually used
+rename reusable task
+    -> ref.setup_task.task_name
+    -> same reusable setup_task_id in PLANNING/ACTIVE annual Session
+    -> annual_task_name updated to the same value
+```
+
+Once a season is **COMPLETE**, its annual name is historical and must not be rewritten by a later reusable rename. The separate `HISTORICAL_VERIFICATION` construction/review Session is likewise not a current-season synchronization target.
+
+`ops.setup_session_task.annual_task_name` remains independently authoritative for **SEASON_ONLY** work because those rows have no reusable source task.
+
+The annual snapshot continues to preserve season planning values such as scope, task type, normal crew guidance, expected duration, completion point, readiness/weather guidance, and annual notes.
+
+This enables a truthful comparison later without creating two current names for one reusable task:
+
+```text
+current reusable task identity/name
++
+same-season synchronized annual identity label
++
+what annual planning guidance was used
 vs.
 what happened in the field
 ```
+
+A reusable rename is therefore a durable identity-label correction, not an annual planning override. The scheduler does not provide a separate reusable-name editor; Managers rename reusable work through the Reusable Task Catalog / governed reusable-task edit path. The database synchronizes the same-season annual label, and operator reads also resolve the current reusable name defensively so stale data cannot reintroduce a second label.
+
+### Season rollover authority
+
+Do not create a separate Setup-only calendar rollover flag. Annual operational season identity already belongs to `ref.season`, including `season_year`, start/end dates, and `active_flag`.
+
+For Setup annual-name synchronization, however, the definitive freeze boundary is **creation of the next non-historical Setup Session**. Changing `ref.season.active_flag` prepares/identifies the operational year; it does not by itself freeze the prior Setup annual occurrence.
+
+The intended rollover is deliberate:
+
+```text
+current newest non-historical Setup Session
+    = current Setup season for reusable-name synchronization
+
+no 2027 Setup Session exists
+    -> 2026 remains current/open for cleanup
+    -> reusable renames continue synchronizing into 2026
+
+activate/prepare 2027 in ref.season
+    -> 2027 becomes a valid operational season target
+    -> 2026 still remains current for Setup until the 2027 Setup Session exists
+
+create/seed 2027 Setup Session
+    -> 2027 becomes the current Setup season
+    -> 2026 reusable-name synchronization stops
+    -> 2026 annual identity/name is frozen as prior-year history
+```
+
+For the 2026 -> 2027 transition, cleanup may therefore continue through the off-season until the 2027 planning Session is actually created. Do not introduce a January 1 trigger merely to force rollover.
 
 The reusable Catalog remains separately editable under its normal Manager authority.
 
