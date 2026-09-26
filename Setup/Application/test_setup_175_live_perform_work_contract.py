@@ -89,6 +89,14 @@ def test_print_task_is_bounded_cover_sheet_not_schedule_print() -> None:
     assert "body.setup-print-perform-task #schedule-view" in css
 
 
+def test_procedure_failure_does_not_block_report_work() -> None:
+    ui = read_app("setup_next_pass.js")
+
+    assert ".catch((error) => ({ payload: null, error }))" in ui
+    assert "Procedure context unavailable." in ui
+    assert "Report Work remains available." in ui
+
+
 def test_live_report_work_database_contract() -> None:
     sql = (DB_DIR / "061_add_live_assignment_report_work.sql").read_text(encoding="utf-8")
 
@@ -106,8 +114,8 @@ def test_live_report_work_database_contract() -> None:
 def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
-    assert "setup_next_pass.css?v=2026-09-26.1" in html
-    assert "setup_next_pass.js?v=2026-09-26.1" in html
+    assert "setup_next_pass.css?v=2026-09-26.2" in html
+    assert "setup_next_pass.js?v=2026-09-26.2" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
     assert "setup_acceptance_fixes.js?v=2026-09-26.1" in html
     assert "setup_scheduling_board.css?v=2026-09-26.1" in html
