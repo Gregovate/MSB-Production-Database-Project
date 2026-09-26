@@ -13,7 +13,7 @@ Operator-facing instructions are separate under [`../operatorSOP/`](../operatorS
 
 ## 2026 Launch Status
 
-The real 2026 Setup Session has been created and is now the active annual planning/execution context. The initial accepted Scheduling Board launch target was `06a6536d92db5c7352beeed496563ed9bfdb7146`. A post-launch reusable-task navigation regression was then corrected and Production accepted at live Setup SHA `55e097e7bb3b807793893defc939c9a23fc4ec5d` with health version `V0.3.18-scheduling-board`.
+The real 2026 Setup Session has been created and is now the active annual planning/execution context. The initial accepted Scheduling Board launch target was `06a6536d92db5c7352beeed496563ed9bfdb7146`. The current Production runtime is `24dd851b6ceed879ca96170db648476a8307a775` (`V0.3.19-pick-list`), with the rolling #206 Pick List accepted and migration 060 installed.
 
 The launch deployment installed migrations 057/058 after the exact candidate passed the full Setup/Application regression (458/458) and disposable browser acceptance. The Scheduling Board preserves the accepted Catalog/Plan ordering, lavender material-task cue, Day-view filters, completed/cancelled-day handling, performance improvements, and current scheduling behavior.
 
@@ -28,7 +28,7 @@ season-only work = 2026 only unless explicitly promoted
 actual work/history = preserved operational evidence
 ```
 
-Broad Work Day deletion was not introduced. #206 / PR #216 continues to own early physical material-demand expansion and Pick List resolution; that work must not be folded back into the Scheduling Board.
+Broad Work Day deletion was not introduced. #206 / PR #216 delivered the Production rolling physical Pick List and early-demand resolution. #206 remains open for tablet validation, full-season / Master material-list scope, movement planning, and named park-location/GIS handoff; those responsibilities must not be folded back into the Scheduling Board.
 
 
 ## #145 Material Completeness / Catalog Gate — COMPLETE
@@ -42,8 +42,11 @@ The real 2026 Setup Session has since been created under #122 and is live. Mater
 ```text
 protected application = https://my.sheboyganlights.org/setup/
 initial Scheduling Board launch target = 06a6536d92db5c7352beeed496563ed9bfdb7146
-current live Setup SHA = 55e097e7bb3b807793893defc939c9a23fc4ec5d
-version = V0.3.18-scheduling-board
+current live Setup SHA = 24dd851b6ceed879ca96170db648476a8307a775
+version = V0.3.19-pick-list
+current accepted migrations = 059 reusable task-name synchronization + 060 Pick List Manager override
+current Setup fingerprint = 96b399ee872c1fe980d6f69a1ad34157
+current annual reusable-name mismatches = 0
 2025 Setup Session = historical / verification evidence
 2026 Setup Session = LIVE annual planning/execution context
 ```
@@ -196,7 +199,7 @@ Server/runtime authority remains `Gregovate/MSB-Server-Management`.
 
 The accepted #184 and #167 rollback archives are retained. Restoration is a governed database operation and must reconcile legitimate post-deployment work; do not use those archives as casual UI rollback points.
 
-The current live Setup application is `55e097e7bb3b807793893defc939c9a23fc4ec5d` (`V0.3.18-scheduling-board`). Its immediate source-only rollback point from the post-launch scheduler fix is the accepted launch target `06a6536d92db5c7352beeed496563ed9bfdb7146`. Older #184/#167/#204 rollback evidence remains historical recovery evidence for those deployments and must not be treated as the current source rollback point.
+The current live Setup application is `24dd851b6ceed879ca96170db648476a8307a775` (`V0.3.19-pick-list`). #206 is migration-bearing: migration 060 is installed and the validated rollback archive is `/home/msbadmin/backups/setup-206/msb-pre-setup-206-pick-list-20260926T030610.dump` (SHA256 `ecb8da74c9192da5c5cf18ff45f8882b4d2cb0cada45516e8b0193073668c145`). The immediately preceding application SHA is `55e097e7bb3b807793893defc939c9a23fc4ec5d` (`V0.3.18-scheduling-board`), but a source-only checkout rollback is not a complete rollback of #206 because migration 060 would remain installed. Use the Production Database change runbook and retained #206 rollback evidence. Older #184/#167/#204 rollback evidence remains historical recovery evidence for those deployments.
 
 ## Resume Checklist
 

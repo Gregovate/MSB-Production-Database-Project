@@ -61,7 +61,7 @@ def test_assignment_grouping_is_not_reordered_by_stage_view() -> None:
 
 
 def test_live_report_work_database_contract() -> None:
-    sql = (DB_DIR / "059_add_live_assignment_report_work.sql").read_text(encoding="utf-8")
+    sql = (DB_DIR / "061_add_live_assignment_report_work.sql").read_text(encoding="utf-8")
 
     assert "ADD COLUMN IF NOT EXISTS duration_minutes integer" in sql
     assert "ADD COLUMN IF NOT EXISTS percent_complete integer" in sql

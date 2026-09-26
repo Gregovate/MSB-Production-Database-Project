@@ -18,13 +18,16 @@ This handoff and the Setup engineering `README.md` are the current resume author
 
 ```text
 protected application = https://my.sheboyganlights.org/setup/
-live /opt/msb-setup SHA = 55e097e7bb3b807793893defc939c9a23fc4ec5d
-version = V0.3.18-scheduling-board
+live /opt/msb-setup SHA = 24dd851b6ceed879ca96170db648476a8307a775
+version = V0.3.19-pick-list
 service = msb-setup.service
 listener = 192.168.5.9:8794
 2025 Setup Session = HISTORICAL_VERIFICATION / historical evidence
 2026 Setup Session = LIVE / PLANNING
 Scheduling Board = live / Production accepted
+Rolling Pick List = live / Production accepted
+migration 060 = installed
+current Setup fingerprint = 96b399ee872c1fe980d6f69a1ad34157
 real 2026 scheduling = started
 ```
 
@@ -155,7 +158,7 @@ Do not recreate the annual Session, treat 2025 as the current planning authority
 
 The accepted rollback archives above are governed database recovery points. Do not restore them merely to undo a UI/documentation problem or without reconciling legitimate post-deployment Production work.
 
-The current live Setup checkout is `55e097e7bb3b807793893defc939c9a23fc4ec5d` (`V0.3.18-scheduling-board`). The immediate source-only rollback point for the post-launch scheduler fix is `06a6536d92db5c7352beeed496563ed9bfdb7146` plus restart of only `msb-setup.service` under the Server Management runbook. Older rollback archives in this handoff remain valid historical evidence for the deployments that created them, not the current source rollback point.
+The current live Setup checkout is `24dd851b6ceed879ca96170db648476a8307a775` (`V0.3.19-pick-list`). Migration 060 is installed for the #206 Manager Pick List override, so #206 rollback is migration-bearing and must use the retained `/home/msbadmin/backups/setup-206/msb-pre-setup-206-pick-list-20260926T030610.dump` archive or the bounded migration-060 rollback procedure under Server Management authority. The immediately preceding application SHA is `55e097e7bb3b807793893defc939c9a23fc4ec5d` (`V0.3.18-scheduling-board`), but source-only rollback does not remove migration 060. Older rollback archives in this handoff remain valid historical evidence for the deployments that created them.
 
 ## Engineering Resume
 
