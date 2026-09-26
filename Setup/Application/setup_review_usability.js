@@ -270,7 +270,7 @@ function installSetupHowItWorks() {
     <div class="card setup-help-card">
       <div class="eyebrow">Plain-English Manager guide</div>
       <h2>How Setup Session Works</h2>
-      <p>This browser review is validating the reusable Setup plan and the 2025 reconstruction. Scheduling, Pick Lists, and field movement/scanning are the next operational layer and are not active in this candidate yet.</p>
+      <p>The reusable Catalog defines recurring Setup work. The live annual Session owns current scheduling/execution, and the Pick List turns that schedule into physical material demand. Movement/scanning records what actually moved.</p>
       <div class="setup-help-grid">
         <section class="setup-help-section">
           <h3>1. Verify 2025</h3>
@@ -293,13 +293,14 @@ function installSetupHowItWorks() {
           <p>Dependency editing is not exposed yet. During this review, flag missing or wrong prerequisites.</p>
         </section>
         <section class="setup-help-section">
-          <h3>4. Scheduling model coming next</h3>
+          <h3>4. Scheduling model</h3>
           <p>One task can span multiple days. One day can have parallel crews. Scheduled work is grouped by <strong>Morning</strong>, <strong>Afternoon</strong>, or <strong>All Day</strong>.</p>
           <p>The reusable Stage sequence is a planning starting point; the actual work-day plan can intentionally run Stow Storm, Elf Choir, and other work in parallel.</p>
         </section>
         <section class="setup-help-section">
           <h3>5. Pick Lists</h3>
-          <p>The Pick List will be derived from the tasks scheduled for a work day/shift: required Displays → their current Containers + supplemental support/KIT Containers → deduplicated physical pull list.</p>
+          <p>The Pick List is derived from live scheduled work and bounded early downstream demand: required Displays → their current Containers + supplemental support/KIT Containers + Extra Material sources → one deduplicated physical pull list.</p>
+          <p>Managers may add an explicit early-pick Container override when bulk/shared stock or a schedule/material-model gap requires a deliberate pull. That override creates demand only; it does not schedule a task or mark anything picked.</p>
           <p>A Pick List replaces manual material bookkeeping, not real labor. A true Prepare/Load task remains a task if people actually spend meaningful time doing that work.</p>
         </section>
         <section class="setup-help-section">
