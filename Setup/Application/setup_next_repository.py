@@ -242,6 +242,31 @@ class SetupNextRepository:
             """, (session_task_id,))
             return [dict(r) for r in cur.fetchall()]
 
+    def correct_progress(self, *, email: str, progress_id: int,
+                         performed_on: str, crew_count: int,
+                         duration_minutes: int, percent_complete: int,
+                         quantity: int | None, units: str | None,
+                         note: str | None) -> dict[str, Any]:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT * FROM ops.correct_setup_task_progress(
+                    %s,%s,%s::date,%s,%s,%s,%s,%s,%s
+                )
+            """, (
+                email,
+                progress_id,
+                performed_on,
+                crew_count,
+                duration_minutes,
+                percent_complete,
+                quantity,
+                units,
+                note,
+            ))
+            result = self._one(cur, "Setup work-report correction returned no result")
+            conn.commit()
+            return result
+
     def field_context(self, *, task_id: int, season_year: int) -> dict[str, list[dict[str, Any]]]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
