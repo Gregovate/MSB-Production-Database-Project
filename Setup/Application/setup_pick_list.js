@@ -11,13 +11,46 @@
   const unresolvedList = document.getElementById('unresolved-list');
   const statusLine = document.getElementById('status-line');
   const generatedAt = document.getElementById('generated-at');
+  const overridePanel = document.getElementById('manager-override-panel');
+  const overrideForm = document.getElementById('manager-override-form');
+  const overrideContainerId = document.getElementById('override-container-id');
+  const overridePickBy = document.getElementById('override-pick-by');
+  const overrideNeededFor = document.getElementById('override-needed-for');
+  const overrideDestination = document.getElementById('override-destination');
+  const overrideReason = document.getElementById('override-reason');
+  const overrideMessage = document.getElementById('override-message');
 
   let readiness = null;
+  let access = null;
 
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, c => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[c]));
+  }
+
+  function commandOptions(method, payload) {
+    return {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-MSB-Setup-Command': '1'
+      },
+      body: JSON.stringify(payload)
+    };
+  }
+
+  function todayIso() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function applyAccess() {
+    if (!overridePanel) return;
+    overridePanel.hidden = !Boolean(access?.can_manage_setup && readiness?.session);
   }
 
   function seasonFromUrl() {
@@ -78,14 +111,31 @@
   }
 
   function destinationText(reasons) {
-    const destinations = [...new Set(
-      reasons.map(stageScene).filter(value => value && value !== 'Site-wide / no Stage')
-    )];
-    if (!destinations.length) return 'Destination not resolved';
-    return destinations.join(' · ');
+    const destinations = new Set();
+    for (const reason of reasons) {
+      const stage = stageScene(reason);
+      if (stage && stage !== 'Site-wide / no Stage') destinations.add(stage);
+      if (reason.override_destination) destinations.add(reason.override_destination);
+    }
+    if (!destinations.size) return 'Destination not resolved';
+    return [...destinations].join(' · ');
   }
 
   function reasonText(r) {
+    if (r.reason_type === 'MANAGER_OVERRIDE') {
+      const timing = [
+        r.manager_override_pick_by ? `Pick by ${formatDate(r.manager_override_pick_by)}` : '',
+        r.manager_override_needed_for ? `Needed for ${formatDate(r.manager_override_needed_for)}` : ''
+      ].filter(Boolean).join(' · ');
+      return [
+        'Manager early-pick override',
+        r.override_destination || '',
+        timing,
+        r.manager_override_reason || r.reason_detail || '',
+        r.manager_override_actor ? `Added by ${r.manager_override_actor}` : ''
+      ].filter(Boolean).join(' — ');
+    }
+
     const parts = [
       `Day ${r.setup_day_number ?? '?'} · ${r.work_date || ''} · ${r.shift_code || ''} · Crew ${r.crew_lane || '?'}`,
       stageScene(r),
@@ -166,7 +216,11 @@
       ? (reasons.map(r => r.target_staged_by).filter(Boolean).sort()[0] || item.target_staged_by)
       : item.target_staged_by;
     const neededFor = selectedDate || item.earliest_needed_for_work;
-    return {pickBy, neededFor};
+    const override = Array.isArray(item.manager_overrides) ? item.manager_overrides[0] : null;
+    const neededForText = item.override_only && override && !override.needed_for_date
+      ? 'Manager override'
+      : formatDate(neededFor);
+    return {pickBy, neededFor, neededForText};
   }
 
   function rackLocationParts(locationCode) {
@@ -207,6 +261,62 @@
     return Number(a.physical_id || 0) - Number(b.physical_id || 0);
   }
 
+  function overrideBadgeHtml(item) {
+    const overrides = Array.isArray(item.manager_overrides) ? item.manager_overrides : [];
+    if (!overrides.length) return '';
+    const cancel = access?.can_manage_setup && !itemMoved(item)
+      ? `<button type="button" class="small secondary cancel-override no-print" data-container-id="${esc(item.physical_id)}">Cancel Override</button>`
+      : '';
+    return `<div class="override-state"><span class="override-badge">MANAGER OVERRIDE</span>${cancel}</div>`;
+  }
+
+  async function submitOverride(event) {
+    event.preventDefault();
+    if (!access?.can_manage_setup) return;
+    overrideMessage.textContent = 'Saving Manager override…';
+    try {
+      const response = await fetch(
+        '../api/setup/material-readiness/overrides',
+        commandOptions('POST', {
+          season_year: Number(seasonSelect.value),
+          container_id: Number(overrideContainerId.value),
+          pick_by_date: overridePickBy.value,
+          needed_for_date: overrideNeededFor.value || null,
+          destination_note: overrideDestination.value.trim(),
+          override_reason: overrideReason.value.trim()
+        })
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      overrideMessage.textContent = `Container ${overrideContainerId.value} added to Pick List demand.`;
+      overrideContainerId.value = '';
+      overrideDestination.value = '';
+      overrideReason.value = '';
+      await load();
+    } catch (error) {
+      overrideMessage.textContent = error.message || error;
+    }
+  }
+
+  async function cancelOverride(containerId) {
+    if (!access?.can_manage_setup) return;
+    if (!window.confirm(`Cancel the Manager Pick List override for Container ${containerId}? Schedule-derived demand, if any, will remain.`)) {
+      return;
+    }
+    try {
+      const response = await fetch(
+        `../api/setup/material-readiness/overrides/${encodeURIComponent(containerId)}`,
+        commandOptions('DELETE', {season_year: Number(seasonSelect.value)})
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      overrideMessage.textContent = `Manager override for Container ${containerId} cancelled.`;
+      await load();
+    } catch (error) {
+      overrideMessage.textContent = error.message || error;
+    }
+  }
+
   function renderItems(date) {
     const status = pickStatusFilter?.value || 'ALL';
     const items = (readiness?.physical_items || []).filter((item) => {
@@ -232,6 +342,7 @@
               <div class="identity">${esc(item.identity)}</div>
               ${item.label ? `<div class="item-label">${esc(item.label)}</div>` : ''}
               <div class="pick-state">${pickStatusHtml(item)}</div>
+              ${overrideBadgeHtml(item)}
             </td>
             <td class="location-cell">
               <div class="home-location-code">${esc(item.home_location_code || 'Not recorded')}</div>
@@ -239,7 +350,7 @@
             </td>
             <td class="destination-cell">${esc(destinationText(reasons))}</td>
             <td class="date-cell"><strong>${esc(formatDate(dates.pickBy))}</strong></td>
-            <td class="date-cell">${esc(formatDate(dates.neededFor))}</td>
+            <td class="date-cell">${esc(dates.neededForText)}</td>
             <td class="qr-cell">
               <div class="pick-qr" data-payload="${esc(payload)}" aria-label="QR for ${esc(item.identity)}"></div>
             </td>
@@ -275,6 +386,11 @@
       </div>`;
 
     renderQrCodes();
+    document.querySelectorAll('.cancel-override').forEach((button) => {
+      button.addEventListener('click', () => {
+        void cancelOverride(Number(button.dataset.containerId));
+      });
+    });
     return items;
   }
 
@@ -298,7 +414,16 @@
     if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
     readiness = data.readiness;
     populateDates();
+    applyAccess();
     render();
+  }
+
+  async function loadAccess() {
+    const response = await fetch('../api/setup/access', {cache: 'no-store'});
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    access = data.access || {};
+    applyAccess();
   }
 
   const season = seasonFromUrl();
@@ -314,10 +439,12 @@
     const url = new URL(location.href);
     url.searchParams.set('season_year', seasonSelect.value);
     history.replaceState({}, '', url);
-    load().catch(showError);
+    if (overridePickBy && !overridePickBy.value) overridePickBy.value = todayIso();
+  Promise.all([loadAccess(), load()]).catch(showError);
   });
   dateFilter.addEventListener('change', render);
   pickStatusFilter?.addEventListener('change', render);
+  overrideForm?.addEventListener('submit', (event) => { void submitOverride(event); });
   document.getElementById('print-button').addEventListener('click', () => window.print());
   document.getElementById('back-button').addEventListener('click', () => {
     location.href = `../?season_year=${encodeURIComponent(seasonSelect.value)}`;
