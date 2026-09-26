@@ -12,7 +12,7 @@
 (() => {
   'use strict';
 
-  const CLIENT_BUILD = 'V0.3.19-reusable-name-sync';
+  const CLIENT_BUILD = 'V0.3.18-scheduling-board';
   const reusableFieldIds = new Set([
     'edit-task-name',
     'edit-stage-id',
@@ -173,7 +173,7 @@
     const badge = document.createElement('span');
     badge.id = 'setup-client-build-badge';
     badge.className = 'pill';
-    badge.textContent = 'Client V0.3.19';
+    badge.textContent = 'Client V0.3.18';
     badge.title = CLIENT_BUILD;
     access.insertAdjacentElement('afterend', badge);
   }
