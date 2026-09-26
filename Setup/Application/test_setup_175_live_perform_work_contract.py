@@ -62,6 +62,19 @@ def test_report_work_requires_actual_crew_duration_and_percent() -> None:
     assert "mark_complete:" not in ui
 
 
+def test_report_work_surfaces_one_editable_actual_work_date() -> None:
+    ui = read_app("setup_next_pass.js")
+
+    assert "Work completed on" in ui
+    assert 'class="next-performed-on"' in ui
+    assert 'value="${escapeHtml(day?.work_date || assignment?.work_date || \'\')}"' in ui
+    assert "performed_on: performedOn" in ui
+    assert "p.performed_on || p.work_date" in ui
+    assert "recorded_at" not in ui.split(
+        '<form class="next-completion-form next-report-work-form"', 1
+    )[1].split("</form>", 1)[0]
+
+
 def test_incomplete_report_requires_remaining_work_note() -> None:
     ui = read_app("setup_next_pass.js")
 
@@ -114,7 +127,7 @@ def test_report_work_layout_keeps_actual_fields_compact() -> None:
     assert 'class="next-report-quantity"' in ui
     assert 'class="next-report-units"' in ui
     assert ".next-report-work-form .next-report-work-grid" in css
-    assert "minmax(85px, 120px)" in css
+    assert "minmax(145px, 175px)" in css
 
 
 def test_print_task_is_bounded_cover_sheet_not_schedule_print() -> None:
@@ -140,6 +153,9 @@ def test_procedure_failure_does_not_block_report_work() -> None:
 def test_live_report_work_database_contract() -> None:
     sql = (DB_DIR / "061_add_live_assignment_report_work.sql").read_text(encoding="utf-8")
 
+    assert "ADD COLUMN IF NOT EXISTS performed_on date" in sql
+    assert "p_performed_on date" in sql
+    assert "Work performed date cannot be in the future" in sql
     assert "ADD COLUMN IF NOT EXISTS duration_minutes integer" in sql
     assert "ADD COLUMN IF NOT EXISTS percent_complete integer" in sql
     assert "percent_complete BETWEEN 1 AND 100" in sql
@@ -149,13 +165,15 @@ def test_live_report_work_database_contract() -> None:
     assert "WHEN p_percent_complete = 100 THEN 'COMPLETE'" in sql
     assert "ELSE 'IN_PROGRESS'" in sql
     assert "PERFORM ops.refresh_setup_session_task_schedule_state" in sql
+    assert "actual_started_at = coalesce(st.actual_started_at, v_recorded_at)" not in sql
+    assert "WHEN p_percent_complete = 100 THEN v_recorded_at" not in sql
 
 
 def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
-    assert "setup_next_pass.css?v=2026-09-26.4" in html
-    assert "setup_next_pass.js?v=2026-09-26.4" in html
+    assert "setup_next_pass.css?v=2026-09-26.5" in html
+    assert "setup_next_pass.js?v=2026-09-26.5" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
     assert "setup_acceptance_fixes.js?v=2026-09-26.1" in html
     assert "setup_scheduling_board.css?v=2026-09-26.1" in html
