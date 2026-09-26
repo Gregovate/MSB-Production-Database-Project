@@ -180,7 +180,14 @@ function acceptanceMaterialMarkup(context) {
   return blocks.join('');
 }
 
-loadNextTaskExecution = async function loadNextTaskExecutionAcceptance(details) {
+const setupAcceptanceBaseLoadNextTaskExecution = loadNextTaskExecution;
+loadNextTaskExecution = async function loadNextTaskExecutionAcceptance(details, focusReport = false) {
+  // #175/#132 assignment-centric Perform Work owns the live field workflow.
+  // Preserve these older acceptance refinements only for the legacy projection.
+  if (setupNextState?.performAssignmentMode) {
+    return setupAcceptanceBaseLoadNextTaskExecution(details, focusReport);
+  }
+
   const taskId = Number(details.dataset.taskId);
   const sessionTaskId = Number(details.dataset.sessionTaskId);
   const task = setupNextState.executionTasks.find((item) => Number(item.setup_session_task_id) === sessionTaskId);

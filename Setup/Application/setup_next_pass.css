@@ -375,3 +375,196 @@
     margin-left: 0;
   }
 }
+
+
+/* #175 live scheduled-assignment Perform Work */
+.next-perform-day { margin: 0 0 22px; }
+.next-perform-day > h3 { margin: 4px 0 10px; padding-bottom: 7px; border-bottom: 2px solid #94a3b8; }
+.next-perform-shift { margin: 10px 0 16px; }
+.next-perform-shift > h4 { margin: 0 0 8px; }
+.next-perform-crew { margin: 8px 0 14px; padding-left: 10px; border-left: 4px solid #cbd5e1; }
+.next-perform-crew > h5 { margin: 0 0 7px; }
+.next-perform-assignment-context { padding: 8px 12px 0; color: #475569; font-size: .9rem; }
+.next-perform-actions { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 12px; }
+.next-perform-actions .next-print-task {
+  background: var(--accent-soft, #e9f4fb);
+  color: var(--accent, #0f5f8f);
+  border-color: var(--accent, #0f5f8f);
+}
+.next-perform-assignment-banner { margin: 0 0 12px; padding: 9px 11px; background: #eef6ff; border-left: 4px solid #2563eb; }
+.next-report-work-grid { display: grid; grid-template-columns: repeat(4, minmax(110px, 1fr)); gap: 10px; }
+.next-report-work-form { margin-top: 14px; padding-top: 12px; border-top: 1px solid #cbd5e1; }
+.next-report-work-form label { display: block; margin: 8px 0; }
+.next-report-work-form input, .next-report-work-form textarea { width: 100%; }
+@media (max-width: 760px) {
+  .next-report-work-grid { grid-template-columns: 1fr 1fr; }
+}
+
+
+/* #175 field execution: readiness is advisory planning context, not the
+   scheduled-assignment execution status. Keep the reason visible without
+   making it look like Report Work is blocked. */
+.next-perform-readiness-warning {
+  margin: 8px 12px 0;
+  padding: 8px 10px;
+  border: 1px solid #d6a84b;
+  border-radius: 0.5rem;
+  background: #fff7df;
+  color: #4a3510;
+}
+
+#setup-perform-print-sheet {
+  display: none;
+}
+
+
+.next-procedure-warning {
+  margin: 0;
+  padding: 0.65rem;
+  border: 1px solid #d6a84b;
+  border-radius: 0.45rem;
+  background: #fff7df;
+  color: #4a3510;
+}
+
+
+/* #175 field reporting: keep the high-frequency actual-work fields together.
+   The generic completion form predates Hours/Minutes/% and otherwise spreads
+   these four values vertically across a large field card. */
+.next-report-work-form {
+  grid-template-columns: minmax(0, 0.35fr) minmax(0, 0.65fr);
+}
+
+.next-report-work-form .next-report-work-grid {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(145px, 175px) minmax(80px, 105px) minmax(80px, 105px) minmax(80px, 105px) minmax(95px, 125px);
+  justify-content: start;
+  align-items: end;
+}
+
+.next-report-work-form .next-report-note {
+  grid-column: 1 / -1;
+}
+
+.next-report-work-form .next-report-quantity {
+  grid-column: 1;
+}
+
+.next-report-work-form .next-report-units {
+  grid-column: 2;
+}
+
+.next-report-work-form > button,
+.next-report-work-form > .muted {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+  .next-report-work-form {
+    grid-template-columns: 1fr;
+  }
+
+  .next-report-work-form .next-report-work-grid {
+    grid-template-columns: repeat(2, minmax(90px, 1fr));
+  }
+
+  .next-report-work-form .next-report-note,
+  .next-report-work-form .next-report-quantity,
+  .next-report-work-form .next-report-units,
+  .next-report-work-form > button,
+  .next-report-work-form > .muted {
+    grid-column: 1;
+  }
+}
+
+
+.next-perform-toolbar {
+  display: flex;
+  align-items: end;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin: 0.85rem 0 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.55rem;
+  background: var(--soft, #f5f8fb);
+}
+
+.next-perform-toolbar label {
+  display: grid;
+  gap: 0.25rem;
+  min-width: min(320px, 100%);
+}
+
+.next-perform-toolbar select {
+  min-height: 2.4rem;
+}
+
+@media (max-width: 760px) {
+  .next-perform-toolbar {
+    align-items: stretch;
+  }
+
+  .next-perform-toolbar label {
+    width: 100%;
+  }
+}
+
+
+.next-report-quantity-details {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--border, #d9e0e8);
+  padding-top: 0.5rem;
+}
+
+.next-report-quantity-details > summary {
+  cursor: pointer;
+  color: var(--muted, #64748b);
+  font-weight: 600;
+}
+
+.next-report-quantity-grid {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.35fr) minmax(180px, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+}
+
+@media (max-width: 760px) {
+  .next-report-quantity-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+.next-progress-entry + .next-progress-entry {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border, #d9e0e8);
+}
+
+.next-progress-correction {
+  margin-top: 0.45rem;
+}
+
+.next-progress-correction > summary {
+  cursor: pointer;
+  width: fit-content;
+  color: var(--accent, #0f5f8f);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.next-progress-correction-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.55rem;
+  background: var(--soft, #f5f8fb);
+}
+
+.next-progress-correction-form > button {
+  justify-self: start;
+}

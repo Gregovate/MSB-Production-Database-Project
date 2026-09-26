@@ -9,7 +9,11 @@ const setupNextState = {
   draggedPlanningSessionTaskId: null,
   copySourceId: null,
   schedule: { work_days: [], assignments: [] },
-  executionTasks: []
+  executionTasks: [],
+  performBoard: { session: null, work_days: [], crews: [], tasks: [], assignments: [] },
+  performAssignmentMode: true,
+  performCaptainFilter: null,
+  performCaptainFilterKey: null
 };
 
 function nextIsSitewide(task) {
@@ -665,13 +669,17 @@ function installNextTabs() {
   perform.id = 'perform-view'; perform.className = 'view';
   perform.innerHTML = `
     <div class="card">
-      <div class="section-title"><div><div class="eyebrow">Captain / field execution</div><h2>Perform Setup Work</h2></div>
-      <label>Status<select id="next-perform-filter"><option value="INCOMPLETE">Incomplete</option><option value="COMPLETE">Completed</option><option value="ALL">All</option></select></label></div>
-      <p class="muted">This screen combines the task, current published Procedure PDF, equipment, mapped material/location context, progress, and completion. Movement/scanning writes remain a separate guarded implementation step.</p>
+      <div class="section-title"><div><div class="eyebrow">Captain / field execution</div><h2>Perform Setup Work</h2></div></div>
+      <p class="muted">Only scheduled work appears here. Work is organized by Setup Day, AM/PM, and Crew/Captain. Report Work records actual crew, elapsed time, and percent complete against the exact scheduled assignment.</p>
+      <div class="next-perform-toolbar">
+        <label>Captain
+          <select id="next-perform-captain-filter" aria-label="Filter Perform Work by Captain"></select>
+        </label>
+        <span id="next-perform-filter-summary" class="muted"></span>
+      </div>
       <div id="next-perform-list"></div>
     </div>`;
   main.appendChild(perform);
-  el('next-perform-filter').addEventListener('change', renderNextExecution);
 }
 
 async function promoteNextBaseline() {
@@ -756,26 +764,351 @@ function renderNextSchedule() {
   }));
 }
 
+
 async function loadNextExecution() {
-  const payload = await api(`api/setup/execution?season_year=${encodeURIComponent(appState.seasonYear)}`);
-  setupNextState.executionTasks = payload.tasks || [];
+  const [executionPayload, boardPayload] = await Promise.all([
+    api(`api/setup/execution?season_year=${encodeURIComponent(appState.seasonYear)}`),
+    api(`api/setup/scheduling-board?season_year=${encodeURIComponent(appState.seasonYear)}`)
+  ]);
+  setupNextState.executionTasks = executionPayload.tasks || [];
+  setupNextState.performBoard = boardPayload.board || { session: null, work_days: [], crews: [], tasks: [], assignments: [] };
   renderNextExecution();
 }
 
-function renderNextExecution() {
-  const filter = el('next-perform-filter')?.value || 'INCOMPLETE';
-  let tasks = nextPlanningOrder(setupNextState.executionTasks);
-  if (filter === 'INCOMPLETE') tasks = tasks.filter((task) => task.execution_status !== 'COMPLETE');
-  if (filter === 'COMPLETE') tasks = tasks.filter((task) => task.execution_status === 'COMPLETE');
-  el('next-perform-list').innerHTML = tasks.map((task) => `
-    <details class="next-perform-task" data-session-task-id="${task.setup_session_task_id}" data-task-id="${task.setup_task_id}">
-      <summary><span><strong>${escapeHtml(task.task_name)}</strong><span class="muted"> · ${escapeHtml(nextTaskScopeLabel(task))}</span></span>
-      <span class="pill ${task.execution_status === 'COMPLETE' ? 'verified' : task.prerequisites_complete ? 'unverified' : 'correction'}">${escapeHtml(task.execution_status)}</span></summary>
-      <div class="next-perform-body"><div class="muted">Open to load Procedure, material locations, resources, and progress.</div></div>
-    </details>`).join('') || '<div class="empty-state">No tasks match this filter.</div>';
-  document.querySelectorAll('.next-perform-task').forEach((details) => {
-    details.addEventListener('toggle', () => { if (details.open && !details.dataset.loaded) loadNextTaskExecution(details); });
+function nextPerformTask(sessionTaskId) {
+  return (setupNextState.performBoard.tasks || []).find(
+    (task) => Number(task.setup_session_task_id) === Number(sessionTaskId)
+  ) || setupNextState.executionTasks.find(
+    (task) => Number(task.setup_session_task_id) === Number(sessionTaskId)
+  ) || null;
+}
+
+function nextPerformCrew(assignment) {
+  return (setupNextState.performBoard.crews || []).find(
+    (crew) => Number(crew.setup_work_day_crew_id) === Number(assignment.setup_work_day_crew_id)
+  ) || null;
+}
+
+function nextPerformDay(dayId) {
+  return (setupNextState.performBoard.work_days || []).find(
+    (day) => Number(day.setup_work_day_id) === Number(dayId)
+  ) || null;
+}
+
+function nextEnsurePerformToolbar() {
+  const list = el('next-perform-list');
+  if (!list) return null;
+
+  let toolbar = list.previousElementSibling;
+  if (!toolbar?.classList?.contains('next-perform-toolbar')) {
+    toolbar = document.createElement('div');
+    toolbar.className = 'next-perform-toolbar';
+    toolbar.innerHTML = `
+      <label>Captain
+        <select id="next-perform-captain-filter" aria-label="Filter Perform Work by Captain"></select>
+      </label>
+      <span id="next-perform-filter-summary" class="muted"></span>
+    `;
+    list.insertAdjacentElement('beforebegin', toolbar);
+  }
+  return toolbar;
+}
+
+function nextPerformScheduledCaptains() {
+  const board = setupNextState.performBoard || {};
+  const assignmentCrewIds = new Set(
+    (board.assignments || []).map((assignment) => Number(assignment.setup_work_day_crew_id))
+  );
+  const candidateById = new Map(
+    (board.captain_candidates || []).map((candidate) => [Number(candidate.person_id), candidate])
+  );
+  const rows = new Map();
+
+  for (const crew of board.crews || []) {
+    const crewId = Number(crew.setup_work_day_crew_id);
+    const personId = Number(crew.captain_person_id);
+    if (!assignmentCrewIds.has(crewId) || !personId) continue;
+    const candidate = candidateById.get(personId) || {};
+    if (!rows.has(personId)) {
+      rows.set(personId, {
+        person_id: personId,
+        display_name: candidate.display_name || crew.captain_display_name || `Captain ${personId}`,
+        email: candidate.email || null
+      });
+    }
+  }
+
+  return [...rows.values()].sort((a, b) =>
+    String(a.display_name || '').localeCompare(String(b.display_name || ''), undefined, { sensitivity: 'base' })
+    || Number(a.person_id) - Number(b.person_id)
+  );
+}
+
+function nextPerformCaptainFilterStorageKey() {
+  const email = String(appState.access?.authenticated_email || 'unknown').trim().toLowerCase();
+  const season = Number(appState.seasonYear) || 'none';
+  return `msb.setup.performCaptainFilter.v1.${email}.${season}`;
+}
+
+function nextStoredPerformCaptainFilter() {
+  try {
+    return window.localStorage.getItem(nextPerformCaptainFilterStorageKey());
+  } catch (_error) {
+    return null;
+  }
+}
+
+function nextStorePerformCaptainFilter(value) {
+  try {
+    window.localStorage.setItem(nextPerformCaptainFilterStorageKey(), value);
+  } catch (_error) {
+    // Browser storage is only a convenience; filtering must still work without it.
+  }
+}
+
+function nextPerformDefaultCaptainFilter() {
+  const email = String(appState.access?.authenticated_email || '').trim().toLowerCase();
+  if (!email) return 'ALL';
+  const mine = nextPerformScheduledCaptains().find(
+    (captain) => String(captain.email || '').trim().toLowerCase() === email
+  );
+  return mine ? `CAPTAIN:${mine.person_id}` : 'ALL';
+}
+
+function nextEnsurePerformCaptainFilter() {
+  const storageKey = nextPerformCaptainFilterStorageKey();
+  if (setupNextState.performCaptainFilterKey !== storageKey) {
+    setupNextState.performCaptainFilterKey = storageKey;
+    setupNextState.performCaptainFilter = null;
+  }
+
+  const valid = new Set([
+    'ALL',
+    ...nextPerformScheduledCaptains().map((captain) => `CAPTAIN:${captain.person_id}`)
+  ]);
+
+  if (!setupNextState.performCaptainFilter || !valid.has(setupNextState.performCaptainFilter)) {
+    const stored = nextStoredPerformCaptainFilter();
+    setupNextState.performCaptainFilter = stored && valid.has(stored)
+      ? stored
+      : nextPerformDefaultCaptainFilter();
+  }
+}
+
+function nextRenderPerformCaptainFilter() {
+  const select = el('next-perform-captain-filter');
+  if (!select) return;
+  nextEnsurePerformCaptainFilter();
+
+  const captains = nextPerformScheduledCaptains();
+  select.innerHTML = [
+    '<option value="ALL">All scheduled work</option>',
+    ...captains.map((captain) => (
+      `<option value="CAPTAIN:${captain.person_id}">${escapeHtml(captain.display_name)}</option>`
+    ))
+  ].join('');
+  select.value = setupNextState.performCaptainFilter;
+
+  if (select.dataset.performCaptainFilterInstalled !== '1') {
+    select.dataset.performCaptainFilterInstalled = '1';
+    select.addEventListener('change', () => {
+      setupNextState.performCaptainFilter = select.value || 'ALL';
+      nextStorePerformCaptainFilter(setupNextState.performCaptainFilter);
+      renderNextExecution();
+    });
+  }
+}
+
+function nextFilterPerformAssignments(assignments) {
+  nextEnsurePerformCaptainFilter();
+  const filter = setupNextState.performCaptainFilter || 'ALL';
+  if (filter === 'ALL') return assignments;
+
+  const personId = Number(String(filter).split(':', 2)[1]);
+  if (!personId) return assignments;
+
+  const crewById = new Map(
+    (setupNextState.performBoard.crews || []).map((crew) => [
+      Number(crew.setup_work_day_crew_id),
+      crew
+    ])
+  );
+  return assignments.filter((assignment) => {
+    const crew = crewById.get(Number(assignment.setup_work_day_crew_id));
+    return Number(crew?.captain_person_id) === personId;
   });
+}
+
+function nextPerformAssignmentCard(assignment) {
+  const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
+  const crew = nextPerformCrew(assignment);
+  const captain = crew?.captain_display_name || 'Captain TBD';
+  const executionStatus = String(task.execution_status || 'PLANNED').toUpperCase();
+  const boardStatus = String(task.board_status || '').toUpperCase();
+  const status = executionStatus === 'COMPLETE' || executionStatus === 'IN_PROGRESS'
+    ? executionStatus
+    : boardStatus === 'SCHEDULED'
+      ? 'SCHEDULED'
+      : boardStatus === 'NEEDS_SCHEDULING_AGAIN'
+        ? 'IN_PROGRESS'
+        : executionStatus;
+  const readinessWarning = task.readiness_state === 'NOT_READY'
+    ? `<div class="next-perform-readiness-warning"><strong>Readiness condition:</strong> ${escapeHtml(task.readiness_note || 'Marked Not Ready')} <span class="muted">· soft planning condition; actual work may still be reported</span></div>`
+    : '';
+  return `
+    <details class="next-perform-task next-perform-assignment"
+      data-assignment-id="${assignment.setup_work_day_task_id}"
+      data-session-task-id="${assignment.setup_session_task_id}"
+      data-task-id="${assignment.setup_task_id}">
+      <summary>
+        <span><strong>${escapeHtml(assignment.task_name)}</strong>
+          <span class="muted"> · ${escapeHtml(nextTaskScopeLabel(assignment))}</span>
+        </span>
+        <span class="pill ${status === 'COMPLETE' ? 'verified' : status === 'IN_PROGRESS' ? 'unverified' : ''}">${escapeHtml(status)}</span>
+      </summary>
+      <div class="next-perform-assignment-context">
+        Crew ${escapeHtml(assignment.crew_lane || '—')} · ${escapeHtml(captain)}
+        · Planned crew ${escapeHtml(assignment.planned_crew_count ?? 'TBD')}
+      </div>
+      ${readinessWarning}
+      <div class="next-perform-actions">
+        <button type="button" class="small secondary next-print-task">Print Task</button>
+        <button type="button" class="small next-report-work">Report Work</button>
+        <button type="button" class="small secondary next-report-problem" disabled title="Report Correction handoff is owned by #172">Report Correction</button>
+      </div>
+      <div class="next-perform-body" hidden></div>
+    </details>`;
+}
+
+function renderNextExecution() {
+  const target = el('next-perform-list');
+  if (!target) return;
+  const board = setupNextState.performBoard || {};
+  nextEnsurePerformToolbar();
+  nextRenderPerformCaptainFilter();
+  const allAssignments = (board.assignments || []).slice();
+  const assignments = nextFilterPerformAssignments(allAssignments);
+  const summary = el('next-perform-filter-summary');
+  if (summary) {
+    summary.textContent = assignments.length === allAssignments.length
+      ? `${assignments.length} scheduled assignment${assignments.length === 1 ? '' : 's'}`
+      : `${assignments.length} of ${allAssignments.length} scheduled assignments shown`;
+  }
+  const days = (board.work_days || []).filter((day) =>
+    assignments.some((assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id))
+  );
+
+  target.innerHTML = days.length ? days.map((day) => {
+    const dayAssignments = assignments.filter(
+      (assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id)
+    );
+    const shifts = ['MORNING', 'AFTERNOON', 'ALL_DAY'];
+    return `
+      <section class="next-perform-day">
+        <h3>Setup Day ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.day_of_week || '')} · ${escapeHtml(day.work_date)}</h3>
+        ${shifts.map((shift) => {
+          const shiftItems = dayAssignments.filter((assignment) => assignment.shift_code === shift);
+          if (!shiftItems.length) return '';
+          const crewIds = [...new Set(shiftItems.map((assignment) => Number(assignment.setup_work_day_crew_id)))];
+          return `
+            <div class="next-perform-shift">
+              <h4>${escapeHtml(shift === 'MORNING' ? 'AM' : shift === 'AFTERNOON' ? 'PM' : 'All Day')}</h4>
+              ${crewIds.map((crewId) => {
+                const crew = (board.crews || []).find((item) => Number(item.setup_work_day_crew_id) === crewId);
+                const crewItems = shiftItems
+                  .filter((assignment) => Number(assignment.setup_work_day_crew_id) === crewId)
+                  .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+                return `
+                  <div class="next-perform-crew">
+                    <h5>Crew ${escapeHtml(crew?.crew_code || crewItems[0]?.crew_lane || '—')} · ${escapeHtml(crew?.captain_display_name || 'Captain TBD')}</h5>
+                    ${crewItems.map(nextPerformAssignmentCard).join('')}
+                  </div>`;
+              }).join('')}
+            </div>`;
+        }).join('')}
+      </section>`;
+  }).join('') : '<div class="empty-state">No scheduled assignments match the selected Captain. Choose All scheduled work to see the full field schedule.</div>';
+
+  target.querySelectorAll('.next-perform-assignment').forEach((details) => {
+    details.querySelector('.next-report-work')?.addEventListener('click', async (event) => {
+      event.preventDefault();
+      details.open = true;
+      await loadNextTaskExecution(details, true);
+    });
+    details.querySelector('.next-print-task')?.addEventListener('click', async (event) => {
+      event.preventDefault();
+      await printNextPerformTask(details);
+    });
+    details.addEventListener('toggle', () => {
+      if (details.open && !details.dataset.loaded && details.dataset.loading !== '1') {
+        loadNextTaskExecution(details, false);
+      }
+    });
+  });
+}
+
+async function printNextPerformTask(details) {
+  // Do not open the <details> element until its context is ready. Opening it
+  // first fires the toggle loader and can race this explicit print load.
+  if (!details.dataset.loaded && details.dataset.loading === '1') {
+    for (let attempt = 0; attempt < 100 && details.dataset.loading === '1'; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 50));
+    }
+  }
+  if (!details.dataset.loaded) {
+    await loadNextTaskExecution(details, false);
+  }
+  if (details.dataset.loaded !== '1') {
+    window.alert('Task context could not be loaded, so the task cover sheet cannot be printed.');
+    return;
+  }
+  details.open = true;
+
+  const assignmentId = Number(details.dataset.assignmentId);
+  const sessionTaskId = Number(details.dataset.sessionTaskId);
+  const assignment = (setupNextState.performBoard.assignments || []).find(
+    (item) => Number(item.setup_work_day_task_id) === assignmentId
+  );
+  const task = nextPerformTask(sessionTaskId) || assignment;
+  const day = assignment ? nextPerformDay(assignment.setup_work_day_id) : null;
+  const crew = assignment ? nextPerformCrew(assignment) : null;
+  const taskContext = details.querySelector('.next-perform-grid');
+  const existing = document.getElementById('setup-perform-print-sheet');
+  existing?.remove();
+
+  const sheet = document.createElement('section');
+  sheet.id = 'setup-perform-print-sheet';
+  sheet.innerHTML = `
+    <header class="setup-perform-print-header">
+      <div>
+        <div class="eyebrow">Captain / field execution</div>
+        <h1>Setup Task Cover Sheet</h1>
+      </div>
+      <div class="setup-perform-print-generated"><strong>Generated:</strong> ${escapeHtml(new Date().toLocaleString())}</div>
+    </header>
+    <h2>${escapeHtml(assignment?.task_name || task?.task_name || 'Setup task')}</h2>
+    <div class="setup-perform-print-meta">
+      <div><strong>Scope:</strong> ${escapeHtml(nextTaskScopeLabel(assignment || task || {}))}</div>
+      <div><strong>Scheduled:</strong> Setup Day ${escapeHtml(day?.setup_day_number ?? '—')} · ${escapeHtml(day?.work_date || assignment?.work_date || '')} · ${escapeHtml(assignment?.shift_code === 'MORNING' ? 'AM' : assignment?.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}</div>
+      <div><strong>Crew / Captain:</strong> Crew ${escapeHtml(crew?.crew_code || assignment?.crew_lane || '—')} · ${escapeHtml(crew?.captain_display_name || 'Captain TBD')}</div>
+      <div><strong>Assignment ID:</strong> ${escapeHtml(assignmentId)}</div>
+    </div>
+    ${task?.readiness_state === 'NOT_READY' ? `<div class="setup-perform-print-warning"><strong>Readiness condition:</strong> ${escapeHtml(task.readiness_note || 'Marked Not Ready')}</div>` : ''}
+    ${taskContext ? taskContext.outerHTML : ''}
+    <section class="setup-perform-print-notes">
+      <h3>Field notes / corrections / problems</h3>
+      <div class="setup-perform-print-lines"></div>
+    </section>
+  `;
+  document.body.appendChild(sheet);
+  document.body.classList.add('setup-print-perform-task');
+
+  const cleanup = () => {
+    document.body.classList.remove('setup-print-perform-task');
+    document.getElementById('setup-perform-print-sheet')?.remove();
+  };
+  window.addEventListener('afterprint', cleanup, { once: true });
+  window.print();
 }
 
 function nextLocationText(item) {
@@ -785,53 +1118,199 @@ function nextLocationText(item) {
   return 'Location not yet recorded';
 }
 
-async function loadNextTaskExecution(details) {
+function nextProgressAuditText(progress) {
+  if (!progress?.updated_at || !progress?.recorded_at) return '';
+  const recorded = new Date(progress.recorded_at).getTime();
+  const updated = new Date(progress.updated_at).getTime();
+  if (!Number.isFinite(recorded) || !Number.isFinite(updated) || updated - recorded < 1000) return '';
+  const who = progress.updated_by_name ? ` by ${progress.updated_by_name}` : '';
+  return ` · corrected${who} ${formatTimestamp(progress.updated_at)}`;
+}
+
+function nextProgressCorrectionForm(progress) {
+  if (!appState.access?.can_manage_setup) return '';
+  const duration = Number(progress.duration_minutes || 0);
+  const hours = Math.floor(duration / 60);
+  const minutes = duration % 60;
+  return `
+    <details class="next-progress-correction">
+      <summary>Correct report</summary>
+      <form class="next-progress-correction-form" data-progress-id="${progress.setup_task_progress_id}">
+        <div class="next-report-work-grid">
+          <label>Work completed on<input class="next-correction-performed-on" type="date" value="${escapeHtml(progress.performed_on || progress.work_date || '')}" required></label>
+          <label>Crew size<input class="next-correction-crew" type="number" min="1" value="${escapeHtml(progress.crew_count || '')}" required></label>
+          <label>Hours<input class="next-correction-hours" type="number" min="0" step="1" value="${hours}" required></label>
+          <label>Minutes<input class="next-correction-minutes" type="number" min="0" max="59" step="1" value="${minutes}" required></label>
+          <label>% complete<input class="next-correction-percent" type="number" min="1" max="100" step="1" value="${escapeHtml(progress.percent_complete || '')}" required></label>
+        </div>
+        <label>What was done / what remains<textarea class="next-correction-note" rows="3">${escapeHtml(progress.progress_note || '')}</textarea></label>
+        <details class="next-report-quantity-details">
+          <summary>Add quantity detail (optional)</summary>
+          <div class="next-report-quantity-grid">
+            <label>Completed quantity<input class="next-correction-quantity" type="number" min="1" value="${escapeHtml(progress.completed_quantity || '')}"></label>
+            <label>Which units<input class="next-correction-units" type="text" value="${escapeHtml(progress.completed_units || '')}"></label>
+          </div>
+        </details>
+        <button type="submit">Save Correction</button>
+      </form>
+    </details>
+  `;
+}
+
+function nextProgressEntryHtml(progress) {
+  return `
+    <div class="next-progress-entry">
+      <div>
+        ${escapeHtml(progress.performed_on || progress.work_date || formatTimestamp(progress.recorded_at))}
+        · Crew ${escapeHtml(progress.crew_count)}
+        ${progress.duration_minutes ? ` · ${escapeHtml(formatMinutes(progress.duration_minutes))}` : ''}
+        ${progress.percent_complete ? ` · ${progress.percent_complete}% complete` : ''}
+        ${progress.progress_note ? ` · ${escapeHtml(progress.progress_note)}` : ''}
+        ${escapeHtml(nextProgressAuditText(progress))}
+      </div>
+      ${nextProgressCorrectionForm(progress)}
+    </div>
+  `;
+}
+
+async function submitNextProgressCorrection(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const progressId = Number(form.dataset.progressId);
+  const performedOn = form.querySelector('.next-correction-performed-on').value;
+  const crew = Number(form.querySelector('.next-correction-crew').value || 0);
+  const hours = Number(form.querySelector('.next-correction-hours').value || 0);
+  const minutes = Number(form.querySelector('.next-correction-minutes').value || 0);
+  const percent = Number(form.querySelector('.next-correction-percent').value || 0);
+  const note = form.querySelector('.next-correction-note').value.trim();
+  const durationMinutes = (hours * 60) + minutes;
+
+  if (!performedOn) return window.alert('Work completed on date is required.');
+  if (crew < 1) return window.alert('Crew size must be at least 1.');
+  if (hours < 0 || minutes < 0 || minutes > 59 || durationMinutes <= 0) {
+    return window.alert('Enter the corrected Hours and Minutes worked.');
+  }
+  if (percent < 1 || percent > 100) return window.alert('Percent complete must be between 1 and 100.');
+  if (percent < 100 && !note) return window.alert('For incomplete work, briefly record what was done and what remains.');
+
+  try {
+    setBusy(true);
+    await api(`api/setup/progress/${progressId}`, commandOptions('PATCH', {
+      performed_on: performedOn,
+      crew_count: crew,
+      duration_minutes: durationMinutes,
+      percent_complete: percent,
+      completed_quantity: nullableInteger(form.querySelector('.next-correction-quantity').value),
+      completed_units: form.querySelector('.next-correction-units').value.trim() || null,
+      progress_note: note || null
+    }));
+    setAlert('Work report corrected.', 'ok');
+    await loadNextExecution();
+    if (typeof board205Load === 'function') await board205Load();
+  } catch (error) {
+    setAlert(error.message || error, 'error');
+    window.alert(error.message || error);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function loadNextTaskExecution(details, focusReport = false) {
+  if (details.dataset.loading === '1') return;
+  details.dataset.loading = '1';
   const taskId = Number(details.dataset.taskId);
   const sessionTaskId = Number(details.dataset.sessionTaskId);
-  const task = setupNextState.executionTasks.find((item) => Number(item.setup_session_task_id) === sessionTaskId);
+  const assignmentId = Number(details.dataset.assignmentId);
+  const assignment = (setupNextState.performBoard.assignments || []).find(
+    (item) => Number(item.setup_work_day_task_id) === assignmentId
+  );
+  const task = nextPerformTask(sessionTaskId) || assignment;
+  const day = assignment ? nextPerformDay(assignment.setup_work_day_id) : null;
+  const crew = assignment ? nextPerformCrew(assignment) : null;
   const body = details.querySelector('.next-perform-body');
-  body.innerHTML = '<div class="muted">Loading task field context…</div>';
+  body.hidden = false;
+  body.innerHTML = '<div class="muted">Loading scheduled work context…</div>';
   try {
-    const [contextPayload, resourcePayload, progressPayload, procedurePayload] = await Promise.all([
+    const [contextPayload, resourcePayload, progressPayload, procedureResult] = await Promise.all([
       api(`api/setup/tasks/${taskId}/field-context?season_year=${encodeURIComponent(appState.seasonYear)}`),
       api(`api/setup/tasks/${taskId}/resources`),
       api(`api/setup/session-tasks/${sessionTaskId}/progress`),
       api(`api/setup/tasks/${taskId}/procedure`)
+        .then((payload) => ({ payload, error: null }))
+        .catch((error) => ({ payload: null, error }))
     ]);
     const context = contextPayload.context || {};
     const resources = resourcePayload.resources || [];
     const progress = progressPayload.progress || [];
+    const procedurePayload = procedureResult.payload || {};
+    const procedureError = procedureResult.error;
     const docs = procedurePayload.instructions?.current_documents || procedurePayload.instructions?.documents || [];
     const assets = [
       ...(context.displays || []).map((item) => `<li>Display ${item.display_id} — ${escapeHtml(item.display_name)}${item.container_id ? ` · Container ${item.container_id}` : ''} · <strong>${escapeHtml(nextLocationText(item))}</strong></li>`),
       ...(context.support_containers || []).map((item) => `<li>Support Container ${item.container_id} · <strong>${escapeHtml(nextLocationText(item))}</strong></li>`)
     ];
+    const assignmentProgress = progress.filter((p) => Number(p.setup_work_day_task_id) === assignmentId);
+    const lastPercent = assignmentProgress.length
+      ? Number(assignmentProgress[assignmentProgress.length - 1].percent_complete || 0)
+      : 0;
+    const complete = task?.execution_status === 'COMPLETE';
+
     body.innerHTML = `
-      <div class="next-perform-grid">
-        <section><h4>Task</h4><p>${escapeHtml(task.completion_point || 'Completion point not yet documented.')}</p>
-          ${task.readiness_note ? `<p><strong>Readiness:</strong> ${escapeHtml(task.readiness_note)}</p>` : ''}
-          ${task.weather_note ? `<p><strong>Weather:</strong> ${escapeHtml(task.weather_note)}</p>` : ''}
-          <p><strong>Expected crew:</strong> ${escapeHtml(formatCrew(task))} · <strong>Expected time:</strong> ${escapeHtml(formatMinutes(task.expected_duration_minutes))}</p>
-          <p><strong>Prerequisites:</strong> ${task.prerequisites_complete ? 'Complete / no blockers' : 'Not complete'}</p></section>
-        <section><h4>Equipment / Resources</h4>${resources.length ? `<ul>${resources.map((r) => `<li>${escapeHtml(r.resource_name)} · Qty ${r.quantity_required} · ${escapeHtml(r.requirement_type)}</li>`).join('')}</ul>` : '<p class="muted">No structured resource requirement recorded.</p>'}</section>
-        <section><h4>Material / Current Location</h4>${assets.length ? `<ul>${assets.join('')}</ul>` : '<p class="muted">No Displays or support Containers are mapped to this reusable task yet.</p>'}</section>
-        <section><h4>Published Setup Procedure</h4>${docs.length ? docs.map((doc) => `<p><a target="_blank" rel="noopener" href="api/setup/tasks/${taskId}/procedure/current?name=${encodeURIComponent(doc.name || '')}">${escapeHtml(doc.name || 'Open current PDF')}</a></p>`).join('') : `<p class="muted">No published Setup PDF resolved for this task scope.${nextIsSitewide(task) ? ' Site-wide Procedures belong in Display Folders\\Site Infrastructure\\Procedures\\Setup.' : ''}</p>`}</section>
+      <div class="next-perform-assignment-banner">
+        <strong>Scheduled assignment:</strong>
+        Setup Day ${escapeHtml(day?.setup_day_number ?? '—')} · ${escapeHtml(day?.work_date || assignment?.work_date || '')}
+        · ${escapeHtml(assignment?.shift_code === 'MORNING' ? 'AM' : assignment?.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}
+        · Crew ${escapeHtml(crew?.crew_code || assignment?.crew_lane || '—')}
+        · ${escapeHtml(crew?.captain_display_name || 'Captain TBD')}
       </div>
-      <section class="next-progress-history"><h4>Progress history</h4>${progress.length ? progress.map((p) => `<div>${escapeHtml(formatTimestamp(p.recorded_at))} · Crew ${p.crew_count}${p.completed_quantity ? ` · ${p.completed_quantity} completed` : ''}${p.completed_units ? ` · ${escapeHtml(p.completed_units)}` : ''}${p.progress_note ? ` · ${escapeHtml(p.progress_note)}` : ''}${p.marks_task_complete ? ' · COMPLETE' : ''}</div>`).join('') : '<div class="muted">No progress recorded yet.</div>'}</section>
-      ${task.execution_status === 'COMPLETE' ? `<div class="next-complete-banner">Completed ${escapeHtml(formatTimestamp(task.actual_completed_at))}${task.completed_by_name ? ` by ${escapeHtml(task.completed_by_name)}` : ''}${task.completion_note ? ` · ${escapeHtml(task.completion_note)}` : ''}</div>` : `
-      <form class="next-completion-form" data-session-task-id="${sessionTaskId}">
-        <label>Crew size<input class="next-crew" type="number" min="1" required></label>
-        <label>Completed quantity <span class="muted">(optional, e.g. 3 trees)</span><input class="next-quantity" type="number" min="1"></label>
-        <label>Which units / what was completed <span class="muted">(optional)</span><input class="next-units" type="text" placeholder="Example: Trees 1, 3, 4"></label>
-        <label>Progress / completion note <span class="muted">(optional)</span><textarea class="next-note" rows="2"></textarea></label>
-        <label class="checkbox-label"><input class="next-mark-complete" type="checkbox"> Entire task complete</label>
-        <button type="submit">Save Progress / Completion</button>
+      <div class="next-perform-grid">
+        <section><h4>Task</h4><p>${escapeHtml(task?.completion_point || 'Completion point not yet documented.')}</p>
+          ${task?.readiness_note ? `<p><strong>Can start when:</strong> ${escapeHtml(task.readiness_note)}</p>` : ''}
+          ${task?.weather_note ? `<p><strong>Weather limits:</strong> ${escapeHtml(task.weather_note)}</p>` : ''}
+          <p><strong>Expected crew:</strong> ${escapeHtml(formatCrew(task))} · <strong>Expected time:</strong> ${escapeHtml(formatMinutes(task?.expected_duration_minutes))}</p></section>
+        <section><h4>Equipment / Resources</h4>${resources.length ? `<ul>${resources.map((r) => `<li>${escapeHtml(r.resource_name)} · Qty ${r.quantity_required} · ${escapeHtml(r.requirement_type)}</li>`).join('')}</ul>` : '<p class="muted">No structured resource requirement recorded.</p>'}</section>
+        <section><h4>Material / Current Location</h4>${assets.length ? `<ul>${assets.join('')}</ul>` : '<p class="muted">No Displays or support Containers are mapped to this task.</p>'}</section>
+        <section><h4>Published Setup Procedure</h4>${docs.length
+          ? docs.map((doc) => `<p><a target="_blank" rel="noopener" href="api/setup/tasks/${taskId}/procedure/current?name=${encodeURIComponent(doc.name || '')}">${escapeHtml(doc.name || 'Open current PDF')}</a></p>`).join('')
+          : procedureError
+            ? `<p class="next-procedure-warning"><strong>Procedure context unavailable.</strong> ${escapeHtml(procedureError.message || procedureError)} Report Work remains available.</p>`
+            : '<p class="muted">No current Setup Procedure is resolved for this task.</p>'}</section>
+      </div>
+      <section class="next-progress-history"><h4>Progress history</h4>${progress.length ? progress.map(nextProgressEntryHtml).join('') : '<div class="muted">No progress recorded yet.</div>'}</section>
+      ${complete ? '<div class="next-complete-banner">This annual task is complete.</div>' : `
+      <form class="next-completion-form next-report-work-form"
+        data-session-task-id="${sessionTaskId}"
+        data-assignment-id="${assignmentId}">
+        <div class="next-report-work-grid">
+          <label>Work completed on<input class="next-performed-on" type="date" value="${escapeHtml(day?.work_date || assignment?.work_date || '')}" required></label>
+          <label>Crew size<input class="next-crew" type="number" min="1" required></label>
+          <label>Hours<input class="next-duration-hours" type="number" min="0" step="1" required></label>
+          <label>Minutes<input class="next-duration-minutes" type="number" min="0" max="59" step="1" value="0" required></label>
+          <label>% complete<input class="next-percent-complete" type="number" min="1" max="100" step="1" value="${Math.max(lastPercent, 1)}" required></label>
+        </div>
+        <label class="next-report-note">What was done / what remains<textarea class="next-note" rows="3" placeholder="Required when the task is not 100% complete"></textarea></label>
+        <details class="next-report-quantity-details">
+          <summary>Add quantity detail (optional)</summary>
+          <div class="next-report-quantity-grid">
+            <label class="next-report-quantity">Completed quantity<input class="next-quantity" type="number" min="1"></label>
+            <label class="next-report-units">Which units<input class="next-units" type="text"></label>
+          </div>
+        </details>
+        <button type="submit">Save Work Report</button>
+        <div class="muted">100% completes the annual task. Anything below 100% records partial work and leaves the task In Progress.</div>
       </form>`}
     `;
     details.dataset.loaded = '1';
-    body.querySelector('.next-completion-form')?.addEventListener('submit', submitNextProgress);
+    const form = body.querySelector('.next-report-work-form');
+    form?.addEventListener('submit', submitNextProgress);
+    body.querySelectorAll('.next-progress-correction-form').forEach(
+      (correctionForm) => correctionForm.addEventListener('submit', submitNextProgressCorrection)
+    );
+    if (focusReport && form) form.querySelector('.next-crew')?.focus();
   } catch (error) {
-    body.innerHTML = `<strong>Task field context could not be loaded.</strong><div class="muted">${escapeHtml(error.message || error)}</div>`;
+    body.innerHTML = `<strong>Scheduled work context could not be loaded.</strong><div class="muted">${escapeHtml(error.message || error)}</div>`;
+  } finally {
+    delete details.dataset.loading;
   }
 }
 
@@ -839,20 +1318,44 @@ async function submitNextProgress(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const sessionTaskId = Number(form.dataset.sessionTaskId);
+  const assignmentId = Number(form.dataset.assignmentId);
+  const performedOn = form.querySelector('.next-performed-on').value;
   const crew = Number(form.querySelector('.next-crew').value || 0);
-  if (crew < 1) return;
+  const hours = Number(form.querySelector('.next-duration-hours').value || 0);
+  const minutes = Number(form.querySelector('.next-duration-minutes').value || 0);
+  const percent = Number(form.querySelector('.next-percent-complete').value || 0);
+  const note = form.querySelector('.next-note').value.trim();
+  const durationMinutes = (hours * 60) + minutes;
+
+  if (!performedOn) return window.alert('Work completed on date is required.');
+  if (crew < 1) return window.alert('Crew size must be at least 1.');
+  if (hours < 0 || minutes < 0 || minutes > 59 || durationMinutes <= 0) {
+    return window.alert('Enter the actual Hours and Minutes worked.');
+  }
+  if (percent < 1 || percent > 100) return window.alert('Percent complete must be between 1 and 100.');
+  if (percent < 100 && !note) return window.alert('For incomplete work, briefly record what was done and what remains.');
+
   try {
+    setBusy(true);
     await api(`api/setup/session-tasks/${sessionTaskId}/progress`, commandOptions('POST', {
-      shift_code: 'ALL_DAY',
+      setup_work_day_task_id: assignmentId,
+      performed_on: performedOn,
       crew_count: crew,
+      duration_minutes: durationMinutes,
+      percent_complete: percent,
       completed_quantity: nullableInteger(form.querySelector('.next-quantity').value),
       completed_units: form.querySelector('.next-units').value.trim() || null,
-      progress_note: form.querySelector('.next-note').value.trim() || null,
-      mark_complete: form.querySelector('.next-mark-complete').checked
+      progress_note: note || null
     }));
-    setAlert(form.querySelector('.next-mark-complete').checked ? 'Task marked complete.' : 'Task progress recorded.', 'ok');
+    setAlert(percent === 100 ? 'Work reported — task complete.' : `Work reported — task is ${percent}% complete and remains In Progress.`, 'ok');
     await loadNextExecution();
-  } catch (error) { setAlert(error.message || error, 'error'); window.alert(error.message || error); }
+    if (typeof board205Load === 'function') await board205Load();
+  } catch (error) {
+    setAlert(error.message || error, 'error');
+    window.alert(error.message || error);
+  } finally {
+    setBusy(false);
+  }
 }
 
 const priorNextPopulateStageSelects = populateStageSelects;

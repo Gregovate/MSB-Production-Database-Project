@@ -119,5 +119,5 @@ def test_final_browser_does_not_enable_movement_writes() -> None:
     html = (APP_DIR / "production.html").read_text(encoding="utf-8")
     client = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
     assert "movement write commands are not installed yet" in html
-    assert "Movement/scanning writes remain a separate guarded implementation step" in client
+    assert "movement writes remain the next guarded integration step" in client
     assert "Simulate Container Scan" not in html
