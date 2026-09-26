@@ -659,24 +659,29 @@ A reusable rename is therefore a durable identity-label correction, not an annua
 
 Do not create a separate Setup-only calendar rollover flag. Annual operational season identity already belongs to `ref.season`, including `season_year`, start/end dates, and `active_flag`.
 
+For Setup annual-name synchronization, however, the definitive freeze boundary is **creation of the next non-historical Setup Session**. Changing `ref.season.active_flag` prepares/identifies the operational year; it does not by itself freeze the prior Setup annual occurrence.
+
 The intended rollover is deliberate:
 
 ```text
-ref.season active year
-    = current operational season
+current newest non-historical Setup Session
+    = current Setup season for reusable-name synchronization
 
-matching Setup Session PLANNING / ACTIVE
-    = current annual planning/execution/cleanup remains mutable
+no 2027 Setup Session exists
+    -> 2026 remains current/open for cleanup
+    -> reusable renames continue synchronizing into 2026
 
-activate next ref.season
-    -> establish next operational season
-    -> create/seed that season's Setup Session through the governed command
+activate/prepare 2027 in ref.season
+    -> 2027 becomes a valid operational season target
+    -> 2026 still remains current for Setup until the 2027 Setup Session exists
 
-prior Setup Session COMPLETE
-    = freeze prior annual record as history
+create/seed 2027 Setup Session
+    -> 2027 becomes the current Setup season
+    -> 2026 reusable-name synchronization stops
+    -> 2026 annual identity/name is frozen as prior-year history
 ```
 
-For the 2026 -> 2027 transition, cleanup may continue through the off-season while 2026 remains the active operational season and its Setup Session remains open. Do not introduce a January 1 trigger merely to force rollover.
+For the 2026 -> 2027 transition, cleanup may therefore continue through the off-season until the 2027 planning Session is actually created. Do not introduce a January 1 trigger merely to force rollover.
 
 The reusable Catalog remains separately editable under its normal Manager authority.
 
