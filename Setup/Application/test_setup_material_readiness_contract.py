@@ -190,6 +190,7 @@ def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_a
     api = read("setup_material_readiness_api.py")
     repo = read("setup_material_readiness_repository.py")
     migration = (DB_DIR / "060_add_setup_pick_list_manager_override.sql").read_text(encoding="utf-8")
+    validation = (APP_DIR.parent / "Acceptance" / "setup_206_pick_list_override_disposable_validation.sql").read_text(encoding="utf-8")
 
     assert "CREATE TABLE IF NOT EXISTS ops.setup_pick_list_override" in migration
     assert "UNIQUE (setup_session_id, container_id)" in migration
@@ -204,6 +205,8 @@ def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_a
     assert "last_movement_event_id IS NOT NULL" in migration
     assert "Cannot cancel a Manager Pick List override after the Container has movement evidence" in migration
     assert "ops.set_setup_pick_list_override" in migration
+    assert "SETUP_206_PICK_LIST_OVERRIDE_DISPOSABLE_VALIDATION_PASS" in validation
+    assert "fieldwiring_app has forbidden broad Pick List override DML" in validation
 
     assert '@setup_material_readiness_api.post("/api/setup/material-readiness/overrides")' in api
     assert "require_setup_command()" in api
@@ -230,3 +233,5 @@ def test_manager_override_ui_is_explicit_and_dedupes_into_normal_pick_rows() -> 
     assert "Cancel Override" in ui
     assert "Schedule-derived demand, if any, will remain." in ui
     assert "override_destination" in ui
+    assert "manager_override_needed_for" in ui
+    assert "reason.reason_type === 'MANAGER_OVERRIDE'" in ui
