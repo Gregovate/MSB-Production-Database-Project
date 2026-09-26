@@ -357,7 +357,7 @@ class SetupMaterialReadinessRepository:
                 """
                 SELECT *
                 FROM ops.set_setup_pick_list_override(
-                    %s,%s,%s,%s::date,%s::date,%s,%s,%s
+                    %s,%s,%s,%s::date,%s::date,%s::integer,%s,%s
                 )
                 """,
                 (
