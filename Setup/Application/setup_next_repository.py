@@ -232,11 +232,13 @@ class SetupNextRepository:
                        p.shift_code, p.crew_count,
                        p.duration_minutes, p.percent_complete,
                        p.completed_quantity, p.completed_units, p.progress_note,
-                       p.marks_task_complete, p.recorded_at,
-                       nullif(btrim(concat_ws(' ', actor.first_name, actor.last_name)), '') AS recorded_by_name
+                       p.marks_task_complete, p.recorded_at, p.updated_at,
+                       nullif(btrim(concat_ws(' ', actor.first_name, actor.last_name)), '') AS recorded_by_name,
+                       nullif(btrim(concat_ws(' ', updater.first_name, updater.last_name)), '') AS updated_by_name
                 FROM ops.setup_task_progress p
                 LEFT JOIN ops.setup_work_day wd ON wd.setup_work_day_id = p.setup_work_day_id
                 LEFT JOIN ref.person actor ON actor.person_id = p.created_by_person_id
+                LEFT JOIN ref.person updater ON updater.person_id = p.updated_by_person_id
                 WHERE p.setup_session_task_id = %s
                 ORDER BY p.recorded_at, p.setup_task_progress_id
             """, (session_task_id,))
