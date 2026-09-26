@@ -10,10 +10,10 @@ $ServerScript = Join-Path $ScriptDir 'setup_206_pick_list_production_deploy_serv
 
 $ExpectedBranch = 'main'
 $AcceptedBrowserSha = '59148515ab361a297cd7107184662648cd10a60d'
-$AcceptedTargetSha = 'a084b0130eae4547f26f3aaddf181b644eccd0b9'
+$AcceptedTargetSha = '24dd851b6ceed879ca96170db648476a8307a775'
 $MigrationPath = 'Setup/Database/060_add_setup_pick_list_manager_override.sql'
 $AcceptedMigrationBlob = '72137b49d78da26647e539769973641b24ee1c57'
-$AcceptedServerRunnerBlob = '4160c4f12d264d83e23f82bce6fa0b969f751ef9'
+$AcceptedServerRunnerBlob = '17285c76b91edc0781fd1ffae9bcce5bf056f441'
 
 if (-not (Test-Path -LiteralPath $ServerScript -PathType Leaf)) {
     throw "Required #206 Production deployment runner is missing: $ServerScript"
