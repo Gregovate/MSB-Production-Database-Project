@@ -131,6 +131,17 @@ def test_print_task_waits_for_context_before_opening_details() -> None:
     )
 
 
+def test_optional_quantity_detail_is_collapsed_by_default() -> None:
+    ui = read_app("setup_next_pass.js")
+    css = read_app("setup_next_pass.css")
+
+    assert "Add quantity detail (optional)" in ui
+    assert 'class="next-report-quantity-details"' in ui
+    assert 'class="next-quantity"' in ui
+    assert 'class="next-units"' in ui
+    assert ".next-report-quantity-details" in css
+
+
 def test_report_work_layout_keeps_actual_fields_compact() -> None:
     ui = read_app("setup_next_pass.js")
     css = read_app("setup_next_pass.css")
@@ -184,8 +195,8 @@ def test_live_report_work_database_contract() -> None:
 def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
-    assert "setup_next_pass.css?v=2026-09-26.7" in html
-    assert "setup_next_pass.js?v=2026-09-26.7" in html
+    assert "setup_next_pass.css?v=2026-09-26.8" in html
+    assert "setup_next_pass.js?v=2026-09-26.8" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
     assert "setup_acceptance_fixes.js?v=2026-09-26.1" in html
     assert "setup_scheduling_board.css?v=2026-09-26.1" in html
