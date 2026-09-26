@@ -44,6 +44,8 @@ protected application = https://my.sheboyganlights.org/setup/
 initial Scheduling Board launch target = 06a6536d92db5c7352beeed496563ed9bfdb7146
 current live Setup SHA = 55e097e7bb3b807793893defc939c9a23fc4ec5d
 version = V0.3.18-scheduling-board
+current corrective migration = 059 reusable task-name synchronization
+current annual reusable-name mismatches = 0
 2025 Setup Session = historical / verification evidence
 2026 Setup Session = LIVE annual planning/execution context
 ```
