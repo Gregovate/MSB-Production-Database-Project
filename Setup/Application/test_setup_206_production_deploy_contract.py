@@ -16,10 +16,10 @@ def test_206_production_wrapper_pins_exact_accepted_release() -> None:
 
     assert "$ExpectedBranch = 'main'" in wrapper
     assert "$AcceptedBrowserSha = '59148515ab361a297cd7107184662648cd10a60d'" in wrapper
-    assert "$AcceptedTargetSha = 'a084b0130eae4547f26f3aaddf181b644eccd0b9'" in wrapper
+    assert "$AcceptedTargetSha = '24dd851b6ceed879ca96170db648476a8307a775'" in wrapper
     assert "$MigrationPath = 'Setup/Database/060_add_setup_pick_list_manager_override.sql'" in wrapper
     assert "$AcceptedMigrationBlob = '72137b49d78da26647e539769973641b24ee1c57'" in wrapper
-    assert "$AcceptedServerRunnerBlob = '4160c4f12d264d83e23f82bce6fa0b969f751ef9'" in wrapper
+    assert "$AcceptedServerRunnerBlob = '17285c76b91edc0781fd1ffae9bcce5bf056f441'" in wrapper
     assert "V0.3.18-scheduling-board" in wrapper
     assert "V0.3.19-pick-list" in wrapper
     assert "Production_Database_Change_Deployment_Runbook.md" in wrapper
@@ -34,7 +34,7 @@ def test_206_server_runner_follows_bounded_database_then_setup_release_order() -
     server = read_accept("setup_206_pick_list_production_deploy_server.sh")
 
     assert 'ACCEPTED_BROWSER_SHA="59148515ab361a297cd7107184662648cd10a60d"' in server
-    assert 'TARGET_SHA="a084b0130eae4547f26f3aaddf181b644eccd0b9"' in server
+    assert 'TARGET_SHA="24dd851b6ceed879ca96170db648476a8307a775"' in server
     assert 'EXPECTED_PRE_VERSION="V0.3.18-scheduling-board"' in server
     assert 'EXPECTED_POST_VERSION="V0.3.19-pick-list"' in server
     assert 'MIGRATION_REL="Setup/Database/060_add_setup_pick_list_manager_override.sql"' in server
