@@ -535,3 +535,36 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+.next-progress-entry + .next-progress-entry {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border, #d9e0e8);
+}
+
+.next-progress-correction {
+  margin-top: 0.45rem;
+}
+
+.next-progress-correction > summary {
+  cursor: pointer;
+  width: fit-content;
+  color: var(--accent, #0f5f8f);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.next-progress-correction-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.55rem;
+  background: var(--soft, #f5f8fb);
+}
+
+.next-progress-correction-form > button {
+  justify-self: start;
+}
