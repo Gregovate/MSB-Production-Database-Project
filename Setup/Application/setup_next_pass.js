@@ -1118,6 +1118,103 @@ function nextLocationText(item) {
   return 'Location not yet recorded';
 }
 
+function nextProgressAuditText(progress) {
+  if (!progress?.updated_at || !progress?.recorded_at) return '';
+  const recorded = new Date(progress.recorded_at).getTime();
+  const updated = new Date(progress.updated_at).getTime();
+  if (!Number.isFinite(recorded) || !Number.isFinite(updated) || updated - recorded < 1000) return '';
+  const who = progress.updated_by_name ? ` by ${progress.updated_by_name}` : '';
+  return ` · corrected${who} ${formatTimestamp(progress.updated_at)}`;
+}
+
+function nextProgressCorrectionForm(progress) {
+  if (!appState.access?.can_manage_setup) return '';
+  const duration = Number(progress.duration_minutes || 0);
+  const hours = Math.floor(duration / 60);
+  const minutes = duration % 60;
+  return `
+    <details class="next-progress-correction">
+      <summary>Correct report</summary>
+      <form class="next-progress-correction-form" data-progress-id="${progress.setup_task_progress_id}">
+        <div class="next-report-work-grid">
+          <label>Work completed on<input class="next-correction-performed-on" type="date" value="${escapeHtml(progress.performed_on || progress.work_date || '')}" required></label>
+          <label>Crew size<input class="next-correction-crew" type="number" min="1" value="${escapeHtml(progress.crew_count || '')}" required></label>
+          <label>Hours<input class="next-correction-hours" type="number" min="0" step="1" value="${hours}" required></label>
+          <label>Minutes<input class="next-correction-minutes" type="number" min="0" max="59" step="1" value="${minutes}" required></label>
+          <label>% complete<input class="next-correction-percent" type="number" min="1" max="100" step="1" value="${escapeHtml(progress.percent_complete || '')}" required></label>
+        </div>
+        <label>What was done / what remains<textarea class="next-correction-note" rows="3">${escapeHtml(progress.progress_note || '')}</textarea></label>
+        <details class="next-report-quantity-details">
+          <summary>Add quantity detail (optional)</summary>
+          <div class="next-report-quantity-grid">
+            <label>Completed quantity<input class="next-correction-quantity" type="number" min="1" value="${escapeHtml(progress.completed_quantity || '')}"></label>
+            <label>Which units<input class="next-correction-units" type="text" value="${escapeHtml(progress.completed_units || '')}"></label>
+          </div>
+        </details>
+        <button type="submit">Save Correction</button>
+      </form>
+    </details>
+  `;
+}
+
+function nextProgressEntryHtml(progress) {
+  return `
+    <div class="next-progress-entry">
+      <div>
+        ${escapeHtml(progress.performed_on || progress.work_date || formatTimestamp(progress.recorded_at))}
+        · Crew ${escapeHtml(progress.crew_count)}
+        ${progress.duration_minutes ? ` · ${escapeHtml(formatMinutes(progress.duration_minutes))}` : ''}
+        ${progress.percent_complete ? ` · ${progress.percent_complete}% complete` : ''}
+        ${progress.progress_note ? ` · ${escapeHtml(progress.progress_note)}` : ''}
+        ${escapeHtml(nextProgressAuditText(progress))}
+      </div>
+      ${nextProgressCorrectionForm(progress)}
+    </div>
+  `;
+}
+
+async function submitNextProgressCorrection(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const progressId = Number(form.dataset.progressId);
+  const performedOn = form.querySelector('.next-correction-performed-on').value;
+  const crew = Number(form.querySelector('.next-correction-crew').value || 0);
+  const hours = Number(form.querySelector('.next-correction-hours').value || 0);
+  const minutes = Number(form.querySelector('.next-correction-minutes').value || 0);
+  const percent = Number(form.querySelector('.next-correction-percent').value || 0);
+  const note = form.querySelector('.next-correction-note').value.trim();
+  const durationMinutes = (hours * 60) + minutes;
+
+  if (!performedOn) return window.alert('Work completed on date is required.');
+  if (crew < 1) return window.alert('Crew size must be at least 1.');
+  if (hours < 0 || minutes < 0 || minutes > 59 || durationMinutes <= 0) {
+    return window.alert('Enter the corrected Hours and Minutes worked.');
+  }
+  if (percent < 1 || percent > 100) return window.alert('Percent complete must be between 1 and 100.');
+  if (percent < 100 && !note) return window.alert('For incomplete work, briefly record what was done and what remains.');
+
+  try {
+    setBusy(true);
+    await api(`api/setup/progress/${progressId}`, commandOptions('PATCH', {
+      performed_on: performedOn,
+      crew_count: crew,
+      duration_minutes: durationMinutes,
+      percent_complete: percent,
+      completed_quantity: nullableInteger(form.querySelector('.next-correction-quantity').value),
+      completed_units: form.querySelector('.next-correction-units').value.trim() || null,
+      progress_note: note || null
+    }));
+    setAlert('Work report corrected.', 'ok');
+    await loadNextExecution();
+    if (typeof board205Load === 'function') await board205Load();
+  } catch (error) {
+    setAlert(error.message || error, 'error');
+    window.alert(error.message || error);
+  } finally {
+    setBusy(false);
+  }
+}
+
 async function loadNextTaskExecution(details, focusReport = false) {
   if (details.dataset.loading === '1') return;
   details.dataset.loading = '1';
@@ -1179,7 +1276,7 @@ async function loadNextTaskExecution(details, focusReport = false) {
             ? `<p class="next-procedure-warning"><strong>Procedure context unavailable.</strong> ${escapeHtml(procedureError.message || procedureError)} Report Work remains available.</p>`
             : '<p class="muted">No current Setup Procedure is resolved for this task.</p>'}</section>
       </div>
-      <section class="next-progress-history"><h4>Progress history</h4>${progress.length ? progress.map((p) => `<div>${escapeHtml(p.performed_on || p.work_date || formatTimestamp(p.recorded_at))} · Crew ${p.crew_count}${p.duration_minutes ? ` · ${escapeHtml(formatMinutes(p.duration_minutes))}` : ''}${p.percent_complete ? ` · ${p.percent_complete}% complete` : ''}${p.progress_note ? ` · ${escapeHtml(p.progress_note)}` : ''}</div>`).join('') : '<div class="muted">No progress recorded yet.</div>'}</section>
+      <section class="next-progress-history"><h4>Progress history</h4>${progress.length ? progress.map(nextProgressEntryHtml).join('') : '<div class="muted">No progress recorded yet.</div>'}</section>
       ${complete ? '<div class="next-complete-banner">This annual task is complete.</div>' : `
       <form class="next-completion-form next-report-work-form"
         data-session-task-id="${sessionTaskId}"
@@ -1206,6 +1303,9 @@ async function loadNextTaskExecution(details, focusReport = false) {
     details.dataset.loaded = '1';
     const form = body.querySelector('.next-report-work-form');
     form?.addEventListener('submit', submitNextProgress);
+    body.querySelectorAll('.next-progress-correction-form').forEach(
+      (correctionForm) => correctionForm.addEventListener('submit', submitNextProgressCorrection)
+    );
     if (focusReport && form) form.querySelector('.next-crew')?.focus();
   } catch (error) {
     body.innerHTML = `<strong>Scheduled work context could not be loaded.</strong><div class="muted">${escapeHtml(error.message || error)}</div>`;
