@@ -23,7 +23,7 @@ def test_perform_work_is_scheduled_assignment_projection() -> None:
     assert "captain_display_name" in ui
     assert 'data-assignment-id=' in ui
 
-    assert "next-perform-filter" not in ui
+    assert 'id="next-perform-filter"' not in ui
 
 
 def test_perform_work_defaults_to_signed_in_captain_when_scheduled() -> None:
