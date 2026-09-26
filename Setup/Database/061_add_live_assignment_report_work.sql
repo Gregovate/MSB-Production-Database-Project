@@ -422,6 +422,13 @@ SELECT
         FROM information_schema.columns
         WHERE table_schema = 'ops'
           AND table_name = 'setup_task_progress'
+          AND column_name = 'performed_on'
+    ) AS performed_on_column_ready,
+    EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'ops'
+          AND table_name = 'setup_task_progress'
           AND column_name = 'duration_minutes'
     ) AS duration_column_ready,
     EXISTS (
@@ -432,7 +439,7 @@ SELECT
           AND column_name = 'percent_complete'
     ) AS percent_complete_column_ready,
     to_regprocedure(
-        'ops.record_setup_task_progress(text,bigint,integer,integer,integer,integer,text,text,bigint,bigint,text)'
+        'ops.record_setup_task_progress(text,bigint,date,integer,integer,integer,integer,text,text,bigint,bigint,text)'
     ) IS NOT NULL AS assignment_progress_command_ready,
     to_regprocedure(
         'ops.record_setup_task_progress(text,bigint,bigint,text,integer,integer,text,text,boolean)'
