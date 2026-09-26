@@ -18,13 +18,16 @@ This handoff and the Setup engineering `README.md` are the current resume author
 
 ```text
 protected application = https://my.sheboyganlights.org/setup/
-live /opt/msb-setup SHA = 55e097e7bb3b807793893defc939c9a23fc4ec5d
-version = V0.3.18-scheduling-board
+live /opt/msb-setup SHA = 24dd851b6ceed879ca96170db648476a8307a775
+version = V0.3.19-pick-list
 service = msb-setup.service
 listener = 192.168.5.9:8794
 2025 Setup Session = HISTORICAL_VERIFICATION / historical evidence
 2026 Setup Session = LIVE / PLANNING
 Scheduling Board = live / Production accepted
+Rolling Pick List = live / Production accepted
+migration 060 = installed
+current Setup fingerprint = 96b399ee872c1fe980d6f69a1ad34157
 real 2026 scheduling = started
 ```
 
