@@ -60,6 +60,35 @@ def test_assignment_grouping_is_not_reordered_by_stage_view() -> None:
     assert "if (setupNextState?.performAssignmentMode) return;" in stage
 
 
+def test_legacy_acceptance_override_delegates_assignment_mode() -> None:
+    acceptance = read_app("setup_acceptance_fixes.js")
+
+    assert "setupAcceptanceBaseLoadNextTaskExecution = loadNextTaskExecution" in acceptance
+    assert "if (setupNextState?.performAssignmentMode)" in acceptance
+    assert "setupAcceptanceBaseLoadNextTaskExecution(details, focusReport)" in acceptance
+
+
+def test_perform_work_status_separates_schedule_from_readiness() -> None:
+    ui = read_app("setup_next_pass.js")
+
+    assert "task.board_status" in ui
+    assert "boardStatus === 'SCHEDULED'" in ui
+    assert "next-perform-readiness-warning" in ui
+    assert "soft planning condition; actual work may still be reported" in ui
+
+
+def test_print_task_is_bounded_cover_sheet_not_schedule_print() -> None:
+    ui = read_app("setup_next_pass.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "printNextPerformTask(details)" in ui
+    assert "setup-perform-print-sheet" in ui
+    assert "setup-print-perform-task" in ui
+    assert "Field notes / corrections / problems" in ui
+    assert "body.setup-print-perform-task > #setup-perform-print-sheet" in css
+    assert "body.setup-print-perform-task #schedule-view" in css
+
+
 def test_live_report_work_database_contract() -> None:
     sql = (DB_DIR / "061_add_live_assignment_report_work.sql").read_text(encoding="utf-8")
 
@@ -77,6 +106,9 @@ def test_live_report_work_database_contract() -> None:
 def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
-    assert "setup_next_pass.css?v=2026-09-25.3" in html
-    assert "setup_next_pass.js?v=2026-09-25.3" in html
+    assert "setup_next_pass.css?v=2026-09-26.1" in html
+    assert "setup_next_pass.js?v=2026-09-26.1" in html
+    assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
+    assert "setup_acceptance_fixes.js?v=2026-09-26.1" in html
+    assert "setup_scheduling_board.css?v=2026-09-26.1" in html
     assert "setup_stage_order.js?v=2026-09-25.1" in html
