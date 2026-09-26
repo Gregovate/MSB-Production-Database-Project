@@ -1,5 +1,6 @@
 param(
-    [string]$Server = 'msbadmin@192.168.5.9'
+    [string]$Server = 'msbadmin@192.168.5.9',
+    [string]$OperatorEmail = 'gliebig@sheboyganlights.org'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,7 +14,7 @@ $AcceptedCandidateSha = 'dd4c80fe3180df8f99cb88be451c803d60b5774f'
 $MergedFeatureSha = '0462d9318eb97e04c238c5e5b8815ec2f266bfe0'
 $MigrationPath = 'Setup/Database/059_sync_reusable_task_name_to_open_annual.sql'
 $AcceptedMigrationBlob = '1be0837c88c243fd54763817983be23fa10853bd'
-$AcceptedServerRunnerBlob = '03796a332c130d3682be3fb6b430003a2962fa11'
+$AcceptedServerRunnerBlob = 'ae1df70248865de3442d55bec5edba047aefe1b7'
 
 if (-not (Test-Path -LiteralPath $ServerScript -PathType Leaf)) {
     throw "Required #122 reusable-name Production deployment runner is missing: $ServerScript"
@@ -66,6 +67,7 @@ Write-Host "Merged feature commit:     $MergedFeatureSha"
 Write-Host "Migration:                 $MigrationPath"
 Write-Host "Migration Git blob:        $AcceptedMigrationBlob"
 Write-Host "Server runner blob:        $AcceptedServerRunnerBlob"
+Write-Host "Deployment operator:       $OperatorEmail"
 Write-Host 'Application source move:   NONE'
 Write-Host 'Expected live app version: V0.3.18-scheduling-board'
 Write-Host "Remote root:               $remoteRoot"
@@ -94,7 +96,8 @@ try {
     Write-Host
     Write-Host 'Starting bounded Production migration...'
     $remoteScript = "$remoteRoot/setup_122_reusable_name_sync_production_deploy_server.sh"
-    $remoteCommand = "chmod 700 '$remoteScript' && bash -n '$remoteScript' && timeout --foreground --signal=TERM 3600s bash '$remoteScript'"
+    $escapedOperatorEmail = $OperatorEmail.Replace("'", "'\''")
+    $remoteCommand = "chmod 700 '$remoteScript' && bash -n '$remoteScript' && timeout --foreground --signal=TERM 3600s bash '$remoteScript' '$escapedOperatorEmail'"
 
     & ssh -tt -o ServerAliveInterval=15 -o ServerAliveCountMax=3 $Server $remoteCommand
     $remoteExit = $LASTEXITCODE
