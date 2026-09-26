@@ -46,6 +46,25 @@ BEGIN
         RAISE EXCEPTION 'No unobserved Container is available for disposable override validation';
     END IF;
 
+    BEGIN
+        PERFORM ops.set_setup_pick_list_override(
+            'gliebig@sheboyganlights.org',
+            2026,
+            v_container_id,
+            DATE '2026-09-27',
+            DATE '2026-09-28',
+            'Disposable Sunday rejection destination',
+            '[PREVIEW ONLY] Sunday Pick By rejection',
+            true
+        );
+        RAISE EXCEPTION 'Sunday Pick By was incorrectly accepted';
+    EXCEPTION
+        WHEN SQLSTATE '22023' THEN
+            IF SQLERRM NOT LIKE '%Pick By cannot be Sunday%' THEN
+                RAISE;
+            END IF;
+    END;
+
     SELECT r.setup_pick_list_override_id, r.operator_display_name
       INTO v_override_id, v_operator
     FROM ops.set_setup_pick_list_override(
