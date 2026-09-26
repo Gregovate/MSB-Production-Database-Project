@@ -77,6 +77,30 @@ def test_perform_work_status_separates_schedule_from_readiness() -> None:
     assert "soft planning condition; actual work may still be reported" in ui
 
 
+def test_print_task_waits_for_context_before_opening_details() -> None:
+    ui = read_app("setup_next_pass.js")
+
+    function_body = ui.split("async function printNextPerformTask(details) {", 1)[1].split(
+        "function nextLocationText", 1
+    )[0]
+    assert "details.dataset.loading === '1'" in function_body
+    assert "await loadNextTaskExecution(details, false)" in function_body
+    assert function_body.index("details.open = true") > function_body.index(
+        "details.dataset.loaded !== '1'"
+    )
+
+
+def test_report_work_layout_keeps_actual_fields_compact() -> None:
+    ui = read_app("setup_next_pass.js")
+    css = read_app("setup_next_pass.css")
+
+    assert 'class="next-report-note"' in ui
+    assert 'class="next-report-quantity"' in ui
+    assert 'class="next-report-units"' in ui
+    assert ".next-report-work-form .next-report-work-grid" in css
+    assert "minmax(85px, 120px)" in css
+
+
 def test_print_task_is_bounded_cover_sheet_not_schedule_print() -> None:
     ui = read_app("setup_next_pass.js")
     css = read_app("setup_scheduling_board.css")
@@ -114,8 +138,8 @@ def test_live_report_work_database_contract() -> None:
 def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
-    assert "setup_next_pass.css?v=2026-09-26.2" in html
-    assert "setup_next_pass.js?v=2026-09-26.2" in html
+    assert "setup_next_pass.css?v=2026-09-26.3" in html
+    assert "setup_next_pass.js?v=2026-09-26.3" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
     assert "setup_acceptance_fixes.js?v=2026-09-26.1" in html
     assert "setup_scheduling_board.css?v=2026-09-26.1" in html
