@@ -394,3 +394,20 @@
 @media (max-width: 760px) {
   .next-report-work-grid { grid-template-columns: 1fr 1fr; }
 }
+
+
+/* #175 field execution: readiness is advisory planning context, not the
+   scheduled-assignment execution status. Keep the reason visible without
+   making it look like Report Work is blocked. */
+.next-perform-readiness-warning {
+  margin: 8px 12px 0;
+  padding: 8px 10px;
+  border: 1px solid #d6a84b;
+  border-radius: 0.5rem;
+  background: #fff7df;
+  color: #4a3510;
+}
+
+#setup-perform-print-sheet {
+  display: none;
+}
