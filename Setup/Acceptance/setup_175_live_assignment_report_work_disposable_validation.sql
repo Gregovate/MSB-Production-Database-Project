@@ -9,7 +9,7 @@ Proves the live continuation loop without changing Production:
     -> annual task IN_PROGRESS
     -> original assignment historical / immovable
     -> no remaining unworked assignment
-    -> new continuation assignment on 2026-09-28
+    -> new continuation assignment on 2026-09-29
 ============================================================================ */
 
 \set ON_ERROR_STOP on
@@ -229,7 +229,7 @@ BEGIN
     END IF;
 
     /*
-      Prove the continuation can be a distinct assignment on 9/28 while the
+      Prove the continuation can be a distinct assignment on 9/29 while the
       old worked assignment remains untouched.
     */
     SELECT setup_work_day_id
@@ -237,7 +237,7 @@ BEGIN
     FROM ops.upsert_setup_work_day(
         v_manager_email,
         2026,
-        DATE '2026-09-28',
+        DATE '2026-09-29',
         NULL,
         'PLANNED',
         NULL,
@@ -253,7 +253,7 @@ BEGIN
     LIMIT 1;
 
     IF v_new_crew_id IS NULL THEN
-        RAISE EXCEPTION '9/28 continuation day has no schedulable crew';
+        RAISE EXCEPTION '9/29 continuation day has no schedulable crew';
     END IF;
 
     SELECT setup_work_day_task_id
@@ -278,10 +278,10 @@ BEGIN
           ON wd.setup_work_day_id = wdt.setup_work_day_id
         WHERE wdt.setup_work_day_task_id = v_new_assignment_id
           AND wdt.setup_session_task_id = v_session_task_id
-          AND wd.work_date = DATE '2026-09-28'
+          AND wd.work_date = DATE '2026-09-29'
           AND wdt.shift_code = 'MORNING'
     ) THEN
-        RAISE EXCEPTION 'Distinct 9/28 continuation assignment was not preserved';
+        RAISE EXCEPTION 'Distinct 9/29 continuation assignment was not preserved';
     END IF;
 
     IF NOT EXISTS (
@@ -297,7 +297,7 @@ BEGIN
     END IF;
 
     RAISE NOTICE
-        'PASS: assignment % on % -> 50%% IN_PROGRESS -> distinct 9/28 continuation %',
+        'PASS: assignment % on % -> 50%% IN_PROGRESS -> distinct 9/29 continuation %',
         v_assignment_id,
         v_old_work_date,
         v_new_assignment_id;
