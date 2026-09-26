@@ -292,3 +292,35 @@ def test_manager_override_destination_uses_governed_stage_authority() -> None:
     assert "destination_stage_id integer NOT NULL" in migration
     assert "Destination Stage is required for a Manager Pick List override" in migration
     assert "Destination Stage was not found" in migration
+
+
+
+def test_manager_search_hides_containers_already_on_the_pick_list() -> None:
+    ui = read("setup_pick_list.js")
+    repo = read("setup_material_readiness_repository.py")
+    api = read("setup_material_readiness_api.py")
+
+    assert "function demandedContainerIds()" in ui
+    assert "!demanded.has(Number(row.container_id))" in ui
+    assert "All matching Containers are already on the Pick List." in ui
+    assert "Container is already on the Pick List from scheduled material demand" in repo
+    assert "SetupMaterialReadinessConflictError" in repo
+    assert "@setup_material_readiness_api.errorhandler(SetupMaterialReadinessConflictError)" in api
+    assert "), 409" in api
+
+
+def test_print_pick_list_is_compact_and_uses_print_specific_values() -> None:
+    ui = read("setup_pick_list.js")
+    css = read("setup_pick_list.css")
+
+    assert "function destinationPrintText(reasons)" in ui
+    assert "function formatDatePrint(value)" in ui
+    assert 'class="print-value"' in ui
+    assert ".print-value{display:none}" in css
+    assert ".screen-value{display:none!important}" in css
+    assert ".print-value{display:inline!important}" in css
+    assert ".summary,.pick-reasons-row,.pick-state,.override-state,.home-location-payload{display:none!important}" in css
+    assert "table-layout:fixed" in css
+    assert "border-collapse:collapse" in css
+    assert ".pick-qr{width:68px;height:68px" in css
+    assert "width:64px!important;height:64px!important" in css
