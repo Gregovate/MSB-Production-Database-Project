@@ -1130,12 +1130,13 @@ async function loadNextTaskExecution(details, focusReport = false) {
             ? `<p class="next-procedure-warning"><strong>Procedure context unavailable.</strong> ${escapeHtml(procedureError.message || procedureError)} Report Work remains available.</p>`
             : '<p class="muted">No current Setup Procedure is resolved for this task.</p>'}</section>
       </div>
-      <section class="next-progress-history"><h4>Progress history</h4>${progress.length ? progress.map((p) => `<div>${escapeHtml(p.work_date || formatTimestamp(p.recorded_at))} · Crew ${p.crew_count}${p.duration_minutes ? ` · ${escapeHtml(formatMinutes(p.duration_minutes))}` : ''}${p.percent_complete ? ` · ${p.percent_complete}% complete` : ''}${p.progress_note ? ` · ${escapeHtml(p.progress_note)}` : ''}</div>`).join('') : '<div class="muted">No progress recorded yet.</div>'}</section>
+      <section class="next-progress-history"><h4>Progress history</h4>${progress.length ? progress.map((p) => `<div>${escapeHtml(p.performed_on || p.work_date || formatTimestamp(p.recorded_at))} · Crew ${p.crew_count}${p.duration_minutes ? ` · ${escapeHtml(formatMinutes(p.duration_minutes))}` : ''}${p.percent_complete ? ` · ${p.percent_complete}% complete` : ''}${p.progress_note ? ` · ${escapeHtml(p.progress_note)}` : ''}</div>`).join('') : '<div class="muted">No progress recorded yet.</div>'}</section>
       ${complete ? '<div class="next-complete-banner">This annual task is complete.</div>' : `
       <form class="next-completion-form next-report-work-form"
         data-session-task-id="${sessionTaskId}"
         data-assignment-id="${assignmentId}">
         <div class="next-report-work-grid">
+          <label>Work completed on<input class="next-performed-on" type="date" value="${escapeHtml(day?.work_date || assignment?.work_date || '')}" required></label>
           <label>Crew size<input class="next-crew" type="number" min="1" required></label>
           <label>Hours<input class="next-duration-hours" type="number" min="0" step="1" required></label>
           <label>Minutes<input class="next-duration-minutes" type="number" min="0" max="59" step="1" value="0" required></label>
@@ -1164,6 +1165,7 @@ async function submitNextProgress(event) {
   const form = event.currentTarget;
   const sessionTaskId = Number(form.dataset.sessionTaskId);
   const assignmentId = Number(form.dataset.assignmentId);
+  const performedOn = form.querySelector('.next-performed-on').value;
   const crew = Number(form.querySelector('.next-crew').value || 0);
   const hours = Number(form.querySelector('.next-duration-hours').value || 0);
   const minutes = Number(form.querySelector('.next-duration-minutes').value || 0);
@@ -1171,6 +1173,7 @@ async function submitNextProgress(event) {
   const note = form.querySelector('.next-note').value.trim();
   const durationMinutes = (hours * 60) + minutes;
 
+  if (!performedOn) return window.alert('Work completed on date is required.');
   if (crew < 1) return window.alert('Crew size must be at least 1.');
   if (hours < 0 || minutes < 0 || minutes > 59 || durationMinutes <= 0) {
     return window.alert('Enter the actual Hours and Minutes worked.');
@@ -1182,6 +1185,7 @@ async function submitNextProgress(event) {
     setBusy(true);
     await api(`api/setup/session-tasks/${sessionTaskId}/progress`, commandOptions('POST', {
       setup_work_day_task_id: assignmentId,
+      performed_on: performedOn,
       crew_count: crew,
       duration_minutes: durationMinutes,
       percent_complete: percent,
