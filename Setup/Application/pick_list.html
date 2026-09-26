@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Setup Pick List</title>
-  <link rel="stylesheet" href="assets/setup_pick_list.css?v=2026-09-25.6">
+  <link rel="stylesheet" href="assets/setup_pick_list.css?v=2026-09-26.1">
 </head>
 <body>
 <header class="page-header">
@@ -39,8 +39,10 @@
     </div>
     <p class="muted">Use this when a Container must be pulled early or the schedule/material model has not surfaced it yet. This does not schedule work or mark the Container picked.</p>
     <form id="manager-override-form" class="manager-override-form">
-      <label>Container ID
-        <input id="override-container-id" type="number" min="1" required placeholder="e.g. 36">
+      <label class="override-container-field">Container
+        <input id="override-container-search" type="search" autocomplete="off" required placeholder="Search by Container name">
+        <input id="override-container-id" type="hidden">
+        <div id="override-container-results" class="container-search-results" hidden></div>
       </label>
       <label>Pick By
         <input id="override-pick-by" type="date" required>
@@ -76,6 +78,6 @@
   <p>Schedule demand and Manager overrides are planning intent. A workshop scan records that an item was actually picked/moved; appearing here does not.</p>
 </footer>
 <script src="assets/qrcode.min.js?v=1"></script>
-<script src="assets/setup_pick_list.js?v=2026-09-25.6"></script>
+<script src="assets/setup_pick_list.js?v=2026-09-26.1"></script>
 </body>
 </html>
