@@ -386,6 +386,11 @@
 .next-perform-crew > h5 { margin: 0 0 7px; }
 .next-perform-assignment-context { padding: 8px 12px 0; color: #475569; font-size: .9rem; }
 .next-perform-actions { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 12px; }
+.next-perform-actions .next-print-task {
+  background: var(--accent-soft, #e9f4fb);
+  color: var(--accent, #0f5f8f);
+  border-color: var(--accent, #0f5f8f);
+}
 .next-perform-assignment-banner { margin: 0 0 12px; padding: 9px 11px; background: #eef6ff; border-left: 4px solid #2563eb; }
 .next-report-work-grid { display: grid; grid-template-columns: repeat(4, minmax(110px, 1fr)); gap: 10px; }
 .next-report-work-form { margin-top: 14px; padding-top: 12px; border-top: 1px solid #cbd5e1; }
