@@ -940,7 +940,7 @@ function nextPerformAssignmentCard(assignment) {
       <div class="next-perform-actions">
         <button type="button" class="small secondary next-print-task">Print Task</button>
         <button type="button" class="small next-report-work">Report Work</button>
-        <button type="button" class="small secondary next-report-problem" disabled title="Report Problem handoff is owned by #172">Report Problem</button>
+        <button type="button" class="small secondary next-report-problem" disabled title="Report Correction handoff is owned by #172">Report Correction</button>
       </div>
       <div class="next-perform-body" hidden></div>
     </details>`;
