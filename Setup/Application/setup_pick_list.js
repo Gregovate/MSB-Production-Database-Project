@@ -267,8 +267,8 @@
       }
       new QRCode(target, {
         text: payload,
-        width: 92,
-        height: 92,
+        width: 96,
+        height: 96,
         colorDark: '#000000',
         colorLight: '#ffffff',
         correctLevel: QRCode.CorrectLevel.M
