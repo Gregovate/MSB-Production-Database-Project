@@ -887,7 +887,13 @@ function renderNextExecution() {
 }
 
 async function printNextPerformTask(details) {
-  details.open = true;
+  // Do not open the <details> element until its context is ready. Opening it
+  // first fires the toggle loader and can race this explicit print load.
+  if (!details.dataset.loaded && details.dataset.loading === '1') {
+    for (let attempt = 0; attempt < 100 && details.dataset.loading === '1'; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 50));
+    }
+  }
   if (!details.dataset.loaded) {
     await loadNextTaskExecution(details, false);
   }
@@ -895,6 +901,7 @@ async function printNextPerformTask(details) {
     window.alert('Task context could not be loaded, so the task cover sheet cannot be printed.');
     return;
   }
+  details.open = true;
 
   const assignmentId = Number(details.dataset.assignmentId);
   const sessionTaskId = Number(details.dataset.sessionTaskId);
@@ -1022,9 +1029,9 @@ async function loadNextTaskExecution(details, focusReport = false) {
           <label>Minutes<input class="next-duration-minutes" type="number" min="0" max="59" step="1" value="0" required></label>
           <label>% complete<input class="next-percent-complete" type="number" min="1" max="100" step="1" value="${Math.max(lastPercent, 1)}" required></label>
         </div>
-        <label>What was done / what remains<textarea class="next-note" rows="3" placeholder="Required when the task is not 100% complete"></textarea></label>
-        <label>Completed quantity <span class="muted">(optional)</span><input class="next-quantity" type="number" min="1"></label>
-        <label>Which units <span class="muted">(optional)</span><input class="next-units" type="text"></label>
+        <label class="next-report-note">What was done / what remains<textarea class="next-note" rows="3" placeholder="Required when the task is not 100% complete"></textarea></label>
+        <label class="next-report-quantity">Completed quantity <span class="muted">(optional)</span><input class="next-quantity" type="number" min="1"></label>
+        <label class="next-report-units">Which units <span class="muted">(optional)</span><input class="next-units" type="text"></label>
         <button type="submit">Save Work Report</button>
         <div class="muted">100% completes the annual task. Anything below 100% records partial work and leaves the task In Progress.</div>
       </form>`}
