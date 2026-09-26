@@ -60,11 +60,11 @@ if ($LASTEXITCODE -ne 0 -or $serverBlob -ne $AcceptedServerRunnerBlob) {
     throw "Production server-runner identity mismatch. Expected blob $AcceptedServerRunnerBlob, got '$serverBlob'."
 }
 
-$backendVersion = (& git -C $RepoRoot show "${AcceptedTargetSha}:Setup/Application/production_backend.py")
+$backendVersion = ((& git -C $RepoRoot show "${AcceptedTargetSha}:Setup/Application/production_backend.py") | Out-String)
 if ($LASTEXITCODE -ne 0 -or $backendVersion -notmatch 'PRODUCTION_VERSION = "V0\.3\.19-pick-list"') {
     throw 'Accepted target does not contain Setup server version V0.3.19-pick-list.'
 }
-$clientVersion = (& git -C $RepoRoot show "${AcceptedTargetSha}:Setup/Application/setup_catalog_dirty_guard.js")
+$clientVersion = ((& git -C $RepoRoot show "${AcceptedTargetSha}:Setup/Application/setup_catalog_dirty_guard.js") | Out-String)
 if ($LASTEXITCODE -ne 0 -or $clientVersion -notmatch "CLIENT_BUILD = 'V0\.3\.19-pick-list'") {
     throw 'Accepted target does not contain Setup client build V0.3.19-pick-list.'
 }
