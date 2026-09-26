@@ -6,7 +6,8 @@ Revision: 2026-09-25
 
 Purpose:
   - allow Production Crew (plus Managers/Administrators) to report actual Setup work;
-  - require elapsed duration and percent complete for each new work report;
+  - require actual work date, elapsed duration, and percent complete for each new work report;
+  - keep actual work date distinct from scheduled Work Day and report-entry timestamp;
   - bind scheduled work reports to the exact setup_work_day_task_id;
   - derive work-day / shift identity from the scheduled assignment instead of
     trusting duplicated browser-entered context;
@@ -38,6 +39,12 @@ BEGIN
     END IF;
 END
 $preflight$;
+
+ALTER TABLE ops.setup_task_progress
+    ADD COLUMN IF NOT EXISTS performed_on date;
+
+COMMENT ON COLUMN ops.setup_task_progress.performed_on IS
+    'Calendar date when this work period actually occurred. May differ from the scheduled Setup Work Day and from recorded_at; NULL is retained only for older evidence.';
 
 ALTER TABLE ops.setup_task_progress
     ADD COLUMN IF NOT EXISTS duration_minutes integer;
@@ -165,6 +172,7 @@ DROP FUNCTION ops.record_setup_task_progress(
 CREATE FUNCTION ops.record_setup_task_progress(
     p_email text,
     p_setup_session_task_id bigint,
+    p_performed_on date,
     p_crew_count integer,
     p_duration_minutes integer,
     p_percent_complete integer,
@@ -181,6 +189,7 @@ RETURNS TABLE (
     setup_work_day_task_id bigint,
     execution_status text,
     percent_complete integer,
+    performed_on date,
     recorded_at timestamptz,
     operator_display_name text
 )
@@ -217,6 +226,16 @@ BEGIN
     SELECT a.directus_user_id, a.person_id, a.display_name
       INTO v_directus_user_id, v_person_id, v_display_name
     FROM ref.setup_execution_actor(p_email, v_setup_task_id) a;
+
+    IF p_performed_on IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Work performed date is required';
+    END IF;
+
+    IF p_performed_on > current_date THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Work performed date cannot be in the future';
+    END IF;
 
     IF p_crew_count IS NULL OR p_crew_count <= 0 THEN
         RAISE EXCEPTION USING ERRCODE = '22023',
@@ -300,6 +319,7 @@ BEGIN
         setup_session_task_id,
         setup_work_day_id,
         setup_work_day_task_id,
+        performed_on,
         shift_code,
         crew_count,
         duration_minutes,
@@ -313,6 +333,7 @@ BEGIN
         p_setup_session_task_id,
         v_work_day_id,
         v_assignment_id,
+        p_performed_on,
         v_shift,
         p_crew_count,
         p_duration_minutes,
@@ -332,16 +353,16 @@ BEGIN
     WHERE p.setup_session_task_id = p_setup_session_task_id
       AND p.duration_minutes IS NOT NULL;
 
+    /*
+      performed_on is the authoritative calendar date for the work period.
+      recorded_at remains the entry/audit timestamp. Do not fabricate start/end
+      timestamps merely because the report is being entered now.
+    */
     UPDATE ops.setup_session_task st
-       SET actual_started_at = coalesce(st.actual_started_at, v_recorded_at),
-           actual_duration_minutes = v_total_duration,
+       SET actual_duration_minutes = v_total_duration,
            execution_status = CASE
                WHEN p_percent_complete = 100 THEN 'COMPLETE'
                ELSE 'IN_PROGRESS'
-           END,
-           actual_completed_at = CASE
-               WHEN p_percent_complete = 100 THEN v_recorded_at
-               ELSE NULL
            END,
            actual_crew_count = CASE
                WHEN p_percent_complete = 100 THEN p_crew_count
@@ -362,11 +383,6 @@ BEGIN
     IF v_assignment_id IS NOT NULL THEN
         UPDATE ops.setup_work_day_task wdt
            SET actual_crew_count = p_crew_count,
-               started_at = coalesce(wdt.started_at, v_recorded_at),
-               completed_at = CASE
-                   WHEN p_percent_complete = 100 THEN v_recorded_at
-                   ELSE wdt.completed_at
-               END,
                notes = CASE
                    WHEN nullif(btrim(p_progress_note), '') IS NOT NULL
                        THEN p_progress_note
@@ -385,16 +401,17 @@ BEGIN
            v_assignment_id,
            v_status,
            p_percent_complete,
+           p_performed_on,
            v_recorded_at,
            v_display_name;
 END;
 $function$;
 
 REVOKE ALL ON FUNCTION ops.record_setup_task_progress(
-    text,bigint,integer,integer,integer,integer,text,text,bigint,bigint,text
+    text,bigint,date,integer,integer,integer,integer,text,text,bigint,bigint,text
 ) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ops.record_setup_task_progress(
-    text,bigint,integer,integer,integer,integer,text,text,bigint,bigint,text
+    text,bigint,date,integer,integer,integer,integer,text,text,bigint,bigint,text
 ) TO fieldwiring_app;
 
 COMMIT;
