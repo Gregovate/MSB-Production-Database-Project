@@ -122,6 +122,10 @@ BEGIN
             RAISE EXCEPTION USING ERRCODE = '22023',
                 MESSAGE = 'Pick By date must be in the selected Setup Session year';
         END IF;
+        IF extract(dow FROM p_pick_by_date)::integer = 0 THEN
+            RAISE EXCEPTION USING ERRCODE = '22023',
+                MESSAGE = 'Pick By cannot be Sunday; use Saturday or another day';
+        END IF;
         IF p_needed_for_date IS NOT NULL
            AND extract(year FROM p_needed_for_date)::integer <> p_season_year THEN
             RAISE EXCEPTION USING ERRCODE = '22023',
