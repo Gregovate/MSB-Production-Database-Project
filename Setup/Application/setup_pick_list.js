@@ -439,8 +439,7 @@
     const url = new URL(location.href);
     url.searchParams.set('season_year', seasonSelect.value);
     history.replaceState({}, '', url);
-    if (overridePickBy && !overridePickBy.value) overridePickBy.value = todayIso();
-  Promise.all([loadAccess(), load()]).catch(showError);
+    load().catch(showError);
   });
   dateFilter.addEventListener('change', render);
   pickStatusFilter?.addEventListener('change', render);
@@ -455,5 +454,6 @@
     pickList.innerHTML = '';
   }
 
-  load().catch(showError);
+  if (overridePickBy && !overridePickBy.value) overridePickBy.value = todayIso();
+  Promise.all([loadAccess(), load()]).catch(showError);
 })();
