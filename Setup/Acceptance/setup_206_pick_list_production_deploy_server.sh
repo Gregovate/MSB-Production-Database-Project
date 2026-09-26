@@ -11,7 +11,7 @@ SETUP_SERVICE="msb-setup.service"
 
 TARGET_REF="main"
 ACCEPTED_BROWSER_SHA="59148515ab361a297cd7107184662648cd10a60d"
-TARGET_SHA="a084b0130eae4547f26f3aaddf181b644eccd0b9"
+TARGET_SHA="24dd851b6ceed879ca96170db648476a8307a775"
 EXPECTED_PRE_VERSION="V0.3.18-scheduling-board"
 EXPECTED_POST_VERSION="V0.3.19-pick-list"
 MIGRATION_REL="Setup/Database/060_add_setup_pick_list_manager_override.sql"
