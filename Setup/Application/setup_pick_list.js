@@ -13,7 +13,9 @@
   const generatedAt = document.getElementById('generated-at');
   const overridePanel = document.getElementById('manager-override-panel');
   const overrideForm = document.getElementById('manager-override-form');
+  const overrideContainerSearch = document.getElementById('override-container-search');
   const overrideContainerId = document.getElementById('override-container-id');
+  const overrideContainerResults = document.getElementById('override-container-results');
   const overridePickBy = document.getElementById('override-pick-by');
   const overrideNeededFor = document.getElementById('override-needed-for');
   const overrideDestination = document.getElementById('override-destination');
@@ -22,6 +24,7 @@
 
   let readiness = null;
   let access = null;
+  let containerCatalog = [];
 
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, c => ({
@@ -46,6 +49,94 @@
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  function noSundayPickDate(value) {
+    if (!value) return value;
+    const parsed = new Date(`${value}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime())) return value;
+    if (parsed.getUTCDay() === 0) {
+      parsed.setUTCDate(parsed.getUTCDate() - 1);
+      return parsed.toISOString().slice(0, 10);
+    }
+    return value;
+  }
+
+  function normalizeOverridePickBy() {
+    if (!overridePickBy?.value) return;
+    const normalized = noSundayPickDate(overridePickBy.value);
+    if (normalized !== overridePickBy.value) {
+      overridePickBy.value = normalized;
+      overrideMessage.textContent = `Sunday is not a pick day. Pick By moved to Saturday, ${formatDate(normalized)}.`;
+    }
+  }
+
+  function containerSearchText(row) {
+    return [
+      row.container_description,
+      `CONT:${row.container_id}`,
+      row.container_id,
+      row.home_location_code
+    ].filter(Boolean).join(' ').toLowerCase();
+  }
+
+  function containerSearchLabel(row) {
+    const name = row.container_description || `Container ${row.container_id}`;
+    const home = row.home_location_code ? ` · ${row.home_location_code}` : '';
+    return `${name} · CONT:${row.container_id}${home}`;
+  }
+
+  function selectOverrideContainer(row) {
+    overrideContainerId.value = String(row.container_id);
+    overrideContainerSearch.value = row.container_description || `Container ${row.container_id}`;
+    overrideContainerResults.hidden = true;
+    overrideContainerResults.innerHTML = '';
+  }
+
+  function renderContainerSearchResults() {
+    if (!overrideContainerSearch || !overrideContainerResults) return;
+    overrideContainerId.value = '';
+    const query = overrideContainerSearch.value.trim().toLowerCase();
+    if (!query) {
+      overrideContainerResults.hidden = true;
+      overrideContainerResults.innerHTML = '';
+      return;
+    }
+
+    const matches = containerCatalog
+      .filter((row) => containerSearchText(row).includes(query))
+      .slice(0, 12);
+
+    overrideContainerResults.innerHTML = matches.length
+      ? matches.map((row) => `
+          <button type="button" class="container-search-result" data-container-id="${esc(row.container_id)}">
+            <strong>${esc(row.container_description || `Container ${row.container_id}`)}</strong>
+            <span>CONT:${esc(row.container_id)}${row.home_location_code ? ` · Home ${esc(row.home_location_code)}` : ''}</span>
+          </button>`).join('')
+      : '<div class="container-search-empty">No matching Containers</div>';
+    overrideContainerResults.hidden = false;
+
+    overrideContainerResults.querySelectorAll('.container-search-result').forEach((button) => {
+      button.addEventListener('click', () => {
+        const id = Number(button.dataset.containerId);
+        const row = containerCatalog.find((candidate) => Number(candidate.container_id) === id);
+        if (row) selectOverrideContainer(row);
+      });
+    });
+  }
+
+  async function loadContainerCatalog() {
+    if (!access?.can_manage_setup) return;
+    const response = await fetch('../api/setup/containers/source-options', {cache: 'no-store'});
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    containerCatalog = Array.isArray(data.containers) ? data.containers : [];
+    containerCatalog.sort((a, b) => {
+      const left = String(a.container_description || '').toLowerCase();
+      const right = String(b.container_description || '').toLowerCase();
+      const nameCompare = left.localeCompare(right, undefined, {numeric: true});
+      return nameCompare || Number(a.container_id || 0) - Number(b.container_id || 0);
+    });
   }
 
   function applyAccess() {
@@ -289,12 +380,19 @@
     event.preventDefault();
     if (!access?.can_manage_setup) return;
     overrideMessage.textContent = 'Saving Manager override…';
+    const containerId = Number(overrideContainerId.value);
+    if (!containerId) {
+      overrideMessage.textContent = 'Select a Container from the search results.';
+      overrideContainerSearch?.focus();
+      return;
+    }
+    normalizeOverridePickBy();
     try {
       const response = await fetch(
         '../api/setup/material-readiness/overrides',
         commandOptions('POST', {
           season_year: Number(seasonSelect.value),
-          container_id: Number(overrideContainerId.value),
+          container_id: containerId,
           pick_by_date: overridePickBy.value,
           needed_for_date: overrideNeededFor.value || null,
           destination_note: overrideDestination.value.trim(),
@@ -303,8 +401,11 @@
       );
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-      overrideMessage.textContent = `Container ${overrideContainerId.value} added to Pick List demand.`;
+      overrideMessage.textContent = `Container ${containerId} added to Pick List demand.`;
       overrideContainerId.value = '';
+      overrideContainerSearch.value = '';
+      overrideContainerResults.hidden = true;
+      overrideContainerResults.innerHTML = '';
       overrideDestination.value = '';
       overrideReason.value = '';
       await load();
@@ -439,6 +540,7 @@
     if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
     access = data.access || {};
     applyAccess();
+    await loadContainerCatalog();
   }
 
   const season = seasonFromUrl();
@@ -459,6 +561,19 @@
   dateFilter.addEventListener('change', render);
   pickStatusFilter?.addEventListener('change', render);
   overrideForm?.addEventListener('submit', (event) => { void submitOverride(event); });
+  overrideContainerSearch?.addEventListener('input', renderContainerSearchResults);
+  overrideContainerSearch?.addEventListener('focus', renderContainerSearchResults);
+  overridePickBy?.addEventListener('change', normalizeOverridePickBy);
+  document.addEventListener('click', (event) => {
+    if (
+      overrideContainerResults
+      && !overrideContainerResults.hidden
+      && !overrideContainerSearch?.contains(event.target)
+      && !overrideContainerResults.contains(event.target)
+    ) {
+      overrideContainerResults.hidden = true;
+    }
+  });
   document.getElementById('print-button').addEventListener('click', () => window.print());
   document.getElementById('back-button').addEventListener('click', () => {
     location.href = `../?season_year=${encodeURIComponent(seasonSelect.value)}`;
@@ -469,6 +584,6 @@
     pickList.innerHTML = '';
   }
 
-  if (overridePickBy && !overridePickBy.value) overridePickBy.value = todayIso();
+  if (overridePickBy && !overridePickBy.value) overridePickBy.value = noSundayPickDate(todayIso());
   Promise.all([loadAccess(), load()]).catch(showError);
 })();
