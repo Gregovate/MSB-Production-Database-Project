@@ -11,7 +11,8 @@ const setupNextState = {
   schedule: { work_days: [], assignments: [] },
   executionTasks: [],
   performBoard: { session: null, work_days: [], crews: [], tasks: [], assignments: [] },
-  performAssignmentMode: true
+  performAssignmentMode: true,
+  performCaptainFilter: null
 };
 
 function nextIsSitewide(task) {
@@ -669,6 +670,12 @@ function installNextTabs() {
     <div class="card">
       <div class="section-title"><div><div class="eyebrow">Captain / field execution</div><h2>Perform Setup Work</h2></div></div>
       <p class="muted">Only scheduled work appears here. Work is organized by Setup Day, AM/PM, and Crew/Captain. Report Work records actual crew, elapsed time, and percent complete against the exact scheduled assignment.</p>
+      <div class="next-perform-toolbar">
+        <label>Captain
+          <select id="next-perform-captain-filter" aria-label="Filter Perform Work by Captain"></select>
+        </label>
+        <span id="next-perform-filter-summary" class="muted"></span>
+      </div>
       <div id="next-perform-list"></div>
     </div>`;
   main.appendChild(perform);
@@ -787,6 +794,103 @@ function nextPerformDay(dayId) {
   ) || null;
 }
 
+function nextPerformScheduledCaptains() {
+  const board = setupNextState.performBoard || {};
+  const assignmentCrewIds = new Set(
+    (board.assignments || []).map((assignment) => Number(assignment.setup_work_day_crew_id))
+  );
+  const candidateById = new Map(
+    (board.captain_candidates || []).map((candidate) => [Number(candidate.person_id), candidate])
+  );
+  const rows = new Map();
+
+  for (const crew of board.crews || []) {
+    const crewId = Number(crew.setup_work_day_crew_id);
+    const personId = Number(crew.captain_person_id);
+    if (!assignmentCrewIds.has(crewId) || !personId) continue;
+    const candidate = candidateById.get(personId) || {};
+    if (!rows.has(personId)) {
+      rows.set(personId, {
+        person_id: personId,
+        display_name: candidate.display_name || crew.captain_display_name || `Captain ${personId}`,
+        email: candidate.email || null
+      });
+    }
+  }
+
+  return [...rows.values()].sort((a, b) =>
+    String(a.display_name || '').localeCompare(String(b.display_name || ''), undefined, { sensitivity: 'base' })
+    || Number(a.person_id) - Number(b.person_id)
+  );
+}
+
+function nextPerformDefaultCaptainFilter() {
+  const email = String(appState.access?.authenticated_email || '').trim().toLowerCase();
+  if (!email) return 'ALL';
+  const mine = nextPerformScheduledCaptains().find(
+    (captain) => String(captain.email || '').trim().toLowerCase() === email
+  );
+  return mine ? `CAPTAIN:${mine.person_id}` : 'ALL';
+}
+
+function nextEnsurePerformCaptainFilter() {
+  const valid = new Set([
+    'ALL',
+    ...nextPerformScheduledCaptains().map((captain) => `CAPTAIN:${captain.person_id}`)
+  ]);
+  if (!setupNextState.performCaptainFilter || !valid.has(setupNextState.performCaptainFilter)) {
+    setupNextState.performCaptainFilter = nextPerformDefaultCaptainFilter();
+  }
+}
+
+function nextRenderPerformCaptainFilter() {
+  const select = el('next-perform-captain-filter');
+  if (!select) return;
+  nextEnsurePerformCaptainFilter();
+
+  const email = String(appState.access?.authenticated_email || '').trim().toLowerCase();
+  const captains = nextPerformScheduledCaptains();
+  select.innerHTML = [
+    '<option value="ALL">All scheduled work</option>',
+    ...captains.map((captain) => {
+      const isMe = email && String(captain.email || '').trim().toLowerCase() === email;
+      const label = isMe
+        ? `My scheduled work — ${captain.display_name}`
+        : captain.display_name;
+      return `<option value="CAPTAIN:${captain.person_id}">${escapeHtml(label)}</option>`;
+    })
+  ].join('');
+  select.value = setupNextState.performCaptainFilter;
+
+  if (select.dataset.performCaptainFilterInstalled !== '1') {
+    select.dataset.performCaptainFilterInstalled = '1';
+    select.addEventListener('change', () => {
+      setupNextState.performCaptainFilter = select.value || 'ALL';
+      renderNextExecution();
+    });
+  }
+}
+
+function nextFilterPerformAssignments(assignments) {
+  nextEnsurePerformCaptainFilter();
+  const filter = setupNextState.performCaptainFilter || 'ALL';
+  if (filter === 'ALL') return assignments;
+
+  const personId = Number(String(filter).split(':', 2)[1]);
+  if (!personId) return assignments;
+
+  const crewById = new Map(
+    (setupNextState.performBoard.crews || []).map((crew) => [
+      Number(crew.setup_work_day_crew_id),
+      crew
+    ])
+  );
+  return assignments.filter((assignment) => {
+    const crew = crewById.get(Number(assignment.setup_work_day_crew_id));
+    return Number(crew?.captain_person_id) === personId;
+  });
+}
+
 function nextPerformAssignmentCard(assignment) {
   const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
   const crew = nextPerformCrew(assignment);
@@ -832,7 +936,15 @@ function renderNextExecution() {
   const target = el('next-perform-list');
   if (!target) return;
   const board = setupNextState.performBoard || {};
-  const assignments = (board.assignments || []).slice();
+  nextRenderPerformCaptainFilter();
+  const allAssignments = (board.assignments || []).slice();
+  const assignments = nextFilterPerformAssignments(allAssignments);
+  const summary = el('next-perform-filter-summary');
+  if (summary) {
+    summary.textContent = assignments.length === allAssignments.length
+      ? `${assignments.length} scheduled assignment${assignments.length === 1 ? '' : 's'}`
+      : `${assignments.length} of ${allAssignments.length} scheduled assignments shown`;
+  }
   const days = (board.work_days || []).filter((day) =>
     assignments.some((assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id))
   );
@@ -866,7 +978,7 @@ function renderNextExecution() {
             </div>`;
         }).join('')}
       </section>`;
-  }).join('') : '<div class="empty-state">No scheduled assignments are available for Perform Work.</div>';
+  }).join('') : '<div class="empty-state">No scheduled assignments match the selected Captain. Choose All scheduled work to see the full field schedule.</div>';
 
   target.querySelectorAll('.next-perform-assignment').forEach((details) => {
     details.querySelector('.next-report-work')?.addEventListener('click', async (event) => {
