@@ -17,6 +17,8 @@ EXPECTED_SETUP_VERSION="V0.3.18-scheduling-board"
 MIGRATION_REL="Setup/Database/059_sync_reusable_task_name_to_open_annual.sql"
 MIGRATION_BLOB="1be0837c88c243fd54763817983be23fa10853bd"
 
+DEPLOY_OPERATOR_EMAIL="${1:?deployment operator email is required}"
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR="/home/msbadmin/backups/setup-122-name-sync"
 REPORT_DIR="/home/msbadmin/setup-deployment-reports"
@@ -32,6 +34,10 @@ CURRENT_SESSION_ID=""
 CURRENT_SEASON_YEAR=""
 INITIAL_FULL_FINGERPRINT=""
 FROZEN_ALLOWED_FINGERPRINT=""
+OPERATOR_UUID=""
+OPERATOR_PERSON_ID=""
+OPERATOR_DISPLAY_NAME=""
+DRIFT_ROW_IDS=""
 BACKUP_CREATED=0
 DB_MIGRATION_COMMITTED=0
 SETUP_STOPPED=0
@@ -49,6 +55,7 @@ echo "Migration Git blob:      $MIGRATION_BLOB"
 echo "Expected live Setup SHA: $EXPECTED_LIVE_SETUP_SHA"
 echo "Expected Setup version:  $EXPECTED_SETUP_VERSION"
 echo "Application source move: NONE"
+echo "Deployment operator:     $DEPLOY_OPERATOR_EMAIL"
 echo "Report:                  $REPORT"
 echo
 
@@ -131,7 +138,15 @@ allowed_change_fingerprint() {
                 SELECT string_agg(
                     CASE
                         WHEN st.setup_session_id = cs.setup_session_id
-                            THEN (to_jsonb(st) - 'annual_task_name')::text
+                            THEN (
+                                to_jsonb(st)
+                                - ARRAY[
+                                    'annual_task_name',
+                                    'updated_at',
+                                    'updated_by',
+                                    'updated_by_person_id'
+                                ]
+                            )::text
                         ELSE to_jsonb(st)::text
                     END,
                     '' ORDER BY st.setup_session_task_id
@@ -192,6 +207,7 @@ capture_narrow_rollback() {
         echo 'BEGIN;'
         echo 'DROP TRIGGER IF EXISTS trg_setup_task_sync_open_annual_name ON ref.setup_task;'
         echo 'DROP FUNCTION IF EXISTS ref.sync_setup_task_name_to_open_annual_sessions();'
+        echo 'SET LOCAL session_replication_role = replica;'
         psql_prod_qat -c "
             WITH current_session AS (
                 SELECT ss.setup_session_id
@@ -201,8 +217,11 @@ capture_narrow_rollback() {
                 LIMIT 1
             )
             SELECT format(
-                'UPDATE ops.setup_session_task SET annual_task_name = %L WHERE setup_session_task_id = %s;',
+                'UPDATE ops.setup_session_task SET annual_task_name = %L, updated_at = %L::timestamptz, updated_by = %L, updated_by_person_id = %s WHERE setup_session_task_id = %s;',
                 st.annual_task_name,
+                st.updated_at,
+                st.updated_by,
+                coalesce(st.updated_by_person_id::text, 'NULL'),
                 st.setup_session_task_id
             )
             FROM ops.setup_session_task st
@@ -214,6 +233,7 @@ capture_narrow_rollback() {
               AND st.annual_task_name IS DISTINCT FROM t.task_name
             ORDER BY st.setup_session_task_id;
         "
+        echo 'SET LOCAL session_replication_role = origin;'
         echo 'COMMIT;'
     } > "$ROLLBACK_SQL"
     test -s "$ROLLBACK_SQL"
@@ -346,6 +366,25 @@ INITIAL_FULL_FINGERPRINT="$(full_setup_fingerprint)"
 [[ -n "$INITIAL_FULL_FINGERPRINT" ]] || { echo "FAIL: initial Setup fingerprint is empty"; exit 11; }
 echo "Initial full Setup fingerprint: $INITIAL_FULL_FINGERPRINT"
 
+if [[ ! "$DEPLOY_OPERATOR_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$ ]]; then
+    echo "FAIL: deployment operator email is invalid"
+    exit 12
+fi
+
+OPERATOR_ROW="$(psql_prod_qat -c "
+    SELECT
+        a.directus_user_id::text || '|' ||
+        a.person_id::text || '|' ||
+        replace(a.display_name, '|', '/')
+    FROM ref.setup_management_actor('$DEPLOY_OPERATOR_EMAIL', false) a;
+")"
+IFS='|' read -r OPERATOR_UUID OPERATOR_PERSON_ID OPERATOR_DISPLAY_NAME <<< "$OPERATOR_ROW"
+if [[ ! "$OPERATOR_UUID" =~ ^[0-9a-fA-F-]{36}$ || ! "$OPERATOR_PERSON_ID" =~ ^[0-9]+$ || -z "$OPERATOR_DISPLAY_NAME" ]]; then
+    echo "FAIL: deployment operator did not resolve to a governed Setup Manager actor"
+    exit 12
+fi
+echo "Resolved deployment operator: $OPERATOR_DISPLAY_NAME (person $OPERATOR_PERSON_ID)"
+
 echo
 echo "--- Fetch and verify accepted migration identity ---"
 sudo git -C "$REPO_ROOT" fetch origin "$TARGET_REF:refs/remotes/origin/$TARGET_REF"
@@ -396,6 +435,28 @@ echo "Frozen allowed-change fingerprint: $FROZEN_ALLOWED_FINGERPRINT"
 
 PRE_DRIFT="$(current_name_drift_count)"
 echo "Current annual reusable name mismatches before migration: $PRE_DRIFT"
+DRIFT_ROW_IDS="$(psql_prod_qat -c "
+    WITH current_session AS (
+        SELECT ss.setup_session_id
+        FROM ops.setup_session ss
+        WHERE ss.session_status <> 'HISTORICAL_VERIFICATION'
+        ORDER BY ss.season_year DESC, ss.setup_session_id DESC
+        LIMIT 1
+    )
+    SELECT string_agg(st.setup_session_task_id::text, ',' ORDER BY st.setup_session_task_id)
+    FROM ops.setup_session_task st
+    JOIN current_session cs
+      ON cs.setup_session_id = st.setup_session_id
+    JOIN ref.setup_task t
+      ON t.setup_task_id = st.setup_task_id
+    WHERE st.task_origin = 'REUSABLE'
+      AND st.annual_task_name IS DISTINCT FROM t.task_name;
+")"
+if [[ "$PRE_DRIFT" -gt 0 && -z "$DRIFT_ROW_IDS" ]]; then
+    echo "FAIL: could not capture current annual drift row identities"
+    exit 17
+fi
+echo "Current annual drift row IDs: ${DRIFT_ROW_IDS:-none}"
 
 echo "--- Current Task 74 / 376 names before migration ---"
 psql_prod -P pager=off -c "
@@ -464,7 +525,11 @@ fi
 
 echo
 echo "--- Apply reviewed migration 059 ---"
-psql_prod < "$M059"
+sudo docker exec -i \
+    -e PGOPTIONS="-c app.directus_user_uuid=$OPERATOR_UUID" \
+    "$PROD_CONTAINER" \
+    psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" \
+    < "$M059"
 DB_MIGRATION_COMMITTED=1
 echo "MIGRATION 059: COMMITTED"
 
@@ -505,14 +570,31 @@ if [[ "$POST_DRIFT" != "0" ]]; then
     exit 19
 fi
 
+if [[ -n "$DRIFT_ROW_IDS" ]]; then
+    BAD_AUDIT="$(psql_prod_qat -c "
+        SELECT count(*)
+        FROM ops.setup_session_task st
+        WHERE st.setup_session_task_id = ANY(string_to_array('$DRIFT_ROW_IDS', ',')::bigint[])
+          AND (
+              st.updated_by_person_id IS DISTINCT FROM $OPERATOR_PERSON_ID
+              OR nullif(btrim(st.updated_by), '') IS NULL
+          );
+    ")"
+    if [[ "$BAD_AUDIT" != "0" ]]; then
+        echo "FAIL: one-time name synchronization did not stamp the governed deployment operator"
+        exit 20
+    fi
+    echo "CURRENT ANNUAL NAME-SYNC AUDIT ACTOR: PASS ($OPERATOR_DISPLAY_NAME / person $OPERATOR_PERSON_ID)"
+fi
+
 POST_ALLOWED="$(allowed_change_fingerprint)"
 echo "Frozen allowed-change fingerprint: $FROZEN_ALLOWED_FINGERPRINT"
 echo "Post-migration allowed fingerprint: $POST_ALLOWED"
 if [[ "$POST_ALLOWED" != "$FROZEN_ALLOWED_FINGERPRINT" ]]; then
-    echo "FAIL: migration 059 changed governed Setup data outside current-session annual_task_name"
+    echo "FAIL: migration 059 changed governed Setup data outside current-session name + governed audit metadata"
     exit 20
 fi
-echo "PASS: only current-session annual_task_name changes were permitted"
+echo "PASS: only current-session annual_task_name + governed audit metadata changed"
 
 TASK74="$(psql_prod_qat -c "
     SELECT t.task_name || '|' || st.annual_task_name
