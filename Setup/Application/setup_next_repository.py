@@ -227,7 +227,9 @@ class SetupNextRepository:
             cur.execute("""
                 SELECT p.setup_task_progress_id, p.setup_session_task_id,
                        p.setup_work_day_id, p.setup_work_day_task_id,
-                       wd.work_date, p.shift_code, p.crew_count,
+                       p.performed_on::text AS performed_on,
+                       wd.work_date::text AS work_date,
+                       p.shift_code, p.crew_count,
                        p.duration_minutes, p.percent_complete,
                        p.completed_quantity, p.completed_units, p.progress_note,
                        p.marks_task_complete, p.recorded_at,
@@ -320,18 +322,19 @@ class SetupNextRepository:
 
     def record_progress(self, *, email: str, session_task_id: int,
                         assignment_id: int | None, work_day_id: int | None,
-                        shift: str | None, crew_count: int,
+                        shift: str | None, performed_on: str, crew_count: int,
                         duration_minutes: int, percent_complete: int,
                         quantity: int | None, units: str | None,
                         note: str | None) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
                 SELECT * FROM ops.record_setup_task_progress(
-                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                    %s,%s,%s::date,%s,%s,%s,%s,%s,%s,%s,%s,%s
                 )
             """, (
                 email,
                 session_task_id,
+                performed_on,
                 crew_count,
                 duration_minutes,
                 percent_complete,
