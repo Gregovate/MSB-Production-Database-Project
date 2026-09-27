@@ -967,7 +967,7 @@ function nextCorrectionIntakeMarkup(sessionTaskId, assignmentId) {
         <label>Suggested correction / evidence <span class="muted">(optional)</span>
           <textarea class="next-suggestion-text" rows="2" maxlength="2000"></textarea>
         </label>
-        <button type="submit">Send to Manager Triage</button>
+        <button type="submit" class="next-report-correction-submit">Report Correction</button>
         <div class="next-problem-result" aria-live="polite"></div>
       </form>
     </section>`;

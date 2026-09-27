@@ -137,7 +137,7 @@ Use **Report Correction** when the scheduled work exposes a field condition, Pro
 2. Click **Report Correction**.
 3. Enter a concise **What did you find?**
 4. Optionally enter a **Suggested correction / evidence**.
-5. Click **Send to Manager Triage**.
+5. Click **Report Correction**.
 
 Setup automatically preserves the known scheduled context, including the annual task, reusable source task when one exists, exact scheduled assignment, Setup Day/date/shift/Crew/Captain, Stage/Scene, current Procedure identity when available, authenticated reporter, and submission time.
 

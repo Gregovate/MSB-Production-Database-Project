@@ -129,6 +129,8 @@ def test_172_field_ui_is_low_friction_and_uses_exact_assignment() -> None:
         "setup_work_day_task_id: assignmentId",
         "suggested_correction_evidence",
         "Submitted to Work Order Intake",
+        "next-report-correction-submit",
+        ">Report Correction</button>",
     ):
         assert token in ui
 
@@ -238,3 +240,15 @@ def test_172_directus_token_is_runtime_only(monkeypatch) -> None:
         match="service credential is not configured",
     ):
         module.SetupDirectusIntakeClient()
+
+
+def test_172_report_correction_uses_work_order_call_to_action_color() -> None:
+    ui = read_app("setup_next_pass.js")
+    css = read_app("setup_next_pass.css")
+
+    assert 'class="next-report-correction-submit">Report Correction</button>' in ui
+    assert "Send to Manager Triage</button>" not in ui
+    assert ".next-report-correction-submit" in css
+    assert "background: #ffd24d;" in css
+    assert "border-color: #ffd24d;" in css
+    assert "color: #111;" in css
