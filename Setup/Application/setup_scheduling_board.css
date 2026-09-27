@@ -796,10 +796,17 @@
     min-height: 0;
   }
 
+  /* Tablet / narrow-screen scheduling must keep the actual Work Day board
+     reachable without scrolling through the entire Needs Scheduling backlog. */
   .setup-board205-right {
+    order: 1;
     height: auto;
     display: grid;
     grid-template-rows: auto auto;
+  }
+
+  .setup-board205-backlog {
+    order: 2;
   }
 
   .setup-board205-backlog,
