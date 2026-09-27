@@ -79,6 +79,7 @@ EXPECTED_JS_PIN="__EXPECTED_JS_PIN__"
 EXPECTED_CSS_PIN="__EXPECTED_CSS_PIN__"
 TOOLING_COMMIT="__TOOLING_COMMIT__"
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 STAMP="$(date +%Y%m%dT%H%M%S)"
 BACKUP_DIR="/home/msbadmin/backups/setup-172"
 REPORT_DIR="/home/msbadmin/setup-deployment-reports"
@@ -489,7 +490,9 @@ echo
 echo "--- Protected Report Correction negative path ---"
 NEGATIVE_CODE="$(
     curl -sS -o "$NEGATIVE_BODY" -w '%{http_code}' \
-      -X POST -H 'Content-Type: application/json' \
+      -X POST \
+      -H 'Content-Type: application/json' \
+      -H 'X-MSB-Setup-Command: 1' \
       -d '{"problem":"negative path","setup_work_day_task_id":1}' \
       http://192.168.5.9:8794/api/setup/session-tasks/1/correction-intake
 )"
