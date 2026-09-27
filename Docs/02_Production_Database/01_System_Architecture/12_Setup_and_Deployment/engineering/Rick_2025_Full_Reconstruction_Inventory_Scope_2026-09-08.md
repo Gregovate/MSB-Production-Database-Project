@@ -4,11 +4,13 @@
 |---|---|
 | Document Type | Engineering Reconstruction Inventory Scope |
 | System | Production Database — Setup Session |
-| Status | CURRENT — supersedes the earlier narrow Batch 01 interpretation |
+| Status | HISTORICAL RECONSTRUCTION SCOPE — superseded by completed Catalog reconstruction/#145 cleanup |
 | Owner | MSB Production Database engineering |
 | Related Work | Issue #122; PR #125; issue #132 |
 
 ## Purpose
+
+> **Historical record:** Retained for reconstruction provenance and decision history. Current Setup authority is the live reusable Catalog, real 2026 annual Session, #122, and the current engineering portal/handoff.
 
 Correct the scope of the Rick Hoffmann 2025 spreadsheet reconstruction effort.
 

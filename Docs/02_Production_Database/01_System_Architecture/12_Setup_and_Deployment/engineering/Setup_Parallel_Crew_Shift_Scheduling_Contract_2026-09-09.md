@@ -4,11 +4,13 @@
 |---|---|
 | Document Type | Engineering Planning-Workflow Contract |
 | System | Production Database — Setup Session |
-| Status | CURRENT DESIGN DIRECTION — operator-confirmed; not yet implemented |
+| Status | HISTORICAL DESIGN INPUT — incorporated into the Production-accepted Scheduling Board contract |
 | Owner | MSB Production Database engineering |
 | Related Work | Issue #122; Issue #132; Setup Smart Scheduler Workflow; Setup Planning Candidate Work View |
 
 ## Purpose
+
+> **Current authority:** This document is retained as design/review history. For current annual scheduling behavior and acceptance state, use [Setup Scheduling Board Contract — 2026-09-17](Setup_Scheduling_Board_Contract_2026-09-17.md) and the [Setup engineering portal](README.md).
 
 Define how the Setup smart scheduler represents **parallel work**, shifts, temporary crew lanes, and lightweight day-of Captain assignment without turning scheduling into person assignment.
 

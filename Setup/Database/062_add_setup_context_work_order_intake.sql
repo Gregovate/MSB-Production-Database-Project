@@ -2,7 +2,7 @@
 MSB Setup Session — contextual Work Order Intake handoff
 Issue: #172
 Status: IMPLEMENTATION CANDIDATE — DO NOT APPLY TO PRODUCTION WITHOUT REVIEW
-Revision: 2026-09-22
+Revision: 2026-09-26 — reconciled onto current #175/#132 Production baseline
 
 Purpose:
   Let trusted Production Crew / Managers report a suspected problem or durable

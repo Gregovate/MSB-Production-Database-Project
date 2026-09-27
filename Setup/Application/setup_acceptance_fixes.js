@@ -41,7 +41,8 @@ function acceptanceNextSequence(stageId, sceneId) {
 function acceptanceOpenAddTask(stageId = null, sceneId = null) {
   acceptanceEnsureAddSceneSelector();
   const form = el('add-task-form');
-  form.hidden = false;
+  if (typeof setReusableAddTaskFormOpen === 'function') setReusableAddTaskFormOpen(true);
+  else form.hidden = false;
   el('add-stage-id').value = stageId == null ? '' : String(stageId);
   acceptancePopulateAddScenes(sceneId);
   el('add-display-order').value = String(acceptanceNextSequence(stageId, sceneId));
@@ -112,7 +113,8 @@ async function acceptanceCreateReusableTask(event) {
       lor_scene_id: sceneId
     }));
 
-    el('add-task-form').hidden = true;
+    if (typeof setReusableAddTaskFormOpen === 'function') setReusableAddTaskFormOpen(false);
+    else el('add-task-form').hidden = true;
     el('add-task-form').reset();
     el('add-display-order').value = '100';
     await reloadTasks(newId);
@@ -178,7 +180,14 @@ function acceptanceMaterialMarkup(context) {
   return blocks.join('');
 }
 
-loadNextTaskExecution = async function loadNextTaskExecutionAcceptance(details) {
+const setupAcceptanceBaseLoadNextTaskExecution = loadNextTaskExecution;
+loadNextTaskExecution = async function loadNextTaskExecutionAcceptance(details, focusReport = false) {
+  // #175/#132 assignment-centric Perform Work owns the live field workflow.
+  // Preserve these older acceptance refinements only for the legacy projection.
+  if (setupNextState?.performAssignmentMode) {
+    return setupAcceptanceBaseLoadNextTaskExecution(details, focusReport);
+  }
+
   const taskId = Number(details.dataset.taskId);
   const sessionTaskId = Number(details.dataset.sessionTaskId);
   const task = setupNextState.executionTasks.find((item) => Number(item.setup_session_task_id) === sessionTaskId);

@@ -37,9 +37,9 @@ The form currently uses numeric Priority values 1 through 5 as an intake estimat
 
 The attached Google Apps Script is part of this integration. Before changing question titles, answer values, branching, or form structure, inspect that script and the downstream intake mapping.
 
-### Authenticated Setup Field Finding
+### Authenticated Setup Report Correction
 
-During active Setup work, trusted Production Crew may submit **Report Problem / Suggest Change** from the known annual-task/schedule context.
+During active Setup work, trusted Production Crew may submit **Report Correction** from the known annual-task/scheduled-assignment context.
 
 The Setup application writes to the existing Work Order Intake lifecycle, not directly to an active Work Order. It supplies task/Stage/Scene/season/work-day/shift/crew and authenticated reporter context automatically where known, preserving stable identities in the intake source payload. The reporter supplies the observation and may optionally suggest a correction.
 
@@ -53,7 +53,7 @@ A Test Session-generated Work Order must be completed before the related contain
 
 ## Triage
 
-Manager triage applies to human-reported Work Order Intake records, including public Work Order Requests and authenticated Setup field findings.
+Manager triage applies to human-reported Work Order Intake records, including public Work Order Requests and authenticated Setup Report Correction findings.
 
 A human field finding may be valid evidence but still represent a misunderstanding, duplicate, wrong owner, or a correction that does not justify an active Work Order. Only Manager **Promote** creates the active Work Order.
 

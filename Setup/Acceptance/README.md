@@ -96,6 +96,11 @@ Only after explicit operator acceptance switch to the Server Management `Product
 
 ## Current Production Acceptance Records
 
+- `Setup_175_132_Report_Work_Production_Acceptance_2026-09-26.md` — #175 Perform Work / Captain Work List + #132 Report Work / migration 061 / Production acceptance.
+- `Setup_206_Pick_List_Production_Acceptance_2026-09-25.md` — #206 rolling physical Pick List / Manager early-pick override / migration 060 / V0.3.19 Production acceptance.
+- `Setup_Reusable_Name_Sync_Production_Acceptance_2026-09-25.md` — #122 reusable Catalog -> current annual task-name synchronization / migration 059.
+- `Setup_122_2026_Scheduling_Board_Production_Acceptance_2026-09-25.md` — #122 real 2026 annual Session launch and accepted Scheduling Board baseline.
+
 - `Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md`
 - `Setup_Resource_Upsert_Repair_Production_Acceptance_2026-09-13.md`
 - `Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md` — #184 durable Extra Material / Kit Inventory / T-Post subsystem plus completed #167 one-time reconstruction.

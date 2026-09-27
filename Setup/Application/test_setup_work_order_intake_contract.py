@@ -5,7 +5,7 @@ from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent
 SETUP_DIR = APP_DIR.parent
-MIGRATION = SETUP_DIR / "Database" / "054_add_setup_context_work_order_intake.sql"
+MIGRATION = SETUP_DIR / "Database" / "062_add_setup_context_work_order_intake.sql"
 
 
 def read_app(name: str) -> str:
@@ -84,14 +84,12 @@ def test_172_field_ui_only_asks_for_observation_and_optional_suggestion() -> Non
     ui = read_app("setup_next_pass.js")
 
     for token in (
-        "Report Problem / Suggest Change",
+        "Report Correction",
         "What did you find?",
         "What do you think should change?",
         "Work Order Intake for Manager triage",
         "it does not create an active Work Order",
-        "setup_work_day_task_id",
-        "setup_work_day_id",
-        "shift_code",
+        "setup_work_day_task_id: assignmentId",
         "Submitted to Work Order Intake",
     ):
         assert token in ui

@@ -7,7 +7,8 @@ The `msb` PostgreSQL database is the authority for all current production system
 | Path | Purpose |
 |---|---|
 | [`Schema_Snapshots/`](Schema_Snapshots/README.md) | Canonical dated schema-only PostgreSQL exports used for current implementation reference and field-name verification |
-| `Basic_Query_Tools/` | Database inspection, verification, maintenance, and current operational SQL |
+| `Acceptance/` | Database-wide disposable current-Production validation for shared database behavior |
+| `Basic_Query_Tools_Dev/` | Database inspection, verification, maintenance, and reviewed shared repair SQL |
 | `ERD/` | PostgreSQL entity-relationship design |
 | `EngineeringTools/` | Repository-only backend engineering utilities |
 

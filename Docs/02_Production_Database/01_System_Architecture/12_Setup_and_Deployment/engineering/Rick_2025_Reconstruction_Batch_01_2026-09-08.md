@@ -4,12 +4,14 @@
 |---|---|
 | Document Type | Engineering Historical Reconstruction Mapping |
 | System | Production Database — Setup Session |
-| Status | REVIEW CANDIDATE — no Production mutation authorized by this document |
+| Status | HISTORICAL RECONSTRUCTION EVIDENCE — retained for provenance; not a current import candidate |
 | Owner | MSB Production Database engineering |
 | Source Window | 2025-09-30 through Thanksgiving 2025 |
 | Related Work | Issue #122; PR #125; issue #132 |
 
 ## Purpose
+
+> **Historical record:** Retained for reconstruction provenance and decision history. Current Setup authority is the live reusable Catalog, real 2026 annual Session, #122, and the current engineering portal/handoff.
 
 Turn Rick Hoffmann's 2025 Setup records into specific, reviewable Production Database candidates rather than leaving the spreadsheets as disconnected reference material.
 

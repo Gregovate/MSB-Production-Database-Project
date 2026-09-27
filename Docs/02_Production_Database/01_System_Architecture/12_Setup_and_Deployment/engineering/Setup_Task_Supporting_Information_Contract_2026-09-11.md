@@ -4,26 +4,26 @@
 |---|---|
 | Document Type | Engineering Operating-Model Contract |
 | System | Production Database — Setup and Deployment |
-| Status | CURRENT CONTRACT — #141 assignment layer implemented; broader material model incomplete |
+| Status | CURRENT CONTRACT — 2026 annual Session live; supporting-information model remains authoritative |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-12 |
+| Last Reviewed | 2026-09-25 |
 | Related Work | #122, #132, #145, #167, #171, #172, #175 |
 
 ## Purpose
 
 Preserve the operator-confirmed model for the information that must support reusable Setup tasks and annual field execution without forcing every procedure step, material detail, or field discovery into an independent scheduled task.
 
-## Current Launch Control
+## Current Annual / Launch Control
 
-Issue #141 is accepted in Production as V0.3.13. The remaining pre-launch order is:
+#141, #145, and #167 are complete. The real 2026 Setup Session is live and is now the current annual planning/execution context under #122.
 
 ```text
-#167  Extra Materials / KIT contents / material sources
-  -> #145 FINAL reusable-Catalog acceptance + disposable 2026 seed proof
-  -> #122 real 2026 Setup Session + scheduling / Pick List launch gate
+Reusable Catalog = recurring Setup knowledge
+2026 annual Session = this season's planning/execution set
+season-only work = 2026 only unless explicitly promoted
 ```
 
-The 2025 Setup Session remains the historical/sandbox proving ground. Do not create the real 2026 Setup Session merely to make current screens look complete.
+Use 2025 only as historical/verification evidence. Do not recreate the 2026 Session or use 2025 annual membership as current planning authority.
 
 ## Preservation Rule
 
@@ -159,15 +159,15 @@ Concrete wrong/missing conditions that require later action may go to the existi
 
 Use the best available procedures, Production data, derived rules, Kit/source information, and verified field evidence. Keep uncertainty visible. Do not block useful 2026 operation on future 2027 detailed Kit inventory.
 
-Do not create the real 2026 Setup Session until #167 establishes the remaining material/source foundation, #145 final Catalog/disposable seed acceptance passes, and #122 is ready for the real scheduling launch.
+The real 2026 Setup Session is live. Continue correcting durable reusable knowledge through governed Manager surfaces while preserving annual 2026 planning/execution history. Remaining #175/#132/#172/#206 work consumes real annual/schedule identities rather than blocking the already-created Session.
 
 ## Resume Development
 
 1. read Production Database Project Rules;
 2. refresh current `main` and read the current Setup engineering handoff/README;
-3. preserve accepted V0.3.7 through V0.3.13 behavior;
-4. treat 2025 as the sandbox/historical proving ground;
-5. work the sequence `#167 -> #145 FINAL -> #122`;
+3. preserve accepted V0.3.7 through V0.3.13 foundations plus the accepted live Scheduling Board behavior;
+4. treat 2025 as historical/verification evidence and 2026 as the current annual planning/execution context;
+5. resume downstream #175/#132/#172/#206 work from real 2026 identities under #122;
 6. inspect current Production schema/migrations before asking the operator to rediscover schema facts;
 7. use governed application commands rather than broad table DML; and
 8. update this contract and acceptance evidence whenever implementation establishes durable behavior.

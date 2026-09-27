@@ -7,8 +7,8 @@
 | Audience | Setup Managers and reviewers |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-22 |
-| Keywords | Setup, reusable task, Verification Queue, Copy Task, prerequisites, Display Ownership, Extra Materials, Kit Inventory |
+| Last Reviewed | 2026-09-26 |
+| Keywords | Setup, Perform Work, Report Work, reusable task, Verification Queue, Copy Task, prerequisites, Display Ownership, Extra Materials, Kit Inventory |
 
 ## Purpose
 
@@ -20,11 +20,43 @@ It explains the normal, fastest way to do the work. You should not need engineer
 
 [**Open the Setup application**](https://my.sheboyganlights.org/setup/)
 
-Choose **2025 — Historical Verification** for the current shared review.
+For current annual work, use the live **2026 Setup Session** and open **Plan / Schedule**. Use **2025 — Historical Verification** only when you intentionally need historical/review evidence. **This is real Production data** and remains permanently year-bounded to the 2025 historical review; do not treat it as the current 2026 schedule.
 
-This is real Production data.
+## 1. Schedule 2026 Work
 
-## 1. Find Work That Still Needs Review
+Open **Plan / Schedule** for the live 2026 Session.
+
+- The Task Finder secondary filters start minimized; use **More filters** when you need the additional status/time/crew/effort controls.
+- Click **+ Add Work Days** only when dates need to be added. The calendar stays collapsed otherwise so the Scheduling Board keeps its working space.
+- In the calendar, tap/click a date to select it and tap/click it again to deselect it. No Ctrl/Shift is required.
+- Dates that already exist as Work Days are disabled and cannot be selected.
+- Submit the selected dates together.
+- Use the Day-view controls to show scheduled/unfinished, completed/cancelled, or empty days as needed.
+- A cancelled/rainout day is retained as annual/history context; do not treat cancellation as permission to delete history.
+- Schedule and move annual work with the existing board controls. Season-only 2026 work remains annual unless a Manager explicitly promotes durable knowledge through the appropriate reusable workflow.
+
+The Scheduling Board does not define the #206 Pick List/material-demand workflow.
+
+## 2. Perform Scheduled Work and Report Actuals
+
+Use **Perform Work** for field execution after work has been scheduled.
+
+For the complete field procedure, see:
+
+[**Perform and Report Setup Work**](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Perform_and_Report_Setup_Work.md)
+
+Manager reminders:
+
+- the **Captain** dropdown is a view filter, not a permission boundary;
+- **Work completed on** is the date the work actually happened and may differ from the scheduled date;
+- do not move a worked assignment to represent remaining partial work;
+- schedule a new continuation assignment for remaining work;
+- future unworked continuations may be moved or assigned to a different Captain;
+- use **Correct report** when an existing Report Work entry was entered incorrectly;
+- do not create a second report merely to repair an entry mistake;
+- **Report Correction** is not yet enabled; field-correction intake remains separate from Report Work.
+
+## 3. Find Work That Still Needs Review
 
 1. Open the **Verification Queue**.
 2. Choose **Unverified** from the review-status dropdown.
@@ -51,7 +83,7 @@ If a reusable task was created after 2025 and is not part of the 2025 historical
 
 *Use the **Unverified** filter to find unfinished review work. The marked button is **Mark Verified**.*
 
-## 2. Edit a Reusable Task
+## 4. Edit a Reusable Task
 
 A reusable task describes work that normally comes back in future Setup seasons.
 
@@ -87,7 +119,7 @@ Old copy/reconstruction history is not useful Captain information. Clean it out 
 
 *If this is normal yearly Setup work, **Active Reusable Task** must be checked so it can be included in a future Setup Session.*
 
-## 3. Copy a Similar Task
+## 5. Copy a Similar Task
 
 Use **Copy** / **Copy Task** when a new task is similar to one that already exists.
 
@@ -102,7 +134,7 @@ After copying:
 
 Treat the copy as a starting point, not a finished task.
 
-## 4. Change Task Order
+## 6. Change Task Order
 
 To change the normal order, **drag the task to where it belongs**.
 
@@ -112,7 +144,7 @@ Normal drag moves/reorders the task.
 
 If the up/down controls are easier for a small adjustment, those may also be used.
 
-## 5. Add a Prerequisite
+## 7. Add a Prerequisite
 
 A prerequisite is a task that must happen before another task can start.
 
@@ -130,7 +162,7 @@ Remember:
 
 You can also use the prerequisite controls in task detail when that is easier.
 
-## 6. Assign Displays to the Correct Task
+## 8. Assign Displays to the Correct Task
 
 Use **Uses Display / Container Material** when the task needs current Displays for its Stage or Scene.
 
@@ -162,7 +194,7 @@ When the screen says **Coverage complete**, every Display in that review has a t
 
 Display Ownership only tells Setup which task is responsible. It does not move the Display to another Container or change its LOR Stage/Scene.
 
-## 7. Equipment / Resources
+## 9. Equipment / Resources
 
 Use **Equipment / Resources** for reusable tools, equipment, vehicles, and similar things needed to do the work.
 
@@ -177,7 +209,7 @@ Search for an existing resource before creating a new one.
 
 Use **Manage Resource Catalog** only when the resource itself needs to be added or corrected.
 
-## 8. Extra Materials Required by This Task
+## 10. Extra Materials Required by This Task
 
 Use **Extra Materials Required by This Task** for materials the job needs.
 
@@ -208,7 +240,7 @@ A task can require T-Posts even when the posts come from shared stock instead of
 
 *Think of these as two questions: **What does this task need?** and **Where should the crew expect to find it?***
 
-## 9. Kit Boxes
+## 11. Kit Boxes
 
 Use **Kit Boxes** on the task to choose the physical Kit that supports the work.
 
@@ -216,7 +248,7 @@ A Kit may support more than one task.
 
 Do not assign bulk T-Post or bulk spacer stock as a Kit just because material comes from that Container.
 
-## 10. Kit Inventory
+## 12. Kit Inventory
 
 Open:
 
@@ -239,7 +271,7 @@ Do not guess where something belongs just to make the record look complete.
 
 The current goal is **review and correction**, not a complete warehouse inventory.
 
-## 11. T-Post Inventory
+## 13. T-Post Inventory
 
 Open:
 
@@ -253,19 +285,19 @@ Use **Count physical stock** only when somebody actually counts or adjusts stock
 
 Do not use a planning quantity as a physical count.
 
-## 12. Spacers
+## 14. Spacers
 
 Shared/bulk spacer stock remains separate from Kit contents.
 
 Some Kits legitimately contain fitted/custom spacers for that task. Do not assume every spacer belongs in the bulk spacer Containers.
 
-## 13. Procedures
+## 15. Procedures
 
 When Setup shows a current published Setup procedure, review it when the task instructions may have changed.
 
 If the procedure is wrong or incomplete, correct the responsible source/published instruction through the established procedure workflow rather than hiding the correction only in a task note.
 
-## 14. Saving and Moving Between Tasks
+## 16. Saving and Moving Between Tasks
 
 If Setup warns that you have unsaved changes, choose the option that matches what you intend:
 
@@ -275,9 +307,9 @@ If Setup warns that you have unsaved changes, choose the option that matches wha
 
 Do not click through a warning without reading it.
 
-## 15. Run the Material Audit
+## 17. Run the Material Audit
 
-Use **Material Audit** before the real 2026 Setup Session is created.
+Use **Material Audit** to review reusable Setup completeness and material relationships. The real 2026 Session is already live; the audit remains useful for correcting durable reusable information.
 
 The audit checks for missing Setup information. It does not decide whether a task or assignment is correct.
 
@@ -307,7 +339,7 @@ If a Kit/support Container is not assigned, decide why.
 - If it is intentionally shared/bulk stock, use the audit review action to record that reason.
 - Do not invent a task assignment just to clear the audit.
 
-## 16. If Something Does Not Make Sense
+## 18. If Something Does Not Make Sense
 
 Do not work around bad information.
 
@@ -317,9 +349,7 @@ Unknown is better than a confident guess that becomes bad planning information.
 
 ## Current Goal
 
-There is not yet a real 2026 Setup Session.
-
-The current job is to improve the reusable Setup tasks so the real 2026 schedule and future Pick Lists start with better information.
+The real 2026 Setup Session is live. Use it for annual scheduling/execution while continuing to correct reusable knowledge when durable year-to-year information is learned. Keep 2026-only planning separate from the reusable Catalog, and keep Pick List/material-demand work in its owning workflow.
 
 ## Related Operator Instructions
 

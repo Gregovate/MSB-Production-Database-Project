@@ -7,8 +7,8 @@
 | Audience | MSB reviewers, managers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-22 |
-| Keywords | Setup, reusable task, verification, Display Ownership, Kit, Extra Materials, T-Post, prerequisites |
+| Last Reviewed | 2026-09-26 |
+| Keywords | Setup, Perform Work, Report Work, reusable task, verification, Display Ownership, Kit, Extra Materials, T-Post, prerequisites |
 
 Use this page to decide **what you are trying to do in Setup** and where to go next.
 
@@ -16,15 +16,18 @@ Use this page to decide **what you are trying to do in Setup** and where to go n
 
 [**Open the Setup application**](https://my.sheboyganlights.org/setup/)
 
-The current shared review is **2025 — Historical Verification** and uses real Production data.
+The real **2026 Setup Session is live** and is the current annual planning, scheduling, and field-execution context.
 
-There is not yet a real 2026 Setup Session. The work now is to clean up the reusable Setup tasks so the 2026 schedule starts with good information.
+**2025 — Historical Verification** remains available as historical/review evidence. Do not use the 2025 view as the current schedule.
 
 ## What Do You Need to Do?
 
 | I need to... | Start here |
 |---|---|
-| Finish reviewing tasks that still need work | [Review and Correct the 2025 Setup History](operatorSOP/Review_2025_Setup_History.md) |
+| Schedule 2026 Setup work | Open **Plan / Schedule** in [Setup](https://my.sheboyganlights.org/setup/) |
+| Perform scheduled field work / report actual work | [Perform and Report Setup Work](operatorSOP/Perform_and_Report_Setup_Work.md) |
+| Add one or more 2026 Work Days | In **Plan / Schedule**, click **+ Add Work Days**, tap/click the dates, then add the selected dates |
+| Review historical 2025 verification evidence | [Review and Correct the 2025 Setup History](operatorSOP/Review_2025_Setup_History.md) |
 | Learn the Setup Manager controls | [Setup Manager Review Guide](../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md) |
 | Review what should be in a Kit | [Open the Kit Inventory instructions](#kit-boxes-and-kit-inventory) |
 | Count or correct T-Post stock | [Open the T-Post Inventory instructions](#t-post-inventory) |
@@ -32,6 +35,14 @@ There is not yet a real 2026 Setup Session. The work now is to clean up the reus
 | Change task order | [Reorder tasks by dragging](#reorder-tasks-by-dragging) |
 | Add a prerequisite | [Add a prerequisite with Shift-drag](#add-a-prerequisite-with-shift-drag) |
 | Assign many Displays to the correct task | [Use Display Ownership](#display-ownership) |
+
+## Perform Work
+
+Use **Perform Work** for scheduled field execution. Captains can filter the page by Captain or choose **All scheduled work**.
+
+Use **Report Work** to record the actual work date, actual crew size, elapsed Hours/Minutes, percent complete, and what was done/remains. Partial work stays **In Progress** and can be scheduled again as a new future assignment without rewriting the worked occurrence.
+
+[**Open the Perform and Report Setup Work instructions**](operatorSOP/Perform_and_Report_Setup_Work.md)
 
 ## Fast Things Worth Knowing
 
@@ -84,9 +95,9 @@ If something is unknown, **do not guess**. Leave it for review or use **Unverifi
 
 *The **Unverified** filter is the fastest way to find review work that remains.*
 
-## Final Completeness Check — Material Audit
+## Material Audit
 
-Use **Material Audit** before the real 2026 Setup Session is created.
+Use **Material Audit** when reviewing reusable Setup completeness and material relationships. The real 2026 Session has already been created; the audit remains a correction/review tool rather than a pre-creation gate.
 
 It checks whether important Setup information is complete. It does **not** decide whether the work itself is correct.
 
@@ -220,5 +231,6 @@ If a task, Display assignment, Kit, material requirement, T-Post source, spacer 
 
 - [Setup operator procedures](operatorSOP/README.md)
 - [Review and Correct the 2025 Setup History](operatorSOP/Review_2025_Setup_History.md)
+- [Perform and Report Setup Work](operatorSOP/Perform_and_Report_Setup_Work.md)
 - [Setup Manager Review Guide](../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
 - [Engineering documentation](engineering/README.md) — for maintainers, not normal operator work

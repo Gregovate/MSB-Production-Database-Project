@@ -52,6 +52,8 @@ def test_browser_date_inputs_follow_selected_setup_session_year() -> None:
         "Historical Review / Training",
         "Saved changes are permanent",
         "does not create or schedule a future season",
+        "if (!historical)",
+        "banner.remove()",
     ):
         assert token in js
 

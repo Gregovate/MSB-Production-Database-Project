@@ -16,10 +16,10 @@ def read_db(name: str) -> str:
 
 def test_training_ux_assets_are_loaded_after_live_review_fixes():
     html = read("production.html")
-    live_index = html.index("setup_live_review_fixes.js?v=2026-09-08.3")
-    training_index = html.index("setup_training_ux.js?v=2026-09-08.1")
+    live_index = html.index("setup_live_review_fixes.js?v=2026-09-24.2")
+    training_index = html.index("setup_training_ux.js?v=2026-09-24.2")
     assigned_index = html.index("setup_assigned_review.js?v=2026-09-08.2")
-    refinement_index = html.index("setup_training_review_refinement.js?v=2026-09-09.3")
+    refinement_index = html.index("setup_training_review_refinement.js?v=2026-09-24.4")
     assert "setup_training_ux.css?v=2026-09-08.1" in html
     assert "setup_training_review_refinement.css?v=2026-09-09.3" in html
     assert training_index > live_index
@@ -66,16 +66,18 @@ def test_return_control_has_distinct_theme_safe_navigation_treatment():
     assert "color: #ffffff" in css
 
 
-def test_effort_save_alignment_uses_primary_button_and_field_baseline():
+def test_effort_uses_single_reusable_task_save_action():
     html = read("production.html")
-    js = read("setup_catalog_effort.js")
-    css = read("setup_training_review_refinement.css")
-    assert 'id="save-task-effort" type="button">Save Effort</button>' in html
-    assert "button.classList.remove('secondary')" in js
-    assert "#setup-effort-editor-row" in css
-    assert "grid-template-columns: minmax(0, 1fr) auto" in css
-    assert "align-items: end" in css
-    assert "Effort saves separately from Save Reusable Task." not in js
+    effort_js = read("setup_catalog_effort.js")
+    production_js = read("setup_production.js")
+
+    assert 'id="edit-effort-level"' in html
+    assert 'id="save-reusable-task" type="button">Save Reusable Task</button>' in html
+    assert 'id="save-task-effort"' not in html
+    assert "saveSelectedSetupEffort" not in effort_js
+    assert "placeSetupEffortSaveControl" not in effort_js
+    assert "const effort = el('edit-effort-level')?.value || null;" in production_js
+    assert "api/setup/tasks/${task.setup_task_id}/effort" in production_js
 
 
 def test_catalog_delete_reuses_existing_back_control_position():
@@ -214,7 +216,8 @@ def test_reconstruction_delete_is_visible_for_catalog_only_tasks_in_historical_m
     assert "attributeFilter: ['hidden']" in refinement_js
     assert "reconstruction-delete" in base_js
     assert "commandOptions('DELETE', {})" in base_js
-    assert "work-day, progress, movement, planning, or actual execution history" in base_js
+    assert "actual work/progress or movement evidence" in base_js
+    assert "Material assignments must be moved or reassigned first" in base_js
     assert "#delete-reconstruction-task.danger" in css
 
 

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB Setup Pick List</title>
+  <link rel="stylesheet" href="assets/setup_pick_list.css?v=2026-09-26.5">
+</head>
+<body>
+<header class="page-header">
+  <div>
+    <div class="eyebrow">Live 2026 Setup</div>
+    <h1>Rolling Pick List</h1>
+    <p id="status-line">Loading live scheduled material demand…</p>
+  </div>
+  <div class="controls no-print">
+    <label>Season <select id="season-select"></select></label>
+    <label>Needed for <select id="date-filter"><option value="">All scheduled dates</option></select></label>
+    <label>Status
+      <select id="pick-status-filter">
+        <option value="ALL">All demanded items</option>
+        <option value="OUTSTANDING">Needs pick</option>
+        <option value="MOVED">Picked / moved</option>
+      </select>
+    </label>
+    <button id="print-button" type="button">Print</button>
+    <button id="back-button" type="button">Back to Setup</button>
+  </div>
+</header>
+<main>
+  <section class="summary" id="summary"></section>
+
+  <section id="manager-override-panel" class="panel manager-override-panel no-print" hidden>
+    <div class="section-heading">
+      <div>
+        <div class="eyebrow">Manager safety override</div>
+        <h2>Add Container to Pick List</h2>
+      </div>
+    </div>
+    <p class="muted">Use this when a Container must be pulled early or the schedule/material model has not surfaced it yet. This does not schedule work or mark the Container picked.</p>
+    <form id="manager-override-form" class="manager-override-form">
+      <label class="override-container-field">Container
+        <input id="override-container-search" type="search" autocomplete="off" required placeholder="Search by Container name">
+        <input id="override-container-id" type="hidden">
+        <div id="override-container-results" class="container-search-results" hidden></div>
+      </label>
+      <label>Pick By
+        <input id="override-pick-by" type="date" required>
+      </label>
+      <label>Needed For
+        <input id="override-needed-for" type="date">
+      </label>
+      <label>Destination
+        <select id="override-destination-stage" required>
+          <option value="">Select destination Stage</option>
+        </select>
+      </label>
+      <label class="override-reason-field">Reason
+        <input id="override-reason" type="text" required placeholder="Why this Container needs an early/manual pick">
+      </label>
+      <button id="override-submit" type="submit">Add Override</button>
+    </form>
+    <div id="override-message" class="muted" aria-live="polite"></div>
+  </section>
+
+  <section id="unresolved-section" class="panel warning-panel" hidden>
+    <h2>Material data exceptions</h2>
+    <p>These demands could not be resolved to a physical pick from current material authority.</p>
+    <div id="unresolved-list"></div>
+  </section>
+  <section class="panel">
+    <div class="section-heading">
+      <div><div class="eyebrow">Generated from the live Scheduling Board</div><h2>Physical items to pull / stage</h2></div>
+      <div id="generated-at" class="muted"></div>
+    </div>
+    <div id="pick-list"></div>
+  </section>
+</main>
+<footer class="no-print">
+  <p>Schedule demand and Manager overrides are planning intent. A workshop scan records that an item was actually picked/moved; appearing here does not.</p>
+</footer>
+<script src="assets/qrcode.min.js?v=1"></script>
+<script src="assets/setup_pick_list.js?v=2026-09-26.5"></script>
+</body>
+</html>

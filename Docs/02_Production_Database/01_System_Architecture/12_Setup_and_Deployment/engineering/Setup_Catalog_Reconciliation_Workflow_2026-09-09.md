@@ -4,11 +4,13 @@
 |---|---|
 | Document Type | Engineering Reconstruction / Reconciliation Contract |
 | System | Production Database — Setup Session |
-| Status | CURRENT DESIGN DIRECTION — operator-confirmed; not yet implemented |
+| Status | HISTORICAL RECONSTRUCTION CONTRACT — superseded by completed #145 Catalog cleanup and live 2026 annual Session |
 | Owner | MSB Production Database engineering |
 | Related Work | Issue #122; PR #125; 2022 Project schedule; Rick 2025 reconstruction; Setup Smart Scheduler |
 
 ## Purpose
+
+> **Historical record:** This contract preserves the reconstruction method used to shape the reusable Catalog. #145 is now complete, the reusable Catalog has launched into the real 2026 Session, and this document is not the current operational resume point.
 
 Define the next reconstruction step after the 2025 verification queue is cleared: reconcile the historical spreadsheet-derived task inventory against the current reusable Setup catalog so missing reusable work can be added without duplicating tasks that already exist or are now organized under current Scenes.
 
@@ -242,7 +244,7 @@ AMBIGUOUS
 
 Rows already matched cleanly to the current database should remain traceable but should not dominate the review workload.
 
-## Current Next Step
+## Historical Next Step
 
 1. Export a fresh read-only snapshot of the current Production reusable Setup catalog after the 2025 verification pass.
 2. Merge that snapshot into the reconstruction workbook.
