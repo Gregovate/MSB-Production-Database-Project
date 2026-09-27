@@ -23,52 +23,27 @@ if not OPERATOR_EMAIL:
 sys.path.insert(0, APP_DIR)
 from production_backend import app  # noqa: E402
 
-PREVIEW_INTAKE_DSN = os.environ.get("MSB_SETUP_PREVIEW_INTAKE_DSN", "").strip()
+# Browser acceptance must never post a clone-only test correction into
+# Production Directus. PostgreSQL preparation/authorization still executes
+# against the disposable clone; only the final external Directus create call
+# is replaced with a no-write preview sink.
+import setup_work_order_intake_api as intake_api  # noqa: E402
 
-if PREVIEW_INTAKE_DSN:
-    import psycopg2  # noqa: E402
-    from psycopg2.extras import Json  # noqa: E402
-    import setup_work_order_intake_api as intake_api  # noqa: E402
 
-    class PreviewDirectusIntakeClient:
-        """Disposable-only Directus sink; never used by Production application."""
+class PreviewDirectusIntakeClient:
+    """No-write Directus boundary used only by disposable browser review."""
 
-        _columns = (
-            "source_system",
-            "source_form_name",
-            "source_payload",
-            "submitter_email_raw",
-            "submitter_name_raw",
-            "submitted_at",
-            "priority_raw",
-            "task_type_raw",
-            "stage_raw",
-            "problem_raw",
-            "notes_raw",
-            "location_type_raw",
-            "submitter_person_id",
-            "stage_id",
-            "target_year",
-            "triage_dropdown",
-        )
+    def create_intake(self, payload):
+        if payload.get("source_system") != "SETUP":
+            raise RuntimeError("Preview Intake payload source_system is not SETUP")
+        if payload.get("source_form_name") != "SETUP_CORRECTION":
+            raise RuntimeError("Preview Intake payload source_form_name is invalid")
+        if str(payload.get("triage_dropdown") or "") != "1":
+            raise RuntimeError("Preview Intake payload is not Submitted")
+        return {"intake_id": 0, "preview_only": True}
 
-        def create_intake(self, payload):
-            values = [payload.get(column) for column in self._columns]
-            values[2] = Json(values[2]) if values[2] is not None else None
-            placeholders = ",".join(["%s"] * len(self._columns))
-            columns = ",".join(self._columns)
-            with psycopg2.connect(PREVIEW_INTAKE_DSN) as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        f"INSERT INTO stage.work_order_intake ({columns}) "
-                        f"VALUES ({placeholders}) RETURNING intake_id",
-                        values,
-                    )
-                    intake_id = cur.fetchone()[0]
-                conn.commit()
-            return {"intake_id": intake_id}
 
-    intake_api.directus_client = lambda: PreviewDirectusIntakeClient()
+intake_api.directus_client = lambda: PreviewDirectusIntakeClient()
 
 
 class PreviewIdentityMiddleware:

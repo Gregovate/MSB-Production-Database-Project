@@ -169,12 +169,72 @@ def test_172_disposable_validation_guards_directus_notification_contract() -> No
     assert "ops.prepare_setup_work_order_intake" in sql
 
 
-def test_172_browser_preview_uses_disposable_intake_sink_not_production_directus() -> None:
+def test_172_browser_preview_never_contacts_production_directus() -> None:
     entry = PREVIEW_ENTRY.read_text(encoding="utf-8")
     runner = PREVIEW_RUNNER.read_text(encoding="utf-8")
 
-    assert "MSB_SETUP_PREVIEW_INTAKE_DSN" in entry
     assert "PreviewDirectusIntakeClient" in entry
-    assert "INSERT INTO stage.work_order_intake" in entry
     assert "intake_api.directus_client = lambda" in entry
-    assert "MSB_SETUP_PREVIEW_INTAKE_DSN=" in runner
+    assert '"intake_id": 0' in entry
+    assert "INSERT INTO stage.work_order_intake" not in entry
+    assert "SETUP_DIRECTUS_INTAKE_TOKEN" not in entry
+    assert "MSB_SETUP_PREVIEW_INTAKE_DSN" not in runner
+
+
+def test_172_directus_client_uses_local_items_api_and_never_cloudflare_secrets(monkeypatch) -> None:
+    import json
+    import setup_work_order_intake_directus as module
+
+    captured = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return b'{"data":{"intake_id":321}}'
+
+    class FakeOpener:
+        def open(self, request_object, timeout):
+            captured["url"] = request_object.full_url
+            captured["authorization"] = request_object.get_header("Authorization")
+            captured["content_type"] = request_object.get_header("Content-type")
+            captured["body"] = json.loads(request_object.data.decode("utf-8"))
+            captured["timeout"] = timeout
+            return FakeResponse()
+
+    monkeypatch.setattr(module, "DIRECT_OPENER", FakeOpener())
+    client = module.SetupDirectusIntakeClient(
+        base_url="http://127.0.0.1:8055",
+        token="test-token-not-a-production-secret",
+    )
+    created = client.create_intake(
+        {
+            "source_system": "SETUP",
+            "source_form_name": "SETUP_CORRECTION",
+            "triage_dropdown": "1",
+            "problem_raw": "test",
+        }
+    )
+
+    assert created["intake_id"] == 321
+    assert captured["url"] == "http://127.0.0.1:8055/items/work_order_intake"
+    assert captured["authorization"] == "Bearer test-token-not-a-production-secret"
+    assert captured["content_type"] == "application/json"
+    assert captured["body"]["source_system"] == "SETUP"
+    assert captured["timeout"] == 15
+
+
+def test_172_directus_token_is_runtime_only(monkeypatch) -> None:
+    import pytest
+    import setup_work_order_intake_directus as module
+
+    monkeypatch.delenv("SETUP_DIRECTUS_INTAKE_TOKEN", raising=False)
+    with pytest.raises(
+        module.SetupDirectusIntakeError,
+        match="service credential is not configured",
+    ):
+        module.SetupDirectusIntakeClient()
