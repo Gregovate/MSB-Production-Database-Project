@@ -131,11 +131,19 @@ Do not enter a second work report solely to repair a data-entry mistake.
 
 ## Report Correction
 
-The **Report Correction** button is visible but is not yet enabled.
+Use **Report Correction** when the scheduled work exposes a field condition, Procedure problem, material relationship, data discrepancy, or other Setup information that may need correction.
 
-For now, tell a Manager when a field condition, procedure, material relationship, data value, or other Setup information needs correction.
+1. Open the scheduled task in **Perform Work**.
+2. Click **Report Correction**.
+3. Enter a concise **What did you find?**
+4. Optionally enter a **Suggested correction / evidence**.
+5. Click **Send to Manager Triage**.
 
-The durable field-correction / triage workflow is owned separately and will be enabled under the existing correction-intake workstream.
+Setup automatically preserves the known scheduled context, including the annual task, reusable source task when one exists, exact scheduled assignment, Setup Day/date/shift/Crew/Captain, Stage/Scene, current Procedure identity when available, authenticated reporter, and submission time.
+
+The report goes to **Work Order Intake** as **Submitted** for Manager triage. Reporting a correction does **not** create an active Work Order and does not directly change the reusable Catalog, Kit, Procedure, LOR, schedule, or other durable business data.
+
+A Manager decides whether the finding should be deleted/no action, remain Submitted, be promoted to an active Work Order, or be corrected through the appropriate Setup/data/Procedure/GIS/engineering surface.
 
 ## Expected Result
 

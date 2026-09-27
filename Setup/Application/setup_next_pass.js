@@ -964,8 +964,8 @@ function nextCorrectionIntakeMarkup(sessionTaskId, assignmentId) {
         <label>What did you find?
           <textarea class="next-problem-text" rows="3" maxlength="255" required></textarea>
         </label>
-        <label>What do you think should change? <span class="muted">(optional)</span>
-          <textarea class="next-suggestion-text" rows="2"></textarea>
+        <label>Suggested correction / evidence <span class="muted">(optional)</span>
+          <textarea class="next-suggestion-text" rows="2" maxlength="2000"></textarea>
         </label>
         <button type="submit">Send to Manager Triage</button>
         <div class="next-problem-result" aria-live="polite"></div>
@@ -987,10 +987,10 @@ async function submitNextCorrectionIntake(event) {
   const result = form.querySelector('.next-problem-result');
   try {
     const payload = await api(
-      `api/setup/session-tasks/${sessionTaskId}/problem-intake`,
+      `api/setup/session-tasks/${sessionTaskId}/correction-intake`,
       commandOptions('POST', {
         problem,
-        suggested_change: form.querySelector('.next-suggestion-text').value.trim() || null,
+        suggested_correction_evidence: form.querySelector('.next-suggestion-text').value.trim() || null,
         setup_work_day_task_id: assignmentId
       })
     );
@@ -1003,6 +1003,32 @@ async function submitNextCorrectionIntake(event) {
   } catch (error) {
     result.textContent = error.message || error;
   }
+}
+
+async function openNextCorrectionIntake(details) {
+  // Match Print Task's load-before-open behavior so the <details> toggle
+  // cannot race the explicit Report Correction context load.
+  if (!details.dataset.loaded && details.dataset.loading === '1') {
+    for (let attempt = 0; attempt < 100 && details.dataset.loading === '1'; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 50));
+    }
+  }
+  if (!details.dataset.loaded) {
+    await loadNextTaskExecution(details, false);
+  }
+  if (details.dataset.loaded !== '1') {
+    window.alert('Scheduled work context could not be loaded, so Report Correction is unavailable.');
+    return;
+  }
+
+  details.open = true;
+  const correctionForm = details.querySelector('.next-problem-form');
+  if (!correctionForm) {
+    window.alert('Report Correction is not authorized for this account.');
+    return;
+  }
+  correctionForm.hidden = false;
+  correctionForm.querySelector('.next-problem-text')?.focus();
 }
 
 function nextPerformAssignmentCard(assignment) {
@@ -1103,13 +1129,7 @@ function renderNextExecution() {
     });
     details.querySelector('.next-report-problem')?.addEventListener('click', async (event) => {
       event.preventDefault();
-      details.open = true;
-      if (!details.dataset.loaded) await loadNextTaskExecution(details, false);
-      const correctionForm = details.querySelector('.next-problem-form');
-      if (correctionForm) {
-        correctionForm.hidden = false;
-        correctionForm.querySelector('.next-problem-text')?.focus();
-      }
+      await openNextCorrectionIntake(details);
     });
     details.querySelector('.next-print-task')?.addEventListener('click', async (event) => {
       event.preventDefault();

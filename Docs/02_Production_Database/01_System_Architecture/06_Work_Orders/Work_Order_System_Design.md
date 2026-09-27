@@ -41,7 +41,7 @@ The attached Google Apps Script is part of this integration. Before changing que
 
 During active Setup work, trusted Production Crew may submit **Report Correction** from the known annual-task/scheduled-assignment context.
 
-The Setup application writes to the existing Work Order Intake lifecycle, not directly to an active Work Order. It supplies task/Stage/Scene/season/work-day/shift/crew and authenticated reporter context automatically where known, preserving stable identities in the intake source payload. The reporter supplies the observation and may optionally suggest a correction.
+The Setup application writes to the existing Work Order Intake lifecycle, not directly to an active Work Order. It supplies task/Stage/Scene/season/work-day/shift/crew/Captain, current Procedure identity, authenticated reporter, and submission time automatically where known, preserving stable identities in the Intake payload and promotion-surviving notes. The reporter supplies the observation and may optionally suggest a correction.
 
 This is intentionally different from the public form, where the reporter must supply location/context because the application does not already know it.
 
