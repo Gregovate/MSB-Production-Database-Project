@@ -7,8 +7,8 @@
 | Audience | MSB reviewers, managers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-25 |
-| Keywords | Setup, reusable task, verification, Display Ownership, Kit, Extra Materials, T-Post, prerequisites |
+| Last Reviewed | 2026-09-26 |
+| Keywords | Setup, Perform Work, Report Work, reusable task, verification, Display Ownership, Kit, Extra Materials, T-Post, prerequisites |
 
 Use this page to decide **what you are trying to do in Setup** and where to go next.
 
@@ -16,7 +16,7 @@ Use this page to decide **what you are trying to do in Setup** and where to go n
 
 [**Open the Setup application**](https://my.sheboyganlights.org/setup/)
 
-The real **2026 Setup Session is live** and is the current annual planning/scheduling context.
+The real **2026 Setup Session is live** and is the current annual planning, scheduling, and field-execution context.
 
 **2025 — Historical Verification** remains available as historical/review evidence. Do not use the 2025 view as the current schedule.
 
@@ -25,6 +25,7 @@ The real **2026 Setup Session is live** and is the current annual planning/sched
 | I need to... | Start here |
 |---|---|
 | Schedule 2026 Setup work | Open **Plan / Schedule** in [Setup](https://my.sheboyganlights.org/setup/) |
+| Perform scheduled field work / report actual work | [Perform and Report Setup Work](operatorSOP/Perform_and_Report_Setup_Work.md) |
 | Add one or more 2026 Work Days | In **Plan / Schedule**, click **+ Add Work Days**, tap/click the dates, then add the selected dates |
 | Review historical 2025 verification evidence | [Review and Correct the 2025 Setup History](operatorSOP/Review_2025_Setup_History.md) |
 | Learn the Setup Manager controls | [Setup Manager Review Guide](../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md) |
@@ -34,6 +35,14 @@ The real **2026 Setup Session is live** and is the current annual planning/sched
 | Change task order | [Reorder tasks by dragging](#reorder-tasks-by-dragging) |
 | Add a prerequisite | [Add a prerequisite with Shift-drag](#add-a-prerequisite-with-shift-drag) |
 | Assign many Displays to the correct task | [Use Display Ownership](#display-ownership) |
+
+## Perform Work
+
+Use **Perform Work** for scheduled field execution. Captains can filter the page by Captain or choose **All scheduled work**.
+
+Use **Report Work** to record the actual work date, actual crew size, elapsed Hours/Minutes, percent complete, and what was done/remains. Partial work stays **In Progress** and can be scheduled again as a new future assignment without rewriting the worked occurrence.
+
+[**Open the Perform and Report Setup Work instructions**](operatorSOP/Perform_and_Report_Setup_Work.md)
 
 ## Fast Things Worth Knowing
 
@@ -222,5 +231,6 @@ If a task, Display assignment, Kit, material requirement, T-Post source, spacer 
 
 - [Setup operator procedures](operatorSOP/README.md)
 - [Review and Correct the 2025 Setup History](operatorSOP/Review_2025_Setup_History.md)
+- [Perform and Report Setup Work](operatorSOP/Perform_and_Report_Setup_Work.md)
 - [Setup Manager Review Guide](../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
 - [Engineering documentation](engineering/README.md) — for maintainers, not normal operator work
