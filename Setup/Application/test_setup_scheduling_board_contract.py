@@ -549,6 +549,19 @@ def test_205_api_uses_governed_manager_commands_for_plan_mutations() -> None:
     assert "DELETE FROM ops.setup_work_day_task" not in repository
 
 
+def test_122_tablet_schedule_keeps_work_day_board_before_long_backlog() -> None:
+    css = read_app("setup_scheduling_board.css")
+    responsive = css.split("@media (max-width: 1100px)", 1)[1].split("}", 1)[0]
+    # The narrow layout returns to document flow, but the operational Work Day
+    # board must come first so a tablet operator does not have to scroll through
+    # the entire Needs Scheduling backlog just to see the schedule.
+    assert ".setup-board205-right" in css
+    assert "order: 1;" in css
+    assert ".setup-board205-backlog" in css
+    assert "order: 2;" in css
+    assert css.index("order: 1;") < css.index("order: 2;")
+
+
 def test_122_work_day_calendar_supports_tablet_multiselect_without_overwriting_existing_days() -> None:
     ui = read_app("setup_scheduling_board.js")
     css = read_app("setup_scheduling_board.css")
@@ -612,7 +625,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-26.1" in html
+    assert "setup_scheduling_board.css?v=2026-09-26.2" in html
     assert "setup_scheduling_board.js?v=2026-09-25.5" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
