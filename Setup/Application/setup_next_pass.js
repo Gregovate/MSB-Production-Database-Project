@@ -1066,7 +1066,7 @@ function nextPerformAssignmentCard(assignment) {
       <div class="next-perform-actions">
         <button type="button" class="small secondary next-print-task">Print Task</button>
         <button type="button" class="small next-report-work">Report Work</button>
-        <button type="button" class="small secondary next-report-problem"${nextCanSubmitFieldFinding() ? '' : ' disabled title="Report Correction requires Production Crew or Manager access"'}>Report Correction</button>
+        <button type="button" class="small next-report-problem next-report-correction-action"${nextCanSubmitFieldFinding() ? '' : ' disabled title="Report Correction requires Production Crew or Manager access"'}>Report Correction</button>
       </div>
       <div class="next-perform-body" hidden></div>
     </details>`;
