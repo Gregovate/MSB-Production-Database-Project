@@ -6,31 +6,36 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent
 SETUP_DIR = APP_DIR.parent
 MIGRATION = SETUP_DIR / "Database" / "062_add_setup_context_work_order_intake.sql"
+VALIDATION = (
+    SETUP_DIR / "Acceptance" / "setup_172_report_correction_disposable_validation.sql"
+)
+PREVIEW_ENTRY = SETUP_DIR / "Acceptance" / "setup_session_browser_preview_entry.py"
+PREVIEW_RUNNER = SETUP_DIR / "Acceptance" / "setup_disposable_browser_preview_server.sh"
 
 
 def read_app(name: str) -> str:
     return (APP_DIR / name).read_text(encoding="utf-8")
 
 
-def test_172_setup_correction_goes_to_existing_intake_not_active_work_order() -> None:
+def test_172_postgres_prepares_intake_but_does_not_insert_or_create_work_order() -> None:
     sql = MIGRATION.read_text(encoding="utf-8")
     function = sql.split(
-        "CREATE OR REPLACE FUNCTION ops.submit_setup_work_order_intake", 1
-    )[1].split("REVOKE ALL ON FUNCTION ops.submit_setup_work_order_intake", 1)[0]
+        "CREATE OR REPLACE FUNCTION ops.prepare_setup_work_order_intake", 1
+    )[1].split("REVOKE ALL ON FUNCTION ops.prepare_setup_work_order_intake", 1)[0]
 
-    assert "INSERT INTO stage.work_order_intake" in function
+    assert "jsonb_build_object(" in function
+    assert "'source_system', 'SETUP'" in function
+    assert "'source_form_name', 'SETUP_CORRECTION'" in function
+    assert "'triage_dropdown', '1'" in function
+    assert "INSERT INTO stage.work_order_intake" not in function
     assert "INSERT INTO ops.work_order" not in function
-    assert "'1'" in function
-    assert "'SUBMITTED'::text" in function
-    assert "'SETUP'" in function
-    assert "'SETUP_CORRECTION'" in function
 
 
 def test_172_exact_assignment_is_authoritative_context_anchor() -> None:
     sql = MIGRATION.read_text(encoding="utf-8")
     function = sql.split(
-        "CREATE OR REPLACE FUNCTION ops.submit_setup_work_order_intake", 1
-    )[1].split("REVOKE ALL ON FUNCTION ops.submit_setup_work_order_intake", 1)[0]
+        "CREATE OR REPLACE FUNCTION ops.prepare_setup_work_order_intake", 1
+    )[1].split("REVOKE ALL ON FUNCTION ops.prepare_setup_work_order_intake", 1)[0]
 
     assert "p_setup_work_day_task_id bigint" in function
     assert "wdt.setup_work_day_task_id = p_setup_work_day_task_id" in function
@@ -81,8 +86,8 @@ def test_172_intake_preserves_required_setup_captain_procedure_context() -> None
 def test_172_reuses_accepted_execution_actor_authority() -> None:
     sql = MIGRATION.read_text(encoding="utf-8")
     function = sql.split(
-        "CREATE OR REPLACE FUNCTION ops.submit_setup_work_order_intake", 1
-    )[1].split("REVOKE ALL ON FUNCTION ops.submit_setup_work_order_intake", 1)[0]
+        "CREATE OR REPLACE FUNCTION ops.prepare_setup_work_order_intake", 1
+    )[1].split("REVOKE ALL ON FUNCTION ops.prepare_setup_work_order_intake", 1)[0]
 
     assert "ref.setup_execution_actor(p_email, v_setup_task_id)" in function
     assert "ref.setup_browser_capabilities" not in function
@@ -90,22 +95,26 @@ def test_172_reuses_accepted_execution_actor_authority() -> None:
     assert "v_policy_names" not in function
 
 
-def test_172_api_uses_governed_command_and_server_resolves_procedure() -> None:
+def test_172_api_prepares_then_creates_through_directus() -> None:
     api = read_app("setup_work_order_intake_api.py")
     repo = read_app("setup_work_order_intake_repository.py")
-    backend = read_app("production_backend.py")
+    client = read_app("setup_work_order_intake_directus.py")
 
     assert "/correction-intake" in api
     assert "Scheduled assignment identity is required" in api
-    assert "assignment_context" in api
     assert "current_procedure_context" in api
-    assert "_task_instructions" in api
-    assert "suggested_correction_evidence" in api
-    assert "ops.submit_setup_work_order_intake" in repo
-    assert "Json(procedure_context)" in repo
+    assert "intake_repo.prepare(" in api
+    assert "directus_client().create_intake(intake_payload)" in api
+    assert "ops.prepare_setup_work_order_intake" in repo
     assert "INSERT INTO stage.work_order_intake" not in repo
-    assert "setup_work_order_intake_api" in backend
-    assert "app.register_blueprint(setup_work_order_intake_api)" in backend
+
+    assert "/items/work_order_intake" in client
+    assert "SETUP_DIRECTUS_INTAKE_TOKEN" in client
+    assert "Authorization" in client
+    assert "Bearer" in client
+    assert "ProxyHandler({})" in client
+    assert "CF-Access-Client-Secret" not in client
+    assert "DIRECTUS_TOKEN =" not in client
 
 
 def test_172_field_ui_is_low_friction_and_uses_exact_assignment() -> None:
@@ -125,12 +134,6 @@ def test_172_field_ui_is_low_friction_and_uses_exact_assignment() -> None:
 
     assert "Where is the problem?" not in ui
     assert "Which Stage?" not in ui
-    assert "setup_work_day_id:" not in ui.split(
-        "async function submitNextCorrectionIntake", 1
-    )[1].split("async function openNextCorrectionIntake", 1)[0]
-    assert "shift_code:" not in ui.split(
-        "async function submitNextCorrectionIntake", 1
-    )[1].split("async function openNextCorrectionIntake", 1)[0]
 
 
 def test_172_report_correction_waits_for_context_before_opening() -> None:
@@ -145,11 +148,33 @@ def test_172_report_correction_waits_for_context_before_opening() -> None:
     assert body.index("details.open = true") > body.index("details.dataset.loaded !== '1'")
 
 
-def test_172_migration_exposes_only_narrow_execute_to_application_role() -> None:
+def test_172_migration_exposes_only_prepare_execute_to_application_role() -> None:
     sql = MIGRATION.read_text(encoding="utf-8")
 
-    assert "GRANT EXECUTE ON FUNCTION ops.submit_setup_work_order_intake" in sql
+    assert "GRANT EXECUTE ON FUNCTION ops.prepare_setup_work_order_intake" in sql
     assert "TO fieldwiring_app" in sql
     assert "has_table_privilege(" in sql
     assert "'stage.work_order_intake'" in sql
     assert "'INSERT'" in sql
+
+
+def test_172_disposable_validation_guards_directus_notification_contract() -> None:
+    sql = VALIDATION.read_text(encoding="utf-8")
+
+    assert "WOI Request Triage Email" in sql
+    assert "f.trigger = 'event'" in sql
+    assert "items.create" in sql
+    assert "work_order_intake" in sql
+    assert "o.type = 'mail'" in sql
+    assert "ops.prepare_setup_work_order_intake" in sql
+
+
+def test_172_browser_preview_uses_disposable_intake_sink_not_production_directus() -> None:
+    entry = PREVIEW_ENTRY.read_text(encoding="utf-8")
+    runner = PREVIEW_RUNNER.read_text(encoding="utf-8")
+
+    assert "MSB_SETUP_PREVIEW_INTAKE_DSN" in entry
+    assert "PreviewDirectusIntakeClient" in entry
+    assert "INSERT INTO stage.work_order_intake" in entry
+    assert "intake_api.directus_client = lambda" in entry
+    assert "MSB_SETUP_PREVIEW_INTAKE_DSN=" in runner

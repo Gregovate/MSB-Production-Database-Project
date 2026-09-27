@@ -4,8 +4,9 @@ Issues: #172, #122
 Scope: DISPOSABLE CURRENT-PRODUCTION CLONE ONLY
 
 Proves:
-  exact scheduled assignment -> one Submitted Intake request
+  exact scheduled assignment -> authorized Directus Intake payload
   -> full Setup/Captain/Procedure/reporter provenance
+  -> existing Directus items.create manager-notification flow present
   -> no active Work Order creation
   -> invalid assignment fails closed
   -> application role has narrow EXECUTE but no direct Intake INSERT
@@ -22,11 +23,11 @@ DECLARE
     v_session_task_id bigint;
     v_setup_task_id bigint;
     v_captain_person_id integer;
-    v_intake_id bigint;
     v_work_orders_before bigint;
     v_work_orders_after bigint;
     v_started_at timestamptz := clock_timestamp();
     v_bad_assignment_blocked boolean := false;
+    v_intake_payload jsonb;
     v_payload jsonb;
     v_notes text;
 BEGIN
@@ -81,9 +82,9 @@ BEGIN
 
     SELECT count(*) INTO v_work_orders_before FROM ops.work_order;
 
-    SELECT intake_id
-      INTO v_intake_id
-    FROM ops.submit_setup_work_order_intake(
+    SELECT intake_payload
+      INTO v_intake_payload
+    FROM ops.prepare_setup_work_order_intake(
         v_reporter_email,
         v_session_task_id,
         v_assignment_id,
@@ -99,21 +100,15 @@ BEGIN
         )
     );
 
-    IF v_intake_id IS NULL THEN
-        RAISE EXCEPTION 'Report Correction did not return an Intake identity';
+    IF v_intake_payload IS NULL THEN
+        RAISE EXCEPTION 'Report Correction preparation did not return an Intake payload';
     END IF;
 
-    SELECT source_payload, notes_raw
-      INTO v_payload, v_notes
-    FROM stage.work_order_intake
-    WHERE intake_id = v_intake_id
-      AND triage_dropdown = '1'
-      AND source_system = 'SETUP'
-      AND source_form_name = 'SETUP_CORRECTION'
-      AND problem_raw = 'Disposable #172 validation finding';
+    v_payload := v_intake_payload -> 'source_payload';
+    v_notes := v_intake_payload ->> 'notes_raw';
 
     IF v_payload IS NULL THEN
-        RAISE EXCEPTION 'Submitted Intake row was not found';
+        RAISE EXCEPTION 'Prepared Intake source payload was not returned';
     END IF;
 
     IF (v_payload ->> 'setup_session_task_id')::bigint <> v_session_task_id
@@ -123,7 +118,7 @@ BEGIN
             <> 'Disposable #172 validation evidence'
        OR v_payload #>> '{procedure_context,summary}'
             <> 'Disposable #172 Procedure.pdf' THEN
-        RAISE EXCEPTION 'Submitted Intake did not preserve required Setup/procedure context: %', v_payload;
+        RAISE EXCEPTION 'Prepared Intake did not preserve required Setup/procedure context: %', v_payload;
     END IF;
 
     IF v_setup_task_id IS NULL THEN
@@ -156,20 +151,19 @@ BEGIN
 
     SELECT count(*) INTO v_work_orders_after FROM ops.work_order;
     IF v_work_orders_after <> v_work_orders_before THEN
-        RAISE EXCEPTION 'Report Correction created an active Work Order directly';
+        RAISE EXCEPTION 'Report Correction preparation created an active Work Order';
     END IF;
 
-    IF EXISTS (
-        SELECT 1
-        FROM ops.work_order
-        WHERE source_intake_id = v_intake_id
-    ) THEN
-        RAISE EXCEPTION 'Submitted Intake unexpectedly promoted itself';
+    IF v_intake_payload ->> 'source_system' <> 'SETUP'
+       OR v_intake_payload ->> 'source_form_name' <> 'SETUP_CORRECTION'
+       OR v_intake_payload ->> 'triage_dropdown' <> '1'
+       OR v_intake_payload ->> 'problem_raw' <> 'Disposable #172 validation finding' THEN
+        RAISE EXCEPTION 'Prepared Directus Intake payload has incorrect lifecycle fields: %', v_intake_payload;
     END IF;
 
     BEGIN
         PERFORM *
-        FROM ops.submit_setup_work_order_intake(
+        FROM ops.prepare_setup_work_order_intake(
             v_reporter_email,
             v_session_task_id,
             v_assignment_id + 999999999,
@@ -188,7 +182,7 @@ BEGIN
 
     IF NOT has_function_privilege(
         'fieldwiring_app',
-        'ops.submit_setup_work_order_intake(text,bigint,bigint,text,text,jsonb)',
+        'ops.prepare_setup_work_order_intake(text,bigint,bigint,text,text,jsonb)',
         'EXECUTE'
     ) THEN
         RAISE EXCEPTION 'fieldwiring_app lacks governed Report Correction command EXECUTE';
@@ -200,6 +194,31 @@ BEGIN
         'INSERT'
     ) THEN
         RAISE EXCEPTION 'fieldwiring_app has forbidden direct Work Order Intake INSERT';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM public.directus_flows f
+        WHERE f.name = 'WOI Request Triage Email'
+          AND f.status = 'active'
+          AND f.trigger = 'event'
+          AND (f.options::jsonb ->> 'type') = 'action'
+          AND (f.options::jsonb -> 'scope') ? 'items.create'
+          AND (f.options::jsonb -> 'collections') ? 'work_order_intake'
+    ) THEN
+        RAISE EXCEPTION
+            'Existing Directus WOI Request Triage Email items.create flow is missing/inactive';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM public.directus_operations o
+        JOIN public.directus_flows f ON f.id = o.flow
+        WHERE f.name = 'WOI Request Triage Email'
+          AND o.type = 'mail'
+    ) THEN
+        RAISE EXCEPTION
+            'Existing Directus WOI Request Triage Email flow has no mail operation';
     END IF;
 END
 $validation$;

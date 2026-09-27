@@ -13,7 +13,9 @@ Boundary:
   - exact setup_work_day_task_id is required and authoritative;
   - scheduled day/shift/crew/Captain are derived server-side;
   - current Procedure identity is captured by the protected backend when available;
-  - creates a stage.work_order_intake record only;
+  - PostgreSQL prepares/authorizes the Intake payload but does not insert it;
+  - protected Setup backend creates the Intake through the Directus Items API;
+  - Directus items.create remains the existing manager-notification boundary;
   - triage_dropdown remains Submitted ('1');
   - does NOT create ops.work_order;
   - does NOT mutate Setup Catalog, Kit, Procedure, LOR, scheduling, or material truth;
@@ -59,7 +61,7 @@ BEGIN
 END
 $preflight$;
 
-CREATE OR REPLACE FUNCTION ops.submit_setup_work_order_intake(
+CREATE OR REPLACE FUNCTION ops.prepare_setup_work_order_intake(
     p_email text,
     p_setup_session_task_id bigint,
     p_setup_work_day_task_id bigint,
@@ -68,7 +70,7 @@ CREATE OR REPLACE FUNCTION ops.submit_setup_work_order_intake(
     p_procedure_context jsonb DEFAULT NULL
 )
 RETURNS TABLE (
-    intake_id bigint,
+    intake_payload jsonb,
     setup_session_task_id bigint,
     setup_work_day_task_id bigint,
     triage_state text,
@@ -111,7 +113,6 @@ DECLARE
     v_stage_raw text;
     v_notes text;
     v_payload jsonb;
-    v_intake_id bigint;
     v_submitted_at timestamptz := clock_timestamp();
 BEGIN
     IF p_setup_session_task_id IS NULL OR p_setup_work_day_task_id IS NULL THEN
@@ -295,54 +296,26 @@ BEGIN
         END
     );
 
-    PERFORM pg_catalog.set_config(
-        'app.directus_user_uuid',
-        v_directus_user_id::text,
-        true
-    );
-
-    INSERT INTO stage.work_order_intake(
-        source_system,
-        source_form_name,
-        source_payload,
-        submitter_email_raw,
-        submitter_name_raw,
-        submitted_at,
-        priority_raw,
-        task_type_raw,
-        stage_raw,
-        problem_raw,
-        notes_raw,
-        location_type_raw,
-        submitter_person_id,
-        stage_id,
-        target_year,
-        triage_dropdown
-    )
-    VALUES (
-        'SETUP',
-        'SETUP_CORRECTION',
-        v_payload,
-        lower(btrim(p_email)),
-        nullif(btrim(v_display_name), ''),
-        v_submitted_at,
-        '3',
-        'Setup field correction',
-        v_stage_raw,
-        v_problem,
-        v_notes,
-        CASE WHEN v_stage_id IS NULL THEN NULL ELSE 'STAGE' END,
-        v_person_id,
-        v_stage_id,
-        v_season_year,
-        '1'
-    )
-    RETURNING stage.work_order_intake.intake_id
-      INTO v_intake_id;
-
     RETURN QUERY
     SELECT
-        v_intake_id,
+        jsonb_strip_nulls(jsonb_build_object(
+            'source_system', 'SETUP',
+            'source_form_name', 'SETUP_CORRECTION',
+            'source_payload', v_payload,
+            'submitter_email_raw', lower(btrim(p_email)),
+            'submitter_name_raw', nullif(btrim(v_display_name), ''),
+            'submitted_at', v_submitted_at,
+            'priority_raw', '3',
+            'task_type_raw', 'Setup field correction',
+            'stage_raw', v_stage_raw,
+            'problem_raw', v_problem,
+            'notes_raw', v_notes,
+            'location_type_raw', CASE WHEN v_stage_id IS NULL THEN NULL ELSE 'STAGE' END,
+            'submitter_person_id', v_person_id,
+            'stage_id', v_stage_id,
+            'target_year', v_season_year,
+            'triage_dropdown', '1'
+        )),
         p_setup_session_task_id,
         p_setup_work_day_task_id,
         'SUBMITTED'::text,
@@ -350,10 +323,10 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION ops.submit_setup_work_order_intake(
+REVOKE ALL ON FUNCTION ops.prepare_setup_work_order_intake(
     text,bigint,bigint,text,text,jsonb
 ) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION ops.submit_setup_work_order_intake(
+GRANT EXECUTE ON FUNCTION ops.prepare_setup_work_order_intake(
     text,bigint,bigint,text,text,jsonb
 ) TO fieldwiring_app;
 
@@ -361,11 +334,11 @@ COMMIT;
 
 SELECT
     to_regprocedure(
-        'ops.submit_setup_work_order_intake(text,bigint,bigint,text,text,jsonb)'
-    ) IS NOT NULL AS setup_intake_command_ready,
+        'ops.prepare_setup_work_order_intake(text,bigint,bigint,text,text,jsonb)'
+    ) IS NOT NULL AS setup_intake_prepare_ready,
     has_function_privilege(
         'fieldwiring_app',
-        'ops.submit_setup_work_order_intake(text,bigint,bigint,text,text,jsonb)',
+        'ops.prepare_setup_work_order_intake(text,bigint,bigint,text,text,jsonb)',
         'EXECUTE'
     ) AS app_can_submit_setup_intake,
     has_table_privilege(

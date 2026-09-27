@@ -86,7 +86,7 @@ The authoritative public instructions are [Submit a Work Order Request](../../02
 Current entry paths are:
 
 1. **Public Work Order Request Form -> Work Order Intake -> manager triage -> active Work Order when promoted**
-2. **Authenticated Setup Report Correction -> Work Order Intake with Setup context prefilled -> manager triage -> active Work Order when promoted**
+2. **Authenticated Setup Report Correction -> authorized payload -> Directus Work Order Intake create event -> manager notification/triage -> active Work Order when promoted**
 3. **Test Session -> automatically generated active Work Order**
 
 Human-reported findings go through Intake because the report may require clarification, correction, deduplication, or a non-Work-Order disposition. Test Session-generated Work Orders bypass Intake because the governed test result already established a defined failure.
@@ -132,3 +132,8 @@ Before changing the public Work Order Request form, inspect its attached Apps Sc
 For broader Work Order engineering, inspect the current PostgreSQL implementation, current Directus flows, and [Work Order System Design](Work_Order_System_Design.md) before making changes.
 
 When the dedicated Work Order application is started, create or use its separate implementation repository and link it here. Keep the Production Database schema/business contract in this subsystem and application implementation in the application repository.
+
+
+### Setup Report Correction / Directus notification integration
+
+The current Manager triage email is an active Directus Flow (`WOI Request Triage Email`) triggered by `items.create` on `work_order_intake`. Setup Report Correction therefore enters Intake through the Directus Items API after PostgreSQL has authenticated the reporter and derived authoritative Setup context. A direct PostgreSQL Intake insert would bypass that event and is not the accepted #172 path.

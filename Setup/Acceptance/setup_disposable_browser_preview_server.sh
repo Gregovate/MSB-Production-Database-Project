@@ -524,6 +524,7 @@ PREVIEW_PGID="$(sudo -u fieldwiring -H env \
     PROCEDURE_DATABASE_DSN="$DSN" \
     SETUP_DRIVE_ROOT="/mnt/msb-display-folders" \
     SETUP_GOOGLE_DOC_LINK_ROOT="/mnt/msb-setup-google-links" \
+    MSB_SETUP_PREVIEW_INTAKE_DSN="host=$TEST_IP port=5432 dbname=$TEST_DB user=$DB_ACTOR password=$TEST_PASSWORD" \
     MSB_SETUP_PREVIEW_APP_DIR="$APP_DIR" \
     MSB_SETUP_PREVIEW_OPERATOR_EMAIL="$PREVIEW_EMAIL" \
     MSB_SETUP_PREVIEW_HOST="127.0.0.1" \

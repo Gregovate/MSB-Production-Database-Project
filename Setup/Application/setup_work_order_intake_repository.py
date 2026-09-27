@@ -1,4 +1,4 @@
-"""Governed Setup Report Correction -> existing Work Order Intake handoff."""
+"""Governed Setup Report Correction payload preparation for Work Order Intake."""
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -27,15 +27,6 @@ class SetupWorkOrderIntakeRepository:
         finally:
             conn.close()
 
-    @contextmanager
-    def write_connect(self) -> Iterator[Any]:
-        conn = psycopg2.connect(self.dsn)
-        try:
-            conn.set_session(readonly=False, autocommit=False)
-            yield conn
-        finally:
-            conn.close()
-
     def assignment_context(
         self,
         *,
@@ -60,7 +51,7 @@ class SetupWorkOrderIntakeRepository:
             row = cur.fetchone()
             return dict(row) if row is not None else None
 
-    def submit(
+    def prepare(
         self,
         *,
         email: str,
@@ -70,11 +61,11 @@ class SetupWorkOrderIntakeRepository:
         suggested_correction_evidence: str | None,
         procedure_context: dict[str, Any],
     ) -> dict[str, Any]:
-        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
                 SELECT *
-                FROM ops.submit_setup_work_order_intake(
+                FROM ops.prepare_setup_work_order_intake(
                     %s,%s,%s,%s,%s,%s
                 )
                 """,
@@ -90,7 +81,6 @@ class SetupWorkOrderIntakeRepository:
             row = cur.fetchone()
             if row is None:
                 raise SetupWorkOrderIntakeRepositoryError(
-                    "Setup correction intake command returned no result"
+                    "Setup correction Intake preparation returned no result"
                 )
-            conn.commit()
             return dict(row)

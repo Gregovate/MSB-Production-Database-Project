@@ -17,6 +17,10 @@ from setup_api import (
 )
 from setup_next_api import _task_instructions
 from setup_next_repository import SetupNextRepositoryError
+from setup_work_order_intake_directus import (
+    SetupDirectusIntakeClient,
+    SetupDirectusIntakeError,
+)
 from setup_work_order_intake_repository import (
     SetupWorkOrderIntakeRepository,
     SetupWorkOrderIntakeRepositoryError,
@@ -28,6 +32,10 @@ setup_work_order_intake_api = Blueprint("setup_work_order_intake_api", __name__)
 
 def repo() -> SetupWorkOrderIntakeRepository:
     return SetupWorkOrderIntakeRepository(setup_database_dsn())
+
+
+def directus_client() -> SetupDirectusIntakeClient:
+    return SetupDirectusIntakeClient()
 
 
 def nullable_int(value: Any, name: str) -> int | None:
@@ -135,7 +143,7 @@ def api_setup_correction_intake(
         access,
     )
 
-    result = intake_repo.submit(
+    prepared = intake_repo.prepare(
         email=email,
         session_task_id=setup_session_task_id,
         assignment_id=assignment_id,
@@ -143,6 +151,20 @@ def api_setup_correction_intake(
         suggested_correction_evidence=suggestion,
         procedure_context=procedure_context,
     )
+    intake_payload = prepared.get("intake_payload")
+    if not isinstance(intake_payload, dict):
+        raise SetupWorkOrderIntakeRepositoryError(
+            "Setup correction Intake preparation returned an invalid payload"
+        )
+
+    created = directus_client().create_intake(intake_payload)
+    result = {
+        "intake_id": created.get("intake_id"),
+        "setup_session_task_id": prepared.get("setup_session_task_id"),
+        "setup_work_day_task_id": prepared.get("setup_work_day_task_id"),
+        "triage_state": prepared.get("triage_state"),
+        "operator_display_name": prepared.get("operator_display_name"),
+    }
     return jsonify(intake=result), 201
 
 
@@ -166,7 +188,17 @@ def setup_intake_repository_error(
     exc: SetupWorkOrderIntakeRepositoryError,
 ) -> tuple[Response, int]:
     return jsonify(
-        error="Setup correction intake is temporarily unavailable.",
+        error="Setup correction Intake preparation is temporarily unavailable.",
+        engineering_error=str(exc),
+    ), 503
+
+
+@setup_work_order_intake_api.errorhandler(SetupDirectusIntakeError)
+def setup_intake_directus_error(
+    exc: SetupDirectusIntakeError,
+) -> tuple[Response, int]:
+    return jsonify(
+        error="Work Order Intake service is temporarily unavailable.",
         engineering_error=str(exc),
     ), 503
 
@@ -182,5 +214,5 @@ def setup_intake_database_error(exc: psycopg2.Error) -> tuple[Response, int]:
         status = 404
     else:
         status = 500
-    message = (exc.diag.message_primary or "Setup correction intake failed").strip()
+    message = (exc.diag.message_primary or "Setup correction Intake preparation failed").strip()
     return jsonify(error=message, engineering_error=str(exc)), status
