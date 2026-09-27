@@ -231,4 +231,66 @@ SELECT
 FROM target_flow f
 LEFT JOIN root_operation r ON true;
 
+
+/* -------------------------------------------------------------------------
+   7. Recent Directus activity for Work Order Intake creates.
+
+   Purpose:
+   - prove whether public-form Intake rows entered through Directus ItemsService;
+   - identify the Directus user/service identity involved;
+   - compare created item IDs to stage.work_order_intake.
+
+   No token/secret columns are selected.
+   ------------------------------------------------------------------------- */
+SELECT
+    a.id AS activity_id,
+    a.timestamp,
+    a.action,
+    a.collection,
+    a.item,
+    a.user AS directus_user_id,
+    u.email AS directus_user_email,
+    u.first_name AS directus_user_first_name,
+    u.last_name AS directus_user_last_name,
+    a.ip,
+    a.user_agent,
+    a.origin
+FROM public.directus_activity a
+LEFT JOIN public.directus_users u
+  ON u.id = a.user
+WHERE a.collection = 'work_order_intake'
+  AND a.action = 'create'
+ORDER BY a.timestamp DESC
+LIMIT 25;
+
+/* -------------------------------------------------------------------------
+   8. Candidate Directus service identities.
+
+   This intentionally reports only whether a static token exists, never the
+   token value. A token-bearing service identity may explain how the public
+   Google Form / Apps Script calls Directus.
+
+   Review names/emails/role IDs only. Do not copy secrets into tickets/chat.
+   ------------------------------------------------------------------------- */
+SELECT
+    u.id,
+    u.email,
+    u.first_name,
+    u.last_name,
+    u.status,
+    u.role,
+    (u.token IS NOT NULL) AS has_static_token
+FROM public.directus_users u
+WHERE u.token IS NOT NULL
+   OR coalesce(u.email, '') ILIKE ANY (
+        ARRAY['%work%order%', '%form%', '%script%', '%service%', '%automation%']
+   )
+   OR coalesce(u.first_name, '') ILIKE ANY (
+        ARRAY['%work%order%', '%form%', '%script%', '%service%', '%automation%']
+   )
+   OR coalesce(u.last_name, '') ILIKE ANY (
+        ARRAY['%work%order%', '%form%', '%script%', '%service%', '%automation%']
+   )
+ORDER BY u.status, u.email NULLS LAST, u.id;
+
 ROLLBACK;
