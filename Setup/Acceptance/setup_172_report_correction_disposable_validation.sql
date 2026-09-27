@@ -17,7 +17,7 @@ BEGIN;
 
 DO $validation$
 DECLARE
-    v_manager_email text;
+    v_reporter_email text;
     v_assignment_id bigint;
     v_session_task_id bigint;
     v_setup_task_id bigint;
@@ -31,17 +31,21 @@ DECLARE
     v_notes text;
 BEGIN
     SELECT lower(u.email)
-      INTO v_manager_email
+      INTO v_reporter_email
     FROM public.directus_users u
     JOIN LATERAL ref.setup_browser_capabilities(u.email) c ON true
     WHERE u.status = 'active'
       AND u.email IS NOT NULL
-      AND c.can_manage_setup
+      AND (
+          c.role_name = 'Production Crew'
+          OR 'Production Crew' = ANY(coalesce(c.policy_names, ARRAY[]::text[]))
+      )
     ORDER BY u.id
     LIMIT 1;
 
-    IF v_manager_email IS NULL THEN
-        RAISE EXCEPTION 'Disposable validation could not find an active Setup Manager';
+    IF v_reporter_email IS NULL THEN
+        RAISE EXCEPTION
+            'Disposable validation could not find an active Production Crew reporter';
     END IF;
 
     SELECT
@@ -80,7 +84,7 @@ BEGIN
     SELECT intake_id
       INTO v_intake_id
     FROM ops.submit_setup_work_order_intake(
-        v_manager_email,
+        v_reporter_email,
         v_session_task_id,
         v_assignment_id,
         'Disposable #172 validation finding',
@@ -139,13 +143,13 @@ BEGIN
     END IF;
 
     IF (v_payload ->> 'reporter_person_id') IS NULL
-       OR (v_payload ->> 'reporter_email') <> v_manager_email
+       OR (v_payload ->> 'reporter_email') <> v_reporter_email
        OR (v_payload ->> 'submitted_at')::timestamptz < v_started_at THEN
         RAISE EXCEPTION 'Reporter/timestamp provenance was not preserved: %', v_payload;
     END IF;
 
-    IF v_notes NOT LIKE '%annual_task_id=' || v_session_task_id::text || '%'
-       OR v_notes NOT LIKE '%assignment_id=' || v_assignment_id::text || '%'
+    IF v_notes NOT LIKE ('%annual_task_id=' || v_session_task_id::text || '%')
+       OR v_notes NOT LIKE ('%assignment_id=' || v_assignment_id::text || '%')
        OR v_notes NOT LIKE '%Procedure: Disposable #172 Procedure.pdf%' THEN
         RAISE EXCEPTION 'Promotion-surviving Setup provenance is incomplete: %', v_notes;
     END IF;
@@ -166,7 +170,7 @@ BEGIN
     BEGIN
         PERFORM *
         FROM ops.submit_setup_work_order_intake(
-            v_manager_email,
+            v_reporter_email,
             v_session_task_id,
             v_assignment_id + 999999999,
             'Disposable invalid-assignment validation',
