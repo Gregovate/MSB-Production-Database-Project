@@ -231,5 +231,5 @@ def test_perform_work_asset_pins_are_refreshed() -> None:
     assert "setup_next_pass.js?v=2026-09-26.10" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
     assert "setup_acceptance_fixes.js?v=2026-09-26.1" in html
-    assert "setup_scheduling_board.css?v=2026-09-26.1" in html
+    assert "setup_scheduling_board.css?v=2026-09-26.2" in html
     assert "setup_stage_order.js?v=2026-09-25.1" in html
