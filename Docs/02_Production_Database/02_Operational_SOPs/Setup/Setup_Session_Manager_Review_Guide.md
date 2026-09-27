@@ -56,7 +56,7 @@ Manager reminders:
 - do not create a second report merely to repair an entry mistake;
 - **Report Correction** is not yet enabled; field-correction intake remains separate from Report Work.
 
-## 4. Find Work That Still Needs Review
+## 3. Find Work That Still Needs Review
 
 1. Open the **Verification Queue**.
 2. Choose **Unverified** from the review-status dropdown.
