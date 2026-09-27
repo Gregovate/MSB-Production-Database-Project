@@ -975,3 +975,99 @@
     border: 1px solid #777 !important;
   }
 }
+
+
+/* #175 task-cover-sheet print mode.
+   The Scheduling Board owns the normal page-level print stylesheet above.
+   When Perform Work explicitly prints one task, override that global rule and
+   print only the generated task cover sheet. */
+@media print {
+  body.setup-print-perform-task > * {
+    display: none !important;
+  }
+
+  body.setup-print-perform-task > #setup-perform-print-sheet {
+    display: block !important;
+  }
+
+  body.setup-print-perform-task #schedule-view {
+    display: none !important;
+  }
+
+  body.setup-print-perform-task #setup-perform-print-sheet {
+    width: 100% !important;
+    max-width: none !important;
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  body.setup-print-perform-task #setup-perform-print-sheet * {
+    color: #000 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  body.setup-print-perform-task .setup-perform-print-header {
+    display: flex !important;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    border-bottom: 2px solid #000;
+    padding-bottom: 0.25in;
+    margin-bottom: 0.2in;
+  }
+
+  body.setup-print-perform-task .setup-perform-print-header h1,
+  body.setup-print-perform-task #setup-perform-print-sheet h2,
+  body.setup-print-perform-task #setup-perform-print-sheet h3,
+  body.setup-print-perform-task #setup-perform-print-sheet h4 {
+    margin-top: 0;
+  }
+
+  body.setup-print-perform-task .setup-perform-print-meta {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.08in 0.25in;
+    margin-bottom: 0.18in;
+  }
+
+  body.setup-print-perform-task .setup-perform-print-warning {
+    border: 1px solid #777;
+    padding: 0.08in;
+    margin-bottom: 0.15in;
+  }
+
+  body.setup-print-perform-task .next-perform-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.12in;
+  }
+
+  body.setup-print-perform-task .next-perform-grid section {
+    border: 1px solid #777 !important;
+    padding: 0.1in;
+    break-inside: avoid;
+  }
+
+  body.setup-print-perform-task .setup-perform-print-notes {
+    margin-top: 0.2in;
+    break-inside: avoid;
+  }
+
+  body.setup-print-perform-task .setup-perform-print-lines {
+    min-height: 1.5in;
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        #fff 0,
+        #fff 0.28in,
+        #999 0.29in,
+        #fff 0.30in
+      ) !important;
+  }
+
+  @page {
+    size: portrait;
+    margin: 0.5in;
+  }
+}

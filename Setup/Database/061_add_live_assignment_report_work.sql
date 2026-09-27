@@ -2,11 +2,12 @@
 MSB Setup Session — live Report Work / continuation execution
 Issues: #132, #175, #122
 Status: IMPLEMENTATION CANDIDATE — DO NOT APPLY TO PRODUCTION WITHOUT REVIEW
-Revision: 2026-09-25
+Revision: 2026-09-26
 
 Purpose:
   - allow Production Crew (plus Managers/Administrators) to report actual Setup work;
-  - require elapsed duration and percent complete for each new work report;
+  - require actual work date, elapsed duration, and percent complete for each new work report;
+  - keep actual work date distinct from scheduled Work Day and report-entry timestamp;
   - bind scheduled work reports to the exact setup_work_day_task_id;
   - derive work-day / shift identity from the scheduled assignment instead of
     trusting duplicated browser-entered context;
@@ -30,7 +31,7 @@ BEGIN
 
     IF to_regprocedure('ref.setup_browser_capabilities(text)') IS NULL
        OR to_regprocedure('ops.record_setup_task_progress(text,bigint,bigint,text,integer,integer,text,text,boolean)') IS NULL THEN
-        RAISE EXCEPTION 'Current Setup authorization/progress command is required before migration 059';
+        RAISE EXCEPTION 'Current Setup authorization/progress command is required before migration 061';
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'fieldwiring_app') THEN
@@ -38,6 +39,12 @@ BEGIN
     END IF;
 END
 $preflight$;
+
+ALTER TABLE ops.setup_task_progress
+    ADD COLUMN IF NOT EXISTS performed_on date;
+
+COMMENT ON COLUMN ops.setup_task_progress.performed_on IS
+    'Calendar date when this work period actually occurred. May differ from the scheduled Setup Work Day and from recorded_at; NULL is retained only for older evidence.';
 
 ALTER TABLE ops.setup_task_progress
     ADD COLUMN IF NOT EXISTS duration_minutes integer;
@@ -165,6 +172,7 @@ DROP FUNCTION ops.record_setup_task_progress(
 CREATE FUNCTION ops.record_setup_task_progress(
     p_email text,
     p_setup_session_task_id bigint,
+    p_performed_on date,
     p_crew_count integer,
     p_duration_minutes integer,
     p_percent_complete integer,
@@ -181,6 +189,7 @@ RETURNS TABLE (
     setup_work_day_task_id bigint,
     execution_status text,
     percent_complete integer,
+    performed_on date,
     recorded_at timestamptz,
     operator_display_name text
 )
@@ -217,6 +226,16 @@ BEGIN
     SELECT a.directus_user_id, a.person_id, a.display_name
       INTO v_directus_user_id, v_person_id, v_display_name
     FROM ref.setup_execution_actor(p_email, v_setup_task_id) a;
+
+    IF p_performed_on IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Work performed date is required';
+    END IF;
+
+    IF p_performed_on > current_date THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Work performed date cannot be in the future';
+    END IF;
 
     IF p_crew_count IS NULL OR p_crew_count <= 0 THEN
         RAISE EXCEPTION USING ERRCODE = '22023',
@@ -300,6 +319,7 @@ BEGIN
         setup_session_task_id,
         setup_work_day_id,
         setup_work_day_task_id,
+        performed_on,
         shift_code,
         crew_count,
         duration_minutes,
@@ -313,6 +333,7 @@ BEGIN
         p_setup_session_task_id,
         v_work_day_id,
         v_assignment_id,
+        p_performed_on,
         v_shift,
         p_crew_count,
         p_duration_minutes,
@@ -332,16 +353,16 @@ BEGIN
     WHERE p.setup_session_task_id = p_setup_session_task_id
       AND p.duration_minutes IS NOT NULL;
 
+    /*
+      performed_on is the authoritative calendar date for the work period.
+      recorded_at remains the entry/audit timestamp. Do not fabricate start/end
+      timestamps merely because the report is being entered now.
+    */
     UPDATE ops.setup_session_task st
-       SET actual_started_at = coalesce(st.actual_started_at, v_recorded_at),
-           actual_duration_minutes = v_total_duration,
+       SET actual_duration_minutes = v_total_duration,
            execution_status = CASE
                WHEN p_percent_complete = 100 THEN 'COMPLETE'
                ELSE 'IN_PROGRESS'
-           END,
-           actual_completed_at = CASE
-               WHEN p_percent_complete = 100 THEN v_recorded_at
-               ELSE NULL
            END,
            actual_crew_count = CASE
                WHEN p_percent_complete = 100 THEN p_crew_count
@@ -362,11 +383,6 @@ BEGIN
     IF v_assignment_id IS NOT NULL THEN
         UPDATE ops.setup_work_day_task wdt
            SET actual_crew_count = p_crew_count,
-               started_at = coalesce(wdt.started_at, v_recorded_at),
-               completed_at = CASE
-                   WHEN p_percent_complete = 100 THEN v_recorded_at
-                   ELSE wdt.completed_at
-               END,
                notes = CASE
                    WHEN nullif(btrim(p_progress_note), '') IS NOT NULL
                        THEN p_progress_note
@@ -385,21 +401,196 @@ BEGIN
            v_assignment_id,
            v_status,
            p_percent_complete,
+           p_performed_on,
            v_recorded_at,
            v_display_name;
 END;
 $function$;
 
 REVOKE ALL ON FUNCTION ops.record_setup_task_progress(
-    text,bigint,integer,integer,integer,integer,text,text,bigint,bigint,text
+    text,bigint,date,integer,integer,integer,integer,text,text,bigint,bigint,text
 ) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ops.record_setup_task_progress(
-    text,bigint,integer,integer,integer,integer,text,text,bigint,bigint,text
+    text,bigint,date,integer,integer,integer,integer,text,text,bigint,bigint,text
+) TO fieldwiring_app;
+
+
+/*
+  Manager-only correction of an existing Report Work row. The progress identity,
+  original creator, scheduled-assignment link, and recorded_at timestamp remain
+  intact. Existing actor triggers stamp who made the correction and when.
+*/
+CREATE OR REPLACE FUNCTION ops.correct_setup_task_progress(
+    p_email text,
+    p_setup_task_progress_id bigint,
+    p_performed_on date,
+    p_crew_count integer,
+    p_duration_minutes integer,
+    p_percent_complete integer,
+    p_completed_quantity integer,
+    p_completed_units text,
+    p_progress_note text
+)
+RETURNS TABLE (
+    setup_task_progress_id bigint,
+    setup_session_task_id bigint,
+    setup_work_day_task_id bigint,
+    execution_status text,
+    percent_complete integer,
+    performed_on date,
+    corrected_at timestamptz,
+    operator_display_name text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, ops, ref
+AS $function$
+DECLARE
+    v_directus_user_id uuid;
+    v_manager_person_id integer;
+    v_display_name text;
+    v_session_task_id bigint;
+    v_assignment_id bigint;
+    v_total_duration integer;
+    v_max_percent integer;
+    v_status text;
+    v_completion_crew integer;
+    v_completion_note text;
+    v_completion_person_id integer;
+    v_assignment_crew integer;
+BEGIN
+    SELECT a.directus_user_id, a.person_id, a.display_name
+      INTO v_directus_user_id, v_manager_person_id, v_display_name
+    FROM ref.setup_management_actor(p_email, false) a;
+
+    IF p_performed_on IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Work completed on date is required';
+    END IF;
+    IF p_performed_on > current_date THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Work completed on date cannot be in the future';
+    END IF;
+    IF p_crew_count IS NULL OR p_crew_count <= 0 THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Crew size must be at least 1';
+    END IF;
+    IF p_duration_minutes IS NULL OR p_duration_minutes <= 0 THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Elapsed work duration must be greater than zero';
+    END IF;
+    IF p_percent_complete IS NULL OR p_percent_complete < 1 OR p_percent_complete > 100 THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Percent complete must be between 1 and 100';
+    END IF;
+    IF p_completed_quantity IS NOT NULL AND p_completed_quantity <= 0 THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Completed quantity must be greater than zero';
+    END IF;
+
+    SELECT p.setup_session_task_id, p.setup_work_day_task_id
+      INTO v_session_task_id, v_assignment_id
+    FROM ops.setup_task_progress p
+    WHERE p.setup_task_progress_id = p_setup_task_progress_id
+    FOR UPDATE;
+
+    IF v_session_task_id IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = 'P0002',
+            MESSAGE = 'Setup work report was not found';
+    END IF;
+
+    PERFORM pg_catalog.set_config(
+        'app.directus_user_uuid',
+        v_directus_user_id::text,
+        true
+    );
+
+    UPDATE ops.setup_task_progress p
+       SET performed_on = p_performed_on,
+           crew_count = p_crew_count,
+           duration_minutes = p_duration_minutes,
+           percent_complete = p_percent_complete,
+           completed_quantity = p_completed_quantity,
+           completed_units = nullif(btrim(p_completed_units), ''),
+           progress_note = nullif(btrim(p_progress_note), ''),
+           marks_task_complete = p_percent_complete = 100
+     WHERE p.setup_task_progress_id = p_setup_task_progress_id;
+
+    SELECT sum(p.duration_minutes),
+           max(p.percent_complete)
+      INTO v_total_duration, v_max_percent
+    FROM ops.setup_task_progress p
+    WHERE p.setup_session_task_id = v_session_task_id;
+
+    IF v_max_percent = 100 THEN
+        SELECT p.crew_count, p.progress_note, p.created_by_person_id
+          INTO v_completion_crew, v_completion_note, v_completion_person_id
+        FROM ops.setup_task_progress p
+        WHERE p.setup_session_task_id = v_session_task_id
+          AND p.percent_complete = 100
+        ORDER BY p.performed_on DESC NULLS LAST,
+                 p.recorded_at DESC,
+                 p.setup_task_progress_id DESC
+        LIMIT 1;
+        v_status := 'COMPLETE';
+    ELSE
+        v_status := 'IN_PROGRESS';
+    END IF;
+
+    UPDATE ops.setup_session_task st
+       SET actual_duration_minutes = v_total_duration,
+           execution_status = v_status,
+           actual_crew_count = CASE WHEN v_status = 'COMPLETE' THEN v_completion_crew ELSE NULL END,
+           completion_note = CASE WHEN v_status = 'COMPLETE' THEN v_completion_note ELSE NULL END,
+           completed_by_person_id = CASE WHEN v_status = 'COMPLETE' THEN v_completion_person_id ELSE NULL END
+     WHERE st.setup_session_task_id = v_session_task_id;
+
+    IF v_assignment_id IS NOT NULL THEN
+        SELECT p.crew_count
+          INTO v_assignment_crew
+        FROM ops.setup_task_progress p
+        WHERE p.setup_work_day_task_id = v_assignment_id
+        ORDER BY p.performed_on DESC NULLS LAST,
+                 p.recorded_at DESC,
+                 p.setup_task_progress_id DESC
+        LIMIT 1;
+
+        UPDATE ops.setup_work_day_task wdt
+           SET actual_crew_count = v_assignment_crew
+         WHERE wdt.setup_work_day_task_id = v_assignment_id;
+    END IF;
+
+    PERFORM ops.refresh_setup_session_task_schedule_state(v_session_task_id);
+
+    RETURN QUERY
+    SELECT p_setup_task_progress_id,
+           v_session_task_id,
+           v_assignment_id,
+           v_status,
+           p_percent_complete,
+           p_performed_on,
+           now(),
+           v_display_name;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION ops.correct_setup_task_progress(
+    text,bigint,date,integer,integer,integer,integer,text,text
+) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ops.correct_setup_task_progress(
+    text,bigint,date,integer,integer,integer,integer,text,text
 ) TO fieldwiring_app;
 
 COMMIT;
 
 SELECT
+    EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'ops'
+          AND table_name = 'setup_task_progress'
+          AND column_name = 'performed_on'
+    ) AS performed_on_column_ready,
     EXISTS (
         SELECT 1
         FROM information_schema.columns
@@ -415,8 +606,11 @@ SELECT
           AND column_name = 'percent_complete'
     ) AS percent_complete_column_ready,
     to_regprocedure(
-        'ops.record_setup_task_progress(text,bigint,integer,integer,integer,integer,text,text,bigint,bigint,text)'
+        'ops.record_setup_task_progress(text,bigint,date,integer,integer,integer,integer,text,text,bigint,bigint,text)'
     ) IS NOT NULL AS assignment_progress_command_ready,
+    to_regprocedure(
+        'ops.correct_setup_task_progress(text,bigint,date,integer,integer,integer,integer,text,text)'
+    ) IS NOT NULL AS manager_progress_correction_ready,
     to_regprocedure(
         'ops.record_setup_task_progress(text,bigint,bigint,text,integer,integer,text,text,boolean)'
     ) IS NULL AS old_progress_command_removed;

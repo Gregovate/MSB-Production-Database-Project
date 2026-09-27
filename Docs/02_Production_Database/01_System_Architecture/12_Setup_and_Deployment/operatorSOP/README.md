@@ -7,8 +7,8 @@
 | Audience | MSB reviewers, managers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-25 |
-| Keywords | Setup, review, verification, reusable tasks, Display Ownership, materials, Kits |
+| Last Reviewed | 2026-09-26 |
+| Keywords | Setup, Perform Work, Report Work, Captain, review, verification, reusable tasks, Display Ownership, materials, Kits |
 
 Use this page to find the Setup instruction for the job you are doing.
 
@@ -20,8 +20,15 @@ Open Setup:
 
 The real **2026 Setup Session is live**. Use **Plan / Schedule** for current annual scheduling. The 2025 Historical Verification view remains history/review evidence; do not use it as the current schedule.
 
+- [Perform and Report Setup Work](Perform_and_Report_Setup_Work.md) — Captain/Production Crew field execution, Print Task, Procedure access, Report Work, partial continuation, and Manager correction of mistaken reports.
 - [Setup Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md) — current scheduling plus reusable-task maintenance, prerequisites, Display Ownership, Resources, Extra Materials, Kits, Kit Inventory, and T-Post Inventory.
 - [Review and Correct the 2025 Setup History](Review_2025_Setup_History.md) — historical verification only.
+
+## Current Field Execution
+
+Use **Perform Work** for scheduled field work. The Captain dropdown can show one Captain or **All scheduled work**. Report the date the work actually happened, not merely the date the report is entered.
+
+If partial work remains, schedule a new continuation assignment; do not move the already-worked occurrence.
 
 ## Quick Reminders
 

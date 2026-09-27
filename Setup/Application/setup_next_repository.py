@@ -227,18 +227,47 @@ class SetupNextRepository:
             cur.execute("""
                 SELECT p.setup_task_progress_id, p.setup_session_task_id,
                        p.setup_work_day_id, p.setup_work_day_task_id,
-                       wd.work_date, p.shift_code, p.crew_count,
+                       p.performed_on::text AS performed_on,
+                       wd.work_date::text AS work_date,
+                       p.shift_code, p.crew_count,
                        p.duration_minutes, p.percent_complete,
                        p.completed_quantity, p.completed_units, p.progress_note,
-                       p.marks_task_complete, p.recorded_at,
-                       nullif(btrim(concat_ws(' ', actor.first_name, actor.last_name)), '') AS recorded_by_name
+                       p.marks_task_complete, p.recorded_at, p.updated_at,
+                       nullif(btrim(concat_ws(' ', actor.first_name, actor.last_name)), '') AS recorded_by_name,
+                       nullif(btrim(concat_ws(' ', updater.first_name, updater.last_name)), '') AS updated_by_name
                 FROM ops.setup_task_progress p
                 LEFT JOIN ops.setup_work_day wd ON wd.setup_work_day_id = p.setup_work_day_id
                 LEFT JOIN ref.person actor ON actor.person_id = p.created_by_person_id
+                LEFT JOIN ref.person updater ON updater.person_id = p.updated_by_person_id
                 WHERE p.setup_session_task_id = %s
                 ORDER BY p.recorded_at, p.setup_task_progress_id
             """, (session_task_id,))
             return [dict(r) for r in cur.fetchall()]
+
+    def correct_progress(self, *, email: str, progress_id: int,
+                         performed_on: str, crew_count: int,
+                         duration_minutes: int, percent_complete: int,
+                         quantity: int | None, units: str | None,
+                         note: str | None) -> dict[str, Any]:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT * FROM ops.correct_setup_task_progress(
+                    %s,%s,%s::date,%s,%s,%s,%s,%s,%s
+                )
+            """, (
+                email,
+                progress_id,
+                performed_on,
+                crew_count,
+                duration_minutes,
+                percent_complete,
+                quantity,
+                units,
+                note,
+            ))
+            result = self._one(cur, "Setup work-report correction returned no result")
+            conn.commit()
+            return result
 
     def field_context(self, *, task_id: int, season_year: int) -> dict[str, list[dict[str, Any]]]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -320,18 +349,19 @@ class SetupNextRepository:
 
     def record_progress(self, *, email: str, session_task_id: int,
                         assignment_id: int | None, work_day_id: int | None,
-                        shift: str | None, crew_count: int,
+                        shift: str | None, performed_on: str, crew_count: int,
                         duration_minutes: int, percent_complete: int,
                         quantity: int | None, units: str | None,
                         note: str | None) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
                 SELECT * FROM ops.record_setup_task_progress(
-                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                    %s,%s,%s::date,%s,%s,%s,%s,%s,%s,%s,%s,%s
                 )
             """, (
                 email,
                 session_task_id,
+                performed_on,
                 crew_count,
                 duration_minutes,
                 percent_complete,

@@ -53,6 +53,18 @@ def test_reusable_browser_preview_is_parameterized_and_version_pinnable() -> Non
     assert "SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY" in server
 
 
+def test_reusable_browser_preview_preserves_setup_procedure_runtime_mounts() -> None:
+    server = read_acceptance("setup_disposable_browser_preview_server.sh")
+
+    assert "msb-display-folders.service" in server
+    assert "msb-setup-google-links.service" in server
+    assert "/mnt/msb-display-folders" in server
+    assert "/mnt/msb-setup-google-links" in server
+    assert 'SETUP_DRIVE_ROOT="/mnt/msb-display-folders"' in server
+    assert 'SETUP_GOOGLE_DOC_LINK_ROOT="/mnt/msb-setup-google-links"' in server
+    assert '"8796"' in server
+
+
 def test_reusable_acceptance_uses_exact_candidate_and_full_application_regression() -> None:
     disposable = read_acceptance("setup_disposable_acceptance_server.sh")
     browser = read_acceptance("setup_disposable_browser_preview_server.sh")

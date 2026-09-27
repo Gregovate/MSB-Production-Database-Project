@@ -189,7 +189,7 @@ if [[ ! "$PREVIEW_PORT" =~ ^[0-9]+$ ]] || (( PREVIEW_PORT < 1024 || PREVIEW_PORT
     echo "FAIL: preview port must be an integer from 1024 through 65535"
     exit 5
 fi
-if [[ "$PREVIEW_PORT" == "8055" || "$PREVIEW_PORT" == "8790" || "$PREVIEW_PORT" == "8792" || "$PREVIEW_PORT" == "8794" ]]; then
+if [[ "$PREVIEW_PORT" == "8055" || "$PREVIEW_PORT" == "8790" || "$PREVIEW_PORT" == "8792" || "$PREVIEW_PORT" == "8794" || "$PREVIEW_PORT" == "8796" ]]; then
     echo "FAIL: preview port conflicts with a governed Production listener"
     exit 6
 fi
@@ -217,9 +217,25 @@ if ! systemctl is-active --quiet msb-setup.service; then
     echo "FAIL: Production Setup service is not active"
     exit 12
 fi
+if ! systemctl is-active --quiet msb-display-folders.service; then
+    echo "FAIL: shared read-only Display Folders service is not active"
+    exit 13
+fi
+if ! systemctl is-active --quiet msb-setup-google-links.service; then
+    echo "FAIL: shared read-only Setup Google Doc link-view service is not active"
+    exit 14
+fi
+if ! sudo -u fieldwiring -H bash -c 'cd /tmp && test -r /mnt/msb-display-folders && test -x /mnt/msb-display-folders'; then
+    echo "FAIL: fieldwiring runtime account cannot read/traverse Display Folders"
+    exit 15
+fi
+if ! sudo -u fieldwiring -H bash -c 'cd /tmp && test -r /mnt/msb-setup-google-links && test -x /mnt/msb-setup-google-links'; then
+    echo "FAIL: fieldwiring runtime account cannot read/traverse Setup Google Doc link view"
+    exit 16
+fi
 if ! sudo -u fieldwiring -H test -x "$PYTHON"; then
     echo "FAIL: documented shared Python runtime is unavailable to fieldwiring"
-    exit 13
+    exit 17
 fi
 
 SETUP_HEAD_BEFORE="$(sudo git -C "$SETUP_LIVE_ROOT" rev-parse HEAD)"
@@ -506,6 +522,8 @@ PREVIEW_PGID="$(sudo -u fieldwiring -H env \
     SETUP_DATABASE_DSN="$DSN" \
     FIELDWIRING_DATABASE_DSN="$DSN" \
     PROCEDURE_DATABASE_DSN="$DSN" \
+    SETUP_DRIVE_ROOT="/mnt/msb-display-folders" \
+    SETUP_GOOGLE_DOC_LINK_ROOT="/mnt/msb-setup-google-links" \
     MSB_SETUP_PREVIEW_APP_DIR="$APP_DIR" \
     MSB_SETUP_PREVIEW_OPERATOR_EMAIL="$PREVIEW_EMAIL" \
     MSB_SETUP_PREVIEW_HOST="127.0.0.1" \
