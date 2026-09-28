@@ -23,7 +23,7 @@ def test_reusable_task_extra_materials_are_visible_in_task_detail() -> None:
     assert "Add Source" in ui
     assert "window.openTaskExtraMaterialSource" in ui
 
-    assert "setup_task_extra_materials.js?v=2026-09-28.1" in bridge
+    assert "setup_task_extra_materials.js?v=2026-09-28.2" in bridge
     assert '"setup_task_extra_materials.js"' in host
 
 
