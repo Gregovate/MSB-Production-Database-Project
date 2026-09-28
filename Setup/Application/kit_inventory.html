@@ -81,7 +81,7 @@
           </div>
           <div class="table-wrap">
             <table class="kit-contents-table">
-              <thead><tr><th>Item</th><th>Expected</th><th>Spec</th><th>Verification</th><th>On Hand</th><th>Notes</th><th></th></tr></thead>
+              <thead><tr><th>Item</th><th>Expected</th><th>Spec</th><th>Used by task(s)</th><th>Verification</th><th>On Hand</th><th>Notes</th><th></th></tr></thead>
               <tbody id="kit-content-body"></tbody>
             </table>
           </div>
@@ -90,9 +90,15 @@
         <section id="expected-editor" class="detail-section editor-panel action-panel" hidden>
           <div id="expected-editor-status" class="editor-banner" hidden></div>
           <h3 id="expected-editor-title">Manager — Add Expected Extra Material</h3>
-          <div class="hint">Changes expected Kit contents only. It does not change physical on-hand.</div>
+          <div class="hint">New expected Kit contents must link to an active reusable-task Extra Material requirement. If the task requirement does not exist yet, add the material from the Setup task first. Physical on-hand remains separate.</div>
           <form id="expected-form">
             <div class="form-grid">
+              <div class="catalog-picker-field wide">
+                <label>Task use<select id="expected-task-requirement" required>
+                  <option value="">Select the reusable task requirement that uses this material</option>
+                </select></label>
+                <div class="hint">This prevents orphan Kit contents. One Kit material may be used by multiple tasks; additional task links are added from those Setup tasks.</div>
+              </div>
               <div class="catalog-picker-field wide">
                 <label>Item<select id="expected-item" required></select></label>
                 <div class="catalog-picker-actions manager-only" hidden>
@@ -272,7 +278,7 @@
   </div>
 </main>
 
-<script src="assets/setup_kit_inventory.js?v=2026-09-13.2"></script>
+<script src="assets/setup_kit_inventory.js?v=2026-09-28.1"></script>
 <script src="assets/setup_kit_inventory_displays.js?v=2026-09-13.1"></script>
 <script src="assets/setup_kit_inventory_review.js?v=2026-09-15.2"></script>
 <script src="assets/setup_uom_catalog.js?v=2026-09-15.1"></script>
