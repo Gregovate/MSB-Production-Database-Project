@@ -16,11 +16,14 @@ def test_reusable_task_extra_materials_are_visible_in_task_detail() -> None:
 
     assert "Extra Materials Required by This Task" in ui
     assert "api/setup/tasks/${taskId}/extra-materials" in ui
-    assert "Reusable requirement only. Source Containers are maintained separately below." in ui
+    assert "maintain its Expected Source Container from the same requirement row" in ui
     assert "selectTaskWithExtraMaterials" in ui
-    assert "source${sources.length === 1 ? '' : 's'}" in ui
+    assert "task-extra-material-source-inline" in ui
+    assert "Review Sources" in ui
+    assert "Add Source" in ui
+    assert "window.openTaskExtraMaterialSource" in ui
 
-    assert "setup_task_extra_materials.js?v=2026-09-16.2" in bridge
+    assert "setup_task_extra_materials.js?v=2026-09-28.1" in bridge
     assert '"setup_task_extra_materials.js"' in host
 
 
@@ -66,3 +69,18 @@ def test_kit_row_actions_move_operator_to_the_selected_editor() -> None:
     assert "focusEditor('inventory-editor', 'inventory-delta')" in review
     assert "scrollIntoView({ behavior: 'smooth', block: 'start' })" in review
     assert "focus({ preventScroll: true })" in review
+
+
+
+def test_task_requirement_rows_keep_source_maintenance_adjacent() -> None:
+    ui = read_app("setup_task_extra_materials.js")
+    css = read_app("setup_extra_materials.css")
+
+    assert "Expected Source Container from the same requirement row" in ui
+    assert "function sourceAction(row)" in ui
+    assert "task-extra-material-source-inline" in ui
+    assert "Review Sources" in ui
+    assert "Add Source" in ui
+    assert "window.openTaskExtraMaterialSource(Number(rowId))" in ui
+    assert ".task-extra-material-source-summary" in css
+    assert ".task-extra-material-source-inline" in css
