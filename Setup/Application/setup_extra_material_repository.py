@@ -146,12 +146,48 @@ class SetupExtraMaterialRepository:
                     cem.active_flag,
                     b.inventory_event_count,
                     b.on_hand_quantity,
-                    b.last_inventory_event_at
+                    b.last_inventory_event_at,
+                    coalesce(usage.task_use_count, 0) AS task_use_count,
+                    coalesce(usage.used_by_tasks, '[]'::jsonb) AS used_by_tasks
                 FROM ref.setup_container_extra_material cem
                 JOIN ref.setup_extra_material m
                   ON m.setup_extra_material_id = cem.setup_extra_material_id
                 LEFT JOIN ops.setup_extra_material_inventory_balance b
                   ON b.setup_container_extra_material_id = cem.setup_container_extra_material_id
+                LEFT JOIN LATERAL (
+                    SELECT
+                        count(DISTINCT t.setup_task_id)::integer AS task_use_count,
+                        jsonb_agg(
+                            DISTINCT jsonb_build_object(
+                                'setup_task_extra_material_source_id', src.setup_task_extra_material_source_id,
+                                'setup_task_extra_material_id', tm.setup_task_extra_material_id,
+                                'setup_task_id', t.setup_task_id,
+                                'task_name', t.task_name,
+                                'stage_id', t.stage_id,
+                                'stage_key', s.stage_key,
+                                'stage_name', s.stage_name,
+                                'expected_quantity', src.expected_quantity,
+                                'source_verification_state', src.verification_state
+                            )
+                        ) AS used_by_tasks
+                    FROM ref.setup_task_extra_material_source AS src
+                    JOIN ref.setup_task_extra_material AS tm
+                      ON tm.setup_task_extra_material_id = src.setup_task_extra_material_id
+                    JOIN ref.setup_task AS t
+                      ON t.setup_task_id = tm.setup_task_id
+                    LEFT JOIN ref.stage AS s
+                      ON s.stage_id = t.stage_id
+                    WHERE src.container_id = cem.container_id
+                      AND src.active_flag
+                      AND tm.active_flag
+                      AND t.active_flag
+                      AND tm.setup_extra_material_id = cem.setup_extra_material_id
+                      AND tm.quantity_uom = cem.quantity_uom
+                      AND tm.size_text IS NOT DISTINCT FROM cem.size_text
+                      AND tm.length_value IS NOT DISTINCT FROM cem.length_value
+                      AND tm.length_unit IS NOT DISTINCT FROM cem.length_unit
+                      AND tm.color IS NOT DISTINCT FROM cem.color
+                ) AS usage ON true
                 WHERE cem.container_id = %s
                   AND cem.active_flag
                 ORDER BY m.display_order, m.material_name,
@@ -160,7 +196,12 @@ class SetupExtraMaterialRepository:
                 """,
                 (container_id,),
             )
-            contents = [dict(row) for row in cur.fetchall()]
+            contents = []
+            for row in cur.fetchall():
+                item = dict(row)
+                used_by = item.get("used_by_tasks")
+                item["used_by_tasks"] = used_by if isinstance(used_by, list) else list(used_by or [])
+                contents.append(item)
         return {"container": dict(container), "contents": contents}
 
     def inventory_history(self, setup_container_extra_material_id: int) -> list[dict[str, Any]]:
