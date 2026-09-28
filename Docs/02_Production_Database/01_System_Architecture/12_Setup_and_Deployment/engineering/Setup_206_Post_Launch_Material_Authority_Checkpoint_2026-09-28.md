@@ -556,3 +556,305 @@ Proceed in this order:
 6. checkpoint exact disposable/browser results before any Production decision.
 
 No Production mutation has been authorized or performed.
+
+
+---
+
+## Continuation Checkpoint — Disposable Browser Review Findings
+
+| Field | Value |
+|---|---|
+| Exact browser-review candidate | `f11db3e44c2911367749fd4ba8bfbb1c70d6fcd7` |
+| Disposable browser result | **CLEAN EXIT** |
+| Production mutation by preview | **NO** |
+| Branch implementation state | **STOPPED — findings captured; no further recon authorized in this checkpoint** |
+
+### Browser-review acceptance status
+
+The disposable browser review found multiple real defects and data-reconciliation cases. Therefore candidate `f11db3e44c2911367749fd4ba8bfbb1c70d6fcd7` is **not accepted for Production**.
+
+Do not resume implementation from the original #206 problem statement. Continue from the findings below.
+
+### 1. Requirement hard-delete refresh defect
+
+Observed on Church RGB Plywood:
+
+- **Delete Mistake** successfully removed the Plywood requirement from the upper **Extra Materials Required by This Task** table.
+- The lower **Expected Source Containers** section retained the deleted requirement until the task/page was reloaded.
+- After reload, Plywood disappeared correctly.
+
+Code cause established during review:
+
+- task requirement module refreshes its own state with `loadTaskMaterials()`;
+- source module owns separate cached requirement state loaded by `loadTaskSources()`;
+- delete path does not trigger source-module refresh.
+
+Required correction:
+
+- hard-delete must refresh both task-requirement and source sections.
+
+### 2. Church RGB / C145 material truth established
+
+Task #73 — `Setup Church RGB (John's) Tree` — has physical Kit C145 assigned.
+
+Operator confirmed these task materials are physically sourced from C145:
+
+- Cribbing / Shim — Qty 3;
+- Ratchet Strap — Qty 3;
+- T-Post — Qty 2 minimum / NEEDS_REVIEW;
+- Turnbuckle — Qty 3 / verification candidate.
+
+After reload, all four source allocations persisted and showed balanced.
+
+Known cleanup:
+
+- **Plywood must not remain in C145 expected contents.**
+- Church RGB plywood is already represented by first-class Display identities stored in Container 131.
+- The task-level Plywood requirement was deleted as duplicate reconstruction authority.
+- The remaining C145 Plywood expected-content row is reconstruction garbage and should be removed separately.
+
+Turnbuckle:
+
+- operator intentionally removed Turnbuckle from C145 expected contents in the disposable browser as a test;
+- operator believes Ratchet Straps may have replaced Turnbuckles for the same guying/tensioning purpose;
+- Turnbuckle remains a **verification/reconciliation candidate**, not established truth.
+
+### 3. Source/content divergence allowed
+
+The Turnbuckle removal test exposed an integrity gap:
+
+```text
+active task requirement
+    -> active source C145
+but
+C145 expected contents
+    -> matching material removed
+```
+
+The system still showed the task/source allocation as balanced.
+
+Required correction:
+
+- removing Kit expected content with active dependent task-source relationships must not silently create contradictory authority;
+- block or require explicit governed reconciliation;
+- surface exact dependent task requirement(s);
+- preserve inventory history separately.
+
+### 4. Kit reverse "Used by task(s)" projection is too strict
+
+C145 showed legitimate task use as `NO TASK USE` for some materials despite real task/source authority.
+
+Current reverse projection requires exact equality of:
+
+- material identity;
+- UOM;
+- size_text;
+- length_value;
+- length_unit;
+- color.
+
+Reconstructed task and Container rows can describe the same physical item with different legacy/spec text.
+
+Observed examples:
+
+- Ratchet Strap — real task #73 source relationship but `NO TASK USE`;
+- T-Post — real task #73 source relationship but `NO TASK USE`.
+
+Required correction:
+
+- do not infer **no use** from failure of exact-spec reverse matching;
+- preserve exact relationship identity while allowing a review state for mismatched reconstructed specs.
+
+Suggested operator-facing states:
+
+- `LINKED TO TASK`;
+- `TASK LINK NEEDS REVIEW`;
+- `NO TASK LINK RECORDED`;
+- explicit `SHARED / STOCK` where governed disposition exists.
+
+### 5. "NO TASK USE" wording is misleading
+
+Church Tree Kit C145 is clearly useful and assigned to task #73.
+
+`NO TASK USE` overstates the evidence when the actual condition is only that no exact reverse material/spec match was resolved.
+
+This is both:
+
+- a projection/reconciliation problem; and
+- an operator wording problem.
+
+### 6. Kit "Task use" picker exposes requirement implementation instead of operator workflow
+
+In **Add Expected Extra Material**, the Task use dropdown currently loads every active task Extra Material requirement globally.
+
+That makes the same reusable task appear repeatedly for unrelated materials.
+
+Observed example for task #73:
+
+- Cribbing / Shim;
+- Ratchet Strap;
+- T-Post;
+- Turnbuckle;
+
+all appear as separate `#73 Setup Church RGB...` choices.
+
+The API already supports filtering source options by `setup_extra_material_id`.
+
+Required UX:
+
+1. choose material first;
+2. show only active task requirements for that material;
+3. show each task once unless multiple real variants of the same material require disambiguation;
+4. when variants exist, show the spec/variant;
+5. continue submitting the exact `setup_task_extra_material_id`;
+6. do not offer an exact task-requirement + Kit relationship as a new choice when it is already linked.
+
+### 7. Northern Lights prior reconciliation assumption is invalid
+
+Prior checkpoint assumption:
+
+- active requirement #52 on task #140 was correct;
+- historical C16/C17/C18/C19 sources from inactive #36 should be moved to #52.
+
+**This is wrong. Do not perform that repair.**
+
+Operator-established reusable workflow:
+
+```text
+#140 Layout Light Locations
+    layout/mark locations only
+    no Display/Container material
+    no T-Post installation
+
+#132 Setup Northern Lights
+    install T-Posts and lights together
+    66 Displays
+    Containers C16/C17/C18/C19
+```
+
+Current Catalog evidence:
+
+#### Task #140
+
+- reusable ID 140;
+- annual task ID 333;
+- current name incorrectly says `Layout Light Locations and install 66 T-Posts`;
+- Material = NO;
+- 0 Displays / 0 Containers;
+- completion point incorrectly says `T-Posts are installed`;
+- active T-Post requirement #52:
+  - 66 EA;
+  - 3 FT;
+  - NEEDS_REVIEW;
+  - no source.
+
+This requirement is misplaced reconstruction authority.
+
+#### Task #132
+
+- reusable ID 132;
+- annual task ID 387;
+- `Setup Northern Lights`;
+- Material = YES;
+- resolves 66 Displays;
+- Containers 16,17,18,19;
+- currently 0 active Extra Material requirements.
+
+Historical requirement #36 on #132 already has source allocations:
+
+- C16 = 16;
+- C17 = 16;
+- C18 = 18;
+- C19 = 16;
+- total = 66.
+
+Correct reconciliation direction:
+
+1. correct task #140 reusable wording to layout-only semantics;
+2. hard-delete mistaken active requirement #52 on #140;
+3. **restore/reactivate existing requirement #36 on #132**;
+4. preserve its existing C16/C17/C18/C19 source rows;
+5. do not duplicate source rows;
+6. preserve #132 Display/Container material resolution.
+
+### 8. Material Audit needs restore/reactivate path
+
+Current historical-source review assumes the current active requirement is the destination.
+
+Northern Lights proves the inactive historical requirement can be correct while the active reconstructed requirement is wrong.
+
+Required correction surface must distinguish at least:
+
+- **Restore prior requirement**; versus
+- **Move/reassign historical source to current requirement**.
+
+Do not make activity state itself determine authority.
+
+### 9. Reusable Catalog and live Setup Session must coexist during first-season cleanup
+
+Northern Lights is direct evidence that reusable Catalog mistakes are being discovered while 2026 Setup is live.
+
+Required operational principle:
+
+- reusable task knowledge must remain correctable during live annual execution;
+- annual/live Session state must remain usable;
+- correcting reusable knowledge must not force bad reconstruction forward;
+- Catalog and annual execution are related but separate authority layers.
+
+### 10. Northern Lights procedure split confirms task boundary
+
+Operator produced separate draft procedures:
+
+- `16-Northern Lights-NL Layout Procedure.pdf`;
+- `16-Northern Lights-NL Setup Procedure.pdf`.
+
+Layout procedure:
+
+- marks light locations only;
+- does not install T-Posts or lights.
+
+Setup procedure:
+
+- begins with placing/pounding shortened T-Posts;
+- then installs one light per post;
+- continues with power/network/bull-line work.
+
+The old **Display Materials** section in the Setup Procedure should be removed because it duplicates/stales database material authority.
+
+Preserve procedural instructions describing **how/where** bull line, network cable, posts, lights, etc. are used.
+
+### 11. Procedure/database authority boundary
+
+Use:
+
+```text
+Layout procedure
+    = where/how to mark locations
+
+Setup procedure
+    = how to perform physical installation
+
+Database
+    = material identity, quantities, Containers, sources, Displays, inventory
+```
+
+Do not retain procedure material inventories as competing durable authority.
+
+### STOP POINT
+
+The operator explicitly stopped further reconnaissance after these findings.
+
+Do not:
+
+- continue browser reconnaissance;
+- mutate Production for these material corrections;
+- implement fixes until work is explicitly resumed;
+- restart #206 from the original prompt.
+
+When work resumes, begin from this checkpoint and the recorded #206 / PR #252 findings, then implement the corrections as one controlled candidate cycle and rerun:
+
+1. full Setup/Application regression;
+2. disposable current-Production clone acceptance;
+3. exact-candidate disposable browser review;
+4. operator acceptance;
+5. separate Production deployment decision.
