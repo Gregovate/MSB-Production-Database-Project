@@ -858,3 +858,152 @@ When work resumes, begin from this checkpoint and the recorded #206 / PR #252 fi
 3. exact-candidate disposable browser review;
 4. operator acceptance;
 5. separate Production deployment decision.
+
+
+---
+
+## Continuation Checkpoint — Corrected Candidate Ready for Retest
+
+| Field | Value |
+|---|---|
+| Implementation head before checkpoint | `a7a15f1fd1dac6f249f2d1950f653ea9ec8cd5e1` |
+| Branch | `agent/setup-206-tablet-material-audit` |
+| PR | #252 |
+| Main comparison before checkpoint | 73 ahead / 0 behind |
+| Mergeable | true |
+| Production mutation authorized | **NO** |
+
+This checkpoint resumes from the prior disposable-browser STOP findings. It is a new controlled candidate cycle, not a restart of #206.
+
+### Corrections implemented
+
+#### 1. Requirement/source panel synchronization
+
+Requirement save and **Delete Mistake** now refresh:
+
+- **Extra Materials Required by This Task**; and
+- **Expected Source Containers**.
+
+The source module exports a bounded refresh hook used by the requirement module after mutations.
+
+This addresses the Church Plywood stale-source-panel finding.
+
+#### 2. Kit reverse task-use semantics
+
+Kit Inventory no longer equates an exact-spec mismatch with "no task use."
+
+Reverse projection now first uses stable:
+
+- source Container;
+- active task requirement;
+- active reusable task; and
+- Extra Material identity.
+
+Each resolved task/source link is then classified:
+
+- `LINKED_TO_TASK` when material specification matches exactly;
+- `TASK_LINK_NEEDS_REVIEW` when a real task/source link exists but reconstructed UOM/size/length/color does not match the Kit row exactly;
+- `NO_TASK_LINK_RECORDED` only when no active task/source relationship exists.
+
+Operator wording changed accordingly.
+
+This addresses the Church Ratchet Strap/T-Post false `NO TASK USE` finding.
+
+#### 3. Material-first Kit task picker
+
+**Add Expected Extra Material** now uses:
+
+```text
+choose Item
+    -> fetch active requirements for that material only
+    -> choose reusable task
+    -> preserve exact setup_task_extra_material_id underneath
+```
+
+Behavior:
+
+- unrelated material requirements are no longer shown;
+- a task appears once when it has one requirement for that material;
+- multiple variants on the same task show variant/spec detail;
+- exact requirements already linked to the selected Kit are labeled **Already linked to this Kit** and disabled for new creation.
+
+The existing API's `setup_extra_material_id` filter is reused; no new relationship table was added.
+
+#### 4. Prevent source/content divergence
+
+Removing/deactivating an expected Container material now checks for active task/source dependencies using stable material identity.
+
+If an active reusable task still says the Container is a source for that material, removal returns HTTP 409 and names the dependent task(s).
+
+Operator must reconcile/remove the task source first.
+
+This addresses the disposable Turnbuckle contradiction:
+
+```text
+task -> source C145
+while
+C145 expected content removed
+```
+
+Physical inventory history remains separate.
+
+#### 5. Historical requirement restore path
+
+Material Audit historical-source review no longer assumes the current active reconstructed requirement is correct.
+
+For a matching inactive historical requirement, Manager now gets distinct actions:
+
+- **Restore prior requirement #N**; or
+- **Move Cxx to current requirement**.
+
+Restore:
+
+- reactivates the exact existing `setup_task_extra_material_id`;
+- reuses the existing governed `ref.set_setup_task_extra_material(...)` command;
+- does not recreate or move its existing source rows;
+- leaves competing current requirements for separate review/delete.
+
+This is the required Northern Lights path for restoring requirement #36 on task #132 while leaving C16/C17/C18/C19 attached.
+
+#### 6. Browser cache isolation
+
+Corrected browser assets were repinned to `2026-09-28.2` where required so the next disposable browser cannot reuse the previous preview's JavaScript.
+
+### Northern Lights retest target
+
+Fresh current-Production clone should include the operator's Production task-name correction.
+
+In the new disposable browser:
+
+1. Material Audit should show the Northern Lights historical relationship without assuming #52 is authoritative.
+2. Use **Restore prior requirement #36** for task #132.
+3. Verify requirement #36 becomes active on **Setup Northern Lights** with existing C16/C17/C18/C19 source rows still attached.
+4. Review task #140 separately and hard-delete mistaken requirement #52.
+5. Confirm no source rows were duplicated or moved.
+6. Confirm #132 continues to resolve the 66 Displays / Containers 16,17,18,19.
+
+No Production material mutation is part of this test.
+
+### Church retest target
+
+On fresh disposable C145 / task #73:
+
+1. remove known-bad Plywood expected content separately;
+2. verify requirement hard-delete/source-panel refresh no longer needs a page reload;
+3. verify Ratchet Strap/T-Post show **TASK LINK NEEDS REVIEW** rather than **NO TASK USE** when specs differ;
+4. verify Cribbing/Shim exact link remains **LINKED TO TASK**;
+5. verify Turnbuckle expected-content removal is blocked while its active task-source link remains;
+6. reconcile/remove the task source first if testing intentional Turnbuckle removal;
+7. verify Add Expected Material picker is material-first and does not show unrelated #73 requirements.
+
+### Required gate sequence from this checkpoint
+
+1. update office checkout to this exact branch head;
+2. run full `python -m pytest -q -p no:cacheprovider Setup/Application`;
+3. if green, run reusable disposable acceptance with migration 063 + lifecycle validation;
+4. if green, start a fresh disposable browser preview from the same exact SHA;
+5. perform the Northern Lights and Church checks above;
+6. checkpoint results before any Production deployment decision.
+
+Do not reuse the previous disposable clone or preview.
+Do not mutate Production material authority during this test cycle.
