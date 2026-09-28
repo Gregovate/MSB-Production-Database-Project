@@ -36,9 +36,10 @@ def test_manager_requirement_editor_is_explicit_and_collapsed_by_default() -> No
     assert "el('task-extra-material-form').hidden = false" in ui
     assert "Edit Requirement" in ui
     assert "Manager — Edit Task Requirement" in ui
-    assert "This changes the reusable requirement itself, not its source Containers." in ui
+    assert "New requirements require a physical source Container." in ui
+    assert 'id="task-extra-material-create-source-container" required' in ui
     assert "commandOptions(method, payload(true))" in ui
-    assert "Remove Requirement" in ui
+    assert "Delete Mistake" in ui
     assert "window.editTaskExtraMaterialRequirement = editRequirement" in ui
     assert "['task-extra-material-form', 'task-extra-material-source-form']" in refinement
     assert "form.classList.remove('manager-only')" in refinement
@@ -73,8 +74,8 @@ def test_kit_row_actions_move_operator_to_the_selected_editor() -> None:
 
 
 def test_task_requirement_rows_keep_source_maintenance_adjacent() -> None:
-    ui = read_app("setup_task_extra_materials.js")
-    css = read_app("setup_extra_materials.css")
+    ui = text("setup_task_extra_materials.js")
+    css = text("setup_extra_materials.css")
 
     assert "Expected Source Container from the same requirement row" in ui
     assert "function sourceAction(row)" in ui
@@ -87,11 +88,32 @@ def test_task_requirement_rows_keep_source_maintenance_adjacent() -> None:
 
 
 
-def test_saving_requirement_with_no_source_warns_immediately() -> None:
-    ui = read_app("setup_task_extra_materials.js")
+def test_new_requirement_requires_source_and_creates_container_authority_atomically() -> None:
+    ui = text("setup_task_extra_materials.js")
+    api = text("setup_extra_material_api.py")
+    repo = text("setup_extra_material_repository.py")
 
-    assert "Requirement saved, but NO SOURCE is assigned." in ui
-    assert "Use Add Source on this requirement row" in ui
-    assert "leave it unresolved intentionally for Manager audit" in ui
-    assert "result.setup_task_extra_material?.setup_task_extra_material_id" in ui
-    assert "!(savedRow.sources || []).length" in ui
+    assert "New Extra Material requirements cannot be created without physical source authority." in ui
+    assert "task-extra-material-create-source-container" in ui
+    assert "result.source =" in ui or "source =" in ui
+    assert 'payload.get("source")' in repo
+    assert "create_task_material_with_source" in repo
+    assert "ref.set_setup_task_extra_material(" in repo
+    assert "ref.set_setup_task_extra_material_source(" in repo
+    assert "ref.set_setup_container_extra_material(" in repo
+    assert "conn.commit()" in repo
+    assert "A source Container is required when adding an Extra Material requirement." in api
+
+
+def test_mistaken_requirement_uses_governed_hard_delete_not_inactive_tombstone() -> None:
+    ui = text("setup_task_extra_materials.js")
+    api = text("setup_extra_material_api.py")
+    repo = text("setup_extra_material_repository.py")
+
+    assert "Delete Mistake" in ui
+    assert "commandOptions('DELETE', {})" in ui
+    assert "permanently remove" in ui
+    assert "@setup_extra_material_api.delete(" in api
+    assert "delete_task_material" in repo
+    assert "ref.delete_setup_task_extra_material" in repo
+    assert "Do not carry mistaken Extra Material requirements forward as inactive rows." in api
