@@ -268,6 +268,14 @@ def test_extra_material_source_reconciliation_distinguishes_historical_and_recon
     assert '"historical_source_review"' in repo
     assert '"reconstruction_review"' in repo
 
+    # Historical source suggestions must match the same material specification;
+    # same family + Stage alone is not enough.
+    assert "prior_tm.quantity_uom = tm.quantity_uom" in repo
+    assert "prior_tm.size_text IS NOT DISTINCT FROM tm.size_text" in repo
+    assert "prior_tm.length_value IS NOT DISTINCT FROM tm.length_value" in repo
+    assert "prior_tm.length_unit IS NOT DISTINCT FROM tm.length_unit" in repo
+    assert "prior_tm.color IS NOT DISTINCT FROM tm.color" in repo
+
     assert "HISTORICAL SOURCE REVIEW" in js
     assert "RECONSTRUCTION REVIEW" in js
     assert "reassign-historical-source" in js

@@ -408,6 +408,11 @@ class SetupMaterialAuditRepository:
                     JOIN ref.container AS prior_container
                       ON prior_container.container_id = prior_source.container_id
                     WHERE prior_tm.setup_extra_material_id = tm.setup_extra_material_id
+                      AND prior_tm.quantity_uom = tm.quantity_uom
+                      AND prior_tm.size_text IS NOT DISTINCT FROM tm.size_text
+                      AND prior_tm.length_value IS NOT DISTINCT FROM tm.length_value
+                      AND prior_tm.length_unit IS NOT DISTINCT FROM tm.length_unit
+                      AND prior_tm.color IS NOT DISTINCT FROM tm.color
                       AND NOT prior_tm.active_flag
                       AND prior_task.stage_id IS NOT DISTINCT FROM t.stage_id
                 ) AS prior ON true
