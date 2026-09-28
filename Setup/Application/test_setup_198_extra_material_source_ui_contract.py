@@ -165,3 +165,15 @@ def test_material_audit_deep_link_opens_exact_existing_source_editor() -> None:
     assert "function openPendingSourceCorrection()" in source_ui
     assert "consumePendingCorrection('extra-material-source')" in source_ui
     assert "beginSource(requirementId)" in source_ui
+
+
+
+def test_existing_source_editor_is_exposed_for_inline_requirement_actions() -> None:
+    source_ui = text("setup_task_extra_material_sources.js")
+    task_ui = text("setup_task_extra_materials.js")
+
+    assert "window.openTaskExtraMaterialSource" in source_ui
+    assert "beginSource(Number(requirementId)" in source_ui
+    assert "window.focusTaskExtraMaterialSources" in source_ui
+    assert "window.openTaskExtraMaterialSource" in task_ui
+    assert "task-extra-material-source-inline" in task_ui
