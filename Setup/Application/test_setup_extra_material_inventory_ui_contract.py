@@ -292,6 +292,29 @@ def test_new_python_modules_parse() -> None:
 
 
 
+def test_206_kit_orphan_prevention_preserves_non_kit_expected_content_creation() -> None:
+    api = text(BASE_DIR / "setup_extra_material_api.py")
+    bootstrap = text(BASE_DIR / "setup_tpost_inventory_bootstrap.js")
+    section = api.split(
+        '@setup_extra_material_api.post("/api/setup/containers/<int:container_id>/extra-materials")',
+        1,
+    )[1].split(
+        '@setup_extra_material_api.patch(\n    "/api/setup/containers/<int:container_id>/extra-materials/<int:row_id>"',
+        1,
+    )[0]
+
+    assert 'container = extra_repo.container_contents(container_id)["container"]' in section
+    assert 'if int(container.get("container_type_id") or 0) != 2:' in section
+    assert "extra_repo.set_container_content(" in section
+    assert "extra_repo.create_container_content_with_task_source(" in section
+    assert "A task Extra Material requirement is required when adding Kit expected contents." in section
+
+    # Existing non-Kit T-Post/shared-stock bootstrap remains valid and does not
+    # need a reusable-task requirement merely to establish Container contents.
+    assert "api/setup/containers/${containerId}/extra-materials" in bootstrap
+    assert "setup_task_extra_material_id" not in bootstrap
+
+
 def test_kit_expected_contents_are_bidirectionally_linked_to_task_requirements() -> None:
     page = text(BASE_DIR / "kit_inventory.html")
     ui = text(BASE_DIR / "setup_kit_inventory.js")

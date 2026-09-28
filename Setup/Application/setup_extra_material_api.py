@@ -266,11 +266,25 @@ def api_container_extra_material_create(container_id: int) -> tuple[Response, in
     require_setup_command()
     _base_repo, email, _access = require_manager()
     payload = json_body()
+    extra_repo = repo()
+    container = extra_repo.container_contents(container_id)["container"]
+
+    # #206 orphan prevention is a Kit-specific rule. Preserve the accepted
+    # generic/non-Kit expected-content path used by T-Post/shared-stock and #230.
+    if int(container.get("container_type_id") or 0) != 2:
+        result = extra_repo.set_container_content(
+            email=email,
+            container_id=container_id,
+            row_id=None,
+            payload=payload,
+        )
+        return jsonify(setup_container_extra_material=result), 201
+
     if not payload.get("setup_task_extra_material_id"):
         return jsonify(
             error="A task Extra Material requirement is required when adding Kit expected contents. Add the requirement from the Setup task first, or choose an existing task requirement."
         ), 400
-    result = repo().create_container_content_with_task_source(
+    result = extra_repo.create_container_content_with_task_source(
         email=email,
         container_id=container_id,
         payload=payload,
