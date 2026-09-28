@@ -45,7 +45,7 @@ def test_task_source_editor_is_compact_and_uses_governed_source_commands() -> No
     assert "Change</button>" in ui
     assert "Remove</button>" in ui
 
-    assert "setup_task_extra_material_sources.js?v=2026-09-28.2" in bridge
+    assert "setup_task_extra_material_sources.js?v=2026-09-28.3" in bridge
     assert "setup_extra_material_source_usability.js?v=2026-09-16.2" in bridge
     assert "script.addEventListener('load', loadSourceUsabilityRefinement" in bridge
     assert '"setup_task_extra_material_sources.js"' in host
@@ -177,3 +177,13 @@ def test_existing_source_editor_is_exposed_for_inline_requirement_actions() -> N
     assert "window.focusTaskExtraMaterialSources" in source_ui
     assert "window.openTaskExtraMaterialSource" in task_ui
     assert "task-extra-material-source-inline" in task_ui
+
+
+def test_source_container_search_accepts_human_readable_c_prefix_and_padding() -> None:
+    ui = text("setup_task_extra_material_sources.js")
+
+    assert "function humanContainerId(value)" in ui
+    assert "padStart(3, '0')" in ui
+    assert "`C${row.container_id}`" in ui
+    assert "humanContainerId(row.container_id)" in ui
+    assert "humanContainerId(source.container_id)" in ui
