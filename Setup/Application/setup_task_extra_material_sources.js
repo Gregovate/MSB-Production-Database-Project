@@ -307,6 +307,23 @@
     applyAccess();
   }
 
+  function openPendingSourceCorrection() {
+    if (typeof consumePendingCorrection !== 'function') return;
+    if (!consumePendingCorrection('extra-material-source')) return;
+
+    const requirementId = Number(appState.pendingExtraMaterialRequirementId || 0);
+    appState.pendingExtraMaterialRequirementId = null;
+    if (!requirementId) {
+      setAlert('Extra Material source correction did not include a requirement identity.', 'error');
+      return;
+    }
+    if (!requirementById(requirementId)) {
+      setAlert(`Extra Material requirement ${requirementId} is not active on this reusable task.`, 'error');
+      return;
+    }
+    beginSource(requirementId);
+  }
+
   async function loadTaskSources(taskId) {
     installSection();
     state.taskId = Number(taskId);
@@ -329,6 +346,7 @@
       state.resolvedContainerIds = new Set(ids.map((value) => Number(value)));
       renderContainerOptions();
       renderRequirements();
+      openPendingSourceCorrection();
     } catch (error) {
       if (token !== state.requestToken) return;
       state.requirements = [];
