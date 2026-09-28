@@ -335,6 +335,9 @@
       const taskId = state.taskId;
       clearEditor();
       await loadTaskMaterials(taskId);
+      if (typeof window.refreshTaskExtraMaterialSources === 'function') {
+        await window.refreshTaskExtraMaterialSources(taskId);
+      }
       if (priorRowId) {
         setAlert('Task Extra Material requirement saved.');
       } else {
@@ -365,6 +368,9 @@
       const taskId = state.taskId;
       clearEditor();
       await loadTaskMaterials(taskId);
+      if (typeof window.refreshTaskExtraMaterialSources === 'function') {
+        await window.refreshTaskExtraMaterialSources(taskId);
+      }
       const details = [];
       if (deletedSources) {
         details.push(`${deletedSources} task-source link${deletedSources === 1 ? '' : 's'}`);

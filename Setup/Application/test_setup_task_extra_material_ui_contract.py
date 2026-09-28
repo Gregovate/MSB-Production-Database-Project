@@ -123,3 +123,12 @@ def test_mistaken_requirement_uses_governed_hard_delete_not_inactive_tombstone()
     assert "deleted_container_content_count" in ui
     assert "unused un-inventoried Container expected-content row" in ui
     assert "This does not delete the Extra Material catalog item, Container expected contents" not in ui
+
+
+def test_requirement_save_and_delete_refresh_both_material_surfaces() -> None:
+    task_ui = text("setup_task_extra_materials.js")
+    source_ui = text("setup_task_extra_material_sources.js")
+
+    assert "window.refreshTaskExtraMaterialSources = loadTaskSources" in source_ui
+    assert task_ui.count("typeof window.refreshTaskExtraMaterialSources === 'function'") >= 2
+    assert task_ui.count("await window.refreshTaskExtraMaterialSources(taskId)") >= 2

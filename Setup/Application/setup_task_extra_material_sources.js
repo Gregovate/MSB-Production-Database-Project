@@ -512,6 +512,7 @@
       beginSource(Number(requirementId), sourceId == null ? null : Number(sourceId));
     };
     window.focusTaskExtraMaterialSources = (requirementId) => focusRequirementSources(Number(requirementId));
+    window.refreshTaskExtraMaterialSources = loadTaskSources;
     if (appState.selectedTaskId) loadTaskSources(appState.selectedTaskId);
   }
 
