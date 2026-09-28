@@ -593,21 +593,9 @@ class SetupExtraMaterialRepository:
                     "Active task Extra Material requirement was not found"
                 )
 
-            normalized_payload = {
-                "setup_extra_material_id": int(requirement["setup_extra_material_id"]),
-                "quantity_uom": requirement["quantity_uom"],
-                "size_text": requirement["size_text"],
-                "length_value": requirement["length_value"],
-                "length_unit": requirement["length_unit"],
-                "color": requirement["color"],
-            }
-            for key, expected in normalized_payload.items():
-                supplied = payload.get(key)
-                if supplied not in (None, "") and str(supplied) != str(expected if expected is not None else ""):
-                    raise SetupExtraMaterialRepositoryError(
-                        "Kit expected-content identity must match the selected task requirement"
-                    )
-
+            # The selected active task requirement is the identity authority for
+            # Kit-first entry. Ignore duplicate browser identity fields rather than
+            # allowing them to drift from the requirement.
             cur.execute(
                 "SELECT * FROM ref.set_setup_container_extra_material(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                 (
