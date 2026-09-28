@@ -1055,3 +1055,63 @@ The harness must:
 If green, start a fresh disposable browser preview from the same exact SHA.
 
 Do not reuse the prior disposable clone or browser session.
+
+
+---
+
+## Continuation Checkpoint — Historical Discovery + Pick List Human ID
+
+Implementation head before this documentation checkpoint:
+`b4b4c38a3ab7b8f37c52e1ce570d1220204b4ac9`
+
+### Browser blocker corrected
+
+The prior disposable browser proved Northern Lights historical requirement #36 was hidden because historical candidate discovery still required an exact match on UOM/size/length/unit/color.
+
+The correction now separates **discovery** from **action eligibility**:
+
+- inactive historical requirements are discovered by same Extra Material identity + same Stage;
+- their own historical specification is returned with source context;
+- each historical candidate is labeled **EXACT SPEC MATCH** or **SPEC MISMATCH — REVIEW**;
+- **Restore prior requirement** remains available for the historical requirement;
+- **Move Cxx to current requirement** is offered only for an exact specification match;
+- repository-side source reassignment also fails closed when attempting to move an existing source between mismatched requirements.
+
+Northern Lights expected browser result:
+
+- #52 on task #140 can discover inactive #36 on task #132;
+- #36 appears with C16/C17/C18/C19;
+- operator can restore #36 without moving those sources;
+- mismatched-spec sources cannot be moved to #52.
+
+### Pick List human-readable Container identity
+
+Machine and human identity are intentionally separate:
+
+```text
+scan / QR route
+    CONT/<container_id>
+
+human-readable Pick List identity
+    C###  (zero-padded to 3 digits)
+```
+
+Examples:
+
+- Container 30 -> `C030`;
+- Container 7 -> `C007`;
+- Container 145 -> `C145`.
+
+Display identity behavior is unchanged.
+
+The Pick List QR payload remains:
+
+`https://db.sheboyganlights.org/scan/CONT/<id>`
+
+Only the operator-facing identity text changed.
+
+The Pick List JavaScript asset pin was advanced to `2026-09-28.2`.
+
+### Next gate
+
+Run full Setup/Application regression on the exact checkpoint SHA created by this documentation commit before launching another disposable acceptance/browser cycle.
