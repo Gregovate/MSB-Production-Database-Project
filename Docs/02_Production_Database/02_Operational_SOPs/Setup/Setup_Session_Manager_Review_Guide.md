@@ -7,7 +7,7 @@
 | Audience | Setup Managers and reviewers |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-26 |
+| Last Reviewed | 2026-09-27 |
 | Keywords | Setup, Perform Work, Report Work, reusable task, Verification Queue, Copy Task, prerequisites, Display Ownership, Extra Materials, Kit Inventory |
 
 ## Purpose
@@ -54,7 +54,7 @@ Manager reminders:
 - future unworked continuations may be moved or assigned to a different Captain;
 - use **Correct report** when an existing Report Work entry was entered incorrectly;
 - do not create a second report merely to repair an entry mistake;
-- **Report Correction** is not yet enabled; field-correction intake remains separate from Report Work.
+- use **Report Correction** for field conditions, Procedure problems, material/data discrepancies, or other Setup information that may need correction; it creates a Submitted Work Order Intake item for Manager triage and remains separate from Report Work.
 
 ## 3. Find Work That Still Needs Review
 

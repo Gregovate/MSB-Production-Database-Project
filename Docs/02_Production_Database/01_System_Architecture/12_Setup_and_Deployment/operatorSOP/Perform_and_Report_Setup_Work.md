@@ -8,7 +8,7 @@
 | Audience | Production Crew, Captains, Setup Managers |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-26 |
+| Last Reviewed | 2026-09-27 |
 | Keywords | Setup, Perform Work, Captain, Report Work, partial work, procedure, Print Task |
 
 ## Purpose
@@ -68,7 +68,7 @@ The printed sheet is a field aid. The current Setup application and current publ
 
 Under **Published Setup Procedure**, open the current procedure when the task has one.
 
-If the procedure appears wrong or incomplete, do not silently change the work history to make it fit. Tell a Manager and preserve the correction for the field-correction workflow.
+If the procedure appears wrong or incomplete, do not silently change the work history to make it fit. Use **Report Correction** to preserve the field finding for Manager triage.
 
 ## Report Work
 
@@ -159,7 +159,7 @@ After a work report is saved:
 
 - If the wrong task was scheduled and no work has been reported yet, correct the assignment in **Plan / Schedule**.
 - If the work report itself was entered incorrectly, ask a Manager to use **Correct report**.
-- If the task/procedure/material/data is wrong, preserve the correction with a Manager; do not invent replacement data merely to make the screen look complete.
+- If the task/procedure/material/data is wrong, use **Report Correction**; do not invent replacement data merely to make the screen look complete.
 - If the application does not behave as described, stop before entering duplicate or guessed information.
 
 ## Related Documents
