@@ -147,7 +147,7 @@
         <div id="task-extra-material-source-selected" class="selected-item"></div>
         <div id="task-extra-material-source-editor-help" class="hint">Select a Container and enter the quantity from that Container.</div>
         <div class="extra-material-form-grid">
-          <label class="wide">Find Container<input id="task-extra-material-source-search" type="search" placeholder="ID, description, type, or location" autocomplete="off"></label>
+          <label class="wide">Find Container<input id="task-extra-material-source-search" type="search" placeholder="ID or C###, description, type, or location" autocomplete="off"></label>
           <label class="wide">Source Container<select id="task-extra-material-source-container" size="6" required></select></label>
           <label>Qty from this Container<input id="task-extra-material-source-qty" type="number" min="0.001" step="any"></label>
           <label>Verification<select id="task-extra-material-source-verification"><option value="UNVERIFIED">Unverified</option><option value="NEEDS_REVIEW">Needs review</option><option value="VERIFIED">Verified</option></select></label>
