@@ -123,14 +123,14 @@
       seen.add(key);
       return true;
     });
-    const needsReview = unique.some((task) => task.link_state === 'TASK_LINK_NEEDS_REVIEW');
-    const review = needsReview
-      ? '<div class="kit-content-orphan"><strong>TASK LINK NEEDS REVIEW</strong><span>A task/source link exists, but reconstructed material specifications do not match this Kit row exactly.</span></div>'
+    const detailsDiffer = unique.some((task) => task.link_state === 'TASK_LINK_NEEDS_REVIEW');
+    const review = detailsDiffer
+      ? '<div class="kit-content-link-review"><strong>LINKED TO TASK — DETAILS DIFFER</strong><span>Source relationship is recorded. Task and Kit descriptions/specifications do not match exactly.</span></div>'
       : '';
     return `<div class="kit-content-task-use">${review}${unique.map((task) => {
       const scope = [task.stage_key, task.stage_name].filter(Boolean).join(' · ');
       const qty = task.expected_quantity == null ? '' : ` · Qty ${formatNumber(task.expected_quantity)}`;
-      const stateLabel = task.link_state === 'TASK_LINK_NEEDS_REVIEW' ? ' · SPEC REVIEW' : '';
+      const stateLabel = task.link_state === 'TASK_LINK_NEEDS_REVIEW' ? ' · DETAILS DIFFER' : '';
       return `<a href="${APP_BASE}?view=review&setup_task_id=${encodeURIComponent(task.setup_task_id)}&correction=extra-material-source&setup_task_extra_material_id=${encodeURIComponent(task.setup_task_extra_material_id)}">
         <strong>#${escapeHtml(task.setup_task_id)} · ${escapeHtml(task.task_name)}</strong>
         <span>${escapeHtml(scope)}${escapeHtml(qty)}${escapeHtml(stateLabel)}</span>
@@ -409,8 +409,8 @@
           <td>${escapeHtml(row.verification_state || 'UNVERIFIED')}</td>
           <td>${onHand} ${escapeHtml(row.quantity_uom || '')}</td>
           <td>${escapeHtml(row.notes || '')}</td>
-          <td>
-            ${accessCanManage ? `<button type="button" class="small secondary expected-edit" data-content-id="${row.setup_container_extra_material_id}">Edit</button>` : ''}
+          <td class="kit-content-actions">
+            ${accessCanManage ? `<button type="button" class="small expected-edit" data-content-id="${row.setup_container_extra_material_id}">Edit / Remove</button>` : ''}
             ${inventoryAllowed ? `<button type="button" class="small inventory-select" data-content-id="${row.setup_container_extra_material_id}">Count / Adjust</button>` : ''}
           </td>
         </tr>`;
