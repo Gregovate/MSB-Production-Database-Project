@@ -152,7 +152,7 @@
         <div class="action-row">
           <button id="task-extra-material-save" type="submit">Add Requirement</button>
           <button id="task-extra-material-clear" type="button" class="secondary">Cancel</button>
-          <button id="task-extra-material-remove" type="button" class="warning" hidden>Remove Requirement</button>
+          <button id="task-extra-material-remove" type="button" class="danger" hidden>Delete Mistake</button>
         </div>
       </form>`;
     dependencies.insertAdjacentElement('afterend', section);
