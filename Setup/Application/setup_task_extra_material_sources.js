@@ -489,6 +489,17 @@
     if (remove) removeSource(Number(remove.dataset.requirementId), Number(remove.dataset.sourceId));
   }
 
+  function focusRequirementSources(requirementId) {
+    const group = document.querySelector(
+      `.setup-extra-material-source-group[data-source-requirement-id="${Number(requirementId)}"]`,
+    );
+    if (!group) return false;
+    group.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    group.classList.add('source-correction-focus');
+    window.setTimeout(() => group.classList.remove('source-correction-focus'), 1800);
+    return true;
+  }
+
   function bind() {
     installSection();
     const priorSelectTask = selectTask;
@@ -497,6 +508,10 @@
       loadTaskSources(taskId);
       return result;
     };
+    window.openTaskExtraMaterialSource = (requirementId, sourceId = null) => {
+      beginSource(Number(requirementId), sourceId == null ? null : Number(sourceId));
+    };
+    window.focusTaskExtraMaterialSources = (requirementId) => focusRequirementSources(Number(requirementId));
     if (appState.selectedTaskId) loadTaskSources(appState.selectedTaskId);
   }
 
