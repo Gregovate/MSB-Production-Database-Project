@@ -354,3 +354,27 @@ def test_historical_restore_ui_uses_operator_names_and_zero_padded_containers() 
     assert "data-source-containers" in js
     assert "Restore prior requirement #" not in js
     assert "on reusable task #" not in js
+
+
+def test_historical_restore_is_governed_by_security_definer_command() -> None:
+    migration = read_db("064_add_setup_extra_material_requirement_restore.sql")
+    repo = read_app("setup_extra_material_repository.py")
+    validation = read_accept("setup_206_extra_material_lifecycle_disposable_validation.sql")
+
+    assert "CREATE OR REPLACE FUNCTION ref.restore_setup_task_extra_material(" in migration
+    assert "SECURITY DEFINER" in migration
+    assert "FOR UPDATE OF tm" in migration
+    assert "FROM ref.setup_management_actor(p_email, false)" in migration
+    assert "FROM ref.set_setup_task_extra_material(" in migration
+    assert "GRANT EXECUTE ON FUNCTION ref.restore_setup_task_extra_material(text,bigint,bigint)" in migration
+    assert "TO fieldwiring_app;" in migration
+
+    restore_section = repo.split("def restore_task_material(", 1)[1].split("def create_task_material_with_source(", 1)[0]
+    assert "ref.restore_setup_task_extra_material" in restore_section
+    assert "FOR UPDATE" not in restore_section
+    assert "FROM ref.setup_task_extra_material" not in restore_section
+
+    assert "ref.restore_setup_task_extra_material(text,bigint,bigint)" in validation
+    assert "Governed restore did not preserve requirement/source identity" in validation
+    assert "Governed restore did not reactivate the same requirement with its source intact" in validation
+    assert "forbidden direct Extra Material UPDATE privilege" in validation
