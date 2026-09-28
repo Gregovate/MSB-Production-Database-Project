@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Material Completeness Audit</title>
-  <link rel="stylesheet" href="assets/setup_material_audit.css?v=2026-09-20.2">
+  <link rel="stylesheet" href="assets/setup_material_audit.css?v=2026-09-28.1">
 </head>
 <body>
 <header class="audit-header">
@@ -13,7 +13,7 @@
     <div>
       <div class="eyebrow">Setup · Manager acceptance gate</div>
       <h1>Material Completeness Audit</h1>
-      <div class="muted">Whole-Catalog review of future Session readiness, Display/LOR ownership, and physical Kit assignment coverage.</div>
+      <div class="muted">Whole-Catalog review of future Session readiness, Display/LOR ownership, Extra Material source coverage, and physical Kit assignment coverage.</div>
     </div>
   </div>
   <div class="audit-header-actions">
@@ -83,6 +83,33 @@
   <section class="card">
     <div class="section-title">
       <div>
+        <div class="eyebrow">Reusable Extra Material authority</div>
+        <h2>Extra Material Source Coverage</h2>
+        <div class="hint">Every active reusable Extra Material requirement must have at least one active Expected Source Container before it can resolve to an actionable physical pick.</div>
+      </div>
+    </div>
+    <div id="extra-material-source-summary" class="summary-grid"></div>
+    <div class="table-wrap">
+      <table class="extra-material-source-audit-table">
+        <thead>
+          <tr>
+            <th>Stage / Scene</th>
+            <th>Reusable task</th>
+            <th>Extra Material</th>
+            <th>Required</th>
+            <th>Verification</th>
+            <th>Source status</th>
+            <th>Correction</th>
+          </tr>
+        </thead>
+        <tbody id="extra-material-source-audit-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">
+      <div>
         <div class="eyebrow">Physical Kit Boxes</div>
         <h2>Kit Assignment Coverage</h2>
         <div class="hint">Shared/non-task disposition is explicit Manager-reviewed Setup state. It never creates a fake task assignment, inventory fact, or Extra Material source.</div>
@@ -103,6 +130,6 @@
   </section>
 </main>
 
-<script src="assets/setup_material_audit.js?v=2026-09-20.2"></script>
+<script src="assets/setup_material_audit.js?v=2026-09-28.1"></script>
 </body>
 </html>
