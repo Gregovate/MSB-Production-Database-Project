@@ -169,3 +169,38 @@ def test_container_unverified_items_is_not_a_catalog_identity() -> None:
     assert "unverified_items_text" in schema
     assert "DELETE FROM ref.setup_container_extra_material_review" in container
     assert "'Unverified'" not in seed
+
+
+
+def test_206_requirement_lifecycle_hard_delete_is_governed_and_bounded() -> None:
+    sql = _text(DB_DIR / "063_harden_setup_extra_material_requirement_lifecycle.sql")
+
+    assert "CREATE OR REPLACE FUNCTION ref.delete_setup_task_extra_material" in sql
+    assert "FROM ref.setup_management_actor(p_email, false)" in sql
+    assert "DELETE FROM ref.setup_task_extra_material_source" in sql
+    assert "DELETE FROM ref.setup_task_extra_material AS tm" in sql
+    assert "DELETE FROM ref.setup_container_extra_material AS cem" in sql
+    assert "ops.setup_extra_material_inventory_event" in sql
+    assert "remaining_tm.active_flag" in sql
+    assert "remaining_task.active_flag" in sql
+    assert "deleted_container_content_count" in sql
+    assert "REVOKE ALL ON FUNCTION ref.delete_setup_task_extra_material" in sql
+    assert "GRANT EXECUTE ON FUNCTION ref.delete_setup_task_extra_material" in sql
+
+    # Hard delete is command-scoped. Application role must not receive broad
+    # table DELETE authority.
+    assert "GRANT DELETE ON ref.setup_task_extra_material" not in sql
+    assert "GRANT DELETE ON ref.setup_task_extra_material_source" not in sql
+    assert "GRANT DELETE ON ref.setup_container_extra_material" not in sql
+
+
+def test_206_hard_delete_has_disposable_proof() -> None:
+    validation = _text(
+        BASE_DIR.parent / "Acceptance" / "setup_206_extra_material_lifecycle_disposable_validation.sql"
+    )
+
+    assert "SETUP_206_EXTRA_MATERIAL_LIFECYCLE_DISPOSABLE_VALIDATION_PASS" in validation
+    assert "ref.delete_setup_task_extra_material" in validation
+    assert "Unused un-inventoried Container expected content was not deleted" in validation
+    assert "ROLLBACK;" in validation
+    assert "forbidden broad Extra Material DELETE privilege" in validation
