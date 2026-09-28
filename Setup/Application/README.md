@@ -14,14 +14,14 @@ Production entry point:
 Setup/Application/production_backend.py
 ```
 
-Current reported version and accepted 2026 Scheduling Board application target:
+Current reported version and Production application target:
 
 ```text
-V0.3.17-performance-trace
-06a6536d92db5c7352beeed496563ed9bfdb7146
+V0.3.19-pick-list
+fc0b76d57826eebf04b81c99cbb904109162cd87
 ```
 
-The health/version string intentionally remains V0.3.13; #184/#167 extended the durable material/inventory subsystem without starting a new annual Session version line.
+The visible version remains `V0.3.19-pick-list`; #172 adds the Production Report Correction -> Work Order Intake path without starting a new display-version line.
 
 ## Current Production Meaning
 
@@ -83,6 +83,10 @@ Accepted durable foundation / reconstruction migrations now include:
 046_preload_explicit_tpost_requirements.sql
 047_finalize_assigned_kit_inventory_coverage.sql
 048_complete_tpost_requirements_and_stock_variants.sql
+059_sync_reusable_task_name_to_open_annual.sql
+060_add_setup_pick_list_manager_override.sql
+061_add_live_assignment_report_work.sql
+062_add_setup_context_work_order_intake.sql
 ```
 
 #184 is the durable model/runtime; #167 is the completed one-time data reconstruction only.
@@ -101,6 +105,18 @@ Preserve:
 - Stage/Scene resolver authority; and
 - current analytics/privacy integration.
 
+## Production Report Correction — #172
+
+The live **Perform Work** surface now includes **Report Correction** for authenticated Production Crew / Managers.
+
+Report Correction preserves the exact scheduled-assignment context, prepares the authoritative Setup provenance through PostgreSQL, and creates a **Submitted** Work Order Intake item through the existing Directus Items API. The current Directus `items.create` notification Flow remains the Manager-triage notification boundary.
+
+Report Correction does not directly create an active Work Order and does not grant field operators reusable-Catalog, Kit, Procedure, LOR, scheduling, or other Manager mutation authority.
+
+Production acceptance is recorded in:
+
+`Setup/Acceptance/Setup_172_Report_Correction_Production_Acceptance_2026-09-27.md`
+
 ## Runtime / Rollback
 
 Permanent source checkout:
@@ -109,9 +125,9 @@ Permanent source checkout:
 /opt/msb-setup
 ```
 
-The accepted 2026 Scheduling Board application target is `06a6536d92db5c7352beeed496563ed9bfdb7146`. Migrations 057/058 and the governed #122 launch deployment tooling established the 2026 launch boundary; later closeout-only commits do not redefine the accepted application target.
+The current exact Production application target is `fc0b76d57826eebf04b81c99cbb904109162cd87`. Migration 062 is installed. Later merge, deployment-tooling, or closeout-only commits do not redefine the deployed application target.
 
-Validated rollback archives from #184 and #167 Production deployments are retained under `/home/msbadmin/backups/setup-184/` and `/home/msbadmin/backups/setup-167/`. Do not restore them merely to undo a UI/documentation problem or without reconciling legitimate post-deployment Production work.
+The #172 validated rollback archive is `/home/msbadmin/backups/setup-172/msb-pre-setup-172-20260928T005954.dump` with SHA256 `fe0d349a587ec0363cb69bb295618c49ab8df771ff9bcb8bf9c0e71c66b8b89a`. Older accepted rollback archives remain historical recovery evidence. Do not restore any database archive without reconciling legitimate post-deployment Production work.
 
 ## Current Boundaries
 
@@ -127,12 +143,14 @@ Before changing the application:
 2. read the Setup engineering README and current handoff;
 3. preserve the accepted V0.3.7 through V0.3.13 behavior plus durable #184/#167 inventory state;
 4. treat 2026 as the live annual planning/execution Session and 2025 as historical/verification evidence;
-5. preserve the accepted Scheduling Board behavior and keep #206 Pick List work in its owning workstream;
-6. use Server Management for live runtime and deployment authority.
+5. preserve the accepted Scheduling Board, Perform Work / Report Work, and Report Correction -> Work Order Intake boundaries;
+6. keep #206 Pick List work in its owning workstream; and
+7. use Server Management for live runtime and deployment authority.
 
 ## Related Documentation
 
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/README.md`
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/README.md`
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_Session_Production_Engineering_Handoff_2026-09-12.md`
+- `Setup/Acceptance/Setup_172_Report_Correction_Production_Acceptance_2026-09-27.md`
 - `Setup/Acceptance/Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md`
