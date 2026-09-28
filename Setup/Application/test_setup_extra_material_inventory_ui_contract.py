@@ -435,3 +435,46 @@ def test_206_kit_task_link_detail_mismatch_does_not_imply_broken_link() -> None:
     assert "TASK LINK NEEDS REVIEW" not in ui
     assert "DETAILS DIFFER" in ui
     assert ".kit-content-link-review" in css
+
+
+def test_206_operator_sop_keeps_material_source_expected_and_inventory_separate() -> None:
+    repo_root = BASE_DIR.parent.parent
+    sop = text(
+        repo_root
+        / "Docs"
+        / "02_Production_Database"
+        / "01_System_Architecture"
+        / "12_Setup_and_Deployment"
+        / "operatorSOP"
+        / "Extra_Materials_and_Kit_Inventory.md"
+    )
+    operator_index = text(
+        repo_root
+        / "Docs"
+        / "02_Production_Database"
+        / "01_System_Architecture"
+        / "12_Setup_and_Deployment"
+        / "operatorSOP"
+        / "README.md"
+    )
+    manager_guide = text(
+        repo_root
+        / "Docs"
+        / "02_Production_Database"
+        / "02_Operational_SOPs"
+        / "Setup"
+        / "Setup_Session_Manager_Review_Guide.md"
+    )
+
+    assert "## The Four Questions" in sop
+    assert "### 1. What does the task need?" in sop
+    assert "### 2. Where should the crew find it?" in sop
+    assert "### 3. What should normally be in this Kit?" in sop
+    assert "### 4. What is physically on hand right now?" in sop
+    assert "A Procedure mention by itself does **not** make something an Extra Material." in sop
+    assert "hearing protection / ear plugs" in sop
+    assert "**Edit / Remove does not record a physical count.**" in sop
+    assert "**Do not use Count / Adjust to change what should belong in the Kit.**" in sop
+    assert "Unknown is better than invented authority." in sop
+    assert "Extra_Materials_and_Kit_Inventory.md" in operator_index
+    assert "Extra_Materials_and_Kit_Inventory.md" in manager_guide
