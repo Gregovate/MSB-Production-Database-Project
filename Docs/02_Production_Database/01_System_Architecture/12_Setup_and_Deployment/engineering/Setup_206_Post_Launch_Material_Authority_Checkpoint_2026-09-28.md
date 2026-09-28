@@ -444,3 +444,84 @@ Continue from this checkpoint and the current PR head. Do not restart #206 imple
 5. Write the next checkpoint with exact regression/acceptance results before any Production deployment decision.
 
 No Production data mutation has been authorized or performed by this continuation.
+
+
+---
+
+## Continuation Checkpoint — Regression Hardening Complete
+
+| Field | Value |
+|---|---|
+| Implementation head before this checkpoint update | `f4194700881a6143caf120652519ea13d4663097` |
+| Branch | `agent/setup-206-tablet-material-audit` |
+| Main comparison | 64 ahead / 0 behind |
+| PR state | open, draft, mergeable |
+| Production mutation authorized | **NO** |
+
+### Additional regression findings corrected
+
+#### 1. Kit orphan-prevention had leaked into non-Kit Container maintenance
+
+Corrected at `3cc5dbb286e10f1b74831476dec0b450bcf80ab4`.
+
+The generic Container expected-content POST now preserves the existing non-Kit path used by T-Post/shared-stock and #230. Only Kit Boxes require an active reusable-task Extra Material requirement when creating new expected contents.
+
+A regression contract now preserves that boundary.
+
+#### 2. Historical source candidates were matched too broadly
+
+Corrected at `8c5e995e737240e2ec3977a1273bd541b393e422`.
+
+Historical source reassignment candidates now require the same:
+
+- Extra Material identity;
+- quantity UOM;
+- size;
+- length value;
+- length unit;
+- color; and
+- Stage context.
+
+This prevents a prior source for a different physical material variant from being offered merely because it shares the same catalog family and Stage.
+
+A contract assertion now preserves the specification match.
+
+#### 3. Delete Mistake operator text contradicted migration 063
+
+Corrected at `f4194700881a6143caf120652519ea13d4663097`.
+
+The browser previously claimed Container expected contents were never removed by hard delete. Migration 063 intentionally removes a matching expected-content row only when it becomes unused and has no physical inventory history.
+
+The UI now states that behavior accurately and reports:
+
+- deleted task-source link count; and
+- deleted unused/un-inventoried Container expected-content row count.
+
+The Extra Material catalog identity, Displays, and inventory history remain preserved.
+
+A contract assertion now prevents the false wording from returning.
+
+### Current acceptance gate
+
+Static implementation/contract review is complete enough to move to executable regression.
+
+Accepted repository runbooks use:
+
+```text
+python -m pytest -q -p no:cacheprovider Setup/Application
+```
+
+No GitHub Actions status exists for this PR, and this ChatGPT tool environment does not provide the governed MSB server/disposable PostgreSQL runtime needed to execute that regression or migration 063 safely.
+
+Next executable steps, in order:
+
+1. full exact-candidate `Setup/Application` regression;
+2. governed current-Production disposable clone;
+3. apply migration 063 only to that disposable clone;
+4. run `Setup/Acceptance/setup_206_extra_material_lifecycle_disposable_validation.sql`;
+5. disposable browser review of the already-recorded Church RGB, Northern Lights, source-required creation, Kit reverse-use/orphan, and picker-only cases;
+6. checkpoint exact results before any Production deployment decision.
+
+Do not restart implementation from the original #206 prompt. Continue from this checkpoint and the current PR head.
+
+No Production data mutation has been authorized or performed.
