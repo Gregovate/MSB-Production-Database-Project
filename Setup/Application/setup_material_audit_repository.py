@@ -442,6 +442,10 @@ class SetupMaterialAuditRepository:
         summary = {
             "requirements_reviewed": len(rows),
             "source_assigned": sum(1 for row in rows if not row["needs_review"]),
+            "historical_source_review": sum(
+                1 for row in rows
+                if row.get("source_status") == "HISTORICAL_SOURCE_REVIEW"
+            ),
             "unresolved_no_source": sum(1 for row in rows if row["needs_review"]),
         }
         return {"summary": summary, "requirements": rows}
