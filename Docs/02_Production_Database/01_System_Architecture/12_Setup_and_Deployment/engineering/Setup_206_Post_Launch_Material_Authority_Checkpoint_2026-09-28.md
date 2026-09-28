@@ -387,3 +387,60 @@ Do not change a Container type just to make it editable.
 No Production mutation is authorized or performed by PR #252 at this checkpoint.
 
 The branch is an implementation candidate only.
+
+
+---
+
+## Continuation Checkpoint — Thread Rollover / Regression Review
+
+| Field | Value |
+|---|---|
+| Implementation head before this checkpoint update | `3cc5dbb286e10f1b74831476dec0b450bcf80ab4` |
+| Branch | `agent/setup-206-tablet-material-audit` |
+| Main comparison at review | 61 ahead / 0 behind |
+| Merge status | mergeable at review |
+| Production mutation authorized | **NO** |
+
+### Contract-test status correction
+
+The earlier **Immediate Next Work** list said to finish the #206 lifecycle/source/Kit contract tests. Static recovery of the actual branch and recent commit history showed those contracts were already written before the first checkpoint:
+
+- source-required task Extra Material creation;
+- atomic requirement + source + matching Container expected-content creation;
+- hard-delete semantics and no inactive tombstone;
+- Kit Inventory reverse **Used by task(s)**;
+- Kit orphan-prevention creation path;
+- historical source-row reassignment through the accepted #198 command;
+- reconstructed mistake review/delete path;
+- bounded hard-delete/disposable proof.
+
+Therefore, do **not** restart those tests as implementation work. The next gate is execution/regression plus disposable acceptance.
+
+### Regression found and corrected during continuation
+
+Static review found that the first orphan-prevention implementation put the task-requirement requirement on the generic:
+
+`POST /api/setup/containers/<container_id>/extra-materials`
+
+That accidentally made every Container behave like a Kit Box. It would break the accepted non-Kit expected-content path used by T-Post/shared-stock flows and would cross the #230 ownership boundary.
+
+Correction committed at `3cc5dbb286e10f1b74831476dec0b450bcf80ab4`:
+
+- resolve the target Container first;
+- when `container_type_id != 2`, preserve the accepted generic `set_container_content(...)` behavior;
+- when `container_type_id == 2`, require `setup_task_extra_material_id` and use the atomic Kit task/source/content path;
+- add a regression contract proving existing T-Post/shared-stock bootstrap does not require a reusable-task requirement merely to establish non-Kit Container contents.
+
+This is a scope correction, not a redesign.
+
+### Next Gate
+
+Continue from this checkpoint and the current PR head. Do not restart #206 implementation.
+
+1. Run the full `Setup/Application` regression against the current branch.
+2. Fix only failures attributable to this candidate.
+3. Run migration 063 and `setup_206_extra_material_lifecycle_disposable_validation.sql` on a governed disposable current-Production clone.
+4. Perform the browser review already listed above.
+5. Write the next checkpoint with exact regression/acceptance results before any Production deployment decision.
+
+No Production data mutation has been authorized or performed by this continuation.
