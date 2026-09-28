@@ -400,6 +400,9 @@ def test_206_removing_kit_expected_content_blocks_active_task_source_divergence(
     assert "t.active_flag" in repo
     assert "if payload.get(\"active_flag\") is False:" in api
     assert "container_content_task_dependencies" in api
-    assert "Cannot remove this expected Container material while active task source relationships still depend on it" in api
-    assert "Reconcile or remove those task source links first." in api
+    assert "Cannot remove this expected Container material while active task source " in api
+    assert "relationships still depend on it:" in api
+    assert "Reconcile or remove " in api
+    assert "those task source links first." in api
+    assert "dependencies=dependencies" in api
     assert "), 409" in api
