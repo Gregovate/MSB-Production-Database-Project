@@ -7,7 +7,7 @@ h1,h2,h3,p{margin-top:0}.eyebrow{text-transform:uppercase;letter-spacing:.08em;f
 button,select{font:inherit;padding:.55rem .7rem}
 .panel{border:1px solid color-mix(in srgb,CanvasText 20%,transparent);border-radius:.65rem;padding:1rem;margin-bottom:1rem}
 .warning-panel{border-width:1px}
-.summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.55rem;margin-bottom:1rem}
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.55rem;margin-bottom:1rem}
 .summary-card{border:1px solid color-mix(in srgb,CanvasText 18%,transparent);border-radius:.55rem;padding:.7rem}
 .summary-card strong{display:block;font-size:1.25rem}.summary-card span{display:block}
 .section-heading{display:flex;justify-content:space-between;gap:1rem;align-items:start}
@@ -53,14 +53,61 @@ button,select{font:inherit;padding:.55rem .7rem}
 @media(max-width:1100px){
   .manager-override-form{grid-template-columns:repeat(2,minmax(0,1fr))}
   .override-reason-field{grid-column:1/-1}
+  .pick-table-wrap{overflow:visible}
+  .pick-table{display:block;width:100%;min-width:0;border-spacing:0}
+  .pick-table thead{display:none}
+  .pick-record{display:block;margin:0 0 .8rem}
+  .pick-row{
+    display:grid;
+    grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) 116px;
+    grid-template-areas:
+      "identity location qr"
+      "destination destination qr"
+      "pickby needed qr";
+    border:2px solid color-mix(in srgb,CanvasText 24%,transparent);
+    border-radius:.6rem .6rem 0 0;
+    overflow:hidden;
+    background:color-mix(in srgb,CanvasText 3%,Canvas)
+  }
+  .pick-row td{border:0!important;border-radius:0!important;background:transparent;padding:.72rem}
+  .pick-identity-cell{grid-area:identity}
+  .location-cell{grid-area:location}
+  .destination-cell{grid-area:destination;border-top:1px solid color-mix(in srgb,CanvasText 16%,transparent)!important}
+  .pick-by-cell{grid-area:pickby;border-top:1px solid color-mix(in srgb,CanvasText 16%,transparent)!important}
+  .needed-for-cell{grid-area:needed;border-top:1px solid color-mix(in srgb,CanvasText 16%,transparent)!important}
+  .qr-cell{grid-area:qr;display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:1px solid color-mix(in srgb,CanvasText 16%,transparent)!important}
+  .destination-cell::before,.pick-by-cell::before,.needed-for-cell::before,.qr-cell::before{
+    display:block;margin-bottom:.24rem;font-size:.7rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;opacity:.68
+  }
+  .destination-cell::before{content:"Destination"}
+  .pick-by-cell::before{content:"Pick By"}
+  .needed-for-cell::before{content:"Needed For"}
+  .qr-cell::before{content:"QR"}
+  .pick-reasons-row{display:block}
+  .pick-reasons-row td{
+    display:block;
+    width:auto;
+    border:2px solid color-mix(in srgb,CanvasText 24%,transparent)!important;
+    border-top:0!important;
+    border-radius:0 0 .6rem .6rem!important;
+    padding:.45rem .72rem .7rem
+  }
 }
 @media(max-width:900px){
   .page-header{display:block}.controls{margin-top:1rem}.summary{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .pick-table{min-width:900px}
 }
 @media(max-width:620px){
   .manager-override-form{grid-template-columns:1fr}
   .override-reason-field{grid-column:auto}
+  .pick-row{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    grid-template-areas:
+      "identity location"
+      "destination destination"
+      "pickby needed"
+      "qr qr";
+  }
+  .qr-cell{border-left:0!important;border-top:1px solid color-mix(in srgb,CanvasText 16%,transparent)!important;align-items:flex-start}
 }
 @media print{
   @page{margin:.25in;size:landscape}
@@ -76,7 +123,11 @@ button,select{font:inherit;padding:.55rem .7rem}
   .section-heading h2{font-size:12pt;margin:0}
   #generated-at{font-size:7.5pt}
   .pick-table-wrap{overflow:visible}
-  .pick-table{width:100%;min-width:0;table-layout:fixed;border-collapse:collapse;border-spacing:0;font-size:8.5pt}
+  .pick-table{display:table;width:100%;min-width:0;table-layout:fixed;border-collapse:collapse;border-spacing:0;font-size:8.5pt}
+  .pick-table thead{display:table-header-group}
+  .pick-record{display:table-row-group;margin:0}
+  .pick-row{display:table-row;border:0}
+  .pick-row td{display:table-cell}
   .pick-table th{font-size:7.5pt;padding:.04in .05in;border-bottom:1.5px solid #555}
   .pick-table td{padding:.055in .05in;background:#fff;border-top:1px solid #777;border-bottom:1px solid #777}
   .pick-table th:nth-child(1){width:25%}
