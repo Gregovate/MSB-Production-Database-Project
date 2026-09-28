@@ -222,7 +222,7 @@
 
   function compactContentRows() {
     document.querySelectorAll('#kit-content-body tr').forEach((row) => {
-      const notes = row.cells?.[5];
+      const notes = row.cells?.[6];
       if (notes) {
         notes.classList.add('content-notes');
         notes.title = notes.textContent?.trim() || '';
@@ -231,7 +231,7 @@
   }
 
   function physicalFromRow(row) {
-    const text = row?.cells?.[4]?.textContent?.trim() || '';
+    const text = row?.cells?.[5]?.textContent?.trim() || '';
     if (!text || /not counted/i.test(text)) return { current: null, uom: 'EA' };
     const match = text.match(/(-?\d+(?:\.\d+)?)\s*([A-Za-z]+)?/);
     return match
@@ -787,7 +787,7 @@
         el('expected-clear')?.click();
         closeExtraMaterialCatalog(false);
         queueMicrotask(() => {
-          openExpectedPanel('expected-item');
+          openExpectedPanel('expected-task-requirement');
           syncExpectedCatalogAction();
         });
         return;
