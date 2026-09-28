@@ -247,3 +247,45 @@ def test_extra_material_source_resolve_action_reuses_existing_198_editor() -> No
     assert '@setup_extra_material_api.post(' in api
     assert '"/api/setup/task-extra-materials/<int:requirement_id>/sources"' in api
     assert "ref.set_setup_task_extra_material_source" in repo
+
+
+
+def test_extra_material_source_reconciliation_distinguishes_historical_and_reconstruction_authority() -> None:
+    repo = read_app("setup_material_audit_repository.py")
+    js = read_app("setup_material_audit.js")
+    api = read_app("setup_extra_material_api.py")
+    source_repo = read_app("setup_extra_material_repository.py")
+
+    assert "prior_inactive_source_count" in repo
+    assert "prior_inactive_source_context" in repo
+    assert "prior_source.setup_task_extra_material_source_id" in repo
+    assert '"HISTORICAL_SOURCE_REVIEW"' in repo
+    assert '"RECONSTRUCTION_REVIEW"' in repo
+    assert "notes.startswith(\"Preloaded from \")" in repo
+    assert '"historical_source_review"' in repo
+    assert '"reconstruction_review"' in repo
+
+    assert "HISTORICAL SOURCE REVIEW" in js
+    assert "RECONSTRUCTION REVIEW" in js
+    assert "reassign-historical-source" in js
+    assert "Reassign C" in js
+    assert "moves the existing source row; it does not create a duplicate" in js
+    assert "Review Requirement" in js
+    assert "Resolve Source" in js
+
+    # Reassignment must reuse the accepted #198 source API and governed command.
+    assert '"/api/setup/task-extra-materials/<int:requirement_id>/sources/<int:row_id>"' in api
+    assert "def set_task_source" in source_repo
+    assert "ref.set_setup_task_extra_material_source" in source_repo
+
+
+def test_material_audit_can_review_or_retire_reconstruction_requirement_before_sourcing() -> None:
+    js = read_app("setup_material_audit.js")
+    production = read_app("setup_production.js")
+    task_ui = read_app("setup_task_extra_materials.js")
+
+    assert "correction=extra-material-requirement" in js
+    assert "requestedCorrection === 'extra-material-requirement'" in production
+    assert "consumePendingCorrection('extra-material-requirement')" in task_ui
+    assert "editRequirement(requirementId)" in task_ui
+    assert "Remove Requirement" in task_ui
