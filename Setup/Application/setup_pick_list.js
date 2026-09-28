@@ -316,6 +316,13 @@
     return parts.join(' — ');
   }
 
+  function humanReadableIdentity(item) {
+    if (item.physical_type === 'CONTAINER') {
+      return `C${String(item.physical_id ?? '').padStart(3, '0')}`;
+    }
+    return item.identity || `DISP:${item.physical_id ?? ''}`;
+  }
+
   function qrPayload(item) {
     const type = item.physical_type === 'DISPLAY' ? 'DISP' : 'CONT';
     return `https://db.sheboyganlights.org/scan/${type}/${item.physical_id}`;
@@ -506,7 +513,7 @@
         <tbody class="pick-record">
           <tr class="pick-row">
             <td class="pick-identity-cell">
-              <div class="identity">${esc(item.identity)}</div>
+              <div class="identity">${esc(humanReadableIdentity(item))}</div>
               ${item.label ? `<div class="item-label">${esc(item.label)}</div>` : ''}
               <div class="pick-state">${pickStatusHtml(item)}</div>
               ${overrideBadgeHtml(item)}
@@ -532,7 +539,7 @@
               )}</span>
             </td>
             <td class="qr-cell">
-              <div class="pick-qr" data-payload="${esc(payload)}" aria-label="QR for ${esc(item.identity)}"></div>
+              <div class="pick-qr" data-payload="${esc(payload)}" aria-label="QR for ${esc(humanReadableIdentity(item))}"></div>
             </td>
           </tr>
           <tr class="pick-reasons-row">

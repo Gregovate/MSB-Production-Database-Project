@@ -140,6 +140,11 @@ def test_live_pick_list_surface_exposes_operational_columns_needs_pick_picked_an
     for heading in ("Container / Display", "Home Location", "Destination", "Pick By", "Needed For", "QR Code"):
         assert heading in ui
     assert "https://db.sheboyganlights.org/scan/" in ui
+    assert "function humanReadableIdentity(item)" in ui
+    assert "item.physical_type === 'CONTAINER'" in ui
+    assert "padStart(3, '0')" in ui
+    assert "humanReadableIdentity(item)" in ui
+    assert "const type = item.physical_type === 'DISPLAY' ? 'DISP' : 'CONT';" in ui
     assert "new QRCode(" in ui
     assert "QRCode.CorrectLevel.M" in ui
     assert "function itemMoved(item)" in ui
