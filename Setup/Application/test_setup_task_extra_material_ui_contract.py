@@ -84,3 +84,14 @@ def test_task_requirement_rows_keep_source_maintenance_adjacent() -> None:
     assert "window.openTaskExtraMaterialSource(Number(rowId))" in ui
     assert ".task-extra-material-source-summary" in css
     assert ".task-extra-material-source-inline" in css
+
+
+
+def test_saving_requirement_with_no_source_warns_immediately() -> None:
+    ui = read_app("setup_task_extra_materials.js")
+
+    assert "Requirement saved, but NO SOURCE is assigned." in ui
+    assert "Use Add Source on this requirement row" in ui
+    assert "leave it unresolved intentionally for Manager audit" in ui
+    assert "result.setup_task_extra_material?.setup_task_extra_material_id" in ui
+    assert "!(savedRow.sources || []).length" in ui
