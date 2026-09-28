@@ -128,6 +128,16 @@ def api_task_extra_materials(setup_task_id: int) -> Response:
     return jsonify(extra_materials=repo().task_materials(setup_task_id))
 
 
+@setup_extra_material_api.get("/api/setup/task-extra-materials/source-options")
+def api_task_extra_material_source_options() -> Response:
+    require_reader()
+    material_id_text = request.args.get("setup_extra_material_id", "").strip()
+    material_id = int(material_id_text) if material_id_text else None
+    return jsonify(requirements=repo().task_requirement_options(
+        setup_extra_material_id=material_id,
+    ))
+
+
 @setup_extra_material_api.get("/api/setup/containers/<int:container_id>/extra-materials")
 def api_container_extra_materials(container_id: int) -> Response:
     require_reader()
@@ -253,13 +263,20 @@ def api_task_extra_material_source_update(requirement_id: int, row_id: int) -> R
 def api_container_extra_material_create(container_id: int) -> tuple[Response, int]:
     require_setup_command()
     _base_repo, email, _access = require_manager()
-    result = repo().set_container_content(
+    payload = json_body()
+    if not payload.get("setup_task_extra_material_id"):
+        return jsonify(
+            error="A task Extra Material requirement is required when adding Kit expected contents. Add the requirement from the Setup task first, or choose an existing task requirement."
+        ), 400
+    result = repo().create_container_content_with_task_source(
         email=email,
         container_id=container_id,
-        row_id=None,
-        payload=json_body(),
+        payload=payload,
     )
-    return jsonify(setup_container_extra_material=result), 201
+    return jsonify(
+        setup_container_extra_material=result["content"],
+        setup_task_extra_material_source=result["source"],
+    ), 201
 
 
 @setup_extra_material_api.patch(
