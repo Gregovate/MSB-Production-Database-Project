@@ -4,6 +4,7 @@
     access: null,
     kitBoxes: [],
     catalog: [],
+    requirementOptions: [],
     selectedContainerId: null,
     container: null,
     contents: [],
@@ -108,6 +109,82 @@
     if (row.length_value != null) parts.push(`${formatNumber(row.length_value)} ${row.length_unit || ''}`.trim());
     if (row.color) parts.push(row.color);
     return parts.length ? parts.join(' · ') : '—';
+  }
+
+  function usedByTasksHtml(row) {
+    const tasks = Array.isArray(row.used_by_tasks) ? row.used_by_tasks : [];
+    if (!tasks.length) {
+      return '<div class="kit-content-orphan"><strong>NO TASK USE</strong><span>Link this Kit material from the reusable Setup task that uses it.</span></div>';
+    }
+    const seen = new Set();
+    const unique = tasks.filter((task) => {
+      const key = Number(task.setup_task_extra_material_id || 0);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return `<div class="kit-content-task-use">${unique.map((task) => {
+      const scope = [task.stage_key, task.stage_name].filter(Boolean).join(' · ');
+      const qty = task.expected_quantity == null ? '' : ` · Qty ${formatNumber(task.expected_quantity)}`;
+      return `<a href="${APP_BASE}?view=review&setup_task_id=${encodeURIComponent(task.setup_task_id)}&correction=extra-material-source&setup_task_extra_material_id=${encodeURIComponent(task.setup_task_extra_material_id)}">
+        <strong>#${escapeHtml(task.setup_task_id)} · ${escapeHtml(task.task_name)}</strong>
+        <span>${escapeHtml(scope)}${escapeHtml(qty)}</span>
+      </a>`;
+    }).join('')}</div>`;
+  }
+
+  function requirementOptionLabel(row) {
+    const scope = [row.stage_key, row.stage_name].filter(Boolean).join(' · ');
+    const spec = [];
+    if (row.size_text) spec.push(row.size_text);
+    if (row.length_value != null) spec.push(`${formatNumber(row.length_value)} ${row.length_unit || ''}`.trim());
+    if (row.color) spec.push(row.color);
+    return [
+      scope,
+      `#${row.setup_task_id} ${row.task_name}`,
+      row.material_name,
+      [row.quantity_required, row.quantity_uom].filter((value) => value != null && String(value).trim() !== '').join(' '),
+      spec.join(' · ')
+    ].filter(Boolean).join(' — ');
+  }
+
+  async function loadRequirementOptions() {
+    const payload = await api('api/setup/task-extra-materials/source-options');
+    state.requirementOptions = payload.requirements || [];
+    const select = el('expected-task-requirement');
+    if (!select) return;
+    const current = select.value;
+    select.innerHTML = '<option value="">Select the reusable task requirement that uses this material</option>' +
+      state.requirementOptions.map((row) =>
+        `<option value="${row.setup_task_extra_material_id}">${escapeHtml(requirementOptionLabel(row))}</option>`
+      ).join('');
+    if (state.requirementOptions.some((row) => String(row.setup_task_extra_material_id) === current)) {
+      select.value = current;
+    }
+  }
+
+  function selectedRequirementOption() {
+    const id = Number(el('expected-task-requirement')?.value || 0);
+    return state.requirementOptions.find(
+      (row) => Number(row.setup_task_extra_material_id) === id,
+    ) || null;
+  }
+
+  function applyRequirementToExpectedEditor() {
+    if (state.editingContentId) return;
+    const requirement = selectedRequirementOption();
+    if (!requirement) return;
+
+    el('expected-item').value = String(requirement.setup_extra_material_id);
+    el('expected-uom').value = requirement.quantity_uom || 'EA';
+    el('expected-size').value = requirement.size_text || '';
+    el('expected-length').value = requirement.length_value ?? '';
+    el('expected-length-unit').value = requirement.length_unit || '';
+    el('expected-color').value = requirement.color || '';
+    if (!el('expected-qty').value && requirement.quantity_required != null) {
+      el('expected-qty').value = formatNumber(requirement.quantity_required);
+    }
+    setIdentityFieldsDisabled(true);
   }
 
   function routeContainerId() {
@@ -282,6 +359,7 @@
           <td><strong>${escapeHtml(row.material_name)}</strong></td>
           <td>${expected} ${escapeHtml(row.quantity_uom || '')}</td>
           <td>${escapeHtml(specText(row))}</td>
+          <td>${usedByTasksHtml(row)}</td>
           <td>${escapeHtml(row.verification_state || 'UNVERIFIED')}</td>
           <td>${onHand} ${escapeHtml(row.quantity_uom || '')}</td>
           <td>${escapeHtml(row.notes || '')}</td>
@@ -290,7 +368,7 @@
             ${inventoryAllowed ? `<button type="button" class="small inventory-select" data-content-id="${row.setup_container_extra_material_id}">Count / Adjust</button>` : ''}
           </td>
         </tr>`;
-    }).join('') || '<tr><td colspan="7" class="empty-state">No normalized expected contents recorded yet.</td></tr>';
+    }).join('') || '<tr><td colspan="8" class="empty-state">No normalized expected contents recorded yet.</td></tr>';
 
     document.querySelectorAll('.expected-edit').forEach((button) => {
       button.addEventListener('click', () => beginExpectedEdit(Number(button.dataset.contentId)));
@@ -309,6 +387,10 @@
   function clearExpectedEditor() {
     state.editingContentId = null;
     setIdentityFieldsDisabled(false);
+    if (el('expected-task-requirement')) {
+      el('expected-task-requirement').disabled = false;
+      el('expected-task-requirement').value = '';
+    }
     el('expected-item').value = '';
     el('expected-qty').value = '';
     el('expected-uom').value = 'EA';
@@ -326,6 +408,11 @@
     const row = state.contents.find((item) => Number(item.setup_container_extra_material_id) === Number(contentId));
     if (!row || !canManage()) return;
     state.editingContentId = contentId;
+    if (el('expected-task-requirement')) {
+      const firstUse = Array.isArray(row.used_by_tasks) ? row.used_by_tasks[0] : null;
+      el('expected-task-requirement').value = firstUse ? String(firstUse.setup_task_extra_material_id) : '';
+      el('expected-task-requirement').disabled = true;
+    }
     el('expected-item').value = String(row.setup_extra_material_id);
     el('expected-qty').value = row.expected_quantity ?? '';
     el('expected-uom').value = row.quantity_uom || 'EA';
@@ -342,6 +429,7 @@
 
   function expectedPayload(activeFlag = true) {
     return {
+      setup_task_extra_material_id: state.editingContentId ? null : Number(el('expected-task-requirement')?.value || 0),
       setup_extra_material_id: Number(el('expected-item').value),
       expected_quantity: numberOrNull(el('expected-qty').value),
       quantity_uom: el('expected-uom').value.trim() || 'EA',
@@ -358,6 +446,10 @@
   async function saveExpected(event) {
     event.preventDefault();
     if (!canManage() || !state.selectedContainerId) return;
+    if (!state.editingContentId && !el('expected-task-requirement')?.value) {
+      setAlert('Choose the reusable task requirement that uses this Kit material. If none exists, add the Extra Material from the Setup task first.', 'error');
+      return;
+    }
     if (!el('expected-item').value) {
       setAlert('Choose an Extra Material.', 'error');
       return;
@@ -485,6 +577,7 @@
     el('inventory-back-setup').href = APP_BASE;
     el('kit-search')?.addEventListener('input', renderKitList);
     el('expected-form')?.addEventListener('submit', saveExpected);
+    el('expected-task-requirement')?.addEventListener('change', applyRequirementToExpectedEditor);
     el('expected-clear')?.addEventListener('click', clearExpectedEditor);
     el('expected-remove')?.addEventListener('click', removeExpected);
     el('save-unverified')?.addEventListener('click', saveUnverified);
@@ -505,7 +598,7 @@
     bind();
     setBusy(true);
     try {
-      await Promise.all([loadAccess(), loadCatalog(), loadKitBoxes()]);
+      await Promise.all([loadAccess(), loadCatalog(), loadRequirementOptions(), loadKitBoxes()]);
       const directId = routeContainerId();
       if (directId) await selectKit(directId, { push: false });
       else setAlert('Select a Kit Box to review expected contents or record physical inventory.');
