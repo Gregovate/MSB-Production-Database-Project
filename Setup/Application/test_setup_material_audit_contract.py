@@ -218,7 +218,10 @@ def test_extra_material_source_coverage_is_one_row_per_active_requirement() -> N
     assert "AND m.active_flag" in repo
     assert "LEFT JOIN LATERAL" in repo
     assert '"source_status" = "SOURCE_ASSIGNED"' not in repo
-    assert '"source_status"] = "SOURCE_ASSIGNED" if source_count else "NO_ACTIVE_SOURCE"' in repo
+    assert '"SOURCE_ASSIGNED"' in repo
+    assert '"HISTORICAL_SOURCE_REVIEW"' in repo
+    assert '"RECONSTRUCTION_REVIEW"' in repo
+    assert '"NO_ACTIVE_SOURCE"' in repo
     assert '"extra_material_source": self.extra_material_source_audit()' in repo
 
     assert "Extra Material Source Coverage" in html
@@ -288,4 +291,5 @@ def test_material_audit_can_review_or_retire_reconstruction_requirement_before_s
     assert "requestedCorrection === 'extra-material-requirement'" in production
     assert "consumePendingCorrection('extra-material-requirement')" in task_ui
     assert "editRequirement(requirementId)" in task_ui
-    assert "Remove Requirement" in task_ui
+    assert "Delete Mistake" in task_ui
+    assert "commandOptions('DELETE', {})" in task_ui
