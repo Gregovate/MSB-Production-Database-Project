@@ -1115,3 +1115,44 @@ The Pick List JavaScript asset pin was advanced to `2026-09-28.2`.
 ### Next gate
 
 Run full Setup/Application regression on the exact checkpoint SHA created by this documentation commit before launching another disposable acceptance/browser cycle.
+
+
+---
+
+## Continuation Checkpoint — Historical Discovery / Pick List Regression PASS
+
+| Field | Value |
+|---|---|
+| Exact tested implementation candidate | `08cac444c6d8d7baef953f432b914af35a3558a7` |
+| Full regression command | `python -m pytest -q -p no:cacheprovider Setup/Application` |
+| Result | **566 passed in 1.11s** |
+| Failures / errors | **0** |
+| Branch | `agent/setup-206-tablet-material-audit` |
+| PR | #252 — draft / mergeable=true |
+| Main comparison before checkpoint | 79 ahead / 0 behind |
+| Production material mutation authorized | **NO** |
+
+The tested candidate includes:
+
+- broader same-material / same-Stage historical requirement discovery;
+- historical candidate exact-spec vs spec-mismatch classification;
+- restore-prior action available independently of source movement;
+- source movement blocked in both UI and repository layer when requirement specs differ;
+- Pick List human-readable Container IDs normalized to `C###`;
+- scan/QR Container route preserved as `CONT/<id>`.
+
+### Next gate
+
+Run reusable disposable acceptance against the exact documentation checkpoint SHA created after this section is committed.
+
+Use:
+
+- migration `Setup/Database/063_harden_setup_extra_material_requirement_lifecycle.sql`;
+- validation `Setup/Acceptance/setup_206_extra_material_lifecycle_disposable_validation.sql`.
+
+If green, launch a fresh disposable browser preview from the same SHA and retest:
+
+1. Northern Lights historical requirement #36 visibility and restore;
+2. C16/C17/C18/C19 source preservation;
+3. #52 remaining separate on task #140 until intentionally deleted;
+4. Pick List human-readable Container identity (for example C030) while QR remains CONT route.
