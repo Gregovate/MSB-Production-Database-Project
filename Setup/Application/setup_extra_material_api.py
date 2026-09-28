@@ -170,13 +170,21 @@ def api_extra_material_update(material_id: int) -> Response:
 def api_task_extra_material_create(setup_task_id: int) -> tuple[Response, int]:
     require_setup_command()
     _base_repo, email, _access = require_manager()
-    result = repo().set_task_material(
+    payload = json_body()
+    source = payload.get("source")
+    if not isinstance(source, dict) or not source.get("container_id"):
+        return jsonify(
+            error="A source Container is required when adding an Extra Material requirement."
+        ), 400
+    result = repo().create_task_material_with_source(
         email=email,
         setup_task_id=setup_task_id,
-        row_id=None,
-        payload=json_body(),
+        payload=payload,
     )
-    return jsonify(setup_task_extra_material=result), 201
+    return jsonify(
+        setup_task_extra_material=result["requirement"],
+        setup_task_extra_material_source=result["source"],
+    ), 201
 
 
 @setup_extra_material_api.patch(
@@ -185,11 +193,30 @@ def api_task_extra_material_create(setup_task_id: int) -> tuple[Response, int]:
 def api_task_extra_material_update(setup_task_id: int, row_id: int) -> Response:
     require_setup_command()
     _base_repo, email, _access = require_manager()
+    payload = json_body()
+    if payload.get("active_flag") is False:
+        return jsonify(
+            error="Do not carry mistaken Extra Material requirements forward as inactive rows. Use DELETE to remove the mistake."
+        ), 400
+    payload["active_flag"] = True
     return jsonify(setup_task_extra_material=repo().set_task_material(
         email=email,
         setup_task_id=setup_task_id,
         row_id=row_id,
-        payload=json_body(),
+        payload=payload,
+    ))
+
+
+@setup_extra_material_api.delete(
+    "/api/setup/tasks/<int:setup_task_id>/extra-materials/<int:row_id>"
+)
+def api_task_extra_material_delete(setup_task_id: int, row_id: int) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    return jsonify(deleted=repo().delete_task_material(
+        email=email,
+        setup_task_id=setup_task_id,
+        row_id=row_id,
     ))
 
 
