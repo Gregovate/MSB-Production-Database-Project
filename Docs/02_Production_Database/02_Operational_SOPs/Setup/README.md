@@ -7,7 +7,7 @@
 | Audience | Setup Managers, reviewers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-26 |
+| Last Reviewed | 2026-09-28 |
 | Keywords | Setup, Perform Work, Report Work, manager, verification, reusable tasks, Displays, Kits, materials |
 
 These are the plain-English instructions for using the live Setup application.
@@ -22,6 +22,7 @@ Open Setup:
 - [Review and Correct the 2025 Setup History](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Review_2025_Setup_History.md)
 - [Perform and Report Setup Work](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Perform_and_Report_Setup_Work.md)
 - [Setup Manager Review Guide](Setup_Session_Manager_Review_Guide.md)
+- [Extra Materials and Kit Inventory](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Extra_Materials_and_Kit_Inventory.md)
 
 ## Current Field Work
 
@@ -54,6 +55,8 @@ The screen labels and their plain-English meaning are:
 - **Equipment / Resources** = tools and equipment used to do the job.
 - **Kit Boxes** = which physical Kit supports the task.
 - **Expected Source Containers** = where material should normally be found.
+- **Edit / Remove** = change what should normally belong in a Kit.
+- **Count / Adjust** = record what somebody physically counted.
 - **Expected** = what should normally be in a Kit.
 - **On Hand** = what somebody physically counted.
 - **Unverified Items / Remainders** = information that is still unclear.
