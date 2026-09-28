@@ -43,8 +43,51 @@
 
   function sourceText(row) {
     const sources = Array.isArray(row.sources) ? row.sources : [];
-    if (!sources.length) return '<span class="extra-material-unknown">None</span>';
-    return `${sources.length} source${sources.length === 1 ? '' : 's'}`;
+    if (!sources.length) {
+      return '<div class="task-extra-material-source-summary"><span class="extra-material-negative">NO SOURCE</span><span class="muted">Expected Source Container not assigned.</span></div>';
+    }
+    return `<div class="task-extra-material-source-summary">
+      ${sources.map((source) => {
+        const quantity = source.expected_quantity == null ? '' : ` · Qty ${displayNumber(source.expected_quantity)}`;
+        const verification = String(source.verification_state || 'UNVERIFIED').replaceAll('_', ' ');
+        return `<div><strong>C${escapeHtml(source.container_id)} — ${escapeHtml(source.container_description || 'Container')}</strong><span class="muted">${escapeHtml(quantity)} · ${escapeHtml(verification)}</span></div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  function sourceAction(row) {
+    if (!appState.access?.can_manage_setup) return '';
+    const sources = Array.isArray(row.sources) ? row.sources : [];
+    return `<button type="button" class="small secondary task-extra-material-source-inline" data-row-id="${row.setup_task_extra_material_id}">${sources.length ? 'Review Sources' : 'Add Source'}</button>`;
+  }
+
+  function openInlineSource(rowId) {
+    if (!appState.access?.can_manage_setup) return;
+    if (typeof window.openTaskExtraMaterialSource !== 'function') {
+      setAlert('Expected Source Containers editor is still loading. Try again.', 'error');
+      return;
+    }
+    window.openTaskExtraMaterialSource(Number(rowId));
+  }
+
+  function openPendingRequirementCorrection() {
+    if (typeof consumePendingCorrection !== 'function') return;
+    if (!consumePendingCorrection('extra-material-requirement')) return;
+
+    const requirementId = Number(appState.pendingExtraMaterialRequirementId || 0);
+    appState.pendingExtraMaterialRequirementId = null;
+    if (!requirementId) {
+      setAlert('Extra Material requirement review did not include a requirement identity.', 'error');
+      return;
+    }
+    const row = state.rows.find(
+      (item) => Number(item.setup_task_extra_material_id) === requirementId,
+    );
+    if (!row) {
+      setAlert(`Extra Material requirement ${requirementId} is not active on this reusable task.`, 'error');
+      return;
+    }
+    editRequirement(requirementId);
   }
 
   function installSection() {
@@ -59,7 +102,7 @@
       <div class="section-title compact">
         <div>
           <h3>Extra Materials Required by This Task</h3>
-          <div class="hint">Reusable requirement only. Source Containers are maintained separately below.</div>
+          <div class="hint">Record what the task requires, then maintain its Expected Source Container from the same requirement row. Container expected contents and physical inventory remain separate facts.</div>
         </div>
         <button id="task-extra-material-add" type="button" class="small manager-only" hidden>Add Requirement</button>
       </div>
@@ -168,7 +211,7 @@
         <td>${escapeHtml(quantityText(row))}</td>
         <td>${escapeHtml(specText(row))}</td>
         <td>${escapeHtml(row.verification_state || 'UNVERIFIED')}</td>
-        <td>${sourceText(row)}</td>
+        <td>${sourceText(row)}${sourceAction(row)}</td>
         <td>${escapeHtml(row.notes || '')}</td>
         <td>${appState.access?.can_manage_setup ? `<button type="button" class="small secondary task-extra-material-edit" data-row-id="${row.setup_task_extra_material_id}">Edit Requirement</button>` : ''}</td>
       </tr>`).join('') || '<tr><td colspan="7" class="empty-state">No Extra Material requirements recorded for this reusable task.</td></tr>';
@@ -189,6 +232,7 @@
       if (token !== state.requestToken || Number(taskId) !== Number(state.taskId)) return;
       state.rows = payload.extra_materials || [];
       renderRows();
+      openPendingRequirementCorrection();
     } catch (error) {
       if (token !== state.requestToken) return;
       state.rows = [];
@@ -270,6 +314,11 @@
       if (option?.dataset.uom && !state.editingRowId) el('task-extra-material-uom').value = option.dataset.uom;
     });
     el('task-extra-material-section')?.addEventListener('click', (event) => {
+      const sourceButton = event.target.closest('.task-extra-material-source-inline');
+      if (sourceButton) {
+        openInlineSource(Number(sourceButton.dataset.rowId));
+        return;
+      }
       const button = event.target.closest('.task-extra-material-edit');
       if (button) editRequirement(Number(button.dataset.rowId));
     });
