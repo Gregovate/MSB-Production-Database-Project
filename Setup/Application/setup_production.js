@@ -8,7 +8,8 @@ const appState = {
   seasonYear: null,
   selectedTaskId: null,
   movementSummary: null,
-  pendingCorrection: null
+  pendingCorrection: null,
+  pendingExtraMaterialRequirementId: null
 };
 
 const el = (id) => document.getElementById(id);
@@ -212,6 +213,7 @@ function setupRouteUrl(route) {
   params.delete('view');
   params.delete('setup_task_id');
   params.delete('correction');
+  params.delete('setup_task_extra_material_id');
 
   const view = String(route?.view || 'review');
   params.set('view', view);
@@ -826,9 +828,17 @@ async function applyRequestedRoute() {
   const requestedView = params.get('view');
   const requestedTaskId = Number(params.get('setup_task_id') || 0);
   const requestedCorrection = params.get('correction');
+  const requestedExtraMaterialRequirementId = Number(params.get('setup_task_extra_material_id') || 0);
 
-  if (requestedCorrection === 'display-ownership' || requestedCorrection === 'kit-boxes') {
+  if (
+    requestedCorrection === 'display-ownership'
+    || requestedCorrection === 'kit-boxes'
+    || requestedCorrection === 'extra-material-source'
+  ) {
     appState.pendingCorrection = requestedCorrection;
+  }
+  if (requestedCorrection === 'extra-material-source' && requestedExtraMaterialRequirementId > 0) {
+    appState.pendingExtraMaterialRequirementId = requestedExtraMaterialRequirementId;
   }
 
   const allowedViews = ['review', 'library', 'extra-materials', 'movement', 'schedule', 'perform'];
@@ -848,6 +858,7 @@ async function applyRequestedRoute() {
   // leaving it in place causes dialog close/reset to reopen the correction.
   if (requestedCorrection) {
     params.delete('correction');
+    params.delete('setup_task_extra_material_id');
     const query = params.toString();
     const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash || ''}`;
     window.history.replaceState({}, '', nextUrl);
