@@ -114,7 +114,7 @@
   function usedByTasksHtml(row) {
     const tasks = Array.isArray(row.used_by_tasks) ? row.used_by_tasks : [];
     if (!tasks.length) {
-      return '<div class="kit-content-orphan"><strong>NO TASK USE</strong><span>Link this Kit material from the reusable Setup task that uses it.</span></div>';
+      return '<div class="kit-content-orphan"><strong>NO TASK LINK RECORDED</strong><span>No active task/source relationship is recorded for this material in this Kit.</span></div>';
     }
     const seen = new Set();
     const unique = tasks.filter((task) => {
@@ -123,12 +123,17 @@
       seen.add(key);
       return true;
     });
-    return `<div class="kit-content-task-use">${unique.map((task) => {
+    const needsReview = unique.some((task) => task.link_state === 'TASK_LINK_NEEDS_REVIEW');
+    const review = needsReview
+      ? '<div class="kit-content-orphan"><strong>TASK LINK NEEDS REVIEW</strong><span>A task/source link exists, but reconstructed material specifications do not match this Kit row exactly.</span></div>'
+      : '';
+    return `<div class="kit-content-task-use">${review}${unique.map((task) => {
       const scope = [task.stage_key, task.stage_name].filter(Boolean).join(' · ');
       const qty = task.expected_quantity == null ? '' : ` · Qty ${formatNumber(task.expected_quantity)}`;
+      const stateLabel = task.link_state === 'TASK_LINK_NEEDS_REVIEW' ? ' · SPEC REVIEW' : '';
       return `<a href="${APP_BASE}?view=review&setup_task_id=${encodeURIComponent(task.setup_task_id)}&correction=extra-material-source&setup_task_extra_material_id=${encodeURIComponent(task.setup_task_extra_material_id)}">
         <strong>#${escapeHtml(task.setup_task_id)} · ${escapeHtml(task.task_name)}</strong>
-        <span>${escapeHtml(scope)}${escapeHtml(qty)}</span>
+        <span>${escapeHtml(scope)}${escapeHtml(qty)}${escapeHtml(stateLabel)}</span>
       </a>`;
     }).join('')}</div>`;
   }

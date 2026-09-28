@@ -167,7 +167,17 @@ class SetupExtraMaterialRepository:
                                 'stage_key', s.stage_key,
                                 'stage_name', s.stage_name,
                                 'expected_quantity', src.expected_quantity,
-                                'source_verification_state', src.verification_state
+                                'source_verification_state', src.verification_state,
+                                'link_state',
+                                CASE
+                                    WHEN tm.quantity_uom = cem.quantity_uom
+                                     AND tm.size_text IS NOT DISTINCT FROM cem.size_text
+                                     AND tm.length_value IS NOT DISTINCT FROM cem.length_value
+                                     AND tm.length_unit IS NOT DISTINCT FROM cem.length_unit
+                                     AND tm.color IS NOT DISTINCT FROM cem.color
+                                    THEN 'LINKED_TO_TASK'
+                                    ELSE 'TASK_LINK_NEEDS_REVIEW'
+                                END
                             )
                         ) AS used_by_tasks
                     FROM ref.setup_task_extra_material_source AS src
@@ -182,11 +192,6 @@ class SetupExtraMaterialRepository:
                       AND tm.active_flag
                       AND t.active_flag
                       AND tm.setup_extra_material_id = cem.setup_extra_material_id
-                      AND tm.quantity_uom = cem.quantity_uom
-                      AND tm.size_text IS NOT DISTINCT FROM cem.size_text
-                      AND tm.length_value IS NOT DISTINCT FROM cem.length_value
-                      AND tm.length_unit IS NOT DISTINCT FROM cem.length_unit
-                      AND tm.color IS NOT DISTINCT FROM cem.color
                 ) AS usage ON true
                 WHERE cem.container_id = %s
                   AND cem.active_flag
@@ -201,6 +206,17 @@ class SetupExtraMaterialRepository:
                 item = dict(row)
                 used_by = item.get("used_by_tasks")
                 item["used_by_tasks"] = used_by if isinstance(used_by, list) else list(used_by or [])
+                link_states = {
+                    str(task.get("link_state") or "")
+                    for task in item["used_by_tasks"]
+                    if isinstance(task, dict)
+                }
+                if "LINKED_TO_TASK" in link_states:
+                    item["task_link_state"] = "LINKED_TO_TASK"
+                elif item["used_by_tasks"]:
+                    item["task_link_state"] = "TASK_LINK_NEEDS_REVIEW"
+                else:
+                    item["task_link_state"] = "NO_TASK_LINK_RECORDED"
                 contents.append(item)
         return {"container": dict(container), "contents": contents}
 

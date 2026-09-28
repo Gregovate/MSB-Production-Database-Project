@@ -326,7 +326,9 @@ def test_kit_expected_contents_are_bidirectionally_linked_to_task_requirements()
     assert "prevents orphan Kit contents" in page
     assert "api/setup/task-extra-materials/source-options" in ui
     assert "function usedByTasksHtml(row)" in ui
-    assert "NO TASK USE" in ui
+    assert "NO TASK LINK RECORDED" in ui
+    assert "TASK LINK NEEDS REVIEW" in ui
+    assert "SPEC REVIEW" in ui
     assert "used_by_tasks" in repo
     assert "ref.setup_task_extra_material_source AS src" in repo
     assert "tm.active_flag" in repo
@@ -355,3 +357,17 @@ def test_kit_task_use_column_does_not_break_inventory_cell_indexes() -> None:
     assert "const notes = row.cells?.[6];" in review
     assert "const text = row?.cells?.[5]?.textContent?.trim() || '';" in review
     assert "openExpectedPanel('expected-task-requirement')" in review
+
+
+def test_206_kit_reverse_use_distinguishes_exact_link_from_spec_review() -> None:
+    repo = text(BASE_DIR / "setup_extra_material_repository.py")
+    ui = text(BASE_DIR / "setup_kit_inventory.js")
+
+    assert "'LINKED_TO_TASK'" in repo
+    assert "'TASK_LINK_NEEDS_REVIEW'" in repo
+    assert 'item["task_link_state"] = "NO_TASK_LINK_RECORDED"' in repo
+    assert "tm.setup_extra_material_id = cem.setup_extra_material_id" in repo
+    assert "AND tm.quantity_uom = cem.quantity_uom" not in repo.split("LEFT JOIN LATERAL (", 1)[1].split(") AS usage ON true", 1)[0]
+    assert "NO TASK LINK RECORDED" in ui
+    assert "TASK LINK NEEDS REVIEW" in ui
+    assert "reconstructed material specifications do not match" in ui
