@@ -391,8 +391,12 @@ class SetupMaterialAuditRepository:
                                 'setup_task_extra_material_id', prior_tm.setup_task_extra_material_id,
                                 'setup_task_id', prior_task.setup_task_id,
                                 'task_name', prior_task.task_name,
+                                'setup_task_extra_material_source_id', prior_source.setup_task_extra_material_source_id,
                                 'container_id', prior_source.container_id,
-                                'container_description', prior_container.description
+                                'container_description', prior_container.description,
+                                'expected_quantity', prior_source.expected_quantity,
+                                'verification_state', prior_source.verification_state,
+                                'notes', prior_source.notes
                             )
                         ) AS prior_source_context
                     FROM ref.setup_task_extra_material AS prior_tm
@@ -431,10 +435,21 @@ class SetupMaterialAuditRepository:
             row["prior_inactive_source_count"] = prior_source_count
             prior_context = row.get("prior_inactive_source_context")
             row["prior_inactive_source_context"] = prior_context if isinstance(prior_context, list) else list(prior_context or [])
+            notes = str(row.get("requirement_notes") or "")
+            reconstruction_evidence = (
+                notes.startswith("Preloaded from ")
+                or notes.startswith("[TPOST_RECON_")
+                or notes.startswith("[TPOST_FINAL_RECON")
+                or notes.startswith("[#167")
+                or notes.startswith("Procedure preload")
+            )
+            row["reconstruction_evidence"] = reconstruction_evidence
             if source_count:
                 row["source_status"] = "SOURCE_ASSIGNED"
             elif prior_source_count:
                 row["source_status"] = "HISTORICAL_SOURCE_REVIEW"
+            elif reconstruction_evidence:
+                row["source_status"] = "RECONSTRUCTION_REVIEW"
             else:
                 row["source_status"] = "NO_ACTIVE_SOURCE"
             row["needs_review"] = source_count == 0
@@ -445,6 +460,10 @@ class SetupMaterialAuditRepository:
             "historical_source_review": sum(
                 1 for row in rows
                 if row.get("source_status") == "HISTORICAL_SOURCE_REVIEW"
+            ),
+            "reconstruction_review": sum(
+                1 for row in rows
+                if row.get("source_status") == "RECONSTRUCTION_REVIEW"
             ),
             "unresolved_no_source": sum(1 for row in rows if row["needs_review"]),
         }
