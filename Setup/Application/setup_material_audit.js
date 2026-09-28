@@ -93,7 +93,7 @@
 
   function statusClass(value) {
     if (value === 'COMPLETE' || value === 'ASSIGNED_ACTIVE' || value === 'REVIEWED_SHARED_NON_TASK' || value === 'SOURCE_ASSIGNED') return 'ok';
-    if (value === 'INACTIVE_OBSOLETE_ONLY' || value === 'HISTORICAL_SOURCE_REVIEW') return 'warn';
+    if (value === 'INACTIVE_OBSOLETE_ONLY' || value === 'HISTORICAL_SOURCE_REVIEW' || value === 'RECONSTRUCTION_REVIEW') return 'warn';
     return 'error';
   }
 
@@ -119,14 +119,53 @@
     const unique = [];
     const seen = new Set();
     for (const item of context) {
-      const key = `${item.setup_task_id}:${item.container_id}`;
+      const key = String(item.setup_task_extra_material_source_id || '') || `${item.setup_task_id}:${item.container_id}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      unique.push(
-        `#${item.setup_task_id} ${item.task_name || 'prior task'} → C${item.container_id} ${item.container_description || ''}`.trim(),
-      );
+      const label = `#${item.setup_task_id} ${item.task_name || 'prior task'} → C${item.container_id} ${item.container_description || ''}`.trim();
+      const reassign = state.access?.can_manage_setup && item.setup_task_extra_material_source_id
+        ? `<button type="button" class="small secondary reassign-historical-source"
+            data-target-requirement-id="${esc(row.setup_task_extra_material_id)}"
+            data-source-id="${esc(item.setup_task_extra_material_source_id)}"
+            data-container-id="${esc(item.container_id)}"
+            data-expected-quantity="${esc(item.expected_quantity ?? '')}"
+            data-verification-state="${esc(item.verification_state || 'UNVERIFIED')}"
+            data-notes="${esc(item.notes || '')}">Reassign C${esc(item.container_id)}</button>`
+        : '';
+      unique.push(`<div class="historical-source-item"><span>${esc(label)}</span>${reassign}</div>`);
     }
-    return `<div class="muted historical-source-context">Active source authority exists on an inactive requirement: ${unique.map(esc).join(' · ')}</div>`;
+    return `<div class="historical-source-context"><div class="muted">Active source authority exists on an inactive requirement. Move it to the current requirement instead of creating a duplicate source.</div>${unique.join('')}</div>`;
+  }
+
+  async function reassignHistoricalSource(button) {
+    const targetRequirementId = Number(button.dataset.targetRequirementId || 0);
+    const sourceId = Number(button.dataset.sourceId || 0);
+    const containerId = Number(button.dataset.containerId || 0);
+    if (!targetRequirementId || !sourceId || !containerId) return;
+    const confirmed = window.confirm(
+      `Reassign existing source C${containerId} to the current Extra Material requirement? This moves the existing source row; it does not create a duplicate.`,
+    );
+    if (!confirmed) return;
+
+    const quantityText = String(button.dataset.expectedQuantity || '').trim();
+    const expectedQuantity = quantityText ? Number(quantityText) : null;
+    try {
+      setAlert(`Reassigning C${containerId} to the current requirement…`);
+      await api(
+        `api/setup/task-extra-materials/${targetRequirementId}/sources/${sourceId}`,
+        commandOptions({
+          container_id: containerId,
+          expected_quantity: Number.isFinite(expectedQuantity) ? expectedQuantity : null,
+          verification_state: button.dataset.verificationState || 'UNVERIFIED',
+          notes: button.dataset.notes || null,
+          active_flag: true,
+        }),
+      );
+      await loadAudit();
+      setAlert(`C${containerId} source authority reassigned to the current requirement.`);
+    } catch (error) {
+      setAlert(error.message || error, 'error');
+    }
   }
 
   function extraMaterialRequiredText(row) {
@@ -207,6 +246,7 @@
       ['Requirements reviewed', summary.requirements_reviewed || 0],
       ['Source assigned', summary.source_assigned || 0],
       ['Historical source review', summary.historical_source_review || 0],
+      ['Reconstruction review', summary.reconstruction_review || 0],
       ['No active source', summary.unresolved_no_source || 0],
     ].map(([label, value]) => summaryCard(label, value)).join('');
 
@@ -219,13 +259,17 @@
         sourceStatus = `${row.active_source_count} active source${Number(row.active_source_count) === 1 ? '' : 's'}`;
       } else if (row.source_status === 'HISTORICAL_SOURCE_REVIEW') {
         sourceStatus = 'HISTORICAL SOURCE REVIEW';
+      } else if (row.source_status === 'RECONSTRUCTION_REVIEW') {
+        sourceStatus = 'RECONSTRUCTION REVIEW';
       }
-      const actions = row.needs_review
-        ? `<div class="action-stack">
-            ${reviewExtraMaterialRequirementLink(row.setup_task_id, row.setup_task_extra_material_id)}
-            ${resolveExtraMaterialSourceLink(row.setup_task_id, row.setup_task_extra_material_id)}
-          </div>`
-        : '<span class="muted">Source authority present</span>';
+      let actions = '<span class="muted">Source authority present</span>';
+      if (row.needs_review) {
+        const review = reviewExtraMaterialRequirementLink(row.setup_task_id, row.setup_task_extra_material_id);
+        const resolve = resolveExtraMaterialSourceLink(row.setup_task_id, row.setup_task_extra_material_id);
+        actions = row.source_status === 'NO_ACTIVE_SOURCE'
+          ? `<div class="action-stack">${resolve}${review}</div>`
+          : `<div class="action-stack">${review}${resolve}</div>`;
+      }
       return `<tr>
         <td>${esc(scope)}</td>
         <td><strong>#${esc(row.setup_task_id)} · ${esc(row.task_name)}</strong></td>
@@ -236,6 +280,10 @@
         <td>${actions}</td>
       </tr>`;
     }).join('') || '<tr><td colspan="7" class="muted">No Extra Material source rows match this filter.</td></tr>';
+
+    document.querySelectorAll('.reassign-historical-source').forEach((button) => {
+      button.addEventListener('click', () => { void reassignHistoricalSource(button); });
+    });
   }
 
   function dispositionText(row) {
