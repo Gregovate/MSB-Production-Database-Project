@@ -365,7 +365,9 @@ class SetupMaterialAuditRepository:
                     tm.color,
                     tm.verification_state,
                     tm.notes AS requirement_notes,
-                    coalesce(src.active_source_count, 0) AS active_source_count
+                    coalesce(src.active_source_count, 0) AS active_source_count,
+                    coalesce(prior.prior_source_count, 0) AS prior_inactive_source_count,
+                    coalesce(prior.prior_source_context, '[]'::jsonb) AS prior_inactive_source_context
                 FROM ref.setup_task_extra_material AS tm
                 JOIN ref.setup_task AS t
                   ON t.setup_task_id = tm.setup_task_id
@@ -381,6 +383,30 @@ class SetupMaterialAuditRepository:
                     WHERE source.setup_task_extra_material_id = tm.setup_task_extra_material_id
                       AND source.active_flag
                 ) AS src ON true
+                LEFT JOIN LATERAL (
+                    SELECT
+                        count(*)::integer AS prior_source_count,
+                        jsonb_agg(
+                            DISTINCT jsonb_build_object(
+                                'setup_task_extra_material_id', prior_tm.setup_task_extra_material_id,
+                                'setup_task_id', prior_task.setup_task_id,
+                                'task_name', prior_task.task_name,
+                                'container_id', prior_source.container_id,
+                                'container_description', prior_container.description
+                            )
+                        ) AS prior_source_context
+                    FROM ref.setup_task_extra_material AS prior_tm
+                    JOIN ref.setup_task AS prior_task
+                      ON prior_task.setup_task_id = prior_tm.setup_task_id
+                    JOIN ref.setup_task_extra_material_source AS prior_source
+                      ON prior_source.setup_task_extra_material_id = prior_tm.setup_task_extra_material_id
+                     AND prior_source.active_flag
+                    JOIN ref.container AS prior_container
+                      ON prior_container.container_id = prior_source.container_id
+                    WHERE prior_tm.setup_extra_material_id = tm.setup_extra_material_id
+                      AND NOT prior_tm.active_flag
+                      AND prior_task.stage_id IS NOT DISTINCT FROM t.stage_id
+                ) AS prior ON true
                 WHERE t.active_flag
                   AND tm.active_flag
                   AND m.active_flag
@@ -400,8 +426,17 @@ class SetupMaterialAuditRepository:
 
         for row in rows:
             source_count = int(row.get("active_source_count") or 0)
+            prior_source_count = int(row.get("prior_inactive_source_count") or 0)
             row["active_source_count"] = source_count
-            row["source_status"] = "SOURCE_ASSIGNED" if source_count else "NO_ACTIVE_SOURCE"
+            row["prior_inactive_source_count"] = prior_source_count
+            prior_context = row.get("prior_inactive_source_context")
+            row["prior_inactive_source_context"] = prior_context if isinstance(prior_context, list) else list(prior_context or [])
+            if source_count:
+                row["source_status"] = "SOURCE_ASSIGNED"
+            elif prior_source_count:
+                row["source_status"] = "HISTORICAL_SOURCE_REVIEW"
+            else:
+                row["source_status"] = "NO_ACTIVE_SOURCE"
             row["needs_review"] = source_count == 0
 
         summary = {
