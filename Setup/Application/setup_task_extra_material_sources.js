@@ -69,11 +69,15 @@
     return 'Container';
   }
 
+  function humanContainerId(value) {
+    return `C${String(value ?? '').padStart(3, '0')}`;
+  }
+
   function containerLabel(row) {
     const type = containerTypeLabel(row);
     const home = row.home_location_code ? ` · ${row.home_location_code}` : '';
     const resolved = state.resolvedContainerIds.has(Number(row.container_id)) ? ' · TASK' : '';
-    return `C${row.container_id} — ${row.container_description || 'No description'} · ${type}${home}${resolved}`;
+    return `${humanContainerId(row.container_id)} — ${row.container_description || 'No description'} · ${type}${home}${resolved}`;
   }
 
   function allocationAudit(requirement) {
@@ -171,7 +175,14 @@
     const rows = state.containers
       .filter((row) => {
         if (!query) return true;
-        return [row.container_id, row.container_description, containerTypeLabel(row), row.home_location_code]
+        return [
+          row.container_id,
+          `C${row.container_id}`,
+          humanContainerId(row.container_id),
+          row.container_description,
+          containerTypeLabel(row),
+          row.home_location_code,
+        ]
           .filter((value) => value != null)
           .join(' ')
           .toLocaleLowerCase()
@@ -238,7 +249,7 @@
     if (source) {
       state.originalSourceContainerId = Number(source.container_id);
       el('task-extra-material-source-editor-title').textContent = 'Manager — Change Source';
-      el('task-extra-material-source-selected').textContent = `${requirementLabel(requirement)} · Current C${source.container_id}`;
+      el('task-extra-material-source-selected').textContent = `${requirementLabel(requirement)} · Current ${humanContainerId(source.container_id)}`;
       el('task-extra-material-source-editor-help').textContent = 'Choose a replacement Container, or keep this Container to edit its source facts.';
       el('task-extra-material-source-container').value = String(source.container_id);
       loadSourceFacts(source);
@@ -294,7 +305,7 @@
               return `
                 <div class="setup-extra-material-source-row"${title}>
                   <div class="setup-extra-material-source-copy">
-                    <strong>C${escapeHtml(source.container_id)} — ${escapeHtml(source.container_description || 'No description')}</strong>
+                    <strong>${escapeHtml(humanContainerId(source.container_id))} — ${escapeHtml(source.container_description || 'No description')}</strong>
                     <span class="muted">${escapeHtml(type)} · ${escapeHtml(quantity)} · ${escapeHtml(verification)}</span>
                   </div>
                   ${appState.access?.can_manage_setup ? `<div class="action-row"><button type="button" class="small secondary task-extra-material-source-edit" data-requirement-id="${requirement.setup_task_extra_material_id}" data-source-id="${source.setup_task_extra_material_source_id}">Change</button><button type="button" class="small danger task-extra-material-source-remove" data-requirement-id="${requirement.setup_task_extra_material_id}" data-source-id="${source.setup_task_extra_material_source_id}">Remove</button></div>` : ''}
