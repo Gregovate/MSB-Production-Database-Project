@@ -94,17 +94,17 @@
           <form id="expected-form">
             <div class="form-grid">
               <div class="catalog-picker-field wide">
-                <label>Task use<select id="expected-task-requirement" required>
-                  <option value="">Select the reusable task requirement that uses this material</option>
-                </select></label>
-                <div class="hint">This prevents orphan Kit contents. One Kit material may be used by multiple tasks; additional task links are added from those Setup tasks.</div>
-              </div>
-              <div class="catalog-picker-field wide">
                 <label>Item<select id="expected-item" required></select></label>
                 <div class="catalog-picker-actions manager-only" hidden>
                   <button id="expected-new-catalog-item" type="button" class="small secondary">New catalog item…</button>
                 </div>
-                <div class="hint">Select an existing normalized Extra Material family. Create a new family only when the physical item is genuinely missing from the catalog.</div>
+                <div class="hint">Choose the material first. Task use will then show only active reusable-task requirements for that material.</div>
+              </div>
+              <div class="catalog-picker-field wide">
+                <label>Task use<select id="expected-task-requirement" required disabled>
+                  <option value="">Choose a material first</option>
+                </select></label>
+                <div class="hint">This prevents orphan Kit contents. If one task has multiple real variants of the same material, the variant is shown so the exact requirement remains unambiguous.</div>
               </div>
               <label>Expected Qty<input id="expected-qty" type="number" min="0.001" step="0.001"></label>
               <label>UOM<select id="expected-uom" required></select></label>

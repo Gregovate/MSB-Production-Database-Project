@@ -324,7 +324,7 @@ def test_kit_expected_contents_are_bidirectionally_linked_to_task_requirements()
     assert "Used by task(s)" in page
     assert 'id="expected-task-requirement" required' in page
     assert "prevents orphan Kit contents" in page
-    assert "api/setup/task-extra-materials/source-options" in ui
+    assert "api/setup/task-extra-materials/source-options?setup_extra_material_id=" in ui
     assert "function usedByTasksHtml(row)" in ui
     assert "NO TASK LINK RECORDED" in ui
     assert "TASK LINK NEEDS REVIEW" in ui
@@ -356,7 +356,7 @@ def test_kit_task_use_column_does_not_break_inventory_cell_indexes() -> None:
 
     assert "const notes = row.cells?.[6];" in review
     assert "const text = row?.cells?.[5]?.textContent?.trim() || '';" in review
-    assert "openExpectedPanel('expected-task-requirement')" in review
+    assert "openExpectedPanel('expected-item')" in review
 
 
 def test_206_kit_reverse_use_distinguishes_exact_link_from_spec_review() -> None:
@@ -371,3 +371,19 @@ def test_206_kit_reverse_use_distinguishes_exact_link_from_spec_review() -> None
     assert "NO TASK LINK RECORDED" in ui
     assert "TASK LINK NEEDS REVIEW" in ui
     assert "reconstructed material specifications do not match" in ui
+
+
+def test_206_kit_task_picker_is_material_first_and_hides_already_linked_requirement() -> None:
+    page = text(BASE_DIR / "kit_inventory.html")
+    ui = text(BASE_DIR / "setup_kit_inventory.js")
+
+    assert page.index('id="expected-item"') < page.index('id="expected-task-requirement"')
+    assert 'id="expected-task-requirement" required disabled' in page
+    assert "Choose a material first" in page
+    assert "handleExpectedMaterialChange" in ui
+    assert "source-options?setup_extra_material_id=" in ui
+    assert "countsByTask" in ui
+    assert "duplicateTask" in ui
+    assert "Already linked to this Kit" in ui
+    assert "linkedRequirementIds" in ui
+    assert "alreadyLinked && !includeLinked ? ' disabled' : ''" in ui

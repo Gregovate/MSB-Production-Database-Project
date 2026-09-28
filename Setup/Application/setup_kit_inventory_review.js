@@ -787,7 +787,7 @@
         el('expected-clear')?.click();
         closeExtraMaterialCatalog(false);
         queueMicrotask(() => {
-          openExpectedPanel('expected-task-requirement');
+          openExpectedPanel('expected-item');
           syncExpectedCatalogAction();
         });
         return;

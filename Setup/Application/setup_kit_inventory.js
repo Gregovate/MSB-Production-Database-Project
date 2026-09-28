@@ -138,34 +138,75 @@
     }).join('')}</div>`;
   }
 
-  function requirementOptionLabel(row) {
-    const scope = [row.stage_key, row.stage_name].filter(Boolean).join(' · ');
+  function requirementVariantText(row) {
     const spec = [];
+    if (row.quantity_required != null || row.quantity_uom) {
+      spec.push([row.quantity_required, row.quantity_uom].filter((value) => value != null && String(value).trim() !== '').join(' '));
+    }
     if (row.size_text) spec.push(row.size_text);
     if (row.length_value != null) spec.push(`${formatNumber(row.length_value)} ${row.length_unit || ''}`.trim());
     if (row.color) spec.push(row.color);
-    return [
-      scope,
-      `#${row.setup_task_id} ${row.task_name}`,
-      row.material_name,
-      [row.quantity_required, row.quantity_uom].filter((value) => value != null && String(value).trim() !== '').join(' '),
-      spec.join(' · ')
-    ].filter(Boolean).join(' — ');
+    return spec.filter(Boolean).join(' · ');
   }
 
-  async function loadRequirementOptions() {
-    const payload = await api('api/setup/task-extra-materials/source-options');
-    state.requirementOptions = payload.requirements || [];
+  function linkedRequirementIds() {
+    const ids = new Set();
+    for (const content of state.contents || []) {
+      for (const task of (Array.isArray(content.used_by_tasks) ? content.used_by_tasks : [])) {
+        const id = Number(task.setup_task_extra_material_id || 0);
+        if (id) ids.add(id);
+      }
+    }
+    return ids;
+  }
+
+  async function loadRequirementOptions(materialId = null, { includeLinked = false } = {}) {
     const select = el('expected-task-requirement');
+    state.requirementOptions = [];
     if (!select) return;
+    const id = Number(materialId || 0);
+    if (!id) {
+      select.innerHTML = '<option value="">Choose a material first</option>';
+      select.value = '';
+      select.disabled = true;
+      return;
+    }
+
+    const payload = await api(`api/setup/task-extra-materials/source-options?setup_extra_material_id=${encodeURIComponent(id)}`);
+    state.requirementOptions = payload.requirements || [];
     const current = select.value;
-    select.innerHTML = '<option value="">Select the reusable task requirement that uses this material</option>' +
-      state.requirementOptions.map((row) =>
-        `<option value="${row.setup_task_extra_material_id}">${escapeHtml(requirementOptionLabel(row))}</option>`
-      ).join('');
+    const linked = linkedRequirementIds();
+    const countsByTask = new Map();
+    for (const row of state.requirementOptions) {
+      const taskId = Number(row.setup_task_id || 0);
+      countsByTask.set(taskId, Number(countsByTask.get(taskId) || 0) + 1);
+    }
+
+    const options = state.requirementOptions.map((row) => {
+      const requirementId = Number(row.setup_task_extra_material_id || 0);
+      const taskId = Number(row.setup_task_id || 0);
+      const duplicateTask = Number(countsByTask.get(taskId) || 0) > 1;
+      const scope = [row.stage_key, row.stage_name].filter(Boolean).join(' · ');
+      const variant = duplicateTask ? requirementVariantText(row) : '';
+      const alreadyLinked = linked.has(requirementId);
+      const suffix = [variant, alreadyLinked ? 'Already linked to this Kit' : ''].filter(Boolean).join(' — ');
+      const label = [scope, `#${row.setup_task_id} ${row.task_name}`, suffix].filter(Boolean).join(' — ');
+      const disabled = alreadyLinked && !includeLinked ? ' disabled' : '';
+      return `<option value="${requirementId}"${disabled}>${escapeHtml(label)}</option>`;
+    });
+
+    select.innerHTML = '<option value="">Select the reusable task that uses this material</option>' + options.join('');
+    select.disabled = false;
     if (state.requirementOptions.some((row) => String(row.setup_task_extra_material_id) === current)) {
       select.value = current;
     }
+  }
+
+  async function handleExpectedMaterialChange() {
+    if (state.editingContentId) return;
+    setIdentityFieldsDisabled(false);
+    const materialId = Number(el('expected-item')?.value || 0);
+    await loadRequirementOptions(materialId);
   }
 
   function selectedRequirementOption() {
@@ -376,7 +417,7 @@
     }).join('') || '<tr><td colspan="8" class="empty-state">No normalized expected contents recorded yet.</td></tr>';
 
     document.querySelectorAll('.expected-edit').forEach((button) => {
-      button.addEventListener('click', () => beginExpectedEdit(Number(button.dataset.contentId)));
+      button.addEventListener('click', () => { void beginExpectedEdit(Number(button.dataset.contentId)); });
     });
     document.querySelectorAll('.inventory-select').forEach((button) => {
       button.addEventListener('click', () => selectInventoryItem(Number(button.dataset.contentId)));
@@ -393,9 +434,11 @@
     state.editingContentId = null;
     setIdentityFieldsDisabled(false);
     if (el('expected-task-requirement')) {
-      el('expected-task-requirement').disabled = false;
+      el('expected-task-requirement').innerHTML = '<option value="">Choose a material first</option>';
+      el('expected-task-requirement').disabled = true;
       el('expected-task-requirement').value = '';
     }
+    state.requirementOptions = [];
     el('expected-item').value = '';
     el('expected-qty').value = '';
     el('expected-uom').value = 'EA';
@@ -409,16 +452,17 @@
     el('expected-remove').hidden = true;
   }
 
-  function beginExpectedEdit(contentId) {
+  async function beginExpectedEdit(contentId) {
     const row = state.contents.find((item) => Number(item.setup_container_extra_material_id) === Number(contentId));
     if (!row || !canManage()) return;
     state.editingContentId = contentId;
+    el('expected-item').value = String(row.setup_extra_material_id);
+    await loadRequirementOptions(row.setup_extra_material_id, { includeLinked: true });
     if (el('expected-task-requirement')) {
       const firstUse = Array.isArray(row.used_by_tasks) ? row.used_by_tasks[0] : null;
       el('expected-task-requirement').value = firstUse ? String(firstUse.setup_task_extra_material_id) : '';
       el('expected-task-requirement').disabled = true;
     }
-    el('expected-item').value = String(row.setup_extra_material_id);
     el('expected-qty').value = row.expected_quantity ?? '';
     el('expected-uom').value = row.quantity_uom || 'EA';
     el('expected-size').value = row.size_text || '';
@@ -582,6 +626,7 @@
     el('inventory-back-setup').href = APP_BASE;
     el('kit-search')?.addEventListener('input', renderKitList);
     el('expected-form')?.addEventListener('submit', saveExpected);
+    el('expected-item')?.addEventListener('change', () => { void handleExpectedMaterialChange(); });
     el('expected-task-requirement')?.addEventListener('change', applyRequirementToExpectedEditor);
     el('expected-clear')?.addEventListener('click', clearExpectedEditor);
     el('expected-remove')?.addEventListener('click', removeExpected);
@@ -603,7 +648,7 @@
     bind();
     setBusy(true);
     try {
-      await Promise.all([loadAccess(), loadCatalog(), loadRequirementOptions(), loadKitBoxes()]);
+      await Promise.all([loadAccess(), loadCatalog(), loadKitBoxes()]);
       const directId = routeContainerId();
       if (directId) await selectKit(directId, { push: false });
       else setAlert('Select a Kit Box to review expected contents or record physical inventory.');
