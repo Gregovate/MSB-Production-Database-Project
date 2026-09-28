@@ -9,8 +9,10 @@ DECLARE
     v_container_id integer;
     v_requirement_id bigint;
     v_source_id bigint;
+    v_content_id bigint;
     v_material_name text;
     v_deleted_source_count integer;
+    v_deleted_content_count integer;
     v_catalog_before integer;
     v_container_before integer;
 BEGIN
@@ -100,6 +102,24 @@ BEGIN
         true
     ) AS result;
 
+    SELECT result.setup_container_extra_material_id
+      INTO v_content_id
+    FROM ref.set_setup_container_extra_material(
+        v_manager_email,
+        NULL,
+        v_container_id,
+        v_material_id,
+        1,
+        'EA',
+        '[DISPOSABLE #206 HARD DELETE]',
+        NULL,
+        NULL,
+        NULL,
+        'UNVERIFIED',
+        '[PREVIEW ONLY] #206 hard-delete validation expected content',
+        true
+    ) AS result;
+
     IF NOT EXISTS (
         SELECT 1
         FROM ref.setup_task_extra_material
@@ -108,12 +128,22 @@ BEGIN
         SELECT 1
         FROM ref.setup_task_extra_material_source
         WHERE setup_task_extra_material_source_id = v_source_id
+    ) OR NOT EXISTS (
+        SELECT 1
+        FROM ref.setup_container_extra_material
+        WHERE setup_container_extra_material_id = v_content_id
     ) THEN
-        RAISE EXCEPTION 'Disposable requirement/source fixture was not created';
+        RAISE EXCEPTION 'Disposable requirement/source/content fixture was not created';
     END IF;
 
-    SELECT result.deleted_source_count, result.material_name
-      INTO v_deleted_source_count, v_material_name
+    SELECT
+        result.deleted_source_count,
+        result.deleted_container_content_count,
+        result.material_name
+      INTO
+        v_deleted_source_count,
+        v_deleted_content_count,
+        v_material_name
     FROM ref.delete_setup_task_extra_material(
         v_manager_email,
         v_task_id,
@@ -140,6 +170,15 @@ BEGIN
         WHERE setup_task_extra_material_source_id = v_source_id
     ) THEN
         RAISE EXCEPTION 'Task-source row still exists after parent requirement hard delete';
+    END IF;
+
+    IF v_deleted_content_count <> 1 OR EXISTS (
+        SELECT 1
+        FROM ref.setup_container_extra_material
+        WHERE setup_container_extra_material_id = v_content_id
+    ) THEN
+        RAISE EXCEPTION
+            'Unused un-inventoried Container expected content was not deleted with mistaken requirement';
     END IF;
 
     IF (SELECT count(*) FROM ref.setup_extra_material WHERE setup_extra_material_id=v_material_id)
