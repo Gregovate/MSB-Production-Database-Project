@@ -95,7 +95,8 @@ def test_new_requirement_requires_source_and_creates_container_authority_atomica
 
     assert "New Extra Material requirements cannot be created without physical source authority." in ui
     assert "task-extra-material-create-source-container" in ui
-    assert "result.source =" in ui or "source =" in ui
+    assert "setup_task_extra_material_source=result[\"source\"]" in api
+    assert "container_content_created=result[\"container_content_created\"]" in api
     assert 'payload.get("source")' in repo
     assert "create_task_material_with_source" in repo
     assert "ref.set_setup_task_extra_material(" in repo
