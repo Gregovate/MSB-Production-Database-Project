@@ -121,3 +121,28 @@ th { color: var(--muted); font-size: .76rem; text-transform: uppercase; letter-s
   justify-content: center;
   min-width: 122px;
 }
+
+
+/* #206 source-authority reconciliation helpers. */
+.historical-source-context {
+  display: grid;
+  gap: 5px;
+  margin-top: 6px;
+}
+.historical-source-item {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  padding-top: 5px;
+}
+.historical-source-item .small {
+  flex: 0 0 auto;
+}
+@media (max-width: 900px) {
+  .historical-source-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
