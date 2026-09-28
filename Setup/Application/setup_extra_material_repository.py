@@ -318,6 +318,84 @@ class SetupExtraMaterialRepository:
             "Task Extra Material update returned no result",
         )
 
+    def create_task_material_with_source(
+        self,
+        *,
+        email: str,
+        setup_task_id: int,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        source = payload.get("source")
+        if not isinstance(source, dict) or not source.get("container_id"):
+            raise SetupExtraMaterialRepositoryError(
+                "A source Container is required when adding a task Extra Material requirement"
+            )
+
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM ref.set_setup_task_extra_material(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (
+                    email,
+                    None,
+                    setup_task_id,
+                    payload.get("setup_extra_material_id"),
+                    payload.get("quantity_required"),
+                    payload.get("quantity_uom", "EA"),
+                    payload.get("size_text"),
+                    payload.get("length_value"),
+                    payload.get("length_unit"),
+                    payload.get("color"),
+                    payload.get("quantity_qualifier", "EXACT"),
+                    payload.get("verification_state", "UNVERIFIED"),
+                    payload.get("notes"),
+                    True,
+                ),
+            )
+            requirement = cur.fetchone()
+            if requirement is None:
+                raise SetupExtraMaterialRepositoryError(
+                    "Task Extra Material creation returned no result"
+                )
+
+            requirement_id = int(requirement["setup_task_extra_material_id"])
+            cur.execute(
+                "SELECT * FROM ref.set_setup_task_extra_material_source(%s,%s,%s,%s,%s,%s,%s,%s)",
+                (
+                    email,
+                    None,
+                    requirement_id,
+                    source.get("container_id"),
+                    source.get("expected_quantity"),
+                    source.get("verification_state", "UNVERIFIED"),
+                    source.get("notes"),
+                    True,
+                ),
+            )
+            source_row = cur.fetchone()
+            if source_row is None:
+                raise SetupExtraMaterialRepositoryError(
+                    "Task Extra Material source creation returned no result"
+                )
+
+            conn.commit()
+            return {
+                "requirement": dict(requirement),
+                "source": dict(source_row),
+            }
+
+    def delete_task_material(
+        self,
+        *,
+        email: str,
+        setup_task_id: int,
+        row_id: int,
+    ) -> dict[str, Any]:
+        return self._command(
+            "SELECT * FROM ref.delete_setup_task_extra_material(%s,%s,%s)",
+            (email, setup_task_id, row_id),
+            "Task Extra Material delete returned no result",
+        )
+
     def set_task_source(self, *, email: str, requirement_id: int, row_id: int | None, payload: dict[str, Any]) -> dict[str, Any]:
         return self._command(
             "SELECT * FROM ref.set_setup_task_extra_material_source(%s,%s,%s,%s,%s,%s,%s,%s)",
