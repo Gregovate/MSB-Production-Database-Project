@@ -525,3 +525,34 @@ Next executable steps, in order:
 Do not restart implementation from the original #206 prompt. Continue from this checkpoint and the current PR head.
 
 No Production data mutation has been authorized or performed.
+
+
+---
+
+## Continuation Checkpoint — Full Setup/Application Regression PASS
+
+| Field | Value |
+|---|---|
+| Exact tested candidate | `938d83327ef6f35a3bd3e270a4f2c602c3d83537` |
+| Test environment | Office Windows checkout, active project virtual environment |
+| Command | `python -m pytest -q -p no:cacheprovider Setup/Application` |
+| Result | **560 passed in 5.63s** |
+| Failures / errors | **0** |
+| Production mutation authorized | **NO** |
+
+The full Setup/Application regression gate is closed for the exact candidate above.
+
+Do not return to implementation reconnaissance or repeat the contract-test buildout unless a later disposable/database/browser gate identifies a specific defect.
+
+### Next gate
+
+Proceed in this order:
+
+1. create/use the governed disposable current-Production PostgreSQL clone under the accepted Setup disposable runbook;
+2. apply candidate migration `Setup/Database/063_harden_setup_extra_material_requirement_lifecycle.sql` to the disposable clone only;
+3. run `Setup/Acceptance/setup_206_extra_material_lifecycle_disposable_validation.sql`;
+4. require the marker `SETUP_206_EXTRA_MATERIAL_LIFECYCLE_DISPOSABLE_VALIDATION_PASS`;
+5. then perform disposable browser review for the recorded Church RGB, Northern Lights, source-required creation, Kit task-use/orphan prevention, and picker-only Pick List cases;
+6. checkpoint exact disposable/browser results before any Production decision.
+
+No Production mutation has been authorized or performed.
