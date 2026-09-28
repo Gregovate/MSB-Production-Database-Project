@@ -834,10 +834,14 @@ async function applyRequestedRoute() {
     requestedCorrection === 'display-ownership'
     || requestedCorrection === 'kit-boxes'
     || requestedCorrection === 'extra-material-source'
+    || requestedCorrection === 'extra-material-requirement'
   ) {
     appState.pendingCorrection = requestedCorrection;
   }
-  if (requestedCorrection === 'extra-material-source' && requestedExtraMaterialRequirementId > 0) {
+  if (
+    (requestedCorrection === 'extra-material-source' || requestedCorrection === 'extra-material-requirement')
+    && requestedExtraMaterialRequirementId > 0
+  ) {
     appState.pendingExtraMaterialRequirementId = requestedExtraMaterialRequirementId;
   }
 
