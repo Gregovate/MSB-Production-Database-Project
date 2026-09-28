@@ -333,6 +333,84 @@ class SetupMaterialAuditRepository:
         }
         return {"context_season_year": context_year, "summary": summary, "scopes": rows}
 
+    def extra_material_source_audit(self) -> dict[str, Any]:
+        """Audit active reusable Extra Material requirements against active source authority.
+
+        One row is returned per active underlying task requirement. Source rows are
+        counted with a correlated aggregate so schedule repetition and multiple
+        physical source allocations never duplicate the requirement in this audit.
+        """
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    tm.setup_task_extra_material_id,
+                    tm.setup_task_id,
+                    t.task_name,
+                    t.stage_id,
+                    s.stage_key,
+                    s.stage_name,
+                    s.park_order,
+                    s.sub_order,
+                    t.lor_scene_id,
+                    ls.scene_name,
+                    m.setup_extra_material_id,
+                    m.material_name,
+                    tm.quantity_required,
+                    tm.quantity_uom,
+                    tm.quantity_qualifier,
+                    tm.size_text,
+                    tm.length_value,
+                    tm.length_unit,
+                    tm.color,
+                    tm.verification_state,
+                    tm.notes AS requirement_notes,
+                    coalesce(src.active_source_count, 0) AS active_source_count
+                FROM ref.setup_task_extra_material AS tm
+                JOIN ref.setup_task AS t
+                  ON t.setup_task_id = tm.setup_task_id
+                JOIN ref.setup_extra_material AS m
+                  ON m.setup_extra_material_id = tm.setup_extra_material_id
+                LEFT JOIN ref.stage AS s
+                  ON s.stage_id = t.stage_id
+                LEFT JOIN ref.lor_scene AS ls
+                  ON ls.lor_scene_id = t.lor_scene_id
+                LEFT JOIN LATERAL (
+                    SELECT count(*)::integer AS active_source_count
+                    FROM ref.setup_task_extra_material_source AS source
+                    WHERE source.setup_task_extra_material_id = tm.setup_task_extra_material_id
+                      AND source.active_flag
+                ) AS src ON true
+                WHERE t.active_flag
+                  AND tm.active_flag
+                  AND m.active_flag
+                ORDER BY
+                    s.park_order NULLS LAST,
+                    s.sub_order NULLS LAST,
+                    s.stage_key NULLS LAST,
+                    ls.scene_name NULLS LAST,
+                    t.display_order,
+                    t.setup_task_id,
+                    m.display_order,
+                    m.material_name,
+                    tm.setup_task_extra_material_id
+                """
+            )
+            rows = [dict(row) for row in cur.fetchall()]
+
+        for row in rows:
+            source_count = int(row.get("active_source_count") or 0)
+            row["active_source_count"] = source_count
+            row["source_status"] = "SOURCE_ASSIGNED" if source_count else "NO_ACTIVE_SOURCE"
+            row["needs_review"] = source_count == 0
+
+        summary = {
+            "requirements_reviewed": len(rows),
+            "source_assigned": sum(1 for row in rows if not row["needs_review"]),
+            "unresolved_no_source": sum(1 for row in rows if row["needs_review"]),
+        }
+        return {"summary": summary, "requirements": rows}
+
     def kit_audit(self) -> dict[str, Any]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
@@ -446,6 +524,7 @@ class SetupMaterialAuditRepository:
         return {
             "future_session": self.future_session_audit(),
             "display": self.display_audit(),
+            "extra_material_source": self.extra_material_source_audit(),
             "kit": self.kit_audit(),
         }
 
