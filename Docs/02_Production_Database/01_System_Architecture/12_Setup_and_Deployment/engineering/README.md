@@ -5,15 +5,15 @@
 | Document Type | Engineering Handoff Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
-| Status | CURRENT HANDOFF — real 2026 Setup Session live; Perform Work / Report Work Production accepted |
+| Status | CURRENT HANDOFF — real 2026 Setup Session live; Perform Work / Report Work / Report Correction Production accepted |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-26 |
+| Last Reviewed | 2026-09-27 |
 
 Operator-facing instructions are separate under [`../operatorSOP/`](../operatorSOP/README.md).
 
 ## 2026 Launch Status
 
-The real 2026 Setup Session has been created and is now the active annual planning/execution context. The initial accepted Scheduling Board launch target was `06a6536d92db5c7352beeed496563ed9bfdb7146`. The current Production runtime is `15864bcce17d0b59c8396e99178e7113fc368b2d` (`V0.3.19-pick-list`), with the rolling #206 Pick List plus #175 Perform Work / #132 Report Work accepted and migrations 060 + 061 installed.
+The real 2026 Setup Session has been created and is now the active annual planning/execution context. The initial accepted Scheduling Board launch target was `06a6536d92db5c7352beeed496563ed9bfdb7146`. The current Production runtime is `fc0b76d57826eebf04b81c99cbb904109162cd87` (`V0.3.19-pick-list`), with the rolling #206 Pick List, #175 Perform Work / #132 Report Work, and #172 Report Correction accepted and migrations 060 + 061 + 062 installed.
 
 The launch deployment installed migrations 057/058 after the exact candidate passed the full Setup/Application regression (458/458) and disposable browser acceptance. The Scheduling Board preserves the accepted Catalog/Plan ordering, lavender material-task cue, Day-view filters, completed/cancelled-day handling, performance improvements, and current scheduling behavior.
 
@@ -42,10 +42,10 @@ The real 2026 Setup Session has since been created under #122 and is live. Mater
 ```text
 protected application = https://my.sheboyganlights.org/setup/
 initial Scheduling Board launch target = 06a6536d92db5c7352beeed496563ed9bfdb7146
-current live Setup SHA = 15864bcce17d0b59c8396e99178e7113fc368b2d
+current live Setup SHA = fc0b76d57826eebf04b81c99cbb904109162cd87
 version = V0.3.19-pick-list
-current accepted migrations = 059 reusable task-name synchronization + 060 Pick List Manager override + 061 Report Work
-deployment-closeout Setup business fingerprint = 3e581494b460ee8e161c76b1481934ae
+current accepted migrations = 059 reusable task-name synchronization + 060 Pick List Manager override + 061 Report Work + 062 Report Correction Intake
+deployment-closeout Setup business fingerprint = a779cc9f77adde416a0b8a78f40e9b70
 current annual reusable-name mismatches = 0
 2025 Setup Session = historical / verification evidence
 2026 Setup Session = LIVE annual planning/execution context
@@ -178,14 +178,40 @@ V0.3.13 Display ownership + physical Kit Box assignment
 
 Also preserve the Stage/Scene resolver, the 2025 historical/verification boundary, current Display/Container authority, narrow governed write commands, and the existing analytics integration/privacy boundary. The real 2026 Session is now live; do not recreate it or reintroduce pre-launch assumptions that treat 2025 as the current planning context.
 
+## Accepted Report Correction / Work Order Intake — #172
+
+Issue #172 / PR #236 is Production accepted.
+
+The live field-execution path is:
+
+```text
+Perform Work
+  -> Report Correction
+  -> PostgreSQL authoritative Setup context preparation
+  -> protected Setup backend
+  -> Directus Work Order Intake create
+  -> existing items.create triage-email Flow
+  -> Manager triage
+```
+
+The reporter supplies the concise finding and may optionally add suggested correction/evidence. The application preserves the exact scheduled assignment, annual/reusable task identities, Setup Day/date/shift/Crew/Captain, Stage/Scene, current Procedure identity when available, authenticated reporter, and submission timestamp.
+
+Report Correction does not create an active Work Order directly and does not grant Production Crew Manager-level mutation authority.
+
+Real protected-route Production validation created Work Order Intake #60 and confirmed the existing Manager triage email fired.
+
+Acceptance record:
+
+[Setup #172 Report Correction Production Acceptance — 2026-09-27](../../../../../Setup/Acceptance/Setup_172_Report_Correction_Production_Acceptance_2026-09-27.md)
+
 ## Current Post-Launch Sequence
 
 #145, #184, and #167 are complete, and the real 2026 Setup Session is live. #122 remains the commanding Setup issue. Remaining work resumes from real 2026 annual/schedule identities:
 
 ```text
-#175 Captain Work List / Procedure context — PRODUCTION ACCEPTED / CLOSEOUT
-#132 Report Work — PRODUCTION ACCEPTED / CLOSEOUT
-#172 Report Correction / field observation intake — NEXT ACTIVE FIELD-EXECUTION WORK
+#175 Captain Work List / Procedure context — PRODUCTION ACCEPTED / CLOSED
+#132 Report Work — PRODUCTION ACCEPTED / CLOSED
+#172 Report Correction / field observation intake — PRODUCTION ACCEPTED / CLOSEOUT
 #206 Pick List / material readiness — existing remaining scope
 #222 performance protection in parallel
 #219 / GIS / writable movement later where required
@@ -199,7 +225,7 @@ Server/runtime authority remains `Gregovate/MSB-Server-Management`.
 
 The accepted #184 and #167 rollback archives are retained. Restoration is a governed database operation and must reconcile legitimate post-deployment work; do not use those archives as casual UI rollback points.
 
-The current live Setup application is `15864bcce17d0b59c8396e99178e7113fc368b2d` (`V0.3.19-pick-list`). #175/#132 installed migration 061 after exact-candidate regression, disposable acceptance, browser acceptance, and bounded Production deployment. #206 migration 060 remains installed and the validated rollback archive is `/home/msbadmin/backups/setup-206/msb-pre-setup-206-pick-list-20260926T030610.dump` (SHA256 `ecb8da74c9192da5c5cf18ff45f8882b4d2cb0cada45516e8b0193073668c145`). The immediately preceding application SHA is `55e097e7bb3b807793893defc939c9a23fc4ec5d` (`V0.3.18-scheduling-board`), but a source-only checkout rollback is not a complete rollback of #206 because migration 060 would remain installed. Use the Production Database change runbook and retained #206 rollback evidence. Older #184/#167/#204 rollback evidence remains historical recovery evidence for those deployments.
+The current live Setup application is `fc0b76d57826eebf04b81c99cbb904109162cd87` (`V0.3.19-pick-list`). #172 installed migration 062 after exact-candidate regression, disposable acceptance, browser acceptance, bounded Production deployment, and real protected-route Work Order Intake/email validation. The validated #172 rollback archive is `/home/msbadmin/backups/setup-172/msb-pre-setup-172-20260928T005954.dump` (SHA256 `fe0d349a587ec0363cb69bb295618c49ab8df771ff9bcb8bf9c0e71c66b8b89a`). Because migration 062 is installed, source-only checkout rollback is not a complete #172 rollback. Use the Production Database change runbook and reconcile legitimate post-deployment Intake/Setup work before restoring or removing database state. Older #206/#175/#132/#184/#167/#204 rollback evidence remains historical recovery evidence for those deployments.
 
 ## Resume Checklist
 
@@ -211,9 +237,10 @@ Before the next Setup change:
 4. read `Setup_Task_Supporting_Information_Contract_2026-09-11.md`;
 5. preserve accepted V0.3.7 through V0.3.13 plus #184/#167 inventory behavior/data;
 6. use the live 2026 Session for annual planning/execution and retain 2025 only as historical/verification evidence;
-7. preserve the accepted Scheduling Board baseline and keep #206 Pick List/material-demand work in its owning workstream;
-8. use `Gregovate/MSB-Server-Management` for runtime/deployment/browser-review authority; and
-9. update controlled docs and acceptance evidence whenever accepted behavior or the resume point changes.
+7. preserve the accepted Scheduling Board, Perform Work / Report Work, and Report Correction -> Work Order Intake boundaries;
+8. keep #206 Pick List/material-demand work in its owning workstream;
+9. use `Gregovate/MSB-Server-Management` for runtime/deployment/browser-review authority; and
+10. update controlled docs and acceptance evidence whenever accepted behavior or the resume point changes.
 
 ## Related Systems
 
@@ -221,6 +248,7 @@ Before the next Setup change:
 - [Operator procedures](../operatorSOP/README.md)
 - [Detailed Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
 - [Kit Inventory / T-Post Production Acceptance](../../../../../Setup/Acceptance/Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md)
+- [#172 Report Correction Production Acceptance](../../../../../Setup/Acceptance/Setup_172_Report_Correction_Production_Acceptance_2026-09-27.md)
 - [#175 / #132 Perform Work + Report Work Production Acceptance](../../../../../Setup/Acceptance/Setup_175_132_Report_Work_Production_Acceptance_2026-09-26.md)
 - [Setup Assignment Layer V0.3.13 Production Acceptance](../../../../../Setup/Acceptance/Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md)
 
