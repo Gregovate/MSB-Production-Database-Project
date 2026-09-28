@@ -45,7 +45,7 @@ def test_task_source_editor_is_compact_and_uses_governed_source_commands() -> No
     assert "Change</button>" in ui
     assert "Remove</button>" in ui
 
-    assert "setup_task_extra_material_sources.js?v=2026-09-16.3" in bridge
+    assert "setup_task_extra_material_sources.js?v=2026-09-28.1" in bridge
     assert "setup_extra_material_source_usability.js?v=2026-09-16.2" in bridge
     assert "script.addEventListener('load', loadSourceUsabilityRefinement" in bridge
     assert '"setup_task_extra_material_sources.js"' in host
@@ -153,3 +153,15 @@ def test_tpost_inventory_can_bootstrap_an_existing_non_kit_container() -> None:
 def test_changed_python_modules_parse() -> None:
     for name in ("setup_extra_material_api.py", "production_backend.py"):
         ast.parse(text(name), filename=name)
+
+
+def test_material_audit_deep_link_opens_exact_existing_source_editor() -> None:
+    production = text("setup_production.js")
+    source_ui = text("setup_task_extra_material_sources.js")
+
+    assert "pendingExtraMaterialRequirementId" in production
+    assert "extra-material-source" in production
+    assert "setup_task_extra_material_id" in production
+    assert "function openPendingSourceCorrection()" in source_ui
+    assert "consumePendingCorrection('extra-material-source')" in source_ui
+    assert "beginSource(requirementId)" in source_ui
