@@ -125,6 +125,7 @@ button,select{font:inherit;padding:.55rem .7rem}
   .pick-table-wrap{overflow:visible}
   .pick-table{display:table;width:100%;min-width:0;table-layout:fixed;border-collapse:collapse;border-spacing:0;font-size:8.5pt}
   .pick-table thead{display:table-header-group}
+  .destination-cell::before,.pick-by-cell::before,.needed-for-cell::before,.qr-cell::before{display:none!important}
   .pick-record{display:table-row-group;margin:0}
   .pick-row{display:table-row;border:0}
   .pick-row td{display:table-cell}
