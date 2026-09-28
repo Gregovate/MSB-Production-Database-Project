@@ -268,12 +268,28 @@
       ? `api/setup/tasks/${state.taskId}/extra-materials/${state.editingRowId}`
       : `api/setup/tasks/${state.taskId}/extra-materials`;
     const method = state.editingRowId ? 'PATCH' : 'POST';
+    const priorRowId = state.editingRowId;
     try {
-      await api(path, commandOptions(method, payload(true)));
+      const result = await api(path, commandOptions(method, payload(true)));
+      const savedRowId = Number(
+        priorRowId
+        || result.setup_task_extra_material?.setup_task_extra_material_id
+        || 0
+      );
       const taskId = state.taskId;
       clearEditor();
       await loadTaskMaterials(taskId);
-      setAlert('Task Extra Material requirement saved.');
+      const savedRow = state.rows.find(
+        (row) => Number(row.setup_task_extra_material_id) === savedRowId,
+      );
+      if (savedRow && !(savedRow.sources || []).length) {
+        setAlert(
+          'Requirement saved, but NO SOURCE is assigned. Use Add Source on this requirement row, or leave it unresolved intentionally for Manager audit.',
+          'error',
+        );
+      } else {
+        setAlert('Task Extra Material requirement saved.');
+      }
     } catch (error) {
       setAlert(error.message, 'error');
     }
