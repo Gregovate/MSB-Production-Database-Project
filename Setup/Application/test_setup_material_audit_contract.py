@@ -281,8 +281,9 @@ def test_extra_material_source_reconciliation_distinguishes_historical_and_recon
     assert "HISTORICAL SOURCE REVIEW" in js
     assert "RECONSTRUCTION REVIEW" in js
     assert "reassign-historical-source" in js
-    assert "Move C" in js
-    assert "Restore prior requirement" in js
+    assert "Move ${esc(containerCode)} to current requirement" in js
+    assert "humanContainerId(item.container_id)" in js
+    assert "Restore ${esc(materialName)} to ${esc(taskName)}" in js
     assert "moves the existing source row; it does not create a duplicate" in js
     assert "Review Requirement" in js
     assert "Resolve Source" in js
