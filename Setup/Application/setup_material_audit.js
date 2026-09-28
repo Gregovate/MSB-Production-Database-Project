@@ -87,8 +87,12 @@
     return Boolean(row.needs_review);
   }
 
+  function extraMaterialSourceIsException(row) {
+    return Boolean(row.needs_review);
+  }
+
   function statusClass(value) {
-    if (value === 'COMPLETE' || value === 'ASSIGNED_ACTIVE' || value === 'REVIEWED_SHARED_NON_TASK') return 'ok';
+    if (value === 'COMPLETE' || value === 'ASSIGNED_ACTIVE' || value === 'REVIEWED_SHARED_NON_TASK' || value === 'SOURCE_ASSIGNED') return 'ok';
     if (value === 'INACTIVE_OBSOLETE_ONLY') return 'warn';
     return 'error';
   }
@@ -97,6 +101,21 @@
     if (!taskId) return '<span class="muted">No scoped task</span>';
     const correctionQuery = correction ? `&correction=${encodeURIComponent(correction)}` : '';
     return `<a class="button secondary" href="../?view=review&setup_task_id=${encodeURIComponent(taskId)}${correctionQuery}">${esc(label)}</a>`;
+  }
+
+  function resolveExtraMaterialSourceLink(taskId, requirementId) {
+    if (!taskId || !requirementId) return '<span class="muted">Requirement identity unavailable</span>';
+    return `<a class="button secondary" href="../?view=review&setup_task_id=${encodeURIComponent(taskId)}&correction=extra-material-source&setup_task_extra_material_id=${encodeURIComponent(requirementId)}">Resolve Source</a>`;
+  }
+
+  function extraMaterialRequiredText(row) {
+    const quantity = [row.quantity_required, row.quantity_uom].filter((value) => value != null && String(value).trim() !== '').join(' ');
+    const spec = [];
+    if (row.quantity_qualifier) spec.push(String(row.quantity_qualifier).replaceAll('_', ' '));
+    if (row.size_text) spec.push(row.size_text);
+    if (row.length_value != null) spec.push([row.length_value, row.length_unit].filter(Boolean).join(' '));
+    if (row.color) spec.push(row.color);
+    return [quantity || 'Quantity not recorded', spec.join(' · ')].filter(Boolean).join(' · ');
   }
 
   function renderFutureSession() {
@@ -158,6 +177,34 @@
       <td>${esc(row.uncontained_display_count || 0)}</td>
       <td>${setupTaskLink(row.correction_setup_task_id, 'Open Display Ownership', 'display-ownership')}</td>
     </tr>`).join('') || '<tr><td colspan="11" class="muted">No Display/LOR rows match this filter.</td></tr>';
+  }
+
+  function renderExtraMaterialSource() {
+    const source = state.audit?.extra_material_source || {};
+    const summary = source.summary || {};
+    el('extra-material-source-summary').innerHTML = [
+      ['Requirements reviewed', summary.requirements_reviewed || 0],
+      ['Source assigned', summary.source_assigned || 0],
+      ['No active source', summary.unresolved_no_source || 0],
+    ].map(([label, value]) => summaryCard(label, value)).join('');
+
+    const allRows = source.requirements || [];
+    const rows = state.filter === 'exceptions' ? allRows.filter(extraMaterialSourceIsException) : allRows;
+    el('extra-material-source-audit-body').innerHTML = rows.map((row) => {
+      const scope = [row.stage_key, row.stage_name, row.scene_name].filter(Boolean).join(' · ') || 'No Stage / site-wide';
+      const sourceStatus = Number(row.active_source_count || 0) > 0
+        ? `${row.active_source_count} active source${Number(row.active_source_count) === 1 ? '' : 's'}`
+        : 'NO ACTIVE SOURCE';
+      return `<tr>
+        <td>${esc(scope)}</td>
+        <td><strong>#${esc(row.setup_task_id)} · ${esc(row.task_name)}</strong></td>
+        <td><strong>${esc(row.material_name || 'Extra Material')}</strong>${row.requirement_notes ? `<div class="muted">${esc(row.requirement_notes)}</div>` : ''}</td>
+        <td>${esc(extraMaterialRequiredText(row))}</td>
+        <td><span class="status ${statusClass(row.verification_state === 'VERIFIED' ? 'SOURCE_ASSIGNED' : row.verification_state)}">${esc(String(row.verification_state || 'UNVERIFIED').replaceAll('_', ' '))}</span></td>
+        <td><span class="status ${statusClass(row.source_status)}">${esc(sourceStatus)}</span></td>
+        <td>${row.needs_review ? resolveExtraMaterialSourceLink(row.setup_task_id, row.setup_task_extra_material_id) : '<span class="muted">Source authority present</span>'}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="7" class="muted">No Extra Material source rows match this filter.</td></tr>';
   }
 
   function dispositionText(row) {
@@ -240,6 +287,7 @@
   function render() {
     renderFutureSession();
     renderDisplay();
+    renderExtraMaterialSource();
     renderKit();
   }
 
@@ -249,9 +297,11 @@
     render();
     const fs = state.audit.future_session?.summary || {};
     const ds = state.audit.display?.summary || {};
+    const es = state.audit.extra_material_source?.summary || {};
     const ks = state.audit.kit?.summary || {};
     const openCount = Number(fs.inactive_will_not_seed || 0)
       + Number(ds.review_required || 0)
+      + Number(es.unresolved_no_source || 0)
       + Number(ks.inactive_obsolete_only || 0)
       + Number(ks.unresolved_unassigned || 0)
       + Number(ks.disposition_conflicts || 0);
