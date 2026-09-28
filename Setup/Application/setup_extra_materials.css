@@ -200,3 +200,28 @@
     margin: 2px 0 0;
   }
 }
+
+
+/* #206 post-launch correction: requirement and Expected Source maintenance are
+   adjacent in the reusable-task Extra Material table while retaining separate
+   durable authorities underneath. */
+.task-extra-material-source-summary {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 6px;
+}
+.task-extra-material-source-summary > div {
+  display: grid;
+  gap: 1px;
+}
+.task-extra-material-source-summary .muted {
+  font-size: .82rem;
+}
+.task-extra-material-source-inline {
+  margin-top: 5px;
+}
+.source-correction-focus {
+  outline: 2px solid var(--accent, #2f6fb2);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
