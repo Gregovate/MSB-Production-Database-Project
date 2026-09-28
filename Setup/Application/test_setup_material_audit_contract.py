@@ -279,7 +279,8 @@ def test_extra_material_source_reconciliation_distinguishes_historical_and_recon
     assert "HISTORICAL SOURCE REVIEW" in js
     assert "RECONSTRUCTION REVIEW" in js
     assert "reassign-historical-source" in js
-    assert "Reassign C" in js
+    assert "Move C" in js
+    assert "Restore prior requirement" in js
     assert "moves the existing source row; it does not create a duplicate" in js
     assert "Review Requirement" in js
     assert "Resolve Source" in js
@@ -301,3 +302,20 @@ def test_material_audit_can_review_or_retire_reconstruction_requirement_before_s
     assert "editRequirement(requirementId)" in task_ui
     assert "Delete Mistake" in task_ui
     assert "commandOptions('DELETE', {})" in task_ui
+
+
+def test_historical_source_review_can_restore_prior_requirement_without_moving_sources() -> None:
+    js = read_app("setup_material_audit.js")
+    api = read_app("setup_extra_material_api.py")
+    repo = read_app("setup_extra_material_repository.py")
+
+    assert "restore-historical-requirement" in js
+    assert "restoreHistoricalRequirement" in js
+    assert "Existing source rows remain attached to that same requirement." in js
+    assert "Review any competing current requirement separately." in js
+    assert '"/api/setup/tasks/<int:setup_task_id>/extra-materials/<int:row_id>/restore"' in api
+    assert "restore_task_material" in api
+    assert "def restore_task_material" in repo
+    assert "AND NOT tm.active_flag" in repo
+    assert "ref.set_setup_task_extra_material" in repo
+    assert 'historical["setup_extra_material_id"]' in repo

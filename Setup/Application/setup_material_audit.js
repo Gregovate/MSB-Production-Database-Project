@@ -117,12 +117,22 @@
     const context = Array.isArray(row.prior_inactive_source_context) ? row.prior_inactive_source_context : [];
     if (!context.length) return '';
     const unique = [];
-    const seen = new Set();
+    const seenSources = new Set();
+    const seenRequirements = new Set();
     for (const item of context) {
       const key = String(item.setup_task_extra_material_source_id || '') || `${item.setup_task_id}:${item.container_id}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
+      if (seenSources.has(key)) continue;
+      seenSources.add(key);
+      const requirementId = Number(item.setup_task_extra_material_id || 0);
+      const taskId = Number(item.setup_task_id || 0);
       const label = `#${item.setup_task_id} ${item.task_name || 'prior task'} → C${item.container_id} ${item.container_description || ''}`.trim();
+      let restore = '';
+      if (state.access?.can_manage_setup && requirementId && taskId && !seenRequirements.has(requirementId)) {
+        seenRequirements.add(requirementId);
+        restore = `<button type="button" class="small restore-historical-requirement"
+            data-prior-task-id="${esc(taskId)}"
+            data-prior-requirement-id="${esc(requirementId)}">Restore prior requirement #${esc(requirementId)}</button>`;
+      }
       const reassign = state.access?.can_manage_setup && item.setup_task_extra_material_source_id
         ? `<button type="button" class="small secondary reassign-historical-source"
             data-target-requirement-id="${esc(row.setup_task_extra_material_id)}"
@@ -130,11 +140,31 @@
             data-container-id="${esc(item.container_id)}"
             data-expected-quantity="${esc(item.expected_quantity ?? '')}"
             data-verification-state="${esc(item.verification_state || 'UNVERIFIED')}"
-            data-notes="${esc(item.notes || '')}">Reassign C${esc(item.container_id)}</button>`
+            data-notes="${esc(item.notes || '')}">Move C${esc(item.container_id)} to current requirement</button>`
         : '';
-      unique.push(`<div class="historical-source-item"><span>${esc(label)}</span>${reassign}</div>`);
+      unique.push(`<div class="historical-source-item"><span>${esc(label)}</span><div class="action-row">${restore}${reassign}</div></div>`);
     }
-    return `<div class="historical-source-context"><div class="muted">Active source authority exists on an inactive requirement. Move it to the current requirement instead of creating a duplicate source.</div>${unique.join('')}</div>`;
+    return `<div class="historical-source-context"><div class="muted">Source authority exists on an inactive historical requirement. Decide whether that prior requirement is the correct reusable authority to restore, or whether the source truly belongs on the current requirement.</div>${unique.join('')}</div>`;
+  }
+
+  async function restoreHistoricalRequirement(button) {
+    const taskId = Number(button.dataset.priorTaskId || 0);
+    const requirementId = Number(button.dataset.priorRequirementId || 0);
+    if (!taskId || !requirementId) return;
+    if (!window.confirm(
+      `Restore historical Extra Material requirement #${requirementId} on reusable task #${taskId}? Existing source rows remain attached to that same requirement.`,
+    )) return;
+    try {
+      setAlert(`Restoring historical requirement #${requirementId}…`);
+      await api(
+        `api/setup/tasks/${taskId}/extra-materials/${requirementId}/restore`,
+        commandOptions({}),
+      );
+      await loadAudit();
+      setAlert(`Historical requirement #${requirementId} restored. Review any competing current requirement separately.`);
+    } catch (error) {
+      setAlert(error.message || error, 'error');
+    }
   }
 
   async function reassignHistoricalSource(button) {
@@ -143,7 +173,7 @@
     const containerId = Number(button.dataset.containerId || 0);
     if (!targetRequirementId || !sourceId || !containerId) return;
     const confirmed = window.confirm(
-      `Reassign existing source C${containerId} to the current Extra Material requirement? This moves the existing source row; it does not create a duplicate.`,
+      `Move existing source C${containerId} to the current Extra Material requirement? Use this only when the current requirement is the correct reusable authority. This moves the existing source row; it does not create a duplicate.`,
     );
     if (!confirmed) return;
 
@@ -281,6 +311,9 @@
       </tr>`;
     }).join('') || '<tr><td colspan="7" class="muted">No Extra Material source rows match this filter.</td></tr>';
 
+    document.querySelectorAll('.restore-historical-requirement').forEach((button) => {
+      button.addEventListener('click', () => { void restoreHistoricalRequirement(button); });
+    });
     document.querySelectorAll('.reassign-historical-source').forEach((button) => {
       button.addEventListener('click', () => { void reassignHistoricalSource(button); });
     });

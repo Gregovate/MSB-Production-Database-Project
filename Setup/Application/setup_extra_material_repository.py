@@ -375,6 +375,69 @@ class SetupExtraMaterialRepository:
             "Task Extra Material update returned no result",
         )
 
+    def restore_task_material(
+        self,
+        *,
+        email: str,
+        setup_task_id: int,
+        row_id: int,
+    ) -> dict[str, Any]:
+        """Reactivate the exact historical requirement without recreating its sources."""
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    tm.setup_extra_material_id,
+                    tm.quantity_required,
+                    tm.quantity_uom,
+                    tm.size_text,
+                    tm.length_value,
+                    tm.length_unit,
+                    tm.color,
+                    tm.quantity_qualifier,
+                    tm.verification_state,
+                    tm.notes
+                FROM ref.setup_task_extra_material AS tm
+                WHERE tm.setup_task_extra_material_id = %s
+                  AND tm.setup_task_id = %s
+                  AND NOT tm.active_flag
+                FOR UPDATE
+                """,
+                (row_id, setup_task_id),
+            )
+            historical = cur.fetchone()
+            if historical is None:
+                raise SetupExtraMaterialRepositoryError(
+                    "Inactive historical task Extra Material requirement was not found"
+                )
+
+            cur.execute(
+                "SELECT * FROM ref.set_setup_task_extra_material(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (
+                    email,
+                    row_id,
+                    setup_task_id,
+                    historical["setup_extra_material_id"],
+                    historical["quantity_required"],
+                    historical["quantity_uom"],
+                    historical["size_text"],
+                    historical["length_value"],
+                    historical["length_unit"],
+                    historical["color"],
+                    historical["quantity_qualifier"],
+                    historical["verification_state"],
+                    historical["notes"],
+                    True,
+                ),
+            )
+            restored = cur.fetchone()
+            if restored is None:
+                raise SetupExtraMaterialRepositoryError(
+                    "Historical task Extra Material restore returned no result"
+                )
+            conn.commit()
+            return dict(restored)
+
     def create_task_material_with_source(
         self,
         *,

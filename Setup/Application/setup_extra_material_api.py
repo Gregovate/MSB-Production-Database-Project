@@ -219,6 +219,19 @@ def api_task_extra_material_update(setup_task_id: int, row_id: int) -> Response:
     ))
 
 
+@setup_extra_material_api.patch(
+    "/api/setup/tasks/<int:setup_task_id>/extra-materials/<int:row_id>/restore"
+)
+def api_task_extra_material_restore(setup_task_id: int, row_id: int) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    return jsonify(setup_task_extra_material=repo().restore_task_material(
+        email=email,
+        setup_task_id=setup_task_id,
+        row_id=row_id,
+    ))
+
+
 @setup_extra_material_api.delete(
     "/api/setup/tasks/<int:setup_task_id>/extra-materials/<int:row_id>"
 )
