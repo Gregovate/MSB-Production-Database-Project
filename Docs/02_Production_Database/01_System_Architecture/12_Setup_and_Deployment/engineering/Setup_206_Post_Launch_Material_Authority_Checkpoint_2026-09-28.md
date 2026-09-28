@@ -1156,3 +1156,100 @@ If green, launch a fresh disposable browser preview from the same SHA and retest
 2. C16/C17/C18/C19 source preservation;
 3. #52 remaining separate on task #140 until intentionally deleted;
 4. Pick List human-readable Container identity (for example C030) while QR remains CONT route.
+
+
+---
+
+## Continuation Checkpoint — Governed Restore Boundary Fix
+
+| Field | Value |
+|---|---|
+| Implementation head before documentation checkpoint | `4ad0766b4c3fdf79a9342cc20bc9e8ecee98d8c7` |
+| Branch | `agent/setup-206-tablet-material-audit` |
+| PR | #252 — draft / mergeable=true |
+| Main comparison before checkpoint | 82 ahead / 0 behind |
+| Production mutation authorized | **NO** |
+
+### Browser evidence from prior candidate
+
+Exact prior browser candidate:
+`dc6d14507a805311d35077fce481a226fccd79f3`
+
+Confirmed passes:
+
+- Rolling Pick List no longer exposes Material data exceptions;
+- human-readable Container identity is `C###`;
+- QR/scan route remains `CONT/<id>`;
+- Northern Lights historical discovery surfaces requirement #36 on task #132 with C16/C17/C18/C19;
+- spec mismatch is shown as review state;
+- moving historical sources to mismatched current #52 is blocked.
+
+Restore attempt then failed with:
+
+`permission denied for table setup_task_extra_material`
+
+Cause: application repository performed direct `SELECT ... FOR UPDATE` against the table before invoking the governed command.
+
+### Correction implemented
+
+New migration:
+
+`Setup/Database/064_add_setup_extra_material_requirement_restore.sql`
+
+It creates governed SECURITY DEFINER command:
+
+`ref.restore_setup_task_extra_material(text,bigint,bigint)`
+
+The command:
+
+- resolves the exact inactive historical requirement under Manager authority;
+- takes the required row lock inside the governed function;
+- reactivates the exact existing requirement through the accepted `ref.set_setup_task_extra_material(...)` command;
+- preserves the existing requirement ID;
+- preserves all existing source rows;
+- returns material/task/source-count evidence;
+- grants only EXECUTE to `fieldwiring_app`;
+- does not grant direct UPDATE or row-lock authority on the table.
+
+Application repository restore now calls only the governed restore function. It performs no direct table lock/read for restoration.
+
+### Restore UX correction
+
+Primary Manager wording now uses physical/operator concepts rather than internal IDs.
+
+Example:
+
+`Restore T-Post to Setup Northern Lights`
+
+Confirmation includes the existing source Container labels, for example:
+
+`Existing source Containers C016, C017, C018, C019 will remain attached.`
+
+Historical source labels also use zero-padded `C###` Container identity.
+
+Restore result/error feedback is rendered adjacent to the restore action at the current scroll position. On success the button changes to `Restored`; the audit is not auto-rerun, so the operator can read the confirmation before navigating to the task or rerunning the audit.
+
+Internal requirement/task IDs remain available only as hidden command identity / engineering evidence.
+
+### Disposable validation extended
+
+`setup_206_extra_material_lifecycle_disposable_validation.sql` now also proves:
+
+1. a disposable requirement can be made inactive;
+2. governed restore reactivates the exact same requirement ID;
+3. its existing source row remains active and attached;
+4. `fieldwiring_app` can execute the restore function;
+5. `fieldwiring_app` still does not have direct UPDATE privilege on `ref.setup_task_extra_material`.
+
+### Next gate
+
+Run full Setup/Application regression on the exact documentation checkpoint SHA produced after this section.
+
+If green, disposable acceptance must include both migrations in order:
+
+1. `Setup/Database/063_harden_setup_extra_material_requirement_lifecycle.sql`
+2. `Setup/Database/064_add_setup_extra_material_requirement_restore.sql`
+
+Use the updated `Setup/Acceptance/setup_206_extra_material_lifecycle_disposable_validation.sql`.
+
+If acceptance is green, start a fresh disposable browser preview from the same exact SHA with both migrations applied and retest Northern Lights restore.
