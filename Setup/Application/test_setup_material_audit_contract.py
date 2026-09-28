@@ -201,3 +201,49 @@ def test_disposable_validation_proves_no_fake_assignment_or_annual_state() -> No
     assert "relationship_type='KIT'" in sql or "relationship_type = 'KIT'" in sql
     assert "ops.setup_session" in sql
     assert "ROLLBACK;" in sql
+
+
+def test_extra_material_source_coverage_is_one_row_per_active_requirement() -> None:
+    repo = read_app("setup_material_audit_repository.py")
+    html = read_app("material_audit.html")
+    js = read_app("setup_material_audit.js")
+
+    assert "def extra_material_source_audit" in repo
+    assert "FROM ref.setup_task_extra_material AS tm" in repo
+    assert "ref.setup_task_extra_material_source AS source" in repo
+    assert "source.setup_task_extra_material_id = tm.setup_task_extra_material_id" in repo
+    assert "source.active_flag" in repo
+    assert "WHERE t.active_flag" in repo
+    assert "AND tm.active_flag" in repo
+    assert "AND m.active_flag" in repo
+    assert "LEFT JOIN LATERAL" in repo
+    assert '"source_status" = "SOURCE_ASSIGNED"' not in repo
+    assert '"source_status"] = "SOURCE_ASSIGNED" if source_count else "NO_ACTIVE_SOURCE"' in repo
+    assert '"extra_material_source": self.extra_material_source_audit()' in repo
+
+    assert "Extra Material Source Coverage" in html
+    assert 'id="extra-material-source-audit-body"' in html
+    assert "Requirements reviewed" in js
+    assert "No active source" in js
+    assert "Resolve Source" in js
+    assert "setup_task_extra_material_id" in js
+    assert "unresolved_no_source" in js
+
+
+def test_extra_material_source_resolve_action_reuses_existing_198_editor() -> None:
+    audit_js = read_app("setup_material_audit.js")
+    production = read_app("setup_production.js")
+    source_ui = read_app("setup_task_extra_material_sources.js")
+    api = read_app("setup_extra_material_api.py")
+    repo = read_app("setup_extra_material_repository.py")
+
+    assert "correction=extra-material-source" in audit_js
+    assert "setup_task_extra_material_id=" in audit_js
+    assert "requestedExtraMaterialRequirementId" in production
+    assert "pendingExtraMaterialRequirementId" in production
+    assert "requestedCorrection === 'extra-material-source'" in production
+    assert "consumePendingCorrection('extra-material-source')" in source_ui
+    assert "beginSource(requirementId)" in source_ui
+    assert '@setup_extra_material_api.post(' in api
+    assert '"/api/setup/task-extra-materials/<int:requirement_id>/sources"' in api
+    assert "ref.set_setup_task_extra_material_source" in repo
