@@ -194,6 +194,8 @@ def api_task_extra_material_create(setup_task_id: int) -> tuple[Response, int]:
     return jsonify(
         setup_task_extra_material=result["requirement"],
         setup_task_extra_material_source=result["source"],
+        setup_container_extra_material_id=result["setup_container_extra_material_id"],
+        container_content_created=result["container_content_created"],
     ), 201
 
 
