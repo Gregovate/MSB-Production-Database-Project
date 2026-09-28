@@ -688,6 +688,51 @@ class SetupExtraMaterialRepository:
                 "source": dict(source),
             }
 
+    def container_content_task_dependencies(
+        self,
+        *,
+        container_id: int,
+        row_id: int,
+    ) -> list[dict[str, Any]]:
+        """Return active task/source relationships that depend on a Container material.
+
+        This intentionally matches by stable material identity rather than exact
+        reconstructed free-text specification. Removal should fail closed when
+        an active task says this Container is a source for the same material.
+        """
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT DISTINCT
+                    src.setup_task_extra_material_source_id,
+                    tm.setup_task_extra_material_id,
+                    tm.setup_task_id,
+                    t.task_name,
+                    m.material_name,
+                    src.expected_quantity,
+                    src.verification_state
+                FROM ref.setup_container_extra_material AS cem
+                JOIN ref.setup_task_extra_material_source AS src
+                  ON src.container_id = cem.container_id
+                 AND src.active_flag
+                JOIN ref.setup_task_extra_material AS tm
+                  ON tm.setup_task_extra_material_id = src.setup_task_extra_material_id
+                 AND tm.active_flag
+                 AND tm.setup_extra_material_id = cem.setup_extra_material_id
+                JOIN ref.setup_task AS t
+                  ON t.setup_task_id = tm.setup_task_id
+                 AND t.active_flag
+                JOIN ref.setup_extra_material AS m
+                  ON m.setup_extra_material_id = cem.setup_extra_material_id
+                WHERE cem.setup_container_extra_material_id = %s
+                  AND cem.container_id = %s
+                  AND cem.active_flag
+                ORDER BY tm.setup_task_id, tm.setup_task_extra_material_id
+                """,
+                (row_id, container_id),
+            )
+            return [dict(row) for row in cur.fetchall()]
+
     def set_container_content(self, *, email: str, container_id: int, row_id: int | None, payload: dict[str, Any]) -> dict[str, Any]:
         return self._command(
             "SELECT * FROM ref.set_setup_container_extra_material(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",

@@ -301,11 +301,31 @@ def api_container_extra_material_create(container_id: int) -> tuple[Response, in
 def api_container_extra_material_update(container_id: int, row_id: int) -> Response:
     require_setup_command()
     _base_repo, email, _access = require_manager()
-    return jsonify(setup_container_extra_material=repo().set_container_content(
+    payload = json_body()
+    extra_repo = repo()
+    if payload.get("active_flag") is False:
+        dependencies = extra_repo.container_content_task_dependencies(
+            container_id=container_id,
+            row_id=row_id,
+        )
+        if dependencies:
+            task_labels = ", ".join(
+                f"#{item['setup_task_id']} {item['task_name']}"
+                for item in dependencies
+            )
+            return jsonify(
+                error=(
+                    "Cannot remove this expected Container material while active task source "
+                    f"relationships still depend on it: {task_labels}. Reconcile or remove "
+                    "those task source links first."
+                ),
+                dependencies=dependencies,
+            ), 409
+    return jsonify(setup_container_extra_material=extra_repo.set_container_content(
         email=email,
         container_id=container_id,
         row_id=row_id,
-        payload=json_body(),
+        payload=payload,
     ))
 
 

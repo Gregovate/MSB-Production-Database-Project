@@ -387,3 +387,19 @@ def test_206_kit_task_picker_is_material_first_and_hides_already_linked_requirem
     assert "Already linked to this Kit" in ui
     assert "linkedRequirementIds" in ui
     assert "alreadyLinked && !includeLinked ? ' disabled' : ''" in ui
+
+
+def test_206_removing_kit_expected_content_blocks_active_task_source_divergence() -> None:
+    api = text(BASE_DIR / "setup_extra_material_api.py")
+    repo = text(BASE_DIR / "setup_extra_material_repository.py")
+
+    assert "def container_content_task_dependencies" in repo
+    assert "src.container_id = cem.container_id" in repo
+    assert "tm.setup_extra_material_id = cem.setup_extra_material_id" in repo
+    assert "tm.active_flag" in repo
+    assert "t.active_flag" in repo
+    assert "if payload.get(\"active_flag\") is False:" in api
+    assert "container_content_task_dependencies" in api
+    assert "Cannot remove this expected Container material while active task source relationships still depend on it" in api
+    assert "Reconcile or remove those task source links first." in api
+    assert "), 409" in api
