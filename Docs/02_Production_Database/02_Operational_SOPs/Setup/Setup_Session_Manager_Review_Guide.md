@@ -7,7 +7,7 @@
 | Audience | Setup Managers and reviewers |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-27 |
+| Last Reviewed | 2026-09-28 |
 | Keywords | Setup, Perform Work, Report Work, reusable task, Verification Queue, Copy Task, prerequisites, Display Ownership, Extra Materials, Kit Inventory |
 
 ## Purpose
@@ -211,6 +211,8 @@ Use **Manage Resource Catalog** only when the resource itself needs to be added 
 
 ## 10. Extra Materials Required by This Task
 
+For the full plain-English workflow, see [**Extra Materials and Kit Inventory**](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Extra_Materials_and_Kit_Inventory.md).
+
 Use **Extra Materials Required by This Task** for materials the job needs.
 
 Examples:
@@ -258,10 +260,13 @@ Use Kit Inventory to review what should normally be in each physical Kit.
 
 ### Expected vs On Hand
 
+- **Edit / Remove** = change what should normally belong in the Kit.
+- **Count / Adjust** = record what somebody physically counted.
 - **Expected** = what should normally be in the Kit.
 - **On Hand** = what somebody physically counted.
 
 **Do not enter an Expected quantity as On Hand unless somebody actually counted it.**
+**Do not use Count / Adjust to remove an item that should not belong in the Kit. Use Edit / Remove instead.**
 
 ### Unverified Items / Remainders
 
