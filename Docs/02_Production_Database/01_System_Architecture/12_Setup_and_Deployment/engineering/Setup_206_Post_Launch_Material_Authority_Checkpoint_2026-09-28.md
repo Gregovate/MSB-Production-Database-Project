@@ -1288,3 +1288,112 @@ Use validation:
 The validation now covers both hard-delete and governed restore lifecycle behavior, including preserved requirement/source identity and no direct application-role UPDATE privilege.
 
 If green, launch a fresh disposable browser preview from the same exact SHA with both migrations applied and retest Northern Lights restore.
+
+
+---
+
+## Continuation Checkpoint — Kit UI Clarity + Operator SOP
+
+| Field | Value |
+|---|---|
+| Implementation head before documentation checkpoint | `91223e581cf488b02c882e74db46534db626b292` |
+| Branch | `agent/setup-206-tablet-material-audit` |
+| PR | #252 — draft / mergeable=true |
+| Main comparison before checkpoint | 99 ahead / 0 behind |
+| Production mutation authorized | **NO** |
+
+### Prior exact-candidate browser review
+
+Exact reviewed candidate:
+`6dc0a85dbc7737b22eba6d4d775049c3906778e9`
+
+The disposable browser exited cleanly after confirming:
+
+- Pick List material exceptions are absent;
+- Pick List Container human-readable IDs use `C###`;
+- Northern Lights historical authority can be discovered, restored, and reconciled safely;
+- restored Northern Lights T-Post authority preserved C016/C017/C018/C019 without duplicate source rows;
+- mistaken Layout Light Locations T-Post authority can be hard-deleted and both task material panels refresh immediately;
+- task-level cleanup correctly removes resolved/deleted rows from Material Audit;
+- Church source correction works, but Kit Inventory exposed remaining UX clarity problems.
+
+### Kit Inventory UI corrections
+
+#### Expected-content maintenance action
+
+Row action changed:
+
+`Edit` -> `Edit / Remove`
+
+The action now has a stronger filled/background treatment, accent border, and bold text so it is visually discoverable beside `Count / Adjust`.
+
+The Kit screen now explicitly explains:
+
+- **Edit / Remove** changes expected Kit contents;
+- **Count / Adjust** records physical on-hand;
+- do not use a physical count to remove an item that should not belong in the Kit.
+
+#### Task-link wording
+
+Operator feedback proved `TASK LINK NEEDS REVIEW` was misleading when the source link itself was valid but task-vs-Kit descriptions/specifications differed.
+
+Operator-facing state is now:
+
+`LINKED TO TASK — DETAILS DIFFER`
+
+Supporting text:
+
+`Source relationship is recorded. Task and Kit descriptions/specifications do not match exactly.`
+
+The underlying internal link-state value remains unchanged; only the operator semantics are corrected.
+
+#### Table layout
+
+The **Used by task(s)** column was widened and action-column width made explicit. Detail mismatch copy can wrap without colliding with the adjacent Verification column.
+
+#### Source Container search
+
+Task Extra Material source search now accepts:
+
+- raw numeric ID such as `145`;
+- unpadded human label such as `C145` / `c145`;
+- padded physical-label identity such as `C030`;
+- description, type, and location as before.
+
+Source labels now use zero-padded `C###` human-readable identity.
+
+### Dedicated operator SOP
+
+New procedure:
+
+`Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Extra_Materials_and_Kit_Inventory.md`
+
+The procedure teaches four separate questions:
+
+1. **What does the task need?** — Extra Materials.
+2. **Where should the crew find it?** — Expected Source Containers.
+3. **What should normally be in this Kit?** — Kit expected contents / Edit / Remove.
+4. **What is physically on hand right now?** — Count / Adjust.
+
+It explicitly states:
+
+- Procedure mention alone is not Extra Material authority;
+- PPE such as hearing protection/ear plugs, fall protection, gloves, and safety glasses remain PPE/procedure information rather than Display/Kit Extra Material;
+- tools, fuel, and normal crew supplies are not promoted to Extra Material merely because a procedure names them;
+- unknown quantities/specs must not be guessed;
+- the same reusable physical item may support more than one task/step without multiplying stock or Pick List demand.
+
+Examples include Church Plywood, Church Cribbing/Shim with unknown quantity, Northern Lights historical restore, and Magic Igloo shared ratchet straps.
+
+The SOP is linked from:
+
+- Setup Operator Procedure Index;
+- Setup Operator Instructions portal;
+- Setup Manager Review Guide;
+- Setup and Deployment portal.
+
+### Next gate
+
+Run the full Setup/Application regression on the exact documentation checkpoint SHA created after this section is committed.
+
+Because candidate bytes changed after browser review, prior disposable acceptance/browser acceptance do not carry forward. If regression is green, rerun disposable acceptance with migrations 063 and 064 and the #206 lifecycle validation, then run one focused fresh browser review of the Kit UI/source-search changes.
