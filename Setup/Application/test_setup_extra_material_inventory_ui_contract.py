@@ -289,3 +289,46 @@ def test_new_python_modules_parse() -> None:
         "production_backend.py",
     ):
         ast.parse(text(BASE_DIR / name), filename=name)
+
+
+
+def test_kit_expected_contents_are_bidirectionally_linked_to_task_requirements() -> None:
+    page = text(BASE_DIR / "kit_inventory.html")
+    ui = text(BASE_DIR / "setup_kit_inventory.js")
+    repo = text(BASE_DIR / "setup_extra_material_repository.py")
+    api = text(BASE_DIR / "setup_extra_material_api.py")
+
+    assert "Used by task(s)" in page
+    assert 'id="expected-task-requirement" required' in page
+    assert "prevents orphan Kit contents" in page
+    assert "api/setup/task-extra-materials/source-options" in ui
+    assert "function usedByTasksHtml(row)" in ui
+    assert "NO TASK USE" in ui
+    assert "used_by_tasks" in repo
+    assert "ref.setup_task_extra_material_source AS src" in repo
+    assert "tm.active_flag" in repo
+    assert "t.active_flag" in repo
+    assert "create_container_content_with_task_source" in repo
+    assert "A task Extra Material requirement is required when adding Kit expected contents" in repo
+    assert "A task Extra Material requirement is required when adding Kit expected contents." in api
+
+
+def test_kit_first_expected_content_uses_task_requirement_as_identity_authority() -> None:
+    ui = text(BASE_DIR / "setup_kit_inventory.js")
+    repo = text(BASE_DIR / "setup_extra_material_repository.py")
+
+    assert "applyRequirementToExpectedEditor" in ui
+    assert "expected-task-requirement" in ui
+    assert "setIdentityFieldsDisabled(true)" in ui
+    assert "selected active task requirement is the identity authority" in repo
+    assert "ref.set_setup_container_extra_material(" in repo
+    assert "ref.set_setup_task_extra_material_source(" in repo
+    assert "conn.commit()" in repo
+
+
+def test_kit_task_use_column_does_not_break_inventory_cell_indexes() -> None:
+    review = text(BASE_DIR / "setup_kit_inventory_review.js")
+
+    assert "const notes = row.cells?.[6];" in review
+    assert "const text = row?.cells?.[5]?.textContent?.trim() || '';" in review
+    assert "openExpectedPanel('expected-task-requirement')" in review
