@@ -371,6 +371,13 @@ class SetupExtraMaterialRepository:
             raise SetupExtraMaterialRepositoryError(
                 "A source Container is required when adding a task Extra Material requirement"
             )
+        if (
+            str(source.get("verification_state") or "UNVERIFIED").upper() == "VERIFIED"
+            and source.get("expected_quantity") is None
+        ):
+            raise SetupExtraMaterialRepositoryError(
+                "A VERIFIED source requires quantity from this Container"
+            )
 
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
@@ -564,6 +571,13 @@ class SetupExtraMaterialRepository:
         if not requirement_id:
             raise SetupExtraMaterialRepositoryError(
                 "A task Extra Material requirement is required when adding Kit expected contents"
+            )
+        if (
+            str(payload.get("verification_state") or "UNVERIFIED").upper() == "VERIFIED"
+            and payload.get("expected_quantity") is None
+        ):
+            raise SetupExtraMaterialRepositoryError(
+                "A VERIFIED Kit source requires expected quantity from this Container"
             )
 
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
