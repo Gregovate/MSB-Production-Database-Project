@@ -93,7 +93,7 @@
 
   function statusClass(value) {
     if (value === 'COMPLETE' || value === 'ASSIGNED_ACTIVE' || value === 'REVIEWED_SHARED_NON_TASK' || value === 'SOURCE_ASSIGNED') return 'ok';
-    if (value === 'INACTIVE_OBSOLETE_ONLY') return 'warn';
+    if (value === 'INACTIVE_OBSOLETE_ONLY' || value === 'HISTORICAL_SOURCE_REVIEW') return 'warn';
     return 'error';
   }
 
@@ -106,6 +106,27 @@
   function resolveExtraMaterialSourceLink(taskId, requirementId) {
     if (!taskId || !requirementId) return '<span class="muted">Requirement identity unavailable</span>';
     return `<a class="button secondary" href="../?view=review&setup_task_id=${encodeURIComponent(taskId)}&correction=extra-material-source&setup_task_extra_material_id=${encodeURIComponent(requirementId)}">Resolve Source</a>`;
+  }
+
+  function reviewExtraMaterialRequirementLink(taskId, requirementId) {
+    if (!taskId || !requirementId) return '<span class="muted">Requirement identity unavailable</span>';
+    return `<a class="button secondary" href="../?view=review&setup_task_id=${encodeURIComponent(taskId)}&correction=extra-material-requirement&setup_task_extra_material_id=${encodeURIComponent(requirementId)}">Review Requirement</a>`;
+  }
+
+  function historicalSourceContext(row) {
+    const context = Array.isArray(row.prior_inactive_source_context) ? row.prior_inactive_source_context : [];
+    if (!context.length) return '';
+    const unique = [];
+    const seen = new Set();
+    for (const item of context) {
+      const key = `${item.setup_task_id}:${item.container_id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(
+        `#${item.setup_task_id} ${item.task_name || 'prior task'} → C${item.container_id} ${item.container_description || ''}`.trim(),
+      );
+    }
+    return `<div class="muted historical-source-context">Active source authority exists on an inactive requirement: ${unique.map(esc).join(' · ')}</div>`;
   }
 
   function extraMaterialRequiredText(row) {
@@ -185,6 +206,7 @@
     el('extra-material-source-summary').innerHTML = [
       ['Requirements reviewed', summary.requirements_reviewed || 0],
       ['Source assigned', summary.source_assigned || 0],
+      ['Historical source review', summary.historical_source_review || 0],
       ['No active source', summary.unresolved_no_source || 0],
     ].map(([label, value]) => summaryCard(label, value)).join('');
 
@@ -192,17 +214,26 @@
     const rows = state.filter === 'exceptions' ? allRows.filter(extraMaterialSourceIsException) : allRows;
     el('extra-material-source-audit-body').innerHTML = rows.map((row) => {
       const scope = [row.stage_key, row.stage_name, row.scene_name].filter(Boolean).join(' · ') || 'No Stage / site-wide';
-      const sourceStatus = Number(row.active_source_count || 0) > 0
-        ? `${row.active_source_count} active source${Number(row.active_source_count) === 1 ? '' : 's'}`
-        : 'NO ACTIVE SOURCE';
+      let sourceStatus = 'NO ACTIVE SOURCE';
+      if (Number(row.active_source_count || 0) > 0) {
+        sourceStatus = `${row.active_source_count} active source${Number(row.active_source_count) === 1 ? '' : 's'}`;
+      } else if (row.source_status === 'HISTORICAL_SOURCE_REVIEW') {
+        sourceStatus = 'HISTORICAL SOURCE REVIEW';
+      }
+      const actions = row.needs_review
+        ? `<div class="action-stack">
+            ${reviewExtraMaterialRequirementLink(row.setup_task_id, row.setup_task_extra_material_id)}
+            ${resolveExtraMaterialSourceLink(row.setup_task_id, row.setup_task_extra_material_id)}
+          </div>`
+        : '<span class="muted">Source authority present</span>';
       return `<tr>
         <td>${esc(scope)}</td>
         <td><strong>#${esc(row.setup_task_id)} · ${esc(row.task_name)}</strong></td>
         <td><strong>${esc(row.material_name || 'Extra Material')}</strong>${row.requirement_notes ? `<div class="muted">${esc(row.requirement_notes)}</div>` : ''}</td>
         <td>${esc(extraMaterialRequiredText(row))}</td>
         <td><span class="status ${statusClass(row.verification_state === 'VERIFIED' ? 'SOURCE_ASSIGNED' : row.verification_state)}">${esc(String(row.verification_state || 'UNVERIFIED').replaceAll('_', ' '))}</span></td>
-        <td><span class="status ${statusClass(row.source_status)}">${esc(sourceStatus)}</span></td>
-        <td>${row.needs_review ? resolveExtraMaterialSourceLink(row.setup_task_id, row.setup_task_extra_material_id) : '<span class="muted">Source authority present</span>'}</td>
+        <td><span class="status ${statusClass(row.source_status)}">${esc(sourceStatus)}</span>${historicalSourceContext(row)}</td>
+        <td>${actions}</td>
       </tr>`;
     }).join('') || '<tr><td colspan="7" class="muted">No Extra Material source rows match this filter.</td></tr>';
   }
