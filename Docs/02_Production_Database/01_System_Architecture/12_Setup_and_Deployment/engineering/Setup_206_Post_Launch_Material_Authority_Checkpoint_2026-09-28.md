@@ -1007,3 +1007,51 @@ On fresh disposable C145 / task #73:
 
 Do not reuse the previous disposable clone or preview.
 Do not mutate Production material authority during this test cycle.
+
+
+---
+
+## Continuation Checkpoint — Corrected Candidate Regression PASS
+
+| Field | Value |
+|---|---|
+| Exact tested implementation candidate | `1e2200fbb68f9d5334881f391c76ed5297e7128d` |
+| Full regression command | `python -m pytest -q -p no:cacheprovider Setup/Application` |
+| Result | **565 passed in 0.98s** |
+| Failures / errors | **0** |
+| Branch | `agent/setup-206-tablet-material-audit` |
+| Main comparison before checkpoint | 75 ahead / 0 behind |
+| PR | #252 — draft / mergeable=true |
+| Production material mutation authorized | **NO** |
+
+This closes the full Setup/Application regression gate for the corrected post-browser candidate.
+
+The implementation under test includes:
+
+- synchronized requirement/source-panel refresh after requirement mutations;
+- Kit reverse-use states that distinguish exact link, spec-review link, and no recorded link;
+- material-first Kit task selection with already-linked requirements disabled;
+- fail-closed expected-content removal when active task/source authority depends on the material;
+- governed historical requirement restore path distinct from moving historical sources;
+- updated browser asset pins for a fresh preview.
+
+### Next gate
+
+Use the reusable disposable acceptance harness on the exact checkpoint SHA created after this section is committed.
+
+Supply:
+
+- migration `Setup/Database/063_harden_setup_extra_material_requirement_lifecycle.sql`;
+- validation `Setup/Acceptance/setup_206_extra_material_lifecycle_disposable_validation.sql`.
+
+The harness must:
+
+1. rerun the full Setup/Application regression on the exact checkpoint SHA;
+2. create a fresh current-Production disposable clone;
+3. apply migration 063 only to that disposable clone;
+4. run the lifecycle validation;
+5. prove Production fingerprint and live Setup SHA remain unchanged.
+
+If green, start a fresh disposable browser preview from the same exact SHA.
+
+Do not reuse the prior disposable clone or browser session.
