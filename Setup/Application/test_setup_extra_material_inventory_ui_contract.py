@@ -327,8 +327,10 @@ def test_kit_expected_contents_are_bidirectionally_linked_to_task_requirements()
     assert "api/setup/task-extra-materials/source-options?setup_extra_material_id=" in ui
     assert "function usedByTasksHtml(row)" in ui
     assert "NO TASK LINK RECORDED" in ui
-    assert "TASK LINK NEEDS REVIEW" in ui
-    assert "SPEC REVIEW" in ui
+    assert "LINKED TO TASK — DETAILS DIFFER" in ui
+    assert "Source relationship is recorded. Task and Kit descriptions/specifications do not match exactly." in ui
+    assert "DETAILS DIFFER" in ui
+    assert "TASK LINK NEEDS REVIEW" not in ui
     assert "used_by_tasks" in repo
     assert "ref.setup_task_extra_material_source AS src" in repo
     assert "tm.active_flag" in repo
@@ -369,8 +371,8 @@ def test_206_kit_reverse_use_distinguishes_exact_link_from_spec_review() -> None
     assert "tm.setup_extra_material_id = cem.setup_extra_material_id" in repo
     assert "AND tm.quantity_uom = cem.quantity_uom" not in repo.split("LEFT JOIN LATERAL (", 1)[1].split(") AS usage ON true", 1)[0]
     assert "NO TASK LINK RECORDED" in ui
-    assert "TASK LINK NEEDS REVIEW" in ui
-    assert "reconstructed material specifications do not match" in ui
+    assert "LINKED TO TASK — DETAILS DIFFER" in ui
+    assert "Task and Kit descriptions/specifications do not match exactly." in ui
 
 
 def test_206_kit_task_picker_is_material_first_and_hides_already_linked_requirement() -> None:
@@ -406,3 +408,30 @@ def test_206_removing_kit_expected_content_blocks_active_task_source_divergence(
     assert "those task source links first." in api
     assert "dependencies=dependencies" in api
     assert "), 409" in api
+
+
+def test_206_kit_expected_content_actions_are_visually_and_semantically_distinct() -> None:
+    page = text(BASE_DIR / "kit_inventory.html")
+    ui = text(BASE_DIR / "setup_kit_inventory.js")
+    css = text(BASE_DIR / "setup_kit_inventory.css")
+
+    assert "Edit / Remove" in ui
+    assert "Count / Adjust" in ui
+    assert "<strong>Edit / Remove</strong> changes expected contents" in page
+    assert "<strong>Count / Adjust</strong> records physical on-hand" in page
+    assert ".expected-edit {" in css
+    assert "border: 2px solid var(--accent);" in css
+    assert "font-weight: 700;" in css
+    assert ".kit-content-actions" in css
+    assert ".kit-contents-table th:nth-child(8)" in css
+
+
+def test_206_kit_task_link_detail_mismatch_does_not_imply_broken_link() -> None:
+    ui = text(BASE_DIR / "setup_kit_inventory.js")
+    css = text(BASE_DIR / "setup_kit_inventory.css")
+
+    assert "LINKED TO TASK — DETAILS DIFFER" in ui
+    assert "Source relationship is recorded." in ui
+    assert "TASK LINK NEEDS REVIEW" not in ui
+    assert "DETAILS DIFFER" in ui
+    assert ".kit-content-link-review" in css
