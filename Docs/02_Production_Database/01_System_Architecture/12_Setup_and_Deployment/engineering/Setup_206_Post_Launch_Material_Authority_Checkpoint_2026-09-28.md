@@ -1397,3 +1397,51 @@ The SOP is linked from:
 Run the full Setup/Application regression on the exact documentation checkpoint SHA created after this section is committed.
 
 Because candidate bytes changed after browser review, prior disposable acceptance/browser acceptance do not carry forward. If regression is green, rerun disposable acceptance with migrations 063 and 064 and the #206 lifecycle validation, then run one focused fresh browser review of the Kit UI/source-search changes.
+
+
+---
+
+## Continuation Checkpoint — Kit UI/SOP Regression PASS
+
+| Field | Value |
+|---|---|
+| Exact tested implementation candidate | `6cdd9fc30ec276743e2931ad2edbdf555c3906e9` |
+| Full regression command | `python -m pytest -q -p no:cacheprovider Setup/Application` |
+| Result | **572 passed in 1.15s** |
+| Failures / errors | **0** |
+| Branch | `agent/setup-206-tablet-material-audit` |
+| PR | #252 — draft / mergeable=true |
+| Main comparison before checkpoint | 100 ahead / 0 behind |
+| Production mutation authorized | **NO** |
+
+The tested candidate includes:
+
+- stronger **Edit / Remove** expected-content action;
+- clearer separation from **Count / Adjust**;
+- `LINKED TO TASK — DETAILS DIFFER` operator wording;
+- table layout correction preventing task-link status from colliding with Verification;
+- C-prefixed / zero-padded Container source search;
+- C### human-readable source labels;
+- dedicated Extra Materials and Kit Inventory operator SOP and portal/index links.
+
+### Next gate
+
+Run reusable disposable acceptance against the exact documentation checkpoint SHA created after this section is committed.
+
+Apply migrations in order:
+
+1. `Setup/Database/063_harden_setup_extra_material_requirement_lifecycle.sql`
+2. `Setup/Database/064_add_setup_extra_material_requirement_restore.sql`
+
+Use validation:
+
+`Setup/Acceptance/setup_206_extra_material_lifecycle_disposable_validation.sql`
+
+If green, run one focused fresh disposable browser review of:
+
+1. C145 row actions — **Edit / Remove** visually distinct from **Count / Adjust**;
+2. task-link mismatch wording — **LINKED TO TASK — DETAILS DIFFER** with no overlap into Verification;
+3. source search accepting `145`, `C145`, `c145`, and padded IDs such as `C030`;
+4. operator SOP links resolving from the Setup documentation/index.
+
+No Production deployment until this focused browser review is accepted.
