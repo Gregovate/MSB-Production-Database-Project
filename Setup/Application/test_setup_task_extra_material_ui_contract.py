@@ -118,3 +118,8 @@ def test_mistaken_requirement_uses_governed_hard_delete_not_inactive_tombstone()
     assert "delete_task_material" in repo
     assert "ref.delete_setup_task_extra_material" in repo
     assert "Do not carry mistaken Extra Material requirements forward as inactive rows." in api
+    assert "The Extra Material catalog item, Displays, and inventory history are preserved." in ui
+    assert "A matching Container expected-content row is removed only if it becomes unused and has no inventory history." in ui
+    assert "deleted_container_content_count" in ui
+    assert "unused un-inventoried Container expected-content row" in ui
+    assert "This does not delete the Extra Material catalog item, Container expected contents" not in ui

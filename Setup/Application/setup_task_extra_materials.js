@@ -352,7 +352,7 @@
   async function deleteRequirement(rowId, materialName = 'this Extra Material') {
     if (!appState.access?.can_manage_setup || !state.taskId || !rowId) return;
     const confirmed = window.confirm(
-      `DELETE MISTAKE: permanently remove ${materialName} from this reusable task? Any task-source links attached to this mistaken requirement are deleted with it. This does not delete the Extra Material catalog item, Container expected contents, Displays, or inventory history.`,
+      `DELETE MISTAKE: permanently remove ${materialName} from this reusable task? Any task-source links attached to this mistaken requirement are deleted with it. The Extra Material catalog item, Displays, and inventory history are preserved. A matching Container expected-content row is removed only if it becomes unused and has no inventory history.`,
     );
     if (!confirmed) return;
     try {
@@ -361,11 +361,19 @@
         commandOptions('DELETE', {}),
       );
       const deletedSources = Number(result.deleted?.deleted_source_count || 0);
+      const deletedContents = Number(result.deleted?.deleted_container_content_count || 0);
       const taskId = state.taskId;
       clearEditor();
       await loadTaskMaterials(taskId);
+      const details = [];
+      if (deletedSources) {
+        details.push(`${deletedSources} task-source link${deletedSources === 1 ? '' : 's'}`);
+      }
+      if (deletedContents) {
+        details.push(`${deletedContents} unused un-inventoried Container expected-content row${deletedContents === 1 ? '' : 's'}`);
+      }
       setAlert(
-        `Mistaken Extra Material requirement deleted${deletedSources ? ` with ${deletedSources} task-source link${deletedSources === 1 ? '' : 's'}` : ''}.`,
+        `Mistaken Extra Material requirement deleted${details.length ? ` with ${details.join(' and ')}` : ''}.`,
       );
     } catch (error) {
       setAlert(error.message, 'error');
