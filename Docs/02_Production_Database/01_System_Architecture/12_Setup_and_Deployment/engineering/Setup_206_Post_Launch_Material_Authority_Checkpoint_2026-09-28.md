@@ -1253,3 +1253,38 @@ If green, disposable acceptance must include both migrations in order:
 Use the updated `Setup/Acceptance/setup_206_extra_material_lifecycle_disposable_validation.sql`.
 
 If acceptance is green, start a fresh disposable browser preview from the same exact SHA with both migrations applied and retest Northern Lights restore.
+
+
+---
+
+## Continuation Checkpoint — Governed Restore Regression PASS
+
+| Field | Value |
+|---|---|
+| Exact tested implementation candidate | `22f5174f994b747b36ae40f70d8e4731e25ae914` |
+| Full regression command | `python -m pytest -q -p no:cacheprovider Setup/Application` |
+| Result | **568 passed in 1.08s** |
+| Failures / errors | **0** |
+| Branch | `agent/setup-206-tablet-material-audit` |
+| PR | #252 — draft / mergeable=true |
+| Main comparison before checkpoint | 84 ahead / 0 behind |
+| Production mutation authorized | **NO** |
+
+The tested candidate includes the governed historical restore command, operator-facing restore wording/local feedback, prior historical-discovery corrections, and Pick List C### human-readable identity behavior.
+
+### Next gate
+
+Run reusable disposable acceptance against the exact documentation checkpoint SHA created after this section is committed.
+
+Apply migrations in order:
+
+1. `Setup/Database/063_harden_setup_extra_material_requirement_lifecycle.sql`
+2. `Setup/Database/064_add_setup_extra_material_requirement_restore.sql`
+
+Use validation:
+
+`Setup/Acceptance/setup_206_extra_material_lifecycle_disposable_validation.sql`
+
+The validation now covers both hard-delete and governed restore lifecycle behavior, including preserved requirement/source identity and no direct application-role UPDATE privilege.
+
+If green, launch a fresh disposable browser preview from the same exact SHA with both migrations applied and retest Northern Lights restore.
