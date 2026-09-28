@@ -313,14 +313,17 @@ def test_historical_source_review_can_restore_prior_requirement_without_moving_s
 
     assert "restore-historical-requirement" in js
     assert "restoreHistoricalRequirement" in js
-    assert "Existing source rows remain attached to that same requirement." in js
-    assert "Review any competing current requirement separately." in js
+    assert "Restore ${esc(materialName)} to ${esc(taskName)}" in js
+    assert "Existing source Containers ${sourceContainers} will remain attached." in js
+    assert "restore-historical-feedback" in js
+    assert "Open the task to verify, or rerun the audit." in js
     assert '"/api/setup/tasks/<int:setup_task_id>/extra-materials/<int:row_id>/restore"' in api
     assert "restore_task_material" in api
     assert "def restore_task_material" in repo
-    assert "AND NOT tm.active_flag" in repo
-    assert "ref.set_setup_task_extra_material" in repo
-    assert 'historical["setup_extra_material_id"]' in repo
+    assert "ref.restore_setup_task_extra_material" in repo
+    restore_section = repo.split("def restore_task_material(", 1)[1].split("def create_task_material_with_source(", 1)[0]
+    assert "FOR UPDATE" not in restore_section
+    assert "FROM ref.setup_task_extra_material" not in restore_section
 
 
 def test_historical_restore_discovery_surfaces_spec_mismatch_but_blocks_source_move() -> None:
@@ -337,3 +340,17 @@ def test_historical_restore_discovery_surfaces_spec_mismatch_but_blocks_source_m
     assert "item.setup_task_extra_material_source_id && specMatch" in js
     assert "Cannot move an existing source to a different Extra Material requirement when the material specification does not match." in source_repo
     assert "Restore/review the historical requirement instead." in source_repo
+
+
+def test_historical_restore_ui_uses_operator_names_and_zero_padded_containers() -> None:
+    html = read_app("material_audit.html")
+    js = read_app("setup_material_audit.js")
+
+    assert "setup_material_audit.js?v=2026-09-28.3" in html
+    assert "function humanContainerId(value)" in js
+    assert "padStart(3, '0')" in js
+    assert "data-material-name" in js
+    assert "data-task-name" in js
+    assert "data-source-containers" in js
+    assert "Restore prior requirement #" not in js
+    assert "on reusable task #" not in js

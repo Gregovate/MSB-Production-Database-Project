@@ -13,6 +13,8 @@ DECLARE
     v_material_name text;
     v_deleted_source_count integer;
     v_deleted_content_count integer;
+    v_restored_source_count integer;
+    v_restored_requirement_id bigint;
     v_catalog_before integer;
     v_container_before integer;
 BEGIN
@@ -20,6 +22,12 @@ BEGIN
         'ref.delete_setup_task_extra_material(text,bigint,bigint)'
     ) IS NULL THEN
         RAISE EXCEPTION 'Governed Extra Material requirement delete command is missing';
+    END IF;
+
+    IF to_regprocedure(
+        'ref.restore_setup_task_extra_material(text,bigint,bigint)'
+    ) IS NULL THEN
+        RAISE EXCEPTION 'Governed Extra Material requirement restore command is missing';
     END IF;
 
     SELECT lower(u.email)
@@ -136,6 +144,67 @@ BEGIN
         RAISE EXCEPTION 'Disposable requirement/source/content fixture was not created';
     END IF;
 
+    PERFORM 1
+    FROM ref.set_setup_task_extra_material(
+        v_manager_email,
+        v_requirement_id,
+        v_task_id,
+        v_material_id,
+        1,
+        'EA',
+        '[DISPOSABLE #206 HARD DELETE]',
+        NULL,
+        NULL,
+        NULL,
+        'EXACT',
+        'UNVERIFIED',
+        '[PREVIEW ONLY] #206 hard-delete validation',
+        false
+    );
+
+    IF EXISTS (
+        SELECT 1
+        FROM ref.setup_task_extra_material
+        WHERE setup_task_extra_material_id = v_requirement_id
+          AND active_flag
+    ) THEN
+        RAISE EXCEPTION 'Disposable restore fixture did not become inactive';
+    END IF;
+
+    SELECT
+        result.restored_setup_task_extra_material_id,
+        result.active_source_count
+      INTO
+        v_restored_requirement_id,
+        v_restored_source_count
+    FROM ref.restore_setup_task_extra_material(
+        v_manager_email,
+        v_task_id,
+        v_requirement_id
+    ) AS result;
+
+    IF v_restored_requirement_id <> v_requirement_id
+       OR v_restored_source_count <> 1 THEN
+        RAISE EXCEPTION
+            'Governed restore did not preserve requirement/source identity: requirement %, sources %',
+            v_restored_requirement_id,
+            v_restored_source_count;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM ref.setup_task_extra_material
+        WHERE setup_task_extra_material_id = v_requirement_id
+          AND active_flag
+    ) OR NOT EXISTS (
+        SELECT 1
+        FROM ref.setup_task_extra_material_source
+        WHERE setup_task_extra_material_source_id = v_source_id
+          AND active_flag
+    ) THEN
+        RAISE EXCEPTION 'Governed restore did not reactivate the same requirement with its source intact';
+    END IF;
+
     SELECT
         result.deleted_source_count,
         result.deleted_container_content_count,
@@ -197,6 +266,18 @@ BEGIN
         'EXECUTE'
     ) THEN
         RAISE EXCEPTION 'fieldwiring_app cannot execute governed requirement delete';
+    END IF;
+
+    IF NOT has_function_privilege(
+        'fieldwiring_app',
+        'ref.restore_setup_task_extra_material(text,bigint,bigint)',
+        'EXECUTE'
+    ) THEN
+        RAISE EXCEPTION 'fieldwiring_app cannot execute governed requirement restore';
+    END IF;
+
+    IF has_table_privilege('fieldwiring_app','ref.setup_task_extra_material','UPDATE') THEN
+        RAISE EXCEPTION 'fieldwiring_app has forbidden direct Extra Material UPDATE privilege';
     END IF;
 
     IF has_table_privilege('fieldwiring_app','ref.setup_task_extra_material','DELETE')

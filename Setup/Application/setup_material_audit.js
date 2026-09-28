@@ -113,6 +113,11 @@
     return `<a class="button secondary" href="../?view=review&setup_task_id=${encodeURIComponent(taskId)}&correction=extra-material-requirement&setup_task_extra_material_id=${encodeURIComponent(requirementId)}">Review Requirement</a>`;
   }
 
+  function humanContainerId(value) {
+    const id = Number(value);
+    return Number.isFinite(id) ? `C${String(id).padStart(3, '0')}` : 'Container';
+  }
+
   function historicalRequirementSpec(item) {
     const parts = [];
     const qty = [item.quantity_required, item.quantity_uom].filter((value) => value != null && String(value).trim() !== '').join(' ');
@@ -138,13 +143,24 @@
       const taskId = Number(item.setup_task_id || 0);
       const specMatch = item.spec_match === true;
       const specState = specMatch ? 'EXACT SPEC MATCH' : 'SPEC MISMATCH — REVIEW';
-      const label = `#${item.setup_task_id} ${item.task_name || 'prior task'} → C${item.container_id} ${item.container_description || ''}`.trim();
+      const taskName = item.task_name || 'prior Setup task';
+      const materialName = row.material_name || 'Extra Material';
+      const containerCode = humanContainerId(item.container_id);
+      const label = `${taskName} → ${containerCode} ${item.container_description || ''}`.trim();
       let restore = '';
       if (state.access?.can_manage_setup && requirementId && taskId && !seenRequirements.has(requirementId)) {
         seenRequirements.add(requirementId);
+        const sourceContainers = context
+          .filter((source) => Number(source.setup_task_extra_material_id || 0) === requirementId)
+          .map((source) => humanContainerId(source.container_id))
+          .filter((value, index, values) => values.indexOf(value) === index)
+          .join(', ');
         restore = `<button type="button" class="small restore-historical-requirement"
             data-prior-task-id="${esc(taskId)}"
-            data-prior-requirement-id="${esc(requirementId)}">Restore prior requirement #${esc(requirementId)}</button>`;
+            data-prior-requirement-id="${esc(requirementId)}"
+            data-material-name="${esc(materialName)}"
+            data-task-name="${esc(taskName)}"
+            data-source-containers="${esc(sourceContainers)}">Restore ${esc(materialName)} to ${esc(taskName)}</button>`;
       }
       const reassign = state.access?.can_manage_setup && item.setup_task_extra_material_source_id && specMatch
         ? `<button type="button" class="small secondary reassign-historical-source"
@@ -153,12 +169,15 @@
             data-container-id="${esc(item.container_id)}"
             data-expected-quantity="${esc(item.expected_quantity ?? '')}"
             data-verification-state="${esc(item.verification_state || 'UNVERIFIED')}"
-            data-notes="${esc(item.notes || '')}">Move C${esc(item.container_id)} to current requirement</button>`
+            data-notes="${esc(item.notes || '')}">Move ${esc(containerCode)} to current requirement</button>`
         : '';
       const moveBlocked = state.access?.can_manage_setup && item.setup_task_extra_material_source_id && !specMatch
         ? '<span class="muted">Source move unavailable until requirement specifications match.</span>'
         : '';
-      unique.push(`<div class="historical-source-item"><div><span>${esc(label)}</span><div class="muted">${esc(specState)} · ${esc(historicalRequirementSpec(item))}</div></div><div class="action-row">${restore}${reassign}${moveBlocked}</div></div>`);
+      const feedback = restore
+        ? `<div class="muted restore-historical-feedback" data-restore-feedback-id="${esc(requirementId)}" aria-live="polite"></div>`
+        : '';
+      unique.push(`<div class="historical-source-item"><div><span>${esc(label)}</span><div class="muted">${esc(specState)} · ${esc(historicalRequirementSpec(item))}</div></div><div class="action-row">${restore}${reassign}${moveBlocked}</div>${feedback}</div>`);
     }
     return `<div class="historical-source-context"><div class="muted">Inactive historical authority exists for this material in the same Stage. Restore preserves that historical requirement and its existing sources; moving a source to the current requirement is offered only for an exact specification match.</div>${unique.join('')}</div>`;
   }
@@ -166,19 +185,29 @@
   async function restoreHistoricalRequirement(button) {
     const taskId = Number(button.dataset.priorTaskId || 0);
     const requirementId = Number(button.dataset.priorRequirementId || 0);
+    const materialName = button.dataset.materialName || 'Extra Material';
+    const taskName = button.dataset.taskName || 'Setup task';
+    const sourceContainers = button.dataset.sourceContainers || 'the existing source Containers';
+    const feedback = document.querySelector(`[data-restore-feedback-id="${requirementId}"]`);
     if (!taskId || !requirementId) return;
     if (!window.confirm(
-      `Restore historical Extra Material requirement #${requirementId} on reusable task #${taskId}? Existing source rows remain attached to that same requirement.`,
+      `Restore ${materialName} to ${taskName}? Existing source Containers ${sourceContainers} will remain attached.`,
     )) return;
+    button.disabled = true;
+    if (feedback) feedback.textContent = `Restoring ${materialName} to ${taskName}…`;
     try {
-      setAlert(`Restoring historical requirement #${requirementId}…`);
       await api(
         `api/setup/tasks/${taskId}/extra-materials/${requirementId}/restore`,
         commandOptions({}),
       );
-      await loadAudit();
-      setAlert(`Historical requirement #${requirementId} restored. Review any competing current requirement separately.`);
+      button.textContent = 'Restored';
+      if (feedback) {
+        feedback.textContent = `Restored ${materialName} to ${taskName}. Existing source Containers ${sourceContainers} remain attached. Open the task to verify, or rerun the audit.`;
+      }
+      setAlert(`${materialName} restored to ${taskName}.`);
     } catch (error) {
+      button.disabled = false;
+      if (feedback) feedback.textContent = error.message || error;
       setAlert(error.message || error, 'error');
     }
   }
