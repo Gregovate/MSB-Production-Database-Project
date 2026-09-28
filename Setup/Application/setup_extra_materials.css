@@ -225,3 +225,18 @@
   outline-offset: 3px;
   border-radius: 6px;
 }
+
+
+#task-extra-material-create-source-fields {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--border, #d8dee8);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--card, #fff) 92%, var(--accent, #2f6fb2) 8%);
+}
+#task-extra-material-create-source-fields h4 {
+  margin: 0 0 5px;
+}
+.task-extra-material-delete-mistake {
+  margin-top: 4px;
+}
