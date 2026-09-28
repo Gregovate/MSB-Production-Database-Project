@@ -7,7 +7,7 @@
 | Audience | MSB reviewers, managers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-26 |
+| Last Reviewed | 2026-09-28 |
 | Keywords | Setup, Perform Work, Report Work, reusable task, verification, Display Ownership, Kit, Extra Materials, T-Post, prerequisites |
 
 Use this page to decide **what you are trying to do in Setup** and where to go next.
@@ -29,7 +29,7 @@ The real **2026 Setup Session is live** and is the current annual planning, sche
 | Add one or more 2026 Work Days | In **Plan / Schedule**, click **+ Add Work Days**, tap/click the dates, then add the selected dates |
 | Review historical 2025 verification evidence | [Review and Correct the 2025 Setup History](operatorSOP/Review_2025_Setup_History.md) |
 | Learn the Setup Manager controls | [Setup Manager Review Guide](../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md) |
-| Review what should be in a Kit | [Open the Kit Inventory instructions](#kit-boxes-and-kit-inventory) |
+| Review what should be in a Kit | [Extra Materials and Kit Inventory](operatorSOP/Extra_Materials_and_Kit_Inventory.md) |
 | Count or correct T-Post stock | [Open the T-Post Inventory instructions](#t-post-inventory) |
 | Review a current Setup procedure | [Open Setup / Takedown Procedures](https://my.sheboyganlights.org/procedures/) |
 | Change task order | [Reorder tasks by dragging](#reorder-tasks-by-dragging) |
@@ -190,10 +190,14 @@ Open:
 
 Use Kit Inventory to review what should normally be in a physical Kit.
 
-Keep these two ideas separate:
+Keep these actions and facts separate:
 
+- **Edit / Remove** = change what should normally belong in the Kit.
+- **Count / Adjust** = record what somebody physically counted.
 - **Expected** = what should normally be in the Kit.
-- **On Hand** = what somebody actually counted.
+- **On Hand** = what somebody physically counted.
+
+For the full workflow, see [**Extra Materials and Kit Inventory**](operatorSOP/Extra_Materials_and_Kit_Inventory.md).
 
 **Do not enter an expected quantity as On Hand unless somebody physically counted it.**
 
