@@ -86,7 +86,7 @@
       return;
     }
     const script = document.createElement('script');
-    script.src = 'setup_task_extra_materials.js?v=2026-09-16.2';
+    script.src = 'setup_task_extra_materials.js?v=2026-09-28.1';
     script.dataset.setupTaskExtraMaterials = '1';
     script.addEventListener('load', loadTaskExtraMaterialSourceUi, { once: true });
     document.body.appendChild(script);
