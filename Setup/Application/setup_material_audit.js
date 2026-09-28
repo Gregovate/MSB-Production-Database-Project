@@ -113,6 +113,17 @@
     return `<a class="button secondary" href="../?view=review&setup_task_id=${encodeURIComponent(taskId)}&correction=extra-material-requirement&setup_task_extra_material_id=${encodeURIComponent(requirementId)}">Review Requirement</a>`;
   }
 
+  function historicalRequirementSpec(item) {
+    const parts = [];
+    const qty = [item.quantity_required, item.quantity_uom].filter((value) => value != null && String(value).trim() !== '').join(' ');
+    if (qty) parts.push(qty);
+    if (item.quantity_qualifier) parts.push(String(item.quantity_qualifier).replaceAll('_', ' '));
+    if (item.size_text) parts.push(item.size_text);
+    if (item.length_value != null) parts.push([item.length_value, item.length_unit].filter(Boolean).join(' '));
+    if (item.color) parts.push(item.color);
+    return parts.join(' · ') || 'No specification recorded';
+  }
+
   function historicalSourceContext(row) {
     const context = Array.isArray(row.prior_inactive_source_context) ? row.prior_inactive_source_context : [];
     if (!context.length) return '';
@@ -125,6 +136,8 @@
       seenSources.add(key);
       const requirementId = Number(item.setup_task_extra_material_id || 0);
       const taskId = Number(item.setup_task_id || 0);
+      const specMatch = item.spec_match === true;
+      const specState = specMatch ? 'EXACT SPEC MATCH' : 'SPEC MISMATCH — REVIEW';
       const label = `#${item.setup_task_id} ${item.task_name || 'prior task'} → C${item.container_id} ${item.container_description || ''}`.trim();
       let restore = '';
       if (state.access?.can_manage_setup && requirementId && taskId && !seenRequirements.has(requirementId)) {
@@ -133,7 +146,7 @@
             data-prior-task-id="${esc(taskId)}"
             data-prior-requirement-id="${esc(requirementId)}">Restore prior requirement #${esc(requirementId)}</button>`;
       }
-      const reassign = state.access?.can_manage_setup && item.setup_task_extra_material_source_id
+      const reassign = state.access?.can_manage_setup && item.setup_task_extra_material_source_id && specMatch
         ? `<button type="button" class="small secondary reassign-historical-source"
             data-target-requirement-id="${esc(row.setup_task_extra_material_id)}"
             data-source-id="${esc(item.setup_task_extra_material_source_id)}"
@@ -142,9 +155,12 @@
             data-verification-state="${esc(item.verification_state || 'UNVERIFIED')}"
             data-notes="${esc(item.notes || '')}">Move C${esc(item.container_id)} to current requirement</button>`
         : '';
-      unique.push(`<div class="historical-source-item"><span>${esc(label)}</span><div class="action-row">${restore}${reassign}</div></div>`);
+      const moveBlocked = state.access?.can_manage_setup && item.setup_task_extra_material_source_id && !specMatch
+        ? '<span class="muted">Source move unavailable until requirement specifications match.</span>'
+        : '';
+      unique.push(`<div class="historical-source-item"><div><span>${esc(label)}</span><div class="muted">${esc(specState)} · ${esc(historicalRequirementSpec(item))}</div></div><div class="action-row">${restore}${reassign}${moveBlocked}</div></div>`);
     }
-    return `<div class="historical-source-context"><div class="muted">Source authority exists on an inactive historical requirement. Decide whether that prior requirement is the correct reusable authority to restore, or whether the source truly belongs on the current requirement.</div>${unique.join('')}</div>`;
+    return `<div class="historical-source-context"><div class="muted">Inactive historical authority exists for this material in the same Stage. Restore preserves that historical requirement and its existing sources; moving a source to the current requirement is offered only for an exact specification match.</div>${unique.join('')}</div>`;
   }
 
   async function restoreHistoricalRequirement(button) {

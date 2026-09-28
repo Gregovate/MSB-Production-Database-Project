@@ -396,7 +396,22 @@ class SetupMaterialAuditRepository:
                                 'container_description', prior_container.description,
                                 'expected_quantity', prior_source.expected_quantity,
                                 'verification_state', prior_source.verification_state,
-                                'notes', prior_source.notes
+                                'notes', prior_source.notes,
+                                'quantity_required', prior_tm.quantity_required,
+                                'quantity_uom', prior_tm.quantity_uom,
+                                'quantity_qualifier', prior_tm.quantity_qualifier,
+                                'size_text', prior_tm.size_text,
+                                'length_value', prior_tm.length_value,
+                                'length_unit', prior_tm.length_unit,
+                                'color', prior_tm.color,
+                                'spec_match',
+                                (
+                                    prior_tm.quantity_uom = tm.quantity_uom
+                                    AND prior_tm.size_text IS NOT DISTINCT FROM tm.size_text
+                                    AND prior_tm.length_value IS NOT DISTINCT FROM tm.length_value
+                                    AND prior_tm.length_unit IS NOT DISTINCT FROM tm.length_unit
+                                    AND prior_tm.color IS NOT DISTINCT FROM tm.color
+                                )
                             )
                         ) AS prior_source_context
                     FROM ref.setup_task_extra_material AS prior_tm
@@ -408,11 +423,6 @@ class SetupMaterialAuditRepository:
                     JOIN ref.container AS prior_container
                       ON prior_container.container_id = prior_source.container_id
                     WHERE prior_tm.setup_extra_material_id = tm.setup_extra_material_id
-                      AND prior_tm.quantity_uom = tm.quantity_uom
-                      AND prior_tm.size_text IS NOT DISTINCT FROM tm.size_text
-                      AND prior_tm.length_value IS NOT DISTINCT FROM tm.length_value
-                      AND prior_tm.length_unit IS NOT DISTINCT FROM tm.length_unit
-                      AND prior_tm.color IS NOT DISTINCT FROM tm.color
                       AND NOT prior_tm.active_flag
                       AND prior_task.stage_id IS NOT DISTINCT FROM t.stage_id
                 ) AS prior ON true

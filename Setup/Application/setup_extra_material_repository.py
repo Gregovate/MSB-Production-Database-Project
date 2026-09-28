@@ -585,11 +585,67 @@ class SetupExtraMaterialRepository:
         )
 
     def set_task_source(self, *, email: str, requirement_id: int, row_id: int | None, payload: dict[str, Any]) -> dict[str, Any]:
+        active_flag = payload.get("active_flag", True)
+        if row_id is not None and active_flag:
+            with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        source.setup_task_extra_material_id AS current_requirement_id,
+                        (
+                            current_tm.setup_extra_material_id = target_tm.setup_extra_material_id
+                            AND current_tm.quantity_uom = target_tm.quantity_uom
+                            AND current_tm.size_text IS NOT DISTINCT FROM target_tm.size_text
+                            AND current_tm.length_value IS NOT DISTINCT FROM target_tm.length_value
+                            AND current_tm.length_unit IS NOT DISTINCT FROM target_tm.length_unit
+                            AND current_tm.color IS NOT DISTINCT FROM target_tm.color
+                        ) AS spec_match
+                    FROM ref.setup_task_extra_material_source AS source
+                    JOIN ref.setup_task_extra_material AS current_tm
+                      ON current_tm.setup_task_extra_material_id = source.setup_task_extra_material_id
+                    JOIN ref.setup_task_extra_material AS target_tm
+                      ON target_tm.setup_task_extra_material_id = %s
+                    WHERE source.setup_task_extra_material_source_id = %s
+                    FOR UPDATE OF source
+                    """,
+                    (requirement_id, row_id),
+                )
+                existing = cur.fetchone()
+                if (
+                    existing is not None
+                    and int(existing["current_requirement_id"]) != int(requirement_id)
+                    and not bool(existing["spec_match"])
+                ):
+                    raise SetupExtraMaterialRepositoryError(
+                        "Cannot move an existing source to a different Extra Material requirement when the material specification does not match. Restore/review the historical requirement instead."
+                    )
+
+                cur.execute(
+                    "SELECT * FROM ref.set_setup_task_extra_material_source(%s,%s,%s,%s,%s,%s,%s,%s)",
+                    (
+                        email,
+                        row_id,
+                        requirement_id,
+                        payload.get("container_id"),
+                        payload.get("expected_quantity"),
+                        payload.get("verification_state", "UNVERIFIED"),
+                        payload.get("notes"),
+                        active_flag,
+                    ),
+                )
+                row = cur.fetchone()
+                conn.commit()
+                if row is None:
+                    raise SetupExtraMaterialRepositoryError(
+                        "Task Extra Material source update returned no result"
+                    )
+                return dict(row)
+
         return self._command(
             "SELECT * FROM ref.set_setup_task_extra_material_source(%s,%s,%s,%s,%s,%s,%s,%s)",
             (email, row_id, requirement_id, payload.get("container_id"),
              payload.get("expected_quantity"), payload.get("verification_state", "UNVERIFIED"),
-             payload.get("notes"), payload.get("active_flag", True)),
+             payload.get("notes"), active_flag),
             "Task Extra Material source update returned no result",
         )
 

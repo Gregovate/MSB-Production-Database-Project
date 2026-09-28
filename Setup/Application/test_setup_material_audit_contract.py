@@ -268,13 +268,15 @@ def test_extra_material_source_reconciliation_distinguishes_historical_and_recon
     assert '"historical_source_review"' in repo
     assert '"reconstruction_review"' in repo
 
-    # Historical source suggestions must match the same material specification;
-    # same family + Stage alone is not enough.
+    # Historical discovery is broader than exact specification now that
+    # restoring the prior requirement is separate from moving a source.
+    historical_where = repo.split("WHERE prior_tm.setup_extra_material_id = tm.setup_extra_material_id", 1)[1].split(") AS prior ON true", 1)[0]
+    assert "AND NOT prior_tm.active_flag" in historical_where
+    assert "prior_task.stage_id IS NOT DISTINCT FROM t.stage_id" in historical_where
+    assert "AND prior_tm.quantity_uom = tm.quantity_uom" not in historical_where
+    assert "'spec_match'" in repo
     assert "prior_tm.quantity_uom = tm.quantity_uom" in repo
     assert "prior_tm.size_text IS NOT DISTINCT FROM tm.size_text" in repo
-    assert "prior_tm.length_value IS NOT DISTINCT FROM tm.length_value" in repo
-    assert "prior_tm.length_unit IS NOT DISTINCT FROM tm.length_unit" in repo
-    assert "prior_tm.color IS NOT DISTINCT FROM tm.color" in repo
 
     assert "HISTORICAL SOURCE REVIEW" in js
     assert "RECONSTRUCTION REVIEW" in js
@@ -319,3 +321,19 @@ def test_historical_source_review_can_restore_prior_requirement_without_moving_s
     assert "AND NOT tm.active_flag" in repo
     assert "ref.set_setup_task_extra_material" in repo
     assert 'historical["setup_extra_material_id"]' in repo
+
+
+def test_historical_restore_discovery_surfaces_spec_mismatch_but_blocks_source_move() -> None:
+    audit_repo = read_app("setup_material_audit_repository.py")
+    js = read_app("setup_material_audit.js")
+    source_repo = read_app("setup_extra_material_repository.py")
+
+    assert "'quantity_required', prior_tm.quantity_required" in audit_repo
+    assert "'quantity_uom', prior_tm.quantity_uom" in audit_repo
+    assert "'spec_match'" in audit_repo
+    assert "SPEC MISMATCH — REVIEW" in js
+    assert "EXACT SPEC MATCH" in js
+    assert "Source move unavailable until requirement specifications match." in js
+    assert "item.setup_task_extra_material_source_id && specMatch" in js
+    assert "Cannot move an existing source to a different Extra Material requirement when the material specification does not match." in source_repo
+    assert "Restore/review the historical requirement instead." in source_repo
