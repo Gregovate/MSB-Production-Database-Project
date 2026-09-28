@@ -568,3 +568,22 @@
 .next-progress-correction-form > button {
   justify-self: start;
 }
+
+
+/* #172 — visually align Report Correction with the MSB Work Order call-to-action. */
+.next-report-correction-action,
+.next-report-correction-submit {
+  background: #ffd24d;
+  border-color: #ffd24d;
+  color: #111;
+  font-weight: 800;
+}
+
+.next-report-correction-action:hover,
+.next-report-correction-action:focus-visible,
+.next-report-correction-submit:hover,
+.next-report-correction-submit:focus-visible {
+  background: #ffd24d;
+  border-color: #ffd24d;
+  color: #111;
+}

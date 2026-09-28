@@ -939,6 +939,98 @@ function nextFilterPerformAssignments(assignments) {
   });
 }
 
+
+function nextCanSubmitFieldFinding() {
+  const access = appState.access || {};
+  return Boolean(
+    access.can_manage_setup
+    || access.role_name === 'Production Crew'
+    || (access.policy_names || []).includes('Production Crew')
+  );
+}
+
+function nextCorrectionIntakeMarkup(sessionTaskId, assignmentId) {
+  if (!nextCanSubmitFieldFinding()) return '';
+  return `
+    <section class="next-problem-intake">
+      <form class="next-problem-form"
+        data-session-task-id="${sessionTaskId}"
+        data-assignment-id="${assignmentId}"
+        hidden>
+        <p class="muted">
+          Setup already knows the scheduled assignment and current task context.
+          This submits to <strong>Work Order Intake for Manager triage</strong>; it does not create an active Work Order.
+        </p>
+        <label>What did you find?
+          <textarea class="next-problem-text" rows="3" maxlength="255" required></textarea>
+        </label>
+        <label>Suggested correction / evidence <span class="muted">(optional)</span>
+          <textarea class="next-suggestion-text" rows="2" maxlength="2000"></textarea>
+        </label>
+        <button type="submit" class="next-report-correction-submit">Report Correction</button>
+        <div class="next-problem-result" aria-live="polite"></div>
+      </form>
+    </section>`;
+}
+
+function wireNextCorrectionIntake(body) {
+  body.querySelector('.next-problem-form')?.addEventListener('submit', submitNextCorrectionIntake);
+}
+
+async function submitNextCorrectionIntake(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const sessionTaskId = Number(form.dataset.sessionTaskId);
+  const assignmentId = Number(form.dataset.assignmentId);
+  const problem = form.querySelector('.next-problem-text').value.trim();
+  if (!problem) return;
+  const result = form.querySelector('.next-problem-result');
+  try {
+    const payload = await api(
+      `api/setup/session-tasks/${sessionTaskId}/correction-intake`,
+      commandOptions('POST', {
+        problem,
+        suggested_correction_evidence: form.querySelector('.next-suggestion-text').value.trim() || null,
+        setup_work_day_task_id: assignmentId
+      })
+    );
+    const intakeId = payload.intake?.intake_id;
+    result.textContent = intakeId
+      ? `Submitted to Work Order Intake #${intakeId} for Manager triage.`
+      : 'Submitted to Work Order Intake for Manager triage.';
+    form.querySelector('.next-problem-text').value = '';
+    form.querySelector('.next-suggestion-text').value = '';
+  } catch (error) {
+    result.textContent = error.message || error;
+  }
+}
+
+async function openNextCorrectionIntake(details) {
+  // Match Print Task's load-before-open behavior so the <details> toggle
+  // cannot race the explicit Report Correction context load.
+  if (!details.dataset.loaded && details.dataset.loading === '1') {
+    for (let attempt = 0; attempt < 100 && details.dataset.loading === '1'; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 50));
+    }
+  }
+  if (!details.dataset.loaded) {
+    await loadNextTaskExecution(details, false);
+  }
+  if (details.dataset.loaded !== '1') {
+    window.alert('Scheduled work context could not be loaded, so Report Correction is unavailable.');
+    return;
+  }
+
+  details.open = true;
+  const correctionForm = details.querySelector('.next-problem-form');
+  if (!correctionForm) {
+    window.alert('Report Correction is not authorized for this account.');
+    return;
+  }
+  correctionForm.hidden = false;
+  correctionForm.querySelector('.next-problem-text')?.focus();
+}
+
 function nextPerformAssignmentCard(assignment) {
   const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
   const crew = nextPerformCrew(assignment);
@@ -974,7 +1066,7 @@ function nextPerformAssignmentCard(assignment) {
       <div class="next-perform-actions">
         <button type="button" class="small secondary next-print-task">Print Task</button>
         <button type="button" class="small next-report-work">Report Work</button>
-        <button type="button" class="small secondary next-report-problem" disabled title="Report Correction handoff is owned by #172">Report Correction</button>
+        <button type="button" class="small next-report-problem next-report-correction-action"${nextCanSubmitFieldFinding() ? '' : ' disabled title="Report Correction requires Production Crew or Manager access"'}>Report Correction</button>
       </div>
       <div class="next-perform-body" hidden></div>
     </details>`;
@@ -1034,6 +1126,10 @@ function renderNextExecution() {
       event.preventDefault();
       details.open = true;
       await loadNextTaskExecution(details, true);
+    });
+    details.querySelector('.next-report-problem')?.addEventListener('click', async (event) => {
+      event.preventDefault();
+      await openNextCorrectionIntake(details);
     });
     details.querySelector('.next-print-task')?.addEventListener('click', async (event) => {
       event.preventDefault();
@@ -1299,10 +1395,12 @@ async function loadNextTaskExecution(details, focusReport = false) {
         <button type="submit">Save Work Report</button>
         <div class="muted">100% completes the annual task. Anything below 100% records partial work and leaves the task In Progress.</div>
       </form>`}
+      ${nextCorrectionIntakeMarkup(sessionTaskId, assignmentId)}
     `;
     details.dataset.loaded = '1';
     const form = body.querySelector('.next-report-work-form');
     form?.addEventListener('submit', submitNextProgress);
+    wireNextCorrectionIntake(body);
     body.querySelectorAll('.next-progress-correction-form').forEach(
       (correctionForm) => correctionForm.addEventListener('submit', submitNextProgressCorrection)
     );
