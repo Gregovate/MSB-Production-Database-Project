@@ -711,6 +711,7 @@ function installNextTabs() {
           <select id="next-perform-captain-filter" aria-label="Filter Perform Work by Captain"></select>
         </label>
         <span id="next-perform-filter-summary" class="muted"></span>
+      <div id="next-perform-kpis" class="next-perform-kpis" aria-label="Perform Work labor KPIs"></div>
       </div>
       <div id="next-perform-list"></div>
     </div>`;
@@ -872,6 +873,7 @@ function nextEnsurePerformToolbar() {
         <select id="next-perform-captain-filter" aria-label="Filter Perform Work by Captain"></select>
       </label>
       <span id="next-perform-filter-summary" class="muted"></span>
+      <div id="next-perform-kpis" class="next-perform-kpis" aria-label="Perform Work labor KPIs"></div>
     `;
     list.insertAdjacentElement('beforebegin', toolbar);
   }
@@ -948,9 +950,15 @@ function nextStorePerformCaptainFilter(value) {
 }
 
 function nextPerformDefaultCaptainFilter() {
+  const signedInPersonId = Number(appState.access?.captain_person_id || 0);
   const email = String(appState.access?.authenticated_email || '').trim().toLowerCase();
   const signedInName = String(appState.access?.display_name || '').trim().toLowerCase();
   const captains = nextPerformScheduledCaptains();
+
+  const mineByIdentity = signedInPersonId
+    ? captains.find((captain) => Number(captain.person_id) === signedInPersonId)
+    : null;
+  if (mineByIdentity) return `CAPTAIN:${mineByIdentity.person_id}`;
 
   const mineByEmail = email
     ? captains.find((captain) => String(captain.email || '').trim().toLowerCase() === email)
@@ -1205,17 +1213,31 @@ function renderNextExecution() {
   nextRenderPerformCaptainFilter();
   const allAssignments = (board.assignments || []).slice();
   const assignments = nextFilterPerformAssignments(allAssignments);
+  const labor = nextPerformLaborKpis(assignments);
   const summary = el('next-perform-filter-summary');
   if (summary) {
-    const labor = nextPerformLaborKpis(assignments);
-    const assignmentText = assignments.length === allAssignments.length
+    summary.textContent = assignments.length === allAssignments.length
       ? `${assignments.length} scheduled assignment${assignments.length === 1 ? '' : 's'}`
       : `${assignments.length} of ${allAssignments.length} scheduled assignments shown`;
-    const unknownText = labor.plannedUnknown
-      ? ` · ${labor.plannedUnknown} planned assignment${labor.plannedUnknown === 1 ? '' : 's'} TBD`
-      : '';
-    summary.textContent =
-      `${assignmentText} · Planned ${labor.plannedHours} labor hr · Actual ${labor.actualHours} labor hr${unknownText}`;
+  }
+
+  const kpis = el('next-perform-kpis');
+  if (kpis) {
+    const varianceReady = labor.plannedUnknown === 0;
+    const varianceValue = varianceReady
+      ? Number(labor.actualHours) - Number(labor.plannedHours)
+      : null;
+    const varianceText = varianceReady
+      ? `${varianceValue > 0 ? '+' : ''}${Number.isInteger(varianceValue) ? varianceValue : varianceValue.toFixed(1)} hr`
+      : 'TBD';
+    const plannedNote = labor.plannedUnknown
+      ? `${labor.plannedUnknown} assignment${labor.plannedUnknown === 1 ? '' : 's'} missing plan estimate`
+      : 'all visible assignments estimated';
+    kpis.innerHTML = `
+      <div class="next-perform-kpi"><span>Planned labor</span><strong>${escapeHtml(labor.plannedHours)} hr</strong><small>${escapeHtml(plannedNote)}</small></div>
+      <div class="next-perform-kpi"><span>Actual labor</span><strong>${escapeHtml(labor.actualHours)} hr</strong><small>reported work</small></div>
+      <div class="next-perform-kpi"><span>Variance</span><strong>${escapeHtml(varianceText)}</strong><small>${varianceReady ? 'actual − planned' : 'waiting on complete plan estimates'}</small></div>
+    `;
   }
   const days = (board.work_days || []).filter((day) =>
     assignments.some((assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id))
