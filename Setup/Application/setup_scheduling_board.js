@@ -2407,14 +2407,16 @@ function board205SyncSeasonTaskTypeHelp() {
 
   const actionType = String(type.value || 'WORK').toUpperCase();
   const isGate = actionType === 'GATE';
+  const isWork = actionType === 'WORK';
+  const workOrderSelected = Boolean(document.getElementById('setup-board205-season-work-order')?.value);
 
-  if (!isGate) gate.checked = false;
-  gate.disabled = !isGate;
+  gate.disabled = !(isGate || isWork) || !workOrderSelected;
+  if (gate.disabled) gate.checked = false;
 
   if (isGate) {
-    help.textContent = 'Wait / Gate is NOT scheduled to a crew or work day. Use it only when Setup must stop until an outside condition is satisfied. If a Work Order is selected below, its completion can satisfy this gate.';
-  } else if (actionType === 'WORK') {
-    help.textContent = 'Setup Work is real crew work. It appears in Needs Scheduling when prerequisites are complete. A linked Work Order is reference/context only; the crew still schedules and completes this Setup task.';
+    help.textContent = 'Wait / Gate is NOT scheduled to a crew or work day. Use it only when Setup must stop until an outside condition is satisfied. With a linked Work Order, checking the completion box makes that Work Order satisfy this gate.';
+  } else if (isWork) {
+    help.textContent = 'Setup Work is real crew work and is schedulable when prerequisites are complete. A linked Work Order may be context only, or check the completion box so finishing that Work Order also completes this Setup task and unblocks downstream work.';
   } else if (actionType === 'SUPPORT') {
     help.textContent = 'Support / Prep is schedulable enabling work around Setup, such as training, arranging rental equipment, or positioning support infrastructure. Locate Power & Network is Setup Work, not Support / Prep.';
   } else {
@@ -2522,7 +2524,8 @@ async function board205SubmitSeasonTask(event) {
       readiness_note: document.getElementById('setup-board205-season-readiness').value.trim() || null,
       linked_work_order_id: workOrderId,
       linked_work_order_gate:
-        actionType === 'GATE' && document.getElementById('setup-board205-season-gate').checked,
+        ['WORK', 'GATE'].includes(actionType)
+        && document.getElementById('setup-board205-season-gate').checked,
       annual_notes: document.getElementById('setup-board205-season-notes').value.trim() || null,
       previous_prerequisite_setup_session_task_id:
         setupBoard205State.seasonPlacementOriginal.prerequisiteId,
@@ -2772,7 +2775,7 @@ function board205InstallView() {
             <label>Selected Work Order<select id="setup-board205-season-work-order"><option value="">No Work Order</option></select></label>
             <button id="setup-board205-season-work-order-clear" type="button" class="small secondary">Clear Work Order</button>
           </div>
-          <label class="checkbox-label"><input id="setup-board205-season-gate" type="checkbox"> Linked Work Order completion satisfies this Wait / Gate</label>
+          <label class="checkbox-label"><input id="setup-board205-season-gate" type="checkbox"> Linked Work Order completion completes/satisfies this Setup item</label>
           <span></span>
           <div id="setup-board205-season-chain" class="setup-board205-form-grid setup-board205-placement-grid">
             <label>This task happens after <span class="muted">(optional)</span><select id="setup-board205-season-prereq"></select></label>
@@ -2811,6 +2814,7 @@ function board205InstallView() {
     const search = document.getElementById('setup-board205-season-work-order-search');
     if (search) search.value = '';
     board205PopulateWorkOrderOptions(workOrderId);
+    board205SyncSeasonTaskTypeHelp();
   });
   document.getElementById('setup-board205-season-work-order-clear')?.addEventListener('click', () => {
     const search = document.getElementById('setup-board205-season-work-order-search');
@@ -2818,6 +2822,7 @@ function board205InstallView() {
     if (search) search.value = '';
     if (select) select.value = '';
     board205PopulateWorkOrderOptions('');
+    board205SyncSeasonTaskTypeHelp();
   });
 
   const finderFilters = document.getElementById('setup-board205-filters');
