@@ -2799,3 +2799,95 @@ When implementation resumes:
 7. use Winter Wonderland as the positive same-day-material acceptance case;
 8. use Magic Igloo 2026 as the annual-block/defer acceptance case.
 
+
+
+---
+
+## PICK LIST DATE-SEMANTICS CLARIFICATION — EARLY PICKING IS ALLOWED
+
+This section refines the previous same-day/downstream visibility checkpoint.
+
+### Operator clarification
+
+Early picking does **not** necessarily hurt anything.
+
+The downstream material frontier exists so the picker can see material that may be needed immediately after Locate/Layout, even before the downstream Setup task has its own work-day assignment.
+
+The problem is not early visibility or early picking.
+
+The problem is that the current Pick List can present the scheduled precursor date as though it were the downstream Setup task's true **Needed For** date.
+
+Winter Wonderland example:
+
+```text
+Locate Power & Network
+    scheduled for Tue 2026-09-29
+
+downstream Setup material
+    correctly visible early
+
+current Pick List
+    Needed For = Tue 9/29
+```
+
+That wording is deceptive because Winter Wonderland Setup is not actually scheduled for 9/29.
+
+### Required semantics
+
+Keep these facts separate:
+
+```text
+trigger / precursor schedule date
+    = actual scheduled Locate/Layout context
+
+anticipated downstream material
+    = visible because downstream work may follow quickly
+
+downstream Needed For
+    = actual downstream scheduled date when one exists
+    = otherwise unknown / not yet scheduled
+
+Pick By
+    = logistics deadline that may be conservatively derived or Manager-overridden
+```
+
+The trigger date may still be useful context and may justify surfacing the material now.
+
+It must not be silently promoted into downstream schedule truth.
+
+### Manager control
+
+When operations know better than the derived/default logistics timing, the Pick List should allow the Manager to use an explicit override for Pick By / Needed For rather than editing the annual work schedule merely to influence logistics.
+
+Existing Pick List override behavior should be reused/extended rather than creating a second duplicate planning system.
+
+### Seasonal readiness interaction
+
+A one-season blocker may also explain why anticipated material does not need to be picked yet.
+
+That context belongs to the annual/session task, for example:
+
+```text
+2026 Magic Igloo
+    road/site work blocks Setup
+    approximate expected availability around Oct 9
+```
+
+The annual/season readiness note/state must remain annual-only and must **not** be written back to the official reusable Catalog.
+
+#205 owns the missing annual-only edit path.
+#206 consumes that context for truthful Pick List presentation and optional Manager logistics override.
+
+### Acceptance direction
+
+Preserve all of the following:
+
+1. downstream material remains visible early;
+2. early picking remains allowed;
+3. the precursor date is identified as trigger/context, not downstream Setup schedule truth;
+4. `Needed For` is not populated with a fabricated downstream work date;
+5. Manager may set an explicit logistics override where useful;
+6. annual seasonal readiness may explain why a pick can wait;
+7. reusable Catalog readiness remains unchanged by seasonal-only notes;
+8. accepted deadline-first sorting remains unchanged.
+
