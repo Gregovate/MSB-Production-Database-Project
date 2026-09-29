@@ -499,3 +499,59 @@ Server Management ownership:
 - PR #52 — recoverable reconnect runbook authority update.
 
 The browser-review transport pause is cleared. This checkpoint commit is documentation-only and does not redefine the pinned application candidate.
+
+
+## Final Production acceptance and #206 handoff
+
+Issue #205 is now Production accepted.
+
+Exact deployed application target:
+
+`9a614c1fa2eea0b425b03bdb4ac3e1790634c760`
+
+Production runtime:
+
+`V0.3.21-scheduling-gates`
+
+Successful source-only deployment report:
+
+`/home/msbadmin/setup-deployment-reports/Setup_205_Work_Order_Gate_UX_Source_Only_Production_Deploy_20260929T200651.txt`
+
+Final deployment proof:
+
+```text
+LIVE SETUP REGRESSION: PASS
+Production Setup fingerprint before: c9e8395208bc2829dfa6cf4225a0ef1a
+Production Setup fingerprint after:  c9e8395208bc2829dfa6cf4225a0ef1a
+2026 Setup Session count before: 1
+2026 Setup Session count after:  1
+Final Setup SHA: 9a614c1fa2eea0b425b03bdb4ac3e1790634c760
+Final health: {"data_mode":"postgres","status":"ok","version":"V0.3.21-scheduling-gates"}
+Exit status: 0
+```
+
+The first source-only deployment attempt reached the accepted target and passed all substantive runtime gates, but a deployment-runner-only shell variable lifetime bug caused fail-closed rollback. That rollback preserved Production data and returned the live Setup checkout to its prior healthy SHA. The tooling-only defect was corrected and the second deployment passed. No application re-acceptance was required.
+
+Final accepted operator behavior includes rolling short-horizon work-day scheduling, dynamic crew lanes/current schedule priority, permanent season-only annual task identity, explicit Work vs Wait/Gate semantics, schedulable annual Setup Work linked to a Work Order, optional Work Order completion -> annual Setup completion semantics, atomic season-task definition + placement save, annual-only readiness/hold editing, planned/actual/variance labor visibility, Captain self-default to current assigned work, and sticky worked history.
+
+Durable acceptance record:
+
+`Setup/Acceptance/Setup_205_Scheduling_Board_Production_Acceptance_2026-09-29.md`
+
+### #206 handoff
+
+#205 no longer owns Pick List/material movement behavior.
+
+Production scheduling authority for #206 is now:
+
+`9a614c1fa2eea0b425b03bdb4ac3e1790634c760`
+
+At closeout review, #206 branch `agent/setup-206-tablet-material-audit` was at `e780d50832f67a0549f50f97dc0b8f3d4ad8e5d2` and was diverged from accepted #205: 12 commits ahead on #206-specific work and 115 commits behind accepted #205.
+
+Therefore #206 must deliberately reconcile/rebase/cherry-pick its work onto the accepted #205 application state before retesting material-frontier behavior. Do not test #206 Pick List date/frontier semantics against the older annual graph.
+
+The #206 retest must preserve these #205 truths: annual Work Order-linked tasks may be schedulable Setup Work; Work Order completion may satisfy/complete the annual Setup item; season-only identity never writes to the reusable Catalog; annual readiness/hold context is one-season planning truth; schedule truth and anticipated downstream material visibility are distinct; and Captain/crew/day/shift fields belong only to actually scheduled tasks.
+
+#206 continues to own material readiness/Pick List, anticipated downstream material frontier, truthful Needed For/trigger-date semantics, Manager defer/override behavior, physical pick/movement truth, Scan CONT/DISP identity handoff, the Oct 5 park-mobilization boundary, GPS/location evidence, offline/idempotent movement replay, and named park-location/GIS integration.
+
+No new #205 work should be introduced during launch unless a launch-blocking scheduling/dispatch defect is proven.
