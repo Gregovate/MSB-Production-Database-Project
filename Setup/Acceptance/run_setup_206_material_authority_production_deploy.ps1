@@ -10,7 +10,7 @@ $ErrorActionPreference = 'Stop'
 
 $ExpectedBranch = 'deploy/setup-206-material-authority-production'
 $AcceptedTargetSha = '947b86a9598584717167cce094cd78d99e9a71e7'
-$AcceptedServerRunnerBlob = '0a89de6dc92c7b05d276fea7728b5ecc8549dd0e'
+$AcceptedServerRunnerBlob = '2aef8ae83f92f4ff92f9641568bf7e09549db932'
 $Migration063Path = 'Setup/Database/063_harden_setup_extra_material_requirement_lifecycle.sql'
 $Migration063Blob = '2c686ad3ae55b09a9cf3629b9ef01bb0b83dd447'
 $Migration064Path = 'Setup/Database/064_add_setup_extra_material_requirement_restore.sql'
