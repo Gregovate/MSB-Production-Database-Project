@@ -20,7 +20,7 @@ def test_material_authority_wrapper_pins_exact_accepted_release() -> None:
     assert "$Migration063Blob = '2c686ad3ae55b09a9cf3629b9ef01bb0b83dd447'" in wrapper
     assert "$Migration064Path = 'Setup/Database/064_add_setup_extra_material_requirement_restore.sql'" in wrapper
     assert "$Migration064Blob = '50de44a51b44eb008e826a7ef76b2023fafa29f7'" in wrapper
-    assert "$AcceptedServerRunnerBlob = '0a89de6dc92c7b05d276fea7728b5ecc8549dd0e'" in wrapper
+    assert "$AcceptedServerRunnerBlob = '2aef8ae83f92f4ff92f9641568bf7e09549db932'" in wrapper
     assert "V0.3.20-material-authority" in wrapper
     assert "Production_Database_Change_Deployment_Runbook.md" in wrapper
     assert "scp -r $localBundle" in wrapper
@@ -70,6 +70,9 @@ def test_material_authority_deployment_preserves_data_and_least_privilege() -> N
     assert "ref.setup_task_extra_material_source src" in server
     assert "ref.setup_container_extra_material cem" in server
     assert "ops.setup_extra_material_inventory_event ev" in server
+    assert "ref.setup_container_extra_material_review rem" in server
+    assert "ORDER BY rem.container_id" in server
+    assert "setup_container_extra_material_review_id" not in server
 
     assert "has_function_privilege(" in server
     assert "ref.delete_setup_task_extra_material(text,bigint,bigint)" in server
