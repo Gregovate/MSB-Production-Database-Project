@@ -12,7 +12,8 @@
 (() => {
   'use strict';
 
-  const CLIENT_BUILD = 'V0.3.20-material-authority';
+  const CLIENT_BUILD = 'V0.3.21-scheduling-gates';
+  const CLIENT_BADGE = `Client ${CLIENT_BUILD.split('-')[0]}`;
   const reusableFieldIds = new Set([
     'edit-task-name',
     'edit-stage-id',
@@ -173,7 +174,7 @@
     const badge = document.createElement('span');
     badge.id = 'setup-client-build-badge';
     badge.className = 'pill';
-    badge.textContent = 'Client V0.3.20';
+    badge.textContent = CLIENT_BADGE;
     badge.title = CLIENT_BUILD;
     access.insertAdjacentElement('afterend', badge);
   }
@@ -181,7 +182,7 @@
   function setBuildBadgeState(serverVersion, ok) {
     const badge = document.getElementById('setup-client-build-badge');
     if (!badge) return;
-    badge.textContent = ok ? 'Client V0.3.20' : 'CLIENT / SERVER MISMATCH';
+    badge.textContent = ok ? CLIENT_BADGE : 'CLIENT / SERVER MISMATCH';
     badge.title = `Client ${CLIENT_BUILD}; server ${serverVersion || 'unknown'}`;
     badge.dataset.state = ok ? 'ok' : 'error';
   }
