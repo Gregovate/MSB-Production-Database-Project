@@ -327,10 +327,9 @@ def test_kit_expected_contents_are_bidirectionally_linked_to_task_requirements()
     assert "api/setup/task-extra-materials/source-options?setup_extra_material_id=" in ui
     assert "function usedByTasksHtml(row)" in ui
     assert "NO TASK LINK RECORDED" in ui
-    assert "LINKED TO TASK — DETAILS DIFFER" in ui
-    assert "Source relationship is recorded. Task and Kit descriptions/specifications do not match exactly." in ui
-    assert "DETAILS DIFFER" in ui
-    assert "TASK LINK NEEDS REVIEW" not in ui
+    assert "LINKED TO TASK" in ui
+    assert "Task / Kit spec differs. Material identity and source relationship are already linked." in ui
+        assert "TASK LINK NEEDS REVIEW" not in ui
     assert "used_by_tasks" in repo
     assert "ref.setup_task_extra_material_source AS src" in repo
     assert "tm.active_flag" in repo
@@ -371,8 +370,8 @@ def test_206_kit_reverse_use_distinguishes_exact_link_from_spec_review() -> None
     assert "tm.setup_extra_material_id = cem.setup_extra_material_id" in repo
     assert "AND tm.quantity_uom = cem.quantity_uom" not in repo.split("LEFT JOIN LATERAL (", 1)[1].split(") AS usage ON true", 1)[0]
     assert "NO TASK LINK RECORDED" in ui
-    assert "LINKED TO TASK — DETAILS DIFFER" in ui
-    assert "Task and Kit descriptions/specifications do not match exactly." in ui
+    assert "LINKED TO TASK" in ui
+    assert "Task / Kit spec differs. Material identity and source relationship are already linked." in ui
 
 
 def test_206_kit_task_picker_is_material_first_and_hides_already_linked_requirement() -> None:
@@ -430,11 +429,10 @@ def test_206_kit_task_link_detail_mismatch_does_not_imply_broken_link() -> None:
     ui = text(BASE_DIR / "setup_kit_inventory.js")
     css = text(BASE_DIR / "setup_kit_inventory.css")
 
-    assert "LINKED TO TASK — DETAILS DIFFER" in ui
+    assert "LINKED TO TASK" in ui
     assert "Source relationship is recorded." in ui
     assert "TASK LINK NEEDS REVIEW" not in ui
-    assert "DETAILS DIFFER" in ui
-    assert ".kit-content-link-review" in css
+        assert ".kit-content-link-review" in css
 
 
 def test_206_operator_sop_keeps_material_source_expected_and_inventory_separate() -> None:
@@ -478,3 +476,10 @@ def test_206_operator_sop_keeps_material_source_expected_and_inventory_separate(
     assert "Unknown is better than invented authority." in sop
     assert "Extra_Materials_and_Kit_Inventory.md" in operator_index
     assert "Extra_Materials_and_Kit_Inventory.md" in manager_guide
+
+
+def test_206_kit_inventory_followup_assets_are_cache_busted() -> None:
+    page = text(BASE_DIR / "kit_inventory.html")
+
+    assert "setup_kit_inventory.css?v=2026-09-29.1" in page
+    assert "setup_kit_inventory.js?v=2026-09-29.1" in page
