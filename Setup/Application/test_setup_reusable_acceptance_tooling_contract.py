@@ -185,8 +185,11 @@ def test_reusable_acceptance_cleanup_and_production_after_check_are_mandatory() 
     disposable = read_acceptance("setup_disposable_acceptance_server.sh")
     browser = read_acceptance("setup_disposable_browser_preview_server.sh")
 
+    assert "trap cleanup EXIT HUP INT TERM" in disposable
+    assert "trap cleanup EXIT INT TERM" in browser
+    assert "trap preserve_transport_loss HUP" in browser
+
     for server in (disposable, browser):
-        assert "trap cleanup EXIT HUP INT TERM" in server
         assert 'docker rm -f "$TEST_CONTAINER"' in server
         assert 'worktree remove --force "$CANDIDATE_WORKTREE"' in server
         assert 'sudo rm -rf "$PYCACHE"' in server
