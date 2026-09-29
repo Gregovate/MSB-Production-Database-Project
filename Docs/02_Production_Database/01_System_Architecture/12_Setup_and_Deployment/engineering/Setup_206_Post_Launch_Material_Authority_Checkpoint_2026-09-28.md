@@ -1931,3 +1931,74 @@ This release requires:
 - retained Production acceptance evidence.
 
 The next action is **Production deployment engineering/preflight**, not direct ad-hoc mutation.
+
+
+---
+
+## PRODUCTION DEPLOYMENT RETRY CHECKPOINT — Attempt 1 stopped pre-mutation
+
+| Field | Value |
+|---|---|
+| Deployment tooling branch | `deploy/setup-206-material-authority-production` |
+| Accepted application target | `947b86a9598584717167cce094cd78d99e9a71e7` |
+| Application version | `V0.3.20-material-authority` |
+| Production attempt result | **STOPPED BEFORE MUTATION** |
+| Production live SHA at stop | `fc0b76d57826eebf04b81c99cbb904109162cd87` |
+| Production live version at stop | `V0.3.19-pick-list` |
+| Rollback archive created | **NO — stop occurred before backup/mutation gate** |
+| Migrations 063 / 064 applied | **NO** |
+| Application checkout advanced | **NO** |
+
+### Attempt 1 retained report
+
+`/home/msbadmin/setup-deployment-reports/Setup_206_Material_Authority_Production_Deploy_20260929T004141.txt`
+
+Exit status:
+
+`1`
+
+### Failure
+
+The new deployment-tooling-only material fingerprint referenced a nonexistent column:
+
+`rem.setup_container_extra_material_review_id`
+
+Authoritative schema in migration 032 proves:
+
+`ref.setup_container_extra_material_review.container_id`
+
+is the table primary key. There is no synthetic review-row ID.
+
+Because the failure occurred while capturing the initial read-only Production material fingerprint, the runner stopped before:
+
+- Setup write freeze;
+- rollback archive creation;
+- migration 063;
+- migration 064;
+- live Setup checkout movement;
+- service restart.
+
+Therefore Attempt 1 did not mutate Production.
+
+### Tooling correction
+
+The material fingerprint now orders `ref.setup_container_extra_material_review` rows by:
+
+`rem.container_id`
+
+Corrected server-runner blob:
+
+`2aef8ae83f92f4ff92f9641568bf7e09549db932`
+
+The Windows wrapper is repinned to that exact server-runner blob.
+
+Deployment contract tests now explicitly require:
+
+- `ORDER BY rem.container_id`;
+- absence of `setup_container_extra_material_review_id` in the runner.
+
+### Required next gate
+
+Do **not** retry Production yet.
+
+First run the complete `Setup/Application` regression on the documentation checkpoint SHA created after this section. Only after that regression is green may the same explicit bounded Production deployment wrapper be retried.
