@@ -547,6 +547,30 @@ function board205Duration(minutes) {
     : `${minutes} min`;
 }
 
+function board205LaborHours(crewCount, durationMinutes) {
+  const crew = Number(crewCount);
+  const minutes = Number(durationMinutes);
+  if (!Number.isFinite(crew) || crew <= 0 || !Number.isFinite(minutes) || minutes <= 0) return null;
+  return (crew * minutes) / 60;
+}
+
+function board205LaborHoursText(crewCount, durationMinutes) {
+  const hours = board205LaborHours(crewCount, durationMinutes);
+  if (hours == null) return 'TBD';
+  const shown = Number.isInteger(hours) ? String(hours) : hours.toFixed(1).replace(/\.0$/, '');
+  return `${shown} person-hour${Number(shown) === 1 ? '' : 's'}`;
+}
+
+function board205AssignmentPlannedCrew(item) {
+  const crew = board205CrewRow(item?.setup_work_day_crew_id);
+  const shiftCrew = board205PlannedCrewForShift(crew, item?.shift_code);
+  if (shiftCrew != null) return Number(shiftCrew);
+  if (item?.planned_crew_count != null && Number(item.planned_crew_count) > 0) {
+    return Number(item.planned_crew_count);
+  }
+  return null;
+}
+
 function board205AuditWhen(value) {
   if (!value) return 'unknown time';
   if (typeof formatTimestamp === 'function') return formatTimestamp(value);
@@ -1293,8 +1317,9 @@ function board205AssignmentCard(item) {
   const crew = board205CrewRow(item.setup_work_day_crew_id);
   const canManage = Boolean(appState.access?.can_manage_setup);
   const locked = Boolean(item.historical_locked);
-  const planned = board205PlannedCrewForShift(crew, item.shift_code);
+  const planned = board205AssignmentPlannedCrew(item);
   const minCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
+  const plannedLabor = board205LaborHoursText(planned, task.expected_duration_minutes);
   const understaffed = planned != null && minCrew != null && planned < minCrew;
   const shortBy = understaffed ? minCrew - planned : 0;
   const heavyWarning = board205HeavyWarning(item);
@@ -1311,6 +1336,7 @@ function board205AssignmentCard(item) {
       </div>
       <div class="setup-board205-meta">${board205Esc(board205Scope(item))}</div>
       <div class="setup-board205-meta">Min crew ${board205Esc(minCrew ?? 'TBD')} · ${board205Esc(board205Duration(task.expected_duration_minutes))}</div>
+      <div class="setup-board205-meta"><strong>Planned crew:</strong> ${board205Esc(planned ?? 'TBD')} · <strong>Est. labor:</strong> ${board205Esc(plannedLabor)}</div>
       <div class="setup-board205-meta"><strong>Crew Captain:</strong> ${board205Esc(crew?.captain_display_name || 'TBD')}</div>
       ${task.readiness_state === 'NOT_READY' ? `<div class="setup-board205-warning">⚠ Readiness not met: ${board205Esc(task.readiness_note || 'annual readiness condition')}</div>` : ''}
       ${understaffed ? `<div class="setup-board205-warning setup-board205-short-crew-warning"><strong>SHORT CREW</strong> · Planned ${board205Esc(item.shift_code === 'MORNING' ? 'AM' : 'PM')} ${board205Esc(planned)} / minimum ${board205Esc(minCrew)} · short by ${board205Esc(shortBy)}.</div>` : ''}
@@ -1501,10 +1527,28 @@ function board205RenderKpis() {
   const complete = tasks.filter((task) => Boolean(task.effective_complete)).length;
   const inProgress = tasks.filter((task) => task.execution_status === 'IN_PROGRESS').length;
   const pct = (count) => total ? Math.round((count / total) * 100) : 0;
+  const currentAssignments = (setupBoard205State.board.assignments || []).filter((item) => !item.historical_locked);
+  let plannedLaborHours = 0;
+  let plannedLaborUnknown = 0;
+  for (const item of currentAssignments) {
+    const task = board205Task(item.setup_session_task_id) || item;
+    const hours = board205LaborHours(
+      board205AssignmentPlannedCrew(item),
+      task.expected_duration_minutes
+    );
+    if (hours == null) plannedLaborUnknown += 1;
+    else plannedLaborHours += hours;
+  }
+  const plannedLaborShown = Number.isInteger(plannedLaborHours)
+    ? String(plannedLaborHours)
+    : plannedLaborHours.toFixed(1).replace(/\.0$/, '');
 
   target.innerHTML = [
     `<span><strong>${total}</strong> tasks</span>`,
     `<span><strong>${scheduled}</strong> scheduled · ${pct(scheduled)}%</span>`,
+    currentAssignments.length
+      ? `<span><strong>${board205Esc(plannedLaborShown)}</strong> planned labor hr${plannedLaborUnknown ? ` · ${plannedLaborUnknown} assignment${plannedLaborUnknown === 1 ? '' : 's'} TBD` : ''}</span>`
+      : '',
     inProgress ? `<span><strong>${inProgress}</strong> in progress · ${pct(inProgress)}%</span>` : '',
     `<span><strong>${complete}</strong> complete · ${pct(complete)}%</span>`
   ].filter(Boolean).join('<span class="setup-board205-kpi-sep">·</span>');
