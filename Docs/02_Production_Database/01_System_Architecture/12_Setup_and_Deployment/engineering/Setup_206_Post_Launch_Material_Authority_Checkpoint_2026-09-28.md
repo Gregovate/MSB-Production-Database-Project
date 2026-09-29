@@ -1730,3 +1730,26 @@ Before Production:
 - keep task requirement, source Container, expected Kit content, and physical inventory as separate operator concepts;
 - do not fabricate unknown quantities or treat Procedure/PPE mentions as automatic Extra Material authority;
 - do not use the old V0.3.19 #206 Production deploy runner unchanged for this V0.3.20/migrations 063+064 release.
+
+
+### V0.3.20 stale #222 contract corrected
+
+Test-only correction applied at implementation commit:
+
+`621cb13f9876c36014b73b6ad5002b30a507ac92`
+
+Changed only:
+
+`Setup/Application/test_setup_222_performance_trace_contract.py`
+
+Old stale assertion:
+
+`PRODUCTION_VERSION = "V0.3.19-pick-list"`
+
+New assertion:
+
+`PRODUCTION_VERSION = "V0.3.20-material-authority"`
+
+No #222 performance-trace runtime behavior was changed.
+
+**Next action:** run the full `Setup/Application` regression on the documentation checkpoint SHA containing this note.
