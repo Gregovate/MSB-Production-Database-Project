@@ -2454,34 +2454,32 @@ async function board205SubmitSeasonTask(event) {
       readiness_note: document.getElementById('setup-board205-season-readiness').value.trim() || null,
       linked_work_order_id: workOrderId,
       linked_work_order_gate: document.getElementById('setup-board205-season-gate').checked,
-      annual_notes: document.getElementById('setup-board205-season-notes').value.trim() || null
+      annual_notes: document.getElementById('setup-board205-season-notes').value.trim() || null,
+      previous_prerequisite_setup_session_task_id:
+        setupBoard205State.seasonPlacementOriginal.prerequisiteId,
+      prerequisite_setup_session_task_id: prior,
+      previous_downstream_setup_session_task_id:
+        setupBoard205State.seasonPlacementOriginal.downstreamId,
+      downstream_setup_session_task_id: downstream
     };
 
+    const inlineError = document.getElementById('setup-board205-season-error');
+    if (inlineError) {
+      inlineError.textContent = '';
+      inlineError.hidden = true;
+    }
+
     setBusy(true);
-    let targetId = sessionTaskId;
     if (sessionTaskId == null) {
       const result = await api('api/setup/scheduling-board/season-tasks', commandOptions('POST', payload));
-      targetId = Number(result.season_task?.setup_session_task_id || 0);
+      const createdId = Number(result.season_task?.setup_session_task_id || 0);
+      if (!createdId) throw new Error('Season-only Setup task identity was not returned.');
     } else {
       await api(
         `api/setup/scheduling-board/season-tasks/${sessionTaskId}`,
         commandOptions('PATCH', payload)
       );
     }
-
-    if (!targetId) throw new Error('Season-only Setup task identity was not returned.');
-    await api(
-      `api/setup/scheduling-board/season-tasks/${targetId}/placement`,
-      commandOptions('PATCH', {
-        previous_prerequisite_setup_session_task_id:
-          setupBoard205State.seasonPlacementOriginal.prerequisiteId,
-        prerequisite_setup_session_task_id: prior,
-        previous_downstream_setup_session_task_id:
-          setupBoard205State.seasonPlacementOriginal.downstreamId,
-        downstream_setup_session_task_id: downstream,
-        planned_order: plannedOrder
-      })
-    );
 
     document.getElementById('setup-board205-season-dialog').close();
     await board205Load();
