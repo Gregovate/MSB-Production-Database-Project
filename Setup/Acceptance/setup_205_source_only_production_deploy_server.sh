@@ -61,7 +61,7 @@ prod_fingerprint() {
                           FROM ops.setup_work_day_task wdt), '') || '|' ||
                 coalesce((SELECT string_agg(row_to_json(p)::text, '' ORDER BY p.setup_task_progress_id)
                           FROM ops.setup_task_progress p), '') || '|' ||
-                coalesce((SELECT string_agg(row_to_json(d)::text, '' ORDER BY d.setup_session_task_dependency_id)
+                coalesce((SELECT string_agg(row_to_json(d)::text, '' ORDER BY d.setup_session_task_id, d.prerequisite_setup_session_task_id)
                           FROM ops.setup_session_task_dependency d), '')
             );
         "
