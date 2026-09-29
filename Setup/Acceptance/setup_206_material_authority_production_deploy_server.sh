@@ -80,7 +80,7 @@ SELECT md5(
     coalesce((SELECT string_agg(row_to_json(tm)::text, '' ORDER BY tm.setup_task_extra_material_id) FROM ref.setup_task_extra_material tm), '') || '|' ||
     coalesce((SELECT string_agg(row_to_json(src)::text, '' ORDER BY src.setup_task_extra_material_source_id) FROM ref.setup_task_extra_material_source src), '') || '|' ||
     coalesce((SELECT string_agg(row_to_json(cem)::text, '' ORDER BY cem.setup_container_extra_material_id) FROM ref.setup_container_extra_material cem), '') || '|' ||
-    coalesce((SELECT string_agg(row_to_json(rem)::text, '' ORDER BY rem.setup_container_extra_material_review_id) FROM ref.setup_container_extra_material_review rem), '') || '|' ||
+    coalesce((SELECT string_agg(row_to_json(rem)::text, '' ORDER BY rem.container_id) FROM ref.setup_container_extra_material_review rem), '') || '|' ||
     coalesce((SELECT string_agg(row_to_json(ev)::text, '' ORDER BY ev.setup_extra_material_inventory_event_id) FROM ops.setup_extra_material_inventory_event ev), '')
 );
 "
