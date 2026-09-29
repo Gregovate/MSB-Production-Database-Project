@@ -34,8 +34,11 @@ def test_perform_work_defaults_to_signed_in_captain_when_scheduled() -> None:
         "captain_person_id",
         "captain_candidates",
         "authenticated_email",
+        "display_name",
         "All scheduled work",
         "nextPerformDefaultCaptainFilter",
+        "mineByEmail",
+        "mineByName",
         "nextEnsurePerformToolbar",
         "nextFilterPerformAssignments",
     ):
