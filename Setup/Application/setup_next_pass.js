@@ -949,11 +949,18 @@ function nextStorePerformCaptainFilter(value) {
 
 function nextPerformDefaultCaptainFilter() {
   const email = String(appState.access?.authenticated_email || '').trim().toLowerCase();
-  if (!email) return 'ALL';
-  const mine = nextPerformScheduledCaptains().find(
-    (captain) => String(captain.email || '').trim().toLowerCase() === email
-  );
-  return mine ? `CAPTAIN:${mine.person_id}` : 'ALL';
+  const signedInName = String(appState.access?.display_name || '').trim().toLowerCase();
+  const captains = nextPerformScheduledCaptains();
+
+  const mineByEmail = email
+    ? captains.find((captain) => String(captain.email || '').trim().toLowerCase() === email)
+    : null;
+  if (mineByEmail) return `CAPTAIN:${mineByEmail.person_id}`;
+
+  const mineByName = signedInName
+    ? captains.find((captain) => String(captain.display_name || '').trim().toLowerCase() === signedInName)
+    : null;
+  return mineByName ? `CAPTAIN:${mineByName.person_id}` : 'ALL';
 }
 
 function nextEnsurePerformCaptainFilter() {
