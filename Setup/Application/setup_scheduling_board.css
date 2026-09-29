@@ -874,6 +874,40 @@
   gap: 0.6rem;
 }
 
+.setup-board205-work-order-search-block {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.setup-board205-work-order-results {
+  display: grid;
+  gap: 0.3rem;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.setup-board205-work-order-result {
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+  min-height: 2.4rem;
+}
+
+.setup-board205-work-order-help {
+  padding: 0.45rem 0.55rem;
+  border: 1px dashed var(--border, #d9e0e8);
+  border-radius: 0.45rem;
+  color: var(--muted, #64748b);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+#setup-board205-season-work-order-clear {
+  justify-self: start;
+  align-self: end;
+}
+
 @media (max-width: 760px) {
   .setup-board205-kpis {
     justify-content: flex-start;
