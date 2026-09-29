@@ -2993,3 +2993,99 @@ Acceptance must prove:
 6. material can transition to park movement on/after Oct 5;
 7. reusable Catalog remains unchanged.
 
+
+
+---
+
+## FIELD-START PRIORITY RESET — SCAN / PICK LIST LOOP BEFORE OCT 5
+
+Operator escalation: only a few days remain before the 2026 City agreement permits material move-in to the park on 2026-10-05. Scan integration is now the field-start critical path.
+
+### Stop consuming the launch window with secondary polish
+
+Do not delay the first physical-state loop for:
+
+- additional material-audit cleanup that does not block current picking;
+- print-layout polish;
+- unrelated scheduler refinements;
+- LOC label rollout;
+- full named-GIS workflow;
+- full offline cold-start hardening.
+
+Those remain required, but the first connected end-to-end movement contract must exist now.
+
+### Minimum launch loop
+
+```text
+Schedule
+    -> Pick List
+    -> scan existing CONT/DISP label
+    -> Scan resolves canonical permanent identity
+    -> Setup matches physical Pick List item
+    -> operator confirms explicit logistics action
+    -> Setup records physical event/state
+    -> Pick List reflects actual state
+```
+
+Scan does not own movement semantics. Setup does not own scanner identity parsing.
+
+### Pre-Oct-5 operational state
+
+Before park material access opens:
+
+```text
+visible on Pick List
+    -> scan
+    -> PICKED / STAGED AT SHOP
+```
+
+Final operator wording may change during acceptance, but semantics must remain explicit.
+
+This physical state:
+
+- may occur before the downstream Setup task is scheduled;
+- may occur before Oct 5;
+- must not imply park delivery;
+- must survive later schedule changes.
+
+### Oct-5+ operational state
+
+On/after Oct 5:
+
+```text
+scan CONT/DISP
+    -> explicit park movement action
+    -> capture original event time
+    -> actor/device
+    -> GPS + accuracy when available
+    -> Setup/session context
+    -> durable/idempotent event
+```
+
+Do not overwrite Home Location.
+Do not fabricate Display movement observations from a Container scan.
+Do not invent a permanent LOC identity merely because named-location integration is unfinished.
+
+### LOC/GIS/offline sequencing
+
+The first movement contract must be designed so the same event can later carry:
+
+- LOC identity;
+- GIS-derived named location;
+- raw GPS/accuracy;
+- offline queued capture/replay.
+
+Do not create a temporary incompatible event model.
+
+For the next few days, prove the connected loop first on the available connected tablet, then harden offline against the same event/API contract.
+
+### Durable cross-issue priority
+
+Recorded in:
+
+- #113 — Scan field-start umbrella;
+- #88 — focused movement/LOC handoff;
+- #206 — Pick List physical-state integration;
+- PR #252 — active #206 candidate context;
+- #122 — commanding Setup priority.
+
