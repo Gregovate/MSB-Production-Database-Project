@@ -37,6 +37,7 @@ def test_perform_work_defaults_to_signed_in_captain_when_scheduled() -> None:
         "display_name",
         "All scheduled work",
         "nextPerformDefaultCaptainFilter",
+        "mineByIdentity",
         "mineByEmail",
         "mineByName",
         "nextEnsurePerformToolbar",
@@ -232,7 +233,7 @@ def test_live_report_work_database_contract() -> None:
 def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
-    assert "setup_next_pass.css?v=2026-09-27.2" in html
+    assert "setup_next_pass.css?v=2026-09-29.1" in html
     assert "setup_next_pass.js?v=2026-09-29.3" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
     assert "setup_acceptance_fixes.js?v=2026-09-26.1" in html
@@ -245,7 +246,17 @@ def test_perform_work_shows_planned_vs_actual_labor_kpi() -> None:
     repo = read_app("setup_scheduling_board_repository.py")
 
     assert "nextPerformLaborKpis" in ui
-    assert "Planned ${labor.plannedHours} labor hr" in ui
-    assert "Actual ${labor.actualHours} labor hr" in ui
+    assert 'id="next-perform-kpis"' in ui
+    assert "<span>Planned labor</span>" in ui
+    assert "<span>Actual labor</span>" in ui
+    assert "<span>Variance</span>" in ui
     assert "actual_person_minutes" in repo
     assert "sum(p.crew_count * p.duration_minutes)" in repo
+
+
+def test_setup_access_exposes_signed_in_captain_identity() -> None:
+    repo = read_app("setup_repository.py")
+
+    assert "captain_person_id" in repo
+    assert "ref.setup_captain_person_list()" in repo
+    assert "lower(captain.email) = lower(caps.email)" in repo
