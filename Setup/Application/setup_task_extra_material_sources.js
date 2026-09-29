@@ -194,10 +194,37 @@
         if (aResolved !== bResolved) return aResolved - bResolved;
         return Number(a.container_id) - Number(b.container_id);
       });
-    select.innerHTML = rows.map((row) => (
-      `<option value="${row.container_id}">${escapeHtml(containerLabel(row))}</option>`
-    )).join('');
-    if (current && rows.some((row) => String(row.container_id) === String(current))) select.value = current;
+    const requirement = requirementById(state.selectedRequirementId);
+    const linkedByContainer = new Map(
+      (requirement?.sources || []).map((source) => [
+        Number(source.container_id),
+        Number(source.setup_task_extra_material_source_id),
+      ]),
+    );
+
+    select.innerHTML = rows.map((row) => {
+      const linkedSourceId = linkedByContainer.get(Number(row.container_id));
+      const isCurrentEditedSource = Boolean(
+        state.editingSourceId
+        && linkedSourceId
+        && linkedSourceId === Number(state.editingSourceId)
+      );
+      const alreadyLinked = Boolean(linkedSourceId && !isCurrentEditedSource);
+      const disabled = alreadyLinked ? ' disabled' : '';
+      const suffix = alreadyLinked ? ' · Already linked — use Change' : '';
+      return `<option value="${row.container_id}"${disabled}>${escapeHtml(containerLabel(row) + suffix)}</option>`;
+    }).join('');
+
+    const currentRow = rows.find((row) => String(row.container_id) === String(current));
+    const currentLinkedSourceId = currentRow
+      ? linkedByContainer.get(Number(currentRow.container_id))
+      : null;
+    const currentAllowed = currentRow && (
+      !currentLinkedSourceId
+      || Number(currentLinkedSourceId) === Number(state.editingSourceId)
+    );
+    if (current && currentAllowed) select.value = current;
+    else if (!state.editingSourceId) select.selectedIndex = -1;
   }
 
   function clearEditor() {
@@ -258,7 +285,7 @@
       state.originalSourceContainerId = null;
       el('task-extra-material-source-editor-title').textContent = 'Manager — Add Source';
       el('task-extra-material-source-selected').textContent = requirementLabel(requirement);
-      el('task-extra-material-source-editor-help').textContent = 'Select a Container and enter the quantity from that Container.';
+      el('task-extra-material-source-editor-help').textContent = 'Select a Container and enter the quantity from that Container. Containers already linked to this requirement are disabled; use Change on the existing source instead.';
       el('task-extra-material-source-container').selectedIndex = -1;
       el('task-extra-material-source-qty').value = '';
       el('task-extra-material-source-verification').value = 'UNVERIFIED';
