@@ -87,3 +87,15 @@ def test_206_source_only_followup_fingerprints_core_and_material_data() -> None:
 
 def test_206_source_only_followup_requires_real_protected_route_after_wrapper() -> None:
     assert "Protected /setup/ operator validation: REQUIRED NEXT" in SH
+
+
+def test_206_windows_wrapper_uses_ascii_structural_catalog_markers() -> None:
+    assert "function renderNextLibraryReadiness()" in PS1
+    assert "Retry Catalog Organization" in PS1
+    assert "Loading reusable Catalog organization…" not in PS1
+    assert "priorNextRenderLibrary" in PS1
+
+
+def test_206_windows_wrapper_updates_remote_tracking_target_ref() -> None:
+    assert "refs/remotes/origin/" in PS1
+    assert "$AcceptedTargetRef + ':refs/remotes/origin/' + $AcceptedTargetRef" in PS1
