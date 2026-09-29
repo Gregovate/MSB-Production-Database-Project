@@ -1788,9 +1788,17 @@ function board205PopulateSeasonPlacementOptions(
   const currentPrior = selectedPrerequisiteId == null ? String(prior?.value || '') : String(selectedPrerequisiteId || '');
   const currentDownstream = selectedDownstreamId == null ? String(downstream?.value || '') : String(selectedDownstreamId || '');
 
+  const selectedIds = new Set(
+    [currentPrior, currentDownstream]
+      .filter(Boolean)
+      .map((value) => Number(value))
+  );
   const tasks = (setupBoard205State.board.tasks || []).filter((task) => (
     Number(task.setup_session_task_id) !== editId
-    && (stageId == null ? task.stage_id == null : Number(task.stage_id) === stageId)
+    && (
+      selectedIds.has(Number(task.setup_session_task_id))
+      || (stageId == null ? task.stage_id == null : Number(task.stage_id) === stageId)
+    )
   ));
   const options = '<option value="">— none —</option>' + tasks.map((task) => (
     `<option value="${task.setup_session_task_id}">${board205Esc(task.planned_order ?? '—')} — ${board205Esc(task.task_name)}</option>`
