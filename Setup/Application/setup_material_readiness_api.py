@@ -97,6 +97,39 @@ def api_setup_material_readiness_override_remove(container_id: int) -> Response:
     return jsonify(pick_list_override=result)
 
 
+
+@setup_material_readiness_api.post("/api/setup/material-readiness/delays")
+def api_setup_material_readiness_delay_set() -> tuple[Response, int]:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+    result = repo().set_pick_list_delay(
+        email=email,
+        season_year=required_int(payload.get("season_year"), "season_year"),
+        container_id=required_int(payload.get("container_id"), "container_id"),
+        reason=optional_text(payload.get("delay_reason")),
+        delayed=True,
+    )
+    return jsonify(pick_list_delay=result), 201
+
+
+@setup_material_readiness_api.delete(
+    "/api/setup/material-readiness/delays/<int:container_id>"
+)
+def api_setup_material_readiness_delay_remove(container_id: int) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+    result = repo().set_pick_list_delay(
+        email=email,
+        season_year=required_int(payload.get("season_year"), "season_year"),
+        container_id=container_id,
+        reason=None,
+        delayed=False,
+    )
+    return jsonify(pick_list_delay=result)
+
+
 @setup_material_readiness_api.errorhandler(SetupAuthenticationError)
 def material_readiness_authentication_error(
     exc: SetupAuthenticationError,

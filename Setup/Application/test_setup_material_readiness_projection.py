@@ -131,7 +131,7 @@ def test_precursor_chain_surfaces_downstream_material_frontier():
     assert [task["setup_session_task_id"] for task in found] == [3]
 
 
-def test_material_frontier_includes_parallel_and_contiguous_material_work():
+def test_material_frontier_stops_at_first_incomplete_material_on_each_branch():
     tasks = {
         1: demand_task(1, order=1),
         2: demand_task(2, order=2),
@@ -142,7 +142,7 @@ def test_material_frontier_includes_parallel_and_contiguous_material_work():
     found = downstream_material_frontier(
         1, tasks, {1: [2], 2: [3, 4], 3: [5]}
     )
-    assert [task["setup_session_task_id"] for task in found] == [3, 4, 5]
+    assert [task["setup_session_task_id"] for task in found] == [3, 4]
 
 
 def test_material_frontier_does_not_cross_into_later_non_material_phase():
@@ -213,3 +213,14 @@ def test_complete_material_target_is_not_demand_but_wave_remains_bounded():
         1, tasks, {1: [2], 2: [3], 3: [4], 4: [5]}
     )
     assert [task["setup_session_task_id"] for task in found] == [3]
+
+
+def test_complete_material_can_be_crossed_to_next_incomplete_frontier():
+    tasks = {
+        1: demand_task(1, order=1),
+        2: demand_task(2, material=True, status="COMPLETE", order=2),
+        3: demand_task(3, order=3),
+        4: demand_task(4, material=True, order=4),
+    }
+    found = downstream_material_frontier(1, tasks, {1: [2], 2: [3], 3: [4]})
+    assert [task["setup_session_task_id"] for task in found] == [4]

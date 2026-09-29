@@ -16,49 +16,40 @@ def downstream_material_frontier(
     tasks_by_session_id: dict[int, dict[str, Any]],
     downstream_by_prerequisite: dict[int, list[int]],
 ) -> list[dict[str, Any]]:
-    """Return the bounded downstream material-demand frontier for scheduled work.
+    """Return the first incomplete material-bearing task on each downstream branch.
 
-    Traverse annual prerequisite edges only when the scheduled trigger itself
-    is non-material precursor work. Material-bearing descendants in the immediate
-    downstream material wave become early demand targets. Traversal may continue
-    through contiguous material-bearing descendants, but it does not cross from
-    a material-bearing task into a later non-material phase.
+    Look-ahead exists only to bridge scheduled non-material precursor work to
+    material that could be needed immediately afterward. Once an incomplete
+    material-bearing descendant is reached, that task is the physical-demand
+    frontier and traversal stops on that branch.
 
-    If the scheduled trigger itself is material-bearing, no downstream expansion
-    occurs; its direct material demand is already visible through the normal
-    resolver.
-
-    COMPLETE and DEFERRED descendants do not create demand. COMPLETE nodes may
-    still be traversed when they are non-material prerequisites; DEFERRED nodes
-    stop their branch.
+    A COMPLETE material-bearing task may be crossed to find the next incomplete
+    material frontier. DEFERRED stops the branch. If the scheduled trigger is
+    itself material-bearing, no downstream expansion occurs because its direct
+    material authority is sufficient.
     """
     start_id = int(start_session_task_id)
     start_task = tasks_by_session_id.get(start_id)
     if start_task is None:
         return []
 
-    # If the scheduled task already owns physical material, its own direct
-    # demand is sufficient. Early downstream expansion exists only to bridge
-    # non-material precursors (for example Locate/Layout) to the first
-    # material wave that must be visible before those downstream tasks can be
-    # scheduled.
     if bool(start_task.get("material_bearing")):
         return []
 
-    queue: list[tuple[int, bool]] = [(start_id, False)]
-    visited: set[tuple[int, bool]] = set()
+    queue: list[int] = [start_id]
+    visited: set[int] = set()
     found: dict[int, dict[str, Any]] = {}
 
     while queue:
-        current_id, material_wave_started = queue.pop(0)
-        state = (current_id, material_wave_started)
-        if state in visited:
+        current_id = queue.pop(0)
+        if current_id in visited:
             continue
-        visited.add(state)
+        visited.add(current_id)
 
         task = tasks_by_session_id.get(current_id)
         if task is None:
             continue
+
         status = str(task.get("execution_status") or "").upper()
         if status == "DEFERRED":
             continue
@@ -66,16 +57,15 @@ def downstream_material_frontier(
         is_material = bool(task.get("material_bearing"))
         if current_id != start_id and is_material and status != "COMPLETE":
             found[current_id] = task
+            # This is the first incomplete material-bearing task on this
+            # dependency branch. Its direct material authority is the current
+            # Pick List frontier; later material belongs to later work.
+            continue
 
-        next_wave_started = material_wave_started or is_material
+        # Non-material work and already-COMPLETE material work may be crossed
+        # to find the next incomplete material-bearing task.
         for downstream_id in downstream_by_prerequisite.get(current_id, []):
-            downstream = tasks_by_session_id.get(int(downstream_id))
-            if downstream is None:
-                continue
-            downstream_is_material = bool(downstream.get("material_bearing"))
-            if next_wave_started and not downstream_is_material:
-                continue
-            queue.append((int(downstream_id), next_wave_started))
+            queue.append(int(downstream_id))
 
     return sorted(
         found.values(),
@@ -84,7 +74,6 @@ def downstream_material_frontier(
             int(task.get("setup_session_task_id") or 0),
         ),
     )
-
 
 def target_staged_by(work_date: str) -> str:
     """Return the normal D-1 staging target, never assigning a Sunday pick."""

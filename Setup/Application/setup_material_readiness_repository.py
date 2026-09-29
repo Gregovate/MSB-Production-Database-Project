@@ -1,9 +1,9 @@
 """Material-readiness resolver for Setup #206.
 
 The read path consumes the accepted schedule and existing reusable material
-authorities. The only write path is the narrow governed Manager early-pick
-override command. It performs no movement writes, does not schedule work, and
-does not invent a second mutable current-location field.
+authorities. Narrow Manager writes are limited to early-pick overrides and
+transient Pick Delays. Pick Delays are session logistics only: they do not
+schedule work, change reusable task knowledge, or write movement/location state.
 """
 from __future__ import annotations
 
@@ -344,6 +344,39 @@ class SetupMaterialReadinessRepository:
             )
             return [dict(row) for row in cur.fetchall()]
 
+
+    def _pick_list_delays(
+        self, setup_session_id: int
+    ) -> list[dict[str, Any]]:
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    d.setup_pick_list_delay_id,
+                    d.setup_session_id,
+                    d.container_id,
+                    d.release_setup_session_task_ids,
+                    d.delay_reason,
+                    d.created_at,
+                    d.updated_at,
+                    c.description AS container_description,
+                    c.location_code AS home_location_code,
+                    coalesce(
+                        nullif(btrim(concat_ws(' ', p.first_name, p.last_name)), ''),
+                        d.updated_by
+                    ) AS delayed_by_display
+                FROM ops.setup_pick_list_delay AS d
+                JOIN ref.container AS c
+                  ON c.container_id = d.container_id
+                LEFT JOIN ref.person AS p
+                  ON p.person_id = d.updated_by_person_id
+                WHERE d.setup_session_id = %s
+                ORDER BY c.location_code NULLS LAST, d.container_id
+                """,
+                (setup_session_id,),
+            )
+            return [dict(row) for row in cur.fetchall()]
+
     def set_pick_list_override(
         self,
         *,
@@ -393,6 +426,80 @@ class SetupMaterialReadinessRepository:
                 ),
             )
             result = self._one(cur, "Pick List override command returned no result")
+            conn.commit()
+            return result
+
+
+    def set_pick_list_delay(
+        self,
+        *,
+        email: str,
+        season_year: int,
+        container_id: int,
+        reason: str | None,
+        delayed: bool,
+    ) -> dict[str, Any]:
+        release_session_task_ids: list[int] = []
+
+        if delayed:
+            readiness = self.material_readiness(season_year)
+            item = next(
+                (
+                    candidate
+                    for candidate in readiness.get("physical_items") or []
+                    if candidate.get("physical_type") == "CONTAINER"
+                    and int(candidate.get("physical_id") or 0) == int(container_id)
+                ),
+                None,
+            )
+            if item is None:
+                raise SetupMaterialReadinessConflictError(
+                    "Container is not current Pick List demand."
+                )
+            if (item.get("current_observation") or {}).get("last_movement_event_id") is not None:
+                raise SetupMaterialReadinessConflictError(
+                    "Container already has Setup movement evidence and cannot be delayed as an unpicked item."
+                )
+
+            reasons = list(item.get("reasons") or [])
+            origins = {
+                str(row.get("demand_origin") or "DIRECT_SCHEDULE")
+                for row in reasons
+            }
+            if origins != {"DOWNSTREAM_FROM_SCHEDULE"}:
+                raise SetupMaterialReadinessConflictError(
+                    "Pick Delay is allowed only for anticipated downstream demand. "
+                    "Direct scheduled or Manager-override demand must remain actionable."
+                )
+
+            release_session_task_ids = sorted({
+                int(row["setup_session_task_id"])
+                for row in reasons
+                if row.get("setup_session_task_id") is not None
+            })
+            if not release_session_task_ids:
+                raise SetupMaterialReadinessConflictError(
+                    "Anticipated Pick List demand has no downstream task identity to release the delay."
+                )
+
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT *
+                FROM ops.set_setup_pick_list_delay(
+                    %s,%s,%s,%s::bigint[],%s,%s
+                )
+                """,
+                (
+                    email,
+                    season_year,
+                    container_id,
+                    release_session_task_ids,
+                    reason,
+                    delayed,
+                ),
+            )
+            result = self._one(cur, "Pick Delay command returned no result")
             conn.commit()
             return result
 
@@ -521,12 +628,14 @@ class SetupMaterialReadinessRepository:
                 "scheduled_work": [],
                 "physical_items": [],
                 "pick_list_overrides": [],
+                "pick_list_delays": [],
                 "unresolved_requirements": [],
                 "summary": {
                     "scheduled_assignment_count": 0,
                     "physical_item_count": 0,
                     "container_count": 0,
                     "display_count": 0,
+                    "pick_delay_count": 0,
                     "unresolved_requirement_count": 0,
                 },
             }
@@ -746,6 +855,7 @@ class SetupMaterialReadinessRepository:
             for item in physical_items
         }
         overrides = self._pick_list_overrides(setup_session_id)
+        delays = self._pick_list_delays(setup_session_id)
         for override in overrides:
             container_id = int(override["container_id"])
             key = ("CONTAINER", container_id)
@@ -858,6 +968,10 @@ class SetupMaterialReadinessRepository:
             container_ids=container_ids,
             display_ids=display_ids,
         )
+        delay_by_container = {
+            int(delay["container_id"]): dict(delay)
+            for delay in delays
+        }
 
         for item in physical_items:
             key = (item["physical_type"], int(item["physical_id"]))
@@ -870,17 +984,39 @@ class SetupMaterialReadinessRepository:
             else:
                 item["location_evidence_status"] = "NO_SETUP_OBSERVATION"
 
+            reasons = list(item.get("reasons") or [])
+            origins = {
+                str(reason.get("demand_origin") or "DIRECT_SCHEDULE")
+                for reason in reasons
+            }
+            item["pick_delay_eligible"] = bool(
+                item["physical_type"] == "CONTAINER"
+                and observation.get("last_movement_event_id") is None
+                and origins == {"DOWNSTREAM_FROM_SCHEDULE"}
+            )
+            delay = (
+                delay_by_container.get(int(item["physical_id"]))
+                if item["physical_type"] == "CONTAINER"
+                and "DIRECT_SCHEDULE" not in origins
+                and "MANAGER_OVERRIDE" not in origins
+                else None
+            )
+            item["pick_delay"] = delay
+            item["pick_delayed"] = bool(delay)
+
         return {
             "session": dict(session),
             "scheduled_work": scheduled_work,
             "physical_items": physical_items,
             "pick_list_overrides": overrides,
+            "pick_list_delays": delays,
             "unresolved_requirements": unresolved,
             "summary": {
                 "scheduled_assignment_count": len(assignments),
                 "physical_item_count": len(physical_items),
                 "container_count": len(container_ids),
                 "display_count": len(display_ids),
+                "pick_delay_count": sum(1 for item in physical_items if item.get("pick_delayed")),
                 "unresolved_requirement_count": len(unresolved),
             },
         }
