@@ -2416,7 +2416,7 @@ function board205SyncSeasonTaskTypeHelp() {
   } else if (actionType === 'WORK') {
     help.textContent = 'Setup Work is real crew work. It appears in Needs Scheduling when prerequisites are complete. A linked Work Order is reference/context only; the crew still schedules and completes this Setup task.';
   } else if (actionType === 'SUPPORT') {
-    help.textContent = 'Support / Prep is schedulable Setup work used for preparation or support activity.';
+    help.textContent = 'Support / Prep is schedulable enabling work around Setup, such as training, arranging rental equipment, or positioning support infrastructure. Locate Power & Network is Setup Work, not Support / Prep.';
   } else {
     help.textContent = 'Unload Container is a physical logistics task. Container movement/Pick List behavior is owned by the Setup logistics workflow.';
   }
