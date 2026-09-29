@@ -187,3 +187,11 @@ def test_source_container_search_accepts_human_readable_c_prefix_and_padding() -
     assert "`C${row.container_id}`" in ui
     assert "humanContainerId(row.container_id)" in ui
     assert "humanContainerId(source.container_id)" in ui
+
+
+def test_production_shell_refreshes_extra_material_bridge_after_source_ui_change() -> None:
+    page = text("production.html")
+    bridge = text("setup_extra_materials.js")
+
+    assert "setup_extra_materials.js?v=2026-09-28.3" in page
+    assert "setup_task_extra_material_sources.js?v=2026-09-28.3" in bridge
