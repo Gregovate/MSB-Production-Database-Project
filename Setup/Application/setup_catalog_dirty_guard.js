@@ -181,7 +181,7 @@
   function setBuildBadgeState(serverVersion, ok) {
     const badge = document.getElementById('setup-client-build-badge');
     if (!badge) return;
-    badge.textContent = ok ? 'Client V0.3.19' : 'CLIENT / SERVER MISMATCH';
+    badge.textContent = ok ? 'Client V0.3.20' : 'CLIENT / SERVER MISMATCH';
     badge.title = `Client ${CLIENT_BUILD}; server ${serverVersion || 'unknown'}`;
     badge.dataset.state = ok ? 'ok' : 'error';
   }
