@@ -1551,3 +1551,67 @@ If green, run one final focused browser check:
 4. verify the page renders correctly **without** `Ctrl+Shift+R`.
 
 No Production deployment until that return-path check passes.
+
+
+---
+
+## Continuation Checkpoint — V0.3.20 Material Authority
+
+| Field | Value |
+|---|---|
+| Implementation head before documentation checkpoint | `a8a918cb77d283a74aaa6d7665deca45a8259142` |
+| Candidate version | `V0.3.20-material-authority` |
+| Branch | `agent/setup-206-tablet-material-audit` |
+| PR | #252 — draft / mergeable=true |
+| Main comparison before checkpoint | 106 ahead / 0 behind |
+| Production mutation authorized | **NO** |
+
+### Prior gate
+
+The immediately preceding candidate `18be2b59fcab521be3cc8c71798c6d2a22e53c95` completed reusable disposable acceptance with a clean exit.
+
+Before the final browser return-path test, operator review identified that the candidate still reported/displayed the existing Production client line `V0.3.19-pick-list`.
+
+That is not acceptable for this release because the candidate now contains a materially different Setup client/runtime boundary, including:
+
+- post-launch #206 material-authority cleanup;
+- governed Extra Material lifecycle and historical restore;
+- task/source/Kit reconciliation;
+- Material Audit correction behavior;
+- Kit Inventory expected-content maintenance;
+- human-readable Container source search;
+- operator material/Kit procedures;
+- Pick List material-surface corrections.
+
+### Version correction
+
+The candidate now advances to:
+
+`V0.3.20-material-authority`
+
+Updated boundaries:
+
+- `production_backend.py` -> `PRODUCTION_VERSION = "V0.3.20-material-authority"`;
+- `setup_catalog_dirty_guard.js` -> `CLIENT_BUILD = 'V0.3.20-material-authority'`;
+- visible badge -> `Client V0.3.20`;
+- `production.html` cache-bust pin for `setup_catalog_dirty_guard.js` -> `v=2026-09-28.1`;
+- current runtime/client contract tests updated to require V0.3.20.
+
+Historical Production deployment scripts/acceptance records for V0.3.19 remain historical evidence and are intentionally not rewritten.
+
+The Setup README / engineering live-runtime documentation continues to identify **current live Production** as V0.3.19 until an authorized V0.3.20 Production deployment actually occurs.
+
+### Gate reset
+
+Changing the server/client build boundary invalidates the prior exact-candidate acceptance for release purposes.
+
+Next:
+
+1. full `Setup/Application` regression on the documentation checkpoint SHA created after this section;
+2. reusable disposable acceptance with migrations 063 + 064 and #206 lifecycle validation;
+3. focused browser review:
+   - header visibly shows **Client V0.3.20**;
+   - Kit Inventory -> Back to Setup Session -> Reusable Task Catalog renders correctly without `Ctrl+Shift+R`;
+   - server/client build guard remains matched and writes are not blocked.
+
+No Production deployment before those gates pass.
