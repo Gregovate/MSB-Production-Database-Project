@@ -2336,3 +2336,43 @@ Acceptance:
 - Client V0.3.20 remains correct;
 - Kit/source follow-up wording remains correct;
 - clean preview exit with Production fingerprint/live SHA unchanged.
+
+---
+
+## FINAL SOURCE-ONLY BROWSER ACCEPTANCE PASS
+
+| Field | Value |
+|---|---|
+| Exact accepted browser candidate | 3cedba88283e4766932ae7905034856a2b9baa00 |
+| Preview result | **PASS / CLEAN EXIT** |
+| Database migrations | **NONE** |
+| Production Setup fingerprint before | `679a83fac441ba73b58abb67d63251ba` |
+| Production Setup fingerprint after | `679a83fac441ba73b58abb67d63251ba` |
+| Live Setup SHA before | `947b86a9598584717167cce094cd78d99e9a71e7` |
+| Live Setup SHA after | `947b86a9598584717167cce094cd78d99e9a71e7` |
+| Preview Flask log | `/tmp/Setup_Disposable_Browser_Preview_Flask_20260929T020838.log` |
+| Preview report | `/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20260929T020838.txt` |
+| Exit status | **0** |
+
+### Browser acceptance confirmed
+
+- Client V0.3.20 remained correct where displayed.
+- Reusable Task Catalog used the current grouped Site-wide / Stage / Scene renderer.
+- Repeated Kit Inventory -> Back to Setup Session -> Reusable Task Catalog navigation did not reproduce the obsolete flat Catalog.
+- Slight Setup startup delay was observed and is acceptable because the deterministic organization gate waits rather than exposing the obsolete renderer.
+- Kit Inventory retained the primary LINKED TO TASK presentation with subordinate spec-difference note.
+- source/requirement edits in the disposable clone behaved as expected.
+
+### Separate Production-data finding
+
+The fresh disposable clone initially still contained the mistaken T-Post requirement on reusable task #140 `Layout Light Locations`.
+
+Deleting that mistake inside the disposable clone immediately cleared Material Audit, confirming governed delete + audit refresh behavior. That disposable deletion does not persist.
+
+Treat #140 cleanup as a separate bounded Production data correction. The accepted Northern Lights T-Post authority remains task #132 `Setup Northern Lights`.
+
+### Source-only release eligibility
+
+This candidate is now browser-accepted for a bounded source-only Production deployment. No database migration or PostgreSQL rollback archive is required for the source-only application correction; rollback unit is the prior exact application SHA plus service restart under the Server Management source-only deployment runbook.
+
+After Production source-only deployment, perform protected `/setup/` smoke validation and then update live runtime/acceptance documentation to the exact deployed SHA.
