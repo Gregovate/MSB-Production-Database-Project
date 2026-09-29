@@ -36,6 +36,7 @@ def test_plain_english_manager_help_covers_current_live_workflows() -> None:
         "Wait / Gate",
         "not scheduled to a crew or work day",
         "linked Work Order",
+        "downstream work unblocks without duplicate reporting",
         "Support / Prep",
         "Locate Power & Network is Setup Work",
         "Pick Lists",
