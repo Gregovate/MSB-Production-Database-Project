@@ -2292,3 +2292,47 @@ If green, run a focused source-only disposable browser preview with no migration
 5. Client V0.3.20 remains correct;
 6. Kit/source UX follow-ups remain correct;
 7. clean preview exit with Production fingerprint/live SHA unchanged.
+
+---
+
+## POST-PRODUCTION CATALOG ORGANIZATION RACE REGRESSION PASS
+
+| Field | Value |
+|---|---|
+| Exact tested implementation candidate | 8c2942c6c97e44f55fec1d5b092b5f147e1f3d66 |
+| Regression command | python -m pytest -q -p no:cacheprovider Setup/Application |
+| Result | **576 passed in 5.19s** |
+| Failures / errors | **0** |
+| Branch | agent/setup-206-tablet-material-audit |
+| PR | #252 — DRAFT / mergeable=true |
+| Main comparison before checkpoint | 135 ahead / 0 behind |
+| Database mutation required | **NO** |
+| Production migrations | 063 + 064 already installed |
+
+This PASS includes:
+- explicit Catalog organization idle/loading/ready/failed state;
+- in-flight organization request tracking/deduplication;
+- removal of the obsolete flat Catalog as a loading fallback;
+- explicit loading and retry/error UI;
+- refreshed setup_next_pass.js asset pin;
+- V0.3.20 badge correction;
+- Kit LINKED TO TASK wording refinement;
+- already-linked Add Source Containers disabled / use Change guidance.
+
+### Next gate
+
+Run one focused source-only disposable browser preview on the exact documentation checkpoint SHA created after this section, with no migrations.
+
+Exercise the prior intermittent path repeatedly:
+1. initial Setup load -> Reusable Task Catalog;
+2. Kit Inventory -> Back to Setup Session -> Reusable Task Catalog;
+3. repeat that round trip several times;
+4. ordinary Ctrl+R on Setup and return to Catalog.
+
+Acceptance:
+- obsolete flat Catalog never appears;
+- if organization is slow, only `Loading reusable Catalog organization…` may appear before the grouped Catalog;
+- no hard refresh required;
+- Client V0.3.20 remains correct;
+- Kit/source follow-up wording remains correct;
+- clean preview exit with Production fingerprint/live SHA unchanged.
