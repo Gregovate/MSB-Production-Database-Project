@@ -219,6 +219,14 @@ def api_setup_scheduling_board_season_task_create() -> tuple[Response, int]:
         linked_work_order_id=nullable_int(payload.get("linked_work_order_id"), "linked_work_order_id"),
         linked_work_order_gate=bool(payload.get("linked_work_order_gate", False)),
         annual_notes=optional_text(payload.get("annual_notes")),
+        prerequisite_session_task_id=nullable_int(
+            payload.get("prerequisite_setup_session_task_id"),
+            "prerequisite_setup_session_task_id",
+        ),
+        downstream_session_task_id=nullable_int(
+            payload.get("downstream_setup_session_task_id"),
+            "downstream_setup_session_task_id",
+        ),
     )
     return jsonify(season_task=result), 201
 
@@ -268,6 +276,23 @@ def api_setup_scheduling_board_season_task_update(
         linked_work_order_id=nullable_int(payload.get("linked_work_order_id"), "linked_work_order_id"),
         linked_work_order_gate=bool(payload.get("linked_work_order_gate", False)),
         annual_notes=optional_text(payload.get("annual_notes")),
+        previous_prerequisite_session_task_id=nullable_int(
+            payload.get("previous_prerequisite_setup_session_task_id"),
+            "previous_prerequisite_setup_session_task_id",
+        ),
+        prerequisite_session_task_id=nullable_int(
+            payload.get("prerequisite_setup_session_task_id"),
+            "prerequisite_setup_session_task_id",
+        ),
+        previous_downstream_session_task_id=nullable_int(
+            payload.get("previous_downstream_setup_session_task_id"),
+            "previous_downstream_setup_session_task_id",
+        ),
+        downstream_session_task_id=nullable_int(
+            payload.get("downstream_setup_session_task_id"),
+            "downstream_setup_session_task_id",
+        ),
+        planned_order=nullable_int(payload.get("planned_order"), "planned_order"),
     )
     return jsonify(season_task=result)
 
