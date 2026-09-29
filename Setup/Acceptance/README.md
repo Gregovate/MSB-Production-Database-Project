@@ -79,6 +79,30 @@ The launcher and server runner:
 
 Feature-specific behavior belongs in the supplied migration/validation files, not in a new acceptance runner.
 
+## Recoverable browser-preview transport
+
+A disposable browser review must not be discarded merely because the workstation SSH tunnel resets.
+
+The reusable Setup browser launcher now separates **application candidate identity** from later **acceptance-tooling hardening**:
+
+- `-CandidateSha` is the exact application/database candidate under review;
+- the local acceptance-tooling checkout may be a clean descendant of that candidate on the same target branch;
+- the launcher records both Candidate SHA and Tooling SHA;
+- tooling-only reconnect/cleanup hardening does not by itself redefine the application candidate being reviewed.
+
+Before the operator-review wait, the remote runner writes narrow resumable state for the exact preview instance. If the SSH/PTTY transport is lost:
+
+1. the remote wrapper preserves the healthy Flask process, disposable PostgreSQL container, candidate worktree, and existing browser writes;
+2. destructive cleanup does **not** run merely because the terminal disappeared;
+3. the workstation launcher reconnects a foreground SSH tunnel to that same preview;
+4. the resume path verifies candidate/ref/port/operator/version, exact preview PID ownership, listener ownership, and `/api/health`;
+5. the operator continues the same review from the same disposable database state;
+6. normal cleanup and Production-after proof run only when the operator explicitly finishes the review or a nonrecoverable failure occurs.
+
+Automatic reconnect remains foreground and bounded. It does not use `ssh -N`, `ssh -f`, `Start-Process ssh`, or a detached Windows SSH process.
+
+This requirement was strengthened after #205 on 2026-09-29 proved that the browser application remained healthy while the workstation SSH/PTTY reset. The old wrapper then lost terminal input and failed cleanup, forcing repeated operator work despite an intact disposable preview.
+
 ## Reusable disposable browser review
 
 After disposable acceptance passes, use:
