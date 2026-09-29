@@ -46,15 +46,14 @@ def test_perform_work_defaults_to_signed_in_captain_when_scheduled() -> None:
         assert token in ui
 
 
-def test_captain_filter_remembers_explicit_operator_choice() -> None:
+def test_captain_filter_defaults_fresh_each_login_but_allows_current_view_changes() -> None:
     ui = read_app("setup_next_pass.js")
 
     assert "performCaptainFilterKey" in ui
-    assert "msb.setup.performCaptainFilter.v2." in ui
-    assert "window.localStorage.getItem" in ui
-    assert "window.localStorage.setItem" in ui
-    assert "nextStorePerformCaptainFilter(setupNextState.performCaptainFilter)" in ui
-    assert "nextLegacyPerformCaptainFilterStorageKey" in ui
+    assert "nextPerformDefaultCaptainFilter()" in ui
+    assert "setupNextState.performCaptainFilter = select.value || 'ALL'" in ui
+    assert "localStorage" not in ui
+    assert "sessionStorage" not in ui
 
 
 def test_report_work_requires_actual_crew_duration_and_percent() -> None:
@@ -234,7 +233,7 @@ def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
     assert "setup_next_pass.css?v=2026-09-29.1" in html
-    assert "setup_next_pass.js?v=2026-09-29.3" in html
+    assert "setup_next_pass.js?v=2026-09-29.4" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
     assert "setup_acceptance_fixes.js?v=2026-09-26.1" in html
     assert "setup_scheduling_board.css?v=2026-09-29.2" in html
