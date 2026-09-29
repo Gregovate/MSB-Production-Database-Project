@@ -2167,3 +2167,40 @@ If green, run one final source-only disposable browser review of:
 5. clean preview exit with Production fingerprint/live SHA unchanged.
 
 No migrations are required.
+
+---
+
+## POST-PRODUCTION MATERIAL UX FOLLOW-UP REGRESSION PASS
+
+| Field | Value |
+|---|---|
+| Exact tested implementation candidate | 1077e24ce53264b379861123c57d1c3423acf6ff |
+| Regression command | python -m pytest -q -p no:cacheprovider Setup/Application |
+| Result | **575 passed in 1.32s** |
+| Failures / errors | **0** |
+| Branch | agent/setup-206-tablet-material-audit |
+| PR | #252 — DRAFT / mergeable=true |
+| Main comparison before checkpoint | 128 ahead / 0 behind |
+| Database mutation required | **NO** |
+| Production migrations | 063 + 064 already installed |
+
+This PASS includes:
+- V0.3.20 healthy client badge fix;
+- refreshed dirty-guard/Extra Material/Kit asset pins;
+- Kit Inventory primary `LINKED TO TASK` state with subordinate Task / Kit spec note;
+- removal of misleading `LINKED TO TASK — DETAILS DIFFER` / duplicated DETAILS DIFFER wording;
+- Add Source disabling already-linked Containers and labeling them `Already linked — use Change`;
+- Change mode preserving edit access to the existing source.
+
+### Next gate
+
+Run one final source-only disposable browser preview on the exact documentation checkpoint SHA created after this section, with **no migrations**.
+
+Acceptance:
+1. Client V0.3.20 remains correct after health check and normal Ctrl+R;
+2. Church Kit rows show LINKED TO TASK with subordinate spec note where applicable;
+3. Turnbuckle Add Source shows C145 disabled / Already linked — use Change;
+4. Change continues to edit the existing C145 source;
+5. clean preview exit with Production fingerprint and live SHA unchanged.
+
+If accepted, the follow-up is eligible for bounded source-only Production deployment under the Server Management source-only runbook.
