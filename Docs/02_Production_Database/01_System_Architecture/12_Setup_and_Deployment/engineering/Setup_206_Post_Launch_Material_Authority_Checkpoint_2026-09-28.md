@@ -1796,3 +1796,138 @@ If clean, run the final focused disposable browser review:
 6. server/client build guard is matched and Manager writes are not blocked.
 
 No Production deployment until this final browser gate passes.
+
+
+---
+
+## PRE-PRODUCTION RELEASE CHECKPOINT — V0.3.20 Material Authority
+
+This is the final acceptance checkpoint before any Production deployment work.
+
+| Field | Value |
+|---|---|
+| Exact browser-accepted candidate | `947b86a9598584717167cce094cd78d99e9a71e7` |
+| Candidate version | `V0.3.20-material-authority` |
+| Branch | `agent/setup-206-tablet-material-audit` |
+| PR | #252 — DRAFT / mergeable=false |
+| Main comparison before checkpoint | 111 ahead / 0 behind |
+| Production mutation authorized | **NO — deployment gate only** |
+| Current live Production version | `V0.3.19-pick-list` |
+| Current live Setup SHA | `fc0b76d57826eebf04b81c99cbb904109162cd87` |
+
+### Full regression
+
+Exact tested implementation:
+
+`431fde764fa8da859f35b1df0e314cb002d66db6`
+
+Result:
+
+`573 passed in 0.99s`
+
+The later documentation-only checkpoint did not alter application/test behavior.
+
+### Reusable disposable acceptance
+
+Exact release candidate:
+
+`947b86a9598584717167cce094cd78d99e9a71e7`
+
+Result:
+
+`SETUP_REUSABLE_DISPOSABLE_ACCEPTANCE_PASS`
+
+Production Setup fingerprint:
+
+- before: `214f843b88a630e03330ac8f378cf0c8`
+- after:  `214f843b88a630e03330ac8f378cf0c8`
+- **PASS: unchanged**
+
+Live Setup checkout:
+
+- before: `fc0b76d57826eebf04b81c99cbb904109162cd87`
+- after:  `fc0b76d57826eebf04b81c99cbb904109162cd87`
+- **PASS: unchanged**
+
+Retained report:
+
+`/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Acceptance_20260929T002753.txt`
+
+Exit status: `0`
+
+### Final disposable browser acceptance
+
+Exact release candidate:
+
+`947b86a9598584717167cce094cd78d99e9a71e7`
+
+Operator acceptance:
+
+- visible header shows **Client V0.3.20**;
+- Kit Inventory opens;
+- **Back to Setup Session** returns cleanly;
+- Reusable Task Catalog renders correctly without `Ctrl+Shift+R`;
+- no client/server build mismatch blocks Manager actions;
+- C145 **Edit / Remove** vs **Count / Adjust** is clear in light/dark mode;
+- source search accepts numeric, C-prefixed, lower-case C-prefixed, and padded C### identity forms;
+- Material Audit historical restore/reassignment behavior remains correct.
+
+Browser preview cleanup:
+
+`SETUP_REUSABLE_DISPOSABLE_BROWSER_PREVIEW_CLEAN_EXIT`
+
+Production Setup fingerprint:
+
+- before: `214f843b88a630e03330ac8f378cf0c8`
+- after:  `214f843b88a630e03330ac8f378cf0c8`
+- **PASS: unchanged**
+
+Live Setup checkout:
+
+- before: `fc0b76d57826eebf04b81c99cbb904109162cd87`
+- after:  `fc0b76d57826eebf04b81c99cbb904109162cd87`
+- **PASS: unchanged**
+
+Retained browser evidence:
+
+- Flask log: `/tmp/Setup_Disposable_Browser_Preview_Flask_20260929T003037.log`
+- report: `/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20260929T003037.txt`
+- exit status: `0`
+
+### Accepted release behavior
+
+Preserve all of the following in Production deployment:
+
+- `V0.3.20-material-authority` server/client build identity;
+- Rolling Pick List contains physical actionable picks only;
+- no Manager material-diagnostic exception panel on Pick List;
+- human-readable Container IDs use `C###`;
+- task Extra Material requirement and source Container remain separate facts;
+- expected Kit contents and physical inventory remain separate facts;
+- **Edit / Remove** is visually distinct from **Count / Adjust**;
+- `LINKED TO TASK — DETAILS DIFFER` does not imply a broken source relationship;
+- governed historical requirement restore preserves exact requirement/source authority;
+- mistaken reusable-task Extra Material remains hard-delete behavior;
+- expected-content removal remains dependency guarded;
+- source Container search accepts `145`, `C145`, `c145`, and padded labels such as `C030`;
+- new Extra Materials and Kit Inventory operator SOP remains linked from Setup operator/manager documentation;
+- unknown quantities/specs are not fabricated;
+- Procedure/PPE/tool mentions are not automatically promoted into Extra Material authority.
+
+### Production deployment boundary
+
+Do **not** reuse the older V0.3.19 Pick List deployment runner unchanged.
+
+This release requires:
+
+- source/application target corresponding to the accepted V0.3.20 candidate;
+- migration 063:
+  `Setup/Database/063_harden_setup_extra_material_requirement_lifecycle.sql`;
+- migration 064:
+  `Setup/Database/064_add_setup_extra_material_requirement_restore.sql`;
+- current Production live-state preflight against V0.3.19 / `fc0b76d...`;
+- governed rollback/archive handling under MSB-Server-Management authority;
+- post-deployment server/client V0.3.20 verification;
+- retained Production acceptance evidence.
+
+The next action is **Production deployment engineering/preflight**, not direct ad-hoc mutation.
