@@ -2046,3 +2046,50 @@ Acceptance:
 6. clean browser-preview exit with Production fingerprint/live SHA unchanged.
 
 If accepted, deploy as a bounded **source-only** Setup application correction using the Server Management source-only deployment runbook. Do not rerun migrations 063/064.
+
+
+---
+
+## POST-PRODUCTION BADGE FIX BROWSER PASS
+
+| Field | Value |
+|---|---|
+| Exact preview candidate | `a1f82e4f530a6d3048540537dbf295e7942ce915` |
+| Production application during preview | `947b86a9598584717167cce094cd78d99e9a71e7` |
+| Production version | `V0.3.20-material-authority` |
+| Preview result | **PASS / CLEAN EXIT** |
+| Production mutation during preview | **NONE** |
+
+Operator confirmed the disposable browser stayed at **Client V0.3.20**.
+
+Preview cleanup evidence:
+
+```text
+SETUP_REUSABLE_DISPOSABLE_BROWSER_PREVIEW_CLEAN_EXIT
+Production Setup fingerprint before: 214f843b88a630e03330ac8f378cf0c8
+Production Setup fingerprint after:  214f843b88a630e03330ac8f378cf0c8
+PASS: Production Setup fingerprint unchanged
+Live Setup SHA before: 947b86a9598584717167cce094cd78d99e9a71e7
+Live Setup SHA after:  947b86a9598584717167cce094cd78d99e9a71e7
+PASS: live Setup checkout unchanged
+Preview Flask log: /tmp/Setup_Disposable_Browser_Preview_Flask_20260929T010157.log
+Preview report: /home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20260929T010157.txt
+Exit status: 0
+```
+
+The V0.3.20 badge defect is therefore corrected in the source-only candidate and independently browser accepted.
+
+### Additional operator UX findings while reviewing Church Tree material
+
+Two non-database UI clarifications remain before the source-only follow-up is frozen:
+
+1. Kit Inventory should present the valid relationship primarily as **LINKED TO TASK**. A task-vs-Kit variant mismatch is subordinate detail, not a broken material/source relationship. Current reverse projection already requires the same `setup_extra_material_id`.
+2. **Add Source** should not present an already-active source Container as though it can be added again. Existing source facts are changed through **Change**.
+
+Do not alter database authority or collapse the three separate quantities:
+
+```text
+task requirement quantity
+source allocation quantity
+Kit expected quantity
+```
