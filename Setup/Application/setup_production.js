@@ -28,7 +28,7 @@ async function api(path, options = {}) {
   const isSetupCommand = options?.headers?.['X-MSB-Setup-Command'] === '1';
   if (isSetupCommand) {
     const checkBuild = window.msbSetupEnsureServerBuild;
-    if (typeof checkBuild !== 'function' || !(await checkBuild())) {
+    if (typeof checkBuild !== 'function' || !(await checkBuild({ alertUser: false }))) {
       throw new Error('Refresh required before changing Setup data.');
     }
   }
