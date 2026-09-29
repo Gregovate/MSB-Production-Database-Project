@@ -28,6 +28,8 @@ Layout / Erect Frame / Strap Down
 
 Those gates are 2026 annual facts. They must not become reusable Catalog tasks.
 
+**Hard invariant confirmed 2026-09-29:** `SEASON_ONLY` tasks remain in their originating season permanently. They are never promoted, converted, copied, or written back into the Master reusable task Catalog, and they never seed a future Setup Session. If a recurring need is discovered from annual experience, a separate reusable task must be created through the governed reusable Catalog workflow while the original season-only row remains unchanged as that season's history.
+
 The same review also exposed a 2026-only road/site-work readiness hold. That hold must not be written into reusable `ref.setup_task.readiness_note`.
 
 Until the annual graph and annual-only hold are trustworthy, #206 cannot safely decide whether downstream material-frontier behavior is wrong.
