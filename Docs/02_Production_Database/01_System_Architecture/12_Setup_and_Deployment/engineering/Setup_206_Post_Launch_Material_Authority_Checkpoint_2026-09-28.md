@@ -2891,3 +2891,105 @@ Preserve all of the following:
 7. reusable Catalog readiness remains unchanged by seasonal-only notes;
 8. accepted deadline-first sorting remains unchanged.
 
+
+
+---
+
+## 2026 PARK MATERIAL-ACCESS GATE — OCTOBER 5
+
+This section supersedes any interpretation that the 2026 pre-October-5 condition should be modeled as ordinary task readiness.
+
+### Operator-established fact
+
+For 2026:
+
+```text
+before 2026-10-05
+    locates and other permitted non-material work may occur
+    material may be picked/staged at the shop
+    physical Setup material may NOT be moved into the park
+
+on/after 2026-10-05
+    City agreement permits material move-in to the park
+```
+
+This is a season/session logistics constraint.
+
+It is **not** reusable task readiness.
+
+Do not write this date into `ref.setup_task.readiness_note`.
+
+Do not mark all affected tasks NOT_READY merely because material entry is restricted; doing so would incorrectly block legitimate pre-Oct-5 work such as Locate.
+
+### Required logistics/date separation
+
+The Pick List currently has concepts that are too easy to conflate.
+
+Required semantics:
+
+```text
+Trigger / precursor date
+    real scheduled work that caused early material visibility
+
+Pick By
+    warehouse/storage pull or staging target
+    may be before Oct 5
+
+Park Move Not Before / Mobilize Not Before
+    annual/session logistics constraint
+    2026 value = Oct 5
+
+Needed For
+    actual downstream material-use date if scheduled
+    otherwise unknown / not yet scheduled
+```
+
+Winter Wonderland example:
+
+```text
+Locate scheduled 9/29
+    -> downstream material visible early
+    -> material may be picked at shop before Oct 5
+    -> material may NOT enter park before Oct 5
+    -> Setup Needed For is NOT 9/29 unless Setup itself is scheduled 9/29
+```
+
+### Physical state boundary
+
+Picking and park mobilization are distinct physical facts.
+
+A valid sequence may be:
+
+```text
+visible on Pick List
+    -> PICKED / STAGED AT SHOP
+    -> waiting on park access
+    -> MOBILIZED TO PARK on/after Oct 5
+```
+
+Do not treat a shop pick as park delivery.
+Do not hide the item because park access is not yet open.
+Do not automatically defer shop picking.
+
+### Ownership
+
+- #205: continue scheduling permitted pre-access work; do not encode Oct 5 as reusable readiness.
+- #206: own truthful Pick List/movement presentation and the material-mobilization gate.
+- #122: own the annual Setup integration fact that 2026 City material move-in begins Oct 5.
+
+### Engineering direction
+
+Before adding schema, inspect whether existing session/annual/override structures can represent this one-season mobilization not-before rule safely.
+
+If a schema gap is proven, the new field must represent the logistics/mobilization boundary explicitly rather than overloading task readiness or Needed For.
+
+Acceptance must prove:
+
+1. Winter Wonderland Locate on 9/29 can still be scheduled/performed;
+2. downstream material remains visible before Oct 5;
+3. early shop picking remains allowed;
+4. Needed For does not falsely claim Setup is 9/29;
+5. park mobilization is clearly blocked before Oct 5;
+6. material can transition to park movement on/after Oct 5;
+7. reusable Catalog remains unchanged.
+
