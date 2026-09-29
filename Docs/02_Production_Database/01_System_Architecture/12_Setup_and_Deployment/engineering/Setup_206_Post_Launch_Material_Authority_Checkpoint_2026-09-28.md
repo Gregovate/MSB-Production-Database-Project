@@ -1615,3 +1615,118 @@ Next:
    - server/client build guard remains matched and writes are not blocked.
 
 No Production deployment before those gates pass.
+
+
+---
+
+## THREAD RECOVERY CHECKPOINT — V0.3.20 Gate Reset
+
+This section is intentionally self-contained so #206 can resume safely if the current chat/thread ends.
+
+| Field | Value |
+|---|---|
+| Branch before this documentation checkpoint | `agent/setup-206-tablet-material-audit` |
+| Exact implementation head | `2bd4c45ad19554092202f60fd6ffb7efc960fb78` |
+| Candidate client/server version | `V0.3.20-material-authority` |
+| PR | #252 — DRAFT |
+| Production deployment authorized | **NO** |
+| Current live Production version | `V0.3.19-pick-list` |
+| Current live Setup SHA (last documented) | `fc0b76d57826eebf04b81c99cbb904109162cd87` |
+
+### Why V0.3.20 exists
+
+The #206 post-launch candidate is materially beyond the original V0.3.19 Pick List release. It now includes governed material lifecycle and historical restore, task/source/Kit reconciliation, Material Audit correction behavior, Kit Inventory expected-content maintenance, Container source search improvements, Pick List cleanup, and operator procedures.
+
+The candidate therefore advances to:
+
+`V0.3.20-material-authority`
+
+The visible client badge must show:
+
+`Client V0.3.20`
+
+Server `/api/health` must report:
+
+`V0.3.20-material-authority`
+
+### Accepted browser findings before V0.3.20 version bump
+
+On exact candidate `8a13328f531e5644be82053b4e0fa855cea4641c`:
+
+- C145 stale Plywood expected content could be removed correctly.
+- **Edit / Remove** and **Count / Adjust** were clear in both light and dark mode.
+- Pick List rendered correctly with human-readable `C###` Container IDs.
+- Kit Inventory opened correctly.
+- Expected Source Container search accepted `145`, `C145`, `c145`, and padded `C030`.
+- Material Audit restored Northern Lights T-Post authority to the correct Northern Lights task.
+- A browser return-path defect remained: Kit Inventory -> Setup -> Reusable Task Catalog sometimes required `Ctrl+Shift+R`.
+
+### Return-path cache correction
+
+The return-path issue was traced to a stale outer bridge asset pin:
+
+- inner source editor had advanced to `setup_task_extra_material_sources.js?v=2026-09-28.3`;
+- outer Production shell still loaded `setup_extra_materials.js?v=2026-09-28.2`.
+
+The candidate was corrected so `production.html` loads:
+
+`setup_extra_materials.js?v=2026-09-28.3`
+
+A regression contract now requires the outer and inner cache-bust boundaries to stay aligned.
+
+Regression for that cache-fix candidate:
+
+`573 passed in 1.07s`
+
+Reusable disposable acceptance after that regression:
+
+`SETUP REUSABLE DISPOSABLE ACCEPTANCE: CLEAN EXIT`
+
+### V0.3.20 regression attempt — current stop point
+
+After advancing the client/server build to `V0.3.20-material-authority`, the full Setup/Application regression was run.
+
+Result:
+
+`572 passed, 1 failed in 1.14s`
+
+The **only failure** is:
+
+`Setup/Application/test_setup_222_performance_trace_contract.py::test_setup_performance_trace_version_is_distinct`
+
+The failing assertion is stale test authority:
+
+`assert 'PRODUCTION_VERSION = "V0.3.19-pick-list"' in text`
+
+The implementation correctly contains:
+
+`PRODUCTION_VERSION = "V0.3.20-material-authority"`
+
+This is a **test-only contract correction**, not an application behavior change. Issue #222 performance tracing itself is not being redesigned here.
+
+### Exact next actions
+
+1. Update only the stale #222 version assertion to require `V0.3.20-material-authority`.
+2. Rerun the entire `Setup/Application` regression.
+3. If green, write a PASS checkpoint.
+4. Rerun reusable disposable acceptance with:
+   - `063_harden_setup_extra_material_requirement_lifecycle.sql`
+   - `064_add_setup_extra_material_requirement_restore.sql`
+   - `setup_206_extra_material_lifecycle_disposable_validation.sql`
+5. Run the final focused disposable browser check:
+   - header shows **Client V0.3.20**;
+   - Kit Inventory -> Back to Setup Session -> Reusable Task Catalog renders correctly **without Ctrl+Shift+R**;
+   - server/client build guard is matched and Manager writes remain enabled.
+6. Only after those gates pass should Production deployment tooling/review begin.
+
+### Do not lose these release requirements
+
+Before Production:
+
+- do not revert the clearer **Edit / Remove** button or merge it with **Count / Adjust**;
+- keep `LINKED TO TASK — DETAILS DIFFER` instead of misleading `TASK LINK NEEDS REVIEW`;
+- keep source search compatible with numeric, C-prefixed, and padded Container IDs;
+- keep the dedicated **Extra Materials and Kit Inventory** operator SOP and links;
+- keep task requirement, source Container, expected Kit content, and physical inventory as separate operator concepts;
+- do not fabricate unknown quantities or treat Procedure/PPE mentions as automatic Extra Material authority;
+- do not use the old V0.3.19 #206 Production deploy runner unchanged for this V0.3.20/migrations 063+064 release.
