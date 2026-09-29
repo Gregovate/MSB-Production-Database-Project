@@ -1116,7 +1116,6 @@ class SetupSchedulingBoardRepository:
                 SELECT setup_session_id, task_origin
                 FROM ops.setup_session_task
                 WHERE setup_session_task_id = %s
-                FOR UPDATE
                 """,
                 (session_task_id,),
             )
