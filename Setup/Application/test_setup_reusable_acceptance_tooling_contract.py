@@ -53,6 +53,25 @@ def test_reusable_browser_preview_is_parameterized_and_version_pinnable() -> Non
     assert "SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY" in server
 
 
+def test_reusable_launchers_fail_before_server_contact_on_setup_build_identity_drift() -> None:
+    disposable = read_acceptance("run_setup_disposable_acceptance.ps1")
+    browser = read_acceptance("run_setup_disposable_browser_preview.ps1")
+
+    for launcher in (disposable, browser):
+        assert "function Get-CandidateSetupBuildIdentity" in launcher
+        assert "Setup/Application/production_backend.py" in launcher
+        assert "Setup/Application/setup_catalog_dirty_guard.js" in launcher
+        assert "PRODUCTION_VERSION" in launcher
+        assert "CLIENT_BUILD" in launcher
+        assert "$buildIdentity.Server -ne $buildIdentity.Client" in launcher
+        assert "STOP before server contact: Setup client/server version mismatch" in launcher
+
+    assert "[Parameter(Mandatory=$true)]\n    [string]$ExpectedVersion" in browser
+    assert "$ExpectedVersion -ne $buildIdentity.Server" in browser
+    assert "ExpectedVersion" in browser
+    assert "does not match exact candidate Setup build" in browser
+
+
 def test_reusable_browser_preview_preserves_setup_procedure_runtime_mounts() -> None:
     server = read_acceptance("setup_disposable_browser_preview_server.sh")
 
