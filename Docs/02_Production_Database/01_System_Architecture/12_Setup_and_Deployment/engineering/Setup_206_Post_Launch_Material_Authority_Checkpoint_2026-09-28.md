@@ -2422,3 +2422,57 @@ Validate:
 - Add Source retains Already linked — use Change behavior.
 
 Keep the #140 Layout Light Locations T-Post correction separate as a bounded Production data cleanup after source-only acceptance.
+
+---
+
+## POST-DEPLOY PICK LIST DEADLINE SORT FIX CHECKPOINT
+
+| Field | Value |
+|---|---|
+| Implementation head before documentation checkpoint | `18a53435cf82c315cd5c3f64fe478e0faf40a1f8` |
+| Production currently live | `3cedba88283e4766932ae7905034856a2b9baa00` |
+| Version | `V0.3.20-material-authority` |
+| Database mutation required | **NO** |
+
+### Production smoke finding
+
+Protected-route Production validation showed that Pick List date values were correct, but browser row ordering was wrong because home rack/location had absolute precedence.
+
+Observed example:
+- an RA02 item with Pick By 10/3;
+- RA05 items with Pick By 10/5;
+- an RA06 item with Pick By 9/28;
+
+The 9/28 item appeared below later October work solely because the browser applied rack-first ordering.
+
+### Non-negotiable operational ordering
+
+The Pick List answers **what must be pulled first** before optimizing **where the picker walks**.
+
+Required row precedence:
+1. **Pick By** date;
+2. **Needed For** date;
+3. physical rack/home-location walk order;
+4. physical identity / existing final tie-break.
+
+Rack/location order is therefore a secondary optimization only among items with the same operational deadline.
+
+The D-1 staging rule and no-Sunday rule remain unchanged.
+
+### Source correction
+
+`setup_pick_list.js` now uses `comparePickListOrder(a, b, selectedDate)` instead of sorting directly with `compareHomeLocations`.
+
+`comparePickListOrder` compares Pick By first, Needed For second, then delegates to the existing rack-location comparator.
+
+Pick List JavaScript asset pin advances to `setup_pick_list.js?v=2026-09-29.1`.
+
+### Next gate
+
+Run full `Setup/Application` regression on the exact documentation checkpoint SHA created after this section.
+
+If green, browser-review the Pick List specifically to verify:
+- 9/28 rows appear before 10/3 and 10/5 rows;
+- same-date rows remain in useful rack walk order;
+- displayed Pick By / Needed For dates remain unchanged;
+- QR, status, destination, and print layout remain intact.
