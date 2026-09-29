@@ -184,15 +184,24 @@ def test_pick_list_separates_physical_rows_and_emphasizes_home_location() -> Non
 
 
 
-def test_pick_list_defaults_to_physical_rack_walk_order() -> None:
+def test_pick_list_sorts_by_pick_deadline_then_physical_rack_walk_order() -> None:
     ui = read("setup_pick_list.js")
+    html = read("pick_list.html")
     assert "function rackLocationParts(locationCode)" in ui
     assert "function compareHomeLocations(a, b)" in ui
-    assert ".sort(compareHomeLocations)" in ui
+    assert "function comparePickListOrder(a, b, selectedDate)" in ui
+    assert "leftDates.pickBy" in ui
+    assert "rightDates.pickBy" in ui
+    assert "leftDates.neededFor" in ui
+    assert "rightDates.neededFor" in ui
+    assert "return compareHomeLocations(a, b);" in ui
+    assert ".sort((a, b) => comparePickListOrder(a, b, date))" in ui
+    assert ".sort(compareHomeLocations)" not in ui
     assert "left.row.localeCompare" in ui
     assert "left.column - right.column" in ui
     assert "left.level.localeCompare" in ui
     assert "left.slot - right.slot" in ui
+    assert "setup_pick_list.js?v=2026-09-29.1" in html
 
 
 def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_assignment() -> None:
