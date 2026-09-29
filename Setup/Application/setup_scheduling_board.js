@@ -2360,6 +2360,11 @@ function board205OpenSeasonTaskDialog(sessionTaskId = null) {
   const form = document.getElementById('setup-board205-season-form');
   if (!dialog || !form) return;
   form.reset();
+  const inlineError = document.getElementById('setup-board205-season-error');
+  if (inlineError) {
+    inlineError.textContent = '';
+    inlineError.hidden = true;
+  }
   setupBoard205State.editSeasonTaskId = sessionTaskId;
   setupBoard205State.seasonPlacementOriginal = {
     prerequisiteId: null,
@@ -2487,8 +2492,13 @@ async function board205SubmitSeasonTask(event) {
       'ok'
     );
   } catch (error) {
-    setAlert(error.message || error, 'error');
-    window.alert(error.message || error);
+    const message = error.message || String(error);
+    setAlert(message, 'error');
+    const inlineError = document.getElementById('setup-board205-season-error');
+    if (inlineError) {
+      inlineError.textContent = message;
+      inlineError.hidden = false;
+    }
   } finally {
     setBusy(false);
   }
@@ -2696,6 +2706,12 @@ function board205InstallView() {
           </div>
           <label class="checkbox-label"><input id="setup-board205-season-gate" type="checkbox"> Work Order completion satisfies this gate</label>
           <span></span>
+          <div id="setup-board205-season-chain" class="setup-board205-form-grid setup-board205-placement-grid">
+            <label>This task happens after <span class="muted">(optional)</span><select id="setup-board205-season-prereq"></select></label>
+            <label>This task must happen before <span class="muted">(optional)</span><select id="setup-board205-season-downstream"></select></label>
+            <p class="muted setup-board205-placement-help">Use one side when that is enough. Use both only when this task must happen between two specific Setup steps.</p>
+          </div>
+          <div id="setup-board205-season-placement-note" class="muted" hidden></div>
           <label>Crew min<input id="setup-board205-season-crew-min" type="number" min="0"></label>
           <label>Crew max<input id="setup-board205-season-crew-max" type="number" min="0"></label>
           <label>Expected hours<input id="setup-board205-season-hours" type="number" min="0"></label>
@@ -2705,11 +2721,7 @@ function board205InstallView() {
         <label>Completion point<textarea id="setup-board205-season-completion" rows="2"></textarea></label>
         <label>Readiness / hold note<textarea id="setup-board205-season-readiness" rows="2"></textarea></label>
         <label>Annual notes<textarea id="setup-board205-season-notes" rows="3"></textarea></label>
-        <div id="setup-board205-season-chain" class="setup-board205-form-grid">
-          <label>Place after / requires<select id="setup-board205-season-prereq"></select></label>
-          <label>Before / blocks<select id="setup-board205-season-downstream"></select></label>
-        </div>
-        <div id="setup-board205-season-placement-note" class="muted" hidden></div>
+        <div id="setup-board205-season-error" class="notice" data-state="error" role="alert" hidden></div>
         <menu><button id="setup-board205-delete-season-task" type="button" class="danger" hidden>Delete Season Task</button><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Save Season Task</button></menu>
       </form>
     </dialog>
