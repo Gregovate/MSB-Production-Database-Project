@@ -773,6 +773,15 @@
   gap: 0.7rem;
 }
 
+.setup-board205-placement-grid {
+  grid-column: 1 / -1;
+}
+
+.setup-board205-placement-help {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 .setup-board205-dialog menu {
   display: flex;
   flex-wrap: wrap;
