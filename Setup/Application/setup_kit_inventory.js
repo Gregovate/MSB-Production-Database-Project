@@ -125,15 +125,14 @@
     });
     const detailsDiffer = unique.some((task) => task.link_state === 'TASK_LINK_NEEDS_REVIEW');
     const review = detailsDiffer
-      ? '<div class="kit-content-link-review"><strong>LINKED TO TASK — DETAILS DIFFER</strong><span>Source relationship is recorded. Task and Kit descriptions/specifications do not match exactly.</span></div>'
+      ? '<div class="kit-content-link-review"><strong>LINKED TO TASK</strong><span>Task / Kit spec differs. Material identity and source relationship are already linked.</span></div>'
       : '';
     return `<div class="kit-content-task-use">${review}${unique.map((task) => {
       const scope = [task.stage_key, task.stage_name].filter(Boolean).join(' · ');
       const qty = task.expected_quantity == null ? '' : ` · Qty ${formatNumber(task.expected_quantity)}`;
-      const stateLabel = task.link_state === 'TASK_LINK_NEEDS_REVIEW' ? ' · DETAILS DIFFER' : '';
       return `<a href="${APP_BASE}?view=review&setup_task_id=${encodeURIComponent(task.setup_task_id)}&correction=extra-material-source&setup_task_extra_material_id=${encodeURIComponent(task.setup_task_extra_material_id)}">
         <strong>#${escapeHtml(task.setup_task_id)} · ${escapeHtml(task.task_name)}</strong>
-        <span>${escapeHtml(scope)}${escapeHtml(qty)}${escapeHtml(stateLabel)}</span>
+        <span>${escapeHtml(scope)}${escapeHtml(qty)}</span>
       </a>`;
     }).join('')}</div>`;
   }
