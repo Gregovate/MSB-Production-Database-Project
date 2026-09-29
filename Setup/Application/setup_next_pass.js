@@ -910,45 +910,6 @@ function nextPerformScheduledCaptains() {
   );
 }
 
-function nextPerformCaptainFilterStorageKey() {
-  const email = String(appState.access?.authenticated_email || 'unknown').trim().toLowerCase();
-  const season = Number(appState.seasonYear) || 'none';
-  return `msb.setup.performCaptainFilter.v2.${email}.${season}`;
-}
-
-function nextLegacyPerformCaptainFilterStorageKey() {
-  const email = String(appState.access?.authenticated_email || 'unknown').trim().toLowerCase();
-  const season = Number(appState.seasonYear) || 'none';
-  return `msb.setup.performCaptainFilter.v1.${email}.${season}`;
-}
-
-function nextStoredPerformCaptainFilter() {
-  try {
-    const current = window.localStorage.getItem(nextPerformCaptainFilterStorageKey());
-    if (current) return current;
-
-    // V1 could persist the old default "ALL" before the signed-in-Captain
-    // default was corrected. Preserve an explicit Captain choice, but ignore a
-    // stale ALL so a scheduled Captain gets their own work on first V2 load.
-    const legacy = window.localStorage.getItem(nextLegacyPerformCaptainFilterStorageKey());
-    if (legacy && legacy !== 'ALL') {
-      window.localStorage.setItem(nextPerformCaptainFilterStorageKey(), legacy);
-      return legacy;
-    }
-    return null;
-  } catch (_error) {
-    return null;
-  }
-}
-
-function nextStorePerformCaptainFilter(value) {
-  try {
-    window.localStorage.setItem(nextPerformCaptainFilterStorageKey(), value);
-  } catch (_error) {
-    // Browser storage is only a convenience; filtering must still work without it.
-  }
-}
-
 function nextPerformDefaultCaptainFilter() {
   const signedInPersonId = Number(appState.access?.captain_person_id || 0);
   const email = String(appState.access?.authenticated_email || '').trim().toLowerCase();
