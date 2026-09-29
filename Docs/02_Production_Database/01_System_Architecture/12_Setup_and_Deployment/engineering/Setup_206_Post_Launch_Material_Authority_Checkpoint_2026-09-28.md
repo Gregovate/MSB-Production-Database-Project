@@ -2204,3 +2204,91 @@ Acceptance:
 5. clean preview exit with Production fingerprint and live SHA unchanged.
 
 If accepted, the follow-up is eligible for bounded source-only Production deployment under the Server Management source-only runbook.
+
+---
+
+## POST-PRODUCTION CATALOG ORGANIZATION RACE FIX CHECKPOINT
+
+| Field | Value |
+|---|---|
+| Implementation head before documentation checkpoint | 6226f5809bded53ed5e45bacceed023157ab8c9f |
+| Branch | agent/setup-206-tablet-material-audit |
+| PR | #252 — DRAFT / mergeable=true |
+| Main comparison before checkpoint | 134 ahead / 0 behind |
+| Production application currently live | 947b86a9598584717167cce094cd78d99e9a71e7 |
+| Production version | V0.3.20-material-authority |
+| Database migration state | 063 + 064 installed |
+| Database mutation required | **NO** |
+
+### Browser defect reproduced
+
+Operator reproduced an intermittent Reusable Task Catalog rendering defect after returning from Kit Inventory.
+
+Bad state:
+- obsolete flat/legacy Catalog renderer;
+- no Expand All / Collapse All controls;
+- no current Site-wide / Stage / Scene grouped layout.
+
+Good state:
+- current setup_next_pass.js grouped Catalog;
+- Expand All / Collapse All controls;
+- Site-wide / Infrastructure + Stage/Scene organization.
+
+Hard refresh changed timing and usually produced the good state; repeated navigation could later work without refresh.
+
+### Root cause
+
+`setup_next_pass.js` started the organization request asynchronously but used `setupNextState.scenes.length` as a readiness proxy.
+
+While `api/setup/organization` was still in flight, `renderLibraryNextPass()` could see an empty scenes array and deliberately call the prior legacy `renderLibrary()`.
+
+This made a normal asynchronous startup condition visible as the obsolete Catalog UI.
+
+### Correction
+
+`setupNextState` now tracks explicit organization state:
+- `organizationStatus`: idle / loading / ready / failed;
+- `organizationPromise`: current in-flight request;
+- `organizationError`: retained failure context.
+
+`loadNextOrganization()` now:
+- deduplicates an existing in-flight load;
+- marks loading/ready/failed explicitly;
+- preserves the organization error for operator retry.
+
+`renderLibraryNextPass()` no longer falls back to the legacy renderer.
+
+Instead:
+- idle/loading -> `Loading reusable Catalog organization…`;
+- failed -> explicit `Reusable Catalog organization could not be loaded.` plus `Retry Catalog Organization`;
+- ready -> current grouped Site-wide / Stage / Scene renderer.
+
+`reloadTasksNextPass()` no longer tests scenes length before rendering.
+
+Asset pin advanced:
+`setup_next_pass.js?v=2026-09-29.1`
+
+Regression contract now requires explicit readiness states and rejects both legacy fallback patterns:
+- `priorNextRenderLibrary`
+- `if (!setupNextState.scenes.length)`
+
+### Existing accepted follow-up scope remains
+
+This candidate also retains:
+- Client V0.3.20 healthy badge correction;
+- Kit primary `LINKED TO TASK` wording with subordinate spec note;
+- already-linked Add Source Containers disabled / labeled `Already linked — use Change`;
+- refreshed Extra Material and Kit Inventory asset pins.
+
+### Next gate
+
+Run full `Setup/Application` regression on the exact documentation checkpoint SHA created after this section.
+
+If green, run a focused source-only disposable browser preview with no migrations:
+1. open Setup and immediately enter Reusable Task Catalog;
+2. return Kit Inventory -> Back to Setup Session -> Reusable Task Catalog repeatedly;
+3. the obsolete flat Catalog must never appear;
+4. if organization is genuinely slow, only the loading state may appear before grouped Catalog;
+5. Client V0.3.20 remains correct;
+6. Kit/source UX follow-ups remain correct;
+7. clean preview exit with Production fingerprint/live SHA unchanged.
