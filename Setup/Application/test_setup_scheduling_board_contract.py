@@ -308,8 +308,8 @@ def test_122_planning_screen_uses_compact_operational_kpis_and_stage_scoped_plac
 def test_122_season_task_type_labels_explain_operator_meaning() -> None:
     ui = read_app("setup_scheduling_board.js")
 
-    assert ">Setup Work<" in ui
-    assert ">Wait / Gate<" in ui
+    assert ">Setup Work — schedulable<" in ui
+    assert ">Wait / Gate — not schedulable<" in ui
     assert ">Support / Prep<" in ui
     assert ">Unload Container<" in ui
 
@@ -544,7 +544,11 @@ def test_205_season_task_editor_is_in_annual_plan_not_reusable_catalog() -> None
     assert "function board205WorkOrderMatches(" in ui
     assert "terms.every((term) => haystack.includes(term))" in ui
     assert "No Work Order" in ui
-    assert "Work Order completion satisfies this gate" in ui
+    assert "Linked Work Order completion satisfies this Wait / Gate" in ui
+    assert "Wait / Gate is NOT scheduled to a crew or work day." in ui
+    assert "Setup Work is real crew work." in ui
+    assert "actionType === 'GATE' && document.getElementById('setup-board205-season-gate').checked" in ui
+    assert "gate.disabled = !isGate" in ui
     assert "This task happens after" in ui
     assert "This task must happen before" in ui
     assert "board205SeasonPlacementState" in ui
