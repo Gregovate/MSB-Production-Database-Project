@@ -1445,3 +1445,65 @@ If green, run one focused fresh disposable browser review of:
 4. operator SOP links resolving from the Setup documentation/index.
 
 No Production deployment until this focused browser review is accepted.
+
+
+---
+
+## Continuation Checkpoint — Browser Return-Path Cache Fix
+
+| Field | Value |
+|---|---|
+| Implementation head before documentation checkpoint | `9bcd30a2521ebfd14cf25d2498aa5650ff35e550` |
+| Branch | `agent/setup-206-tablet-material-audit` |
+| Production mutation authorized | **NO** |
+
+### Focused browser result on prior candidate
+
+Prior exact browser candidate:
+
+`8a13328f531e5644be82053b4e0fa855cea4641c`
+
+Accepted in browser:
+
+- C145 **Edit / Remove** is visually distinct from **Count / Adjust** in light and dark modes;
+- stale Plywood expected content can be removed correctly;
+- Pick List still renders with human-readable `C###` Container IDs;
+- Kit Inventory opens correctly;
+- Material Audit restore/reassignment behavior for Northern Lights remains correct;
+- Expected Source Container search accepts `145`, `C145`, `c145`, and padded identities such as `C030`.
+
+Release blocker found:
+
+- returning from Kit Inventory to Reusable Task Catalog could render incorrectly until `Ctrl+Shift+R`.
+
+### Correction
+
+The candidate had changed the bridge file:
+
+`Setup/Application/setup_extra_materials.js`
+
+so it loaded:
+
+`setup_task_extra_material_sources.js?v=2026-09-28.3`
+
+but `Setup/Application/production.html` still referenced the bridge itself as:
+
+`setup_extra_materials.js?v=2026-09-28.2`
+
+The Production shell pin is now bumped to:
+
+`setup_extra_materials.js?v=2026-09-28.3`
+
+A regression contract now requires both the outer bridge pin and the inner source-editor pin to remain aligned at the current candidate version.
+
+### Next gate
+
+Run the full `Setup/Application` regression on the exact documentation checkpoint SHA created after this section is committed.
+
+If green:
+
+1. rerun reusable disposable acceptance with migrations 063 and 064 plus the #206 lifecycle validation;
+2. run a focused fresh browser check of **Kit Inventory -> Back to Setup Session -> Reusable Task Catalog** without hard refresh;
+3. confirm no stale/malformed rendering occurs.
+
+No Production deployment until that return-path browser check passes.
