@@ -24,6 +24,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 OLD_HEAD=""
 PROD_BEFORE=""
+SESSION_2026_BEFORE=""
 APP_ADVANCED=0
 SUCCESS=0
 
@@ -110,9 +111,9 @@ cleanup() {
     if [[ -n "$PROD_BEFORE" ]]; then
         PROD_AFTER="$(prod_fingerprint 2>/dev/null || true)"
         echo "Production Setup fingerprint before: $PROD_BEFORE"
-SESSION_2026_BEFORE="$(sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "SELECT count(*) FROM ops.setup_session WHERE season_year=2026;")"
-echo "2026 Setup Session count before: $SESSION_2026_BEFORE"
-[[ "$SESSION_2026_BEFORE" == "1" ]] || { echo "FAIL: expected exactly one live 2026 Setup Session before #205 source deployment"; exit 10; }
+        if [[ -n "$SESSION_2026_BEFORE" ]]; then
+            echo "2026 Setup Session count before: $SESSION_2026_BEFORE"
+        fi
         echo "Production Setup fingerprint after:  $PROD_AFTER"
         if [[ -z "$PROD_AFTER" || "$PROD_AFTER" != "$PROD_BEFORE" ]]; then
             echo "FAIL: source-only #205 deployment changed governed Setup data"
@@ -172,6 +173,10 @@ fi
 PROD_BEFORE="$(prod_fingerprint)"
 [[ -n "$PROD_BEFORE" ]] || { echo "FAIL: Production Setup fingerprint is empty"; exit 10; }
 echo "Production Setup fingerprint before: $PROD_BEFORE"
+
+SESSION_2026_BEFORE="$(sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "SELECT count(*) FROM ops.setup_session WHERE season_year=2026;")"
+echo "2026 Setup Session count before: $SESSION_2026_BEFORE"
+[[ "$SESSION_2026_BEFORE" == "1" ]] || { echo "FAIL: expected exactly one live 2026 Setup Session before #205 source deployment"; exit 11; }
 
 echo
 echo "--- Fetch and prove exact accepted target ancestry ---"
