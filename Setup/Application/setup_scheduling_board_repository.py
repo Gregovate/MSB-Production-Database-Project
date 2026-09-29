@@ -492,6 +492,17 @@ class SetupSchedulingBoardRepository:
                     wdt.sort_order,
                     wdt.planned_crew_count,
                     wdt.actual_crew_count,
+                    coalesce((
+                        SELECT sum(p.crew_count * p.duration_minutes)
+                        FROM ops.setup_task_progress p
+                        WHERE p.setup_work_day_task_id = wdt.setup_work_day_task_id
+                           OR (
+                               p.setup_work_day_task_id IS NULL
+                               AND p.setup_work_day_id = wdt.setup_work_day_id
+                               AND p.setup_session_task_id = wdt.setup_session_task_id
+                               AND p.shift_code = wdt.shift_code
+                           )
+                    ), 0)::integer AS actual_person_minutes,
                     wdt.started_at,
                     wdt.completed_at,
                     wdt.notes,
