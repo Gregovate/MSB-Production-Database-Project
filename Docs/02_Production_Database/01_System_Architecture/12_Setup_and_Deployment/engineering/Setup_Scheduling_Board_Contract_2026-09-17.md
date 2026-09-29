@@ -614,9 +614,11 @@ It participates in:
 - progress/completion where applicable; and
 - historical reporting.
 
-It does not automatically appear in any later Setup Session.
+It does not appear in any later Setup Session.
 
-A season-only task can become reusable only through a later explicit reusable-reconciliation decision.
+**Season-only is a permanent identity boundary.** A `SEASON_ONLY` annual task remains in that season for its entire lifetime. It is never converted, promoted, copied, or written back into `ref.setup_task`, and it is never a source for future-season seeding.
+
+If annual experience shows that comparable work should recur in later seasons, an authorized Manager may separately create a new reusable Catalog task through the normal governed reusable-task workflow. That new reusable task is a different reusable identity; the original season-only annual task remains unchanged as historical evidence in its original season.
 
 `inactive reusable task` and `season-only annual task` are different states and must not substitute for one another.
 
@@ -727,7 +729,7 @@ The two repair gates:
 - are linked to real `ops.work_order` identities;
 - participate in annual prerequisite logic;
 - remain visible in 2026 history; and
-- do not seed the next season unless explicitly promoted.
+- never seed a later season or convert into reusable Catalog identities.
 
 Work Order owns repair lifecycle. Setup owns annual sequence and dependency meaning.
 
@@ -769,9 +771,9 @@ Candidate changes may include:
 - expected duration;
 - reusable task boundary split/merge;
 - material/resource guidance; or
-- promotion of a season-only task that proved recurring.
+- creation of a separate reusable Catalog task when annual evidence proves that a recurring task is needed.
 
-Annual history remains evidence even when a proposed reusable change is rejected or deferred.
+A season-only annual identity itself is never promoted or converted. Annual history remains evidence even when a proposed reusable change is rejected or deferred.
 
 No blanket regeneration of the Reusable Catalog from one year's schedule is acceptable.
 
