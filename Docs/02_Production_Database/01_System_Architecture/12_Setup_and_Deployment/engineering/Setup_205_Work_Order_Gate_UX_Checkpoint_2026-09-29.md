@@ -433,3 +433,69 @@ Current Production Database tooling head before this checkpoint commit:
 `96fd7b399e53d9fada68973ed6555c58ae4dcc9c`.
 
 This hardening is specifically intended to stop forcing the operator to rebuild a disposable clone and repeat completed browser review work after a tunnel reset.
+
+
+## Reusable browser-preview reconnect acceptance — PASS
+
+The reconnect hardening introduced after the repeated SSH/PTTY failures is now runtime-proven.
+
+Pinned application candidate under review remained:
+
+`ecc9690e6649795ddc626e3516e53d36319344bc`
+
+Acceptance-tooling head used for the runtime test:
+
+`d9a34c620286c538aa1b96fbeebdc6908a116be5`
+
+Focused tooling validation before runtime test:
+
+```text
+14 passed in 0.17s
+POWERSHELL_PARSE_PASS
+BASH_PARSE_PASS
+```
+
+Controlled runtime acceptance:
+1. old pre-fix orphan on port 8899 was ownership-verified and removed narrowly;
+2. a fresh disposable preview reached READY on the exact pinned application candidate;
+3. workstation SSH transport reset with exit 255;
+4. launcher recognized transport loss and attempted reconnect rather than rebuilding the clone;
+5. the same disposable preview resumed successfully;
+6. exact candidate/ref/port/operator/version and preview ownership/health were revalidated;
+7. operator explicitly ended the resumed review;
+8. normal teardown and Production-after proof completed.
+
+Observed reconnect evidence:
+
+```text
+client_loop: send disconnect: Connection reset
+WARNING: Browser-review SSH session ended with exit code 255.
+Checking whether the exact preview can be resumed without rebuilding it...
+Reconnecting to preserved Setup browser preview on port 8899 (attempt 1/12)...
+SETUP REUSABLE DISPOSABLE BROWSER REVIEW RESUMED
+The existing disposable clone and all browser-review writes were preserved.
+```
+
+Final cleanup proof:
+
+```text
+SETUP_REUSABLE_DISPOSABLE_BROWSER_PREVIEW_CLEAN_EXIT
+Production Setup fingerprint before: 2e4e1176f52fd083e3803c4e70ff0134
+Production Setup fingerprint after:  2e4e1176f52fd083e3803c4e70ff0134
+PASS: Production Setup fingerprint unchanged
+Live Setup SHA before: 3cedba88283e4766932ae7905034856a2b9baa00
+Live Setup SHA after:  3cedba88283e4766932ae7905034856a2b9baa00
+PASS: live Setup checkout unchanged
+Exit status: 0
+SETUP REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT
+```
+
+Retained runtime evidence:
+- `/tmp/Setup_Disposable_Browser_Preview_Flask_20260929T155625.log`
+- `/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20260929T155625.txt`
+
+Server Management ownership:
+- issue #40 — browser-preview teardown/reconnect lifecycle;
+- PR #52 — recoverable reconnect runbook authority update.
+
+The browser-review transport pause is cleared. This checkpoint commit is documentation-only and does not redefine the pinned application candidate.
