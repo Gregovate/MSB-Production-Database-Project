@@ -46,10 +46,11 @@ def test_captain_filter_remembers_explicit_operator_choice() -> None:
     ui = read_app("setup_next_pass.js")
 
     assert "performCaptainFilterKey" in ui
-    assert "msb.setup.performCaptainFilter.v1." in ui
+    assert "msb.setup.performCaptainFilter.v2." in ui
     assert "window.localStorage.getItem" in ui
     assert "window.localStorage.setItem" in ui
     assert "nextStorePerformCaptainFilter(setupNextState.performCaptainFilter)" in ui
+    assert "nextLegacyPerformCaptainFilterStorageKey" in ui
 
 
 def test_report_work_requires_actual_crew_duration_and_percent() -> None:
@@ -229,8 +230,19 @@ def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
     assert "setup_next_pass.css?v=2026-09-27.2" in html
-    assert "setup_next_pass.js?v=2026-09-29.2" in html
+    assert "setup_next_pass.js?v=2026-09-29.3" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
     assert "setup_acceptance_fixes.js?v=2026-09-26.1" in html
     assert "setup_scheduling_board.css?v=2026-09-29.2" in html
     assert "setup_stage_order.js?v=2026-09-25.1" in html
+
+
+def test_perform_work_shows_planned_vs_actual_labor_kpi() -> None:
+    ui = read_app("setup_next_pass.js")
+    repo = read_app("setup_scheduling_board_repository.py")
+
+    assert "nextPerformLaborKpis" in ui
+    assert "Planned ${labor.plannedHours} labor hr" in ui
+    assert "Actual ${labor.actualHours} labor hr" in ui
+    assert "actual_person_minutes" in repo
+    assert "sum(p.crew_count * p.duration_minutes)" in repo
