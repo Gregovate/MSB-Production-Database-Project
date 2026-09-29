@@ -375,3 +375,61 @@ Source checkpoint before this documentation commit:
 Because application/API/repository behavior changed, the prior `582 passed`, disposable PASS, and browser READY evidence do not transfer to the new exact candidate. Restart exact-candidate regression, reusable disposable acceptance, and browser review after clean teardown of the current preview.
 
 No Production mutation occurred.
+
+
+## Browser review transport recurrence — reusable infrastructure hardening
+
+The browser review on exact application candidate:
+
+`ecc9690e6649795ddc626e3516e53d36319344bc`
+
+again lost the workstation SSH/PTTY with:
+
+```text
+client_loop: send disconnect: Connection reset
+```
+
+Read-only post-failure evidence proved:
+- preview port `8899` was still listening;
+- direct `/api/health` returned `V0.3.21-scheduling-gates`;
+- the exact `fieldwiring` Flask process remained alive;
+- the successful WO 372 season-task PATCH had completed with HTTP 200 before transport loss;
+- the remote wrapper later failed at its interactive `read` with an input/output error;
+- cleanup could not complete because the PTY/sudo path was gone, leaving the preview listener alive.
+
+This is the same reusable lifecycle defect owned by Server Management issue #40. The application candidate did not crash.
+
+### Candidate vs acceptance-tooling identity
+
+The exact application/database candidate remains pinned at:
+
+`ecc9690e6649795ddc626e3516e53d36319344bc`
+
+Later commits on this branch are acceptance-tooling/documentation hardening only. The reusable launcher now allows a clean acceptance-tooling HEAD that is a descendant of the pinned application candidate, matching the precedent established under Setup #151.
+
+### Reconnect design
+
+Reusable browser-preview tooling now:
+- writes narrow resumable state before the operator-review wait;
+- preserves the exact healthy Flask process, disposable PostgreSQL container, candidate worktree, and existing browser writes when SSH/HUP/PTTY input is lost;
+- does not run destructive cleanup merely because transport disappeared;
+- automatically reconnects a new foreground SSH tunnel to the same preserved preview;
+- verifies candidate/ref/port/operator/version, preview PID/listener ownership, and direct health before resume;
+- permits repeated reconnects to that same clone;
+- runs normal cleanup and Production-after proof when the operator explicitly ends the review;
+- remains bounded and does not use background Windows SSH, `ssh -N`, or `ssh -f`.
+
+Durable common Production Database authority:
+`Setup/Acceptance/README.md` -> **Recoverable browser-preview transport**.
+
+Reusable contract coverage:
+`Setup/Application/test_setup_reusable_acceptance_tooling_contract.py`.
+
+Server Management authority is being updated under:
+- issue #40 — `Harden disposable browser-preview teardown after SSH/tunnel reset`;
+- PR #52 — `#40 Recoverable Setup browser-preview reconnect`.
+
+Current Production Database tooling head before this checkpoint commit:
+`96fd7b399e53d9fada68973ed6555c58ae4dcc9c`.
+
+This hardening is specifically intended to stop forcing the operator to rebuild a disposable clone and repeat completed browser review work after a tunnel reset.
