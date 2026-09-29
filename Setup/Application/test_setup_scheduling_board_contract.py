@@ -545,8 +545,8 @@ def test_205_season_task_editor_is_in_annual_plan_not_reusable_catalog() -> None
     assert "terms.every((term) => haystack.includes(term))" in ui
     assert "No Work Order" in ui
     assert "Work Order completion satisfies this gate" in ui
-    assert "Place after / requires" in ui
-    assert "Before / blocks" in ui
+    assert "This task happens after" in ui
+    assert "This task must happen before" in ui
     assert "board205SeasonPlacementState" in ui
     assert "chain.hidden = true" not in ui
     assert "setup-board205-season-placement-note" in ui
@@ -562,10 +562,34 @@ def test_205_existing_season_gate_can_reconcile_annual_placement_without_rewriti
     assert "reconcile_season_task_placement" in repository
     assert "ops.set_setup_session_task_dependency" in repository
     assert "ops.set_setup_session_task_planned_order" in repository
+    reconcile = repository.split("def reconcile_season_task_placement(", 1)[1].split(
+        "def set_readiness(", 1
+    )[0]
+    assert "FOR UPDATE" not in reconcile
     assert "previous_prerequisite_setup_session_task_id" in ui
     assert "previous_downstream_setup_session_task_id" in ui
     assert "Additional prerequisite(s) preserved" in ui
     assert "Additional downstream dependency/dependencies preserved" in ui
+    assert "Use one side when that is enough." in ui
+    assert "setup-board205-season-error" in ui
+    assert "window.alert(error.message || error)" not in ui.split("async function board205SubmitSeasonTask", 1)[1].split("function board205InstallView", 1)[0]
+
+    # Save the definition and requested placement as one browser command so a
+    # dependency failure cannot leave a partially updated season-only task.
+    season_submit = ui.split("async function board205SubmitSeasonTask", 1)[1].split(
+        "function board205InstallView", 1
+    )[0]
+    assert "/placement" not in season_submit
+    assert "previous_prerequisite_setup_session_task_id" in season_submit
+    assert "downstream_setup_session_task_id" in season_submit
+
+    update_method = repository.split("def update_annual_task(", 1)[1].split(
+        "def update_planning_info(", 1
+    )[0]
+    assert "ops.update_setup_annual_task_definition" in update_method
+    assert "ops.set_setup_session_task_dependency" in update_method
+    assert "ops.set_setup_session_task_planned_order" in update_method
+    assert "FOR UPDATE" not in update_method
 
 
 def test_205_annual_hold_is_season_only_and_does_not_write_reusable_readiness() -> None:
