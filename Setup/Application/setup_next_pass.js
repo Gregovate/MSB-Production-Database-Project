@@ -824,6 +824,35 @@ function nextPerformCrew(assignment) {
   ) || null;
 }
 
+function nextLaborHours(crewCount, durationMinutes) {
+  const crew = Number(crewCount);
+  const minutes = Number(durationMinutes);
+  if (!Number.isFinite(crew) || crew <= 0 || !Number.isFinite(minutes) || minutes <= 0) return null;
+  return (crew * minutes) / 60;
+}
+
+function nextLaborHoursText(crewCount, durationMinutes) {
+  const hours = nextLaborHours(crewCount, durationMinutes);
+  if (hours == null) return 'TBD';
+  const shown = Number.isInteger(hours) ? String(hours) : hours.toFixed(1).replace(/\.0$/, '');
+  return `${shown} person-hour${Number(shown) === 1 ? '' : 's'}`;
+}
+
+function nextPerformPlannedCrew(assignment) {
+  const crew = nextPerformCrew(assignment);
+  const shift = String(assignment?.shift_code || '').toUpperCase();
+  const shiftCount = shift === 'MORNING'
+    ? crew?.am_planned_crew_count
+    : shift === 'AFTERNOON'
+      ? crew?.pm_planned_crew_count
+      : null;
+  if (shiftCount != null && Number(shiftCount) > 0) return Number(shiftCount);
+  if (assignment?.planned_crew_count != null && Number(assignment.planned_crew_count) > 0) {
+    return Number(assignment.planned_crew_count);
+  }
+  return null;
+}
+
 function nextPerformDay(dayId) {
   return (setupNextState.performBoard.work_days || []).find(
     (day) => Number(day.setup_work_day_id) === Number(dayId)
@@ -1079,6 +1108,8 @@ function nextPerformAssignmentCard(assignment) {
       : boardStatus === 'NEEDS_SCHEDULING_AGAIN'
         ? 'IN_PROGRESS'
         : executionStatus;
+  const plannedCrew = nextPerformPlannedCrew(assignment);
+  const plannedLabor = nextLaborHoursText(plannedCrew, task.expected_duration_minutes);
   const readinessWarning = task.readiness_state === 'NOT_READY'
     ? `<div class="next-perform-readiness-warning"><strong>Readiness condition:</strong> ${escapeHtml(task.readiness_note || 'Marked Not Ready')} <span class="muted">· soft planning condition; actual work may still be reported</span></div>`
     : '';
@@ -1095,7 +1126,9 @@ function nextPerformAssignmentCard(assignment) {
       </summary>
       <div class="next-perform-assignment-context">
         Crew ${escapeHtml(assignment.crew_lane || '—')} · ${escapeHtml(captain)}
-        · Planned crew ${escapeHtml(assignment.planned_crew_count ?? 'TBD')}
+        · Planned crew ${escapeHtml(plannedCrew ?? 'TBD')}
+        · Expected ${escapeHtml(formatMinutes(task.expected_duration_minutes))}
+        · Est. labor ${escapeHtml(plannedLabor)}
       </div>
       ${readinessWarning}
       <div class="next-perform-actions">
@@ -1295,6 +1328,7 @@ function nextProgressEntryHtml(progress) {
         ${escapeHtml(progress.performed_on || progress.work_date || formatTimestamp(progress.recorded_at))}
         · Crew ${escapeHtml(progress.crew_count)}
         ${progress.duration_minutes ? ` · ${escapeHtml(formatMinutes(progress.duration_minutes))}` : ''}
+        ${progress.duration_minutes && progress.crew_count ? ` · Labor ${escapeHtml(nextLaborHoursText(progress.crew_count, progress.duration_minutes))}` : ''}
         ${progress.percent_complete ? ` · ${progress.percent_complete}% complete` : ''}
         ${progress.progress_note ? ` · ${escapeHtml(progress.progress_note)}` : ''}
         ${escapeHtml(nextProgressAuditText(progress))}
