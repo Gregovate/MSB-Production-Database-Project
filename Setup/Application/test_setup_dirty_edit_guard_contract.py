@@ -113,6 +113,17 @@ def test_client_and_server_build_identity_are_exactly_synchronized():
     assert server_version == client_version
 
 
+def test_all_governed_setup_command_requests_require_current_client_server_build():
+    production = read("setup_production.js")
+    guard = guard_source()
+
+    assert "window.msbSetupEnsureServerBuild = ensureServerBuild;" in guard
+    assert "const isSetupCommand = options?.headers?.['X-MSB-Setup-Command'] === '1';" in production
+    assert "const checkBuild = window.msbSetupEnsureServerBuild;" in production
+    assert "await checkBuild({ alertUser: false })" in production
+    assert "Refresh required before changing Setup data." in production
+
+
 def test_navigation_uses_explicit_save_discard_cancel_decision():
     js = guard_source()
     assert "Save and continue" in js
