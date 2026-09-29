@@ -224,3 +224,25 @@ Because application code changed after disposable/browser acceptance began, all 
 3. fresh disposable browser preview.
 
 The failed preview made no accepted browser mutations and is not reusable for later acceptance.
+
+
+## Browser review attempt 1 follow-up — shared command version check added
+
+The initial mismatch page continued rendering behind the browser alert. Review showed that the exact client/server version check was wired directly into the older reusable/annual save paths, while newer Setup surfaces use the shared command request path.
+
+Correction:
+- `setup_catalog_dirty_guard.js` exposes the exact client/server version check as `window.msbSetupEnsureServerBuild`;
+- shared `api()` checks every request created with the governed Setup command header before sending it;
+- a command request does not proceed when the version check is unavailable or does not match;
+- Scheduling Board and the other Setup command surfaces therefore use the same version-consistency rule;
+- `setup_production.js` and `setup_catalog_dirty_guard.js` asset pins were refreshed;
+- regression coverage now protects this shared command boundary.
+
+Static JavaScript parse checks after the correction:
+- `setup_production.js`: PASS
+- `setup_catalog_dirty_guard.js`: PASS
+
+Source checkpoint before this documentation commit:
+`ada13aab763833e29281da260ed85b331263732d`
+
+Because this changed application code after the earlier `580 passed` run, exact-candidate regression and disposable/browser acceptance must restart from the final branch head.
