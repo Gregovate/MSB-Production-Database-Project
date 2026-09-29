@@ -425,6 +425,21 @@
     return Number(a.physical_id || 0) - Number(b.physical_id || 0);
   }
 
+  function comparePickListOrder(a, b, selectedDate) {
+    const leftDates = itemDates(a, itemReasonsForDate(a, selectedDate), selectedDate);
+    const rightDates = itemDates(b, itemReasonsForDate(b, selectedDate), selectedDate);
+
+    const pickByCompare = String(leftDates.pickBy || '\uffff')
+      .localeCompare(String(rightDates.pickBy || '\uffff'));
+    if (pickByCompare) return pickByCompare;
+
+    const neededForCompare = String(leftDates.neededFor || '\uffff')
+      .localeCompare(String(rightDates.neededFor || '\uffff'));
+    if (neededForCompare) return neededForCompare;
+
+    return compareHomeLocations(a, b);
+  }
+
   function overrideBadgeHtml(item) {
     const overrides = Array.isArray(item.manager_overrides) ? item.manager_overrides : [];
     if (!overrides.length) return '';
@@ -498,7 +513,7 @@
       if (status === 'OUTSTANDING') return !itemMoved(item);
       if (status === 'MOVED') return itemMoved(item);
       return true;
-    }).sort(compareHomeLocations);
+    }).sort((a, b) => comparePickListOrder(a, b, date));
 
     if (!items.length) {
       pickList.innerHTML = '<div class="empty">No physical demand resolves from the selected scheduled work.</div>';
