@@ -518,12 +518,52 @@ def test_205_season_task_editor_is_in_annual_plan_not_reusable_catalog() -> None
     assert "Add Task" in ui
     assert "THIS SEASON ONLY" in ui
     assert "It does not enter the Reusable Task Catalog" in ui
-    assert "Matching Work Order<select" in ui
+    assert "Selected Work Order<select" in ui
+    assert "setup-board205-season-work-order-results" in ui
+    assert "The full open Work Order list is intentionally not shown." in ui
+    assert "function board205WorkOrderMatches(" in ui
+    assert "terms.every((term) => haystack.includes(term))" in ui
     assert "No Work Order" in ui
     assert "Work Order completion satisfies this gate" in ui
     assert "Place after / requires" in ui
-    assert "Optional downstream task to block" in ui
+    assert "Before / blocks" in ui
+    assert "board205SeasonPlacementState" in ui
+    assert "chain.hidden = true" not in ui
+    assert "setup-board205-season-placement-note" in ui
     assert "setup-board205-season-effort" in ui
+
+
+def test_205_existing_season_gate_can_reconcile_annual_placement_without_rewriting_other_edges() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    api = read_app("setup_scheduling_board_api.py")
+    repository = read_app("setup_scheduling_board_repository.py")
+
+    assert "/placement" in api
+    assert "reconcile_season_task_placement" in repository
+    assert "ops.set_setup_session_task_dependency" in repository
+    assert "ops.set_setup_session_task_planned_order" in repository
+    assert "previous_prerequisite_setup_session_task_id" in ui
+    assert "previous_downstream_setup_session_task_id" in ui
+    assert "Additional prerequisite(s) preserved" in ui
+    assert "Additional downstream dependency/dependencies preserved" in ui
+
+
+def test_205_annual_hold_is_season_only_and_does_not_write_reusable_readiness() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    api = read_app("setup_scheduling_board_api.py")
+    repository = read_app("setup_scheduling_board_repository.py")
+
+    assert "Annual readiness…" in ui
+    assert "THIS SEASON ONLY." in ui
+    assert "does not change reusable Catalog readiness knowledge" in ui
+    assert "/annual-hold" in api
+    assert "set_annual_hold" in repository
+    assert "ops.update_setup_annual_task_definition" in repository
+    assert "ops.set_setup_annual_task_readiness" in repository
+    annual_hold = repository.split("def set_annual_hold(", 1)[1].split(
+        "def reconcile_season_task_placement(", 1
+    )[0]
+    assert "ref.update_setup_task" not in annual_hold
 
 
 def test_205_api_uses_governed_manager_commands_for_plan_mutations() -> None:
@@ -537,6 +577,8 @@ def test_205_api_uses_governed_manager_commands_for_plan_mutations() -> None:
         "/api/setup/scheduling-board/crews/<int:setup_work_day_crew_id>",
         "/api/setup/scheduling-board/season-tasks",
         "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/readiness",
+        "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/annual-hold",
+        "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/placement",
         "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/planning-info",
         "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/crew-captain/",
     ):
@@ -635,6 +677,7 @@ def test_122_b1a_pre2026_current_catalog_allows_planning_edits_but_blocks_actual
     # season-task actions remain suppressed until a real annual Session exists.
     assert "setup-board205-edit-planning-info" in ui
     assert "canManage && !historicalReview && !task.catalog_only && task.readiness_note" in ui
+    assert "setup-board205-edit-annual-hold" in ui
     assert "canManage && !historicalReview && seasonOnly" in ui
     assert "setup-board205-plan-up" not in ui
     assert "setup-board205-plan-down" not in ui
