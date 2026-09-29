@@ -1507,3 +1507,47 @@ If green:
 3. confirm no stale/malformed rendering occurs.
 
 No Production deployment until that return-path browser check passes.
+
+
+---
+
+## Continuation Checkpoint — Browser Return-Path Regression PASS
+
+| Field | Value |
+|---|---|
+| Exact tested implementation candidate | `e009eba6bfe2c6cab235ef6e4fc39797c7680faf` |
+| Full regression command | `python -m pytest -q -p no:cacheprovider Setup/Application` |
+| Result | **573 passed in 1.07s** |
+| Failures / errors | **0** |
+| Branch | `agent/setup-206-tablet-material-audit` |
+| PR | #252 — draft / mergeable=true |
+| Main comparison before checkpoint | 104 ahead / 0 behind |
+| Production mutation authorized | **NO** |
+
+This validates the candidate that:
+
+- bumps the Production shell pin for `setup_extra_materials.js` to `v=2026-09-28.3`;
+- keeps the inner `setup_task_extra_material_sources.js` pin at `v=2026-09-28.3`;
+- adds a regression contract requiring the two cache-bust boundaries to stay aligned.
+
+### Next gate
+
+Run reusable disposable acceptance against the exact documentation checkpoint SHA created after this section is committed.
+
+Apply migrations in order:
+
+1. `Setup/Database/063_harden_setup_extra_material_requirement_lifecycle.sql`
+2. `Setup/Database/064_add_setup_extra_material_requirement_restore.sql`
+
+Use validation:
+
+`Setup/Acceptance/setup_206_extra_material_lifecycle_disposable_validation.sql`
+
+If green, run one final focused browser check:
+
+1. open Kit Inventory;
+2. use **Back to Setup Session**;
+3. open/confirm Reusable Task Catalog;
+4. verify the page renders correctly **without** `Ctrl+Shift+R`.
+
+No Production deployment until that return-path check passes.
