@@ -2476,3 +2476,37 @@ If green, browser-review the Pick List specifically to verify:
 - same-date rows remain in useful rack walk order;
 - displayed Pick By / Needed For dates remain unchanged;
 - QR, status, destination, and print layout remain intact.
+
+---
+
+## PICK LIST DEADLINE-FIRST REGRESSION PASS
+
+| Field | Value |
+|---|---|
+| Exact tested implementation candidate | 4e5f7a72fcf1568bce40c742f8eb804e14463601 |
+| Regression command | python -m pytest -q -p no:cacheprovider Setup/Application |
+| Result | **576 passed in 7.04s** |
+| Failures / errors | **0** |
+| Branch | agent/setup-206-tablet-material-audit |
+| PR | #252 — DRAFT / mergeable=true |
+| Main comparison before checkpoint | 142 ahead / 0 behind |
+| Database mutation required | **NO** |
+
+This PASS covers the Pick List ordering correction:
+- Pick By date first;
+- Needed For date second;
+- rack/home-location walk order third;
+- existing final physical identity tie-break retained.
+
+The D-1 staging calculation and no-Sunday rule are unchanged.
+
+### Next gate
+
+Run a focused disposable browser preview on the exact documentation checkpoint SHA created after this section, with no migrations.
+
+Acceptance:
+- 9/28 Pick By rows appear before 10/3 and 10/5 rows;
+- rows sharing the same Pick By/Needed For deadline remain in rack walk order;
+- displayed Pick By and Needed For dates remain unchanged;
+- QR codes, destination, Needs Pick/Picked state, and print layout remain intact;
+- clean preview exit with Production fingerprint/live SHA unchanged.
