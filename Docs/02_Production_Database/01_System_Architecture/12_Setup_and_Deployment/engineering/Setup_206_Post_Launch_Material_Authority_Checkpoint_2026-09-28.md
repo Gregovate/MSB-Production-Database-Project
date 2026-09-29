@@ -2093,3 +2093,77 @@ task requirement quantity
 source allocation quantity
 Kit expected quantity
 ```
+
+---
+
+## POST-PRODUCTION MATERIAL UX FOLLOW-UP CHECKPOINT
+
+| Field | Value |
+|---|---|
+| Implementation head before documentation checkpoint | b73e2152912de5fe8382fd59746fbd71bc981be8 |
+| Branch | agent/setup-206-tablet-material-audit |
+| PR | #252 — DRAFT / mergeable=true |
+| Main comparison before checkpoint | 127 ahead / 0 behind |
+| Production application currently live | 947b86a9598584717167cce094cd78d99e9a71e7 |
+| Production version | V0.3.20-material-authority |
+| Database migration state | 063 + 064 installed |
+| Database mutation required for this follow-up | **NO** |
+
+### Badge-fix browser gate
+
+The prior badge-only candidate completed disposable browser review with CLEAN EXIT.
+
+Production Setup fingerprint remained 214f843b88a630e03330ac8f378cf0c8 and live Setup remained 947b86a9598584717167cce094cd78d99e9a71e7.
+
+Badge-fix preview evidence:
+- /tmp/Setup_Disposable_Browser_Preview_Flask_20260929T010157.log
+- /home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20260929T010157.txt
+
+### Material UX findings accepted from operator review
+
+The same normalized Extra Material catalog identity is already required before Kit reverse task usage is shown. A variant mismatch must not visually imply that the task/source relationship is broken.
+
+Operator-facing Kit state is now:
+
+LINKED TO TASK
+Task / Kit spec differs. Material identity and source relationship are already linked.
+
+The prior LINKED TO TASK — DETAILS DIFFER warning and duplicated DETAILS DIFFER suffix are removed. The subordinate spec-difference note is visually de-emphasized.
+
+### Already-linked source behavior
+
+When adding a source to a task requirement:
+- Containers already active as sources for that same requirement remain visible for context;
+- those options are disabled;
+- the option label says **Already linked — use Change**;
+- the currently edited source remains selectable in Change Source mode;
+- the API duplicate-source guard remains as fail-closed protection.
+
+This addresses the Church Turnbuckle confusion where C145 already existed as source Qty 3 but still appeared selectable through Add Source.
+
+### Asset pins refreshed
+
+- setup_catalog_dirty_guard.js?v=2026-09-29.1
+- setup_extra_materials.js?v=2026-09-29.1
+- setup_task_extra_material_sources.js?v=2026-09-29.1
+- setup_kit_inventory.css?v=2026-09-29.1
+- setup_kit_inventory.js?v=2026-09-29.1
+
+### Quantity semantics remain unchanged
+
+Do not collapse task requirement quantity, source allocation quantity, Kit expected quantity, or physical on-hand quantity.
+
+For the reviewed Church Turnbuckle example: task requirement quantity may be blank; C145 source allocation Qty 3 can still be recorded; Kit expected quantity can independently remain unverified; physical on-hand remains uncounted until physically counted.
+
+### Next gate
+
+Run the full Setup/Application regression on the exact documentation checkpoint SHA created after this section.
+
+If green, run one final source-only disposable browser review of:
+1. Client V0.3.20 badge remains correct;
+2. Kit Inventory shows LINKED TO TASK with subordinate spec note;
+3. Add Source shows an already-linked C145 as disabled / Already linked — use Change;
+4. Change continues to edit the existing source;
+5. clean preview exit with Production fingerprint/live SHA unchanged.
+
+No migrations are required.
