@@ -821,6 +821,8 @@ class SetupSchedulingBoardRepository:
         linked_work_order_id: int | None,
         linked_work_order_gate: bool,
         annual_notes: str | None,
+        prerequisite_session_task_id: int | None,
+        downstream_session_task_id: int | None,
     ) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
@@ -850,6 +852,22 @@ class SetupSchedulingBoardRepository:
                 ),
             )
             result = self._one(cur, "Season-only Setup task command returned no result")
+            session_task_id = int(result["setup_session_task_id"])
+
+            if prerequisite_session_task_id is not None:
+                cur.execute(
+                    "SELECT * FROM ops.set_setup_session_task_dependency(%s,%s,%s,%s,%s)",
+                    (email, session_task_id, prerequisite_session_task_id, None, True),
+                )
+                self._one(cur, "Annual Setup prerequisite command returned no result")
+
+            if downstream_session_task_id is not None:
+                cur.execute(
+                    "SELECT * FROM ops.set_setup_session_task_dependency(%s,%s,%s,%s,%s)",
+                    (email, downstream_session_task_id, session_task_id, None, True),
+                )
+                self._one(cur, "Annual Setup downstream command returned no result")
+
             conn.commit()
             return result
 
@@ -887,8 +905,27 @@ class SetupSchedulingBoardRepository:
         linked_work_order_id: int | None,
         linked_work_order_gate: bool,
         annual_notes: str | None,
+        previous_prerequisite_session_task_id: int | None,
+        prerequisite_session_task_id: int | None,
+        previous_downstream_session_task_id: int | None,
+        downstream_session_task_id: int | None,
+        planned_order: int | None,
     ) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT task_origin
+                FROM ops.setup_session_task
+                WHERE setup_session_task_id = %s
+                """,
+                (session_task_id,),
+            )
+            target = self._one(cur, "Season-only Setup task was not found")
+            if target["task_origin"] != "SEASON_ONLY":
+                raise SetupSchedulingBoardRepositoryError(
+                    "Season-task editor can only update season-only annual work."
+                )
+
             cur.execute(
                 """
                 SELECT * FROM ops.update_setup_annual_task_definition(
@@ -915,6 +952,43 @@ class SetupSchedulingBoardRepository:
                 ),
             )
             result = self._one(cur, "Annual Setup task update returned no result")
+
+            def set_edge(dependent_id: int, prerequisite_id: int, active: bool) -> None:
+                cur.execute(
+                    "SELECT * FROM ops.set_setup_session_task_dependency(%s,%s,%s,%s,%s)",
+                    (email, dependent_id, prerequisite_id, None, active),
+                )
+                self._one(cur, "Annual Setup dependency command returned no result")
+
+            if (
+                previous_prerequisite_session_task_id is not None
+                and previous_prerequisite_session_task_id != prerequisite_session_task_id
+            ):
+                set_edge(session_task_id, previous_prerequisite_session_task_id, False)
+            if (
+                prerequisite_session_task_id is not None
+                and prerequisite_session_task_id != previous_prerequisite_session_task_id
+            ):
+                set_edge(session_task_id, prerequisite_session_task_id, True)
+
+            if (
+                previous_downstream_session_task_id is not None
+                and previous_downstream_session_task_id != downstream_session_task_id
+            ):
+                set_edge(previous_downstream_session_task_id, session_task_id, False)
+            if (
+                downstream_session_task_id is not None
+                and downstream_session_task_id != previous_downstream_session_task_id
+            ):
+                set_edge(downstream_session_task_id, session_task_id, True)
+
+            if planned_order is not None:
+                cur.execute(
+                    "SELECT * FROM ops.set_setup_session_task_planned_order(%s,%s,%s,%s)",
+                    (email, session_task_id, planned_order, "Season-only Work Order/gate placement"),
+                )
+                self._one(cur, "Setup planned-order command returned no result")
+
             conn.commit()
             return result
 
