@@ -2355,6 +2355,29 @@ async function board205DeleteSeasonTask() {
   }
 }
 
+function board205SyncSeasonTaskTypeHelp() {
+  const type = document.getElementById('setup-board205-season-type');
+  const help = document.getElementById('setup-board205-season-type-help');
+  const gate = document.getElementById('setup-board205-season-gate');
+  if (!type || !help || !gate) return;
+
+  const actionType = String(type.value || 'WORK').toUpperCase();
+  const isGate = actionType === 'GATE';
+
+  if (!isGate) gate.checked = false;
+  gate.disabled = !isGate;
+
+  if (isGate) {
+    help.textContent = 'Wait / Gate is NOT scheduled to a crew or work day. Use it only when Setup must stop until an outside condition is satisfied. If a Work Order is selected below, its completion can satisfy this gate.';
+  } else if (actionType === 'WORK') {
+    help.textContent = 'Setup Work is real crew work. It appears in Needs Scheduling when prerequisites are complete. A linked Work Order is reference/context only; the crew still schedules and completes this Setup task.';
+  } else if (actionType === 'SUPPORT') {
+    help.textContent = 'Support / Prep is schedulable Setup work used for preparation or support activity.';
+  } else {
+    help.textContent = 'Unload Container is a physical logistics task. Container movement/Pick List behavior is owned by the Setup logistics workflow.';
+  }
+}
+
 function board205OpenSeasonTaskDialog(sessionTaskId = null) {
   const dialog = document.getElementById('setup-board205-season-dialog');
   const form = document.getElementById('setup-board205-season-form');
@@ -2410,6 +2433,7 @@ function board205OpenSeasonTaskDialog(sessionTaskId = null) {
     document.getElementById('setup-board205-season-notes').value = task.annual_notes || '';
     board205PopulateSeasonPlacementOptions(placement.prerequisiteId, placement.downstreamId);
   }
+  board205SyncSeasonTaskTypeHelp();
   dialog.showModal();
 }
 
@@ -2453,7 +2477,8 @@ async function board205SubmitSeasonTask(event) {
       completion_point: document.getElementById('setup-board205-season-completion').value.trim() || null,
       readiness_note: document.getElementById('setup-board205-season-readiness').value.trim() || null,
       linked_work_order_id: workOrderId,
-      linked_work_order_gate: document.getElementById('setup-board205-season-gate').checked,
+      linked_work_order_gate:
+        actionType === 'GATE' && document.getElementById('setup-board205-season-gate').checked,
       annual_notes: document.getElementById('setup-board205-season-notes').value.trim() || null,
       previous_prerequisite_setup_session_task_id:
         setupBoard205State.seasonPlacementOriginal.prerequisiteId,
@@ -2693,7 +2718,8 @@ function board205InstallView() {
         <div class="setup-board205-form-grid">
           <label>Stage<select id="setup-board205-season-stage"></select></label>
           <label>Scene<select id="setup-board205-season-scene"></select></label>
-          <label>Type<select id="setup-board205-season-type"><option value="WORK">Setup Work</option><option value="GATE">Wait / Gate</option><option value="SUPPORT">Support / Prep</option><option value="UNLOAD_CONTAINER">Unload Container</option></select></label>
+          <label>Type<select id="setup-board205-season-type"><option value="WORK">Setup Work — schedulable</option><option value="GATE">Wait / Gate — not schedulable</option><option value="SUPPORT">Support / Prep</option><option value="UNLOAD_CONTAINER">Unload Container</option></select></label>
+          <div id="setup-board205-season-type-help" class="setup-board205-placement-help"></div>
           <div class="setup-board205-work-order-picker">
             <div class="setup-board205-work-order-search-block">
               <label>Find open Work Order<input id="setup-board205-season-work-order-search" type="search" placeholder="WO # or problem text" autocomplete="off"></label>
@@ -2702,7 +2728,7 @@ function board205InstallView() {
             <label>Selected Work Order<select id="setup-board205-season-work-order"><option value="">No Work Order</option></select></label>
             <button id="setup-board205-season-work-order-clear" type="button" class="small secondary">Clear Work Order</button>
           </div>
-          <label class="checkbox-label"><input id="setup-board205-season-gate" type="checkbox"> Work Order completion satisfies this gate</label>
+          <label class="checkbox-label"><input id="setup-board205-season-gate" type="checkbox"> Linked Work Order completion satisfies this Wait / Gate</label>
           <span></span>
           <div id="setup-board205-season-chain" class="setup-board205-form-grid setup-board205-placement-grid">
             <label>This task happens after <span class="muted">(optional)</span><select id="setup-board205-season-prereq"></select></label>
@@ -2730,6 +2756,7 @@ function board205InstallView() {
     board205ApplyFinderCompact();
   });
 
+  document.getElementById('setup-board205-season-type')?.addEventListener('change', board205SyncSeasonTaskTypeHelp);
   document.getElementById('setup-board205-season-work-order-search')?.addEventListener('input', () => {
     board205PopulateWorkOrderOptions();
   });
