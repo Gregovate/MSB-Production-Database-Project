@@ -911,12 +911,29 @@ function nextPerformScheduledCaptains() {
 function nextPerformCaptainFilterStorageKey() {
   const email = String(appState.access?.authenticated_email || 'unknown').trim().toLowerCase();
   const season = Number(appState.seasonYear) || 'none';
+  return `msb.setup.performCaptainFilter.v2.${email}.${season}`;
+}
+
+function nextLegacyPerformCaptainFilterStorageKey() {
+  const email = String(appState.access?.authenticated_email || 'unknown').trim().toLowerCase();
+  const season = Number(appState.seasonYear) || 'none';
   return `msb.setup.performCaptainFilter.v1.${email}.${season}`;
 }
 
 function nextStoredPerformCaptainFilter() {
   try {
-    return window.localStorage.getItem(nextPerformCaptainFilterStorageKey());
+    const current = window.localStorage.getItem(nextPerformCaptainFilterStorageKey());
+    if (current) return current;
+
+    // V1 could persist the old default "ALL" before the signed-in-Captain
+    // default was corrected. Preserve an explicit Captain choice, but ignore a
+    // stale ALL so a scheduled Captain gets their own work on first V2 load.
+    const legacy = window.localStorage.getItem(nextLegacyPerformCaptainFilterStorageKey());
+    if (legacy && legacy !== 'ALL') {
+      window.localStorage.setItem(nextPerformCaptainFilterStorageKey(), legacy);
+      return legacy;
+    }
+    return null;
   } catch (_error) {
     return null;
   }
@@ -1140,6 +1157,39 @@ function nextPerformAssignmentCard(assignment) {
     </details>`;
 }
 
+function nextPerformLaborKpis(assignments) {
+  let plannedHours = 0;
+  let plannedUnknown = 0;
+  let actualHours = 0;
+
+  for (const assignment of assignments || []) {
+    const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
+    const planned = nextLaborHours(
+      nextPerformPlannedCrew(assignment),
+      task.expected_duration_minutes
+    );
+    if (planned == null) plannedUnknown += 1;
+    else plannedHours += planned;
+
+    const actualPersonMinutes = Number(assignment.actual_person_minutes || 0);
+    if (Number.isFinite(actualPersonMinutes) && actualPersonMinutes > 0) {
+      actualHours += actualPersonMinutes / 60;
+    }
+  }
+
+  const formatHours = (hours) => (
+    Number.isInteger(hours)
+      ? String(hours)
+      : hours.toFixed(1).replace(/\.0$/, '')
+  );
+
+  return {
+    plannedHours: formatHours(plannedHours),
+    plannedUnknown,
+    actualHours: formatHours(actualHours)
+  };
+}
+
 function renderNextExecution() {
   const target = el('next-perform-list');
   if (!target) return;
@@ -1150,9 +1200,15 @@ function renderNextExecution() {
   const assignments = nextFilterPerformAssignments(allAssignments);
   const summary = el('next-perform-filter-summary');
   if (summary) {
-    summary.textContent = assignments.length === allAssignments.length
+    const labor = nextPerformLaborKpis(assignments);
+    const assignmentText = assignments.length === allAssignments.length
       ? `${assignments.length} scheduled assignment${assignments.length === 1 ? '' : 's'}`
       : `${assignments.length} of ${allAssignments.length} scheduled assignments shown`;
+    const unknownText = labor.plannedUnknown
+      ? ` · ${labor.plannedUnknown} planned assignment${labor.plannedUnknown === 1 ? '' : 's'} TBD`
+      : '';
+    summary.textContent =
+      `${assignmentText} · Planned ${labor.plannedHours} labor hr · Actual ${labor.actualHours} labor hr${unknownText}`;
   }
   const days = (board.work_days || []).filter((day) =>
     assignments.some((assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id))
