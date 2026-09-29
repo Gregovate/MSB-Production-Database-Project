@@ -16,7 +16,8 @@ const setupNextState = {
   performBoard: { session: null, work_days: [], crews: [], tasks: [], assignments: [] },
   performAssignmentMode: true,
   performCaptainFilter: null,
-  performCaptainFilterKey: null
+  performCaptainFilterKey: null,
+  performCaptainFilterTouched: false
 };
 
 function nextIsSitewide(task) {
@@ -940,7 +941,8 @@ function nextEnsurePerformCaptainFilter() {
 
   if (setupNextState.performCaptainFilterKey !== contextKey) {
     setupNextState.performCaptainFilterKey = contextKey;
-    setupNextState.performCaptainFilter = nextPerformDefaultCaptainFilter();
+    setupNextState.performCaptainFilter = null;
+    setupNextState.performCaptainFilterTouched = false;
   }
 
   const valid = new Set([
@@ -948,8 +950,17 @@ function nextEnsurePerformCaptainFilter() {
     ...nextPerformScheduledCaptains().map((captain) => `CAPTAIN:${captain.person_id}`)
   ]);
 
+  // Until the operator deliberately changes the dropdown, keep re-evaluating
+  // the default as access + schedule data arrive. This avoids the initial
+  // empty-board render permanently locking a scheduled Captain onto ALL.
+  if (!setupNextState.performCaptainFilterTouched) {
+    setupNextState.performCaptainFilter = nextPerformDefaultCaptainFilter();
+    return;
+  }
+
   if (!setupNextState.performCaptainFilter || !valid.has(setupNextState.performCaptainFilter)) {
     setupNextState.performCaptainFilter = nextPerformDefaultCaptainFilter();
+    setupNextState.performCaptainFilterTouched = false;
   }
 }
 
@@ -971,6 +982,7 @@ function nextRenderPerformCaptainFilter() {
     select.dataset.performCaptainFilterInstalled = '1';
     select.addEventListener('change', () => {
       setupNextState.performCaptainFilter = select.value || 'ALL';
+      setupNextState.performCaptainFilterTouched = true;
       renderNextExecution();
     });
   }
