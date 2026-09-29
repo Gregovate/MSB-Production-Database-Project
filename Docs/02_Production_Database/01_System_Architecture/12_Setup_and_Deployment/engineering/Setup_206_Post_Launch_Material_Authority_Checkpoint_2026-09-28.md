@@ -2002,3 +2002,41 @@ Deployment contract tests now explicitly require:
 Do **not** retry Production yet.
 
 First run the complete `Setup/Application` regression on the documentation checkpoint SHA created after this section. Only after that regression is green may the same explicit bounded Production deployment wrapper be retried.
+
+
+---
+
+## PRODUCTION DEPLOYMENT RETRY CHECKPOINT — Corrected tooling regression PASS
+
+| Field | Value |
+|---|---|
+| Exact tested deployment-tooling head | `12b4719ea9bf5e274fb1e7783bb373dafe6b02f4` |
+| Regression command | `python -m pytest -q -p no:cacheprovider Setup/Application` |
+| Result | **578 passed in 1.02s** |
+| Failures / errors | **0** |
+| Accepted application target | `947b86a9598584717167cce094cd78d99e9a71e7` |
+| Application version | `V0.3.20-material-authority` |
+| Production mutation from Attempt 1 | **NONE** |
+
+This PASS includes the corrected material fingerprint using the real
+`ref.setup_container_extra_material_review.container_id` primary key.
+
+The deployment wrapper remains pinned to corrected server-runner blob:
+
+`2aef8ae83f92f4ff92f9641568bf7e09549db932`
+
+Attempt 1 retained report:
+
+`/home/msbadmin/setup-deployment-reports/Setup_206_Material_Authority_Production_Deploy_20260929T004141.txt`
+
+Attempt 1 stopped before backup, migrations, application checkout movement, or service restart.
+
+### Retry authorization gate
+
+The corrected deployment tooling has now passed its full regression gate.
+
+The next operator action may be the explicit bounded Production wrapper:
+
+`Setup/Acceptance/run_setup_206_material_authority_production_deploy.ps1`
+
+Production preflight must still fail closed if the live SHA/version/worktree or migration state differs from the expected pre-deploy state.
