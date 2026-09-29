@@ -117,7 +117,7 @@ button,select{font:inherit;padding:.55rem .7rem}
   .no-print,.summary,.pick-reasons-row,.pick-state,.override-state,.home-location-payload{display:none!important}
   .screen-value{display:none!important}
   .print-value{display:inline!important}
-  .print-delay-badge{display:block!important;font-size:8pt;line-height:1.05;margin-top:.03in;border:1.5px solid #000;padding:.02in .03in}
+  .print-delay-badge{display:inline-block!important;font-size:8pt;line-height:1.05;margin-top:.03in;border:1.5px solid #000;padding:.02in .03in}
   body{background:#fff;color:#000;font-size:8.5pt}
   .page-header{display:none!important}
   main{max-width:none;padding:0}
