@@ -686,6 +686,9 @@ fi
 curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/setup/access" >/dev/null
 echo "Preview authorization: PASS"
 
+write_resume_state
+echo "Reconnect state: $STATE_FILE"
+
 cat <<CHECKLIST
 
 SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY
@@ -704,7 +707,11 @@ Perform the feature-specific operator checklist now.
 When review is complete, return to this terminal and press ENTER.
 CHECKLIST
 
-read -r _done
+if ! read -r _done; then
+    PRESERVE_FOR_RECONNECT=1
+    echo "Review terminal disconnected; preserving preview for reconnect."
+    exit 75
+fi
 
 echo
 echo "Browser review session ended by operator. Cleanup will now run."
