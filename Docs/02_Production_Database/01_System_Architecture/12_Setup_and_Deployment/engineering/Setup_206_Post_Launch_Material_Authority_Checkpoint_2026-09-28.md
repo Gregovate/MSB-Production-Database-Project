@@ -1753,3 +1753,46 @@ New assertion:
 No #222 performance-trace runtime behavior was changed.
 
 **Next action:** run the full `Setup/Application` regression on the documentation checkpoint SHA containing this note.
+
+
+---
+
+## Continuation Checkpoint — V0.3.20 Full Regression PASS
+
+| Field | Value |
+|---|---|
+| Exact tested implementation candidate | `431fde764fa8da859f35b1df0e314cb002d66db6` |
+| Candidate version | `V0.3.20-material-authority` |
+| Full regression command | `python -m pytest -q -p no:cacheprovider Setup/Application` |
+| Result | **573 passed in 0.99s** |
+| Failures / errors | **0** |
+| Branch | `agent/setup-206-tablet-material-audit` |
+| PR | #252 — draft / mergeable=true |
+| Main comparison before checkpoint | 110 ahead / 0 behind |
+| Production mutation authorized | **NO** |
+
+This confirms the V0.3.20 server/client version boundary and the corrected #222 version contract are green with the full Setup/Application regression.
+
+### Next gate
+
+Run reusable disposable acceptance against the exact documentation checkpoint SHA created after this section is committed.
+
+Apply migrations in order:
+
+1. `Setup/Database/063_harden_setup_extra_material_requirement_lifecycle.sql`
+2. `Setup/Database/064_add_setup_extra_material_requirement_restore.sql`
+
+Use validation:
+
+`Setup/Acceptance/setup_206_extra_material_lifecycle_disposable_validation.sql`
+
+If clean, run the final focused disposable browser review:
+
+1. header visibly shows **Client V0.3.20**;
+2. open Kit Inventory;
+3. use **Back to Setup Session**;
+4. open/confirm Reusable Task Catalog;
+5. page renders correctly without `Ctrl+Shift+R`;
+6. server/client build guard is matched and Manager writes are not blocked.
+
+No Production deployment until this final browser gate passes.
