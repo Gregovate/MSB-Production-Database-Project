@@ -544,11 +544,12 @@ def test_205_season_task_editor_is_in_annual_plan_not_reusable_catalog() -> None
     assert "function board205WorkOrderMatches(" in ui
     assert "terms.every((term) => haystack.includes(term))" in ui
     assert "No Work Order" in ui
-    assert "Linked Work Order completion satisfies this Wait / Gate" in ui
+    assert "Linked Work Order completion completes/satisfies this Setup item" in ui
     assert "Wait / Gate is NOT scheduled to a crew or work day." in ui
-    assert "Setup Work is real crew work." in ui
-    assert "actionType === 'GATE' && document.getElementById('setup-board205-season-gate').checked" in ui
-    assert "gate.disabled = !isGate" in ui
+    assert "Setup Work is real crew work" in ui
+    assert "['WORK', 'GATE'].includes(actionType)" in ui
+    assert "gate.disabled = !(isGate || isWork) || !workOrderSelected" in ui
+    assert "finishing that Work Order also completes this Setup task and unblocks downstream work" in ui
     assert "Est. labor:" in ui
     assert "planned labor hr" in ui
     assert "board205LaborHours" in ui
@@ -720,7 +721,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
     assert "setup_scheduling_board.css?v=2026-09-29.2" in html
-    assert "setup_scheduling_board.js?v=2026-09-29.4" in html
+    assert "setup_scheduling_board.js?v=2026-09-29.5" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
