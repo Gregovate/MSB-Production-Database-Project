@@ -187,7 +187,7 @@
     badge.dataset.state = ok ? 'ok' : 'error';
   }
 
-  async function ensureServerBuild() {
+  async function ensureServerBuild({ alertUser = true } = {}) {
     try {
       const health = await api('api/health');
       const serverVersion = String(health?.version || '');
@@ -196,13 +196,13 @@
       if (!ok) {
         const message = `Setup client/server version mismatch. Client ${CLIENT_BUILD}; server ${serverVersion || 'unknown'}. Refresh the page before making changes.`;
         setAlert(message, 'error');
-        window.alert(message);
+        if (alertUser) window.alert(message);
       }
       return ok;
     } catch (error) {
       setBuildBadgeState('unavailable', false);
       setAlert(error.message || error, 'error');
-      window.alert(error.message || error);
+      if (alertUser) window.alert(error.message || error);
       return false;
     }
   }
