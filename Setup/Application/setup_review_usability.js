@@ -295,7 +295,7 @@ function installSetupHowItWorks() {
         <section class="setup-help-section">
           <h3>4. Scheduling model</h3>
           <p>One task can span multiple days. One day can have parallel crews. Scheduled work is grouped by <strong>Morning</strong>, <strong>Afternoon</strong>, or <strong>All Day</strong>.</p>
-          <p><strong>Setup Work</strong> is real crew work and becomes schedulable when its hard prerequisites are complete. A linked Work Order can provide context without replacing the Setup task.</p>
+          <p><strong>Setup Work</strong> is real crew work and becomes schedulable when its hard prerequisites are complete. A linked Work Order can be reference/context only, or its completion can be configured to complete the Setup task too so downstream work unblocks without duplicate reporting.</p>
           <p><strong>Wait / Gate</strong> is different: it is <strong>not scheduled to a crew or work day</strong>. Use it only when downstream Setup must wait for an outside condition, such as a linked Work Order being completed elsewhere.</p>
           <p>If MSB volunteers must perform the repair or other work, use <strong>Setup Work</strong>, not Wait / Gate.</p>
           <p><strong>Support / Prep</strong> is schedulable enabling work around Setup, such as training, arranging rental equipment, or positioning support infrastructure. <strong>Locate Power & Network is Setup Work</strong>, not Support / Prep.</p>
