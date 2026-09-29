@@ -259,7 +259,8 @@ def test_122_work_order_picker_is_searchable() -> None:
     assert "WHERE wo.date_completed IS NULL" in repo
     assert 'placeholder="WO # or problem text"' in ui
     assert "function board205PopulateWorkOrderOptions(" in ui
-    assert "haystack.includes(search)" in ui
+    assert "function board205WorkOrderMatches(" in ui
+    assert "terms.every((term) => haystack.includes(term))" in ui
 
 
 def test_122_scheduled_task_drops_out_of_default_needs_scheduling_queue() -> None:
@@ -280,7 +281,7 @@ def test_122_planning_screen_uses_compact_operational_kpis_and_stage_scoped_plac
     assert "complete · " in ui
     assert "setup-board205-primary-filters" in ui
     assert "setup-board205-scene-label" in ui
-    assert "function board205PopulateSeasonPlacementOptions()" in ui
+    assert "function board205PopulateSeasonPlacementOptions(" in ui
     assert "Number(task.stage_id) === stageId" in ui
     assert "grid-template-columns: minmax(0, 1.55fr) minmax(6.5rem, 0.8fr)" in css
 
@@ -1046,7 +1047,8 @@ def test_122_b1a_work_order_selector_uses_live_lookup() -> None:
     assert '"work_orders": work_orders' in repo
 
     assert "setupBoard205State.board.work_orders" in ui
-    assert "WO ${wo.work_order_id}${problem ? ` · ${problem}` : ''}" in ui
+    assert "function board205WorkOrderLabel(wo)" in ui
+    assert "problem ? ` · ${problem}` : ''" in ui
     assert "WHERE wo.date_completed IS NULL" in repo
     assert "setup-board205-season-work-order" in ui
     assert "type=\"number\"" not in ui.split(
