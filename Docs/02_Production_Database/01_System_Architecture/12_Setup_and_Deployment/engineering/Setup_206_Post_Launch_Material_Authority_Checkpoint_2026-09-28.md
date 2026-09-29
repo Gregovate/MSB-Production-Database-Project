@@ -1931,3 +1931,78 @@ This release requires:
 - retained Production acceptance evidence.
 
 The next action is **Production deployment engineering/preflight**, not direct ad-hoc mutation.
+
+
+---
+
+## POST-PRODUCTION BADGE FIX CHECKPOINT — V0.3.20 healthy badge
+
+| Field | Value |
+|---|---|
+| Production application before badge-only correction | `947b86a9598584717167cce094cd78d99e9a71e7` |
+| Production version | `V0.3.20-material-authority` |
+| Migration state | 063 + 064 installed |
+| Core fingerprint after deployment | `214f843b88a630e03330ac8f378cf0c8` |
+| Material fingerprint after deployment | `07aab8c3e63914a3f8d7363e689e580f` |
+| Badge-fix implementation head before this checkpoint | `0f442bdb52f276ab01c1909cbe1bb0259c3bb62d` |
+| Database mutation required for badge fix | **NO** |
+
+### Production deployment result
+
+The bounded V0.3.20 material-authority Production deployment passed with:
+
+- unchanged core Setup fingerprint;
+- unchanged material-authority fingerprint;
+- one 2026 Setup Session before/after;
+- rollback archive retained at
+  `/home/msbadmin/backups/setup-206-material-authority/msb-pre-setup-206-material-authority-20260929T004607.dump`;
+- rollback SHA256
+  `af2611564c034773e206e68c8cb26bb19813af21a25d1aa40e3b96638be0f6fb`;
+- deployment report
+  `/home/msbadmin/setup-deployment-reports/Setup_206_Material_Authority_Production_Deploy_20260929T004607.txt`;
+- exit status 0.
+
+### Post-deploy badge defect
+
+Operator testing showed:
+
+- Pick List is the corrected/new Production behavior;
+- Material Audit is correct;
+- public `/setup/api/health` reports
+  `V0.3.20-material-authority`;
+- a second laptop also displayed **Client V0.3.19**.
+
+The public `setup_catalog_dirty_guard.js` itself proved the cause:
+
+```js
+const CLIENT_BUILD = 'V0.3.20-material-authority';
+...
+badge.textContent = 'Client V0.3.20';
+...
+badge.textContent = ok ? 'Client V0.3.19' : 'CLIENT / SERVER MISMATCH';
+```
+
+So this was **not** a Synology/Cloudflare cache defect. The healthy server/client match callback overwrote the correct V0.3.20 label with stale V0.3.19 display text.
+
+### Correction
+
+Current source-only candidate:
+
+- changes the healthy badge result to **Client V0.3.20**;
+- keeps server/client build identity `V0.3.20-material-authority`;
+- bumps `setup_catalog_dirty_guard.js` asset pin from
+  `v=2026-09-28.1` to `v=2026-09-29.1`;
+- extends the dirty-guard regression contract to require the healthy V0.3.20 badge and reject `Client V0.3.19`.
+
+No database/schema/migration behavior changes.
+
+### Next gate
+
+1. run full `Setup/Application` regression on the exact documentation checkpoint SHA created after this section;
+2. if green, run an exact-candidate disposable browser preview with **no new migration** and confirm:
+   - header shows **Client V0.3.20** after normal reload/navigation;
+   - no client/server mismatch warning;
+3. deploy as a bounded **source-only** Setup application correction under the Server Management source-only runbook;
+4. verify the real protected Production route with a normal reload.
+
+Server Management issue #51 should be updated to record that the apparent cache problem was actually caused by application badge logic; no nginx/Cloudflare mutation is indicated by current evidence.
