@@ -341,7 +341,7 @@ body.busy button { pointer-events: none; opacity: .65; }
   display: grid;
   gap: 2px;
   min-width: 0;
-  color: var(--warn);
+  color: var(--text);
   overflow-wrap: anywhere;
 }
 .kit-content-link-review span {
