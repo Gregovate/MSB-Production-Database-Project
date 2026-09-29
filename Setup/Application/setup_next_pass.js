@@ -972,10 +972,14 @@ function nextPerformDefaultCaptainFilter() {
 }
 
 function nextEnsurePerformCaptainFilter() {
-  const storageKey = nextPerformCaptainFilterStorageKey();
-  if (setupNextState.performCaptainFilterKey !== storageKey) {
-    setupNextState.performCaptainFilterKey = storageKey;
-    setupNextState.performCaptainFilter = null;
+  const contextKey = [
+    String(appState.access?.authenticated_email || 'unknown').trim().toLowerCase(),
+    Number(appState.seasonYear) || 'none'
+  ].join('|');
+
+  if (setupNextState.performCaptainFilterKey !== contextKey) {
+    setupNextState.performCaptainFilterKey = contextKey;
+    setupNextState.performCaptainFilter = nextPerformDefaultCaptainFilter();
   }
 
   const valid = new Set([
@@ -984,10 +988,7 @@ function nextEnsurePerformCaptainFilter() {
   ]);
 
   if (!setupNextState.performCaptainFilter || !valid.has(setupNextState.performCaptainFilter)) {
-    const stored = nextStoredPerformCaptainFilter();
-    setupNextState.performCaptainFilter = stored && valid.has(stored)
-      ? stored
-      : nextPerformDefaultCaptainFilter();
+    setupNextState.performCaptainFilter = nextPerformDefaultCaptainFilter();
   }
 }
 
@@ -1009,7 +1010,6 @@ function nextRenderPerformCaptainFilter() {
     select.dataset.performCaptainFilterInstalled = '1';
     select.addEventListener('change', () => {
       setupNextState.performCaptainFilter = select.value || 'ALL';
-      nextStorePerformCaptainFilter(setupNextState.performCaptainFilter);
       renderNextExecution();
     });
   }
