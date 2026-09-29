@@ -135,8 +135,10 @@ def test_perform_work_shows_planned_and_actual_person_hours() -> None:
     text = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
     assert "nextLaborHoursText" in text
     assert "nextPerformLaborKpis" in text
-    assert "Planned ${labor.plannedHours} labor hr" in text
-    assert "Actual ${labor.actualHours} labor hr" in text
+    assert 'id="next-perform-kpis"' in text
+    assert "<span>Planned labor</span>" in text
+    assert "<span>Actual labor</span>" in text
+    assert "<span>Variance</span>" in text
     assert "Est. labor" in text
     assert "person-hour" in text
     assert "Labor " in text
