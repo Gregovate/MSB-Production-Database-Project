@@ -192,3 +192,35 @@ Not yet completed:
 No Production mutation is authorized by this checkpoint.
 
 Before any Production deployment, retrieve and read the current Server Management source-only Setup application deployment authority in the deployment workstream and follow the Runbook-First Production Rule.
+
+
+## Browser review attempt 1 — stopped on client/server identity mismatch
+
+The first exact-candidate disposable browser preview reached the READY gate on port `8899`, but the first page load correctly failed closed before any operator mutation:
+
+```text
+Setup client/server version mismatch.
+Client V0.3.20-material-authority;
+server V0.3.21-scheduling-gates.
+```
+
+Root cause:
+- `production_backend.py` had already advanced the server identity to `V0.3.21-scheduling-gates`;
+- `setup_catalog_dirty_guard.js` still declared `CLIENT_BUILD = 'V0.3.20-material-authority'`;
+- the dirty-guard asset pin also needed a cache-busting refresh.
+
+Correction:
+- client build advanced to `V0.3.21-scheduling-gates`;
+- visible badge derives from the authoritative client build rather than duplicating a hard-coded minor version;
+- dirty-guard asset pin advanced to `2026-09-29.2`;
+- regression coverage now compares the server and client build identities directly so a future version bump cannot pass regression with different client/server identities.
+
+Source-fix checkpoint before this documentation commit:
+`500dab15be46165673302de56e91fc338599c58f`
+
+Because application code changed after disposable/browser acceptance began, all exact-candidate gates must restart from the final branch head:
+1. full Setup/Application regression;
+2. reusable disposable current-Production acceptance;
+3. fresh disposable browser preview.
+
+The failed preview made no accepted browser mutations and is not reusable for later acceptance.
