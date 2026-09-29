@@ -15,7 +15,7 @@ def guard_source() -> str:
 def test_dirty_guard_asset_is_loaded_and_protected_before_layout_refinement():
     html = read("production.html")
     host = read("production_backend.py")
-    guard_index = html.index("setup_catalog_dirty_guard.js?v=2026-09-28.1")
+    guard_index = html.index("setup_catalog_dirty_guard.js?v=2026-09-29.1")
     compact_index = html.index("setup_task_detail_compact.js?v=2026-09-11.1")
     effort_index = html.index("setup_catalog_effort.js?v=2026-09-24.5")
     assert guard_index > effort_index
@@ -91,6 +91,8 @@ def test_client_build_is_visible_and_write_paths_fail_closed_on_mismatch():
     js = guard_source()
     assert "V0.3.20-material-authority" in js
     assert "Client V0.3.20" in js
+    assert "badge.textContent = ok ? 'Client V0.3.20'" in js
+    assert "Client V0.3.19" not in js
     assert "setup-client-build-badge" in js
     assert "window.msbSetupClientBuild = CLIENT_BUILD" in js
     assert "async function ensureServerBuild()" in js
