@@ -2376,3 +2376,49 @@ Treat #140 cleanup as a separate bounded Production data correction. The accepte
 This candidate is now browser-accepted for a bounded source-only Production deployment. No database migration or PostgreSQL rollback archive is required for the source-only application correction; rollback unit is the prior exact application SHA plus service restart under the Server Management source-only deployment runbook.
 
 After Production source-only deployment, perform protected `/setup/` smoke validation and then update live runtime/acceptance documentation to the exact deployed SHA.
+
+---
+
+## SOURCE-ONLY PRODUCTION DEPLOYMENT PASS
+
+| Field | Value |
+|---|---|
+| Accepted application target | `3cedba88283e4766932ae7905034856a2b9baa00` |
+| Prior live Setup SHA | `947b86a9598584717167cce094cd78d99e9a71e7` |
+| Final live Setup SHA | `3cedba88283e4766932ae7905034856a2b9baa00` |
+| Production version | `V0.3.20-material-authority` |
+| Deployment type | **SOURCE ONLY** |
+| Database migration | **NONE** |
+| Exit status | **0 / PASS** |
+
+Production after-check:
+
+```text
+Deployment core fingerprint before: 679a83fac441ba73b58abb67d63251ba
+Production core fingerprint after:   679a83fac441ba73b58abb67d63251ba
+Deployment material fingerprint before: 35356aa21bbc074aeb2b64a4f2c2e6cf
+Production material fingerprint after:   35356aa21bbc074aeb2b64a4f2c2e6cf
+2026 Setup Session count before: 1
+2026 Setup Session count after:  1
+Final Setup health: {"data_mode":"postgres","status":"ok","version":"V0.3.20-material-authority"}
+PostgreSQL rollback archive: NOT REQUIRED / NOT CREATED
+```
+
+Deployment report:
+`/home/msbadmin/setup-deployment-reports/Setup_206_Source_Only_Followup_Production_Deploy_20260929T024256.txt`
+
+Wrapper result:
+`SETUP #206 V0.3.20 SOURCE-ONLY FOLLOW-UP PRODUCTION DEPLOYMENT WRAPPER: PASS`
+
+### Remaining release gate
+
+Perform protected-route operator smoke validation through real Production `/setup/` before closeout.
+
+Validate:
+- Client V0.3.20 remains correct;
+- Reusable Task Catalog always uses grouped Site-wide / Stage / Scene renderer;
+- Kit Inventory -> Back to Setup Session -> Reusable Task Catalog does not expose the obsolete flat Catalog;
+- Kit Inventory retains LINKED TO TASK wording;
+- Add Source retains Already linked — use Change behavior.
+
+Keep the #140 Layout Light Locations T-Post correction separate as a bounded Production data cleanup after source-only acceptance.
