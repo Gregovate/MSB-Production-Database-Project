@@ -2654,3 +2654,148 @@ The next implementation cycle is the downstream-demand date/assignment semantics
 4. verify direct scheduled material work still receives correct Pick By / Needed For dates;
 5. verify accepted Pick By -> Needed For -> rack ordering remains unchanged.
 
+
+
+---
+
+## PICK LIST DOWNSTREAM VISIBILITY CORRECTION — SAME-DAY WORK / ANNUAL HOLD
+
+This section **supersedes the overly strong interpretation** in the immediately prior downstream-date checkpoint.
+
+### Why downstream material visibility is required
+
+Operator clarified the original logistics requirement:
+
+```text
+Locate
+    -> Layout
+        -> Setup
+```
+
+may all occur on the same day.
+
+The picker may be assigned to different work once the field crews begin. If the Pick List waits until the downstream Setup task receives its own explicit work-day assignment, the crew can complete Locate/Layout and then discover that required material is still at the shop with no picker available to retrieve it.
+
+Therefore:
+
+```text
+scheduled precursor
+    -> near downstream material frontier
+    -> material must be visible before downstream work is explicitly scheduled
+```
+
+Preserve `downstream_material_frontier()`.
+
+Do **not** reduce the Pick List back to direct scheduled material only.
+
+### Correct semantic distinction
+
+The prior checkpoint correctly identified that the expanded reason currently makes a downstream task appear to own the precursor's assignment, but it was wrong to imply that the precursor date cannot drive logistics.
+
+Required model:
+
+```text
+scheduled trigger
+    = actual annual schedule fact
+
+anticipated downstream demand
+    = material that may be needed immediately after the scheduled trigger
+
+derived logistics deadline
+    = conservative Pick By / material-readiness target from that possibility
+
+downstream Day / shift / crew
+    = not asserted unless the downstream task has its own real assignment
+```
+
+A Pick List reason may say, conceptually:
+
+```text
+Anticipated after Day 3 Locate Power & Network
+Potential same-day downstream work: Setup Polar Express
+Pick by 9/28
+```
+
+It must not say that Setup Polar Express itself is `Day 3 · MORNING · Crew A` unless that annual assignment really exists.
+
+### 2026-only Magic Igloo block
+
+Magic Igloo provides a second dimension:
+
+- normally downstream material visibility is wanted early;
+- in 2026, road/site work prevents Setup from proceeding;
+- operator expects that block may remain until about 2026-10-09;
+- this is a one-season condition, not reusable Catalog knowledge.
+
+Do not write this condition into reusable `ref.setup_task.readiness_note`.
+
+Current #205 data model already contains annual/session snapshot fields:
+
+```text
+ops.setup_session_task.annual_readiness_note
+ops.setup_session_task.annual_readiness_state
+```
+
+but the current Scheduling Board **Edit Planning Info** path for REUSABLE-origin work writes the readiness text back to the reusable Catalog before updating the annual row. The existing inline Ready / Not Ready action changes annual state only and does not record an annual-only reason.
+
+Therefore the current operator surface has a proven #205 gap: a reusable-origin annual task cannot currently receive a 2026-only readiness/hold reason through the normal scheduler edit path without contaminating reusable knowledge.
+
+This gap is now recorded in #205 / #122.
+
+### #206 defer requirement
+
+Annual blocked/not-ready context must not make anticipated material disappear.
+
+The desired operator behavior is:
+
+```text
+anticipated downstream material appears
+    -> operator can see why it is being surfaced
+    -> annual blocker/readiness context is visible
+    -> operator can deliberately defer the pick when appropriate
+    -> deferred material remains explainable/visible as deferred
+```
+
+Do not collapse this into physical Picked/Moved state.
+
+Do not automatically treat an annual blocker as "never pick"; material may still be intentionally staged early.
+
+The engineering model must keep separate:
+
+1. direct scheduled demand;
+2. anticipated downstream demand;
+3. annual readiness/blocking context;
+4. operator defer decision;
+5. physical picked/mobilized state.
+
+### #205 state check
+
+Current #205 follow-up discussions **did** record:
+
+- WO 372 / WO 156 annual gate placement;
+- Work Order search/discovery defects;
+- requirement that those gates remain annual-only and out of the reusable Catalog.
+
+They **did not** record:
+
+- the 2026 road-work hold / approximate Oct 9 timing;
+- the need for annual-only readiness/hold editing on a reusable-origin task;
+- the relationship between that annual block and #206 anticipated material visibility/defer behavior.
+
+Those omissions have now been corrected in #205 and #122 issue comments.
+
+### Next controlled implementation direction
+
+Do not change code from this checkpoint until #205 annual-hold behavior and #206 defer semantics are reconciled.
+
+When implementation resumes:
+
+1. preserve the accepted deadline-first sort;
+2. preserve downstream frontier visibility;
+3. stop labeling anticipated downstream work as though it owns the trigger task's Day/shift/crew;
+4. expose/consume annual-only blocked/not-ready context without altering reusable Catalog truth;
+5. provide an explicit defer behavior for anticipated material rather than hiding it;
+6. keep physical pick/movement history separate;
+7. use Winter Wonderland as the positive same-day-material acceptance case;
+8. use Magic Igloo 2026 as the annual-block/defer acceptance case.
+
