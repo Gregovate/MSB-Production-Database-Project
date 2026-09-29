@@ -605,6 +605,17 @@ A one-off annual task does **not** belong in `ref.setup_task` merely because the
 
 Season-only work is created and maintained in the selected annual Setup Session.
 
+### Creation-surface rule
+
+The creation surface determines the intended identity deliberately:
+
+- **Scheduling Board -> Add Task** must ask the Manager to choose either **Reusable Setup Task — every year** or **Season Task Only — this season**. There is no implicit default because the two choices have different identity/lifetime semantics.
+- **Reusable Task Catalog -> Add Task** is inherently a reusable-task creation workflow. A task created there is assumed to be reusable and is created in `ref.setup_task`.
+- Choosing **Reusable Setup Task** from the Scheduling Board hands off to the same governed reusable Catalog creation workflow; it does not create a separate kind of reusable task.
+- Choosing **Season Task Only** creates only the annual/session-scoped row and never creates a reusable Catalog row.
+
+This separation is intentional: the Scheduling Board can create either kind because planning may discover either durable recurring work or a one-season exception, while the Reusable Task Catalog itself represents permanent reusable Setup knowledge.
+
 It participates in:
 
 - annual order;
