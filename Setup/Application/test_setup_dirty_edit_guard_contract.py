@@ -95,7 +95,7 @@ def test_client_build_is_visible_and_write_paths_fail_closed_on_mismatch():
     assert "badge.textContent = ok ? CLIENT_BADGE" in js
     assert "setup-client-build-badge" in js
     assert "window.msbSetupClientBuild = CLIENT_BUILD" in js
-    assert "async function ensureServerBuild()" in js
+    assert "async function ensureServerBuild({ alertUser = true } = {})" in js
     assert "serverVersion === CLIENT_BUILD" in js
     assert "Refresh the page before making changes" in js
     assert "if (!await ensureServerBuild()) return false;" in js
