@@ -1133,7 +1133,7 @@ function board205TaskCard(task) {
       ${blockerDetails.map((detail) => `<div class="setup-board205-warning setup-board205-blocker-detail"><strong>${board205Esc(detail.label)}:</strong> ${board205Esc(detail.text)}</div>`).join('')}
       <div class="setup-board205-card-actions">
         ${canSchedule ? '<button type="button" class="small setup-board205-schedule-task">Schedule…</button>' : ''}
-        ${canManage && !historicalReview && !task.catalog_only && task.readiness_note ? `<button type="button" class="small secondary setup-board205-toggle-readiness">${task.readiness_state === 'NOT_READY' ? 'Mark Ready' : 'Mark Not Ready'}</button>` : ''}
+        ${canManage && !historicalReview && !task.catalog_only && task.readiness_note && !task.progress_entries && !task.effective_complete ? `<button type="button" class="small secondary setup-board205-toggle-readiness">${task.readiness_state === 'NOT_READY' ? 'Mark Ready' : 'Mark Not Ready'}</button>` : ''}
         ${canManage && !historicalReview && !task.catalog_only && !task.progress_entries && !task.effective_complete ? '<button type="button" class="small secondary setup-board205-edit-annual-hold">Annual readiness…</button>' : ''}
         ${canManage && historicalReview && task.task_origin === 'REUSABLE' ? '<button type="button" class="small setup-board205-edit-planning-info">Edit Planning Info</button>' : ''}
         ${canManage && !historicalReview && !task.catalog_only && !task.progress_entries && !task.effective_complete ? '<button type="button" class="small secondary setup-board205-edit-planning-info">Edit Planning Info</button>' : ''}
