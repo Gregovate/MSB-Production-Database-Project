@@ -246,3 +246,42 @@ Source checkpoint before this documentation commit:
 `ada13aab763833e29281da260ed85b331263732d`
 
 Because this changed application code after the earlier `580 passed` run, exact-candidate regression and disposable/browser acceptance must restart from the final branch head.
+
+
+## Reusable acceptance lesson promoted — future Setup threads inherit this gate
+
+The first #205 browser-review mismatch proved a gap in the reusable acceptance process, not only in this feature candidate.
+
+The common Setup acceptance tooling is now changed so future Setup work cannot reach server-side disposable/browser testing with different client/server build identities.
+
+Reusable launcher preflight now reads the exact candidate files with `git show`:
+
+```text
+Setup/Application/production_backend.py
+    PRODUCTION_VERSION
+
+Setup/Application/setup_catalog_dirty_guard.js
+    CLIENT_BUILD
+```
+
+Before any SCP/SSH/server contact:
+- disposable acceptance requires the two build strings to match exactly;
+- browser preview requires the two build strings to match exactly;
+- browser preview also requires the operator-supplied `-ExpectedVersion` to equal that same exact candidate build.
+
+The durable common authority is:
+`Setup/Acceptance/README.md` -> **Mandatory exact client/server build identity gate**.
+
+The reusable tooling contract test now protects this behavior:
+`Setup/Application/test_setup_reusable_acceptance_tooling_contract.py`.
+
+This intentionally applies to future Setup threads using the reusable acceptance launchers; it is not limited to #205.
+
+The prior candidate `cb76d28648528d57c2ea2d69a68d1a7e84618024` passed:
+- full regression: `581 passed in 1.15s`;
+- reusable disposable current-Production acceptance;
+- Production fingerprint unchanged: `2e4e1176f52fd083e3803c4e70ff0134`;
+- live Setup SHA unchanged: `3cedba88283e4766932ae7905034856a2b9baa00`;
+- retained acceptance report: `/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Acceptance_20260929T131346.txt`.
+
+Because the reusable launcher/docs/contracts were then improved, those gates do not transfer to the new exact branch head. Regression and disposable/browser acceptance restart from the new SHA.
