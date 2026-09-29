@@ -605,6 +605,17 @@ A one-off annual task does **not** belong in `ref.setup_task` merely because the
 
 Season-only work is created and maintained in the selected annual Setup Session.
 
+### Creation-surface rule
+
+The creation surface determines the intended identity deliberately:
+
+- **Scheduling Board -> Add Task** must ask the Manager to choose either **Reusable Setup Task — every year** or **Season Task Only — this season**. There is no implicit default because the two choices have different identity/lifetime semantics.
+- **Reusable Task Catalog -> Add Task** is inherently a reusable-task creation workflow. A task created there is assumed to be reusable and is created in `ref.setup_task`.
+- Choosing **Reusable Setup Task** from the Scheduling Board hands off to the same governed reusable Catalog creation workflow; it does not create a separate kind of reusable task.
+- Choosing **Season Task Only** creates only the annual/session-scoped row and never creates a reusable Catalog row.
+
+This separation is intentional: the Scheduling Board can create either kind because planning may discover either durable recurring work or a one-season exception, while the Reusable Task Catalog itself represents permanent reusable Setup knowledge.
+
 It participates in:
 
 - annual order;
@@ -614,9 +625,11 @@ It participates in:
 - progress/completion where applicable; and
 - historical reporting.
 
-It does not automatically appear in any later Setup Session.
+It does not appear in any later Setup Session.
 
-A season-only task can become reusable only through a later explicit reusable-reconciliation decision.
+**Season-only is a permanent identity boundary.** A `SEASON_ONLY` annual task remains in that season for its entire lifetime. It is never converted, promoted, copied, or written back into `ref.setup_task`, and it is never a source for future-season seeding.
+
+If annual experience shows that comparable work should recur in later seasons, an authorized Manager may separately create a new reusable Catalog task through the normal governed reusable-task workflow. That new reusable task is a different reusable identity; the original season-only annual task remains unchanged as historical evidence in its original season.
 
 `inactive reusable task` and `season-only annual task` are different states and must not substitute for one another.
 
@@ -727,7 +740,7 @@ The two repair gates:
 - are linked to real `ops.work_order` identities;
 - participate in annual prerequisite logic;
 - remain visible in 2026 history; and
-- do not seed the next season unless explicitly promoted.
+- never seed a later season or convert into reusable Catalog identities.
 
 Work Order owns repair lifecycle. Setup owns annual sequence and dependency meaning.
 
@@ -769,9 +782,9 @@ Candidate changes may include:
 - expected duration;
 - reusable task boundary split/merge;
 - material/resource guidance; or
-- promotion of a season-only task that proved recurring.
+- creation of a separate reusable Catalog task when annual evidence proves that a recurring task is needed.
 
-Annual history remains evidence even when a proposed reusable change is rejected or deferred.
+A season-only annual identity itself is never promoted or converted. Annual history remains evidence even when a proposed reusable change is rejected or deferred.
 
 No blanket regeneration of the Reusable Catalog from one year's schedule is acceptable.
 

@@ -24,7 +24,15 @@ function escapeHtml(value) {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(path.replace(/^\/+/, ''), {
+  const normalizedPath = path.replace(/^\/+/, '');
+  const isSetupCommand = options?.headers?.['X-MSB-Setup-Command'] === '1';
+  if (isSetupCommand) {
+    const checkBuild = window.msbSetupEnsureServerBuild;
+    if (typeof checkBuild !== 'function' || !(await checkBuild({ alertUser: false }))) {
+      throw new Error('Refresh required before changing Setup data.');
+    }
+  }
+  const response = await fetch(normalizedPath, {
     credentials: 'same-origin',
     headers: {
       Accept: 'application/json',

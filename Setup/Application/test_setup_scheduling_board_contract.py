@@ -57,6 +57,25 @@ def test_205_migration_separates_reusable_and_season_only_annual_work() -> None:
     )[1].split("CREATE OR REPLACE FUNCTION ops.update_setup_annual_task_definition", 1)[0]
 
 
+def test_205_season_only_tasks_never_seed_future_sessions_or_write_back_to_catalog() -> None:
+    migration_050 = read_db("050_add_setup_scheduling_board_foundation.sql")
+    migration_058 = read_db("058_preserve_catalog_review_on_annual_launch.sql")
+
+    season_create = migration_050.split(
+        "CREATE OR REPLACE FUNCTION ops.create_setup_season_task", 1
+    )[1].split("CREATE OR REPLACE FUNCTION ops.update_setup_annual_task_definition", 1)[0]
+    assert "INSERT INTO ref.setup_task" not in season_create
+    assert "task_origin" in season_create
+    assert "'SEASON_ONLY'" in season_create
+
+    session_create = migration_058.split(
+        "CREATE OR REPLACE FUNCTION ops.create_setup_session", 1
+    )[1].split("CREATE OR REPLACE FUNCTION ref.create_setup_task", 1)[0]
+    assert "FROM ref.setup_task t" in session_create
+    assert "WHERE t.active_flag" in session_create
+    assert "FROM ops.setup_session_task" not in session_create
+
+
 def test_205_annual_dependencies_can_include_season_only_tasks() -> None:
     sql = read_db("050_add_setup_scheduling_board_foundation.sql")
     assert "CREATE TABLE IF NOT EXISTS ops.setup_session_task_dependency" in sql
@@ -259,7 +278,8 @@ def test_122_work_order_picker_is_searchable() -> None:
     assert "WHERE wo.date_completed IS NULL" in repo
     assert 'placeholder="WO # or problem text"' in ui
     assert "function board205PopulateWorkOrderOptions(" in ui
-    assert "haystack.includes(search)" in ui
+    assert "function board205WorkOrderMatches(" in ui
+    assert "terms.every((term) => haystack.includes(term))" in ui
 
 
 def test_122_scheduled_task_drops_out_of_default_needs_scheduling_queue() -> None:
@@ -280,7 +300,7 @@ def test_122_planning_screen_uses_compact_operational_kpis_and_stage_scoped_plac
     assert "complete · " in ui
     assert "setup-board205-primary-filters" in ui
     assert "setup-board205-scene-label" in ui
-    assert "function board205PopulateSeasonPlacementOptions()" in ui
+    assert "function board205PopulateSeasonPlacementOptions(" in ui
     assert "Number(task.stage_id) === stageId" in ui
     assert "grid-template-columns: minmax(0, 1.55fr) minmax(6.5rem, 0.8fr)" in css
 
@@ -288,8 +308,8 @@ def test_122_planning_screen_uses_compact_operational_kpis_and_stage_scoped_plac
 def test_122_season_task_type_labels_explain_operator_meaning() -> None:
     ui = read_app("setup_scheduling_board.js")
 
-    assert ">Setup Work<" in ui
-    assert ">Wait / Gate<" in ui
+    assert ">Setup Work — schedulable<" in ui
+    assert ">Wait / Gate — not schedulable<" in ui
     assert ">Support / Prep<" in ui
     assert ">Unload Container<" in ui
 
@@ -518,12 +538,98 @@ def test_205_season_task_editor_is_in_annual_plan_not_reusable_catalog() -> None
     assert "Add Task" in ui
     assert "THIS SEASON ONLY" in ui
     assert "It does not enter the Reusable Task Catalog" in ui
-    assert "Matching Work Order<select" in ui
+    assert "Selected Work Order<select" in ui
+    assert "setup-board205-season-work-order-results" in ui
+    assert "The full open Work Order list is intentionally not shown." in ui
+    assert "function board205WorkOrderMatches(" in ui
+    assert "terms.every((term) => haystack.includes(term))" in ui
     assert "No Work Order" in ui
-    assert "Work Order completion satisfies this gate" in ui
-    assert "Place after / requires" in ui
-    assert "Optional downstream task to block" in ui
+    assert "Linked Work Order completion completes/satisfies this Setup item" in ui
+    assert "Wait / Gate is NOT scheduled to a crew or work day." in ui
+    assert "Setup Work is real crew work" in ui
+    assert "['WORK', 'GATE'].includes(actionType)" in ui
+    assert "gate.disabled = !(isGate || isWork) || !workOrderSelected" in ui
+    assert "finishing that Work Order also completes this Setup task and unblocks downstream work" in ui
+    assert "Est. labor:" in ui
+    assert "planned labor hr" in ui
+    assert "board205LaborHours" in ui
+    assert "board205AssignmentPlannedCrew" in ui
+    assert "Locate Power & Network is Setup Work, not Support / Prep." in ui
+    assert "This task happens after" in ui
+    assert "This task must happen before" in ui
+    assert "board205SeasonPlacementState" in ui
+    assert "chain.hidden = true" not in ui
+    assert "setup-board205-season-placement-note" in ui
     assert "setup-board205-season-effort" in ui
+
+
+def test_205_existing_season_gate_can_reconcile_annual_placement_without_rewriting_other_edges() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    api = read_app("setup_scheduling_board_api.py")
+    repository = read_app("setup_scheduling_board_repository.py")
+
+    assert "/placement" in api
+    assert "reconcile_season_task_placement" in repository
+    assert "ops.set_setup_session_task_dependency" in repository
+    assert "ops.set_setup_session_task_planned_order" in repository
+    reconcile = repository.split("def reconcile_season_task_placement(", 1)[1].split(
+        "def set_readiness(", 1
+    )[0]
+    assert "FOR UPDATE" not in reconcile
+    assert "previous_prerequisite_setup_session_task_id" in ui
+    assert "previous_downstream_setup_session_task_id" in ui
+    assert "Additional prerequisite(s) preserved" in ui
+    assert "Additional downstream dependency/dependencies preserved" in ui
+    assert "Use one side when that is enough." in ui
+    assert "setup-board205-season-error" in ui
+    assert "window.alert(error.message || error)" not in ui.split("async function board205SubmitSeasonTask", 1)[1].split("function board205InstallView", 1)[0]
+
+    # Save the definition and requested placement as one browser command so a
+    # dependency failure cannot leave a partially updated season-only task.
+    season_submit = ui.split("async function board205SubmitSeasonTask", 1)[1].split(
+        "function board205InstallView", 1
+    )[0]
+    assert "/placement" not in season_submit
+    assert "previous_prerequisite_setup_session_task_id" in season_submit
+    assert "downstream_setup_session_task_id" in season_submit
+
+    update_method = repository.split("def update_annual_task(", 1)[1].split(
+        "def update_planning_info(", 1
+    )[0]
+    assert "ops.update_setup_annual_task_definition" in update_method
+    assert "ops.set_setup_session_task_dependency" in update_method
+    assert "ops.set_setup_session_task_planned_order" in update_method
+    assert "FOR UPDATE" not in update_method
+
+    create_method = repository.split("def create_season_task(", 1)[1].split(
+        "def delete_season_task(", 1
+    )[0]
+    assert "ops.create_setup_season_task" in create_method
+    assert "ops.set_setup_session_task_dependency" in create_method
+    assert "conn.commit()" in create_method
+
+    assert "prerequisite_session_task_id=nullable_int(" in api
+    assert "downstream_session_task_id=nullable_int(" in api
+    assert "previous_prerequisite_session_task_id=nullable_int(" in api
+    assert "previous_downstream_session_task_id=nullable_int(" in api
+
+
+def test_205_annual_hold_is_season_only_and_does_not_write_reusable_readiness() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    api = read_app("setup_scheduling_board_api.py")
+    repository = read_app("setup_scheduling_board_repository.py")
+
+    assert "Annual readiness…" in ui
+    assert "THIS SEASON ONLY." in ui
+    assert "does not change reusable Catalog readiness knowledge" in ui
+    assert "/annual-hold" in api
+    assert "set_annual_hold" in repository
+    assert "ops.update_setup_annual_task_definition" in repository
+    assert "ops.set_setup_annual_task_readiness" in repository
+    annual_hold = repository.split("def set_annual_hold(", 1)[1].split(
+        "def reconcile_season_task_placement(", 1
+    )[0]
+    assert "ref.update_setup_task" not in annual_hold
 
 
 def test_205_api_uses_governed_manager_commands_for_plan_mutations() -> None:
@@ -537,6 +643,8 @@ def test_205_api_uses_governed_manager_commands_for_plan_mutations() -> None:
         "/api/setup/scheduling-board/crews/<int:setup_work_day_crew_id>",
         "/api/setup/scheduling-board/season-tasks",
         "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/readiness",
+        "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/annual-hold",
+        "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/placement",
         "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/planning-info",
         "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/crew-captain/",
     ):
@@ -612,8 +720,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-26.1" in html
-    assert "setup_scheduling_board.js?v=2026-09-25.5" in html
+    assert "setup_scheduling_board.css?v=2026-09-29.2" in html
+    assert "setup_scheduling_board.js?v=2026-09-29.5" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
@@ -635,6 +743,7 @@ def test_122_b1a_pre2026_current_catalog_allows_planning_edits_but_blocks_actual
     # season-task actions remain suppressed until a real annual Session exists.
     assert "setup-board205-edit-planning-info" in ui
     assert "canManage && !historicalReview && !task.catalog_only && task.readiness_note" in ui
+    assert "setup-board205-edit-annual-hold" in ui
     assert "canManage && !historicalReview && seasonOnly" in ui
     assert "setup-board205-plan-up" not in ui
     assert "setup-board205-plan-down" not in ui
@@ -850,7 +959,7 @@ def test_122_b1a_reusable_task_audit_is_visible() -> None:
     assert "<strong>Audit:</strong>" in ui
     assert "reusable-task-audit" in html
     assert "Created ${createdAt} by ${createdBy} · Last updated ${updatedAt} by ${updatedBy}" in production
-    assert "setup_production.js?v=2026-09-28.1" in html
+    assert "setup_production.js?v=2026-09-29.2" in html
 
 
 def test_122_b1a_historical_overlay_preserves_fresh_board_audit_after_write() -> None:
@@ -1003,7 +1112,8 @@ def test_122_b1a_work_order_selector_uses_live_lookup() -> None:
     assert '"work_orders": work_orders' in repo
 
     assert "setupBoard205State.board.work_orders" in ui
-    assert "WO ${wo.work_order_id}${problem ? ` · ${problem}` : ''}" in ui
+    assert "function board205WorkOrderLabel(wo)" in ui
+    assert "problem ? ` · ${problem}` : ''" in ui
     assert "WHERE wo.date_completed IS NULL" in repo
     assert "setup-board205-season-work-order" in ui
     assert "type=\"number\"" not in ui.split(
@@ -1106,6 +1216,18 @@ def test_122_real_2026_session_creation_and_add_intent_are_explicit() -> None:
     assert "There is no default" in ui
     assert "board205ChooseReusableTask" in ui
     assert "board205ChooseSeasonOnlyTask" in ui
+
+    # Scheduling can deliberately create either identity. Reusable creation
+    # hands off to the normal Catalog editor; season-only stays annual-only.
+    reusable_choice = ui.split("async function board205ChooseReusableTask()", 1)[1].split(
+        "function board205ChooseSeasonOnlyTask()", 1
+    )[0]
+    season_choice = ui.split("function board205ChooseSeasonOnlyTask()", 1)[1].split(
+        "async function board205DeleteSeasonTask()", 1
+    )[0]
+    assert "navigateSetupView('library')" in reusable_choice
+    assert "acceptanceOpenAddTask" in reusable_choice
+    assert "board205OpenSeasonTaskDialog()" in season_choice
 
 
 def test_122_season_only_unworked_task_delete_is_governed() -> None:

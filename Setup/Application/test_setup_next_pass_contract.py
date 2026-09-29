@@ -128,4 +128,18 @@ def test_next_pass_catalog_waits_for_organization_readiness() -> None:
     assert "priorNextRenderLibrary" not in text
     assert "if (!setupNextState.scenes.length)" not in text
     assert "if (setupNextState.scenes.length) renderLibrary();" not in text
-    assert "setup_next_pass.js?v=2026-09-29.1" in html
+    assert "setup_next_pass.js?v=2026-09-29.5" in html
+
+
+def test_perform_work_shows_planned_and_actual_person_hours() -> None:
+    text = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
+    assert "nextLaborHoursText" in text
+    assert "nextPerformLaborKpis" in text
+    assert 'id="next-perform-kpis"' in text
+    assert "<span>Planned labor</span>" in text
+    assert "<span>Actual labor</span>" in text
+    assert "<span>Variance</span>" in text
+    assert "Est. labor" in text
+    assert "person-hour" in text
+    assert "Labor " in text
+    assert "nextPerformPlannedCrew" in text

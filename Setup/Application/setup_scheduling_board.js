@@ -8,6 +8,13 @@ const setupBoard205State = {
   editSeasonTaskId: null,
   editPlanningTaskId: null,
   editPlanningReusableTaskId: null,
+  editAnnualHoldTaskId: null,
+  seasonPlacementOriginal: {
+    prerequisiteId: null,
+    downstreamId: null,
+    extraPrerequisiteNames: [],
+    extraDownstreamNames: []
+  },
   scheduleTarget: null,
   finderCompact: null,
   workDaySelection: new Set(),
@@ -25,6 +32,64 @@ function board205Task(sessionTaskId) {
   return (setupBoard205State.board.tasks || []).find(
     (task) => Number(task.setup_session_task_id) === Number(sessionTaskId)
   );
+}
+
+function board205SeasonPlacementState(sessionTaskId) {
+  const targetId = Number(sessionTaskId || 0);
+  const target = board205Task(targetId);
+  const targetOrder = Number(target?.planned_order ?? 0);
+
+  const prerequisiteRows = (setupBoard205State.board.dependencies || [])
+    .filter((dep) => Number(dep.setup_session_task_id) === targetId)
+    .map((dep) => ({ dep, task: board205Task(dep.prerequisite_setup_session_task_id) }))
+    .filter((row) => row.task)
+    .sort((a, b) => (
+      Number(b.task?.planned_order ?? -1) - Number(a.task?.planned_order ?? -1)
+      || Number(b.task?.setup_session_task_id ?? 0) - Number(a.task?.setup_session_task_id ?? 0)
+    ));
+
+  const downstreamRows = (setupBoard205State.board.dependencies || [])
+    .filter((dep) => Number(dep.prerequisite_setup_session_task_id) === targetId)
+    .map((dep) => ({ dep, task: board205Task(dep.setup_session_task_id) }))
+    .filter((row) => row.task)
+    .sort((a, b) => (
+      Number(a.task?.planned_order ?? 999999) - Number(b.task?.planned_order ?? 999999)
+      || Number(a.task?.setup_session_task_id ?? 0) - Number(b.task?.setup_session_task_id ?? 0)
+    ));
+
+  const prerequisite = prerequisiteRows.find((row) => Number(row.task.planned_order ?? -1) <= targetOrder)
+    || prerequisiteRows[0]
+    || null;
+  const downstream = downstreamRows.find((row) => Number(row.task.planned_order ?? 999999) >= targetOrder)
+    || downstreamRows[0]
+    || null;
+
+  return {
+    prerequisiteId: prerequisite ? Number(prerequisite.task.setup_session_task_id) : null,
+    downstreamId: downstream ? Number(downstream.task.setup_session_task_id) : null,
+    extraPrerequisiteNames: prerequisiteRows
+      .filter((row) => row !== prerequisite)
+      .map((row) => row.task.task_name),
+    extraDownstreamNames: downstreamRows
+      .filter((row) => row !== downstream)
+      .map((row) => row.task.task_name)
+  };
+}
+
+function board205SeasonPlannedOrder(prerequisiteId, downstreamId, currentTask = null) {
+  const priorTask = prerequisiteId ? board205Task(prerequisiteId) : null;
+  const downstreamTask = downstreamId ? board205Task(downstreamId) : null;
+  const priorOrder = priorTask?.planned_order == null ? null : Number(priorTask.planned_order);
+  const downstreamOrder = downstreamTask?.planned_order == null ? null : Number(downstreamTask.planned_order);
+
+  if (priorOrder != null && downstreamOrder != null) {
+    return downstreamOrder > priorOrder + 1
+      ? Math.floor((priorOrder + downstreamOrder) / 2)
+      : priorOrder + 1;
+  }
+  if (priorOrder != null) return priorOrder + 1;
+  if (downstreamOrder != null) return Math.max(0, downstreamOrder - 1);
+  return currentTask?.planned_order == null ? null : Number(currentTask.planned_order);
 }
 
 function board205Assignment(assignmentId) {
@@ -480,6 +545,30 @@ function board205Duration(minutes) {
   return typeof formatMinutes === 'function'
     ? formatMinutes(Number(minutes))
     : `${minutes} min`;
+}
+
+function board205LaborHours(crewCount, durationMinutes) {
+  const crew = Number(crewCount);
+  const minutes = Number(durationMinutes);
+  if (!Number.isFinite(crew) || crew <= 0 || !Number.isFinite(minutes) || minutes <= 0) return null;
+  return (crew * minutes) / 60;
+}
+
+function board205LaborHoursText(crewCount, durationMinutes) {
+  const hours = board205LaborHours(crewCount, durationMinutes);
+  if (hours == null) return 'TBD';
+  const shown = Number.isInteger(hours) ? String(hours) : hours.toFixed(1).replace(/\.0$/, '');
+  return `${shown} person-hour${Number(shown) === 1 ? '' : 's'}`;
+}
+
+function board205AssignmentPlannedCrew(item) {
+  const crew = board205CrewRow(item?.setup_work_day_crew_id);
+  const shiftCrew = board205PlannedCrewForShift(crew, item?.shift_code);
+  if (shiftCrew != null) return Number(shiftCrew);
+  if (item?.planned_crew_count != null && Number(item.planned_crew_count) > 0) {
+    return Number(item.planned_crew_count);
+  }
+  return null;
 }
 
 function board205AuditWhen(value) {
@@ -1068,7 +1157,8 @@ function board205TaskCard(task) {
       ${blockerDetails.map((detail) => `<div class="setup-board205-warning setup-board205-blocker-detail"><strong>${board205Esc(detail.label)}:</strong> ${board205Esc(detail.text)}</div>`).join('')}
       <div class="setup-board205-card-actions">
         ${canSchedule ? '<button type="button" class="small setup-board205-schedule-task">Schedule…</button>' : ''}
-        ${canManage && !historicalReview && !task.catalog_only && task.readiness_note ? `<button type="button" class="small secondary setup-board205-toggle-readiness">${task.readiness_state === 'NOT_READY' ? 'Mark Ready' : 'Mark Not Ready'}</button>` : ''}
+        ${canManage && !historicalReview && !task.catalog_only && task.readiness_note && !task.progress_entries && !task.effective_complete ? `<button type="button" class="small secondary setup-board205-toggle-readiness">${task.readiness_state === 'NOT_READY' ? 'Mark Ready' : 'Mark Not Ready'}</button>` : ''}
+        ${canManage && !historicalReview && !task.catalog_only && !task.progress_entries && !task.effective_complete ? '<button type="button" class="small secondary setup-board205-edit-annual-hold">Annual readiness…</button>' : ''}
         ${canManage && historicalReview && task.task_origin === 'REUSABLE' ? '<button type="button" class="small setup-board205-edit-planning-info">Edit Planning Info</button>' : ''}
         ${canManage && !historicalReview && !task.catalog_only && !task.progress_entries && !task.effective_complete ? '<button type="button" class="small secondary setup-board205-edit-planning-info">Edit Planning Info</button>' : ''}
         ${canManage && !historicalReview && seasonOnly ? '<button type="button" class="small secondary setup-board205-edit-season-task">Edit season task</button>' : ''}
@@ -1194,6 +1284,9 @@ function board205RenderQueue() {
     card.querySelector('.setup-board205-toggle-readiness')?.addEventListener('click', () => {
       board205SetReadiness(task);
     });
+    card.querySelector('.setup-board205-edit-annual-hold')?.addEventListener('click', () => {
+      board205OpenAnnualHoldDialog(task);
+    });
     card.querySelector('.setup-board205-edit-planning-info')?.addEventListener('click', () => {
       board205OpenPlanningInfoDialog(taskId || null, reusableTaskId || null);
     });
@@ -1224,8 +1317,9 @@ function board205AssignmentCard(item) {
   const crew = board205CrewRow(item.setup_work_day_crew_id);
   const canManage = Boolean(appState.access?.can_manage_setup);
   const locked = Boolean(item.historical_locked);
-  const planned = board205PlannedCrewForShift(crew, item.shift_code);
+  const planned = board205AssignmentPlannedCrew(item);
   const minCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
+  const plannedLabor = board205LaborHoursText(planned, task.expected_duration_minutes);
   const understaffed = planned != null && minCrew != null && planned < minCrew;
   const shortBy = understaffed ? minCrew - planned : 0;
   const heavyWarning = board205HeavyWarning(item);
@@ -1242,6 +1336,7 @@ function board205AssignmentCard(item) {
       </div>
       <div class="setup-board205-meta">${board205Esc(board205Scope(item))}</div>
       <div class="setup-board205-meta">Min crew ${board205Esc(minCrew ?? 'TBD')} · ${board205Esc(board205Duration(task.expected_duration_minutes))}</div>
+      <div class="setup-board205-meta"><strong>Planned crew:</strong> ${board205Esc(planned ?? 'TBD')} · <strong>Est. labor:</strong> ${board205Esc(plannedLabor)}</div>
       <div class="setup-board205-meta"><strong>Crew Captain:</strong> ${board205Esc(crew?.captain_display_name || 'TBD')}</div>
       ${task.readiness_state === 'NOT_READY' ? `<div class="setup-board205-warning">⚠ Readiness not met: ${board205Esc(task.readiness_note || 'annual readiness condition')}</div>` : ''}
       ${understaffed ? `<div class="setup-board205-warning setup-board205-short-crew-warning"><strong>SHORT CREW</strong> · Planned ${board205Esc(item.shift_code === 'MORNING' ? 'AM' : 'PM')} ${board205Esc(planned)} / minimum ${board205Esc(minCrew)} · short by ${board205Esc(shortBy)}.</div>` : ''}
@@ -1432,10 +1527,28 @@ function board205RenderKpis() {
   const complete = tasks.filter((task) => Boolean(task.effective_complete)).length;
   const inProgress = tasks.filter((task) => task.execution_status === 'IN_PROGRESS').length;
   const pct = (count) => total ? Math.round((count / total) * 100) : 0;
+  const currentAssignments = (setupBoard205State.board.assignments || []).filter((item) => !item.historical_locked);
+  let plannedLaborHours = 0;
+  let plannedLaborUnknown = 0;
+  for (const item of currentAssignments) {
+    const task = board205Task(item.setup_session_task_id) || item;
+    const hours = board205LaborHours(
+      board205AssignmentPlannedCrew(item),
+      task.expected_duration_minutes
+    );
+    if (hours == null) plannedLaborUnknown += 1;
+    else plannedLaborHours += hours;
+  }
+  const plannedLaborShown = Number.isInteger(plannedLaborHours)
+    ? String(plannedLaborHours)
+    : plannedLaborHours.toFixed(1).replace(/\.0$/, '');
 
   target.innerHTML = [
     `<span><strong>${total}</strong> tasks</span>`,
     `<span><strong>${scheduled}</strong> scheduled · ${pct(scheduled)}%</span>`,
+    currentAssignments.length
+      ? `<span><strong>${board205Esc(plannedLaborShown)}</strong> planned labor hr${plannedLaborUnknown ? ` · ${plannedLaborUnknown} assignment${plannedLaborUnknown === 1 ? '' : 's'} TBD` : ''}</span>`
+      : '',
     inProgress ? `<span><strong>${inProgress}</strong> in progress · ${pct(inProgress)}%</span>` : '',
     `<span><strong>${complete}</strong> complete · ${pct(complete)}%</span>`
   ].filter(Boolean).join('<span class="setup-board205-kpi-sep">·</span>');
@@ -1521,9 +1634,13 @@ async function board205SetReadiness(task) {
   const ready = task.readiness_state === 'NOT_READY';
   try {
     setBusy(true);
-    await api(`api/setup/scheduling-board/season-tasks/${task.setup_session_task_id}/readiness`, commandOptions('PATCH', {
-      ready
-    }));
+    await api(
+      `api/setup/scheduling-board/season-tasks/${task.setup_session_task_id}/annual-hold`,
+      commandOptions('PATCH', {
+        ready,
+        readiness_note: task.readiness_note || null
+      })
+    );
     await board205Load();
     setAlert(ready ? 'Annual readiness marked Ready.' : 'Annual readiness marked Not Ready.', 'ok');
   } catch (error) {
@@ -1703,49 +1820,127 @@ function board205PopulateDialogSelects() {
   board205PopulateWorkOrderOptions();
 }
 
-function board205PopulateSeasonPlacementOptions() {
+function board205PopulateSeasonPlacementOptions(
+  selectedPrerequisiteId = null,
+  selectedDownstreamId = null
+) {
   const stageValue = document.getElementById('setup-board205-season-stage')?.value || '';
   const stageId = stageValue ? Number(stageValue) : null;
+  const editId = Number(setupBoard205State.editSeasonTaskId || 0);
+  const prior = document.getElementById('setup-board205-season-prereq');
+  const downstream = document.getElementById('setup-board205-season-downstream');
+  const currentPrior = selectedPrerequisiteId == null ? String(prior?.value || '') : String(selectedPrerequisiteId || '');
+  const currentDownstream = selectedDownstreamId == null ? String(downstream?.value || '') : String(selectedDownstreamId || '');
+
+  const selectedIds = new Set(
+    [currentPrior, currentDownstream]
+      .filter(Boolean)
+      .map((value) => Number(value))
+  );
   const tasks = (setupBoard205State.board.tasks || []).filter((task) => (
-    stageId == null ? task.stage_id == null : Number(task.stage_id) === stageId
+    Number(task.setup_session_task_id) !== editId
+    && (
+      selectedIds.has(Number(task.setup_session_task_id))
+      || (stageId == null ? task.stage_id == null : Number(task.stage_id) === stageId)
+    )
   ));
   const options = '<option value="">— none —</option>' + tasks.map((task) => (
     `<option value="${task.setup_session_task_id}">${board205Esc(task.planned_order ?? '—')} — ${board205Esc(task.task_name)}</option>`
   )).join('');
-  const prior = document.getElementById('setup-board205-season-prereq');
-  const downstream = document.getElementById('setup-board205-season-downstream');
-  if (prior) prior.innerHTML = options;
-  if (downstream) downstream.innerHTML = options;
+
+  if (prior) {
+    prior.innerHTML = options;
+    if (currentPrior && [...prior.options].some((option) => option.value === currentPrior)) {
+      prior.value = currentPrior;
+    }
+  }
+  if (downstream) {
+    downstream.innerHTML = options;
+    if (currentDownstream && [...downstream.options].some((option) => option.value === currentDownstream)) {
+      downstream.value = currentDownstream;
+    }
+  }
+
+  const note = document.getElementById('setup-board205-season-placement-note');
+  if (note) {
+    const extra = [];
+    if (setupBoard205State.seasonPlacementOriginal.extraPrerequisiteNames.length) {
+      extra.push(
+        'Additional prerequisite(s) preserved: '
+        + setupBoard205State.seasonPlacementOriginal.extraPrerequisiteNames.join('; ')
+      );
+    }
+    if (setupBoard205State.seasonPlacementOriginal.extraDownstreamNames.length) {
+      extra.push(
+        'Additional downstream dependency/dependencies preserved: '
+        + setupBoard205State.seasonPlacementOriginal.extraDownstreamNames.join('; ')
+      );
+    }
+    note.textContent = extra.join(' · ');
+    note.hidden = !extra.length;
+  }
+}
+
+function board205WorkOrderLabel(wo) {
+  const problem = String(wo?.problem || '').trim();
+  return `WO ${wo?.work_order_id}${problem ? ` · ${problem}` : ''}`;
+}
+
+function board205WorkOrderMatches(wo, search) {
+  const terms = String(search || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return false;
+  const haystack = [
+    wo.work_order_id,
+    `wo ${wo.work_order_id}`,
+    wo.problem || ''
+  ].join(' ').toLowerCase();
+  return terms.every((term) => haystack.includes(term));
 }
 
 function board205PopulateWorkOrderOptions(selectedId = null) {
   const select = document.getElementById('setup-board205-season-work-order');
+  const results = document.getElementById('setup-board205-season-work-order-results');
   if (!select) return;
 
   const search = String(
     document.getElementById('setup-board205-season-work-order-search')?.value || ''
-  ).trim().toLowerCase();
+  ).trim();
   const selected = selectedId == null ? String(select.value || '') : String(selectedId || '');
+  const allRows = setupBoard205State.board.work_orders || [];
+  const selectedRow = selected
+    ? allRows.find((wo) => String(wo.work_order_id) === selected)
+    : null;
+  const rows = search
+    ? allRows.filter((wo) => board205WorkOrderMatches(wo, search)).slice(0, 20)
+    : [];
 
-  const rows = (setupBoard205State.board.work_orders || []).filter((wo) => {
-    if (!search) return true;
-    const haystack = [
-      wo.work_order_id,
-      `wo ${wo.work_order_id}`,
-      wo.problem || ''
-    ].join(' ').toLowerCase();
-    return haystack.includes(search);
-  });
+  const optionRows = [...rows];
+  if (selectedRow && !optionRows.some((wo) => String(wo.work_order_id) === selected)) {
+    optionRows.unshift(selectedRow);
+  }
 
-  select.innerHTML = '<option value="">No Work Order</option>' + rows.map((wo) => {
-    const problem = String(wo.problem || '').trim();
-    const label = `WO ${wo.work_order_id}${problem ? ` · ${problem}` : ''}`;
-    return `<option value="${wo.work_order_id}">${board205Esc(label)}</option>`;
-  }).join('');
-
+  select.innerHTML = '<option value="">No Work Order</option>' + optionRows.map((wo) => (
+    `<option value="${wo.work_order_id}">${board205Esc(board205WorkOrderLabel(wo))}</option>`
+  )).join('');
   if (selected && [...select.options].some((option) => option.value === selected)) {
     select.value = selected;
   }
+
+  if (!results) return;
+  if (!search) {
+    results.innerHTML = selectedRow
+      ? `<div class="setup-board205-work-order-help">Selected: <strong>${board205Esc(board205WorkOrderLabel(selectedRow))}</strong>. Type part of the Work Order problem or a WO number to change it.</div>`
+      : '<div class="setup-board205-work-order-help">Type part of the Work Order problem or a WO number. The full open Work Order list is intentionally not shown.</div>';
+    return;
+  }
+  if (!rows.length) {
+    results.innerHTML = `<div class="setup-board205-work-order-help">No open Work Orders match “${board205Esc(search)}”.</div>`;
+    return;
+  }
+
+  results.innerHTML = rows.slice(0, 12).map((wo) => (
+    `<button type="button" class="setup-board205-work-order-result" data-work-order-id="${wo.work_order_id}">${board205Esc(board205WorkOrderLabel(wo))}</button>`
+  )).join('');
 }
 
 function board205PopulateCrewSelect(dayId, selectedCrewId = null) {
@@ -2061,6 +2256,50 @@ async function board205SubmitPlanningInfo(event) {
   await board205PersistPlanningInfo();
 }
 
+function board205OpenAnnualHoldDialog(task) {
+  const dialog = document.getElementById('setup-board205-annual-hold-dialog');
+  const form = document.getElementById('setup-board205-annual-hold-form');
+  if (!task || !task.setup_session_task_id || !dialog || !form) return;
+
+  setupBoard205State.editAnnualHoldTaskId = Number(task.setup_session_task_id);
+  form.reset();
+  document.getElementById('setup-board205-annual-hold-heading').textContent =
+    `${appState.seasonYear} Annual Readiness — ${task.task_name}`;
+  document.getElementById('setup-board205-annual-hold-state').value =
+    task.readiness_state === 'NOT_READY' ? 'NOT_READY' : 'READY';
+  document.getElementById('setup-board205-annual-hold-note').value = task.readiness_note || '';
+  dialog.showModal();
+}
+
+async function board205SubmitAnnualHold(event) {
+  event.preventDefault();
+  const sessionTaskId = Number(setupBoard205State.editAnnualHoldTaskId || 0);
+  if (!sessionTaskId) return;
+
+  const state = document.getElementById('setup-board205-annual-hold-state').value;
+  const readinessNote = document.getElementById('setup-board205-annual-hold-note').value.trim() || null;
+
+  try {
+    setBusy(true);
+    await api(
+      `api/setup/scheduling-board/season-tasks/${sessionTaskId}/annual-hold`,
+      commandOptions('PATCH', {
+        ready: state === 'READY',
+        readiness_note: readinessNote
+      })
+    );
+    document.getElementById('setup-board205-annual-hold-dialog')?.close();
+    setupBoard205State.editAnnualHoldTaskId = null;
+    await board205Load();
+    setAlert(`${appState.seasonYear} annual readiness updated. Reusable Catalog knowledge was not changed.`, 'ok');
+  } catch (error) {
+    setAlert(error.message || error, 'error');
+    window.alert(error.message || error);
+  } finally {
+    setBusy(false);
+  }
+}
+
 async function board205CreateAnnualSession() {
   const year = Number(appState.seasonYear);
   if (!appState.access?.can_admin_setup || !Number.isInteger(year)) return;
@@ -2160,26 +2399,67 @@ async function board205DeleteSeasonTask() {
   }
 }
 
+function board205SyncSeasonTaskTypeHelp() {
+  const type = document.getElementById('setup-board205-season-type');
+  const help = document.getElementById('setup-board205-season-type-help');
+  const gate = document.getElementById('setup-board205-season-gate');
+  if (!type || !help || !gate) return;
+
+  const actionType = String(type.value || 'WORK').toUpperCase();
+  const isGate = actionType === 'GATE';
+  const isWork = actionType === 'WORK';
+  const workOrderSelected = Boolean(document.getElementById('setup-board205-season-work-order')?.value);
+
+  gate.disabled = !(isGate || isWork) || !workOrderSelected;
+  if (gate.disabled) gate.checked = false;
+
+  if (isGate) {
+    help.textContent = 'Wait / Gate is NOT scheduled to a crew or work day. Use it only when Setup must stop until an outside condition is satisfied. With a linked Work Order, checking the completion box makes that Work Order satisfy this gate.';
+  } else if (isWork) {
+    help.textContent = 'Setup Work is real crew work and is schedulable when prerequisites are complete. A linked Work Order may be context only, or check the completion box so finishing that Work Order also completes this Setup task and unblocks downstream work.';
+  } else if (actionType === 'SUPPORT') {
+    help.textContent = 'Support / Prep is schedulable enabling work around Setup, such as training, arranging rental equipment, or positioning support infrastructure. Locate Power & Network is Setup Work, not Support / Prep.';
+  } else {
+    help.textContent = 'Unload Container is a physical logistics task. Container movement/Pick List behavior is owned by the Setup logistics workflow.';
+  }
+}
+
 function board205OpenSeasonTaskDialog(sessionTaskId = null) {
   const dialog = document.getElementById('setup-board205-season-dialog');
   const form = document.getElementById('setup-board205-season-form');
   if (!dialog || !form) return;
   form.reset();
+  const inlineError = document.getElementById('setup-board205-season-error');
+  if (inlineError) {
+    inlineError.textContent = '';
+    inlineError.hidden = true;
+  }
   setupBoard205State.editSeasonTaskId = sessionTaskId;
+  setupBoard205State.seasonPlacementOriginal = {
+    prerequisiteId: null,
+    downstreamId: null,
+    extraPrerequisiteNames: [],
+    extraDownstreamNames: []
+  };
   board205PopulateDialogSelects();
 
   const heading = document.getElementById('setup-board205-season-heading');
   const chain = document.getElementById('setup-board205-season-chain');
   const deleteButton = document.getElementById('setup-board205-delete-season-task');
   if (deleteButton) deleteButton.hidden = sessionTaskId == null;
+  chain.hidden = false;
+
   if (sessionTaskId == null) {
     heading.textContent = `Add ${appState.seasonYear} Season Task`;
-    chain.hidden = false;
+    board205PopulateSeasonPlacementOptions();
+    board205PopulateWorkOrderOptions();
   } else {
     const task = board205Task(sessionTaskId);
     if (!task || task.task_origin !== 'SEASON_ONLY') return;
+    const placement = board205SeasonPlacementState(sessionTaskId);
+    setupBoard205State.seasonPlacementOriginal = placement;
+
     heading.textContent = `Edit ${appState.seasonYear} Season Task`;
-    chain.hidden = true;
     document.getElementById('setup-board205-season-name').value = task.task_name || '';
     document.getElementById('setup-board205-season-stage').value = task.stage_id ?? '';
     board205PopulateScenes();
@@ -2197,7 +2477,9 @@ function board205OpenSeasonTaskDialog(sessionTaskId = null) {
     document.getElementById('setup-board205-season-completion').value = task.completion_point || '';
     document.getElementById('setup-board205-season-readiness').value = task.readiness_note || '';
     document.getElementById('setup-board205-season-notes').value = task.annual_notes || '';
+    board205PopulateSeasonPlacementOptions(placement.prerequisiteId, placement.downstreamId);
   }
+  board205SyncSeasonTaskTypeHelp();
   dialog.showModal();
 }
 
@@ -2221,23 +2503,11 @@ async function board205SubmitSeasonTask(event) {
   const actionType = document.getElementById('setup-board205-season-type').value;
   const prior = nullableInteger(document.getElementById('setup-board205-season-prereq').value);
   const downstream = nullableInteger(document.getElementById('setup-board205-season-downstream').value);
+  const currentTask = sessionTaskId == null ? null : board205Task(sessionTaskId);
 
   try {
     const duration = board205SeasonMinutes();
-    let plannedOrder = null;
-    if (prior) {
-      const priorTask = board205Task(prior);
-      const priorOrder = Number(priorTask?.planned_order ?? 0);
-      if (downstream) {
-        const downstreamTask = board205Task(downstream);
-        const downstreamOrder = Number(downstreamTask?.planned_order ?? 0);
-        plannedOrder = downstreamOrder > priorOrder + 1
-          ? Math.floor((priorOrder + downstreamOrder) / 2)
-          : priorOrder + 1;
-      } else {
-        plannedOrder = priorOrder + 1;
-      }
-    }
+    const plannedOrder = board205SeasonPlannedOrder(prior, downstream, currentTask);
 
     const payload = {
       season_year: Number(appState.seasonYear),
@@ -2253,30 +2523,52 @@ async function board205SubmitSeasonTask(event) {
       completion_point: document.getElementById('setup-board205-season-completion').value.trim() || null,
       readiness_note: document.getElementById('setup-board205-season-readiness').value.trim() || null,
       linked_work_order_id: workOrderId,
-      linked_work_order_gate: document.getElementById('setup-board205-season-gate').checked,
-      annual_notes: document.getElementById('setup-board205-season-notes').value.trim() || null
+      linked_work_order_gate:
+        ['WORK', 'GATE'].includes(actionType)
+        && document.getElementById('setup-board205-season-gate').checked,
+      annual_notes: document.getElementById('setup-board205-season-notes').value.trim() || null,
+      previous_prerequisite_setup_session_task_id:
+        setupBoard205State.seasonPlacementOriginal.prerequisiteId,
+      prerequisite_setup_session_task_id: prior,
+      previous_downstream_setup_session_task_id:
+        setupBoard205State.seasonPlacementOriginal.downstreamId,
+      downstream_setup_session_task_id: downstream
     };
 
+    const inlineError = document.getElementById('setup-board205-season-error');
+    if (inlineError) {
+      inlineError.textContent = '';
+      inlineError.hidden = true;
+    }
+
     setBusy(true);
-    let targetId = sessionTaskId;
     if (sessionTaskId == null) {
       const result = await api('api/setup/scheduling-board/season-tasks', commandOptions('POST', payload));
-      targetId = Number(result.season_task?.setup_session_task_id || 0);
-      if (targetId && prior) {
-        await api(`api/setup/scheduling-board/season-tasks/${targetId}/dependencies/${prior}`, commandOptions('PATCH', { active: true }));
-      }
-      if (targetId && downstream) {
-        await api(`api/setup/scheduling-board/season-tasks/${downstream}/dependencies/${targetId}`, commandOptions('PATCH', { active: true }));
-      }
+      const createdId = Number(result.season_task?.setup_session_task_id || 0);
+      if (!createdId) throw new Error('Season-only Setup task identity was not returned.');
     } else {
-      await api(`api/setup/scheduling-board/season-tasks/${sessionTaskId}`, commandOptions('PATCH', payload));
+      await api(
+        `api/setup/scheduling-board/season-tasks/${sessionTaskId}`,
+        commandOptions('PATCH', payload)
+      );
     }
+
     document.getElementById('setup-board205-season-dialog').close();
     await board205Load();
-    setAlert(sessionTaskId == null ? 'Season-only Setup task added.' : 'Season-only Setup task updated.', 'ok');
+    setAlert(
+      sessionTaskId == null
+        ? 'Season-only Setup task added and placed in the annual plan.'
+        : 'Season-only Setup task and annual placement updated.',
+      'ok'
+    );
   } catch (error) {
-    setAlert(error.message || error, 'error');
-    window.alert(error.message || error);
+    const message = error.message || String(error);
+    setAlert(message, 'error');
+    const inlineError = document.getElementById('setup-board205-season-error');
+    if (inlineError) {
+      inlineError.textContent = message;
+      inlineError.hidden = false;
+    }
   } finally {
     setBusy(false);
   }
@@ -2432,6 +2724,21 @@ function board205InstallView() {
       </form>
     </dialog>
 
+    <dialog id="setup-board205-annual-hold-dialog" class="setup-board205-dialog">
+      <form id="setup-board205-annual-hold-form">
+        <h3 id="setup-board205-annual-hold-heading">Annual Readiness</h3>
+        <p class="muted"><strong>THIS SEASON ONLY.</strong> This changes the selected annual Setup task's readiness/hold state and reason. It does not change reusable Catalog readiness knowledge.</p>
+        <label>Annual readiness
+          <select id="setup-board205-annual-hold-state">
+            <option value="READY">Ready</option>
+            <option value="NOT_READY">Not Ready / Hold</option>
+          </select>
+        </label>
+        <label>Annual reason / hold note<textarea id="setup-board205-annual-hold-note" rows="4" placeholder="e.g. 2026 road/site work expected through approximately Oct 9"></textarea></label>
+        <menu><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Save Annual Readiness</button></menu>
+      </form>
+    </dialog>
+
     <dialog id="setup-board205-add-intent-dialog" class="setup-board205-dialog">
       <form method="dialog">
         <h3>What kind of task is this?</h3>
@@ -2458,13 +2765,24 @@ function board205InstallView() {
         <div class="setup-board205-form-grid">
           <label>Stage<select id="setup-board205-season-stage"></select></label>
           <label>Scene<select id="setup-board205-season-scene"></select></label>
-          <label>Type<select id="setup-board205-season-type"><option value="WORK">Setup Work</option><option value="GATE">Wait / Gate</option><option value="SUPPORT">Support / Prep</option><option value="UNLOAD_CONTAINER">Unload Container</option></select></label>
+          <label>Type<select id="setup-board205-season-type"><option value="WORK">Setup Work — schedulable</option><option value="GATE">Wait / Gate — not schedulable</option><option value="SUPPORT">Support / Prep</option><option value="UNLOAD_CONTAINER">Unload Container</option></select></label>
+          <div id="setup-board205-season-type-help" class="setup-board205-placement-help"></div>
           <div class="setup-board205-work-order-picker">
-            <label>Find open Work Order<input id="setup-board205-season-work-order-search" type="search" placeholder="WO # or problem text" autocomplete="off"></label>
-            <label>Matching Work Order<select id="setup-board205-season-work-order"><option value="">No Work Order</option></select></label>
+            <div class="setup-board205-work-order-search-block">
+              <label>Find open Work Order<input id="setup-board205-season-work-order-search" type="search" placeholder="WO # or problem text" autocomplete="off"></label>
+              <div id="setup-board205-season-work-order-results" class="setup-board205-work-order-results" aria-live="polite"></div>
+            </div>
+            <label>Selected Work Order<select id="setup-board205-season-work-order"><option value="">No Work Order</option></select></label>
+            <button id="setup-board205-season-work-order-clear" type="button" class="small secondary">Clear Work Order</button>
           </div>
-          <label class="checkbox-label"><input id="setup-board205-season-gate" type="checkbox"> Work Order completion satisfies this gate</label>
+          <label class="checkbox-label"><input id="setup-board205-season-gate" type="checkbox"> Linked Work Order completion completes/satisfies this Setup item</label>
           <span></span>
+          <div id="setup-board205-season-chain" class="setup-board205-form-grid setup-board205-placement-grid">
+            <label>This task happens after <span class="muted">(optional)</span><select id="setup-board205-season-prereq"></select></label>
+            <label>This task must happen before <span class="muted">(optional)</span><select id="setup-board205-season-downstream"></select></label>
+            <p class="muted setup-board205-placement-help">Use one side when that is enough. Use both only when this task must happen between two specific Setup steps.</p>
+          </div>
+          <div id="setup-board205-season-placement-note" class="muted" hidden></div>
           <label>Crew min<input id="setup-board205-season-crew-min" type="number" min="0"></label>
           <label>Crew max<input id="setup-board205-season-crew-max" type="number" min="0"></label>
           <label>Expected hours<input id="setup-board205-season-hours" type="number" min="0"></label>
@@ -2474,10 +2792,7 @@ function board205InstallView() {
         <label>Completion point<textarea id="setup-board205-season-completion" rows="2"></textarea></label>
         <label>Readiness / hold note<textarea id="setup-board205-season-readiness" rows="2"></textarea></label>
         <label>Annual notes<textarea id="setup-board205-season-notes" rows="3"></textarea></label>
-        <div id="setup-board205-season-chain" class="setup-board205-form-grid">
-          <label>Place after / requires<select id="setup-board205-season-prereq"></select></label>
-          <label>Optional downstream task to block<select id="setup-board205-season-downstream"></select></label>
-        </div>
+        <div id="setup-board205-season-error" class="notice" data-state="error" role="alert" hidden></div>
         <menu><button id="setup-board205-delete-season-task" type="button" class="danger" hidden>Delete Season Task</button><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Save Season Task</button></menu>
       </form>
     </dialog>
@@ -2488,8 +2803,26 @@ function board205InstallView() {
     board205ApplyFinderCompact();
   });
 
+  document.getElementById('setup-board205-season-type')?.addEventListener('change', board205SyncSeasonTaskTypeHelp);
   document.getElementById('setup-board205-season-work-order-search')?.addEventListener('input', () => {
     board205PopulateWorkOrderOptions();
+  });
+  document.getElementById('setup-board205-season-work-order-results')?.addEventListener('click', (event) => {
+    const button = event.target?.closest?.('.setup-board205-work-order-result');
+    if (!button) return;
+    const workOrderId = String(button.dataset.workOrderId || '');
+    const search = document.getElementById('setup-board205-season-work-order-search');
+    if (search) search.value = '';
+    board205PopulateWorkOrderOptions(workOrderId);
+    board205SyncSeasonTaskTypeHelp();
+  });
+  document.getElementById('setup-board205-season-work-order-clear')?.addEventListener('click', () => {
+    const search = document.getElementById('setup-board205-season-work-order-search');
+    const select = document.getElementById('setup-board205-season-work-order');
+    if (search) search.value = '';
+    if (select) select.value = '';
+    board205PopulateWorkOrderOptions('');
+    board205SyncSeasonTaskTypeHelp();
   });
 
   const finderFilters = document.getElementById('setup-board205-filters');
@@ -2538,6 +2871,7 @@ function board205InstallView() {
     board205PopulateCrewSelect(Number(event.currentTarget.value || 0));
   });
   document.getElementById('setup-board205-planning-form').addEventListener('submit', board205SubmitPlanningInfo);
+  document.getElementById('setup-board205-annual-hold-form').addEventListener('submit', board205SubmitAnnualHold);
   document.getElementById('setup-board205-open-full-reusable')?.addEventListener('click', () => {
     void (async () => {
       const reusableTaskId = setupBoard205State.editPlanningReusableTaskId;

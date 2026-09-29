@@ -12,6 +12,7 @@ PYTHON="/opt/fieldwiring/.venv/bin/python"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 MANIFEST="${1:?manifest path is required}"
+MODE="${2:-start}"
 
 [[ -s "$MANIFEST" ]] || { echo "FAIL: preview manifest is missing: $MANIFEST"; exit 2; }
 
@@ -45,6 +46,13 @@ done < "$MANIFEST"
 : "${TARGET_REF:?manifest target_ref is required}"
 : "${PREVIEW_PORT:?manifest preview_port is required}"
 : "${PREVIEW_EMAIL:?manifest preview_email is required}"
+STATE_FILE="/tmp/msb-setup-browser-preview-state-${PREVIEW_PORT}.env"
+PRESERVE_FOR_RECONNECT=0
+
+if [[ "$MODE" != "start" && "$MODE" != "resume" ]]; then
+    echo "FAIL: preview mode must be start or resume"
+    exit 3
+fi
 
 if [[ "$ALLOW_CONCURRENT_PRODUCTION_WRITES" != "true" && "$ALLOW_CONCURRENT_PRODUCTION_WRITES" != "false" ]]; then
     echo "FAIL: allow_concurrent_production_writes must be true or false"
@@ -118,6 +126,14 @@ cleanup() {
     trap - EXIT HUP INT TERM
     set +e
 
+    if [[ "$PRESERVE_FOR_RECONNECT" -eq 1 ]]; then
+        echo
+        echo "SETUP_BROWSER_PREVIEW_TRANSPORT_LOST"
+        echo "Preview resources preserved for reconnect on port $PREVIEW_PORT."
+        echo "State file: $STATE_FILE"
+        exit "$status"
+    fi
+
     echo
     echo "--- Browser preview cleanup ---"
     if [[ -n "$PREVIEW_PGID" ]]; then
@@ -131,6 +147,7 @@ cleanup() {
     fi
     rm -f "$DUMP_FILE" "$GRANTS_FILE" >/dev/null 2>&1 || true
     sudo rm -rf "$PYCACHE" >/dev/null 2>&1 || true
+    rm -f "$STATE_FILE" >/dev/null 2>&1 || true
     rm -rf "$SCRIPT_DIR" >/dev/null 2>&1 || true
 
     echo "--- Production after-check ---"
@@ -181,7 +198,108 @@ cleanup() {
     echo "Exit status: $status"
     exit "$status"
 }
-trap cleanup EXIT HUP INT TERM
+trap cleanup EXIT INT TERM
+
+preserve_transport_loss() {
+    PRESERVE_FOR_RECONNECT=1
+    trap - HUP
+    echo
+    echo "SSH/PTY transport lost; preserving healthy preview for reconnect."
+    exit 75
+}
+trap preserve_transport_loss HUP
+
+write_resume_state() {
+    umask 077
+    {
+        printf 'TARGET_SHA=%q\n' "$TARGET_SHA"
+        printf 'TARGET_REF=%q\n' "$TARGET_REF"
+        printf 'PREVIEW_PORT=%q\n' "$PREVIEW_PORT"
+        printf 'PREVIEW_EMAIL=%q\n' "$PREVIEW_EMAIL"
+        printf 'EXPECTED_VERSION=%q\n' "$EXPECTED_VERSION"
+        printf 'ALLOW_CONCURRENT_PRODUCTION_WRITES=%q\n' "$ALLOW_CONCURRENT_PRODUCTION_WRITES"
+        printf 'TEST_CONTAINER=%q\n' "$TEST_CONTAINER"
+        printf 'TEST_DB=%q\n' "$TEST_DB"
+        printf 'DUMP_FILE=%q\n' "$DUMP_FILE"
+        printf 'GRANTS_FILE=%q\n' "$GRANTS_FILE"
+        printf 'CANDIDATE_WORKTREE=%q\n' "$CANDIDATE_WORKTREE"
+        printf 'REPORT=%q\n' "$REPORT"
+        printf 'PREVIEW_LOG=%q\n' "$PREVIEW_LOG"
+        printf 'PREVIEW_ENTRY=%q\n' "$PREVIEW_ENTRY"
+        printf 'PREVIEW_PGID=%q\n' "$PREVIEW_PGID"
+        printf 'PROD_BEFORE=%q\n' "$PROD_BEFORE"
+        printf 'SETUP_HEAD_BEFORE=%q\n' "$SETUP_HEAD_BEFORE"
+        printf 'PREVIEW_OWNED_PORT=%q\n' "$PREVIEW_OWNED_PORT"
+        printf 'PYCACHE=%q\n' "$PYCACHE"
+        printf 'SCRIPT_DIR=%q\n' "$SCRIPT_DIR"
+    } > "$STATE_FILE"
+}
+
+resume_existing_preview() {
+    local requested_sha="$TARGET_SHA"
+    local requested_ref="$TARGET_REF"
+    local requested_port="$PREVIEW_PORT"
+    local requested_email="$PREVIEW_EMAIL"
+    local requested_version="$EXPECTED_VERSION"
+
+    sudo -v
+    if [[ ! -s "$STATE_FILE" ]]; then
+        echo "FAIL: no resumable Setup browser preview state exists for port $requested_port"
+        exit 76
+    fi
+
+    # shellcheck disable=SC1090
+    source "$STATE_FILE"
+
+    if [[ "$TARGET_SHA" != "$requested_sha"        || "$TARGET_REF" != "$requested_ref"        || "$PREVIEW_PORT" != "$requested_port"        || "$PREVIEW_EMAIL" != "$requested_email"        || "$EXPECTED_VERSION" != "$requested_version" ]]; then
+        echo "FAIL: resumable preview state does not match requested candidate/ref/port/operator/version"
+        exit 77
+    fi
+
+    if [[ ! "$PREVIEW_PGID" =~ ^[0-9]+$ ]] || ! sudo kill -0 "$PREVIEW_PGID" >/dev/null 2>&1; then
+        echo "FAIL: resumable preview process is no longer running"
+        exit 78
+    fi
+
+    if ! sudo ss -ltnp "sport = :$PREVIEW_PORT" 2>/dev/null | grep -q "pid=$PREVIEW_PGID"; then
+        echo "FAIL: preview port $PREVIEW_PORT is not owned by expected PID $PREVIEW_PGID"
+        exit 79
+    fi
+
+    HEALTH="$(curl -fsS --max-time 5 "http://127.0.0.1:$PREVIEW_PORT/api/health")" || {
+        echo "FAIL: resumable preview health check failed"
+        exit 80
+    }
+    HEALTH_VERSION="$(printf '%s' "$HEALTH" | sudo -u fieldwiring -H "$PYTHON" -c 'import json,sys; print(json.load(sys.stdin).get("version", ""))')"
+    if [[ "$HEALTH_VERSION" != "$EXPECTED_VERSION" ]]; then
+        echo "FAIL: resumable preview version '$HEALTH_VERSION' does not match expected '$EXPECTED_VERSION'"
+        exit 81
+    fi
+
+    echo
+    echo "SETUP REUSABLE DISPOSABLE BROWSER REVIEW RESUMED"
+    echo "Browser URL through SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/"
+    echo "Candidate SHA: $TARGET_SHA"
+    echo "Preview identity: $PREVIEW_EMAIL"
+    echo "Expected version: $EXPECTED_VERSION"
+    echo "The existing disposable clone and all browser-review writes were preserved."
+    echo "When review is complete, press ENTER. If the tunnel drops again, the launcher will reconnect again."
+
+    if ! read -r _done; then
+        PRESERVE_FOR_RECONNECT=1
+        echo "Review terminal disconnected; preserving preview for another reconnect."
+        exit 75
+    fi
+
+    echo
+    echo "Browser review session ended by operator. Cleanup will now run."
+    echo "SETUP_REUSABLE_DISPOSABLE_BROWSER_PREVIEW_CLEAN_EXIT"
+    exit 0
+}
+
+if [[ "$MODE" == "resume" ]]; then
+    resume_existing_preview
+fi
 
 sudo -v
 
@@ -568,6 +686,9 @@ fi
 curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/setup/access" >/dev/null
 echo "Preview authorization: PASS"
 
+write_resume_state
+echo "Reconnect state: $STATE_FILE"
+
 cat <<CHECKLIST
 
 SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY
@@ -586,7 +707,11 @@ Perform the feature-specific operator checklist now.
 When review is complete, return to this terminal and press ENTER.
 CHECKLIST
 
-read -r _done
+if ! read -r _done; then
+    PRESERVE_FOR_RECONNECT=1
+    echo "Review terminal disconnected; preserving preview for reconnect."
+    exit 75
+fi
 
 echo
 echo "Browser review session ended by operator. Cleanup will now run."
