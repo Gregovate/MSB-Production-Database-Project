@@ -27,6 +27,31 @@ Production mutation is not part of either reusable acceptance launcher. Producti
 
 If the candidate changes after either gate, start again from the new exact SHA. Do not carry forward a prior disposable clone or browser preview.
 
+## Mandatory exact client/server build identity gate
+
+Every reusable Setup acceptance launcher must fail **before server contact** when the exact candidate contains different client and server build identities.
+
+The authoritative candidate markers are:
+
+```text
+Setup/Application/production_backend.py
+    PRODUCTION_VERSION = "<build>"
+
+Setup/Application/setup_catalog_dirty_guard.js
+    CLIENT_BUILD = '<build>'
+```
+
+Required behavior:
+
+- reusable disposable acceptance extracts both markers from the exact `CandidateSha` with `git show`;
+- client and server build strings must match exactly before SCP/SSH or any server-side acceptance work begins;
+- reusable browser preview requires `-ExpectedVersion` and it must exactly match that same candidate build;
+- a mismatch is an acceptance-tooling failure and must be corrected in source, asset pins, and regression contracts before the candidate is tested again;
+- do not dismiss a browser mismatch alert and continue operator testing;
+- if application code changes to correct the mismatch, restart regression -> disposable acceptance -> browser review from the new exact SHA.
+
+This gate exists because #205 browser review on 2026-09-29 reached a disposable preview with server `V0.3.21-scheduling-gates` while the client still declared `V0.3.20-material-authority`. The browser guard correctly exposed the mismatch, but reusable acceptance had not rejected it earlier. The reusable launchers now own that preflight so future Setup threads do not rediscover the same failure.
+
 ## Reusable disposable acceptance
 
 Use:
