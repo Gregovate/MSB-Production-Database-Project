@@ -2006,3 +2006,43 @@ No database/schema/migration behavior changes.
 4. verify the real protected Production route with a normal reload.
 
 Server Management issue #51 should be updated to record that the apparent cache problem was actually caused by application badge logic; no nginx/Cloudflare mutation is indicated by current evidence.
+
+
+---
+
+## POST-PRODUCTION BADGE FIX REGRESSION PASS
+
+| Field | Value |
+|---|---|
+| Exact tested badge-fix candidate | `b19d59997972d1e13c94e0d060396e70df62bf07` |
+| Regression command | `python -m pytest -q -p no:cacheprovider Setup/Application` |
+| Result | **573 passed in 1.13s** |
+| Failures / errors | **0** |
+| Production database migration required | **NO** |
+| Current Production DB migration state | 063 + 064 already installed |
+| Current Production application before source-only follow-up | `947b86a9598584717167cce094cd78d99e9a71e7` / `V0.3.20-material-authority` |
+
+The badge-only correction is green.
+
+It changes only:
+
+- healthy client-build badge text from stale **Client V0.3.19** to **Client V0.3.20**;
+- dirty-guard asset cache token to `setup_catalog_dirty_guard.js?v=2026-09-29.1`;
+- regression contracts proving a healthy V0.3.20 match cannot render V0.3.19.
+
+No schema, data, migration, Material Audit, Pick List, Kit Inventory, or source-allocation behavior changes.
+
+### Next gate
+
+Run a focused reusable disposable browser preview on the exact documentation checkpoint SHA created after this section, with **no migrations**.
+
+Acceptance:
+
+1. header shows **Client V0.3.20** after initial load;
+2. wait for the client/server health check to complete — badge remains **Client V0.3.20**;
+3. navigate Setup tabs / return to the Catalog — badge remains V0.3.20;
+4. normal browser reload (Ctrl+R) — badge returns as **Client V0.3.20**;
+5. no client/server mismatch warning;
+6. clean browser-preview exit with Production fingerprint/live SHA unchanged.
+
+If accepted, deploy as a bounded **source-only** Setup application correction using the Server Management source-only deployment runbook. Do not rerun migrations 063/064.
