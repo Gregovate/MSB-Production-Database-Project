@@ -591,6 +591,18 @@ def test_205_existing_season_gate_can_reconcile_annual_placement_without_rewriti
     assert "ops.set_setup_session_task_planned_order" in update_method
     assert "FOR UPDATE" not in update_method
 
+    create_method = repository.split("def create_season_task(", 1)[1].split(
+        "def delete_season_task(", 1
+    )[0]
+    assert "ops.create_setup_season_task" in create_method
+    assert "ops.set_setup_session_task_dependency" in create_method
+    assert "conn.commit()" in create_method
+
+    assert "prerequisite_session_task_id=nullable_int(" in api
+    assert "downstream_session_task_id=nullable_int(" in api
+    assert "previous_prerequisite_session_task_id=nullable_int(" in api
+    assert "previous_downstream_session_task_id=nullable_int(" in api
+
 
 def test_205_annual_hold_is_season_only_and_does_not_write_reusable_readiness() -> None:
     ui = read_app("setup_scheduling_board.js")
