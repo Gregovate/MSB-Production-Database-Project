@@ -329,7 +329,9 @@ def test_kit_expected_contents_are_bidirectionally_linked_to_task_requirements()
     assert "NO TASK LINK RECORDED" in ui
     assert "LINKED TO TASK" in ui
     assert "Task / Kit spec differs. Material identity and source relationship are already linked." in ui
-        assert "TASK LINK NEEDS REVIEW" not in ui
+    assert "LINKED TO TASK — DETAILS DIFFER" not in ui
+    assert "DETAILS DIFFER" not in ui
+    assert "TASK LINK NEEDS REVIEW" not in ui
     assert "used_by_tasks" in repo
     assert "ref.setup_task_extra_material_source AS src" in repo
     assert "tm.active_flag" in repo
@@ -430,9 +432,13 @@ def test_206_kit_task_link_detail_mismatch_does_not_imply_broken_link() -> None:
     css = text(BASE_DIR / "setup_kit_inventory.css")
 
     assert "LINKED TO TASK" in ui
-    assert "Source relationship is recorded." in ui
+    assert "Task / Kit spec differs." in ui
+    assert "Material identity and source relationship are already linked." in ui
+    assert "LINKED TO TASK — DETAILS DIFFER" not in ui
+    assert "DETAILS DIFFER" not in ui
     assert "TASK LINK NEEDS REVIEW" not in ui
-        assert ".kit-content-link-review" in css
+    assert ".kit-content-link-review" in css
+    assert "color: var(--text);" in css
 
 
 def test_206_operator_sop_keeps_material_source_expected_and_inventory_separate() -> None:
