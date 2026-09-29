@@ -3,6 +3,9 @@
 const setupNextState = {
   scenes: [],
   taskScopes: new Map(),
+  organizationStatus: 'idle',
+  organizationPromise: null,
+  organizationError: null,
   closedStages: new Set(),
   closedScopes: new Set(),
   draggedTaskId: null,
@@ -56,14 +59,46 @@ function applyNextTaskScopes() {
   }
 }
 
-async function loadNextOrganization(render = true) {
-  const payload = await api('api/setup/organization');
-  const data = payload.organization || {};
-  setupNextState.scenes = data.scenes || [];
-  setupNextState.taskScopes = new Map(
-    (data.task_scopes || []).map((scope) => [Number(scope.setup_task_id), scope])
-  );
-  applyNextTaskScopes();
+async function loadNextOrganization(render = true, { force = false } = {}) {
+  if (setupNextState.organizationPromise && !force) {
+    await setupNextState.organizationPromise;
+    if (render && appState.tasks?.length) renderLibrary();
+    return;
+  }
+  if (setupNextState.organizationStatus === 'ready' && !force) {
+    if (render && appState.tasks?.length) renderLibrary();
+    return;
+  }
+
+  setupNextState.organizationStatus = 'loading';
+  setupNextState.organizationError = null;
+
+  const request = (async () => {
+    try {
+      const payload = await api('api/setup/organization');
+      const data = payload.organization || {};
+      setupNextState.scenes = data.scenes || [];
+      setupNextState.taskScopes = new Map(
+        (data.task_scopes || []).map((scope) => [Number(scope.setup_task_id), scope])
+      );
+      setupNextState.organizationStatus = 'ready';
+      applyNextTaskScopes();
+    } catch (error) {
+      setupNextState.organizationStatus = 'failed';
+      setupNextState.organizationError = error;
+      throw error;
+    }
+  })();
+
+  setupNextState.organizationPromise = request;
+  try {
+    await request;
+  } finally {
+    if (setupNextState.organizationPromise === request) {
+      setupNextState.organizationPromise = null;
+    }
+  }
+
   if (render && appState.tasks?.length) renderLibrary();
 }
 
@@ -1494,10 +1529,41 @@ async function nextLoadProcedure(task) {
 }
 loadProcedure = nextLoadProcedure;
 
-const priorNextRenderLibrary = renderLibrary;
+function renderNextLibraryReadiness() {
+  const target = el('library-list');
+  if (!target) return false;
+
+  if (setupNextState.organizationStatus === 'ready') return false;
+
+  document.querySelector('#library-view .next-library-tools')?.remove();
+  el('stage-gap-list').innerHTML = '';
+
+  if (setupNextState.organizationStatus === 'failed') {
+    const message = setupNextState.organizationError?.message || setupNextState.organizationError || 'Unknown organization load error';
+    target.innerHTML = `
+      <div class="empty-state">
+        <strong>Reusable Catalog organization could not be loaded.</strong>
+        <div class="muted">${escapeHtml(message)}</div>
+        <button id="next-organization-retry" type="button" class="secondary">Retry Catalog Organization</button>
+      </div>`;
+    el('next-organization-retry')?.addEventListener('click', () => {
+      setupNextState.organizationStatus = 'idle';
+      setupNextState.organizationError = null;
+      renderLibrary();
+    });
+    return true;
+  }
+
+  target.innerHTML = '<div class="empty-state">Loading reusable Catalog organization…</div>';
+  if (setupNextState.organizationStatus === 'idle') {
+    void loadNextOrganization(true).catch(() => renderLibrary());
+  }
+  return true;
+}
+
 renderLibrary = function renderLibraryNextPass() {
+  if (renderNextLibraryReadiness()) return;
   applyNextTaskScopes();
-  if (!setupNextState.scenes.length) return priorNextRenderLibrary();
   renderNextLibrary();
   installNextLibraryTools();
 };
@@ -1516,7 +1582,7 @@ const priorNextReloadTasks = reloadTasks;
 reloadTasks = async function reloadTasksNextPass(selectTaskId = null) {
   await priorNextReloadTasks(selectTaskId);
   applyNextTaskScopes();
-  if (setupNextState.scenes.length) renderLibrary();
+  renderLibrary();
 };
 
 async function initializeNextPass() {
