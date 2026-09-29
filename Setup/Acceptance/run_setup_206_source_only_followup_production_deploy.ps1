@@ -37,7 +37,7 @@ if (-not (Test-Path -LiteralPath $ServerScript -PathType Leaf)) {
     throw "STOP: source-only Production server runner is missing: $ServerScript"
 }
 
-& git -C $RepoRoot fetch origin $AcceptedTargetRef
+& git -C $RepoRoot fetch origin ($AcceptedTargetRef + ':refs/remotes/origin/' + $AcceptedTargetRef)
 if ($LASTEXITCODE -ne 0) {
     throw "STOP: unable to fetch accepted target ref $AcceptedTargetRef"
 }
@@ -89,7 +89,7 @@ foreach ($pin in @(
 }
 
 $nextPass = ((& git -C $RepoRoot show ($AcceptedTargetSha + ':Setup/Application/setup_next_pass.js')) | Out-String)
-if (-not $nextPass.Contains("organizationStatus: 'idle'") -or -not $nextPass.Contains('Loading reusable Catalog organization…') -or $nextPass.Contains('priorNextRenderLibrary')) {
+if (-not $nextPass.Contains("organizationStatus: 'idle'") -or -not $nextPass.Contains('function renderNextLibraryReadiness()') -or -not $nextPass.Contains('Retry Catalog Organization') -or $nextPass.Contains('priorNextRenderLibrary')) {
     throw 'STOP: accepted target does not contain the deterministic Catalog organization gate.'
 }
 
