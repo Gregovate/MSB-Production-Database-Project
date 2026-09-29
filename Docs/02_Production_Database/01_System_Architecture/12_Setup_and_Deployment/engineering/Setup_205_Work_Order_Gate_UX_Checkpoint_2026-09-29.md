@@ -285,3 +285,93 @@ The prior candidate `cb76d28648528d57c2ea2d69a68d1a7e84618024` passed:
 - retained acceptance report: `/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Acceptance_20260929T131346.txt`.
 
 Because the reusable launcher/docs/contracts were then improved, those gates do not transfer to the new exact branch head. Regression and disposable/browser acceptance restart from the new SHA.
+
+
+## Browser review attempt 2 — placement save permission failure and UX correction
+
+Exact preview candidate:
+`f8a168baf6a6bd3a2894c8f58c7877251bd8f3c1`
+
+The corrected client/server identity reached READY and rendered with `Client V0.3.21` and server `V0.3.21-scheduling-gates`.
+
+Operator reviewed the existing 2026 season-only Magic Igloo WO 372 gate and selected the intended annual window:
+
+```text
+after:  Layout / Erect Frame / Strap Down
+before: Install Skins and Bungees
+```
+
+Save failed in the disposable browser with the exact database error:
+
+```text
+permission denied for table setup_session_task
+```
+
+### Root cause
+
+The new placement repository path performed a direct:
+
+```sql
+SELECT setup_session_id, task_origin
+FROM ops.setup_session_task
+WHERE setup_session_task_id = ...
+FOR UPDATE
+```
+
+The disposable application role intentionally has broad Setup SELECT plus narrow SECURITY DEFINER command EXECUTE, but does not have broad table UPDATE/DML. PostgreSQL row locking through `FOR UPDATE` crosses that least-privilege boundary, so the command correctly failed.
+
+The row lock was unnecessary because the actual annual dependency and planned-order mutations already go through governed SECURITY DEFINER commands.
+
+### Correction
+
+- remove the direct `FOR UPDATE` from the season-placement read;
+- retain the season-only identity check with ordinary SELECT;
+- continue all dependency/planned-order writes through:
+  - `ops.set_setup_session_task_dependency(...)`;
+  - `ops.set_setup_session_task_planned_order(...)`.
+
+The browser Save path is also tightened so task-definition changes and requested placement are one database transaction instead of two separate HTTP mutations:
+- season-only create + initial dependency placement are atomic;
+- season-only edit + dependency reconciliation + planned-order update are atomic;
+- a dependency/cycle/permission failure rolls the whole Save back instead of leaving a partially updated task.
+
+### Placement UX correction from operator review
+
+The original labels were too implementation-oriented:
+
+```text
+Place after / requires
+Before / blocks
+```
+
+Accepted replacement wording:
+
+```text
+This task happens after (optional)
+This task must happen before (optional)
+```
+
+The controls move immediately below the Work Order/gate section and above Crew min / Crew max.
+
+Both sides are optional. Use one side when one constraint is sufficient. Use both only when the annual exception truly belongs between two Setup steps. WO 372 is intentionally two-sided because the frame must exist before welding and skins must wait until the weld repair is complete.
+
+An inline error area is added inside the season-task dialog and this save path no longer depends on an immovable native browser alert to expose command errors.
+
+### Magic Igloo second annual exception
+
+The accepted #205 baseline still requires the separate 2026 season-only WO 156 gate:
+
+```text
+Install Skins and Bungees
+    -> WO 156 manufacturer skin repair
+    -> Install Lighting, Cameras, Mats, Signs, and Finish Setup
+```
+
+WO 156 remains annual-only and must not be recreated as reusable Catalog work.
+
+Source checkpoint before this documentation commit:
+`cdf686cf6aece7b0f3df5b21c3b60ddd5bc26b38`
+
+Because application/API/repository behavior changed, the prior `582 passed`, disposable PASS, and browser READY evidence do not transfer to the new exact candidate. Restart exact-candidate regression, reusable disposable acceptance, and browser review after clean teardown of the current preview.
+
+No Production mutation occurred.
