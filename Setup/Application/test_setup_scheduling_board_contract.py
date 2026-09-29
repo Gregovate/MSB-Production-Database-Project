@@ -549,6 +549,11 @@ def test_205_season_task_editor_is_in_annual_plan_not_reusable_catalog() -> None
     assert "Setup Work is real crew work." in ui
     assert "actionType === 'GATE' && document.getElementById('setup-board205-season-gate').checked" in ui
     assert "gate.disabled = !isGate" in ui
+    assert "Est. labor:" in ui
+    assert "planned labor hr" in ui
+    assert "board205LaborHours" in ui
+    assert "board205AssignmentPlannedCrew" in ui
+    assert "Locate Power & Network is Setup Work, not Support / Prep." in ui
     assert "This task happens after" in ui
     assert "This task must happen before" in ui
     assert "board205SeasonPlacementState" in ui
@@ -715,7 +720,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
     assert "setup_scheduling_board.css?v=2026-09-29.2" in html
-    assert "setup_scheduling_board.js?v=2026-09-29.3" in html
+    assert "setup_scheduling_board.js?v=2026-09-29.4" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
