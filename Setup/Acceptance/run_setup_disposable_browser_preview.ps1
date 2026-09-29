@@ -7,7 +7,8 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$TargetRef,
     [string]$PreviewEmail = 'gliebig@sheboyganlights.org',
-    [string]$ExpectedVersion = '',
+    [Parameter(Mandatory=$true)]
+    [string]$ExpectedVersion,
     [string[]]$MigrationPaths = @(),
     [string[]]$ValidationPaths = @(),
     [switch]$AllowConcurrentProductionWrites
@@ -41,6 +42,43 @@ if ($dirty) {
 & git -C $repo cat-file -e "${CandidateSha}^{commit}"
 if ($LASTEXITCODE -ne 0) {
     throw "Candidate SHA is not available locally: $CandidateSha"
+}
+
+function Get-CandidateSetupBuildIdentity {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Sha
+    )
+
+    $backend = ((& git -C $repo show "${Sha}:Setup/Application/production_backend.py") | Out-String)
+    if ($LASTEXITCODE -ne 0) {
+        throw "STOP before server contact: exact candidate $Sha is missing Setup/Application/production_backend.py."
+    }
+
+    $client = ((& git -C $repo show "${Sha}:Setup/Application/setup_catalog_dirty_guard.js") | Out-String)
+    if ($LASTEXITCODE -ne 0) {
+        throw "STOP before server contact: exact candidate $Sha is missing Setup/Application/setup_catalog_dirty_guard.js."
+    }
+
+    $serverMatch = [regex]::Match($backend, 'PRODUCTION_VERSION\s*=\s*"([^"]+)"')
+    $clientMatch = [regex]::Match($client, "CLIENT_BUILD\s*=\s*'([^']+)'")
+    if (-not $serverMatch.Success -or -not $clientMatch.Success) {
+        throw "STOP before server contact: unable to resolve exact Setup server/client build identities from candidate $Sha."
+    }
+
+    [pscustomobject]@{
+        Server = $serverMatch.Groups[1].Value
+        Client = $clientMatch.Groups[1].Value
+    }
+}
+
+$buildIdentity = Get-CandidateSetupBuildIdentity -Sha $CandidateSha
+if ($buildIdentity.Server -ne $buildIdentity.Client) {
+    throw "STOP before server contact: Setup client/server version mismatch in exact candidate $CandidateSha. Client $($buildIdentity.Client); server $($buildIdentity.Server)."
+}
+
+if ($ExpectedVersion -ne $buildIdentity.Server) {
+    throw "STOP before server contact: ExpectedVersion '$ExpectedVersion' does not match exact candidate Setup build '$($buildIdentity.Server)'."
 }
 
 if ($PreviewPort -lt 1024 -or $PreviewPort -gt 65535) {
