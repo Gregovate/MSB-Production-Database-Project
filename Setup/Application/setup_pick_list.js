@@ -587,6 +587,7 @@
               <div class="identity">${esc(humanReadableIdentity(item))}</div>
               ${item.label ? `<div class="item-label">${esc(item.label)}</div>` : ''}
               <div class="pick-state">${pickStatusHtml(item)}</div>
+              ${itemDelayed(item) ? '<div class="print-delay-badge">DELAYED — DO NOT PICK YET</div>' : ''}
               ${delayActionHtml(item)}
               ${overrideBadgeHtml(item)}
             </td>

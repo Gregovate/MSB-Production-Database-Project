@@ -42,6 +42,7 @@ button,select{font:inherit;padding:.55rem .7rem}
 .pick-status{font-weight:800;font-size:.76rem;letter-spacing:.03em;border:1px solid currentColor;border-radius:999px;padding:.12rem .42rem}
 .pick-status.delayed{border-width:2px}
 .pick-status-detail{font-size:.84rem;opacity:.78}
+.print-delay-badge{display:none;font-weight:900}
 .delay-state{margin-top:.35rem}
 .location-cell{font-weight:700}.destination-cell{font-size:1.22rem;font-weight:800;line-height:1.18}.home-location-code{font-size:1.72rem;font-weight:900;line-height:1.02;letter-spacing:.025em;white-space:nowrap}.home-location-payload{margin-top:.3rem;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.82rem;opacity:.62;white-space:nowrap}
 .date-cell{white-space:nowrap}.print-value{display:none}
@@ -116,6 +117,7 @@ button,select{font:inherit;padding:.55rem .7rem}
   .no-print,.summary,.pick-reasons-row,.pick-state,.override-state,.home-location-payload{display:none!important}
   .screen-value{display:none!important}
   .print-value{display:inline!important}
+  .print-delay-badge{display:block!important;font-size:8pt;line-height:1.05;margin-top:.03in;border:1.5px solid #000;padding:.02in .03in}
   body{background:#fff;color:#000;font-size:8.5pt}
   .page-header{display:none!important}
   main{max-width:none;padding:0}
