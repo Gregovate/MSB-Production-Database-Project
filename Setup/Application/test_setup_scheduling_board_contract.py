@@ -57,6 +57,25 @@ def test_205_migration_separates_reusable_and_season_only_annual_work() -> None:
     )[1].split("CREATE OR REPLACE FUNCTION ops.update_setup_annual_task_definition", 1)[0]
 
 
+def test_205_season_only_tasks_never_seed_future_sessions_or_write_back_to_catalog() -> None:
+    migration_050 = read_db("050_add_setup_scheduling_board_foundation.sql")
+    migration_058 = read_db("058_preserve_catalog_review_on_annual_launch.sql")
+
+    season_create = migration_050.split(
+        "CREATE OR REPLACE FUNCTION ops.create_setup_season_task", 1
+    )[1].split("CREATE OR REPLACE FUNCTION ops.update_setup_annual_task_definition", 1)[0]
+    assert "INSERT INTO ref.setup_task" not in season_create
+    assert "task_origin" in season_create
+    assert "'SEASON_ONLY'" in season_create
+
+    session_create = migration_058.split(
+        "CREATE OR REPLACE FUNCTION ops.create_setup_session", 1
+    )[1].split("CREATE OR REPLACE FUNCTION ref.create_setup_task", 1)[0]
+    assert "FROM ref.setup_task t" in session_create
+    assert "WHERE t.active_flag" in session_create
+    assert "FROM ops.setup_session_task" not in session_create
+
+
 def test_205_annual_dependencies_can_include_season_only_tasks() -> None:
     sql = read_db("050_add_setup_scheduling_board_foundation.sql")
     assert "CREATE TABLE IF NOT EXISTS ops.setup_session_task_dependency" in sql
