@@ -10,7 +10,7 @@ $ServerScript = Join-Path $ScriptDir 'setup_205_source_only_production_deploy_se
 
 $ExpectedBranch = 'agent/setup-205-work-order-gate-ux'
 $AcceptedTargetSha = '9a614c1fa2eea0b425b03bdb4ac3e1790634c760'
-$AcceptedServerRunnerBlob = '8024776388f6843443a6e223cb21e4ebe015c3fb'
+$AcceptedServerRunnerBlob = 'ff2d49a980379fec03ff163f29da780f6c09ea65'
 
 if (-not (Test-Path -LiteralPath $ServerScript -PathType Leaf)) {
     throw "Required #205 source-only Production deployment runner is missing: $ServerScript"
