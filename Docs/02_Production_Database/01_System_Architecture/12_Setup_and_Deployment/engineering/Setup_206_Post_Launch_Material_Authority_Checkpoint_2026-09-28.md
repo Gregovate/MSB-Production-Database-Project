@@ -2510,3 +2510,147 @@ Acceptance:
 - displayed Pick By and Needed For dates remain unchanged;
 - QR codes, destination, Needs Pick/Picked state, and print layout remain intact;
 - clean preview exit with Production fingerprint/live SHA unchanged.
+
+
+---
+
+## PICK LIST DEADLINE-FIRST BROWSER PASS + DOWNSTREAM DATE SEMANTICS FINDING
+
+| Field | Value |
+|---|---|
+| Exact browser-reviewed application candidate | `47214817788074a8cd62d61ad725f70b0312808e` |
+| Preview type | reusable source-only disposable current-Production clone |
+| Preview result | **PASS / CLEAN EXIT for deadline-first ordering gate** |
+| Preview report | `/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20260929T113114.txt` |
+| Preview Flask log | `/tmp/Setup_Disposable_Browser_Preview_Flask_20260929T113114.log` |
+| Production Setup fingerprint before | `3b60b486035332236644fa52b361d6f5` |
+| Production Setup fingerprint after | `3b60b486035332236644fa52b361d6f5` |
+| Live Setup SHA before | `3cedba88283e4766932ae7905034856a2b9baa00` |
+| Live Setup SHA after | `3cedba88283e4766932ae7905034856a2b9baa00` |
+| Exit status | **0** |
+| Production mutation during preview | **NONE** |
+
+### Deadline ordering accepted
+
+Operator review confirmed the browser now orders physical picks by:
+
+1. Pick By;
+2. Needed For;
+3. rack/home-location walk order;
+4. existing physical-identity tie-break.
+
+Representative printed/browser evidence showed Winter Wonderland rows with Pick By 9/28 before Church rows with Pick By 10/3 and later 10/5+ work. The ordering correction itself is accepted.
+
+Do not reopen the rack-first sorting defect unless a later exact-candidate regression demonstrates a new failure.
+
+### New #206 semantic defect exposed by Winter Wonderland
+
+The same review exposed a separate demand-generation defect that is **not a sorting defect**.
+
+Annual Scheduling Board evidence showed:
+
+```text
+Day 3 — Tue 2026-09-29
+    Locate Power & Network — Winter Wonderland
+```
+
+The downstream Winter Wonderland material tasks were **not themselves scheduled on Day 3**.
+
+However, expanded Pick List reasons for C036 and other Winter Wonderland material showed downstream tasks such as:
+
+- Setup Polar Express (Grover Train);
+- Setup Kranks VW;
+- Setup Christmas Story panels;
+- Setup Flick and Flagpole;
+
+as:
+
+```text
+Day 3 · 2026-09-29 · MORNING · Crew A
+```
+
+and therefore gave the physical items:
+
+```text
+Needed For = Tue 9/29
+Pick By    = Mon 9/28
+```
+
+The reusable Winter Wonderland Catalog/dependency graph explains why those tasks are downstream of Locate/Layout, but it does **not** make them scheduled annual work on 9/29.
+
+### Code cause
+
+Current #206 demand expansion does this intentionally:
+
+```text
+scheduled non-material precursor
+    -> downstream_material_frontier(...)
+    -> find downstream material-bearing annual tasks
+    -> copy the scheduled precursor assignment
+    -> replace task identity with downstream task identity
+    -> retain precursor work_date / shift / crew lane
+```
+
+In `setup_material_readiness_repository.py`, the downstream expansion starts with:
+
+```python
+expanded = dict(assignment)
+```
+
+then updates the target task/session identity while leaving the scheduled trigger's date/shift/crew context in place.
+
+That makes an **unscheduled downstream task appear scheduled**.
+
+### Authority conflict
+
+This conflicts with #206's existing rule:
+
+```text
+Preferred annual order/readiness may help prioritize unscheduled work,
+but do not fabricate schedule dates merely to create a Pick List.
+```
+
+The Pick List may use prerequisite/readiness knowledge to explain future material need, but it must not represent the trigger task's date/shift/crew as the downstream task's own annual schedule assignment.
+
+### Correction boundary for next engineering cycle
+
+Do **not** undo the accepted deadline-first sort.
+
+The next #206 change must separate:
+
+```text
+scheduled trigger date
+    != downstream task scheduled date
+    != inferred readiness / early-mobilization context
+```
+
+At minimum:
+
+- direct scheduled work may use its actual annual work date;
+- unscheduled downstream material tasks must not inherit the trigger date as their own `work_date`;
+- Pick List reason rows must preserve the scheduled trigger identity explicitly;
+- any early-pick/readiness date for unscheduled descendants must be represented as a different concept, not fabricated annual schedule truth;
+- no downstream task may be labeled Day / shift / crew unless that assignment exists in `ops.setup_work_day_task`;
+- existing physical-item deduplication and accepted deadline-first row ordering must remain intact.
+
+### Magic Igloo boundary correction
+
+The earlier instruction to hold `downstream_material_frontier()` changes until the Magic Igloo annual graph was complete was correct for diagnosing Magic Igloo specifically.
+
+Winter Wonderland now provides an independent complete-enough counterexample: the bad date/shift/crew representation occurs because of #206 expansion semantics even when the annual prerequisite path is real.
+
+Therefore this specific semantic defect can be engineered under #206 without using the incomplete Magic Igloo graph as the acceptance case.
+
+### Stop point
+
+No application code change has been made for this newly exposed defect in this checkpoint.
+
+The deadline-first browser gate is closed.
+The next implementation cycle is the downstream-demand date/assignment semantics correction, followed by:
+
+1. full Setup/Application regression;
+2. fresh disposable browser review using Winter Wonderland as the primary acceptance case;
+3. verify unscheduled downstream tasks no longer impersonate Day 3 / MORNING / Crew A;
+4. verify direct scheduled material work still receives correct Pick By / Needed For dates;
+5. verify accepted Pick By -> Needed For -> rack ordering remains unchanged.
+
