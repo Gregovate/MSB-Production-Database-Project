@@ -1171,6 +1171,18 @@ def test_122_real_2026_session_creation_and_add_intent_are_explicit() -> None:
     assert "board205ChooseReusableTask" in ui
     assert "board205ChooseSeasonOnlyTask" in ui
 
+    # Scheduling can deliberately create either identity. Reusable creation
+    # hands off to the normal Catalog editor; season-only stays annual-only.
+    reusable_choice = ui.split("async function board205ChooseReusableTask()", 1)[1].split(
+        "function board205ChooseSeasonOnlyTask()", 1
+    )[0]
+    season_choice = ui.split("function board205ChooseSeasonOnlyTask()", 1)[1].split(
+        "async function board205DeleteSeasonTask()", 1
+    )[0]
+    assert "navigateSetupView('library')" in reusable_choice
+    assert "acceptanceOpenAddTask" in reusable_choice
+    assert "board205OpenSeasonTaskDialog()" in season_choice
+
 
 def test_122_season_only_unworked_task_delete_is_governed() -> None:
     ui = read_app("setup_scheduling_board.js")
