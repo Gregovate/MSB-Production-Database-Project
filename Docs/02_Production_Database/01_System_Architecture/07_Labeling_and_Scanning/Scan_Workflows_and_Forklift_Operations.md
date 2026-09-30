@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT PLANNING BASELINE — Setup/Deployment engineering pending |
+| Status | CURRENT OPERATING CONTRACT — #88 movement/Record Location acceptance pending |
 | Current revision | 2026-09-30 |
 
 ## Purpose
@@ -262,15 +262,29 @@ The dedicated Record Location workflow remains distinct from both the general Sc
 
 The physical QR code supplies permanent identity, not a GPS coordinate.
 
-It is valid to:
+The Record Location field sequence is explicit:
 
-1. scan/resolve the asset while GPS is off;
-2. explicitly choose Record Location;
-3. start GPS and obtain a fresh fix;
-4. review/reference the current location; and
-5. record the location without rescanning the asset.
+1. **Scan / select the asset.**
+2. **Establish or confirm location evidence.**
+   - Start GPS when raw location evidence is needed.
+   - A current GPS fix alone is valid evidence.
+   - A nearby named reference may be selected as optional confirmation/context.
+   - A deliberate location note may be used where appropriate.
+3. **Review and record.**
+   - The selected asset and the exact location evidence must be shown together before the final action is enabled.
+   - The action should state what will be recorded, for example `Record CONT:036 at 01-Front Entrance-FE`.
 
-Do not require a second QR scan merely because GPS was unavailable at the moment identity was captured.
+It remains valid to resolve the asset while GPS is off, start GPS afterward, and record without rescanning the asset.
+
+Do not require a second QR scan merely because GPS was unavailable at the moment identity was captured. Do not present a generic Record action as ready before valid location evidence exists.
+
+### Training / device test
+
+Both workshop Pick List and Record Location require a deliberate Training mode for teaching material handlers with the real tablet/scanner workflow.
+
+Training uses real authenticated read context and real device hardware/sensors, but it must not create movement events or add events to the offline queue.
+
+Active Training must be unmistakable with **TRAINING MODE — NOTHING WILL BE RECORDED** and an obvious exit action.
 
 ### Mobile browser account-selection failure
 
