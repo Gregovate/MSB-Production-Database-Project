@@ -283,3 +283,12 @@ def test_reusable_acl_batch_block_is_complete_before_role_lockdown() -> None:
             'psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"'
         )
         assert count_at < replay_at < pass_at < readonly_at
+
+
+def test_reusable_disposable_acceptance_allows_tooling_descendant_of_exact_candidate() -> None:
+    launcher = read_acceptance("run_setup_disposable_acceptance.ps1")
+
+    assert "$toolingHead = (git -C $repo rev-parse HEAD).Trim()" in launcher
+    assert "merge-base --is-ancestor $CandidateSha $toolingHead" in launcher
+    assert "requested candidate $CandidateSha is not an ancestor of current acceptance-tooling HEAD $toolingHead" in launcher
+    assert "does not equal requested candidate" not in launcher

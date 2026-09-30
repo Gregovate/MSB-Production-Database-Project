@@ -20,9 +20,10 @@ if ($LASTEXITCODE -ne 0 -or $currentBranch -ne $TargetRef) {
     throw "STOP before server contact: current branch '$currentBranch' does not equal TargetRef '$TargetRef'."
 }
 
-$head = (git -C $repo rev-parse HEAD).Trim()
-if ($head -ne $CandidateSha) {
-    throw "STOP before server contact: checkout HEAD $head does not equal requested candidate $CandidateSha."
+$toolingHead = (git -C $repo rev-parse HEAD).Trim()
+& git -C $repo merge-base --is-ancestor $CandidateSha $toolingHead
+if ($LASTEXITCODE -ne 0) {
+    throw "STOP before server contact: requested candidate $CandidateSha is not an ancestor of current acceptance-tooling HEAD $toolingHead."
 }
 
 $dirty = git -C $repo status --porcelain
