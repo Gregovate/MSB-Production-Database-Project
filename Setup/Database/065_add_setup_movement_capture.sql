@@ -101,6 +101,10 @@ ALTER TABLE ops.setup_movement_event
     ADD COLUMN IF NOT EXISTS gps_latitude numeric(9,6),
     ADD COLUMN IF NOT EXISTS gps_longitude numeric(9,6),
     ADD COLUMN IF NOT EXISTS gps_accuracy_m numeric(10,2),
+    ADD COLUMN IF NOT EXISTS gps_fix_at timestamptz,
+    ADD COLUMN IF NOT EXISTS gps_fix_age_ms integer,
+    ADD COLUMN IF NOT EXISTS gps_quality text NOT NULL DEFAULT 'UNASSESSED',
+    ADD COLUMN IF NOT EXISTS gps_quality_note text,
     ADD COLUMN IF NOT EXISTS source_location_code text;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_setup_movement_event_client_event
@@ -181,6 +185,20 @@ ALTER TABLE ops.setup_movement_event
         gps_accuracy_m IS NULL OR gps_accuracy_m >= 0
     );
 
+ALTER TABLE ops.setup_movement_event
+    DROP CONSTRAINT IF EXISTS ck_setup_movement_event_gps_fix_age;
+ALTER TABLE ops.setup_movement_event
+    ADD CONSTRAINT ck_setup_movement_event_gps_fix_age CHECK (
+        gps_fix_age_ms IS NULL OR gps_fix_age_ms >= 0
+    );
+
+ALTER TABLE ops.setup_movement_event
+    DROP CONSTRAINT IF EXISTS ck_setup_movement_event_gps_quality;
+ALTER TABLE ops.setup_movement_event
+    ADD CONSTRAINT ck_setup_movement_event_gps_quality CHECK (
+        gps_quality IN ('UNASSESSED','QUESTIONABLE','BAD')
+    );
+
 /* --------------------------------------------------------------------------
    EXPLICIT CURRENT MOVEMENT STATE, SEPARATE FROM LOCATION
    -------------------------------------------------------------------------- */
@@ -224,7 +242,8 @@ ALTER TABLE ops.setup_display_state
         OR nullif(btrim(current_location_note), '') IS NOT NULL
         OR movement_status IN (
             'PICKED','LOADED','IN_TRANSIT','DELIVERED','UNLOADED',
-            'STAGED','PLACED','RELOCATED','RETURNED'
+            'STAGED','PLACED','RELOCATED','RETURNED',
+            'DISPLAY_MOVE','TASK_UNLOAD'
         )
     );
 
@@ -253,7 +272,12 @@ CREATE OR REPLACE FUNCTION ops.record_setup_movement_event(
     p_gps_accuracy_m numeric DEFAULT NULL,
     p_destination_stage_id integer DEFAULT NULL,
     p_destination_location_note text DEFAULT NULL,
-    p_notes text DEFAULT NULL
+    p_notes text DEFAULT NULL,
+    p_unloaded_display_ids bigint[] DEFAULT NULL,
+    p_gps_fix_at timestamptz DEFAULT NULL,
+    p_gps_fix_age_ms integer DEFAULT NULL,
+    p_gps_quality text DEFAULT 'UNASSESSED',
+    p_gps_quality_note text DEFAULT NULL
 )
 RETURNS TABLE (
     setup_movement_event_id bigint,
@@ -265,6 +289,7 @@ RETURNS TABLE (
     movement_status text,
     home_location_code text,
     duplicate_event boolean,
+    unloaded_display_count integer,
     operator_display_name text
 )
 LANGUAGE plpgsql
@@ -284,6 +309,10 @@ DECLARE
     v_captured_person_id integer;
     v_destination_note text := nullif(btrim(p_destination_location_note), '');
     v_notes text := nullif(btrim(p_notes), '');
+    v_unloaded_display_ids bigint[] := coalesce(p_unloaded_display_ids, ARRAY[]::bigint[]);
+    v_gps_quality text := upper(btrim(coalesce(p_gps_quality, 'UNASSESSED')));
+    v_gps_quality_note text := nullif(btrim(p_gps_quality_note), '');
+    v_unloaded_count integer := 0;
     v_home_location text;
     v_event_id bigint;
     v_existing_type text;
@@ -320,15 +349,42 @@ BEGIN
 
     IF v_action NOT IN (
         'PICKED','LOADED','IN_TRANSIT','DELIVERED','UNLOADED',
-        'STAGED','PLACED','RELOCATED','RETURNED'
+        'STAGED','PLACED','RELOCATED','RETURNED',
+        'CONTAINER_MOVE','DISPLAY_MOVE'
     ) THEN
         RAISE EXCEPTION USING ERRCODE = '22023',
             MESSAGE = 'Unsupported Setup movement action';
     END IF;
 
-    IF v_capture_method NOT IN ('HID_SCAN','CAMERA_SCAN','MANUAL_ENTRY','SYSTEM') THEN
+    IF v_capture_method NOT IN ('HID_SCAN','CAMERA_SCAN','MANUAL_ENTRY','TOUCH_SELECT','SYSTEM') THEN
         RAISE EXCEPTION USING ERRCODE = '22023',
             MESSAGE = 'Unsupported Setup movement capture method';
+    END IF;
+
+    IF v_gps_quality NOT IN ('UNASSESSED','QUESTIONABLE','BAD') THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Unsupported GPS quality disposition';
+    END IF;
+
+    IF p_gps_fix_age_ms IS NOT NULL AND p_gps_fix_age_ms < 0 THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'GPS fix age cannot be negative';
+    END IF;
+
+    IF v_action = 'CONTAINER_MOVE' AND v_asset_type <> 'CONTAINER' THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'CONTAINER_MOVE requires a Container';
+    END IF;
+
+    IF v_action = 'DISPLAY_MOVE' AND v_asset_type <> 'DISPLAY' THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'DISPLAY_MOVE requires a Display';
+    END IF;
+
+    IF cardinality(v_unloaded_display_ids) > 0
+       AND (v_asset_type <> 'CONTAINER' OR v_action <> 'CONTAINER_MOVE') THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Grouped Display unload is valid only with CONTAINER_MOVE';
     END IF;
 
     IF p_occurred_at IS NULL THEN
@@ -341,7 +397,10 @@ BEGIN
             MESSAGE = 'GPS latitude and longitude must be supplied together';
     END IF;
 
-    IF v_action IN ('DELIVERED','UNLOADED','STAGED','PLACED','RELOCATED')
+    IF v_action IN (
+            'DELIVERED','UNLOADED','STAGED','PLACED','RELOCATED',
+            'CONTAINER_MOVE','DISPLAY_MOVE'
+       )
        AND p_destination_stage_id IS NULL
        AND v_destination_note IS NULL
        AND p_gps_latitude IS NULL THEN
@@ -409,6 +468,12 @@ BEGIN
             WHERE d.display_id = p_asset_id;
         END IF;
 
+        SELECT count(*)
+          INTO v_unloaded_count
+        FROM ops.setup_movement_event_display med
+        WHERE med.setup_movement_event_id = v_event_id
+          AND med.movement_effect = 'UNLOADED';
+
         RETURN QUERY SELECT
             v_event_id,
             v_session_id,
@@ -419,6 +484,7 @@ BEGIN
             v_existing_status,
             v_home_location,
             true,
+            v_unloaded_count,
             v_display_name;
         RETURN;
     END IF;
@@ -426,7 +492,10 @@ BEGIN
     IF p_season_year = 2026
        AND (p_occurred_at AT TIME ZONE 'America/Chicago')::date < DATE '2026-10-05'
        AND (
-           v_action IN ('IN_TRANSIT','DELIVERED','UNLOADED','PLACED','RELOCATED')
+           v_action IN (
+               'IN_TRANSIT','DELIVERED','UNLOADED','PLACED','RELOCATED',
+               'CONTAINER_MOVE','DISPLAY_MOVE'
+           )
            OR p_destination_stage_id IS NOT NULL
        ) THEN
         RAISE EXCEPTION USING ERRCODE = '23514',
@@ -470,6 +539,28 @@ BEGIN
         FOR UPDATE;
     END IF;
 
+    IF cardinality(v_unloaded_display_ids) > 0 THEN
+        SELECT count(DISTINCT x.display_id)
+          INTO v_unloaded_count
+        FROM unnest(v_unloaded_display_ids) AS x(display_id);
+
+        IF EXISTS (
+            SELECT 1
+            FROM unnest(v_unloaded_display_ids) AS x(display_id)
+            LEFT JOIN ref.display d
+              ON d.display_id = x.display_id
+            LEFT JOIN ops.setup_display_state ds
+              ON ds.setup_session_id = v_session_id
+             AND ds.display_id = x.display_id
+            WHERE d.display_id IS NULL
+               OR d.container_id IS DISTINCT FROM p_asset_id::integer
+               OR coalesce(ds.position_mode, 'WITH_CONTAINER') <> 'WITH_CONTAINER'
+        ) THEN
+            RAISE EXCEPTION USING ERRCODE = '23514',
+                MESSAGE = 'Grouped unload contains a Display that is not still WITH_CONTAINER';
+        END IF;
+    END IF;
+
     IF v_action = 'RETURNED'
        AND v_home_location IS NULL THEN
         RAISE EXCEPTION USING ERRCODE = '23514',
@@ -479,7 +570,7 @@ BEGIN
     IF v_action = 'PICKED'
        AND coalesce(v_existing_status, '') IN (
            'PICKED','LOADED','IN_TRANSIT','DELIVERED','UNLOADED',
-           'STAGED','PLACED','RELOCATED'
+           'STAGED','PLACED','RELOCATED','CONTAINER_MOVE','DISPLAY_MOVE'
        )
        AND (
            v_existing_movement_at IS NULL
@@ -522,6 +613,10 @@ BEGIN
         gps_latitude,
         gps_longitude,
         gps_accuracy_m,
+        gps_fix_at,
+        gps_fix_age_ms,
+        gps_quality,
+        gps_quality_note,
         source_location_code
     ) VALUES (
         v_session_id,
@@ -541,6 +636,10 @@ BEGIN
         p_gps_latitude,
         p_gps_longitude,
         p_gps_accuracy_m,
+        p_gps_fix_at,
+        p_gps_fix_age_ms,
+        v_gps_quality,
+        v_gps_quality_note,
         CASE WHEN v_action = 'PICKED' THEN v_home_location ELSE NULL END
     )
     RETURNING ops.setup_movement_event.setup_movement_event_id
@@ -559,13 +658,17 @@ BEGIN
             v_session_id,
             p_asset_id::integer,
             CASE
-                WHEN v_action IN ('DELIVERED','UNLOADED','STAGED','PLACED','RELOCATED')
+                WHEN v_action IN (
+                    'DELIVERED','UNLOADED','STAGED','PLACED','RELOCATED','CONTAINER_MOVE'
+                )
                 THEN p_destination_stage_id
                 ELSE NULL
             END,
             CASE
                 WHEN v_action = 'RETURNED' THEN v_home_location
-                WHEN v_action IN ('DELIVERED','UNLOADED','STAGED','PLACED','RELOCATED')
+                WHEN v_action IN (
+                    'DELIVERED','UNLOADED','STAGED','PLACED','RELOCATED','CONTAINER_MOVE'
+                )
                 THEN v_destination_note
                 ELSE NULL
             END,
@@ -582,6 +685,56 @@ BEGIN
             last_movement_at = EXCLUDED.last_movement_at
         WHERE ops.setup_container_state.last_movement_at IS NULL
            OR EXCLUDED.last_movement_at >= ops.setup_container_state.last_movement_at;
+
+        IF v_unloaded_count > 0 THEN
+            INSERT INTO ops.setup_movement_event_display(
+                setup_movement_event_id,
+                display_id,
+                movement_effect
+            )
+            SELECT
+                v_event_id,
+                x.display_id,
+                'UNLOADED'
+            FROM (
+                SELECT DISTINCT display_id
+                FROM unnest(v_unloaded_display_ids) AS u(display_id)
+            ) AS x;
+
+            INSERT INTO ops.setup_display_state(
+                setup_session_id,
+                display_id,
+                position_mode,
+                current_stage_id,
+                current_location_note,
+                last_movement_event_id,
+                movement_status,
+                last_movement_at
+            )
+            SELECT
+                v_session_id,
+                x.display_id,
+                'DETACHED',
+                NULL,
+                v_destination_note,
+                v_event_id,
+                'TASK_UNLOAD',
+                p_occurred_at
+            FROM (
+                SELECT DISTINCT display_id
+                FROM unnest(v_unloaded_display_ids) AS u(display_id)
+            ) AS x
+            ON CONFLICT ON CONSTRAINT pk_setup_display_state
+            DO UPDATE SET
+                position_mode = 'DETACHED',
+                current_stage_id = EXCLUDED.current_stage_id,
+                current_location_note = EXCLUDED.current_location_note,
+                last_movement_event_id = EXCLUDED.last_movement_event_id,
+                movement_status = EXCLUDED.movement_status,
+                last_movement_at = EXCLUDED.last_movement_at
+            WHERE ops.setup_display_state.last_movement_at IS NULL
+               OR EXCLUDED.last_movement_at >= ops.setup_display_state.last_movement_at;
+        END IF;
     ELSE
         INSERT INTO ops.setup_movement_event_display(
             setup_movement_event_id,
@@ -607,13 +760,17 @@ BEGIN
             p_asset_id,
             'DETACHED',
             CASE
-                WHEN v_action IN ('DELIVERED','UNLOADED','STAGED','PLACED','RELOCATED')
+                WHEN v_action IN (
+                    'DELIVERED','UNLOADED','STAGED','PLACED','RELOCATED','DISPLAY_MOVE'
+                )
                 THEN p_destination_stage_id
                 ELSE NULL
             END,
             CASE
                 WHEN v_action = 'RETURNED' THEN v_home_location
-                WHEN v_action IN ('DELIVERED','UNLOADED','STAGED','PLACED','RELOCATED')
+                WHEN v_action IN (
+                    'DELIVERED','UNLOADED','STAGED','PLACED','RELOCATED','DISPLAY_MOVE'
+                )
                 THEN v_destination_note
                 ELSE NULL
             END,
@@ -643,18 +800,19 @@ BEGIN
         v_action,
         v_home_location,
         false,
+        v_unloaded_count,
         v_display_name;
 END;
 $function$;
 
 REVOKE ALL ON FUNCTION ops.record_setup_movement_event(
     text,integer,uuid,text,bigint,text,timestamptz,text,text,text,boolean,
-    numeric,numeric,numeric,integer,text,text
+    numeric,numeric,numeric,integer,text,text,bigint[],timestamptz,integer,text,text
 ) FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION ops.record_setup_movement_event(
     text,integer,uuid,text,bigint,text,timestamptz,text,text,text,boolean,
-    numeric,numeric,numeric,integer,text,text
+    numeric,numeric,numeric,integer,text,text,bigint[],timestamptz,integer,text,text
 ) TO fieldwiring_app;
 
 REVOKE INSERT, UPDATE, DELETE ON ops.setup_movement_event FROM fieldwiring_app;
@@ -669,7 +827,7 @@ GRANT SELECT ON ops.setup_display_state TO fieldwiring_app;
 
 COMMENT ON FUNCTION ops.record_setup_movement_event(
     text,integer,uuid,text,bigint,text,timestamptz,text,text,text,boolean,
-    numeric,numeric,numeric,integer,text,text
+    numeric,numeric,numeric,integer,text,text,bigint[],timestamptz,integer,text,text
 ) IS
 'Idempotent governed Setup movement command for field/material handlers. Records explicit movement semantics and current state without rewriting permanent Home Location or Display-to-Container assignment.';
 
@@ -680,5 +838,5 @@ SELECT
         'ref.setup_movement_actor(text)'
     ) IS NOT NULL AS movement_actor_ready,
     to_regprocedure(
-        'ops.record_setup_movement_event(text,integer,uuid,text,bigint,text,timestamptz,text,text,text,boolean,numeric,numeric,numeric,integer,text,text)'
+        'ops.record_setup_movement_event(text,integer,uuid,text,bigint,text,timestamptz,text,text,text,boolean,numeric,numeric,numeric,integer,text,text,bigint[],timestamptz,integer,text,text)'
     ) IS NOT NULL AS movement_command_ready;

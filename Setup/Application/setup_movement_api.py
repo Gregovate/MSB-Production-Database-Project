@@ -89,9 +89,43 @@ def optional_float(value: object, name: str) -> float | None:
         raise SetupCommandError(f"{name} must be numeric") from exc
 
 
+def optional_nonnegative_int(value: object, name: str) -> int | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, bool):
+        raise SetupCommandError(f"{name} must be an integer")
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise SetupCommandError(f"{name} must be an integer") from exc
+    if parsed < 0:
+        raise SetupCommandError(f"{name} cannot be negative")
+    return parsed
+
+
 def optional_text(value: object) -> str | None:
     text = str(value or "").strip()
     return text or None
+
+
+def optional_positive_int_list(value: object, name: str) -> list[int]:
+    if value in (None, ""):
+        return []
+    if not isinstance(value, list):
+        raise SetupCommandError(f"{name} must be a JSON array")
+    result: list[int] = []
+    for item in value:
+        parsed = positive_int(item, name)
+        if parsed not in result:
+            result.append(parsed)
+    return result
+
+
+def normalize_gps_quality(value: object) -> str:
+    quality = str(value or "UNASSESSED").strip().upper()
+    if quality not in {"UNASSESSED", "QUESTIONABLE", "BAD"}:
+        raise SetupCommandError("gps_quality must be UNASSESSED, QUESTIONABLE, or BAD")
+    return quality
 
 
 def normalize_asset_type(value: object) -> str:
@@ -113,6 +147,8 @@ def normalize_action(value: object) -> str:
         "PLACED",
         "RELOCATED",
         "RETURNED",
+        "CONTAINER_MOVE",
+        "DISPLAY_MOVE",
     }:
         raise SetupCommandError("Unsupported Setup movement action")
     return action
@@ -175,6 +211,22 @@ def api_setup_movement_state() -> Response:
     return jsonify(state=state)
 
 
+@setup_movement_api.get("/api/setup/movements/container-contents")
+def api_setup_container_contents() -> Response:
+    require_movement_operator()
+    raw_year = request.args.get("season_year", "").strip()
+    if not raw_year.isdigit():
+        raise SetupCommandError("season_year is required")
+    container_id = positive_int(request.args.get("container_id"), "container_id")
+    contents = repo().container_contents(
+        season_year=int(raw_year),
+        container_id=container_id,
+    )
+    if contents is None:
+        return jsonify(error="Container was not found"), 404
+    return jsonify(container=contents)
+
+
 @setup_movement_api.post("/api/setup/movements")
 def api_setup_movement_record() -> tuple[Response, int] | Response:
     require_setup_command()
@@ -225,6 +277,21 @@ def api_setup_movement_record() -> tuple[Response, int] | Response:
             payload.get("destination_location_note")
         ),
         notes=optional_text(payload.get("notes")),
+        unloaded_display_ids=optional_positive_int_list(
+            payload.get("unloaded_display_ids"),
+            "unloaded_display_ids",
+        ),
+        gps_fix_at=(
+            required_timestamp(payload.get("gps_fix_at"), "gps_fix_at")
+            if payload.get("gps_fix_at")
+            else None
+        ),
+        gps_fix_age_ms=optional_nonnegative_int(
+            payload.get("gps_fix_age_ms"),
+            "gps_fix_age_ms",
+        ),
+        gps_quality=normalize_gps_quality(payload.get("gps_quality")),
+        gps_quality_note=optional_text(payload.get("gps_quality_note")),
     )
     status = 200 if result.get("duplicate_event") else 201
     return jsonify(movement=result), status
