@@ -97,7 +97,7 @@ def test_206_pick_list_surface_is_schedule_driven_with_narrow_manager_override()
     assert "unresolvedSection" not in ui
     assert "Material exceptions" not in ui
     assert "Generated from the live Scheduling Board" in html
-    assert "A workshop scan records that an item was actually picked/moved" in html
+    assert "A workshop scan records an actual PICKED event." in html
     assert "@media print" in css
     assert "commandOptions(" in ui
     assert "../api/setup/material-readiness/overrides" in ui
@@ -136,7 +136,7 @@ def test_live_pick_list_surface_exposes_operational_columns_needs_pick_picked_an
     assert '<option value="ALL">All demanded items</option>' in html
     assert '<option value="OUTSTANDING" selected>Needs pick</option>' in html
     assert '<option value="MOVED">Already moved</option>' in html
-    assert "A workshop scan records that an item was actually picked/moved" in html
+    assert "A workshop scan records an actual PICKED event." in html
     for heading in ("Container / Display", "Home Location", "Destination", "Pick By", "Needed For", "QR Code"):
         assert heading in ui
     assert "https://db.sheboyganlights.org/scan/" in ui
