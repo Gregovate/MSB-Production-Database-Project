@@ -191,7 +191,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.3.21-scheduling-gates"
+    assert payload["version"] == "V0.3.22-pick-list-delay"
     assert health.headers["Cache-Control"] == "no-store, max-age=0"
 
     for asset in (
