@@ -186,6 +186,9 @@
       movement_action: 'PICKED',
       occurred_at: new Date().toISOString(),
       device_id: deviceId(),
+      captured_operator_email: String(
+        bridge()?.access?.()?.authenticated_email || ''
+      ).trim().toLowerCase(),
       capture_method: 'HID_SCAN',
       offline_captured: !navigator.onLine,
       ...gpsEvidence()
