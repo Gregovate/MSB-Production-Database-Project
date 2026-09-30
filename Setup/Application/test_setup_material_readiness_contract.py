@@ -215,7 +215,7 @@ def test_pick_list_sorts_by_pick_deadline_then_physical_rack_walk_order() -> Non
     assert "left.column - right.column" in ui
     assert "left.level.localeCompare" in ui
     assert "left.slot - right.slot" in ui
-    assert "setup_pick_list.js?v=2026-09-30.7" in html
+    assert "setup_pick_list.js?v=2026-09-30.8" in html
 
 
 def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_assignment() -> None:
@@ -430,4 +430,4 @@ def test_delayed_pick_warning_survives_print_when_delayed_rows_are_shown() -> No
     assert ".print-delay-badge{display:none" in css
     assert ".print-delay-badge{display:inline-block!important" in css
     assert "setup_pick_list.css?v=2026-09-30.4" in html
-    assert "setup_pick_list.js?v=2026-09-30.7" in html
+    assert "setup_pick_list.js?v=2026-09-30.8" in html
