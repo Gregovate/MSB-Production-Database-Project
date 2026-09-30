@@ -7,7 +7,6 @@ const appState = {
   tasks: [],
   seasonYear: null,
   selectedTaskId: null,
-  movementSummary: null,
   pendingCorrection: null,
   pendingExtraMaterialRequirementId: null
 };
@@ -212,7 +211,6 @@ function setupNavigationActionLabel(route) {
   if (view === 'library') return 'opening the Reusable Task Catalog';
   if (view === 'perform') return 'opening Perform Work';
   if (view === 'extra-materials') return 'opening Extra Materials / Inventory';
-  if (view === 'movement') return 'opening Movement / Scanning';
   return 'continuing';
 }
 
@@ -747,13 +745,6 @@ async function loadProcedure(task) {
   }
 }
 
-function renderMovementSummary() {
-  const summary = appState.movementSummary || {};
-  el('movement-display-state').textContent = summary.display_state_rows ?? '—';
-  el('movement-container-state').textContent = summary.container_state_rows ?? '—';
-  el('movement-event-count').textContent = summary.movement_event_rows ?? '—';
-}
-
 async function reloadTasks(selectTaskId = null) {
   const payload = await api(`api/setup/tasks?season_year=${encodeURIComponent(appState.seasonYear)}`);
   appState.tasks = payload.tasks || [];
@@ -788,19 +779,16 @@ async function loadSeason(year) {
     const includeRequestedTask = requestedTaskId > 0
       ? `&include_setup_task_id=${encodeURIComponent(requestedTaskId)}`
       : '';
-    const [tasksPayload, movementPayload] = await Promise.all([
-      api(`api/setup/tasks?season_year=${encodeURIComponent(appState.seasonYear)}${includeRequestedTask}`),
-      api(`api/setup/movement-summary?season_year=${encodeURIComponent(appState.seasonYear)}`)
-    ]);
+    const tasksPayload = await api(
+      `api/setup/tasks?season_year=${encodeURIComponent(appState.seasonYear)}${includeRequestedTask}`
+    );
     appState.tasks = tasksPayload.tasks || [];
-    appState.movementSummary = movementPayload.movement || null;
     appState.selectedTaskId = null;
     el('review-detail').hidden = true;
     el('review-empty').hidden = false;
     renderSummary();
     renderReviewList();
     renderLibrary();
-    renderMovementSummary();
     setAlert(
       season?.setup_session_id
         ? `${appState.seasonYear} Setup Session loaded from Production. Changes made by authorized Managers are shared immediately.`
@@ -853,7 +841,7 @@ async function applyRequestedRoute() {
     appState.pendingExtraMaterialRequirementId = requestedExtraMaterialRequirementId;
   }
 
-  const allowedViews = ['review', 'library', 'extra-materials', 'movement', 'schedule', 'perform'];
+  const allowedViews = ['review', 'library', 'extra-materials', 'schedule', 'perform'];
   if (requestedView && allowedViews.includes(requestedView)) {
     await setupRestoreRoute({ view: requestedView });
   }
