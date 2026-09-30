@@ -36,7 +36,9 @@ Those releases must not share one visible version merely because one was develop
 
 ## What Does Not Require a New Application Version
 
-A new visible version is not required merely for documentation-only commits after the accepted application candidate, deployment/rollback tooling that does not change the application, repository-only merge/reconciliation commits, issue/PR comments, acceptance-record documentation, or branch housekeeping.
+A new visible version is not required merely for documentation-only commits after the accepted application candidate, deployment/rollback tooling that does not change the application, repository-only merge/reconciliation commits, issue/PR comments, acceptance-record documentation, branch housekeeping, or presentation-only UI changes such as spacing, styling, layout, wording, or labels that do not change workflow meaning, persisted behavior, API behavior, or the meaning of an operator action.
+
+A UI change **does** require a new release version when it changes workflow semantics, available actions, safety behavior, persisted state, or another operational capability rather than presentation alone.
 
 Those commits may have different repository SHAs while still referring to the same deployed application SHA/version. Documentation must state that distinction explicitly.
 
