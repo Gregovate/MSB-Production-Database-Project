@@ -210,6 +210,11 @@ def test_online_workshop_pick_is_still_checked_against_authoritative_pick_list()
 
     assert "def pick_demand_status(" in readiness_repo
     assert "def _matching_material_task_ids(" in readiness_repo
+    focused = readiness_repo.split("def pick_demand_status(", 1)[1].split(
+        "def material_readiness(", 1
+    )[0]
+    assert "field_context(" not in focused
+    assert "material_readiness(" not in focused
     assert "ref.setup_task_display" in readiness_repo
     assert "ref.lor_scene_display" in readiness_repo
     assert "ref.setup_task_container_support" in readiness_repo
