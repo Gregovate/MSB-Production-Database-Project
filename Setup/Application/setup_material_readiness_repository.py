@@ -523,6 +523,8 @@ class SetupMaterialReadinessRepository:
                         s.stage_key AS current_stage_key,
                         s.stage_name AS current_stage_name,
                         cs.current_location_note,
+                        cs.movement_status,
+                        cs.last_movement_at,
                         cs.last_movement_event_id,
                         me.event_type AS last_event_type,
                         me.occurred_at AS last_observed_at,
@@ -556,6 +558,8 @@ class SetupMaterialReadinessRepository:
                         s.stage_key AS current_stage_key,
                         s.stage_name AS current_stage_name,
                         ds.current_location_note,
+                        ds.movement_status,
+                        ds.last_movement_at,
                         ds.last_movement_event_id,
                         me.event_type AS last_event_type,
                         me.occurred_at AS last_observed_at,
@@ -989,9 +993,25 @@ class SetupMaterialReadinessRepository:
                 str(reason.get("demand_origin") or "DIRECT_SCHEDULE")
                 for reason in reasons
             }
+            movement_status = str(observation.get("movement_status") or "").upper()
+            has_outbound_movement = movement_status in {
+                "PICKED",
+                "LOADED",
+                "IN_TRANSIT",
+                "DELIVERED",
+                "UNLOADED",
+                "STAGED",
+                "PLACED",
+                "RELOCATED",
+            }
+            has_legacy_unclassified_movement = bool(
+                not movement_status
+                and observation.get("last_movement_event_id") is not None
+            )
             item["pick_delay_eligible"] = bool(
                 item["physical_type"] == "CONTAINER"
-                and observation.get("last_movement_event_id") is None
+                and not has_outbound_movement
+                and not has_legacy_unclassified_movement
                 and origins == {"DOWNSTREAM_FROM_SCHEDULE"}
             )
             delay = (

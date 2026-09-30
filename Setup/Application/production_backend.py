@@ -33,6 +33,7 @@ from setup_planning_summary_api import setup_planning_summary_api
 from setup_scheduling_board_api import setup_scheduling_board_api
 from setup_work_order_intake_api import setup_work_order_intake_api
 from setup_material_readiness_api import setup_material_readiness_api
+from setup_movement_api import setup_movement_api
 from setup_material_resolution import install_setup_material_resolution
 from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
@@ -152,6 +153,8 @@ PICK_LIST_ASSETS = frozenset(
     {
         "setup_pick_list.css",
         "setup_pick_list.js",
+        "setup_pick_mode.css",
+        "setup_pick_mode.js",
         "qrcode.min.js",
     }
 )
@@ -183,6 +186,7 @@ app.register_blueprint(setup_planning_summary_api)
 app.register_blueprint(setup_scheduling_board_api)
 app.register_blueprint(setup_work_order_intake_api)
 app.register_blueprint(setup_material_readiness_api)
+app.register_blueprint(setup_movement_api)
 
 
 def _setup_perf_is_traced_request() -> bool:
@@ -480,6 +484,17 @@ if __name__ == "__main__":
 def pick_list():
     """Read-only scheduled physical-demand Pick List."""
     return _no_store(send_from_directory(BASE_DIR, "pick_list.html"))
+
+
+@app.get("/pick-list/service-worker.js")
+def pick_list_service_worker():
+    return _no_store(
+        send_from_directory(
+            BASE_DIR,
+            "setup_pick_mode_sw.js",
+            mimetype="application/javascript",
+        )
+    )
 
 
 @app.get("/pick-list/assets/<path:name>")

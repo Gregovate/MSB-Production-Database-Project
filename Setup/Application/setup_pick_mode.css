@@ -1,0 +1,18 @@
+.pick-mode-start{font-weight:900}
+.pick-mode-panel{position:sticky;top:0;z-index:50;margin:0 0 1rem;padding:1rem;border:4px solid currentColor;border-radius:14px}
+.pick-mode-toolbar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+.pick-mode-toolbar h2{margin:.15rem 0 .35rem;font-size:1.55rem}
+.pick-mode-toolbar p{margin:.25rem 0}
+.pick-mode-toolbar button{min-height:48px;padding:.65rem 1rem;font-weight:800}
+.pick-mode-feedback{margin-top:.8rem;padding:1rem 1.15rem;border-radius:10px;font-size:1.45rem;font-weight:950;letter-spacing:.01em;border:3px solid currentColor}
+.pick-mode-feedback.ready{background:#12341e}
+.pick-mode-feedback.success{background:#0b7a32}
+.pick-mode-feedback.warning{background:#8a6800}
+.pick-mode-feedback.blocked{background:#8d1823}
+.pick-mode-feedback.offline{background:#704b00}
+.pick-mode-meta{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-top:.65rem;font-weight:800}
+body.pick-mode-active #manager-override-panel{display:none!important}
+body.pick-mode-active .delay-pick,body.pick-mode-active .resume-pick,body.pick-mode-active .cancel-override{display:none!important}
+body.pick-mode-active #print-button,body.pick-mode-active #back-button,body.pick-mode-active #start-pick-mode{display:none!important}
+@media(max-width:700px){.pick-mode-toolbar{display:block}.pick-mode-toolbar button{width:100%;margin-top:.6rem}.pick-mode-feedback{font-size:1.2rem}}
+@media print{.pick-mode-panel{display:none!important}}

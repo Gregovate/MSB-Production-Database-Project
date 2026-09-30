@@ -200,7 +200,20 @@
   }
 
   function itemMoved(item) {
-    return Boolean(item?.current_observation?.last_movement_event_id);
+    const observation = item?.current_observation || {};
+    const movementStatus = String(observation.movement_status || '').toUpperCase();
+    if (movementStatus === 'RETURNED') return false;
+    if ([
+      'PICKED',
+      'LOADED',
+      'IN_TRANSIT',
+      'DELIVERED',
+      'UNLOADED',
+      'STAGED',
+      'PLACED',
+      'RELOCATED'
+    ].includes(movementStatus)) return true;
+    return !movementStatus && Boolean(observation.last_movement_event_id);
   }
 
   function itemDelayed(item) {
@@ -245,7 +258,11 @@
     }
     const o = item.current_observation || {};
     const when = formatObservedAt(o.last_observed_at) || 'time unavailable';
-    return `<span class="pick-status picked">PICKED</span><span class="pick-status-detail">${esc(when)} · ${esc(currentLocationText(item))}</span>`;
+    const movementStatus = String(o.movement_status || '').toUpperCase();
+    const label = movementStatus
+      ? movementStatus.replaceAll('_', ' ')
+      : 'PICKED / MOVED';
+    return `<span class="pick-status picked">${esc(label)}</span><span class="pick-status-detail">${esc(when)}</span>`;
   }
 
   function destinationText(reasons) {
@@ -737,6 +754,14 @@
     statusLine.textContent = `Pick List unavailable: ${error.message || error}`;
     pickList.innerHTML = '';
   }
+
+  window.MSBSetupPickList = Object.freeze({
+    reload: () => load(),
+    readiness: () => readiness,
+    access: () => access,
+    itemMoved,
+    itemDelayed
+  });
 
   if (overridePickBy && !overridePickBy.value) overridePickBy.value = noSundayPickDate(todayIso());
   Promise.all([loadAccess(), load()]).catch(showError);

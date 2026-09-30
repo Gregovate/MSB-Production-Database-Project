@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Setup Pick List</title>
   <link rel="stylesheet" href="assets/setup_pick_list.css?v=2026-09-29.3">
+  <link rel="stylesheet" href="assets/setup_pick_mode.css?v=2026-09-30.1">
 </head>
 <body>
 <header class="page-header">
@@ -24,11 +25,28 @@
       </select>
     </label>
     <label class="delayed-filter"><input id="show-delayed-picks" type="checkbox" checked> Show delayed picks</label>
+    <button id="start-pick-mode" type="button" class="pick-mode-start">Start Picking</button>
     <button id="print-button" type="button">Print</button>
     <button id="back-button" type="button">Back to Setup</button>
   </div>
 </header>
 <main>
+  <section id="pick-mode-panel" class="pick-mode-panel no-print" hidden aria-live="polite">
+    <div class="pick-mode-toolbar">
+      <div>
+        <div class="eyebrow">Fork-truck scanner mode</div>
+        <h2 id="pick-mode-title">PICK MODE — ARMED</h2>
+        <p id="pick-mode-help">Scan a Container or Display. The Zebra sends CONT:&lt;id&gt; / DISP:&lt;id&gt; + Enter.</p>
+      </div>
+      <button id="stop-pick-mode" type="button">Stop Picking</button>
+    </div>
+    <div id="pick-mode-feedback" class="pick-mode-feedback ready">READY — scan the next item</div>
+    <div class="pick-mode-meta">
+      <span id="pick-mode-network">Checking connection…</span>
+      <span id="pick-mode-queue">Offline queue: 0</span>
+    </div>
+  </section>
+
   <section class="summary" id="summary"></section>
 
   <section id="manager-override-panel" class="panel manager-override-panel no-print" hidden>
@@ -77,5 +95,6 @@
 </footer>
 <script src="assets/qrcode.min.js?v=1"></script>
 <script src="assets/setup_pick_list.js?v=2026-09-29.3"></script>
+<script src="assets/setup_pick_mode.js?v=2026-09-30.1"></script>
 </body>
 </html>

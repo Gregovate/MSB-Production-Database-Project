@@ -261,3 +261,8 @@ Before the next Setup change:
 
 - [Setup Scheduling Board Contract — 2026-09-17](Setup_Scheduling_Board_Contract_2026-09-17.md) — Production-accepted annual Day Number/DOW board, crew/shift scheduling, permanent season-only identity, schedulable Work Order-linked annual work, Captain live-dispatch default, planned-vs-actual labor visibility, historical assignment stickiness, and reusable-learning boundary.
 - [#205 Production Acceptance — 2026-09-29](../../../../../Setup/Acceptance/Setup_205_Scheduling_Board_Production_Acceptance_2026-09-29.md) — exact V0.3.21 source-only Production acceptance and #206 handoff.
+
+
+## #88 Pick Mode / Movement Capture — ACTIVE LAUNCH GATE
+
+- [Setup #88 Pick Mode and Movement Capture Design — 2026-09-29](Setup_88_Pick_Mode_Movement_Design_2026-09-29.md) — current launch design for explicit PICKED/LOADED/field movement events, Zebra HID Pick Mode, current-state semantics, return-home behavior, GPS evidence, and durable offline queue/sync.

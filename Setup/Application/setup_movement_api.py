@@ -1,0 +1,282 @@
+"""Protected API for Setup #88 physical movement capture."""
+from __future__ import annotations
+
+from datetime import datetime
+from uuid import UUID
+
+import psycopg2
+from flask import Blueprint, Response, jsonify, request
+
+from setup_api import (
+    SetupAuthenticationError,
+    SetupCommandError,
+    json_body,
+    require_movement_operator,
+    require_reader,
+    require_setup_command,
+    setup_database_dsn,
+)
+from setup_material_readiness_repository import SetupMaterialReadinessRepository
+from setup_movement_repository import (
+    SetupMovementConflictError,
+    SetupMovementRepository,
+    SetupMovementRepositoryError,
+)
+
+setup_movement_api = Blueprint("setup_movement_api", __name__)
+
+_OUTBOUND_MOVEMENT = {
+    "PICKED",
+    "LOADED",
+    "IN_TRANSIT",
+    "DELIVERED",
+    "UNLOADED",
+    "STAGED",
+    "PLACED",
+    "RELOCATED",
+}
+
+
+def repo() -> SetupMovementRepository:
+    return SetupMovementRepository(setup_database_dsn())
+
+
+def positive_int(value: object, name: str) -> int:
+    if isinstance(value, bool):
+        raise SetupCommandError(f"{name} must be an integer")
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise SetupCommandError(f"{name} is required") from exc
+    if parsed <= 0:
+        raise SetupCommandError(f"{name} must be greater than zero")
+    return parsed
+
+
+def optional_positive_int(value: object, name: str) -> int | None:
+    if value in (None, ""):
+        return None
+    return positive_int(value, name)
+
+
+def required_uuid(value: object, name: str) -> UUID:
+    try:
+        return UUID(str(value or "").strip())
+    except (TypeError, ValueError, AttributeError) as exc:
+        raise SetupCommandError(f"{name} must be a UUID") from exc
+
+
+def required_timestamp(value: object, name: str) -> str:
+    text = str(value or "").strip()
+    if not text:
+        raise SetupCommandError(f"{name} is required")
+    candidate = text[:-1] + "+00:00" if text.endswith("Z") else text
+    try:
+        parsed = datetime.fromisoformat(candidate)
+    except ValueError as exc:
+        raise SetupCommandError(f"{name} must be an ISO-8601 timestamp") from exc
+    if parsed.tzinfo is None:
+        raise SetupCommandError(f"{name} must include a timezone")
+    return text
+
+
+def optional_float(value: object, name: str) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError) as exc:
+        raise SetupCommandError(f"{name} must be numeric") from exc
+
+
+def optional_text(value: object) -> str | None:
+    text = str(value or "").strip()
+    return text or None
+
+
+def normalize_asset_type(value: object) -> str:
+    asset_type = str(value or "").strip().upper()
+    if asset_type not in {"CONTAINER", "DISPLAY"}:
+        raise SetupCommandError("asset_type must be CONTAINER or DISPLAY")
+    return asset_type
+
+
+def normalize_action(value: object) -> str:
+    action = str(value or "").strip().upper()
+    if action not in {
+        "PICKED",
+        "LOADED",
+        "IN_TRANSIT",
+        "DELIVERED",
+        "UNLOADED",
+        "STAGED",
+        "PLACED",
+        "RELOCATED",
+        "RETURNED",
+    }:
+        raise SetupCommandError("Unsupported Setup movement action")
+    return action
+
+
+def _validate_live_pick_demand(
+    *,
+    season_year: int,
+    asset_type: str,
+    asset_id: int,
+) -> None:
+    readiness = SetupMaterialReadinessRepository(
+        setup_database_dsn()
+    ).material_readiness(season_year)
+    item = next(
+        (
+            candidate
+            for candidate in readiness.get("physical_items") or []
+            if candidate.get("physical_type") == asset_type
+            and int(candidate.get("physical_id") or 0) == asset_id
+        ),
+        None,
+    )
+    if item is None:
+        raise SetupMovementConflictError("Asset is not on the current Pick List.")
+
+    if item.get("pick_delayed"):
+        raise SetupMovementConflictError("DELAYED — DO NOT PICK YET")
+
+    observation = item.get("current_observation") or {}
+    movement_status = str(observation.get("movement_status") or "").upper()
+    if movement_status in _OUTBOUND_MOVEMENT:
+        raise SetupMovementConflictError(
+            f"Asset is already in {movement_status} movement state."
+        )
+
+    # Preserve conservative behavior for movement evidence created before
+    # explicit movement_status existed. RETURNED is the explicit future reset.
+    if not movement_status and observation.get("last_movement_event_id") is not None:
+        raise SetupMovementConflictError(
+            "Asset already has Setup movement evidence and is not an active home pick."
+        )
+
+
+@setup_movement_api.get("/api/setup/movements/state")
+def api_setup_movement_state() -> Response:
+    require_reader()
+    raw_year = request.args.get("season_year", "").strip()
+    if not raw_year.isdigit():
+        raise SetupCommandError("season_year is required")
+    asset_type = normalize_asset_type(request.args.get("asset_type"))
+    asset_id = positive_int(request.args.get("asset_id"), "asset_id")
+    state = repo().current_state(
+        season_year=int(raw_year),
+        asset_type=asset_type,
+        asset_id=asset_id,
+    )
+    if state is None:
+        return jsonify(error="Movement asset was not found"), 404
+    return jsonify(state=state)
+
+
+@setup_movement_api.post("/api/setup/movements")
+def api_setup_movement_record() -> tuple[Response, int] | Response:
+    require_setup_command()
+    _base_repo, email, access = require_movement_operator()
+    payload = json_body()
+
+    season_year = positive_int(payload.get("season_year"), "season_year")
+    asset_type = normalize_asset_type(payload.get("asset_type"))
+    asset_id = positive_int(payload.get("asset_id"), "asset_id")
+    movement_action = normalize_action(payload.get("movement_action"))
+    offline_captured = bool(payload.get("offline_captured", False))
+
+    # Online PICKED is checked against the current authoritative Pick List.
+    # Offline replay preserves the original field observation even if the live
+    # schedule has changed since capture; the client only queues cached-valid
+    # active demand and the DB still enforces identity/idempotency/state safety.
+    if movement_action == "PICKED" and not offline_captured:
+        _validate_live_pick_demand(
+            season_year=season_year,
+            asset_type=asset_type,
+            asset_id=asset_id,
+        )
+
+    result = repo().record_event(
+        email=email,
+        season_year=season_year,
+        client_event_id=required_uuid(payload.get("client_event_id"), "client_event_id"),
+        asset_type=asset_type,
+        asset_id=asset_id,
+        movement_action=movement_action,
+        occurred_at=required_timestamp(payload.get("occurred_at"), "occurred_at"),
+        device_id=optional_text(payload.get("device_id")),
+        captured_operator_email=(
+            optional_text(payload.get("captured_operator_email"))
+            if offline_captured
+            else email
+        ) or str(access.get("authenticated_email") or email),
+        capture_method=str(payload.get("capture_method") or "HID_SCAN").strip().upper(),
+        offline_captured=offline_captured,
+        gps_latitude=optional_float(payload.get("gps_latitude"), "gps_latitude"),
+        gps_longitude=optional_float(payload.get("gps_longitude"), "gps_longitude"),
+        gps_accuracy_m=optional_float(payload.get("gps_accuracy_m"), "gps_accuracy_m"),
+        destination_stage_id=optional_positive_int(
+            payload.get("destination_stage_id"),
+            "destination_stage_id",
+        ),
+        destination_location_note=optional_text(
+            payload.get("destination_location_note")
+        ),
+        notes=optional_text(payload.get("notes")),
+    )
+    status = 200 if result.get("duplicate_event") else 201
+    return jsonify(movement=result), status
+
+
+@setup_movement_api.errorhandler(SetupAuthenticationError)
+def movement_authentication_error(
+    exc: SetupAuthenticationError,
+) -> tuple[Response, int]:
+    return jsonify(
+        error="Setup Session sign-in identity is unavailable",
+        engineering_error=str(exc),
+    ), 401
+
+
+@setup_movement_api.errorhandler(SetupCommandError)
+def movement_command_error(exc: SetupCommandError) -> tuple[Response, int]:
+    return jsonify(error=str(exc), engineering_error=str(exc)), 403
+
+
+@setup_movement_api.errorhandler(SetupMovementConflictError)
+def movement_conflict_error(
+    exc: SetupMovementConflictError,
+) -> tuple[Response, int]:
+    return jsonify(error=str(exc), engineering_error=str(exc)), 409
+
+
+@setup_movement_api.errorhandler(SetupMovementRepositoryError)
+def movement_repository_error(
+    exc: SetupMovementRepositoryError,
+) -> tuple[Response, int]:
+    return jsonify(
+        error="Setup movement is temporarily unavailable.",
+        engineering_error=str(exc),
+    ), 503
+
+
+@setup_movement_api.errorhandler(psycopg2.Error)
+def movement_database_error(exc: psycopg2.Error) -> tuple[Response, int]:
+    sqlstate = exc.pgcode or ""
+    if sqlstate == "42501":
+        status = 403
+    elif sqlstate in {"23505", "23514"}:
+        status = 409
+    elif sqlstate in {"22023", "23503"}:
+        status = 400
+    elif sqlstate == "P0002":
+        status = 404
+    else:
+        status = 500
+    message = (
+        exc.diag.message_primary
+        or "Setup movement database command failed"
+    ).strip()
+    return jsonify(error=message, engineering_error=str(exc)), status
