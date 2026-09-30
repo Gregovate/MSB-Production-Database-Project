@@ -58,6 +58,7 @@ class SetupMovementRepository:
         movement_action: str,
         occurred_at: str,
         device_id: str | None,
+        captured_operator_email: str,
         capture_method: str,
         offline_captured: bool,
         gps_latitude: float | None,
@@ -73,7 +74,7 @@ class SetupMovementRepository:
                 SELECT *
                 FROM ops.record_setup_movement_event(
                     %s,%s,%s::uuid,%s,%s,%s,%s::timestamptz,
-                    %s,%s,%s,%s,%s,%s,%s,%s,%s
+                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s
                 )
                 """,
                 (
@@ -85,6 +86,7 @@ class SetupMovementRepository:
                     movement_action,
                     occurred_at,
                     device_id,
+                    captured_operator_email,
                     capture_method,
                     offline_captured,
                     gps_latitude,
