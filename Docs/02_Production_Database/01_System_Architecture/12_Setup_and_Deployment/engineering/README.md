@@ -268,17 +268,18 @@ Before the next Setup change:
 Current successor release under PR #255:
 
 ```text
-V0.3.28-field-evidence
+V0.3.29-pick-clarity
 branch = agent/setup-88-pick-mode-movement
 Production remains = 6f53d7f0c4b15f7175e773a2069595eef3f0e698 / V0.3.22-pick-list-delay
 ```
 
-V0.3.27 passed regression/disposable gates and materially improved Training, Pick counters, Record Location review/record sequencing, and completed-work variance. Browser review then exposed two workflow defects plus a measured Pick latency hotspot.
+V0.3.28 validated the field-evidence model: real Record Location observations are not blocked by planned access dates or missing prior PICKED events, canonical Home Location is shown for return, and Pick response time is materially improved by focused authoritative validation plus immediate UI settlement.
 
-V0.3.28 preserves the V0.3.27 UX while:
-- treating a deliberate Record Location observation as real physical evidence even when planned access dates or a prior PICKED event do not match reality;
-- showing canonical Home Location in the return workflow and naming it in the final return action;
-- preserving authoritative server-side Pick demand/delay/outbound validation through a focused single-asset validator instead of a full-season readiness build; and
-- settling successful Pick feedback/counts immediately from the authoritative movement response while refreshing full readiness in the background.
+The V0.3.28 browser review then exposed final picker-clarity cleanup. V0.3.29:
+- removes the obsolete **Movement / Scanning** shared Setup tab because it duplicated the direct Pick List entry point and had no unique operational workflow;
+- removes the corresponding unnecessary movement-summary fetch from ordinary Setup page load while retaining the protected API;
+- makes the Pick List summary physical-material-only: **Items to pick**, **Delayed items**, **Items already moved**, and **Containers picked**;
+- defines **Containers picked** from an actual current-Session `PICKED` event rather than any outbound/moved state, so a Container discovered in the park without a Pick scan does not falsely increment Pick throughput; and
+- preserves immediate Pick-count settlement and background authoritative readiness refresh.
 
-- [Setup #88 Pick Mode and Movement Capture Design — 2026-09-29](Setup_88_Pick_Mode_Movement_Design_2026-09-29.md) — current launch design and V0.3.27 browser-review successor contract for Zebra HID Pick Mode, field Record Location, GPS evidence, Training Mode, current-state semantics, return-home behavior, and durable offline queue/sync.
+- [Setup #88 Pick Mode and Movement Capture Design — 2026-09-29](Setup_88_Pick_Mode_Movement_Design_2026-09-29.md) — current launch design through the V0.3.29 picker-clarity successor for Zebra HID Pick Mode, field Record Location, GPS evidence, Training Mode, current-state semantics, return-home behavior, and durable offline queue/sync.
