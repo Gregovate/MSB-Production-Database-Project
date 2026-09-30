@@ -25,6 +25,7 @@
   let access = null;
   let containerCatalog = [];
   let stageCatalog = [];
+  const settledPickEvidence = new Map();
 
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, c => ({
@@ -402,6 +403,48 @@
     ).length;
   }
 
+  function physicalItemKey(assetType, assetId) {
+    return String(assetType || '').toUpperCase() + ':' + Number(assetId);
+  }
+
+  function applySettledPickEvidence() {
+    const items = readiness?.physical_items || [];
+    const presentKeys = new Set();
+
+    for (const item of items) {
+      const key = physicalItemKey(item.physical_type, item.physical_id);
+      presentKeys.add(key);
+      const evidence = settledPickEvidence.get(key);
+      if (!evidence) continue;
+
+      if (itemMoved(item)) {
+        settledPickEvidence.delete(key);
+        continue;
+      }
+
+      item.current_observation = Object.assign(
+        {},
+        item.current_observation || {},
+        evidence
+      );
+    }
+
+    for (const key of [...settledPickEvidence.keys()]) {
+      if (!presentKeys.has(key)) settledPickEvidence.delete(key);
+    }
+  }
+
+  function settlePicked(identity, movement) {
+    const key = physicalItemKey(identity.asset_type, identity.asset_id);
+    settledPickEvidence.set(key, {
+      movement_status: String(movement?.movement_status || movement?.movement_action || 'PICKED').toUpperCase(),
+      last_movement_event_id: movement?.setup_movement_event_id || null,
+      last_observed_at: movement?.occurred_at || new Date().toISOString()
+    });
+    applySettledPickEvidence();
+    render();
+  }
+
   function renderSummary(date) {
     const s = readiness?.summary || {};
     const scopedItems = scopedPhysicalItems(date);
@@ -725,6 +768,7 @@
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
     readiness = data.readiness;
+    applySettledPickEvidence();
     populateDates();
     applyAccess();
     render();
@@ -787,7 +831,8 @@
     access: () => access,
     itemMoved,
     itemDelayed,
-    containersPickedCount
+    containersPickedCount,
+    settlePicked
   });
 
   if (overridePickBy && !overridePickBy.value) overridePickBy.value = noSundayPickDate(todayIso());
