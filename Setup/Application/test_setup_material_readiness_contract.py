@@ -160,9 +160,12 @@ def test_pick_list_summary_totals_picked_containers_outside_working_filter() -> 
     ui = read("setup_pick_list.js")
     css = read("setup_pick_list.css")
 
+    assert "function scopedPhysicalItems(date = dateFilter?.value || '')" in ui
+    assert "return (readiness?.physical_items || []).filter" in ui
+    assert "function containersPickedCount(date = dateFilter?.value || '')" in ui
     assert "function renderSummary(date)" in ui
-    assert "const scopedItems = (readiness?.physical_items || []).filter" in ui
-    assert "['Containers picked'," in ui
+    assert "const scopedItems = scopedPhysicalItems(date);" in ui
+    assert "['Containers picked', containersPickedCount(date)]" in ui
     assert "item.physical_type === 'CONTAINER' && itemMoved(item)" in ui
     assert "renderSummary(date);" in ui
     assert "repeat(5,minmax(0,1fr))" in css
