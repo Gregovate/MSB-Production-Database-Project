@@ -244,12 +244,12 @@ def test_release_identity_and_offline_shells_are_synchronized():
 
     assert 'PRODUCTION_VERSION = "V0.3.27-field-training-ux"' in backend
     assert "const CLIENT_BUILD = 'V0.3.27-field-training-ux';" in guard
-    assert "msb-setup-pick-mode-v6" in pick_sw
+    assert "msb-setup-pick-mode-v7" in pick_sw
     assert "setup_pick_mode.js?v=2026-09-30.6" in pick_sw
     assert "setup_pick_mode.js?v=2026-09-30.6" in pick_html
-    assert "msb-setup-record-location-v4" in location_sw
-    assert "setup_record_location.js?v=2026-09-30.4" in location_sw
-    assert "setup_record_location.js?v=2026-09-30.4" in location_html
+    assert "msb-setup-record-location-v5" in location_sw
+    assert "setup_record_location.js?v=2026-09-30.5" in location_sw
+    assert "setup_record_location.js?v=2026-09-30.5" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():
@@ -274,6 +274,8 @@ def test_pick_list_training_mode_is_fail_closed_and_keeps_real_pick_totals_visib
     assert "TRAINING MODE — NOTHING WILL BE RECORDED" in html
     assert 'id="pick-mode-containers-picked"' in html
     assert 'id="pick-mode-training-count"' in html
+    assert 'class="pick-mode-toolbar-actions"' in html
+    assert 'class="pick-mode-toolbar-counts"' in html
     assert "const trainingMode = pageParams.get('training') === '1';" in ui
     assert "Training Mode blocks Setup movement writes." in ui
     assert "Training Mode blocks the offline movement queue." in ui
@@ -281,7 +283,7 @@ def test_pick_list_training_mode_is_fail_closed_and_keeps_real_pick_totals_visib
     assert "TRAINING — WOULD PICK " in ui
     assert "NOTHING RECORDED" in ui
     assert "containersPickedCount" in list_ui
-    assert "pick-mode-counters" in css
+    assert "pick-mode-toolbar-counts" in css
 
 
 def test_record_location_requires_visible_location_review_before_record_action():
@@ -292,11 +294,14 @@ def test_record_location_requires_visible_location_review_before_record_action()
     assert "3 · Review and record" in html
     assert 'id="movement-review-location"' in html
     assert 'id="movement-record-here" type="button" class="primary" disabled' in html
-    assert 'id="movement-mobile-progress"' in html
+    assert 'id="movement-compact-status"' in html
+    assert '<summary>Other location note</summary>' in html
+    assert '<summary>Reference data</summary>' in html
+    assert 'class="panel status-panel"' not in html
     assert "function currentLocationEvidence()" in ui
     assert "function renderRecordReadiness()" in ui
     assert "Location confirmed:" in ui
     assert "Choose a location first" in ui
     assert "scrollIntoView({behavior: 'smooth', block: 'start'})" in ui
     assert "locationNote.addEventListener('input', renderRecordReadiness)" in ui
-    assert ".mobile-workflow-progress" in css
+    assert ".compact-status" in css
