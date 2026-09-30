@@ -12,7 +12,7 @@ $ExpectedBranch = 'main'
 $AcceptedTargetSha = '6f53d7f0c4b15f7175e773a2069595eef3f0e698'
 $MigrationPath = 'Setup/Database/063_add_setup_pick_list_delay.sql'
 $AcceptedMigrationBlob = '45d1f71e226ab9e358e40f331945135cbe19cfb8'
-$AcceptedServerRunnerBlob = 'c104f9b51ea258720bd13ae0f2d125167f30be6e'
+$AcceptedServerRunnerBlob = '7a585d5d00fdff93e9dc792505458c0a8da12fd7'
 
 if (-not (Test-Path -LiteralPath $ServerScript -PathType Leaf)) {
     throw "Required #206 Production deployment runner is missing: $ServerScript"
