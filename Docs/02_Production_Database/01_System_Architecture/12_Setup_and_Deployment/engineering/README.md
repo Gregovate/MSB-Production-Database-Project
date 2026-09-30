@@ -268,11 +268,17 @@ Before the next Setup change:
 Current successor release under PR #255:
 
 ```text
-V0.3.27-field-training-ux
+V0.3.28-field-evidence
 branch = agent/setup-88-pick-mode-movement
 Production remains = 6f53d7f0c4b15f7175e773a2069595eef3f0e698 / V0.3.22-pick-list-delay
 ```
 
-V0.3.26 disposable regression and current-Production clone acceptance passed, but browser review produced required field UX/training corrections, so V0.3.26 was not operator-accepted. V0.3.27 adds fail-closed Training to both Pick List and Record Location, keeps Containers picked visible in the sticky Pick panel, makes Record Location explicitly Scan -> Confirm location -> Review and record, and changes Perform Work variance to completed-work actual minus completed-work planned while retaining full Captain-scope Planned labor visibility.
+V0.3.27 passed regression/disposable gates and materially improved Training, Pick counters, Record Location review/record sequencing, and completed-work variance. Browser review then exposed two workflow defects plus a measured Pick latency hotspot.
+
+V0.3.28 preserves the V0.3.27 UX while:
+- treating a deliberate Record Location observation as real physical evidence even when planned access dates or a prior PICKED event do not match reality;
+- showing canonical Home Location in the return workflow and naming it in the final return action;
+- preserving authoritative server-side Pick demand/delay/outbound validation through a focused single-asset validator instead of a full-season readiness build; and
+- settling successful Pick feedback/counts immediately from the authoritative movement response while refreshing full readiness in the background.
 
 - [Setup #88 Pick Mode and Movement Capture Design — 2026-09-29](Setup_88_Pick_Mode_Movement_Design_2026-09-29.md) — current launch design and V0.3.27 browser-review successor contract for Zebra HID Pick Mode, field Record Location, GPS evidence, Training Mode, current-state semantics, return-home behavior, and durable offline queue/sync.
