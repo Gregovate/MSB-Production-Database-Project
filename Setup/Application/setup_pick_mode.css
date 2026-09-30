@@ -7,10 +7,11 @@ body.pick-training-mode .pick-mode-panel{top:3rem;border-color:#ffd166}
 .pick-training-entry p{margin:.55rem 0}
 .pick-training-entry button{min-height:44px;font-weight:800}
 body.pick-training-mode #exit-pick-training{background:#8a5a00;color:#fff}
-.pick-mode-counters{display:flex;flex-wrap:wrap;gap:.7rem;margin-top:.8rem;font-weight:850}
-.pick-mode-counters span{padding:.45rem .65rem;border:1px solid currentColor;border-radius:8px}
-.pick-mode-counters strong{font-size:1.15rem}
 .pick-mode-toolbar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+.pick-mode-toolbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:.65rem;flex-wrap:wrap}
+.pick-mode-toolbar-counts{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;font-weight:850}
+.pick-mode-toolbar-counts span{padding:.4rem .55rem;border:1px solid currentColor;border-radius:8px;white-space:nowrap}
+.pick-mode-toolbar-counts strong{font-size:1.12rem}
 .pick-mode-toolbar h2{margin:.15rem 0 .35rem;font-size:1.55rem}
 .pick-mode-toolbar p{margin:.25rem 0}
 .pick-mode-toolbar button{min-height:48px;padding:.65rem 1rem;font-weight:800}
@@ -56,13 +57,14 @@ body.pick-mode-active .delay-pick,body.pick-mode-active .resume-pick,body.pick-m
 body.pick-mode-active #print-button,body.pick-mode-active #start-pick-mode,body.pick-mode-active #start-park-mode{display:none!important}
 @media(max-width:700px){
   .pick-mode-toolbar{display:block}
-  .pick-mode-toolbar button{width:100%;margin-top:.6rem}
+  .pick-mode-toolbar-actions{display:grid;grid-template-columns:1fr;justify-items:stretch;margin-top:.6rem}
+  .pick-mode-toolbar-counts{order:1}
+  .pick-mode-toolbar-actions button{order:2;width:100%}
   .movement-manual-row{display:grid;grid-template-columns:1fr auto}
   .movement-location-head{align-items:flex-start}
   .movement-record-actions{display:grid;grid-template-columns:1fr}
   .movement-record-actions button{width:100%}
   .pick-mode-feedback{font-size:1.15rem}
   body.pick-training-mode .pick-mode-panel{top:3.4rem}
-  .pick-mode-counters{display:grid;grid-template-columns:1fr 1fr}
 }
 @media print{.pick-mode-panel{display:none!important}}
