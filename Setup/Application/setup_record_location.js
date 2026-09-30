@@ -36,7 +36,6 @@
   const trainingExit = el('training-exit');
   const trainingEntry = el('training-entry');
   const trainingBanner = el('training-banner');
-  const mobileProgress = el('movement-mobile-progress');
   const locationPanel = document.querySelector('.location-panel');
 
   const pageParams = new URLSearchParams(location.search);
@@ -397,7 +396,6 @@
       button.addEventListener('click', function () {
         knownReference.value = item.name;
         renderRecordReadiness();
-        setFeedback('ready', 'LOCATION CONFIRMED — ' + item.name);
       });
       gpsCandidateButtons.appendChild(button);
     });
@@ -485,7 +483,6 @@
       recordHere.textContent = trainingMode ? 'Choose a location first' : 'Choose a location first';
       reviewLocation.className = 'review-location blocked';
       reviewLocation.textContent = 'Location needed — scan or choose an asset first.';
-      if (mobileProgress) mobileProgress.innerHTML = '<strong>Ready:</strong> scan or choose an asset.';
       return;
     }
 
@@ -499,17 +496,9 @@
         + '<div class="muted">' + escapeHtml(evidence.detail) + '</div>';
       recordHere.textContent = (trainingMode ? 'Test ' : 'Record ')
         + pendingIdentity.identity + ' at ' + evidence.label;
-      if (mobileProgress) {
-        mobileProgress.innerHTML = '<strong>' + escapeHtml(pendingIdentity.identity)
-          + '</strong> · ' + escapeHtml(evidence.label) + ' · Ready to record';
-      }
     } else {
       reviewLocation.textContent = evidence.detail;
       recordHere.textContent = 'Choose a location first';
-      if (mobileProgress) {
-        mobileProgress.innerHTML = '<strong>' + escapeHtml(pendingIdentity.identity)
-          + '</strong> · Choose location evidence';
-      }
     }
   }
 
@@ -1029,7 +1018,6 @@
   });
   knownReference.addEventListener('change', function () {
     renderRecordReadiness();
-    if (knownReference.value) setFeedback('ready', 'LOCATION CONFIRMED — ' + knownReference.value);
   });
   locationNote.addEventListener('input', renderRecordReadiness);
   trainingEnter.addEventListener('click', enterTrainingMode);
