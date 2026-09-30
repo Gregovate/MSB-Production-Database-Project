@@ -324,3 +324,27 @@ def test_reusable_disposable_allows_only_the_approved_shared_audit_repair() -> N
     assert "$isSetupValidation = $Path.StartsWith('Setup/Acceptance/')" in launcher
     assert "$isApprovedSharedValidation = $Path -eq 'Database/Acceptance/database_shared_audit_actor_disposable_validation.sql'" in launcher
     assert "explicitly approved shared database validation" in launcher
+
+
+def test_reusable_browser_preview_cleans_only_owned_stale_selected_port_before_start() -> None:
+    server = read_acceptance("setup_disposable_browser_preview_server.sh")
+
+    assert "cleanup_stale_preview_on_selected_port" in server
+    assert 'sudo ss -ltnp "sport = :$PREVIEW_PORT"' in server
+    assert 'fieldwiring_uid="$(id -u fieldwiring)"' in server
+    assert '"/tmp/msb-setup-browser-preview-candidate-"*"/Setup/Acceptance/setup_session_browser_preview_entry.py"*' in server
+    assert "refusing to kill it" in server
+    assert 'sudo -u fieldwiring -H kill -- -"$pgid"' in server
+    assert "msb-setup-browser-preview-" in server
+    assert 'worktree remove --force "$stale_worktree"' in server
+    assert 'manifest_port="$(awk -F' in server
+    assert "PASS: stale reusable Setup preview on port $PREVIEW_PORT removed narrowly" in server
+    assert "Selected-port stale preview cleanup" in server
+
+
+def test_reusable_browser_preview_only_resumes_transport_loss_not_start_preflight_failures() -> None:
+    launcher = read_acceptance("run_setup_disposable_browser_preview.ps1")
+
+    assert "if ($remoteExit -notin @(75, 255))" in launcher
+    assert "The start failure is not resumable" in launcher
+    assert "Browser-review SSH transport ended with exit code" in launcher
