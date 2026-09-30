@@ -218,6 +218,75 @@ def test_online_workshop_pick_is_still_checked_against_authoritative_pick_list()
     assert "ops.setup_pick_list_delay" in readiness_repo
 
 
+
+def test_focused_pick_validator_preserves_demand_delay_and_outbound_safety(monkeypatch):
+    import setup_movement_api
+
+    status = {
+        "demanded": True,
+        "pick_delayed": False,
+        "current_observation": None,
+    }
+
+    class FakeReadinessRepository:
+        def __init__(self, _dsn):
+            pass
+
+        def pick_demand_status(self, **_kwargs):
+            return dict(status)
+
+    monkeypatch.setattr(
+        setup_movement_api,
+        "SetupMaterialReadinessRepository",
+        FakeReadinessRepository,
+    )
+    monkeypatch.setattr(setup_movement_api, "setup_database_dsn", lambda: "fake-dsn")
+
+    setup_movement_api._validate_live_pick_demand(
+        season_year=2026,
+        asset_type="CONTAINER",
+        asset_id=36,
+    )
+
+    status["demanded"] = False
+    try:
+        setup_movement_api._validate_live_pick_demand(
+            season_year=2026,
+            asset_type="CONTAINER",
+            asset_id=36,
+        )
+    except setup_movement_api.SetupMovementConflictError as exc:
+        assert "not on the current Pick List" in str(exc)
+    else:
+        raise AssertionError("non-demand asset was accepted for Pick")
+
+    status.update({"demanded": True, "pick_delayed": True})
+    try:
+        setup_movement_api._validate_live_pick_demand(
+            season_year=2026,
+            asset_type="CONTAINER",
+            asset_id=36,
+        )
+    except setup_movement_api.SetupMovementConflictError as exc:
+        assert "DELAYED — DO NOT PICK YET" in str(exc)
+    else:
+        raise AssertionError("delayed asset was accepted for Pick")
+
+    status.update({
+        "pick_delayed": False,
+        "current_observation": {"movement_status": "PICKED"},
+    })
+    try:
+        setup_movement_api._validate_live_pick_demand(
+            season_year=2026,
+            asset_type="CONTAINER",
+            asset_id=36,
+        )
+    except setup_movement_api.SetupMovementConflictError as exc:
+        assert "already in PICKED movement state" in str(exc)
+    else:
+        raise AssertionError("already-outbound asset was accepted for Pick")
+
 def test_movement_migration_preserves_raw_gps_and_permanent_assignment():
     sql = migration()
 
