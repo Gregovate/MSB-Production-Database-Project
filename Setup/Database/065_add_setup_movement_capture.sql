@@ -94,6 +94,8 @@ ALTER TABLE ops.setup_movement_event
     ADD COLUMN IF NOT EXISTS client_event_id uuid,
     ADD COLUMN IF NOT EXISTS received_at timestamptz NOT NULL DEFAULT now(),
     ADD COLUMN IF NOT EXISTS device_id text,
+    ADD COLUMN IF NOT EXISTS captured_operator_email text,
+    ADD COLUMN IF NOT EXISTS captured_operator_person_id integer,
     ADD COLUMN IF NOT EXISTS capture_method text,
     ADD COLUMN IF NOT EXISTS offline_captured boolean NOT NULL DEFAULT false,
     ADD COLUMN IF NOT EXISTS gps_latitude numeric(9,6),
@@ -104,6 +106,13 @@ ALTER TABLE ops.setup_movement_event
 CREATE UNIQUE INDEX IF NOT EXISTS uq_setup_movement_event_client_event
     ON ops.setup_movement_event(client_event_id)
     WHERE client_event_id IS NOT NULL;
+
+ALTER TABLE ops.setup_movement_event
+    DROP CONSTRAINT IF EXISTS fk_setup_movement_event_captured_operator_person;
+ALTER TABLE ops.setup_movement_event
+    ADD CONSTRAINT fk_setup_movement_event_captured_operator_person
+    FOREIGN KEY (captured_operator_person_id)
+    REFERENCES ref.person(person_id);
 
 ALTER TABLE ops.setup_movement_event
     DROP CONSTRAINT IF EXISTS ck_setup_movement_event_type;
@@ -236,6 +245,7 @@ CREATE OR REPLACE FUNCTION ops.record_setup_movement_event(
     p_movement_action text,
     p_occurred_at timestamptz,
     p_device_id text DEFAULT NULL,
+    p_captured_operator_email text DEFAULT NULL,
     p_capture_method text DEFAULT 'HID_SCAN',
     p_offline_captured boolean DEFAULT false,
     p_gps_latitude numeric DEFAULT NULL,
@@ -270,6 +280,8 @@ DECLARE
     v_action text := upper(btrim(coalesce(p_movement_action, '')));
     v_capture_method text := upper(btrim(coalesce(p_capture_method, 'HID_SCAN')));
     v_device_id text := nullif(btrim(p_device_id), '');
+    v_captured_email text := lower(nullif(btrim(p_captured_operator_email), ''));
+    v_captured_person_id integer;
     v_destination_note text := nullif(btrim(p_destination_location_note), '');
     v_notes text := nullif(btrim(p_notes), '');
     v_home_location text;
@@ -284,6 +296,11 @@ BEGIN
     SELECT a.directus_user_id, a.person_id, a.display_name
       INTO v_directus_user_id, v_person_id, v_display_name
     FROM ref.setup_movement_actor(p_email) a;
+
+    v_captured_email := coalesce(v_captured_email, lower(btrim(p_email)));
+    SELECT a.person_id
+      INTO v_captured_person_id
+    FROM ref.setup_movement_actor(v_captured_email) a;
 
     IF p_client_event_id IS NULL THEN
         RAISE EXCEPTION USING ERRCODE = '22023',
@@ -475,6 +492,8 @@ BEGIN
         client_event_id,
         received_at,
         device_id,
+        captured_operator_email,
+        captured_operator_person_id,
         capture_method,
         offline_captured,
         gps_latitude,
@@ -492,6 +511,8 @@ BEGIN
         p_client_event_id,
         now(),
         v_device_id,
+        v_captured_email,
+        v_captured_person_id,
         v_capture_method,
         coalesce(p_offline_captured, false),
         p_gps_latitude,
@@ -604,12 +625,12 @@ END;
 $function$;
 
 REVOKE ALL ON FUNCTION ops.record_setup_movement_event(
-    text,integer,uuid,text,bigint,text,timestamptz,text,text,boolean,
+    text,integer,uuid,text,bigint,text,timestamptz,text,text,text,boolean,
     numeric,numeric,numeric,integer,text,text
 ) FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION ops.record_setup_movement_event(
-    text,integer,uuid,text,bigint,text,timestamptz,text,text,boolean,
+    text,integer,uuid,text,bigint,text,timestamptz,text,text,text,boolean,
     numeric,numeric,numeric,integer,text,text
 ) TO fieldwiring_app;
 
@@ -624,7 +645,7 @@ GRANT SELECT ON ops.setup_container_state TO fieldwiring_app;
 GRANT SELECT ON ops.setup_display_state TO fieldwiring_app;
 
 COMMENT ON FUNCTION ops.record_setup_movement_event(
-    text,integer,uuid,text,bigint,text,timestamptz,text,text,boolean,
+    text,integer,uuid,text,bigint,text,timestamptz,text,text,text,boolean,
     numeric,numeric,numeric,integer,text,text
 ) IS
 'Idempotent governed Setup movement command for field/material handlers. Records explicit movement semantics and current state without rewriting permanent Home Location or Display-to-Container assignment.';
@@ -636,5 +657,5 @@ SELECT
         'ref.setup_movement_actor(text)'
     ) IS NOT NULL AS movement_actor_ready,
     to_regprocedure(
-        'ops.record_setup_movement_event(text,integer,uuid,text,bigint,text,timestamptz,text,text,boolean,numeric,numeric,numeric,integer,text,text)'
+        'ops.record_setup_movement_event(text,integer,uuid,text,bigint,text,timestamptz,text,text,text,boolean,numeric,numeric,numeric,integer,text,text)'
     ) IS NOT NULL AS movement_command_ready;
