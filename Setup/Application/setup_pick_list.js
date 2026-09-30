@@ -399,7 +399,8 @@
 
   function containersPickedCount(date = dateFilter?.value || '') {
     return scopedPhysicalItems(date).filter(
-      (item) => item.physical_type === 'CONTAINER' && itemMoved(item)
+      (item) => item.physical_type === 'CONTAINER'
+        && Boolean(item.current_observation?.has_pick_event)
     ).length;
   }
 
@@ -439,20 +440,19 @@
     settledPickEvidence.set(key, {
       movement_status: String(movement?.movement_status || movement?.movement_action || 'PICKED').toUpperCase(),
       last_movement_event_id: movement?.setup_movement_event_id || null,
-      last_observed_at: movement?.occurred_at || new Date().toISOString()
+      last_observed_at: movement?.occurred_at || new Date().toISOString(),
+      has_pick_event: true
     });
     applySettledPickEvidence();
     render();
   }
 
   function renderSummary(date) {
-    const s = readiness?.summary || {};
     const scopedItems = scopedPhysicalItems(date);
     const cards = [
-      ['Scheduled assignments', s.scheduled_assignment_count ?? 0],
-      ['Active picks', scopedItems.filter(i => !itemMoved(i) && !itemDelayed(i)).length],
-      ['Delayed picks', scopedItems.filter(i => !itemMoved(i) && itemDelayed(i)).length],
-      ['Picked / moved', scopedItems.filter(itemMoved).length],
+      ['Items to pick', scopedItems.filter(i => !itemMoved(i) && !itemDelayed(i)).length],
+      ['Delayed items', scopedItems.filter(i => !itemMoved(i) && itemDelayed(i)).length],
+      ['Items already moved', scopedItems.filter(itemMoved).length],
       ['Containers picked', containersPickedCount(date)]
     ];
     summary.innerHTML = cards.map(([label, value]) =>
