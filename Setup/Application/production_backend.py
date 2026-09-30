@@ -495,7 +495,6 @@ def pick_list_service_worker():
             mimetype="application/javascript",
         )
     )
-    response.headers["Service-Worker-Allowed"] = "/pick-list/"
     return response
 
 
