@@ -292,6 +292,7 @@ DECLARE
     v_existing_session_id bigint;
     v_existing_occurred_at timestamptz;
     v_existing_status text;
+    v_existing_movement_at timestamptz;
 BEGIN
     SELECT a.directus_user_id, a.person_id, a.display_name
       INTO v_directus_user_id, v_person_id, v_display_name
@@ -435,8 +436,8 @@ BEGIN
                 MESSAGE = 'Container was not found';
         END IF;
 
-        SELECT cs.movement_status
-          INTO v_existing_status
+        SELECT cs.movement_status, cs.last_movement_at
+          INTO v_existing_status, v_existing_movement_at
         FROM ops.setup_container_state cs
         WHERE cs.setup_session_id = v_session_id
           AND cs.container_id = p_asset_id::integer
@@ -453,8 +454,8 @@ BEGIN
                 MESSAGE = 'Display was not found';
         END IF;
 
-        SELECT ds.movement_status
-          INTO v_existing_status
+        SELECT ds.movement_status, ds.last_movement_at
+          INTO v_existing_status, v_existing_movement_at
         FROM ops.setup_display_state ds
         WHERE ds.setup_session_id = v_session_id
           AND ds.display_id = p_asset_id
@@ -465,12 +466,20 @@ BEGIN
        AND coalesce(v_existing_status, '') IN (
            'PICKED','LOADED','IN_TRANSIT','DELIVERED','UNLOADED',
            'STAGED','PLACED','RELOCATED'
+       )
+       AND (
+           v_existing_movement_at IS NULL
+           OR p_occurred_at >= v_existing_movement_at
        ) THEN
         RAISE EXCEPTION USING ERRCODE = '23514',
             MESSAGE = 'Asset is already picked or currently out of Home Location';
     END IF;
 
-    IF v_existing_status = v_action THEN
+    IF v_existing_status = v_action
+       AND (
+           v_existing_movement_at IS NULL
+           OR p_occurred_at >= v_existing_movement_at
+       ) THEN
         RAISE EXCEPTION USING ERRCODE = '23514',
             MESSAGE = format('Asset is already in %s movement state', v_action);
     END IF;
