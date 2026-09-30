@@ -387,6 +387,24 @@
     if (!('serviceWorker' in navigator)) return;
     try {
       await navigator.serviceWorker.register('service-worker.js', {scope: './'});
+      await navigator.serviceWorker.ready;
+
+      // The first page load may finish its API reads before the newly installed
+      // worker controls the client. Re-read the launch-critical GET surfaces
+      // after activation so a later offline cold start has authoritative cached
+      // Pick List/access data from the most recent connected checkpoint.
+      const year = encodeURIComponent(seasonSelect?.value || '2026');
+      const urls = [
+        `../api/setup/material-readiness?season_year=${year}`,
+        '../api/setup/access',
+        '../api/setup/stages'
+      ];
+      if (bridge()?.access?.()?.can_manage_setup) {
+        urls.push('../api/setup/containers/source-options');
+      }
+      await Promise.allSettled(
+        urls.map((url) => fetch(url, {cache: 'no-store'}))
+      );
     } catch (_error) {
       // Queueing still works when the browser lacks install permission, but the
       // offline-cold-start acceptance gate will expose a failed shell cache.
