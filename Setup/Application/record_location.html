@@ -14,7 +14,7 @@
     <p>Identify a Container or Display, review current location evidence, then record where it is now.</p>
   </div>
   <div class="header-actions">
-    <button id="training-toggle" type="button">Training Mode</button>
+    <button id="training-exit" type="button" hidden>Exit Training</button>
     <button id="back-setup" type="button">Back to Setup</button>
   </div>
 </header>
@@ -121,6 +121,12 @@
       <span id="movement-queue">Offline queue: 0</span>
     </div>
   </section>
+
+  <details id="training-entry" class="training-entry">
+    <summary>Training / device test</summary>
+    <p class="muted">Use this only for deliberate phone/tablet/Zebra/GPS practice. Training uses real read-only context but never records or queues a Setup movement.</p>
+    <button id="training-enter" type="button">Enter Training Mode</button>
+  </details>
 </main>
 
 <script src="assets/setup_record_location.js?v=2026-09-30.2"></script>
