@@ -55,7 +55,6 @@
     <button class="tab active" data-view="review" type="button">2025 Verification</button>
     <button class="tab" data-view="library" type="button">Reusable Task Catalog</button>
     <button class="tab" data-view="extra-materials" type="button">Extra Materials / Inventory</button>
-    <button class="tab" data-view="movement" type="button">Movement / Scanning</button>
   </nav>
 
   <section id="summary-grid" class="summary-grid" aria-live="polite"></section>
@@ -321,20 +320,6 @@
     </div>
   </section>
 
-  <section id="movement-view" class="view">
-    <div class="card">
-      <div class="eyebrow">Movement integration boundary</div>
-      <h2>Container / Display Movement and Scanning</h2>
-      <p>Use the Rolling Pick List scanner workflow to record real Container/Display movement. <strong>Pick</strong> is the default action; the same scanner mode can then record Load, Depart, Unload, Stage, Place, Relocate, and Return Empty.</p>
-      <p><a href="pick-list/">Open Pick / Movement Scanner</a></p>
-      <p class="muted">Each accepted scan records one explicit movement event. GPS/accuracy evidence is attached when available; permanent Home Location remains separate and is shown for Return Empty.</p>
-      <div class="fact-grid">
-        <div><span>Annual Display state rows</span><strong id="movement-display-state">—</strong></div>
-        <div><span>Annual Container state rows</span><strong id="movement-container-state">—</strong></div>
-        <div><span>Recorded Setup movement events</span><strong id="movement-event-count">—</strong></div>
-      </div>
-    </div>
-  </section>
 </main>
 
 <footer class="muted" style="max-width:1600px; margin:18px auto 28px; padding:0 18px; text-align:center; font-size:.85rem;">
@@ -343,7 +328,7 @@
 
 <script src="setup_analytics.js?v=2026-09-07.1"></script>
 <script src="setup_theme.js?v=2026-09-24.1"></script>
-<script src="setup_production.js?v=2026-09-29.2"></script>
+<script src="setup_production.js?v=2026-09-30.1"></script>
 <script src="setup_resource_review.js?v=2026-09-11.2"></script>
 <script src="setup_review_usability.js?v=2026-09-30.3"></script>
 <script src="setup_next_pass.js?v=2026-09-30.7"></script>
