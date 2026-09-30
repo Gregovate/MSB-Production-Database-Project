@@ -23,6 +23,7 @@
   const pendingPanel = el('movement-pending');
   const pendingTitle = el('movement-pending-title');
   const pendingState = el('movement-pending-state');
+  const reviewLocation = el('movement-review-location');
   const unloadGroups = el('movement-unload-groups');
   const recordHere = el('movement-record-here');
   const returnHome = el('movement-return-home');
@@ -35,6 +36,8 @@
   const trainingExit = el('training-exit');
   const trainingEntry = el('training-entry');
   const trainingBanner = el('training-banner');
+  const mobileProgress = el('movement-mobile-progress');
+  const locationPanel = document.querySelector('.location-panel');
 
   const pageParams = new URLSearchParams(location.search);
   const trainingMode = pageParams.get('training') === '1';
@@ -119,6 +122,7 @@
     if (recordHere) recordHere.textContent = trainingMode ? 'Test Record Here' : 'Record Here';
     if (returnHome) returnHome.textContent = trainingMode ? 'Test Return Home' : 'Returned to Home Location';
     if (trainingMode && queueState) queueState.textContent = 'Training — movement queue disabled';
+    renderRecordReadiness();
   }
 
   function enterTrainingMode() {
@@ -360,6 +364,7 @@
       gpsToggle.textContent = 'Start GPS';
       gpsCandidates.textContent = 'GPS is off. Start it when location evidence is needed.';
       gpsCandidateButtons.innerHTML = '';
+      renderRecordReadiness();
       return;
     }
 
@@ -369,6 +374,7 @@
       gpsState.textContent = latestPosition ? 'GPS STALE — waiting for current fix' : 'GPS acquiring…';
       gpsCandidates.textContent = 'Waiting for a current GPS fix…';
       gpsCandidateButtons.innerHTML = '';
+      renderRecordReadiness();
       return;
     }
 
@@ -390,10 +396,12 @@
       button.textContent = item.name + ' · ' + item.distance_ft.toFixed(0) + ' ft';
       button.addEventListener('click', function () {
         knownReference.value = item.name;
+        renderRecordReadiness();
         setFeedback('ready', 'LOCATION CONFIRMED — ' + item.name);
       });
       gpsCandidateButtons.appendChild(button);
     });
+    renderRecordReadiness();
   }
 
   function startGps() {
@@ -430,6 +438,78 @@
     return String(locationNote.value || '').trim()
       || String(knownReference.value || '').trim()
       || null;
+  }
+
+  function currentLocationEvidence() {
+    const reference = String(knownReference.value || '').trim();
+    const note = String(locationNote.value || '').trim();
+    const gps = currentGpsSnapshot();
+
+    if (reference) {
+      return {
+        ready: true,
+        label: reference,
+        detail: gps
+          ? 'Named reference confirmed · GPS ±' + Math.round(Number(gps.accuracy_m || 0) * 3.280839895) + ' ft'
+          : 'Named reference confirmed'
+      };
+    }
+    if (note) {
+      return {
+        ready: true,
+        label: note,
+        detail: gps
+          ? 'Location note · GPS ±' + Math.round(Number(gps.accuracy_m || 0) * 3.280839895) + ' ft'
+          : 'Location note'
+      };
+    }
+    if (gps) {
+      return {
+        ready: true,
+        label: 'current GPS',
+        detail: 'Current GPS ±' + Math.round(Number(gps.accuracy_m || 0) * 3.280839895) + ' ft'
+      };
+    }
+    return {
+      ready: false,
+      label: null,
+      detail: 'Location needed — start GPS, confirm a named reference, or enter a location note.'
+    };
+  }
+
+  function renderRecordReadiness() {
+    if (!recordHere || !reviewLocation) return;
+    if (!pendingIdentity) {
+      recordHere.disabled = true;
+      recordHere.textContent = trainingMode ? 'Choose a location first' : 'Choose a location first';
+      reviewLocation.className = 'review-location blocked';
+      reviewLocation.textContent = 'Location needed — scan or choose an asset first.';
+      if (mobileProgress) mobileProgress.innerHTML = '<strong>Ready:</strong> scan or choose an asset.';
+      return;
+    }
+
+    const evidence = currentLocationEvidence();
+    recordHere.disabled = !evidence.ready;
+    reviewLocation.className = 'review-location ' + (evidence.ready ? 'ready' : 'blocked');
+
+    if (evidence.ready) {
+      reviewLocation.innerHTML = '<strong>Location confirmed:</strong> '
+        + escapeHtml(evidence.label)
+        + '<div class="muted">' + escapeHtml(evidence.detail) + '</div>';
+      recordHere.textContent = (trainingMode ? 'Test ' : 'Record ')
+        + pendingIdentity.identity + ' at ' + evidence.label;
+      if (mobileProgress) {
+        mobileProgress.innerHTML = '<strong>' + escapeHtml(pendingIdentity.identity)
+          + '</strong> · ' + escapeHtml(evidence.label) + ' · Ready to record';
+      }
+    } else {
+      reviewLocation.textContent = evidence.detail;
+      recordHere.textContent = 'Choose a location first';
+      if (mobileProgress) {
+        mobileProgress.innerHTML = '<strong>' + escapeHtml(pendingIdentity.identity)
+          + '</strong> · Choose location evidence';
+      }
+    }
   }
 
   function gpsPayload() {
@@ -544,6 +624,7 @@
     pendingState.textContent = '';
     unloadGroups.innerHTML = '';
     returnHome.hidden = true;
+    renderRecordReadiness();
   }
 
   function selectedUnloadedDisplayIds() {
@@ -574,6 +655,7 @@
       || 'No prior movement state';
     pendingState.textContent = 'Current Setup state: ' + String(status).replaceAll('_', ' ');
     returnHome.hidden = pendingIdentity.asset_type !== 'CONTAINER';
+    renderRecordReadiness();
 
     if (pendingIdentity.asset_type !== 'CONTAINER') {
       unloadGroups.innerHTML = '<p>Recording this Display here detaches only this Display from its Container. Later Container moves will not move it.</p>';
@@ -668,7 +750,11 @@
     }
 
     renderPending();
-    setFeedback('ready', identity.identity + ' — review location evidence, then RECORD HERE');
+    renderRecordReadiness();
+    setFeedback('ready', identity.identity + ' — now confirm location evidence, then review and record');
+    if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches && locationPanel) {
+      locationPanel.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }
   }
 
   async function recordPending(returningHome) {
@@ -943,8 +1029,10 @@
     setFeedback('ready', 'READY — scan, search, or choose an asset');
   });
   knownReference.addEventListener('change', function () {
+    renderRecordReadiness();
     if (knownReference.value) setFeedback('ready', 'LOCATION CONFIRMED — ' + knownReference.value);
   });
+  locationNote.addEventListener('input', renderRecordReadiness);
   trainingEnter.addEventListener('click', enterTrainingMode);
   trainingExit.addEventListener('click', exitTrainingMode);
   el('back-setup').addEventListener('click', function () {
