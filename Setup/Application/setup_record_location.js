@@ -23,6 +23,7 @@
   const pendingPanel = el('movement-pending');
   const pendingTitle = el('movement-pending-title');
   const pendingState = el('movement-pending-state');
+  const homeLocationReview = el('movement-home-location');
   const reviewLocation = el('movement-review-location');
   const unloadGroups = el('movement-unload-groups');
   const recordHere = el('movement-record-here');
@@ -612,8 +613,14 @@
     pendingPanel.hidden = true;
     pendingTitle.textContent = '';
     pendingState.textContent = '';
+    if (homeLocationReview) {
+      homeLocationReview.hidden = true;
+      homeLocationReview.textContent = '';
+    }
     unloadGroups.innerHTML = '';
     returnHome.hidden = true;
+    returnHome.disabled = false;
+    returnHome.textContent = trainingMode ? 'Test Return Home' : 'Returned to Home Location';
     renderRecordReadiness();
   }
 
@@ -644,7 +651,35 @@
       || (pendingStateRow && pendingStateRow.movement_status)
       || 'No prior movement state';
     pendingState.textContent = 'Current Setup state: ' + String(status).replaceAll('_', ' ');
-    returnHome.hidden = pendingIdentity.asset_type !== 'CONTAINER';
+
+    if (pendingIdentity.asset_type === 'CONTAINER') {
+      const home = String(
+        (pendingContents && pendingContents.home_location_code)
+        || (pendingStateRow && pendingStateRow.home_location_code)
+        || ''
+      ).trim();
+
+      returnHome.hidden = false;
+      if (home) {
+        returnHome.disabled = false;
+        returnHome.textContent = (trainingMode ? 'Test returned ' : 'Returned ')
+          + pendingIdentity.identity + ' to ' + home;
+        if (homeLocationReview) {
+          homeLocationReview.hidden = false;
+          homeLocationReview.innerHTML = '<strong>Home Location:</strong> ' + escapeHtml(home);
+        }
+      } else {
+        returnHome.disabled = true;
+        returnHome.textContent = 'Home Location missing — Manager correction required';
+        if (homeLocationReview) {
+          homeLocationReview.hidden = false;
+          homeLocationReview.innerHTML = '<strong>Home Location missing.</strong> Manager correction required before return.';
+        }
+      }
+    } else {
+      returnHome.hidden = true;
+    }
+
     renderRecordReadiness();
 
     if (pendingIdentity.asset_type !== 'CONTAINER') {
