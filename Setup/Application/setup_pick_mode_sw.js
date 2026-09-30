@@ -1,13 +1,13 @@
 'use strict';
 
-const CACHE_NAME = 'msb-setup-pick-mode-v5';
+const CACHE_NAME = 'msb-setup-pick-mode-v6';
 const SHELL = [
   './',
   'assets/setup_pick_list.css?v=2026-09-30.4',
-  'assets/setup_pick_mode.css?v=2026-09-30.6',
+  'assets/setup_pick_mode.css?v=2026-09-30.7',
   'assets/qrcode.min.js?v=1',
-  'assets/setup_pick_list.js?v=2026-09-30.6',
-  'assets/setup_pick_mode.js?v=2026-09-30.5'
+  'assets/setup_pick_list.js?v=2026-09-30.7',
+  'assets/setup_pick_mode.js?v=2026-09-30.6'
 ];
 
 self.addEventListener('install', function (event) {
