@@ -1,13 +1,13 @@
 'use strict';
 
-const CACHE_NAME = 'msb-setup-pick-mode-v1';
+const CACHE_NAME = 'msb-setup-pick-mode-v2';
 const SHELL = [
   './',
   'assets/setup_pick_list.css?v=2026-09-29.3',
-  'assets/setup_pick_mode.css?v=2026-09-29.1',
+  'assets/setup_pick_mode.css?v=2026-09-30.1',
   'assets/qrcode.min.js?v=1',
   'assets/setup_pick_list.js?v=2026-09-29.3',
-  'assets/setup_pick_mode.js?v=2026-09-29.1'
+  'assets/setup_pick_mode.js?v=2026-09-30.1'
 ];
 
 self.addEventListener('install', (event) => {
@@ -27,6 +27,13 @@ self.addEventListener('activate', (event) => {
       .then(() => self.clients.claim())
   );
 });
+
+function isPickListAssetRequest(request) {
+  if (request.method !== 'GET') return false;
+  const url = new URL(request.url);
+  return url.origin === self.location.origin
+    && url.pathname.includes('/pick-list/assets/');
+}
 
 function isSetupReadRequest(request) {
   if (request.method !== 'GET') return false;
@@ -53,6 +60,20 @@ async function networkFirst(request) {
 }
 
 self.addEventListener('fetch', (event) => {
+  if (isPickListAssetRequest(event.request)) {
+    event.respondWith((async () => {
+      const cached = await caches.match(event.request);
+      if (cached) return cached;
+      const response = await fetch(event.request);
+      if (response.ok) {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(event.request, response.clone());
+      }
+      return response;
+    })());
+    return;
+  }
+
   if (isSetupReadRequest(event.request)) {
     event.respondWith(networkFirst(event.request));
     return;

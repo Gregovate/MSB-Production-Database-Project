@@ -221,3 +221,17 @@ def test_movement_release_identity_is_distinct_and_synchronized():
     guard = read("setup_catalog_dirty_guard.js")
     assert 'PRODUCTION_VERSION = "V0.3.23-movement-loop"' in backend
     assert "const CLIENT_BUILD = 'V0.3.23-movement-loop';" in guard
+
+
+def test_service_worker_serves_precached_assets_for_offline_cold_start():
+    sw = read("setup_pick_mode_sw.js")
+    html = read("pick_list.html")
+
+    assert "msb-setup-pick-mode-v2" in sw
+    assert "isPickListAssetRequest" in sw
+    assert "caches.match(event.request)" in sw
+    assert "/pick-list/assets/" in sw
+    assert "setup_pick_mode.css?v=2026-09-30.1" in sw
+    assert "setup_pick_mode.js?v=2026-09-30.1" in sw
+    assert "setup_pick_mode.css?v=2026-09-30.1" in html
+    assert "setup_pick_mode.js?v=2026-09-30.1" in html
