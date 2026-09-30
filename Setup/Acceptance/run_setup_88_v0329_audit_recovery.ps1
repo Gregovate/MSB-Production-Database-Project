@@ -19,7 +19,7 @@ $MovementValidationPath = 'Setup/Acceptance/setup_88_movement_capture_disposable
 $MovementValidationBlob = 'fc152c305dc0bf7a056aeff60aae3615b06b96d4'
 $MigrationPath = 'Setup/Database/065_add_setup_movement_capture.sql'
 $MigrationBlob = '2738065a6fc3cb84858e401de5fae9bd6ae35dcc'
-$ServerRunnerBlob = 'bea8cc2ed74ebbe57170963c5e09cd59c884326e'
+$ServerRunnerBlob = '73e6f83ff7339f6cb4108f7779c54ad39298499e'
 
 if (-not (Test-Path -LiteralPath $ServerScript -PathType Leaf)) {
     throw "Required #88 audit recovery runner is missing: $ServerScript"
