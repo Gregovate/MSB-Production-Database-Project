@@ -31,6 +31,11 @@
   const networkState = el('movement-network');
   const queueState = el('movement-queue');
   const operatorBadge = el('operator-badge');
+  const trainingToggle = el('training-toggle');
+  const trainingBanner = el('training-banner');
+
+  const pageParams = new URLSearchParams(location.search);
+  const trainingMode = pageParams.get('training') === '1';
 
   const DB_NAME = 'msb-setup-movement';
   const DB_VERSION = 1;
@@ -93,9 +98,31 @@
   }
 
   function updateNetwork() {
+    if (trainingMode) {
+      networkState.textContent = navigator.onLine
+        ? 'ONLINE · TRAINING READ-ONLY'
+        : 'OFFLINE · TRAINING READ-ONLY';
+      return;
+    }
     networkState.textContent = navigator.onLine
       ? 'ONLINE'
       : 'OFFLINE — observations will queue locally';
+  }
+
+  function applyTrainingMode() {
+    document.body.classList.toggle('training-mode', trainingMode);
+    if (trainingBanner) trainingBanner.hidden = !trainingMode;
+    if (trainingToggle) trainingToggle.textContent = trainingMode ? 'Exit Training' : 'Training Mode';
+    if (recordHere) recordHere.textContent = trainingMode ? 'Test Record Here' : 'Record Here';
+    if (returnHome) returnHome.textContent = trainingMode ? 'Test Return Home' : 'Returned to Home Location';
+    if (trainingMode && queueState) queueState.textContent = 'Training — movement queue disabled';
+  }
+
+  function toggleTrainingMode() {
+    const url = new URL(location.href);
+    if (trainingMode) url.searchParams.delete('training');
+    else url.searchParams.set('training', '1');
+    location.href = url.toString();
   }
 
   function parseIdentity(raw) {
@@ -186,6 +213,10 @@
   }
 
   async function refreshQueueState() {
+    if (trainingMode) {
+      queueState.textContent = 'Training — movement queue disabled';
+      return [];
+    }
     try {
       const rows = await queueRows();
       queueState.textContent = 'Offline queue: ' + rows.length;
@@ -434,6 +465,9 @@
   }
 
   async function postMovement(payload) {
+    if (trainingMode) {
+      throw new Error('Training Mode blocks Setup movement writes.');
+    }
     const data = await apiJson('../api/setup/movements', {
       method: 'POST',
       headers: {
@@ -446,6 +480,9 @@
   }
 
   async function queueMovement(payload) {
+    if (trainingMode) {
+      throw new Error('Training Mode blocks the offline movement queue.');
+    }
     await putQueue(Object.assign({}, payload, {
       offline_captured: true,
       queue_status: 'QUEUED'
@@ -639,6 +676,30 @@
 
     const unloaded = action === 'CONTAINER_MOVE' ? selectedUnloadedDisplayIds() : [];
     const payload = movementPayload(identity, action, pendingCaptureMethod, unloaded);
+
+    if (trainingMode) {
+      const gps = currentGpsSnapshot();
+      const reference = String(knownReference.value || '').trim();
+      const note = destinationNote();
+      let message = 'TRAINING — WOULD RECORD ' + identity.identity;
+      if (returningHome) {
+        message += ' RETURNED HOME';
+      } else {
+        message += ' HERE';
+        if (reference) message += ' · ' + reference;
+        else if (note) message += ' · ' + note;
+        if (gps) message += ' · GPS ±' + Math.round(Number(gps.accuracy_m || 0) * 3.280839895) + ' ft';
+        if (unloaded.length) message += ' · would leave ' + unloaded.length + ' Display' + (unloaded.length === 1 ? '' : 's') + ' here';
+      }
+      setFeedback('success', message + ' · NOTHING RECORDED');
+      clearPending();
+      knownReference.value = '';
+      locationNote.value = '';
+      gpsQuality.value = 'UNASSESSED';
+      gpsQualityNote.value = '';
+      return;
+    }
+
     setFeedback('ready', identity.identity + ' — recording physical observation…');
 
     try {
@@ -809,7 +870,7 @@
   }
 
   async function syncQueue() {
-    if (syncing || !navigator.onLine) return;
+    if (trainingMode || syncing || !navigator.onLine) return;
     syncing = true;
     try {
       const rows = await queueRows();
@@ -871,6 +932,7 @@
   knownReference.addEventListener('change', function () {
     if (knownReference.value) setFeedback('ready', 'LOCATION CONFIRMED — ' + knownReference.value);
   });
+  trainingToggle.addEventListener('click', toggleTrainingMode);
   el('back-setup').addEventListener('click', function () {
     location.href = '../';
   });
@@ -885,6 +947,7 @@
   window.setInterval(function () { renderGps(); }, 1000);
 
   async function initialize() {
+    applyTrainingMode();
     stopGps();
     updateNetwork();
     await refreshQueueState();
@@ -896,9 +959,9 @@
       return;
     }
     await loadReferenceSet();
-    if (navigator.onLine) void syncQueue();
+    if (navigator.onLine && !trainingMode) void syncQueue();
 
-    const requested = new URLSearchParams(location.search).get('asset');
+    const requested = pageParams.get('asset');
     if (requested) {
       const identity = parseIdentity(requested);
       if (identity) {
