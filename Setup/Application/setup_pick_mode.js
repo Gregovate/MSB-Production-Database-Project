@@ -331,8 +331,19 @@
       if (result.queued) {
         setFeedback('offline', identity.identity + ' — PICK QUEUED OFFLINE');
       } else {
+        const movement = result.movement || {};
+        if (bridge() && bridge().settlePicked) {
+          bridge().settlePicked(identity, movement);
+        }
         setFeedback('success', identity.identity + ' — PICKED FOR PARK TRANSPORT');
-        await bridge().reload();
+        if (bridge() && bridge().reload) {
+          void bridge().reload().catch(function () {
+            setFeedback(
+              'warning',
+              identity.identity + ' — PICKED, but Pick List refresh is delayed. Continue scanning; authoritative refresh will retry on the next load.'
+            );
+          });
+        }
       }
     } catch (error) {
       const message = String(error.message || error);
