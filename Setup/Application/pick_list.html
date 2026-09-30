@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Setup Pick List</title>
   <link rel="stylesheet" href="assets/setup_pick_list.css?v=2026-09-29.3">
-  <link rel="stylesheet" href="assets/setup_pick_mode.css?v=2026-09-30.4">
+  <link rel="stylesheet" href="assets/setup_pick_mode.css?v=2026-09-30.5">
 </head>
 <body>
 <header class="page-header">
@@ -26,7 +26,6 @@
     </label>
     <label class="delayed-filter"><input id="show-delayed-picks" type="checkbox" checked> Show delayed picks</label>
     <button id="start-pick-mode" type="button" class="pick-mode-start">Start Picking</button>
-    <button id="start-park-mode" type="button" class="pick-mode-start">Park Scan</button>
     <button id="print-button" type="button">Print</button>
     <button id="back-button" type="button">Back to Setup</button>
   </div>
@@ -35,9 +34,9 @@
   <section id="pick-mode-panel" class="pick-mode-panel no-print" hidden aria-live="polite">
     <div class="pick-mode-toolbar">
       <div>
-        <div class="eyebrow">Physical material movement</div>
-        <h2 id="pick-mode-title">SCANNER READY</h2>
-        <p id="pick-mode-help">Scan CONT:&lt;id&gt; or DISP:&lt;id&gt;, or type the identity below.</p>
+        <div class="eyebrow">Workshop Pick List execution</div>
+        <h2 id="pick-mode-title">WORKSHOP PICK — READY</h2>
+        <p id="pick-mode-help">Scan a Pick List Container / Display with Zebra, or type/paste the permanent identity.</p>
       </div>
       <button id="stop-pick-mode" type="button">Stop Scanner</button>
     </div>
@@ -49,52 +48,6 @@
         <button id="movement-manual-go" type="button">Use</button>
       </div>
     </div>
-
-    <section id="park-location-tools" class="park-location-tools" hidden>
-      <div class="movement-location-head">
-        <div>
-          <strong>Location evidence</strong>
-          <div id="pick-mode-gps" class="movement-gps-state">GPS OFF</div>
-        </div>
-        <button id="movement-gps-toggle" type="button">Start GPS</button>
-      </div>
-      <div id="movement-gps-candidates" class="movement-gps-candidates">Start GPS to see nearby park references.</div>
-      <div id="movement-gps-candidate-buttons" class="movement-reference-buttons"></div>
-
-      <details class="movement-location-details">
-        <summary>Confirm / correct location or GPS quality</summary>
-        <label for="movement-known-reference">Known park reference
-          <select id="movement-known-reference">
-            <option value="">No named location confirmed</option>
-          </select>
-        </label>
-        <label for="movement-location-note">Other location note
-          <input id="movement-location-note" autocomplete="off" placeholder="Optional when GPS or a known reference is available">
-        </label>
-        <label for="movement-gps-quality">GPS quality
-          <select id="movement-gps-quality">
-            <option value="UNASSESSED">Not flagged</option>
-            <option value="QUESTIONABLE">Questionable</option>
-            <option value="BAD">Bad — keep movement, discount GPS later</option>
-          </select>
-        </label>
-        <label for="movement-gps-quality-note">GPS quality note
-          <input id="movement-gps-quality-note" autocomplete="off" placeholder="Tree cover, jump/drift, structure, obvious wrong fix…">
-        </label>
-      </details>
-    </section>
-
-    <section id="movement-pending" class="movement-pending" hidden>
-      <div class="eyebrow">Selected asset</div>
-      <h3 id="movement-pending-title"></h3>
-      <div id="movement-pending-state" class="muted"></div>
-      <div id="movement-unload-groups" class="movement-unload-groups"></div>
-      <div class="movement-record-actions">
-        <button id="movement-record-here" type="button" class="primary-movement-action">Record Here</button>
-        <button id="movement-return-home" type="button" class="secondary" hidden>Returned to Home Location</button>
-        <button id="movement-clear-pending" type="button" class="secondary">Clear</button>
-      </div>
-    </section>
 
     <div id="pick-mode-feedback" class="pick-mode-feedback ready">READY — scan or choose an item</div>
     <div class="pick-mode-meta">
@@ -147,10 +100,10 @@
   </section>
 </main>
 <footer class="no-print">
-  <p>Schedule demand and Manager overrides are planning intent. A workshop scan records that an item was actually picked/moved. Park Scan records later physical observations; appearing here does not.</p>
+  <p>Schedule demand and Manager overrides are planning intent. A workshop scan records that an item was actually picked/moved. Record Location is a separate field workflow; appearing here does not record a park location.</p>
 </footer>
 <script src="assets/qrcode.min.js?v=1"></script>
-<script src="assets/setup_pick_list.js?v=2026-09-30.4"></script>
-<script src="assets/setup_pick_mode.js?v=2026-09-30.4"></script>
+<script src="assets/setup_pick_list.js?v=2026-09-30.5"></script>
+<script src="assets/setup_pick_mode.js?v=2026-09-30.5"></script>
 </body>
 </html>
