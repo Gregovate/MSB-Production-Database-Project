@@ -345,8 +345,8 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "window.history.go(pending.delta)" in production
     assert "['review', 'library', 'extra-materials', 'movement', 'schedule', 'perform']" in production
     assert "navigateSetupView(button.dataset.view)" in production
-    assert \'data-view="movement"\' not in html
-    assert \'id="movement-view"\' not in html
+    assert 'data-view="movement"' not in html
+    assert 'id="movement-view"' not in html
     assert "api/setup/movement-summary?season_year=" not in production
     assert "navigateSetupView('schedule')" in next_pass
     assert "navigateSetupView('perform')" in next_pass
