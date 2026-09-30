@@ -144,29 +144,39 @@ BEGIN
         RAISE EXCEPTION 'Same client event identity was not treated as idempotent replay';
     END IF;
 
-    BEGIN
-        PERFORM ops.record_setup_movement_event(
-            p_email => v_operator_email,
-            p_season_year => 2026,
-            p_client_event_id => v_pre_oct_uuid,
-            p_asset_type => 'CONTAINER',
-            p_asset_id => v_container_id,
-            p_movement_action => 'CONTAINER_MOVE',
-            p_occurred_at => '2026-10-04T12:00:00-05:00'::timestamptz,
-            p_device_id => 'DISPOSABLE-VALIDATION',
-            p_captured_operator_email => v_operator_email,
-            p_capture_method => 'HID_SCAN',
-            p_gps_latitude => 43.77636681,
-            p_gps_longitude => -87.74226992,
-            p_gps_accuracy_m => 4.0
-        );
-        RAISE EXCEPTION 'Pre-2026-10-05 park movement was incorrectly accepted';
-    EXCEPTION
-        WHEN SQLSTATE '23514' THEN
-            IF SQLERRM NOT LIKE '%material-access date%' THEN
-                RAISE;
-            END IF;
-    END;
+    SELECT r.setup_movement_event_id
+      INTO v_event_id
+    FROM ops.record_setup_movement_event(
+        p_email => v_operator_email,
+        p_season_year => 2026,
+        p_client_event_id => v_pre_oct_uuid,
+        p_asset_type => 'CONTAINER',
+        p_asset_id => v_container_id,
+        p_movement_action => 'CONTAINER_MOVE',
+        p_occurred_at => '2026-10-04T12:00:00-05:00'::timestamptz,
+        p_device_id => 'DISPOSABLE-VALIDATION',
+        p_captured_operator_email => v_operator_email,
+        p_capture_method => 'HID_SCAN',
+        p_gps_latitude => 43.77636681,
+        p_gps_longitude => -87.74226992,
+        p_gps_accuracy_m => 4.0
+    ) r;
+
+    IF v_event_id IS NULL THEN
+        RAISE EXCEPTION 'Real pre-2026-10-05 field observation was not recorded';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM ops.setup_movement_event me
+        WHERE me.setup_movement_event_id = v_event_id
+          AND me.event_type = 'CONTAINER_MOVE'
+          AND me.occurred_at = '2026-10-04T12:00:00-05:00'::timestamptz
+          AND me.gps_latitude IS NOT NULL
+          AND me.gps_longitude IS NOT NULL
+    ) THEN
+        RAISE EXCEPTION 'Pre-access-date physical evidence was not preserved truthfully';
+    END IF;
 
     BEGIN
         PERFORM ops.record_setup_movement_event(
