@@ -173,6 +173,8 @@ def test_mixed_container_ui_records_only_selected_display_groups_as_unloaded():
     assert "'UNLOADED'" in sql
     assert "'TASK_UNLOAD'" in sql
     assert "position_mode = 'DETACHED'" in sql
+    assert "material-access date" not in sql
+    assert "DATE '2026-10-05'" not in sql
     assert "Grouped unload contains a Display that is not still WITH_CONTAINER" in sql
 
 
@@ -194,10 +196,26 @@ def test_movement_api_uses_field_capability_governed_command_and_asset_search():
 
 def test_online_workshop_pick_is_still_checked_against_authoritative_pick_list():
     api = read("setup_movement_api.py")
-    assert "SetupMaterialReadinessRepository" in api
-    assert "Asset is not on the current Pick List." in api
-    assert "DELAYED — DO NOT PICK YET" in api
+    readiness_repo = read("setup_material_readiness_repository.py")
+
+    validator = api.split("def _validate_live_pick_demand(", 1)[1].split(
+        "@setup_movement_api.get", 1
+    )[0]
+    assert "SetupMaterialReadinessRepository" in validator
+    assert ".pick_demand_status(" in validator
+    assert ".material_readiness(" not in validator
+    assert "Asset is not on the current Pick List." in validator
+    assert "DELAYED — DO NOT PICK YET" in validator
     assert 'movement_action == "PICKED" and not offline_captured' in api
+
+    assert "def pick_demand_status(" in readiness_repo
+    assert "def _matching_material_task_ids(" in readiness_repo
+    assert "ref.setup_task_display" in readiness_repo
+    assert "ref.lor_scene_display" in readiness_repo
+    assert "ref.setup_task_container_support" in readiness_repo
+    assert "ref.setup_task_extra_material_source" in readiness_repo
+    assert "ops.setup_pick_list_override" in readiness_repo
+    assert "ops.setup_pick_list_delay" in readiness_repo
 
 
 def test_movement_migration_preserves_raw_gps_and_permanent_assignment():
@@ -230,7 +248,8 @@ def test_disposable_validation_still_proves_movement_semantics_and_least_privile
     assert "Independent Display move did not detach only that Display" in sql
     assert "Raw GPS uncertainty/reference evidence was not preserved" in sql
     assert "Repeated Container move was not recorded as a new observation" in sql
-    assert "Pre-2026-10-05 park movement was incorrectly accepted" in sql
+    assert "Real pre-2026-10-05 field observation was not recorded" in sql
+    assert "Pre-access-date physical evidence was not preserved truthfully" in sql
     assert "fieldwiring_app retains forbidden broad movement DML" in sql
 
 
@@ -242,13 +261,13 @@ def test_release_identity_and_offline_shells_are_synchronized():
     location_sw = read("setup_record_location_sw.js")
     location_html = read("record_location.html")
 
-    assert 'PRODUCTION_VERSION = "V0.3.27-field-training-ux"' in backend
-    assert "const CLIENT_BUILD = 'V0.3.27-field-training-ux';" in guard
-    assert "msb-setup-pick-mode-v7" in pick_sw
-    assert "setup_pick_mode.js?v=2026-09-30.6" in pick_sw
+    assert 'PRODUCTION_VERSION = "V0.3.28-field-evidence"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.28-field-evidence';" in guard
+    assert "msb-setup-pick-mode-v8" in pick_sw
+    assert "setup_pick_mode.js?v=2026-09-30.7" in pick_sw
     assert "setup_pick_mode.js?v=2026-09-30.6" in pick_html
-    assert "msb-setup-record-location-v5" in location_sw
-    assert "setup_record_location.js?v=2026-09-30.5" in location_sw
+    assert "msb-setup-record-location-v6" in location_sw
+    assert "setup_record_location.js?v=2026-09-30.6" in location_sw
     assert "setup_record_location.js?v=2026-09-30.5" in location_html
 
 
@@ -284,6 +303,10 @@ def test_pick_list_training_mode_is_fail_closed_and_keeps_real_pick_totals_visib
     assert "NOTHING RECORDED" in ui
     assert "containersPickedCount" in list_ui
     assert "pick-mode-toolbar-counts" in css
+    assert "settlePicked" in list_ui
+    assert "settledPickEvidence" in list_ui
+    assert "bridge().settlePicked(identity, movement)" in ui
+    assert "void bridge().reload().catch" in ui
 
 
 def test_record_location_requires_visible_location_review_before_record_action():
@@ -305,3 +328,8 @@ def test_record_location_requires_visible_location_review_before_record_action()
     assert "scrollIntoView({behavior: 'smooth', block: 'start'})" in ui
     assert "locationNote.addEventListener('input', renderRecordReadiness)" in ui
     assert ".compact-status" in css
+    assert 'id="movement-home-location"' in html
+    assert "Home Location:" in ui
+    assert "Manager correction required before return" in ui
+    assert "Returned " in ui
+    assert "home_location_code" in ui
