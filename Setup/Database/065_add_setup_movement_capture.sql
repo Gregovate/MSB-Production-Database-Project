@@ -207,6 +207,19 @@ ALTER TABLE ops.setup_display_state
         )
     );
 
+ALTER TABLE ops.setup_display_state
+    DROP CONSTRAINT IF EXISTS ck_setup_display_state_detached_location;
+ALTER TABLE ops.setup_display_state
+    ADD CONSTRAINT ck_setup_display_state_detached_location CHECK (
+        position_mode <> 'DETACHED'
+        OR current_stage_id IS NOT NULL
+        OR nullif(btrim(current_location_note), '') IS NOT NULL
+        OR movement_status IN (
+            'PICKED','LOADED','IN_TRANSIT','DELIVERED','UNLOADED',
+            'STAGED','PLACED','RELOCATED','RETURNED'
+        )
+    );
+
 /* Preserve any existing movement truth rather than converting old evidence to NULL. */
 UPDATE ops.setup_container_state cs
 SET movement_status = me.event_type,
