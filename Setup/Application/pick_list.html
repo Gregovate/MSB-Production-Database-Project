@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Setup Pick List</title>
   <link rel="stylesheet" href="assets/setup_pick_list.css?v=2026-09-30.4">
-  <link rel="stylesheet" href="assets/setup_pick_mode.css?v=2026-09-30.6">
+  <link rel="stylesheet" href="assets/setup_pick_mode.css?v=2026-09-30.7">
 </head>
 <body>
 <header class="page-header">
@@ -26,10 +26,14 @@
     </label>
     <label class="delayed-filter"><input id="show-delayed-picks" type="checkbox" checked> Show delayed picks</label>
     <button id="start-pick-mode" type="button" class="pick-mode-start">Start Picking</button>
+    <button id="exit-pick-training" type="button" hidden>Exit Training</button>
     <button id="print-button" type="button">Print</button>
     <button id="back-button" type="button">Back to Setup</button>
   </div>
 </header>
+<div id="pick-training-banner" class="pick-training-banner no-print" hidden>
+  TRAINING MODE — NOTHING WILL BE RECORDED
+</div>
 <main>
   <section id="pick-mode-panel" class="pick-mode-panel no-print" hidden aria-live="polite">
     <div class="pick-mode-toolbar">
@@ -49,6 +53,10 @@
       </div>
     </div>
 
+    <div class="pick-mode-counters">
+      <span>Containers picked: <strong id="pick-mode-containers-picked">0</strong></span>
+      <span id="pick-mode-training-count" hidden>Training picks: <strong>0</strong></span>
+    </div>
     <div id="pick-mode-feedback" class="pick-mode-feedback ready">READY — scan or choose an item</div>
     <div class="pick-mode-meta">
       <span id="pick-mode-network">Checking connection…</span>
@@ -57,6 +65,12 @@
   </section>
 
   <section class="summary" id="summary"></section>
+
+  <details id="pick-training-entry" class="pick-training-entry no-print">
+    <summary>Training / device test</summary>
+    <p>Use the real Pick List and Zebra workflow without recording or queueing PICKED movement.</p>
+    <button id="enter-pick-training" type="button">Enter Training Mode</button>
+  </details>
 
   <section id="manager-override-panel" class="panel manager-override-panel no-print" hidden>
     <div class="section-heading">
@@ -103,7 +117,7 @@
   <p>Schedule demand and Manager overrides are planning intent. A workshop scan records that an item was actually picked/moved. Record Location is a separate field workflow; appearing here does not record a park location.</p>
 </footer>
 <script src="assets/qrcode.min.js?v=1"></script>
-<script src="assets/setup_pick_list.js?v=2026-09-30.6"></script>
-<script src="assets/setup_pick_mode.js?v=2026-09-30.5"></script>
+<script src="assets/setup_pick_list.js?v=2026-09-30.7"></script>
+<script src="assets/setup_pick_mode.js?v=2026-09-30.6"></script>
 </body>
 </html>
