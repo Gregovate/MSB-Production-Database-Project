@@ -76,10 +76,17 @@ def test_record_location_training_mode_uses_real_reads_but_never_writes_or_queue
     ui = read("setup_record_location.js")
     html = read("record_location.html")
 
-    assert 'id="training-toggle"' in html
+    assert 'id="training-entry"' in html
+    assert '<summary>Training / device test</summary>' in html
+    assert 'id="training-enter"' in html
+    assert 'id="training-exit"' in html
+    assert 'id="training-toggle"' not in html
     assert 'id="training-banner"' in html
     assert "TRAINING MODE — NOTHING WILL BE RECORDED" in html
     assert "const trainingMode = pageParams.get('training') === '1';" in ui
+    assert "window.confirm(" in ui
+    assert "enterTrainingMode" in ui
+    assert "exitTrainingMode" in ui
     assert "Training Mode blocks Setup movement writes." in ui
     assert "Training Mode blocks the offline movement queue." in ui
     assert "if (trainingMode || syncing || !navigator.onLine) return;" in ui
