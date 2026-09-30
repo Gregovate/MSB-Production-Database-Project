@@ -17,11 +17,11 @@ Setup/Application/production_backend.py
 Current reported version and Production application target:
 
 ```text
-V0.3.21-scheduling-gates
-9a614c1fa2eea0b425b03bdb4ac3e1790634c760
+V0.3.22-pick-list-delay
+6f53d7f0c4b15f7175e773a2069595eef3f0e698
 ```
 
-The visible Production version is `V0.3.21-scheduling-gates`. #205 adds the accepted Work-vs-Gate semantics, Captain live-dispatch default, and planned-vs-actual labor visibility while preserving #172 Report Correction and existing Pick List foundations.
+The visible Production version is `V0.3.22-pick-list-delay`. #206 adds the accepted bounded material frontier and transient Manager Pick Delay behavior on top of the #205 Scheduling Board release. Persisted physical PICKED/movement execution remains owned by #88.
 
 ## Current Production Meaning
 
@@ -87,6 +87,7 @@ Accepted durable foundation / reconstruction migrations now include:
 060_add_setup_pick_list_manager_override.sql
 061_add_live_assignment_report_work.sql
 062_add_setup_context_work_order_intake.sql
+063_add_setup_pick_list_delay.sql
 ```
 
 #184 is the durable model/runtime; #167 is the completed one-time data reconstruction only.
@@ -125,15 +126,15 @@ Permanent source checkout:
 /opt/msb-setup
 ```
 
-The current exact Production application target is `9a614c1fa2eea0b425b03bdb4ac3e1790634c760`. Migrations through 062 remain installed; #205 itself was a source-only deployment. Later merge, deployment-tooling, or closeout-only commits do not redefine the deployed application target.
+The current exact Production application target is `6f53d7f0c4b15f7175e773a2069595eef3f0e698`. The accepted Pick Delay migration `063_add_setup_pick_list_delay.sql` is installed in addition to migrations through 062. Later merge, deployment-tooling, or closeout-only commits do not redefine the deployed application target.
 
-The #172 validated rollback archive is `/home/msbadmin/backups/setup-172/msb-pre-setup-172-20260928T005954.dump` with SHA256 `fe0d349a587ec0363cb69bb295618c49ab8df771ff9bcb8bf9c0e71c66b8b89a`. Older accepted rollback archives remain historical recovery evidence. Do not restore any database archive without reconciling legitimate post-deployment Production work.
+The #206 V0.3.22 validated rollback archive is `/home/msbadmin/backups/setup-206/msb-pre-setup-206-v0322-pick-list-delay-20260930T091257.dump` with SHA256 `1415868b93bca4b0ad073b65d741087f34851d134dd8ce18346cce45061154af`. The #172 rollback archive and older accepted rollback archives remain historical recovery evidence. Do not restore any database archive without reconciling legitimate post-deployment Production work.
 
 ## Current Boundaries
 
 The annual Session and Scheduling Board are live. Continue to preserve the boundary between reusable Catalog knowledge and 2026 annual planning/execution. Season-only work belongs in the annual Session unless explicitly promoted to reusable knowledge.
 
-Pick List / early physical material-demand expansion remains owned by #206 / PR #216 and is not part of Scheduling Board closeout. Movement/scanning and park-location semantics remain under their existing owning workstreams.
+#206 Pick List demand/frontier and transient Pick Delay are now Production accepted. Persisted physical pick/movement events belong to #88, scanner/tablet capture plumbing to #113, GIS/location interpretation to #171, and Manager reference/Home Location maintenance to #230.
 
 ## Engineering Resume
 
@@ -144,7 +145,7 @@ Before changing the application:
 3. preserve the accepted V0.3.7 through V0.3.13 behavior plus durable #184/#167 inventory state;
 4. treat 2026 as the live annual planning/execution Session and 2025 as historical/verification evidence;
 5. preserve the accepted Scheduling Board, Perform Work / Report Work, and Report Correction -> Work Order Intake boundaries;
-6. keep #206 Pick List work in its owning workstream; and
+6. preserve #206 Pick List/Pick Delay as accepted Production behavior and put persisted physical pick/movement execution under #88; and
 7. use Server Management for live runtime and deployment authority.
 
 ## Related Documentation
@@ -152,6 +153,7 @@ Before changing the application:
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/README.md`
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/README.md`
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_Session_Production_Engineering_Handoff_2026-09-12.md`
+- `Setup/Acceptance/Setup_206_V0322_Pick_List_Delay_Production_Acceptance_2026-09-30.md`
 - `Setup/Acceptance/Setup_205_Scheduling_Board_Production_Acceptance_2026-09-29.md`
 - `Setup/Acceptance/Setup_172_Report_Correction_Production_Acceptance_2026-09-27.md`
 - `Setup/Acceptance/Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md`
