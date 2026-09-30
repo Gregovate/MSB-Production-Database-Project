@@ -160,25 +160,21 @@ def _validate_live_pick_demand(
     asset_type: str,
     asset_id: int,
 ) -> None:
-    readiness = SetupMaterialReadinessRepository(
+    status = SetupMaterialReadinessRepository(
         setup_database_dsn()
-    ).material_readiness(season_year)
-    item = next(
-        (
-            candidate
-            for candidate in readiness.get("physical_items") or []
-            if candidate.get("physical_type") == asset_type
-            and int(candidate.get("physical_id") or 0) == asset_id
-        ),
-        None,
+    ).pick_demand_status(
+        season_year=season_year,
+        asset_type=asset_type,
+        asset_id=asset_id,
     )
-    if item is None:
+
+    if not status.get("demanded"):
         raise SetupMovementConflictError("Asset is not on the current Pick List.")
 
-    if item.get("pick_delayed"):
+    if status.get("pick_delayed"):
         raise SetupMovementConflictError("DELAYED — DO NOT PICK YET")
 
-    observation = item.get("current_observation") or {}
+    observation = status.get("current_observation") or {}
     movement_status = str(observation.get("movement_status") or "").upper()
     if movement_status in _OUTBOUND_MOVEMENT:
         raise SetupMovementConflictError(
