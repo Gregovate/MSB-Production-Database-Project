@@ -435,5 +435,5 @@ def test_delayed_pick_warning_survives_print_when_delayed_rows_are_shown() -> No
     assert 'class="print-delay-badge">DELAYED — DO NOT PICK YET</div>' in ui
     assert ".print-delay-badge{display:none" in css
     assert ".print-delay-badge{display:inline-block!important" in css
-    assert "setup_pick_list.css?v=2026-09-30.4" in html
+    assert "setup_pick_list.css?v=2026-09-30.5" in html
     assert "setup_pick_list.js?v=2026-09-30.9" in html
