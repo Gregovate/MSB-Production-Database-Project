@@ -7,7 +7,8 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$TargetRef,
     [string]$PreviewEmail = 'gliebig@sheboyganlights.org',
-    [string]$ExpectedVersion = '',
+    [Parameter(Mandatory=$true)]
+    [string]$ExpectedVersion,
     [string[]]$MigrationPaths = @(),
     [string[]]$ValidationPaths = @(),
     [switch]$AllowConcurrentProductionWrites
@@ -25,9 +26,10 @@ if ($LASTEXITCODE -ne 0 -or $currentBranch -ne $TargetRef) {
     throw "STOP before server contact: current branch '$currentBranch' does not equal TargetRef '$TargetRef'."
 }
 
-$head = (git -C $repo rev-parse HEAD).Trim()
-if ($head -ne $CandidateSha) {
-    throw "STOP before server contact: checkout HEAD $head does not equal requested candidate $CandidateSha."
+$toolingHead = (git -C $repo rev-parse HEAD).Trim()
+& git -C $repo merge-base --is-ancestor $CandidateSha $toolingHead
+if ($LASTEXITCODE -ne 0) {
+    throw "STOP before server contact: requested candidate $CandidateSha is not an ancestor of current acceptance-tooling HEAD $toolingHead."
 }
 
 $dirty = git -C $repo status --porcelain
@@ -41,6 +43,43 @@ if ($dirty) {
 & git -C $repo cat-file -e "${CandidateSha}^{commit}"
 if ($LASTEXITCODE -ne 0) {
     throw "Candidate SHA is not available locally: $CandidateSha"
+}
+
+function Get-CandidateSetupBuildIdentity {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Sha
+    )
+
+    $backend = ((& git -C $repo show "${Sha}:Setup/Application/production_backend.py") | Out-String)
+    if ($LASTEXITCODE -ne 0) {
+        throw "STOP before server contact: exact candidate $Sha is missing Setup/Application/production_backend.py."
+    }
+
+    $client = ((& git -C $repo show "${Sha}:Setup/Application/setup_catalog_dirty_guard.js") | Out-String)
+    if ($LASTEXITCODE -ne 0) {
+        throw "STOP before server contact: exact candidate $Sha is missing Setup/Application/setup_catalog_dirty_guard.js."
+    }
+
+    $serverMatch = [regex]::Match($backend, 'PRODUCTION_VERSION\s*=\s*"([^"]+)"')
+    $clientMatch = [regex]::Match($client, "CLIENT_BUILD\s*=\s*'([^']+)'")
+    if (-not $serverMatch.Success -or -not $clientMatch.Success) {
+        throw "STOP before server contact: unable to resolve exact Setup server/client build identities from candidate $Sha."
+    }
+
+    [pscustomobject]@{
+        Server = $serverMatch.Groups[1].Value
+        Client = $clientMatch.Groups[1].Value
+    }
+}
+
+$buildIdentity = Get-CandidateSetupBuildIdentity -Sha $CandidateSha
+if ($buildIdentity.Server -ne $buildIdentity.Client) {
+    throw "STOP before server contact: Setup client/server version mismatch in exact candidate $CandidateSha. Client $($buildIdentity.Client); server $($buildIdentity.Server)."
+}
+
+if ($ExpectedVersion -ne $buildIdentity.Server) {
+    throw "STOP before server contact: ExpectedVersion '$ExpectedVersion' does not match exact candidate Setup build '$($buildIdentity.Server)'."
 }
 
 if ($PreviewPort -lt 1024 -or $PreviewPort -gt 65535) {
@@ -162,6 +201,7 @@ try {
     Write-Host 'Disposable standard: docs/server/PostgreSQL_Disposable_Acceptance_Standard.md'
     Write-Host "Server:          $Server"
     Write-Host "Candidate SHA:   $CandidateSha"
+    Write-Host "Tooling SHA:     $toolingHead"
     Write-Host "Target ref:      $TargetRef"
     Write-Host "Preview port:    $PreviewPort"
     Write-Host "Browser URL:     $browserUrl"
@@ -187,12 +227,50 @@ try {
 
     $remoteRunner = "$remoteBundle/setup_disposable_browser_preview_server.sh"
     $remoteManifest = "$remoteBundle/preview_manifest.tsv"
-    $remoteCommand = "chmod 700 '$remoteRunner' && bash -n '$remoteRunner' && timeout --foreground --signal=TERM 28800s bash '$remoteRunner' '$remoteManifest'"
+    $initialCommand = "chmod 700 '$remoteRunner' && bash -n '$remoteRunner' && timeout --foreground --signal=TERM 28800s bash '$remoteRunner' '$remoteManifest' start"
+    $resumeCommand = "timeout --foreground --signal=TERM 28800s bash '$remoteRunner' '$remoteManifest' resume"
 
-    & ssh -tt -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -L "${PreviewPort}:127.0.0.1:${PreviewPort}" $Server $remoteCommand
-    $remoteExit = $LASTEXITCODE
-    if ($remoteExit -ne 0) {
-        throw "Reusable Setup browser preview failed with exit code $remoteExit. Review the retained remote report for the failed gate."
+    $mode = 'start'
+    $reconnectAttempts = 0
+    $maxReconnectAttempts = 12
+    $initialExit = 0
+
+    while ($true) {
+        $command = if ($mode -eq 'start') { $initialCommand } else { $resumeCommand }
+
+        & ssh -tt -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -L "${PreviewPort}:127.0.0.1:${PreviewPort}" $Server $command
+        $remoteExit = $LASTEXITCODE
+
+        if ($remoteExit -eq 0) {
+            break
+        }
+
+        if ($mode -eq 'start') {
+            $initialExit = $remoteExit
+            Write-Warning "Browser-review SSH session ended with exit code $remoteExit. Checking whether the exact preview can be resumed without rebuilding it..."
+            $mode = 'resume'
+        }
+        elseif ($remoteExit -notin @(75, 255)) {
+            throw "Reusable Setup browser preview could not be resumed (initial exit $initialExit; resume exit $remoteExit). Review the retained remote report."
+        }
+
+        $reconnectAttempts += 1
+        if ($reconnectAttempts -gt $maxReconnectAttempts) {
+            throw "Reusable Setup browser preview tunnel could not be re-established after $maxReconnectAttempts attempts. The remote preview may still be preserved; do not start another preview until its state is inspected."
+        }
+
+        $localListeners = @(Get-NetTCPConnection -LocalPort $PreviewPort -State Listen -ErrorAction SilentlyContinue)
+        foreach ($listener in $localListeners) {
+            $owner = Get-Process -Id $listener.OwningProcess -ErrorAction SilentlyContinue
+            if ($null -eq $owner) { continue }
+            if ($owner.ProcessName -ne 'ssh') {
+                throw "Local preview port $PreviewPort became owned by non-SSH process $($owner.ProcessName) PID $($owner.Id) during reconnect."
+            }
+            Stop-Process -Id $owner.Id -Force
+        }
+
+        Start-Sleep -Seconds 2
+        Write-Host "Reconnecting to preserved Setup browser preview on port $PreviewPort (attempt $reconnectAttempts/$maxReconnectAttempts)..."
     }
 
     Write-Host

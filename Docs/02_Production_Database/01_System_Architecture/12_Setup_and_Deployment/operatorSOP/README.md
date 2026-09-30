@@ -7,7 +7,7 @@
 | Audience | MSB reviewers, managers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-26 |
+| Last Reviewed | 2026-09-28 |
 | Keywords | Setup, Perform Work, Report Work, Captain, review, verification, reusable tasks, Display Ownership, materials, Kits |
 
 Use this page to find the Setup instruction for the job you are doing.
@@ -22,6 +22,7 @@ The real **2026 Setup Session is live**. Use **Plan / Schedule** for current ann
 
 - [Perform and Report Setup Work](Perform_and_Report_Setup_Work.md) — Captain/Production Crew field execution, Print Task, Procedure access, Report Work, partial continuation, and Manager correction of mistaken reports.
 - [Setup Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md) — current scheduling plus reusable-task maintenance, prerequisites, Display Ownership, Resources, Extra Materials, Kits, Kit Inventory, and T-Post Inventory.
+- [Extra Materials and Kit Inventory](Extra_Materials_and_Kit_Inventory.md) — plain-English guide to task material, source Containers, expected Kit contents, and physical counts.
 - [Review and Correct the 2025 Setup History](Review_2025_Setup_History.md) — historical verification only.
 
 ## Current Field Execution
@@ -37,6 +38,8 @@ If partial work remains, schedule a new continuation assignment; do not move the
 - **Copy a similar task:** use **Copy** / **Copy Task**, then review the copied information.
 - **Select several Displays:** use **Ctrl/Cmd-click** for individual Displays or **Shift-click** for a range, then drag the selected group to the correct task.
 - **Large Display list:** use **Move selected to**.
+- **Edit / Remove:** change what should normally belong in a Kit.
+- **Count / Adjust:** record what somebody physically counted.
 - **Expected Kit quantity:** what should normally be there.
 - **On Hand:** what somebody actually counted.
 - **If you do not know:** do not guess.

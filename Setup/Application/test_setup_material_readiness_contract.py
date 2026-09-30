@@ -92,7 +92,10 @@ def test_206_pick_list_surface_is_schedule_driven_with_narrow_manager_override()
     assert "assets/qrcode.min.js" in html
     assert "api/setup/material-readiness?season_year=" in ui
     assert "Physical items to pull / stage" in html
-    assert "Material data exceptions" in html
+    assert "Material data exceptions" not in html
+    assert "unresolved-section" not in html
+    assert "unresolvedSection" not in ui
+    assert "Material exceptions" not in ui
     assert "Generated from the live Scheduling Board" in html
     assert "A workshop scan records that an item was actually picked/moved" in html
     assert "@media print" in css
@@ -137,6 +140,11 @@ def test_live_pick_list_surface_exposes_operational_columns_needs_pick_picked_an
     for heading in ("Container / Display", "Home Location", "Destination", "Pick By", "Needed For", "QR Code"):
         assert heading in ui
     assert "https://db.sheboyganlights.org/scan/" in ui
+    assert "function humanReadableIdentity(item)" in ui
+    assert "item.physical_type === 'CONTAINER'" in ui
+    assert "padStart(3, '0')" in ui
+    assert "humanReadableIdentity(item)" in ui
+    assert "const type = item.physical_type === 'DISPLAY' ? 'DISP' : 'CONT';" in ui
     assert "new QRCode(" in ui
     assert "QRCode.CorrectLevel.M" in ui
     assert "function itemMoved(item)" in ui
@@ -324,3 +332,23 @@ def test_print_pick_list_is_compact_and_uses_print_specific_values() -> None:
     assert "border-collapse:collapse" in css
     assert ".pick-qr{width:68px;height:68px" in css
     assert "width:64px!important;height:64px!important" in css
+
+
+def test_pick_list_tablet_layout_becomes_complete_card_without_horizontal_scroll() -> None:
+    ui = read("setup_pick_list.js")
+    css = read("setup_pick_list.css")
+
+    assert 'class="date-cell pick-by-cell"' in ui
+    assert 'class="date-cell needed-for-cell"' in ui
+    assert "@media(max-width:1100px)" in css
+    assert ".pick-table-wrap{overflow:visible}" in css
+    assert ".pick-table{display:block;width:100%;min-width:0" in css
+    assert 'grid-template-areas:' in css
+    assert '"identity location qr"' in css
+    assert '"destination destination qr"' in css
+    assert '"pickby needed qr"' in css
+    assert '.destination-cell::before{content:"Destination"}' in css
+    assert '.pick-by-cell::before{content:"Pick By"}' in css
+    assert '.needed-for-cell::before{content:"Needed For"}' in css
+    assert ".pick-table{min-width:900px}" not in css
+    assert ".pick-table{display:table;width:100%;min-width:0" in css

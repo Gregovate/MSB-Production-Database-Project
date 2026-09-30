@@ -17,11 +17,11 @@ Setup/Application/production_backend.py
 Current reported version and Production application target:
 
 ```text
-V0.3.19-pick-list
-fc0b76d57826eebf04b81c99cbb904109162cd87
+V0.3.21-scheduling-gates
+9a614c1fa2eea0b425b03bdb4ac3e1790634c760
 ```
 
-The visible version remains `V0.3.19-pick-list`; #172 adds the Production Report Correction -> Work Order Intake path without starting a new display-version line.
+The visible Production version is `V0.3.21-scheduling-gates`. #205 adds the accepted Work-vs-Gate semantics, Captain live-dispatch default, and planned-vs-actual labor visibility while preserving #172 Report Correction and existing Pick List foundations.
 
 ## Current Production Meaning
 
@@ -125,7 +125,7 @@ Permanent source checkout:
 /opt/msb-setup
 ```
 
-The current exact Production application target is `fc0b76d57826eebf04b81c99cbb904109162cd87`. Migration 062 is installed. Later merge, deployment-tooling, or closeout-only commits do not redefine the deployed application target.
+The current exact Production application target is `9a614c1fa2eea0b425b03bdb4ac3e1790634c760`. Migrations through 062 remain installed; #205 itself was a source-only deployment. Later merge, deployment-tooling, or closeout-only commits do not redefine the deployed application target.
 
 The #172 validated rollback archive is `/home/msbadmin/backups/setup-172/msb-pre-setup-172-20260928T005954.dump` with SHA256 `fe0d349a587ec0363cb69bb295618c49ab8df771ff9bcb8bf9c0e71c66b8b89a`. Older accepted rollback archives remain historical recovery evidence. Do not restore any database archive without reconciling legitimate post-deployment Production work.
 
@@ -152,5 +152,6 @@ Before changing the application:
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/README.md`
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/README.md`
 - `Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_Session_Production_Engineering_Handoff_2026-09-12.md`
+- `Setup/Acceptance/Setup_205_Scheduling_Board_Production_Acceptance_2026-09-29.md`
 - `Setup/Acceptance/Setup_172_Report_Correction_Production_Acceptance_2026-09-27.md`
 - `Setup/Acceptance/Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md`

@@ -54,15 +54,22 @@ class SetupRepository:
             cur.execute(
                 """
                 SELECT
-                    email,
-                    display_name,
-                    role_name,
-                    policy_names,
-                    can_read_setup,
-                    can_move_setup_assets,
-                    can_manage_setup,
-                    can_admin_setup
-                FROM ref.setup_browser_capabilities(%s)
+                    caps.email,
+                    caps.display_name,
+                    caps.role_name,
+                    caps.policy_names,
+                    caps.can_read_setup,
+                    caps.can_move_setup_assets,
+                    caps.can_manage_setup,
+                    caps.can_admin_setup,
+                    (
+                        SELECT captain.person_id
+                        FROM ref.setup_captain_person_list() AS captain
+                        WHERE lower(captain.email) = lower(caps.email)
+                        ORDER BY captain.person_id
+                        LIMIT 1
+                    ) AS captain_person_id
+                FROM ref.setup_browser_capabilities(%s) AS caps
                 """,
                 (normalized,),
             )
@@ -73,6 +80,7 @@ class SetupRepository:
                 "authenticated_email": normalized,
                 "known_user": False,
                 "display_name": normalized,
+                "captain_person_id": None,
                 "role_name": None,
                 "policy_names": [],
                 "can_read_setup": False,
@@ -86,6 +94,7 @@ class SetupRepository:
             "authenticated_email": normalized,
             "known_user": True,
             "display_name": item.get("display_name") or normalized,
+            "captain_person_id": item.get("captain_person_id"),
             "role_name": item.get("role_name"),
             "policy_names": list(item.get("policy_names") or []),
             "can_read_setup": bool(item.get("can_read_setup")),

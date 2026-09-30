@@ -69,11 +69,15 @@
     return 'Container';
   }
 
+  function humanContainerId(value) {
+    return `C${String(value ?? '').padStart(3, '0')}`;
+  }
+
   function containerLabel(row) {
     const type = containerTypeLabel(row);
     const home = row.home_location_code ? ` · ${row.home_location_code}` : '';
     const resolved = state.resolvedContainerIds.has(Number(row.container_id)) ? ' · TASK' : '';
-    return `C${row.container_id} — ${row.container_description || 'No description'} · ${type}${home}${resolved}`;
+    return `${humanContainerId(row.container_id)} — ${row.container_description || 'No description'} · ${type}${home}${resolved}`;
   }
 
   function allocationAudit(requirement) {
@@ -143,7 +147,7 @@
         <div id="task-extra-material-source-selected" class="selected-item"></div>
         <div id="task-extra-material-source-editor-help" class="hint">Select a Container and enter the quantity from that Container.</div>
         <div class="extra-material-form-grid">
-          <label class="wide">Find Container<input id="task-extra-material-source-search" type="search" placeholder="ID, description, type, or location" autocomplete="off"></label>
+          <label class="wide">Find Container<input id="task-extra-material-source-search" type="search" placeholder="ID or C###, description, type, or location" autocomplete="off"></label>
           <label class="wide">Source Container<select id="task-extra-material-source-container" size="6" required></select></label>
           <label>Qty from this Container<input id="task-extra-material-source-qty" type="number" min="0.001" step="any"></label>
           <label>Verification<select id="task-extra-material-source-verification"><option value="UNVERIFIED">Unverified</option><option value="NEEDS_REVIEW">Needs review</option><option value="VERIFIED">Verified</option></select></label>
@@ -171,7 +175,14 @@
     const rows = state.containers
       .filter((row) => {
         if (!query) return true;
-        return [row.container_id, row.container_description, containerTypeLabel(row), row.home_location_code]
+        return [
+          row.container_id,
+          `C${row.container_id}`,
+          humanContainerId(row.container_id),
+          row.container_description,
+          containerTypeLabel(row),
+          row.home_location_code,
+        ]
           .filter((value) => value != null)
           .join(' ')
           .toLocaleLowerCase()
@@ -183,10 +194,37 @@
         if (aResolved !== bResolved) return aResolved - bResolved;
         return Number(a.container_id) - Number(b.container_id);
       });
-    select.innerHTML = rows.map((row) => (
-      `<option value="${row.container_id}">${escapeHtml(containerLabel(row))}</option>`
-    )).join('');
-    if (current && rows.some((row) => String(row.container_id) === String(current))) select.value = current;
+    const requirement = requirementById(state.selectedRequirementId);
+    const linkedByContainer = new Map(
+      (requirement?.sources || []).map((source) => [
+        Number(source.container_id),
+        Number(source.setup_task_extra_material_source_id),
+      ]),
+    );
+
+    select.innerHTML = rows.map((row) => {
+      const linkedSourceId = linkedByContainer.get(Number(row.container_id));
+      const isCurrentEditedSource = Boolean(
+        state.editingSourceId
+        && linkedSourceId
+        && linkedSourceId === Number(state.editingSourceId)
+      );
+      const alreadyLinked = Boolean(linkedSourceId && !isCurrentEditedSource);
+      const disabled = alreadyLinked ? ' disabled' : '';
+      const suffix = alreadyLinked ? ' · Already linked — use Change' : '';
+      return `<option value="${row.container_id}"${disabled}>${escapeHtml(containerLabel(row) + suffix)}</option>`;
+    }).join('');
+
+    const currentRow = rows.find((row) => String(row.container_id) === String(current));
+    const currentLinkedSourceId = currentRow
+      ? linkedByContainer.get(Number(currentRow.container_id))
+      : null;
+    const currentAllowed = currentRow && (
+      !currentLinkedSourceId
+      || Number(currentLinkedSourceId) === Number(state.editingSourceId)
+    );
+    if (current && currentAllowed) select.value = current;
+    else if (!state.editingSourceId) select.selectedIndex = -1;
   }
 
   function clearEditor() {
@@ -238,7 +276,7 @@
     if (source) {
       state.originalSourceContainerId = Number(source.container_id);
       el('task-extra-material-source-editor-title').textContent = 'Manager — Change Source';
-      el('task-extra-material-source-selected').textContent = `${requirementLabel(requirement)} · Current C${source.container_id}`;
+      el('task-extra-material-source-selected').textContent = `${requirementLabel(requirement)} · Current ${humanContainerId(source.container_id)}`;
       el('task-extra-material-source-editor-help').textContent = 'Choose a replacement Container, or keep this Container to edit its source facts.';
       el('task-extra-material-source-container').value = String(source.container_id);
       loadSourceFacts(source);
@@ -247,7 +285,7 @@
       state.originalSourceContainerId = null;
       el('task-extra-material-source-editor-title').textContent = 'Manager — Add Source';
       el('task-extra-material-source-selected').textContent = requirementLabel(requirement);
-      el('task-extra-material-source-editor-help').textContent = 'Select a Container and enter the quantity from that Container.';
+      el('task-extra-material-source-editor-help').textContent = 'Select a Container and enter the quantity from that Container. Containers already linked to this requirement are disabled; use Change on the existing source instead.';
       el('task-extra-material-source-container').selectedIndex = -1;
       el('task-extra-material-source-qty').value = '';
       el('task-extra-material-source-verification').value = 'UNVERIFIED';
@@ -294,7 +332,7 @@
               return `
                 <div class="setup-extra-material-source-row"${title}>
                   <div class="setup-extra-material-source-copy">
-                    <strong>C${escapeHtml(source.container_id)} — ${escapeHtml(source.container_description || 'No description')}</strong>
+                    <strong>${escapeHtml(humanContainerId(source.container_id))} — ${escapeHtml(source.container_description || 'No description')}</strong>
                     <span class="muted">${escapeHtml(type)} · ${escapeHtml(quantity)} · ${escapeHtml(verification)}</span>
                   </div>
                   ${appState.access?.can_manage_setup ? `<div class="action-row"><button type="button" class="small secondary task-extra-material-source-edit" data-requirement-id="${requirement.setup_task_extra_material_id}" data-source-id="${source.setup_task_extra_material_source_id}">Change</button><button type="button" class="small danger task-extra-material-source-remove" data-requirement-id="${requirement.setup_task_extra_material_id}" data-source-id="${source.setup_task_extra_material_source_id}">Remove</button></div>` : ''}
@@ -305,6 +343,23 @@
     }).join('');
     el('task-extra-material-source-status').textContent = '';
     applyAccess();
+  }
+
+  function openPendingSourceCorrection() {
+    if (typeof consumePendingCorrection !== 'function') return;
+    if (!consumePendingCorrection('extra-material-source')) return;
+
+    const requirementId = Number(appState.pendingExtraMaterialRequirementId || 0);
+    appState.pendingExtraMaterialRequirementId = null;
+    if (!requirementId) {
+      setAlert('Extra Material source correction did not include a requirement identity.', 'error');
+      return;
+    }
+    if (!requirementById(requirementId)) {
+      setAlert(`Extra Material requirement ${requirementId} is not active on this reusable task.`, 'error');
+      return;
+    }
+    beginSource(requirementId);
   }
 
   async function loadTaskSources(taskId) {
@@ -329,6 +384,7 @@
       state.resolvedContainerIds = new Set(ids.map((value) => Number(value)));
       renderContainerOptions();
       renderRequirements();
+      openPendingSourceCorrection();
     } catch (error) {
       if (token !== state.requestToken) return;
       state.requirements = [];
@@ -471,6 +527,17 @@
     if (remove) removeSource(Number(remove.dataset.requirementId), Number(remove.dataset.sourceId));
   }
 
+  function focusRequirementSources(requirementId) {
+    const group = document.querySelector(
+      `.setup-extra-material-source-group[data-source-requirement-id="${Number(requirementId)}"]`,
+    );
+    if (!group) return false;
+    group.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    group.classList.add('source-correction-focus');
+    window.setTimeout(() => group.classList.remove('source-correction-focus'), 1800);
+    return true;
+  }
+
   function bind() {
     installSection();
     const priorSelectTask = selectTask;
@@ -479,6 +546,11 @@
       loadTaskSources(taskId);
       return result;
     };
+    window.openTaskExtraMaterialSource = (requirementId, sourceId = null) => {
+      beginSource(Number(requirementId), sourceId == null ? null : Number(sourceId));
+    };
+    window.focusTaskExtraMaterialSources = (requirementId) => focusRequirementSources(Number(requirementId));
+    window.refreshTaskExtraMaterialSources = loadTaskSources;
     if (appState.selectedTaskId) loadTaskSources(appState.selectedTaskId);
   }
 

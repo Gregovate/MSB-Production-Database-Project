@@ -27,6 +27,31 @@ Production mutation is not part of either reusable acceptance launcher. Producti
 
 If the candidate changes after either gate, start again from the new exact SHA. Do not carry forward a prior disposable clone or browser preview.
 
+## Mandatory exact client/server build identity gate
+
+Every reusable Setup acceptance launcher must fail **before server contact** when the exact candidate contains different client and server build identities.
+
+The authoritative candidate markers are:
+
+```text
+Setup/Application/production_backend.py
+    PRODUCTION_VERSION = "<build>"
+
+Setup/Application/setup_catalog_dirty_guard.js
+    CLIENT_BUILD = '<build>'
+```
+
+Required behavior:
+
+- reusable disposable acceptance extracts both markers from the exact `CandidateSha` with `git show`;
+- client and server build strings must match exactly before SCP/SSH or any server-side acceptance work begins;
+- reusable browser preview requires `-ExpectedVersion` and it must exactly match that same candidate build;
+- a mismatch is an acceptance-tooling failure and must be corrected in source, asset pins, and regression contracts before the candidate is tested again;
+- do not dismiss a browser mismatch alert and continue operator testing;
+- if application code changes to correct the mismatch, restart regression -> disposable acceptance -> browser review from the new exact SHA.
+
+This gate exists because #205 browser review on 2026-09-29 reached a disposable preview with server `V0.3.21-scheduling-gates` while the client still declared `V0.3.20-material-authority`. The browser guard correctly exposed the mismatch, but reusable acceptance had not rejected it earlier. The reusable launchers now own that preflight so future Setup threads do not rediscover the same failure.
+
 ## Reusable disposable acceptance
 
 Use:
@@ -53,6 +78,30 @@ The launcher and server runner:
 - prove the Production Setup fingerprint and live `/opt/msb-setup` SHA are unchanged before returning success.
 
 Feature-specific behavior belongs in the supplied migration/validation files, not in a new acceptance runner.
+
+## Recoverable browser-preview transport
+
+A disposable browser review must not be discarded merely because the workstation SSH tunnel resets.
+
+The reusable Setup browser launcher now separates **application candidate identity** from later **acceptance-tooling hardening**:
+
+- `-CandidateSha` is the exact application/database candidate under review;
+- the local acceptance-tooling checkout may be a clean descendant of that candidate on the same target branch;
+- the launcher records both Candidate SHA and Tooling SHA;
+- tooling-only reconnect/cleanup hardening does not by itself redefine the application candidate being reviewed.
+
+Before the operator-review wait, the remote runner writes narrow resumable state for the exact preview instance. If the SSH/PTTY transport is lost:
+
+1. the remote wrapper preserves the healthy Flask process, disposable PostgreSQL container, candidate worktree, and existing browser writes;
+2. destructive cleanup does **not** run merely because the terminal disappeared;
+3. the workstation launcher reconnects a foreground SSH tunnel to that same preview;
+4. the resume path verifies candidate/ref/port/operator/version, exact preview PID ownership, listener ownership, and `/api/health`;
+5. the operator continues the same review from the same disposable database state;
+6. normal cleanup and Production-after proof run only when the operator explicitly finishes the review or a nonrecoverable failure occurs.
+
+Automatic reconnect remains foreground and bounded. It does not use `ssh -N`, `ssh -f`, `Start-Process ssh`, or a detached Windows SSH process.
+
+This requirement was strengthened after #205 on 2026-09-29 proved that the browser application remained healthy while the workstation SSH/PTTY reset. The old wrapper then lost terminal input and failed cleanup, forcing repeated operator work despite an intact disposable preview.
 
 ## Reusable disposable browser review
 
@@ -96,6 +145,7 @@ Only after explicit operator acceptance switch to the Server Management `Product
 
 ## Current Production Acceptance Records
 
+- `Setup_205_Scheduling_Board_Production_Acceptance_2026-09-29.md` — #205 rolling Scheduling Board / season-only Work Order placement / Captain live-dispatch default / planned-vs-actual labor KPI / V0.3.21 source-only Production acceptance and #206 handoff.
 - `Setup_172_Report_Correction_Production_Acceptance_2026-09-27.md` — #172 Report Correction -> Work Order Intake / migration 062 / Directus items.create manager-notification boundary / Production acceptance.
 - `Setup_175_132_Report_Work_Production_Acceptance_2026-09-26.md` — #175 Perform Work / Captain Work List + #132 Report Work / migration 061 / Production acceptance.
 - `Setup_206_Pick_List_Production_Acceptance_2026-09-25.md` — #206 rolling physical Pick List / Manager early-pick override / migration 060 / V0.3.19 Production acceptance.

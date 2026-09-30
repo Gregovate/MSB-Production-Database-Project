@@ -87,9 +87,13 @@
     return Boolean(row.needs_review);
   }
 
+  function extraMaterialSourceIsException(row) {
+    return Boolean(row.needs_review);
+  }
+
   function statusClass(value) {
-    if (value === 'COMPLETE' || value === 'ASSIGNED_ACTIVE' || value === 'REVIEWED_SHARED_NON_TASK') return 'ok';
-    if (value === 'INACTIVE_OBSOLETE_ONLY') return 'warn';
+    if (value === 'COMPLETE' || value === 'ASSIGNED_ACTIVE' || value === 'REVIEWED_SHARED_NON_TASK' || value === 'SOURCE_ASSIGNED') return 'ok';
+    if (value === 'INACTIVE_OBSOLETE_ONLY' || value === 'HISTORICAL_SOURCE_REVIEW' || value === 'RECONSTRUCTION_REVIEW') return 'warn';
     return 'error';
   }
 
@@ -97,6 +101,156 @@
     if (!taskId) return '<span class="muted">No scoped task</span>';
     const correctionQuery = correction ? `&correction=${encodeURIComponent(correction)}` : '';
     return `<a class="button secondary" href="../?view=review&setup_task_id=${encodeURIComponent(taskId)}${correctionQuery}">${esc(label)}</a>`;
+  }
+
+  function resolveExtraMaterialSourceLink(taskId, requirementId) {
+    if (!taskId || !requirementId) return '<span class="muted">Requirement identity unavailable</span>';
+    return `<a class="button secondary" href="../?view=review&setup_task_id=${encodeURIComponent(taskId)}&correction=extra-material-source&setup_task_extra_material_id=${encodeURIComponent(requirementId)}">Resolve Source</a>`;
+  }
+
+  function reviewExtraMaterialRequirementLink(taskId, requirementId) {
+    if (!taskId || !requirementId) return '<span class="muted">Requirement identity unavailable</span>';
+    return `<a class="button secondary" href="../?view=review&setup_task_id=${encodeURIComponent(taskId)}&correction=extra-material-requirement&setup_task_extra_material_id=${encodeURIComponent(requirementId)}">Review Requirement</a>`;
+  }
+
+  function humanContainerId(value) {
+    const id = Number(value);
+    return Number.isFinite(id) ? `C${String(id).padStart(3, '0')}` : 'Container';
+  }
+
+  function historicalRequirementSpec(item) {
+    const parts = [];
+    const qty = [item.quantity_required, item.quantity_uom].filter((value) => value != null && String(value).trim() !== '').join(' ');
+    if (qty) parts.push(qty);
+    if (item.quantity_qualifier) parts.push(String(item.quantity_qualifier).replaceAll('_', ' '));
+    if (item.size_text) parts.push(item.size_text);
+    if (item.length_value != null) parts.push([item.length_value, item.length_unit].filter(Boolean).join(' '));
+    if (item.color) parts.push(item.color);
+    return parts.join(' · ') || 'No specification recorded';
+  }
+
+  function historicalSourceContext(row) {
+    const context = Array.isArray(row.prior_inactive_source_context) ? row.prior_inactive_source_context : [];
+    if (!context.length) return '';
+    const unique = [];
+    const seenSources = new Set();
+    const seenRequirements = new Set();
+    for (const item of context) {
+      const key = String(item.setup_task_extra_material_source_id || '') || `${item.setup_task_id}:${item.container_id}`;
+      if (seenSources.has(key)) continue;
+      seenSources.add(key);
+      const requirementId = Number(item.setup_task_extra_material_id || 0);
+      const taskId = Number(item.setup_task_id || 0);
+      const specMatch = item.spec_match === true;
+      const specState = specMatch ? 'EXACT SPEC MATCH' : 'SPEC MISMATCH — REVIEW';
+      const taskName = item.task_name || 'prior Setup task';
+      const materialName = row.material_name || 'Extra Material';
+      const containerCode = humanContainerId(item.container_id);
+      const label = `${taskName} → ${containerCode} ${item.container_description || ''}`.trim();
+      let restore = '';
+      if (state.access?.can_manage_setup && requirementId && taskId && !seenRequirements.has(requirementId)) {
+        seenRequirements.add(requirementId);
+        const sourceContainers = context
+          .filter((source) => Number(source.setup_task_extra_material_id || 0) === requirementId)
+          .map((source) => humanContainerId(source.container_id))
+          .filter((value, index, values) => values.indexOf(value) === index)
+          .join(', ');
+        restore = `<button type="button" class="small restore-historical-requirement"
+            data-prior-task-id="${esc(taskId)}"
+            data-prior-requirement-id="${esc(requirementId)}"
+            data-material-name="${esc(materialName)}"
+            data-task-name="${esc(taskName)}"
+            data-source-containers="${esc(sourceContainers)}">Restore ${esc(materialName)} to ${esc(taskName)}</button>`;
+      }
+      const reassign = state.access?.can_manage_setup && item.setup_task_extra_material_source_id && specMatch
+        ? `<button type="button" class="small secondary reassign-historical-source"
+            data-target-requirement-id="${esc(row.setup_task_extra_material_id)}"
+            data-source-id="${esc(item.setup_task_extra_material_source_id)}"
+            data-container-id="${esc(item.container_id)}"
+            data-expected-quantity="${esc(item.expected_quantity ?? '')}"
+            data-verification-state="${esc(item.verification_state || 'UNVERIFIED')}"
+            data-notes="${esc(item.notes || '')}">Move ${esc(containerCode)} to current requirement</button>`
+        : '';
+      const moveBlocked = state.access?.can_manage_setup && item.setup_task_extra_material_source_id && !specMatch
+        ? '<span class="muted">Source move unavailable until requirement specifications match.</span>'
+        : '';
+      const feedback = restore
+        ? `<div class="muted restore-historical-feedback" data-restore-feedback-id="${esc(requirementId)}" aria-live="polite"></div>`
+        : '';
+      unique.push(`<div class="historical-source-item"><div><span>${esc(label)}</span><div class="muted">${esc(specState)} · ${esc(historicalRequirementSpec(item))}</div></div><div class="action-row">${restore}${reassign}${moveBlocked}</div>${feedback}</div>`);
+    }
+    return `<div class="historical-source-context"><div class="muted">Inactive historical authority exists for this material in the same Stage. Restore preserves that historical requirement and its existing sources; moving a source to the current requirement is offered only for an exact specification match.</div>${unique.join('')}</div>`;
+  }
+
+  async function restoreHistoricalRequirement(button) {
+    const taskId = Number(button.dataset.priorTaskId || 0);
+    const requirementId = Number(button.dataset.priorRequirementId || 0);
+    const materialName = button.dataset.materialName || 'Extra Material';
+    const taskName = button.dataset.taskName || 'Setup task';
+    const sourceContainers = button.dataset.sourceContainers || 'the existing source Containers';
+    const feedback = document.querySelector(`[data-restore-feedback-id="${requirementId}"]`);
+    if (!taskId || !requirementId) return;
+    if (!window.confirm(
+      `Restore ${materialName} to ${taskName}? Existing source Containers ${sourceContainers} will remain attached.`,
+    )) return;
+    button.disabled = true;
+    if (feedback) feedback.textContent = `Restoring ${materialName} to ${taskName}…`;
+    try {
+      await api(
+        `api/setup/tasks/${taskId}/extra-materials/${requirementId}/restore`,
+        commandOptions({}),
+      );
+      button.textContent = 'Restored';
+      if (feedback) {
+        feedback.textContent = `Restored ${materialName} to ${taskName}. Existing source Containers ${sourceContainers} remain attached. Open the task to verify, or rerun the audit.`;
+      }
+      setAlert(`${materialName} restored to ${taskName}.`);
+    } catch (error) {
+      button.disabled = false;
+      if (feedback) feedback.textContent = error.message || error;
+      setAlert(error.message || error, 'error');
+    }
+  }
+
+  async function reassignHistoricalSource(button) {
+    const targetRequirementId = Number(button.dataset.targetRequirementId || 0);
+    const sourceId = Number(button.dataset.sourceId || 0);
+    const containerId = Number(button.dataset.containerId || 0);
+    if (!targetRequirementId || !sourceId || !containerId) return;
+    const confirmed = window.confirm(
+      `Move existing source C${containerId} to the current Extra Material requirement? Use this only when the current requirement is the correct reusable authority. This moves the existing source row; it does not create a duplicate.`,
+    );
+    if (!confirmed) return;
+
+    const quantityText = String(button.dataset.expectedQuantity || '').trim();
+    const expectedQuantity = quantityText ? Number(quantityText) : null;
+    try {
+      setAlert(`Reassigning C${containerId} to the current requirement…`);
+      await api(
+        `api/setup/task-extra-materials/${targetRequirementId}/sources/${sourceId}`,
+        commandOptions({
+          container_id: containerId,
+          expected_quantity: Number.isFinite(expectedQuantity) ? expectedQuantity : null,
+          verification_state: button.dataset.verificationState || 'UNVERIFIED',
+          notes: button.dataset.notes || null,
+          active_flag: true,
+        }),
+      );
+      await loadAudit();
+      setAlert(`C${containerId} source authority reassigned to the current requirement.`);
+    } catch (error) {
+      setAlert(error.message || error, 'error');
+    }
+  }
+
+  function extraMaterialRequiredText(row) {
+    const quantity = [row.quantity_required, row.quantity_uom].filter((value) => value != null && String(value).trim() !== '').join(' ');
+    const spec = [];
+    if (row.quantity_qualifier) spec.push(String(row.quantity_qualifier).replaceAll('_', ' '));
+    if (row.size_text) spec.push(row.size_text);
+    if (row.length_value != null) spec.push([row.length_value, row.length_unit].filter(Boolean).join(' '));
+    if (row.color) spec.push(row.color);
+    return [quantity || 'Quantity not recorded', spec.join(' · ')].filter(Boolean).join(' · ');
   }
 
   function renderFutureSession() {
@@ -158,6 +312,56 @@
       <td>${esc(row.uncontained_display_count || 0)}</td>
       <td>${setupTaskLink(row.correction_setup_task_id, 'Open Display Ownership', 'display-ownership')}</td>
     </tr>`).join('') || '<tr><td colspan="11" class="muted">No Display/LOR rows match this filter.</td></tr>';
+  }
+
+  function renderExtraMaterialSource() {
+    const source = state.audit?.extra_material_source || {};
+    const summary = source.summary || {};
+    el('extra-material-source-summary').innerHTML = [
+      ['Requirements reviewed', summary.requirements_reviewed || 0],
+      ['Source assigned', summary.source_assigned || 0],
+      ['Historical source review', summary.historical_source_review || 0],
+      ['Reconstruction review', summary.reconstruction_review || 0],
+      ['No active source', summary.unresolved_no_source || 0],
+    ].map(([label, value]) => summaryCard(label, value)).join('');
+
+    const allRows = source.requirements || [];
+    const rows = state.filter === 'exceptions' ? allRows.filter(extraMaterialSourceIsException) : allRows;
+    el('extra-material-source-audit-body').innerHTML = rows.map((row) => {
+      const scope = [row.stage_key, row.stage_name, row.scene_name].filter(Boolean).join(' · ') || 'No Stage / site-wide';
+      let sourceStatus = 'NO ACTIVE SOURCE';
+      if (Number(row.active_source_count || 0) > 0) {
+        sourceStatus = `${row.active_source_count} active source${Number(row.active_source_count) === 1 ? '' : 's'}`;
+      } else if (row.source_status === 'HISTORICAL_SOURCE_REVIEW') {
+        sourceStatus = 'HISTORICAL SOURCE REVIEW';
+      } else if (row.source_status === 'RECONSTRUCTION_REVIEW') {
+        sourceStatus = 'RECONSTRUCTION REVIEW';
+      }
+      let actions = '<span class="muted">Source authority present</span>';
+      if (row.needs_review) {
+        const review = reviewExtraMaterialRequirementLink(row.setup_task_id, row.setup_task_extra_material_id);
+        const resolve = resolveExtraMaterialSourceLink(row.setup_task_id, row.setup_task_extra_material_id);
+        actions = row.source_status === 'NO_ACTIVE_SOURCE'
+          ? `<div class="action-stack">${resolve}${review}</div>`
+          : `<div class="action-stack">${review}${resolve}</div>`;
+      }
+      return `<tr>
+        <td>${esc(scope)}</td>
+        <td><strong>#${esc(row.setup_task_id)} · ${esc(row.task_name)}</strong></td>
+        <td><strong>${esc(row.material_name || 'Extra Material')}</strong>${row.requirement_notes ? `<div class="muted">${esc(row.requirement_notes)}</div>` : ''}</td>
+        <td>${esc(extraMaterialRequiredText(row))}</td>
+        <td><span class="status ${statusClass(row.verification_state === 'VERIFIED' ? 'SOURCE_ASSIGNED' : row.verification_state)}">${esc(String(row.verification_state || 'UNVERIFIED').replaceAll('_', ' '))}</span></td>
+        <td><span class="status ${statusClass(row.source_status)}">${esc(sourceStatus)}</span>${historicalSourceContext(row)}</td>
+        <td>${actions}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="7" class="muted">No Extra Material source rows match this filter.</td></tr>';
+
+    document.querySelectorAll('.restore-historical-requirement').forEach((button) => {
+      button.addEventListener('click', () => { void restoreHistoricalRequirement(button); });
+    });
+    document.querySelectorAll('.reassign-historical-source').forEach((button) => {
+      button.addEventListener('click', () => { void reassignHistoricalSource(button); });
+    });
   }
 
   function dispositionText(row) {
@@ -240,6 +444,7 @@
   function render() {
     renderFutureSession();
     renderDisplay();
+    renderExtraMaterialSource();
     renderKit();
   }
 
@@ -249,9 +454,11 @@
     render();
     const fs = state.audit.future_session?.summary || {};
     const ds = state.audit.display?.summary || {};
+    const es = state.audit.extra_material_source?.summary || {};
     const ks = state.audit.kit?.summary || {};
     const openCount = Number(fs.inactive_will_not_seed || 0)
       + Number(ds.review_required || 0)
+      + Number(es.unresolved_no_source || 0)
       + Number(ks.inactive_obsolete_only || 0)
       + Number(ks.unresolved_unassigned || 0)
       + Number(ks.disposition_conflicts || 0);

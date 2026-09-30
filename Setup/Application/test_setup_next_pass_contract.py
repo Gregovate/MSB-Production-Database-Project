@@ -108,3 +108,38 @@ def test_field_context_is_read_only_location_integration_not_movement_simulation
     assert "INSERT INTO ops.setup_movement_event" not in repo
     assert "UPDATE ops.setup_display_state" not in repo
     assert "UPDATE ops.setup_container_state" not in repo
+
+
+def test_next_pass_catalog_waits_for_organization_readiness() -> None:
+    text = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
+    html = (APP_DIR / "production.html").read_text(encoding="utf-8")
+
+    assert "organizationStatus: 'idle'" in text
+    assert "organizationPromise: null" in text
+    assert "organizationError: null" in text
+    assert "setupNextState.organizationStatus = 'loading';" in text
+    assert "setupNextState.organizationStatus = 'ready';" in text
+    assert "setupNextState.organizationStatus = 'failed';" in text
+    assert "function renderNextLibraryReadiness()" in text
+    assert "Loading reusable Catalog organization…" in text
+    assert "Reusable Catalog organization could not be loaded." in text
+    assert "Retry Catalog Organization" in text
+    assert "if (renderNextLibraryReadiness()) return;" in text
+    assert "priorNextRenderLibrary" not in text
+    assert "if (!setupNextState.scenes.length)" not in text
+    assert "if (setupNextState.scenes.length) renderLibrary();" not in text
+    assert "setup_next_pass.js?v=2026-09-29.5" in html
+
+
+def test_perform_work_shows_planned_and_actual_person_hours() -> None:
+    text = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
+    assert "nextLaborHoursText" in text
+    assert "nextPerformLaborKpis" in text
+    assert 'id="next-perform-kpis"' in text
+    assert "<span>Planned labor</span>" in text
+    assert "<span>Actual labor</span>" in text
+    assert "<span>Variance</span>" in text
+    assert "Est. labor" in text
+    assert "person-hour" in text
+    assert "Labor " in text
+    assert "nextPerformPlannedCrew" in text

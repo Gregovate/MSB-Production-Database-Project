@@ -3,6 +3,9 @@
 const setupNextState = {
   scenes: [],
   taskScopes: new Map(),
+  organizationStatus: 'idle',
+  organizationPromise: null,
+  organizationError: null,
   closedStages: new Set(),
   closedScopes: new Set(),
   draggedTaskId: null,
@@ -13,7 +16,8 @@ const setupNextState = {
   performBoard: { session: null, work_days: [], crews: [], tasks: [], assignments: [] },
   performAssignmentMode: true,
   performCaptainFilter: null,
-  performCaptainFilterKey: null
+  performCaptainFilterKey: null,
+  performCaptainFilterTouched: false
 };
 
 function nextIsSitewide(task) {
@@ -56,14 +60,46 @@ function applyNextTaskScopes() {
   }
 }
 
-async function loadNextOrganization(render = true) {
-  const payload = await api('api/setup/organization');
-  const data = payload.organization || {};
-  setupNextState.scenes = data.scenes || [];
-  setupNextState.taskScopes = new Map(
-    (data.task_scopes || []).map((scope) => [Number(scope.setup_task_id), scope])
-  );
-  applyNextTaskScopes();
+async function loadNextOrganization(render = true, { force = false } = {}) {
+  if (setupNextState.organizationPromise && !force) {
+    await setupNextState.organizationPromise;
+    if (render && appState.tasks?.length) renderLibrary();
+    return;
+  }
+  if (setupNextState.organizationStatus === 'ready' && !force) {
+    if (render && appState.tasks?.length) renderLibrary();
+    return;
+  }
+
+  setupNextState.organizationStatus = 'loading';
+  setupNextState.organizationError = null;
+
+  const request = (async () => {
+    try {
+      const payload = await api('api/setup/organization');
+      const data = payload.organization || {};
+      setupNextState.scenes = data.scenes || [];
+      setupNextState.taskScopes = new Map(
+        (data.task_scopes || []).map((scope) => [Number(scope.setup_task_id), scope])
+      );
+      setupNextState.organizationStatus = 'ready';
+      applyNextTaskScopes();
+    } catch (error) {
+      setupNextState.organizationStatus = 'failed';
+      setupNextState.organizationError = error;
+      throw error;
+    }
+  })();
+
+  setupNextState.organizationPromise = request;
+  try {
+    await request;
+  } finally {
+    if (setupNextState.organizationPromise === request) {
+      setupNextState.organizationPromise = null;
+    }
+  }
+
   if (render && appState.tasks?.length) renderLibrary();
 }
 
@@ -676,6 +712,7 @@ function installNextTabs() {
           <select id="next-perform-captain-filter" aria-label="Filter Perform Work by Captain"></select>
         </label>
         <span id="next-perform-filter-summary" class="muted"></span>
+      <div id="next-perform-kpis" class="next-perform-kpis" aria-label="Perform Work labor KPIs"></div>
       </div>
       <div id="next-perform-list"></div>
     </div>`;
@@ -789,6 +826,35 @@ function nextPerformCrew(assignment) {
   ) || null;
 }
 
+function nextLaborHours(crewCount, durationMinutes) {
+  const crew = Number(crewCount);
+  const minutes = Number(durationMinutes);
+  if (!Number.isFinite(crew) || crew <= 0 || !Number.isFinite(minutes) || minutes <= 0) return null;
+  return (crew * minutes) / 60;
+}
+
+function nextLaborHoursText(crewCount, durationMinutes) {
+  const hours = nextLaborHours(crewCount, durationMinutes);
+  if (hours == null) return 'TBD';
+  const shown = Number.isInteger(hours) ? String(hours) : hours.toFixed(1).replace(/\.0$/, '');
+  return `${shown} person-hour${Number(shown) === 1 ? '' : 's'}`;
+}
+
+function nextPerformPlannedCrew(assignment) {
+  const crew = nextPerformCrew(assignment);
+  const shift = String(assignment?.shift_code || '').toUpperCase();
+  const shiftCount = shift === 'MORNING'
+    ? crew?.am_planned_crew_count
+    : shift === 'AFTERNOON'
+      ? crew?.pm_planned_crew_count
+      : null;
+  if (shiftCount != null && Number(shiftCount) > 0) return Number(shiftCount);
+  if (assignment?.planned_crew_count != null && Number(assignment.planned_crew_count) > 0) {
+    return Number(assignment.planned_crew_count);
+  }
+  return null;
+}
+
 function nextPerformDay(dayId) {
   return (setupNextState.performBoard.work_days || []).find(
     (day) => Number(day.setup_work_day_id) === Number(dayId)
@@ -808,6 +874,7 @@ function nextEnsurePerformToolbar() {
         <select id="next-perform-captain-filter" aria-label="Filter Perform Work by Captain"></select>
       </label>
       <span id="next-perform-filter-summary" class="muted"></span>
+      <div id="next-perform-kpis" class="next-perform-kpis" aria-label="Perform Work labor KPIs"></div>
     `;
     list.insertAdjacentElement('beforebegin', toolbar);
   }
@@ -844,42 +911,38 @@ function nextPerformScheduledCaptains() {
   );
 }
 
-function nextPerformCaptainFilterStorageKey() {
-  const email = String(appState.access?.authenticated_email || 'unknown').trim().toLowerCase();
-  const season = Number(appState.seasonYear) || 'none';
-  return `msb.setup.performCaptainFilter.v1.${email}.${season}`;
-}
-
-function nextStoredPerformCaptainFilter() {
-  try {
-    return window.localStorage.getItem(nextPerformCaptainFilterStorageKey());
-  } catch (_error) {
-    return null;
-  }
-}
-
-function nextStorePerformCaptainFilter(value) {
-  try {
-    window.localStorage.setItem(nextPerformCaptainFilterStorageKey(), value);
-  } catch (_error) {
-    // Browser storage is only a convenience; filtering must still work without it.
-  }
-}
-
 function nextPerformDefaultCaptainFilter() {
+  const signedInPersonId = Number(appState.access?.captain_person_id || 0);
   const email = String(appState.access?.authenticated_email || '').trim().toLowerCase();
-  if (!email) return 'ALL';
-  const mine = nextPerformScheduledCaptains().find(
-    (captain) => String(captain.email || '').trim().toLowerCase() === email
-  );
-  return mine ? `CAPTAIN:${mine.person_id}` : 'ALL';
+  const signedInName = String(appState.access?.display_name || '').trim().toLowerCase();
+  const captains = nextPerformScheduledCaptains();
+
+  const mineByIdentity = signedInPersonId
+    ? captains.find((captain) => Number(captain.person_id) === signedInPersonId)
+    : null;
+  if (mineByIdentity) return `CAPTAIN:${mineByIdentity.person_id}`;
+
+  const mineByEmail = email
+    ? captains.find((captain) => String(captain.email || '').trim().toLowerCase() === email)
+    : null;
+  if (mineByEmail) return `CAPTAIN:${mineByEmail.person_id}`;
+
+  const mineByName = signedInName
+    ? captains.find((captain) => String(captain.display_name || '').trim().toLowerCase() === signedInName)
+    : null;
+  return mineByName ? `CAPTAIN:${mineByName.person_id}` : 'ALL';
 }
 
 function nextEnsurePerformCaptainFilter() {
-  const storageKey = nextPerformCaptainFilterStorageKey();
-  if (setupNextState.performCaptainFilterKey !== storageKey) {
-    setupNextState.performCaptainFilterKey = storageKey;
+  const contextKey = [
+    String(appState.access?.authenticated_email || 'unknown').trim().toLowerCase(),
+    Number(appState.seasonYear) || 'none'
+  ].join('|');
+
+  if (setupNextState.performCaptainFilterKey !== contextKey) {
+    setupNextState.performCaptainFilterKey = contextKey;
     setupNextState.performCaptainFilter = null;
+    setupNextState.performCaptainFilterTouched = false;
   }
 
   const valid = new Set([
@@ -887,11 +950,17 @@ function nextEnsurePerformCaptainFilter() {
     ...nextPerformScheduledCaptains().map((captain) => `CAPTAIN:${captain.person_id}`)
   ]);
 
+  // Until the operator deliberately changes the dropdown, keep re-evaluating
+  // the default as access + schedule data arrive. This avoids the initial
+  // empty-board render permanently locking a scheduled Captain onto ALL.
+  if (!setupNextState.performCaptainFilterTouched) {
+    setupNextState.performCaptainFilter = nextPerformDefaultCaptainFilter();
+    return;
+  }
+
   if (!setupNextState.performCaptainFilter || !valid.has(setupNextState.performCaptainFilter)) {
-    const stored = nextStoredPerformCaptainFilter();
-    setupNextState.performCaptainFilter = stored && valid.has(stored)
-      ? stored
-      : nextPerformDefaultCaptainFilter();
+    setupNextState.performCaptainFilter = nextPerformDefaultCaptainFilter();
+    setupNextState.performCaptainFilterTouched = false;
   }
 }
 
@@ -913,7 +982,7 @@ function nextRenderPerformCaptainFilter() {
     select.dataset.performCaptainFilterInstalled = '1';
     select.addEventListener('change', () => {
       setupNextState.performCaptainFilter = select.value || 'ALL';
-      nextStorePerformCaptainFilter(setupNextState.performCaptainFilter);
+      setupNextState.performCaptainFilterTouched = true;
       renderNextExecution();
     });
   }
@@ -1044,6 +1113,8 @@ function nextPerformAssignmentCard(assignment) {
       : boardStatus === 'NEEDS_SCHEDULING_AGAIN'
         ? 'IN_PROGRESS'
         : executionStatus;
+  const plannedCrew = nextPerformPlannedCrew(assignment);
+  const plannedLabor = nextLaborHoursText(plannedCrew, task.expected_duration_minutes);
   const readinessWarning = task.readiness_state === 'NOT_READY'
     ? `<div class="next-perform-readiness-warning"><strong>Readiness condition:</strong> ${escapeHtml(task.readiness_note || 'Marked Not Ready')} <span class="muted">· soft planning condition; actual work may still be reported</span></div>`
     : '';
@@ -1060,7 +1131,9 @@ function nextPerformAssignmentCard(assignment) {
       </summary>
       <div class="next-perform-assignment-context">
         Crew ${escapeHtml(assignment.crew_lane || '—')} · ${escapeHtml(captain)}
-        · Planned crew ${escapeHtml(assignment.planned_crew_count ?? 'TBD')}
+        · Planned crew ${escapeHtml(plannedCrew ?? 'TBD')}
+        · Expected ${escapeHtml(formatMinutes(task.expected_duration_minutes))}
+        · Est. labor ${escapeHtml(plannedLabor)}
       </div>
       ${readinessWarning}
       <div class="next-perform-actions">
@@ -1072,6 +1145,39 @@ function nextPerformAssignmentCard(assignment) {
     </details>`;
 }
 
+function nextPerformLaborKpis(assignments) {
+  let plannedHours = 0;
+  let plannedUnknown = 0;
+  let actualHours = 0;
+
+  for (const assignment of assignments || []) {
+    const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
+    const planned = nextLaborHours(
+      nextPerformPlannedCrew(assignment),
+      task.expected_duration_minutes
+    );
+    if (planned == null) plannedUnknown += 1;
+    else plannedHours += planned;
+
+    const actualPersonMinutes = Number(assignment.actual_person_minutes || 0);
+    if (Number.isFinite(actualPersonMinutes) && actualPersonMinutes > 0) {
+      actualHours += actualPersonMinutes / 60;
+    }
+  }
+
+  const formatHours = (hours) => (
+    Number.isInteger(hours)
+      ? String(hours)
+      : hours.toFixed(1).replace(/\.0$/, '')
+  );
+
+  return {
+    plannedHours: formatHours(plannedHours),
+    plannedUnknown,
+    actualHours: formatHours(actualHours)
+  };
+}
+
 function renderNextExecution() {
   const target = el('next-perform-list');
   if (!target) return;
@@ -1080,11 +1186,31 @@ function renderNextExecution() {
   nextRenderPerformCaptainFilter();
   const allAssignments = (board.assignments || []).slice();
   const assignments = nextFilterPerformAssignments(allAssignments);
+  const labor = nextPerformLaborKpis(assignments);
   const summary = el('next-perform-filter-summary');
   if (summary) {
     summary.textContent = assignments.length === allAssignments.length
       ? `${assignments.length} scheduled assignment${assignments.length === 1 ? '' : 's'}`
       : `${assignments.length} of ${allAssignments.length} scheduled assignments shown`;
+  }
+
+  const kpis = el('next-perform-kpis');
+  if (kpis) {
+    const varianceReady = labor.plannedUnknown === 0;
+    const varianceValue = varianceReady
+      ? Number(labor.actualHours) - Number(labor.plannedHours)
+      : null;
+    const varianceText = varianceReady
+      ? `${varianceValue > 0 ? '+' : ''}${Number.isInteger(varianceValue) ? varianceValue : varianceValue.toFixed(1)} hr`
+      : 'TBD';
+    const plannedNote = labor.plannedUnknown
+      ? `${labor.plannedUnknown} assignment${labor.plannedUnknown === 1 ? '' : 's'} missing plan estimate`
+      : 'all visible assignments estimated';
+    kpis.innerHTML = `
+      <div class="next-perform-kpi"><span>Planned labor</span><strong>${escapeHtml(labor.plannedHours)} hr</strong><small>${escapeHtml(plannedNote)}</small></div>
+      <div class="next-perform-kpi"><span>Actual labor</span><strong>${escapeHtml(labor.actualHours)} hr</strong><small>reported work</small></div>
+      <div class="next-perform-kpi"><span>Variance</span><strong>${escapeHtml(varianceText)}</strong><small>${varianceReady ? 'actual − planned' : 'waiting on complete plan estimates'}</small></div>
+    `;
   }
   const days = (board.work_days || []).filter((day) =>
     assignments.some((assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id))
@@ -1260,6 +1386,7 @@ function nextProgressEntryHtml(progress) {
         ${escapeHtml(progress.performed_on || progress.work_date || formatTimestamp(progress.recorded_at))}
         · Crew ${escapeHtml(progress.crew_count)}
         ${progress.duration_minutes ? ` · ${escapeHtml(formatMinutes(progress.duration_minutes))}` : ''}
+        ${progress.duration_minutes && progress.crew_count ? ` · Labor ${escapeHtml(nextLaborHoursText(progress.crew_count, progress.duration_minutes))}` : ''}
         ${progress.percent_complete ? ` · ${progress.percent_complete}% complete` : ''}
         ${progress.progress_note ? ` · ${escapeHtml(progress.progress_note)}` : ''}
         ${escapeHtml(nextProgressAuditText(progress))}
@@ -1494,10 +1621,41 @@ async function nextLoadProcedure(task) {
 }
 loadProcedure = nextLoadProcedure;
 
-const priorNextRenderLibrary = renderLibrary;
+function renderNextLibraryReadiness() {
+  const target = el('library-list');
+  if (!target) return false;
+
+  if (setupNextState.organizationStatus === 'ready') return false;
+
+  document.querySelector('#library-view .next-library-tools')?.remove();
+  el('stage-gap-list').innerHTML = '';
+
+  if (setupNextState.organizationStatus === 'failed') {
+    const message = setupNextState.organizationError?.message || setupNextState.organizationError || 'Unknown organization load error';
+    target.innerHTML = `
+      <div class="empty-state">
+        <strong>Reusable Catalog organization could not be loaded.</strong>
+        <div class="muted">${escapeHtml(message)}</div>
+        <button id="next-organization-retry" type="button" class="secondary">Retry Catalog Organization</button>
+      </div>`;
+    el('next-organization-retry')?.addEventListener('click', () => {
+      setupNextState.organizationStatus = 'idle';
+      setupNextState.organizationError = null;
+      renderLibrary();
+    });
+    return true;
+  }
+
+  target.innerHTML = '<div class="empty-state">Loading reusable Catalog organization…</div>';
+  if (setupNextState.organizationStatus === 'idle') {
+    void loadNextOrganization(true).catch(() => renderLibrary());
+  }
+  return true;
+}
+
 renderLibrary = function renderLibraryNextPass() {
+  if (renderNextLibraryReadiness()) return;
   applyNextTaskScopes();
-  if (!setupNextState.scenes.length) return priorNextRenderLibrary();
   renderNextLibrary();
   installNextLibraryTools();
 };
@@ -1516,7 +1674,7 @@ const priorNextReloadTasks = reloadTasks;
 reloadTasks = async function reloadTasksNextPass(selectTaskId = null) {
   await priorNextReloadTasks(selectTaskId);
   applyNextTaskScopes();
-  if (setupNextState.scenes.length) renderLibrary();
+  renderLibrary();
 };
 
 async function initializeNextPass() {

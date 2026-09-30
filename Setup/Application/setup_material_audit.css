@@ -97,3 +97,52 @@ th { color: var(--muted); font-size: .76rem; text-transform: uppercase; letter-s
   flex-wrap: wrap;
   gap: 4px;
 }
+
+
+/* #206 post-launch correction: Extra Material source coverage remains a Manager
+   audit table, with enough room to show the requirement identity and correction. */
+.extra-material-source-audit-table { min-width: 1280px; }
+.extra-material-source-audit-table th:nth-child(1),
+.extra-material-source-audit-table td:nth-child(1) { min-width: 210px; }
+.extra-material-source-audit-table th:nth-child(2),
+.extra-material-source-audit-table td:nth-child(2) { min-width: 250px; }
+.extra-material-source-audit-table th:nth-child(3),
+.extra-material-source-audit-table td:nth-child(3) { min-width: 240px; }
+.extra-material-source-audit-table th:nth-child(4),
+.extra-material-source-audit-table td:nth-child(4) { min-width: 210px; }
+.extra-material-source-audit-table th:nth-child(5),
+.extra-material-source-audit-table td:nth-child(5) { min-width: 120px; }
+.extra-material-source-audit-table th:nth-child(6),
+.extra-material-source-audit-table td:nth-child(6) { min-width: 150px; }
+.extra-material-source-audit-table th:nth-child(7),
+.extra-material-source-audit-table td:nth-child(7) { min-width: 140px; }
+.extra-material-source-audit-table td:nth-child(7) .button {
+  display: inline-flex;
+  justify-content: center;
+  min-width: 122px;
+}
+
+
+/* #206 source-authority reconciliation helpers. */
+.historical-source-context {
+  display: grid;
+  gap: 5px;
+  margin-top: 6px;
+}
+.historical-source-item {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  padding-top: 5px;
+}
+.historical-source-item .small {
+  flex: 0 0 auto;
+}
+@media (max-width: 900px) {
+  .historical-source-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

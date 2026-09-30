@@ -15,7 +15,7 @@ def guard_source() -> str:
 def test_dirty_guard_asset_is_loaded_and_protected_before_layout_refinement():
     html = read("production.html")
     host = read("production_backend.py")
-    guard_index = html.index("setup_catalog_dirty_guard.js?v=2026-09-26.1")
+    guard_index = html.index("setup_catalog_dirty_guard.js?v=2026-09-29.3")
     compact_index = html.index("setup_task_detail_compact.js?v=2026-09-11.1")
     effort_index = html.index("setup_catalog_effort.js?v=2026-09-24.5")
     assert guard_index > effort_index
@@ -89,14 +89,39 @@ def test_reusable_save_preserves_pending_annual_fields_across_reload():
 
 def test_client_build_is_visible_and_write_paths_fail_closed_on_mismatch():
     js = guard_source()
-    assert "V0.3.19-pick-list" in js
-    assert "Client V0.3.19" in js
+    assert "V0.3.21-scheduling-gates" in js
+    assert "const CLIENT_BADGE = `Client ${CLIENT_BUILD.split('-')[0]}`;" in js
+    assert "badge.textContent = CLIENT_BADGE;" in js
+    assert "badge.textContent = ok ? CLIENT_BADGE" in js
     assert "setup-client-build-badge" in js
     assert "window.msbSetupClientBuild = CLIENT_BUILD" in js
-    assert "async function ensureServerBuild()" in js
+    assert "async function ensureServerBuild({ alertUser = true } = {})" in js
     assert "serverVersion === CLIENT_BUILD" in js
     assert "Refresh the page before making changes" in js
     assert "if (!await ensureServerBuild()) return false;" in js
+
+
+def test_client_and_server_build_identity_are_exactly_synchronized():
+    backend = read("production_backend.py")
+    js = guard_source()
+
+    server_marker = 'PRODUCTION_VERSION = "'
+    client_marker = "const CLIENT_BUILD = '"
+    server_version = backend.split(server_marker, 1)[1].split('"', 1)[0]
+    client_version = js.split(client_marker, 1)[1].split("'", 1)[0]
+
+    assert server_version == client_version
+
+
+def test_all_governed_setup_command_requests_require_current_client_server_build():
+    production = read("setup_production.js")
+    guard = guard_source()
+
+    assert "window.msbSetupEnsureServerBuild = ensureServerBuild;" in guard
+    assert "const isSetupCommand = options?.headers?.['X-MSB-Setup-Command'] === '1';" in production
+    assert "const checkBuild = window.msbSetupEnsureServerBuild;" in production
+    assert "await checkBuild({ alertUser: false })" in production
+    assert "Refresh required before changing Setup data." in production
 
 
 def test_navigation_uses_explicit_save_discard_cancel_decision():

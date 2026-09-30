@@ -7,8 +7,6 @@
   const pickStatusFilter = document.getElementById('pick-status-filter');
   const summary = document.getElementById('summary');
   const pickList = document.getElementById('pick-list');
-  const unresolvedSection = document.getElementById('unresolved-section');
-  const unresolvedList = document.getElementById('unresolved-list');
   const statusLine = document.getElementById('status-line');
   const generatedAt = document.getElementById('generated-at');
   const overridePanel = document.getElementById('manager-override-panel');
@@ -318,6 +316,13 @@
     return parts.join(' — ');
   }
 
+  function humanReadableIdentity(item) {
+    if (item.physical_type === 'CONTAINER') {
+      return `C${String(item.physical_id ?? '').padStart(3, '0')}`;
+    }
+    return item.identity || `DISP:${item.physical_id ?? ''}`;
+  }
+
   function qrPayload(item) {
     const type = item.physical_type === 'DISPLAY' ? 'DISP' : 'CONT';
     return `https://db.sheboyganlights.org/scan/${type}/${item.physical_id}`;
@@ -357,31 +362,17 @@
     if (dates.includes(current)) dateFilter.value = current;
   }
 
-  function renderSummary(items, unresolved) {
+  function renderSummary(items) {
     const s = readiness?.summary || {};
     const cards = [
       ['Scheduled assignments', s.scheduled_assignment_count ?? 0],
       ['Needs pick', items.filter(i => !itemMoved(i)).length],
       ['Picked / moved', items.filter(itemMoved).length],
-      ['Physical items', items.length],
-      ['Material exceptions', unresolved.length]
+      ['Physical items', items.length]
     ];
     summary.innerHTML = cards.map(([label, value]) =>
       `<div class="summary-card"><strong>${esc(value)}</strong><span>${esc(label)}</span></div>`
     ).join('');
-  }
-
-  function renderUnresolved(date) {
-    const unresolved = (readiness?.unresolved_requirements || [])
-      .filter(r => !date || r.work_date === date);
-    unresolvedSection.hidden = unresolved.length === 0;
-    unresolvedList.innerHTML = unresolved.map(r => `
-      <div class="unresolved">
-        <strong>${esc(r.message || r.requirement_type || 'Material data exception')}</strong>
-        <div>${esc(stageScene(r))} — ${esc(r.task_name || 'Unnamed task')}</div>
-        <div class="meta">Day ${esc(r.setup_day_number ?? '?')} · ${esc(r.work_date || '')} · ${esc(r.shift_code || '')} · Crew ${esc(r.crew_lane || '?')}</div>
-      </div>`).join('');
-    return unresolved;
   }
 
   function itemDates(item, reasons, selectedDate) {
@@ -522,7 +513,7 @@
         <tbody class="pick-record">
           <tr class="pick-row">
             <td class="pick-identity-cell">
-              <div class="identity">${esc(item.identity)}</div>
+              <div class="identity">${esc(humanReadableIdentity(item))}</div>
               ${item.label ? `<div class="item-label">${esc(item.label)}</div>` : ''}
               <div class="pick-state">${pickStatusHtml(item)}</div>
               ${overrideBadgeHtml(item)}
@@ -535,11 +526,11 @@
               <span class="screen-value">${esc(destinationText(reasons))}</span>
               <span class="print-value">${esc(destinationPrintText(reasons))}</span>
             </td>
-            <td class="date-cell">
+            <td class="date-cell pick-by-cell">
               <strong class="screen-value">${esc(formatDate(dates.pickBy))}</strong>
               <strong class="print-value">${esc(formatDatePrint(dates.pickBy))}</strong>
             </td>
-            <td class="date-cell">
+            <td class="date-cell needed-for-cell">
               <span class="screen-value">${esc(dates.neededForText)}</span>
               <span class="print-value">${esc(
                 dates.neededForText === 'Manager override'
@@ -548,7 +539,7 @@
               )}</span>
             </td>
             <td class="qr-cell">
-              <div class="pick-qr" data-payload="${esc(payload)}" aria-label="QR for ${esc(item.identity)}"></div>
+              <div class="pick-qr" data-payload="${esc(payload)}" aria-label="QR for ${esc(humanReadableIdentity(item))}"></div>
             </td>
           </tr>
           <tr class="pick-reasons-row">
@@ -593,9 +584,8 @@
   function render() {
     if (!readiness) return;
     const date = dateFilter.value;
-    const unresolved = renderUnresolved(date);
     const items = renderItems(date);
-    renderSummary(items, unresolved);
+    renderSummary(items);
     generatedAt.textContent = `Generated ${new Date().toLocaleString()}`;
     statusLine.textContent = readiness.session
       ? `Live ${readiness.session.season_year} schedule → physical Pick List.`

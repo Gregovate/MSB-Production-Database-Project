@@ -53,6 +53,61 @@ def test_reusable_browser_preview_is_parameterized_and_version_pinnable() -> Non
     assert "SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY" in server
 
 
+def test_reusable_launchers_fail_before_server_contact_on_setup_build_identity_drift() -> None:
+    disposable = read_acceptance("run_setup_disposable_acceptance.ps1")
+    browser = read_acceptance("run_setup_disposable_browser_preview.ps1")
+
+    for launcher in (disposable, browser):
+        assert "function Get-CandidateSetupBuildIdentity" in launcher
+        assert "Setup/Application/production_backend.py" in launcher
+        assert "Setup/Application/setup_catalog_dirty_guard.js" in launcher
+        assert "PRODUCTION_VERSION" in launcher
+        assert "CLIENT_BUILD" in launcher
+        assert "$buildIdentity.Server -ne $buildIdentity.Client" in launcher
+        assert "STOP before server contact: Setup client/server version mismatch" in launcher
+
+    assert "[Parameter(Mandatory=$true)]\n    [string]$ExpectedVersion" in browser
+    assert "$ExpectedVersion -ne $buildIdentity.Server" in browser
+    assert "ExpectedVersion" in browser
+    assert "does not match exact candidate Setup build" in browser
+
+
+def test_reusable_browser_preview_recovers_transport_loss_without_rebuilding_clone() -> None:
+    launcher = read_acceptance("run_setup_disposable_browser_preview.ps1")
+    server = read_acceptance("setup_disposable_browser_preview_server.sh")
+
+    # Application candidate may stay pinned while later commits harden only the
+    # reusable acceptance tooling, matching the accepted #151 pattern.
+    assert "$toolingHead = (git -C $repo rev-parse HEAD).Trim()" in launcher
+    assert "merge-base --is-ancestor $CandidateSha $toolingHead" in launcher
+    assert "does not equal requested candidate" not in launcher
+
+    # The remote preview writes resumable state before the operator-review wait.
+    for token in (
+        'MODE="${2:-start}"',
+        'STATE_FILE="/tmp/msb-setup-browser-preview-state-${PREVIEW_PORT}.env"',
+        "write_resume_state",
+        "resume_existing_preview",
+        "PRESERVE_FOR_RECONNECT=1",
+        "SETUP_BROWSER_PREVIEW_TRANSPORT_LOST",
+        "preserving preview for reconnect",
+    ):
+        assert token in server
+
+    # A lost PTY must not trigger destructive cleanup of the healthy clone.
+    assert 'trap cleanup EXIT INT TERM' in server
+    assert 'trap preserve_transport_loss HUP' in server
+    assert 'if ! read -r _done; then' in server
+
+    # The workstation launcher re-establishes the foreground SSH tunnel to the
+    # same remote preview instead of re-running clone preparation.
+    assert "$resumeCommand" in launcher
+    assert "$mode = 'resume'" in launcher
+    assert "$maxReconnectAttempts = 12" in launcher
+    assert "Reconnecting to preserved Setup browser preview" in launcher
+    assert "Start-Process" not in launcher
+    assert "ssh -N" not in launcher
+
 def test_reusable_browser_preview_preserves_setup_procedure_runtime_mounts() -> None:
     server = read_acceptance("setup_disposable_browser_preview_server.sh")
 
@@ -130,8 +185,11 @@ def test_reusable_acceptance_cleanup_and_production_after_check_are_mandatory() 
     disposable = read_acceptance("setup_disposable_acceptance_server.sh")
     browser = read_acceptance("setup_disposable_browser_preview_server.sh")
 
+    assert "trap cleanup EXIT HUP INT TERM" in disposable
+    assert "trap cleanup EXIT INT TERM" in browser
+    assert "trap preserve_transport_loss HUP" in browser
+
     for server in (disposable, browser):
-        assert "trap cleanup EXIT HUP INT TERM" in server
         assert 'docker rm -f "$TEST_CONTAINER"' in server
         assert 'worktree remove --force "$CANDIDATE_WORKTREE"' in server
         assert 'sudo rm -rf "$PYCACHE"' in server

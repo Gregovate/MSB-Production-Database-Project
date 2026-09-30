@@ -128,6 +128,16 @@ def api_task_extra_materials(setup_task_id: int) -> Response:
     return jsonify(extra_materials=repo().task_materials(setup_task_id))
 
 
+@setup_extra_material_api.get("/api/setup/task-extra-materials/source-options")
+def api_task_extra_material_source_options() -> Response:
+    require_reader()
+    material_id_text = request.args.get("setup_extra_material_id", "").strip()
+    material_id = int(material_id_text) if material_id_text else None
+    return jsonify(requirements=repo().task_requirement_options(
+        setup_extra_material_id=material_id,
+    ))
+
+
 @setup_extra_material_api.get("/api/setup/containers/<int:container_id>/extra-materials")
 def api_container_extra_materials(container_id: int) -> Response:
     require_reader()
@@ -170,13 +180,23 @@ def api_extra_material_update(material_id: int) -> Response:
 def api_task_extra_material_create(setup_task_id: int) -> tuple[Response, int]:
     require_setup_command()
     _base_repo, email, _access = require_manager()
-    result = repo().set_task_material(
+    payload = json_body()
+    source = payload.get("source")
+    if not isinstance(source, dict) or not source.get("container_id"):
+        return jsonify(
+            error="A source Container is required when adding an Extra Material requirement."
+        ), 400
+    result = repo().create_task_material_with_source(
         email=email,
         setup_task_id=setup_task_id,
-        row_id=None,
-        payload=json_body(),
+        payload=payload,
     )
-    return jsonify(setup_task_extra_material=result), 201
+    return jsonify(
+        setup_task_extra_material=result["requirement"],
+        setup_task_extra_material_source=result["source"],
+        setup_container_extra_material_id=result["setup_container_extra_material_id"],
+        container_content_created=result["container_content_created"],
+    ), 201
 
 
 @setup_extra_material_api.patch(
@@ -185,11 +205,43 @@ def api_task_extra_material_create(setup_task_id: int) -> tuple[Response, int]:
 def api_task_extra_material_update(setup_task_id: int, row_id: int) -> Response:
     require_setup_command()
     _base_repo, email, _access = require_manager()
+    payload = json_body()
+    if payload.get("active_flag") is False:
+        return jsonify(
+            error="Do not carry mistaken Extra Material requirements forward as inactive rows. Use DELETE to remove the mistake."
+        ), 400
+    payload["active_flag"] = True
     return jsonify(setup_task_extra_material=repo().set_task_material(
         email=email,
         setup_task_id=setup_task_id,
         row_id=row_id,
-        payload=json_body(),
+        payload=payload,
+    ))
+
+
+@setup_extra_material_api.patch(
+    "/api/setup/tasks/<int:setup_task_id>/extra-materials/<int:row_id>/restore"
+)
+def api_task_extra_material_restore(setup_task_id: int, row_id: int) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    return jsonify(setup_task_extra_material=repo().restore_task_material(
+        email=email,
+        setup_task_id=setup_task_id,
+        row_id=row_id,
+    ))
+
+
+@setup_extra_material_api.delete(
+    "/api/setup/tasks/<int:setup_task_id>/extra-materials/<int:row_id>"
+)
+def api_task_extra_material_delete(setup_task_id: int, row_id: int) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    return jsonify(deleted=repo().delete_task_material(
+        email=email,
+        setup_task_id=setup_task_id,
+        row_id=row_id,
     ))
 
 
@@ -226,13 +278,34 @@ def api_task_extra_material_source_update(requirement_id: int, row_id: int) -> R
 def api_container_extra_material_create(container_id: int) -> tuple[Response, int]:
     require_setup_command()
     _base_repo, email, _access = require_manager()
-    result = repo().set_container_content(
+    payload = json_body()
+    extra_repo = repo()
+    container = extra_repo.container_contents(container_id)["container"]
+
+    # #206 orphan prevention is a Kit-specific rule. Preserve the accepted
+    # generic/non-Kit expected-content path used by T-Post/shared-stock and #230.
+    if int(container.get("container_type_id") or 0) != 2:
+        result = extra_repo.set_container_content(
+            email=email,
+            container_id=container_id,
+            row_id=None,
+            payload=payload,
+        )
+        return jsonify(setup_container_extra_material=result), 201
+
+    if not payload.get("setup_task_extra_material_id"):
+        return jsonify(
+            error="A task Extra Material requirement is required when adding Kit expected contents. Add the requirement from the Setup task first, or choose an existing task requirement."
+        ), 400
+    result = extra_repo.create_container_content_with_task_source(
         email=email,
         container_id=container_id,
-        row_id=None,
-        payload=json_body(),
+        payload=payload,
     )
-    return jsonify(setup_container_extra_material=result), 201
+    return jsonify(
+        setup_container_extra_material=result["content"],
+        setup_task_extra_material_source=result["source"],
+    ), 201
 
 
 @setup_extra_material_api.patch(
@@ -241,11 +314,31 @@ def api_container_extra_material_create(container_id: int) -> tuple[Response, in
 def api_container_extra_material_update(container_id: int, row_id: int) -> Response:
     require_setup_command()
     _base_repo, email, _access = require_manager()
-    return jsonify(setup_container_extra_material=repo().set_container_content(
+    payload = json_body()
+    extra_repo = repo()
+    if payload.get("active_flag") is False:
+        dependencies = extra_repo.container_content_task_dependencies(
+            container_id=container_id,
+            row_id=row_id,
+        )
+        if dependencies:
+            task_labels = ", ".join(
+                f"#{item['setup_task_id']} {item['task_name']}"
+                for item in dependencies
+            )
+            return jsonify(
+                error=(
+                    "Cannot remove this expected Container material while active task source "
+                    f"relationships still depend on it: {task_labels}. Reconcile or remove "
+                    "those task source links first."
+                ),
+                dependencies=dependencies,
+            ), 409
+    return jsonify(setup_container_extra_material=extra_repo.set_container_content(
         email=email,
         container_id=container_id,
         row_id=row_id,
-        payload=json_body(),
+        payload=payload,
     ))
 
 

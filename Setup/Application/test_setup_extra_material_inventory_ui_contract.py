@@ -289,3 +289,203 @@ def test_new_python_modules_parse() -> None:
         "production_backend.py",
     ):
         ast.parse(text(BASE_DIR / name), filename=name)
+
+
+
+def test_206_kit_orphan_prevention_preserves_non_kit_expected_content_creation() -> None:
+    api = text(BASE_DIR / "setup_extra_material_api.py")
+    bootstrap = text(BASE_DIR / "setup_tpost_inventory_bootstrap.js")
+    section = api.split(
+        '@setup_extra_material_api.post("/api/setup/containers/<int:container_id>/extra-materials")',
+        1,
+    )[1].split(
+        '@setup_extra_material_api.patch(\n    "/api/setup/containers/<int:container_id>/extra-materials/<int:row_id>"',
+        1,
+    )[0]
+
+    assert 'container = extra_repo.container_contents(container_id)["container"]' in section
+    assert 'if int(container.get("container_type_id") or 0) != 2:' in section
+    assert "extra_repo.set_container_content(" in section
+    assert "extra_repo.create_container_content_with_task_source(" in section
+    assert "A task Extra Material requirement is required when adding Kit expected contents." in section
+
+    # Existing non-Kit T-Post/shared-stock bootstrap remains valid and does not
+    # need a reusable-task requirement merely to establish Container contents.
+    assert "api/setup/containers/${containerId}/extra-materials" in bootstrap
+    assert "setup_task_extra_material_id" not in bootstrap
+
+
+def test_kit_expected_contents_are_bidirectionally_linked_to_task_requirements() -> None:
+    page = text(BASE_DIR / "kit_inventory.html")
+    ui = text(BASE_DIR / "setup_kit_inventory.js")
+    repo = text(BASE_DIR / "setup_extra_material_repository.py")
+    api = text(BASE_DIR / "setup_extra_material_api.py")
+
+    assert "Used by task(s)" in page
+    assert 'id="expected-task-requirement" required' in page
+    assert "prevents orphan Kit contents" in page
+    assert "api/setup/task-extra-materials/source-options?setup_extra_material_id=" in ui
+    assert "function usedByTasksHtml(row)" in ui
+    assert "NO TASK LINK RECORDED" in ui
+    assert "LINKED TO TASK" in ui
+    assert "Task / Kit spec differs. Material identity and source relationship are already linked." in ui
+    assert "LINKED TO TASK — DETAILS DIFFER" not in ui
+    assert "DETAILS DIFFER" not in ui
+    assert "TASK LINK NEEDS REVIEW" not in ui
+    assert "used_by_tasks" in repo
+    assert "ref.setup_task_extra_material_source AS src" in repo
+    assert "tm.active_flag" in repo
+    assert "t.active_flag" in repo
+    assert "create_container_content_with_task_source" in repo
+    assert "A task Extra Material requirement is required when adding Kit expected contents" in repo
+    assert "A task Extra Material requirement is required when adding Kit expected contents." in api
+
+
+def test_kit_first_expected_content_uses_task_requirement_as_identity_authority() -> None:
+    ui = text(BASE_DIR / "setup_kit_inventory.js")
+    repo = text(BASE_DIR / "setup_extra_material_repository.py")
+
+    assert "applyRequirementToExpectedEditor" in ui
+    assert "expected-task-requirement" in ui
+    assert "setIdentityFieldsDisabled(true)" in ui
+    assert "selected active task requirement is the identity authority" in repo
+    assert "ref.set_setup_container_extra_material(" in repo
+    assert "ref.set_setup_task_extra_material_source(" in repo
+    assert "conn.commit()" in repo
+
+
+def test_kit_task_use_column_does_not_break_inventory_cell_indexes() -> None:
+    review = text(BASE_DIR / "setup_kit_inventory_review.js")
+
+    assert "const notes = row.cells?.[6];" in review
+    assert "const text = row?.cells?.[5]?.textContent?.trim() || '';" in review
+    assert "openExpectedPanel('expected-item')" in review
+
+
+def test_206_kit_reverse_use_distinguishes_exact_link_from_spec_review() -> None:
+    repo = text(BASE_DIR / "setup_extra_material_repository.py")
+    ui = text(BASE_DIR / "setup_kit_inventory.js")
+
+    assert "'LINKED_TO_TASK'" in repo
+    assert "'TASK_LINK_NEEDS_REVIEW'" in repo
+    assert 'item["task_link_state"] = "NO_TASK_LINK_RECORDED"' in repo
+    assert "tm.setup_extra_material_id = cem.setup_extra_material_id" in repo
+    assert "AND tm.quantity_uom = cem.quantity_uom" not in repo.split("LEFT JOIN LATERAL (", 1)[1].split(") AS usage ON true", 1)[0]
+    assert "NO TASK LINK RECORDED" in ui
+    assert "LINKED TO TASK" in ui
+    assert "Task / Kit spec differs. Material identity and source relationship are already linked." in ui
+
+
+def test_206_kit_task_picker_is_material_first_and_hides_already_linked_requirement() -> None:
+    page = text(BASE_DIR / "kit_inventory.html")
+    ui = text(BASE_DIR / "setup_kit_inventory.js")
+
+    assert page.index('id="expected-item"') < page.index('id="expected-task-requirement"')
+    assert 'id="expected-task-requirement" required disabled' in page
+    assert "Choose a material first" in page
+    assert "handleExpectedMaterialChange" in ui
+    assert "source-options?setup_extra_material_id=" in ui
+    assert "countsByTask" in ui
+    assert "duplicateTask" in ui
+    assert "Already linked to this Kit" in ui
+    assert "linkedRequirementIds" in ui
+    assert "alreadyLinked && !includeLinked ? ' disabled' : ''" in ui
+
+
+def test_206_removing_kit_expected_content_blocks_active_task_source_divergence() -> None:
+    api = text(BASE_DIR / "setup_extra_material_api.py")
+    repo = text(BASE_DIR / "setup_extra_material_repository.py")
+
+    assert "def container_content_task_dependencies" in repo
+    assert "src.container_id = cem.container_id" in repo
+    assert "tm.setup_extra_material_id = cem.setup_extra_material_id" in repo
+    assert "tm.active_flag" in repo
+    assert "t.active_flag" in repo
+    assert "if payload.get(\"active_flag\") is False:" in api
+    assert "container_content_task_dependencies" in api
+    assert "Cannot remove this expected Container material while active task source " in api
+    assert "relationships still depend on it:" in api
+    assert "Reconcile or remove " in api
+    assert "those task source links first." in api
+    assert "dependencies=dependencies" in api
+    assert "), 409" in api
+
+
+def test_206_kit_expected_content_actions_are_visually_and_semantically_distinct() -> None:
+    page = text(BASE_DIR / "kit_inventory.html")
+    ui = text(BASE_DIR / "setup_kit_inventory.js")
+    css = text(BASE_DIR / "setup_kit_inventory.css")
+
+    assert "Edit / Remove" in ui
+    assert "Count / Adjust" in ui
+    assert "<strong>Edit / Remove</strong> changes expected contents" in page
+    assert "<strong>Count / Adjust</strong> records physical on-hand" in page
+    assert ".expected-edit {" in css
+    assert "border: 2px solid var(--accent);" in css
+    assert "font-weight: 700;" in css
+    assert ".kit-content-actions" in css
+    assert ".kit-contents-table th:nth-child(8)" in css
+
+
+def test_206_kit_task_link_detail_mismatch_does_not_imply_broken_link() -> None:
+    ui = text(BASE_DIR / "setup_kit_inventory.js")
+    css = text(BASE_DIR / "setup_kit_inventory.css")
+
+    assert "LINKED TO TASK" in ui
+    assert "Task / Kit spec differs." in ui
+    assert "Material identity and source relationship are already linked." in ui
+    assert "LINKED TO TASK — DETAILS DIFFER" not in ui
+    assert "DETAILS DIFFER" not in ui
+    assert "TASK LINK NEEDS REVIEW" not in ui
+    assert ".kit-content-link-review" in css
+    assert "color: var(--text);" in css
+
+
+def test_206_operator_sop_keeps_material_source_expected_and_inventory_separate() -> None:
+    repo_root = BASE_DIR.parent.parent
+    sop = text(
+        repo_root
+        / "Docs"
+        / "02_Production_Database"
+        / "01_System_Architecture"
+        / "12_Setup_and_Deployment"
+        / "operatorSOP"
+        / "Extra_Materials_and_Kit_Inventory.md"
+    )
+    operator_index = text(
+        repo_root
+        / "Docs"
+        / "02_Production_Database"
+        / "01_System_Architecture"
+        / "12_Setup_and_Deployment"
+        / "operatorSOP"
+        / "README.md"
+    )
+    manager_guide = text(
+        repo_root
+        / "Docs"
+        / "02_Production_Database"
+        / "02_Operational_SOPs"
+        / "Setup"
+        / "Setup_Session_Manager_Review_Guide.md"
+    )
+
+    assert "## The Four Questions" in sop
+    assert "### 1. What does the task need?" in sop
+    assert "### 2. Where should the crew find it?" in sop
+    assert "### 3. What should normally be in this Kit?" in sop
+    assert "### 4. What is physically on hand right now?" in sop
+    assert "A Procedure mention by itself does **not** make something an Extra Material." in sop
+    assert "hearing protection / ear plugs" in sop
+    assert "**Edit / Remove does not record a physical count.**" in sop
+    assert "**Do not use Count / Adjust to change what should belong in the Kit.**" in sop
+    assert "Unknown is better than invented authority." in sop
+    assert "Extra_Materials_and_Kit_Inventory.md" in operator_index
+    assert "Extra_Materials_and_Kit_Inventory.md" in manager_guide
+
+
+def test_206_kit_inventory_followup_assets_are_cache_busted() -> None:
+    page = text(BASE_DIR / "kit_inventory.html")
+
+    assert "setup_kit_inventory.css?v=2026-09-29.1" in page
+    assert "setup_kit_inventory.js?v=2026-09-29.1" in page

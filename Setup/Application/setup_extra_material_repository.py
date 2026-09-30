@@ -146,12 +146,53 @@ class SetupExtraMaterialRepository:
                     cem.active_flag,
                     b.inventory_event_count,
                     b.on_hand_quantity,
-                    b.last_inventory_event_at
+                    b.last_inventory_event_at,
+                    coalesce(usage.task_use_count, 0) AS task_use_count,
+                    coalesce(usage.used_by_tasks, '[]'::jsonb) AS used_by_tasks
                 FROM ref.setup_container_extra_material cem
                 JOIN ref.setup_extra_material m
                   ON m.setup_extra_material_id = cem.setup_extra_material_id
                 LEFT JOIN ops.setup_extra_material_inventory_balance b
                   ON b.setup_container_extra_material_id = cem.setup_container_extra_material_id
+                LEFT JOIN LATERAL (
+                    SELECT
+                        count(DISTINCT t.setup_task_id)::integer AS task_use_count,
+                        jsonb_agg(
+                            DISTINCT jsonb_build_object(
+                                'setup_task_extra_material_source_id', src.setup_task_extra_material_source_id,
+                                'setup_task_extra_material_id', tm.setup_task_extra_material_id,
+                                'setup_task_id', t.setup_task_id,
+                                'task_name', t.task_name,
+                                'stage_id', t.stage_id,
+                                'stage_key', s.stage_key,
+                                'stage_name', s.stage_name,
+                                'expected_quantity', src.expected_quantity,
+                                'source_verification_state', src.verification_state,
+                                'link_state',
+                                CASE
+                                    WHEN tm.quantity_uom = cem.quantity_uom
+                                     AND tm.size_text IS NOT DISTINCT FROM cem.size_text
+                                     AND tm.length_value IS NOT DISTINCT FROM cem.length_value
+                                     AND tm.length_unit IS NOT DISTINCT FROM cem.length_unit
+                                     AND tm.color IS NOT DISTINCT FROM cem.color
+                                    THEN 'LINKED_TO_TASK'
+                                    ELSE 'TASK_LINK_NEEDS_REVIEW'
+                                END
+                            )
+                        ) AS used_by_tasks
+                    FROM ref.setup_task_extra_material_source AS src
+                    JOIN ref.setup_task_extra_material AS tm
+                      ON tm.setup_task_extra_material_id = src.setup_task_extra_material_id
+                    JOIN ref.setup_task AS t
+                      ON t.setup_task_id = tm.setup_task_id
+                    LEFT JOIN ref.stage AS s
+                      ON s.stage_id = t.stage_id
+                    WHERE src.container_id = cem.container_id
+                      AND src.active_flag
+                      AND tm.active_flag
+                      AND t.active_flag
+                      AND tm.setup_extra_material_id = cem.setup_extra_material_id
+                ) AS usage ON true
                 WHERE cem.container_id = %s
                   AND cem.active_flag
                 ORDER BY m.display_order, m.material_name,
@@ -160,7 +201,23 @@ class SetupExtraMaterialRepository:
                 """,
                 (container_id,),
             )
-            contents = [dict(row) for row in cur.fetchall()]
+            contents = []
+            for row in cur.fetchall():
+                item = dict(row)
+                used_by = item.get("used_by_tasks")
+                item["used_by_tasks"] = used_by if isinstance(used_by, list) else list(used_by or [])
+                link_states = {
+                    str(task.get("link_state") or "")
+                    for task in item["used_by_tasks"]
+                    if isinstance(task, dict)
+                }
+                if "LINKED_TO_TASK" in link_states:
+                    item["task_link_state"] = "LINKED_TO_TASK"
+                elif item["used_by_tasks"]:
+                    item["task_link_state"] = "TASK_LINK_NEEDS_REVIEW"
+                else:
+                    item["task_link_state"] = "NO_TASK_LINK_RECORDED"
+                contents.append(item)
         return {"container": dict(container), "contents": contents}
 
     def inventory_history(self, setup_container_extra_material_id: int) -> list[dict[str, Any]]:
@@ -318,14 +375,434 @@ class SetupExtraMaterialRepository:
             "Task Extra Material update returned no result",
         )
 
+    def restore_task_material(
+        self,
+        *,
+        email: str,
+        setup_task_id: int,
+        row_id: int,
+    ) -> dict[str, Any]:
+        """Restore historical authority only through the governed database command."""
+        return self._command(
+            "SELECT * FROM ref.restore_setup_task_extra_material(%s,%s,%s)",
+            (email, setup_task_id, row_id),
+            "Historical task Extra Material restore returned no result",
+        )
+
+
+    def create_task_material_with_source(
+        self,
+        *,
+        email: str,
+        setup_task_id: int,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        source = payload.get("source")
+        if not isinstance(source, dict) or not source.get("container_id"):
+            raise SetupExtraMaterialRepositoryError(
+                "A source Container is required when adding a task Extra Material requirement"
+            )
+        if (
+            str(source.get("verification_state") or "UNVERIFIED").upper() == "VERIFIED"
+            and source.get("expected_quantity") is None
+        ):
+            raise SetupExtraMaterialRepositoryError(
+                "A VERIFIED source requires quantity from this Container"
+            )
+
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM ref.set_setup_task_extra_material(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (
+                    email,
+                    None,
+                    setup_task_id,
+                    payload.get("setup_extra_material_id"),
+                    payload.get("quantity_required"),
+                    payload.get("quantity_uom", "EA"),
+                    payload.get("size_text"),
+                    payload.get("length_value"),
+                    payload.get("length_unit"),
+                    payload.get("color"),
+                    payload.get("quantity_qualifier", "EXACT"),
+                    payload.get("verification_state", "UNVERIFIED"),
+                    payload.get("notes"),
+                    True,
+                ),
+            )
+            requirement = cur.fetchone()
+            if requirement is None:
+                raise SetupExtraMaterialRepositoryError(
+                    "Task Extra Material creation returned no result"
+                )
+
+            requirement_id = int(requirement["setup_task_extra_material_id"])
+            container_id = int(source.get("container_id"))
+            cur.execute(
+                "SELECT * FROM ref.set_setup_task_extra_material_source(%s,%s,%s,%s,%s,%s,%s,%s)",
+                (
+                    email,
+                    None,
+                    requirement_id,
+                    container_id,
+                    source.get("expected_quantity"),
+                    source.get("verification_state", "UNVERIFIED"),
+                    source.get("notes"),
+                    True,
+                ),
+            )
+            source_row = cur.fetchone()
+            if source_row is None:
+                raise SetupExtraMaterialRepositoryError(
+                    "Task Extra Material source creation returned no result"
+                )
+
+            # Task-first entry also establishes the Container expected-content
+            # authority when the same material/spec is not already present.
+            cur.execute(
+                """
+                SELECT cem.setup_container_extra_material_id
+                FROM ref.setup_container_extra_material AS cem
+                WHERE cem.container_id = %s
+                  AND cem.setup_extra_material_id = %s
+                  AND cem.quantity_uom = upper(btrim(coalesce(%s, 'EA')))
+                  AND cem.size_text IS NOT DISTINCT FROM nullif(btrim(%s), '')
+                  AND cem.length_value IS NOT DISTINCT FROM %s
+                  AND cem.length_unit IS NOT DISTINCT FROM nullif(upper(btrim(%s)), '')
+                  AND cem.color IS NOT DISTINCT FROM nullif(btrim(%s), '')
+                  AND cem.active_flag
+                ORDER BY cem.setup_container_extra_material_id
+                LIMIT 1
+                """,
+                (
+                    container_id,
+                    payload.get("setup_extra_material_id"),
+                    payload.get("quantity_uom", "EA"),
+                    payload.get("size_text"),
+                    payload.get("length_value"),
+                    payload.get("length_unit"),
+                    payload.get("color"),
+                ),
+            )
+            existing_content = cur.fetchone()
+            content_created = existing_content is None
+            if existing_content is None:
+                cur.execute(
+                    "SELECT * FROM ref.set_setup_container_extra_material(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                    (
+                        email,
+                        None,
+                        container_id,
+                        payload.get("setup_extra_material_id"),
+                        source.get("expected_quantity"),
+                        payload.get("quantity_uom", "EA"),
+                        payload.get("size_text"),
+                        payload.get("length_value"),
+                        payload.get("length_unit"),
+                        payload.get("color"),
+                        source.get("verification_state", "UNVERIFIED"),
+                        source.get("notes"),
+                        True,
+                    ),
+                )
+                container_content = cur.fetchone()
+                if container_content is None:
+                    raise SetupExtraMaterialRepositoryError(
+                        "Container expected-content creation returned no result"
+                    )
+                content_id = int(container_content["setup_container_extra_material_id"])
+            else:
+                content_id = int(existing_content["setup_container_extra_material_id"])
+
+            conn.commit()
+            return {
+                "requirement": dict(requirement),
+                "source": dict(source_row),
+                "setup_container_extra_material_id": content_id,
+                "container_content_created": content_created,
+            }
+
+
+    def delete_task_material(
+        self,
+        *,
+        email: str,
+        setup_task_id: int,
+        row_id: int,
+    ) -> dict[str, Any]:
+        return self._command(
+            "SELECT * FROM ref.delete_setup_task_extra_material(%s,%s,%s)",
+            (email, setup_task_id, row_id),
+            "Task Extra Material delete returned no result",
+        )
+
     def set_task_source(self, *, email: str, requirement_id: int, row_id: int | None, payload: dict[str, Any]) -> dict[str, Any]:
+        active_flag = payload.get("active_flag", True)
+        if row_id is not None and active_flag:
+            with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        source.setup_task_extra_material_id AS current_requirement_id,
+                        (
+                            current_tm.setup_extra_material_id = target_tm.setup_extra_material_id
+                            AND current_tm.quantity_uom = target_tm.quantity_uom
+                            AND current_tm.size_text IS NOT DISTINCT FROM target_tm.size_text
+                            AND current_tm.length_value IS NOT DISTINCT FROM target_tm.length_value
+                            AND current_tm.length_unit IS NOT DISTINCT FROM target_tm.length_unit
+                            AND current_tm.color IS NOT DISTINCT FROM target_tm.color
+                        ) AS spec_match
+                    FROM ref.setup_task_extra_material_source AS source
+                    JOIN ref.setup_task_extra_material AS current_tm
+                      ON current_tm.setup_task_extra_material_id = source.setup_task_extra_material_id
+                    JOIN ref.setup_task_extra_material AS target_tm
+                      ON target_tm.setup_task_extra_material_id = %s
+                    WHERE source.setup_task_extra_material_source_id = %s
+                    FOR UPDATE OF source
+                    """,
+                    (requirement_id, row_id),
+                )
+                existing = cur.fetchone()
+                if (
+                    existing is not None
+                    and int(existing["current_requirement_id"]) != int(requirement_id)
+                    and not bool(existing["spec_match"])
+                ):
+                    raise SetupExtraMaterialRepositoryError(
+                        "Cannot move an existing source to a different Extra Material requirement when the material specification does not match. Restore/review the historical requirement instead."
+                    )
+
+                cur.execute(
+                    "SELECT * FROM ref.set_setup_task_extra_material_source(%s,%s,%s,%s,%s,%s,%s,%s)",
+                    (
+                        email,
+                        row_id,
+                        requirement_id,
+                        payload.get("container_id"),
+                        payload.get("expected_quantity"),
+                        payload.get("verification_state", "UNVERIFIED"),
+                        payload.get("notes"),
+                        active_flag,
+                    ),
+                )
+                row = cur.fetchone()
+                conn.commit()
+                if row is None:
+                    raise SetupExtraMaterialRepositoryError(
+                        "Task Extra Material source update returned no result"
+                    )
+                return dict(row)
+
         return self._command(
             "SELECT * FROM ref.set_setup_task_extra_material_source(%s,%s,%s,%s,%s,%s,%s,%s)",
             (email, row_id, requirement_id, payload.get("container_id"),
              payload.get("expected_quantity"), payload.get("verification_state", "UNVERIFIED"),
-             payload.get("notes"), payload.get("active_flag", True)),
+             payload.get("notes"), active_flag),
             "Task Extra Material source update returned no result",
         )
+
+    def task_requirement_options(
+        self,
+        *,
+        setup_extra_material_id: int | None = None,
+    ) -> list[dict[str, Any]]:
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    tm.setup_task_extra_material_id,
+                    tm.setup_task_id,
+                    t.task_name,
+                    t.stage_id,
+                    s.stage_key,
+                    s.stage_name,
+                    tm.setup_extra_material_id,
+                    m.material_name,
+                    tm.quantity_required,
+                    tm.quantity_uom,
+                    tm.size_text,
+                    tm.length_value,
+                    tm.length_unit,
+                    tm.color,
+                    tm.quantity_qualifier,
+                    tm.verification_state
+                FROM ref.setup_task_extra_material AS tm
+                JOIN ref.setup_task AS t
+                  ON t.setup_task_id = tm.setup_task_id
+                JOIN ref.setup_extra_material AS m
+                  ON m.setup_extra_material_id = tm.setup_extra_material_id
+                LEFT JOIN ref.stage AS s
+                  ON s.stage_id = t.stage_id
+                WHERE tm.active_flag
+                  AND t.active_flag
+                  AND (%s IS NULL OR tm.setup_extra_material_id = %s)
+                ORDER BY
+                    s.park_order NULLS LAST,
+                    s.sub_order NULLS LAST,
+                    t.display_order,
+                    t.setup_task_id,
+                    tm.setup_task_extra_material_id
+                """,
+                (setup_extra_material_id, setup_extra_material_id),
+            )
+            return [dict(row) for row in cur.fetchall()]
+
+    def create_container_content_with_task_source(
+        self,
+        *,
+        email: str,
+        container_id: int,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        requirement_id = payload.get("setup_task_extra_material_id")
+        if not requirement_id:
+            raise SetupExtraMaterialRepositoryError(
+                "A task Extra Material requirement is required when adding Kit expected contents"
+            )
+        if (
+            str(payload.get("verification_state") or "UNVERIFIED").upper() == "VERIFIED"
+            and payload.get("expected_quantity") is None
+        ):
+            raise SetupExtraMaterialRepositoryError(
+                "A VERIFIED Kit source requires expected quantity from this Container"
+            )
+
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    tm.setup_task_extra_material_id,
+                    tm.setup_extra_material_id,
+                    tm.quantity_uom,
+                    tm.size_text,
+                    tm.length_value,
+                    tm.length_unit,
+                    tm.color
+                FROM ref.setup_task_extra_material AS tm
+                JOIN ref.setup_task AS t
+                  ON t.setup_task_id = tm.setup_task_id
+                WHERE tm.setup_task_extra_material_id = %s
+                  AND tm.active_flag
+                  AND t.active_flag
+                FOR UPDATE OF tm
+                """,
+                (requirement_id,),
+            )
+            requirement = cur.fetchone()
+            if requirement is None:
+                raise SetupExtraMaterialRepositoryError(
+                    "Active task Extra Material requirement was not found"
+                )
+
+            # The selected active task requirement is the identity authority for
+            # Kit-first entry. Ignore duplicate browser identity fields rather than
+            # allowing them to drift from the requirement.
+            cur.execute(
+                "SELECT * FROM ref.set_setup_container_extra_material(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (
+                    email,
+                    None,
+                    container_id,
+                    requirement["setup_extra_material_id"],
+                    payload.get("expected_quantity"),
+                    requirement["quantity_uom"],
+                    requirement["size_text"],
+                    requirement["length_value"],
+                    requirement["length_unit"],
+                    requirement["color"],
+                    payload.get("verification_state", "UNVERIFIED"),
+                    payload.get("notes"),
+                    True,
+                ),
+            )
+            content = cur.fetchone()
+            if content is None:
+                raise SetupExtraMaterialRepositoryError(
+                    "Container expected-content creation returned no result"
+                )
+
+            cur.execute(
+                """
+                SELECT s.setup_task_extra_material_source_id
+                FROM ref.setup_task_extra_material_source AS s
+                WHERE s.setup_task_extra_material_id = %s
+                  AND s.container_id = %s
+                  AND s.active_flag
+                LIMIT 1
+                """,
+                (requirement_id, container_id),
+            )
+            source = cur.fetchone()
+            if source is None:
+                cur.execute(
+                    "SELECT * FROM ref.set_setup_task_extra_material_source(%s,%s,%s,%s,%s,%s,%s,%s)",
+                    (
+                        email,
+                        None,
+                        requirement_id,
+                        container_id,
+                        payload.get("expected_quantity"),
+                        payload.get("verification_state", "UNVERIFIED"),
+                        payload.get("notes"),
+                        True,
+                    ),
+                )
+                source = cur.fetchone()
+                if source is None:
+                    raise SetupExtraMaterialRepositoryError(
+                        "Task source creation returned no result"
+                    )
+
+            conn.commit()
+            return {
+                "content": dict(content),
+                "source": dict(source),
+            }
+
+    def container_content_task_dependencies(
+        self,
+        *,
+        container_id: int,
+        row_id: int,
+    ) -> list[dict[str, Any]]:
+        """Return active task/source relationships that depend on a Container material.
+
+        This intentionally matches by stable material identity rather than exact
+        reconstructed free-text specification. Removal should fail closed when
+        an active task says this Container is a source for the same material.
+        """
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT DISTINCT
+                    src.setup_task_extra_material_source_id,
+                    tm.setup_task_extra_material_id,
+                    tm.setup_task_id,
+                    t.task_name,
+                    m.material_name,
+                    src.expected_quantity,
+                    src.verification_state
+                FROM ref.setup_container_extra_material AS cem
+                JOIN ref.setup_task_extra_material_source AS src
+                  ON src.container_id = cem.container_id
+                 AND src.active_flag
+                JOIN ref.setup_task_extra_material AS tm
+                  ON tm.setup_task_extra_material_id = src.setup_task_extra_material_id
+                 AND tm.active_flag
+                 AND tm.setup_extra_material_id = cem.setup_extra_material_id
+                JOIN ref.setup_task AS t
+                  ON t.setup_task_id = tm.setup_task_id
+                 AND t.active_flag
+                JOIN ref.setup_extra_material AS m
+                  ON m.setup_extra_material_id = cem.setup_extra_material_id
+                WHERE cem.setup_container_extra_material_id = %s
+                  AND cem.container_id = %s
+                  AND cem.active_flag
+                ORDER BY tm.setup_task_id, tm.setup_task_extra_material_id
+                """,
+                (row_id, container_id),
+            )
+            return [dict(row) for row in cur.fetchall()]
 
     def set_container_content(self, *, email: str, container_id: int, row_id: int | None, payload: dict[str, Any]) -> dict[str, Any]:
         return self._command(
