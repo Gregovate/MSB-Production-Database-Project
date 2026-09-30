@@ -267,3 +267,19 @@ def test_reusable_disposable_grant_replay_is_batched_and_fail_fast() -> None:
         assert "application-role function ACL batch replay failed" in server
         assert 'echo "Grant replay [$grant_index]: $grant_stmt"' not in server
         assert 'psql_test -c "$grant_stmt" </dev/null' not in server
+
+
+def test_reusable_acl_batch_block_is_complete_before_role_lockdown() -> None:
+    for name in (
+        "setup_disposable_acceptance_server.sh",
+        "setup_disposable_browser_preview_server.sh",
+    ):
+        server = read_acceptance(name)
+        assert 'grant_count="$(wc -l < "$GRANTS_FILE" | tr -d \'[:space:]\')"' in server
+        count_at = server.index("Production function ACL statements extracted:")
+        replay_at = server.index('psql_test -q < "$GRANTS_FILE"')
+        pass_at = server.index("Production function ACL batch replay: PASS")
+        readonly_at = server.index(
+            'psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"'
+        )
+        assert count_at < replay_at < pass_at < readonly_at

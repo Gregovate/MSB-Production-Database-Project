@@ -518,7 +518,13 @@ if [[ ! -s "$GRANTS_FILE" ]]; then
     exit 23
 fi
 
-grant_count="$(grep -cve '^[[:space:]]*
+grant_count="$(wc -l < "$GRANTS_FILE" | tr -d '[:space:]')"
+echo "Production function ACL statements extracted: $grant_count"
+if ! psql_test -q < "$GRANTS_FILE"; then
+    echo "FAIL: application-role function ACL batch replay failed"
+    exit 23
+fi
+echo "Production function ACL batch replay: PASS"
 
 psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"
 
