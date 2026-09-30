@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Setup Pick List</title>
   <link rel="stylesheet" href="assets/setup_pick_list.css?v=2026-09-30.4">
-  <link rel="stylesheet" href="assets/setup_pick_mode.css?v=2026-09-30.7">
+  <link rel="stylesheet" href="assets/setup_pick_mode.css?v=2026-09-30.8">
 </head>
 <body>
 <header class="page-header">
@@ -42,7 +42,13 @@
         <h2 id="pick-mode-title">WORKSHOP PICK — READY</h2>
         <p id="pick-mode-help">Scan a Pick List Container / Display with Zebra, or type/paste the permanent identity.</p>
       </div>
-      <button id="stop-pick-mode" type="button">Stop Scanner</button>
+      <div class="pick-mode-toolbar-actions">
+        <div class="pick-mode-toolbar-counts">
+          <span>Containers picked: <strong id="pick-mode-containers-picked">0</strong></span>
+          <span id="pick-mode-training-count" hidden>Training picks: <strong>0</strong></span>
+        </div>
+        <button id="stop-pick-mode" type="button">Stop Scanner</button>
+      </div>
     </div>
 
     <div class="movement-manual-entry">
@@ -53,10 +59,6 @@
       </div>
     </div>
 
-    <div class="pick-mode-counters">
-      <span>Containers picked: <strong id="pick-mode-containers-picked">0</strong></span>
-      <span id="pick-mode-training-count" hidden>Training picks: <strong>0</strong></span>
-    </div>
     <div id="pick-mode-feedback" class="pick-mode-feedback ready">READY — scan or choose an item</div>
     <div class="pick-mode-meta">
       <span id="pick-mode-network">Checking connection…</span>
