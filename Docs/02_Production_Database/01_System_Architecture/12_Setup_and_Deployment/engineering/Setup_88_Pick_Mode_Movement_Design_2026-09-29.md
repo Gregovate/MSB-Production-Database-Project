@@ -551,3 +551,57 @@ The current live #219 field harness remains useful while #171 is open. A later S
 Required order for V0.3.29 Production is Setup/PostgreSQL first, then Scan. This avoids exposing Record Location links before the target Setup route/movement API exists.
 
 The failed preflight that exposed the stale Scan baseline made no database, Setup checkout, or Scan runtime mutation.
+
+
+## 2026-09-30 Production recovery — shared audit prerequisite already fixed in source
+
+The first bounded V0.3.29 Setup/PostgreSQL Production attempt committed migration 065, then stopped during the rollback-only #88 movement validation before the application checkout advanced.
+
+Failure evidence:
+
+```text
+ops.setup_container_state.updated_by = NULL
+during record_setup_movement_event(...) UPSERT
+```
+
+This is not a new movement-model defect. It is the already-known shared audit-attribution defect reproduced during prior #122/#88 acceptance using the existing person/user 36 case.
+
+The accepted database-wide source repair already exists:
+
+```text
+Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql
+```
+
+The prior defect allowed an UPDATE trigger to retain an old non-null updater carried forward in `NEW` instead of stamping the currently resolved actor. The shared repair corrects that update-attribution rule and hardens usable actor-name resolution.
+
+The earlier disposable #88 acceptance passed because the accepted order was:
+
+```text
+shared audit repair
+-> database-wide audit rollback validation
+-> migration 065
+-> #88 movement rollback validation
+```
+
+The Production deployment incorrectly omitted the shared repair after assuming it was already live. It was not.
+
+Current Production recovery state after the failed attempt:
+
+- migration 065 is committed;
+- rollback-only movement validation did not leave movement evidence;
+- governed Setup business fingerprint remained unchanged;
+- Setup runtime recovered to V0.3.22;
+- Scan/Directus was not changed.
+
+Therefore recovery is forward-only:
+
+```text
+prove 065 already installed
+-> create fresh post-065 / pre-audit PostgreSQL rollback archive
+-> apply the already-reviewed shared audit repair
+-> database-wide audit rollback validation
+-> #88 movement rollback validation
+-> only if both PASS, promote exact V0.3.29 Setup application
+```
+
+Do not reapply migration 065 and do not invent a new #88-specific audit workaround.
