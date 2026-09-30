@@ -29,6 +29,17 @@ Current schedule and material authority determine what appears. When future sche
 
 Use the visible **Pick By** and **Needed For** timing to understand urgency. Rack/home-location information helps put the physical pull in practical warehouse order.
 
+## Pick List Summary Counters
+
+The Pick List summary is physical-material status, not a second schedule summary.
+
+- **Items to pick** — current demanded physical items that are not delayed and are not already out/moved.
+- **Delayed items** — current demanded physical items temporarily held by Pick Delay.
+- **Items already moved** — current demanded physical items whose latest Setup movement state shows they are already out/moved. This may include Containers or standalone Displays and may include a real field observation that occurred without a prior Pick scan.
+- **Containers picked** — current-demand Containers with an actual `PICKED` event in the current Setup Session.
+
+**Containers picked** is therefore a true Pick throughput measure. A Container that is first discovered in the park through Record Location does not count as picked unless a real `PICKED` event also exists.
+
 ## Normal Picker Workflow
 
 1. Open the Rolling Pick List. The working view defaults to **Needs pick**.
@@ -37,7 +48,7 @@ Use the visible **Pick By** and **Needed For** timing to understand urgency. Rac
 4. Scan the Container/Display with the Zebra/HID scanner, or use the explicit picker fallback.
 5. A successful scan records **PICKED FOR PARK TRANSPORT**. The item then leaves the **Needs pick** working list.
 6. While the scanner is armed, the sticky Pick panel keeps **Containers picked** visible so the material handler can track real Container throughput without scrolling back to the page totals.
-7. Use **Picked / moved** or **All demanded items** only when you intentionally need to review already-picked rows.
+7. Use **Already moved** or **All demanded items** only when you intentionally need to review material that is no longer in the Needs pick working set.
 8. If the item should not be picked yet and you have Manager authority, use **Pick Delay** rather than changing the Setup schedule just to hide the item.
 
 The Pick operation deliberately does **not** require separate Load or Depart buttons. The physical Pick scan means the item is going onto transport for the park.
