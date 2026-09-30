@@ -134,7 +134,7 @@ def test_live_pick_list_surface_exposes_operational_columns_needs_pick_picked_an
     assert "Rolling Pick List" in html
     assert 'id="pick-status-filter"' in html
     assert '<option value="ALL">All demanded items</option>' in html
-    assert '<option value="OUTSTANDING">Needs pick</option>' in html
+    assert '<option value="OUTSTANDING" selected>Needs pick</option>' in html
     assert '<option value="MOVED">Picked / moved</option>' in html
     assert "A workshop scan records that an item was actually picked/moved" in html
     for heading in ("Container / Display", "Home Location", "Destination", "Pick By", "Needed For", "QR Code"):
@@ -160,7 +160,7 @@ def test_later_demand_reports_existing_pick_state_without_error() -> None:
     html = read("pick_list.html")
     ui = read("setup_pick_list.js")
     assert '<option value="ALL">All demanded items</option>' in html
-    assert '<option value="OUTSTANDING">Needs pick</option>' in html
+    assert '<option value="OUTSTANDING" selected>Needs pick</option>' in html
     assert '<option value="MOVED">Picked / moved</option>' in html
     assert "movement_status" in ui
     assert "'PICKED / MOVED'" in ui
