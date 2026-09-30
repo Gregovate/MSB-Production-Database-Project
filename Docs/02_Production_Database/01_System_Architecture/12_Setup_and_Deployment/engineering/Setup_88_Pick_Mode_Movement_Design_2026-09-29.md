@@ -2,11 +2,11 @@
 
 | Document Control | Value |
 |---|---|
-| Status | ACTIVE IMPLEMENTATION DESIGN |
+| Status | ACTIVE IMPLEMENTATION DESIGN — V0.3.27 successor candidate |
 | Issue | #88 |
 | Branch | `agent/setup-88-pick-mode-movement` |
-| Baseline main | `0fc710764e773311346324c71b12e51908dec7ae` |
-| Production Setup runtime | `9a614c1fa2eea0b425b03bdb4ac3e1790634c760` / `V0.3.21-scheduling-gates` |
+| Baseline main | `ff6cc0b6f7c65fe736f85ce12297dbc141a69267` |
+| Production Setup runtime | `6f53d7f0c4b15f7175e773a2069595eef3f0e698` / `V0.3.22-pick-list-delay` |
 | Owner | Setup movement / Labeling and Scanning integration |
 
 ## Purpose
@@ -321,6 +321,102 @@ Acceptance must prove:
 - Production fingerprint/live runtime remain unchanged throughout disposable/browser acceptance.
 
 Production deployment remains a separate explicit runbook-authorized step.
+
+
+
+## 2026-09-30 browser-review successor — V0.3.27 field training UX
+
+The V0.3.26 disposable browser review completed safely but was **not operator-accepted**. The review established that the movement/data rules were safe while several field/operator interactions still needed correction.
+
+The successor release identity is:
+
+```text
+V0.3.27-field-training-ux
+```
+
+This section supersedes earlier UI details where they conflict.
+
+### Training applies to both material-handler workflows
+
+Training is deliberately read-only but uses the real authenticated Production context and real device hardware.
+
+```text
+Workshop Pick List — TRAINING
+    -> real current Pick List
+    -> real Zebra HID / manual identity validation
+    -> delayed / not-demanded / already-moved feedback remains real
+    -> WOULD PICK feedback
+    -> NO movement POST
+    -> NO offline movement queue
+    -> NO real Pick List suppression
+    -> NO change to persisted Containers-picked totals
+
+Record Location — TRAINING
+    -> real Container/Display lookup
+    -> real Zebra / camera / GPS / reference data
+    -> real mixed-Container review
+    -> WOULD RECORD feedback
+    -> NO movement POST
+    -> NO offline movement queue
+```
+
+Training entry remains explicit and confirmation-gated. Active training must continuously show **TRAINING MODE — NOTHING WILL BE RECORDED** and provide an obvious Exit Training action.
+
+### Pick List field feedback
+
+While Pick Mode is armed, the sticky scanner panel must keep the real **Containers picked** count visible so the forklift/material handler does not lose throughput visibility while scrolling the rack list.
+
+Training may additionally show an in-memory **Training picks** counter. It is not database state and resets with the training page/session.
+
+### Record Location interaction order
+
+The accepted field interaction is:
+
+```text
+1. Scan / select asset
+2. Establish or confirm location evidence
+3. Review asset + exact location evidence together
+4. Record
+```
+
+A current GPS fix alone is valid location evidence. Selecting a nearby named reference is optional confirmation/context, not a second required identity.
+
+The final Record action must not appear ready before valid location evidence exists. The review step must show what will be recorded, for example:
+
+```text
+CONT:036 — T-Posts - Used For Panels
+Location confirmed: 01-Front Entrance-FE
+GPS ±18 ft
+Record CONT:036 at 01-Front Entrance-FE
+```
+
+On phone/tablet, successful identity selection should guide the operator to Location Evidence and a compact workflow status should keep the selected asset/location readiness visible near the action.
+
+Explicit GPS Start/Stop remains required. Do not force high-accuracy GPS continuously.
+
+### Perform Work labor KPI meaning
+
+Keep schedule workload visibility separate from performance comparison:
+
+- **Planned labor** = planned person-hours for the active Captain scope, independent of whether completed rows are currently hidden;
+- **Actual labor** = reported person-hours for that Captain scope;
+- **Completed-work variance** = actual person-hours minus planned person-hours using completed assignments only.
+
+Future scheduled work must not distort completed-work variance. If any completed assignment in the comparison lacks a plan estimate, variance remains TBD with an explicit completed-assignment missing-estimate count.
+
+### Acceptance consequence
+
+V0.3.26 browser-review evidence remains historical review evidence only. V0.3.27 must restart the exact-candidate chain:
+
+```text
+full Setup/Application regression
+ -> reusable current-Production disposable acceptance
+ -> fresh exact-candidate disposable browser review
+ -> physical rugged-tablet + Zebra / camera / GPS review
+ -> Wi-Fi loss / offline replay proof
+ -> formal Scan Node-runtime test
+ -> separate governed Production deployment authorization
+```
 
 
 ## 2026-09-30 launch checkpoint — Oct. 2 closed-loop target
