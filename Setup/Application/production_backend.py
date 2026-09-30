@@ -39,7 +39,7 @@ from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.24-field-movement"
+PRODUCTION_VERSION = "V0.3.25-record-location"
 
 # #222 lightweight Production request instrumentation.
 #
@@ -156,6 +156,12 @@ PICK_LIST_ASSETS = frozenset(
         "setup_pick_mode.css",
         "setup_pick_mode.js",
         "qrcode.min.js",
+    }
+)
+RECORD_LOCATION_ASSETS = frozenset(
+    {
+        "setup_record_location.css",
+        "setup_record_location.js",
     }
 )
 
@@ -500,6 +506,43 @@ def pick_list_service_worker():
 @app.get("/pick-list/assets/<path:name>")
 def pick_list_asset(name: str):
     if name not in PICK_LIST_ASSETS:
+        abort(404)
+    mimetype = "application/javascript" if name.casefold().endswith(".js") else None
+    return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
+
+
+@app.get("/record-location")
+@app.get("/record-location/")
+def record_location():
+    """Explicit Setup field workflow for recording Container / Display location."""
+    return _no_store(send_from_directory(BASE_DIR, "record_location.html"))
+
+
+@app.get("/record-location/service-worker.js")
+def record_location_service_worker():
+    return _no_store(
+        send_from_directory(
+            BASE_DIR,
+            "setup_record_location_sw.js",
+            mimetype="application/javascript",
+        )
+    )
+
+
+@app.get("/record-location/location-references.json")
+def record_location_references():
+    return _no_store(
+        send_from_directory(
+            BASE_DIR,
+            "setup_location_references.json",
+            mimetype="application/json",
+        )
+    )
+
+
+@app.get("/record-location/assets/<path:name>")
+def record_location_asset(name: str):
+    if name not in RECORD_LOCATION_ASSETS:
         abort(404)
     mimetype = "application/javascript" if name.casefold().endswith(".js") else None
     return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
