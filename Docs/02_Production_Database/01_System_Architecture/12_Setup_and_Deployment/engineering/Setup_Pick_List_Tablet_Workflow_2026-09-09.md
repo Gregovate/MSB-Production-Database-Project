@@ -358,3 +358,40 @@ Before the #88 Record Location workflow is Production accepted, browser/disposab
 7. mixed-stage unload does not guess membership when required state is unavailable;
 8. reference-location data is refreshable/versioned rather than compiled forever into the application; and
 9. later #171 GIS refinements cannot mutate the original raw observation evidence.
+
+
+### Record Location Training / Device Test
+
+The 2026-09-30 browser/device review identified a practical acceptance/training need: the real forklift/tablet/phone hardware cannot exercise camera/GPS/Zebra behavior through a workstation-local disposable browser tunnel.
+
+The accepted Production-facing solution is an explicit **Training / device test** mode inside Record Location.
+
+Training must reuse the real authenticated read path and real device sensors:
+
+- permanent `CONT:` / `DISP:` identity parsing;
+- Zebra/HID input;
+- browser camera scanning where supported;
+- Container/Display lookup;
+- current read-only movement/container context;
+- actual tablet/phone GPS;
+- current refreshable reference-location set; and
+- the same mixed-stage review UI.
+
+Training must **never**:
+
+- POST a Setup movement event;
+- enqueue an offline movement event for later replay;
+- fabricate GPS, Container contents, or named reference data; or
+- silently fall back into live write mode.
+
+The normal Record Location page must not expose an easy one-click training toggle in its primary controls. Entry is deliberately tucked under a collapsed **Training / device test** section and requires an explicit confirmation. Once active, the page must display a persistent, unmistakable:
+
+```text
+TRAINING MODE — NOTHING WILL BE RECORDED
+```
+
+banner. Leaving Training Mode should be simple and obvious.
+
+A direct `?training=1` URL remains useful for deliberate managed-device/bookmark testing, but normal Scan -> Record Location handoff does not add that parameter.
+
+This mode is intended for real material-handler practice on the forklift tablet and for post-deployment hardware verification without contaminating annual Setup movement history.
