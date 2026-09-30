@@ -16,3 +16,8 @@ body.pick-mode-active .delay-pick,body.pick-mode-active .resume-pick,body.pick-m
 body.pick-mode-active #print-button,body.pick-mode-active #back-button,body.pick-mode-active #start-pick-mode{display:none!important}
 @media(max-width:700px){.pick-mode-toolbar{display:block}.pick-mode-toolbar button{width:100%;margin-top:.6rem}.pick-mode-feedback{font-size:1.2rem}}
 @media print{.pick-mode-panel{display:none!important}}
+
+.movement-action-grid{display:grid;grid-template-columns:repeat(4,minmax(110px,1fr));gap:.55rem;margin-top:.85rem}
+.movement-action-grid button{min-height:52px;padding:.65rem .5rem;font-weight:900;border:2px solid currentColor;border-radius:9px}
+.movement-action-grid button.active{outline:4px solid currentColor;outline-offset:2px}
+@media(max-width:900px){.movement-action-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}}

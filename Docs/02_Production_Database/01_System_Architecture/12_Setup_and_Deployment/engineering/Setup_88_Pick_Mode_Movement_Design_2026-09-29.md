@@ -321,3 +321,14 @@ Acceptance must prove:
 - Production fingerprint/live runtime remain unchanged throughout disposable/browser acceptance.
 
 Production deployment remains a separate explicit runbook-authorized step.
+
+
+## 2026-09-30 launch checkpoint — Oct. 2 closed-loop target
+
+The implementation remains under #88 / PR #255. The bounded candidate release identity is:
+
+```text
+V0.3.23-movement-loop
+```
+
+The Oct. 2 launch target is not merely a PICKED proof. The scanner surface must support the same governed event contract through Pick, Load, Depart/In Transit, Unload, Stage, Place/Relocate, and Return Empty. GPS/accuracy evidence is persisted on the movement event and exposed on current-state reads; it does not become permanent GIS/reference identity. Return Empty must surface canonical Home Location and fail closed to a Manager correction when Home Location is missing.

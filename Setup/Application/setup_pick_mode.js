@@ -7,6 +7,10 @@
   const feedback = document.getElementById('pick-mode-feedback');
   const networkState = document.getElementById('pick-mode-network');
   const queueState = document.getElementById('pick-mode-queue');
+  const gpsState = document.getElementById('pick-mode-gps');
+  const title = document.getElementById('pick-mode-title');
+  const help = document.getElementById('pick-mode-help');
+  const actionButtons = Array.from(document.querySelectorAll('[data-movement-action]'));
   const seasonSelect = document.getElementById('season-select');
 
   const DB_NAME = 'msb-setup-movement';
@@ -14,13 +18,27 @@
   const STORE_NAME = 'movement-queue';
   const DEVICE_KEY = 'msb.setup.movement.device-id';
   const SCAN_RESET_MS = 5000;
+  const ACTION_LABELS = Object.freeze({
+    PICKED: 'PICK',
+    LOADED: 'LOAD',
+    IN_TRANSIT: 'DEPART / IN TRANSIT',
+    UNLOADED: 'UNLOAD',
+    STAGED: 'STAGE',
+    PLACED: 'PLACE',
+    RELOCATED: 'RELOCATE',
+    RETURNED: 'RETURN EMPTY'
+  });
+  const GPS_REQUIRED_ACTIONS = new Set([
+    'UNLOADED', 'STAGED', 'PLACED', 'RELOCATED'
+  ]);
 
   let active = false;
+  let currentAction = 'PICKED';
   let scanBuffer = '';
   let scanResetTimer = null;
   let latestPosition = null;
   let watchId = null;
-  let queuedAssetKeys = new Set();
+  let queuedActionKeys = new Set();
   let syncing = false;
 
   function bridge() {
@@ -118,10 +136,18 @@
     return `${assetType}:${assetId}`;
   }
 
+  function actionKey(assetType, assetId, action) {
+    return `${assetKey(assetType, assetId)}:${action}`;
+  }
+
   async function refreshQueueState() {
     try {
       const rows = await queueRows();
-      queuedAssetKeys = new Set(rows.map((row) => assetKey(row.asset_type, row.asset_id)));
+      queuedActionKeys = new Set(rows.map((row) => actionKey(
+        row.asset_type,
+        row.asset_id,
+        row.movement_action
+      )));
       if (queueState) queueState.textContent = `Offline queue: ${rows.length}`;
       return rows;
     } catch (error) {
@@ -162,8 +188,8 @@
       const status = String(item?.current_observation?.movement_status || 'MOVED');
       return {ok: false, kind: 'warning', message: `${identity.identity} — ALREADY ${status}`};
     }
-    if (queuedAssetKeys.has(assetKey(identity.asset_type, identity.asset_id))) {
-      return {ok: false, kind: 'offline', message: `${identity.identity} — ALREADY QUEUED OFFLINE`};
+    if (queuedActionKeys.has(actionKey(identity.asset_type, identity.asset_id, 'PICKED'))) {
+      return {ok: false, kind: 'offline', message: `${identity.identity} — PICK ALREADY QUEUED OFFLINE`};
     }
     return {ok: true, item};
   }
@@ -177,13 +203,34 @@
     };
   }
 
+  function gpsText() {
+    if (!latestPosition) return 'GPS unavailable';
+    const accuracy = Math.round(Number(latestPosition.coords.accuracy) || 0);
+    return `GPS ±${accuracy} m`;
+  }
+
+  function selectAction(action) {
+    if (!Object.hasOwn(ACTION_LABELS, action)) return;
+    currentAction = action;
+    actionButtons.forEach((button) => {
+      button.classList.toggle('active', button.dataset.movementAction === action);
+    });
+    if (title) title.textContent = `SCAN MODE — ${ACTION_LABELS[action]}`;
+    if (help) {
+      help.textContent = action === 'RETURNED'
+        ? 'Scan an empty Container or Display. The accepted Home Location will be shown after the return event is recorded.'
+        : `${ACTION_LABELS[action]} is armed. Scan CONT:<id> or DISP:<id> + Enter.`;
+    }
+    if (active) setFeedback('ready', `READY — ${ACTION_LABELS[action]} next scan`);
+  }
+
   function movementPayload(identity) {
     return {
       season_year: Number(seasonSelect?.value || 2026),
       client_event_id: uuid(),
       asset_type: identity.asset_type,
       asset_id: identity.asset_id,
-      movement_action: 'PICKED',
+      movement_action: currentAction,
       occurred_at: new Date().toISOString(),
       device_id: deviceId(),
       captured_operator_email: String(
@@ -219,43 +266,73 @@
   async function queueMovement(payload) {
     const queued = {...payload, offline_captured: true, queue_status: 'QUEUED'};
     await putQueue(queued);
-    queuedAssetKeys.add(assetKey(payload.asset_type, payload.asset_id));
+    queuedActionKeys.add(actionKey(
+      payload.asset_type,
+      payload.asset_id,
+      payload.movement_action
+    ));
     await refreshQueueState();
     return queued;
   }
 
-  async function recordPick(identity) {
-    const validation = cachedPickValidation(identity);
-    if (!validation.ok) {
-      setFeedback(validation.kind, validation.message);
+  async function recordMovement(identity) {
+    if (currentAction === 'PICKED') {
+      const validation = cachedPickValidation(identity);
+      if (!validation.ok) {
+        setFeedback(validation.kind, validation.message);
+        return;
+      }
+    } else if (queuedActionKeys.has(actionKey(
+      identity.asset_type,
+      identity.asset_id,
+      currentAction
+    ))) {
+      setFeedback(
+        'offline',
+        `${identity.identity} — ${ACTION_LABELS[currentAction]} ALREADY QUEUED OFFLINE`
+      );
+      return;
+    }
+
+    if (GPS_REQUIRED_ACTIONS.has(currentAction) && !latestPosition) {
+      setFeedback(
+        'blocked',
+        `${ACTION_LABELS[currentAction]} REQUIRES LOCATION — wait for GPS before scanning`
+      );
       return;
     }
 
     const payload = movementPayload(identity);
+    const action = payload.movement_action;
 
     if (!navigator.onLine) {
       try {
         await queueMovement(payload);
-        setFeedback('offline', `${identity.identity} — QUEUED OFFLINE`);
+        setFeedback('offline', `${identity.identity} — ${ACTION_LABELS[action]} QUEUED OFFLINE`);
       } catch (error) {
         setFeedback('blocked', `OFFLINE QUEUE FAILED — ${error.message || error}`);
       }
       return;
     }
 
-    setFeedback('ready', `${identity.identity} — recording PICKED…`);
+    setFeedback('ready', `${identity.identity} — recording ${ACTION_LABELS[action]}…`);
     try {
       const movement = await postMovement(payload);
-      setFeedback(
-        'success',
-        `${identity.identity} — ${movement.duplicate_event ? 'ALREADY RECORDED' : 'PICKED'}`
-      );
+      let message = `${identity.identity} — ${movement.duplicate_event ? 'ALREADY RECORDED' : ACTION_LABELS[action]}`;
+      if (action === 'RETURNED') {
+        message += movement.home_location_code
+          ? ` — HOME ${movement.home_location_code}`
+          : ' — HOME LOCATION MISSING — MANAGER EXCEPTION';
+      } else if (latestPosition) {
+        message += ` · ${gpsText()}`;
+      }
+      setFeedback('success', message);
       await bridge()?.reload?.();
     } catch (error) {
       if (!navigator.onLine || !error.httpStatus || error.httpStatus >= 500) {
         try {
           await queueMovement(payload);
-          setFeedback('offline', `${identity.identity} — QUEUED OFFLINE`);
+          setFeedback('offline', `${identity.identity} — ${ACTION_LABELS[action]} QUEUED OFFLINE`);
           return;
         } catch (queueError) {
           setFeedback('blocked', `PICK FAILED — ${queueError.message || queueError}`);
@@ -275,7 +352,7 @@
       setFeedback('blocked', `INVALID SCAN — expected CONT:<id> or DISP:<id>`);
       return;
     }
-    await recordPick(identity);
+    await recordMovement(identity);
   }
 
   function clearScanTimer() {
@@ -314,10 +391,20 @@
   }
 
   function startGps() {
-    if (!navigator.geolocation || watchId !== null) return;
+    if (!navigator.geolocation) {
+      if (gpsState) gpsState.textContent = 'GPS unavailable';
+      return;
+    }
+    if (watchId !== null) return;
+    if (gpsState) gpsState.textContent = 'GPS: acquiring…';
     watchId = navigator.geolocation.watchPosition(
-      (position) => { latestPosition = position; },
-      () => {},
+      (position) => {
+        latestPosition = position;
+        if (gpsState) gpsState.textContent = gpsText();
+      },
+      () => {
+        if (gpsState) gpsState.textContent = 'GPS unavailable';
+      },
       {enableHighAccuracy: true, maximumAge: 30000, timeout: 10000}
     );
   }
@@ -338,6 +425,7 @@
     }
     active = true;
     scanBuffer = '';
+    selectAction('PICKED');
     document.body.classList.add('pick-mode-active');
     if (panel) panel.hidden = false;
     document.activeElement?.blur?.();
@@ -364,7 +452,11 @@
         try {
           await postMovement({...row, offline_captured: true});
           await deleteQueue(row.client_event_id);
-          queuedAssetKeys.delete(assetKey(row.asset_type, row.asset_id));
+          queuedActionKeys.delete(actionKey(
+            row.asset_type,
+            row.asset_id,
+            row.movement_action
+          ));
         } catch (error) {
           if (!error.httpStatus || error.httpStatus >= 500) break;
           await putQueue({
@@ -417,6 +509,11 @@
   document.addEventListener('keydown', captureKeydown, true);
   startButton?.addEventListener('click', startMode);
   stopButton?.addEventListener('click', stopMode);
+  actionButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      selectAction(String(button.dataset.movementAction || '').toUpperCase());
+    });
+  });
   window.addEventListener('online', () => {
     updateNetwork();
     void syncQueue();

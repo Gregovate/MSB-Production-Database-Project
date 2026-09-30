@@ -36,13 +36,24 @@
       <div>
         <div class="eyebrow">Fork-truck scanner mode</div>
         <h2 id="pick-mode-title">PICK MODE — ARMED</h2>
-        <p id="pick-mode-help">Scan a Container or Display. The Zebra sends CONT:&lt;id&gt; / DISP:&lt;id&gt; + Enter.</p>
+        <p id="pick-mode-help">Pick is armed. Scan a Container or Display. The Zebra sends CONT:&lt;id&gt; / DISP:&lt;id&gt; + Enter.</p>
       </div>
       <button id="stop-pick-mode" type="button">Stop Picking</button>
+    </div>
+    <div class="movement-action-grid" role="group" aria-label="Movement action">
+      <button type="button" data-movement-action="PICKED" class="active">Pick</button>
+      <button type="button" data-movement-action="LOADED">Load</button>
+      <button type="button" data-movement-action="IN_TRANSIT">Depart</button>
+      <button type="button" data-movement-action="UNLOADED">Unload</button>
+      <button type="button" data-movement-action="STAGED">Stage</button>
+      <button type="button" data-movement-action="PLACED">Place</button>
+      <button type="button" data-movement-action="RELOCATED">Relocate</button>
+      <button type="button" data-movement-action="RETURNED">Return Empty</button>
     </div>
     <div id="pick-mode-feedback" class="pick-mode-feedback ready">READY — scan the next item</div>
     <div class="pick-mode-meta">
       <span id="pick-mode-network">Checking connection…</span>
+      <span id="pick-mode-gps">GPS: acquiring…</span>
       <span id="pick-mode-queue">Offline queue: 0</span>
     </div>
   </section>

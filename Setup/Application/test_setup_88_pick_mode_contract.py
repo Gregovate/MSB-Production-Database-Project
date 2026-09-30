@@ -165,3 +165,52 @@ def test_production_host_registers_movement_api_pick_mode_assets_and_service_wor
     assert '"setup_pick_mode.js"' in backend
     assert '@app.get("/pick-list/service-worker.js")' in backend
     assert '"setup_pick_mode_sw.js"' in backend
+
+
+def test_pick_mode_exposes_closed_loop_actions_and_gps_feedback():
+    ui = read("setup_pick_mode.js")
+    html = read("pick_list.html")
+
+    for action in (
+        "PICKED",
+        "LOADED",
+        "IN_TRANSIT",
+        "UNLOADED",
+        "STAGED",
+        "PLACED",
+        "RELOCATED",
+        "RETURNED",
+    ):
+        assert f'data-movement-action="{action}"' in html
+        assert action in ui
+
+    assert "GPS_REQUIRED_ACTIONS" in ui
+    assert "GPS ±" in ui
+    assert "HOME LOCATION MISSING — MANAGER EXCEPTION" in ui
+    assert "movement_action: currentAction" in ui
+    assert "actionKey(" in ui
+
+
+def test_current_state_exposes_latest_movement_gps_evidence():
+    repository = read("setup_movement_repository.py")
+    assert "me.gps_latitude" in repository
+    assert "me.gps_longitude" in repository
+    assert "me.gps_accuracy_m" in repository
+    assert "me.capture_method" in repository
+    assert "me.offline_captured" in repository
+
+
+def test_return_requires_canonical_home_and_location_actions_require_evidence():
+    migration = (ROOT / "Database" / "065_add_setup_movement_capture.sql").read_text(
+        encoding="utf-8"
+    )
+    assert "Home Location is missing — Manager correction required before RETURNED" in migration
+    assert "Location evidence is required for this movement action" in migration
+    assert "CASE WHEN v_action = 'PICKED' THEN v_home_location ELSE NULL END" in migration
+
+
+def test_movement_release_identity_is_distinct_and_synchronized():
+    backend = read("production_backend.py")
+    guard = read("setup_catalog_dirty_guard.js")
+    assert 'PRODUCTION_VERSION = "V0.3.23-movement-loop"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.23-movement-loop';" in guard

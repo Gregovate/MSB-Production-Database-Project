@@ -125,13 +125,22 @@ class SetupMovementRepository:
                         s.stage_key,
                         s.stage_name,
                         cs.current_location_note,
-                        cs.last_movement_event_id
+                        cs.last_movement_event_id,
+                        me.event_type AS last_event_type,
+                        me.occurred_at AS last_observed_at,
+                        me.gps_latitude,
+                        me.gps_longitude,
+                        me.gps_accuracy_m,
+                        me.capture_method,
+                        me.offline_captured
                     FROM ops.setup_session ss
                     JOIN ref.container c ON c.container_id = %s
                     LEFT JOIN ops.setup_container_state cs
                       ON cs.setup_session_id = ss.setup_session_id
                      AND cs.container_id = c.container_id
                     LEFT JOIN ref.stage s ON s.stage_id = cs.current_stage_id
+                    LEFT JOIN ops.setup_movement_event me
+                      ON me.setup_movement_event_id = cs.last_movement_event_id
                     WHERE ss.season_year = %s
                     """,
                     (asset_id, season_year),
@@ -152,7 +161,14 @@ class SetupMovementRepository:
                         s.stage_key,
                         s.stage_name,
                         ds.current_location_note,
-                        ds.last_movement_event_id
+                        ds.last_movement_event_id,
+                        me.event_type AS last_event_type,
+                        me.occurred_at AS last_observed_at,
+                        me.gps_latitude,
+                        me.gps_longitude,
+                        me.gps_accuracy_m,
+                        me.capture_method,
+                        me.offline_captured
                     FROM ops.setup_session ss
                     JOIN ref.display d ON d.display_id = %s
                     LEFT JOIN ref.container c ON c.container_id = d.container_id
@@ -160,6 +176,8 @@ class SetupMovementRepository:
                       ON ds.setup_session_id = ss.setup_session_id
                      AND ds.display_id = d.display_id
                     LEFT JOIN ref.stage s ON s.stage_id = ds.current_stage_id
+                    LEFT JOIN ops.setup_movement_event me
+                      ON me.setup_movement_event_id = ds.last_movement_event_id
                     WHERE ss.season_year = %s
                     """,
                     (asset_id, season_year),

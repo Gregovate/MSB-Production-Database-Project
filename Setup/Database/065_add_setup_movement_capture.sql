@@ -341,6 +341,14 @@ BEGIN
             MESSAGE = 'GPS latitude and longitude must be supplied together';
     END IF;
 
+    IF v_action IN ('DELIVERED','UNLOADED','STAGED','PLACED','RELOCATED')
+       AND p_destination_stage_id IS NULL
+       AND v_destination_note IS NULL
+       AND p_gps_latitude IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = '23514',
+            MESSAGE = 'Location evidence is required for this movement action';
+    END IF;
+
     SELECT ss.setup_session_id
       INTO v_session_id
     FROM ops.setup_session ss
@@ -462,6 +470,12 @@ BEGIN
         FOR UPDATE;
     END IF;
 
+    IF v_action = 'RETURNED'
+       AND v_home_location IS NULL THEN
+        RAISE EXCEPTION USING ERRCODE = '23514',
+            MESSAGE = 'Home Location is missing — Manager correction required before RETURNED';
+    END IF;
+
     IF v_action = 'PICKED'
        AND coalesce(v_existing_status, '') IN (
            'PICKED','LOADED','IN_TRANSIT','DELIVERED','UNLOADED',
@@ -527,7 +541,7 @@ BEGIN
         p_gps_latitude,
         p_gps_longitude,
         p_gps_accuracy_m,
-        v_home_location
+        CASE WHEN v_action = 'PICKED' THEN v_home_location ELSE NULL END
     )
     RETURNING ops.setup_movement_event.setup_movement_event_id
       INTO v_event_id;
