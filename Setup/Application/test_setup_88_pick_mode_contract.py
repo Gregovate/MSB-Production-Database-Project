@@ -173,6 +173,9 @@ def test_mixed_container_ui_records_only_selected_display_groups_as_unloaded():
     assert "'UNLOADED'" in sql
     assert "'TASK_UNLOAD'" in sql
     assert "position_mode = 'DETACHED'" in sql
+    readiness_repo = read("setup_material_readiness_repository.py")
+    assert "AS has_pick_event" in readiness_repo
+    assert "picked.event_type = 'PICKED'" in readiness_repo
     assert "material-access date" not in sql
     assert "DATE '2026-10-05'" not in sql
     assert "Grouped unload contains a Display that is not still WITH_CONTAINER" in sql
@@ -335,13 +338,13 @@ def test_release_identity_and_offline_shells_are_synchronized():
     location_sw = read("setup_record_location_sw.js")
     location_html = read("record_location.html")
 
-    assert 'PRODUCTION_VERSION = "V0.3.28-field-evidence"' in backend
-    assert "const CLIENT_BUILD = 'V0.3.28-field-evidence';" in guard
-    assert "msb-setup-pick-mode-v8" in pick_sw
+    assert 'PRODUCTION_VERSION = "V0.3.29-pick-clarity"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.29-pick-clarity';" in guard
+    assert "msb-setup-pick-mode-v9" in pick_sw
     assert "setup_pick_mode.css?v=2026-09-30.8" in pick_sw
     assert "setup_pick_mode.css?v=2026-09-30.8" in pick_html
-    assert "setup_pick_list.js?v=2026-09-30.8" in pick_sw
-    assert "setup_pick_list.js?v=2026-09-30.8" in pick_html
+    assert "setup_pick_list.js?v=2026-09-30.9" in pick_sw
+    assert "setup_pick_list.js?v=2026-09-30.9" in pick_html
     assert "setup_pick_mode.js?v=2026-09-30.7" in pick_sw
     assert "setup_pick_mode.js?v=2026-09-30.7" in pick_html
     assert "msb-setup-record-location-v6" in location_sw
@@ -382,6 +385,8 @@ def test_pick_list_training_mode_is_fail_closed_and_keeps_real_pick_totals_visib
     assert "TRAINING — WOULD PICK " in ui
     assert "NOTHING RECORDED" in ui
     assert "containersPickedCount" in list_ui
+    assert "item.current_observation?.has_pick_event" in list_ui
+    assert "has_pick_event: true" in list_ui
     assert "pick-mode-toolbar-counts" in css
     assert "settlePicked" in list_ui
     assert "settledPickEvidence" in list_ui
