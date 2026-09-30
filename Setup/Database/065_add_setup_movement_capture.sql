@@ -489,18 +489,9 @@ BEGIN
         RETURN;
     END IF;
 
-    IF p_season_year = 2026
-       AND (p_occurred_at AT TIME ZONE 'America/Chicago')::date < DATE '2026-10-05'
-       AND (
-           v_action IN (
-               'IN_TRANSIT','DELIVERED','UNLOADED','PLACED','RELOCATED',
-               'CONTAINER_MOVE','DISPLAY_MOVE'
-           )
-           OR p_destination_stage_id IS NOT NULL
-       ) THEN
-        RAISE EXCEPTION USING ERRCODE = '23514',
-            MESSAGE = 'Park movement cannot be recorded before the 2026-10-05 material-access date';
-    END IF;
+    /* Real movement/location observations are physical evidence. Planned access
+       dates do not block recording what an authenticated operator actually
+       observed in the field. */
 
     IF v_asset_type = 'CONTAINER' THEN
         SELECT c.location_code
