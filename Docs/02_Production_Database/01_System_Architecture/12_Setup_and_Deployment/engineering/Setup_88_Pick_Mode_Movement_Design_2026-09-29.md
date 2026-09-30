@@ -514,3 +514,40 @@ V0.3.23-movement-loop
 ```
 
 The Oct. 2 launch target is not merely a PICKED proof. The scanner surface must support the same governed event contract through Pick, Load, Depart/In Transit, Unload, Stage, Place/Relocate, and Return Empty. GPS/accuracy evidence is persisted on the movement event and exposed on current-state reads; it does not become permanent GIS/reference identity. Return Empty must surface canonical Home Location and fail closed to a Manager correction when Home Location is missing.
+
+
+## 2026-09-30 Production deployment authority split
+
+The first V0.3.29 Production attempt correctly stopped before mutation when the feature-owned deployment runner compared the live Scan artifact against the obsolete September 3 Controller baseline. Read-only reconciliation then proved the live Scan runtime is the still-useful #219 `/scan/field-test` harness used for #171 GIS/reference evidence.
+
+The Production deployment boundary is therefore deliberately split by runtime authority:
+
+```text
+Step 1 — Production Database / Setup authority
+    -> exact accepted Setup application SHA
+    -> Setup write freeze
+    -> validated PostgreSQL rollback archive
+    -> migration 065 only
+    -> transactional movement validation
+    -> /opt/msb-setup exact-target promotion
+    -> Setup restart / health / live regression
+    -> NO Directus/Scan file mutation
+
+Step 2 — MSB-Server-Management Scan authority
+    -> merged Production Database Scan candidate
+    -> isolated Directus endpoint-extension validation
+    -> verify current live #219 field-harness baseline
+    -> create/hash fresh immediately-current Scan rollback
+    -> replace only Scan dist/index.js
+    -> Directus restart / route regression
+    -> preserve /scan/field-test
+    -> verify explicit Display/Container Record Location handoffs
+```
+
+The #88 Setup/PostgreSQL runner must not copy, stage, back up, restart, or otherwise administer the Directus Scan extension. Scan runtime mutation belongs to the Server Management Scan deployment/recovery runbook and its reviewed repository-owned wrappers.
+
+The current live #219 field harness remains useful while #171 is open. A later Setup release must not silently regress or remove that route merely because its own Scan delta was based on an older source artifact.
+
+Required order for V0.3.29 Production is Setup/PostgreSQL first, then Scan. This avoids exposing Record Location links before the target Setup route/movement API exists.
+
+The failed preflight that exposed the stale Scan baseline made no database, Setup checkout, or Scan runtime mutation.

@@ -9,11 +9,6 @@ SETUP_ROOT="/opt/msb-setup"
 PYTHON="/opt/fieldwiring/.venv/bin/python"
 SETUP_SERVICE="msb-setup.service"
 
-DIRECTUS_CONTAINER="msb-directus"
-DIRECTUS_IMAGE="directus/directus:11.17.1"
-SCAN_LIVE_PATH="/opt/directus/extensions/directus-extension-scan/dist/index.js"
-EXPECTED_LIVE_SCAN_SHA256="3457efa15f461b774ef20462f57807d36cb848cac67bdcffcc2a8284c2dc2f96"
-
 TARGET_REF="main"
 TARGET_SHA="7da6828d7b884ee5bb12123dab647bd6fadfba50"
 EXPECTED_PRE_VERSION="V0.3.22-pick-list-delay"
@@ -23,23 +18,16 @@ MIGRATION_REL="Setup/Database/065_add_setup_movement_capture.sql"
 MIGRATION_BLOB="2738065a6fc3cb84858e401de5fae9bd6ae35dcc"
 VALIDATION_REL="Setup/Acceptance/setup_88_movement_capture_disposable_validation.sql"
 VALIDATION_BLOB="fc152c305dc0bf7a056aeff60aae3615b06b96d4"
-SCAN_SRC_REL="Scan/directus-extension-scan/src/index.js"
-SCAN_DIST_REL="Scan/directus-extension-scan/dist/index.js"
-SCAN_BLOB="4c2810bf33087d33803456d4b73a4ff1dc86760b"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 STAMP="$(date +%Y%m%dT%H%M%S)"
 BACKUP_DIR="/home/msbadmin/backups/setup-88"
-SCAN_BACKUP_DIR="/home/msbadmin/backups/directus-scan"
 REPORT_DIR="/home/msbadmin/setup-deployment-reports"
 BACKUP_FILE="$BACKUP_DIR/msb-pre-setup-88-v0329-$STAMP.dump"
-SCAN_ROLLBACK="$SCAN_BACKUP_DIR/pre-setup-88-v0329-$STAMP-index.js"
 REPORT="$REPORT_DIR/Setup_88_V0329_Production_Deploy_$STAMP.txt"
 CANDIDATE_WORKTREE="/tmp/msb-setup-88-v0329-candidate-$STAMP"
 DETACHED_PYCACHE="/tmp/msb-setup-88-v0329-detached-pycache-$STAMP"
 LIVE_PYCACHE="/tmp/msb-setup-88-v0329-live-pycache-$STAMP"
-STAGED_SCAN="/tmp/directus-scan-index-$TARGET_SHA-$STAMP.js"
-SCAN_CONTAINER_TMP="/tmp/directus-scan-candidate-$STAMP.js"
 NEGATIVE_BODY="/tmp/msb-setup-88-negative-$STAMP.json"
 
 OLD_SETUP_HEAD=""
@@ -53,27 +41,21 @@ INITIAL_DISPLAY_STATE=""
 BACKUP_CREATED=0
 DB_MIGRATION_COMMITTED=0
 SETUP_ADVANCED=0
-SCAN_ADVANCED=0
 SETUP_STOPPED=0
 SUCCESS=0
-STAGED_SCAN_SHA=""
 BACKUP_SHA=""
-SCAN_ROLLBACK_SHA=""
 
 mkdir -p "$REPORT_DIR"
 exec > >(tee "$REPORT") 2>&1
 
-echo "========== SETUP #88 V0.3.29 FIELD MOVEMENT PRODUCTION DEPLOYMENT =========="
+echo "========== SETUP #88 V0.3.29 SETUP/POSTGRESQL PRODUCTION DEPLOYMENT =========="
 echo "Authority: Gregovate/MSB-Server-Management — docs/server/Production_Database_Change_Deployment_Runbook.md"
 echo "Authority: Gregovate/MSB-Server-Management — docs/server/Setup_Production_Runtime.md"
-echo "Authority: Gregovate/MSB-Server-Management — docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md"
-echo "Authority: Gregovate/MSB-Server-Management — docs/directus/Directus_Restart_Procedure.md"
 echo "Exact accepted application SHA: $TARGET_SHA"
 echo "Expected Setup version: $EXPECTED_PRE_VERSION -> $EXPECTED_POST_VERSION"
 echo "Migration: $MIGRATION_REL"
 echo "Migration blob: $MIGRATION_BLOB"
-echo "Scan artifact blob: $SCAN_BLOB"
-echo "Expected current live Scan SHA256: $EXPECTED_LIVE_SCAN_SHA256"
+echo "Scan/Directus deployment: separate Server Management runbook; NOT mutated by this runner"
 echo "Report: $REPORT"
 echo
 
@@ -171,18 +153,6 @@ restart_setup() {
     wait_setup_ready
 }
 
-restart_directus() {
-    sudo docker restart "$DIRECTUS_CONTAINER" >/dev/null
-    for _ in $(seq 1 90); do
-        if [[ "$(sudo docker inspect "$DIRECTUS_CONTAINER" --format '{{.State.Running}}' 2>/dev/null || true)" == "true" ]] \
-           && curl -fsS http://127.0.0.1:8055/scan/ >/dev/null 2>&1; then
-            return 0
-        fi
-        sleep 1
-    done
-    return 1
-}
-
 cleanup() {
     status=$?
     trap - EXIT HUP INT TERM
@@ -191,14 +161,6 @@ cleanup() {
     if [[ "$status" -ne 0 && "$SUCCESS" -ne 1 ]]; then
         echo
         echo "--- FAIL-CLOSED RECOVERY ---"
-
-        if [[ "$SCAN_ADVANCED" -eq 1 && -s "$SCAN_ROLLBACK" ]]; then
-            echo "Restoring immediately preceding Scan artifact"
-            sudo cp -p "$SCAN_ROLLBACK" "$SCAN_LIVE_PATH" || true
-            restart_directus || true
-            SCAN_ADVANCED=0
-            echo "Scan artifact rollback attempted."
-        fi
 
         if [[ "$SETUP_ADVANCED" -eq 1 && -n "$OLD_SETUP_HEAD" ]]; then
             echo "Restoring /opt/msb-setup to prior SHA $OLD_SETUP_HEAD"
@@ -220,14 +182,12 @@ cleanup() {
         fi
     fi
 
-    sudo docker exec "$DIRECTUS_CONTAINER" rm -f "$SCAN_CONTAINER_TMP" >/dev/null 2>&1 || true
-
     if sudo git -C "$REPO_ROOT" worktree list --porcelain 2>/dev/null | grep -Fq "worktree $CANDIDATE_WORKTREE"; then
         sudo git -C "$REPO_ROOT" worktree remove --force "$CANDIDATE_WORKTREE" >/dev/null 2>&1 || true
     fi
     sudo git -C "$REPO_ROOT" worktree prune >/dev/null 2>&1 || true
     sudo rm -rf "$DETACHED_PYCACHE" "$LIVE_PYCACHE" >/dev/null 2>&1 || true
-    rm -f "$STAGED_SCAN" "$NEGATIVE_BODY" >/dev/null 2>&1 || true
+    rm -f "$NEGATIVE_BODY" >/dev/null 2>&1 || true
     rm -rf "$SCRIPT_DIR" >/dev/null 2>&1 || true
 
     echo
@@ -263,13 +223,6 @@ cleanup() {
         echo "Rollback PostgreSQL archive: not created before this stop"
     fi
 
-    if [[ -s "$SCAN_ROLLBACK" ]]; then
-        echo "Immediately preceding Scan artifact retained at: $SCAN_ROLLBACK"
-        echo "Scan rollback SHA256: ${SCAN_ROLLBACK_SHA:-unknown}"
-    else
-        echo "Scan rollback artifact: not created before this stop"
-    fi
-
     echo "Deployment report retained at: $REPORT"
     echo "Exit status: $status"
     exit "$status"
@@ -277,7 +230,7 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 
 sudo -v
-mkdir -p "$BACKUP_DIR" "$SCAN_BACKUP_DIR" "$REPORT_DIR"
+mkdir -p "$BACKUP_DIR" "$REPORT_DIR"
 
 echo "--- Verify current Production runtime ---"
 if ! sudo docker inspect "$PROD_CONTAINER" >/dev/null 2>&1; then
@@ -287,14 +240,6 @@ fi
 if [[ "$(sudo docker inspect "$PROD_CONTAINER" --format '{{.Config.Image}}')" != "postgis/postgis:16-3.5" ]]; then
     echo "FAIL: Production PostgreSQL image mismatch"
     exit 3
-fi
-if ! sudo docker inspect "$DIRECTUS_CONTAINER" >/dev/null 2>&1; then
-    echo "FAIL: Directus container not found"
-    exit 4
-fi
-if [[ "$(sudo docker inspect "$DIRECTUS_CONTAINER" --format '{{.Config.Image}}')" != "$DIRECTUS_IMAGE" ]]; then
-    echo "FAIL: Directus image differs from documented $DIRECTUS_IMAGE"
-    exit 5
 fi
 if ! sudo git -C "$REPO_ROOT" worktree list --porcelain | grep -Fq "worktree $SETUP_ROOT"; then
     echo "FAIL: $SETUP_ROOT is not a registered worktree of $REPO_ROOT"
@@ -314,15 +259,6 @@ if ! systemctl is-active --quiet "$SETUP_SERVICE"; then
     echo "FAIL: $SETUP_SERVICE is not active before deployment"
     exit 9
 fi
-if [[ "$(sudo docker inspect "$DIRECTUS_CONTAINER" --format '{{.State.Running}}')" != "true" ]]; then
-    echo "FAIL: $DIRECTUS_CONTAINER is not running before deployment"
-    exit 10
-fi
-if [[ ! -s "$SCAN_LIVE_PATH" ]]; then
-    echo "FAIL: live Scan artifact is missing: $SCAN_LIVE_PATH"
-    exit 11
-fi
-
 OLD_SETUP_HEAD="$(sudo git -C "$SETUP_ROOT" rev-parse HEAD)"
 SHARED_HEAD_BEFORE="$(sudo git -C "$REPO_ROOT" rev-parse HEAD)"
 echo "Verified live Setup checkout: $OLD_SETUP_HEAD"
@@ -336,16 +272,6 @@ if [[ "$SETUP_PRE" != *"\"status\":\"ok\""* \
     echo "FAIL: live Setup pre-version/health is not $EXPECTED_PRE_VERSION"
     exit 12
 fi
-
-LIVE_SCAN_SHA="$(sha256sum "$SCAN_LIVE_PATH" | awk '{print $1}')"
-echo "Current live Scan SHA256: $LIVE_SCAN_SHA"
-if [[ "$LIVE_SCAN_SHA" != "$EXPECTED_LIVE_SCAN_SHA256" ]]; then
-    echo "FAIL: live Scan hash differs from documented accepted baseline"
-    echo "Expected: $EXPECTED_LIVE_SCAN_SHA256"
-    echo "Actual:   $LIVE_SCAN_SHA"
-    exit 13
-fi
-echo "LIVE SCAN HASH BASELINE: PASS"
 
 INITIAL_FINGERPRINT="$(setup_business_fingerprint)"
 INITIAL_2026_COUNT="$(setup_2026_count)"
@@ -393,17 +319,13 @@ check_blob() {
 }
 check_blob "$MIGRATION_REL" "$MIGRATION_BLOB"
 check_blob "$VALIDATION_REL" "$VALIDATION_BLOB"
-check_blob "$SCAN_SRC_REL" "$SCAN_BLOB"
-check_blob "$SCAN_DIST_REL" "$SCAN_BLOB"
 
 echo
-echo "--- Detached exact-target regression and Scan staging ---"
+echo "--- Detached exact-target regression in Production runtime ---"
 sudo git -C "$REPO_ROOT" worktree add --detach "$CANDIDATE_WORKTREE" "$TARGET_SHA"
 M065="$CANDIDATE_WORKTREE/$MIGRATION_REL"
 V065="$CANDIDATE_WORKTREE/$VALIDATION_REL"
-SCAN_SRC="$CANDIDATE_WORKTREE/$SCAN_SRC_REL"
-SCAN_DIST="$CANDIDATE_WORKTREE/$SCAN_DIST_REL"
-for required in "$M065" "$V065" "$SCAN_SRC" "$SCAN_DIST"; do
+for required in "$M065" "$V065"; do
     [[ -s "$required" ]] || { echo "FAIL: exact target is missing required file $required"; exit 18; }
 done
 
@@ -411,21 +333,11 @@ grep -Fq 'PRODUCTION_VERSION = "V0.3.29-pick-clarity"' \
     "$CANDIDATE_WORKTREE/Setup/Application/production_backend.py"
 grep -Fq "CLIENT_BUILD = 'V0.3.29-pick-clarity'" \
     "$CANDIDATE_WORKTREE/Setup/Application/setup_catalog_dirty_guard.js"
-cmp -s "$SCAN_SRC" "$SCAN_DIST" || { echo "FAIL: Scan src/index.js and dist/index.js differ"; exit 19; }
 
 sudo -u fieldwiring -H env PYTHONPYCACHEPREFIX="$DETACHED_PYCACHE" bash -c \
     "cd '$CANDIDATE_WORKTREE' && '$PYTHON' -m pytest -q -p no:cacheprovider Setup/Application"
 echo "DETACHED EXACT-TARGET SETUP REGRESSION: PASS"
 
-cp "$SCAN_DIST" "$STAGED_SCAN"
-STAGED_SCAN_SHA="$(sha256sum "$STAGED_SCAN" | awk '{print $1}')"
-echo "Staged Scan SHA256: $STAGED_SCAN_SHA"
-sudo docker cp "$STAGED_SCAN" "$DIRECTUS_CONTAINER:$SCAN_CONTAINER_TMP"
-sudo docker exec "$DIRECTUS_CONTAINER" node --check "$SCAN_CONTAINER_TMP"
-sudo docker exec "$DIRECTUS_CONTAINER" rm -f "$SCAN_CONTAINER_TMP"
-echo "STAGED SCAN JAVASCRIPT SYNTAX: PASS"
-
-echo
 echo "--- Freeze Setup writes for bounded Production mutation window ---"
 sudo systemctl stop "$SETUP_SERVICE"
 SETUP_STOPPED=1
@@ -457,19 +369,6 @@ sudo docker exec -i "$PROD_CONTAINER" pg_restore --list < "$BACKUP_FILE" >/dev/n
 echo "Rollback archive: $BACKUP_FILE"
 echo "SHA256:          $BACKUP_SHA"
 echo "ROLLBACK ARCHIVE VALIDATION: PASS"
-
-echo
-echo "--- Capture immediately preceding Scan rollback artifact ---"
-sudo cp -p "$SCAN_LIVE_PATH" "$SCAN_ROLLBACK"
-test -s "$SCAN_ROLLBACK"
-SCAN_ROLLBACK_SHA="$(sha256sum "$SCAN_ROLLBACK" | awk '{print $1}')"
-if [[ "$SCAN_ROLLBACK_SHA" != "$EXPECTED_LIVE_SCAN_SHA256" ]]; then
-    echo "FAIL: Scan rollback copy hash differs from verified live baseline"
-    exit 23
-fi
-echo "Scan rollback: $SCAN_ROLLBACK"
-echo "Scan rollback SHA256: $SCAN_ROLLBACK_SHA"
-echo "SCAN ROLLBACK CAPTURE: PASS"
 
 echo
 echo "--- Production database preflight for migration 065 ---"
@@ -569,56 +468,6 @@ fi
 echo "Setup checkout advanced exactly to $DEPLOYED_SETUP_HEAD"
 
 echo
-echo "--- Install exact approved Scan artifact ---"
-sudo cp "$STAGED_SCAN" "$SCAN_LIVE_PATH"
-sudo chown --reference="$SCAN_ROLLBACK" "$SCAN_LIVE_PATH"
-sudo chmod --reference="$SCAN_ROLLBACK" "$SCAN_LIVE_PATH"
-SCAN_ADVANCED=1
-LIVE_SCAN_NEW_SHA="$(sha256sum "$SCAN_LIVE_PATH" | awk '{print $1}')"
-if [[ "$LIVE_SCAN_NEW_SHA" != "$STAGED_SCAN_SHA" ]]; then
-    echo "FAIL: live Scan hash does not match staged candidate"
-    exit 28
-fi
-sudo docker exec "$DIRECTUS_CONTAINER" node --check /directus/extensions/directus-extension-scan/dist/index.js
-echo "LIVE SCAN ARTIFACT HASH/SYNTAX: PASS ($LIVE_SCAN_NEW_SHA)"
-
-echo
-echo "--- Restart Directus and verify Scan extension ---"
-if ! restart_directus; then
-    echo "FAIL: Directus did not return with /scan/ healthy"
-    sudo docker ps --filter name="$DIRECTUS_CONTAINER" || true
-    sudo docker logs --tail 200 "$DIRECTUS_CONTAINER" || true
-    exit 29
-fi
-sudo docker ps --filter name="$DIRECTUS_CONTAINER"
-sudo docker logs --tail 200 "$DIRECTUS_CONTAINER"
-
-SCAN_DISPLAY_ID="$(sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "SELECT display_id FROM ref.display ORDER BY display_id LIMIT 1;")"
-SCAN_CONTAINER_ID="$(sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "SELECT container_id FROM ref.container ORDER BY container_id LIMIT 1;")"
-[[ -n "$SCAN_DISPLAY_ID" && -n "$SCAN_CONTAINER_ID" ]] || { echo "FAIL: Scan regression fixture identities unavailable"; exit 30; }
-
-SCAN_ROOT_HTML="$(curl -fsS http://127.0.0.1:8055/scan/)"
-DISP_HTML="$(curl -fsS "http://127.0.0.1:8055/scan/DISP/$SCAN_DISPLAY_ID")"
-CONT_HTML="$(curl -fsS "http://127.0.0.1:8055/scan/CONT/$SCAN_CONTAINER_ID")"
-
-grep -Fq 'focusScanInput' <<<"$SCAN_ROOT_HTML"
-grep -Fq 'Record Location' <<<"$DISP_HTML"
-grep -Fq "https://my.sheboyganlights.org/setup/record-location/?asset=DISP:$SCAN_DISPLAY_ID" <<<"$DISP_HTML"
-grep -Fq 'Field Wiring' <<<"$DISP_HTML"
-grep -Fq 'Procedures' <<<"$DISP_HTML"
-grep -Fq 'Record Location' <<<"$CONT_HTML"
-grep -Fq "https://my.sheboyganlights.org/setup/record-location/?asset=CONT:$SCAN_CONTAINER_ID" <<<"$CONT_HTML"
-
-CTRL_HEADERS="$(curl -sS -D - -o /dev/null http://127.0.0.1:8055/scan/CTRL/1014)"
-grep -Fqi 'location: https://my.sheboyganlights.org/fieldwiring/controllers?controller_id=1014' <<<"$CTRL_HEADERS"
-CTRL_BAD_CODE="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8055/scan/CTRL/not-a-controller)"
-if [[ "$CTRL_BAD_CODE" != "400" ]]; then
-    echo "FAIL: invalid CTRL route returned HTTP $CTRL_BAD_CODE, expected 400"
-    exit 31
-fi
-echo "SCAN ROUTE/HANDOFF REGRESSION: PASS"
-
-echo
 echo "--- Restart and verify Setup V0.3.29 runtime ---"
 restart_setup
 SETUP_POST="$(curl -fsS http://192.168.5.9:8794/api/health)"
@@ -659,7 +508,6 @@ FINAL_MOVEMENT_EVENTS="$(table_count ops.setup_movement_event)"
 FINAL_CONTAINER_STATE="$(table_count ops.setup_container_state)"
 FINAL_DISPLAY_STATE="$(table_count ops.setup_display_state)"
 FINAL_NEW_EVIDENCE="$(new_movement_evidence_count)"
-FINAL_SCAN_SHA="$(sha256sum "$SCAN_LIVE_PATH" | awk '{print $1}')"
 FINAL_HEALTH="$(curl -fsS http://192.168.5.9:8794/api/health)"
 
 echo "Final Setup SHA:                    $FINAL_SETUP_HEAD"
@@ -670,7 +518,6 @@ echo "Movement events before/after:       $INITIAL_MOVEMENT_EVENTS / $FINAL_MOVE
 echo "Container state rows before/after:  $INITIAL_CONTAINER_STATE / $FINAL_CONTAINER_STATE"
 echo "Display state rows before/after:    $INITIAL_DISPLAY_STATE / $FINAL_DISPLAY_STATE"
 echo "New explicit movement evidence:     $FINAL_NEW_EVIDENCE"
-echo "Final Scan SHA256:                  $FINAL_SCAN_SHA"
 echo "Final Setup health:                 $FINAL_HEALTH"
 
 [[ "$FINAL_SETUP_HEAD" == "$TARGET_SHA" ]]
@@ -682,17 +529,13 @@ echo "Final Setup health:                 $FINAL_HEALTH"
 [[ "$FINAL_CONTAINER_STATE" == "$INITIAL_CONTAINER_STATE" ]]
 [[ "$FINAL_DISPLAY_STATE" == "$INITIAL_DISPLAY_STATE" ]]
 [[ "$FINAL_NEW_EVIDENCE" == "0" ]]
-[[ "$FINAL_SCAN_SHA" == "$STAGED_SCAN_SHA" ]]
 [[ "$FINAL_HEALTH" == *"\"version\":\"$EXPECTED_POST_VERSION\""* ]]
 
 SUCCESS=1
 echo
-echo "SETUP_88_V0329_PRODUCTION_DEPLOYMENT_PASS"
+echo "SETUP_88_V0329_SETUP_POSTGRES_PRODUCTION_DEPLOYMENT_PASS"
 echo "Deployed Setup SHA:       $FINAL_SETUP_HEAD"
-echo "Deployed Scan SHA256:     $FINAL_SCAN_SHA"
 echo "Rollback Setup SHA:       $OLD_SETUP_HEAD"
 echo "Rollback PostgreSQL dump: $BACKUP_FILE"
 echo "Rollback PostgreSQL SHA:  $BACKUP_SHA"
-echo "Rollback Scan artifact:   $SCAN_ROLLBACK"
-echo "Rollback Scan SHA256:     $SCAN_ROLLBACK_SHA"
 echo "Deployment report:        $REPORT"

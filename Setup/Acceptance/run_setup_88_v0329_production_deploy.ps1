@@ -14,9 +14,7 @@ $MigrationPath = 'Setup/Database/065_add_setup_movement_capture.sql'
 $AcceptedMigrationBlob = '2738065a6fc3cb84858e401de5fae9bd6ae35dcc'
 $ValidationPath = 'Setup/Acceptance/setup_88_movement_capture_disposable_validation.sql'
 $AcceptedValidationBlob = 'fc152c305dc0bf7a056aeff60aae3615b06b96d4'
-$ScanPath = 'Scan/directus-extension-scan/dist/index.js'
-$AcceptedScanBlob = '4c2810bf33087d33803456d4b73a4ff1dc86760b'
-$AcceptedServerRunnerBlob = 'bd90c85d923f3b8bee0ceb6b8617632c74039819'
+$AcceptedServerRunnerBlob = '4f151af8df503e019419fe8c86d491eba7d97dfa'
 
 if (-not (Test-Path -LiteralPath $ServerScript -PathType Leaf)) {
     throw "Required #88 Production deployment runner is missing: $ServerScript"
@@ -68,7 +66,6 @@ function Assert-GitBlob {
 
 Assert-GitBlob -Path $MigrationPath -ExpectedBlob $AcceptedMigrationBlob
 Assert-GitBlob -Path $ValidationPath -ExpectedBlob $AcceptedValidationBlob
-Assert-GitBlob -Path $ScanPath -ExpectedBlob $AcceptedScanBlob
 
 $serverBlob = (& git -C $RepoRoot hash-object $ServerScript).Trim()
 if ($LASTEXITCODE -ne 0 -or $serverBlob -ne $AcceptedServerRunnerBlob) {
@@ -92,7 +89,7 @@ $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 $cr = [string][char]13
 $lf = [string][char]10
 
-Write-Host '========== SETUP #88 V0.3.29 FIELD MOVEMENT PRODUCTION DEPLOYMENT =========='
+Write-Host '========== SETUP #88 V0.3.29 SETUP/POSTGRESQL PRODUCTION DEPLOYMENT =========='
 Write-Host "Server:                    $Server"
 Write-Host "Merged-main tooling SHA:   $localHead"
 Write-Host "Accepted application SHA:  $AcceptedApplicationSha"
@@ -101,14 +98,12 @@ Write-Host 'Expected post-version:     V0.3.29-pick-clarity'
 Write-Host "Migration:                 $MigrationPath"
 Write-Host "Migration Git blob:        $AcceptedMigrationBlob"
 Write-Host "Validation Git blob:       $AcceptedValidationBlob"
-Write-Host "Scan Git blob:             $AcceptedScanBlob"
 Write-Host "Server runner blob:        $AcceptedServerRunnerBlob"
 Write-Host "Remote root:               $remoteRoot"
 Write-Host 'Authority: Gregovate/MSB-Server-Management — docs/server/Production_Database_Change_Deployment_Runbook.md'
 Write-Host 'Authority: Gregovate/MSB-Server-Management — docs/server/Setup_Production_Runtime.md'
-Write-Host 'Authority: Gregovate/MSB-Server-Management — docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md'
-Write-Host 'Authority: Gregovate/MSB-Server-Management — docs/directus/Directus_Restart_Procedure.md'
-Write-Host 'Procedure: one SCP bundle + one foreground SSH bounded Production runner'
+Write-Host 'Procedure: one SCP bundle + one foreground SSH bounded Setup/PostgreSQL Production runner'
+Write-Host 'Scan/Directus deployment is separate and remains governed by the merged Server Management Scan runbook/tooling.'
 Write-Host 'Keep Setup editing paused while the bounded deployment runner is active.'
 Write-Host
 
@@ -142,7 +137,7 @@ try {
     }
 
     Write-Host
-    Write-Host 'SETUP #88 V0.3.29 FIELD MOVEMENT PRODUCTION DEPLOYMENT WRAPPER: PASS'
+    Write-Host 'SETUP #88 V0.3.29 SETUP/POSTGRESQL PRODUCTION DEPLOYMENT WRAPPER: PASS'
 }
 finally {
     if (Test-Path -LiteralPath $localBundle) {
