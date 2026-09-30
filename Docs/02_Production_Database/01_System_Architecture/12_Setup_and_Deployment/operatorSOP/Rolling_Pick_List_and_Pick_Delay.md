@@ -36,11 +36,27 @@ Use the visible **Pick By** and **Needed For** timing to understand urgency. Rac
 3. Choose **Start Picking** when you are physically pulling/loading demanded material.
 4. Scan the Container/Display with the Zebra/HID scanner, or use the explicit picker fallback.
 5. A successful scan records **PICKED FOR PARK TRANSPORT**. The item then leaves the **Needs pick** working list.
-6. The page keeps a visible **Containers picked** total so the material handler can track Container throughput.
+6. While the scanner is armed, the sticky Pick panel keeps **Containers picked** visible so the material handler can track real Container throughput without scrolling back to the page totals.
 7. Use **Picked / moved** or **All demanded items** only when you intentionally need to review already-picked rows.
 8. If the item should not be picked yet and you have Manager authority, use **Pick Delay** rather than changing the Setup schedule just to hide the item.
 
 The Pick operation deliberately does **not** require separate Load or Depart buttons. The physical Pick scan means the item is going onto transport for the park.
+
+## Training / Device Test
+
+Use **Training / device test** when teaching or checking the forklift tablet/Zebra workflow.
+
+Training uses the real current Pick List and the same scan validation, including delayed, already-moved, and not-on-current-list feedback, but:
+
+- it does **not** record a `PICKED` movement;
+- it does **not** add anything to the offline movement queue;
+- it does **not** remove the item from the real **Needs pick** list;
+- it does **not** change the real **Containers picked** count; and
+- it may show a temporary **Training picks** count for the current training page/session only.
+
+Entering Training requires deliberate confirmation. While active, the screen must continuously show **TRAINING MODE — NOTHING WILL BE RECORDED** and provide **Exit Training**.
+
+Use normal Pick Mode only when the physical item is actually being picked for park transport.
 
 **Record Location** is a separate field workflow used later to record where a Container/Display is physically observed. It is not embedded in the Pick List.
 
