@@ -64,6 +64,7 @@ class SetupSchedulingBoardRepository:
                     "work_days": [],
                     "crews": [],
                     "captain_candidates": [],
+                    "work_orders": [],
                     "tasks": [],
                     "assignments": [],
                     "dependencies": [],
@@ -128,6 +129,23 @@ class SetupSchedulingBoardRepository:
             cur.execute(
                 """
                 SELECT
+                    wo.work_order_id,
+                    wo.problem,
+                    wo.date_completed,
+                    CASE
+                        WHEN wo.date_completed IS NULL THEN 'OPEN'
+                        ELSE 'COMPLETE'
+                    END AS work_order_status
+                FROM ops.setup_scheduling_work_order_gate wo
+                WHERE wo.date_completed IS NULL
+                ORDER BY wo.work_order_id DESC
+                """
+            )
+            work_orders = [dict(row) for row in cur.fetchall()]
+
+            cur.execute(
+                """
+                SELECT
                     st.setup_session_task_id,
                     st.setup_session_id,
                     st.setup_task_id,
@@ -160,7 +178,27 @@ class SetupSchedulingBoardRepository:
                     st.annual_readiness_state AS readiness_state,
                     st.annual_weather_note AS weather_note,
                     coalesce(captains.captain_person_ids, ARRAY[]::integer[]) AS reusable_captain_person_ids,
+                    rt.display_order,
                     rt.baseline_plan_order,
+                    rt.reusable_notes,
+                    rt.created_at AS reusable_created_at,
+                    rt.created_by AS reusable_created_by,
+                    rt.created_by_person_id AS reusable_created_by_person_id,
+                    coalesce(
+                        nullif(btrim(created_actor.preferred_name), ''),
+                        nullif(btrim(pg_catalog.concat_ws(' ', created_actor.first_name, created_actor.last_name)), ''),
+                        nullif(btrim(created_actor.email), ''),
+                        rt.created_by
+                    ) AS reusable_created_by_display,
+                    rt.updated_at AS reusable_updated_at,
+                    rt.updated_by AS reusable_updated_by,
+                    rt.updated_by_person_id AS reusable_updated_by_person_id,
+                    coalesce(
+                        nullif(btrim(updated_actor.preferred_name), ''),
+                        nullif(btrim(pg_catalog.concat_ws(' ', updated_actor.first_name, updated_actor.last_name)), ''),
+                        nullif(btrim(updated_actor.email), ''),
+                        rt.updated_by
+                    ) AS reusable_updated_by_display,
                     rt.active_flag AS reusable_active_flag,
                     coalesce(rt.requires_display_material, false) AS requires_display_material,
                     coalesce(resources.resource_count, 0) AS resource_count,
@@ -216,6 +254,10 @@ class SetupSchedulingBoardRepository:
                 FROM ops.setup_session_task st
                 LEFT JOIN ref.setup_task rt
                   ON rt.setup_task_id = st.setup_task_id
+                LEFT JOIN ref.person created_actor
+                  ON created_actor.person_id = rt.created_by_person_id
+                LEFT JOIN ref.person updated_actor
+                  ON updated_actor.person_id = rt.updated_by_person_id
                 LEFT JOIN ref.stage s
                   ON s.stage_id = st.annual_stage_id
                 LEFT JOIN ref.lor_scene ls
@@ -299,6 +341,40 @@ class SetupSchedulingBoardRepository:
                       AND tm.active_flag
                 ) extra ON true
                 LEFT JOIN LATERAL (
+                    WITH required AS (
+                        /* Reusable-origin annual tasks follow the CURRENT reusable
+                           prerequisite graph. The 2025 annual baseline snapshot can
+                           be stale after Manager prerequisite corrections. */
+                        SELECT pst.setup_session_task_id AS prerequisite_setup_session_task_id
+                        FROM ref.setup_task_dependency rd
+                        LEFT JOIN ops.setup_session_task pst
+                          ON pst.setup_session_id = st.setup_session_id
+                         AND pst.setup_task_id = rd.prerequisite_setup_task_id
+                        WHERE st.task_origin = 'REUSABLE'
+                          AND rd.setup_task_id = st.setup_task_id
+
+                        UNION ALL
+
+                        /* Preserve season-only and explicit annual-only edges.
+                           Ignore stale REUSABLE_BASELINE copies for reusable tasks. */
+                        SELECT ad.prerequisite_setup_session_task_id
+                        FROM ops.setup_session_task_dependency ad
+                        LEFT JOIN ops.setup_session_task apst
+                          ON apst.setup_session_task_id = ad.prerequisite_setup_session_task_id
+                        WHERE ad.setup_session_task_id = st.setup_session_task_id
+                          AND (
+                              st.task_origin = 'SEASON_ONLY'
+                              OR (
+                                  ad.dependency_origin = 'ANNUAL'
+                                  AND NOT EXISTS (
+                                      SELECT 1
+                                      FROM ref.setup_task_dependency rd
+                                      WHERE rd.setup_task_id = st.setup_task_id
+                                        AND rd.prerequisite_setup_task_id = apst.setup_task_id
+                                  )
+                              )
+                          )
+                    )
                     SELECT
                         count(*) AS prerequisite_count,
                         bool_and(
@@ -310,12 +386,11 @@ class SetupSchedulingBoardRepository:
                                 ELSE false
                             END
                         ) AS prerequisites_complete
-                    FROM ops.setup_session_task_dependency d
-                    JOIN ops.setup_session_task pst
-                      ON pst.setup_session_task_id = d.prerequisite_setup_session_task_id
+                    FROM required r
+                    LEFT JOIN ops.setup_session_task pst
+                      ON pst.setup_session_task_id = r.prerequisite_setup_session_task_id
                     LEFT JOIN ops.setup_scheduling_work_order_gate pwo
                       ON pwo.work_order_id = pst.linked_work_order_id
-                    WHERE d.setup_session_task_id = st.setup_session_task_id
                 ) dep ON true
                 LEFT JOIN LATERAL (
                     SELECT
@@ -417,6 +492,17 @@ class SetupSchedulingBoardRepository:
                     wdt.sort_order,
                     wdt.planned_crew_count,
                     wdt.actual_crew_count,
+                    coalesce((
+                        SELECT sum(p.crew_count * p.duration_minutes)
+                        FROM ops.setup_task_progress p
+                        WHERE p.setup_work_day_task_id = wdt.setup_work_day_task_id
+                           OR (
+                               p.setup_work_day_task_id IS NULL
+                               AND p.setup_work_day_id = wdt.setup_work_day_id
+                               AND p.setup_session_task_id = wdt.setup_session_task_id
+                               AND p.shift_code = wdt.shift_code
+                           )
+                    ), 0)::integer AS actual_person_minutes,
                     wdt.started_at,
                     wdt.completed_at,
                     wdt.notes,
@@ -485,36 +571,85 @@ class SetupSchedulingBoardRepository:
 
             cur.execute(
                 """
-                SELECT
-                    d.setup_session_task_id,
-                    d.prerequisite_setup_session_task_id,
-                    d.dependency_origin,
-                    d.dependency_note,
-                    d.sort_order,
-                    pst.annual_task_name AS prerequisite_task_name,
-                    pst.task_origin AS prerequisite_task_origin,
-                    pst.execution_status AS prerequisite_execution_status,
-                    pst.linked_work_order_id AS prerequisite_work_order_id,
-                    pwo.date_completed AS prerequisite_work_order_completed_at,
-                    CASE
-                        WHEN pst.execution_status = 'COMPLETE' THEN true
-                        WHEN pst.linked_work_order_gate
-                             AND pst.linked_work_order_id IS NOT NULL
-                             AND pwo.date_completed IS NOT NULL THEN true
-                        ELSE false
-                    END AS prerequisite_complete
-                FROM ops.setup_session_task_dependency d
-                JOIN ops.setup_session_task st
-                  ON st.setup_session_task_id = d.setup_session_task_id
-                JOIN ops.setup_session_task pst
-                  ON pst.setup_session_task_id = d.prerequisite_setup_session_task_id
-                LEFT JOIN ops.setup_scheduling_work_order_gate pwo
-                  ON pwo.work_order_id = pst.linked_work_order_id
-                WHERE st.setup_session_id = %s
-                ORDER BY d.setup_session_task_id, d.sort_order,
-                         d.prerequisite_setup_session_task_id
+                WITH reusable_current AS (
+                    SELECT
+                        st.setup_session_task_id,
+                        pst.setup_session_task_id AS prerequisite_setup_session_task_id,
+                        'REUSABLE_CURRENT'::text AS dependency_origin,
+                        rd.dependency_note,
+                        rd.sort_order,
+                        pt.task_name AS prerequisite_task_name,
+                        'REUSABLE'::text AS prerequisite_task_origin,
+                        pst.execution_status AS prerequisite_execution_status,
+                        pst.linked_work_order_id AS prerequisite_work_order_id,
+                        pwo.date_completed AS prerequisite_work_order_completed_at,
+                        CASE
+                            WHEN pst.execution_status = 'COMPLETE' THEN true
+                            WHEN pst.linked_work_order_gate
+                                 AND pst.linked_work_order_id IS NOT NULL
+                                 AND pwo.date_completed IS NOT NULL THEN true
+                            ELSE false
+                        END AS prerequisite_complete
+                    FROM ops.setup_session_task st
+                    JOIN ref.setup_task_dependency rd
+                      ON rd.setup_task_id = st.setup_task_id
+                    JOIN ref.setup_task pt
+                      ON pt.setup_task_id = rd.prerequisite_setup_task_id
+                    LEFT JOIN ops.setup_session_task pst
+                      ON pst.setup_session_id = st.setup_session_id
+                     AND pst.setup_task_id = rd.prerequisite_setup_task_id
+                    LEFT JOIN ops.setup_scheduling_work_order_gate pwo
+                      ON pwo.work_order_id = pst.linked_work_order_id
+                    WHERE st.setup_session_id = %s
+                      AND st.task_origin = 'REUSABLE'
+                ),
+                annual_explicit AS (
+                    SELECT
+                        ad.setup_session_task_id,
+                        ad.prerequisite_setup_session_task_id,
+                        ad.dependency_origin,
+                        ad.dependency_note,
+                        ad.sort_order,
+                        pst.annual_task_name AS prerequisite_task_name,
+                        pst.task_origin AS prerequisite_task_origin,
+                        pst.execution_status AS prerequisite_execution_status,
+                        pst.linked_work_order_id AS prerequisite_work_order_id,
+                        pwo.date_completed AS prerequisite_work_order_completed_at,
+                        CASE
+                            WHEN pst.execution_status = 'COMPLETE' THEN true
+                            WHEN pst.linked_work_order_gate
+                                 AND pst.linked_work_order_id IS NOT NULL
+                                 AND pwo.date_completed IS NOT NULL THEN true
+                            ELSE false
+                        END AS prerequisite_complete
+                    FROM ops.setup_session_task_dependency ad
+                    JOIN ops.setup_session_task st
+                      ON st.setup_session_task_id = ad.setup_session_task_id
+                    JOIN ops.setup_session_task pst
+                      ON pst.setup_session_task_id = ad.prerequisite_setup_session_task_id
+                    LEFT JOIN ops.setup_scheduling_work_order_gate pwo
+                      ON pwo.work_order_id = pst.linked_work_order_id
+                    WHERE st.setup_session_id = %s
+                      AND (
+                          st.task_origin = 'SEASON_ONLY'
+                          OR (
+                              ad.dependency_origin = 'ANNUAL'
+                              AND NOT EXISTS (
+                                  SELECT 1
+                                  FROM ref.setup_task_dependency rd
+                                  WHERE rd.setup_task_id = st.setup_task_id
+                                    AND rd.prerequisite_setup_task_id = pst.setup_task_id
+                              )
+                          )
+                      )
+                )
+                SELECT * FROM reusable_current
+                UNION ALL
+                SELECT * FROM annual_explicit
+                ORDER BY setup_session_task_id, sort_order,
+                         prerequisite_setup_session_task_id NULLS LAST
                 """,
-                (session["setup_session_id"],),
+                (session["setup_session_id"], session["setup_session_id"]),
             )
             dependencies = [dict(row) for row in cur.fetchall()]
 
@@ -523,6 +658,7 @@ class SetupSchedulingBoardRepository:
             "work_days": work_days,
             "crews": crews,
             "captain_candidates": captain_candidates,
+            "work_orders": work_orders,
             "tasks": tasks,
             "assignments": assignments,
             "dependencies": dependencies,
@@ -696,6 +832,8 @@ class SetupSchedulingBoardRepository:
         linked_work_order_id: int | None,
         linked_work_order_gate: bool,
         annual_notes: str | None,
+        prerequisite_session_task_id: int | None,
+        downstream_session_task_id: int | None,
     ) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
@@ -725,6 +863,37 @@ class SetupSchedulingBoardRepository:
                 ),
             )
             result = self._one(cur, "Season-only Setup task command returned no result")
+            session_task_id = int(result["setup_session_task_id"])
+
+            if prerequisite_session_task_id is not None:
+                cur.execute(
+                    "SELECT * FROM ops.set_setup_session_task_dependency(%s,%s,%s,%s,%s)",
+                    (email, session_task_id, prerequisite_session_task_id, None, True),
+                )
+                self._one(cur, "Annual Setup prerequisite command returned no result")
+
+            if downstream_session_task_id is not None:
+                cur.execute(
+                    "SELECT * FROM ops.set_setup_session_task_dependency(%s,%s,%s,%s,%s)",
+                    (email, downstream_session_task_id, session_task_id, None, True),
+                )
+                self._one(cur, "Annual Setup downstream command returned no result")
+
+            conn.commit()
+            return result
+
+    def delete_season_task(
+        self,
+        *,
+        email: str,
+        session_task_id: int,
+    ) -> dict[str, Any]:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM ops.delete_unworked_setup_season_task(%s,%s)",
+                (email, session_task_id),
+            )
+            result = self._one(cur, "Season-only Setup task delete returned no result")
             conn.commit()
             return result
 
@@ -747,8 +916,27 @@ class SetupSchedulingBoardRepository:
         linked_work_order_id: int | None,
         linked_work_order_gate: bool,
         annual_notes: str | None,
+        previous_prerequisite_session_task_id: int | None,
+        prerequisite_session_task_id: int | None,
+        previous_downstream_session_task_id: int | None,
+        downstream_session_task_id: int | None,
+        planned_order: int | None,
     ) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT task_origin
+                FROM ops.setup_session_task
+                WHERE setup_session_task_id = %s
+                """,
+                (session_task_id,),
+            )
+            target = self._one(cur, "Season-only Setup task was not found")
+            if target["task_origin"] != "SEASON_ONLY":
+                raise SetupSchedulingBoardRepositoryError(
+                    "Season-task editor can only update season-only annual work."
+                )
+
             cur.execute(
                 """
                 SELECT * FROM ops.update_setup_annual_task_definition(
@@ -775,6 +963,43 @@ class SetupSchedulingBoardRepository:
                 ),
             )
             result = self._one(cur, "Annual Setup task update returned no result")
+
+            def set_edge(dependent_id: int, prerequisite_id: int, active: bool) -> None:
+                cur.execute(
+                    "SELECT * FROM ops.set_setup_session_task_dependency(%s,%s,%s,%s,%s)",
+                    (email, dependent_id, prerequisite_id, None, active),
+                )
+                self._one(cur, "Annual Setup dependency command returned no result")
+
+            if (
+                previous_prerequisite_session_task_id is not None
+                and previous_prerequisite_session_task_id != prerequisite_session_task_id
+            ):
+                set_edge(session_task_id, previous_prerequisite_session_task_id, False)
+            if (
+                prerequisite_session_task_id is not None
+                and prerequisite_session_task_id != previous_prerequisite_session_task_id
+            ):
+                set_edge(session_task_id, prerequisite_session_task_id, True)
+
+            if (
+                previous_downstream_session_task_id is not None
+                and previous_downstream_session_task_id != downstream_session_task_id
+            ):
+                set_edge(previous_downstream_session_task_id, session_task_id, False)
+            if (
+                downstream_session_task_id is not None
+                and downstream_session_task_id != previous_downstream_session_task_id
+            ):
+                set_edge(downstream_session_task_id, session_task_id, True)
+
+            if planned_order is not None:
+                cur.execute(
+                    "SELECT * FROM ops.set_setup_session_task_planned_order(%s,%s,%s,%s)",
+                    (email, session_task_id, planned_order, "Season-only Work Order/gate placement"),
+                )
+                self._one(cur, "Setup planned-order command returned no result")
+
             conn.commit()
             return result
 
@@ -790,6 +1015,7 @@ class SetupSchedulingBoardRepository:
         readiness_note: str | None,
         weather_note: str | None,
         completion_point: str | None,
+        reusable_notes: str | None,
     ) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
@@ -811,6 +1037,48 @@ class SetupSchedulingBoardRepository:
                 ),
             )
             result = self._one(cur, "Scheduling planning-info update returned no result")
+
+            # Reusable Notes are durable Catalog knowledge. Reuse the existing
+            # governed ref.update_setup_task() command instead of adding broad
+            # table DML or a second notes authority.
+            if result.get("task_origin") == "REUSABLE":
+                cur.execute(
+                    """
+                    SELECT task_name, stage_id, task_action_type, display_order,
+                           active_flag, normal_crew_min, normal_crew_max,
+                           expected_duration_minutes, completion_point,
+                           readiness_note, weather_note
+                    FROM ref.setup_task
+                    WHERE setup_task_id = %s
+                    """,
+                    (result["setup_task_id"],),
+                )
+                current = self._one(cur, "Reusable Setup task was not found")
+                cur.execute(
+                    """
+                    SELECT * FROM ref.update_setup_task(
+                        %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                    )
+                    """,
+                    (
+                        email,
+                        result["setup_task_id"],
+                        current["task_name"],
+                        current["stage_id"],
+                        current["task_action_type"],
+                        current["display_order"],
+                        current["active_flag"],
+                        current["normal_crew_min"],
+                        current["normal_crew_max"],
+                        current["expected_duration_minutes"],
+                        current["completion_point"],
+                        current["readiness_note"],
+                        current["weather_note"],
+                        reusable_notes,
+                    ),
+                )
+                self._one(cur, "Reusable Notes update returned no result")
+
             conn.commit()
             return result
 
@@ -829,6 +1097,191 @@ class SetupSchedulingBoardRepository:
             result = self._one(cur, "Crew Captain knowledge update returned no result")
             conn.commit()
             return result
+
+    def set_annual_hold(
+        self,
+        *,
+        email: str,
+        session_task_id: int,
+        ready: bool,
+        readiness_note: str | None,
+    ) -> dict[str, Any]:
+        """Update annual-only readiness without mutating reusable Catalog knowledge."""
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    st.annual_task_name,
+                    st.annual_stage_id,
+                    st.annual_lor_scene_id,
+                    st.annual_task_action_type,
+                    st.annual_normal_crew_min,
+                    st.annual_normal_crew_max,
+                    st.annual_expected_duration_minutes,
+                    st.annual_effort_level,
+                    st.annual_completion_point,
+                    st.annual_weather_note,
+                    st.linked_work_order_id,
+                    st.linked_work_order_gate,
+                    st.annual_notes,
+                    st.actual_started_at,
+                    st.actual_completed_at,
+                    EXISTS (
+                        SELECT 1
+                        FROM ops.setup_task_progress p
+                        WHERE p.setup_session_task_id = st.setup_session_task_id
+                    ) AS has_progress
+                FROM ops.setup_session_task st
+                WHERE st.setup_session_task_id = %s
+                FOR UPDATE
+                """,
+                (session_task_id,),
+            )
+            current = self._one(cur, "Annual Setup task was not found")
+
+            if (
+                current.get("actual_started_at") is not None
+                or current.get("actual_completed_at") is not None
+                or current.get("has_progress")
+            ):
+                raise SetupSchedulingBoardRepositoryError(
+                    "Actual work exists for this annual task; annual readiness is historical."
+                )
+
+            cur.execute(
+                """
+                SELECT * FROM ops.update_setup_annual_task_definition(
+                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                )
+                """,
+                (
+                    email,
+                    session_task_id,
+                    current["annual_task_name"],
+                    current["annual_stage_id"],
+                    current["annual_lor_scene_id"],
+                    current["annual_task_action_type"],
+                    current["annual_normal_crew_min"],
+                    current["annual_normal_crew_max"],
+                    current["annual_expected_duration_minutes"],
+                    current["annual_effort_level"],
+                    current["annual_completion_point"],
+                    readiness_note,
+                    current["annual_weather_note"],
+                    current["linked_work_order_id"],
+                    current["linked_work_order_gate"],
+                    current["annual_notes"],
+                ),
+            )
+            self._one(cur, "Annual-only readiness-note update returned no result")
+
+            cur.execute(
+                "SELECT * FROM ops.set_setup_annual_task_readiness(%s,%s,%s)",
+                (email, session_task_id, ready),
+            )
+            result = self._one(cur, "Annual Setup readiness command returned no result")
+            conn.commit()
+            return result
+
+    def reconcile_season_task_placement(
+        self,
+        *,
+        email: str,
+        session_task_id: int,
+        previous_prerequisite_session_task_id: int | None,
+        prerequisite_session_task_id: int | None,
+        previous_downstream_session_task_id: int | None,
+        downstream_session_task_id: int | None,
+        planned_order: int | None,
+    ) -> dict[str, Any]:
+        """Atomically reposition one season-only task while preserving unrelated annual edges."""
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT setup_session_id, task_origin
+                FROM ops.setup_session_task
+                WHERE setup_session_task_id = %s
+                """,
+                (session_task_id,),
+            )
+            target = self._one(cur, "Season-only Setup task was not found")
+            if target["task_origin"] != "SEASON_ONLY":
+                raise SetupSchedulingBoardRepositoryError(
+                    "Season-task placement editor can only reposition season-only annual work."
+                )
+
+            def set_edge(
+                dependent_id: int,
+                prerequisite_id: int,
+                active: bool,
+            ) -> None:
+                cur.execute(
+                    """
+                    SELECT * FROM ops.set_setup_session_task_dependency(
+                        %s,%s,%s,%s,%s
+                    )
+                    """,
+                    (email, dependent_id, prerequisite_id, None, active),
+                )
+                self._one(cur, "Annual Setup dependency command returned no result")
+
+            if (
+                previous_prerequisite_session_task_id is not None
+                and previous_prerequisite_session_task_id != prerequisite_session_task_id
+            ):
+                set_edge(
+                    session_task_id,
+                    previous_prerequisite_session_task_id,
+                    False,
+                )
+            if (
+                prerequisite_session_task_id is not None
+                and prerequisite_session_task_id != previous_prerequisite_session_task_id
+            ):
+                set_edge(
+                    session_task_id,
+                    prerequisite_session_task_id,
+                    True,
+                )
+
+            if (
+                previous_downstream_session_task_id is not None
+                and previous_downstream_session_task_id != downstream_session_task_id
+            ):
+                set_edge(
+                    previous_downstream_session_task_id,
+                    session_task_id,
+                    False,
+                )
+            if (
+                downstream_session_task_id is not None
+                and downstream_session_task_id != previous_downstream_session_task_id
+            ):
+                set_edge(
+                    downstream_session_task_id,
+                    session_task_id,
+                    True,
+                )
+
+            if planned_order is not None:
+                cur.execute(
+                    "SELECT * FROM ops.set_setup_session_task_planned_order(%s,%s,%s,%s)",
+                    (
+                        email,
+                        session_task_id,
+                        planned_order,
+                        "Season-only Work Order/gate placement",
+                    ),
+                )
+                self._one(cur, "Setup planned-order command returned no result")
+
+            conn.commit()
+            return {
+                "setup_session_task_id": session_task_id,
+                "prerequisite_setup_session_task_id": prerequisite_session_task_id,
+                "downstream_setup_session_task_id": downstream_session_task_id,
+                "planned_order": planned_order,
+            }
 
     def set_readiness(
         self,

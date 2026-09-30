@@ -16,11 +16,14 @@ def test_reusable_task_extra_materials_are_visible_in_task_detail() -> None:
 
     assert "Extra Materials Required by This Task" in ui
     assert "api/setup/tasks/${taskId}/extra-materials" in ui
-    assert "Reusable requirement only. Source Containers are maintained separately below." in ui
+    assert "maintain its Expected Source Container from the same requirement row" in ui
     assert "selectTaskWithExtraMaterials" in ui
-    assert "source${sources.length === 1 ? '' : 's'}" in ui
+    assert "task-extra-material-source-inline" in ui
+    assert "Review Sources" in ui
+    assert "Add Source" in ui
+    assert "window.openTaskExtraMaterialSource" in ui
 
-    assert "setup_task_extra_materials.js?v=2026-09-16.2" in bridge
+    assert "setup_task_extra_materials.js?v=2026-09-28.2" in bridge
     assert '"setup_task_extra_materials.js"' in host
 
 
@@ -33,9 +36,10 @@ def test_manager_requirement_editor_is_explicit_and_collapsed_by_default() -> No
     assert "el('task-extra-material-form').hidden = false" in ui
     assert "Edit Requirement" in ui
     assert "Manager — Edit Task Requirement" in ui
-    assert "This changes the reusable requirement itself, not its source Containers." in ui
+    assert "New requirements require a physical source Container." in ui
+    assert 'id="task-extra-material-create-source-container" required' in ui
     assert "commandOptions(method, payload(true))" in ui
-    assert "Remove Requirement" in ui
+    assert "Delete Mistake" in ui
     assert "window.editTaskExtraMaterialRequirement = editRequirement" in ui
     assert "['task-extra-material-form', 'task-extra-material-source-form']" in refinement
     assert "form.classList.remove('manager-only')" in refinement
@@ -66,3 +70,65 @@ def test_kit_row_actions_move_operator_to_the_selected_editor() -> None:
     assert "focusEditor('inventory-editor', 'inventory-delta')" in review
     assert "scrollIntoView({ behavior: 'smooth', block: 'start' })" in review
     assert "focus({ preventScroll: true })" in review
+
+
+
+def test_task_requirement_rows_keep_source_maintenance_adjacent() -> None:
+    ui = text("setup_task_extra_materials.js")
+    css = text("setup_extra_materials.css")
+
+    assert "Expected Source Container from the same requirement row" in ui
+    assert "function sourceAction(row)" in ui
+    assert "task-extra-material-source-inline" in ui
+    assert "Review Sources" in ui
+    assert "Add Source" in ui
+    assert "window.openTaskExtraMaterialSource(Number(rowId))" in ui
+    assert ".task-extra-material-source-summary" in css
+    assert ".task-extra-material-source-inline" in css
+
+
+
+def test_new_requirement_requires_source_and_creates_container_authority_atomically() -> None:
+    ui = text("setup_task_extra_materials.js")
+    api = text("setup_extra_material_api.py")
+    repo = text("setup_extra_material_repository.py")
+
+    assert "New Extra Material requirements cannot be created without physical source authority." in ui
+    assert "task-extra-material-create-source-container" in ui
+    assert "setup_task_extra_material_source=result[\"source\"]" in api
+    assert "container_content_created=result[\"container_content_created\"]" in api
+    assert 'payload.get("source")' in repo
+    assert "create_task_material_with_source" in repo
+    assert "ref.set_setup_task_extra_material(" in repo
+    assert "ref.set_setup_task_extra_material_source(" in repo
+    assert "ref.set_setup_container_extra_material(" in repo
+    assert "conn.commit()" in repo
+    assert "A source Container is required when adding an Extra Material requirement." in api
+
+
+def test_mistaken_requirement_uses_governed_hard_delete_not_inactive_tombstone() -> None:
+    ui = text("setup_task_extra_materials.js")
+    api = text("setup_extra_material_api.py")
+    repo = text("setup_extra_material_repository.py")
+
+    assert "Delete Mistake" in ui
+    assert "commandOptions('DELETE', {})" in ui
+    assert "permanently remove" in ui
+    assert "@setup_extra_material_api.delete(" in api
+    assert "delete_task_material" in repo
+    assert "ref.delete_setup_task_extra_material" in repo
+    assert "Do not carry mistaken Extra Material requirements forward as inactive rows." in api
+    assert "The Extra Material catalog item, Displays, and inventory history are preserved." in ui
+    assert "A matching Container expected-content row is removed only if it becomes unused and has no inventory history." in ui
+    assert "deleted_container_content_count" in ui
+    assert "unused un-inventoried Container expected-content row" in ui
+    assert "This does not delete the Extra Material catalog item, Container expected contents" not in ui
+
+
+def test_requirement_save_and_delete_refresh_both_material_surfaces() -> None:
+    task_ui = text("setup_task_extra_materials.js")
+    source_ui = text("setup_task_extra_material_sources.js")
+
+    assert "window.refreshTaskExtraMaterialSources = loadTaskSources" in source_ui
+    assert task_ui.count("typeof window.refreshTaskExtraMaterialSources === 'function'") >= 2
+    assert task_ui.count("await window.refreshTaskExtraMaterialSources(taskId)") >= 2

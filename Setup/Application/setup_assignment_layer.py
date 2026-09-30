@@ -529,6 +529,57 @@ def _set_display_owner(
     return self.field_context(task_id=context_task_id, season_year=season_year)
 
 
+def _clear_display_owner(
+    self: SetupNextRepository,
+    *,
+    email: str,
+    context_task_id: int,
+    display_id: int,
+    expected_setup_task_id: int,
+    season_year: int,
+) -> dict[str, Any]:
+    preview = self.field_context(task_id=context_task_id, season_year=season_year)
+    ownership = preview.get("display_ownership") or {}
+
+    current_assignment = next(
+        (
+            row
+            for row in ownership.get("assignments") or []
+            if int(row["display_id"]) == int(display_id)
+            and row.get("ownership_state") == "ASSIGNED"
+            and int(row.get("owner_setup_task_id") or 0) == int(expected_setup_task_id)
+        ),
+        None,
+    )
+    stale_assignment = next(
+        (
+            row
+            for row in ownership.get("stale_assignments") or []
+            if int(row["display_id"]) == int(display_id)
+            and int(row["setup_task_id"]) == int(expected_setup_task_id)
+        ),
+        None,
+    )
+
+    if current_assignment is None and stale_assignment is None:
+        raise SetupNextRepositoryError(
+            "Display ownership row is no longer an explicit current assignment or stale row in this resolver scope; refresh before removing"
+        )
+
+    with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            """
+            SELECT *
+            FROM ref.clear_setup_task_display_owner(%s,%s,%s)
+            """,
+            (email, int(display_id), int(expected_setup_task_id)),
+        )
+        if cur.fetchone() is None:
+            raise SetupNextRepositoryError("Display ownership clear command returned no result")
+        conn.commit()
+
+    return self.field_context(task_id=context_task_id, season_year=season_year)
+
 def _kit_box_catalog(self: SetupNextRepository, *, task_id: int) -> list[dict[str, Any]]:
     with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
@@ -622,5 +673,6 @@ def install_setup_assignment_layer() -> None:
     SetupNextRepository.field_context = _field_context
     SetupNextRepository.initialize_display_ownership = _initialize_display_ownership
     SetupNextRepository.set_display_owner = _set_display_owner
+    SetupNextRepository.clear_display_owner = _clear_display_owner
     SetupNextRepository.kit_box_catalog = _kit_box_catalog
     SetupNextRepository.set_kit_box_assignment = _set_kit_box_assignment

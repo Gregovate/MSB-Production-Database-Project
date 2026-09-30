@@ -54,15 +54,22 @@ class SetupRepository:
             cur.execute(
                 """
                 SELECT
-                    email,
-                    display_name,
-                    role_name,
-                    policy_names,
-                    can_read_setup,
-                    can_move_setup_assets,
-                    can_manage_setup,
-                    can_admin_setup
-                FROM ref.setup_browser_capabilities(%s)
+                    caps.email,
+                    caps.display_name,
+                    caps.role_name,
+                    caps.policy_names,
+                    caps.can_read_setup,
+                    caps.can_move_setup_assets,
+                    caps.can_manage_setup,
+                    caps.can_admin_setup,
+                    (
+                        SELECT captain.person_id
+                        FROM ref.setup_captain_person_list() AS captain
+                        WHERE lower(captain.email) = lower(caps.email)
+                        ORDER BY captain.person_id
+                        LIMIT 1
+                    ) AS captain_person_id
+                FROM ref.setup_browser_capabilities(%s) AS caps
                 """,
                 (normalized,),
             )
@@ -73,6 +80,7 @@ class SetupRepository:
                 "authenticated_email": normalized,
                 "known_user": False,
                 "display_name": normalized,
+                "captain_person_id": None,
                 "role_name": None,
                 "policy_names": [],
                 "can_read_setup": False,
@@ -86,6 +94,7 @@ class SetupRepository:
             "authenticated_email": normalized,
             "known_user": True,
             "display_name": item.get("display_name") or normalized,
+            "captain_person_id": item.get("captain_person_id"),
             "role_name": item.get("role_name"),
             "policy_names": list(item.get("policy_names") or []),
             "can_read_setup": bool(item.get("can_read_setup")),
@@ -162,6 +171,24 @@ class SetupRepository:
                     t.readiness_note,
                     t.weather_note,
                     t.reusable_notes,
+                    t.created_at AS reusable_created_at,
+                    t.created_by AS reusable_created_by,
+                    t.created_by_person_id AS reusable_created_by_person_id,
+                    coalesce(
+                        nullif(btrim(created_actor.preferred_name), ''),
+                        nullif(btrim(pg_catalog.concat_ws(' ', created_actor.first_name, created_actor.last_name)), ''),
+                        nullif(btrim(created_actor.email), ''),
+                        t.created_by
+                    ) AS reusable_created_by_display,
+                    t.updated_at AS reusable_updated_at,
+                    t.updated_by AS reusable_updated_by,
+                    t.updated_by_person_id AS reusable_updated_by_person_id,
+                    coalesce(
+                        nullif(btrim(updated_actor.preferred_name), ''),
+                        nullif(btrim(pg_catalog.concat_ws(' ', updated_actor.first_name, updated_actor.last_name)), ''),
+                        nullif(btrim(updated_actor.email), ''),
+                        t.updated_by
+                    ) AS reusable_updated_by_display,
                     ss.setup_session_id,
                     ss.session_status,
                     st.setup_session_task_id,
@@ -180,6 +207,10 @@ class SetupRepository:
                 FROM ref.setup_task t
                 LEFT JOIN ref.stage s
                   ON s.stage_id = t.stage_id
+                LEFT JOIN ref.person created_actor
+                  ON created_actor.person_id = t.created_by_person_id
+                LEFT JOIN ref.person updated_actor
+                  ON updated_actor.person_id = t.updated_by_person_id
                 LEFT JOIN ops.setup_session ss
                   ON ss.season_year = %s
                 LEFT JOIN ops.setup_session_task st

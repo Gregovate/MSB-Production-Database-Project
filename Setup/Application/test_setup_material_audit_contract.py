@@ -201,3 +201,181 @@ def test_disposable_validation_proves_no_fake_assignment_or_annual_state() -> No
     assert "relationship_type='KIT'" in sql or "relationship_type = 'KIT'" in sql
     assert "ops.setup_session" in sql
     assert "ROLLBACK;" in sql
+
+
+def test_extra_material_source_coverage_is_one_row_per_active_requirement() -> None:
+    repo = read_app("setup_material_audit_repository.py")
+    html = read_app("material_audit.html")
+    js = read_app("setup_material_audit.js")
+
+    assert "def extra_material_source_audit" in repo
+    assert "FROM ref.setup_task_extra_material AS tm" in repo
+    assert "ref.setup_task_extra_material_source AS source" in repo
+    assert "source.setup_task_extra_material_id = tm.setup_task_extra_material_id" in repo
+    assert "source.active_flag" in repo
+    assert "WHERE t.active_flag" in repo
+    assert "AND tm.active_flag" in repo
+    assert "AND m.active_flag" in repo
+    assert "LEFT JOIN LATERAL" in repo
+    assert '"source_status" = "SOURCE_ASSIGNED"' not in repo
+    assert '"SOURCE_ASSIGNED"' in repo
+    assert '"HISTORICAL_SOURCE_REVIEW"' in repo
+    assert '"RECONSTRUCTION_REVIEW"' in repo
+    assert '"NO_ACTIVE_SOURCE"' in repo
+    assert '"extra_material_source": self.extra_material_source_audit()' in repo
+
+    assert "Extra Material Source Coverage" in html
+    assert 'id="extra-material-source-audit-body"' in html
+    assert "Requirements reviewed" in js
+    assert "No active source" in js
+    assert "Resolve Source" in js
+    assert "setup_task_extra_material_id" in js
+    assert "unresolved_no_source" in js
+
+
+def test_extra_material_source_resolve_action_reuses_existing_198_editor() -> None:
+    audit_js = read_app("setup_material_audit.js")
+    production = read_app("setup_production.js")
+    source_ui = read_app("setup_task_extra_material_sources.js")
+    api = read_app("setup_extra_material_api.py")
+    repo = read_app("setup_extra_material_repository.py")
+
+    assert "correction=extra-material-source" in audit_js
+    assert "setup_task_extra_material_id=" in audit_js
+    assert "requestedExtraMaterialRequirementId" in production
+    assert "pendingExtraMaterialRequirementId" in production
+    assert "requestedCorrection === 'extra-material-source'" in production
+    assert "consumePendingCorrection('extra-material-source')" in source_ui
+    assert "beginSource(requirementId)" in source_ui
+    assert '@setup_extra_material_api.post(' in api
+    assert '"/api/setup/task-extra-materials/<int:requirement_id>/sources"' in api
+    assert "ref.set_setup_task_extra_material_source" in repo
+
+
+
+def test_extra_material_source_reconciliation_distinguishes_historical_and_reconstruction_authority() -> None:
+    repo = read_app("setup_material_audit_repository.py")
+    js = read_app("setup_material_audit.js")
+    api = read_app("setup_extra_material_api.py")
+    source_repo = read_app("setup_extra_material_repository.py")
+
+    assert "prior_inactive_source_count" in repo
+    assert "prior_inactive_source_context" in repo
+    assert "prior_source.setup_task_extra_material_source_id" in repo
+    assert '"HISTORICAL_SOURCE_REVIEW"' in repo
+    assert '"RECONSTRUCTION_REVIEW"' in repo
+    assert "notes.startswith(\"Preloaded from \")" in repo
+    assert '"historical_source_review"' in repo
+    assert '"reconstruction_review"' in repo
+
+    # Historical discovery is broader than exact specification now that
+    # restoring the prior requirement is separate from moving a source.
+    historical_where = repo.split("WHERE prior_tm.setup_extra_material_id = tm.setup_extra_material_id", 1)[1].split(") AS prior ON true", 1)[0]
+    assert "AND NOT prior_tm.active_flag" in historical_where
+    assert "prior_task.stage_id IS NOT DISTINCT FROM t.stage_id" in historical_where
+    assert "AND prior_tm.quantity_uom = tm.quantity_uom" not in historical_where
+    assert "'spec_match'" in repo
+    assert "prior_tm.quantity_uom = tm.quantity_uom" in repo
+    assert "prior_tm.size_text IS NOT DISTINCT FROM tm.size_text" in repo
+
+    assert "HISTORICAL SOURCE REVIEW" in js
+    assert "RECONSTRUCTION REVIEW" in js
+    assert "reassign-historical-source" in js
+    assert "Move ${esc(containerCode)} to current requirement" in js
+    assert "humanContainerId(item.container_id)" in js
+    assert "Restore ${esc(materialName)} to ${esc(taskName)}" in js
+    assert "moves the existing source row; it does not create a duplicate" in js
+    assert "Review Requirement" in js
+    assert "Resolve Source" in js
+
+    # Reassignment must reuse the accepted #198 source API and governed command.
+    assert '"/api/setup/task-extra-materials/<int:requirement_id>/sources/<int:row_id>"' in api
+    assert "def set_task_source" in source_repo
+    assert "ref.set_setup_task_extra_material_source" in source_repo
+
+
+def test_material_audit_can_review_or_retire_reconstruction_requirement_before_sourcing() -> None:
+    js = read_app("setup_material_audit.js")
+    production = read_app("setup_production.js")
+    task_ui = read_app("setup_task_extra_materials.js")
+
+    assert "correction=extra-material-requirement" in js
+    assert "requestedCorrection === 'extra-material-requirement'" in production
+    assert "consumePendingCorrection('extra-material-requirement')" in task_ui
+    assert "editRequirement(requirementId)" in task_ui
+    assert "Delete Mistake" in task_ui
+    assert "commandOptions('DELETE', {})" in task_ui
+
+
+def test_historical_source_review_can_restore_prior_requirement_without_moving_sources() -> None:
+    js = read_app("setup_material_audit.js")
+    api = read_app("setup_extra_material_api.py")
+    repo = read_app("setup_extra_material_repository.py")
+
+    assert "restore-historical-requirement" in js
+    assert "restoreHistoricalRequirement" in js
+    assert "Restore ${esc(materialName)} to ${esc(taskName)}" in js
+    assert "Existing source Containers ${sourceContainers} will remain attached." in js
+    assert "restore-historical-feedback" in js
+    assert "Open the task to verify, or rerun the audit." in js
+    assert '"/api/setup/tasks/<int:setup_task_id>/extra-materials/<int:row_id>/restore"' in api
+    assert "restore_task_material" in api
+    assert "def restore_task_material" in repo
+    assert "ref.restore_setup_task_extra_material" in repo
+    restore_section = repo.split("def restore_task_material(", 1)[1].split("def create_task_material_with_source(", 1)[0]
+    assert "FOR UPDATE" not in restore_section
+    assert "FROM ref.setup_task_extra_material" not in restore_section
+
+
+def test_historical_restore_discovery_surfaces_spec_mismatch_but_blocks_source_move() -> None:
+    audit_repo = read_app("setup_material_audit_repository.py")
+    js = read_app("setup_material_audit.js")
+    source_repo = read_app("setup_extra_material_repository.py")
+
+    assert "'quantity_required', prior_tm.quantity_required" in audit_repo
+    assert "'quantity_uom', prior_tm.quantity_uom" in audit_repo
+    assert "'spec_match'" in audit_repo
+    assert "SPEC MISMATCH — REVIEW" in js
+    assert "EXACT SPEC MATCH" in js
+    assert "Source move unavailable until requirement specifications match." in js
+    assert "item.setup_task_extra_material_source_id && specMatch" in js
+    assert "Cannot move an existing source to a different Extra Material requirement when the material specification does not match." in source_repo
+    assert "Restore/review the historical requirement instead." in source_repo
+
+
+def test_historical_restore_ui_uses_operator_names_and_zero_padded_containers() -> None:
+    html = read_app("material_audit.html")
+    js = read_app("setup_material_audit.js")
+
+    assert "setup_material_audit.js?v=2026-09-28.3" in html
+    assert "function humanContainerId(value)" in js
+    assert "padStart(3, '0')" in js
+    assert "data-material-name" in js
+    assert "data-task-name" in js
+    assert "data-source-containers" in js
+    assert "Restore prior requirement #" not in js
+    assert "on reusable task #" not in js
+
+
+def test_historical_restore_is_governed_by_security_definer_command() -> None:
+    migration = read_db("064_add_setup_extra_material_requirement_restore.sql")
+    repo = read_app("setup_extra_material_repository.py")
+    validation = read_accept("setup_206_extra_material_lifecycle_disposable_validation.sql")
+
+    assert "CREATE OR REPLACE FUNCTION ref.restore_setup_task_extra_material(" in migration
+    assert "SECURITY DEFINER" in migration
+    assert "FOR UPDATE OF tm" in migration
+    assert "FROM ref.setup_management_actor(p_email, false)" in migration
+    assert "FROM ref.set_setup_task_extra_material(" in migration
+    assert "GRANT EXECUTE ON FUNCTION ref.restore_setup_task_extra_material(text,bigint,bigint)" in migration
+    assert "TO fieldwiring_app;" in migration
+
+    restore_section = repo.split("def restore_task_material(", 1)[1].split("def create_task_material_with_source(", 1)[0]
+    assert "ref.restore_setup_task_extra_material" in restore_section
+    assert "FOR UPDATE" not in restore_section
+    assert "FROM ref.setup_task_extra_material" not in restore_section
+
+    assert "ref.restore_setup_task_extra_material(text,bigint,bigint)" in validation
+    assert "Governed restore did not preserve requirement/source identity" in validation
+    assert "Governed restore did not reactivate the same requirement with its source intact" in validation
+    assert "forbidden direct Extra Material UPDATE privilege" in validation

@@ -2,8 +2,8 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT PRODUCTION DEPENDENCY — CTRL physical scan accepted; PR #121 HID focus repair deployed; physical no-tap focus retest pending |
-| Current revision | 2026-09-20 |
+| Status | CURRENT PRODUCTION DEPENDENCY — #219 read-only Scan/GPS harness live; #171 GIS/reference work remains open; #88 Record Location handoff pending deployment |
+| Current revision | 2026-09-30 |
 | Owner | MSB Database Administrator |
 | Production host | `msb-prod-db` |
 | Production runtime path | `/opt/directus/extensions/directus-extension-scan/` |
@@ -32,13 +32,27 @@ Directus executes:
 dist/index.js
 ```
 
-The current deployed Scan artifact is the PR #121 HID-focus repair, merged as `0540d3b702de68d10d78ff8e17e8bca317a9a51f`:
+The current Server Management runbook records this accepted production SHA-256, including the FieldWiring and Procedures Display-hub actions and the Controller Inventory handoff:
+
+The live Scan runtime has advanced beyond the historical 2026-09-03 Controller baseline. The current Production artifact is the #219 read-only Scan + GPS field-acceptance harness:
 
 ```text
-c11e39e99b720f90ecd9a226c0358e3dbc1fa9d51e7a0490f9cc0cd4875474a9
+live Scan SHA-256     5b456bb682daad50673e5b7b2514cb7b98ce0d4fabb5551d79b1b0f4e98ffb50
+live Git blob         c131458fb549ab4127ede1fd8d4277d115cebaa0
+source commit         ab1ec9a66ce8daaf489a0dba221f4e9ba7949cb2
+current #219 PR       #218
+field route           /scan/field-test
 ```
 
-The exact current rollback artifact/path is a Server Management runtime fact and must be taken from the current Server Management Scan deployment/recovery runbook. Do not reuse the older Sept. 3 `pre-ctrl` artifact merely because it appears in historical acceptance records.
+The live bytes were re-verified during #88 Production preflight and exactly match the current PR #218 Scan blob before reconciliation with current `main`. The harness is intentionally read-only and remains useful while #171 GIS/reference-location work is open. Do not overwrite it with an older Scan artifact merely to deploy another Setup feature.
+
+The exact current rollback artifact/path is a Server Management runtime fact and must be reconciled in the current Server Management Scan deployment/recovery authority. The older September 3 Controller rollback remains historical evidence, not an assumed current rollback.
+
+The immediately preceding Scan artifact is retained at:
+
+```text
+/home/msbadmin/backups/directus-scan/pre-ctrl-20260903T112856Z/index.js
+```
 
 The accepted application/business source is version-controlled under:
 
@@ -203,7 +217,7 @@ https://my.sheboyganlights.org/fieldwiring/controllers?controller_id=<controller
 
 The deployed Scan route adds `/scan/CTRL/:key`, validates that the key is a positive integer permanent Controller ID, and redirects to that existing Controller Inventory entry point. The Controller browser initializes its Search control from `controller_id`, filters the list, and opens the exact detail panel.
 
-The route does not query Controller tables or duplicate Controller details/actions inside Scan. Production manual entry of both the full Scan URL and compact canonical value passed on 2026-09-03. A printed Controller `1031` label then passed phone-camera full-URL routing and Zebra DS3678-ER compact-value/Enter routing. That physical test exposed the initial-focus defect. PR #121 repaired startup/page-restore HID focus and first-character/Enter fallback behavior and is deployed in the current live artifact. A post-deployment physical no-tap tablet acceptance is not present in the durable record, so that physical focus verification remains deferred. The exact phone OS and useful scan distance from the earlier physical test were not recorded.
+The route does not query Controller tables or duplicate Controller details/actions inside Scan. Production manual entry of both the full Scan URL and compact canonical value passed on 2026-09-03. A printed Controller `1031` label then passed phone-camera full-URL routing and Zebra DS3678-ER compact-value/Enter routing. The tablet required the operator to tap the entry field first, exposing a Scan input-focus defect. The exact phone OS and useful scan distance were not recorded.
 
 ## Future Setup/Deployment Scan Platform Boundary
 
@@ -251,29 +265,27 @@ A server path does not transfer business-rule authority to the Server Management
 
 ## Current Stop Point
 
-As of 2026-09-20:
+As of 2026-09-30:
 
-- current scan application source is recovered in Git;
-- FieldWiring Scan Integration is accepted production work;
-- PR #121 HID-focus repair is deployed from merge commit `0540d3b702de68d10d78ff8e17e8bca317a9a51f`;
-- current accepted live scan artifact hash is `c11e39e99b720f90ecd9a226c0358e3dbc1fa9d51e7a0490f9cc0cd4875474a9`;
-- the Directus public-origin correction is accepted production behavior;
-- the `/scan/` Synology route is production-operational;
-- standalone Procedure field access and its Display-hub action are production-operational;
-- Controller Inventory V0.4.0 is merged and production-operational;
-- the deployed CTRL route hands permanent `controller_id` to the existing Controller Inventory Search/detail experience;
-- manual full-URL and compact CTRL inputs are production-accepted;
-- physical Controller-label, phone-camera, and Zebra end-to-end routing are accepted for Controller 1031;
-- physical post-repair no-tap HID focus acceptance, OS-specific camera classification, and useful-distance recording remain pending;
-- the broader Container/Location Setup/Deployment workflow remains separate engineering scope; and
-- no schema or physical QR change is part of this bounded integration.
+- the existing Display/Container/Controller Scan application remains Production-operational;
+- PR #121 HID focus behavior remains part of the live implementation;
+- #219's read-only `/scan/field-test` harness is deployed and has been used for real HOTWAV/Zebra/browser-GPS evidence;
+- current live Scan SHA-256 is `5b456bb682daad50673e5b7b2514cb7b98ce0d4fabb5551d79b1b0f4e98ffb50`;
+- current live Scan Git blob is `c131458fb549ab4127ede1fd8d4277d115cebaa0`;
+- #171 remains the GIS/reference-location authority and is not complete; the field-test harness remains useful and should be preserved;
+- #88 owns persisted Setup movement/Record Location semantics;
+- #88's explicit Record Location links from resolved Display/Container Scan pages are an additive integration and must not remove the #219 harness;
+- normal Scan remains lookup/context only and does not create Setup movement merely because an asset was scanned;
+- the Directus public-origin correction, Controller handoff, Field Wiring, Procedures, Testing, Container, and Work Order actions remain part of the required regression surface; and
+- no physical QR identity redesign is part of this integration.
 
-Before any later Scan deployment, read the current Server Management [Display Scan Extension Deployment and Recovery](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/directus/Display_Scan_Extension_Deployment_and_Recovery.md) runbook. Do not rediscover the Directus extension path, current runtime hash, restart procedure, `/scan/` proxy, or rollback process from scratch unless the documented runtime is proven wrong.
+Before any later Scan deployment, use the current Server Management Scan deployment/recovery authority and verify the actual live artifact/hash before mutation.
 
 ## Related Documents
 
 - [Labeling and Scanning](README.md)
 - [Controller Scan Production Deployment Acceptance — 2026-09-03](Controller_Scan_Production_Deployment_Acceptance_2026-09-03.md)
+- [Scan + GPS Field Acceptance Harness — 2026-09-18](Scan_GPS_Field_Acceptance_Harness_2026-09-18.md)
 - [FieldWiring Scan Integration Engineering Handoff](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md)
 - [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md)
 - [Field Context Resolution Contract](Field_Context_Resolution_Contract.md)

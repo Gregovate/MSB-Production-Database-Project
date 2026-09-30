@@ -4,11 +4,13 @@
 |---|---|
 | Document Type | Engineering Handoff |
 | System | Production Database — Setup Session |
-| Status | CURRENT HANDOFF — Production runtime accepted; UI/workflow in live evaluation |
+| Status | HISTORICAL HANDOFF — superseded by later Setup engineering handoff/current portal |
 | Owner | MSB Production Database engineering |
 | Last Reviewed | 2026-09-07 |
 
 ## Purpose
+
+> **Historical record:** This document preserves the accepted state at its date. It is not the current Setup resume authority. Use the Setup engineering `README.md` and the current 2026 live-state handoff for present runtime/launch status.
 
 Preserve the accepted Setup Session V0.3.4 Production state, operating model, security boundaries, runtime dependencies, rollback evidence, open PR structure, and current live-evaluation resume point so later work can start from repository evidence instead of chat history.
 

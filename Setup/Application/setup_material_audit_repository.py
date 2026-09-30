@@ -333,6 +333,157 @@ class SetupMaterialAuditRepository:
         }
         return {"context_season_year": context_year, "summary": summary, "scopes": rows}
 
+    def extra_material_source_audit(self) -> dict[str, Any]:
+        """Audit active reusable Extra Material requirements against active source authority.
+
+        One row is returned per active underlying task requirement. Source rows are
+        counted with a correlated aggregate so schedule repetition and multiple
+        physical source allocations never duplicate the requirement in this audit.
+        """
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    tm.setup_task_extra_material_id,
+                    tm.setup_task_id,
+                    t.task_name,
+                    t.stage_id,
+                    s.stage_key,
+                    s.stage_name,
+                    s.park_order,
+                    s.sub_order,
+                    t.lor_scene_id,
+                    ls.scene_name,
+                    m.setup_extra_material_id,
+                    m.material_name,
+                    tm.quantity_required,
+                    tm.quantity_uom,
+                    tm.quantity_qualifier,
+                    tm.size_text,
+                    tm.length_value,
+                    tm.length_unit,
+                    tm.color,
+                    tm.verification_state,
+                    tm.notes AS requirement_notes,
+                    coalesce(src.active_source_count, 0) AS active_source_count,
+                    coalesce(prior.prior_source_count, 0) AS prior_inactive_source_count,
+                    coalesce(prior.prior_source_context, '[]'::jsonb) AS prior_inactive_source_context
+                FROM ref.setup_task_extra_material AS tm
+                JOIN ref.setup_task AS t
+                  ON t.setup_task_id = tm.setup_task_id
+                JOIN ref.setup_extra_material AS m
+                  ON m.setup_extra_material_id = tm.setup_extra_material_id
+                LEFT JOIN ref.stage AS s
+                  ON s.stage_id = t.stage_id
+                LEFT JOIN ref.lor_scene AS ls
+                  ON ls.lor_scene_id = t.lor_scene_id
+                LEFT JOIN LATERAL (
+                    SELECT count(*)::integer AS active_source_count
+                    FROM ref.setup_task_extra_material_source AS source
+                    WHERE source.setup_task_extra_material_id = tm.setup_task_extra_material_id
+                      AND source.active_flag
+                ) AS src ON true
+                LEFT JOIN LATERAL (
+                    SELECT
+                        count(*)::integer AS prior_source_count,
+                        jsonb_agg(
+                            DISTINCT jsonb_build_object(
+                                'setup_task_extra_material_id', prior_tm.setup_task_extra_material_id,
+                                'setup_task_id', prior_task.setup_task_id,
+                                'task_name', prior_task.task_name,
+                                'setup_task_extra_material_source_id', prior_source.setup_task_extra_material_source_id,
+                                'container_id', prior_source.container_id,
+                                'container_description', prior_container.description,
+                                'expected_quantity', prior_source.expected_quantity,
+                                'verification_state', prior_source.verification_state,
+                                'notes', prior_source.notes,
+                                'quantity_required', prior_tm.quantity_required,
+                                'quantity_uom', prior_tm.quantity_uom,
+                                'quantity_qualifier', prior_tm.quantity_qualifier,
+                                'size_text', prior_tm.size_text,
+                                'length_value', prior_tm.length_value,
+                                'length_unit', prior_tm.length_unit,
+                                'color', prior_tm.color,
+                                'spec_match',
+                                (
+                                    prior_tm.quantity_uom = tm.quantity_uom
+                                    AND prior_tm.size_text IS NOT DISTINCT FROM tm.size_text
+                                    AND prior_tm.length_value IS NOT DISTINCT FROM tm.length_value
+                                    AND prior_tm.length_unit IS NOT DISTINCT FROM tm.length_unit
+                                    AND prior_tm.color IS NOT DISTINCT FROM tm.color
+                                )
+                            )
+                        ) AS prior_source_context
+                    FROM ref.setup_task_extra_material AS prior_tm
+                    JOIN ref.setup_task AS prior_task
+                      ON prior_task.setup_task_id = prior_tm.setup_task_id
+                    JOIN ref.setup_task_extra_material_source AS prior_source
+                      ON prior_source.setup_task_extra_material_id = prior_tm.setup_task_extra_material_id
+                     AND prior_source.active_flag
+                    JOIN ref.container AS prior_container
+                      ON prior_container.container_id = prior_source.container_id
+                    WHERE prior_tm.setup_extra_material_id = tm.setup_extra_material_id
+                      AND NOT prior_tm.active_flag
+                      AND prior_task.stage_id IS NOT DISTINCT FROM t.stage_id
+                ) AS prior ON true
+                WHERE t.active_flag
+                  AND tm.active_flag
+                  AND m.active_flag
+                ORDER BY
+                    s.park_order NULLS LAST,
+                    s.sub_order NULLS LAST,
+                    s.stage_key NULLS LAST,
+                    ls.scene_name NULLS LAST,
+                    t.display_order,
+                    t.setup_task_id,
+                    m.display_order,
+                    m.material_name,
+                    tm.setup_task_extra_material_id
+                """
+            )
+            rows = [dict(row) for row in cur.fetchall()]
+
+        for row in rows:
+            source_count = int(row.get("active_source_count") or 0)
+            prior_source_count = int(row.get("prior_inactive_source_count") or 0)
+            row["active_source_count"] = source_count
+            row["prior_inactive_source_count"] = prior_source_count
+            prior_context = row.get("prior_inactive_source_context")
+            row["prior_inactive_source_context"] = prior_context if isinstance(prior_context, list) else list(prior_context or [])
+            notes = str(row.get("requirement_notes") or "")
+            reconstruction_evidence = (
+                notes.startswith("Preloaded from ")
+                or notes.startswith("[TPOST_RECON_")
+                or notes.startswith("[TPOST_FINAL_RECON")
+                or notes.startswith("[#167")
+                or notes.startswith("Procedure preload")
+            )
+            row["reconstruction_evidence"] = reconstruction_evidence
+            if source_count:
+                row["source_status"] = "SOURCE_ASSIGNED"
+            elif prior_source_count:
+                row["source_status"] = "HISTORICAL_SOURCE_REVIEW"
+            elif reconstruction_evidence:
+                row["source_status"] = "RECONSTRUCTION_REVIEW"
+            else:
+                row["source_status"] = "NO_ACTIVE_SOURCE"
+            row["needs_review"] = source_count == 0
+
+        summary = {
+            "requirements_reviewed": len(rows),
+            "source_assigned": sum(1 for row in rows if not row["needs_review"]),
+            "historical_source_review": sum(
+                1 for row in rows
+                if row.get("source_status") == "HISTORICAL_SOURCE_REVIEW"
+            ),
+            "reconstruction_review": sum(
+                1 for row in rows
+                if row.get("source_status") == "RECONSTRUCTION_REVIEW"
+            ),
+            "unresolved_no_source": sum(1 for row in rows if row["needs_review"]),
+        }
+        return {"summary": summary, "requirements": rows}
+
     def kit_audit(self) -> dict[str, Any]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
@@ -446,6 +597,7 @@ class SetupMaterialAuditRepository:
         return {
             "future_session": self.future_session_audit(),
             "display": self.display_audit(),
+            "extra_material_source": self.extra_material_source_audit(),
             "kit": self.kit_audit(),
         }
 

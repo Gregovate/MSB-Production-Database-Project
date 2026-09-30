@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path, PureWindowsPath
 
-VERSION = "1.1.0"
+VERSION = "1.2.1"
 DEFAULT_DB = Path(r"G:\Shared drives\MSB Database\database\lor_output_v7_scene.db")
 DEFAULT_ROOT = Path(r"G:\Shared drives\Display Folders")
 #DEFAULT_OUTPUT = Path(r"G:\Shared drives\MSB Database\Database Previews V6.6.4\reports\google-drive-alignment")
@@ -50,6 +50,13 @@ STRUCTURED_REQUIRED = (
     "Procedures/Takedown/SourceDocs",
     "Wiring/BackgroundStage/SourceDocs",
     "Wiring/MusicalStage/SourceDocs",
+)
+PROCEDURE_REQUIRED = (
+    "Procedures",
+    "Procedures/Setup",
+    "Procedures/Setup/Archive",
+    "Procedures/Setup/images",
+    "Procedures/Setup/SourceDocs",
 )
 GENERIC_WORDS = {
     "setup", "set", "up", "instructions", "instruction", "procedure", "procedures",
@@ -82,6 +89,13 @@ class Scope:
 class LegacyFile:
     path: Path
     category: str
+
+
+@dataclass(frozen=True)
+class ProcedureInventory:
+    archive_gdocs: tuple[Path, ...]
+    source_gdocs: tuple[Path, ...]
+    published_pdfs: tuple[Path, ...]
 
 
 def norm(value: str | None) -> str:
@@ -586,6 +600,360 @@ def missing_contract(scope: Scope) -> list[str]:
     return [p for p in STRUCTURED_REQUIRED if not (scope.path / Path(p)).is_dir()]
 
 
+def missing_procedure_contract(scope: Scope) -> list[str]:
+    return [p for p in PROCEDURE_REQUIRED if not (scope.path / Path(p)).is_dir()]
+
+
+def _direct_files(folder: Path, suffix: str) -> tuple[Path, ...]:
+    if not folder.is_dir():
+        return ()
+    try:
+        items = [
+            item
+            for item in folder.iterdir()
+            if item.is_file() and item.suffix.casefold() == suffix.casefold()
+        ]
+    except OSError:
+        return ()
+    return tuple(sorted(items, key=lambda item: item.name.casefold()))
+
+
+def procedure_inventory(scope: Scope) -> ProcedureInventory:
+    """Inventory Setup procedure files without guessing document equivalence.
+
+    One archived legacy source may intentionally be split into multiple current
+    SourceDocs and multiple published PDFs. Counts and locations are therefore
+    reported independently; filenames are not paired one-to-one.
+    """
+    setup_root = scope.path / "Procedures" / "Setup"
+    return ProcedureInventory(
+        archive_gdocs=_direct_files(setup_root / "Archive", ".gdoc"),
+        source_gdocs=_direct_files(setup_root / "SourceDocs", ".gdoc"),
+        published_pdfs=_direct_files(setup_root, ".pdf"),
+    )
+
+
+def _paths_text(paths: tuple[Path, ...], root: Path) -> str:
+    return "; ".join(rel(path, root) for path in paths)
+
+
+def file_modified_text(path: Path) -> str:
+    """Return the local filesystem modified time reported by Google Drive for Desktop."""
+    try:
+        return datetime.fromtimestamp(path.stat().st_mtime).astimezone().strftime(
+            "%Y-%m-%d %H:%M %Z"
+        )
+    except (OSError, OverflowError, ValueError):
+        return "Unavailable"
+
+
+def _modified_text(paths: tuple[Path, ...]) -> str:
+    return "; ".join(file_modified_text(path) for path in paths)
+
+
+def write_procedure_inventory(
+    output: Path,
+    root: Path,
+    scopes: list[Scope],
+    stamp: str,
+) -> tuple[Path, Path]:
+    """Write a shareable read-only Setup Procedure Inventory."""
+
+    html_path = output / f"procedure-inventory-{stamp}.html"
+    csv_path = output / f"procedure-inventory-{stamp}.csv"
+
+    rows = []
+    for scope in sorted(
+        scopes,
+        key=lambda item: (
+            item.stage_id,
+            0 if item.scope_type == "STAGE" else 1 if item.scope_type == "SUB_STAGE" else 2,
+            str(item.path).casefold(),
+        ),
+    ):
+        inv = procedure_inventory(scope)
+        rows.append((scope, inv, missing_procedure_contract(scope)))
+
+    with csv_path.open("w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f)
+        w.writerow([
+            "stage_id",
+            "scope_type",
+            "scope_name",
+            "scope_path",
+            "published_pdf_expected_folder",
+            "published_pdf_count",
+            "published_pdf_paths",
+            "published_pdf_modified",
+            "sourcedoc_expected_folder",
+            "sourcedoc_gdoc_count",
+            "sourcedoc_gdoc_paths",
+            "sourcedoc_gdoc_modified",
+            "archive_expected_folder",
+            "archive_gdoc_count",
+            "archive_gdoc_paths",
+            "archive_gdoc_modified",
+            "missing_required_folders",
+        ])
+        for scope, inv, missing in rows:
+            setup_root = scope.path / "Procedures" / "Setup"
+            w.writerow([
+                scope.stage_id,
+                scope.scope_type,
+                scope.scope_name,
+                rel(scope.path, root),
+                rel(setup_root, root),
+                len(inv.published_pdfs),
+                _paths_text(inv.published_pdfs, root),
+                _modified_text(inv.published_pdfs),
+                rel(setup_root / "SourceDocs", root),
+                len(inv.source_gdocs),
+                _paths_text(inv.source_gdocs, root),
+                _modified_text(inv.source_gdocs),
+                rel(setup_root / "Archive", root),
+                len(inv.archive_gdocs),
+                _paths_text(inv.archive_gdocs, root),
+                _modified_text(inv.archive_gdocs),
+                "; ".join(missing),
+            ])
+
+    total = len(rows)
+    with_published = sum(bool(inv.published_pdfs) for _scope, inv, _missing in rows)
+    with_source = sum(bool(inv.source_gdocs) for _scope, inv, _missing in rows)
+    with_archive = sum(bool(inv.archive_gdocs) for _scope, inv, _missing in rows)
+    no_setup_files = sum(
+        not (inv.published_pdfs or inv.source_gdocs or inv.archive_gdocs)
+        for _scope, inv, _missing in rows
+    )
+
+    css = """
+body{font-family:Segoe UI,Arial,sans-serif;margin:24px;color:#222;max-width:1600px}
+h1{margin-bottom:5px}h2{margin-top:30px;border-bottom:2px solid #777;padding-bottom:5px}
+table{border-collapse:collapse;width:100%;margin:8px 0 22px;font-size:14px;table-layout:fixed}
+th,td{border:1px solid #ccc;padding:7px;vertical-align:top;text-align:left}
+th{background:#eee}.note{background:#fff8d6;border:1px solid #d5a400;padding:10px}
+.quiet{color:#666}.missing{color:#9a2f00;font-weight:700}.present{color:#176b22;font-weight:700}
+code{font-family:Consolas,monospace;overflow-wrap:anywhere}
+.file{margin:3px 0}.file a{margin-left:6px}
+.scope-col{width:20%}.files-col{width:23%}.missing-col{width:11%}
+.instructions{background:#eef6ff;border:2px solid #6b8fb8;padding:14px 18px;margin:18px 0 24px}
+.instructions h2{margin-top:0;border-bottom:0}.instructions li{margin:8px 0;line-height:1.35}
+.instructions .warning{background:#fff3cd;border-left:4px solid #d39e00;padding:8px 10px;margin:12px 0}
+.folder-contract{background:#f7f7f7;border:2px solid #777;padding:14px 18px;margin:18px 0 24px}
+.folder-contract h2{margin-top:0;border-bottom:0}.folder-contract pre{background:white;border:1px solid #ccc;padding:12px;overflow:auto}
+.folder-contract .danger{background:#fdecec;border-left:5px solid #b42318;padding:10px 12px;margin:12px 0;font-weight:700}
+"""
+
+    def render_files(paths: tuple[Path, ...], expected: Path) -> str:
+        parts = [
+            "<div class='quiet'>Expected folder: "
+            f"<code>{html.escape(rel(expected, root))}</code></div>"
+        ]
+        if not paths:
+            parts.append("<div class='missing'>No matching files found in this location.</div>")
+            return "".join(parts)
+        for item in paths:
+            parts.append(
+                "<div class='file'><code>"
+                + html.escape(rel(item, root))
+                + "</code> "
+                + file_link(item)
+                + "<br><span class='quiet'>Modified: "
+                + html.escape(file_modified_text(item))
+                + "</span></div>"
+            )
+        return "".join(parts)
+
+    out = [
+        "<!doctype html><html><head><meta charset='utf-8'>",
+        "<title>MSB Procedure Inventory</title>",
+        f"<style>{css}</style></head><body>",
+        "<h1>MSB Procedure Inventory</h1>",
+        "<p class='note'><strong>READ-ONLY.</strong> This report inventories existing Setup procedure documents. "
+        "It does not move, copy, rename, publish, or decide whether a procedure is required for a scope.</p>",
+        "<p>The documented Setup locations are: current field PDFs directly in "
+        "<code>Procedures\\Setup</code>, editable working Google Docs in "
+        "<code>Procedures\\Setup\\SourceDocs</code>, and preserved original/historical Google Docs in "
+        "<code>Procedures\\Setup\\Archive</code>.</p>",
+        "<p><strong>Important:</strong> document counts do not need to match. "
+        "A single archived legacy procedure may legitimately be split into multiple SourceDocs and multiple published PDFs.</p>",
+        "<p class='quiet'>Modified timestamps are the filesystem Last Modified values reported on the machine running the inventory (Google Drive for Desktop on the normal Windows workflow).</p>",
+        "<div class='instructions'>",
+        "<h2>How to Update a Setup Procedure</h2>",
+        "<p>Work on one Stage or Scene at a time. Use the file list below to find the correct folders.</p>",
+        "<ol>",
+        "<li><strong>Start with the original.</strong> Look in <code>Procedures\\Setup\\Archive</code>. "
+        "The file in Archive is the original instruction. <strong>Do not edit the Archive file.</strong></li>",
+        "<li><strong>Open the archived Google Doc.</strong> Click <strong>Open</strong> beside the Archive <code>.gdoc</code> file. "
+        "It should open in Google Docs.</li>",
+        "<li><strong>Make the working copy in Google Docs.</strong> In Google Docs, click <strong>File → Make a copy</strong>. "
+        "Do not copy the <code>.gdoc</code> file with Windows Explorer.</li>",
+        "<li><strong>Save the copy in SourceDocs.</strong> In the Make a copy window, choose the same Stage or Scene folder, then "
+        "<code>Procedures\\Setup\\SourceDocs</code>. This new Google Doc is the file you will edit from now on.</li>",
+        "<li><strong>Name the working copy clearly.</strong> Use the Stage or Scene number and name, followed by <strong>Setup</strong>. "
+        "Example: <code>26-Magic Igloo Setup</code>. If the old instruction is split into several procedures, add the job name, for example "
+        "<code>26-Magic Igloo Setup - Frame</code>, <code>26-Magic Igloo Setup - Skins</code>, and "
+        "<code>26-Magic Igloo Setup - Interior Lighting</code>.</li>",
+        "<li><strong>Edit only the SourceDocs copy.</strong> Make all corrections and improvements in the copy under "
+        "<code>SourceDocs</code>. Leave the Archive original unchanged.</li>",
+        "<li><strong>Split large procedures when it helps the crew.</strong> If one old document contains several large jobs, it is OK to create "
+        "separate SourceDocs for those jobs. The number of new procedures does not have to match the number of archived originals.</li>",
+        "<li><strong>Keep the instructions focused on the physical work.</strong> As the new Setup system starts supplying Display names, "
+        "equipment, materials, and other lists, remove duplicate lists from the procedure only after the new system has been checked and is ready to replace them.</li>",
+        "<li><strong>Create the field PDF when the edits are finished.</strong> While the finished working copy is open in Google Docs, click "
+        "<strong>File → Download → PDF Document (.pdf)</strong>.</li>",
+        "<li><strong>Find the downloaded PDF.</strong> Open your computer's <strong>Downloads</strong> folder in Windows File Explorer.</li>",
+        "<li><strong>Move the PDF to the current Setup folder.</strong> Cut the downloaded PDF, then go back to the same Stage or Scene in Google Drive and paste it directly into "
+        "<code>Procedures\\Setup</code>. <strong>Do not put the current PDF in SourceDocs or Archive.</strong></li>",
+        "<li><strong>Use the same title for the source and PDF.</strong> Example: "
+        "<code>26-Magic Igloo Setup - Frame.gdoc</code> in SourceDocs should publish as "
+        "<code>26-Magic Igloo Setup - Frame.pdf</code> in Setup.</li>",
+        "<li><strong>Check your work.</strong> Re-run this Procedure Inventory. Make sure the editable Google Doc appears under SourceDocs and the PDF appears under Published Setup PDFs. "
+        "Then open the Procedures system and confirm the PDF is the file the crew sees.</li>",
+        "</ol>",
+        "<div class='warning'><strong>Do not edit or delete the Archive original.</strong> Archive is the preserved historical copy. "
+        "SourceDocs is the editable working copy. The PDF directly in <code>Procedures\\Setup</code> is the read-only field copy used on phones and tablets.</div>",
+        "</div>",
+        "<div class='folder-contract'>",
+        "<h2>Do Not Change the Folder Structure</h2>",
+        "<div class='danger'>DO NOT edit, rename, move, or delete any file named "
+        "<code>_MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt</code>. "
+        "These marker/readme files tell the MSB applications which folders are approved. "
+        "Do not delete folders or files just to make this report look cleaner.</div>",
+        "<p>Stage, Sub-stage, and Scene documentation use the same basic structure. "
+        "A Sub-stage lives inside its owning Stage. A Scene normally lives inside its owning Stage or Sub-stage. "
+        "When a Sub-stage or Scene is a real documentation scope, it gets the same helper folders shown below.</p>",
+        "<h3>Big Picture — same idea as the office whiteboard</h3>",
+        "<pre>&lt;Stage&gt;\\\n"
+        "├── PreviewBackground\\\n"
+        "├── Procedures\\\n"
+        "│   └── Setup\\\n"
+        "│       ├── Archive\\       ← original instructions; DO NOT EDIT\n"
+        "│       ├── images\\        ← pictures used in the instructions\n"
+        "│       ├── SourceDocs\\    ← editable Google Docs\n"
+        "│       └── *.pdf            ← current field copy for phones/tablets\n"
+        "├── Wiring\\\n"
+        "│   ├── BackgroundStage\\SourceDocs\\\n"
+        "│   └── MusicalStage\\SourceDocs\\\n"
+        "├── &lt;Sub-stage&gt;\\       ← when used\n"
+        "│   └── same folder structure\n"
+        "└── &lt;Scene&gt;\\           ← when it is an approved documentation scope\n"
+        "    └── same folder structure</pre>",
+        "<p><strong>Think of the Stage as the big box on the office whiteboard.</strong> "
+        "Sub-stages and approved Scene folders sit inside that Stage and carry their own Procedure/Wiring/PreviewBackground structure when needed.</p>",
+        "<h3>Stage folder</h3>",
+        "<pre>&lt;NN-Stage Name-XY&gt;\\\n"
+        "├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt\n"
+        "├── PreviewBackground\\\n"
+        "│   └── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt  (when used as a controlled LOR background source)\n"
+        "├── Photos\\\n"
+        "│   ├── Current\\\n"
+        "│   └── Historical\\\n"
+        "├── Procedures\\\n"
+        "│   ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt\n"
+        "│   ├── Inspection\\\n"
+        "│   ├── Setup\\\n"
+        "│   │   ├── Archive\\        ← original / historical Google Docs; DO NOT EDIT\n"
+        "│   │   ├── images\\         ← pictures used by Setup instructions\n"
+        "│   │   ├── SourceDocs\\     ← editable Google Docs used going forward\n"
+        "│   │   └── *.pdf             ← current read-only field procedure(s) go DIRECTLY in Setup\n"
+        "│   └── Takedown\\\n"
+        "│       ├── Archive\\\n"
+        "│       ├── images\\\n"
+        "│       └── SourceDocs\\\n"
+        "└── Wiring\\\n"
+        "    ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt\n"
+        "    ├── BackgroundStage\\\n"
+        "    │   └── SourceDocs\\\n"
+        "    └── MusicalStage\\\n"
+        "        └── SourceDocs\\</pre>",
+        "<h3>Sub-stage folder</h3>",
+        "<p>A <strong>Sub-stage</strong> is used when part of a Stage needs to be managed separately for technical or planning reasons. "
+        "Examples are <code>03a-Mega Cube-MC</code> for the Mega Cube and <code>07a-Who Forest-WF</code> for the Who Forest. "
+        "A Sub-stage may have its own Setup procedures, wiring, Setup schedule, crew needs, and resource requirements, while still belonging to the larger Stage.</p>",
+        "<pre>&lt;NN-Stage Name-XY&gt;\\\n"
+        "└── &lt;NNa-Sub-stage Name-XY&gt;\\\n"
+        "    ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt\n"
+        "    ├── PreviewBackground\\\n"
+        "    ├── Photos\\Current\\ and Photos\\Historical\\\n"
+        "    ├── Procedures\\Inspection\\\n"
+        "    ├── Procedures\\Setup\\Archive\\\n"
+        "    ├── Procedures\\Setup\\images\\\n"
+        "    ├── Procedures\\Setup\\SourceDocs\\\n"
+        "    ├── Procedures\\Setup\\*.pdf   ← current field procedure(s)\n"
+        "    ├── Procedures\\Takedown\\Archive\\, images\\, SourceDocs\\\n"
+        "    └── Wiring\\BackgroundStage\\SourceDocs\\ and Wiring\\MusicalStage\\SourceDocs\\</pre>",
+        "<h3>Scene folder</h3>",
+        "<p>A <strong>Scene</strong> is a part of a Stage that can be set up independently from the rest of that Stage. "
+        "Because it can be worked on separately, it may need its own Setup procedures, wiring, schedule, crew, and resource information. "
+        "Use a Scene folder only when that Scene is an approved documentation scope; not every LOR Scene automatically gets its own folder.</p>",
+        "<pre>&lt;NN-Stage Name-XY&gt;\\\n"
+        "└── &lt;NN-Scene Name&gt;\\\n"
+        "    ├── _MSB-DB-Source-Folder_READ-ME-FIRST-AND-DO-NOT-DELETE.txt\n"
+        "    ├── PreviewBackground\\\n"
+        "    ├── Photos\\Current\\ and Photos\\Historical\\\n"
+        "    ├── Procedures\\Inspection\\\n"
+        "    ├── Procedures\\Setup\\Archive\\\n"
+        "    ├── Procedures\\Setup\\images\\\n"
+        "    ├── Procedures\\Setup\\SourceDocs\\\n"
+        "    ├── Procedures\\Setup\\*.pdf   ← current field procedure(s)\n"
+        "    ├── Procedures\\Takedown\\Archive\\, images\\, SourceDocs\\\n"
+        "    └── Wiring\\BackgroundStage\\SourceDocs\\ and Wiring\\MusicalStage\\SourceDocs\\</pre>",
+        "<p><strong>Important:</strong> not every LOR Scene is automatically a Google Drive Scene documentation folder. "
+        "Use the existing approved Stage/Sub-stage/Scene structure. Do not create, rename, move, or delete a scope folder because a name looks similar.</p>",
+        "</div>",
+        "<h2>Inventory Summary</h2>",
+        "<table><tr><th>Measure</th><th>Scopes</th></tr>",
+        f"<tr><td>Structured Stage/Sub-stage/Scene scopes inventoried</td><td>{total}</td></tr>",
+        f"<tr><td>Scopes with published Setup PDF(s)</td><td>{with_published}</td></tr>",
+        f"<tr><td>Scopes with editable SourceDocs .gdoc file(s)</td><td>{with_source}</td></tr>",
+        f"<tr><td>Scopes with archived .gdoc original(s)</td><td>{with_archive}</td></tr>",
+        f"<tr><td>Scopes with no Setup procedure files in any of the three locations</td><td>{no_setup_files}</td></tr>",
+        "</table>",
+    ]
+
+    by_stage: dict[str, list[tuple[Scope, ProcedureInventory, list[str]]]] = defaultdict(list)
+    for row in rows:
+        by_stage[row[0].stage_id].append(row)
+
+    for sid in sorted(by_stage):
+        stage_rows = by_stage[sid]
+        stage_scope = next((scope for scope, _inv, _missing in stage_rows if scope.scope_type == "STAGE"), None)
+        title = stage_scope.scope_name if stage_scope else f"Stage {sid}"
+        out.append(f"<h2>Stage {html.escape(sid)} — {html.escape(title)}</h2>")
+        out.append(
+            "<table><tr>"
+            "<th class='scope-col'>Scope</th>"
+            "<th class='files-col'>Published Setup PDFs</th>"
+            "<th class='files-col'>Editable SourceDocs .gdoc</th>"
+            "<th class='files-col'>Archived original .gdoc</th>"
+            "<th class='missing-col'>Missing documented folders</th>"
+            "</tr>"
+        )
+        for scope, inv, missing in stage_rows:
+            setup_root = scope.path / "Procedures" / "Setup"
+            missing_html = (
+                "<div class='missing'>" + "<br>".join(html.escape(item) for item in missing) + "</div>"
+                if missing
+                else "<span class='present'>None</span>"
+            )
+            out.append(
+                "<tr>"
+                f"<td><strong>{html.escape(scope.scope_type.replace('_', ' ').title())}</strong><br>"
+                f"{html.escape(scope.scope_name)}<br><code>{html.escape(rel(scope.path, root))}</code></td>"
+                f"<td>{render_files(inv.published_pdfs, setup_root)}</td>"
+                f"<td>{render_files(inv.source_gdocs, setup_root / 'SourceDocs')}</td>"
+                f"<td>{render_files(inv.archive_gdocs, setup_root / 'Archive')}</td>"
+                f"<td>{missing_html}</td>"
+                "</tr>"
+            )
+        out.append("</table>")
+
+    out.append("</body></html>")
+    html_path.write_text("".join(out), encoding="utf-8")
+    return html_path, csv_path
+
+
 def write_reports(output: Path, root: Path, db: Path, previews, scopes, scope_issues, legacy_by_stage, unassigned, provenance):
     output.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -749,8 +1117,17 @@ def main() -> int:
         output_dir, args.drive_root, args.db, previews, scopes, scope_issues,
         legacy_by_stage, unassigned, provenance,
     )
+    procedure_stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    procedure_html, procedure_csv = write_procedure_inventory(
+        output_dir,
+        args.drive_root,
+        scopes,
+        procedure_stamp,
+    )
     print(f"[INFO] HTML: {html_path}", flush=True)
     print(f"[INFO] CSV: {csv_path}", flush=True)
+    print(f"[INFO] Procedure Inventory HTML: {procedure_html}", flush=True)
+    print(f"[INFO] Procedure Inventory CSV:  {procedure_csv}", flush=True)
     return 0
 
 

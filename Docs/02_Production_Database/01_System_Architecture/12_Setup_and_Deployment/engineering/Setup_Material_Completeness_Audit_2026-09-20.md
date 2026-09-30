@@ -4,14 +4,14 @@
 |---|---|
 | Document Type | Engineering Implementation Contract |
 | System | Production Database — Setup and Deployment |
-| Issue | #145 |
-| Status | IMPLEMENTATION CANDIDATE — NOT PRODUCTION ACCEPTED |
+| Issue | #145 — COMPLETE |
+| Status | PRODUCTION ACCEPTED — continuing Manager audit/correction surface |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-20 |
+| Last Reviewed | 2026-09-25 |
 
 ## Purpose
 
-Provide the Manager-level whole-Catalog acceptance surface required before #145 can complete its disposable 2026 seed proof.
+Define the Manager-level whole-Catalog Material Completeness Audit that was used to close #145 and remains available for ongoing reusable-Catalog correction after the real 2026 Session launch.
 
 The candidate audits two existing authorities without replacing them:
 
@@ -20,7 +20,7 @@ The candidate audits two existing authorities without replacing them:
 
 ## Future Session readiness
 
-The audit also reviews reusable-task activation before any new annual Setup Session is created.
+The audit reviews reusable-task activation for future annual seeding. The real 2026 Setup Session is already live; this section now applies to future Sessions and to ongoing reusable-Catalog review.
 
 The installed annual Session command seeds reusable work using:
 
@@ -121,9 +121,9 @@ PATCH /api/setup/material-audit/kits/{container_id}/shared-non-task
 
 The browser defaults to **Exceptions only**, provides whole-Catalog summary counts, and links Managers to existing Display Ownership, reusable-task Kit assignment, and Kit Inventory surfaces.
 
-## Acceptance gate
+## Historical #145 acceptance gate — SATISFIED
 
-Before #145 final Catalog acceptance:
+The following criteria governed #145 final Catalog acceptance before the 2026 annual launch:
 
 ```text
 Display REVIEW_REQUIRED scopes = 0
@@ -136,4 +136,4 @@ Kit disposition conflicts = 0
 
 `REVIEWED_SHARED_NON_TASK` is an accepted deliberate exception.
 
-No real 2026 Setup Session may be created by this work.
+#145 is now complete and closed. The audit feature itself does not create annual Sessions; the real 2026 Setup Session was later created through the governed #122 launch path and is now live. Continue using Material Audit as a Manager review/correction surface without treating it as ownership of annual scheduling or #206 physical movement semantics.

@@ -516,7 +516,7 @@
 
     const confirmed = window.confirm(
       `Delete "${task.task_name}" completely from the ${appState.seasonYear} reconstruction and the Reusable Task Catalog?\n\n`
-      + 'This is intended for reconstruction mistakes only. The database will refuse the delete if the task has work-day, progress, movement, planning, or actual execution history.\n\n'
+      + 'This is intended for reconstruction mistakes only. The database will refuse the delete if actual work/progress or movement evidence exists. Material assignments must be moved or reassigned first.\n\n'
       + 'This cannot be undone.'
     );
     if (!confirmed) return;

@@ -45,7 +45,7 @@ def test_task_source_editor_is_compact_and_uses_governed_source_commands() -> No
     assert "Change</button>" in ui
     assert "Remove</button>" in ui
 
-    assert "setup_task_extra_material_sources.js?v=2026-09-16.3" in bridge
+    assert "setup_task_extra_material_sources.js?v=2026-09-29.1" in bridge
     assert "setup_extra_material_source_usability.js?v=2026-09-16.2" in bridge
     assert "script.addEventListener('load', loadSourceUsabilityRefinement" in bridge
     assert '"setup_task_extra_material_sources.js"' in host
@@ -153,3 +153,56 @@ def test_tpost_inventory_can_bootstrap_an_existing_non_kit_container() -> None:
 def test_changed_python_modules_parse() -> None:
     for name in ("setup_extra_material_api.py", "production_backend.py"):
         ast.parse(text(name), filename=name)
+
+
+def test_material_audit_deep_link_opens_exact_existing_source_editor() -> None:
+    production = text("setup_production.js")
+    source_ui = text("setup_task_extra_material_sources.js")
+
+    assert "pendingExtraMaterialRequirementId" in production
+    assert "extra-material-source" in production
+    assert "setup_task_extra_material_id" in production
+    assert "function openPendingSourceCorrection()" in source_ui
+    assert "consumePendingCorrection('extra-material-source')" in source_ui
+    assert "beginSource(requirementId)" in source_ui
+
+
+
+def test_existing_source_editor_is_exposed_for_inline_requirement_actions() -> None:
+    source_ui = text("setup_task_extra_material_sources.js")
+    task_ui = text("setup_task_extra_materials.js")
+
+    assert "window.openTaskExtraMaterialSource" in source_ui
+    assert "beginSource(Number(requirementId)" in source_ui
+    assert "window.focusTaskExtraMaterialSources" in source_ui
+    assert "window.openTaskExtraMaterialSource" in task_ui
+    assert "task-extra-material-source-inline" in task_ui
+
+
+def test_source_container_search_accepts_human_readable_c_prefix_and_padding() -> None:
+    ui = text("setup_task_extra_material_sources.js")
+
+    assert "function humanContainerId(value)" in ui
+    assert "padStart(3, '0')" in ui
+    assert "`C${row.container_id}`" in ui
+    assert "humanContainerId(row.container_id)" in ui
+    assert "humanContainerId(source.container_id)" in ui
+
+
+def test_production_shell_refreshes_extra_material_bridge_after_source_ui_change() -> None:
+    page = text("production.html")
+    bridge = text("setup_extra_materials.js")
+
+    assert "setup_extra_materials.js?v=2026-09-29.1" in page
+    assert "setup_task_extra_material_sources.js?v=2026-09-29.1" in bridge
+
+
+def test_add_source_disables_already_linked_containers_and_points_to_change() -> None:
+    ui = text("setup_task_extra_material_sources.js")
+
+    assert "linkedByContainer" in ui
+    assert "isCurrentEditedSource" in ui
+    assert "alreadyLinked" in ui
+    assert "Already linked — use Change" in ui
+    assert "Containers already linked to this requirement are disabled; use Change on the existing source instead." in ui
+    assert "const disabled = alreadyLinked ? ' disabled' : '';" in ui

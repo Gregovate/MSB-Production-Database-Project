@@ -54,7 +54,22 @@ G:\Shared drives\MSB Database\Database Previews V6.6.4\reports\google-drive-alig
 
 ## Expected Result
 
-A current HTML Documentation Alignment Worklist opens and shows the present parser/Google Drive comparison without changing Google Drive contents.
+The run creates two read-only reports in the current Folder Alignment report folder:
+
+1. **Documentation Alignment Worklist** — current LOR/parser versus Google Drive folder alignment.
+2. **Procedure Inventory** — current Setup procedure files found at each resolved Stage/Sub-stage/Scene scope.
+
+The Procedure Inventory shows the actual file locations under the documented Setup branches:
+
+```text
+Procedures\Setup\                 current published PDF(s)
+Procedures\Setup\SourceDocs\      editable working .gdoc source(s)
+Procedures\Setup\Archive\         preserved original/historical .gdoc source(s)
+```
+
+The report also shows missing documented Procedure folders. It does **not** assume file counts or filenames must match. One archived legacy procedure may legitimately be split into multiple SourceDocs and multiple published PDFs.
+
+Neither report changes Google Drive contents.
 
 ## Next Step
 

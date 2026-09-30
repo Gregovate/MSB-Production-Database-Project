@@ -23,6 +23,28 @@ if not OPERATOR_EMAIL:
 sys.path.insert(0, APP_DIR)
 from production_backend import app  # noqa: E402
 
+# Browser acceptance must never post a clone-only test correction into
+# Production Directus. PostgreSQL preparation/authorization still executes
+# against the disposable clone; only the final external Directus create call
+# is replaced with a no-write preview sink.
+import setup_work_order_intake_api as intake_api  # noqa: E402
+
+
+class PreviewDirectusIntakeClient:
+    """No-write Directus boundary used only by disposable browser review."""
+
+    def create_intake(self, payload):
+        if payload.get("source_system") != "SETUP":
+            raise RuntimeError("Preview Intake payload source_system is not SETUP")
+        if payload.get("source_form_name") != "SETUP_CORRECTION":
+            raise RuntimeError("Preview Intake payload source_form_name is invalid")
+        if str(payload.get("triage_dropdown") or "") != "1":
+            raise RuntimeError("Preview Intake payload is not Submitted")
+        return {"intake_id": 0, "preview_only": True}
+
+
+intake_api.directus_client = lambda: PreviewDirectusIntakeClient()
+
 
 class PreviewIdentityMiddleware:
     """Inject one reviewed Cloudflare identity only inside the preview process."""

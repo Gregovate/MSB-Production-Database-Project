@@ -10,12 +10,12 @@
 | Audience | Managers |
 | Status | CURRENT |
 | Owner | Production Database Manager |
-| Last Reviewed | 2026-08-09 |
+| Last Reviewed | 2026-09-26 |
 | Keywords | work order intake, triage, promote, submitted, delete |
 
 ## Purpose
 
-Use this procedure to review a request submitted through the Work Order Request Form and decide whether it should become an active Work Order.
+Use this procedure to review a human-reported Work Order Intake record, including the public Work Order Request Form and authenticated Setup **Report Correction**, and decide whether it should become an active Work Order or remain an Intake-only correction finding.
 
 Work Orders created automatically by a Test Session are already active Work Orders and do **not** go through this triage process.
 
@@ -24,7 +24,7 @@ Work Orders created automatically by a Test Session are already active Work Orde
 1. Open **Work Order Intake**.
 2. Open the request that needs review.
 3. Confirm the request is valid and actionable.
-4. Review and correct the information needed for the Work Order, including when applicable:
+4. Review the submitted source context and correct the information needed for the Work Order, including when applicable:
    - Stage or Work Area;
    - related Display;
    - Task Type;
@@ -32,9 +32,9 @@ Work Orders created automatically by a Test Session are already active Work Orde
    - supporting notes;
    - Urgency; and
    - Target Year.
-5. Review the submitted Priority and assign the correct Work Order Urgency using [Urgency and Target Year Reference](Urgency_and_Target_Year_Reference.md).
+5. For a request that may be promoted, review the submitted Priority and assign the correct Work Order Urgency using [Urgency and Target Year Reference](Urgency_and_Target_Year_Reference.md). Setup Report Correction records may instead be resolved through the responsible Setup/data/Procedure/GIS/engineering surface without promotion.
 6. Choose the appropriate triage outcome:
-   - **Delete** — no action is required;
+   - **Delete** — no Work Order or retained Intake action is required;
    - **Submitted** — keep the request in intake for later review; or
    - **Promote** — create an active Work Order.
 7. Save the record.

@@ -24,15 +24,24 @@ def test_review_usability_assets_are_loaded_and_served() -> None:
     assert client.get("/setup_review_usability.js").status_code == 200
 
 
-def test_plain_english_manager_help_covers_current_and_next_workflows() -> None:
+def test_plain_english_manager_help_covers_current_live_workflows() -> None:
     text = (APP_DIR / "setup_review_usability.js").read_text(encoding="utf-8")
     for phrase in (
         "How Setup Session Works",
         "Verify 2025",
         "Reusable tasks and Stage sequence",
         "Prerequisites and readiness",
-        "Scheduling model coming next",
+        "Scheduling model",
+        "Setup Work",
+        "Wait / Gate",
+        "not scheduled to a crew or work day",
+        "linked Work Order",
+        "downstream work unblocks without duplicate reporting",
+        "Support / Prep",
+        "Locate Power & Network is Setup Work",
         "Pick Lists",
+        "live annual Session",
+        "early-pick Container override",
         "Movement and scanning",
         "Morning",
         "Afternoon",

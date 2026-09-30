@@ -77,9 +77,13 @@ def test_next_pass_browser_exposes_prerequisite_schedule_and_captain_execution()
     assert "api/setup/tasks/${taskId}/procedure/current" in text
     assert "Crew size" in text
     assert "Completed quantity" in text
-    assert "Which units / what was completed" in text
-    assert "Progress / completion note" in text
-    assert "Entire task complete" in text
+    assert "Which units" in text
+    assert "What was done / what remains" in text
+    assert "next-duration-hours" in text
+    assert "next-duration-minutes" in text
+    assert "next-percent-complete" in text
+    assert "100% completes the annual task" in text
+    assert "next-mark-complete" not in text
     assert "api/setup/session-tasks/${sessionTaskId}/progress" in text
 
 
@@ -104,3 +108,47 @@ def test_field_context_is_read_only_location_integration_not_movement_simulation
     assert "INSERT INTO ops.setup_movement_event" not in repo
     assert "UPDATE ops.setup_display_state" not in repo
     assert "UPDATE ops.setup_container_state" not in repo
+
+
+def test_next_pass_catalog_waits_for_organization_readiness() -> None:
+    text = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
+    html = (APP_DIR / "production.html").read_text(encoding="utf-8")
+
+    assert "organizationStatus: 'idle'" in text
+    assert "organizationPromise: null" in text
+    assert "organizationError: null" in text
+    assert "setupNextState.organizationStatus = 'loading';" in text
+    assert "setupNextState.organizationStatus = 'ready';" in text
+    assert "setupNextState.organizationStatus = 'failed';" in text
+    assert "function renderNextLibraryReadiness()" in text
+    assert "Loading reusable Catalog organization…" in text
+    assert "Reusable Catalog organization could not be loaded." in text
+    assert "Retry Catalog Organization" in text
+    assert "if (renderNextLibraryReadiness()) return;" in text
+    assert "priorNextRenderLibrary" not in text
+    assert "if (!setupNextState.scenes.length)" not in text
+    assert "if (setupNextState.scenes.length) renderLibrary();" not in text
+    assert "setup_next_pass.js?v=2026-09-30.10" in html
+
+
+def test_perform_work_shows_planned_and_actual_person_hours() -> None:
+    text = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
+    assert "nextLaborHoursText" in text
+    assert "nextPerformLaborKpis" in text
+    assert 'id="next-perform-kpis"' in text
+    assert "<span>Planned labor</span>" in text
+    assert "<span>Actual labor</span>" in text
+    assert "<span>Completed-work variance</span>" in text
+    assert "Est. labor" in text
+    assert "person-hour" in text
+    assert "Labor " in text
+    assert "nextPerformPlannedCrew" in text
+    assert "nextPerformCaptainScopedAssignments" in text
+    assert "completedPlannedHours" in text
+    assert "completedActualHours" in text
+    assert "completedPlannedUnknown" in text
+    assert "Completed:" in text
+    assert "const labor = nextPerformLaborKpis(scopedAssignments);" in text
+    assert "completedCount += 1;" in text
+    assert "reported work in Captain scope" in text
+    assert "no completed assignments in Captain scope" in text

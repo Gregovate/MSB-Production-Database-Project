@@ -1,72 +1,81 @@
-# Setup Session Operator Procedures
+# Setup Operator Instructions
 
-This folder contains operator/Manager procedures for the live Setup Session application.
+| Document Control | Value |
+|---|---|
+| Document Type | Operator Portal |
+| System | Production Database — Setup Session |
+| Audience | Setup Managers, reviewers, and Setup operators |
+| Status | CURRENT |
+| Owner | MSB Production Database / Setup administrator |
+| Last Reviewed | 2026-09-30 |
+| Keywords | Setup, 2026 Setup, Plan / Schedule, Perform Work, Report Work, Report Correction, Pick List, Pick Delay, manager, verification, reusable tasks, Displays, Kits, materials |
 
-## Current State
+These are the plain-English instructions for using the live Setup application.
 
-```text
-https://my.sheboyganlights.org/setup/
-2025 — Historical Verification
-Client V0.3.13
-```
+Open Setup:
 
-The 2025 shared review uses real Production data. There is currently no 2026 Setup Session.
+[**Open the Setup application**](https://my.sheboyganlights.org/setup/)
 
 ## Start Here
 
-- [Setup Session Manager Review Guide](Setup_Session_Manager_Review_Guide.md)
-- [Setup system/operator portal](../../01_System_Architecture/12_Setup_and_Deployment/README.md)
+- [Setup and Deployment — What do you need to do?](../../01_System_Architecture/12_Setup_and_Deployment/README.md)
+- [Review and Correct the 2025 Setup History](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Review_2025_Setup_History.md)
+- [Perform and Report Setup Work](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Perform_and_Report_Setup_Work.md)
+- [Rolling Pick List and Pick Delay](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Rolling_Pick_List_and_Pick_Delay.md)
+- [Setup Manager Review Guide](Setup_Session_Manager_Review_Guide.md)
+- [Extra Materials and Kit Inventory](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Extra_Materials_and_Kit_Inventory.md)
 
-## Material Applicability and Ownership
+## Current Field Work
 
-Reusable tasks use **Uses Display / Container Material** to participate in the LOR-derived material resolver.
+- **Plan / Schedule** = schedule or move work before it is worked.
+- **Perform Work** = open the scheduled field assignment, print/open instructions, and report actual work.
+- **Report Work** = actual work date, actual crew, elapsed Hours/Minutes, percent complete, and what was done/remains.
+- Partial work remains **In Progress** and can be scheduled again as a new future assignment.
+- Managers can use **Correct report** to repair a mistaken work report without creating a duplicate.
+- **Report Correction** preserves a field problem or data/procedure/material finding as a Submitted Work Order Intake item for Manager triage.
+- **Rolling Pick List** shows the current schedule-derived physical material demand that is ready for warehouse/picker action.
+- **Pick Delay** is a temporary Manager hold meaning **do not pick yet**; **Resume Pick** releases that hold.
 
-When one material-bearing task owns the scope, material resolution remains automatic. When several material-bearing tasks share the same Stage/real-Scene scope, use **Display Ownership** so each resolved Display has one effective reusable task owner.
+## Most Important Shortcuts
 
-For large scopes, use **Move selected to** when drag would require scrolling across a very tall board. Ownership does not change LOR membership or the Display's current Container.
+- **Reorder a task:** drag it. Do not renumber all the tasks by hand.
+- **Add a prerequisite:** hold **Shift** and drag the later task onto the task that must happen first.
+- **Select several Displays:** use **Ctrl/Cmd-click** for individual Displays or **Shift-click** for a range.
+- **Move selected Displays:** drag any selected Display, or use **Move selected to** for a large list.
+- **Create a similar task:** use **Copy** / **Copy Task**, then review the copied information.
 
-Use **Kit Boxes** separately to assign existing physical Kit Box Containers to reusable tasks. The same Kit Box may support multiple tasks.
+## Important Planning Fields
 
-## Extra Materials
+The screen labels and their plain-English meaning are:
 
-Reusable task detail includes **Extra Materials Required by This Task**. The task requirement records what the work requires, including quantity/specification and review state where known. Expected source Containers are separate from that requirement.
+- **Completion point** — Done when
+- **Readiness note** — Can start when
+- **Weather note** — Weather limits
+- **Reusable notes** — Important setup notes
 
-Migrated reconstruction rows are intentionally reviewable. `UNVERIFIED` and `NEEDS_REVIEW` mean the value is not yet accepted field truth.
+## Materials in One Minute
 
-## Kit Inventory
+- **Extra Materials** = what the job needs.
+- **Equipment / Resources** = tools and equipment used to do the job.
+- **Kit Boxes** = which physical Kit supports the task.
+- **Expected Source Containers** = where material should normally be found.
+- **Edit / Remove** = change what should normally belong in a Kit.
+- **Count / Adjust** = record what somebody physically counted.
+- **Expected** = what should normally be in a Kit.
+- **On Hand** = what somebody physically counted.
+- **Unverified Items / Remainders** = information that is still unclear.
+- **Pick List** = physical Containers/material currently demanded by the live schedule.
+- **Pick Delay** = a temporary logistics hold; it does not cancel or reschedule the work.
 
-Open:
+If you do not know, **do not guess**.
 
-```text
-https://my.sheboyganlights.org/setup/kit-inventory/
-```
+Inventory review remains review and correction, not a complete warehouse inventory. Current 2026 scheduling, field execution, and Pick List work are live operational workflows.
 
-Use Kit Inventory to review all physical Kit Boxes, including Assigned / Unassigned filters. Expected Kit contents, physical on-hand, task assignment context, current Displays stored in the Kit, and Remainders are shown separately.
 
-Expected contents are not counts. Physical on-hand changes only through inventory events. Remainders preserve unresolved items/questions and must not be treated as confirmed inventory without review.
+## Direct Links
 
-## T-Post Inventory
-
-Open:
-
-```text
-https://my.sheboyganlights.org/setup/t-post-inventory/
-```
-
-T-Post Inventory records physical T-Post stock by the Container where it is actually stored. Shared/bulk stock and T-Posts stored with Kits/Displays are separate groups. Planning/known quantity is not physical on-hand. Actual stock changes only through inventory events.
-
-Storage location does not assign T-Posts to a Setup task; reusable task requirements remain separate task/installation facts.
-
-## Session-Year Safety
-
-The selected annual Setup Session controls allowable operational dates. Audit timestamps remain real current timestamps.
-
-Only a Setup Administrator may create/manage an annual Setup Session or promote annual planned order into the reusable future baseline.
-
-There is currently no 2026 Setup Session.
-
-## Current Implementation Boundary
-
-Production-operational now includes 2025 historical review, reusable task maintenance, Stage/real-Scene organization, LOR-derived Display/Container resolution, Display Ownership, physical Kit Box assignment, structured task Extra Materials, expected Kit contents/Remainders, Kit Inventory, T-Post inventory, resource/effort/prerequisite maintenance, Procedure context, and protected browser access.
-
-Still incomplete/separate work includes final reusable Catalog acceptance/disposable 2026 seed proof, structured readiness gating, Pick List generation/staged release scheduling, Container/Display movement/scanning writes, and park-location execution evidence.
+- [Open Setup](https://my.sheboyganlights.org/setup/)
+- [Open Rolling Pick List](https://my.sheboyganlights.org/setup/pick-list/)
+- [Open Kit Inventory](https://my.sheboyganlights.org/setup/kit-inventory/)
+- [Open T-Post Inventory](https://my.sheboyganlights.org/setup/t-post-inventory/)
+- [Open Setup / Takedown Procedures](https://my.sheboyganlights.org/procedures/)

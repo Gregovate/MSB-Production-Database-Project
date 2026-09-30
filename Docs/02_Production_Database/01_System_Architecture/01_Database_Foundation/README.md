@@ -27,6 +27,45 @@ LOR remains authoritative for show topology and wiring configuration. The Produc
 - PostgreSQL functions, procedures, and triggers
 - database-wide integrity and history rules
 
+## Standard Audit Contract
+
+Auditability is a database-wide Foundation requirement, not an optional application feature.
+
+Every mutable MSB business table must carry the complete standard audit set unless an explicit documented database-foundation exception applies:
+
+```text
+created_at
+created_by
+created_by_person_id
+updated_at
+updated_by
+updated_by_person_id
+```
+
+Required behavior:
+
+- INSERT records the actual current actor and creation timestamp.
+- UPDATE preserves the original `created_*` values and replaces the `updated_*` values with the actual current actor and current update timestamp.
+- Person-aware audit attribution resolves to `ref.person`; an application/service database login is not an acceptable substitute for the authenticated human when the authenticated person is known.
+- Directus-authored writes must have the required actor-stamping policy/identity path in addition to ordinary Directus role/policy authorization.
+- Shared audit functions/triggers are database infrastructure and must behave consistently across subsystems.
+- Database acceptance must detect mutable business tables that are missing required audit columns, required audit triggers, or required Directus actor-policy coverage.
+- A newly added or changed mutable business table is not complete merely because business columns and permissions work; its audit contract must also pass.
+- Historical audit values are evidence, not data to rewrite merely because a later defect is discovered. Unless a separately approved forensic correction is justified, repairs establish correct attribution going forward.
+
+### Audit presentation boundary
+
+The audit contract applies in PostgreSQL regardless of whether the fields are shown in an operator UI.
+
+Audit fields should be surfaced selectively where knowing **who changed what and when** materially helps operation, review, or correction. They should not be added mechanically to every screen.
+
+Current presentation direction:
+
+- Setup Scheduling / reusable-task management: audit identity and timestamps are required because schedule/planning corrections need visible accountability.
+- Future primary reference-maintenance UIs for `ref.display`, `ref.container`, and `ref.storage_location`: expose useful created/last-updated identity and time context.
+- Work Orders and Test Sessions: audit visibility at key decision/change points is a useful future candidate, but it is not part of the current Setup launch-critical repair.
+- Other UIs should expose audit information only when the owning workflow demonstrates an operational need.
+
 ## History and Lifecycle Contract
 
 History tables are purposeful, not automatic. Current state stays on the owning record unless a workflow genuinely requires a reconstructable event/history trail. Standard audit fields provide normal accountability for changes that do not need separate event history.

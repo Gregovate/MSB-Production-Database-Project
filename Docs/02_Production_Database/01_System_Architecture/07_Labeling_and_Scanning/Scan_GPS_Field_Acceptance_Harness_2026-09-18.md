@@ -2,11 +2,40 @@
 
 | Document control | Value |
 |---|---|
-| Status | CANDIDATE — NOT DEPLOYED |
+| Status | PRODUCTION DEPLOYED — READ-ONLY FIELD-ACCEPTANCE HARNESS; #171 GIS/reference work remains open |
 | Owner | Issue #219 — Scan + GPS acceptance harness; #122 governs Setup integration decisions |
 | Related issues | #219 (owner), #122 (governing Setup), #113, #171 |
-| Candidate route | `/scan/field-test` |
+| Production route | `/scan/field-test` |
 | Production write behavior | None |
+
+## Current Production State — 2026-09-30
+
+The read-only field harness remains useful while #171 GIS/reference-location work is still open and must be preserved during #88 integration.
+
+Current live Production identity verified during the #88 deployment preflight:
+
+```text
+live route                 /scan/field-test
+live Scan SHA-256          5b456bb682daad50673e5b7b2514cb7b98ce0d4fabb5551d79b1b0f4e98ffb50
+live Git blob              c131458fb549ab4127ede1fd8d4277d115cebaa0
+source commit introducing
+the live src/dist blob      ab1ec9a66ce8daaf489a0dba221f4e9ba7949cb2
+PR #218 head before
+main reconciliation         cd71b0170a284f7d749ef29f23420a1e4dbaeb56
+```
+
+The current PR #218 head retained the same `src/index.js` / `dist/index.js` blob as the live runtime. Later #219 work used this harness for HOTWAV/Zebra/browser-GPS field evidence. It remains disposable evidence only: no PostgreSQL movement/GPS writes and no automatic promotion of observations into GIS authority.
+
+Ownership remains:
+
+```text
+#219 = Scan + GPS field acceptance harness
+#171 = GIS/reference-location authority and ongoing location-model work
+#113 = scanner/tablet/device readiness
+#88  = governed Setup movement / Record Location semantics
+```
+
+The #88 integration is additive: preserve `/scan/field-test` while adding explicit Record Location handoffs from resolved Display/Container Scan pages.
 
 ## Purpose
 

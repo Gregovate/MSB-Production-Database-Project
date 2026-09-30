@@ -2018,6 +2018,7 @@ export default {
               ${testButtonHtml}
               <a class="btn secondary" href="https://my.sheboyganlights.org/fieldwiring/wiring.html?display_id=${encodeURIComponent(display.display_id)}">Field Wiring</a>
               <a class="btn secondary" href="https://my.sheboyganlights.org/procedures/?display_id=${encodeURIComponent(display.display_id)}">Procedures</a>
+              <a class="btn secondary" href="https://my.sheboyganlights.org/setup/record-location/?asset=DISP:${encodeURIComponent(display.display_id)}">Record Location</a>
               <a class="btn secondary" href="/scan/DISP/${encodeURIComponent(display.display_id)}/container">Open Container</a>
                 ${woCount > 0
             ? `<a class="btn secondary" href="/scan/DISP/${encodeURIComponent(display.display_id)}/work-orders">
@@ -2087,6 +2088,10 @@ export default {
 
             <a class="btn" href="https://db.sheboyganlights.org/admin/content/container/${key}">
               Open Container Record
+            </a>
+
+            <a class="btn" href="https://my.sheboyganlights.org/setup/record-location/?asset=CONT:${encodeURIComponent(key)}">
+              Record Location
             </a>
 
             <a class="btn" href="/scan">

@@ -22,7 +22,10 @@ Current PostgreSQL schema, constraints, procedures, and triggers are implementat
 
 ## Work Entry Paths
 
-There are two current operational entry paths.
+There are two lifecycle classes with multiple intake sources:
+
+1. human-reported findings/requests -> Work Order Intake -> Manager triage -> active Work Order when promoted;
+2. governed deterministic Test Session failure -> active Work Order directly.
 
 ### Public Work Order Request
 
@@ -34,6 +37,14 @@ The form currently uses numeric Priority values 1 through 5 as an intake estimat
 
 The attached Google Apps Script is part of this integration. Before changing question titles, answer values, branching, or form structure, inspect that script and the downstream intake mapping.
 
+### Authenticated Setup Report Correction
+
+During active Setup work, trusted Production Crew may submit **Report Correction** from the known annual-task/scheduled-assignment context.
+
+The Setup application prepares and authorizes the Intake payload from PostgreSQL, then creates the item through the existing Directus Items API so the current `work_order_intake` `items.create` automation—including the Manager triage email—continues to fire. It does not create an active Work Order directly. It supplies task/Stage/Scene/season/work-day/shift/crew/Captain, current Procedure identity, authenticated reporter, and submission time automatically where known, preserving stable identities in the Intake payload and promotion-surviving notes. The reporter supplies the observation and may optionally suggest a correction.
+
+This is intentionally different from the public form, where the reporter must supply location/context because the application does not already know it.
+
 ### Test Session Repair
 
 A display Test Session can generate a repair Work Order automatically. That Work Order is already active and does not pass through Work Order Intake triage.
@@ -42,7 +53,9 @@ A Test Session-generated Work Order must be completed before the related contain
 
 ## Triage
 
-Manager triage applies only to Work Order Requests submitted through the public form.
+Manager triage applies to human-reported Work Order Intake records, including public Work Order Requests and authenticated Setup Report Correction findings.
+
+A human field finding may be valid evidence but still represent a misunderstanding, duplicate, wrong owner, or a correction that does not justify an active Work Order. Only Manager **Promote** creates the active Work Order.
 
 During triage the manager validates or corrects the information required for an actionable Work Order, including as applicable:
 
@@ -122,3 +135,20 @@ Before changing this subsystem, inspect:
 - [Work Orders engineering handoff](README.md)
 - [Testing System](../05_Testing_System/README.md)
 - [Work Order Operational SOPs](../../02_Operational_SOPs/Work_Orders/README.md)
+
+
+### Setup Report Correction notification boundary
+
+The existing Manager notification is not a PostgreSQL trigger. Production Directus owns an active Flow named `WOI Request Triage Email` with an `items.create` event trigger on `work_order_intake`.
+
+Accordingly, Setup Report Correction must not directly insert the Intake row and then implement a second email path. PostgreSQL remains responsible for authenticated Setup authorization and authoritative schedule/task/context derivation; the protected Setup backend submits the prepared Intake item through Directus. Directus remains responsible for the existing create-event automation.
+
+The Setup runtime credential for this call is configuration, not source code. It must be stored outside Git and must belong to a Directus identity limited to the Work Order Intake creation capability needed by this workflow.
+
+
+Runtime configuration for the Setup-to-Directus create boundary:
+
+- `SETUP_DIRECTUS_URL` — defaults to the documented local Directus listener `http://127.0.0.1:8055`;
+- `SETUP_DIRECTUS_INTAKE_TOKEN` — required bearer credential for the Directus identity authorized to create Work Order Intake records.
+
+The bearer credential must not be committed to Git or exposed to the browser. Cloudflare service-token headers are not required for the local host-to-Directus call on the Production server.

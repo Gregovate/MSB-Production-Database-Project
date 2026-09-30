@@ -252,3 +252,146 @@ The first usable Pick List release should prove:
 - GitHub issue #122 — Setup Session planning/pick-list/movement umbrella
 - GitHub issue #113 — Scan application and Setup-season scanning integration
 - GitHub issue #88 — Location scan resolution/movement workflow
+
+
+## 2026-09-30 Field Browser Review Addendum
+
+Browser review of the #88 movement candidate clarified the operator boundary beyond the original 2026-09-09 Pick List design.
+
+### Separate operator intents
+
+The following are distinct workflows even though they reuse the same permanent `CONT:` / `DISP:` identities:
+
+```text
+Pick List
+    = workshop operation
+    = identify an item on current physical demand
+    = record that it was picked for park transport
+
+MSB Scan
+    = general identity / information / action hub
+    = normal destination of permanent Display and Container QR codes
+    = scanning alone does not imply Setup movement
+
+Record Location
+    = deliberate Setup field operation
+    = record where a Container or Display is physically observed now
+```
+
+Do not merge the Record Location workflow into the Pick List page. Do not replace the normal Scan application with Record Location.
+
+A normal QR scan of a Display in the park may be for Field Wiring, Procedures, Testing, Work Orders, Container information, or another Scan action. GPS/location context may be shown read-only on that Scan surface, but **no Setup movement/location write occurs merely because the asset was scanned**.
+
+A resolved Display or Container Scan page may offer an explicit **Record Location** action. That handoff should pass the already-resolved identity into the Record Location workflow so the operator does not need to scan the same QR code again.
+
+### Record Location entry choices
+
+The dedicated Record Location browser surface should preserve multiple low-typing entry methods:
+
+- Zebra/HID scan;
+- phone/tablet camera scan where supported;
+- manual identity entry;
+- touch/search selection; and
+- handoff from the existing MSB Scan Display/Container page with identity already selected.
+
+Many convenient identity-selection methods may converge on one governed Record Location transaction. Do not reintroduce artificial operator buttons for internal event vocabulary.
+
+### GPS lifecycle
+
+GPS is evidence for the Record Location transaction, not part of the permanent QR payload.
+
+The asset may be identified first. GPS can then be started, obtain a current fix, and be stopped again when not needed. The operator should not have to rescan the asset merely because GPS was off at the time of the identity scan.
+
+Record Location must preserve:
+
+- raw device latitude/longitude;
+- reported accuracy;
+- fix timestamp and fix age;
+- GPS quality/uncertainty and optional note;
+- operator/device/capture provenance;
+- selected/confirmed named reference when used; and
+- event identity/original observation time.
+
+Raw GPS evidence remains separate from named/reference-location interpretation.
+
+### Online / offline requirement
+
+Park movement/location capture must remain usable when connectivity is unavailable or intermittent.
+
+The browser workflow should:
+
+1. post immediately when online;
+2. durably queue the original event locally when offline or when a retryable transport/server failure occurs;
+3. preserve the original client event ID, observation time, operator/device provenance, and raw GPS evidence;
+4. replay idempotently when connectivity returns; and
+5. surface failed/conflicting replay for operator review rather than silently inventing a correction.
+
+For mixed-stage Containers, offline behavior must fail conservatively. If the device does not have authoritative/current enough contents state to know which Displays are still `WITH_CONTAINER`, it may record the Container observation but must not guess which Displays came off.
+
+### Refreshable location-reference requirement
+
+The 2026 GPX-derived Stage reference points used during #219/#88 browser review are useful field anchors, but they must not become permanently hard-coded GIS authority.
+
+Record Location should consume a **versioned, refreshable accepted reference set**. An online device refreshes that small reference dataset and keeps the last accepted version for offline use.
+
+The captured event should retain enough provenance to know which reference set/version was presented or used at observation time.
+
+Later GIS/location refinement under #171 may:
+
+- add or refine reference points;
+- improve operational extents/drop zones;
+- improve nearest-reference ranking; or
+- add supplemental field locations.
+
+Those refinements must not rewrite historical raw GPS observations. A historical event can be reinterpreted against newer GIS knowledge while preserving what the device/operator actually observed at capture time.
+
+### Acceptance invariants
+
+Before the #88 Record Location workflow is Production accepted, browser/disposable acceptance must prove at least:
+
+1. Pick List and Record Location are separate operator surfaces;
+2. normal MSB Scan QR behavior remains the general identity/action path;
+3. explicit Record Location handoff can reuse an already-resolved Display/Container identity without a second scan;
+4. GPS can be explicitly started and stopped;
+5. identity may be acquired before GPS without losing the selected asset;
+6. offline events retain original identity/time/GPS/provenance and replay idempotently;
+7. mixed-stage unload does not guess membership when required state is unavailable;
+8. reference-location data is refreshable/versioned rather than compiled forever into the application; and
+9. later #171 GIS refinements cannot mutate the original raw observation evidence.
+
+
+### Record Location Training / Device Test
+
+The 2026-09-30 browser/device review identified a practical acceptance/training need: the real forklift/tablet/phone hardware cannot exercise camera/GPS/Zebra behavior through a workstation-local disposable browser tunnel.
+
+The accepted Production-facing solution is an explicit **Training / device test** mode inside Record Location.
+
+Training must reuse the real authenticated read path and real device sensors:
+
+- permanent `CONT:` / `DISP:` identity parsing;
+- Zebra/HID input;
+- browser camera scanning where supported;
+- Container/Display lookup;
+- current read-only movement/container context;
+- actual tablet/phone GPS;
+- current refreshable reference-location set; and
+- the same mixed-stage review UI.
+
+Training must **never**:
+
+- POST a Setup movement event;
+- enqueue an offline movement event for later replay;
+- fabricate GPS, Container contents, or named reference data; or
+- silently fall back into live write mode.
+
+The normal Record Location page must not expose an easy one-click training toggle in its primary controls. Entry is deliberately tucked under a collapsed **Training / device test** section and requires an explicit confirmation. Once active, the page must display a persistent, unmistakable:
+
+```text
+TRAINING MODE — NOTHING WILL BE RECORDED
+```
+
+banner. Leaving Training Mode should be simple and obvious.
+
+A direct `?training=1` URL remains useful for deliberate managed-device/bookmark testing, but normal Scan -> Record Location handoff does not add that parameter.
+
+This mode is intended for real material-handler practice on the forklift tablet and for post-deployment hardware verification without contaminating annual Setup movement history.

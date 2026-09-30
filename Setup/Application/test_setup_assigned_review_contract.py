@@ -15,8 +15,8 @@ def read_db(name: str) -> str:
 
 def test_assigned_browser_asset_is_loaded_after_training_ux():
     html = read("production.html")
-    training_index = html.index("setup_training_ux.js?v=2026-09-08.1")
-    assigned_index = html.index("setup_assigned_review.js?v=2026-09-08.2")
+    training_index = html.index("setup_training_ux.js?v=")
+    assigned_index = html.index("setup_assigned_review.js?v=")
     assert assigned_index > training_index
     host = read("production_backend.py")
     assert '"setup_assigned_review.js"' in host

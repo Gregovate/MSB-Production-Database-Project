@@ -219,8 +219,31 @@ def api_setup_scheduling_board_season_task_create() -> tuple[Response, int]:
         linked_work_order_id=nullable_int(payload.get("linked_work_order_id"), "linked_work_order_id"),
         linked_work_order_gate=bool(payload.get("linked_work_order_gate", False)),
         annual_notes=optional_text(payload.get("annual_notes")),
+        prerequisite_session_task_id=nullable_int(
+            payload.get("prerequisite_setup_session_task_id"),
+            "prerequisite_setup_session_task_id",
+        ),
+        downstream_session_task_id=nullable_int(
+            payload.get("downstream_setup_session_task_id"),
+            "downstream_setup_session_task_id",
+        ),
     )
     return jsonify(season_task=result), 201
+
+
+@setup_scheduling_board_api.delete(
+    "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>"
+)
+def api_setup_scheduling_board_season_task_delete(
+    setup_session_task_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    result = repo().delete_season_task(
+        email=email,
+        session_task_id=setup_session_task_id,
+    )
+    return jsonify(season_task=result)
 
 
 @setup_scheduling_board_api.patch(
@@ -253,8 +276,59 @@ def api_setup_scheduling_board_season_task_update(
         linked_work_order_id=nullable_int(payload.get("linked_work_order_id"), "linked_work_order_id"),
         linked_work_order_gate=bool(payload.get("linked_work_order_gate", False)),
         annual_notes=optional_text(payload.get("annual_notes")),
+        previous_prerequisite_session_task_id=nullable_int(
+            payload.get("previous_prerequisite_setup_session_task_id"),
+            "previous_prerequisite_setup_session_task_id",
+        ),
+        prerequisite_session_task_id=nullable_int(
+            payload.get("prerequisite_setup_session_task_id"),
+            "prerequisite_setup_session_task_id",
+        ),
+        previous_downstream_session_task_id=nullable_int(
+            payload.get("previous_downstream_setup_session_task_id"),
+            "previous_downstream_setup_session_task_id",
+        ),
+        downstream_session_task_id=nullable_int(
+            payload.get("downstream_setup_session_task_id"),
+            "downstream_setup_session_task_id",
+        ),
+        planned_order=nullable_int(payload.get("planned_order"), "planned_order"),
     )
     return jsonify(season_task=result)
+
+
+@setup_scheduling_board_api.patch(
+    "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/placement"
+)
+def api_setup_scheduling_board_season_task_placement(
+    setup_session_task_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+
+    result = repo().reconcile_season_task_placement(
+        email=email,
+        session_task_id=setup_session_task_id,
+        previous_prerequisite_session_task_id=nullable_int(
+            payload.get("previous_prerequisite_setup_session_task_id"),
+            "previous_prerequisite_setup_session_task_id",
+        ),
+        prerequisite_session_task_id=nullable_int(
+            payload.get("prerequisite_setup_session_task_id"),
+            "prerequisite_setup_session_task_id",
+        ),
+        previous_downstream_session_task_id=nullable_int(
+            payload.get("previous_downstream_setup_session_task_id"),
+            "previous_downstream_setup_session_task_id",
+        ),
+        downstream_session_task_id=nullable_int(
+            payload.get("downstream_setup_session_task_id"),
+            "downstream_setup_session_task_id",
+        ),
+        planned_order=nullable_int(payload.get("planned_order"), "planned_order"),
+    )
+    return jsonify(placement=result)
 
 
 @setup_scheduling_board_api.patch(
@@ -280,8 +354,30 @@ def api_setup_scheduling_board_planning_info(
         readiness_note=optional_text(payload.get("readiness_note")),
         weather_note=optional_text(payload.get("weather_note")),
         completion_point=optional_text(payload.get("completion_point")),
+        reusable_notes=optional_text(payload.get("reusable_notes")),
     )
     return jsonify(planning_info=result)
+
+
+@setup_scheduling_board_api.patch(
+    "/api/setup/scheduling-board/season-tasks/<int:setup_session_task_id>/annual-hold"
+)
+def api_setup_scheduling_board_annual_hold(
+    setup_session_task_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+    if "ready" not in payload:
+        raise SetupCommandError("ready is required")
+
+    result = repo().set_annual_hold(
+        email=email,
+        session_task_id=setup_session_task_id,
+        ready=bool(payload.get("ready")),
+        readiness_note=optional_text(payload.get("readiness_note")),
+    )
+    return jsonify(annual_hold=result)
 
 
 @setup_scheduling_board_api.post(

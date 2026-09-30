@@ -125,7 +125,7 @@ Write-Host '  6. Confirm the persistent identity still names the actual selected
 Write-Host '  7. Check light mode and dark mode. The persistent identity must remain readable using the existing Setup theme tokens.'
 Write-Host '  8. Narrow the browser to laptop/mobile-style widths. Confirm the header wraps without hiding season, operator, client version, theme control, or active task identity.'
 Write-Host '  9. Confirm prerequisites, Resource Catalog/Equipment controls, Material / Logistics detail, Captains/Knowledge Owners, procedure links, and ordinary task selection still work.'
-Write-Host ' 10. Confirm Reusable Task Catalog and Movement / Scanning views do not show a stale Active task identity when the review view is not active.'
+Write-Host ' 10. Confirm Reusable Task Catalog and Plan / Schedule views do not show a stale Active task identity when the review view is not active.'
 Write-Host
 Write-Host 'All writes in this checklist are against the disposable Production clone only. Production remains unchanged.'
 Write-Host

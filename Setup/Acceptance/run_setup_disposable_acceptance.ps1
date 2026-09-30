@@ -20,9 +20,10 @@ if ($LASTEXITCODE -ne 0 -or $currentBranch -ne $TargetRef) {
     throw "STOP before server contact: current branch '$currentBranch' does not equal TargetRef '$TargetRef'."
 }
 
-$head = (git -C $repo rev-parse HEAD).Trim()
-if ($head -ne $CandidateSha) {
-    throw "STOP before server contact: checkout HEAD $head does not equal requested candidate $CandidateSha."
+$toolingHead = (git -C $repo rev-parse HEAD).Trim()
+& git -C $repo merge-base --is-ancestor $CandidateSha $toolingHead
+if ($LASTEXITCODE -ne 0) {
+    throw "STOP before server contact: requested candidate $CandidateSha is not an ancestor of current acceptance-tooling HEAD $toolingHead."
 }
 
 $dirty = git -C $repo status --porcelain
@@ -38,6 +39,39 @@ if ($LASTEXITCODE -ne 0) {
     throw "Candidate SHA is not available locally: $CandidateSha"
 }
 
+function Get-CandidateSetupBuildIdentity {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Sha
+    )
+
+    $backend = ((& git -C $repo show "${Sha}:Setup/Application/production_backend.py") | Out-String)
+    if ($LASTEXITCODE -ne 0) {
+        throw "STOP before server contact: exact candidate $Sha is missing Setup/Application/production_backend.py."
+    }
+
+    $client = ((& git -C $repo show "${Sha}:Setup/Application/setup_catalog_dirty_guard.js") | Out-String)
+    if ($LASTEXITCODE -ne 0) {
+        throw "STOP before server contact: exact candidate $Sha is missing Setup/Application/setup_catalog_dirty_guard.js."
+    }
+
+    $serverMatch = [regex]::Match($backend, 'PRODUCTION_VERSION\s*=\s*"([^"]+)"')
+    $clientMatch = [regex]::Match($client, "CLIENT_BUILD\s*=\s*'([^']+)'")
+    if (-not $serverMatch.Success -or -not $clientMatch.Success) {
+        throw "STOP before server contact: unable to resolve exact Setup server/client build identities from candidate $Sha."
+    }
+
+    [pscustomobject]@{
+        Server = $serverMatch.Groups[1].Value
+        Client = $clientMatch.Groups[1].Value
+    }
+}
+
+$buildIdentity = Get-CandidateSetupBuildIdentity -Sha $CandidateSha
+if ($buildIdentity.Server -ne $buildIdentity.Client) {
+    throw "STOP before server contact: Setup client/server version mismatch in exact candidate $CandidateSha. Client $($buildIdentity.Client); server $($buildIdentity.Server)."
+}
+
 function Assert-SafeCandidatePath {
     param(
         [Parameter(Mandatory=$true)][string]$Path,
@@ -50,11 +84,19 @@ function Assert-SafeCandidatePath {
     if ([System.IO.Path]::IsPathRooted($Path) -or $Path.Contains('..') -or $Path.Contains("`t") -or $Path.Contains("`r") -or $Path.Contains("`n")) {
         throw "Unsafe $Kind candidate-relative path: $Path"
     }
-    if ($Kind -eq 'migration' -and -not $Path.StartsWith('Setup/Database/')) {
-        throw "Migration path must be under Setup/Database/: $Path"
+    if ($Kind -eq 'migration') {
+        $isSetupMigration = $Path.StartsWith('Setup/Database/')
+        $isApprovedSharedMigration = $Path -eq 'Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql'
+        if (-not ($isSetupMigration -or $isApprovedSharedMigration)) {
+            throw "Migration path must be under Setup/Database/ or explicitly approved shared database repair: $Path"
+        }
     }
-    if ($Kind -eq 'validation' -and -not $Path.StartsWith('Setup/Acceptance/')) {
-        throw "Validation path must be under Setup/Acceptance/: $Path"
+    if ($Kind -eq 'validation') {
+        $isSetupValidation = $Path.StartsWith('Setup/Acceptance/')
+        $isApprovedSharedValidation = $Path -eq 'Database/Acceptance/database_shared_audit_actor_disposable_validation.sql'
+        if (-not ($isSetupValidation -or $isApprovedSharedValidation)) {
+            throw "Validation path must be under Setup/Acceptance/ or explicitly approved shared database validation: $Path"
+        }
     }
 
     & git -C $repo cat-file -e "${CandidateSha}:$Path" 2>$null

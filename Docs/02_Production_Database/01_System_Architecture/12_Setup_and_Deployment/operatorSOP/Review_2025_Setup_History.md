@@ -4,59 +4,142 @@
 |---|---|
 | Document Type | Operator Procedure |
 | System | Production Database — Setup and Deployment |
-| Task | Review and correct the 2025 Setup history and reusable Setup knowledge |
+| Task | Review incomplete Setup tasks and improve reusable Setup information |
 | Audience | Authorized Setup reviewers and managers |
 | Status | CURRENT |
-| Last Reviewed | 2026-09-17 |
+| Owner | MSB Production Database / Setup administrator |
+| Last Reviewed | 2026-09-22 |
+| Keywords | Setup, 2025, Verification Queue, Unverified, Mark Verified, reusable task |
 
-Use the real 2025 Setup Session to preserve/correct 2025 history while improving reusable Setup knowledge before the 2026 Setup Session is created.
+Use the real 2025 Setup Session to finish reviewing the reusable Setup tasks before the 2026 Setup Session is created.
 
 Open:
 
-```text
-https://my.sheboyganlights.org/setup/
-2025 — Historical Verification
-Client V0.3.13
-```
+[**Open the Setup application**](https://my.sheboyganlights.org/setup/)
 
-Keep annual 2025 facts separate from reusable Setup knowledge.
+Choose **2025 — Historical Verification**.
 
-## Material Review
+The 2025 review uses real Production data.
 
-Use **Uses Display / Container Material** only when the reusable task needs current LOR-derived Displays for its Stage or real Scene.
+## Find the Tasks That Still Need Review
 
-If one material-bearing task owns the scope, material resolution remains automatic. If several material-bearing tasks share the same Stage/real-Scene scope, use **Display Ownership** so every current resolved Display has one effective reusable task owner.
+1. Go to the **Verification Queue**.
+2. Open the review-status dropdown.
+3. Choose **Unverified**.
+4. Open a task that still needs work.
 
-For large scopes, select Display(s), choose the destination under **Move selected to**, and click **Move selected**. A completed assignment shows **Coverage complete**.
+Work through the list one task at a time.
 
-Display Ownership does not change LOR membership or the Display's current Container.
+![Verification Queue showing the Unverified filter, a task that still needs review, and the Mark Verified button](../images/setup-verification-queue-unverified-mark-verified.png)
 
-## Kit Boxes
+*Use **Unverified** to find the remaining review work. After the task has been checked and corrected, use **Mark Verified**.*
 
-Use **Kit Boxes** when a reusable task requires a physical Kit Box. Search the existing physical Kit Box list, assign the appropriate box, review assigned names/IDs, and remove a wrong assignment directly. The same Kit Box may support multiple reusable tasks.
+## Before You Click Mark Verified
 
-Expected Kit contents, Extra Materials, quantities/specifications, and expected source Containers are now live review workflows. Keep task requirement, expected source, expected Kit contents, and physical on-hand as separate facts.
+Ask these questions:
 
-## Reusable Expected Duration
+- Should this task exist every year?
+- Is **Active Reusable Task** correct? If normal yearly work is inactive, it will not be included when a future Setup Session is created.
+- Is the normal crew size entered?
+- Is the expected time entered?
+- Are the prerequisites correct?
+- Are the needed Displays assigned to the correct task?
+- Are the needed Kit Boxes assigned?
+- Are Extra Materials complete enough for planning?
+- Are Equipment / Resources complete enough for planning?
+- Are **Completion point**, **Readiness note**, **Weather note**, and **Reusable notes** useful and accurate?
+- Does the current Setup procedure still match the work?
 
-When normal reusable duration is supported by the evidence, enter it with **Expected hrs** and **Expected mins (0–59)**. Existing stored durations are displayed in Hours / Minutes automatically. Leave both fields blank when the normal reusable duration is still unknown.
+When the needed information is present and looks correct, click **Mark Verified**.
 
-This field is the reusable planning estimate. Do not copy a one-off 2025 elapsed time into it unless the evidence supports that as the normal reusable expectation.
+### Active Reusable Task
 
-## Other Review Work
+![Active Reusable Task checkbox in reusable task detail](../images/setup-active-reusable-task.png)
 
-Correct only information supported by reliable evidence. Review resources, prerequisites, effort, crew/time expectations, readiness, task scope/order, notes, and current published procedures where applicable.
+*If normal yearly work should come back in future Setup seasons, **Active Reusable Task** must be checked. Leave a task inactive only when that is intentional.*
 
-Fast prerequisite entry remains Shift-drag; normal drag without Shift remains task movement/reorder.
+## Important Field Meanings
 
-Do not create fake records or fake Scenes to work around missing information.
+- **Completion point** = **Done when.**
+- **Readiness note** = **Can start when.** Scheduling needs this when a task cannot start yet.
+- **Weather note** = **Weather limits.**
+- **Reusable notes** = **Important setup notes** that should help future Captains and crews.
 
-## 2026 Gate
+Do not keep old copy/reconstruction history in Reusable notes when it no longer helps the crew.
 
-There is currently no 2026 Setup Session. Continue correcting the reusable task/material foundation, then perform final Catalog acceptance and disposable 2026 seed proof before real 2026 Session creation.
+![Completion point, Readiness note, Weather note, and Reusable notes fields](../images/setup-task-planning-fields.png)
 
-## Related Documents
+*These four boxes are not interchangeable. **Readiness note** helps Scheduling know when work can start; **Weather note** records weather limits; **Completion point** says when the task is done; **Reusable notes** keeps important year-to-year crew knowledge.*
 
-- [Setup operator procedures](README.md)
-- [Detailed Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
-- [Setup engineering handoff](../engineering/README.md)
+## Faster Ways to Work
+
+### Reorder tasks
+
+Drag a task to where it belongs.
+
+**Do not renumber every task by hand.**
+
+### Add prerequisites
+
+Hold **Shift** and drag the **later task** onto the **task that must happen first**.
+
+Normal drag moves a task. Shift-drag adds a prerequisite.
+
+### Select several Displays
+
+In **Display Ownership**:
+
+- **Ctrl/Cmd-click** adds or removes individual Displays from the selection.
+- **Shift-click** selects a range in the same task column.
+- Drag any selected Display to move the selected group.
+- Use **Move selected to** for a very large list.
+
+## Materials and Kits
+
+Keep these ideas separate:
+
+- **Extra Materials Required by This Task** = what the job needs.
+- **Equipment / Resources** = tools/equipment needed to do the job.
+- **Kit Boxes** = which physical Kit supports the task.
+- **Expected Source Containers** = where material should normally be found.
+- **Kit Inventory — Expected** = what should normally be in the Kit.
+- **Kit Inventory — On Hand** = what somebody actually counted.
+- **Unverified Items / Remainders** = information that is still unclear.
+
+Do not guess to make a task look complete.
+
+![Extra Materials Required by This Task above Expected Source Containers](../images/setup-extra-materials-and-source-containers.png)
+
+*The top section answers **what the task needs**. The lower section answers **where the crew should expect to find it**.*
+
+## If Mark Verified Is Not Available
+
+Some reusable tasks were created after the 2025 work and are not part of the 2025 historical Session.
+
+Review and correct the reusable task, but **do not create fake 2025 history just to make Mark Verified available**.
+
+## Run the Material Audit
+
+Use **Material Audit** as the final completeness check before the real 2026 Setup Session is created.
+
+Review all three sections:
+
+- **Future Session Readiness** — make sure normal yearly tasks that should carry forward are active.
+- **Display / LOR Ownership** — assign unresolved Displays to the correct Setup Task.
+- **Kit Assignment Coverage** — assign the Kit/support Container when one task owns it, or record the correct shared/bulk-stock reason when that is the real situation.
+
+The audit checks completeness. It does not decide whether a task should exist or whether the information is actually correct.
+
+Fix the real problem instead of entering something only to make the audit disappear.
+
+## Current Goal
+
+The goal is to make the reusable Setup information good enough to seed the real 2026 Setup Session.
+
+The goal is **not** to create a perfect warehouse inventory before Setup begins.
+
+## More Help
+
+- [Setup Operator Procedures](README.md)
+- [Setup Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
+- [Setup and Deployment](../README.md)

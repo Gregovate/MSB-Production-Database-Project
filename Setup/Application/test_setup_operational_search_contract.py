@@ -19,6 +19,9 @@ def test_operational_search_uses_existing_global_search_control() -> None:
     assert "setup-stage-order-heading" in text
     assert "setup-stage-scope-heading" in text
     assert "setup-operational-search-hidden" in text
+    assert "sessionTaskMap" in text
+    assert "applyActiveOperationalSearch" in text
+    assert "sessionTaskById" not in text
     assert ".setup-operational-search-hidden" in css
     assert "display: none !important" in css
     assert "localStorage." not in text
