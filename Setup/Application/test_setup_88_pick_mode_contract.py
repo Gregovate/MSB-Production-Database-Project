@@ -153,6 +153,13 @@ def test_disposable_validation_checks_idempotency_authority_and_oct5_gate():
     assert "Movement rewrote permanent Container Home Location" in validation
     assert "Display movement rewrote permanent Display-to-Container assignment" in validation
     assert "Pre-2026-10-05 park delivery was incorrectly accepted" in validation
+    assert "Location-dependent movement was accepted without location evidence" in validation
+    assert "Closed movement chain did not finish at RETURNED" in validation
+    assert "v_transit_uuid" in validation
+    assert "v_unload_uuid" in validation
+    assert "v_stage_uuid" in validation
+    assert "v_place_uuid" in validation
+    assert "v_relocate_uuid" in validation
     assert "fieldwiring_app retains forbidden broad movement DML" in validation
 
 

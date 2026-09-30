@@ -18,6 +18,15 @@ DECLARE
     v_return_uuid uuid := '88000000-0000-4000-8000-000000000003'::uuid;
     v_display_uuid uuid := '88000000-0000-4000-8000-000000000004'::uuid;
     v_park_uuid uuid := '88000000-0000-4000-8000-000000000005'::uuid;
+    v_pick2_uuid uuid := '88000000-0000-4000-8000-000000000006'::uuid;
+    v_load2_uuid uuid := '88000000-0000-4000-8000-000000000007'::uuid;
+    v_transit_uuid uuid := '88000000-0000-4000-8000-000000000008'::uuid;
+    v_unload_uuid uuid := '88000000-0000-4000-8000-000000000009'::uuid;
+    v_stage_uuid uuid := '88000000-0000-4000-8000-00000000000a'::uuid;
+    v_place_uuid uuid := '88000000-0000-4000-8000-00000000000b'::uuid;
+    v_relocate_uuid uuid := '88000000-0000-4000-8000-00000000000c'::uuid;
+    v_return2_uuid uuid := '88000000-0000-4000-8000-00000000000d'::uuid;
+    v_missing_location_uuid uuid := '88000000-0000-4000-8000-00000000000e'::uuid;
     v_event_id bigint;
     v_duplicate boolean;
     v_status text;
@@ -63,6 +72,10 @@ BEGIN
     SELECT c.container_id, c.location_code
       INTO v_container_id, v_container_home
     FROM ref.container c
+    JOIN ref.storage_location sl
+      ON sl.location_code = c.location_code
+     AND sl.is_active
+    WHERE nullif(btrim(c.location_code), '') IS NOT NULL
     ORDER BY c.container_id
     LIMIT 1;
 
@@ -268,6 +281,7 @@ BEGIN
             'DELIVERED',
             '2026-10-04T12:00:00-05:00'::timestamptz,
             'DISPOSABLE-VALIDATION',
+            v_operator_email,
             'HID_SCAN',
             false,
             NULL,NULL,NULL,v_stage_id,NULL,
@@ -280,6 +294,116 @@ BEGIN
                 RAISE;
             END IF;
     END;
+
+    BEGIN
+        PERFORM ops.record_setup_movement_event(
+            v_operator_email, 2026, v_missing_location_uuid,
+            'CONTAINER', v_container_id, 'STAGED',
+            '2026-10-05T08:00:00-05:00'::timestamptz,
+            'DISPOSABLE-VALIDATION', v_operator_email, 'HID_SCAN', false,
+            NULL,NULL,NULL,NULL,NULL,
+            '[PREVIEW ONLY] missing-location evidence guard'
+        );
+        RAISE EXCEPTION 'Location-dependent movement was accepted without location evidence';
+    EXCEPTION
+        WHEN SQLSTATE '23514' THEN
+            IF SQLERRM NOT LIKE '%Location evidence is required%' THEN
+                RAISE;
+            END IF;
+    END;
+
+    PERFORM ops.record_setup_movement_event(
+        v_operator_email, 2026, v_pick2_uuid,
+        'CONTAINER', v_container_id, 'PICKED',
+        '2026-10-05T08:05:00-05:00'::timestamptz,
+        'DISPOSABLE-VALIDATION', v_operator_email, 'HID_SCAN', false,
+        43.750000,-87.800000,5.0,NULL,NULL,
+        '[PREVIEW ONLY] second PICKED'
+    );
+
+    PERFORM ops.record_setup_movement_event(
+        v_operator_email, 2026, v_load2_uuid,
+        'CONTAINER', v_container_id, 'LOADED',
+        '2026-10-05T08:10:00-05:00'::timestamptz,
+        'DISPOSABLE-VALIDATION', v_operator_email, 'HID_SCAN', false,
+        43.750000,-87.800000,5.0,NULL,NULL,
+        '[PREVIEW ONLY] LOADED'
+    );
+
+    PERFORM ops.record_setup_movement_event(
+        v_operator_email, 2026, v_transit_uuid,
+        'CONTAINER', v_container_id, 'IN_TRANSIT',
+        '2026-10-05T08:15:00-05:00'::timestamptz,
+        'DISPOSABLE-VALIDATION', v_operator_email, 'HID_SCAN', false,
+        43.751000,-87.801000,5.0,NULL,NULL,
+        '[PREVIEW ONLY] IN_TRANSIT'
+    );
+
+    PERFORM ops.record_setup_movement_event(
+        v_operator_email, 2026, v_unload_uuid,
+        'CONTAINER', v_container_id, 'UNLOADED',
+        '2026-10-05T08:20:00-05:00'::timestamptz,
+        'DISPOSABLE-VALIDATION', v_operator_email, 'HID_SCAN', false,
+        43.752000,-87.802000,5.0,NULL,NULL,
+        '[PREVIEW ONLY] UNLOADED'
+    );
+
+    PERFORM ops.record_setup_movement_event(
+        v_operator_email, 2026, v_stage_uuid,
+        'CONTAINER', v_container_id, 'STAGED',
+        '2026-10-05T08:25:00-05:00'::timestamptz,
+        'DISPOSABLE-VALIDATION', v_operator_email, 'HID_SCAN', false,
+        43.753000,-87.803000,5.0,NULL,NULL,
+        '[PREVIEW ONLY] STAGED'
+    );
+
+    PERFORM ops.record_setup_movement_event(
+        v_operator_email, 2026, v_place_uuid,
+        'CONTAINER', v_container_id, 'PLACED',
+        '2026-10-05T08:30:00-05:00'::timestamptz,
+        'DISPOSABLE-VALIDATION', v_operator_email, 'HID_SCAN', false,
+        43.754000,-87.804000,5.0,NULL,NULL,
+        '[PREVIEW ONLY] PLACED'
+    );
+
+    PERFORM ops.record_setup_movement_event(
+        v_operator_email, 2026, v_relocate_uuid,
+        'CONTAINER', v_container_id, 'RELOCATED',
+        '2026-10-05T08:35:00-05:00'::timestamptz,
+        'DISPOSABLE-VALIDATION', v_operator_email, 'HID_SCAN', false,
+        43.755000,-87.805000,5.0,NULL,NULL,
+        '[PREVIEW ONLY] RELOCATED'
+    );
+
+    PERFORM ops.record_setup_movement_event(
+        v_operator_email, 2026, v_return2_uuid,
+        'CONTAINER', v_container_id, 'RETURNED',
+        '2026-10-05T08:40:00-05:00'::timestamptz,
+        'DISPOSABLE-VALIDATION', v_operator_email, 'HID_SCAN', false,
+        43.750000,-87.800000,5.0,NULL,NULL,
+        '[PREVIEW ONLY] RETURNED'
+    );
+
+    SELECT cs.movement_status
+      INTO v_status
+    FROM ops.setup_container_state cs
+    WHERE cs.setup_session_id = v_session_id
+      AND cs.container_id = v_container_id;
+
+    IF v_status <> 'RETURNED' THEN
+        RAISE EXCEPTION 'Closed movement chain did not finish at RETURNED';
+    END IF;
+
+    IF (
+        SELECT count(*)
+        FROM ops.setup_movement_event me
+        WHERE me.client_event_id IN (
+            v_pick2_uuid, v_load2_uuid, v_transit_uuid, v_unload_uuid,
+            v_stage_uuid, v_place_uuid, v_relocate_uuid, v_return2_uuid
+        )
+    ) <> 8 THEN
+        RAISE EXCEPTION 'Closed movement chain did not retain all explicit events';
+    END IF;
 END;
 $validation$;
 
