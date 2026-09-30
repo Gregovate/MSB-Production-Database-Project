@@ -1003,6 +1003,9 @@ class SetupMaterialReadinessRepository:
                 "STAGED",
                 "PLACED",
                 "RELOCATED",
+                "CONTAINER_MOVE",
+                "DISPLAY_MOVE",
+                "TASK_UNLOAD",
             }
             has_legacy_unclassified_movement = bool(
                 not movement_status

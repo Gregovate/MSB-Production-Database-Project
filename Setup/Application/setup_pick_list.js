@@ -211,7 +211,10 @@
       'UNLOADED',
       'STAGED',
       'PLACED',
-      'RELOCATED'
+      'RELOCATED',
+      'CONTAINER_MOVE',
+      'DISPLAY_MOVE',
+      'TASK_UNLOAD'
     ].includes(movementStatus)) return true;
     return !movementStatus && Boolean(observation.last_movement_event_id);
   }
