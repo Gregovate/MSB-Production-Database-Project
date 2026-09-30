@@ -21,6 +21,19 @@ def validation() -> str:
     ).read_text(encoding="utf-8")
 
 
+def test_pick_list_defaults_to_needs_pick_and_keeps_back_navigation_while_scanning():
+    html = read("pick_list.html")
+    css = read("setup_pick_mode.css")
+
+    assert '<option value="OUTSTANDING" selected>Needs pick</option>' in html
+    assert 'id="back-button"' in html
+    active_rule = next(
+        line for line in css.splitlines()
+        if line.startswith("body.pick-mode-active #print-button")
+    )
+    assert "#back-button" not in active_rule
+
+
 def test_pick_list_is_workshop_only_and_record_location_is_separate():
     pick_html = read("pick_list.html")
     pick_ui = read("setup_pick_mode.js")
