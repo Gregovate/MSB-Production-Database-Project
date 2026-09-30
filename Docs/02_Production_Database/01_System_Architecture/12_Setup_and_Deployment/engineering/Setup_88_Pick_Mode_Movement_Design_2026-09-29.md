@@ -2,7 +2,7 @@
 
 | Document Control | Value |
 |---|---|
-| Status | ACTIVE IMPLEMENTATION DESIGN — V0.3.28 field-evidence successor |
+| Status | ACTIVE IMPLEMENTATION DESIGN — V0.3.29 pick-clarity successor |
 | Issue | #88 |
 | Branch | `agent/setup-88-pick-mode-movement` |
 | Baseline main | `ff6cc0b6f7c65fe736f85ce12297dbc141a69267` |
@@ -330,6 +330,47 @@ Acceptance must prove:
 Production deployment remains a separate explicit runbook-authorized step.
 
 
+
+
+
+## 2026-09-30 V0.3.29 pick-clarity successor
+
+The V0.3.28 browser review validated the major field-evidence changes and materially improved Pick response time. It also exposed two final clarity issues in the picker surface.
+
+### Pick List counters are physical-material counters
+
+Do not mix Setup task-assignment counts with picker throughput in the same summary strip.
+
+The Pick List summary is:
+
+- **Items to pick** — demanded physical items not delayed and not already moved/out;
+- **Delayed items** — demanded physical items currently held by Pick Delay;
+- **Items already moved** — demanded physical items whose current movement state is already out/moved, whether Container or standalone Display;
+- **Containers picked** — demanded Containers with an actual `PICKED` event in the current Setup Session.
+
+A Container discovered in the park by Record Location may be **already moved** without ever having a Pick event. That observation must suppress it from the Needs pick working set, but it must **not** increase **Containers picked**.
+
+This makes Containers picked a truthful throughput measure rather than a synonym for current outbound state.
+
+### Remove obsolete Movement / Scanning shared-app view
+
+The old **Movement / Scanning** Setup tab is no longer an operational workflow. It only linked back to Pick List and showed diagnostic movement-state row counts.
+
+The accepted operational entry points are now:
+
+```text
+Pick List
+    = workshop pull / PICKED workflow
+
+Record Location
+    = deliberate field location/movement observation
+```
+
+Remove the obsolete shared-app tab/view and stop fetching movement-summary solely to populate it. Keep the protected movement-summary API until separate system-wide review proves no remaining consumer needs it.
+
+### Offline gate remains separate
+
+Offline queue / cold start / reconnect / idempotent replay remains a required physical-device acceptance gate. Picker-summary and navigation cleanup do not substitute for that test.
 
 
 ## 2026-09-30 V0.3.28 field-evidence successor
