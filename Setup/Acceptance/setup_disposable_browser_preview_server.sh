@@ -518,16 +518,202 @@ if [[ ! -s "$GRANTS_FILE" ]]; then
     exit 23
 fi
 
-grant_index=0
-while IFS= read -r grant_stmt || [[ -n "$grant_stmt" ]]; do
-    [[ -z "$grant_stmt" ]] && continue
-    grant_index=$((grant_index + 1))
-    echo "Grant replay [$grant_index]: $grant_stmt"
-    if ! psql_test -c "$grant_stmt" </dev/null; then
-        echo "FAIL: application-role function grant replay failed at statement $grant_index"
-        exit 23
+grant_count="$(grep -cve '^[[:space:]]*
+
+psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"
+
+echo "--- Production Setup function-boundary proof (read-only) ---"
+PROD_CAPABILITY_EXEC="$(sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "SELECT has_function_privilege('fieldwiring_app','ref.setup_browser_capabilities(text)','EXECUTE');")"
+PROD_UPDATE_EXEC="$(sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "SELECT has_function_privilege('fieldwiring_app','ref.update_setup_task(text,bigint,text,integer,text,integer,boolean,integer,integer,integer,text,text,text,text)','EXECUTE');")"
+PROD_INTERNAL_EXEC="$(sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" -c "SELECT has_function_privilege('fieldwiring_app','ref.setup_management_actor(text,boolean)','EXECUTE');")"
+
+echo "Production capability EXECUTE: $PROD_CAPABILITY_EXEC"
+echo "Production update-task EXECUTE:  $PROD_UPDATE_EXEC"
+echo "Production internal-helper EXECUTE: $PROD_INTERNAL_EXEC"
+
+if [[ "$PROD_CAPABILITY_EXEC" != "t" || "$PROD_UPDATE_EXEC" != "t" || "$PROD_INTERNAL_EXEC" != "f" ]]; then
+    echo "FAIL: Production Setup function authorization boundary is not the documented contract"
+    exit 23
+fi
+echo "Production Setup function authorization boundary: PASS"
+
+echo "--- Production role/ACL diagnostic (read-only) ---"
+sudo docker exec "$PROD_CONTAINER" psql -X -P pager=off -U "$DB_ACTOR" -d "$PROD_DB" -c "
+    SELECT
+        member_role.rolname AS member_role,
+        granted_role.rolname AS inherited_role,
+        member_role.rolinherit
+    FROM pg_auth_members AS m
+    JOIN pg_roles AS member_role
+      ON member_role.oid = m.member
+    JOIN pg_roles AS granted_role
+      ON granted_role.oid = m.roleid
+    WHERE member_role.rolname = 'fieldwiring_app'
+       OR granted_role.rolname = 'fieldwiring_app'
+    ORDER BY member_role.rolname, granted_role.rolname;
+" || true
+
+psql_test <<'SQL'
+DO $boundary$
+BEGIN
+    IF NOT has_schema_privilege('fieldwiring_app', 'ref', 'USAGE')
+       OR NOT has_schema_privilege('fieldwiring_app', 'ops', 'USAGE')
+       OR NOT has_schema_privilege('fieldwiring_app', 'lor_snap', 'USAGE') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app lacks required schema USAGE';
+    END IF;
+
+    IF NOT has_table_privilege('fieldwiring_app', 'ref.setup_task', 'SELECT')
+       OR NOT has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'SELECT') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app lacks required Setup SELECT boundary';
+    END IF;
+
+    IF NOT has_function_privilege(
+        'fieldwiring_app',
+        'ref.setup_browser_capabilities(text)',
+        'EXECUTE'
+    ) THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app cannot execute Setup capability function';
+    END IF;
+
+    /*
+      Function ACLs are stripped by pg_restore --no-acl, so PostgreSQL's
+      default PUBLIC EXECUTE makes the disposable clone unsuitable as the
+      authority for the internal-helper EXECUTE assertion. The exact Production
+      boundary is proved read-only immediately above instead.
+    */
+
+    IF has_table_privilege('fieldwiring_app', 'ref.setup_task', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ref.setup_task', 'UPDATE')
+       OR has_table_privilege('fieldwiring_app', 'ref.setup_task', 'DELETE')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'UPDATE')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'DELETE') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app unexpectedly has broad Setup DML';
+    END IF;
+END
+$boundary$;
+SQL
+echo "Established Setup disposable read boundary + Production command ACL replay: PASS"
+
+echo
+echo "--- Apply candidate migrations to disposable clone only ---"
+for rel in "${MIGRATIONS[@]}"; do
+    [[ -z "$rel" ]] && continue
+    echo "Applying: $rel"
+    psql_test < "$CANDIDATE_WORKTREE/$rel"
+done
+
+echo
+echo "--- Run candidate validation SQL on disposable clone ---"
+for rel in "${VALIDATIONS[@]}"; do
+    [[ -z "$rel" ]] && continue
+    echo "Validating: $rel"
+    psql_test < "$CANDIDATE_WORKTREE/$rel"
+done
+
+MANAGE_OK="$(psql_test -qAt -c "SELECT can_manage_setup FROM ref.setup_browser_capabilities('$PREVIEW_EMAIL');")"
+if [[ "$MANAGE_OK" != "t" ]]; then
+    echo "FAIL: preview operator $PREVIEW_EMAIL lacks Setup Manager capability"
+    exit 20
+fi
+
+TEST_IP="$(sudo docker inspect "$TEST_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
+if [[ -z "$TEST_IP" ]]; then
+    echo "FAIL: could not resolve disposable PostgreSQL container IP"
+    exit 21
+fi
+DSN="host=$TEST_IP port=5432 dbname=$TEST_DB user=fieldwiring_app password=$APP_PASSWORD"
+APP_DIR="$CANDIDATE_WORKTREE/Setup/Application"
+
+echo
+echo "--- Start exact candidate on temporary preview port ---"
+PREVIEW_PGID="$(sudo -u fieldwiring -H env \
+    SETUP_DATABASE_DSN="$DSN" \
+    FIELDWIRING_DATABASE_DSN="$DSN" \
+    PROCEDURE_DATABASE_DSN="$DSN" \
+    SETUP_DRIVE_ROOT="/mnt/msb-display-folders" \
+    SETUP_GOOGLE_DOC_LINK_ROOT="/mnt/msb-setup-google-links" \
+    MSB_SETUP_PREVIEW_APP_DIR="$APP_DIR" \
+    MSB_SETUP_PREVIEW_OPERATOR_EMAIL="$PREVIEW_EMAIL" \
+    MSB_SETUP_PREVIEW_HOST="127.0.0.1" \
+    MSB_SETUP_PREVIEW_PORT="$PREVIEW_PORT" \
+    MSB_SETUP_PREVIEW_ENTRY="$PREVIEW_ENTRY" \
+    MSB_SETUP_PREVIEW_LOG="$PREVIEW_LOG" \
+    bash -c '
+        cd /tmp
+        setsid /opt/fieldwiring/.venv/bin/python "$MSB_SETUP_PREVIEW_ENTRY" > "$MSB_SETUP_PREVIEW_LOG" 2>&1 &
+        echo $!
+    ')"
+if [[ ! "$PREVIEW_PGID" =~ ^[0-9]+$ ]]; then
+    echo "FAIL: preview process did not return a PID"
+    exit 22
+fi
+PREVIEW_OWNED_PORT=1
+
+preview_ready=0
+for _ in $(seq 1 60); do
+    if curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health" >/dev/null 2>&1; then
+        preview_ready=1
+        break
     fi
-done < "$GRANTS_FILE"
+    sleep 0.5
+done
+if [[ "$preview_ready" -ne 1 ]]; then
+    echo "FAIL: preview did not become healthy"
+    tail -n 120 "$PREVIEW_LOG" || true
+    exit 23
+fi
+
+HEALTH="$(curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health")"
+echo "Preview health: $HEALTH"
+if [[ -n "$EXPECTED_VERSION" ]]; then
+    HEALTH_VERSION="$(printf '%s' "$HEALTH" | sudo -u fieldwiring -H "$PYTHON" -c 'import json,sys; print(json.load(sys.stdin).get("version", ""))')"
+    if [[ "$HEALTH_VERSION" != "$EXPECTED_VERSION" ]]; then
+        echo "FAIL: preview health version '$HEALTH_VERSION' does not match expected '$EXPECTED_VERSION'"
+        exit 24
+    fi
+    echo "Preview version pin: PASS ($HEALTH_VERSION)"
+fi
+curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/setup/access" >/dev/null
+echo "Preview authorization: PASS"
+
+write_resume_state
+echo "Reconnect state: $STATE_FILE"
+
+cat <<CHECKLIST
+
+SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY
+Browser URL through SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/
+Candidate SHA: $TARGET_SHA
+Candidate ref: $TARGET_REF
+Preview identity: $PREVIEW_EMAIL
+Expected version: ${EXPECTED_VERSION:-not pinned}
+
+The exact candidate is running against a disposable current-Production database clone.
+All browser writes from this preview are disposable.
+Concurrent Production application writes allowed: $ALLOW_CONCURRENT_PRODUCTION_WRITES
+The preview clone is a point-in-time snapshot; later Production edits are not visible until a new preview is started.
+
+Perform the feature-specific operator checklist now.
+When review is complete, return to this terminal and press ENTER.
+CHECKLIST
+
+if ! read -r _done; then
+    PRESERVE_FOR_RECONNECT=1
+    echo "Review terminal disconnected; preserving preview for reconnect."
+    exit 75
+fi
+
+echo
+echo "Browser review session ended by operator. Cleanup will now run."
+echo "SETUP_REUSABLE_DISPOSABLE_BROWSER_PREVIEW_CLEAN_EXIT"
+ "$GRANTS_FILE")"
+echo "Production function ACL statements extracted: $grant_count"
+if ! psql_test -q < "$GRANTS_FILE"; then
+    echo "FAIL: application-role function ACL batch replay failed"
+    exit 23
+fi
+echo "Production function ACL batch replay: PASS"
 
 psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"
 

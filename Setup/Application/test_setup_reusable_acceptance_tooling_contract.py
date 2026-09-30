@@ -255,13 +255,15 @@ def test_browser_preview_allows_only_the_approved_shared_audit_repair() -> None:
     )
 
 
-def test_reusable_disposable_grant_replay_identifies_the_exact_failing_statement() -> None:
+def test_reusable_disposable_grant_replay_is_batched_and_fail_fast() -> None:
     for name in (
         "setup_disposable_acceptance_server.sh",
         "setup_disposable_browser_preview_server.sh",
     ):
         server = read_acceptance(name)
-        assert 'echo "Grant replay [$grant_index]: $grant_stmt"' in server
-        assert 'psql_test -c "$grant_stmt" </dev/null' in server
-        assert "application-role function grant replay failed at statement" in server
-        assert 'psql_test < "$GRANTS_FILE"' not in server
+        assert "Production function ACL statements extracted:" in server
+        assert 'psql_test -q < "$GRANTS_FILE"' in server
+        assert "Production function ACL batch replay: PASS" in server
+        assert "application-role function ACL batch replay failed" in server
+        assert 'echo "Grant replay [$grant_index]: $grant_stmt"' not in server
+        assert 'psql_test -c "$grant_stmt" </dev/null' not in server

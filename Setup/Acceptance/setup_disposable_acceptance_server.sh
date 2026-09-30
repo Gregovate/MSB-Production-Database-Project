@@ -263,16 +263,94 @@ if [[ ! -s "$GRANTS_FILE" ]]; then
     exit 23
 fi
 
-grant_index=0
-while IFS= read -r grant_stmt || [[ -n "$grant_stmt" ]]; do
-    [[ -z "$grant_stmt" ]] && continue
-    grant_index=$((grant_index + 1))
-    echo "Grant replay [$grant_index]: $grant_stmt"
-    if ! psql_test -c "$grant_stmt" </dev/null; then
-        echo "FAIL: application-role function grant replay failed at statement $grant_index"
-        exit 23
-    fi
-done < "$GRANTS_FILE"
+grant_count="$(grep -cve '^[[:space:]]*
+
+psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"
+
+echo "--- Production role/ACL diagnostic (read-only) ---"
+sudo docker exec "$PROD_CONTAINER" psql -X -P pager=off -U "$DB_ACTOR" -d "$PROD_DB" -c "
+    SELECT
+        member_role.rolname AS member_role,
+        granted_role.rolname AS inherited_role,
+        member_role.rolinherit
+    FROM pg_auth_members AS m
+    JOIN pg_roles AS member_role
+      ON member_role.oid = m.member
+    JOIN pg_roles AS granted_role
+      ON granted_role.oid = m.roleid
+    WHERE member_role.rolname = 'fieldwiring_app'
+       OR granted_role.rolname = 'fieldwiring_app'
+    ORDER BY member_role.rolname, granted_role.rolname;
+" || true
+
+psql_test <<'SQL'
+DO $boundary$
+BEGIN
+    IF NOT has_schema_privilege('fieldwiring_app', 'ref', 'USAGE')
+       OR NOT has_schema_privilege('fieldwiring_app', 'ops', 'USAGE')
+       OR NOT has_schema_privilege('fieldwiring_app', 'lor_snap', 'USAGE') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app lacks required schema USAGE';
+    END IF;
+
+    IF NOT has_table_privilege('fieldwiring_app', 'ref.setup_task', 'SELECT')
+       OR NOT has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'SELECT') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app lacks required Setup SELECT boundary';
+    END IF;
+
+    IF NOT has_function_privilege(
+        'fieldwiring_app',
+        'ref.setup_browser_capabilities(text)',
+        'EXECUTE'
+    ) THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app cannot execute Setup capability function';
+    END IF;
+
+    IF has_function_privilege(
+        'fieldwiring_app',
+        'ref.setup_management_actor(text,boolean)',
+        'EXECUTE'
+    ) THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app can execute internal Setup actor helper';
+    END IF;
+
+    IF has_table_privilege('fieldwiring_app', 'ref.setup_task', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ref.setup_task', 'UPDATE')
+       OR has_table_privilege('fieldwiring_app', 'ref.setup_task', 'DELETE')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'INSERT')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'UPDATE')
+       OR has_table_privilege('fieldwiring_app', 'ops.setup_session_task', 'DELETE') THEN
+        RAISE EXCEPTION 'Preview fieldwiring_app unexpectedly has broad Setup DML';
+    END IF;
+END
+$boundary$;
+SQL
+echo "Established Setup disposable read boundary + Production command ACL replay: PASS"
+
+echo
+echo "--- Apply candidate migrations to disposable clone only ---"
+for rel in "${MIGRATIONS[@]}"; do
+    [[ -z "$rel" ]] && continue
+    echo "Applying: $rel"
+    psql_test < "$CANDIDATE_WORKTREE/$rel"
+done
+
+echo
+echo "--- Run candidate validation SQL on disposable clone ---"
+for rel in "${VALIDATIONS[@]}"; do
+    [[ -z "$rel" ]] && continue
+    echo "Validating: $rel"
+    psql_test < "$CANDIDATE_WORKTREE/$rel"
+done
+
+echo
+echo "SETUP_REUSABLE_DISPOSABLE_ACCEPTANCE_PASS"
+ "$GRANTS_FILE")"
+echo "Production function ACL statements extracted: $grant_count"
+if ! psql_test -q < "$GRANTS_FILE"; then
+    echo "FAIL: application-role function ACL batch replay failed"
+    exit 23
+fi
+echo "Production function ACL batch replay: PASS"
 
 psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"
 
