@@ -236,3 +236,14 @@ def test_service_worker_serves_precached_assets_for_offline_cold_start():
     assert "setup_pick_mode.js?v=2026-09-30.1" in sw
     assert "setup_pick_mode.css?v=2026-09-30.1" in html
     assert "setup_pick_mode.js?v=2026-09-30.1" in html
+
+
+def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():
+    migration = (ROOT / "Database" / "065_add_setup_movement_capture.sql").read_text(
+        encoding="utf-8"
+    )
+
+    assert "ON CONFLICT ON CONSTRAINT pk_setup_container_state" in migration
+    assert "ON CONFLICT ON CONSTRAINT pk_setup_display_state" in migration
+    assert "ON CONFLICT (setup_session_id, container_id)" not in migration
+    assert "ON CONFLICT (setup_session_id, display_id)" not in migration

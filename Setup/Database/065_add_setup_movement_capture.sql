@@ -573,7 +573,7 @@ BEGIN
             v_action,
             p_occurred_at
         )
-        ON CONFLICT (setup_session_id, container_id)
+        ON CONFLICT ON CONSTRAINT pk_setup_container_state
         DO UPDATE SET
             current_stage_id = EXCLUDED.current_stage_id,
             current_location_note = EXCLUDED.current_location_note,
@@ -621,7 +621,7 @@ BEGIN
             v_action,
             p_occurred_at
         )
-        ON CONFLICT (setup_session_id, display_id)
+        ON CONFLICT ON CONSTRAINT pk_setup_display_state
         DO UPDATE SET
             position_mode = 'DETACHED',
             current_stage_id = EXCLUDED.current_stage_id,
