@@ -178,7 +178,7 @@ def api_setup_movement_state() -> Response:
 @setup_movement_api.post("/api/setup/movements")
 def api_setup_movement_record() -> tuple[Response, int] | Response:
     require_setup_command()
-    _base_repo, email, _access = require_movement_operator()
+    _base_repo, email, access = require_movement_operator()
     payload = json_body()
 
     season_year = positive_int(payload.get("season_year"), "season_year")
@@ -207,6 +207,11 @@ def api_setup_movement_record() -> tuple[Response, int] | Response:
         movement_action=movement_action,
         occurred_at=required_timestamp(payload.get("occurred_at"), "occurred_at"),
         device_id=optional_text(payload.get("device_id")),
+        captured_operator_email=(
+            optional_text(payload.get("captured_operator_email"))
+            if offline_captured
+            else email
+        ) or str(access.get("authenticated_email") or email),
         capture_method=str(payload.get("capture_method") or "HID_SCAN").strip().upper(),
         offline_captured=offline_captured,
         gps_latitude=optional_float(payload.get("gps_latitude"), "gps_latitude"),
