@@ -244,7 +244,7 @@ def test_release_identity_and_offline_shells_are_synchronized():
 
     assert 'PRODUCTION_VERSION = "V0.3.26-record-location-training"' in backend
     assert "const CLIENT_BUILD = 'V0.3.26-record-location-training';" in guard
-    assert "msb-setup-pick-mode-v4" in pick_sw
+    assert "msb-setup-pick-mode-v5" in pick_sw
     assert "setup_pick_mode.js?v=2026-09-30.5" in pick_sw
     assert "setup_pick_mode.js?v=2026-09-30.5" in pick_html
     assert "msb-setup-record-location-v3" in location_sw
