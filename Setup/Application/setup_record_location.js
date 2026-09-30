@@ -31,7 +31,9 @@
   const networkState = el('movement-network');
   const queueState = el('movement-queue');
   const operatorBadge = el('operator-badge');
-  const trainingToggle = el('training-toggle');
+  const trainingEnter = el('training-enter');
+  const trainingExit = el('training-exit');
+  const trainingEntry = el('training-entry');
   const trainingBanner = el('training-banner');
 
   const pageParams = new URLSearchParams(location.search);
@@ -112,16 +114,27 @@
   function applyTrainingMode() {
     document.body.classList.toggle('training-mode', trainingMode);
     if (trainingBanner) trainingBanner.hidden = !trainingMode;
-    if (trainingToggle) trainingToggle.textContent = trainingMode ? 'Exit Training' : 'Training Mode';
+    if (trainingExit) trainingExit.hidden = !trainingMode;
+    if (trainingEntry) trainingEntry.hidden = trainingMode;
     if (recordHere) recordHere.textContent = trainingMode ? 'Test Record Here' : 'Record Here';
     if (returnHome) returnHome.textContent = trainingMode ? 'Test Return Home' : 'Returned to Home Location';
     if (trainingMode && queueState) queueState.textContent = 'Training — movement queue disabled';
   }
 
-  function toggleTrainingMode() {
+  function enterTrainingMode() {
+    const confirmed = window.confirm(
+      'Enter Record Location Training Mode?\n\n'
+      + 'Nothing will be recorded or queued. Use this only for deliberate device/operator practice.'
+    );
+    if (!confirmed) return;
     const url = new URL(location.href);
-    if (trainingMode) url.searchParams.delete('training');
-    else url.searchParams.set('training', '1');
+    url.searchParams.set('training', '1');
+    location.href = url.toString();
+  }
+
+  function exitTrainingMode() {
+    const url = new URL(location.href);
+    url.searchParams.delete('training');
     location.href = url.toString();
   }
 
@@ -932,7 +945,8 @@
   knownReference.addEventListener('change', function () {
     if (knownReference.value) setFeedback('ready', 'LOCATION CONFIRMED — ' + knownReference.value);
   });
-  trainingToggle.addEventListener('click', toggleTrainingMode);
+  trainingEnter.addEventListener('click', enterTrainingMode);
+  trainingExit.addEventListener('click', exitTrainingMode);
   el('back-setup').addEventListener('click', function () {
     location.href = '../';
   });
