@@ -242,13 +242,13 @@ def test_release_identity_and_offline_shells_are_synchronized():
     location_sw = read("setup_record_location_sw.js")
     location_html = read("record_location.html")
 
-    assert 'PRODUCTION_VERSION = "V0.3.26-record-location-training"' in backend
-    assert "const CLIENT_BUILD = 'V0.3.26-record-location-training';" in guard
-    assert "msb-setup-pick-mode-v5" in pick_sw
-    assert "setup_pick_mode.js?v=2026-09-30.5" in pick_sw
+    assert 'PRODUCTION_VERSION = "V0.3.27-field-training-ux"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.27-field-training-ux';" in guard
+    assert "msb-setup-pick-mode-v6" in pick_sw
+    assert "setup_pick_mode.js?v=2026-09-30.6" in pick_sw
     assert "setup_pick_mode.js?v=2026-09-30.5" in pick_html
-    assert "msb-setup-record-location-v3" in location_sw
-    assert "setup_record_location.js?v=2026-09-30.3" in location_sw
+    assert "msb-setup-record-location-v4" in location_sw
+    assert "setup_record_location.js?v=2026-09-30.4" in location_sw
     assert "setup_record_location.js?v=2026-09-30.3" in location_html
 
 
@@ -258,3 +258,45 @@ def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_am
     assert "ON CONFLICT ON CONSTRAINT pk_setup_display_state" in sql
     assert "ON CONFLICT (setup_session_id, container_id)" not in sql
     assert "ON CONFLICT (setup_session_id, display_id)" not in sql
+
+
+def test_pick_list_training_mode_is_fail_closed_and_keeps_real_pick_totals_visible():
+    html = read("pick_list.html")
+    ui = read("setup_pick_mode.js")
+    css = read("setup_pick_mode.css")
+    list_ui = read("setup_pick_list.js")
+
+    assert 'id="pick-training-entry"' in html
+    assert '<summary>Training / device test</summary>' in html
+    assert 'id="enter-pick-training"' in html
+    assert 'id="exit-pick-training"' in html
+    assert 'id="pick-training-banner"' in html
+    assert "TRAINING MODE — NOTHING WILL BE RECORDED" in html
+    assert 'id="pick-mode-containers-picked"' in html
+    assert 'id="pick-mode-training-count"' in html
+    assert "const trainingMode = pageParams.get('training') === '1';" in ui
+    assert "Training Mode blocks Setup movement writes." in ui
+    assert "Training Mode blocks the offline movement queue." in ui
+    assert "if (trainingMode || syncing || !navigator.onLine) return;" in ui
+    assert "TRAINING — WOULD PICK " in ui
+    assert "NOTHING RECORDED" in ui
+    assert "containersPickedCount" in list_ui
+    assert "pick-mode-counters" in css
+
+
+def test_record_location_requires_visible_location_review_before_record_action():
+    html = read("record_location.html")
+    ui = read("setup_record_location.js")
+    css = read("setup_record_location.css")
+
+    assert "3 · Review and record" in html
+    assert 'id="movement-review-location"' in html
+    assert 'id="movement-record-here" type="button" class="primary" disabled' in html
+    assert 'id="movement-mobile-progress"' in html
+    assert "function currentLocationEvidence()" in ui
+    assert "function renderRecordReadiness()" in ui
+    assert "Location confirmed:" in ui
+    assert "Choose a location first" in ui
+    assert "scrollIntoView({behavior: 'smooth', block: 'start'})" in ui
+    assert "locationNote.addEventListener('input', renderRecordReadiness)" in ui
+    assert ".mobile-workflow-progress" in css
