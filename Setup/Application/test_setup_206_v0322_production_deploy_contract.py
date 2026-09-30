@@ -17,7 +17,7 @@ def test_v0322_wrapper_pins_exact_accepted_release() -> None:
     assert "$AcceptedTargetSha = '6f53d7f0c4b15f7175e773a2069595eef3f0e698'" in text
     assert "$MigrationPath = 'Setup/Database/063_add_setup_pick_list_delay.sql'" in text
     assert "$AcceptedMigrationBlob = '45d1f71e226ab9e358e40f331945135cbe19cfb8'" in text
-    assert "$AcceptedServerRunnerBlob = 'c104f9b51ea258720bd13ae0f2d125167f30be6e'" in text
+    assert "$AcceptedServerRunnerBlob = '7a585d5d00fdff93e9dc792505458c0a8da12fd7'" in text
     assert 'PRODUCTION_VERSION = "V0\\.3\\.22-pick-list-delay"' in text
     assert "CLIENT_BUILD = 'V0\\.3\\.22-pick-list-delay'" in text
     assert "setup_catalog_dirty_guard.js?v=2026-09-30.1" in text
@@ -97,3 +97,13 @@ def test_v0322_server_has_no_stale_release_tokens_or_broken_duplicate_blocks() -
         'preserved existing governed Setup data"echo',
     ):
         assert forbidden not in text
+
+
+def test_v0322_source_assertions_match_asset_ownership() -> None:
+    text = read(SERVER)
+    html_check = text[text.index('PICK_HTML="$(curl -fsS http://192.168.5.9:8794/pick-list/)"'):text.index('DIRTY_GUARD_JS=', text.index('PICK_HTML='))]
+    js_check = text[text.index('for token in \\\n'):text.index('done', text.index('for token in \\\n'))]
+    assert "Show delayed picks" in html_check
+    assert "Show delayed picks" not in js_check
+    assert "DELAYED — DO NOT PICK YET" in js_check
+    assert "../api/setup/material-readiness/delays" in js_check

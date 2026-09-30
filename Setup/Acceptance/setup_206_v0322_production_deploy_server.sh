@@ -542,7 +542,6 @@ if [[ "$DIRTY_GUARD_JS" != *"V0.3.22-pick-list-delay"* ]]; then
 fi
 for token in \
     'DELAYED — DO NOT PICK YET' \
-    'Show delayed picks' \
     '../api/setup/material-readiness/delays'; do
     if [[ "$PICK_JS" != *"$token"* ]]; then
         echo "FAIL: live Pick List source is missing accepted V0.3.22 token: $token"
