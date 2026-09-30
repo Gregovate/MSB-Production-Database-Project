@@ -7,7 +7,7 @@ h1,h2,h3,p{margin-top:0}.eyebrow{text-transform:uppercase;letter-spacing:.08em;f
 button,select{font:inherit;padding:.55rem .7rem}
 .panel{border:1px solid color-mix(in srgb,CanvasText 20%,transparent);border-radius:.65rem;padding:1rem;margin-bottom:1rem}
 .warning-panel{border-width:1px}
-.summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.55rem;margin-bottom:1rem}
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.55rem;margin-bottom:1rem}
 .summary-card{border:1px solid color-mix(in srgb,CanvasText 18%,transparent);border-radius:.55rem;padding:.7rem}
 .summary-card strong{display:block;font-size:1.25rem}.summary-card span{display:block}
 .section-heading{display:flex;justify-content:space-between;gap:1rem;align-items:start}
