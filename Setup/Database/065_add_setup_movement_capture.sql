@@ -536,7 +536,9 @@ BEGIN
             current_location_note = EXCLUDED.current_location_note,
             last_movement_event_id = EXCLUDED.last_movement_event_id,
             movement_status = EXCLUDED.movement_status,
-            last_movement_at = EXCLUDED.last_movement_at;
+            last_movement_at = EXCLUDED.last_movement_at
+        WHERE ops.setup_container_state.last_movement_at IS NULL
+           OR EXCLUDED.last_movement_at >= ops.setup_container_state.last_movement_at;
     ELSE
         INSERT INTO ops.setup_movement_event_display(
             setup_movement_event_id,
@@ -583,7 +585,9 @@ BEGIN
             current_location_note = EXCLUDED.current_location_note,
             last_movement_event_id = EXCLUDED.last_movement_event_id,
             movement_status = EXCLUDED.movement_status,
-            last_movement_at = EXCLUDED.last_movement_at;
+            last_movement_at = EXCLUDED.last_movement_at
+        WHERE ops.setup_display_state.last_movement_at IS NULL
+           OR EXCLUDED.last_movement_at >= ops.setup_display_state.last_movement_at;
     END IF;
 
     RETURN QUERY SELECT
