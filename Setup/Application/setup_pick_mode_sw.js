@@ -64,8 +64,14 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (url.pathname.includes('/pick-list')) {
-    event.respondWith(
-      caches.match(event.request).then((cached) => cached || fetch(event.request))
-    );
+    event.respondWith((async () => {
+      const cached = await caches.match(event.request, {ignoreSearch: true});
+      if (cached) return cached;
+      if (event.request.mode === 'navigate') {
+        const shell = await caches.match('./', {ignoreSearch: true});
+        if (shell) return shell;
+      }
+      return fetch(event.request);
+    })());
   }
 });
