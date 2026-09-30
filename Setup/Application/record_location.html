@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Setup — Record Location</title>
-  <link rel="stylesheet" href="assets/setup_record_location.css?v=2026-09-30.1">
+  <link rel="stylesheet" href="assets/setup_record_location.css?v=2026-09-30.2">
 </head>
 <body>
 <header class="page-header">
@@ -14,9 +14,14 @@
     <p>Identify a Container or Display, review current location evidence, then record where it is now.</p>
   </div>
   <div class="header-actions">
+    <button id="training-toggle" type="button">Training Mode</button>
     <button id="back-setup" type="button">Back to Setup</button>
   </div>
 </header>
+
+<div id="training-banner" class="training-banner" hidden>
+  TRAINING MODE — NOTHING WILL BE RECORDED
+</div>
 
 <main>
   <section class="panel identity-panel">
@@ -118,6 +123,6 @@
   </section>
 </main>
 
-<script src="assets/setup_record_location.js?v=2026-09-30.1"></script>
+<script src="assets/setup_record_location.js?v=2026-09-30.2"></script>
 </body>
 </html>
