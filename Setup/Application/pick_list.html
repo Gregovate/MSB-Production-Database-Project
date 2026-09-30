@@ -21,7 +21,7 @@
       <select id="pick-status-filter">
         <option value="ALL">All demanded items</option>
         <option value="OUTSTANDING" selected>Needs pick</option>
-        <option value="MOVED">Picked / moved</option>
+        <option value="MOVED">Already moved</option>
       </select>
     </label>
     <label class="delayed-filter"><input id="show-delayed-picks" type="checkbox" checked> Show delayed picks</label>
@@ -116,7 +116,7 @@
   </section>
 </main>
 <footer class="no-print">
-  <p>Schedule demand and Manager overrides are planning intent. A workshop scan records that an item was actually picked/moved. Record Location is a separate field workflow; appearing here does not record a park location.</p>
+  <p>Schedule demand and Manager overrides are planning intent. A workshop scan records an actual PICKED event. Other movement/location observations are recorded through their own explicit workflows. Record Location is a separate field workflow; appearing here does not record a park location.</p>
 </footer>
 <script src="assets/qrcode.min.js?v=1"></script>
 <script src="assets/setup_pick_list.js?v=2026-09-30.9"></script>
