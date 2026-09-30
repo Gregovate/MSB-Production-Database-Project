@@ -265,4 +265,14 @@ Before the next Setup change:
 
 ## #88 Pick Mode / Movement Capture — ACTIVE LAUNCH GATE
 
-- [Setup #88 Pick Mode and Movement Capture Design — 2026-09-29](Setup_88_Pick_Mode_Movement_Design_2026-09-29.md) — current launch design for explicit PICKED/LOADED/field movement events, Zebra HID Pick Mode, current-state semantics, return-home behavior, GPS evidence, and durable offline queue/sync.
+Current successor release under PR #255:
+
+```text
+V0.3.27-field-training-ux
+branch = agent/setup-88-pick-mode-movement
+Production remains = 6f53d7f0c4b15f7175e773a2069595eef3f0e698 / V0.3.22-pick-list-delay
+```
+
+V0.3.26 disposable regression and current-Production clone acceptance passed, but browser review produced required field UX/training corrections, so V0.3.26 was not operator-accepted. V0.3.27 adds fail-closed Training to both Pick List and Record Location, keeps Containers picked visible in the sticky Pick panel, makes Record Location explicitly Scan -> Confirm location -> Review and record, and changes Perform Work variance to completed-work actual minus completed-work planned while retaining full Captain-scope Planned labor visibility.
+
+- [Setup #88 Pick Mode and Movement Capture Design — 2026-09-29](Setup_88_Pick_Mode_Movement_Design_2026-09-29.md) — current launch design and V0.3.27 browser-review successor contract for Zebra HID Pick Mode, field Record Location, GPS evidence, Training Mode, current-state semantics, return-home behavior, and durable offline queue/sync.
