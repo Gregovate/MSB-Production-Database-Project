@@ -19,11 +19,12 @@ def test_audit_recovery_wrapper_requires_merged_main_and_exact_artifacts() -> No
     assert "$AuditValidationBlob = '1e09846734deb02f49a8b94d7614758958c2cc3e'" in text
     assert "$MovementValidationBlob = 'fc152c305dc0bf7a056aeff60aae3615b06b96d4'" in text
     assert "$MigrationBlob = '2738065a6fc3cb84858e401de5fae9bd6ae35dcc'" in text
-    assert "$ServerRunnerBlob = 'bea8cc2ed74ebbe57170963c5e09cd59c884326e'" in text
+    assert "$ServerRunnerBlob = '73e6f83ff7339f6cb4108f7779c54ad39298499e'" in text
     assert "& git -C $RepoRoot fetch origin main" in text
     assert "$localHead -ne $originMain" in text
     assert "merge-base --is-ancestor $AcceptedApplicationSha HEAD" in text
     assert "Migration 065 must already be installed and will NOT be reapplied." in text
+    assert 'fetch origin "main:refs/remotes/origin/main"' in read(SERVER)
 
 
 def test_audit_recovery_wrapper_uses_one_bundle_and_one_foreground_ssh() -> None:
