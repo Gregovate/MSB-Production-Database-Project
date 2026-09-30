@@ -260,7 +260,11 @@
     }
     const o = item.current_observation || {};
     const when = formatObservedAt(o.last_observed_at) || 'time unavailable';
-    return `<span class="pick-status picked">PICKED</span><span class="pick-status-detail">${esc(when)} · ${esc(currentLocationText(item))}</span>`;
+    const movementStatus = String(o.movement_status || '').toUpperCase();
+    const label = movementStatus
+      ? movementStatus.replaceAll('_', ' ')
+      : 'PICKED / MOVED';
+    return `<span class="pick-status picked">${esc(label)}</span><span class="pick-status-detail">${esc(when)}</span>`;
   }
 
   function destinationText(reasons) {
