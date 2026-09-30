@@ -99,6 +99,8 @@ def test_movement_migration_evolves_existing_tables_instead_of_parallel_model():
     assert "gps_latitude numeric(9,6)" in migration
     assert "gps_accuracy_m numeric(10,2)" in migration
     assert "source_location_code text" in migration
+    assert "captured_operator_email text" in migration
+    assert "captured_operator_person_id integer" in migration
     assert "CREATE UNIQUE INDEX IF NOT EXISTS uq_setup_movement_event_client_event" in migration
 
 
