@@ -135,7 +135,7 @@ def test_live_pick_list_surface_exposes_operational_columns_needs_pick_picked_an
     assert 'id="pick-status-filter"' in html
     assert '<option value="ALL">All demanded items</option>' in html
     assert '<option value="OUTSTANDING" selected>Needs pick</option>' in html
-    assert '<option value="MOVED">Picked / moved</option>' in html
+    assert '<option value="MOVED">Already moved</option>' in html
     assert "A workshop scan records that an item was actually picked/moved" in html
     for heading in ("Container / Display", "Home Location", "Destination", "Pick By", "Needed For", "QR Code"):
         assert heading in ui
@@ -164,11 +164,17 @@ def test_pick_list_summary_totals_picked_containers_outside_working_filter() -> 
     assert "return (readiness?.physical_items || []).filter" in ui
     assert "function containersPickedCount(date = dateFilter?.value || '')" in ui
     assert "function renderSummary(date)" in ui
+    assert "[\'Items to pick\', " in ui
+    assert "[\'Delayed items\', " in ui
+    assert "[\'Items already moved\', " in ui
+    summary_block = ui.split("function renderSummary(date)", 1)[1].split("function itemDates", 1)[0]
+    assert "Scheduled assignments" not in summary_block
     assert "const scopedItems = scopedPhysicalItems(date);" in ui
     assert "['Containers picked', containersPickedCount(date)]" in ui
-    assert "item.physical_type === 'CONTAINER' && itemMoved(item)" in ui
+    assert "item.physical_type === 'CONTAINER'" in ui
+    assert "item.current_observation?.has_pick_event" in ui
     assert "renderSummary(date);" in ui
-    assert "repeat(5,minmax(0,1fr))" in css
+    assert "repeat(4,minmax(0,1fr))" in css
 
 
 def test_later_demand_reports_existing_pick_state_without_error() -> None:
@@ -176,7 +182,7 @@ def test_later_demand_reports_existing_pick_state_without_error() -> None:
     ui = read("setup_pick_list.js")
     assert '<option value="ALL">All demanded items</option>' in html
     assert '<option value="OUTSTANDING" selected>Needs pick</option>' in html
-    assert '<option value="MOVED">Picked / moved</option>' in html
+    assert '<option value="MOVED">Already moved</option>' in html
     assert "movement_status" in ui
     assert "'PICKED / MOVED'" in ui
     assert "last_observed_at" in ui
@@ -215,7 +221,7 @@ def test_pick_list_sorts_by_pick_deadline_then_physical_rack_walk_order() -> Non
     assert "left.column - right.column" in ui
     assert "left.level.localeCompare" in ui
     assert "left.slot - right.slot" in ui
-    assert "setup_pick_list.js?v=2026-09-30.8" in html
+    assert "setup_pick_list.js?v=2026-09-30.9" in html
 
 
 def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_assignment() -> None:
@@ -430,4 +436,4 @@ def test_delayed_pick_warning_survives_print_when_delayed_rows_are_shown() -> No
     assert ".print-delay-badge{display:none" in css
     assert ".print-delay-badge{display:inline-block!important" in css
     assert "setup_pick_list.css?v=2026-09-30.4" in html
-    assert "setup_pick_list.js?v=2026-09-30.8" in html
+    assert "setup_pick_list.js?v=2026-09-30.9" in html
