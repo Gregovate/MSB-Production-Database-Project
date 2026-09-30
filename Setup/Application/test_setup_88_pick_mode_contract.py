@@ -242,14 +242,14 @@ def test_release_identity_and_offline_shells_are_synchronized():
     location_sw = read("setup_record_location_sw.js")
     location_html = read("record_location.html")
 
-    assert 'PRODUCTION_VERSION = "V0.3.25-record-location"' in backend
-    assert "const CLIENT_BUILD = 'V0.3.25-record-location';" in guard
+    assert 'PRODUCTION_VERSION = "V0.3.26-record-location-training"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.26-record-location-training';" in guard
     assert "msb-setup-pick-mode-v4" in pick_sw
     assert "setup_pick_mode.js?v=2026-09-30.5" in pick_sw
     assert "setup_pick_mode.js?v=2026-09-30.5" in pick_html
-    assert "msb-setup-record-location-v2" in location_sw
-    assert "setup_record_location.js?v=2026-09-30.2" in location_sw
-    assert "setup_record_location.js?v=2026-09-30.2" in location_html
+    assert "msb-setup-record-location-v3" in location_sw
+    assert "setup_record_location.js?v=2026-09-30.3" in location_sw
+    assert "setup_record_location.js?v=2026-09-30.3" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():
