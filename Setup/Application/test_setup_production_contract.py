@@ -350,6 +350,9 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "api/setup/movement-summary?season_year=" not in production
     assert "navigateSetupView('schedule')" in next_pass
     assert "navigateSetupView('perform')" in next_pass
+    assert "const pickListButton = document.getElementById('setup-pick-list-link');" in next_pass
+    assert "tabs.insertBefore(scheduleButton, pickListButton);" in next_pass
+    assert "tabs.insertBefore(performButton, pickListButton);" in next_pass
     assert "function setReusableAddTaskFormOpen(open)" in production
     assert "setReusableAddTaskFormOpen(false);" in production
     assert "if (trigger) trigger.hidden = Boolean(open);" in production
