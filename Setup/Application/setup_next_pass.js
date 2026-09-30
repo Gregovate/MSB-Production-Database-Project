@@ -711,6 +711,10 @@ function installNextTabs() {
         <label>Captain
           <select id="next-perform-captain-filter" aria-label="Filter Perform Work by Captain"></select>
         </label>
+        <label class="next-perform-show-completed">
+          <input id="next-perform-show-completed" type="checkbox">
+          Show completed
+        </label>
         <span id="next-perform-filter-summary" class="muted"></span>
       <div id="next-perform-kpis" class="next-perform-kpis" aria-label="Perform Work labor KPIs"></div>
       </div>
@@ -873,10 +877,19 @@ function nextEnsurePerformToolbar() {
       <label>Captain
         <select id="next-perform-captain-filter" aria-label="Filter Perform Work by Captain"></select>
       </label>
+      <label class="next-perform-show-completed">
+        <input id="next-perform-show-completed" type="checkbox">
+        Show completed
+      </label>
       <span id="next-perform-filter-summary" class="muted"></span>
       <div id="next-perform-kpis" class="next-perform-kpis" aria-label="Perform Work labor KPIs"></div>
     `;
     list.insertAdjacentElement('beforebegin', toolbar);
+  }
+  const showCompleted = el('next-perform-show-completed');
+  if (showCompleted && showCompleted.dataset.performCompletedFilterInstalled !== '1') {
+    showCompleted.dataset.performCompletedFilterInstalled = '1';
+    showCompleted.addEventListener('change', renderNextExecution);
   }
   return toolbar;
 }
@@ -991,18 +1004,21 @@ function nextRenderPerformCaptainFilter() {
 function nextFilterPerformAssignments(assignments) {
   nextEnsurePerformCaptainFilter();
   const filter = setupNextState.performCaptainFilter || 'ALL';
-  if (filter === 'ALL') return assignments;
-
-  const personId = Number(String(filter).split(':', 2)[1]);
-  if (!personId) return assignments;
-
+  const showCompleted = Boolean(el('next-perform-show-completed')?.checked);
   const crewById = new Map(
     (setupNextState.performBoard.crews || []).map((crew) => [
       Number(crew.setup_work_day_crew_id),
       crew
     ])
   );
+
   return assignments.filter((assignment) => {
+    if (!showCompleted && nextPerformAssignmentStatus(assignment) === 'COMPLETE') {
+      return false;
+    }
+    if (filter === 'ALL') return true;
+    const personId = Number(String(filter).split(':', 2)[1]);
+    if (!personId) return true;
     const crew = crewById.get(Number(assignment.setup_work_day_crew_id));
     return Number(crew?.captain_person_id) === personId;
   });
@@ -1100,19 +1116,24 @@ async function openNextCorrectionIntake(details) {
   correctionForm.querySelector('.next-problem-text')?.focus();
 }
 
-function nextPerformAssignmentCard(assignment) {
+function nextPerformAssignmentStatus(assignment) {
   const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
-  const crew = nextPerformCrew(assignment);
-  const captain = crew?.captain_display_name || 'Captain TBD';
   const executionStatus = String(task.execution_status || 'PLANNED').toUpperCase();
   const boardStatus = String(task.board_status || '').toUpperCase();
-  const status = executionStatus === 'COMPLETE' || executionStatus === 'IN_PROGRESS'
+  return executionStatus === 'COMPLETE' || executionStatus === 'IN_PROGRESS'
     ? executionStatus
     : boardStatus === 'SCHEDULED'
       ? 'SCHEDULED'
       : boardStatus === 'NEEDS_SCHEDULING_AGAIN'
         ? 'IN_PROGRESS'
         : executionStatus;
+}
+
+function nextPerformAssignmentCard(assignment) {
+  const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
+  const crew = nextPerformCrew(assignment);
+  const captain = crew?.captain_display_name || 'Captain TBD';
+  const status = nextPerformAssignmentStatus(assignment);
   const plannedCrew = nextPerformPlannedCrew(assignment);
   const plannedLabor = nextLaborHoursText(plannedCrew, task.expected_duration_minutes);
   const readinessWarning = task.readiness_state === 'NOT_READY'
@@ -1245,7 +1266,7 @@ function renderNextExecution() {
             </div>`;
         }).join('')}
       </section>`;
-  }).join('') : '<div class="empty-state">No scheduled assignments match the selected Captain. Choose All scheduled work to see the full field schedule.</div>';
+  }).join('') : '<div class="empty-state">No scheduled or in-progress assignments match this view. Turn on Show completed to include completed work, or choose All scheduled work to see every Captain.</div>';
 
   target.querySelectorAll('.next-perform-assignment').forEach((details) => {
     details.querySelector('.next-report-work')?.addEventListener('click', async (event) => {
