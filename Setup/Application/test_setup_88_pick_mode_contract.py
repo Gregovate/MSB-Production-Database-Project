@@ -28,7 +28,8 @@ def test_pick_mode_is_explicit_armed_scanner_flow_without_second_confirmation():
     html = read("pick_list.html")
 
     assert "function startMode()" in ui
-    assert "movement_action: 'PICKED'" in ui
+    assert "movement_action: currentAction" in ui
+    assert "selectAction('PICKED')" in ui
     assert "document.addEventListener('keydown', captureKeydown, true)" in ui
     assert "event.stopImmediatePropagation()" in ui
     assert "window.confirm" not in ui

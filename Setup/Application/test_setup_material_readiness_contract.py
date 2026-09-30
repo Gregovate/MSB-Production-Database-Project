@@ -162,10 +162,9 @@ def test_later_demand_reports_existing_pick_state_without_error() -> None:
     assert '<option value="ALL">All demanded items</option>' in html
     assert '<option value="OUTSTANDING">Needs pick</option>' in html
     assert '<option value="MOVED">Picked / moved</option>' in html
-    assert ">PICKED<" in ui
+    assert "movement_status" in ui
+    assert "'PICKED / MOVED'" in ui
     assert "last_observed_at" in ui
-    assert "currentLocationText(item)" in ui
-    assert "Current location not resolved" in ui
     assert ">NEEDS PICK<" in ui
 
 

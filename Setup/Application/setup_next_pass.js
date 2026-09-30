@@ -1691,7 +1691,7 @@ async function initializeNextPass() {
   const help = el('help-view');
   if (help) {
     const intro = help.querySelector('p');
-    if (intro) intro.textContent = 'This review now includes Site-wide / Infrastructure plus Stage/Scene organization, prerequisite maintenance, a reusable/annual ordered backlog, rolling-horizon Crew A/B/C scheduling, and Captain field execution. Container/Display movement writes remain the next guarded integration step.';
+    if (intro) intro.textContent = 'This review now includes Site-wide / Infrastructure plus Stage/Scene organization, prerequisite maintenance, a reusable/annual ordered backlog, rolling-horizon Crew A/B/C scheduling, and Captain field execution. Container/Display movement is available through the governed Pick / Movement Scanner candidate workflow.';
   }
 }
 

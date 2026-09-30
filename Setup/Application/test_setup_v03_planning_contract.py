@@ -115,9 +115,12 @@ def test_park_infrastructure_folder_sop_is_buildable_and_uses_existing_marker_co
     assert "Editable source documents" in text
 
 
-def test_final_browser_does_not_enable_movement_writes() -> None:
+def test_final_browser_exposes_governed_movement_scanner_without_simulation() -> None:
     html = (APP_DIR / "production.html").read_text(encoding="utf-8")
     client = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
-    assert "movement write commands are not installed yet" in html
-    assert "movement writes remain the next guarded integration step" in client
+    assert "Open Pick / Movement Scanner" in html
+    assert "same scanner mode can then record Load, Depart, Unload, Stage, Place, Relocate, and Return Empty" in html
+    assert "governed Pick / Movement Scanner candidate workflow" in client
+    assert "movement write commands are not installed yet" not in html
+    assert "movement writes remain the next guarded integration step" not in client
     assert "Simulate Container Scan" not in html
