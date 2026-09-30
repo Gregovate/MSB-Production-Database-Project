@@ -280,6 +280,70 @@ class SetupMovementRepository:
         )
         return result
 
+    def search_assets(
+        self,
+        *,
+        query: str,
+        limit: int = 30,
+    ) -> list[dict[str, Any]]:
+        text = str(query or "").strip()
+        if not text:
+            return []
+        like = f"%{text}%"
+        numeric_id = int(text) if text.isdigit() else None
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                WITH matches AS (
+                    SELECT
+                        'CONTAINER'::text AS asset_type,
+                        c.container_id::bigint AS asset_id,
+                        'CONT:' || c.container_id::text AS identity,
+                        coalesce(nullif(btrim(c.description), ''), 'Container ' || c.container_id::text) AS label,
+                        CASE
+                            WHEN %s::bigint IS NOT NULL AND c.container_id = %s::bigint THEN 0
+                            ELSE 2
+                        END AS rank_order
+                    FROM ref.container AS c
+                    WHERE (%s::bigint IS NOT NULL AND c.container_id = %s::bigint)
+                       OR c.description ILIKE %s
+
+                    UNION ALL
+
+                    SELECT
+                        'DISPLAY'::text AS asset_type,
+                        d.display_id::bigint AS asset_id,
+                        'DISP:' || d.display_id::text AS identity,
+                        coalesce(nullif(btrim(d.display_name), ''), 'Display ' || d.display_id::text) AS label,
+                        CASE
+                            WHEN %s::bigint IS NOT NULL AND d.display_id = %s::bigint THEN 0
+                            ELSE 1
+                        END AS rank_order
+                    FROM ref.display AS d
+                    WHERE (%s::bigint IS NOT NULL AND d.display_id = %s::bigint)
+                       OR d.display_name ILIKE %s
+                )
+                SELECT asset_type, asset_id, identity, label
+                FROM matches
+                ORDER BY rank_order, label, asset_id
+                LIMIT %s
+                """,
+                (
+                    numeric_id,
+                    numeric_id,
+                    numeric_id,
+                    numeric_id,
+                    like,
+                    numeric_id,
+                    numeric_id,
+                    numeric_id,
+                    numeric_id,
+                    like,
+                    limit,
+                ),
+            )
+            return [dict(row) for row in cur.fetchall()]
+
     def current_state(
         self,
         *,
