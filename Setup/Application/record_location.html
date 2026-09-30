@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Setup — Record Location</title>
-  <link rel="stylesheet" href="assets/setup_record_location.css?v=2026-09-30.4">
+  <link rel="stylesheet" href="assets/setup_record_location.css?v=2026-09-30.5">
 </head>
 <body>
 <header class="page-header">
@@ -81,9 +81,12 @@
       </select>
     </label>
 
-    <label for="movement-location-note">Other location note
-      <input id="movement-location-note" autocomplete="off" placeholder="Optional when GPS or a known reference is available">
-    </label>
+    <details class="location-note-details">
+      <summary>Other location note</summary>
+      <label for="movement-location-note">Optional location note
+        <input id="movement-location-note" autocomplete="off" placeholder="Use only when GPS/reference does not fully describe this location">
+      </label>
+    </details>
 
     <details class="gps-quality">
       <summary>GPS quality / uncertainty</summary>
@@ -99,7 +102,10 @@
       </label>
     </details>
 
-    <div id="movement-reference-status" class="reference-status">Location references not loaded yet.</div>
+    <details class="reference-data-details">
+      <summary>Reference data</summary>
+      <div id="movement-reference-status" class="reference-status">Location references not loaded yet.</div>
+    </details>
   </section>
 
   <section id="movement-pending" class="panel pending-panel" hidden>
@@ -117,17 +123,13 @@
     </div>
   </section>
 
-  <div id="movement-mobile-progress" class="mobile-workflow-progress">
-    <strong>Ready:</strong> scan or choose an asset.
-  </div>
-
-  <section class="panel status-panel">
-    <div id="movement-feedback" class="feedback ready">READY — scan, search, or choose an asset</div>
-    <div class="status-meta">
+  <div id="movement-compact-status" class="compact-status" aria-live="polite">
+    <span id="movement-feedback" class="feedback ready">READY — scan, search, or choose an asset</span>
+    <span class="status-meta">
       <span id="movement-network">Checking connection…</span>
       <span id="movement-queue">Offline queue: 0</span>
-    </div>
-  </section>
+    </span>
+  </div>
 
   <details id="training-entry" class="training-entry">
     <summary>Training / device test</summary>
@@ -136,6 +138,6 @@
   </details>
 </main>
 
-<script src="assets/setup_record_location.js?v=2026-09-30.4"></script>
+<script src="assets/setup_record_location.js?v=2026-09-30.5"></script>
 </body>
 </html>
