@@ -529,7 +529,14 @@ class SetupMaterialReadinessRepository:
                         me.event_type AS last_event_type,
                         me.occurred_at AS last_observed_at,
                         me.destination_stage_id,
-                        me.destination_location_note
+                        me.destination_location_note,
+                        EXISTS (
+                            SELECT 1
+                            FROM ops.setup_movement_event AS picked
+                            WHERE picked.setup_session_id = %s
+                              AND picked.container_id = c.container_id
+                              AND picked.event_type = 'PICKED'
+                        ) AS has_pick_event
                     FROM ref.container AS c
                     LEFT JOIN ops.setup_container_state AS cs
                       ON cs.setup_session_id = %s
@@ -540,7 +547,7 @@ class SetupMaterialReadinessRepository:
                       ON me.setup_movement_event_id = cs.last_movement_event_id
                     WHERE c.container_id = ANY(%s)
                     """,
-                    (setup_session_id, container_ids),
+                    (setup_session_id, setup_session_id, container_ids),
                 )
                 for row in cur.fetchall():
                     item = dict(row)
