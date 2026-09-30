@@ -416,6 +416,1415 @@ export default {
       `);
     });
 
+
+    // ============================================================
+    // SCAN + GPS FIELD ACCEPTANCE HARNESS
+    // /scan/field-test
+    //
+    // Read-only engineering page used to collect evidence from the
+    // real tablet + Zebra + browser geolocation path. It does not
+    // query or write Production Database workflow state.
+    // ============================================================
+    router.get('/field-test', async (req, res) => {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader(
+        'Content-Security-Policy',
+        [
+          "default-src 'self'",
+          "script-src 'self' 'unsafe-inline'",
+          "style-src 'self' 'unsafe-inline'",
+          "img-src 'self' data:",
+          "connect-src 'self'",
+          "object-src 'none'"
+        ].join('; ')
+      );
+
+      res.send(String.raw`
+        <!doctype html>
+        <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>MSB Scan + GPS Field Acceptance</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background: #0b1220;
+              color: #fff;
+              margin: 0;
+              padding: 16px;
+            }
+            .card {
+              max-width: 900px;
+              margin: 0 auto 16px;
+              background: #111a2b;
+              border-radius: 12px;
+              padding: 18px;
+            }
+            h1, h2 { margin-top: 0; }
+            .warning {
+              background: #4b3210;
+              border: 1px solid #8c6420;
+              border-radius: 8px;
+              padding: 12px;
+              margin-bottom: 16px;
+            }
+            .good { color: #8fe29a; }
+            .bad { color: #ff9b9b; }
+            .muted { color: #bbb; }
+            .grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+              gap: 12px;
+            }
+            label {
+              display: block;
+              font-weight: bold;
+              margin-bottom: 6px;
+            }
+            input, select, textarea, button {
+              width: 100%;
+              box-sizing: border-box;
+              padding: 12px;
+              font-size: 16px;
+              border-radius: 8px;
+              border: 1px solid #4a5568;
+              margin-bottom: 10px;
+            }
+            input, select, textarea {
+              background: #fff;
+              color: #111;
+            }
+            .source-badge {
+              display: inline-block;
+              padding: 2px 6px;
+              margin-right: 4px;
+              border-radius: 999px;
+              font-size: 11px;
+              font-weight: bold;
+              background: #39435a;
+              color: #fff;
+            }
+            .source-badge.field { background: #285d3b; }
+            .source-badge.preview { background: #6b4d16; }
+            button, .btn {
+              display: block;
+              background: #1f6feb;
+              color: #fff;
+              text-decoration: none;
+              text-align: center;
+              font-weight: bold;
+              cursor: pointer;
+            }
+            button.secondary, .btn.secondary { background: #39435a; }
+            button.danger { background: #7c2d2d; }
+            button:disabled, .btn.disabled {
+              opacity: .5;
+              pointer-events: none;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 14px;
+            }
+            th, td {
+              text-align: left;
+              padding: 8px;
+              border-bottom: 1px solid #39435a;
+              vertical-align: top;
+            }
+            code {
+              color: #c9d7ff;
+              overflow-wrap: anywhere;
+            }
+            .value {
+              font-size: 18px;
+              font-weight: bold;
+            }
+            .small { font-size: 13px; }
+            details.card { padding: 0; }
+            details.card > summary {
+              cursor: pointer;
+              font-size: 20px;
+              font-weight: bold;
+              padding: 18px;
+              list-style-position: inside;
+            }
+            details.card[open] > summary { border-bottom: 1px solid #39435a; }
+            .details-body { padding: 18px; }
+            .status-pill {
+              display: inline-block;
+              padding: 5px 9px;
+              border-radius: 999px;
+              background: #39435a;
+              font-size: 13px;
+              font-weight: bold;
+            }
+            .save-feedback {
+              border: 2px solid #4a5568;
+              border-radius: 10px;
+              padding: 14px;
+              margin-bottom: 12px;
+              font-size: 18px;
+              font-weight: bold;
+            }
+            .save-feedback.good {
+              border-color: #4c9f5e;
+              background: #14351c;
+              color: #b9f4c2;
+            }
+            .save-feedback.bad {
+              border-color: #b45353;
+              background: #3a1717;
+              color: #ffd0d0;
+            }
+            .candidate-buttons {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+              gap: 8px;
+              margin-top: 10px;
+            }
+            .candidate-buttons button { margin-bottom: 0; }
+            .check-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+              gap: 8px;
+              margin-bottom: 12px;
+            }
+            .check-grid label {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              padding: 10px;
+              border: 1px solid #4a5568;
+              border-radius: 8px;
+              margin: 0;
+              font-weight: normal;
+            }
+            .check-grid input {
+              width: auto;
+              margin: 0;
+              padding: 0;
+            }
+            #scanInput {
+              border-width: 2px;
+              font-size: 19px;
+            }
+            .section-note { margin-top: 8px; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <h1>MSB Scan + GPS Field Acceptance</h1>
+            <div class="warning">
+              <strong>READ-ONLY ENGINEERING TEST.</strong>
+              This page does not change Setup movement state or write test observations to PostgreSQL.
+              Test evidence stays in this browser until exported.
+            </div>
+            <div class="muted small">
+              Reference source: <code>2026_msb.gpx</code> · ExpertGPS 9.34 / Garmin GPSMAP 66sr ·
+              GPX modified 2026-09-15T20:51:16.014Z · 31 current GPX waypoints exported with type Stage.
+              Names are used exactly as GPX reference labels; this page does not infer Production Stage/Scene hierarchy.
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Field status</h2>
+            <div class="grid">
+              <button id="startGps" type="button">Start high-accuracy GPS</button>
+              <button id="captureGps" type="button" class="secondary" disabled>Save GPS-only sample</button>
+            </div>
+            <div id="gpsError" class="bad"></div>
+            <div class="grid">
+              <div><div class="muted">GPS status</div><div id="gpsState" class="value">NOT STARTED</div></div>
+              <div><div class="muted">Reported accuracy</div><div id="gpsAccuracy" class="value">—</div></div>
+              <div><div class="muted">Fix age</div><div id="gpsAge" class="value">—</div></div>
+              <div><div class="muted">Connectivity</div><div id="connectivityState" class="value">Checking…</div></div>
+              <div><div class="muted">Latitude / Longitude</div><div id="gpsLatLon" class="value">No fix</div></div>
+              <div><div class="muted">Likely location</div><div id="gpsNearest" class="value">—</div></div>
+            </div>
+            <div id="gpsCandidates" class="small muted section-note">Start GPS to see the three nearest location candidates.</div>
+            <div id="gpsCandidateButtons" class="candidate-buttons"></div>
+            <button id="addLocationFromCandidates" type="button" class="secondary" disabled style="margin-top:10px;">None of these / Add location</button>
+            <div id="locationConfirmationStatus" class="muted small" aria-live="polite">No location confirmed for the next scan.</div>
+          </div>
+
+          <div class="card" id="scanCard">
+            <h2>Scan</h2>
+            <div id="saveFeedback" class="save-feedback muted" aria-live="assertive">READY FOR SCAN</div>
+            <div class="grid">
+              <div>
+                <label for="inputMethod">Input method</label>
+                <select id="inputMethod">
+                  <option value="ZEBRA_HID">Zebra HID</option>
+                  <option value="MANUAL">Manual entry</option>
+                  <option value="CAMERA">Camera (record only)</option>
+                </select>
+              </div>
+              <div>
+                <label for="scanInput">Asset identity</label>
+                <form id="scanForm">
+                  <input id="scanInput" autocomplete="off" autofocus inputmode="none" placeholder="Scan DISP:, CONT:, CTRL:, LOC: or full scan URL" />
+                </form>
+                <div id="scanFocusState" class="good small">SCAN READY</div>
+              </div>
+            </div>
+            <div id="scanStatus" class="muted">A scan can still be saved if GPS is unavailable; the save message will say NO CURRENT GPS.</div>
+            <a id="normalRoute" class="btn secondary disabled" target="_blank" rel="noopener">Verify normal Scan route</a>
+          </div>
+
+          <details class="card" id="knownLocationDetails">
+            <summary>Known location / notes</summary>
+            <div class="details-body">
+              <label for="expectedReference">Confirm or test a known location</label>
+              <select id="expectedReference">
+                <option value="">No confirmed location</option>
+              </select>
+              <button id="clearExpectedReference" type="button" class="secondary">Clear confirmed location</button>
+              <div class="muted small">
+                The live GPS estimate remains independent. Use this when you know the meaningful location or want to test an existing GPX/reference point.
+              </div>
+
+              <label for="operatorLocationComment" style="margin-top:14px;">Operator location comment</label>
+              <textarea
+                id="operatorLocationComment"
+                rows="3"
+                placeholder="Examples: beginning of stage, end of stage, drop point, overlapping area, or anything useful about where you are."
+              ></textarea>
+            </div>
+          </details>
+
+          <details class="card" id="fieldReferenceDetails">
+            <summary>Add / Check a Location Point</summary>
+            <div class="details-body">
+              <div class="warning">
+                <strong>FIELD EVIDENCE ONLY.</strong>
+                Saving a location sample does not move or overwrite the GPX/GIS source.
+              </div>
+              <div class="grid">
+                <div>
+                  <label for="fieldReferenceName">Location point name</label>
+                  <input id="fieldReferenceName" autocomplete="off" placeholder="Example: Who Forest north end" />
+                </div>
+                <div>
+                  <label for="fieldReferenceArea">Stage / area (optional)</label>
+                  <input id="fieldReferenceArea" list="referenceAreaChoices" autocomplete="off" placeholder="Choose or type an area" />
+                  <datalist id="referenceAreaChoices"></datalist>
+                </div>
+                <div>
+                  <label for="fieldReferenceSampleRole">What are you marking?</label>
+                  <select id="fieldReferenceSampleRole">
+                    <option value="">Not specified</option>
+                    <option value="CENTER">Center</option>
+                    <option value="START">Start</option>
+                    <option value="END">End</option>
+                    <option value="EDGE">Edge</option>
+                    <option value="ENTRANCE">Entrance</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="muted small" style="margin-bottom:8px;">Conditions — select every condition that applies.</div>
+              <div class="check-grid">
+                <label><input id="envOpenSky" type="checkbox" value="OPEN_SKY" /> Open sky</label>
+                <label><input id="envTreeCover" type="checkbox" value="TREE_COVER" /> Tree cover</label>
+                <label><input id="envVehicle" type="checkbox" value="INSIDE_VEHICLE" /> Inside vehicle / Toolcat cab</label>
+                <label><input id="envStructure" type="checkbox" value="STRUCTURE_ADJACENT" /> Near structure</label>
+                <label><input id="envOther" type="checkbox" value="OTHER" /> Other</label>
+              </div>
+
+              <label for="fieldReferenceComment">Location comment</label>
+              <textarea id="fieldReferenceComment" rows="2" placeholder="Describe the point, boundary, overlap, or why it would be useful."></textarea>
+              <label for="fieldReferenceEnvironmentNote">Condition note (optional)</label>
+              <textarea id="fieldReferenceEnvironmentNote" rows="2" placeholder="Anything else affecting the observation."></textarea>
+
+              <div class="grid">
+                <button id="captureFieldReference" type="button" disabled>SAVE LOCATION SAMPLE</button>
+                <button id="clearFieldReference" type="button" class="secondary">NEW / CLEAR</button>
+              </div>
+              <div id="fieldReferenceStatus" class="muted small" aria-live="polite"></div>
+            </div>
+          </details>
+
+          <details class="card">
+            <summary>Session evidence / export</summary>
+            <div class="details-body">
+              <div id="sessionSummary" class="muted">No observations yet.</div>
+              <div id="fieldReferenceSummary" class="muted small" style="margin-top:8px;">No location samples yet.</div>
+
+              <div style="overflow-x:auto; margin-top:12px;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Location sample</th>
+                      <th>Source</th>
+                      <th>Area</th>
+                      <th>Role / conditions</th>
+                      <th>GPS</th>
+                      <th>Accuracy</th>
+                      <th>Time</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fieldReferenceRows"></tbody>
+                </table>
+              </div>
+
+              <div style="overflow-x:auto; margin-top:18px;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Scan</th>
+                      <th>Confirmed/test location</th>
+                      <th>Operator comment</th>
+                      <th>Nearest</th>
+                      <th>Rank</th>
+                      <th>GPS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="observationRows"></tbody>
+                </table>
+              </div>
+
+              <div class="grid" style="margin-top:12px;">
+                <button id="exportJson" type="button" class="secondary">Export JSON</button>
+                <button id="exportCsv" type="button" class="secondary">Export CSV</button>
+                <button id="clearSession" type="button" class="danger">Clear local test data</button>
+              </div>
+            </div>
+          </details>
+
+          <details class="card">
+            <summary>Developer / Test Tools</summary>
+            <div class="details-body">
+              <button id="loadPreviewFix" type="button" class="secondary">Use test location</button>
+              <div class="muted small">
+                This inserts a controlled non-physical GPS fix for UI testing. It is exported as
+                <code>fix_source=CONTROLLED_PREVIEW</code> and must never be treated as park evidence.
+              </div>
+            </div>
+          </details>
+
+          <script>
+            const referencePoints = [{"name":"04-Food Collection-FC","lat":43.7777955,"lon":-87.74358339},{"name":"01-Front Entrance-FE","lat":43.77752968,"lon":-87.74151575},{"name":"00-HWY 42-HW","lat":43.77792811,"lon":-87.74186506},{"name":"05-Festive Trees-FT","lat":43.77833036,"lon":-87.74354104},{"name":"05a-Mega Star-MS","lat":43.7785483,"lon":-87.74319754},{"name":"06-Post Office-PO","lat":43.77874564,"lon":-87.74423908},{"name":"07a-Who Forest-WF","lat":43.77948868,"lon":-87.74573914},{"name":"08-Elf Choir-EC","lat":43.77942108,"lon":-87.74623869},{"name":"09-Global Warming-GW","lat":43.77977361,"lon":-87.74652366},{"name":"10-Stars-ST","lat":43.78026391,"lon":-87.74678012},{"name":"11-Sledders-SL","lat":43.78038637,"lon":-87.74757818},{"name":"13-Winter Wonderland-WW","lat":43.77984397,"lon":-87.74782959},{"name":"14-Icicle Tunnel-IT","lat":43.7789102,"lon":-87.74828739},{"name":"15-Church-Bells-CH","lat":43.77852769,"lon":-87.74910923},{"name":"16-Northern Lights-NL","lat":43.77721337,"lon":-87.74888248},{"name":"17-Candyland-CL","lat":43.77680829,"lon":-87.74697976},{"name":"18-Dancing Forest-DF","lat":43.77649806,"lon":-87.74559202},{"name":"19-Santa's Workshop-SW","lat":43.77683742,"lon":-87.74577019},{"name":"20-Snow Storm-SS","lat":43.77625492,"lon":-87.74475721},{"name":"21-Polar Bear Playground-PB","lat":43.77604286,"lon":-87.74487442},{"name":"22-Glistening Grove-GG","lat":43.77573908,"lon":-87.74390953},{"name":"23-Peanuts-PN","lat":43.77577894,"lon":-87.74294278},{"name":"24-Traditional Christmas-TC","lat":43.77591889,"lon":-87.74289151},{"name":"25-Racing Arches-RA","lat":43.77636681,"lon":-87.74226992},{"name":"26-Magic Igloo-MI","lat":43.77714554,"lon":-87.74166344},{"name":"02-Triangle-TR","lat":43.77709198,"lon":-87.74208111},{"name":"03-Welcome Area-WA","lat":43.77741945,"lon":-87.7426539},{"name":"03a-Mega Cube-MC","lat":43.77756775,"lon":-87.7426221},{"name":"30-Santa's Station-QV","lat":43.78175546,"lon":-87.74664227},{"name":"30-Santa's Station Entrance","lat":43.78063504,"lon":-87.74542583},{"name":"07-Whoville-WV","lat":43.77955255,"lon":-87.74491109}];
+            const STORAGE_KEY = 'msb_scan_gps_field_acceptance_v1';
+            const SOURCE = {
+              file: '2026_msb.gpx',
+              creator: 'ExpertGPS 9.34 using Garmin GPSMAP 66sr',
+              modified_at: '2026-09-15T20:51:16.014Z',
+              sha256: 'eff23e666e0c288b52741621c1450b5a95150b36394de38bfe50b307c311de74',
+              source_waypoint_count: 519,
+              selection_rule: 'type=Stage',
+              selected_waypoint_count: referencePoints.length,
+              reference_count: referencePoints.length
+            };
+
+            const expectedReference = document.getElementById('expectedReference');
+            const clearExpectedReference = document.getElementById('clearExpectedReference');
+            const operatorLocationComment = document.getElementById('operatorLocationComment');
+            const startGps = document.getElementById('startGps');
+            const captureGps = document.getElementById('captureGps');
+            const gpsError = document.getElementById('gpsError');
+            const gpsState = document.getElementById('gpsState');
+            const gpsLatLon = document.getElementById('gpsLatLon');
+            const gpsAccuracy = document.getElementById('gpsAccuracy');
+            const gpsAge = document.getElementById('gpsAge');
+            const gpsNearest = document.getElementById('gpsNearest');
+            const gpsCandidates = document.getElementById('gpsCandidates');
+            const gpsCandidateButtons = document.getElementById('gpsCandidateButtons');
+            const addLocationFromCandidates = document.getElementById('addLocationFromCandidates');
+            const locationConfirmationStatus = document.getElementById('locationConfirmationStatus');
+            const connectivityState = document.getElementById('connectivityState');
+            const fieldReferenceDetails = document.getElementById('fieldReferenceDetails');
+            const fieldReferenceName = document.getElementById('fieldReferenceName');
+            const fieldReferenceArea = document.getElementById('fieldReferenceArea');
+            const referenceAreaChoices = document.getElementById('referenceAreaChoices');
+            const fieldReferenceSampleRole = document.getElementById('fieldReferenceSampleRole');
+            const fieldReferenceComment = document.getElementById('fieldReferenceComment');
+            const fieldReferenceEnvironmentNote = document.getElementById('fieldReferenceEnvironmentNote');
+            const captureFieldReference = document.getElementById('captureFieldReference');
+            const clearFieldReference = document.getElementById('clearFieldReference');
+            const environmentChecks = [
+              document.getElementById('envOpenSky'),
+              document.getElementById('envTreeCover'),
+              document.getElementById('envVehicle'),
+              document.getElementById('envStructure'),
+              document.getElementById('envOther')
+            ];
+            const loadPreviewFix = document.getElementById('loadPreviewFix');
+            const fieldReferenceStatus = document.getElementById('fieldReferenceStatus');
+            const fieldReferenceSummary = document.getElementById('fieldReferenceSummary');
+            const fieldReferenceRows = document.getElementById('fieldReferenceRows');
+            const inputMethod = document.getElementById('inputMethod');
+            const scanForm = document.getElementById('scanForm');
+            const scanInput = document.getElementById('scanInput');
+            const scanFocusState = document.getElementById('scanFocusState');
+            const scanStatus = document.getElementById('scanStatus');
+            const saveFeedback = document.getElementById('saveFeedback');
+            const normalRoute = document.getElementById('normalRoute');
+            const sessionSummary = document.getElementById('sessionSummary');
+            const observationRows = document.getElementById('observationRows');
+            const exportJson = document.getElementById('exportJson');
+            const exportCsv = document.getElementById('exportCsv');
+            const clearSession = document.getElementById('clearSession');
+
+            const GPS_STALE_MS = 5000;
+            const GPS_LOST_MS = 15000;
+            let watchId = null;
+            let latestPosition = null;
+            let gpsStartedAt = null;
+            let confirmedLocationMethod = null;
+            let confirmedLocationAt = null;
+            let saveFeedbackTimer = null;
+            let gpsWatchErrorActive = false;
+
+            function newId() {
+              if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+                return window.crypto.randomUUID();
+              }
+              return 'obs-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+            }
+
+            function newSession() {
+              return {
+                schema_version: 3,
+                session_id: newId(),
+                started_at: new Date().toISOString(),
+                reference_source: SOURCE,
+                reference_points: referencePoints.map(function(point) {
+                  return { name: point.name, lat: point.lat, lon: point.lon };
+                }),
+                user_agent: navigator.userAgent,
+                field_reference_observations: [],
+                observations: []
+              };
+            }
+
+            function loadSession() {
+              try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return newSession();
+                const parsed = JSON.parse(raw);
+                if (!parsed || !Array.isArray(parsed.observations)) return newSession();
+                if (!Array.isArray(parsed.field_reference_observations)) {
+                  parsed.field_reference_observations = [];
+                }
+                parsed.schema_version = 3;
+                return parsed;
+              } catch (err) {
+                return newSession();
+              }
+            }
+
+            let session = loadSession();
+
+            function referenceCandidates() {
+              const seeds = referencePoints.map(function(point) {
+                return {
+                  reference_id: 'GPX:' + point.name,
+                  source_type: 'GPX_SEED',
+                  name: point.name,
+                  lat: point.lat,
+                  lon: point.lon,
+                  area_context: null,
+                  observation_recorded_at: null
+                };
+              });
+              const field = session.field_reference_observations.map(function(obs) {
+                return {
+                  reference_id: 'FIELD:' + obs.field_reference_observation_id,
+                  source_type: 'FIELD_OBSERVATION',
+                  name: obs.provisional_name,
+                  lat: obs.gps.latitude,
+                  lon: obs.gps.longitude,
+                  area_context: obs.area_context,
+                  observation_recorded_at: obs.recorded_at
+                };
+              });
+              return seeds.concat(field);
+            }
+
+            function renderExpectedReferenceOptions() {
+              const selected = expectedReference.value;
+              expectedReference.innerHTML = '<option value="">Select expected reference (optional)</option>';
+              referenceCandidates()
+                .slice()
+                .sort(function(a, b) {
+                  if (a.source_type !== b.source_type) return a.source_type === 'GPX_SEED' ? -1 : 1;
+                  return a.name.localeCompare(b.name);
+                })
+                .forEach(function(point) {
+                  const option = document.createElement('option');
+                  option.value = point.reference_id;
+                  option.textContent =
+                    (point.source_type === 'GPX_SEED' ? '[GPX] ' : '[FIELD] ') +
+                    point.name +
+                    (point.area_context ? ' · ' + point.area_context : '');
+                  expectedReference.appendChild(option);
+                });
+              if (Array.from(expectedReference.options).some(function(option) { return option.value === selected; })) {
+                expectedReference.value = selected;
+              }
+            }
+
+            function renderReferenceAreaChoices() {
+              referenceAreaChoices.innerHTML = '';
+              referencePoints
+                .slice()
+                .sort(function(a, b) { return a.name.localeCompare(b.name); })
+                .forEach(function(point) {
+                  const option = document.createElement('option');
+                  option.value = point.name;
+                  referenceAreaChoices.appendChild(option);
+                });
+            }
+
+            renderExpectedReferenceOptions();
+            renderReferenceAreaChoices();
+
+            function toRadians(value) {
+              return value * Math.PI / 180;
+            }
+
+            function distanceFeet(lat1, lon1, lat2, lon2) {
+              const earthFeet = 20902231;
+              const dLat = toRadians(lat2 - lat1);
+              const dLon = toRadians(lon2 - lon1);
+              const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+              const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+              return earthFeet * c;
+            }
+
+            function rankedReferences(lat, lon) {
+              return referenceCandidates()
+                .map(function(point) {
+                  return {
+                    reference_id: point.reference_id,
+                    source_type: point.source_type,
+                    name: point.name,
+                    latitude: point.lat,
+                    longitude: point.lon,
+                    area_context: point.area_context,
+                    observation_recorded_at: point.observation_recorded_at,
+                    distance_ft: distanceFeet(lat, lon, point.lat, point.lon)
+                  };
+                })
+                .sort(function(a, b) { return a.distance_ft - b.distance_ft; });
+            }
+
+            function rankedMeaningfulLocations(lat, lon) {
+              const raw = rankedReferences(lat, lon);
+              const seen = new Set();
+              const grouped = [];
+              raw.forEach(function(item) {
+                const key = item.source_type === 'FIELD_OBSERVATION'
+                  ? 'FIELD_NAME:' + String(item.name || '').trim().toLowerCase()
+                  : item.reference_id;
+                if (seen.has(key)) return;
+                seen.add(key);
+                const supportCount = item.source_type === 'FIELD_OBSERVATION'
+                  ? session.field_reference_observations.filter(function(obs) {
+                      return String(obs.provisional_name || '').trim().toLowerCase() ===
+                        String(item.name || '').trim().toLowerCase();
+                    }).length
+                  : 1;
+                grouped.push(Object.assign({}, item, {
+                  supporting_observation_count: supportCount
+                }));
+              });
+              return grouped;
+            }
+
+            function referenceLabel(item) {
+              if (!item) return '—';
+              const count = item.source_type === 'FIELD_OBSERVATION' && item.supporting_observation_count > 1
+                ? ' (' + item.supporting_observation_count + ' samples)'
+                : '';
+              return (item.source_type === 'FIELD_OBSERVATION' ? '[FIELD] ' : '[GPX] ') + item.name + count;
+            }
+
+            function connectivitySnapshot() {
+              const connection =
+                navigator.connection ||
+                navigator.mozConnection ||
+                navigator.webkitConnection ||
+                null;
+
+              return {
+                browser_online: navigator.onLine === true,
+                effective_type: connection && connection.effectiveType ? connection.effectiveType : null,
+                downlink_mbps: connection && typeof connection.downlink === 'number' ? connection.downlink : null,
+                rtt_ms: connection && typeof connection.rtt === 'number' ? connection.rtt : null,
+                save_data: connection && typeof connection.saveData === 'boolean' ? connection.saveData : null
+              };
+            }
+
+            function renderConnectivity() {
+              const state = connectivitySnapshot();
+              connectivityState.textContent = state.browser_online ? 'ONLINE' : 'OFFLINE';
+              connectivityState.className = 'value ' + (state.browser_online ? 'good' : 'bad');
+            }
+
+            function positionSnapshot(position) {
+              if (!position || !position.coords) return null;
+              return {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy_m: position.coords.accuracy,
+                accuracy_ft: position.coords.accuracy == null ? null : position.coords.accuracy * 3.280839895,
+                altitude_m: position.coords.altitude,
+                altitude_accuracy_m: position.coords.altitudeAccuracy,
+                heading_deg: position.coords.heading,
+                speed_mps: position.coords.speed,
+                fix_timestamp: new Date(position.timestamp).toISOString(),
+                fix_age_ms: Math.max(0, Date.now() - Number(position.timestamp)),
+                fix_source: position._msbSource || 'BROWSER_GEOLOCATION'
+              };
+            }
+
+            function gpsStateSnapshot() {
+              if (gpsWatchErrorActive) return 'LOST';
+              if (!latestPosition) return watchId != null ? 'WAITING' : 'NOT_STARTED';
+              const gps = positionSnapshot(latestPosition);
+              if (!gps) return 'NO_FIX';
+              if (gps.fix_source === 'CONTROLLED_PREVIEW') return 'TEST';
+              if (gps.fix_age_ms <= GPS_STALE_MS) return 'LIVE';
+              if (gps.fix_age_ms <= GPS_LOST_MS) return 'STALE';
+              return 'LOST';
+            }
+
+            function currentGpsSnapshot() {
+              const state = gpsStateSnapshot();
+              if (state !== 'LIVE' && state !== 'TEST') return null;
+              return positionSnapshot(latestPosition);
+            }
+
+            function renderCandidateButtons(ranked, enabled) {
+              gpsCandidateButtons.innerHTML = '';
+              ranked.slice(0, 3).forEach(function(item, index) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'secondary';
+                button.disabled = !enabled;
+                button.textContent =
+                  (index === 0 ? 'Likely: ' : '') +
+                  item.name + ' · ' + item.distance_ft.toFixed(1) + ' ft';
+                button.addEventListener('click', function() {
+                  confirmLocation(item.reference_id, 'LIVE_TOP_' + (index + 1));
+                });
+                gpsCandidateButtons.appendChild(button);
+              });
+            }
+
+            function renderGps() {
+              const state = gpsStateSnapshot();
+              gpsState.textContent = state.replace('_', ' ');
+              gpsState.className = 'value ' + (
+                state === 'LIVE' ? 'good' :
+                state === 'TEST' ? 'muted' :
+                state === 'STALE' || state === 'LOST' || state === 'NO_FIX' ? 'bad' : 'muted'
+              );
+
+              if (!latestPosition) {
+                gpsLatLon.textContent = 'No fix';
+                gpsAccuracy.textContent = '—';
+                gpsAge.textContent = '—';
+                gpsNearest.textContent = '—';
+                gpsCandidates.textContent = state === 'WAITING' ? 'Waiting for GPS fix…' : 'Start GPS to see nearby locations.';
+                gpsCandidateButtons.innerHTML = '';
+                captureGps.disabled = true;
+                captureFieldReference.disabled = true;
+                addLocationFromCandidates.disabled = true;
+                return;
+              }
+
+              const gps = positionSnapshot(latestPosition);
+              const ranked = rankedMeaningfulLocations(gps.latitude, gps.longitude);
+              const current = state === 'LIVE' || state === 'TEST';
+
+              gpsLatLon.textContent = gps.latitude.toFixed(7) + ', ' + gps.longitude.toFixed(7);
+              gpsAccuracy.textContent = gps.accuracy_ft == null ? 'Unknown' : gps.accuracy_ft.toFixed(1) + ' ft';
+              gpsAge.textContent = (gps.fix_age_ms / 1000).toFixed(1) + ' sec';
+              gpsNearest.textContent =
+                (current ? '' : 'LAST FIX · ') +
+                referenceLabel(ranked[0]) + ' · ' + ranked[0].distance_ft.toFixed(1) + ' ft';
+              gpsCandidates.textContent =
+                (current ? 'Three nearest candidates: ' : 'Last-fix candidates (GPS is not current): ') +
+                ranked.slice(0, 3).map(function(item, index) {
+                  return (index + 1) + '. ' + referenceLabel(item) + ' (' + item.distance_ft.toFixed(1) + ' ft)';
+                }).join(' · ');
+
+              renderCandidateButtons(ranked, current);
+              captureGps.disabled = !current;
+              captureFieldReference.disabled = !current;
+              addLocationFromCandidates.disabled = !current;
+
+              if (expectedReference.value) {
+                const rawRanked = rankedReferences(gps.latitude, gps.longitude);
+                const selectedIndex = rawRanked.findIndex(function(item) {
+                  return item.reference_id === expectedReference.value;
+                });
+                const selected = selectedIndex >= 0 ? rawRanked[selectedIndex] : null;
+                if (selected) {
+                  locationConfirmationStatus.textContent =
+                    'Confirmed for next scan: ' + referenceLabel(selected) +
+                    ' · currently #' + (selectedIndex + 1) +
+                    ' · ' + selected.distance_ft.toFixed(1) + ' ft';
+                  locationConfirmationStatus.className =
+                    (selectedIndex < 3 && current ? 'good small' : 'bad small');
+                }
+              }
+            }
+
+            function startGpsWatch() {
+              gpsError.textContent = '';
+              gpsWatchErrorActive = false;
+              if (!navigator.geolocation) {
+                gpsError.textContent = 'This browser does not expose geolocation.';
+                return;
+              }
+              if (watchId != null) {
+                gpsError.textContent = 'GPS watch is already running.';
+                return;
+              }
+              gpsStartedAt = Date.now();
+              startGps.disabled = true;
+              startGps.textContent = 'GPS running…';
+              watchId = navigator.geolocation.watchPosition(
+                function(position) {
+                  gpsWatchErrorActive = false;
+                  latestPosition = position;
+                  renderGps();
+                },
+                function(error) {
+                  gpsWatchErrorActive = true;
+                  gpsError.textContent = 'GPS error ' + error.code + ': ' + error.message;
+                  renderGps();
+                  startGps.disabled = false;
+                  startGps.textContent = 'Retry high-accuracy GPS';
+                  if (watchId != null) {
+                    navigator.geolocation.clearWatch(watchId);
+                    watchId = null;
+                  }
+                },
+                {
+                  enableHighAccuracy: true,
+                  maximumAge: 0,
+                  timeout: 15000
+                }
+              );
+            }
+
+            function persistSession() {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+            }
+
+            function loadControlledPreviewFix() {
+              const selected = referenceCandidates().find(function(item) {
+                return item.reference_id === expectedReference.value;
+              }) || referenceCandidates().find(function(item) {
+                return item.source_type === 'GPX_SEED';
+              });
+              if (!selected) return;
+              latestPosition = {
+                coords: {
+                  latitude: selected.lat,
+                  longitude: selected.lon,
+                  accuracy: 3,
+                  altitude: null,
+                  altitudeAccuracy: null,
+                  heading: null,
+                  speed: null
+                },
+                timestamp: Date.now(),
+                _msbSource: 'CONTROLLED_PREVIEW'
+              };
+              gpsStartedAt = Date.now();
+              renderGps();
+              fieldReferenceStatus.textContent =
+                'Controlled preview fix loaded from ' + referenceLabel(selected) +
+                '. This is UI test data, not physical GPS evidence.';
+            }
+
+            function selectedEnvironmentFlags() {
+              return environmentChecks
+                .filter(function(input) { return input.checked; })
+                .map(function(input) { return input.value; });
+            }
+
+            function clearFieldReferenceForm() {
+              fieldReferenceName.value = '';
+              fieldReferenceArea.value = '';
+              fieldReferenceSampleRole.value = '';
+              fieldReferenceComment.value = '';
+              fieldReferenceEnvironmentNote.value = '';
+              environmentChecks.forEach(function(input) { input.checked = false; });
+              fieldReferenceStatus.textContent = 'Location sample form cleared.';
+            }
+
+            function showSaveFeedback(message, isGood) {
+              if (saveFeedbackTimer != null) {
+                window.clearTimeout(saveFeedbackTimer);
+                saveFeedbackTimer = null;
+              }
+              saveFeedback.textContent = message;
+              saveFeedback.className = 'save-feedback ' + (isGood ? 'good' : 'bad');
+              saveFeedbackTimer = window.setTimeout(function() {
+                saveFeedback.textContent = 'READY FOR SCAN';
+                saveFeedback.className = 'save-feedback muted';
+              }, 4500);
+            }
+
+            function confirmLocation(referenceId, method) {
+              const point = referenceCandidates().find(function(item) {
+                return item.reference_id === referenceId;
+              }) || null;
+              if (!point) return;
+              expectedReference.value = point.reference_id;
+              confirmedLocationMethod = method || 'MANUAL';
+              confirmedLocationAt = new Date().toISOString();
+              locationConfirmationStatus.textContent =
+                'Confirmed for next scan: ' + referenceLabel(point) + '.';
+              scheduleScanInputFocus();
+            }
+
+            function clearConfirmedLocation() {
+              expectedReference.value = '';
+              confirmedLocationMethod = null;
+              confirmedLocationAt = null;
+              locationConfirmationStatus.textContent = 'No location confirmed for the next scan.';
+              scheduleScanInputFocus();
+            }
+
+            function captureFieldReferenceObservation() {
+              const gps = currentGpsSnapshot();
+              const provisionalName = fieldReferenceName.value.trim();
+              if (!gps) {
+                fieldReferenceStatus.textContent = 'GPS must be LIVE before saving a location sample.';
+                showSaveFeedback('NOT SAVED — NO CURRENT GPS', false);
+                return;
+              }
+              if (!provisionalName) {
+                fieldReferenceStatus.textContent = 'Enter a location point name first.';
+                fieldReferenceName.focus();
+                return;
+              }
+
+              const flags = selectedEnvironmentFlags();
+              const observation = {
+                field_reference_observation_id: newId(),
+                provisional_name: provisionalName,
+                area_context: fieldReferenceArea.value.trim() || null,
+                sample_role: fieldReferenceSampleRole.value || null,
+                operator_comment: fieldReferenceComment.value.trim() || null,
+                environment_context: flags.length ? flags[0] : null,
+                environment_flags: flags,
+                environment_note: fieldReferenceEnvironmentNote.value.trim() || null,
+                recorded_at: new Date().toISOString(),
+                gps: gps,
+                gps_acquisition_elapsed_ms:
+                  gpsStartedAt == null ? null : Number(latestPosition.timestamp) - gpsStartedAt,
+                connectivity: connectivitySnapshot()
+              };
+
+              session.field_reference_observations.push(observation);
+              persistSession();
+              renderExpectedReferenceOptions();
+              renderFieldReferences();
+              renderGps();
+              renderSession();
+              fieldReferenceStatus.textContent =
+                'SAVED — location sample “' + provisionalName + '”. Use NEW / CLEAR before entering a different point.';
+              showSaveFeedback(
+                'SAVED — LOCATION SAMPLE · ' + provisionalName + ' · GPS ' +
+                (gps.accuracy_ft == null ? 'accuracy unknown' : gps.accuracy_ft.toFixed(1) + ' ft'),
+                true
+              );
+              scheduleScanInputFocus();
+            }
+
+            function canonicalScan(raw) {
+              const value = String(raw || '').trim();
+              if (!value) return null;
+
+              if (value.startsWith('http://') || value.startsWith('https://')) {
+                try {
+                  const url = new URL(value);
+                  const match = url.pathname.match(/\/scan\/([A-Za-z]+)\/([^/?#]+)/);
+                  if (match) {
+                    return {
+                      type: match[1].toUpperCase(),
+                      key: decodeURIComponent(match[2]),
+                      canonical: match[1].toUpperCase() + ':' + decodeURIComponent(match[2])
+                    };
+                  }
+                } catch (err) {}
+              }
+
+              const compact = value.match(/^([A-Za-z]+):(.*)$/);
+              if (!compact || !compact[2]) return null;
+              return {
+                type: compact[1].toUpperCase(),
+                key: compact[2],
+                canonical: compact[1].toUpperCase() + ':' + compact[2]
+              };
+            }
+
+            function expectedResult(ranked) {
+              const referenceId = expectedReference.value || null;
+              if (!referenceId) {
+                return {
+                  reference_id: null,
+                  source_type: null,
+                  name: null,
+                  latitude: null,
+                  longitude: null,
+                  rank: null,
+                  distance_ft: null
+                };
+              }
+
+              const point = referenceCandidates().find(function(item) {
+                return item.reference_id === referenceId;
+              }) || null;
+              const index = ranked.findIndex(function(item) {
+                return item.reference_id === referenceId;
+              });
+              return {
+                reference_id: point ? point.reference_id : referenceId,
+                source_type: point ? point.source_type : null,
+                name: point ? point.name : null,
+                latitude: point ? point.lat : null,
+                longitude: point ? point.lon : null,
+                rank: index < 0 ? null : index + 1,
+                distance_ft: index < 0 ? null : ranked[index].distance_ft
+              };
+            }
+
+            function recordObservation(kind, rawScan) {
+              const gpsStatusValue = gpsStateSnapshot();
+              const lastGpsFix = latestPosition ? positionSnapshot(latestPosition) : null;
+              const gps = currentGpsSnapshot();
+              const ranked = gps ? rankedReferences(gps.latitude, gps.longitude) : [];
+              const expected = expectedResult(ranked);
+              const parsed = rawScan ? canonicalScan(rawScan) : null;
+
+              const observation = {
+                observation_id: newId(),
+                kind: kind,
+                recorded_at: new Date().toISOString(),
+                input_method: kind === 'SCAN' ? inputMethod.value : null,
+                scan_raw: rawScan || null,
+                scan_canonical: parsed ? parsed.canonical : null,
+                scan_type: parsed ? parsed.type : null,
+                scan_key: parsed ? parsed.key : null,
+                expected_reference_id: expected.reference_id,
+                expected_reference_source_type: expected.source_type,
+                expected_reference: expected.name,
+                expected_reference_latitude: expected.latitude,
+                expected_reference_longitude: expected.longitude,
+                location_confirmation_method: confirmedLocationMethod,
+                location_confirmed_at: confirmedLocationAt,
+                operator_location_comment: operatorLocationComment.value.trim() || null,
+                expected_rank: expected.rank,
+                expected_distance_ft: expected.distance_ft,
+                gps_status: gpsStatusValue,
+                gps: gps,
+                last_gps_fix: gps ? null : lastGpsFix,
+                connectivity: connectivitySnapshot(),
+                gps_acquisition_elapsed_ms: gpsStartedAt == null || !gps ? null : Number(latestPosition.timestamp) - gpsStartedAt,
+                nearest_references: ranked.slice(0, 5)
+              };
+
+              session.observations.push(observation);
+              persistSession();
+              renderSession();
+
+              if (kind === 'SCAN') {
+                if (parsed) {
+                  const gpsText = gps
+                    ? 'GPS ' + (gps.accuracy_ft == null ? 'accuracy unknown' : gps.accuracy_ft.toFixed(1) + ' ft')
+                    : 'NO CURRENT GPS';
+                  const locationText = expected.name ? ' · ' + expected.name : '';
+                  showSaveFeedback('SAVED — ' + parsed.canonical + ' · ' + gpsText + locationText, !!gps);
+                  scanStatus.textContent =
+                    'Recorded ' + parsed.canonical +
+                    (gps ? ' with current GPS evidence.' : ' without a current GPS fix; last-fix evidence is preserved when available.');
+                  normalRoute.href = '/scan/' + encodeURIComponent(parsed.type) + '/' + encodeURIComponent(parsed.key);
+                  normalRoute.classList.remove('disabled');
+                } else {
+                  showSaveFeedback('SAVED RAW INPUT — UNRECOGNIZED IDENTITY', false);
+                  scanStatus.textContent = 'Recorded raw scan, but it did not match a recognized TYPE:key or /scan/TYPE/key value.';
+                  normalRoute.removeAttribute('href');
+                  normalRoute.classList.add('disabled');
+                }
+                scanInput.value = '';
+                scheduleScanInputFocus();
+              }
+            }
+
+            function escapeHtml(value) {
+              return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+            }
+
+            function renderFieldReferences() {
+              fieldReferenceRows.innerHTML = '';
+              session.field_reference_observations.slice().reverse().forEach(function(obs) {
+                const tr = document.createElement('tr');
+                const gps = obs.gps || {};
+                const sourceClass = gps.fix_source === 'CONTROLLED_PREVIEW' ? 'preview' : 'field';
+                tr.innerHTML =
+                  '<td>' + escapeHtml(obs.provisional_name) + '</td>' +
+                  '<td><span class="source-badge ' + sourceClass + '">' +
+                    escapeHtml(gps.fix_source || 'BROWSER_GEOLOCATION') + '</span></td>' +
+                  '<td>' + escapeHtml(obs.area_context || '—') + '</td>' +
+                  '<td>' + escapeHtml(
+                    (obs.sample_role ? obs.sample_role + ' · ' : '') +
+                    ((obs.environment_flags && obs.environment_flags.length)
+                      ? obs.environment_flags.join(' + ')
+                      : (obs.environment_context || '—')) +
+                    (obs.environment_note ? ' · ' + obs.environment_note : '')
+                  ) + '</td>' +
+                  '<td>' + escapeHtml(
+                    gps.latitude == null ? '—' :
+                    Number(gps.latitude).toFixed(7) + ', ' + Number(gps.longitude).toFixed(7)
+                  ) + '</td>' +
+                  '<td>' + escapeHtml(
+                    gps.accuracy_ft == null ? '—' : Number(gps.accuracy_ft).toFixed(1) + ' ft'
+                  ) + '</td>' +
+                  '<td>' + escapeHtml(new Date(obs.recorded_at).toLocaleTimeString()) + '</td>';
+                fieldReferenceRows.appendChild(tr);
+              });
+              const physicalCount = session.field_reference_observations.filter(function(obs) {
+                return obs.gps && obs.gps.fix_source !== 'CONTROLLED_PREVIEW';
+              }).length;
+              const previewCount = session.field_reference_observations.length - physicalCount;
+              fieldReferenceSummary.textContent =
+                session.field_reference_observations.length + ' raw field-reference observations · ' +
+                physicalCount + ' browser-GPS · ' + previewCount + ' controlled preview · no averaging/promotion';
+            }
+
+            function renderSession() {
+              observationRows.innerHTML = '';
+              session.observations.slice().reverse().forEach(function(obs) {
+                const nearest = obs.nearest_references && obs.nearest_references[0];
+                const tr = document.createElement('tr');
+                tr.innerHTML =
+                  '<td>' + escapeHtml(new Date(obs.recorded_at).toLocaleTimeString()) + '</td>' +
+                  '<td>' + escapeHtml(obs.scan_canonical || (obs.kind === 'GPS_SAMPLE' ? 'GPS sample' : obs.scan_raw || '—')) + '</td>' +
+                  '<td>' + escapeHtml(obs.expected_reference || '—') + '</td>' +
+                  '<td>' + escapeHtml(obs.operator_location_comment || '—') + '</td>' +
+                  '<td>' + escapeHtml(nearest ? referenceLabel(nearest) + ' · ' + nearest.distance_ft.toFixed(1) + ' ft' : 'No GPS') + '</td>' +
+                  '<td>' + escapeHtml(obs.expected_rank == null ? '—' : String(obs.expected_rank)) + '</td>' +
+                  '<td>' + escapeHtml(obs.gps && obs.gps.accuracy_ft != null ? obs.gps.accuracy_ft.toFixed(1) + ' ft' : '—') + '</td>';
+                observationRows.appendChild(tr);
+              });
+
+              const gpsCount = session.observations.filter(function(obs) { return !!obs.gps; }).length;
+              const offlineCount = session.observations.filter(function(obs) {
+                return obs.connectivity && obs.connectivity.browser_online === false;
+              }).length;
+              const rankedCount = session.observations.filter(function(obs) { return obs.expected_rank != null; }).length;
+              const nearestExpected = session.observations.filter(function(obs) { return obs.expected_rank === 1; }).length;
+              sessionSummary.textContent =
+                session.observations.length + ' observations · ' +
+                session.field_reference_observations.length + ' raw field references · ' +
+                gpsCount + ' with GPS · ' +
+                offlineCount + ' captured offline · ' +
+                (rankedCount ? nearestExpected + '/' + rankedCount + ' expected locations ranked #1' : 'no expected-location comparisons yet') +
+                ' · local session ' + session.session_id;
+            }
+
+            function csvCell(value) {
+              const text = value == null ? '' : String(value);
+              return '"' + text.replace(/"/g, '""') + '"';
+            }
+
+            function exportFile(filename, mime, text) {
+              const blob = new Blob([text], { type: mime });
+              const url = URL.createObjectURL(blob);
+              const anchor = document.createElement('a');
+              anchor.href = url;
+              anchor.download = filename;
+              document.body.appendChild(anchor);
+              anchor.click();
+              anchor.remove();
+              window.setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+            }
+
+            function exportSessionJson() {
+              exportFile(
+                'msb-scan-gps-field-test-' + session.session_id + '.json',
+                'application/json',
+                JSON.stringify(session, null, 2)
+              );
+            }
+
+            function exportSessionCsv() {
+              const header = [
+                'record_type','observation_id','field_reference_observation_id','recorded_at','kind','input_method',
+                'scan_raw','scan_canonical','scan_type','scan_key',
+                'reference_source_sha256','reference_source_modified_at','reference_selection_rule',
+                'source_waypoint_count','selected_waypoint_count',
+                'expected_reference_id','expected_reference_source_type','expected_reference',
+                'expected_reference_latitude','expected_reference_longitude',
+                'field_reference_name','field_reference_area_context','field_reference_sample_role','field_reference_operator_comment',
+                'field_reference_environment_context','field_reference_environment_flags','field_reference_environment_note','gps_fix_source',
+                'location_confirmation_method','location_confirmed_at','gps_status','operator_location_comment','expected_rank','expected_distance_ft',
+                'latitude','longitude','accuracy_ft','fix_timestamp','fix_age_ms','gps_acquisition_elapsed_ms',
+                'browser_online','effective_type','downlink_mbps','rtt_ms','save_data',
+                'nearest_1_source','nearest_1','nearest_1_distance_ft',
+                'nearest_2_source','nearest_2','nearest_2_distance_ft',
+                'nearest_3_source','nearest_3','nearest_3_distance_ft',
+                'nearest_4_source','nearest_4','nearest_4_distance_ft',
+                'nearest_5_source','nearest_5','nearest_5_distance_ft'
+              ];
+              const rows = [header.map(csvCell).join(',')];
+              session.observations.forEach(function(obs) {
+                const ranked = obs.nearest_references || [];
+                const gps = obs.gps || {};
+                const connectivity = obs.connectivity || {};
+                rows.push([
+                  'OBSERVATION', obs.observation_id, null, obs.recorded_at, obs.kind, obs.input_method,
+                  obs.scan_raw, obs.scan_canonical, obs.scan_type, obs.scan_key,
+                  session.reference_source && session.reference_source.sha256,
+                  session.reference_source && session.reference_source.modified_at,
+                  session.reference_source && session.reference_source.selection_rule,
+                  session.reference_source && session.reference_source.source_waypoint_count,
+                  session.reference_source && session.reference_source.selected_waypoint_count,
+                  obs.expected_reference_id, obs.expected_reference_source_type, obs.expected_reference,
+                  obs.expected_reference_latitude, obs.expected_reference_longitude,
+                  null, null, null, null, null, null, null, gps.fix_source,
+                  obs.location_confirmation_method, obs.location_confirmed_at, obs.gps_status,
+                  obs.operator_location_comment, obs.expected_rank, obs.expected_distance_ft,
+                  gps.latitude, gps.longitude, gps.accuracy_ft, gps.fix_timestamp, gps.fix_age_ms,
+                  obs.gps_acquisition_elapsed_ms,
+                  connectivity.browser_online, connectivity.effective_type, connectivity.downlink_mbps,
+                  connectivity.rtt_ms, connectivity.save_data,
+                  ranked[0] && ranked[0].source_type, ranked[0] && ranked[0].name, ranked[0] && ranked[0].distance_ft,
+                  ranked[1] && ranked[1].source_type, ranked[1] && ranked[1].name, ranked[1] && ranked[1].distance_ft,
+                  ranked[2] && ranked[2].source_type, ranked[2] && ranked[2].name, ranked[2] && ranked[2].distance_ft,
+                  ranked[3] && ranked[3].source_type, ranked[3] && ranked[3].name, ranked[3] && ranked[3].distance_ft,
+                  ranked[4] && ranked[4].source_type, ranked[4] && ranked[4].name, ranked[4] && ranked[4].distance_ft
+                ].map(csvCell).join(','));
+              });
+              session.field_reference_observations.forEach(function(obs) {
+                const gps = obs.gps || {};
+                const connectivity = obs.connectivity || {};
+                rows.push([
+                  'FIELD_REFERENCE_OBSERVATION', null, obs.field_reference_observation_id, obs.recorded_at,
+                  'FIELD_REFERENCE', null, null, null, null, null,
+                  session.reference_source && session.reference_source.sha256,
+                  session.reference_source && session.reference_source.modified_at,
+                  session.reference_source && session.reference_source.selection_rule,
+                  session.reference_source && session.reference_source.source_waypoint_count,
+                  session.reference_source && session.reference_source.selected_waypoint_count,
+                  null, null, null, null, null,
+                  obs.provisional_name, obs.area_context, obs.sample_role, obs.operator_comment,
+                  obs.environment_context,
+                  obs.environment_flags && obs.environment_flags.join('|'),
+                  obs.environment_note, gps.fix_source,
+                  null, null, null, null, null, null,
+                  gps.latitude, gps.longitude, gps.accuracy_ft, gps.fix_timestamp, gps.fix_age_ms,
+                  obs.gps_acquisition_elapsed_ms,
+                  connectivity.browser_online, connectivity.effective_type, connectivity.downlink_mbps,
+                  connectivity.rtt_ms, connectivity.save_data,
+                  null, null, null, null, null, null, null, null, null, null, null, null, null, null, null
+                ].map(csvCell).join(','));
+              });
+              exportFile(
+                'msb-scan-gps-field-test-' + session.session_id + '.csv',
+                'text/csv',
+                rows.join('\n')
+              );
+            }
+
+            function focusScanInput() {
+              try {
+                scanInput.focus({ preventScroll: true });
+              } catch (err) {
+                scanInput.focus();
+              }
+            }
+
+            function scheduleScanInputFocus() {
+              window.setTimeout(focusScanInput, 0);
+              window.setTimeout(focusScanInput, 250);
+            }
+
+            function isTextEntryTarget(target) {
+              if (!target || !target.tagName || target === scanInput) return false;
+              const tag = String(target.tagName).toUpperCase();
+              if (tag === 'TEXTAREA') return true;
+              if (tag !== 'INPUT') return false;
+              const type = String(target.type || 'text').toLowerCase();
+              return ['text','search','url','email','number','tel','password'].includes(type);
+            }
+
+            startGps.addEventListener('click', function() {
+              startGpsWatch();
+              scheduleScanInputFocus();
+            });
+            captureGps.addEventListener('click', function() {
+              recordObservation('GPS_SAMPLE', null);
+              showSaveFeedback('SAVED — GPS SAMPLE', true);
+              scheduleScanInputFocus();
+            });
+            captureFieldReference.addEventListener('click', captureFieldReferenceObservation);
+            clearFieldReference.addEventListener('click', function() {
+              clearFieldReferenceForm();
+              fieldReferenceName.focus();
+            });
+            loadPreviewFix.addEventListener('click', function() {
+              loadControlledPreviewFix();
+              scheduleScanInputFocus();
+            });
+            clearExpectedReference.addEventListener('click', clearConfirmedLocation);
+            addLocationFromCandidates.addEventListener('click', function() {
+              clearConfirmedLocation();
+              fieldReferenceDetails.open = true;
+              const gps = currentGpsSnapshot();
+              if (gps) {
+                const ranked = rankedReferences(gps.latitude, gps.longitude);
+                if (!fieldReferenceArea.value && ranked[0]) fieldReferenceArea.value = ranked[0].name;
+              }
+              fieldReferenceName.focus();
+            });
+            expectedReference.addEventListener('change', function() {
+              if (expectedReference.value) {
+                confirmedLocationMethod = 'KNOWN_LOCATION_DROPDOWN';
+                confirmedLocationAt = new Date().toISOString();
+                const point = referenceCandidates().find(function(item) {
+                  return item.reference_id === expectedReference.value;
+                });
+                locationConfirmationStatus.textContent =
+                  point ? 'Confirmed for next scan: ' + referenceLabel(point) + '.' : 'Known location selected.';
+              } else {
+                confirmedLocationMethod = null;
+                confirmedLocationAt = null;
+                locationConfirmationStatus.textContent = 'No location confirmed for the next scan.';
+              }
+              if (latestPosition && latestPosition._msbSource === 'CONTROLLED_PREVIEW') {
+                loadControlledPreviewFix();
+              }
+              scheduleScanInputFocus();
+            });
+            function applyScanKeyboardMode() {
+              const useSoftKeyboard = inputMethod.value === 'MANUAL';
+              scanInput.setAttribute('inputmode', useSoftKeyboard ? 'text' : 'none');
+              scanInput.setAttribute('enterkeyhint', 'done');
+              scanFocusState.textContent = useSoftKeyboard
+                ? 'MANUAL ENTRY — on-screen keyboard enabled'
+                : 'SCAN READY — on-screen keyboard suppressed';
+              scanFocusState.className = useSoftKeyboard ? 'muted small' : 'good small';
+            }
+
+            inputMethod.addEventListener('change', function() {
+              applyScanKeyboardMode();
+              scheduleScanInputFocus();
+            });
+            operatorLocationComment.addEventListener('blur', scheduleScanInputFocus);
+            fieldReferenceName.addEventListener('blur', scheduleScanInputFocus);
+            fieldReferenceArea.addEventListener('blur', scheduleScanInputFocus);
+            fieldReferenceComment.addEventListener('blur', scheduleScanInputFocus);
+            fieldReferenceEnvironmentNote.addEventListener('blur', scheduleScanInputFocus);
+            fieldReferenceSampleRole.addEventListener('change', scheduleScanInputFocus);
+            environmentChecks.forEach(function(input) {
+              input.addEventListener('change', scheduleScanInputFocus);
+            });
+            scanInput.addEventListener('focus', function() {
+              scanFocusState.textContent = 'SCAN READY';
+              scanFocusState.className = 'good small';
+            });
+            scanInput.addEventListener('blur', function() {
+              scanFocusState.textContent = 'SCAN FIELD NOT FOCUSED — Zebra still works from buttons/dropdowns; finish any text entry first.';
+              scanFocusState.className = 'muted small';
+            });
+            scanForm.addEventListener('submit', function(event) {
+              event.preventDefault();
+              const raw = scanInput.value.trim();
+              if (raw) recordObservation('SCAN', raw);
+            });
+
+            exportJson.addEventListener('click', exportSessionJson);
+            exportCsv.addEventListener('click', exportSessionCsv);
+            clearSession.addEventListener('click', function() {
+              if (!window.confirm('Clear all locally stored field-test observations on this browser?')) return;
+              localStorage.removeItem(STORAGE_KEY);
+              session = newSession();
+              fieldReferenceStatus.textContent = '';
+              clearConfirmedLocation();
+              clearFieldReferenceForm();
+              renderExpectedReferenceOptions();
+              renderReferenceAreaChoices();
+              renderFieldReferences();
+              renderGps();
+              renderSession();
+            });
+
+            document.addEventListener('keydown', function(event) {
+              if (
+                event.defaultPrevented ||
+                event.isComposing ||
+                event.ctrlKey ||
+                event.metaKey ||
+                event.altKey ||
+                isTextEntryTarget(event.target)
+              ) {
+                return;
+              }
+
+              if (event.key === 'Enter') {
+                if (scanInput.value.trim()) {
+                  event.preventDefault();
+                  recordObservation('SCAN', scanInput.value);
+                }
+                return;
+              }
+
+              if (event.key && event.key.length === 1) {
+                event.preventDefault();
+                scanInput.value += event.key;
+                focusScanInput();
+              }
+            }, true);
+
+            window.setInterval(renderGps, 1000);
+            window.addEventListener('online', renderConnectivity);
+            window.addEventListener('offline', renderConnectivity);
+            window.addEventListener('pageshow', function() {
+              renderConnectivity();
+              scheduleScanInputFocus();
+            });
+            window.addEventListener('focus', scheduleScanInputFocus);
+            document.addEventListener('visibilitychange', function() {
+              if (document.visibilityState === 'visible') scheduleScanInputFocus();
+            });
+
+            renderConnectivity();
+            renderExpectedReferenceOptions();
+            renderReferenceAreaChoices();
+            applyScanKeyboardMode();
+            renderGps();
+            renderFieldReferences();
+            renderSession();
+            scheduleScanInputFocus();
+          </script>
+        </body>
+        </html>
+      `);
+    });
+
     // ============================================================
     // DISPLAY HUB
     // /scan/DISP/:key

@@ -39,11 +39,17 @@ Scan/directus-extension-scan/
     src/index.js
     dist/index.js
     test/controller-route.test.mjs
+    test/scan-input-focus.test.mjs
+    test/record-location-handoff.test.mjs
+    test/field-test-route.test.mjs
 ```
 
 The source is stored in the Production Database repository because it operates directly against Production Database identities/data. Its label/payload/scan behavior still implements the Labeling and Scanning subsystem contract.
 
 The detailed deployed runtime hash, rollback artifacts, restart/recovery sequence, and Synology `/scan/` proxy behavior are maintained in `Gregovate/MSB-Server-Management`.
+
+**#219 Scan + GPS field acceptance harness is currently deployed.** The protected `/scan/field-test` route is a read-only engineering surface used with the real HOTWAV/Zebra/browser-GPS path. Its current live artifact was re-verified during #88 preflight as SHA-256 `5b456bb682daad50673e5b7b2514cb7b98ce0d4fabb5551d79b1b0f4e98ffb50` / Git blob `c131458fb549ab4127ede1fd8d4277d115cebaa0`. #219 owns the harness; #171 remains the GIS/reference-location authority and is not complete. Preserve the harness while that evidence work remains useful. It does not write Setup movement/GPS state to PostgreSQL.
+
 
 **FieldWiring Scan Integration is accepted production work.** The Display scan hub currently includes the additive **Field Wiring** action using only the already-resolved permanent `display_id`:
 
@@ -91,6 +97,7 @@ The LabelPrintService is an external supporting subsystem. If it is unavailable,
 - [Label Payload and Profile Architecture](Label_Payload_and_Profile_Architecture.md) — current QR-generation/profile reconnaissance and implementation gates.
 - [FieldWiring Scan Integration Engineering Handoff — 2026-08-22](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md) — accepted production Scan/FieldWiring baseline, permanent `display_id` handoff, source-control boundary, failure boundary, acceptance matrix, and deferred regression cases.
 - [Deployed Display Scan Runtime Boundary](Deployed_Display_Scan_Runtime_Boundary.md) — current Directus scan endpoint, application/runtime ownership boundary, and accepted production baseline.
+- [Scan + GPS Field Acceptance Harness](Scan_GPS_Field_Acceptance_Harness_2026-09-18.md) — current #219 read-only field-test surface and evidence boundary; #171 remains GIS authority.
 - [Controller Scan Production Deployment Acceptance — 2026-09-03](Controller_Scan_Production_Deployment_Acceptance_2026-09-03.md) — deployed commit/hash/rollback, manual-input acceptance, and explicit physical-test deferrals.
 - [Asset Identity and Scan Payload Standard](Asset_Identity_and_Scan_Payload_Standard.md) — durable asset/payload rules.
 - [Field Context Resolution Contract](Field_Context_Resolution_Contract.md) — shared scan-to-Display/hierarchy contract used by Work Orders, FieldWiring, Procedures, Testing, and future field functions.
@@ -240,7 +247,7 @@ The former loose `H_Asset_ID_Labeling_and_Scanning_Plan.md` has been reconciled 
 
 ## Resume Development
 
-### Controller Scan Integration — physical routing accepted; tablet focus repair pending
+### Controller Scan Integration — physical routing accepted; HID focus repair and #219 field harness live
 
 Current production Controller Inventory owns Controller search, detail, assignments, planning, maintenance, and label-request actions. The deployed Scan handoff adds no competing Controller screen or database query.
 
@@ -254,9 +261,9 @@ Zebra/manual: CTRL:<controller_id>
     -> Search filtered and exact Controller detail opened
 ```
 
-The Git-controlled `src/index.js` and deployed `dist/index.js` remain identical. The Controller browser initializes its existing Search control from the same `controller_id` parameter already used by FieldWiring cross-links and exact-detail loading.
+The September 3 Controller deployment established the route and physical Controller 1031 phone/Zebra path. PR #121 later repaired landing-page HID focus. #219 subsequently deployed the read-only `/scan/field-test` harness and exercised the real tablet/Zebra/browser-GPS path. The current live Scan artifact is SHA-256 `5b456bb682daad50673e5b7b2514cb7b98ce0d4fabb5551d79b1b0f4e98ffb50` / Git blob `c131458fb549ab4127ede1fd8d4277d115cebaa0`.
 
-Production deployment passed at shared checkout `72f5b7164f31753a33e5c2a9d83d9a7a6909a417` with live Scan SHA-256 `3457efa15f461b774ef20462f57807d36cb848cac67bdcffcc2a8284c2dc2f96`. Manual compact/full-URL inputs and a printed Controller `1031` label through phone-camera and Zebra paths passed. The current tablet still requires the operator to select the entry field before Zebra scanning. Repair and physically accept that initial-focus behavior, then record the tested camera operating systems and useful scan distance.
+#171 remains open as GIS/reference-location authority, so the field harness remains useful. #88 adds explicit Record Location handoffs from resolved Display/Container Scan pages; those links are additive and must preserve the existing field-test route and normal Scan behavior.
 
 ### Setup/Deployment operational scanning — separate project
 
