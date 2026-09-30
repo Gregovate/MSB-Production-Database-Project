@@ -193,6 +193,17 @@ def _validate_live_pick_demand(
         )
 
 
+@setup_movement_api.get("/api/setup/movements/search")
+def api_setup_movement_search() -> Response:
+    require_movement_operator()
+    query = str(request.args.get("q") or "").strip()
+    if not query:
+        return jsonify(assets=[])
+    if len(query) > 120:
+        raise SetupCommandError("Movement asset search is too long")
+    return jsonify(assets=repo().search_assets(query=query))
+
+
 @setup_movement_api.get("/api/setup/movements/state")
 def api_setup_movement_state() -> Response:
     require_reader()
