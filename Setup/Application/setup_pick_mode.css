@@ -43,7 +43,7 @@
 body.pick-mode-active .movement-select{display:inline-block;margin-top:.45rem}
 body.pick-mode-active #manager-override-panel{display:none!important}
 body.pick-mode-active .delay-pick,body.pick-mode-active .resume-pick,body.pick-mode-active .cancel-override{display:none!important}
-body.pick-mode-active #print-button,body.pick-mode-active #back-button,body.pick-mode-active #start-pick-mode,body.pick-mode-active #start-park-mode{display:none!important}
+body.pick-mode-active #print-button,body.pick-mode-active #start-pick-mode,body.pick-mode-active #start-park-mode{display:none!important}
 @media(max-width:700px){
   .pick-mode-toolbar{display:block}
   .pick-mode-toolbar button{width:100%;margin-top:.6rem}
