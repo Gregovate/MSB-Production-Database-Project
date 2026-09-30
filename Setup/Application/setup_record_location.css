@@ -31,3 +31,8 @@ main{max-width:1050px;margin:0 auto;padding:1rem}
 .feedback{padding:1rem;border-radius:10px;font-size:1.15rem;font-weight:900;border:3px solid currentColor}.feedback.ready{background:#12341e}.feedback.success{background:var(--ok)}.feedback.warning{background:var(--warn)}.feedback.blocked{background:var(--bad)}.feedback.offline{background:#704b00}
 .status-meta{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-top:.65rem;font-weight:800}
 @media(max-width:720px){.page-header{display:block}.header-actions{margin-top:.8rem}.entry-grid{grid-template-columns:1fr}.camera-actions button,.record-actions button{width:100%}.record-actions{display:grid;grid-template-columns:1fr}}
+
+.training-banner{position:sticky;top:0;z-index:20;padding:.8rem 1rem;text-align:center;font-size:1.05rem;font-weight:950;letter-spacing:.04em;background:#8a5a00;color:#fff;border-bottom:3px solid #ffd166}
+body.training-mode .panel{outline:2px solid #d79b00}
+body.training-mode .record-actions .primary{background:#8a5a00}
+body.training-mode .feedback.ready{background:#5e4400}
