@@ -2336,3 +2336,756 @@ Acceptance:
 - Client V0.3.20 remains correct;
 - Kit/source follow-up wording remains correct;
 - clean preview exit with Production fingerprint/live SHA unchanged.
+
+---
+
+## FINAL SOURCE-ONLY BROWSER ACCEPTANCE PASS
+
+| Field | Value |
+|---|---|
+| Exact accepted browser candidate | 3cedba88283e4766932ae7905034856a2b9baa00 |
+| Preview result | **PASS / CLEAN EXIT** |
+| Database migrations | **NONE** |
+| Production Setup fingerprint before | `679a83fac441ba73b58abb67d63251ba` |
+| Production Setup fingerprint after | `679a83fac441ba73b58abb67d63251ba` |
+| Live Setup SHA before | `947b86a9598584717167cce094cd78d99e9a71e7` |
+| Live Setup SHA after | `947b86a9598584717167cce094cd78d99e9a71e7` |
+| Preview Flask log | `/tmp/Setup_Disposable_Browser_Preview_Flask_20260929T020838.log` |
+| Preview report | `/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20260929T020838.txt` |
+| Exit status | **0** |
+
+### Browser acceptance confirmed
+
+- Client V0.3.20 remained correct where displayed.
+- Reusable Task Catalog used the current grouped Site-wide / Stage / Scene renderer.
+- Repeated Kit Inventory -> Back to Setup Session -> Reusable Task Catalog navigation did not reproduce the obsolete flat Catalog.
+- Slight Setup startup delay was observed and is acceptable because the deterministic organization gate waits rather than exposing the obsolete renderer.
+- Kit Inventory retained the primary LINKED TO TASK presentation with subordinate spec-difference note.
+- source/requirement edits in the disposable clone behaved as expected.
+
+### Separate Production-data finding
+
+The fresh disposable clone initially still contained the mistaken T-Post requirement on reusable task #140 `Layout Light Locations`.
+
+Deleting that mistake inside the disposable clone immediately cleared Material Audit, confirming governed delete + audit refresh behavior. That disposable deletion does not persist.
+
+Treat #140 cleanup as a separate bounded Production data correction. The accepted Northern Lights T-Post authority remains task #132 `Setup Northern Lights`.
+
+### Source-only release eligibility
+
+This candidate is now browser-accepted for a bounded source-only Production deployment. No database migration or PostgreSQL rollback archive is required for the source-only application correction; rollback unit is the prior exact application SHA plus service restart under the Server Management source-only deployment runbook.
+
+After Production source-only deployment, perform protected `/setup/` smoke validation and then update live runtime/acceptance documentation to the exact deployed SHA.
+
+---
+
+## SOURCE-ONLY PRODUCTION DEPLOYMENT PASS
+
+| Field | Value |
+|---|---|
+| Accepted application target | `3cedba88283e4766932ae7905034856a2b9baa00` |
+| Prior live Setup SHA | `947b86a9598584717167cce094cd78d99e9a71e7` |
+| Final live Setup SHA | `3cedba88283e4766932ae7905034856a2b9baa00` |
+| Production version | `V0.3.20-material-authority` |
+| Deployment type | **SOURCE ONLY** |
+| Database migration | **NONE** |
+| Exit status | **0 / PASS** |
+
+Production after-check:
+
+```text
+Deployment core fingerprint before: 679a83fac441ba73b58abb67d63251ba
+Production core fingerprint after:   679a83fac441ba73b58abb67d63251ba
+Deployment material fingerprint before: 35356aa21bbc074aeb2b64a4f2c2e6cf
+Production material fingerprint after:   35356aa21bbc074aeb2b64a4f2c2e6cf
+2026 Setup Session count before: 1
+2026 Setup Session count after:  1
+Final Setup health: {"data_mode":"postgres","status":"ok","version":"V0.3.20-material-authority"}
+PostgreSQL rollback archive: NOT REQUIRED / NOT CREATED
+```
+
+Deployment report:
+`/home/msbadmin/setup-deployment-reports/Setup_206_Source_Only_Followup_Production_Deploy_20260929T024256.txt`
+
+Wrapper result:
+`SETUP #206 V0.3.20 SOURCE-ONLY FOLLOW-UP PRODUCTION DEPLOYMENT WRAPPER: PASS`
+
+### Remaining release gate
+
+Perform protected-route operator smoke validation through real Production `/setup/` before closeout.
+
+Validate:
+- Client V0.3.20 remains correct;
+- Reusable Task Catalog always uses grouped Site-wide / Stage / Scene renderer;
+- Kit Inventory -> Back to Setup Session -> Reusable Task Catalog does not expose the obsolete flat Catalog;
+- Kit Inventory retains LINKED TO TASK wording;
+- Add Source retains Already linked — use Change behavior.
+
+Keep the #140 Layout Light Locations T-Post correction separate as a bounded Production data cleanup after source-only acceptance.
+
+---
+
+## POST-DEPLOY PICK LIST DEADLINE SORT FIX CHECKPOINT
+
+| Field | Value |
+|---|---|
+| Implementation head before documentation checkpoint | `18a53435cf82c315cd5c3f64fe478e0faf40a1f8` |
+| Production currently live | `3cedba88283e4766932ae7905034856a2b9baa00` |
+| Version | `V0.3.20-material-authority` |
+| Database mutation required | **NO** |
+
+### Production smoke finding
+
+Protected-route Production validation showed that Pick List date values were correct, but browser row ordering was wrong because home rack/location had absolute precedence.
+
+Observed example:
+- an RA02 item with Pick By 10/3;
+- RA05 items with Pick By 10/5;
+- an RA06 item with Pick By 9/28;
+
+The 9/28 item appeared below later October work solely because the browser applied rack-first ordering.
+
+### Non-negotiable operational ordering
+
+The Pick List answers **what must be pulled first** before optimizing **where the picker walks**.
+
+Required row precedence:
+1. **Pick By** date;
+2. **Needed For** date;
+3. physical rack/home-location walk order;
+4. physical identity / existing final tie-break.
+
+Rack/location order is therefore a secondary optimization only among items with the same operational deadline.
+
+The D-1 staging rule and no-Sunday rule remain unchanged.
+
+### Source correction
+
+`setup_pick_list.js` now uses `comparePickListOrder(a, b, selectedDate)` instead of sorting directly with `compareHomeLocations`.
+
+`comparePickListOrder` compares Pick By first, Needed For second, then delegates to the existing rack-location comparator.
+
+Pick List JavaScript asset pin advances to `setup_pick_list.js?v=2026-09-29.1`.
+
+### Next gate
+
+Run full `Setup/Application` regression on the exact documentation checkpoint SHA created after this section.
+
+If green, browser-review the Pick List specifically to verify:
+- 9/28 rows appear before 10/3 and 10/5 rows;
+- same-date rows remain in useful rack walk order;
+- displayed Pick By / Needed For dates remain unchanged;
+- QR, status, destination, and print layout remain intact.
+
+---
+
+## PICK LIST DEADLINE-FIRST REGRESSION PASS
+
+| Field | Value |
+|---|---|
+| Exact tested implementation candidate | 4e5f7a72fcf1568bce40c742f8eb804e14463601 |
+| Regression command | python -m pytest -q -p no:cacheprovider Setup/Application |
+| Result | **576 passed in 7.04s** |
+| Failures / errors | **0** |
+| Branch | agent/setup-206-tablet-material-audit |
+| PR | #252 — DRAFT / mergeable=true |
+| Main comparison before checkpoint | 142 ahead / 0 behind |
+| Database mutation required | **NO** |
+
+This PASS covers the Pick List ordering correction:
+- Pick By date first;
+- Needed For date second;
+- rack/home-location walk order third;
+- existing final physical identity tie-break retained.
+
+The D-1 staging calculation and no-Sunday rule are unchanged.
+
+### Next gate
+
+Run a focused disposable browser preview on the exact documentation checkpoint SHA created after this section, with no migrations.
+
+Acceptance:
+- 9/28 Pick By rows appear before 10/3 and 10/5 rows;
+- rows sharing the same Pick By/Needed For deadline remain in rack walk order;
+- displayed Pick By and Needed For dates remain unchanged;
+- QR codes, destination, Needs Pick/Picked state, and print layout remain intact;
+- clean preview exit with Production fingerprint/live SHA unchanged.
+
+
+---
+
+## PICK LIST DEADLINE-FIRST BROWSER PASS + DOWNSTREAM DATE SEMANTICS FINDING
+
+| Field | Value |
+|---|---|
+| Exact browser-reviewed application candidate | `47214817788074a8cd62d61ad725f70b0312808e` |
+| Preview type | reusable source-only disposable current-Production clone |
+| Preview result | **PASS / CLEAN EXIT for deadline-first ordering gate** |
+| Preview report | `/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20260929T113114.txt` |
+| Preview Flask log | `/tmp/Setup_Disposable_Browser_Preview_Flask_20260929T113114.log` |
+| Production Setup fingerprint before | `3b60b486035332236644fa52b361d6f5` |
+| Production Setup fingerprint after | `3b60b486035332236644fa52b361d6f5` |
+| Live Setup SHA before | `3cedba88283e4766932ae7905034856a2b9baa00` |
+| Live Setup SHA after | `3cedba88283e4766932ae7905034856a2b9baa00` |
+| Exit status | **0** |
+| Production mutation during preview | **NONE** |
+
+### Deadline ordering accepted
+
+Operator review confirmed the browser now orders physical picks by:
+
+1. Pick By;
+2. Needed For;
+3. rack/home-location walk order;
+4. existing physical-identity tie-break.
+
+Representative printed/browser evidence showed Winter Wonderland rows with Pick By 9/28 before Church rows with Pick By 10/3 and later 10/5+ work. The ordering correction itself is accepted.
+
+Do not reopen the rack-first sorting defect unless a later exact-candidate regression demonstrates a new failure.
+
+### New #206 semantic defect exposed by Winter Wonderland
+
+The same review exposed a separate demand-generation defect that is **not a sorting defect**.
+
+Annual Scheduling Board evidence showed:
+
+```text
+Day 3 — Tue 2026-09-29
+    Locate Power & Network — Winter Wonderland
+```
+
+The downstream Winter Wonderland material tasks were **not themselves scheduled on Day 3**.
+
+However, expanded Pick List reasons for C036 and other Winter Wonderland material showed downstream tasks such as:
+
+- Setup Polar Express (Grover Train);
+- Setup Kranks VW;
+- Setup Christmas Story panels;
+- Setup Flick and Flagpole;
+
+as:
+
+```text
+Day 3 · 2026-09-29 · MORNING · Crew A
+```
+
+and therefore gave the physical items:
+
+```text
+Needed For = Tue 9/29
+Pick By    = Mon 9/28
+```
+
+The reusable Winter Wonderland Catalog/dependency graph explains why those tasks are downstream of Locate/Layout, but it does **not** make them scheduled annual work on 9/29.
+
+### Code cause
+
+Current #206 demand expansion does this intentionally:
+
+```text
+scheduled non-material precursor
+    -> downstream_material_frontier(...)
+    -> find downstream material-bearing annual tasks
+    -> copy the scheduled precursor assignment
+    -> replace task identity with downstream task identity
+    -> retain precursor work_date / shift / crew lane
+```
+
+In `setup_material_readiness_repository.py`, the downstream expansion starts with:
+
+```python
+expanded = dict(assignment)
+```
+
+then updates the target task/session identity while leaving the scheduled trigger's date/shift/crew context in place.
+
+That makes an **unscheduled downstream task appear scheduled**.
+
+### Authority conflict
+
+This conflicts with #206's existing rule:
+
+```text
+Preferred annual order/readiness may help prioritize unscheduled work,
+but do not fabricate schedule dates merely to create a Pick List.
+```
+
+The Pick List may use prerequisite/readiness knowledge to explain future material need, but it must not represent the trigger task's date/shift/crew as the downstream task's own annual schedule assignment.
+
+### Correction boundary for next engineering cycle
+
+Do **not** undo the accepted deadline-first sort.
+
+The next #206 change must separate:
+
+```text
+scheduled trigger date
+    != downstream task scheduled date
+    != inferred readiness / early-mobilization context
+```
+
+At minimum:
+
+- direct scheduled work may use its actual annual work date;
+- unscheduled downstream material tasks must not inherit the trigger date as their own `work_date`;
+- Pick List reason rows must preserve the scheduled trigger identity explicitly;
+- any early-pick/readiness date for unscheduled descendants must be represented as a different concept, not fabricated annual schedule truth;
+- no downstream task may be labeled Day / shift / crew unless that assignment exists in `ops.setup_work_day_task`;
+- existing physical-item deduplication and accepted deadline-first row ordering must remain intact.
+
+### Magic Igloo boundary correction
+
+The earlier instruction to hold `downstream_material_frontier()` changes until the Magic Igloo annual graph was complete was correct for diagnosing Magic Igloo specifically.
+
+Winter Wonderland now provides an independent complete-enough counterexample: the bad date/shift/crew representation occurs because of #206 expansion semantics even when the annual prerequisite path is real.
+
+Therefore this specific semantic defect can be engineered under #206 without using the incomplete Magic Igloo graph as the acceptance case.
+
+### Stop point
+
+No application code change has been made for this newly exposed defect in this checkpoint.
+
+The deadline-first browser gate is closed.
+The next implementation cycle is the downstream-demand date/assignment semantics correction, followed by:
+
+1. full Setup/Application regression;
+2. fresh disposable browser review using Winter Wonderland as the primary acceptance case;
+3. verify unscheduled downstream tasks no longer impersonate Day 3 / MORNING / Crew A;
+4. verify direct scheduled material work still receives correct Pick By / Needed For dates;
+5. verify accepted Pick By -> Needed For -> rack ordering remains unchanged.
+
+
+
+---
+
+## PICK LIST DOWNSTREAM VISIBILITY CORRECTION — SAME-DAY WORK / ANNUAL HOLD
+
+This section **supersedes the overly strong interpretation** in the immediately prior downstream-date checkpoint.
+
+### Why downstream material visibility is required
+
+Operator clarified the original logistics requirement:
+
+```text
+Locate
+    -> Layout
+        -> Setup
+```
+
+may all occur on the same day.
+
+The picker may be assigned to different work once the field crews begin. If the Pick List waits until the downstream Setup task receives its own explicit work-day assignment, the crew can complete Locate/Layout and then discover that required material is still at the shop with no picker available to retrieve it.
+
+Therefore:
+
+```text
+scheduled precursor
+    -> near downstream material frontier
+    -> material must be visible before downstream work is explicitly scheduled
+```
+
+Preserve `downstream_material_frontier()`.
+
+Do **not** reduce the Pick List back to direct scheduled material only.
+
+### Correct semantic distinction
+
+The prior checkpoint correctly identified that the expanded reason currently makes a downstream task appear to own the precursor's assignment, but it was wrong to imply that the precursor date cannot drive logistics.
+
+Required model:
+
+```text
+scheduled trigger
+    = actual annual schedule fact
+
+anticipated downstream demand
+    = material that may be needed immediately after the scheduled trigger
+
+derived logistics deadline
+    = conservative Pick By / material-readiness target from that possibility
+
+downstream Day / shift / crew
+    = not asserted unless the downstream task has its own real assignment
+```
+
+A Pick List reason may say, conceptually:
+
+```text
+Anticipated after Day 3 Locate Power & Network
+Potential same-day downstream work: Setup Polar Express
+Pick by 9/28
+```
+
+It must not say that Setup Polar Express itself is `Day 3 · MORNING · Crew A` unless that annual assignment really exists.
+
+### 2026-only Magic Igloo block
+
+Magic Igloo provides a second dimension:
+
+- normally downstream material visibility is wanted early;
+- in 2026, road/site work prevents Setup from proceeding;
+- operator expects that block may remain until about 2026-10-09;
+- this is a one-season condition, not reusable Catalog knowledge.
+
+Do not write this condition into reusable `ref.setup_task.readiness_note`.
+
+Current #205 data model already contains annual/session snapshot fields:
+
+```text
+ops.setup_session_task.annual_readiness_note
+ops.setup_session_task.annual_readiness_state
+```
+
+but the current Scheduling Board **Edit Planning Info** path for REUSABLE-origin work writes the readiness text back to the reusable Catalog before updating the annual row. The existing inline Ready / Not Ready action changes annual state only and does not record an annual-only reason.
+
+Therefore the current operator surface has a proven #205 gap: a reusable-origin annual task cannot currently receive a 2026-only readiness/hold reason through the normal scheduler edit path without contaminating reusable knowledge.
+
+This gap is now recorded in #205 / #122.
+
+### #206 defer requirement
+
+Annual blocked/not-ready context must not make anticipated material disappear.
+
+The desired operator behavior is:
+
+```text
+anticipated downstream material appears
+    -> operator can see why it is being surfaced
+    -> annual blocker/readiness context is visible
+    -> operator can deliberately defer the pick when appropriate
+    -> deferred material remains explainable/visible as deferred
+```
+
+Do not collapse this into physical Picked/Moved state.
+
+Do not automatically treat an annual blocker as "never pick"; material may still be intentionally staged early.
+
+The engineering model must keep separate:
+
+1. direct scheduled demand;
+2. anticipated downstream demand;
+3. annual readiness/blocking context;
+4. operator defer decision;
+5. physical picked/mobilized state.
+
+### #205 state check
+
+Current #205 follow-up discussions **did** record:
+
+- WO 372 / WO 156 annual gate placement;
+- Work Order search/discovery defects;
+- requirement that those gates remain annual-only and out of the reusable Catalog.
+
+They **did not** record:
+
+- the 2026 road-work hold / approximate Oct 9 timing;
+- the need for annual-only readiness/hold editing on a reusable-origin task;
+- the relationship between that annual block and #206 anticipated material visibility/defer behavior.
+
+Those omissions have now been corrected in #205 and #122 issue comments.
+
+### Next controlled implementation direction
+
+Do not change code from this checkpoint until #205 annual-hold behavior and #206 defer semantics are reconciled.
+
+When implementation resumes:
+
+1. preserve the accepted deadline-first sort;
+2. preserve downstream frontier visibility;
+3. stop labeling anticipated downstream work as though it owns the trigger task's Day/shift/crew;
+4. expose/consume annual-only blocked/not-ready context without altering reusable Catalog truth;
+5. provide an explicit defer behavior for anticipated material rather than hiding it;
+6. keep physical pick/movement history separate;
+7. use Winter Wonderland as the positive same-day-material acceptance case;
+8. use Magic Igloo 2026 as the annual-block/defer acceptance case.
+
+
+
+---
+
+## PICK LIST DATE-SEMANTICS CLARIFICATION — EARLY PICKING IS ALLOWED
+
+This section refines the previous same-day/downstream visibility checkpoint.
+
+### Operator clarification
+
+Early picking does **not** necessarily hurt anything.
+
+The downstream material frontier exists so the picker can see material that may be needed immediately after Locate/Layout, even before the downstream Setup task has its own work-day assignment.
+
+The problem is not early visibility or early picking.
+
+The problem is that the current Pick List can present the scheduled precursor date as though it were the downstream Setup task's true **Needed For** date.
+
+Winter Wonderland example:
+
+```text
+Locate Power & Network
+    scheduled for Tue 2026-09-29
+
+downstream Setup material
+    correctly visible early
+
+current Pick List
+    Needed For = Tue 9/29
+```
+
+That wording is deceptive because Winter Wonderland Setup is not actually scheduled for 9/29.
+
+### Required semantics
+
+Keep these facts separate:
+
+```text
+trigger / precursor schedule date
+    = actual scheduled Locate/Layout context
+
+anticipated downstream material
+    = visible because downstream work may follow quickly
+
+downstream Needed For
+    = actual downstream scheduled date when one exists
+    = otherwise unknown / not yet scheduled
+
+Pick By
+    = logistics deadline that may be conservatively derived or Manager-overridden
+```
+
+The trigger date may still be useful context and may justify surfacing the material now.
+
+It must not be silently promoted into downstream schedule truth.
+
+### Manager control
+
+When operations know better than the derived/default logistics timing, the Pick List should allow the Manager to use an explicit override for Pick By / Needed For rather than editing the annual work schedule merely to influence logistics.
+
+Existing Pick List override behavior should be reused/extended rather than creating a second duplicate planning system.
+
+### Seasonal readiness interaction
+
+A one-season blocker may also explain why anticipated material does not need to be picked yet.
+
+That context belongs to the annual/session task, for example:
+
+```text
+2026 Magic Igloo
+    road/site work blocks Setup
+    approximate expected availability around Oct 9
+```
+
+The annual/season readiness note/state must remain annual-only and must **not** be written back to the official reusable Catalog.
+
+#205 owns the missing annual-only edit path.
+#206 consumes that context for truthful Pick List presentation and optional Manager logistics override.
+
+### Acceptance direction
+
+Preserve all of the following:
+
+1. downstream material remains visible early;
+2. early picking remains allowed;
+3. the precursor date is identified as trigger/context, not downstream Setup schedule truth;
+4. `Needed For` is not populated with a fabricated downstream work date;
+5. Manager may set an explicit logistics override where useful;
+6. annual seasonal readiness may explain why a pick can wait;
+7. reusable Catalog readiness remains unchanged by seasonal-only notes;
+8. accepted deadline-first sorting remains unchanged.
+
+
+
+---
+
+## 2026 PARK MATERIAL-ACCESS GATE — OCTOBER 5
+
+This section supersedes any interpretation that the 2026 pre-October-5 condition should be modeled as ordinary task readiness.
+
+### Operator-established fact
+
+For 2026:
+
+```text
+before 2026-10-05
+    locates and other permitted non-material work may occur
+    material may be picked/staged at the shop
+    physical Setup material may NOT be moved into the park
+
+on/after 2026-10-05
+    City agreement permits material move-in to the park
+```
+
+This is a season/session logistics constraint.
+
+It is **not** reusable task readiness.
+
+Do not write this date into `ref.setup_task.readiness_note`.
+
+Do not mark all affected tasks NOT_READY merely because material entry is restricted; doing so would incorrectly block legitimate pre-Oct-5 work such as Locate.
+
+### Required logistics/date separation
+
+The Pick List currently has concepts that are too easy to conflate.
+
+Required semantics:
+
+```text
+Trigger / precursor date
+    real scheduled work that caused early material visibility
+
+Pick By
+    warehouse/storage pull or staging target
+    may be before Oct 5
+
+Park Move Not Before / Mobilize Not Before
+    annual/session logistics constraint
+    2026 value = Oct 5
+
+Needed For
+    actual downstream material-use date if scheduled
+    otherwise unknown / not yet scheduled
+```
+
+Winter Wonderland example:
+
+```text
+Locate scheduled 9/29
+    -> downstream material visible early
+    -> material may be picked at shop before Oct 5
+    -> material may NOT enter park before Oct 5
+    -> Setup Needed For is NOT 9/29 unless Setup itself is scheduled 9/29
+```
+
+### Physical state boundary
+
+Picking and park mobilization are distinct physical facts.
+
+A valid sequence may be:
+
+```text
+visible on Pick List
+    -> PICKED / STAGED AT SHOP
+    -> waiting on park access
+    -> MOBILIZED TO PARK on/after Oct 5
+```
+
+Do not treat a shop pick as park delivery.
+Do not hide the item because park access is not yet open.
+Do not automatically defer shop picking.
+
+### Ownership
+
+- #205: continue scheduling permitted pre-access work; do not encode Oct 5 as reusable readiness.
+- #206: own truthful Pick List/movement presentation and the material-mobilization gate.
+- #122: own the annual Setup integration fact that 2026 City material move-in begins Oct 5.
+
+### Engineering direction
+
+Before adding schema, inspect whether existing session/annual/override structures can represent this one-season mobilization not-before rule safely.
+
+If a schema gap is proven, the new field must represent the logistics/mobilization boundary explicitly rather than overloading task readiness or Needed For.
+
+Acceptance must prove:
+
+1. Winter Wonderland Locate on 9/29 can still be scheduled/performed;
+2. downstream material remains visible before Oct 5;
+3. early shop picking remains allowed;
+4. Needed For does not falsely claim Setup is 9/29;
+5. park mobilization is clearly blocked before Oct 5;
+6. material can transition to park movement on/after Oct 5;
+7. reusable Catalog remains unchanged.
+
+
+
+---
+
+## FIELD-START PRIORITY RESET — SCAN / PICK LIST LOOP BEFORE OCT 5
+
+Operator escalation: only a few days remain before the 2026 City agreement permits material move-in to the park on 2026-10-05. Scan integration is now the field-start critical path.
+
+### Stop consuming the launch window with secondary polish
+
+Do not delay the first physical-state loop for:
+
+- additional material-audit cleanup that does not block current picking;
+- print-layout polish;
+- unrelated scheduler refinements;
+- LOC label rollout;
+- full named-GIS workflow;
+- full offline cold-start hardening.
+
+Those remain required, but the first connected end-to-end movement contract must exist now.
+
+### Minimum launch loop
+
+```text
+Schedule
+    -> Pick List
+    -> scan existing CONT/DISP label
+    -> Scan resolves canonical permanent identity
+    -> Setup matches physical Pick List item
+    -> operator confirms explicit logistics action
+    -> Setup records physical event/state
+    -> Pick List reflects actual state
+```
+
+Scan does not own movement semantics. Setup does not own scanner identity parsing.
+
+### Pre-Oct-5 operational state
+
+Before park material access opens:
+
+```text
+visible on Pick List
+    -> scan
+    -> PICKED / STAGED AT SHOP
+```
+
+Final operator wording may change during acceptance, but semantics must remain explicit.
+
+This physical state:
+
+- may occur before the downstream Setup task is scheduled;
+- may occur before Oct 5;
+- must not imply park delivery;
+- must survive later schedule changes.
+
+### Oct-5+ operational state
+
+On/after Oct 5:
+
+```text
+scan CONT/DISP
+    -> explicit park movement action
+    -> capture original event time
+    -> actor/device
+    -> GPS + accuracy when available
+    -> Setup/session context
+    -> durable/idempotent event
+```
+
+Do not overwrite Home Location.
+Do not fabricate Display movement observations from a Container scan.
+Do not invent a permanent LOC identity merely because named-location integration is unfinished.
+
+### LOC/GIS/offline sequencing
+
+The first movement contract must be designed so the same event can later carry:
+
+- LOC identity;
+- GIS-derived named location;
+- raw GPS/accuracy;
+- offline queued capture/replay.
+
+Do not create a temporary incompatible event model.
+
+For the next few days, prove the connected loop first on the available connected tablet, then harden offline against the same event/API contract.
+
+### Durable cross-issue priority
+
+Recorded in:
+
+- #113 — Scan field-start umbrella;
+- #88 — focused movement/LOC handoff;
+- #206 — Pick List physical-state integration;
+- PR #252 — active #206 candidate context;
+- #122 — commanding Setup priority.
+

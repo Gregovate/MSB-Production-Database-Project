@@ -5,6 +5,7 @@
   const seasonSelect = document.getElementById('season-select');
   const dateFilter = document.getElementById('date-filter');
   const pickStatusFilter = document.getElementById('pick-status-filter');
+  const showDelayedPicks = document.getElementById('show-delayed-picks');
   const summary = document.getElementById('summary');
   const pickList = document.getElementById('pick-list');
   const statusLine = document.getElementById('status-line');
@@ -202,6 +203,10 @@
     return Boolean(item?.current_observation?.last_movement_event_id);
   }
 
+  function itemDelayed(item) {
+    return Boolean(item?.pick_delayed && item?.pick_delay);
+  }
+
   function formatObservedAt(value) {
     if (!value) return '';
     const parsed = new Date(value);
@@ -232,6 +237,9 @@
   }
 
   function pickStatusHtml(item) {
+    if (itemDelayed(item)) {
+      return `<span class="pick-status delayed">DELAYED — DO NOT PICK YET</span><span class="pick-status-detail">${esc(item.pick_delay?.delay_reason || 'Temporary Pick List delay')}</span>`;
+    }
     if (!itemMoved(item)) {
       return '<span class="pick-status needs-pick">NEEDS PICK</span>';
     }
@@ -366,9 +374,9 @@
     const s = readiness?.summary || {};
     const cards = [
       ['Scheduled assignments', s.scheduled_assignment_count ?? 0],
-      ['Needs pick', items.filter(i => !itemMoved(i)).length],
-      ['Picked / moved', items.filter(itemMoved).length],
-      ['Physical items', items.length]
+      ['Active picks', items.filter(i => !itemMoved(i) && !itemDelayed(i)).length],
+      ['Delayed picks', items.filter(i => !itemMoved(i) && itemDelayed(i)).length],
+      ['Picked / moved', items.filter(itemMoved).length]
     ];
     summary.innerHTML = cards.map(([label, value]) =>
       `<div class="summary-card"><strong>${esc(value)}</strong><span>${esc(label)}</span></div>`
@@ -425,6 +433,21 @@
     return Number(a.physical_id || 0) - Number(b.physical_id || 0);
   }
 
+  function comparePickListOrder(a, b, selectedDate) {
+    const leftDates = itemDates(a, itemReasonsForDate(a, selectedDate), selectedDate);
+    const rightDates = itemDates(b, itemReasonsForDate(b, selectedDate), selectedDate);
+
+    const pickByCompare = String(leftDates.pickBy || '\uffff')
+      .localeCompare(String(rightDates.pickBy || '\uffff'));
+    if (pickByCompare) return pickByCompare;
+
+    const neededForCompare = String(leftDates.neededFor || '\uffff')
+      .localeCompare(String(rightDates.neededFor || '\uffff'));
+    if (neededForCompare) return neededForCompare;
+
+    return compareHomeLocations(a, b);
+  }
+
   function overrideBadgeHtml(item) {
     const overrides = Array.isArray(item.manager_overrides) ? item.manager_overrides : [];
     if (!overrides.length) return '';
@@ -432,6 +455,53 @@
       ? `<button type="button" class="small secondary cancel-override no-print" data-container-id="${esc(item.physical_id)}">Cancel Override</button>`
       : '';
     return `<div class="override-state"><span class="override-badge">MANAGER OVERRIDE</span>${cancel}</div>`;
+  }
+
+
+  function delayActionHtml(item) {
+    if (!access?.can_manage_setup || item.physical_type !== 'CONTAINER' || itemMoved(item)) return '';
+    if (itemDelayed(item)) {
+      return `<div class="delay-state no-print"><button type="button" class="small secondary resume-pick" data-container-id="${esc(item.physical_id)}">Resume Pick</button></div>`;
+    }
+    if (!item.pick_delay_eligible) return '';
+    return `<div class="delay-state no-print"><button type="button" class="small secondary delay-pick" data-container-id="${esc(item.physical_id)}">Delay Pick</button></div>`;
+  }
+
+  async function setPickDelay(containerId, delayed) {
+    if (!access?.can_manage_setup) return;
+    try {
+      if (delayed) {
+        const reason = window.prompt(
+          'Why delay this pick? This is temporary Pick List logistics only and will be removed when the requiring task is scheduled.',
+          ''
+        );
+        if (reason === null) return;
+        if (!reason.trim()) {
+          window.alert('A short temporary delay reason is required.');
+          return;
+        }
+        const response = await fetch(
+          '../api/setup/material-readiness/delays',
+          commandOptions('POST', {
+            season_year: Number(seasonSelect.value),
+            container_id: Number(containerId),
+            delay_reason: reason.trim()
+          })
+        );
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      } else {
+        const response = await fetch(
+          `../api/setup/material-readiness/delays/${encodeURIComponent(containerId)}`,
+          commandOptions('DELETE', {season_year: Number(seasonSelect.value)})
+        );
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      }
+      await load();
+    } catch (error) {
+      overrideMessage.textContent = error.message || error;
+    }
   }
 
   async function submitOverride(event) {
@@ -495,10 +565,11 @@
     const status = pickStatusFilter?.value || 'ALL';
     const items = (readiness?.physical_items || []).filter((item) => {
       if (!itemReasonsForDate(item, date).length) return false;
+      if (!showDelayedPicks?.checked && itemDelayed(item)) return false;
       if (status === 'OUTSTANDING') return !itemMoved(item);
       if (status === 'MOVED') return itemMoved(item);
       return true;
-    }).sort(compareHomeLocations);
+    }).sort((a, b) => comparePickListOrder(a, b, date));
 
     if (!items.length) {
       pickList.innerHTML = '<div class="empty">No physical demand resolves from the selected scheduled work.</div>';
@@ -516,6 +587,8 @@
               <div class="identity">${esc(humanReadableIdentity(item))}</div>
               ${item.label ? `<div class="item-label">${esc(item.label)}</div>` : ''}
               <div class="pick-state">${pickStatusHtml(item)}</div>
+              ${itemDelayed(item) ? '<div class="print-delay-badge">DELAYED — DO NOT PICK YET</div>' : ''}
+              ${delayActionHtml(item)}
               ${overrideBadgeHtml(item)}
             </td>
             <td class="location-cell">
@@ -578,6 +651,16 @@
         void cancelOverride(Number(button.dataset.containerId));
       });
     });
+    document.querySelectorAll('.delay-pick').forEach((button) => {
+      button.addEventListener('click', () => {
+        void setPickDelay(Number(button.dataset.containerId), true);
+      });
+    });
+    document.querySelectorAll('.resume-pick').forEach((button) => {
+      button.addEventListener('click', () => {
+        void setPickDelay(Number(button.dataset.containerId), false);
+      });
+    });
     return items;
   }
 
@@ -630,6 +713,7 @@
   });
   dateFilter.addEventListener('change', render);
   pickStatusFilter?.addEventListener('change', render);
+  showDelayedPicks?.addEventListener('change', render);
   overrideForm?.addEventListener('submit', (event) => { void submitOverride(event); });
   overrideContainerSearch?.addEventListener('input', renderContainerSearchResults);
   overrideContainerSearch?.addEventListener('focus', renderContainerSearchResults);

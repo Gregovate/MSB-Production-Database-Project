@@ -3,7 +3,7 @@ body{margin:0;background:Canvas;color:CanvasText}
 .page-header,main,footer{max-width:1480px;margin:0 auto;padding:1rem}
 .page-header{display:flex;gap:1rem;align-items:end;justify-content:space-between}
 h1,h2,h3,p{margin-top:0}.eyebrow{text-transform:uppercase;letter-spacing:.08em;font-size:.75rem;opacity:.7}
-.controls{display:flex;flex-wrap:wrap;gap:.6rem;align-items:end}.controls label{display:grid;gap:.2rem;font-size:.85rem}
+.controls{display:flex;flex-wrap:wrap;gap:.6rem;align-items:end}.controls label{display:grid;gap:.2rem;font-size:.85rem}.controls .delayed-filter{display:flex;align-items:center;gap:.35rem;padding:.5rem .2rem}
 button,select{font:inherit;padding:.55rem .7rem}
 .panel{border:1px solid color-mix(in srgb,CanvasText 20%,transparent);border-radius:.65rem;padding:1rem;margin-bottom:1rem}
 .warning-panel{border-width:1px}
@@ -40,7 +40,10 @@ button,select{font:inherit;padding:.55rem .7rem}
 .item-label{font-weight:700;font-size:1rem;margin-top:.2rem}
 .pick-state{margin-top:.45rem;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
 .pick-status{font-weight:800;font-size:.76rem;letter-spacing:.03em;border:1px solid currentColor;border-radius:999px;padding:.12rem .42rem}
+.pick-status.delayed{border-width:2px}
 .pick-status-detail{font-size:.84rem;opacity:.78}
+.print-delay-badge{display:none;font-weight:900}
+.delay-state{margin-top:.35rem}
 .location-cell{font-weight:700}.destination-cell{font-size:1.22rem;font-weight:800;line-height:1.18}.home-location-code{font-size:1.72rem;font-weight:900;line-height:1.02;letter-spacing:.025em;white-space:nowrap}.home-location-payload{margin-top:.3rem;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.82rem;opacity:.62;white-space:nowrap}
 .date-cell{white-space:nowrap}.print-value{display:none}
 .qr-cell{text-align:center}
@@ -114,6 +117,7 @@ button,select{font:inherit;padding:.55rem .7rem}
   .no-print,.summary,.pick-reasons-row,.pick-state,.override-state,.home-location-payload{display:none!important}
   .screen-value{display:none!important}
   .print-value{display:inline!important}
+  .print-delay-badge{display:inline-block!important;font-size:8pt;line-height:1.05;margin-top:.03in;border:1.5px solid #000;padding:.02in .03in}
   body{background:#fff;color:#000;font-size:8.5pt}
   .page-header{display:none!important}
   main{max-width:none;padding:0}

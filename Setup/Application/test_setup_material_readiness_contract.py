@@ -184,15 +184,24 @@ def test_pick_list_separates_physical_rows_and_emphasizes_home_location() -> Non
 
 
 
-def test_pick_list_defaults_to_physical_rack_walk_order() -> None:
+def test_pick_list_sorts_by_pick_deadline_then_physical_rack_walk_order() -> None:
     ui = read("setup_pick_list.js")
+    html = read("pick_list.html")
     assert "function rackLocationParts(locationCode)" in ui
     assert "function compareHomeLocations(a, b)" in ui
-    assert ".sort(compareHomeLocations)" in ui
+    assert "function comparePickListOrder(a, b, selectedDate)" in ui
+    assert "leftDates.pickBy" in ui
+    assert "rightDates.pickBy" in ui
+    assert "leftDates.neededFor" in ui
+    assert "rightDates.neededFor" in ui
+    assert "return compareHomeLocations(a, b);" in ui
+    assert ".sort((a, b) => comparePickListOrder(a, b, date))" in ui
+    assert ".sort(compareHomeLocations)" not in ui
     assert "left.row.localeCompare" in ui
     assert "left.column - right.column" in ui
     assert "left.level.localeCompare" in ui
     assert "left.slot - right.slot" in ui
+    assert "setup_pick_list.js?v=2026-09-29.3" in html
 
 
 def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_assignment() -> None:
@@ -352,3 +361,59 @@ def test_pick_list_tablet_layout_becomes_complete_card_without_horizontal_scroll
     assert '.needed-for-cell::before{content:"Needed For"}' in css
     assert ".pick-table{min-width:900px}" not in css
     assert ".pick-table{display:table;width:100%;min-width:0" in css
+
+
+def test_pick_delay_is_transient_visible_filterable_and_schedule_released() -> None:
+    api = read("setup_material_readiness_api.py")
+    repo = read("setup_material_readiness_repository.py")
+    ui = read("setup_pick_list.js")
+    html = read("pick_list.html")
+    css = read("setup_pick_list.css")
+    migration = (DB_DIR / "063_add_setup_pick_list_delay.sql").read_text(encoding="utf-8")
+    validation = (
+        APP_DIR.parent / "Acceptance" / "setup_206_pick_delay_disposable_validation.sql"
+    ).read_text(encoding="utf-8")
+
+    assert "CREATE TABLE IF NOT EXISTS ops.setup_pick_list_delay" in migration
+    assert "release_setup_session_task_ids bigint[] NOT NULL" in migration
+    assert "DELETE FROM ops.setup_pick_list_delay" in migration
+    assert "clear_setup_pick_list_delay_on_schedule" in migration
+    assert "AFTER INSERT OR UPDATE OF setup_session_task_id" in migration
+    assert "SETUP_206_PICK_DELAY_DISPOSABLE_VALIDATION_PASS" in validation
+    assert "fieldwiring_app has forbidden broad Pick Delay DML" in validation
+
+    assert '@setup_material_readiness_api.post("/api/setup/material-readiness/delays")' in api
+    assert '"/api/setup/material-readiness/delays/<int:container_id>"' in api
+    assert "set_pick_list_delay" in repo
+    assert 'origins == {"DOWNSTREAM_FROM_SCHEDULE"}' in repo
+    assert "Direct scheduled or Manager-override demand must remain actionable." in repo
+    assert '"pick_delay_eligible"' in repo
+    assert '"pick_delayed"' in repo
+
+    assert 'id="show-delayed-picks"' in html
+    assert "Show delayed picks" in html
+    assert "DELAYED — DO NOT PICK YET" in ui
+    assert "Delay Pick" in ui
+    assert "Resume Pick" in ui
+    assert "!showDelayedPicks?.checked && itemDelayed(item)" in ui
+    assert ".pick-status.delayed" in css
+
+
+def test_downstream_frontier_is_first_incomplete_material_not_contiguous_material_wave() -> None:
+    projection = read("setup_material_readiness_projection.py")
+    assert "first incomplete material-bearing task" in projection
+    assert "found[current_id] = task" in projection
+    assert "continue" in projection
+    assert "material_wave_started" not in projection
+
+
+def test_delayed_pick_warning_survives_print_when_delayed_rows_are_shown() -> None:
+    ui = read("setup_pick_list.js")
+    css = read("setup_pick_list.css")
+    html = read("pick_list.html")
+
+    assert 'class="print-delay-badge">DELAYED — DO NOT PICK YET</div>' in ui
+    assert ".print-delay-badge{display:none" in css
+    assert ".print-delay-badge{display:inline-block!important" in css
+    assert "setup_pick_list.css?v=2026-09-29.3" in html
+    assert "setup_pick_list.js?v=2026-09-29.3" in html
