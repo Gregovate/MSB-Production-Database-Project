@@ -29,7 +29,7 @@ BEGIN
     END IF;
 
     IF to_regprocedure(
-        'ops.record_setup_movement_event(text,integer,uuid,text,bigint,text,timestamptz,text,text,boolean,numeric,numeric,numeric,integer,text,text)'
+        'ops.record_setup_movement_event(text,integer,uuid,text,bigint,text,timestamptz,text,text,text,boolean,numeric,numeric,numeric,integer,text,text)'
     ) IS NULL THEN
         RAISE EXCEPTION 'Setup movement command is missing';
     END IF;
@@ -81,6 +81,7 @@ BEGIN
         'PICKED',
         '2026-09-30T08:00:00-05:00'::timestamptz,
         'DISPOSABLE-VALIDATION',
+        v_operator_email,
         'HID_SCAN',
         false,
         43.750000,
@@ -118,6 +119,7 @@ BEGIN
         'PICKED',
         '2026-09-30T08:00:00-05:00'::timestamptz,
         'DISPOSABLE-VALIDATION',
+        v_operator_email,
         'HID_SCAN',
         true,
         43.750000,
@@ -141,6 +143,7 @@ BEGIN
         'LOADED',
         '2026-09-30T08:05:00-05:00'::timestamptz,
         'DISPOSABLE-VALIDATION',
+        v_operator_email,
         'HID_SCAN',
         false,
         NULL,NULL,NULL,NULL,NULL,
@@ -166,6 +169,7 @@ BEGIN
         'RETURNED',
         '2026-09-30T08:10:00-05:00'::timestamptz,
         'DISPOSABLE-VALIDATION',
+        v_operator_email,
         'HID_SCAN',
         false,
         NULL,NULL,NULL,NULL,NULL,
@@ -212,6 +216,7 @@ BEGIN
         'PICKED',
         '2026-09-30T08:15:00-05:00'::timestamptz,
         'DISPOSABLE-VALIDATION',
+        v_operator_email,
         'HID_SCAN',
         false,
         NULL,NULL,NULL,NULL,NULL,
@@ -291,7 +296,7 @@ BEGIN
 
     IF NOT has_function_privilege(
         'fieldwiring_app',
-        'ops.record_setup_movement_event(text,integer,uuid,text,bigint,text,timestamptz,text,text,boolean,numeric,numeric,numeric,integer,text,text)',
+        'ops.record_setup_movement_event(text,integer,uuid,text,bigint,text,timestamptz,text,text,text,boolean,numeric,numeric,numeric,integer,text,text)',
         'EXECUTE'
     ) THEN
         RAISE EXCEPTION 'fieldwiring_app cannot execute governed movement command';
