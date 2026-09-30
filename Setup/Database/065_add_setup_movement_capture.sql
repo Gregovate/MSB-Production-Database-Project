@@ -137,8 +137,7 @@ ALTER TABLE ops.setup_movement_event
             'PICKED',
             'LOADED',
             'IN_TRANSIT',
-            'RETURNED',
-            'TASK_COMPLETION_RECONCILE'
+            'RETURNED'
         )
         OR destination_stage_id IS NOT NULL
         OR nullif(btrim(destination_location_note), '') IS NOT NULL
