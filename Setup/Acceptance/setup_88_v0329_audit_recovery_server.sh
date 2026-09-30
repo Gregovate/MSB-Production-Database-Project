@@ -307,7 +307,7 @@ if [[ "$SETUP_PRE" != *"\"status\":\"ok\""*    || "$SETUP_PRE" != *"\"data_mode\
     exit 9
 fi
 
-sudo git -C "$REPO_ROOT" fetch origin main
+sudo git -C "$REPO_ROOT" fetch origin "main:refs/remotes/origin/main"
 REMOTE_MAIN="$(sudo git -C "$REPO_ROOT" rev-parse origin/main)"
 if [[ "$REMOTE_MAIN" != "$MERGED_MAIN_SHA" ]]; then
     echo "FAIL: origin/main moved from reviewed recovery SHA"
