@@ -88,8 +88,8 @@ def test_park_mode_has_operator_controlled_gps_and_existing_reference_context():
     assert "Nearest:" in ui
     assert "gps_fix_at" in ui
     assert "gps_fix_age_ms" in ui
-    assert "QUESTIONABLE" in ui
-    assert "BAD" in ui
+    assert "QUESTIONABLE" in html
+    assert "BAD" in html
 
 
 def test_mixed_container_ui_records_only_selected_display_groups_as_unloaded():
@@ -99,7 +99,7 @@ def test_mixed_container_ui_records_only_selected_display_groups_as_unloaded():
     sql = migration()
 
     assert "What came off here?" in ui
-    assert "anything not selected stays WITH_CONTAINER" in ui.lower()
+    assert "anything not selected stays with_container" in ui.lower()
     assert "unloaded_display_ids" in ui
     assert "container_contents" in repository
     assert "coalesce(ds.position_mode, 'WITH_CONTAINER')" in repository
