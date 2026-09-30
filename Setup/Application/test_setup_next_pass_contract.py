@@ -148,3 +148,7 @@ def test_perform_work_shows_planned_and_actual_person_hours() -> None:
     assert "completedActualHours" in text
     assert "completedPlannedUnknown" in text
     assert "Completed:" in text
+    assert "const labor = nextPerformLaborKpis(scopedAssignments);" in text
+    assert "completedCount += 1;" in text
+    assert "reported work in Captain scope" in text
+    assert "no completed assignments in Captain scope" in text
