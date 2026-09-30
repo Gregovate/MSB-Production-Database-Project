@@ -246,10 +246,10 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "const CLIENT_BUILD = 'V0.3.27-field-training-ux';" in guard
     assert "msb-setup-pick-mode-v6" in pick_sw
     assert "setup_pick_mode.js?v=2026-09-30.6" in pick_sw
-    assert "setup_pick_mode.js?v=2026-09-30.5" in pick_html
+    assert "setup_pick_mode.js?v=2026-09-30.6" in pick_html
     assert "msb-setup-record-location-v4" in location_sw
     assert "setup_record_location.js?v=2026-09-30.4" in location_sw
-    assert "setup_record_location.js?v=2026-09-30.3" in location_html
+    assert "setup_record_location.js?v=2026-09-30.4" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():
