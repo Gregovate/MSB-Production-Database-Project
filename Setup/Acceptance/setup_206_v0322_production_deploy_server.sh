@@ -49,7 +49,6 @@ echo "Exact accepted candidate SHA: $ACCEPTED_CANDIDATE_SHA"
 echo "Deployment target SHA:         $TARGET_SHA"
 echo "Expected pre-version:          $EXPECTED_PRE_VERSION"
 echo "Expected post-version:         $EXPECTED_POST_VERSION"
-echo "Migration:                     $MIGRATION_REL"
 echo "Approved migration path:        $MIGRATION_REL"
 echo "Approved migration Git blob:    $MIGRATION_BLOB"
 echo "Report:                        $REPORT"
@@ -72,7 +71,15 @@ setup_fingerprint() {
                 coalesce((SELECT string_agg(row_to_json(tr)::text, '' ORDER BY tr.setup_task_id, tr.setup_resource_id) FROM ref.setup_task_resource tr), '') || '|' ||
                 coalesce((SELECT string_agg(row_to_json(s)::text, '' ORDER BY s.setup_session_id) FROM ops.setup_session s), '') || '|' ||
                 coalesce((SELECT string_agg(row_to_json(st)::text, '' ORDER BY st.setup_session_task_id) FROM ops.setup_session_task st), '') || '|' ||
-                coalesce((SELECT string_agg(row_to_json(wd)::text, '' ORDER BY wd.setup_work_day_id) FROM ops.setup_work_day wd), '')
+                coalesce((SELECT string_agg(row_to_json(sd)::text, '' ORDER BY sd.setup_session_task_id, sd.prerequisite_setup_session_task_id) FROM ops.setup_session_task_dependency sd), '') || '|' ||
+                coalesce((SELECT string_agg(row_to_json(wd)::text, '' ORDER BY wd.setup_work_day_id) FROM ops.setup_work_day wd), '') || '|' ||
+                coalesce((SELECT string_agg(row_to_json(wc)::text, '' ORDER BY wc.setup_work_day_crew_id) FROM ops.setup_work_day_crew wc), '') || '|' ||
+                coalesce((SELECT string_agg(row_to_json(wdt)::text, '' ORDER BY wdt.setup_work_day_task_id) FROM ops.setup_work_day_task wdt), '') || '|' ||
+                coalesce((SELECT string_agg(row_to_json(p)::text, '' ORDER BY p.setup_task_progress_id) FROM ops.setup_task_progress p), '') || '|' ||
+                coalesce((SELECT string_agg(row_to_json(cs)::text, '' ORDER BY cs.setup_session_id, cs.container_id) FROM ops.setup_container_state cs), '') || '|' ||
+                coalesce((SELECT string_agg(row_to_json(ds)::text, '' ORDER BY ds.setup_session_id, ds.display_id) FROM ops.setup_display_state ds), '') || '|' ||
+                coalesce((SELECT string_agg(row_to_json(me)::text, '' ORDER BY me.setup_movement_event_id) FROM ops.setup_movement_event me), '') || '|' ||
+                coalesce((SELECT string_agg(row_to_json(o)::text, '' ORDER BY o.setup_pick_list_override_id) FROM ops.setup_pick_list_override o), '')
             );
         "
 }
@@ -93,7 +100,7 @@ delay_count() {
         "
 }
 
-wait_setup_ready() {wait_setup_ready() {
+wait_setup_ready() {
     for _ in $(seq 1 60); do
         if systemctl is-active --quiet "$SETUP_SERVICE" \
            && curl -fsS http://192.168.5.9:8794/api/health >/dev/null 2>&1; then
@@ -130,7 +137,7 @@ SQL
     MIGRATION_ROLLED_BACK=1
 }
 
-cleanup() {cleanup() {
+cleanup() {
     status=$?
     trap - EXIT HUP INT TERM
     set +e
@@ -394,7 +401,7 @@ BEGIN
 END
 $preflight$;
 SQL
-echo "DATABASE PREFLIGHT: PASS"echo "DATABASE PREFLIGHT: PASS"
+echo "DATABASE PREFLIGHT: PASS"
 
 PRE_MUTATION_FINGERPRINT="$(setup_fingerprint)"
 if [[ "$PRE_MUTATION_FINGERPRINT" != "$FROZEN_FINGERPRINT" ]]; then
@@ -483,7 +490,7 @@ if [[ "$POST_DB_FINGERPRINT" != "$FROZEN_FINGERPRINT" ]]; then
     echo "FAIL: Pick Delay migration changed existing governed Setup data"
     exit 20
 fi
-echo "PASS: Pick Delay migration preserved existing governed Setup data"echo "PASS: migration 060 preserved existing governed Setup data"
+echo "PASS: Pick Delay migration preserved existing governed Setup data"
 
 echo
 echo "--- Advance dedicated Setup Production checkout to exact target ---"
