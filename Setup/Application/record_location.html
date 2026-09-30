@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB Setup — Record Location</title>
+  <link rel="stylesheet" href="assets/setup_record_location.css?v=2026-09-30.1">
+</head>
+<body>
+<header class="page-header">
+  <div>
+    <div class="eyebrow">Live Setup field operation</div>
+    <h1>Record Location</h1>
+    <p>Identify a Container or Display, review current location evidence, then record where it is now.</p>
+  </div>
+  <div class="header-actions">
+    <button id="back-setup" type="button">Back to Setup</button>
+  </div>
+</header>
+
+<main>
+  <section class="panel identity-panel">
+    <div class="section-heading">
+      <div>
+        <div class="eyebrow">1 · Select the asset</div>
+        <h2>Container / Display</h2>
+      </div>
+      <span id="operator-badge" class="pill">Checking access…</span>
+    </div>
+
+    <div class="entry-grid">
+      <div>
+        <label for="movement-manual-input">Scan with Zebra or enter identity / QR URL</label>
+        <div class="entry-row">
+          <input id="movement-manual-input" autocomplete="off" inputmode="text" placeholder="CONT:34, DISP:141, or scan URL">
+          <button id="movement-manual-go" type="button">Use</button>
+        </div>
+      </div>
+      <div class="camera-actions">
+        <button id="movement-camera-toggle" type="button">Scan with Camera</button>
+        <span id="movement-camera-status" class="muted">Camera off</span>
+      </div>
+    </div>
+
+    <div id="movement-camera-panel" class="camera-panel" hidden>
+      <video id="movement-camera-video" playsinline muted></video>
+      <p class="muted">Point the camera at a Display or Container QR code. The normal permanent QR still identifies the asset; this page supplies the Record Location intent.</p>
+    </div>
+
+    <details class="find-asset">
+      <summary>Find Container / Display instead</summary>
+      <div class="entry-row">
+        <input id="movement-search-input" type="search" autocomplete="off" placeholder="Name or ID">
+        <button id="movement-search-go" type="button">Find</button>
+      </div>
+      <div id="movement-search-results" class="search-results"></div>
+    </details>
+  </section>
+
+  <section class="panel location-panel">
+    <div class="section-heading">
+      <div>
+        <div class="eyebrow">2 · Location evidence</div>
+        <h2>Where is it now?</h2>
+      </div>
+      <button id="movement-gps-toggle" type="button">Start GPS</button>
+    </div>
+
+    <div id="movement-gps" class="gps-state">GPS OFF</div>
+    <div id="movement-gps-candidates" class="gps-candidates">GPS is off. Start it when location evidence is needed.</div>
+    <div id="movement-gps-candidate-buttons" class="reference-buttons"></div>
+
+    <label for="movement-known-reference">Known park reference
+      <select id="movement-known-reference">
+        <option value="">No named location confirmed</option>
+      </select>
+    </label>
+
+    <label for="movement-location-note">Other location note
+      <input id="movement-location-note" autocomplete="off" placeholder="Optional when GPS or a known reference is available">
+    </label>
+
+    <details class="gps-quality">
+      <summary>GPS quality / uncertainty</summary>
+      <label for="movement-gps-quality">GPS quality
+        <select id="movement-gps-quality">
+          <option value="UNASSESSED">Not flagged</option>
+          <option value="QUESTIONABLE">Questionable</option>
+          <option value="BAD">Bad — keep movement, discount GPS later</option>
+        </select>
+      </label>
+      <label for="movement-gps-quality-note">GPS quality note
+        <input id="movement-gps-quality-note" autocomplete="off" placeholder="Tree cover, jump/drift, structure, obvious wrong fix…">
+      </label>
+    </details>
+
+    <div id="movement-reference-status" class="reference-status">Location references not loaded yet.</div>
+  </section>
+
+  <section id="movement-pending" class="panel pending-panel" hidden>
+    <div class="eyebrow">3 · Selected asset</div>
+    <h2 id="movement-pending-title"></h2>
+    <div id="movement-pending-state" class="muted"></div>
+    <div id="movement-unload-groups" class="unload-groups"></div>
+    <div class="record-actions">
+      <button id="movement-record-here" type="button" class="primary">Record Here</button>
+      <button id="movement-return-home" type="button" hidden>Returned to Home Location</button>
+      <button id="movement-clear-pending" type="button">Clear Asset</button>
+    </div>
+  </section>
+
+  <section class="panel status-panel">
+    <div id="movement-feedback" class="feedback ready">READY — scan, search, or choose an asset</div>
+    <div class="status-meta">
+      <span id="movement-network">Checking connection…</span>
+      <span id="movement-queue">Offline queue: 0</span>
+    </div>
+  </section>
+</main>
+
+<script src="assets/setup_record_location.js?v=2026-09-30.1"></script>
+</body>
+</html>
