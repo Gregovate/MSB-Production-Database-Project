@@ -615,6 +615,271 @@ class SetupMaterialReadinessRepository:
             ),
         }
 
+    def _matching_material_task_ids(
+        self,
+        *,
+        setup_session_id: int,
+        task_ids: list[int],
+        asset_type: str,
+        asset_id: int,
+    ) -> set[int]:
+        """Return only current reusable tasks whose physical authority uses this asset."""
+        if not task_ids:
+            return set()
+
+        normalized_type = str(asset_type or "").strip().upper()
+        if normalized_type not in {"CONTAINER", "DISPLAY"}:
+            raise SetupMaterialReadinessRepositoryError(
+                "Pick validation asset type must be CONTAINER or DISPLAY"
+            )
+
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            if normalized_type == "DISPLAY":
+                cur.execute(
+                    """
+                    WITH task_context AS (
+                        SELECT t.setup_task_id, t.lor_scene_id
+                        FROM ref.setup_task AS t
+                        WHERE t.setup_task_id = ANY(%s)
+                    ),
+                    display_scope AS (
+                        SELECT tc.setup_task_id, td.display_id
+                        FROM task_context AS tc
+                        JOIN ref.setup_task_display AS td
+                          ON td.setup_task_id = tc.setup_task_id
+
+                        UNION
+
+                        SELECT tc.setup_task_id, lsd.display_id
+                        FROM task_context AS tc
+                        JOIN ref.lor_scene_display AS lsd
+                          ON lsd.lor_scene_id = tc.lor_scene_id
+                        WHERE tc.lor_scene_id IS NOT NULL
+                    )
+                    SELECT DISTINCT scope.setup_task_id
+                    FROM display_scope AS scope
+                    JOIN ref.display AS d
+                      ON d.display_id = scope.display_id
+                    LEFT JOIN ops.setup_display_state AS ds
+                      ON ds.setup_session_id = %s
+                     AND ds.display_id = d.display_id
+                    WHERE d.display_id = %s
+                      AND (
+                          d.container_id IS NULL
+                          OR coalesce(ds.position_mode, 'WITH_CONTAINER') = 'DETACHED'
+                      )
+                    """,
+                    (task_ids, setup_session_id, asset_id),
+                )
+            else:
+                cur.execute(
+                    """
+                    WITH task_context AS (
+                        SELECT t.setup_task_id, t.lor_scene_id
+                        FROM ref.setup_task AS t
+                        WHERE t.setup_task_id = ANY(%s)
+                    ),
+                    display_scope AS (
+                        SELECT tc.setup_task_id, td.display_id
+                        FROM task_context AS tc
+                        JOIN ref.setup_task_display AS td
+                          ON td.setup_task_id = tc.setup_task_id
+
+                        UNION
+
+                        SELECT tc.setup_task_id, lsd.display_id
+                        FROM task_context AS tc
+                        JOIN ref.lor_scene_display AS lsd
+                          ON lsd.lor_scene_id = tc.lor_scene_id
+                        WHERE tc.lor_scene_id IS NOT NULL
+                    ),
+                    matches AS (
+                        SELECT DISTINCT scope.setup_task_id
+                        FROM display_scope AS scope
+                        JOIN ref.display AS d
+                          ON d.display_id = scope.display_id
+                        LEFT JOIN ops.setup_display_state AS ds
+                          ON ds.setup_session_id = %s
+                         AND ds.display_id = d.display_id
+                        WHERE d.container_id = %s
+                          AND coalesce(ds.position_mode, 'WITH_CONTAINER') <> 'DETACHED'
+
+                        UNION
+
+                        SELECT tc.setup_task_id
+                        FROM ref.setup_task_container_support AS tc
+                        WHERE tc.setup_task_id = ANY(%s)
+                          AND tc.container_id = %s
+
+                        UNION
+
+                        SELECT tm.setup_task_id
+                        FROM ref.setup_task_extra_material AS tm
+                        JOIN ref.setup_extra_material AS m
+                          ON m.setup_extra_material_id = tm.setup_extra_material_id
+                        JOIN ref.setup_task_extra_material_source AS src
+                          ON src.setup_task_extra_material_id = tm.setup_task_extra_material_id
+                         AND src.active_flag
+                        WHERE tm.setup_task_id = ANY(%s)
+                          AND tm.active_flag
+                          AND m.active_flag
+                          AND src.container_id = %s
+                    )
+                    SELECT DISTINCT setup_task_id
+                    FROM matches
+                    """,
+                    (
+                        task_ids,
+                        setup_session_id,
+                        asset_id,
+                        task_ids,
+                        asset_id,
+                        task_ids,
+                        asset_id,
+                    ),
+                )
+            return {int(row["setup_task_id"]) for row in cur.fetchall()}
+
+    def pick_demand_status(
+        self,
+        *,
+        season_year: int,
+        asset_type: str,
+        asset_id: int,
+    ) -> dict[str, Any]:
+        """Focused authoritative Pick validation without building the full Pick List."""
+        normalized_type = str(asset_type or "").strip().upper()
+        if normalized_type not in {"CONTAINER", "DISPLAY"}:
+            raise SetupMaterialReadinessRepositoryError(
+                "Pick validation asset type must be CONTAINER or DISPLAY"
+            )
+
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT setup_session_id
+                FROM ops.setup_session
+                WHERE season_year = %s
+                  AND session_status NOT IN ('COMPLETE', 'HISTORICAL_VERIFICATION')
+                LIMIT 1
+                """,
+                (season_year,),
+            )
+            session = cur.fetchone()
+
+        if session is None:
+            return {
+                "demanded": False,
+                "pick_delayed": False,
+                "demand_origins": [],
+                "current_observation": None,
+            }
+
+        setup_session_id = int(session["setup_session_id"])
+        assignments = self._scheduled_work(setup_session_id)
+        tasks_by_session_id, downstream_by_prerequisite = self._annual_demand_graph(
+            setup_session_id
+        )
+        material_bearing_session_ids = self._material_bearing_session_task_ids(
+            setup_session_id
+        )
+        for session_task_id, task in tasks_by_session_id.items():
+            task["material_bearing"] = session_task_id in material_bearing_session_ids
+
+        demand_assignments: list[dict[str, Any]] = []
+        for assignment in assignments:
+            direct = dict(assignment)
+            direct["demand_origin"] = "DIRECT_SCHEDULE"
+            demand_assignments.append(direct)
+
+            for target in downstream_material_frontier(
+                int(assignment["setup_session_task_id"]),
+                tasks_by_session_id,
+                downstream_by_prerequisite,
+            ):
+                expanded = dict(assignment)
+                expanded.update({
+                    "setup_session_task_id": target["setup_session_task_id"],
+                    "setup_task_id": target.get("setup_task_id"),
+                    "task_origin": target.get("task_origin"),
+                    "task_name": target.get("task_name"),
+                    "stage_id": target.get("stage_id"),
+                    "stage_key": target.get("stage_key"),
+                    "stage_name": target.get("stage_name"),
+                    "lor_scene_id": target.get("lor_scene_id"),
+                    "scene_name": target.get("scene_name"),
+                    "demand_origin": "DOWNSTREAM_FROM_SCHEDULE",
+                })
+                demand_assignments.append(expanded)
+
+        origins_by_task: dict[int, set[str]] = defaultdict(set)
+        for assignment in demand_assignments:
+            task_id = assignment.get("setup_task_id")
+            if task_id is None:
+                continue
+            origins_by_task[int(task_id)].add(
+                str(assignment.get("demand_origin") or "DIRECT_SCHEDULE")
+            )
+
+        candidate_task_ids = sorted(origins_by_task)
+        matched_task_ids = self._matching_material_task_ids(
+            setup_session_id=setup_session_id,
+            task_ids=candidate_task_ids,
+            asset_type=normalized_type,
+            asset_id=asset_id,
+        )
+
+        origins: set[str] = set()
+        for task_id in matched_task_ids:
+            origins.update(origins_by_task.get(task_id) or set())
+
+        active_override = False
+        active_delay = False
+        if normalized_type == "CONTAINER":
+            with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        EXISTS (
+                            SELECT 1
+                            FROM ops.setup_pick_list_override AS o
+                            WHERE o.setup_session_id = %s
+                              AND o.container_id = %s
+                              AND o.active_flag
+                        ) AS active_override,
+                        EXISTS (
+                            SELECT 1
+                            FROM ops.setup_pick_list_delay AS d
+                            WHERE d.setup_session_id = %s
+                              AND d.container_id = %s
+                        ) AS active_delay
+                    """,
+                    (setup_session_id, asset_id, setup_session_id, asset_id),
+                )
+                row = self._one(cur, "Pick validation state query returned no result")
+                active_override = bool(row["active_override"])
+                active_delay = bool(row["active_delay"])
+            if active_override:
+                origins.add("MANAGER_OVERRIDE")
+
+        state = self._observation_state(
+            setup_session_id=setup_session_id,
+            container_ids=[asset_id] if normalized_type == "CONTAINER" else [],
+            display_ids=[asset_id] if normalized_type == "DISPLAY" else [],
+        )
+        observation = dict(state.get((normalized_type, int(asset_id))) or {})
+
+        return {
+            "demanded": bool(origins),
+            "pick_delayed": bool(
+                normalized_type == "CONTAINER"
+                and active_delay
+                and origins == {"DOWNSTREAM_FROM_SCHEDULE"}
+            ),
+            "demand_origins": sorted(origins),
+            "current_observation": observation or None,
+        }
+
     def material_readiness(self, season_year: int) -> dict[str, Any]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
