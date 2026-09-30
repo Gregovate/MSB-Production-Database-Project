@@ -1,51 +1,40 @@
 'use strict';
 
-const CACHE_NAME = 'msb-setup-pick-mode-v3';
+const CACHE_NAME = 'msb-setup-pick-mode-v4';
 const SHELL = [
   './',
   'assets/setup_pick_list.css?v=2026-09-29.3',
-  'assets/setup_pick_mode.css?v=2026-09-30.4',
+  'assets/setup_pick_mode.css?v=2026-09-30.5',
   'assets/qrcode.min.js?v=1',
-  'assets/setup_pick_list.js?v=2026-09-30.4',
-  'assets/setup_pick_mode.js?v=2026-09-30.4'
+  'assets/setup_pick_list.js?v=2026-09-30.5',
+  'assets/setup_pick_mode.js?v=2026-09-30.5'
 ];
 
-self.addEventListener('install', (event) => {
+self.addEventListener('install', function (event) {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(SHELL))
-      .then(() => self.skipWaiting())
+      .then(function (cache) { return cache.addAll(SHELL); })
+      .then(function () { return self.skipWaiting(); })
   );
 });
 
-self.addEventListener('activate', (event) => {
+self.addEventListener('activate', function (event) {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      ))
-      .then(() => self.clients.claim())
+      .then(function (keys) {
+        return Promise.all(keys.filter(function (key) {
+          return key.indexOf('msb-setup-pick-mode-') === 0 && key !== CACHE_NAME;
+        }).map(function (key) { return caches.delete(key); }));
+      })
+      .then(function () { return self.clients.claim(); })
   );
 });
-
-function isPickListAssetRequest(request) {
-  if (request.method !== 'GET') return false;
-  const url = new URL(request.url);
-  return url.origin === self.location.origin
-    && url.pathname.includes('/pick-list/assets/');
-}
 
 function isSetupReadRequest(request) {
   if (request.method !== 'GET') return false;
   const url = new URL(request.url);
-  return (
-    url.pathname.includes('/api/setup/material-readiness')
-    || url.pathname.includes('/api/setup/access')
-    || url.pathname.includes('/api/setup/containers/source-options')
-    || url.pathname.includes('/api/setup/stages')
-    || url.pathname.includes('/api/setup/movements/state')
-    || url.pathname.includes('/api/setup/movements/container-contents')
-  );
+  return url.pathname.indexOf('/api/setup/material-readiness') >= 0
+    || url.pathname.indexOf('/api/setup/access') >= 0;
 }
 
 async function networkFirst(request) {
@@ -55,46 +44,23 @@ async function networkFirst(request) {
     if (response.ok) await cache.put(request, response.clone());
     return response;
   } catch (error) {
-    const cached = await cache.match(request);
+    const cached = await cache.match(request, {ignoreSearch: true});
     if (cached) return cached;
     throw error;
   }
 }
 
-self.addEventListener('fetch', (event) => {
-  if (isPickListAssetRequest(event.request)) {
-    event.respondWith((async () => {
-      const cached = await caches.match(event.request);
-      if (cached) return cached;
-      const response = await fetch(event.request);
-      if (response.ok) {
-        const cache = await caches.open(CACHE_NAME);
-        await cache.put(event.request, response.clone());
-      }
-      return response;
-    })());
-    return;
-  }
+self.addEventListener('fetch', function (event) {
+  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
 
-  if (isSetupReadRequest(event.request)) {
+  if (event.request.mode === 'navigate' && url.pathname.indexOf('/pick-list') >= 0) {
     event.respondWith(networkFirst(event.request));
     return;
   }
 
-  if (event.request.method !== 'GET') return;
-
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return;
-
-  if (url.pathname.includes('/pick-list')) {
-    event.respondWith((async () => {
-      const cached = await caches.match(event.request, {ignoreSearch: true});
-      if (cached) return cached;
-      if (event.request.mode === 'navigate') {
-        const shell = await caches.match('./', {ignoreSearch: true});
-        if (shell) return shell;
-      }
-      return fetch(event.request);
-    })());
+  if (url.pathname.indexOf('/pick-list/assets/') >= 0 || isSetupReadRequest(event.request)) {
+    event.respondWith(networkFirst(event.request));
   }
 });
