@@ -500,6 +500,22 @@
   min-height: 2.4rem;
 }
 
+.next-perform-toolbar .next-perform-show-completed {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: auto;
+  width: auto;
+  padding-bottom: 0.45rem;
+  white-space: nowrap;
+}
+
+.next-perform-toolbar .next-perform-show-completed input {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+}
+
 .next-perform-kpis {
   display: grid;
   grid-template-columns: repeat(3, minmax(150px, 1fr));
