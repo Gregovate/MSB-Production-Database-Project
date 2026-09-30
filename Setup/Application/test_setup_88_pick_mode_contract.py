@@ -66,10 +66,29 @@ def test_record_location_preserves_many_identity_entry_options_and_scan_handoff(
     assert "TOUCH_SELECT" in ui
     assert "BarcodeDetector" in ui
     assert "/api/setup/movements/search" in ui
-    assert "new URLSearchParams(location.search).get('asset')" in ui
+    assert "pageParams.get('asset')" in ui
     assert "/scan\\/(CONT|DISP)\\/(\\d+)" in ui
     assert 'id="movement-camera-toggle"' in html
     assert 'id="movement-search-input"' in html
+
+
+def test_record_location_training_mode_uses_real_reads_but_never_writes_or_queues():
+    ui = read("setup_record_location.js")
+    html = read("record_location.html")
+
+    assert 'id="training-toggle"' in html
+    assert 'id="training-banner"' in html
+    assert "TRAINING MODE — NOTHING WILL BE RECORDED" in html
+    assert "const trainingMode = pageParams.get('training') === '1';" in ui
+    assert "Training Mode blocks Setup movement writes." in ui
+    assert "Training Mode blocks the offline movement queue." in ui
+    assert "if (trainingMode || syncing || !navigator.onLine) return;" in ui
+    assert "if (navigator.onLine && !trainingMode) void syncQueue();" in ui
+    assert "TRAINING — WOULD RECORD " in ui
+    assert "NOTHING RECORDED" in ui
+    assert "fetchContainerContents" in ui
+    assert "fetchState" in ui
+    assert "startGps" in ui
 
 
 def test_record_location_gps_is_explicit_and_identity_can_precede_gps():
@@ -221,9 +240,9 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "msb-setup-pick-mode-v4" in pick_sw
     assert "setup_pick_mode.js?v=2026-09-30.5" in pick_sw
     assert "setup_pick_mode.js?v=2026-09-30.5" in pick_html
-    assert "msb-setup-record-location-v1" in location_sw
-    assert "setup_record_location.js?v=2026-09-30.1" in location_sw
-    assert "setup_record_location.js?v=2026-09-30.1" in location_html
+    assert "msb-setup-record-location-v2" in location_sw
+    assert "setup_record_location.js?v=2026-09-30.2" in location_sw
+    assert "setup_record_location.js?v=2026-09-30.2" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():
