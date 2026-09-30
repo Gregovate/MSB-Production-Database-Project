@@ -313,3 +313,14 @@ def test_reusable_acceptance_runners_have_single_main_flow_tail() -> None:
     assert browser.rstrip().endswith(
         'echo "SETUP_REUSABLE_DISPOSABLE_BROWSER_PREVIEW_CLEAN_EXIT"'
     )
+
+
+def test_reusable_disposable_allows_only_the_approved_shared_audit_repair() -> None:
+    launcher = read_acceptance("run_setup_disposable_acceptance.ps1")
+
+    assert "$isSetupMigration = $Path.StartsWith('Setup/Database/')" in launcher
+    assert "$isApprovedSharedMigration = $Path -eq 'Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql'" in launcher
+    assert "explicitly approved shared database repair" in launcher
+    assert "$isSetupValidation = $Path.StartsWith('Setup/Acceptance/')" in launcher
+    assert "$isApprovedSharedValidation = $Path -eq 'Database/Acceptance/database_shared_audit_actor_disposable_validation.sql'" in launcher
+    assert "explicitly approved shared database validation" in launcher
