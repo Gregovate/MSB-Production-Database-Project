@@ -338,11 +338,17 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert 'PRODUCTION_VERSION = "V0.3.28-field-evidence"' in backend
     assert "const CLIENT_BUILD = 'V0.3.28-field-evidence';" in guard
     assert "msb-setup-pick-mode-v8" in pick_sw
+    assert "setup_pick_mode.css?v=2026-09-30.8" in pick_sw
+    assert "setup_pick_mode.css?v=2026-09-30.8" in pick_html
+    assert "setup_pick_list.js?v=2026-09-30.8" in pick_sw
+    assert "setup_pick_list.js?v=2026-09-30.8" in pick_html
     assert "setup_pick_mode.js?v=2026-09-30.7" in pick_sw
-    assert "setup_pick_mode.js?v=2026-09-30.6" in pick_html
+    assert "setup_pick_mode.js?v=2026-09-30.7" in pick_html
     assert "msb-setup-record-location-v6" in location_sw
+    assert "setup_record_location.css?v=2026-09-30.6" in location_sw
+    assert "setup_record_location.css?v=2026-09-30.6" in location_html
     assert "setup_record_location.js?v=2026-09-30.6" in location_sw
-    assert "setup_record_location.js?v=2026-09-30.5" in location_html
+    assert "setup_record_location.js?v=2026-09-30.6" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():
