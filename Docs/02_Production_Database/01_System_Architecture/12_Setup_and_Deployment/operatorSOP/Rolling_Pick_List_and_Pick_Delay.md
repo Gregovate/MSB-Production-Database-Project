@@ -19,7 +19,7 @@ Open:
 
 [**Rolling Pick List**](https://my.sheboyganlights.org/setup/pick-list/)
 
-The Pick List is a logistics projection of current demand. It does not by itself prove that a Container was physically picked, moved, delivered, or scanned.
+The Pick List is a logistics projection of current demand. Merely appearing on the list does not prove physical movement. When the operator deliberately starts **Start Picking**, however, a successful Container/Display scan records the annual `PICKED` event for that demanded item.
 
 ## What Appears on the List
 
@@ -31,13 +31,18 @@ Use the visible **Pick By** and **Needed For** timing to understand urgency. Rac
 
 ## Normal Picker Workflow
 
-1. Open the Rolling Pick List.
+1. Open the Rolling Pick List. The working view defaults to **Needs pick**.
 2. Work from the current highest-priority items shown by Pick By / Needed For and storage order.
-3. Use the Container identity and displayed material/task context to find the correct physical item.
-4. If the item should not be picked yet and you have Manager authority, use **Pick Delay** rather than changing the Setup schedule just to hide the item.
-5. Do not treat the Pick List as a physical movement/completion record.
+3. Choose **Start Picking** when you are physically pulling/loading demanded material.
+4. Scan the Container/Display with the Zebra/HID scanner, or use the explicit picker fallback.
+5. A successful scan records **PICKED FOR PARK TRANSPORT**. The item then leaves the **Needs pick** working list.
+6. The page keeps a visible **Containers picked** total so the material handler can track Container throughput.
+7. Use **Picked / moved** or **All demanded items** only when you intentionally need to review already-picked rows.
+8. If the item should not be picked yet and you have Manager authority, use **Pick Delay** rather than changing the Setup schedule just to hide the item.
 
-Persisted physical PICKED/movement execution belongs to the separate movement/scanning workflow.
+The Pick operation deliberately does **not** require separate Load or Depart buttons. The physical Pick scan means the item is going onto transport for the park.
+
+**Record Location** is a separate field workflow used later to record where a Container/Display is physically observed. It is not embedded in the Pick List.
 
 ## Manager Early-Pick Demand
 
