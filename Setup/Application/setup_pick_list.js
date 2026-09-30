@@ -200,7 +200,22 @@
   }
 
   function itemMoved(item) {
-    return Boolean(item?.current_observation?.last_movement_event_id);
+    const observation = item?.current_observation || {};
+    const movementStatus = String(observation.movement_status || '').toUpperCase();
+    if (movementStatus === 'RETURNED') return false;
+    if ([
+      'PICKED',
+      'LOADED',
+      'IN_TRANSIT',
+      'DELIVERED',
+      'UNLOADED',
+      'STAGED',
+      'PLACED',
+      'RELOCATED'
+    ].includes(movementStatus)) return true;
+    // Existing movement evidence predating explicit movement_status remains
+    // conservatively treated as already moved until reconciled.
+    return !movementStatus && Boolean(observation.last_movement_event_id);
   }
 
   function itemDelayed(item) {
@@ -737,6 +752,14 @@
     statusLine.textContent = `Pick List unavailable: ${error.message || error}`;
     pickList.innerHTML = '';
   }
+
+  window.MSBSetupPickList = Object.freeze({
+    reload: () => load(),
+    readiness: () => readiness,
+    access: () => access,
+    itemMoved,
+    itemDelayed
+  });
 
   if (overridePickBy && !overridePickBy.value) overridePickBy.value = noSundayPickDate(todayIso());
   Promise.all([loadAccess(), load()]).catch(showError);
