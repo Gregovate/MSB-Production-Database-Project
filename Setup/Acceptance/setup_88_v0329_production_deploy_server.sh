@@ -14,7 +14,7 @@ DIRECTUS_IMAGE="directus/directus:11.17.1"
 SCAN_LIVE_PATH="/opt/directus/extensions/directus-extension-scan/dist/index.js"
 EXPECTED_LIVE_SCAN_SHA256="3457efa15f461b774ef20462f57807d36cb848cac67bdcffcc2a8284c2dc2f96"
 
-TARGET_REF="agent/setup-88-pick-mode-movement"
+TARGET_REF="main"
 TARGET_SHA="7da6828d7b884ee5bb12123dab647bd6fadfba50"
 EXPECTED_PRE_VERSION="V0.3.22-pick-list-delay"
 EXPECTED_POST_VERSION="V0.3.29-pick-clarity"
