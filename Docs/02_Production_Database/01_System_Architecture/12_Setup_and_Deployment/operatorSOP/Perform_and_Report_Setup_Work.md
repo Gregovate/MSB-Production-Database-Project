@@ -47,6 +47,26 @@ Scheduled work is grouped by:
 - Captain; and
 - scheduled task order.
 
+
+## Labor Summary
+
+The Perform Work summary answers two different questions and keeps them separate:
+
+- **Planned labor** shows the planned person-hours for the current Captain scope, including work that may still be scheduled/in progress. It remains visible even when **Show completed** is off.
+- **Actual labor** shows reported person-hours for the current Captain scope.
+- **Completed-work variance** compares only completed assignments: completed actual person-hours minus completed planned person-hours.
+
+Future scheduled work does not reduce or distort completed-work variance.
+
+When a completed assignment needed for the comparison is missing a plan estimate, **Completed-work variance** remains **TBD** and the screen identifies how many completed assignments are missing the estimate.
+
+The variance detail shows the completed comparison, for example:
+
+```text
+Completed: 18 hr actual vs 16 hr planned
+```
+
+
 ## Open a Task
 
 Select the task you are working on.
