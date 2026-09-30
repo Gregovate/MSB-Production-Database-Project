@@ -390,23 +390,32 @@
     if (dates.includes(current)) dateFilter.value = current;
   }
 
-  function renderSummary(date) {
-    const s = readiness?.summary || {};
-    const scopedItems = (readiness?.physical_items || []).filter(
+  function scopedPhysicalItems(date = dateFilter?.value || '') {
+    return (readiness?.physical_items || []).filter(
       (item) => itemReasonsForDate(item, date).length
     );
+  }
+
+  function containersPickedCount(date = dateFilter?.value || '') {
+    return scopedPhysicalItems(date).filter(
+      (item) => item.physical_type === 'CONTAINER' && itemMoved(item)
+    ).length;
+  }
+
+  function renderSummary(date) {
+    const s = readiness?.summary || {};
+    const scopedItems = scopedPhysicalItems(date);
     const cards = [
       ['Scheduled assignments', s.scheduled_assignment_count ?? 0],
       ['Active picks', scopedItems.filter(i => !itemMoved(i) && !itemDelayed(i)).length],
       ['Delayed picks', scopedItems.filter(i => !itemMoved(i) && itemDelayed(i)).length],
       ['Picked / moved', scopedItems.filter(itemMoved).length],
-      ['Containers picked', scopedItems.filter(
-        (item) => item.physical_type === 'CONTAINER' && itemMoved(item)
-      ).length]
+      ['Containers picked', containersPickedCount(date)]
     ];
     summary.innerHTML = cards.map(([label, value]) =>
       `<div class="summary-card"><strong>${esc(value)}</strong><span>${esc(label)}</span></div>`
     ).join('');
+    document.dispatchEvent(new CustomEvent('msb-pick-list-rendered'));
   }
 
   function itemDates(item, reasons, selectedDate) {
@@ -777,7 +786,8 @@
     readiness: () => readiness,
     access: () => access,
     itemMoved,
-    itemDelayed
+    itemDelayed,
+    containersPickedCount
   });
 
   if (overridePickBy && !overridePickBy.value) overridePickBy.value = noSundayPickDate(todayIso());
