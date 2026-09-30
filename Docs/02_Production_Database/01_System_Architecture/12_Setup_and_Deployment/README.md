@@ -7,8 +7,8 @@
 | Audience | MSB reviewers, managers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-28 |
-| Keywords | Setup, Perform Work, Report Work, reusable task, verification, Display Ownership, Kit, Extra Materials, T-Post, prerequisites |
+| Last Reviewed | 2026-09-30 |
+| Keywords | Setup, 2026 Setup, Scheduling Board, Perform Work, Report Work, Report Correction, Rolling Pick List, Pick Delay, reusable task, verification, Display Ownership, Kit, Extra Materials, T-Post, prerequisites |
 
 Use this page to decide **what you are trying to do in Setup** and where to go next.
 
@@ -26,6 +26,7 @@ The real **2026 Setup Session is live** and is the current annual planning, sche
 |---|---|
 | Schedule 2026 Setup work | Open **Plan / Schedule** in [Setup](https://my.sheboyganlights.org/setup/) |
 | Perform scheduled field work / report actual work | [Perform and Report Setup Work](operatorSOP/Perform_and_Report_Setup_Work.md) |
+| Pull the next physical material / review delayed picks | [Rolling Pick List and Pick Delay](operatorSOP/Rolling_Pick_List_and_Pick_Delay.md) |
 | Add one or more 2026 Work Days | In **Plan / Schedule**, click **+ Add Work Days**, tap/click the dates, then add the selected dates |
 | Review historical 2025 verification evidence | [Review and Correct the 2025 Setup History](operatorSOP/Review_2025_Setup_History.md) |
 | Learn the Setup Manager controls | [Setup Manager Review Guide](../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md) |
@@ -43,6 +44,16 @@ Use **Perform Work** for scheduled field execution. Captains can filter the page
 Use **Report Work** to record the actual work date, actual crew size, elapsed Hours/Minutes, percent complete, and what was done/remains. Partial work stays **In Progress** and can be scheduled again as a new future assignment without rewriting the worked occurrence.
 
 [**Open the Perform and Report Setup Work instructions**](operatorSOP/Perform_and_Report_Setup_Work.md)
+
+## Rolling Pick List
+
+Use the [**Rolling Pick List**](https://my.sheboyganlights.org/setup/pick-list/) for the current schedule-derived physical material demand.
+
+The list is intentionally logistics-focused: it shows physical demand that is actionable for picking, ordered by current timing/need and then practical storage/rack order. Managers may create deliberate early-pick demand or apply a temporary **Pick Delay** when a visible item should not be pulled yet. **Resume Pick** releases that hold.
+
+The Pick List does not record a physical PICKED/movement event. Persisted movement/scanning remains a separate workflow.
+
+[**Open the Rolling Pick List and Pick Delay instructions**](operatorSOP/Rolling_Pick_List_and_Pick_Delay.md)
 
 ## Fast Things Worth Knowing
 
@@ -236,5 +247,6 @@ If a task, Display assignment, Kit, material requirement, T-Post source, spacer 
 - [Setup operator procedures](operatorSOP/README.md)
 - [Review and Correct the 2025 Setup History](operatorSOP/Review_2025_Setup_History.md)
 - [Perform and Report Setup Work](operatorSOP/Perform_and_Report_Setup_Work.md)
+- [Rolling Pick List and Pick Delay](operatorSOP/Rolling_Pick_List_and_Pick_Delay.md)
 - [Setup Manager Review Guide](../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
 - [Engineering documentation](engineering/README.md) — for maintainers, not normal operator work

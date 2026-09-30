@@ -5,9 +5,9 @@
 | Document Type | Internal Web Backbone Integration Handoff |
 | Source System | Production Database — Setup and Deployment |
 | Consuming System | `Gregovate/MSB-Internal-Web-Backbone` |
-| Status | CURRENT HANDOFF — source Setup state reconciled to live 2026 annual operation |
+| Status | CURRENT HANDOFF — source Setup state reconciled through V0.3.22 live 2026 scheduling / field execution / Pick List |
 | Owner | MSB Production Database / Setup documentation owner |
-| Last Reviewed | 2026-09-25 |
+| Last Reviewed | 2026-09-30 |
 
 ## Purpose
 
@@ -35,6 +35,8 @@ post-deployment invariants            = PASS
 ```
 
 The **runtime and 2026 Scheduling Board are accepted**. The real 2026 Setup Session is now the current annual planning/execution context. 2025 Historical Verification remains available only for intentional historical/review work. Backbone navigation must lead with current 2026 Setup work rather than presenting 2025 review/training as the primary Setup action.
+
+Current accepted operator workflows also include **Perform Work / Report Work**, **Report Correction -> Work Order Intake**, and the **Rolling Pick List / Pick Delay** release. The current Production application identity is **V0.3.22-pick-list-delay**. Persisted physical PICKED/movement execution remains separate.
 
 ## Canonical Operator Portal
 
@@ -112,9 +114,13 @@ The obsolete static artifact may be removed later through the Backbone repositor
 
 ## Operator Tasks That Should Be Discoverable
 
-Primary current task:
+Primary current tasks:
 
 - **Schedule 2026 Setup Work** — Managers use the live 2026 Setup Session and **Plan / Schedule** for current annual planning.
+- **Perform / Report Setup Work** — Captains and Production Crew use **Perform Work** for scheduled field assignments and **Report Work** for actual date, crew, elapsed time, progress, and completion.
+- **Rolling Pick List** — warehouse/picker view of current schedule-derived physical demand; Manager early-pick demand and transient **Pick Delay / Resume Pick** are accepted.
+- **Report Correction** — preserves a field Procedure/material/data problem as Submitted Work Order Intake for Manager triage without silently changing durable Setup data.
+- **Kit / T-Post Inventory** — review expected Kit contents and physical inventory while keeping expected, on-hand, and storage facts separate.
 
 Secondary historical/review task:
 
@@ -137,12 +143,22 @@ Additional Setup task choices should be added only after the corresponding workf
 Primary card/action title:
 
 ```text
-Schedule 2026 Setup
+2026 Setup — Plan, Perform & Pick
 ```
 
 Description:
 
-> Plan current 2026 Setup work, add Work Days, and schedule the next practical crew assignments.
+> Schedule current 2026 work, open Captain field assignments, report actual work, and pull the physical material the live schedule now needs.
+
+Useful supporting actions:
+
+```text
+Open Rolling Pick List
+Open Kit Inventory
+Open T-Post Inventory
+Setup Operator Procedures
+Perform and Report Setup Work
+```
 
 Secondary historical action when useful:
 
@@ -150,7 +166,7 @@ Secondary historical action when useful:
 Review 2025 Setup History
 ```
 
-Do not label the application as a prototype. The accurate operator meaning is that the annual scheduling spine is live Production software; additional Work List, Report Work, problem-intake, Pick List, and movement capabilities continue under their owning workstreams.
+Do not label the application as a prototype. The annual Scheduling Board, Perform Work / Report Work, Report Correction intake, and Rolling Pick List / Pick Delay workflows are live Production software. Persisted physical movement/scanning remains under its owning workstream.
 
 ## Search / Discovery Metadata
 
@@ -160,6 +176,12 @@ Useful search terms:
 Setup
 2026 Setup
 Plan / Schedule
+Scheduling Board
+Perform Work
+Report Work
+Report Correction
+Rolling Pick List
+Pick Delay
 Work Day
 2025 Setup
 Historical Verification
@@ -211,12 +233,9 @@ Engineering material may remain available through a clearly separated contributo
 
 ## Current Feature Boundary
 
-Do not advertise the following as current operator workflows:
+The Rolling Pick List and transient Pick Delay are current Production workflows and may be exposed in operator navigation.
 
-- Pick List generation; or
-- Container/Display movement/scanning write commands.
-
-Those remain outside the current accepted Production-ready boundary.
+Do **not** describe the Pick List as proof that material physically moved or was picked. Persisted physical PICKED/movement execution and Container/Display movement/scanning writes remain separate work.
 
 ## Backbone Implementation
 
@@ -232,7 +251,10 @@ Live browser evidence from 2026-09-22 showed the then-current Backbone Setup des
 
 Current source-system direction is:
 
-- **Schedule 2026 Setup** -> `https://my.sheboyganlights.org/setup/`;
+- **2026 Setup — Plan, Perform & Pick** -> `https://my.sheboyganlights.org/setup/`;
+- **Rolling Pick List** -> `https://my.sheboyganlights.org/setup/pick-list/`;
+- **Kit Inventory** -> `https://my.sheboyganlights.org/setup/kit-inventory/`;
+- **T-Post Inventory** -> `https://my.sheboyganlights.org/setup/t-post-inventory/`;
 - **Setup Documentation** -> the canonical Setup README on Production Database `main`;
 - **Open Procedures — Setup / Takedown / Inspection** -> `https://my.sheboyganlights.org/procedures/`;
 - retain **Review 2025 Setup History** only as a secondary historical/review destination where useful.
@@ -245,7 +267,7 @@ Backbone integration is VERIFIED only when all applicable checks pass:
 
 1. the Production index/task navigation includes an appropriate Setup action;
 2. the action points to `https://my.sheboyganlights.org/setup/`;
-3. the primary action reflects the live 2026 Setup workflow, while 2025 historical review remains clearly secondary;
+3. the primary action reflects live 2026 scheduling/execution and current Pick List capability, while 2025 historical review remains clearly secondary;
 4. the obsolete static Setup/Takedown page is not linked or promoted;
 5. engineering/acceptance/database source paths are absent from normal operator navigation;
 6. no duplicate editable copy of the source operator procedure is created in Backbone;
@@ -255,10 +277,10 @@ Backbone integration is VERIFIED only when all applicable checks pass:
 ## Backbone State
 
 ```text
-VERIFIED — Production Portal v1.3 visible live; Setup Documentation opens the current canonical Setup README on Production Database main
+SOURCE FOLLOW-UP REQUIRED — existing Production landing copy predates the live 2026 Scheduling Board / Perform Work / Report Correction / V0.3.22 Pick List workflow
 ```
 
-Live browser verification was supplied by Greg on 2026-09-22; Backbone issue #10 may be closed after recording that evidence.
+The canonical source documentation is current through the accepted 2026 operator workflow. Backbone presentation must be refreshed from this handoff and then live-verified through its controlled one-file publish process.
 
 ## Related Documents
 

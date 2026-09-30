@@ -7,8 +7,8 @@
 | Audience | Setup Managers and reviewers |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-28 |
-| Keywords | Setup, Perform Work, Report Work, reusable task, Verification Queue, Copy Task, prerequisites, Display Ownership, Extra Materials, Kit Inventory |
+| Last Reviewed | 2026-09-30 |
+| Keywords | Setup, 2026 Setup, Scheduling Board, Perform Work, Report Work, Report Correction, Pick List, Pick Delay, reusable task, Verification Queue, Copy Task, prerequisites, Display Ownership, Extra Materials, Kit Inventory |
 
 ## Purpose
 
@@ -35,7 +35,21 @@ Open **Plan / Schedule** for the live 2026 Session.
 - A cancelled/rainout day is retained as annual/history context; do not treat cancellation as permission to delete history.
 - Schedule and move annual work with the existing board controls. Season-only 2026 work remains annual unless a Manager explicitly promotes durable knowledge through the appropriate reusable workflow.
 
-The Scheduling Board does not define the #206 Pick List/material-demand workflow.
+The Scheduling Board drives the current material-demand frontier, but the Pick List has its own operator workflow.
+
+### Rolling Pick List and Pick Delay
+
+Open [**Rolling Pick List**](https://my.sheboyganlights.org/setup/pick-list/) for the current schedule-derived physical demand.
+
+- The list is for picker-actionable physical Containers/material demand, not reusable task editing.
+- **Pick By** and **Needed For** identify urgency; rack/home-location information supports practical warehouse order.
+- A Manager may add an explicit **early-pick** demand when a deliberate pull is needed before normal schedule-derived demand.
+- A Manager may use **Pick Delay** when material is visible but should not be picked yet.
+- **Resume Pick** releases the delay. Scheduling a requiring downstream task also releases the transient delay.
+- Early-pick demand and Pick Delay do not mark material physically picked and do not move a Container.
+- Persisted physical pick/movement execution remains a separate movement/scanning workflow.
+
+See [**Rolling Pick List and Pick Delay**](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Rolling_Pick_List_and_Pick_Delay.md) for the crew-facing procedure.
 
 ## 2. Perform Scheduled Work and Report Actuals
 
