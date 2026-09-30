@@ -36,3 +36,8 @@ main{max-width:1050px;margin:0 auto;padding:1rem}
 body.training-mode .panel{outline:2px solid #d79b00}
 body.training-mode .record-actions .primary{background:#8a5a00}
 body.training-mode .feedback.ready{background:#5e4400}
+
+.training-entry{max-width:760px;margin:1.5rem auto 0;color:var(--muted)}
+.training-entry summary{cursor:pointer;font-weight:700}
+.training-entry button{margin-top:.55rem}
+body.training-mode #training-exit{background:#8a5a00;color:#fff}
