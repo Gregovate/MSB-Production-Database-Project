@@ -464,9 +464,9 @@ full Setup/Application regression
 ```
 
 
-## 2026-09-30 launch checkpoint — Oct. 2 closed-loop target
+## Historical 2026-09-30 launch checkpoint — Oct. 2 closed-loop target
 
-The implementation remains under #88 / PR #255. The bounded candidate release identity is:
+This checkpoint records the earlier closed-loop candidate and is superseded by the V0.3.28 contract above. The implementation remains under #88 / PR #255. Historical candidate identity:
 
 ```text
 V0.3.23-movement-loop
