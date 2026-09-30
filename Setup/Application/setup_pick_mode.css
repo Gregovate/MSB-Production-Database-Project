@@ -1,5 +1,15 @@
 .pick-mode-start{font-weight:900}
+.pick-training-banner{position:sticky;top:0;z-index:70;padding:.75rem 1rem;text-align:center;font-size:1.05rem;font-weight:950;letter-spacing:.04em;background:#8a5a00;color:#fff;border-bottom:3px solid #ffd166}
 .pick-mode-panel{position:sticky;top:0;z-index:50;margin:0 0 1rem;padding:1rem;border:4px solid currentColor;border-radius:14px;background:#171717}
+body.pick-training-mode .pick-mode-panel{top:3rem;border-color:#ffd166}
+.pick-training-entry{margin:0 0 1rem;padding:.7rem .9rem;border:1px solid currentColor;border-radius:10px}
+.pick-training-entry summary{cursor:pointer;font-weight:800}
+.pick-training-entry p{margin:.55rem 0}
+.pick-training-entry button{min-height:44px;font-weight:800}
+body.pick-training-mode #exit-pick-training{background:#8a5a00;color:#fff}
+.pick-mode-counters{display:flex;flex-wrap:wrap;gap:.7rem;margin-top:.8rem;font-weight:850}
+.pick-mode-counters span{padding:.45rem .65rem;border:1px solid currentColor;border-radius:8px}
+.pick-mode-counters strong{font-size:1.15rem}
 .pick-mode-toolbar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
 .pick-mode-toolbar h2{margin:.15rem 0 .35rem;font-size:1.55rem}
 .pick-mode-toolbar p{margin:.25rem 0}
@@ -52,5 +62,7 @@ body.pick-mode-active #print-button,body.pick-mode-active #start-pick-mode,body.
   .movement-record-actions{display:grid;grid-template-columns:1fr}
   .movement-record-actions button{width:100%}
   .pick-mode-feedback{font-size:1.15rem}
+  body.pick-training-mode .pick-mode-panel{top:3.4rem}
+  .pick-mode-counters{display:grid;grid-template-columns:1fr 1fr}
 }
 @media print{.pick-mode-panel{display:none!important}}
