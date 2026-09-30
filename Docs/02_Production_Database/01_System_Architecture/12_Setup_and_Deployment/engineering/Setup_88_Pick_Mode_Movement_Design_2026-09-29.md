@@ -2,7 +2,7 @@
 
 | Document Control | Value |
 |---|---|
-| Status | ACTIVE IMPLEMENTATION DESIGN — V0.3.27 successor candidate |
+| Status | ACTIVE IMPLEMENTATION DESIGN — V0.3.28 field-evidence successor |
 | Issue | #88 |
 | Branch | `agent/setup-88-pick-mode-movement` |
 | Baseline main | `ff6cc0b6f7c65fe736f85ce12297dbc141a69267` |
@@ -209,8 +209,9 @@ Location barcode deployment is not required for normal Container return.
 Return mode
  -> scan CONT:<id>
  -> resolve ref.container.location_code
- -> display canonical Home Location prominently
- -> material handler returns it there
+ -> display canonical Home Location prominently in Review and record
+ -> final action names the exact location (for example: Returned CONT:36 to RA03-A-01)
+ -> material handler confirms the return
 ```
 
 Material handlers do not type/select permanent Home Location.
@@ -257,13 +258,19 @@ connectivity returns
 
 Offline mode must not create a second event schema.
 
-## 2026 material-access boundary
+## Planned access dates do not override observed physical evidence
 
-Before 2026-10-05, shop-side `PICKED` / shop staging evidence is valid.
+Planned material-access dates are planning context, not a blocker against recording reality.
 
-Park-side movement actions must not falsely claim that material is already in the park before the City material-access date.
+If an authenticated operator deliberately scans/selects an asset in **Record Location** and provides valid location evidence, that observation must be recorded even when:
 
-This is a movement-operation safety rule. It must not be encoded as reusable Catalog readiness, a season task, a Wait/Gate, or Pick List demand logic.
+- the planned park-access date has not arrived;
+- the item has no prior `PICKED` event;
+- the material reached the park through an exception or unrecorded prior movement.
+
+A real movement/location observation is durable physical evidence. Do not invent a prerequisite movement merely to satisfy the plan, and do not discard a real observation because planned sequence was bypassed.
+
+The command still requires valid identity, operator authorization, location evidence where applicable, idempotency, and normal movement-state integrity.
 
 ## Application boundary
 
@@ -317,11 +324,49 @@ Acceptance must prove:
 - Container event does not fabricate Display observation rows;
 - permanent Home Location is unchanged by movement;
 - return flow displays canonical Home Location without requiring LOC barcode;
-- pre-2026-10-05 park-side false movement is rejected/blocked;
+- real field movement/location evidence is accepted regardless of planned access date, while retaining normal identity/location/idempotency safeguards;
 - Production fingerprint/live runtime remain unchanged throughout disposable/browser acceptance.
 
 Production deployment remains a separate explicit runbook-authorized step.
 
+
+
+
+## 2026-09-30 V0.3.28 field-evidence successor
+
+The V0.3.27 browser review established three additional launch facts.
+
+### Observed movement outranks planned sequence
+
+A real Record Location observation must not be rejected by the historical/planned October 5 material-access date. The system records physical evidence even when a prior Pick event is missing. Planning sequence and actual movement history remain separate facts.
+
+### Return Home must name the destination
+
+For Container return, the Review/Record surface must expose canonical `ref.container.location_code` and the confirmation action must name it. A generic **Returned to Home Location** action with no visible destination is not acceptable.
+
+If Home Location is missing, the return action fails closed to Manager reference-data correction under #230. Movement does not invent or rewrite Home Location.
+
+### Pick validation/performance
+
+Disposable `SETUP_PERF` evidence measured normal online Pick scans at roughly:
+
+```text
+POST /api/setup/movements          ~1.28–1.38 s
+GET  /api/setup/material-readiness ~1.32–1.44 s
+combined server application work   ~2.60–2.81 s
+```
+
+The delay is caused by two serial full material-readiness builds: one solely to validate the scanned item and one synchronous list refresh after the successful write.
+
+The accepted optimization boundary is:
+
+1. keep authoritative server-side demand / delay / already-outbound validation;
+2. validate only the scanned asset against the same current scheduling/material authorities instead of constructing the entire Pick List;
+3. after a successful governed write, settle the scanned row/count immediately from the authoritative movement response;
+4. refresh full material readiness in the background without making the operator wait for that rebuild;
+5. preserve conservative offline validation/idempotent replay.
+
+#222 remains the performance cross-reference and Production measurement authority. #88 owns the Pick workflow behavior and acceptance.
 
 
 ## 2026-09-30 browser-review successor — V0.3.27 field training UX
