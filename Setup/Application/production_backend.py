@@ -486,6 +486,19 @@ def pick_list():
     return _no_store(send_from_directory(BASE_DIR, "pick_list.html"))
 
 
+@app.get("/pick-list/service-worker.js")
+def pick_list_service_worker():
+    response = _no_store(
+        send_from_directory(
+            BASE_DIR,
+            "setup_pick_mode_sw.js",
+            mimetype="application/javascript",
+        )
+    )
+    response.headers["Service-Worker-Allowed"] = "/pick-list/"
+    return response
+
+
 @app.get("/pick-list/assets/<path:name>")
 def pick_list_asset(name: str):
     if name not in PICK_LIST_ASSETS:
