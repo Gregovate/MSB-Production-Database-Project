@@ -651,12 +651,13 @@ function renderPlanningBacklog() {
 function installNextTabs() {
   const tabs = document.querySelector('.tabs');
   if (!tabs || el('schedule-view')) return;
+  const pickListButton = document.getElementById('setup-pick-list-link');
   const scheduleButton = document.createElement('button');
   scheduleButton.className = 'tab'; scheduleButton.dataset.view = 'schedule'; scheduleButton.type = 'button'; scheduleButton.textContent = 'Plan / Schedule';
   const performButton = document.createElement('button');
   performButton.className = 'tab'; performButton.dataset.view = 'perform'; performButton.type = 'button'; performButton.textContent = 'Perform Work';
-  tabs.appendChild(scheduleButton);
-  tabs.appendChild(performButton);
+  tabs.insertBefore(scheduleButton, pickListButton);
+  tabs.insertBefore(performButton, pickListButton);
   scheduleButton.addEventListener('click', async () => {
     if (typeof navigateSetupView === 'function') await navigateSetupView('schedule');
     else { showView('schedule'); await loadNextSchedule(); }
