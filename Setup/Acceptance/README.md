@@ -145,6 +145,7 @@ Only after explicit operator acceptance switch to the Server Management `Product
 
 ## Current Production Acceptance Records
 
+- `Setup_205_Scheduling_Board_Production_Acceptance_2026-09-29.md` — #205 rolling Scheduling Board / season-only Work Order placement / Captain live-dispatch default / planned-vs-actual labor KPI / V0.3.21 source-only Production acceptance and #206 handoff.
 - `Setup_172_Report_Correction_Production_Acceptance_2026-09-27.md` — #172 Report Correction -> Work Order Intake / migration 062 / Directus items.create manager-notification boundary / Production acceptance.
 - `Setup_175_132_Report_Work_Production_Acceptance_2026-09-26.md` — #175 Perform Work / Captain Work List + #132 Report Work / migration 061 / Production acceptance.
 - `Setup_206_Pick_List_Production_Acceptance_2026-09-25.md` — #206 rolling physical Pick List / Manager early-pick override / migration 060 / V0.3.19 Production acceptance.
