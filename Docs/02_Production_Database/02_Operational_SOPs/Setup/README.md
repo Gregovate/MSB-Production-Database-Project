@@ -7,8 +7,8 @@
 | Audience | Setup Managers, reviewers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-28 |
-| Keywords | Setup, Perform Work, Report Work, manager, verification, reusable tasks, Displays, Kits, materials |
+| Last Reviewed | 2026-09-30 |
+| Keywords | Setup, 2026 Setup, Plan / Schedule, Perform Work, Report Work, Report Correction, Pick List, Pick Delay, manager, verification, reusable tasks, Displays, Kits, materials |
 
 These are the plain-English instructions for using the live Setup application.
 
@@ -21,6 +21,7 @@ Open Setup:
 - [Setup and Deployment — What do you need to do?](../../01_System_Architecture/12_Setup_and_Deployment/README.md)
 - [Review and Correct the 2025 Setup History](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Review_2025_Setup_History.md)
 - [Perform and Report Setup Work](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Perform_and_Report_Setup_Work.md)
+- [Rolling Pick List and Pick Delay](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Rolling_Pick_List_and_Pick_Delay.md)
 - [Setup Manager Review Guide](Setup_Session_Manager_Review_Guide.md)
 - [Extra Materials and Kit Inventory](../../01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Extra_Materials_and_Kit_Inventory.md)
 
@@ -31,6 +32,9 @@ Open Setup:
 - **Report Work** = actual work date, actual crew, elapsed Hours/Minutes, percent complete, and what was done/remains.
 - Partial work remains **In Progress** and can be scheduled again as a new future assignment.
 - Managers can use **Correct report** to repair a mistaken work report without creating a duplicate.
+- **Report Correction** preserves a field problem or data/procedure/material finding as a Submitted Work Order Intake item for Manager triage.
+- **Rolling Pick List** shows the current schedule-derived physical material demand that is ready for warehouse/picker action.
+- **Pick Delay** is a temporary Manager hold meaning **do not pick yet**; **Resume Pick** releases that hold.
 
 ## Most Important Shortcuts
 
@@ -60,15 +64,18 @@ The screen labels and their plain-English meaning are:
 - **Expected** = what should normally be in a Kit.
 - **On Hand** = what somebody physically counted.
 - **Unverified Items / Remainders** = information that is still unclear.
+- **Pick List** = physical Containers/material currently demanded by the live schedule.
+- **Pick Delay** = a temporary logistics hold; it does not cancel or reschedule the work.
 
 If you do not know, **do not guess**.
 
-The current goal is review and correction, not a complete warehouse inventory.
+Inventory review remains review and correction, not a complete warehouse inventory. Current 2026 scheduling, field execution, and Pick List work are live operational workflows.
 
 
 ## Direct Links
 
 - [Open Setup](https://my.sheboyganlights.org/setup/)
+- [Open Rolling Pick List](https://my.sheboyganlights.org/setup/pick-list/)
 - [Open Kit Inventory](https://my.sheboyganlights.org/setup/kit-inventory/)
 - [Open T-Post Inventory](https://my.sheboyganlights.org/setup/t-post-inventory/)
 - [Open Setup / Takedown Procedures](https://my.sheboyganlights.org/procedures/)
