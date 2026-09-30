@@ -390,13 +390,19 @@
     if (dates.includes(current)) dateFilter.value = current;
   }
 
-  function renderSummary(items) {
+  function renderSummary(date) {
     const s = readiness?.summary || {};
+    const scopedItems = (readiness?.physical_items || []).filter(
+      (item) => itemReasonsForDate(item, date).length
+    );
     const cards = [
       ['Scheduled assignments', s.scheduled_assignment_count ?? 0],
-      ['Active picks', items.filter(i => !itemMoved(i) && !itemDelayed(i)).length],
-      ['Delayed picks', items.filter(i => !itemMoved(i) && itemDelayed(i)).length],
-      ['Picked / moved', items.filter(itemMoved).length]
+      ['Active picks', scopedItems.filter(i => !itemMoved(i) && !itemDelayed(i)).length],
+      ['Delayed picks', scopedItems.filter(i => !itemMoved(i) && itemDelayed(i)).length],
+      ['Picked / moved', scopedItems.filter(itemMoved).length],
+      ['Containers picked', scopedItems.filter(
+        (item) => item.physical_type === 'CONTAINER' && itemMoved(item)
+      ).length]
     ];
     summary.innerHTML = cards.map(([label, value]) =>
       `<div class="summary-card"><strong>${esc(value)}</strong><span>${esc(label)}</span></div>`
@@ -696,7 +702,7 @@
     if (!readiness) return;
     const date = dateFilter.value;
     const items = renderItems(date);
-    renderSummary(items);
+    renderSummary(date);
     generatedAt.textContent = `Generated ${new Date().toLocaleString()}`;
     statusLine.textContent = readiness.session
       ? `Live ${readiness.session.season_year} schedule → physical Pick List.`
