@@ -1,9 +1,10 @@
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parent
-WRAPPER = ROOT / "run_setup_206_v0322_production_deploy.ps1"
-SERVER = ROOT / "setup_206_v0322_production_deploy_server.sh"
+APP_DIR = Path(__file__).resolve().parent
+ACCEPTANCE_DIR = APP_DIR.parent / "Acceptance"
+WRAPPER = ACCEPTANCE_DIR / "run_setup_206_v0322_production_deploy.ps1"
+SERVER = ACCEPTANCE_DIR / "setup_206_v0322_production_deploy_server.sh"
 
 
 def read(path: Path) -> str:
