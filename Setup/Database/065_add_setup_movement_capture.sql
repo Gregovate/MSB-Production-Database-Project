@@ -581,6 +581,7 @@ BEGIN
     END IF;
 
     IF v_existing_status = v_action
+       AND v_action NOT IN ('CONTAINER_MOVE','DISPLAY_MOVE')
        AND (
            v_existing_movement_at IS NULL
            OR p_occurred_at >= v_existing_movement_at
