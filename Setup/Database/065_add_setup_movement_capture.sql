@@ -627,8 +627,15 @@ GRANT EXECUTE ON FUNCTION ops.record_setup_movement_event(
     numeric,numeric,numeric,integer,text,text
 ) TO fieldwiring_app;
 
+REVOKE INSERT, UPDATE, DELETE ON ops.setup_movement_event FROM fieldwiring_app;
+REVOKE INSERT, UPDATE, DELETE ON ops.setup_movement_event_display FROM fieldwiring_app;
+REVOKE INSERT, UPDATE, DELETE ON ops.setup_container_state FROM fieldwiring_app;
+REVOKE INSERT, UPDATE, DELETE ON ops.setup_display_state FROM fieldwiring_app;
+
 GRANT SELECT ON ops.setup_movement_event TO fieldwiring_app;
 GRANT SELECT ON ops.setup_movement_event_display TO fieldwiring_app;
+GRANT SELECT ON ops.setup_container_state TO fieldwiring_app;
+GRANT SELECT ON ops.setup_display_state TO fieldwiring_app;
 
 COMMENT ON FUNCTION ops.record_setup_movement_event(
     text,integer,uuid,text,bigint,text,timestamptz,text,text,boolean,
