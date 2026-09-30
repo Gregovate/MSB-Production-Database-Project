@@ -65,7 +65,8 @@ def test_perform_work_hides_completed_by_default_without_changing_global_captain
     assert 'id="next-perform-show-completed" type="checkbox"' in ui
     assert 'id="next-perform-show-completed" type="checkbox" checked' not in ui
     assert "function nextPerformAssignmentStatus(assignment)" in ui
-    assert "if (!showCompleted && nextPerformAssignmentStatus(assignment) === 'COMPLETE')" in ui
+    assert "function nextPerformCaptainScopedAssignments(assignments)" in ui
+    assert "showCompleted || nextPerformAssignmentStatus(assignment) !== 'COMPLETE'" in ui
     assert "const filter = setupNextState.performCaptainFilter || 'ALL';" in ui
     assert "if (filter === 'ALL') return true;" in ui
     assert "All scheduled work" in ui
