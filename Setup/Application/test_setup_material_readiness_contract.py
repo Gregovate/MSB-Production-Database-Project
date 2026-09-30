@@ -156,6 +156,18 @@ def test_live_pick_list_surface_exposes_operational_columns_needs_pick_picked_an
 
 
 
+def test_pick_list_summary_totals_picked_containers_outside_working_filter() -> None:
+    ui = read("setup_pick_list.js")
+    css = read("setup_pick_list.css")
+
+    assert "function renderSummary(date)" in ui
+    assert "const scopedItems = (readiness?.physical_items || []).filter" in ui
+    assert "['Containers picked'," in ui
+    assert "item.physical_type === 'CONTAINER' && itemMoved(item)" in ui
+    assert "renderSummary(date);" in ui
+    assert "repeat(5,minmax(0,1fr))" in css
+
+
 def test_later_demand_reports_existing_pick_state_without_error() -> None:
     html = read("pick_list.html")
     ui = read("setup_pick_list.js")
@@ -200,7 +212,7 @@ def test_pick_list_sorts_by_pick_deadline_then_physical_rack_walk_order() -> Non
     assert "left.column - right.column" in ui
     assert "left.level.localeCompare" in ui
     assert "left.slot - right.slot" in ui
-    assert "setup_pick_list.js?v=2026-09-30.5" in html
+    assert "setup_pick_list.js?v=2026-09-30.6" in html
 
 
 def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_assignment() -> None:
@@ -414,5 +426,5 @@ def test_delayed_pick_warning_survives_print_when_delayed_rows_are_shown() -> No
     assert 'class="print-delay-badge">DELAYED — DO NOT PICK YET</div>' in ui
     assert ".print-delay-badge{display:none" in css
     assert ".print-delay-badge{display:inline-block!important" in css
-    assert "setup_pick_list.css?v=2026-09-29.3" in html
-    assert "setup_pick_list.js?v=2026-09-30.5" in html
+    assert "setup_pick_list.css?v=2026-09-30.4" in html
+    assert "setup_pick_list.js?v=2026-09-30.6" in html
