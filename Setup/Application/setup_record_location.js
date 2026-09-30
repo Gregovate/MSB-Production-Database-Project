@@ -779,15 +779,13 @@
 
     if (trainingMode) {
       const gps = currentGpsSnapshot();
-      const reference = String(knownReference.value || '').trim();
-      const note = destinationNote();
+      const evidence = currentLocationEvidence();
       let message = 'TRAINING — WOULD RECORD ' + identity.identity;
       if (returningHome) {
         message += ' RETURNED HOME';
       } else {
         message += ' HERE';
-        if (reference) message += ' · ' + reference;
-        else if (note) message += ' · ' + note;
+        if (evidence.ready && evidence.label) message += ' · ' + evidence.label;
         if (gps) message += ' · GPS ±' + Math.round(Number(gps.accuracy_m || 0) * 3.280839895) + ' ft';
         if (unloaded.length) message += ' · would leave ' + unloaded.length + ' Display' + (unloaded.length === 1 ? '' : 's') + ' here';
       }
