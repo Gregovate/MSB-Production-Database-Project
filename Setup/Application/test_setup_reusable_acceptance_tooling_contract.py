@@ -292,3 +292,24 @@ def test_reusable_disposable_acceptance_allows_tooling_descendant_of_exact_candi
     assert "merge-base --is-ancestor $CandidateSha $toolingHead" in launcher
     assert "requested candidate $CandidateSha is not an ancestor of current acceptance-tooling HEAD $toolingHead" in launcher
     assert "does not equal requested candidate" not in launcher
+
+
+def test_reusable_acceptance_runners_have_single_main_flow_tail() -> None:
+    disposable = read_acceptance("setup_disposable_acceptance_server.sh")
+    browser = read_acceptance("setup_disposable_browser_preview_server.sh")
+
+    assert disposable.count("SETUP_REUSABLE_DISPOSABLE_ACCEPTANCE_PASS") == 1
+    assert disposable.count("Production function ACL statements extracted:") == 1
+    assert disposable.count("Production function ACL batch replay: PASS") == 1
+
+    # Browser has one resume completion marker and one normal main-flow marker.
+    assert browser.count("SETUP_REUSABLE_DISPOSABLE_BROWSER_PREVIEW_CLEAN_EXIT") == 2
+    assert browser.count("Production function ACL statements extracted:") == 1
+    assert browser.count("Production function ACL batch replay: PASS") == 1
+
+    assert disposable.rstrip().endswith(
+        'echo "SETUP_REUSABLE_DISPOSABLE_ACCEPTANCE_PASS"'
+    )
+    assert browser.rstrip().endswith(
+        'echo "SETUP_REUSABLE_DISPOSABLE_BROWSER_PREVIEW_CLEAN_EXIT"'
+    )
