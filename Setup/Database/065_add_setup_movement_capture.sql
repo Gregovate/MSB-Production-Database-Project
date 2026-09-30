@@ -220,22 +220,9 @@ ALTER TABLE ops.setup_display_state
         )
     );
 
-/* Preserve any existing movement truth rather than converting old evidence to NULL. */
-UPDATE ops.setup_container_state cs
-SET movement_status = me.event_type,
-    last_movement_at = me.occurred_at
-FROM ops.setup_movement_event me
-WHERE cs.last_movement_event_id = me.setup_movement_event_id
-  AND cs.movement_status IS NULL
-  AND me.event_type IN ('CONTAINER_MOVE','TASK_UNLOAD');
-
-UPDATE ops.setup_display_state ds
-SET movement_status = me.event_type,
-    last_movement_at = me.occurred_at
-FROM ops.setup_movement_event me
-WHERE ds.last_movement_event_id = me.setup_movement_event_id
-  AND ds.movement_status IS NULL
-  AND me.event_type IN ('DISPLAY_MOVE','DISPLAY_REATTACH','TASK_UNLOAD');
+/* Existing movement rows are intentionally not backfilled here. Legacy rows remain
+   explainable through last_movement_event_id/event_type, and avoiding an UPDATE
+   prevents migration-time audit churn on live annual state. */
 
 /* --------------------------------------------------------------------------
    ONE IDEMPOTENT GOVERNED MOVEMENT COMMAND
