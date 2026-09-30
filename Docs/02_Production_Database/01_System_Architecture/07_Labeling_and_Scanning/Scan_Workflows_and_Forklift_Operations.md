@@ -278,6 +278,17 @@ It remains valid to resolve the asset while GPS is off, start GPS afterward, and
 
 Do not require a second QR scan merely because GPS was unavailable at the moment identity was captured. Do not present a generic Record action as ready before valid location evidence exists.
 
+
+A deliberate Record Location observation is evidence of what physically exists where the operator is observing it. Do not reject a real observation merely because:
+
+- a planned material-access date has not arrived;
+- no prior `PICKED` event exists; or
+- the expected movement sequence was bypassed in the field.
+
+The system should preserve the actual observed event and let planning/history show that the physical sequence differed from plan.
+
+For Container return, the screen must resolve and show the canonical Home Location before confirmation. The action must name the destination (for example, **Returned CONT:36 to RA03-A-01**). If Home Location is missing, stop for Manager correction rather than guessing.
+
 ### Training / device test
 
 Both workshop Pick List and Record Location require a deliberate Training mode for teaching material handlers with the real tablet/scanner workflow.
