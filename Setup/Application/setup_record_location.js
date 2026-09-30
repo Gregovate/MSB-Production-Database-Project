@@ -445,6 +445,16 @@
     const note = String(locationNote.value || '').trim();
     const gps = currentGpsSnapshot();
 
+    if (note) {
+      const context = [];
+      if (reference) context.push('named reference ' + reference + ' confirmed');
+      if (gps) context.push('GPS ±' + Math.round(Number(gps.accuracy_m || 0) * 3.280839895) + ' ft');
+      return {
+        ready: true,
+        label: note,
+        detail: context.length ? 'Location note · ' + context.join(' · ') : 'Location note'
+      };
+    }
     if (reference) {
       return {
         ready: true,
@@ -452,15 +462,6 @@
         detail: gps
           ? 'Named reference confirmed · GPS ±' + Math.round(Number(gps.accuracy_m || 0) * 3.280839895) + ' ft'
           : 'Named reference confirmed'
-      };
-    }
-    if (note) {
-      return {
-        ready: true,
-        label: note,
-        detail: gps
-          ? 'Location note · GPS ±' + Math.round(Number(gps.accuracy_m || 0) * 3.280839895) + ' ft'
-          : 'Location note'
       };
     }
     if (gps) {
