@@ -1,13 +1,13 @@
 'use strict';
 
-const CACHE_NAME = 'msb-setup-pick-mode-v2';
+const CACHE_NAME = 'msb-setup-pick-mode-v3';
 const SHELL = [
   './',
   'assets/setup_pick_list.css?v=2026-09-29.3',
-  'assets/setup_pick_mode.css?v=2026-09-30.1',
+  'assets/setup_pick_mode.css?v=2026-09-30.4',
   'assets/qrcode.min.js?v=1',
-  'assets/setup_pick_list.js?v=2026-09-29.3',
-  'assets/setup_pick_mode.js?v=2026-09-30.1'
+  'assets/setup_pick_list.js?v=2026-09-30.4',
+  'assets/setup_pick_mode.js?v=2026-09-30.4'
 ];
 
 self.addEventListener('install', (event) => {
@@ -43,6 +43,8 @@ function isSetupReadRequest(request) {
     || url.pathname.includes('/api/setup/access')
     || url.pathname.includes('/api/setup/containers/source-options')
     || url.pathname.includes('/api/setup/stages')
+    || url.pathname.includes('/api/setup/movements/state')
+    || url.pathname.includes('/api/setup/movements/container-contents')
   );
 }
 

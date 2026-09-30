@@ -603,6 +603,7 @@
             <td class="pick-identity-cell">
               <div class="identity">${esc(humanReadableIdentity(item))}</div>
               ${item.label ? `<div class="item-label">${esc(item.label)}</div>` : ''}
+              <button type="button" class="movement-select no-print" data-identity="${esc(item.identity)}">Use in Scanner</button>
               <div class="pick-state">${pickStatusHtml(item)}</div>
               ${itemDelayed(item) ? '<div class="print-delay-badge">DELAYED — DO NOT PICK YET</div>' : ''}
               ${delayActionHtml(item)}
@@ -676,6 +677,13 @@
     document.querySelectorAll('.resume-pick').forEach((button) => {
       button.addEventListener('click', () => {
         void setPickDelay(Number(button.dataset.containerId), false);
+      });
+    });
+    document.querySelectorAll('.movement-select').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.dispatchEvent(new CustomEvent('msb-movement-select', {
+          detail: {identity: button.dataset.identity}
+        }));
       });
     });
     return items;
@@ -764,5 +772,9 @@
   });
 
   if (overridePickBy && !overridePickBy.value) overridePickBy.value = noSundayPickDate(todayIso());
-  Promise.all([loadAccess(), load()]).catch(showError);
+  Promise.all([loadAccess(), load()])
+    .then(() => {
+      document.dispatchEvent(new CustomEvent('msb-pick-list-ready'));
+    })
+    .catch(showError);
 })();
