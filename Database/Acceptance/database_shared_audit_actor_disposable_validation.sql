@@ -191,6 +191,55 @@ BEGIN
 END
 $contract$;
 
+DO $resolver_fallback$
+DECLARE
+    v_person_id integer;
+    v_uuid uuid;
+    v_expected_name text;
+    v_resolved_person integer;
+    v_resolved_name text;
+BEGIN
+    SELECT
+        p.person_id,
+        p.directus_user_id,
+        coalesce(
+            nullif(btrim(p.preferred_name), ''),
+            nullif(btrim(pg_catalog.concat_ws(' ', p.first_name, p.last_name)), ''),
+            nullif(btrim(p.email), '')
+        )
+      INTO v_person_id, v_uuid, v_expected_name
+    FROM ref.person AS p
+    WHERE p.directus_user_id IS NOT NULL
+      AND nullif(btrim(p.preferred_name), '') IS NULL
+      AND (
+          nullif(btrim(pg_catalog.concat_ws(' ', p.first_name, p.last_name)), '') IS NOT NULL
+          OR nullif(btrim(p.email), '') IS NOT NULL
+      )
+    ORDER BY p.person_id
+    LIMIT 1;
+
+    IF v_person_id IS NULL THEN
+        RAISE EXCEPTION
+            'Shared audit validation requires one mapped Directus person with blank preferred_name';
+    END IF;
+
+    PERFORM pg_catalog.set_config('app.directus_user_uuid', v_uuid::text, true);
+
+    SELECT r.person_id, r.actor_name
+      INTO v_resolved_person, v_resolved_name
+    FROM ref.resolve_actor() AS r;
+
+    IF v_resolved_person IS DISTINCT FROM v_person_id
+       OR nullif(btrim(v_resolved_name), '') IS DISTINCT FROM v_expected_name THEN
+        RAISE EXCEPTION
+            'shared actor resolver blank-preferred-name fallback failed: expected %/% got %/%',
+            v_person_id, v_expected_name, v_resolved_person, v_resolved_name;
+    END IF;
+
+    PERFORM pg_catalog.set_config('app.directus_user_uuid', '', true);
+END
+$resolver_fallback$;
+
 DO $validation$
 DECLARE
     v_person_1 integer;

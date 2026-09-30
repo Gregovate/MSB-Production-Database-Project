@@ -146,3 +146,14 @@ def test_database_wide_disposable_runner_tests_repair_against_known_production_g
     assert "Tee-Object" not in wrapper
     assert "ssh -f" not in wrapper
     assert "Production access: pg_dump + SELECT only." in wrapper
+
+
+def test_shared_actor_resolver_handles_blank_preferred_name() -> None:
+    sql = REPAIR.read_text(encoding="utf-8")
+    validation = DB_VALIDATION.read_text(encoding="utf-8")
+
+    assert "CREATE OR REPLACE FUNCTION ref.resolve_actor()" in sql
+    assert "nullif(btrim(p.preferred_name), '')" in sql
+    assert "pg_catalog.concat_ws(' ', p.first_name, p.last_name)" in sql
+    assert "nullif(btrim(p.email), '')" in sql
+    assert "shared actor resolver blank-preferred-name fallback failed" in validation
