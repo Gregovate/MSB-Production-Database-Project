@@ -10,6 +10,15 @@
   const manualInput = document.getElementById('movement-manual-input');
   const manualGo = document.getElementById('movement-manual-go');
   const seasonSelect = document.getElementById('season-select');
+  const trainingEntry = document.getElementById('pick-training-entry');
+  const trainingEnter = document.getElementById('enter-pick-training');
+  const trainingExit = document.getElementById('exit-pick-training');
+  const trainingBanner = document.getElementById('pick-training-banner');
+  const containersPicked = document.getElementById('pick-mode-containers-picked');
+  const trainingCount = document.getElementById('pick-mode-training-count');
+
+  const pageParams = new URLSearchParams(location.search);
+  const trainingMode = pageParams.get('training') === '1';
 
   const DB_NAME = 'msb-setup-movement';
   const DB_VERSION = 1;
@@ -22,6 +31,7 @@
   let scanResetTimer = null;
   let queuedPickKeys = new Set();
   let syncing = false;
+  let trainingPickCount = 0;
 
   function bridge() {
     return window.MSBSetupPickList || null;
@@ -49,10 +59,54 @@
     feedback.textContent = message;
   }
 
+  function refreshPanelCounts() {
+    const current = bridge() && bridge().containersPickedCount
+      ? bridge().containersPickedCount()
+      : 0;
+    if (containersPicked) containersPicked.textContent = String(current);
+    if (trainingCount) {
+      trainingCount.hidden = !trainingMode;
+      const strong = trainingCount.querySelector('strong');
+      if (strong) strong.textContent = String(trainingPickCount);
+    }
+  }
+
   function updateNetwork() {
+    if (trainingMode) {
+      networkState.textContent = navigator.onLine
+        ? 'ONLINE · TRAINING READ-ONLY'
+        : 'OFFLINE · TRAINING READ-ONLY';
+      return;
+    }
     networkState.textContent = navigator.onLine
       ? 'ONLINE'
       : 'OFFLINE — valid picks will queue locally';
+  }
+
+  function applyTrainingMode() {
+    document.body.classList.toggle('pick-training-mode', trainingMode);
+    if (trainingBanner) trainingBanner.hidden = !trainingMode;
+    if (trainingEntry) trainingEntry.hidden = trainingMode;
+    if (trainingExit) trainingExit.hidden = !trainingMode;
+    if (startButton) startButton.textContent = trainingMode ? 'Start Training Pick' : 'Start Picking';
+    refreshPanelCounts();
+  }
+
+  function enterTrainingMode() {
+    const confirmed = window.confirm(
+      'Enter Pick List Training Mode?\n\n'
+      + 'Nothing will be recorded or queued. The real Pick List and scanner validation will still be used.'
+    );
+    if (!confirmed) return;
+    const url = new URL(location.href);
+    url.searchParams.set('training', '1');
+    location.href = url.toString();
+  }
+
+  function exitTrainingMode() {
+    const url = new URL(location.href);
+    url.searchParams.delete('training');
+    location.href = url.toString();
   }
 
   function parseIdentity(raw) {
@@ -179,7 +233,10 @@
       }).map(function (row) {
         return assetKey(row.asset_type, row.asset_id);
       }));
-      queueState.textContent = 'Offline queue: ' + rows.length;
+      queueState.textContent = trainingMode
+        ? 'Training — movement queue disabled' + (rows.length ? ' · real pending queue: ' + rows.length : '')
+        : 'Offline queue: ' + rows.length;
+      refreshPanelCounts();
       return rows;
     } catch (_error) {
       queueState.textContent = 'Offline queue unavailable';
@@ -204,6 +261,9 @@
   }
 
   async function postMovement(payload) {
+    if (trainingMode) {
+      throw new Error('Training Mode blocks Setup movement writes.');
+    }
     const response = await fetch('../api/setup/movements', {
       method: 'POST',
       headers: {
@@ -225,6 +285,9 @@
   }
 
   async function queueMovement(payload) {
+    if (trainingMode) {
+      throw new Error('Training Mode blocks the offline movement queue.');
+    }
     await putQueue(Object.assign({}, payload, {
       offline_captured: true,
       queue_status: 'QUEUED'
@@ -253,6 +316,13 @@
     const validation = cachedPickValidation(identity);
     if (!validation.ok) {
       setFeedback(validation.kind, validation.message);
+      return;
+    }
+
+    if (trainingMode) {
+      trainingPickCount += 1;
+      refreshPanelCounts();
+      setFeedback('success', 'TRAINING — WOULD PICK ' + identity.identity + ' FOR PARK TRANSPORT · NOTHING RECORDED');
       return;
     }
 
@@ -337,7 +407,13 @@
     document.body.classList.add('pick-mode-active');
     panel.hidden = false;
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    setFeedback('ready', 'READY — scan the next Pick List item');
+    setFeedback(
+      'ready',
+      trainingMode
+        ? 'TRAINING — READY — scan the next Pick List item · NOTHING WILL BE RECORDED'
+        : 'READY — scan the next Pick List item'
+    );
+    refreshPanelCounts();
     void refreshQueueState();
   }
 
@@ -350,7 +426,7 @@
   }
 
   async function syncQueue() {
-    if (syncing || !navigator.onLine) return;
+    if (trainingMode || syncing || !navigator.onLine) return;
     syncing = true;
     try {
       const rows = await queueRows();
@@ -405,14 +481,18 @@
   });
   startButton.addEventListener('click', startPicking);
   stopButton.addEventListener('click', stopPicking);
+  trainingEnter?.addEventListener('click', enterTrainingMode);
+  trainingExit?.addEventListener('click', exitTrainingMode);
+  document.addEventListener('msb-pick-list-rendered', refreshPanelCounts);
   window.addEventListener('online', function () {
     updateNetwork();
     void syncQueue();
   });
   window.addEventListener('offline', updateNetwork);
 
+  applyTrainingMode();
   updateNetwork();
   void refreshQueueState();
   void registerServiceWorker();
-  if (navigator.onLine) void syncQueue();
+  if (navigator.onLine && !trainingMode) void syncQueue();
 })();
