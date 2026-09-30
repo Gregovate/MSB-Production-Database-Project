@@ -92,7 +92,7 @@ try {
 
     $serverText = [System.IO.File]::ReadAllText($ServerScript)
     $serverText = $serverText.Replace($cr + $lf, $lf).Replace($cr, $lf)
-    $localServer = Join-Path $localBundle 'setup_206_pick_list_production_deploy_server.sh'
+    $localServer = Join-Path $localBundle 'setup_206_v0322_production_deploy_server.sh'
     [System.IO.File]::WriteAllText($localServer, $serverText, $utf8NoBom)
 
     if ($serverText.Contains($cr)) {
@@ -104,7 +104,7 @@ try {
         throw "SCP deployment bundle upload failed with exit code $LASTEXITCODE"
     }
 
-    $remoteScript = "$remoteRoot/setup_206_pick_list_production_deploy_server.sh"
+    $remoteScript = "$remoteRoot/setup_206_v0322_production_deploy_server.sh"
     $remoteCommand = "chmod 700 '$remoteScript' && bash -n '$remoteScript' && timeout --foreground --signal=TERM 3600s bash '$remoteScript'"
 
     Write-Host
