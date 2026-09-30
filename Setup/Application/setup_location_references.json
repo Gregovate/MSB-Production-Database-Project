@@ -1,0 +1,193 @@
+{
+  "version": "2026-stage-gpx-20260930.1",
+  "source": "2026_msb.gpx",
+  "source_context": "#219 field-test accepted Stage reference set; consumed by #88 Record Location; #171 remains GIS authority",
+  "points": [
+    {
+      "reference_id": "stage-01",
+      "name": "04-Food Collection-FC",
+      "latitude": 43.7777955,
+      "longitude": -87.74358339
+    },
+    {
+      "reference_id": "stage-02",
+      "name": "01-Front Entrance-FE",
+      "latitude": 43.77752968,
+      "longitude": -87.74151575
+    },
+    {
+      "reference_id": "stage-03",
+      "name": "00-HWY 42-HW",
+      "latitude": 43.77792811,
+      "longitude": -87.74186506
+    },
+    {
+      "reference_id": "stage-04",
+      "name": "05-Festive Trees-FT",
+      "latitude": 43.77833036,
+      "longitude": -87.74354104
+    },
+    {
+      "reference_id": "stage-05",
+      "name": "05a-Mega Star-MS",
+      "latitude": 43.7785483,
+      "longitude": -87.74319754
+    },
+    {
+      "reference_id": "stage-06",
+      "name": "06-Post Office-PO",
+      "latitude": 43.77874564,
+      "longitude": -87.74423908
+    },
+    {
+      "reference_id": "stage-07",
+      "name": "07a-Who Forest-WF",
+      "latitude": 43.77948868,
+      "longitude": -87.74573914
+    },
+    {
+      "reference_id": "stage-08",
+      "name": "08-Elf Choir-EC",
+      "latitude": 43.77942108,
+      "longitude": -87.74623869
+    },
+    {
+      "reference_id": "stage-09",
+      "name": "09-Global Warming-GW",
+      "latitude": 43.77977361,
+      "longitude": -87.74652366
+    },
+    {
+      "reference_id": "stage-10",
+      "name": "10-Stars-ST",
+      "latitude": 43.78026391,
+      "longitude": -87.74678012
+    },
+    {
+      "reference_id": "stage-11",
+      "name": "11-Sledders-SL",
+      "latitude": 43.78038637,
+      "longitude": -87.74757818
+    },
+    {
+      "reference_id": "stage-12",
+      "name": "13-Winter Wonderland-WW",
+      "latitude": 43.77984397,
+      "longitude": -87.74782959
+    },
+    {
+      "reference_id": "stage-13",
+      "name": "14-Icicle Tunnel-IT",
+      "latitude": 43.7789102,
+      "longitude": -87.74828739
+    },
+    {
+      "reference_id": "stage-14",
+      "name": "15-Church-Bells-CH",
+      "latitude": 43.77852769,
+      "longitude": -87.74910923
+    },
+    {
+      "reference_id": "stage-15",
+      "name": "16-Northern Lights-NL",
+      "latitude": 43.77721337,
+      "longitude": -87.74888248
+    },
+    {
+      "reference_id": "stage-16",
+      "name": "17-Candyland-CL",
+      "latitude": 43.77680829,
+      "longitude": -87.74697976
+    },
+    {
+      "reference_id": "stage-17",
+      "name": "18-Dancing Forest-DF",
+      "latitude": 43.77649806,
+      "longitude": -87.74559202
+    },
+    {
+      "reference_id": "stage-18",
+      "name": "19-Santa's Workshop-SW",
+      "latitude": 43.77683742,
+      "longitude": -87.74577019
+    },
+    {
+      "reference_id": "stage-19",
+      "name": "20-Snow Storm-SS",
+      "latitude": 43.77625492,
+      "longitude": -87.74475721
+    },
+    {
+      "reference_id": "stage-20",
+      "name": "21-Polar Bear Playground-PB",
+      "latitude": 43.77604286,
+      "longitude": -87.74487442
+    },
+    {
+      "reference_id": "stage-21",
+      "name": "22-Glistening Grove-GG",
+      "latitude": 43.77573908,
+      "longitude": -87.74390953
+    },
+    {
+      "reference_id": "stage-22",
+      "name": "23-Peanuts-PN",
+      "latitude": 43.77577894,
+      "longitude": -87.74294278
+    },
+    {
+      "reference_id": "stage-23",
+      "name": "24-Traditional Christmas-TC",
+      "latitude": 43.77591889,
+      "longitude": -87.74289151
+    },
+    {
+      "reference_id": "stage-24",
+      "name": "25-Racing Arches-RA",
+      "latitude": 43.77636681,
+      "longitude": -87.74226992
+    },
+    {
+      "reference_id": "stage-25",
+      "name": "26-Magic Igloo-MI",
+      "latitude": 43.77714554,
+      "longitude": -87.74166344
+    },
+    {
+      "reference_id": "stage-26",
+      "name": "02-Triangle-TR",
+      "latitude": 43.77709198,
+      "longitude": -87.74208111
+    },
+    {
+      "reference_id": "stage-27",
+      "name": "03-Welcome Area-WA",
+      "latitude": 43.77741945,
+      "longitude": -87.7426539
+    },
+    {
+      "reference_id": "stage-28",
+      "name": "03a-Mega Cube-MC",
+      "latitude": 43.77756775,
+      "longitude": -87.7426221
+    },
+    {
+      "reference_id": "stage-29",
+      "name": "30-Santa's Station-QV",
+      "latitude": 43.78175546,
+      "longitude": -87.74664227
+    },
+    {
+      "reference_id": "stage-30",
+      "name": "30-Santa's Station Entrance",
+      "latitude": 43.78063504,
+      "longitude": -87.74542583
+    },
+    {
+      "reference_id": "stage-31",
+      "name": "07-Whoville-WV",
+      "latitude": 43.77955255,
+      "longitude": -87.74491109
+    }
+  ]
+}

@@ -263,16 +263,13 @@ if [[ ! -s "$GRANTS_FILE" ]]; then
     exit 23
 fi
 
-grant_index=0
-while IFS= read -r grant_stmt || [[ -n "$grant_stmt" ]]; do
-    [[ -z "$grant_stmt" ]] && continue
-    grant_index=$((grant_index + 1))
-    echo "Grant replay [$grant_index]: $grant_stmt"
-    if ! psql_test -c "$grant_stmt" </dev/null; then
-        echo "FAIL: application-role function grant replay failed at statement $grant_index"
-        exit 23
-    fi
-done < "$GRANTS_FILE"
+grant_count="$(wc -l < "$GRANTS_FILE" | tr -d '[:space:]')"
+echo "Production function ACL statements extracted: $grant_count"
+if ! psql_test -q < "$GRANTS_FILE"; then
+    echo "FAIL: application-role function ACL batch replay failed"
+    exit 23
+fi
+echo "Production function ACL batch replay: PASS"
 
 psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"
 

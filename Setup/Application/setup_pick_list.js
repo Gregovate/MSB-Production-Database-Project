@@ -25,6 +25,7 @@
   let access = null;
   let containerCatalog = [];
   let stageCatalog = [];
+  const settledPickEvidence = new Map();
 
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, c => ({
@@ -200,7 +201,23 @@
   }
 
   function itemMoved(item) {
-    return Boolean(item?.current_observation?.last_movement_event_id);
+    const observation = item?.current_observation || {};
+    const movementStatus = String(observation.movement_status || '').toUpperCase();
+    if (movementStatus === 'RETURNED') return false;
+    if ([
+      'PICKED',
+      'LOADED',
+      'IN_TRANSIT',
+      'DELIVERED',
+      'UNLOADED',
+      'STAGED',
+      'PLACED',
+      'RELOCATED',
+      'CONTAINER_MOVE',
+      'DISPLAY_MOVE',
+      'TASK_UNLOAD'
+    ].includes(movementStatus)) return true;
+    return !movementStatus && Boolean(observation.last_movement_event_id);
   }
 
   function itemDelayed(item) {
@@ -245,7 +262,11 @@
     }
     const o = item.current_observation || {};
     const when = formatObservedAt(o.last_observed_at) || 'time unavailable';
-    return `<span class="pick-status picked">PICKED</span><span class="pick-status-detail">${esc(when)} · ${esc(currentLocationText(item))}</span>`;
+    const movementStatus = String(o.movement_status || '').toUpperCase();
+    const label = movementStatus
+      ? movementStatus.replaceAll('_', ' ')
+      : 'PICKED / MOVED';
+    return `<span class="pick-status picked">${esc(label)}</span><span class="pick-status-detail">${esc(when)}</span>`;
   }
 
   function destinationText(reasons) {
@@ -370,17 +391,74 @@
     if (dates.includes(current)) dateFilter.value = current;
   }
 
-  function renderSummary(items) {
-    const s = readiness?.summary || {};
+  function scopedPhysicalItems(date = dateFilter?.value || '') {
+    return (readiness?.physical_items || []).filter(
+      (item) => itemReasonsForDate(item, date).length
+    );
+  }
+
+  function containersPickedCount(date = dateFilter?.value || '') {
+    return scopedPhysicalItems(date).filter(
+      (item) => item.physical_type === 'CONTAINER'
+        && Boolean(item.current_observation?.has_pick_event)
+    ).length;
+  }
+
+  function physicalItemKey(assetType, assetId) {
+    return String(assetType || '').toUpperCase() + ':' + Number(assetId);
+  }
+
+  function applySettledPickEvidence() {
+    const items = readiness?.physical_items || [];
+    const presentKeys = new Set();
+
+    for (const item of items) {
+      const key = physicalItemKey(item.physical_type, item.physical_id);
+      presentKeys.add(key);
+      const evidence = settledPickEvidence.get(key);
+      if (!evidence) continue;
+
+      if (itemMoved(item)) {
+        settledPickEvidence.delete(key);
+        continue;
+      }
+
+      item.current_observation = Object.assign(
+        {},
+        item.current_observation || {},
+        evidence
+      );
+    }
+
+    for (const key of [...settledPickEvidence.keys()]) {
+      if (!presentKeys.has(key)) settledPickEvidence.delete(key);
+    }
+  }
+
+  function settlePicked(identity, movement) {
+    const key = physicalItemKey(identity.asset_type, identity.asset_id);
+    settledPickEvidence.set(key, {
+      movement_status: String(movement?.movement_status || movement?.movement_action || 'PICKED').toUpperCase(),
+      last_movement_event_id: movement?.setup_movement_event_id || null,
+      last_observed_at: movement?.occurred_at || new Date().toISOString(),
+      has_pick_event: true
+    });
+    applySettledPickEvidence();
+    render();
+  }
+
+  function renderSummary(date) {
+    const scopedItems = scopedPhysicalItems(date);
     const cards = [
-      ['Scheduled assignments', s.scheduled_assignment_count ?? 0],
-      ['Active picks', items.filter(i => !itemMoved(i) && !itemDelayed(i)).length],
-      ['Delayed picks', items.filter(i => !itemMoved(i) && itemDelayed(i)).length],
-      ['Picked / moved', items.filter(itemMoved).length]
+      ['Items to pick', scopedItems.filter(i => !itemMoved(i) && !itemDelayed(i)).length],
+      ['Delayed items', scopedItems.filter(i => !itemMoved(i) && itemDelayed(i)).length],
+      ['Items already moved', scopedItems.filter(itemMoved).length],
+      ['Containers picked', containersPickedCount(date)]
     ];
     summary.innerHTML = cards.map(([label, value]) =>
       `<div class="summary-card"><strong>${esc(value)}</strong><span>${esc(label)}</span></div>`
     ).join('');
+    document.dispatchEvent(new CustomEvent('msb-pick-list-rendered'));
   }
 
   function itemDates(item, reasons, selectedDate) {
@@ -586,6 +664,7 @@
             <td class="pick-identity-cell">
               <div class="identity">${esc(humanReadableIdentity(item))}</div>
               ${item.label ? `<div class="item-label">${esc(item.label)}</div>` : ''}
+              <button type="button" class="movement-select no-print" data-identity="${esc(item.identity)}">Use in Scanner</button>
               <div class="pick-state">${pickStatusHtml(item)}</div>
               ${itemDelayed(item) ? '<div class="print-delay-badge">DELAYED — DO NOT PICK YET</div>' : ''}
               ${delayActionHtml(item)}
@@ -661,6 +740,13 @@
         void setPickDelay(Number(button.dataset.containerId), false);
       });
     });
+    document.querySelectorAll('.movement-select').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.dispatchEvent(new CustomEvent('msb-movement-select', {
+          detail: {identity: button.dataset.identity}
+        }));
+      });
+    });
     return items;
   }
 
@@ -668,7 +754,7 @@
     if (!readiness) return;
     const date = dateFilter.value;
     const items = renderItems(date);
-    renderSummary(items);
+    renderSummary(date);
     generatedAt.textContent = `Generated ${new Date().toLocaleString()}`;
     statusLine.textContent = readiness.session
       ? `Live ${readiness.session.season_year} schedule → physical Pick List.`
@@ -682,6 +768,7 @@
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
     readiness = data.readiness;
+    applySettledPickEvidence();
     populateDates();
     applyAccess();
     render();
@@ -738,6 +825,20 @@
     pickList.innerHTML = '';
   }
 
+  window.MSBSetupPickList = Object.freeze({
+    reload: () => load(),
+    readiness: () => readiness,
+    access: () => access,
+    itemMoved,
+    itemDelayed,
+    containersPickedCount,
+    settlePicked
+  });
+
   if (overridePickBy && !overridePickBy.value) overridePickBy.value = noSundayPickDate(todayIso());
-  Promise.all([loadAccess(), load()]).catch(showError);
+  Promise.all([loadAccess(), load()])
+    .then(() => {
+      document.dispatchEvent(new CustomEvent('msb-pick-list-ready'));
+    })
+    .catch(showError);
 })();

@@ -121,6 +121,126 @@ prod_fingerprint() {
         "
 }
 
+cleanup_stale_preview_on_selected_port() {
+    local listener_pids=()
+    local fieldwiring_uid
+    local pid
+    local cmdline
+    local owner_uid
+    local pgid
+    local app_dir
+    local stale_worktree=""
+    local dsn
+    local db_host
+    local stale_container=""
+    local bundle
+    local manifest_port
+
+    mapfile -t listener_pids < <(
+        sudo ss -ltnp "sport = :$PREVIEW_PORT" 2>/dev/null             | grep -oE 'pid=[0-9]+'             | cut -d= -f2             | sort -u             || true
+    )
+
+    if (( ${#listener_pids[@]} == 0 )); then
+        rm -f "$STATE_FILE" >/dev/null 2>&1 || true
+        return 0
+    fi
+
+    if (( ${#listener_pids[@]} != 1 )); then
+        echo "FAIL: preview port $PREVIEW_PORT has multiple listener PIDs; refusing stale cleanup"
+        sudo ss -ltnp "sport = :$PREVIEW_PORT" || true
+        return 8
+    fi
+
+    pid="${listener_pids[0]}"
+    cmdline="$(sudo cat "/proc/$pid/cmdline" 2>/dev/null | tr '\0' ' ' || true)"
+    owner_uid="$(ps -o uid= -p "$pid" 2>/dev/null | xargs || true)"
+    fieldwiring_uid="$(id -u fieldwiring)"
+
+    if [[ "$owner_uid" != "$fieldwiring_uid"        || "$cmdline" != *"/tmp/msb-setup-browser-preview-candidate-"*"/Setup/Acceptance/setup_session_browser_preview_entry.py"* ]]; then
+        echo "FAIL: preview port $PREVIEW_PORT is owned by an unknown/non-reusable-Setup-preview process; refusing to kill it"
+        ps -o pid,ppid,pgid,sid,user,args -p "$pid" || true
+        sudo ss -ltnp "sport = :$PREVIEW_PORT" || true
+        return 8
+    fi
+
+    app_dir="$(sudo cat "/proc/$pid/environ" 2>/dev/null         | tr '\0' '\n'         | sed -n 's/^MSB_SETUP_PREVIEW_APP_DIR=//p'         | head -1)"
+    if [[ "$app_dir" == /tmp/msb-setup-browser-preview-candidate-*/Setup/Application ]]; then
+        stale_worktree="${app_dir%/Setup/Application}"
+    else
+        echo "FAIL: recognized preview PID $pid has unexpected application directory; refusing stale cleanup"
+        ps -o pid,ppid,pgid,sid,user,args -p "$pid" || true
+        return 8
+    fi
+
+    dsn="$(sudo cat "/proc/$pid/environ" 2>/dev/null         | tr '\0' '\n'         | sed -n 's/^SETUP_DATABASE_DSN=//p'         | head -1)"
+    db_host="$(sed -n 's/.*\(^\|[[:space:]]\)host=\([^[:space:]]*\).*/\2/p' <<<"$dsn")"
+    if [[ -n "$db_host" ]]; then
+        while IFS= read -r name; do
+            [[ -n "$name" ]] || continue
+            ip="$(sudo docker inspect "$name" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null || true)"
+            if [[ "$ip" == "$db_host" ]]; then
+                stale_container="$name"
+                break
+            fi
+        done < <(sudo docker ps -a --format '{{.Names}}' | grep '^msb-setup-browser-preview-' || true)
+    fi
+
+    if [[ -z "$stale_container" ]]; then
+        echo "FAIL: recognized preview PID $pid does not resolve to its expected disposable Setup container; refusing partial cleanup"
+        return 8
+    fi
+
+    pgid="$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ')"
+    if [[ ! "$pgid" =~ ^[0-9]+$ ]]; then
+        echo "FAIL: could not determine process group for stale Setup preview PID $pid"
+        return 8
+    fi
+
+    echo "Recognized stale reusable Setup preview on port $PREVIEW_PORT"
+    echo "  PID/PGID: $pid/$pgid"
+    echo "  worktree: $stale_worktree"
+    echo "  container: $stale_container"
+    echo "Stopping only this stale preview instance..."
+
+    sudo -u fieldwiring -H kill -- -"$pgid" >/dev/null 2>&1 || true
+    sleep 1
+    if sudo kill -0 "$pid" >/dev/null 2>&1; then
+        sudo -u fieldwiring -H kill -KILL -- -"$pgid" >/dev/null 2>&1 || true
+        sleep 1
+    fi
+
+    if ss -ltnH "sport = :$PREVIEW_PORT" | grep -q .; then
+        echo "FAIL: stale reusable Setup preview still owns port $PREVIEW_PORT after narrow process-group cleanup"
+        sudo ss -ltnp "sport = :$PREVIEW_PORT" || true
+        return 8
+    fi
+
+    echo "Removing stale reusable Setup disposable container: $stale_container"
+    sudo docker rm -f "$stale_container" >/dev/null 2>&1 || true
+
+    if sudo git -C "$REPO_ROOT" worktree list --porcelain 2>/dev/null | grep -Fq "worktree $stale_worktree"; then
+        echo "Removing stale reusable Setup worktree: $stale_worktree"
+        sudo git -C "$REPO_ROOT" worktree remove --force "$stale_worktree" >/dev/null 2>&1 || true
+    fi
+
+    rm -f "$STATE_FILE" >/dev/null 2>&1 || true
+
+    # Remove only uploaded reusable-preview bundles whose manifest names this exact
+    # selected port. Reports and Flask logs are retained as acceptance evidence.
+    for bundle in /tmp/msb-setup-disposable-browser-preview-*; do
+        [[ -d "$bundle" ]] || continue
+        [[ -s "$bundle/preview_manifest.tsv" ]] || continue
+        manifest_port="$(awk -F '\t' '$1 == "preview_port" { print $2; exit }' "$bundle/preview_manifest.tsv")"
+        if [[ "$manifest_port" == "$PREVIEW_PORT" ]]; then
+            echo "Removing stale reusable Setup preview bundle: $bundle"
+            rm -rf -- "$bundle"
+        fi
+    done
+
+    echo "PASS: stale reusable Setup preview on port $PREVIEW_PORT removed narrowly"
+    return 0
+}
+
 cleanup() {
     status=$?
     trap - EXIT HUP INT TERM
@@ -315,8 +435,14 @@ if [[ ! "$PREVIEW_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$ ]]; then
     echo "FAIL: preview email is invalid"
     exit 7
 fi
+
+echo "--- Selected-port stale preview cleanup ---"
+if ! cleanup_stale_preview_on_selected_port; then
+    exit 8
+fi
 if ss -ltnH "sport = :$PREVIEW_PORT" | grep -q .; then
-    echo "FAIL: preview port $PREVIEW_PORT is already listening on msb-prod-db"
+    echo "FAIL: preview port $PREVIEW_PORT remains occupied after selected-port cleanup"
+    sudo ss -ltnp "sport = :$PREVIEW_PORT" || true
     exit 8
 fi
 if ! sudo docker inspect "$PROD_CONTAINER" >/dev/null 2>&1; then
@@ -518,16 +644,13 @@ if [[ ! -s "$GRANTS_FILE" ]]; then
     exit 23
 fi
 
-grant_index=0
-while IFS= read -r grant_stmt || [[ -n "$grant_stmt" ]]; do
-    [[ -z "$grant_stmt" ]] && continue
-    grant_index=$((grant_index + 1))
-    echo "Grant replay [$grant_index]: $grant_stmt"
-    if ! psql_test -c "$grant_stmt" </dev/null; then
-        echo "FAIL: application-role function grant replay failed at statement $grant_index"
-        exit 23
-    fi
-done < "$GRANTS_FILE"
+grant_count="$(wc -l < "$GRANTS_FILE" | tr -d '[:space:]')"
+echo "Production function ACL statements extracted: $grant_count"
+if ! psql_test -q < "$GRANTS_FILE"; then
+    echo "FAIL: application-role function ACL batch replay failed"
+    exit 23
+fi
+echo "Production function ACL batch replay: PASS"
 
 psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"
 

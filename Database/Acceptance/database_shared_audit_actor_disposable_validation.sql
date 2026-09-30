@@ -191,6 +191,70 @@ BEGIN
 END
 $contract$;
 
+/* Shared actor resolver preferred-name fallback validation.
+   Exercise the exact supported case that exposed #88: a mapped Directus person
+   whose preferred_name is NULL but whose durable first/last name is present. */
+DO $resolver_fallback$
+DECLARE
+    v_person_id integer;
+    v_uuid uuid;
+    v_original_preferred text;
+    v_expected_name text;
+    v_resolved_person integer;
+    v_resolved_name text;
+BEGIN
+    SELECT
+        p.person_id,
+        p.directus_user_id,
+        p.preferred_name,
+        coalesce(
+            nullif(btrim(pg_catalog.concat_ws(' ', p.first_name, p.last_name)), ''),
+            nullif(btrim(p.email), '')
+        )
+      INTO
+        v_person_id,
+        v_uuid,
+        v_original_preferred,
+        v_expected_name
+    FROM ref.person AS p
+    WHERE p.directus_user_id IS NOT NULL
+      AND (
+          nullif(btrim(pg_catalog.concat_ws(' ', p.first_name, p.last_name)), '') IS NOT NULL
+          OR nullif(btrim(p.email), '') IS NOT NULL
+      )
+    ORDER BY (nullif(btrim(p.preferred_name), '') IS NULL) DESC, p.person_id
+    LIMIT 1;
+
+    IF v_person_id IS NULL OR v_uuid IS NULL OR v_expected_name IS NULL THEN
+        RAISE EXCEPTION
+            'Mapped Directus person with durable name/email is required for resolver fallback validation';
+    END IF;
+
+    PERFORM pg_catalog.set_config('app.directus_user_uuid', v_uuid::text, true);
+
+    UPDATE ref.person AS p
+       SET preferred_name = NULL
+     WHERE p.person_id = v_person_id;
+
+    SELECT r.person_id, r.actor_name
+      INTO v_resolved_person, v_resolved_name
+    FROM ref.resolve_actor() AS r;
+
+    IF v_resolved_person IS DISTINCT FROM v_person_id
+       OR v_resolved_name IS DISTINCT FROM v_expected_name THEN
+        RAISE EXCEPTION
+            'Shared actor resolver preferred-name fallback failed: expected %/% got %/%',
+            v_person_id, v_expected_name, v_resolved_person, v_resolved_name;
+    END IF;
+
+    UPDATE ref.person AS p
+       SET preferred_name = v_original_preferred
+     WHERE p.person_id = v_person_id;
+
+    PERFORM pg_catalog.set_config('app.directus_user_uuid', '', true);
+END
+$resolver_fallback$;
+
 DO $validation$
 DECLARE
     v_person_1 integer;

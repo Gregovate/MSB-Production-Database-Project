@@ -2,8 +2,8 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT PLANNING BASELINE — Setup/Deployment engineering pending |
-| Current revision | 2026-08-22 |
+| Status | CURRENT OPERATING CONTRACT — #88 movement/Record Location acceptance pending |
+| Current revision | 2026-09-30 |
 
 ## Purpose
 
@@ -223,3 +223,106 @@ Do not start by creating movement tables or GPS columns.
 - [Containers and Storage](../04_Containers_and_Storage/README.md)
 - [Setup and Deployment](../12_Setup_and_Deployment/README.md)
 - [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md)
+
+
+## 2026-09-30 Mobile Browser / Record Location Findings
+
+Field-browser review established several launch-critical Scan boundaries.
+
+### Normal Scan remains the default QR behavior
+
+Permanent Display and Container QR codes continue to resolve through the existing MSB Scan application.
+
+That general Scan surface may be used for:
+
+- asset identity/details;
+- Field Wiring;
+- Procedures;
+- Testing;
+- Container relationships;
+- Work Orders; and
+- other existing Scan actions.
+
+A park scan does not, by itself, prove that the operator intends to change Setup movement/location state.
+
+Therefore:
+
+```text
+normal QR scan
+    -> MSB Scan identity/action page
+    -> optional passive GPS / likely-location context
+    -> NO Setup movement write solely because scanning occurred
+```
+
+A resolved Display or Container page may offer **Record Location** as an explicit action. That action may hand the already-resolved `DISP:` or `CONT:` identity into the Setup Record Location workflow so a second scan is unnecessary.
+
+The dedicated Record Location workflow remains distinct from both the general Scan hub and the workshop Pick List.
+
+### Identity and location evidence are separate
+
+The physical QR code supplies permanent identity, not a GPS coordinate.
+
+The Record Location field sequence is explicit:
+
+1. **Scan / select the asset.**
+2. **Establish or confirm location evidence.**
+   - Start GPS when raw location evidence is needed.
+   - A current GPS fix alone is valid evidence.
+   - A nearby named reference may be selected as optional confirmation/context.
+   - A deliberate location note may be used where appropriate.
+3. **Review and record.**
+   - The selected asset and the exact location evidence must be shown together before the final action is enabled.
+   - The action should state what will be recorded, for example `Record CONT:036 at 01-Front Entrance-FE`.
+
+It remains valid to resolve the asset while GPS is off, start GPS afterward, and record without rescanning the asset.
+
+Do not require a second QR scan merely because GPS was unavailable at the moment identity was captured. Do not present a generic Record action as ready before valid location evidence exists.
+
+
+A deliberate Record Location observation is evidence of what physically exists where the operator is observing it. Do not reject a real observation merely because:
+
+- a planned material-access date has not arrived;
+- no prior `PICKED` event exists; or
+- the expected movement sequence was bypassed in the field.
+
+The system should preserve the actual observed event and let planning/history show that the physical sequence differed from plan.
+
+For Container return, the screen must resolve and show the canonical Home Location before confirmation. The action must name the destination (for example, **Returned CONT:36 to RA03-A-01**). If Home Location is missing, stop for Manager correction rather than guessing.
+
+### Training / device test
+
+Both workshop Pick List and Record Location require a deliberate Training mode for teaching material handlers with the real tablet/scanner workflow.
+
+Training uses real authenticated read context and real device hardware/sensors, but it must not create movement events or add events to the offline queue.
+
+Active Training must be unmistakable with **TRAINING MODE — NOTHING WILL BE RECORDED** and an obvious exit action.
+
+### Mobile browser account-selection failure
+
+Operator testing on 2026-09-30 exposed a mobile authentication failure mode:
+
+- the browser/device had more than one Google account context;
+- one login path attempted a Google account that was not eligible for the MSB organization;
+- Google returned `403 org_internal`;
+- that browser path did **not** present a usable account chooser/switch-account prompt before failing;
+- another tested Chrome flow did present account selection.
+
+This is an authentication/browser interoperability issue, not a Scan-identity failure.
+
+Launch requirement:
+
+> A volunteer using a phone/tablet must have a practical way to choose the authorized `sheboyganlights.org` Google account when the browser's current Google session is the wrong account.
+
+Do not assume every mobile browser behaves like Chrome or will automatically offer the correct account chooser.
+
+The current Cloudflare Access / Google Apps identity-provider configuration should be inspected under the existing server-management authority. A forced/select-account prompt or equivalent recovery path may be appropriate, but the exact configuration change must be verified against the live Access setup before mutation.
+
+The Scan application itself should not work around this by weakening authentication or creating an alternate unauthenticated movement path.
+
+### Online/offline and reference-data boundary
+
+Normal Scan lookup/actions and Setup Record Location have different write semantics, but field operation must account for intermittent connectivity.
+
+Record Location owns durable offline capture/replay. It must preserve original event/GPS evidence and use a versioned refreshable reference-location dataset, with the last accepted version available offline.
+
+General Scan may show passive location context, but it must not silently create a queued movement event merely because location evidence was available.

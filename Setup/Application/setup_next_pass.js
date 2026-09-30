@@ -651,13 +651,13 @@ function renderPlanningBacklog() {
 function installNextTabs() {
   const tabs = document.querySelector('.tabs');
   if (!tabs || el('schedule-view')) return;
-  const movementButton = tabs.querySelector('[data-view="movement"]');
+  const pickListButton = document.getElementById('setup-pick-list-link');
   const scheduleButton = document.createElement('button');
   scheduleButton.className = 'tab'; scheduleButton.dataset.view = 'schedule'; scheduleButton.type = 'button'; scheduleButton.textContent = 'Plan / Schedule';
   const performButton = document.createElement('button');
   performButton.className = 'tab'; performButton.dataset.view = 'perform'; performButton.type = 'button'; performButton.textContent = 'Perform Work';
-  tabs.insertBefore(scheduleButton, movementButton);
-  tabs.insertBefore(performButton, movementButton);
+  tabs.insertBefore(scheduleButton, pickListButton);
+  tabs.insertBefore(performButton, pickListButton);
   scheduleButton.addEventListener('click', async () => {
     if (typeof navigateSetupView === 'function') await navigateSetupView('schedule');
     else { showView('schedule'); await loadNextSchedule(); }
@@ -710,6 +710,10 @@ function installNextTabs() {
       <div class="next-perform-toolbar">
         <label>Captain
           <select id="next-perform-captain-filter" aria-label="Filter Perform Work by Captain"></select>
+        </label>
+        <label class="next-perform-show-completed">
+          <input id="next-perform-show-completed" type="checkbox">
+          Show completed
         </label>
         <span id="next-perform-filter-summary" class="muted"></span>
       <div id="next-perform-kpis" class="next-perform-kpis" aria-label="Perform Work labor KPIs"></div>
@@ -873,10 +877,19 @@ function nextEnsurePerformToolbar() {
       <label>Captain
         <select id="next-perform-captain-filter" aria-label="Filter Perform Work by Captain"></select>
       </label>
+      <label class="next-perform-show-completed">
+        <input id="next-perform-show-completed" type="checkbox">
+        Show completed
+      </label>
       <span id="next-perform-filter-summary" class="muted"></span>
       <div id="next-perform-kpis" class="next-perform-kpis" aria-label="Perform Work labor KPIs"></div>
     `;
     list.insertAdjacentElement('beforebegin', toolbar);
+  }
+  const showCompleted = el('next-perform-show-completed');
+  if (showCompleted && showCompleted.dataset.performCompletedFilterInstalled !== '1') {
+    showCompleted.dataset.performCompletedFilterInstalled = '1';
+    showCompleted.addEventListener('change', renderNextExecution);
   }
   return toolbar;
 }
@@ -988,24 +1001,30 @@ function nextRenderPerformCaptainFilter() {
   }
 }
 
-function nextFilterPerformAssignments(assignments) {
+function nextPerformCaptainScopedAssignments(assignments) {
   nextEnsurePerformCaptainFilter();
   const filter = setupNextState.performCaptainFilter || 'ALL';
-  if (filter === 'ALL') return assignments;
-
-  const personId = Number(String(filter).split(':', 2)[1]);
-  if (!personId) return assignments;
-
   const crewById = new Map(
     (setupNextState.performBoard.crews || []).map((crew) => [
       Number(crew.setup_work_day_crew_id),
       crew
     ])
   );
+
   return assignments.filter((assignment) => {
+    if (filter === 'ALL') return true;
+    const personId = Number(String(filter).split(':', 2)[1]);
+    if (!personId) return true;
     const crew = crewById.get(Number(assignment.setup_work_day_crew_id));
     return Number(crew?.captain_person_id) === personId;
   });
+}
+
+function nextFilterPerformAssignments(assignments) {
+  const showCompleted = Boolean(el('next-perform-show-completed')?.checked);
+  return nextPerformCaptainScopedAssignments(assignments).filter((assignment) => (
+    showCompleted || nextPerformAssignmentStatus(assignment) !== 'COMPLETE'
+  ));
 }
 
 
@@ -1100,19 +1119,24 @@ async function openNextCorrectionIntake(details) {
   correctionForm.querySelector('.next-problem-text')?.focus();
 }
 
-function nextPerformAssignmentCard(assignment) {
+function nextPerformAssignmentStatus(assignment) {
   const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
-  const crew = nextPerformCrew(assignment);
-  const captain = crew?.captain_display_name || 'Captain TBD';
   const executionStatus = String(task.execution_status || 'PLANNED').toUpperCase();
   const boardStatus = String(task.board_status || '').toUpperCase();
-  const status = executionStatus === 'COMPLETE' || executionStatus === 'IN_PROGRESS'
+  return executionStatus === 'COMPLETE' || executionStatus === 'IN_PROGRESS'
     ? executionStatus
     : boardStatus === 'SCHEDULED'
       ? 'SCHEDULED'
       : boardStatus === 'NEEDS_SCHEDULING_AGAIN'
         ? 'IN_PROGRESS'
         : executionStatus;
+}
+
+function nextPerformAssignmentCard(assignment) {
+  const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
+  const crew = nextPerformCrew(assignment);
+  const captain = crew?.captain_display_name || 'Captain TBD';
+  const status = nextPerformAssignmentStatus(assignment);
   const plannedCrew = nextPerformPlannedCrew(assignment);
   const plannedLabor = nextLaborHoursText(plannedCrew, task.expected_duration_minutes);
   const readinessWarning = task.readiness_state === 'NOT_READY'
@@ -1149,6 +1173,10 @@ function nextPerformLaborKpis(assignments) {
   let plannedHours = 0;
   let plannedUnknown = 0;
   let actualHours = 0;
+  let completedPlannedHours = 0;
+  let completedActualHours = 0;
+  let completedPlannedUnknown = 0;
+  let completedCount = 0;
 
   for (const assignment of assignments || []) {
     const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
@@ -1160,8 +1188,16 @@ function nextPerformLaborKpis(assignments) {
     else plannedHours += planned;
 
     const actualPersonMinutes = Number(assignment.actual_person_minutes || 0);
-    if (Number.isFinite(actualPersonMinutes) && actualPersonMinutes > 0) {
-      actualHours += actualPersonMinutes / 60;
+    const actual = Number.isFinite(actualPersonMinutes) && actualPersonMinutes > 0
+      ? actualPersonMinutes / 60
+      : 0;
+    actualHours += actual;
+
+    if (nextPerformAssignmentStatus(assignment) === 'COMPLETE') {
+      completedCount += 1;
+      completedActualHours += actual;
+      if (planned == null) completedPlannedUnknown += 1;
+      else completedPlannedHours += planned;
     }
   }
 
@@ -1174,7 +1210,11 @@ function nextPerformLaborKpis(assignments) {
   return {
     plannedHours: formatHours(plannedHours),
     plannedUnknown,
-    actualHours: formatHours(actualHours)
+    actualHours: formatHours(actualHours),
+    completedPlannedHours: formatHours(completedPlannedHours),
+    completedActualHours: formatHours(completedActualHours),
+    completedPlannedUnknown,
+    completedCount
   };
 }
 
@@ -1185,8 +1225,9 @@ function renderNextExecution() {
   nextEnsurePerformToolbar();
   nextRenderPerformCaptainFilter();
   const allAssignments = (board.assignments || []).slice();
+  const scopedAssignments = nextPerformCaptainScopedAssignments(allAssignments);
   const assignments = nextFilterPerformAssignments(allAssignments);
-  const labor = nextPerformLaborKpis(assignments);
+  const labor = nextPerformLaborKpis(scopedAssignments);
   const summary = el('next-perform-filter-summary');
   if (summary) {
     summary.textContent = assignments.length === allAssignments.length
@@ -1196,20 +1237,25 @@ function renderNextExecution() {
 
   const kpis = el('next-perform-kpis');
   if (kpis) {
-    const varianceReady = labor.plannedUnknown === 0;
+    const varianceReady = labor.completedCount > 0 && labor.completedPlannedUnknown === 0;
     const varianceValue = varianceReady
-      ? Number(labor.actualHours) - Number(labor.plannedHours)
+      ? Number(labor.completedActualHours) - Number(labor.completedPlannedHours)
       : null;
     const varianceText = varianceReady
       ? `${varianceValue > 0 ? '+' : ''}${Number.isInteger(varianceValue) ? varianceValue : varianceValue.toFixed(1)} hr`
       : 'TBD';
     const plannedNote = labor.plannedUnknown
       ? `${labor.plannedUnknown} assignment${labor.plannedUnknown === 1 ? '' : 's'} missing plan estimate`
-      : 'all visible assignments estimated';
+      : 'all assignments in Captain scope estimated';
+    const varianceNote = labor.completedCount === 0
+      ? 'no completed assignments in Captain scope'
+      : labor.completedPlannedUnknown
+        ? `${labor.completedPlannedUnknown} completed assignment${labor.completedPlannedUnknown === 1 ? '' : 's'} missing plan estimate`
+        : `Completed: ${labor.completedActualHours} hr actual vs ${labor.completedPlannedHours} hr planned`;
     kpis.innerHTML = `
       <div class="next-perform-kpi"><span>Planned labor</span><strong>${escapeHtml(labor.plannedHours)} hr</strong><small>${escapeHtml(plannedNote)}</small></div>
-      <div class="next-perform-kpi"><span>Actual labor</span><strong>${escapeHtml(labor.actualHours)} hr</strong><small>reported work</small></div>
-      <div class="next-perform-kpi"><span>Variance</span><strong>${escapeHtml(varianceText)}</strong><small>${varianceReady ? 'actual − planned' : 'waiting on complete plan estimates'}</small></div>
+      <div class="next-perform-kpi"><span>Actual labor</span><strong>${escapeHtml(labor.actualHours)} hr</strong><small>reported work in Captain scope</small></div>
+      <div class="next-perform-kpi"><span>Completed-work variance</span><strong>${escapeHtml(varianceText)}</strong><small>${escapeHtml(varianceNote)}</small></div>
     `;
   }
   const days = (board.work_days || []).filter((day) =>
@@ -1245,7 +1291,7 @@ function renderNextExecution() {
             </div>`;
         }).join('')}
       </section>`;
-  }).join('') : '<div class="empty-state">No scheduled assignments match the selected Captain. Choose All scheduled work to see the full field schedule.</div>';
+  }).join('') : '<div class="empty-state">No scheduled or in-progress assignments match this view. Turn on Show completed to include completed work, or choose All scheduled work to see every Captain.</div>';
 
   target.querySelectorAll('.next-perform-assignment').forEach((details) => {
     details.querySelector('.next-report-work')?.addEventListener('click', async (event) => {
@@ -1691,7 +1737,7 @@ async function initializeNextPass() {
   const help = el('help-view');
   if (help) {
     const intro = help.querySelector('p');
-    if (intro) intro.textContent = 'This review now includes Site-wide / Infrastructure plus Stage/Scene organization, prerequisite maintenance, a reusable/annual ordered backlog, rolling-horizon Crew A/B/C scheduling, and Captain field execution. Container/Display movement writes remain the next guarded integration step.';
+    if (intro) intro.textContent = 'This review now includes Site-wide / Infrastructure plus Stage/Scene organization, prerequisite maintenance, a reusable/annual ordered backlog, rolling-horizon Crew A/B/C scheduling, and Captain field execution. Physical material handling is split deliberately: Pick List records workshop PICKED events, while Record Location records field Container/Display observations.';
   }
 }
 

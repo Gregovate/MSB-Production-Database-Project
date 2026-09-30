@@ -254,6 +254,18 @@ function installSetupHowItWorks() {
     window.location.href = 'pick-list/' + query;
   });
 
+  const recordLocationButton = document.createElement('button');
+  recordLocationButton.id = 'setup-record-location-link';
+  recordLocationButton.className = 'tab';
+  recordLocationButton.type = 'button';
+  recordLocationButton.textContent = 'Record Location';
+  recordLocationButton.addEventListener('click', () => {
+    const query = appState.seasonYear == null
+      ? ''
+      : '?season_year=' + encodeURIComponent(appState.seasonYear);
+    window.location.href = 'record-location/' + query;
+  });
+
   const helpButton = document.createElement('button');
   helpButton.className = 'tab';
   helpButton.dataset.view = 'help';
@@ -261,6 +273,7 @@ function installSetupHowItWorks() {
   helpButton.textContent = 'How Setup Works';
   helpButton.addEventListener('click', () => showView('help'));
   tabs.appendChild(pickListButton);
+  tabs.appendChild(recordLocationButton);
   tabs.appendChild(helpButton);
 
   const helpView = document.createElement('section');
@@ -309,7 +322,7 @@ function installSetupHowItWorks() {
         </section>
         <section class="setup-help-section">
           <h3>6. Movement and scanning</h3>
-          <p>Scanning identifies the physical Display, Container, or Location. Setup Session owns what that scan means operationally. The audited movement command layer is not active in this browser candidate.</p>
+          <p><strong>Pick List</strong> is the workshop pull operation. <strong>Record Location</strong> is the deliberate field operation for recording where a Container or Display is now. Normal permanent QR scans still open the MSB Scan identity/action hub; scanning alone does not imply a movement write.</p>
         </section>
       </div>
     </div>

@@ -191,7 +191,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.3.22-pick-list-delay"
+    assert payload["version"] == "V0.3.29-pick-clarity"
     assert health.headers["Cache-Control"] == "no-store, max-age=0"
 
     for asset in (
@@ -343,10 +343,16 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "setupPopstateReplay" in production
     assert "window.history.go(-delta)" in production
     assert "window.history.go(pending.delta)" in production
-    assert "['review', 'library', 'extra-materials', 'movement', 'schedule', 'perform']" in production
+    assert "['review', 'library', 'extra-materials', 'schedule', 'perform']" in production
     assert "navigateSetupView(button.dataset.view)" in production
+    assert 'data-view="movement"' not in html
+    assert 'id="movement-view"' not in html
+    assert "api/setup/movement-summary?season_year=" not in production
     assert "navigateSetupView('schedule')" in next_pass
     assert "navigateSetupView('perform')" in next_pass
+    assert "const pickListButton = document.getElementById('setup-pick-list-link');" in next_pass
+    assert "tabs.insertBefore(scheduleButton, pickListButton);" in next_pass
+    assert "tabs.insertBefore(performButton, pickListButton);" in next_pass
     assert "function setReusableAddTaskFormOpen(open)" in production
     assert "setReusableAddTaskFormOpen(false);" in production
     assert "if (trigger) trigger.hidden = Boolean(open);" in production
@@ -354,7 +360,7 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert 'id="add-task-form" class="add-task-form manager-only" hidden' not in html
     assert "setReusableAddTaskFormOpen(true)" in acceptance
     assert "setReusableAddTaskFormOpen(false)" in acceptance
-    assert "setup_production.js?v=2026-09-29.2" in html
-    assert "setup_next_pass.js?v=2026-09-29.5" in html
+    assert "setup_production.js?v=2026-09-30.1" in html
+    assert "setup_next_pass.js?v=2026-09-30.10" in html
     assert "setup_scheduling_board.js?v=2026-09-29.5" in html
 

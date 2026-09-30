@@ -261,3 +261,25 @@ Before the next Setup change:
 
 - [Setup Scheduling Board Contract — 2026-09-17](Setup_Scheduling_Board_Contract_2026-09-17.md) — Production-accepted annual Day Number/DOW board, crew/shift scheduling, permanent season-only identity, schedulable Work Order-linked annual work, Captain live-dispatch default, planned-vs-actual labor visibility, historical assignment stickiness, and reusable-learning boundary.
 - [#205 Production Acceptance — 2026-09-29](../../../../../Setup/Acceptance/Setup_205_Scheduling_Board_Production_Acceptance_2026-09-29.md) — exact V0.3.21 source-only Production acceptance and #206 handoff.
+
+
+## #88 Pick Mode / Movement Capture — ACTIVE LAUNCH GATE
+
+Current successor release under PR #255:
+
+```text
+V0.3.29-pick-clarity
+branch = agent/setup-88-pick-mode-movement
+Production remains = 6f53d7f0c4b15f7175e773a2069595eef3f0e698 / V0.3.22-pick-list-delay
+```
+
+V0.3.28 validated the field-evidence model: real Record Location observations are not blocked by planned access dates or missing prior PICKED events, canonical Home Location is shown for return, and Pick response time is materially improved by focused authoritative validation plus immediate UI settlement.
+
+The V0.3.28 browser review then exposed final picker-clarity cleanup. V0.3.29:
+- removes the obsolete **Movement / Scanning** shared Setup tab because it duplicated the direct Pick List entry point and had no unique operational workflow;
+- removes the corresponding unnecessary movement-summary fetch from ordinary Setup page load while retaining the protected API;
+- makes the Pick List summary physical-material-only: **Items to pick**, **Delayed items**, **Items already moved**, and **Containers picked**;
+- defines **Containers picked** from an actual current-Session `PICKED` event rather than any outbound/moved state, so a Container discovered in the park without a Pick scan does not falsely increment Pick throughput; and
+- preserves immediate Pick-count settlement and background authoritative readiness refresh.
+
+- [Setup #88 Pick Mode and Movement Capture Design — 2026-09-29](Setup_88_Pick_Mode_Movement_Design_2026-09-29.md) — current launch design through the V0.3.29 picker-clarity successor for Zebra HID Pick Mode, field Record Location, GPS evidence, Training Mode, current-state semantics, return-home behavior, and durable offline queue/sync.

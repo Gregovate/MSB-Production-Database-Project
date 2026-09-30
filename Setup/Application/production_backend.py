@@ -33,12 +33,13 @@ from setup_planning_summary_api import setup_planning_summary_api
 from setup_scheduling_board_api import setup_scheduling_board_api
 from setup_work_order_intake_api import setup_work_order_intake_api
 from setup_material_readiness_api import setup_material_readiness_api
+from setup_movement_api import setup_movement_api
 from setup_material_resolution import install_setup_material_resolution
 from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.22-pick-list-delay"
+PRODUCTION_VERSION = "V0.3.29-pick-clarity"
 
 # #222 lightweight Production request instrumentation.
 #
@@ -152,7 +153,15 @@ PICK_LIST_ASSETS = frozenset(
     {
         "setup_pick_list.css",
         "setup_pick_list.js",
+        "setup_pick_mode.css",
+        "setup_pick_mode.js",
         "qrcode.min.js",
+    }
+)
+RECORD_LOCATION_ASSETS = frozenset(
+    {
+        "setup_record_location.css",
+        "setup_record_location.js",
     }
 )
 
@@ -183,6 +192,7 @@ app.register_blueprint(setup_planning_summary_api)
 app.register_blueprint(setup_scheduling_board_api)
 app.register_blueprint(setup_work_order_intake_api)
 app.register_blueprint(setup_material_readiness_api)
+app.register_blueprint(setup_movement_api)
 
 
 def _setup_perf_is_traced_request() -> bool:
@@ -482,9 +492,57 @@ def pick_list():
     return _no_store(send_from_directory(BASE_DIR, "pick_list.html"))
 
 
+@app.get("/pick-list/service-worker.js")
+def pick_list_service_worker():
+    return _no_store(
+        send_from_directory(
+            BASE_DIR,
+            "setup_pick_mode_sw.js",
+            mimetype="application/javascript",
+        )
+    )
+
+
 @app.get("/pick-list/assets/<path:name>")
 def pick_list_asset(name: str):
     if name not in PICK_LIST_ASSETS:
+        abort(404)
+    mimetype = "application/javascript" if name.casefold().endswith(".js") else None
+    return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
+
+
+@app.get("/record-location")
+@app.get("/record-location/")
+def record_location():
+    """Explicit Setup field workflow for recording Container / Display location."""
+    return _no_store(send_from_directory(BASE_DIR, "record_location.html"))
+
+
+@app.get("/record-location/service-worker.js")
+def record_location_service_worker():
+    return _no_store(
+        send_from_directory(
+            BASE_DIR,
+            "setup_record_location_sw.js",
+            mimetype="application/javascript",
+        )
+    )
+
+
+@app.get("/record-location/location-references.json")
+def record_location_references():
+    return _no_store(
+        send_from_directory(
+            BASE_DIR,
+            "setup_location_references.json",
+            mimetype="application/json",
+        )
+    )
+
+
+@app.get("/record-location/assets/<path:name>")
+def record_location_asset(name: str):
+    if name not in RECORD_LOCATION_ASSETS:
         abort(404)
     mimetype = "application/javascript" if name.casefold().endswith(".js") else None
     return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))

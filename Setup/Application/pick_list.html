@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Setup Pick List</title>
-  <link rel="stylesheet" href="assets/setup_pick_list.css?v=2026-09-29.3">
+  <link rel="stylesheet" href="assets/setup_pick_list.css?v=2026-09-30.5">
+  <link rel="stylesheet" href="assets/setup_pick_mode.css?v=2026-09-30.8">
 </head>
 <body>
 <header class="page-header">
@@ -19,17 +20,59 @@
     <label>Status
       <select id="pick-status-filter">
         <option value="ALL">All demanded items</option>
-        <option value="OUTSTANDING">Needs pick</option>
-        <option value="MOVED">Picked / moved</option>
+        <option value="OUTSTANDING" selected>Needs pick</option>
+        <option value="MOVED">Already moved</option>
       </select>
     </label>
     <label class="delayed-filter"><input id="show-delayed-picks" type="checkbox" checked> Show delayed picks</label>
+    <button id="start-pick-mode" type="button" class="pick-mode-start">Start Picking</button>
+    <button id="exit-pick-training" type="button" hidden>Exit Training</button>
     <button id="print-button" type="button">Print</button>
     <button id="back-button" type="button">Back to Setup</button>
   </div>
 </header>
+<div id="pick-training-banner" class="pick-training-banner no-print" hidden>
+  TRAINING MODE — NOTHING WILL BE RECORDED
+</div>
 <main>
+  <section id="pick-mode-panel" class="pick-mode-panel no-print" hidden aria-live="polite">
+    <div class="pick-mode-toolbar">
+      <div>
+        <div class="eyebrow">Workshop Pick List execution</div>
+        <h2 id="pick-mode-title">WORKSHOP PICK — READY</h2>
+        <p id="pick-mode-help">Scan a Pick List Container / Display with Zebra, or type/paste the permanent identity.</p>
+      </div>
+      <div class="pick-mode-toolbar-actions">
+        <div class="pick-mode-toolbar-counts">
+          <span>Containers picked: <strong id="pick-mode-containers-picked">0</strong></span>
+          <span id="pick-mode-training-count" hidden>Training picks: <strong>0</strong></span>
+        </div>
+        <button id="stop-pick-mode" type="button">Stop Scanner</button>
+      </div>
+    </div>
+
+    <div class="movement-manual-entry">
+      <label for="movement-manual-input">Container / Display</label>
+      <div class="movement-manual-row">
+        <input id="movement-manual-input" autocomplete="off" inputmode="text" placeholder="CONT:34 or DISP:323">
+        <button id="movement-manual-go" type="button">Use</button>
+      </div>
+    </div>
+
+    <div id="pick-mode-feedback" class="pick-mode-feedback ready">READY — scan or choose an item</div>
+    <div class="pick-mode-meta">
+      <span id="pick-mode-network">Checking connection…</span>
+      <span id="pick-mode-queue">Offline queue: 0</span>
+    </div>
+  </section>
+
   <section class="summary" id="summary"></section>
+
+  <details id="pick-training-entry" class="pick-training-entry no-print">
+    <summary>Training / device test</summary>
+    <p>Use the real Pick List and Zebra workflow without recording or queueing PICKED movement.</p>
+    <button id="enter-pick-training" type="button">Enter Training Mode</button>
+  </details>
 
   <section id="manager-override-panel" class="panel manager-override-panel no-print" hidden>
     <div class="section-heading">
@@ -73,9 +116,10 @@
   </section>
 </main>
 <footer class="no-print">
-  <p>Schedule demand and Manager overrides are planning intent. A workshop scan records that an item was actually picked/moved; appearing here does not.</p>
+  <p>Schedule demand and Manager overrides are planning intent. A workshop scan records an actual PICKED event. Other movement/location observations are recorded through their own explicit workflows. Record Location is a separate field workflow; appearing here does not record a park location.</p>
 </footer>
 <script src="assets/qrcode.min.js?v=1"></script>
-<script src="assets/setup_pick_list.js?v=2026-09-29.3"></script>
+<script src="assets/setup_pick_list.js?v=2026-09-30.9"></script>
+<script src="assets/setup_pick_mode.js?v=2026-09-30.7"></script>
 </body>
 </html>

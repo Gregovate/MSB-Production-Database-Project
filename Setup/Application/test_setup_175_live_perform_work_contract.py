@@ -59,6 +59,20 @@ def test_captain_filter_defaults_fresh_each_login_but_allows_current_view_change
     assert "sessionStorage" not in ui
 
 
+def test_perform_work_hides_completed_by_default_without_changing_global_captain_filter() -> None:
+    ui = read_app("setup_next_pass.js")
+
+    assert 'id="next-perform-show-completed" type="checkbox"' in ui
+    assert 'id="next-perform-show-completed" type="checkbox" checked' not in ui
+    assert "function nextPerformAssignmentStatus(assignment)" in ui
+    assert "function nextPerformCaptainScopedAssignments(assignments)" in ui
+    assert "showCompleted || nextPerformAssignmentStatus(assignment) !== 'COMPLETE'" in ui
+    assert "const filter = setupNextState.performCaptainFilter || 'ALL';" in ui
+    assert "if (filter === 'ALL') return true;" in ui
+    assert "All scheduled work" in ui
+    assert "Turn on Show completed to include completed work" in ui
+
+
 def test_report_work_requires_actual_crew_duration_and_percent() -> None:
     ui = read_app("setup_next_pass.js")
 
@@ -235,8 +249,8 @@ def test_live_report_work_database_contract() -> None:
 def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
-    assert "setup_next_pass.css?v=2026-09-29.1" in html
-    assert "setup_next_pass.js?v=2026-09-29.5" in html
+    assert "setup_next_pass.css?v=2026-09-30.2" in html
+    assert "setup_next_pass.js?v=2026-09-30.10" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
     assert "setup_acceptance_fixes.js?v=2026-09-26.1" in html
     assert "setup_scheduling_board.css?v=2026-09-29.2" in html
@@ -251,7 +265,7 @@ def test_perform_work_shows_planned_vs_actual_labor_kpi() -> None:
     assert 'id="next-perform-kpis"' in ui
     assert "<span>Planned labor</span>" in ui
     assert "<span>Actual labor</span>" in ui
-    assert "<span>Variance</span>" in ui
+    assert "<span>Completed-work variance</span>" in ui
     assert "actual_person_minutes" in repo
     assert "sum(p.crew_count * p.duration_minutes)" in repo
 

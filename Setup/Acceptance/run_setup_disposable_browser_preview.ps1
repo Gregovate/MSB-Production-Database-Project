@@ -247,7 +247,10 @@ try {
 
         if ($mode -eq 'start') {
             $initialExit = $remoteExit
-            Write-Warning "Browser-review SSH session ended with exit code $remoteExit. Checking whether the exact preview can be resumed without rebuilding it..."
+            if ($remoteExit -notin @(75, 255)) {
+                throw "Reusable Setup browser preview start failed with exit code $remoteExit. The start failure is not resumable; review the retained remote report."
+            }
+            Write-Warning "Browser-review SSH transport ended with exit code $remoteExit. Checking whether the exact healthy preview can be resumed without rebuilding it..."
             $mode = 'resume'
         }
         elseif ($remoteExit -notin @(75, 255)) {

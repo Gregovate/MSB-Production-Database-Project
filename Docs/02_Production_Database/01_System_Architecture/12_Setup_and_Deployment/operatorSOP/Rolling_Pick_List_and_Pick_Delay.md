@@ -19,7 +19,7 @@ Open:
 
 [**Rolling Pick List**](https://my.sheboyganlights.org/setup/pick-list/)
 
-The Pick List is a logistics projection of current demand. It does not by itself prove that a Container was physically picked, moved, delivered, or scanned.
+The Pick List is a logistics projection of current demand. Merely appearing on the list does not prove physical movement. When the operator deliberately starts **Start Picking**, however, a successful Container/Display scan records the annual `PICKED` event for that demanded item.
 
 ## What Appears on the List
 
@@ -29,15 +29,47 @@ Current schedule and material authority determine what appears. When future sche
 
 Use the visible **Pick By** and **Needed For** timing to understand urgency. Rack/home-location information helps put the physical pull in practical warehouse order.
 
+## Pick List Summary Counters
+
+The Pick List summary is physical-material status, not a second schedule summary.
+
+- **Items to pick** — current demanded physical items that are not delayed and are not already out/moved.
+- **Delayed items** — current demanded physical items temporarily held by Pick Delay.
+- **Items already moved** — current demanded physical items whose latest Setup movement state shows they are already out/moved. This may include Containers or standalone Displays and may include a real field observation that occurred without a prior Pick scan.
+- **Containers picked** — current-demand Containers with an actual `PICKED` event in the current Setup Session.
+
+**Containers picked** is therefore a true Pick throughput measure. A Container that is first discovered in the park through Record Location does not count as picked unless a real `PICKED` event also exists.
+
 ## Normal Picker Workflow
 
-1. Open the Rolling Pick List.
+1. Open the Rolling Pick List. The working view defaults to **Needs pick**.
 2. Work from the current highest-priority items shown by Pick By / Needed For and storage order.
-3. Use the Container identity and displayed material/task context to find the correct physical item.
-4. If the item should not be picked yet and you have Manager authority, use **Pick Delay** rather than changing the Setup schedule just to hide the item.
-5. Do not treat the Pick List as a physical movement/completion record.
+3. Choose **Start Picking** when you are physically pulling/loading demanded material.
+4. Scan the Container/Display with the Zebra/HID scanner, or use the explicit picker fallback.
+5. A successful scan records **PICKED FOR PARK TRANSPORT**. The item then leaves the **Needs pick** working list.
+6. While the scanner is armed, the sticky Pick panel keeps **Containers picked** visible so the material handler can track real Container throughput without scrolling back to the page totals.
+7. Use **Already moved** or **All demanded items** only when you intentionally need to review material that is no longer in the Needs pick working set.
+8. If the item should not be picked yet and you have Manager authority, use **Pick Delay** rather than changing the Setup schedule just to hide the item.
 
-Persisted physical PICKED/movement execution belongs to the separate movement/scanning workflow.
+The Pick operation deliberately does **not** require separate Load or Depart buttons. The physical Pick scan means the item is going onto transport for the park.
+
+## Training / Device Test
+
+Use **Training / device test** when teaching or checking the forklift tablet/Zebra workflow.
+
+Training uses the real current Pick List and the same scan validation, including delayed, already-moved, and not-on-current-list feedback, but:
+
+- it does **not** record a `PICKED` movement;
+- it does **not** add anything to the offline movement queue;
+- it does **not** remove the item from the real **Needs pick** list;
+- it does **not** change the real **Containers picked** count; and
+- it may show a temporary **Training picks** count for the current training page/session only.
+
+Entering Training requires deliberate confirmation. While active, the screen must continuously show **TRAINING MODE — NOTHING WILL BE RECORDED** and provide **Exit Training**.
+
+Use normal Pick Mode only when the physical item is actually being picked for park transport.
+
+**Record Location** is a separate field workflow used later to record where a Container/Display is physically observed. It is not embedded in the Pick List.
 
 ## Manager Early-Pick Demand
 

@@ -2,7 +2,7 @@
 MSB Production Database — database-wide audit contract repair
 Issue: #122 discovery / shared database authority
 Status: IMPLEMENTATION CANDIDATE — DISPOSABLE ACCEPTANCE REQUIRED
-Revision: 2026-09-24 V0.3.0
+Revision: 2026-09-30 V0.3.1
 
 Observed defects:
   1. ref.set_actor_on_update() and ref.set_updated_fields() used
@@ -14,6 +14,10 @@ Observed defects:
        ops.work_order_status_history
        ref.task_type
        ref.work_area
+  4. ref.resolve_actor() returned only ref.person.preferred_name for mapped
+     people. preferred_name is optional, so a valid mapped person such as a
+     first/last-name-only record could resolve person_id correctly while
+     returning NULL actor_name and violating NOT NULL audit text columns.
 
 Foundation contract:
   Mutable MSB business tables using the shared audit system carry:
@@ -228,6 +232,86 @@ COMMENT ON FUNCTION ref.sync_audit_collection_policy() IS
 'Database Foundation audit-policy synchronizer. Missing policy rows are added only for ref/ops/stage base tables that contain the complete standard audit contract: created_at, created_by, created_by_person_id, updated_at, updated_by, updated_by_person_id. Existing policy rows are not overwritten.';
 
 /* --------------------------------------------------------------------------
+   Keep shared actor text aligned with the current People/Setup display contract.
+
+   preferred_name is optional. For a mapped person, resolve human-readable
+   actor text as:
+     preferred_name -> first_name + last_name -> email
+
+   Browser/application authorization is unchanged. Governed commands continue
+   to pass the authenticated Directus UUID through app.directus_user_uuid.
+   -------------------------------------------------------------------------- */
+
+CREATE OR REPLACE FUNCTION ref.resolve_actor()
+RETURNS TABLE (
+    person_id integer,
+    actor_name text
+)
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_directus_uuid text;
+BEGIN
+    v_directus_uuid := current_setting('app.directus_user_uuid', true);
+
+    /* 1) Authenticated Directus user mapped to durable ref.person. */
+    IF v_directus_uuid IS NOT NULL AND btrim(v_directus_uuid) <> '' THEN
+        SELECT
+            p.person_id,
+            coalesce(
+                nullif(btrim(p.preferred_name), ''),
+                nullif(btrim(pg_catalog.concat_ws(' ', p.first_name, p.last_name)), ''),
+                nullif(btrim(p.email), '')
+            )
+          INTO person_id, actor_name
+        FROM ref.person AS p
+        WHERE p.directus_user_id::text = v_directus_uuid
+        LIMIT 1;
+
+        IF person_id IS NOT NULL THEN
+            IF actor_name IS NULL THEN
+                RAISE EXCEPTION
+                    'Mapped Directus actor % has no usable person display identity',
+                    person_id;
+            END IF;
+            RETURN NEXT;
+            RETURN;
+        END IF;
+    END IF;
+
+    /* 2) PostgreSQL login mapped to durable ref.person. */
+    SELECT
+        p.person_id,
+        coalesce(
+            nullif(btrim(p.preferred_name), ''),
+            nullif(btrim(pg_catalog.concat_ws(' ', p.first_name, p.last_name)), ''),
+            nullif(btrim(p.email), '')
+        )
+      INTO person_id, actor_name
+    FROM ref.person AS p
+    WHERE p.pg_login_name = current_user
+    LIMIT 1;
+
+    IF person_id IS NOT NULL THEN
+        IF actor_name IS NULL THEN
+            RAISE EXCEPTION
+                'Mapped PostgreSQL actor % has no usable person display identity',
+                person_id;
+        END IF;
+        RETURN NEXT;
+        RETURN;
+    END IF;
+
+    /* 3) Established database-side fallback for an unmapped PostgreSQL login. */
+    person_id := NULL;
+    actor_name := current_user;
+
+    RETURN NEXT;
+    RETURN;
+END;
+$function$;
+
+/* --------------------------------------------------------------------------
    Correct shared UPDATE attribution.
    -------------------------------------------------------------------------- */
 
@@ -346,5 +430,5 @@ FROM ref.sync_audit_collection_policy();
 COMMIT;
 
 SELECT
-    '2026-09-24-database-wide-audit-contract-v0.3.0' AS applied_revision,
+    '2026-09-30-database-wide-audit-contract-v0.3.1' AS applied_revision,
     current_user AS applied_by;

@@ -8,7 +8,7 @@
 | Audience | Production Crew, Captains, Setup Managers |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-27 |
+| Last Reviewed | 2026-09-30 |
 | Keywords | Setup, Perform Work, Captain, Report Work, partial work, procedure, Print Task |
 
 ## Purpose
@@ -27,11 +27,17 @@ This screen uses the real 2026 Setup schedule. It keeps the original scheduled a
 ## Find Your Scheduled Work
 
 1. Open **Perform Work**.
-2. Use the **Captain** dropdown.
-3. Choose your name to see only work assigned to crews you Captain.
-4. Choose **All scheduled work** when you need to see the full field schedule.
+2. The Captain filter defaults to the signed-in person when that person is a Captain on scheduled work.
+3. The normal field view hides completed assignments and shows scheduled / in-progress work.
+4. Turn on **Show completed** only when you need completed assignments added back into the current Captain view.
+5. Choose **All scheduled work** when you need the same view across every Captain.
 
-When a logged-in person is a Captain on scheduled work, Setup may start with that Captain selected. If you explicitly choose **All scheduled work** or another Captain, Setup remembers that choice for that user and season.
+**Show completed** and **All scheduled work** are independent controls:
+
+- **Show completed** changes assignment status visibility;
+- **All scheduled work** changes Captain scope globally.
+
+Changing the Captain dropdown affects the current view. A fresh login/session re-evaluates the signed-in Captain default from current schedule/access context.
 
 Scheduled work is grouped by:
 
@@ -40,6 +46,26 @@ Scheduled work is grouped by:
 - Crew;
 - Captain; and
 - scheduled task order.
+
+
+## Labor Summary
+
+The Perform Work summary answers two different questions and keeps them separate:
+
+- **Planned labor** shows the planned person-hours for the current Captain scope, including work that may still be scheduled/in progress. It remains visible even when **Show completed** is off.
+- **Actual labor** shows reported person-hours for the current Captain scope.
+- **Completed-work variance** compares only completed assignments: completed actual person-hours minus completed planned person-hours.
+
+Future scheduled work does not reduce or distort completed-work variance.
+
+When a completed assignment needed for the comparison is missing a plan estimate, **Completed-work variance** remains **TBD** and the screen identifies how many completed assignments are missing the estimate.
+
+The variance detail shows the completed comparison, for example:
+
+```text
+Completed: 18 hr actual vs 16 hr planned
+```
+
 
 ## Open a Task
 

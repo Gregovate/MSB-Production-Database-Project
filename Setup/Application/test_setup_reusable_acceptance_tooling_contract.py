@@ -255,13 +255,96 @@ def test_browser_preview_allows_only_the_approved_shared_audit_repair() -> None:
     )
 
 
-def test_reusable_disposable_grant_replay_identifies_the_exact_failing_statement() -> None:
+def test_reusable_disposable_grant_replay_is_batched_and_fail_fast() -> None:
     for name in (
         "setup_disposable_acceptance_server.sh",
         "setup_disposable_browser_preview_server.sh",
     ):
         server = read_acceptance(name)
-        assert 'echo "Grant replay [$grant_index]: $grant_stmt"' in server
-        assert 'psql_test -c "$grant_stmt" </dev/null' in server
-        assert "application-role function grant replay failed at statement" in server
-        assert 'psql_test < "$GRANTS_FILE"' not in server
+        assert "Production function ACL statements extracted:" in server
+        assert 'psql_test -q < "$GRANTS_FILE"' in server
+        assert "Production function ACL batch replay: PASS" in server
+        assert "application-role function ACL batch replay failed" in server
+        assert 'echo "Grant replay [$grant_index]: $grant_stmt"' not in server
+        assert 'psql_test -c "$grant_stmt" </dev/null' not in server
+
+
+def test_reusable_acl_batch_block_is_complete_before_role_lockdown() -> None:
+    for name in (
+        "setup_disposable_acceptance_server.sh",
+        "setup_disposable_browser_preview_server.sh",
+    ):
+        server = read_acceptance(name)
+        assert 'grant_count="$(wc -l < "$GRANTS_FILE" | tr -d \'[:space:]\')"' in server
+        count_at = server.index("Production function ACL statements extracted:")
+        replay_at = server.index('psql_test -q < "$GRANTS_FILE"')
+        pass_at = server.index("Production function ACL batch replay: PASS")
+        readonly_at = server.index(
+            'psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"'
+        )
+        assert count_at < replay_at < pass_at < readonly_at
+
+
+def test_reusable_disposable_acceptance_allows_tooling_descendant_of_exact_candidate() -> None:
+    launcher = read_acceptance("run_setup_disposable_acceptance.ps1")
+
+    assert "$toolingHead = (git -C $repo rev-parse HEAD).Trim()" in launcher
+    assert "merge-base --is-ancestor $CandidateSha $toolingHead" in launcher
+    assert "requested candidate $CandidateSha is not an ancestor of current acceptance-tooling HEAD $toolingHead" in launcher
+    assert "does not equal requested candidate" not in launcher
+
+
+def test_reusable_acceptance_runners_have_single_main_flow_tail() -> None:
+    disposable = read_acceptance("setup_disposable_acceptance_server.sh")
+    browser = read_acceptance("setup_disposable_browser_preview_server.sh")
+
+    assert disposable.count("SETUP_REUSABLE_DISPOSABLE_ACCEPTANCE_PASS") == 1
+    assert disposable.count("Production function ACL statements extracted:") == 1
+    assert disposable.count("Production function ACL batch replay: PASS") == 1
+
+    # Browser has one resume completion marker and one normal main-flow marker.
+    assert browser.count("SETUP_REUSABLE_DISPOSABLE_BROWSER_PREVIEW_CLEAN_EXIT") == 2
+    assert browser.count("Production function ACL statements extracted:") == 1
+    assert browser.count("Production function ACL batch replay: PASS") == 1
+
+    assert disposable.rstrip().endswith(
+        'echo "SETUP_REUSABLE_DISPOSABLE_ACCEPTANCE_PASS"'
+    )
+    assert browser.rstrip().endswith(
+        'echo "SETUP_REUSABLE_DISPOSABLE_BROWSER_PREVIEW_CLEAN_EXIT"'
+    )
+
+
+def test_reusable_disposable_allows_only_the_approved_shared_audit_repair() -> None:
+    launcher = read_acceptance("run_setup_disposable_acceptance.ps1")
+
+    assert "$isSetupMigration = $Path.StartsWith('Setup/Database/')" in launcher
+    assert "$isApprovedSharedMigration = $Path -eq 'Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql'" in launcher
+    assert "explicitly approved shared database repair" in launcher
+    assert "$isSetupValidation = $Path.StartsWith('Setup/Acceptance/')" in launcher
+    assert "$isApprovedSharedValidation = $Path -eq 'Database/Acceptance/database_shared_audit_actor_disposable_validation.sql'" in launcher
+    assert "explicitly approved shared database validation" in launcher
+
+
+def test_reusable_browser_preview_cleans_only_owned_stale_selected_port_before_start() -> None:
+    server = read_acceptance("setup_disposable_browser_preview_server.sh")
+
+    assert "cleanup_stale_preview_on_selected_port" in server
+    assert 'sudo ss -ltnp "sport = :$PREVIEW_PORT"' in server
+    assert 'fieldwiring_uid="$(id -u fieldwiring)"' in server
+    assert '"/tmp/msb-setup-browser-preview-candidate-"*"/Setup/Acceptance/setup_session_browser_preview_entry.py"*' in server
+    assert "refusing to kill it" in server
+    assert 'sudo -u fieldwiring -H kill -- -"$pgid"' in server
+    assert "msb-setup-browser-preview-" in server
+    assert 'worktree remove --force "$stale_worktree"' in server
+    assert 'manifest_port="$(awk -F' in server
+    assert "PASS: stale reusable Setup preview on port $PREVIEW_PORT removed narrowly" in server
+    assert "Selected-port stale preview cleanup" in server
+
+
+def test_reusable_browser_preview_only_resumes_transport_loss_not_start_preflight_failures() -> None:
+    launcher = read_acceptance("run_setup_disposable_browser_preview.ps1")
+
+    assert "if ($remoteExit -notin @(75, 255))" in launcher
+    assert "The start failure is not resumable" in launcher
+    assert "Browser-review SSH transport ended with exit code" in launcher
