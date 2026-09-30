@@ -7,8 +7,8 @@
 | Audience | MSB reviewers, managers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-28 |
-| Keywords | Setup, Perform Work, Report Work, Captain, review, verification, reusable tasks, Display Ownership, materials, Kits |
+| Last Reviewed | 2026-09-30 |
+| Keywords | Setup, 2026 Setup, Plan / Schedule, Perform Work, Report Work, Report Correction, Pick List, Pick Delay, Captain, review, verification, reusable tasks, Display Ownership, materials, Kits |
 
 Use this page to find the Setup instruction for the job you are doing.
 
@@ -20,7 +20,8 @@ Open Setup:
 
 The real **2026 Setup Session is live**. Use **Plan / Schedule** for current annual scheduling. The 2025 Historical Verification view remains history/review evidence; do not use it as the current schedule.
 
-- [Perform and Report Setup Work](Perform_and_Report_Setup_Work.md) — Captain/Production Crew field execution, Print Task, Procedure access, Report Work, partial continuation, and Manager correction of mistaken reports.
+- [Perform and Report Setup Work](Perform_and_Report_Setup_Work.md) — Captain/Production Crew field execution, Print Task, Procedure access, Report Work, partial continuation, Manager correction of mistaken reports, and Report Correction -> Work Order Intake.
+- [Rolling Pick List and Pick Delay](Rolling_Pick_List_and_Pick_Delay.md) — current schedule-derived physical demand, picker ordering, Manager early-pick demand, temporary Pick Delay, and Resume Pick.
 - [Setup Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md) — current scheduling plus reusable-task maintenance, prerequisites, Display Ownership, Resources, Extra Materials, Kits, Kit Inventory, and T-Post Inventory.
 - [Extra Materials and Kit Inventory](Extra_Materials_and_Kit_Inventory.md) — plain-English guide to task material, source Containers, expected Kit contents, and physical counts.
 - [Review and Correct the 2025 Setup History](Review_2025_Setup_History.md) — historical verification only.
@@ -30,6 +31,8 @@ The real **2026 Setup Session is live**. Use **Plan / Schedule** for current ann
 Use **Perform Work** for scheduled field work. The Captain dropdown can show one Captain or **All scheduled work**. Report the date the work actually happened, not merely the date the report is entered.
 
 If partial work remains, schedule a new continuation assignment; do not move the already-worked occurrence.
+
+Use the **Rolling Pick List** for current physical material demand created by the live schedule. It is a logistics projection, not a physical movement/completion ledger.
 
 ## Quick Reminders
 
@@ -57,7 +60,7 @@ Readiness is especially important for scheduling. Reusable notes should hold use
 
 Use the live 2026 annual Session to schedule Setup work while keeping reusable year-to-year knowledge separate from season-only 2026 planning. **+ Add Work Days** opens the date calendar only when needed; select dates by tapping/clicking them and submit the selected dates together. Existing Work Days are disabled in the calendar.
 
-Pick List/material-demand behavior is a separate workflow and is not defined by this Scheduling Board instruction.
+The Rolling Pick List is live and follows the current schedule. Use [Rolling Pick List and Pick Delay](Rolling_Pick_List_and_Pick_Delay.md) for its operator workflow; persisted physical PICKED/movement execution remains separate.
 
 For a plain-English overview of the whole Setup area, go back to [Setup and Deployment](../README.md).
 
@@ -65,6 +68,7 @@ For a plain-English overview of the whole Setup area, go back to [Setup and Depl
 ## Direct Links
 
 - [Open Setup](https://my.sheboyganlights.org/setup/)
+- [Open Rolling Pick List](https://my.sheboyganlights.org/setup/pick-list/)
 - [Open Kit Inventory](https://my.sheboyganlights.org/setup/kit-inventory/)
 - [Open T-Post Inventory](https://my.sheboyganlights.org/setup/t-post-inventory/)
 - [Open Setup / Takedown Procedures](https://my.sheboyganlights.org/procedures/)
