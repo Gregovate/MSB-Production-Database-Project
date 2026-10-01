@@ -102,7 +102,10 @@
       <label class="override-reason-field">Reason
         <input id="override-reason" type="text" required placeholder="Why this Container needs an early/manual pick">
       </label>
-      <button id="override-submit" type="submit">Add Override</button>
+      <div class="override-form-actions">
+        <button id="override-submit" type="submit">Add Override</button>
+        <button id="override-edit-cancel" type="button" class="secondary" hidden>Cancel Edit</button>
+      </div>
     </form>
     <div id="override-message" class="muted" aria-live="polite"></div>
   </section>
@@ -119,7 +122,7 @@
   <p>Schedule demand and Manager overrides are planning intent. A workshop scan records an actual PICKED event. Other movement/location observations are recorded through their own explicit workflows. Record Location is a separate field workflow; appearing here does not record a park location.</p>
 </footer>
 <script src="assets/qrcode.min.js?v=1"></script>
-<script src="assets/setup_pick_list.js?v=2026-10-01.2"></script>
+<script src="assets/setup_pick_list.js?v=2026-10-01.3"></script>
 <script src="assets/setup_pick_mode.js?v=2026-09-30.7"></script>
 </body>
 </html>
