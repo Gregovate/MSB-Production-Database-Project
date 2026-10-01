@@ -11,9 +11,10 @@
   const manualGo = document.getElementById('movement-manual-go');
   const seasonSelect = document.getElementById('season-select');
   const trainingEntry = document.getElementById('pick-training-entry');
+  const trainingSummary = document.getElementById('pick-training-summary');
   const trainingEnter = document.getElementById('enter-pick-training');
   const trainingExit = document.getElementById('exit-pick-training');
-  const trainingBanner = document.getElementById('pick-training-banner');
+  const pickModeTitle = document.getElementById('pick-mode-title');
   const containersPicked = document.getElementById('pick-mode-containers-picked');
   const trainingCount = document.getElementById('pick-mode-training-count');
 
@@ -83,10 +84,17 @@
 
   function applyTrainingMode() {
     document.body.classList.toggle('pick-training-mode', trainingMode);
-    if (trainingBanner) trainingBanner.hidden = !trainingMode;
-    if (trainingEntry) trainingEntry.hidden = trainingMode;
+    if (trainingEntry) trainingEntry.hidden = false;
+    if (trainingSummary) trainingSummary.textContent = trainingMode
+      ? 'Training active — no recording'
+      : 'Training / device test';
+    if (trainingEnter) trainingEnter.hidden = trainingMode;
     if (trainingExit) trainingExit.hidden = !trainingMode;
     if (startButton) startButton.textContent = trainingMode ? 'Start Training Pick' : 'Start Picking';
+    if (stopButton) stopButton.textContent = trainingMode ? 'Exit Training' : 'Stop Scanner';
+    if (pickModeTitle) pickModeTitle.textContent = trainingMode
+      ? 'WORKSHOP PICK — TRAINING'
+      : 'WORKSHOP PICK — READY';
     refreshPanelCounts();
   }
 
@@ -496,7 +504,13 @@
     if (active && identity) void handleIdentity(identity, 'TOUCH_SELECT');
   });
   startButton.addEventListener('click', startPicking);
-  stopButton.addEventListener('click', stopPicking);
+  stopButton.addEventListener('click', function () {
+    if (trainingMode) {
+      exitTrainingMode();
+      return;
+    }
+    stopPicking();
+  });
   trainingEnter?.addEventListener('click', enterTrainingMode);
   trainingExit?.addEventListener('click', exitTrainingMode);
   document.addEventListener('msb-pick-list-rendered', refreshPanelCounts);
