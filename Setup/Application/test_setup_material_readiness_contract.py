@@ -221,7 +221,7 @@ def test_pick_list_sorts_by_pick_deadline_then_physical_rack_walk_order() -> Non
     assert "left.column - right.column" in ui
     assert "left.level.localeCompare" in ui
     assert "left.slot - right.slot" in ui
-    assert "setup_pick_list.js?v=2026-10-01.4" in html
+    assert "setup_pick_list.js?v=2026-10-01.3" in html
 
 
 def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_assignment() -> None:
@@ -273,10 +273,6 @@ def test_pick_list_manager_edit_controls_are_invisible_to_ordinary_operators() -
     ui = read("setup_pick_list.js")
     api = read("setup_material_readiness_api.py")
 
-    assert 'id="manager-pick-lookup" class="manager-pick-lookup no-print" hidden' in html
-    assert 'id="manager-pick-search"' in html
-    assert "managerLookupPanel.hidden = !managerActive;" in ui
-
     # Fail closed in the static page: Manager panel is hidden until access is proven.
     assert 'id="manager-override-panel" class="panel manager-override-panel no-print" hidden' in html
 
@@ -315,30 +311,6 @@ def test_pick_list_manager_edit_controls_are_invisible_to_ordinary_operators() -
         1,
     )[0]
     assert "require_manager()" in remove_route
-
-
-def test_manager_pick_list_lookup_searches_full_current_demand_not_screen_filters() -> None:
-    html = read("pick_list.html")
-    ui = read("setup_pick_list.js")
-    css = read("setup_pick_list.css")
-
-    assert 'id="manager-pick-lookup"' in html
-    assert 'id="manager-pick-search"' in html
-    assert "Container / Display name, ID, rack, destination, task" in html
-    assert "function pickLookupText(item)" in ui
-    assert "item.home_location_code" in ui
-    assert "destinationText(reasons)" in ui
-    assert "reason.display_names" in ui
-    assert "reason.display_ids" in ui
-    assert "...carriedDisplayTerms" in ui
-    assert "...reasons.map(reasonText)" in ui
-    assert "function managerLookupQuery()" in ui
-    assert "function managerLookupMatches()" in ui
-    assert "if (lookupQuery) return pickLookupText(item).includes(lookupQuery);" in ui
-    assert "lookupQuery ? '' : date" in ui
-    assert "itemReasonsForDate(item, lookupQuery ? '' : date)" in ui
-    assert "full current Pick List" in html
-    assert ".manager-pick-lookup{" in css
 
 
 def test_manager_override_ui_is_explicit_and_dedupes_into_normal_pick_rows() -> None:
@@ -541,5 +513,5 @@ def test_delayed_pick_warning_survives_print_when_delayed_rows_are_shown() -> No
     assert 'class="print-delay-badge">DELAYED — DO NOT PICK YET</div>' in ui
     assert ".print-delay-badge{display:none" in css
     assert ".print-delay-badge{display:inline-block!important" in css
-    assert "setup_pick_list.css?v=2026-10-01.2" in html
-    assert "setup_pick_list.js?v=2026-10-01.4" in html
+    assert "setup_pick_list.css?v=2026-10-01.1" in html
+    assert "setup_pick_list.js?v=2026-10-01.3" in html
