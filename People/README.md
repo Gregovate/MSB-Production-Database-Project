@@ -66,6 +66,10 @@ Server/runtime mechanics remain owned by `Gregovate/MSB-Server-Management`.
 
 ### Durable person / contact identity
 
+People Manager is the uniform MSB contact registry for members, Production participants, Setup/Takedown helpers, seasonal/casual volunteers, and other contacts. A Person may be contact-only and does not need a Google Workspace or Directus account.
+
+The generated/reserved `@sheboyganlights.org` value is a durable MSB/system identity string. It is not proof that a Google Workspace mailbox exists and must not be treated as automatically deliverable.
+
 - Manager/Administrator-authorized person search and detail;
 - create/edit contact information;
 - active/inactive lifecycle with reactivation of the same durable `person_id`;
@@ -126,6 +130,19 @@ These relationships describe participation/eligibility and do not create Captain
 People Manager reads the existing `ref.setup_task_captain` relationship so a person's current reusable-task `CAPTAIN`, `ALTERNATE`, and `ADVISOR` assignments are visible. People Manager does not create or infer those assignments.
 
 ## Authentication / Authorization
+
+Identity/contact, participation, Google Workspace, and database application access are separate:
+
+```text
+ref.person                    -> durable contact/person identity
+personal_email / phone        -> ordinary contact channels
+reserved MSB email            -> system identity; not proof of mailbox
+Setup/Takedown participation  -> operational participation only
+Google Workspace account      -> Google authentication eligibility
+Directus identity / role      -> database application identity/authorization
+```
+
+Creating a Person or assigning Setup/Takedown participation must not automatically provision Directus. A Google Workspace account is required for Google-authenticated application access but does not by itself grant Production Crew, Manager, or Administrator authorization.
 
 Cloudflare Access authenticates the browser user. PostgreSQL then resolves the current Directus authorization context.
 
@@ -202,7 +219,7 @@ People/Acceptance/People_Manager_Production_Acceptance_2026-09-09.md
 The accepted current People Manager deliberately leaves these as separate follow-on work:
 
 - Google Workspace account provisioning remains owned by Google Admin / Workspace;
-- Directus role/policy administration remains outside ordinary People editing;
+- Directus role/policy administration remains protected from ordinary contact editing; the corrective People/Identity work now requires a separate governed **System Access & Identity** provisioning action on the Person page rather than manual Directus/SQL operator plumbing;
 - authoritative capability/qualification seed evidence must be resolved to canonical `person_id` values before any seed/import;
 - `ref.setup_task_capability` remains a later Setup-consumer relationship; and
 - governed person merge/reconciliation remains future work before relationship-heavy duplicate cleanup.
