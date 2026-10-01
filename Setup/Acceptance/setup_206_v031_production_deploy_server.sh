@@ -310,7 +310,12 @@ echo "MIGRATION 066: COMMITTED"
 
 echo
 echo "--- Run exact rollback-safe validation against Production while writes are frozen ---"
-psql_prod < "$V066" | grep -Fq "SETUP_206_PICK_LIST_OVERRIDE_DISPOSABLE_VALIDATION_PASS"
+VALIDATION_OUTPUT="$(psql_prod < "$V066")"
+if [[ "$VALIDATION_OUTPUT" != *"SETUP_206_PICK_LIST_OVERRIDE_DISPOSABLE_VALIDATION_PASS"* ]]; then
+    echo "FAIL: exact migration 066 validation marker was not returned"
+    printf '%s\n' "$VALIDATION_OUTPUT"
+    exit 19
+fi
 echo "MIGRATION 066 VALIDATION: PASS"
 
 echo
