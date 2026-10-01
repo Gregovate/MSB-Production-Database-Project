@@ -177,7 +177,7 @@
 
 .setup-board205-main {
   display: grid;
-  grid-template-columns: minmax(22rem, 0.95fr) minmax(34rem, 1.55fr);
+  grid-template-columns: minmax(22rem, 0.72fr) minmax(34rem, 1.9fr);
   gap: 0.75rem;
   align-items: stretch;
   height: calc(100vh - 6.25rem);
@@ -545,7 +545,7 @@
 
 .setup-board205-grid {
   display: grid;
-  grid-template-columns: minmax(10rem, 0.72fr) repeat(2, minmax(14rem, 1fr));
+  grid-template-columns: minmax(10rem, 0.55fr) repeat(2, minmax(14rem, 1fr));
   min-width: 44rem;
 }
 
@@ -796,6 +796,13 @@
   color: var(--muted, #64748b);
   border: 1px dashed var(--border, #d9e0e8);
   border-radius: 0.55rem;
+}
+
+/* #205 launch stabilization: Scheduling is the one Setup surface that benefits
+   from using the full desktop width. Other Setup views keep the shared 1500px cap. */
+body.setup-schedule-active main {
+  width: 100%;
+  max-width: none;
 }
 
 @media (max-width: 1100px) {
