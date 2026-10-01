@@ -36,6 +36,11 @@ def test_pick_list_defaults_to_needs_pick_and_keeps_back_navigation_while_scanni
     assert "body.pick-mode-active .movement-manual-entry>label{display:none}" in css
     assert "body.pick-mode-active .pick-mode-feedback{" in css
     assert "font-size:1rem" in css
+    assert "body.pick-mode-active .page-header>div:first-child{display:none}" in css
+    assert "body.pick-mode-active .page-header .controls label," in css
+    assert "body.pick-mode-active .summary," in css
+    assert "body.pick-mode-active .pick-training-entry{display:none!important}" in css
+    assert "padding:.28rem .55rem" in css
 
     assert '<option value="OUTSTANDING" selected>Needs pick</option>' in html
     assert 'id="back-button"' in html
@@ -359,13 +364,13 @@ def test_release_identity_and_offline_shells_are_synchronized():
 
     assert 'PRODUCTION_VERSION = "V0.3.30-pick-override-cancel"' in backend
     assert "const CLIENT_BUILD = 'V0.3.30-pick-override-cancel';" in guard
-    assert "msb-setup-pick-mode-v13" in pick_sw
-    assert "setup_pick_mode.css?v=2026-10-01.3" in pick_sw
-    assert "setup_pick_mode.css?v=2026-10-01.3" in pick_html
+    assert "msb-setup-pick-mode-v14" in pick_sw
+    assert "setup_pick_mode.css?v=2026-10-01.4" in pick_sw
+    assert "setup_pick_mode.css?v=2026-10-01.4" in pick_html
     assert "setup_pick_list.js?v=2026-10-01.3" in pick_sw
     assert "setup_pick_list.js?v=2026-10-01.3" in pick_html
-    assert "setup_pick_mode.js?v=2026-10-01.1" in pick_sw
-    assert "setup_pick_mode.js?v=2026-10-01.1" in pick_html
+    assert "setup_pick_mode.js?v=2026-10-01.2" in pick_sw
+    assert "setup_pick_mode.js?v=2026-10-01.2" in pick_html
     assert "msb-setup-record-location-v6" in location_sw
     assert "setup_record_location.css?v=2026-09-30.6" in location_sw
     assert "setup_record_location.css?v=2026-09-30.6" in location_html
@@ -400,7 +405,10 @@ def test_pick_list_training_mode_is_fail_closed_and_keeps_real_pick_totals_visib
     assert 'id="enter-pick-training"' in html
     assert 'id="exit-pick-training"' in html
     assert 'id="pick-training-banner"' in html
-    assert "TRAINING MODE — NOTHING WILL BE RECORDED" in html
+    assert "TRAINING — NO RECORDING" in html
+    banner = html.split('id="pick-training-banner"', 1)[1].split("</div>", 1)[0]
+    assert 'id="exit-pick-training"' in banner
+    assert "TRAINING MODE — NOTHING WILL BE RECORDED" not in banner
     assert 'id="pick-mode-containers-picked"' in html
     assert 'id="pick-mode-training-count"' in html
     assert 'class="pick-mode-toolbar-actions"' in html
@@ -408,6 +416,11 @@ def test_pick_list_training_mode_is_fail_closed_and_keeps_real_pick_totals_visib
     assert "const trainingMode = pageParams.get('training') === '1';" in ui
     assert "Training Mode blocks Setup movement writes." in ui
     assert "Training Mode blocks the offline movement queue." in ui
+    assert "networkState.textContent = navigator.onLine ? 'ONLINE' : 'OFFLINE';" in ui
+    assert "'Queue disabled'" in ui
+    assert "WOULD PICK " in ui
+    assert " · NOT RECORDED" in ui
+    assert "TRAINING — READY" not in ui
     assert "if (trainingMode || syncing || !navigator.onLine) return;" in ui
     assert "TRAINING — WOULD PICK " in ui
     assert "NOTHING RECORDED" in ui
