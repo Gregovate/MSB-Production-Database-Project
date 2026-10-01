@@ -273,6 +273,34 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert client.get("/api/setup/material-audit").status_code == 401
 
 
+def test_manager_material_status_route_assets_navigation_and_protected_api() -> None:
+    from production_backend import app
+
+    html = (APP_DIR / "production.html").read_text(encoding="utf-8")
+    client_ui = (APP_DIR / "setup_production.js").read_text(encoding="utf-8")
+
+    assert 'id="manager-material-status-link"' in html
+    assert "manager-only" in html
+    assert "material-status/" in client_ui
+
+    app.testing = True
+    client = app.test_client()
+
+    page = client.get("/material-status/")
+    assert page.status_code == 200
+    assert b"Manager Material Status" in page.data
+    assert page.headers["Cache-Control"] == "no-store, max-age=0"
+
+    css = client.get("/material-status/assets/setup_material_status.css")
+    js = client.get("/material-status/assets/setup_material_status.js")
+    assert css.status_code == 200
+    assert js.status_code == 200
+    assert client.get("/material-status/assets/setup_pick_list.js").status_code == 404
+
+    # The HTML shell is harmless; annual data is Manager-authorized server-side.
+    assert client.get("/api/setup/material-status?season_year=2026").status_code == 401
+
+
 def test_production_entry_point_uses_distinct_flask_app() -> None:
     import backend
     import production_backend

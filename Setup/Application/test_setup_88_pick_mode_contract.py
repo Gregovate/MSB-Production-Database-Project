@@ -54,8 +54,10 @@ def test_pick_list_defaults_to_needs_pick_and_keeps_back_navigation_while_scanni
         line for line in css.splitlines()
         if line.startswith("body.pick-mode-active .delay-pick")
     )
-    assert ".edit-override" in manager_action_rule
-    assert ".cancel-override" in manager_action_rule
+    assert ".resume-pick" in manager_action_rule
+    assert ".edit-override" not in manager_action_rule
+    assert ".cancel-override" not in manager_action_rule
+    assert "#manager-material-status-link" in css
 
 
 def test_pick_list_is_workshop_only_and_record_location_is_separate():

@@ -78,7 +78,8 @@ def test_production_host_registers_material_readiness_blueprint() -> None:
     assert "app.register_blueprint(setup_material_readiness_api)" in host
 
 
-def test_206_pick_list_surface_is_schedule_driven_with_narrow_manager_override() -> None:
+
+def test_206_pick_list_surface_remains_execution_only_with_manager_status_handoff() -> None:
     backend = read("production_backend.py")
     html = read("pick_list.html")
     ui = read("setup_pick_list.js")
@@ -92,21 +93,20 @@ def test_206_pick_list_surface_is_schedule_driven_with_narrow_manager_override()
     assert "assets/qrcode.min.js" in html
     assert "api/setup/material-readiness?season_year=" in ui
     assert "Physical items to pull / stage" in html
-    assert "Material data exceptions" not in html
-    assert "unresolved-section" not in html
-    assert "unresolvedSection" not in ui
-    assert "Material exceptions" not in ui
     assert "Generated from the live Scheduling Board" in html
     assert "A workshop scan records an actual PICKED event." in html
     assert "@media print" in css
     assert "commandOptions(" in ui
-    assert "../api/setup/material-readiness/overrides" in ui
+    assert "../api/setup/material-readiness/overrides" not in ui
+    assert 'id="manager-override-panel"' not in html
+    assert "Edit Override" not in ui
+    assert "Cancel Override" not in ui
+    assert 'id="manager-material-status-link"' in html
+    assert "../material-status/?season_year=" in ui
     assert "api/setup/scheduling-board/assignments" not in ui
     assert "setup-pick-list-link" in navigation_ui
     assert "pick-list/" in navigation_ui
     assert navigation_ui.index("Pick List") < navigation_ui.index("How Setup Works")
-
-
 
 def test_early_demand_uses_annual_prerequisites_without_scheduling_mutation() -> None:
     repo = read("setup_material_readiness_repository.py")
@@ -268,32 +268,36 @@ def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_a
     assert "set_setup_session_task_dependency" not in repo
 
 
-def test_pick_list_manager_edit_controls_are_invisible_to_ordinary_operators() -> None:
-    html = read("pick_list.html")
-    ui = read("setup_pick_list.js")
+
+def test_manager_material_status_is_manager_only_and_picker_link_fails_closed() -> None:
+    picker_html = read("pick_list.html")
+    picker_ui = read("setup_pick_list.js")
+    status_html = read("material_status.html")
+    status_ui = read("setup_material_status.js")
     api = read("setup_material_readiness_api.py")
+    backend = read("production_backend.py")
 
-    # Fail closed in the static page: Manager panel is hidden until access is proven.
-    assert 'id="manager-override-panel" class="panel manager-override-panel no-print" hidden' in html
-
-    # Runtime visibility is capability-gated.
-    access_block = ui.split("function applyAccess()", 1)[1].split("function seasonFromUrl", 1)[0]
+    assert 'id="manager-material-status-link" type="button" hidden' in picker_html
+    access_block = picker_ui.split("function applyAccess()", 1)[1].split(
+        "function seasonFromUrl", 1
+    )[0]
     assert "access?.can_manage_setup" in access_block
-    assert "overridePanel.hidden = !Boolean(" in access_block
+    assert "managerMaterialStatusLink.hidden" in access_block
+    assert "Manager Material Status" in status_html
+    assert '@app.get("/material-status")' in backend
+    assert "setup_material_status.css" in backend
+    assert "setup_material_status.js" in backend
 
-    override_actions = ui.split("function overrideBadgeHtml(item)", 1)[1].split(
-        "function delayActionHtml", 1
+    route = api.split(
+        '@setup_material_readiness_api.get("/api/setup/material-status")', 1
+    )[1].split(
+        '@setup_material_readiness_api.post("/api/setup/material-readiness/overrides")', 1
     )[0]
-    assert "access?.can_manage_setup" in override_actions
-    assert "Edit Override" in override_actions
-    assert "Cancel Override" in override_actions
+    assert "require_manager()" in route
+    assert "manager_material_status" in route
 
-    edit_block = ui.split("function beginEditOverride(containerId)", 1)[1].split(
-        "function demandedContainerIds", 1
-    )[0]
-    assert "if (!access?.can_manage_setup) return;" in edit_block
-
-    # Even a forged browser request remains Manager-authorized server-side.
+    # Override mutations remain protected even if a request is forged.
+    assert "../api/setup/material-readiness/overrides" in status_ui
     set_route = api.split(
         '@setup_material_readiness_api.post("/api/setup/material-readiness/overrides")',
         1,
@@ -303,53 +307,41 @@ def test_pick_list_manager_edit_controls_are_invisible_to_ordinary_operators() -
     )[0]
     assert "require_manager()" in set_route
 
-    remove_route = api.split(
-        '@setup_material_readiness_api.delete(\n    "/api/setup/material-readiness/overrides/<int:container_id>"',
-        1,
-    )[1].split(
-        '@setup_material_readiness_api.post("/api/setup/material-readiness/delays")',
-        1,
-    )[0]
-    assert "require_manager()" in remove_route
 
+def test_manager_material_status_owns_explicit_one_item_pick_list_controls() -> None:
+    html = read("material_status.html")
+    ui = read("setup_material_status.js")
+    picker_html = read("pick_list.html")
+    picker_ui = read("setup_pick_list.js")
 
-def test_manager_override_ui_is_explicit_and_dedupes_into_normal_pick_rows() -> None:
-    html = read("pick_list.html")
-    ui = read("setup_pick_list.js")
-    css = read("setup_pick_list.css")
-    assert 'id="manager-override-panel"' in html
-    assert "Add Container to Pick List" in html
-    assert 'id="override-container-id"' in html
-    assert 'id="override-pick-by"' in html
-    assert 'id="override-needed-for"' in html
-    assert 'id="override-destination-stage"' in html
-    assert "Select destination Stage" in html
+    assert "Manager Material Status" in html
+    assert "Add to Pick List" in html
+    assert 'id="override-container-id" type="hidden"' in html
+    assert 'id="override-pick-by" type="date" required' in html
+    assert 'id="override-needed-for" type="date"' in html
+    assert 'id="override-destination" required' in html
     assert 'id="override-reason"' in html
-    assert "This does not schedule work or mark the Container picked." in html
-    assert "MANAGER OVERRIDE" in ui
-    assert "Edit Override" in ui
-    assert "Cancel Override" in ui
-    assert "function beginEditOverride(containerId)" in ui
-    assert "overridePickBy.value = override.pick_by_date || '';" in ui
-    assert "overrideNeededFor.value = override.needed_for_date || '';" in ui
-    assert "overrideDestinationStage.value" in ui
-    assert "overrideReason.value = override.override_reason || '';" in ui
-    assert "Update Override" in ui
-    assert "Edit Manager Pick Override" in ui
-    assert 'id="manager-override-title"' in html
-    assert 'id="override-edit-cancel"' in html
-    assert "override-form-actions" in css
-    override_badge = ui.split("function overrideBadgeHtml(item)", 1)[1].split("function delayActionHtml", 1)[0]
-    assert "access?.can_manage_setup" in override_badge
-    assert "!itemMoved(item)" not in override_badge
-    assert "Schedule-derived demand, if any, will remain." in ui
-    assert "override_destination" in ui
-    assert "../api/setup/stages" in ui
-    assert "destination_stage_id" in ui
-    assert "manager_override_needed_for" in ui
-    assert "reason.reason_type === 'MANAGER_OVERRIDE'" in ui
+    assert "Pick By, Destination, and Reason are required." in ui
+    assert "Needed For cannot be before Pick By." in ui
+    assert "function openOverride(containerId, editing)" in ui
+    assert "function removeOverride(containerId)" in ui
+    assert "item.can_add_to_pick_list" in ui
+    assert "item.can_remove_from_pick_list" in ui
+    assert "item.can_edit_pick_list_override" in ui
+    assert "Schedule demand and movement truth are never removed here." in ui
+    assert "Add all" not in html
+    assert "Remove all" not in html
+    assert "Add All" not in ui
+    assert "Remove All" not in ui
 
-
+    # Rolling Pick List displays the demand badge but does not own override editing.
+    assert 'id="manager-override-panel"' not in picker_html
+    override_badge = picker_ui.split("function overrideBadgeHtml(item)", 1)[1].split(
+        "function delayActionHtml", 1
+    )[0]
+    assert "MANAGER OVERRIDE" in override_badge
+    assert "Edit Override" not in override_badge
+    assert "Cancel Override" not in override_badge
 
 def test_pick_list_qr_renderer_does_not_force_canvas_and_image_visible_together() -> None:
     css = read("setup_pick_list.css")
@@ -357,45 +349,48 @@ def test_pick_list_qr_renderer_does_not_force_canvas_and_image_visible_together(
     assert "display:block!important" not in css
 
 
-def test_manager_override_container_selection_is_name_first_search() -> None:
-    html = read("pick_list.html")
-    ui = read("setup_pick_list.js")
-    assert 'id="override-container-search"' in html
-    assert 'placeholder="Search by Container name"' in html
-    assert 'id="override-container-id" type="hidden"' in html
-    assert "../api/setup/containers/source-options" in ui
-    assert "containerSearchText(row)" in ui
-    assert "container_description" in ui
-    assert "home_location_code" in ui
-    assert "goes_to_endpoint_id" in ui
-    assert "Number(row.goes_to_endpoint_id) !== 1" in ui
-    assert "marked Workshop and cannot be added to the park Pick List" in ui
-    assert "Select a Container from the search results." in ui
+
+def test_manager_material_status_searches_display_container_task_and_location() -> None:
+    html = read("material_status.html")
+    ui = read("setup_material_status.js")
+    assert 'id="search-filter" type="search"' in html
+    assert "Display, Container, task, home location" in html
+    assert "function searchText(item)" in ui
+    for token in (
+        "item.identity",
+        "item.label",
+        "item.home_location_code",
+        "reason.task_name",
+        "reason.stage_key",
+        "reason.stage_name",
+        "reason.scene_name",
+        "reason.display_names",
+        "reason.display_ids",
+    ):
+        assert token in ui
 
 
-def test_pick_list_sunday_rule_applies_to_schedule_and_manager_override() -> None:
+def test_sunday_rule_applies_to_schedule_and_manager_status_override() -> None:
     projection = read("setup_material_readiness_projection.py")
     migration = (DB_DIR / "060_add_setup_pick_list_manager_override.sql").read_text(encoding="utf-8")
-    ui = read("setup_pick_list.js")
+    ui = read("setup_material_status.js")
     assert "if target.weekday() == 6" in projection
     assert "Pick By cannot be Sunday; use Saturday or another day" in migration
     assert "function noSundayPickDate(value)" in ui
-    assert "Sunday is not a pick day. Pick By moved to Saturday" in ui
+    assert "Sunday is not a pick day. Pick By moved to Saturday." in ui
+    assert "noSundayPickDate(todayIso())" in ui
 
 
-
-def test_manager_override_destination_uses_governed_stage_authority() -> None:
-    html = read("pick_list.html")
-    ui = read("setup_pick_list.js")
+def test_manager_status_override_destination_uses_annual_stage_authority() -> None:
+    html = read("material_status.html")
+    ui = read("setup_material_status.js")
     api = read("setup_material_readiness_api.py")
     repo = read("setup_material_readiness_repository.py")
     migration = (DB_DIR / "060_add_setup_pick_list_manager_override.sql").read_text(encoding="utf-8")
 
-    assert 'id="override-destination-stage"' in html
-    assert 'type="text" required placeholder="e.g. Food Collection / Mt Crumpit"' not in html
-    assert "../api/setup/stages" in ui
-    assert "loadDestinationStages" in ui
-    assert "destination_stage_id: Number(overrideDestinationStage.value)" in ui
+    assert 'id="override-destination" required' in html
+    assert "stageOptions()" in ui
+    assert "destination_stage_id: Number(destinationInput.value)" in ui
     assert 'payload.get("destination_stage_id")' in api
     assert "JOIN ref.stage AS ds" in repo
     assert "destination_stage_key" in repo
@@ -405,23 +400,55 @@ def test_manager_override_destination_uses_governed_stage_authority() -> None:
     assert "Destination Stage was not found" in migration
 
 
-
-def test_manager_search_hides_workshop_and_already_demanded_containers() -> None:
-    ui = read("setup_pick_list.js")
+def test_manager_status_action_eligibility_blocks_workshop_schedule_and_movement_overreach() -> None:
     repo = read("setup_material_readiness_repository.py")
-    api = read("setup_material_readiness_api.py")
+    ui = read("setup_material_status.js")
     source_api = read("setup_extra_material_api.py")
+    correction = (DB_DIR / "066_allow_manager_pick_override_cancel_after_movement.sql").read_text(encoding="utf-8")
 
-    assert "function demandedContainerIds()" in ui
-    assert "Number(row.goes_to_endpoint_id) !== 1" in ui
-    assert "!demanded.has(Number(row.container_id))" in ui
-    assert "Matching Containers are marked Workshop and cannot be added to the park Pick List." in ui
-    assert "All matching eligible Containers are already on the Pick List." in ui
-    assert "c.goes_to_endpoint_id" in source_api
+    assert "def manager_material_status(self, season_year: int)" in repo
+    assert "c.goes_to_endpoint_id" in repo
+    assert "endpoint_policy.get(int(item[\"physical_id\"])) == 1" in repo
+    assert 'status = "PICKED_MOVED"' in repo
+    assert 'status = "WORKSHOP"' in repo
+    assert 'status = "SCHEDULED_TO_PICK"' in repo
+    assert 'status = "UNSCHEDULED_PICKABLE"' in repo
+    assert 'item["can_add_to_pick_list"] = bool(' in repo
+    assert "and has_unscheduled_demand" in repo
+    assert "and not has_schedule_demand" in repo
+    assert "and not has_override" in repo
+    assert "and not moved" in repo
+    assert "and not workshop" in repo
+    assert 'item["can_remove_from_pick_list"] = bool(' in repo
+    assert 'item["can_remove_manager_override"] = bool(' in repo
+    assert 'item["can_edit_pick_list_override"] = bool(' in repo
+    assert "and has_override" in repo
+    assert "and not has_schedule_demand" in repo
+    assert "and has_schedule_demand" in repo
     assert "Container is already on the Pick List from scheduled material demand" in repo
-    assert "SetupMaterialReadinessConflictError" in repo
-    assert "@setup_material_readiness_api.errorhandler(SetupMaterialReadinessConflictError)" in api
-    assert "), 409" in api
+    assert "c.goes_to_endpoint_id" in source_api
+    assert "Workshop Containers cannot be added to the Setup Pick List" in correction
+    assert "!item?.can_remove_from_pick_list && !item?.can_remove_manager_override" in ui
+
+def test_manager_material_status_preserves_unscheduled_and_unresolved_annual_truth() -> None:
+    repo = read("setup_material_readiness_repository.py")
+    html = read("material_status.html")
+    ui = read("setup_material_status.js")
+
+    assert '"demand_origin": "UNSCHEDULED_ANNUAL"' in repo
+    assert "SetupNextRepository(self.dsn)" in repo
+    assert "next_repo.field_context" in repo
+    assert "_extra_material_rows(candidate_task_ids, season_year)" in repo
+    assert "Season-only annual work has no reusable material authority." in repo
+    assert "Required Extra Material has no active expected-source Container." in repo
+    assert '"demand_source":' not in html
+    assert "PICKED / MOVED" in html
+    assert "SCHEDULED TO PICK" in html
+    assert "UNSCHEDULED / PICKABLE" in html
+    assert "WORKSHOP / DO NOT MOBILIZE" in html
+    assert "Unresolved" in html
+    assert "unresolved_requirements" in ui
+    assert "Unresolved material is shown for Manager review" in html
 
 
 def test_print_pick_list_is_compact_and_uses_print_specific_values() -> None:
