@@ -10,6 +10,7 @@
   const pickList = document.getElementById('pick-list');
   const statusLine = document.getElementById('status-line');
   const generatedAt = document.getElementById('generated-at');
+  const managerMaterialStatusLink = document.getElementById('manager-material-status-link');
   const overridePanel = document.getElementById('manager-override-panel');
   const overrideForm = document.getElementById('manager-override-form');
   const overrideContainerSearch = document.getElementById('override-container-search');
@@ -223,13 +224,9 @@
   }
 
   function applyAccess() {
-    if (!overridePanel) return;
-    const status = String(readiness?.session?.session_status || '').toUpperCase();
-    overridePanel.hidden = !Boolean(
-      access?.can_manage_setup
-      && readiness?.session
-      && !['COMPLETE', 'HISTORICAL_VERIFICATION'].includes(status)
-    );
+    if (managerMaterialStatusLink) {
+      managerMaterialStatusLink.hidden = !Boolean(access?.can_manage_setup);
+    }
   }
 
   function seasonFromUrl() {
@@ -582,13 +579,8 @@
   function overrideBadgeHtml(item) {
     const overrides = Array.isArray(item.manager_overrides) ? item.manager_overrides : [];
     if (!overrides.length) return '';
-    const actions = access?.can_manage_setup
-      ? `<button type="button" class="small secondary edit-override no-print" data-container-id="${esc(item.physical_id)}">Edit Override</button>
-         <button type="button" class="small secondary cancel-override no-print" data-container-id="${esc(item.physical_id)}">Cancel Override</button>`
-      : '';
-    return `<div class="override-state"><span class="override-badge">MANAGER OVERRIDE</span>${actions}</div>`;
+    return '<div class="override-state"><span class="override-badge">MANAGER OVERRIDE</span></div>';
   }
-
 
   function delayActionHtml(item) {
     if (!access?.can_manage_setup || item.physical_type !== 'CONTAINER' || itemMoved(item)) return '';
@@ -632,7 +624,7 @@
       }
       await load();
     } catch (error) {
-      overrideMessage.textContent = error.message || error;
+      window.alert(error.message || error);
     }
   }
 
@@ -778,16 +770,6 @@
       </div>`;
 
     renderQrCodes();
-    document.querySelectorAll('.edit-override').forEach((button) => {
-      button.addEventListener('click', () => {
-        beginEditOverride(Number(button.dataset.containerId));
-      });
-    });
-    document.querySelectorAll('.cancel-override').forEach((button) => {
-      button.addEventListener('click', () => {
-        void cancelOverride(Number(button.dataset.containerId));
-      });
-    });
     document.querySelectorAll('.delay-pick').forEach((button) => {
       button.addEventListener('click', () => {
         void setPickDelay(Number(button.dataset.containerId), true);
@@ -838,7 +820,6 @@
     if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
     access = data.access || {};
     applyAccess();
-    await Promise.all([loadContainerCatalog(), loadDestinationStages()]);
   }
 
   const season = seasonFromUrl();
@@ -859,23 +840,8 @@
   dateFilter.addEventListener('change', render);
   pickStatusFilter?.addEventListener('change', render);
   showDelayedPicks?.addEventListener('change', render);
-  overrideForm?.addEventListener('submit', (event) => { void submitOverride(event); });
-  overrideEditCancel?.addEventListener('click', () => {
-    resetOverrideForm();
-    overrideMessage.textContent = 'Override edit cancelled.';
-  });
-  overrideContainerSearch?.addEventListener('input', renderContainerSearchResults);
-  overrideContainerSearch?.addEventListener('focus', renderContainerSearchResults);
-  overridePickBy?.addEventListener('change', normalizeOverridePickBy);
-  document.addEventListener('click', (event) => {
-    if (
-      overrideContainerResults
-      && !overrideContainerResults.hidden
-      && !overrideContainerSearch?.contains(event.target)
-      && !overrideContainerResults.contains(event.target)
-    ) {
-      overrideContainerResults.hidden = true;
-    }
+  managerMaterialStatusLink?.addEventListener('click', () => {
+    location.href = `../material-status/?season_year=${encodeURIComponent(seasonSelect.value)}`;
   });
   document.getElementById('print-button').addEventListener('click', () => window.print());
   document.getElementById('back-button').addEventListener('click', () => {
@@ -897,7 +863,6 @@
     settlePicked
   });
 
-  if (overridePickBy && !overridePickBy.value) overridePickBy.value = noSundayPickDate(todayIso());
   Promise.all([loadAccess(), load()])
     .then(() => {
       document.dispatchEvent(new CustomEvent('msb-pick-list-ready'));
