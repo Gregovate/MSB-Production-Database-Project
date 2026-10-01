@@ -1248,7 +1248,10 @@ class SetupMaterialReadinessRepository:
                 status = "PICKED_MOVED"
             elif workshop:
                 status = "WORKSHOP"
-            elif has_schedule_demand:
+            elif has_schedule_demand or has_override:
+                # Status answers whether this physical item is currently on the
+                # actionable Pick List. demand_source separately explains
+                # SCHEDULE vs MANAGER_OVERRIDE vs BOTH.
                 status = "SCHEDULED_TO_PICK"
             else:
                 status = "UNSCHEDULED_PICKABLE"
