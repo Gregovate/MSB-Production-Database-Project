@@ -174,3 +174,12 @@ def test_manager_material_status_shows_contents_and_routes_unresolved_to_audit()
     assert 'class="material-contents"' in ui
     assert "function renderReasons(item)" not in ui
     assert "location.href = '../material-audit/'" in ui
+
+
+def test_manager_material_status_keeps_item_visible_when_override_changes_status() -> None:
+    ui = read("setup_material_status.js")
+
+    assert "statusFilter.value === 'UNSCHEDULED_PICKABLE'" in ui
+    assert "statusFilter.value === 'SCHEDULED_TO_PICK'" in ui
+    assert "statusFilter.value = ''" in ui
+    assert "item.can_remove_from_pick_list" in ui
