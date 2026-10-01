@@ -1,12 +1,12 @@
 .pick-mode-start{font-weight:900}
-.pick-training-banner{position:sticky;top:0;z-index:70;padding:.75rem 1rem;text-align:center;font-size:1.05rem;font-weight:950;letter-spacing:.04em;background:#8a5a00;color:#fff;border-bottom:3px solid #ffd166}
+.pick-training-banner{position:sticky;top:0;z-index:70;padding:.28rem .55rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;font-size:.82rem;font-weight:950;letter-spacing:.035em;background:#8a5a00;color:#fff;border-bottom:2px solid #ffd166}
 .pick-mode-panel{position:sticky;top:0;z-index:50;margin:0 0 1rem;padding:1rem;border:4px solid currentColor;border-radius:14px;background:#171717;color:#fff}
-body.pick-training-mode .pick-mode-panel{top:3rem;border-color:#ffd166}
+body.pick-training-mode .pick-mode-panel{top:2.3rem;border-color:#ffd166}
 .pick-training-entry{margin:0 0 1rem;padding:.7rem .9rem;border:1px solid currentColor;border-radius:10px}
 .pick-training-entry summary{cursor:pointer;font-weight:800}
 .pick-training-entry p{margin:.55rem 0}
 .pick-training-entry button{min-height:44px;font-weight:800}
-body.pick-training-mode #exit-pick-training{background:#8a5a00;color:#fff}
+body.pick-training-mode #exit-pick-training{min-height:30px;padding:.2rem .5rem;background:#fff;color:#5b3b00;font-weight:900;border:1px solid #fff;border-radius:6px}
 .pick-mode-toolbar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
 .pick-mode-toolbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:.65rem;flex-wrap:wrap}
 .pick-mode-toolbar-counts{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;font-weight:850}
@@ -55,6 +55,16 @@ body.pick-mode-active .movement-select{display:inline-block;margin-top:.45rem}
 body.pick-mode-active #manager-override-panel{display:none!important}
 body.pick-mode-active .delay-pick,body.pick-mode-active .resume-pick,body.pick-mode-active .edit-override,body.pick-mode-active .cancel-override{display:none!important}
 body.pick-mode-active #print-button,body.pick-mode-active #start-pick-mode,body.pick-mode-active #start-park-mode{display:none!important}
+
+/* While scanning, keep only operator-critical navigation above the compact picker. */
+body.pick-mode-active .page-header{padding:.2rem 1rem;justify-content:flex-end;align-items:center}
+body.pick-mode-active .page-header>div:first-child{display:none}
+body.pick-mode-active .page-header .controls{margin:0;gap:.35rem;align-items:center}
+body.pick-mode-active .page-header .controls label,
+body.pick-mode-active .page-header .delayed-filter{display:none!important}
+body.pick-mode-active #back-button{min-height:32px;padding:.22rem .55rem}
+body.pick-mode-active .summary,
+body.pick-mode-active .pick-training-entry{display:none!important}
 
 /* Active Pick Mode must preserve the tablet's primary job: walking the Pick List.
    Collapse the scanner into a compact sticky strip instead of covering the list. */
