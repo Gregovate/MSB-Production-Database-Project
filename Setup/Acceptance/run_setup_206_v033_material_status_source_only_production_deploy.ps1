@@ -11,7 +11,7 @@ $ServerScript = Join-Path $ScriptDir 'setup_206_v033_material_status_source_only
 $ExpectedBranch = 'tooling/206-v033-production-deploy'
 $AcceptedApplicationSha = 'e9839123e7483d7ced630b3dc6ab8f377c3f3262'
 $MergedMainSha = 'e81d4e2da9d84324d85f6423dca0aae831a98753'
-$AcceptedServerRunnerBlob = '2f0be0e91c077613e2ceaa091e242f691a51c090'
+$AcceptedServerRunnerBlob = 'e3cef2cc9064d1e1009739d8737005fd39a76f4d'
 $ExpectedVersion = 'V0.3.33-material-status-review-fixes'
 
 if (-not (Test-Path -LiteralPath $ServerScript -PathType Leaf)) {
