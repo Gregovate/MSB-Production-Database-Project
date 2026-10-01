@@ -40,7 +40,7 @@ def test_pick_list_defaults_to_needs_pick_and_keeps_back_navigation_while_scanni
     assert "body.pick-mode-active .page-header .controls label," in css
     assert "body.pick-mode-active .summary," in css
     assert "body.pick-mode-active .pick-training-entry{display:none!important}" in css
-    assert "padding:.28rem .55rem" in css
+    assert ".pick-training-banner" not in css
 
     assert '<option value="OUTSTANDING" selected>Needs pick</option>' in html
     assert 'id="back-button"' in html
@@ -366,7 +366,7 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "const CLIENT_BUILD = 'V0.3.31-pick-review-fixes';" in guard
     assert "msb-setup-pick-mode-v15" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_sw
-    assert "setup_pick_mode.css?v=2026-10-01.4" in pick_html
+    assert "setup_pick_mode.css?v=2026-10-01.5" in pick_html
     assert "setup_pick_list.js?v=2026-10-01.3" in pick_sw
     assert "setup_pick_list.js?v=2026-10-01.3" in pick_html
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_sw
