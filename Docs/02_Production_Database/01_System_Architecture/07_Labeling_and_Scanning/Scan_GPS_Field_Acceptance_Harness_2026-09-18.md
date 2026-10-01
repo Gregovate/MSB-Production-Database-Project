@@ -8,34 +8,42 @@
 | Production route | `/scan/field-test` |
 | Production write behavior | None |
 
-## Current Production State — 2026-09-30
+## Current Production State — 2026-10-01
 
-The read-only field harness remains useful while #171 GIS/reference-location work is still open and must be preserved during #88 integration.
+The read-only field harness remains useful while #171 GIS/reference-location work is still open and was preserved during #88 integration.
 
-Current live Production identity verified during the #88 deployment preflight:
+Current live Production identity after the governed 2026-10-01 Scan deployment:
 
 ```text
 live route                 /scan/field-test
-live Scan SHA-256          5b456bb682daad50673e5b7b2514cb7b98ce0d4fabb5551d79b1b0f4e98ffb50
-live Git blob              c131458fb549ab4127ede1fd8d4277d115cebaa0
-source commit introducing
-the live src/dist blob      ab1ec9a66ce8daaf489a0dba221f4e9ba7949cb2
-PR #218 head before
-main reconciliation         cd71b0170a284f7d749ef29f23420a1e4dbaeb56
+live Scan SHA-256          c2bc2d4e7d9d7ff86c57a7d30a52d427f9897f538aa2ce68c5ffc4f0a305bfea
+live Git blob              6de1ba35c85f0c6585e5849b6dfc135c27af4b68
+deployed candidate         413c8dc215873bcdb47c3490493b6b458d015c1e
+immediate rollback         /home/msbadmin/backups/directus-scan/pre-issue219-20261001T004354Z/index.js
+rollback SHA-256           5b456bb682daad50673e5b7b2514cb7b98ce0d4fabb5551d79b1b0f4e98ffb50
 ```
 
-The current PR #218 head retained the same `src/index.js` / `dist/index.js` blob as the live runtime. Later #219 work used this harness for HOTWAV/Zebra/browser-GPS field evidence. It remains disposable evidence only: no PostgreSQL movement/GPS writes and no automatic promotion of observations into GIS authority.
+The live artifact preserves the #219 field-test harness and adds #88's explicit Display/Container **Record Location** handoffs. The field-test route remains read-only: it does not create PostgreSQL movement/GPS state and does not promote observations into GIS authority.
+
+Production deployment evidence:
+
+```text
+repository-owned Scan tests: 20 passed / 0 failed
+SETUP_219_ISOLATED_DIRECTUS_VALIDATION_PASS
+SETUP_219_SCAN_DEPLOYMENT_PASS
+ISSUE #219 VALIDATE + DEPLOY: PASS
+```
 
 Ownership remains:
 
 ```text
-#219 = Scan + GPS field acceptance harness
+#219 = Scan + GPS field acceptance harness / Scan runtime handoff
 #171 = GIS/reference-location authority and ongoing location-model work
 #113 = scanner/tablet/device readiness
 #88  = governed Setup movement / Record Location semantics
 ```
 
-The #88 integration is additive: preserve `/scan/field-test` while adding explicit Record Location handoffs from resolved Display/Container Scan pages.
+The #88 integration is additive: `/scan/field-test` remains available, while resolved Display/Container Scan pages now provide explicit Record Location handoffs. Final operator/browser/device verification of those newly visible actions remains separate from the automated deployment PASS.
 
 ## Purpose
 
@@ -327,11 +335,11 @@ If tablet GPS cannot reliably discriminate meaningful nearby locations, retain t
 
 ## Deployment Boundary
 
-This candidate is not deployed by this branch.
+The #219/#88 Scan candidate is now deployed in Production through the current Server Management Scan extension deployment/recovery runbook. The deployment was additive: accepted DISP/CONT/CTRL behavior and the field-test harness were preserved, while Record Location handoffs were added to resolved Display/Container pages.
 
-Before installing it on the protected Scan origin, follow the current Server Management Scan extension deployment/recovery runbook and preserve rollback/runtime-hash evidence. Production deployment is additive and must not change accepted DISP/CONT/CTRL behavior.
+For future Scan changes, follow the same governed Windows PowerShell -> foreground SSH -> reviewed standalone server-runner path and preserve fresh rollback/runtime-hash evidence. Do not treat this completed deployment wrapper as a generic deploy-latest command.
 
-After field acceptance, this harness may remain as an engineering diagnostic route or be removed. It is not the final Setup movement user interface.
+The field-test harness may remain as an engineering diagnostic route while #171 work continues. It is not itself the Setup movement user interface.
 
 
 ## Field usability revision after first park run

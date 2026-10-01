@@ -2,8 +2,8 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT PRODUCTION DEPENDENCY — #219 read-only Scan/GPS harness live; #171 GIS/reference work remains open; #88 Record Location handoff pending deployment |
-| Current revision | 2026-09-30 |
+| Status | CURRENT PRODUCTION DEPENDENCY — #219/#88 Scan integration live; Record Location handoff deployed; #171 GIS/reference work remains open |
+| Current revision | 2026-10-01 |
 | Owner | MSB Database Administrator |
 | Production host | `msb-prod-db` |
 | Production runtime path | `/opt/directus/extensions/directus-extension-scan/` |
@@ -34,25 +34,27 @@ dist/index.js
 
 The current Server Management runbook records this accepted production SHA-256, including the FieldWiring and Procedures Display-hub actions and the Controller Inventory handoff:
 
-The live Scan runtime has advanced beyond the historical 2026-09-03 Controller baseline. The current Production artifact is the #219 read-only Scan + GPS field-acceptance harness:
+The live Scan runtime has advanced beyond the historical 2026-09-03 Controller baseline. The current Production artifact is the merged #219/#88 Scan candidate:
 
 ```text
-live Scan SHA-256     5b456bb682daad50673e5b7b2514cb7b98ce0d4fabb5551d79b1b0f4e98ffb50
-live Git blob         c131458fb549ab4127ede1fd8d4277d115cebaa0
-source commit         ab1ec9a66ce8daaf489a0dba221f4e9ba7949cb2
-current #219 PR       #218
+live Scan SHA-256     c2bc2d4e7d9d7ff86c57a7d30a52d427f9897f538aa2ce68c5ffc4f0a305bfea
+live Git blob         6de1ba35c85f0c6585e5849b6dfc135c27af4b68
+deployed candidate    413c8dc215873bcdb47c3490493b6b458d015c1e
 field route           /scan/field-test
+Display handoff       /setup/record-location/?asset=DISP:<display_id>
+Container handoff     /setup/record-location/?asset=CONT:<container_id>
 ```
 
-The live bytes were re-verified during #88 Production preflight and exactly match the current PR #218 Scan blob before reconciliation with current `main`. The harness is intentionally read-only and remains useful while #171 GIS/reference-location work is open. Do not overwrite it with an older Scan artifact merely to deploy another Setup feature.
+The controlled 2026-10-01 Server Management deployment preserved the read-only field-test harness, existing Display/Container/Controller routes, HID-focus behavior, and public-origin contract while adding explicit Record Location handoffs. Normal Scan requests still do not create movement state automatically.
 
-The exact current rollback artifact/path is a Server Management runtime fact and must be reconciled in the current Server Management Scan deployment/recovery authority. The older September 3 Controller rollback remains historical evidence, not an assumed current rollback.
-
-The immediately preceding Scan artifact is retained at:
+Immediate rollback was captured and verified before replacement:
 
 ```text
-/home/msbadmin/backups/directus-scan/pre-ctrl-20260903T112856Z/index.js
+/home/msbadmin/backups/directus-scan/pre-issue219-20261001T004354Z/index.js
+SHA-256: 5b456bb682daad50673e5b7b2514cb7b98ce0d4fabb5551d79b1b0f4e98ffb50
 ```
+
+Post-restart runner acceptance proved `/scan/`, `/scan/field-test`, `/scan/DISP/141`, and `/scan/CONT/216` returned HTTP 200, `/scan/CTRL/1014` returned the exact Controller Inventory redirect, and both live Record Location handoffs were present. Final operator/browser/device verification on representative real scans remains a separate acceptance step.
 
 The accepted application/business source is version-controlled under:
 
@@ -112,9 +114,10 @@ The currently accepted production hub independently presents or resolves:
 - the Directus Display record;
 - the current Display Testing record/status when applicable;
 - the assigned Container;
-- active Work Orders; and
-- the accepted Field Wiring action; and
-- the accepted Procedures action.
+- active Work Orders;
+- the accepted Field Wiring action;
+- the accepted Procedures action; and
+- the explicit Setup Record Location handoff.
 
 Testing, Container, Work Order, FieldWiring, and Procedure remain separate downstream actions. A failure in one downstream application must not make the basic Display hub or unrelated actions unavailable.
 
