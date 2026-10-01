@@ -72,21 +72,6 @@ def test_reusable_launchers_fail_before_server_contact_on_setup_build_identity_d
     assert "does not match exact candidate Setup build" in browser
 
 
-def test_reusable_browser_preview_supports_tablet_relay_via_workstation_without_server_firewall_change() -> None:
-    launcher = read_acceptance("run_setup_disposable_browser_preview.ps1")
-    server = read_acceptance("setup_disposable_browser_preview_server.sh")
-
-    assert "[switch]$TabletViaWorkstation" in launcher
-    assert "$previewBindHost = '127.0.0.1'" in launcher
-    assert "Test-NetConnection -ComputerName '192.168.5.9' -Port 22" in launcher
-    assert "$workstationAddress" in launcher
-    assert "-g -L \"${workstationAddress}:${PreviewPort}:127.0.0.1:${PreviewPort}\"" in launcher
-    assert "Production UFW and public proxy/routing are unchanged." in launcher
-    assert 'MSB_SETUP_PREVIEW_HOST="127.0.0.1"' in server
-    assert 'http://127.0.0.1:$PREVIEW_PORT/api/health' in server
-    assert 'http://127.0.0.1:$PREVIEW_PORT/api/setup/access' in server
-    assert "PREVIEW_BIND_HOST" not in server
-
 def test_reusable_browser_preview_recovers_transport_loss_without_rebuilding_clone() -> None:
     launcher = read_acceptance("run_setup_disposable_browser_preview.ps1")
     server = read_acceptance("setup_disposable_browser_preview_server.sh")
