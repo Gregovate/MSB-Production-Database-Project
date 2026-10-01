@@ -20,7 +20,6 @@ TARGET_SHA=""
 TARGET_REF=""
 PREVIEW_PORT=""
 PREVIEW_EMAIL=""
-PREVIEW_BIND_HOST="127.0.0.1"
 EXPECTED_VERSION=""
 ALLOW_CONCURRENT_PRODUCTION_WRITES="false"
 MIGRATIONS=()
@@ -35,7 +34,6 @@ while IFS=$'\t' read -r kind value extra; do
         target_ref) TARGET_REF="$value" ;;
         preview_port) PREVIEW_PORT="$value" ;;
         preview_email) PREVIEW_EMAIL="$value" ;;
-        preview_bind_host) PREVIEW_BIND_HOST="$value" ;;
         expected_version) EXPECTED_VERSION="$value" ;;
         allow_concurrent_production_writes) ALLOW_CONCURRENT_PRODUCTION_WRITES="$value" ;;
         migration) MIGRATIONS+=("$value") ;;
@@ -58,10 +56,6 @@ fi
 
 if [[ "$ALLOW_CONCURRENT_PRODUCTION_WRITES" != "true" && "$ALLOW_CONCURRENT_PRODUCTION_WRITES" != "false" ]]; then
     echo "FAIL: allow_concurrent_production_writes must be true or false"
-    exit 3
-fi
-if [[ "$PREVIEW_BIND_HOST" != "127.0.0.1" && "$PREVIEW_BIND_HOST" != "192.168.5.9" ]]; then
-    echo "FAIL: preview_bind_host must be 127.0.0.1 or the documented private Setup host 192.168.5.9"
     exit 3
 fi
 
@@ -101,7 +95,7 @@ echo "Candidate SHA: $TARGET_SHA"
 echo "Target ref:    $TARGET_REF"
 echo "Preview port:  $PREVIEW_PORT"
 echo "Preview user:  $PREVIEW_EMAIL"
-echo "Preview bind:  $PREVIEW_BIND_HOST"
+echo "Preview bind:  127.0.0.1 (server loopback only)"
 echo "Expected ver:  ${EXPECTED_VERSION:-not pinned}"
 echo "Concurrent Production writes allowed: $ALLOW_CONCURRENT_PRODUCTION_WRITES"
 echo "Migrations:    ${#MIGRATIONS[@]}"
@@ -393,7 +387,7 @@ resume_existing_preview() {
         exit 79
     fi
 
-    HEALTH="$(curl -fsS --max-time 5 "http://$PREVIEW_BIND_HOST:$PREVIEW_PORT/api/health")" || {
+    HEALTH="$(curl -fsS --max-time 5 "http://127.0.0.1:$PREVIEW_PORT/api/health")" || {
         echo "FAIL: resumable preview health check failed"
         exit 80
     }
@@ -405,7 +399,7 @@ resume_existing_preview() {
 
     echo
     echo "SETUP REUSABLE DISPOSABLE BROWSER REVIEW RESUMED"
-    echo "Browser URL: http://$PREVIEW_BIND_HOST:$PREVIEW_PORT/"
+    echo "Browser URL through workstation SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/"
     echo "Candidate SHA: $TARGET_SHA"
     echo "Preview identity: $PREVIEW_EMAIL"
     echo "Expected version: $EXPECTED_VERSION"
@@ -774,7 +768,7 @@ PREVIEW_PGID="$(sudo -u fieldwiring -H env \
     SETUP_GOOGLE_DOC_LINK_ROOT="/mnt/msb-setup-google-links" \
     MSB_SETUP_PREVIEW_APP_DIR="$APP_DIR" \
     MSB_SETUP_PREVIEW_OPERATOR_EMAIL="$PREVIEW_EMAIL" \
-    MSB_SETUP_PREVIEW_HOST="$PREVIEW_BIND_HOST" \
+    MSB_SETUP_PREVIEW_HOST="127.0.0.1" \
     MSB_SETUP_PREVIEW_PORT="$PREVIEW_PORT" \
     MSB_SETUP_PREVIEW_ENTRY="$PREVIEW_ENTRY" \
     MSB_SETUP_PREVIEW_LOG="$PREVIEW_LOG" \
@@ -791,7 +785,7 @@ PREVIEW_OWNED_PORT=1
 
 preview_ready=0
 for _ in $(seq 1 60); do
-    if curl -fsS "http://$PREVIEW_BIND_HOST:$PREVIEW_PORT/api/health" >/dev/null 2>&1; then
+    if curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health" >/dev/null 2>&1; then
         preview_ready=1
         break
     fi
@@ -803,7 +797,7 @@ if [[ "$preview_ready" -ne 1 ]]; then
     exit 23
 fi
 
-HEALTH="$(curl -fsS "http://$PREVIEW_BIND_HOST:$PREVIEW_PORT/api/health")"
+HEALTH="$(curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health")"
 echo "Preview health: $HEALTH"
 if [[ -n "$EXPECTED_VERSION" ]]; then
     HEALTH_VERSION="$(printf '%s' "$HEALTH" | sudo -u fieldwiring -H "$PYTHON" -c 'import json,sys; print(json.load(sys.stdin).get("version", ""))')"
@@ -813,7 +807,7 @@ if [[ -n "$EXPECTED_VERSION" ]]; then
     fi
     echo "Preview version pin: PASS ($HEALTH_VERSION)"
 fi
-curl -fsS "http://$PREVIEW_BIND_HOST:$PREVIEW_PORT/api/setup/access" >/dev/null
+curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/setup/access" >/dev/null
 echo "Preview authorization: PASS"
 
 write_resume_state
@@ -822,7 +816,7 @@ echo "Reconnect state: $STATE_FILE"
 cat <<CHECKLIST
 
 SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY
-Browser URL: http://$PREVIEW_BIND_HOST:$PREVIEW_PORT/
+Browser URL through workstation SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/
 Candidate SHA: $TARGET_SHA
 Candidate ref: $TARGET_REF
 Preview identity: $PREVIEW_EMAIL
