@@ -240,10 +240,9 @@
     el('activeFlag').checked = Boolean(person.active_flag);
     el('personStateBadge').textContent = person.active_flag ? 'Active' : 'Inactive';
     el('msbEmail').disabled = Boolean(person.directus_linked);
-    el('suggestEmailButton').disabled = Boolean(person.directus_linked);
     el('emailHelp').textContent = person.directus_linked
-      ? 'Directus-linked MSB email is protected from ordinary contact editing.'
-      : 'Reserved system identity. Reserving it does not create the Google Workspace account.';
+      ? 'Directus-linked Sheboygan Lights email is protected from ordinary contact editing.'
+      : 'Enter this only when the person has a real sheboyganlights.org Google Workspace account. Otherwise leave it blank.';
     renderIdentity(person);
     el('identityPanel').classList.remove('hidden');
     el('dependenciesPanel').classList.remove('hidden');
@@ -269,8 +268,7 @@
     el('activeFlag').checked = true;
     el('personStateBadge').textContent = 'New';
     el('msbEmail').disabled = false;
-    el('suggestEmailButton').disabled = false;
-    el('emailHelp').textContent = 'A standard first-initial + last-name @sheboyganlights.org address will be reserved. This does not create a Google account.';
+    el('emailHelp').textContent = 'Leave blank unless this person already has a real sheboyganlights.org Google Workspace account.';
     el('identityPanel').classList.add('hidden');
     el('dependenciesPanel').classList.add('hidden');
     showMetadataSections(false);
@@ -448,11 +446,6 @@
     }
 
     try {
-      if (!payload.email && !state.person?.directus_linked) {
-        await buildEmailCandidates();
-        payload.email = el('msbEmail').value.trim().toLowerCase() || null;
-      }
-
       const duplicates = await checkDuplicates();
       if (duplicates.length && !el('duplicateReviewAck').checked) {
         setMessage('formMessage', 'Review the potential duplicate records and check the acknowledgement before saving.');
@@ -849,7 +842,6 @@
     el('searchInput').addEventListener('input', scheduleSearch);
     el('includeInactive').addEventListener('change', () => loadPeople().catch(showGlobalError));
     el('personForm').addEventListener('submit', savePerson);
-    el('suggestEmailButton').addEventListener('click', () => buildEmailCandidates().catch((error) => setMessage('formMessage', error.message)));
     el('checkDuplicatesButton').addEventListener('click', () => checkDuplicates().catch((error) => setMessage('formMessage', error.message)));
 
     el('assignCapabilityButton').addEventListener('click', assignCapability);
