@@ -1,4 +1,6 @@
 param(
+    [Parameter(Mandatory=$true)]
+    [string]$TargetSha,
     [string]$Server = 'msbadmin@192.168.5.9'
 )
 
@@ -8,7 +10,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = (Resolve-Path (Join-Path $ScriptDir '..\..')).Path
 $ServerScript = Join-Path $ScriptDir 'people_manager_nullable_email_production_deploy_server.sh'
 
-$ExpectedBranch = 'agent/people-nullable-email-production-20261001'
+$ExpectedBranch = 'main'
 $RuntimeSha = '953f2b71487de80519f4fc2f8005467ca41983e9'
 
 if (-not (Test-Path -LiteralPath $ServerScript)) {
@@ -33,13 +35,18 @@ if ($LASTEXITCODE -ne 0) {
     throw "Accepted runtime SHA is not available locally: $RuntimeSha"
 }
 
-& git -C $RepoRoot merge-base --is-ancestor $RuntimeSha HEAD
+& git -C $RepoRoot fetch origin main
+if ($LASTEXITCODE -ne 0) { throw 'Unable to refresh origin/main.' }
+$localHead = (& git -C $RepoRoot rev-parse HEAD).Trim()
+$remoteMain = (& git -C $RepoRoot rev-parse origin/main).Trim()
+if ($localHead -ne $TargetSha -or $remoteMain -ne $TargetSha) { throw "TargetSha must equal local main HEAD and origin/main. local=$localHead remote=$remoteMain requested=$TargetSha" }
+& git -C $RepoRoot merge-base --is-ancestor $RuntimeSha $TargetSha
 if ($LASTEXITCODE -ne 0) {
-    throw "Current branch no longer contains accepted runtime SHA $RuntimeSha"
+    throw "Merged main does not contain accepted runtime SHA $RuntimeSha"
 }
 
 $runtimeChangesAfterAcceptance = @(
-    & git -C $RepoRoot diff --name-only "$RuntimeSha..HEAD" -- People/Application People/Database
+    & git -C $RepoRoot diff --name-only "$RuntimeSha..$TargetSha" -- People/Application People/Database
 )
 if ($LASTEXITCODE -ne 0) {
     throw 'Unable to verify accepted People runtime against current branch.'
@@ -56,7 +63,8 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 Write-Host '========== PEOPLE NULLABLE MSB EMAIL PRODUCTION DEPLOYMENT =========='
 Write-Host "Server:          $Server"
-Write-Host "Runtime SHA:     $RuntimeSha"
+Write-Host "Accepted runtime: $RuntimeSha"
+Write-Host "Merged main SHA:  $TargetSha"
 Write-Host "Remote root:     $remoteRoot"
 Write-Host 'Authority: MSB-Server-Management — Production_Database_Change_Deployment_Runbook.md'
 Write-Host
@@ -85,7 +93,7 @@ try {
 
     Write-Host
     Write-Host 'Starting bounded Production deployment...'
-    & ssh -tt $Server "bash -n '$remoteRoot/people_manager_nullable_email_production_deploy_server.sh' && chmod 700 '$remoteRoot/people_manager_nullable_email_production_deploy_server.sh'; timeout --signal=TERM 1800s bash '$remoteRoot/people_manager_nullable_email_production_deploy_server.sh'"
+    & ssh -tt $Server "bash -n '$remoteRoot/people_manager_nullable_email_production_deploy_server.sh' && chmod 700 '$remoteRoot/people_manager_nullable_email_production_deploy_server.sh'; timeout --signal=TERM 1800s bash '$remoteRoot/people_manager_nullable_email_production_deploy_server.sh' '$TargetSha'"
     $remoteExit = $LASTEXITCODE
 
     if ($remoteExit -ne 0) {
