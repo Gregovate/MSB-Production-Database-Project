@@ -82,7 +82,21 @@ An early-pick override:
 - does not assign material to a reusable task; and
 - does not mark anything physically picked or moved.
 
-Use it only when the physical pull is intentionally needed early.
+The **Pick By** and **Needed For** dates on a Manager override remain editable. Use **Edit Override** when a manual pick was entered with the wrong timing. The Container identity is locked during that edit; changing a Container means canceling the mistaken override and creating the correct one.
+
+Pick List working order is:
+
+```text
+Pick By
+-> Needed For
+-> Home Location / rack walk order
+```
+
+That means an override accidentally dated earlier than the main pull can jump ahead of nearby rack items and confuse the material handler. Correct the override date rather than changing the permanent Home Location or fabricating movement.
+
+Schedule-derived Pick By / Needed For dates remain schedule-owned. Correct those through the Scheduling/Setup authority rather than editing them as if they were Manager overrides.
+
+Use an early-pick override only when the physical pull is intentionally needed early.
 
 ## Pick Delay
 
