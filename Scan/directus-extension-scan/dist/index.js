@@ -189,6 +189,7 @@ export default {
 
             <button id="scanBtn" type="button" class="btn secondary">Scan with Camera</button>
             <button id="stopBtn" type="button" class="btn secondary" style="display:none;">Stop Camera</button>
+            <a class="btn secondary" href="https://my.sheboyganlights.org/setup/record-location/">Record Location</a>
 
             <div class="hint">Examples: DISP:141, CONT:238, LOC:RA-01-A-03, CTRL:1014, or a full scan URL</div>
 
