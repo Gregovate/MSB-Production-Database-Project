@@ -38,6 +38,67 @@ Each deployment entry must record, when applicable:
 
 Documentation-only repository changes that do not alter Production do not require a deployment entry.
 
+## 2026-10-01 — Setup V0.3.33-material-status-review-fixes
+
+**Subsystem:** Setup and Deployment  
+**Owning work:** #206 under #122, with performance cross-reference #222  
+**Production result:** PASS
+
+### Changes deployed
+
+- Added the separate Manager Material Status screen for annual material oversight while preserving the Rolling Pick List as the picker/material-handler execution surface.
+- Added Manager search/filter/sort across physical material, Stage/Scene, status, Pick By, Needed For, Home Location, and identity.
+- Added one-item Manager override Add / Edit / Remove controls using the existing governed override command path.
+- Preserved independent schedule and Manager demand: an item may show `BOTH`; schedule demand does not replace or rewrite a Manager override, and removing the Manager override leaves schedule demand intact.
+- Corrected Pick List Needed For filtering so a Manager override with blank Needed For remains visible using its effective Pick By date.
+- Reworked Manager Material Status unscheduled-material resolution from per-task `field_context()` calls to bounded batched reads. Disposable browser evidence improved from about 13.2 seconds server application time to below the existing 250 ms slow-GET event threshold during review.
+- Replaced repeated annual task-reason blocks with concise deduplicated physical Contents.
+- Kept Unresolved material read-only on Material Status and routed correction to the existing Material Audit workflow.
+- Corrected status-transition behavior so removing or adding an override does not make the same item appear lost behind the prior status filter.
+- Advanced the Material Status client asset pins for the accepted browser behavior.
+
+### Identity
+
+```text
+visible Production version = V0.3.33-material-status-review-fixes
+accepted/deployed application SHA = e9839123e7483d7ced630b3dc6ab8f377c3f3262
+application PR #276 merge = e81d4e2da9d84324d85f6423dca0aae831a98753
+deployment tooling PR #277 merge = 893cca3fa593e75f4c41ec7e18e03aa24b6f971c
+main-only deployment guard PR #278 merge = 5659de172cb5eb2abcf05e50c190a00ca775c4a7
+database migration = NONE — source-only Setup deployment
+```
+
+### Production acceptance
+
+```text
+marker = SETUP #206 V0.3.33 SOURCE-ONLY PRODUCTION DEPLOYMENT WRAPPER: PASS
+governed Setup fingerprint before/after = 72f5e30b374631daf91e059593b37500 unchanged
+final Setup SHA = e9839123e7483d7ced630b3dc6ab8f377c3f3262
+final health = {"data_mode":"postgres","status":"ok","version":"V0.3.33-material-status-review-fixes"}
+exit status = 0
+```
+
+Rollback/evidence:
+
+```text
+rollback unit = prior exact Setup SHA 79574e3a7d16e82ef3e045eb2c7c96cff624e4e1 + msb-setup.service restart
+PostgreSQL rollback archive = not applicable; Production database was not mutated
+deployment report = /home/msbadmin/setup-deployment-reports/Setup_206_V033_Material_Status_Source_Only_Production_Deploy_20261001T231702.txt
+```
+
+Browser/operator validation before Production deployment included:
+
+- Manager Material Status performance and search/sort behavior;
+- Manager override add/edit/remove and date behavior;
+- blank Needed For handling;
+- `BOTH` schedule + Manager override behavior;
+- concise Container Contents presentation;
+- Unresolved -> Material Audit correction handoff;
+- status-transition visibility after override removal/re-add;
+- `CONT:134` re-add visible on both Manager Material Status and Rolling Pick List.
+
+---
+
 ## 2026-10-01 — Setup V0.3.31-pick-review-fixes
 
 **Subsystem:** Setup and Deployment  
