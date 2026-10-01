@@ -9,9 +9,10 @@ $RepoRoot = (Resolve-Path (Join-Path $ScriptDir '..\..')).Path
 $Sql001 = Join-Path $RepoRoot 'People\Database\001_create_people_manager_contract.sql'
 $Sql002 = Join-Path $RepoRoot 'People\Database\002_harden_people_search_phone_filter.sql'
 $Sql003 = Join-Path $RepoRoot 'People\Database\003_create_people_metadata_contract.sql'
+$Sql004 = Join-Path $RepoRoot 'People\Database\004_stop_automatic_msb_email_generation.sql'
 $ServerScript = Join-Path $ScriptDir 'people_manager_disposable_server.sh'
 
-foreach ($path in @($Sql001, $Sql002, $Sql003, $ServerScript)) {
+foreach ($path in @($Sql001, $Sql002, $Sql003, $Sql004, $ServerScript)) {
     if (-not (Test-Path -LiteralPath $path)) {
         throw "Required acceptance file is missing: $path"
     }
@@ -28,7 +29,7 @@ Write-Host "Remote root: $remoteRoot"
 Write-Host 'Authority: MSB-Server-Management — PostgreSQL_Disposable_Acceptance_Standard.md'
 Write-Host 'Production access in the remote runner is pg_dump + SELECT only.'
 Write-Host 'All candidate mutations occur in a separate disposable PostgreSQL container.'
-Write-Host 'Candidate migrations: People 001 + 002 + 003.'
+Write-Host 'Candidate migrations: People 001 + 002 + 003 + 004.'
 Write-Host 'Transfer/execution uses one SCP session plus one foreground SSH session.'
 Write-Host
 
@@ -37,6 +38,7 @@ try {
     Copy-Item -LiteralPath $Sql001 -Destination (Join-Path $localBundle '001_create_people_manager_contract.sql')
     Copy-Item -LiteralPath $Sql002 -Destination (Join-Path $localBundle '002_harden_people_search_phone_filter.sql')
     Copy-Item -LiteralPath $Sql003 -Destination (Join-Path $localBundle '003_create_people_metadata_contract.sql')
+    Copy-Item -LiteralPath $Sql004 -Destination (Join-Path $localBundle '004_stop_automatic_msb_email_generation.sql')
 
     # Server Management requires Linux shell files to be normalized before SCP.
     # The version-controlled server runner is the reviewed source; this wrapper
