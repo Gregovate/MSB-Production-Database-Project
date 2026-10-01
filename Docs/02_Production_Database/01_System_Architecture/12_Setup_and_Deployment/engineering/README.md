@@ -5,7 +5,7 @@
 | Document Type | Engineering Handoff Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
-| Status | CURRENT HANDOFF — real 2026 Setup Session live; V0.3.31 Pick review fixes Production accepted; #205/#206 launch-stabilization work continues |
+| Status | CURRENT HANDOFF — real 2026 Setup Session live; V0.3.33 Manager Material Status Production accepted; #122 launch-stabilization work continues |
 | Owner | MSB Production Database engineering |
 | Last Reviewed | 2026-10-01 |
 
@@ -44,10 +44,10 @@ The real 2026 Setup Session has since been created under #122 and is live. Mater
 ```text
 protected application = https://my.sheboyganlights.org/setup/
 initial Scheduling Board launch target = 06a6536d92db5c7352beeed496563ed9bfdb7146
-current live Setup SHA = 79574e3a7d16e82ef3e045eb2c7c96cff624e4e1
-version = V0.3.31-pick-review-fixes
+current live Setup SHA = e9839123e7483d7ced630b3dc6ab8f377c3f3262
+version = V0.3.33-material-status-review-fixes
 current accepted migration tail = 063 Pick List Delay + 064 Extra Material requirement restore + 065 Setup movement capture + 066 Manager override cancel-after-movement correction
-deployment-closeout Setup business fingerprint = 9951600040f7b01c75b8c104b4ddeb8c
+deployment-closeout Setup business fingerprint = 72f5e30b374631daf91e059593b37500
 current annual reusable-name mismatches = 0
 2025 Setup Session = historical / verification evidence
 2026 Setup Session = LIVE annual planning/execution context
@@ -229,7 +229,7 @@ Server/runtime authority remains `Gregovate/MSB-Server-Management`.
 
 The accepted #184 and #167 rollback archives are retained. Restoration is a governed database operation and must reconcile legitimate post-deployment work; do not use those archives as casual UI rollback points.
 
-The current live Setup application is `6f53d7f0c4b15f7175e773a2069595eef3f0e698` (`V0.3.22-pick-list-delay`). #206 V0.3.22 was deployed after exact-candidate regression, reusable disposable acceptance, bounded browser smoke, protected negative-path checks, authenticated Pick List/Pick Delay read, live regression, unchanged governed Setup fingerprint, and unchanged 2026 Session count. The validated rollback archive is `/home/msbadmin/backups/setup-206/msb-pre-setup-206-v0322-pick-list-delay-20260930T091257.dump` (SHA256 `1415868b93bca4b0ad073b65d741087f34851d134dd8ce18346cce45061154af`). Because the Pick Delay migration is installed, source-only checkout rollback is not a complete #206 rollback. #205 was the immediately preceding live runtime. #172 previously installed migration 062 after exact-candidate regression, disposable acceptance, browser acceptance, bounded Production deployment, and real protected-route Work Order Intake/email validation. The validated #172 rollback archive is `/home/msbadmin/backups/setup-172/msb-pre-setup-172-20260928T005954.dump` (SHA256 `fe0d349a587ec0363cb69bb295618c49ab8df771ff9bcb8bf9c0e71c66b8b89a`). Because migration 062 is installed, source-only checkout rollback is not a complete #172 rollback. Use the Production Database change runbook and reconcile legitimate post-deployment Intake/Setup work before restoring or removing database state. Older #206/#175/#132/#184/#167/#204 rollback evidence remains historical recovery evidence for those deployments.
+The current live Setup application is `e9839123e7483d7ced630b3dc6ab8f377c3f3262` (`V0.3.33-material-status-review-fixes`). V0.3.33 was a source-only #206 deployment; its rollback unit is the immediately preceding exact Setup SHA `79574e3a7d16e82ef3e045eb2c7c96cff624e4e1` plus `msb-setup.service` restart, and no PostgreSQL rollback archive was created because Production database state was not mutated. The governed Setup fingerprint remained `72f5e30b374631daf91e059593b37500`. The preceding V0.3.31 release installed migration 066, so any database rollback across that boundary remains migration-aware and must use the Production Database change runbook rather than a casual source checkout rollback. Older #206/#88/#172/#175/#132/#184/#167/#204 rollback archives remain historical recovery evidence for the releases that created them and are not the current V0.3.33 rollback unit.
 
 ## Resume Checklist
 
@@ -252,7 +252,8 @@ Before the next Setup change:
 - [Operator procedures](../operatorSOP/README.md)
 - [Detailed Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md)
 - [Kit Inventory / T-Post Production Acceptance](../../../../../Setup/Acceptance/Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md)
-- [#206 V0.3.22 Pick List Delay Production Acceptance](../../../../../Setup/Acceptance/Setup_206_V0322_Pick_List_Delay_Production_Acceptance_2026-09-30.md)
+- [#206 V0.3.33 Manager Material Status Production Acceptance](../../../../../Setup/Acceptance/Setup_206_V033_Manager_Material_Status_Production_Acceptance_2026-10-01.md) — current #206 Manager Material Status / Manager override / Pick List Needed For / performance-batching source-only Production acceptance.
+- [#206 V0.3.22 Pick List Delay Production Acceptance](../../../../../Setup/Acceptance/Setup_206_V0322_Pick_List_Delay_Production_Acceptance_2026-09-30.md) — historical bounded material frontier / transient Pick Delay / automatic schedule-release acceptance.
 - [#205 Scheduling Board / Captain Dispatch Production Acceptance](../../../../../Setup/Acceptance/Setup_205_Scheduling_Board_Production_Acceptance_2026-09-29.md)
 - [#172 Report Correction Production Acceptance](../../../../../Setup/Acceptance/Setup_172_Report_Correction_Production_Acceptance_2026-09-27.md)
 - [#175 / #132 Perform Work + Report Work Production Acceptance](../../../../../Setup/Acceptance/Setup_175_132_Report_Work_Production_Acceptance_2026-09-26.md)
@@ -265,15 +266,16 @@ Before the next Setup change:
 - [#205 Production Acceptance — 2026-09-29](../../../../../Setup/Acceptance/Setup_205_Scheduling_Board_Production_Acceptance_2026-09-29.md) — exact V0.3.21 source-only Production acceptance and #206 handoff.
 
 
-## #88 Pick Mode / Movement Capture — ACTIVE LAUNCH GATE
+## #88 Pick Mode / Movement Capture — ACCEPTED FOUNDATION / HISTORICAL RELEASE CONTEXT
 
-Current successor release under PR #255:
+V0.3.29 Pick Mode / Movement Capture was Production accepted and later superseded by V0.3.31 and the current V0.3.33 Setup application:
 
 ```text
-V0.3.29-pick-clarity
-branch = agent/setup-88-pick-mode-movement
-Production remains = 6f53d7f0c4b15f7175e773a2069595eef3f0e698 / V0.3.22-pick-list-delay
+historical #88 release = V0.3.29-pick-clarity
+current Production     = e9839123e7483d7ced630b3dc6ab8f377c3f3262 / V0.3.33-material-status-review-fixes
 ```
+
+The #88 movement-capture foundation remains active behavior inside the current Setup release; this section preserves release/design context rather than declaring V0.3.29 to be the current runtime.
 
 V0.3.28 validated the field-evidence model: real Record Location observations are not blocked by planned access dates or missing prior PICKED events, canonical Home Location is shown for return, and Pick response time is materially improved by focused authoritative validation plus immediate UI settlement.
 
