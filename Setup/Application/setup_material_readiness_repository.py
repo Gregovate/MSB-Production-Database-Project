@@ -1288,7 +1288,17 @@ class SetupMaterialReadinessRepository:
                 and not has_schedule_demand
                 and not moved
             )
-            item["can_edit_pick_list_override"] = item["can_remove_from_pick_list"]
+            item["can_remove_manager_override"] = bool(
+                item["physical_type"] == "CONTAINER"
+                and has_override
+                and has_schedule_demand
+                and not moved
+            )
+            item["can_edit_pick_list_override"] = bool(
+                item["physical_type"] == "CONTAINER"
+                and has_override
+                and not moved
+            )
 
         stage_rows: dict[int, dict[str, Any]] = {}
         for task in tasks_by_session_id.values():
