@@ -515,6 +515,9 @@
     editingContainerId = null;
     dialog.close();
   });
+  document.getElementById('open-material-audit')?.addEventListener('click', () => {
+    location.href = '../material-audit/';
+  });
   document.getElementById('back-button').addEventListener('click', () => {
     location.href = `../?season_year=${encodeURIComponent(seasonSelect.value)}`;
   });
