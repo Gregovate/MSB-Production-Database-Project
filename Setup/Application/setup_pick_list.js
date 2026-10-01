@@ -405,6 +405,10 @@
 
   function pickLookupText(item) {
     const reasons = Array.isArray(item.reasons) ? item.reasons : [];
+    const carriedDisplayTerms = reasons.flatMap((reason) => [
+      ...(Array.isArray(reason.display_names) ? reason.display_names : []),
+      ...(Array.isArray(reason.display_ids) ? reason.display_ids.map((id) => `DISP:${id}`) : [])
+    ]);
     return [
       humanReadableIdentity(item),
       item.identity,
@@ -412,6 +416,7 @@
       item.home_location_code,
       item.physical_id,
       destinationText(reasons),
+      ...carriedDisplayTerms,
       ...reasons.map(reasonText)
     ].filter(Boolean).join(' ').toLowerCase();
   }
@@ -758,8 +763,8 @@
     }
 
     const rows = items.map((item) => {
-      const reasons = itemReasonsForDate(item, date);
-      const dates = itemDates(item, reasons, date);
+      const reasons = itemReasonsForDate(item, lookupQuery ? '' : date);
+      const dates = itemDates(item, reasons, lookupQuery ? '' : date);
       const payload = qrPayload(item);
       return `
         <tbody class="pick-record">
