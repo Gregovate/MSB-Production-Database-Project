@@ -251,6 +251,9 @@ def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_a
     assert "c.goes_to_endpoint_id = 1" in correction
     assert "SETUP_206_PICK_LIST_OVERRIDE_DISPOSABLE_VALIDATION_PASS" in validation
     assert "Workshop-marked Container was incorrectly accepted" in validation
+    assert "Editing Manager override timing created a second override identity" in validation
+    assert "Manager override timing edit did not update the existing demand row" in validation
+    assert "Manager override timing edit produced duplicate Container demand rows" in validation
     assert "Canceling Manager override incorrectly removed physical movement history" in validation
     assert "Canceling Manager override incorrectly changed current Container movement state" in validation
     assert "fieldwiring_app has forbidden broad Pick List override DML" in validation
