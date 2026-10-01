@@ -85,6 +85,8 @@ def test_reusable_browser_preview_supports_explicit_private_network_tablet_mode(
     assert 'preview_bind_host) PREVIEW_BIND_HOST="$value" ;;' in server
     assert 'MSB_SETUP_PREVIEW_HOST="$PREVIEW_BIND_HOST"' in server
     assert 'Browser URL: http://$PREVIEW_BIND_HOST:$PREVIEW_PORT/' in server
+    assert 'http://$PREVIEW_BIND_HOST:$PREVIEW_PORT/api/health' in server
+    assert 'http://$PREVIEW_BIND_HOST:$PREVIEW_PORT/api/setup/access' in server
     assert "192.168.5.9" in server
 
 def test_reusable_browser_preview_recovers_transport_loss_without_rebuilding_clone() -> None:
