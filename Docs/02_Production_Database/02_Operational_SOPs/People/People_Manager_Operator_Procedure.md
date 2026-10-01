@@ -45,7 +45,7 @@ Cloudflare Access identifies the signed-in user. People Manager then checks the 
 - A person's `person_id` is the durable database identity. It is not a membership number and should not be recreated merely because someone returns after being inactive.
 - If someone stops participating, normally mark the person **inactive** rather than creating a replacement person later.
 - If that same person returns, reactivate the existing person record.
-- The Sheboygan Lights email stored in People Manager is a **reserved system identity**. It does not create a Google Workspace mailbox.
+- The Sheboygan Lights email should represent an **actual Google Workspace account** when one exists. Do not invent one for a contact-only volunteer.
 - Creating a Person does **not** create a Google Workspace account, Directus identity, or database-application access.
 - Setup/Takedown participation or Production help does **not** automatically grant database access.
 - A person may remain contact-only and still receive schedules/notifications through ordinary contact information.
@@ -76,16 +76,15 @@ Use **Add person** only after searching and confirming that the person does not 
 2. Enter **First name** and **Last name**.
 3. Enter **Preferred name** when useful.
 4. Enter **Cell phone** and **Personal email** when known.
-5. Select **Build email** to build the normal Sheboygan Lights email reservation.
-6. Review the proposed address before saving.
+5. If the person already has a real Sheboygan Lights Google Workspace account, enter that exact account in **Sheboygan Lights email**.
+6. If the person does not have a real Google Workspace account, leave **Sheboygan Lights email** blank and use **Personal email** as the ordinary contact address.
 7. Leave **Active person** checked for a person who is currently participating with MSB.
 8. Select **Check duplicates** when you want to review possible matches before saving. The save workflow also performs duplicate checks.
 9. If a possible duplicate is shown, review the matching records carefully. If this is intentionally a different person, check the acknowledgement only after that review.
-10. If the standard MSB email is already reserved, review the additional-first-name-character alternatives shown by People Manager. Approve a non-standard alternative only when it is the correct separate identity.
-11. Select **Save person**.
-12. Confirm the saved person remains selected and the metadata panels become available.
+10. Select **Save person**.
+11. Confirm the saved person remains selected and the metadata panels become available.
 
-The reserved `@sheboyganlights.org` address does not create the Google Workspace account. Account creation remains a separate Google Admin / Workspace task.
+Do not use **Build email** merely to invent a future account for a contact-only volunteer. The target workflow is to leave the MSB email blank until a real Google Workspace account exists.
 
 ## Edit a Person
 
@@ -212,6 +211,11 @@ Use this panel to answer questions such as "What Setup knowledge responsibility 
 
 ## Contact-Only People and Database Access
 
+Any real Sheboygan Lights Google Workspace user may receive the baseline **MSB Browser** role for read-only database application access. Production Crew, Manager, and Administrator remain explicit elevated Directus roles.
+
+A Google Workspace account does not make somebody Production Crew, and Setup/Takedown or Production participation does not imply a database role.
+
+
 
 People Manager is the uniform contact list, not a membership/access list.
 
@@ -249,6 +253,22 @@ These values are visible for context but remain governed by their owning workflo
 Expand **Current database relationships** when duplicate/reconciliation work requires awareness of other records that currently reference this person.
 
 People Manager intentionally exposes no normal person delete action. Relationship visibility exists so an inactive or duplicate-looking person is not casually removed while other Production records depend on that identity.
+
+## Preferred contact email rule
+
+For schedules, notifications, and ordinary communication, the intended rule is:
+
+```text
+real Sheboygan Lights Google Workspace account exists
+    -> use Sheboygan Lights email as primary
+
+otherwise
+    -> use personal email
+```
+
+This communication rule is independent of Directus/database access.
+
+Historical generated/reserved MSB email values must be reconciled before an automated sender assumes every non-null Sheboygan Lights email is a real mailbox.
 
 ## If Something Is Wrong
 
