@@ -20,6 +20,7 @@ TARGET_SHA=""
 TARGET_REF=""
 PREVIEW_PORT=""
 PREVIEW_EMAIL=""
+PREVIEW_BIND_HOST="127.0.0.1"
 EXPECTED_VERSION=""
 ALLOW_CONCURRENT_PRODUCTION_WRITES="false"
 MIGRATIONS=()
@@ -34,6 +35,7 @@ while IFS=$'\t' read -r kind value extra; do
         target_ref) TARGET_REF="$value" ;;
         preview_port) PREVIEW_PORT="$value" ;;
         preview_email) PREVIEW_EMAIL="$value" ;;
+        preview_bind_host) PREVIEW_BIND_HOST="$value" ;;
         expected_version) EXPECTED_VERSION="$value" ;;
         allow_concurrent_production_writes) ALLOW_CONCURRENT_PRODUCTION_WRITES="$value" ;;
         migration) MIGRATIONS+=("$value") ;;
@@ -56,6 +58,10 @@ fi
 
 if [[ "$ALLOW_CONCURRENT_PRODUCTION_WRITES" != "true" && "$ALLOW_CONCURRENT_PRODUCTION_WRITES" != "false" ]]; then
     echo "FAIL: allow_concurrent_production_writes must be true or false"
+    exit 3
+fi
+if [[ "$PREVIEW_BIND_HOST" != "127.0.0.1" && "$PREVIEW_BIND_HOST" != "192.168.5.9" ]]; then
+    echo "FAIL: preview_bind_host must be 127.0.0.1 or the documented private Setup host 192.168.5.9"
     exit 3
 fi
 
@@ -95,6 +101,7 @@ echo "Candidate SHA: $TARGET_SHA"
 echo "Target ref:    $TARGET_REF"
 echo "Preview port:  $PREVIEW_PORT"
 echo "Preview user:  $PREVIEW_EMAIL"
+echo "Preview bind:  $PREVIEW_BIND_HOST"
 echo "Expected ver:  ${EXPECTED_VERSION:-not pinned}"
 echo "Concurrent Production writes allowed: $ALLOW_CONCURRENT_PRODUCTION_WRITES"
 echo "Migrations:    ${#MIGRATIONS[@]}"
@@ -398,7 +405,7 @@ resume_existing_preview() {
 
     echo
     echo "SETUP REUSABLE DISPOSABLE BROWSER REVIEW RESUMED"
-    echo "Browser URL through SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/"
+    echo "Browser URL: http://$PREVIEW_BIND_HOST:$PREVIEW_PORT/"
     echo "Candidate SHA: $TARGET_SHA"
     echo "Preview identity: $PREVIEW_EMAIL"
     echo "Expected version: $EXPECTED_VERSION"
@@ -767,7 +774,7 @@ PREVIEW_PGID="$(sudo -u fieldwiring -H env \
     SETUP_GOOGLE_DOC_LINK_ROOT="/mnt/msb-setup-google-links" \
     MSB_SETUP_PREVIEW_APP_DIR="$APP_DIR" \
     MSB_SETUP_PREVIEW_OPERATOR_EMAIL="$PREVIEW_EMAIL" \
-    MSB_SETUP_PREVIEW_HOST="127.0.0.1" \
+    MSB_SETUP_PREVIEW_HOST="$PREVIEW_BIND_HOST" \
     MSB_SETUP_PREVIEW_PORT="$PREVIEW_PORT" \
     MSB_SETUP_PREVIEW_ENTRY="$PREVIEW_ENTRY" \
     MSB_SETUP_PREVIEW_LOG="$PREVIEW_LOG" \
