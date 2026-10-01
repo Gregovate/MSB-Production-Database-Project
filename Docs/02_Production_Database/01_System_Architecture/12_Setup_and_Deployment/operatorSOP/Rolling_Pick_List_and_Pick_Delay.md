@@ -73,7 +73,9 @@ Use normal Pick Mode only when the physical item is actually being picked for pa
 
 ## Manager Early-Pick Demand
 
-A Manager may add an explicit early-pick demand when a deliberate physical pull is needed before normal schedule-derived demand would surface it.
+Manager early-pick creation/edit/cancel is not performed on the Rolling Pick List. The Pick List is the material-handler execution surface. Manager override control belongs on the separate Manager Material Status surface owned by #206/#122.
+
+A Manager override may add an explicit early-pick demand when a deliberate physical pull is needed before normal schedule-derived demand would surface it.
 
 An early-pick override:
 

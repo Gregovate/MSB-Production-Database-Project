@@ -81,3 +81,6 @@ def test_preview_copy_never_claims_disposable_writes_are_production() -> None:
     assert "Production is not being edited." in text
     assert "saved to the disposable review clone" in text
     assert "created in the disposable review clone" in text
+    assert "Setup Session loaded from Production. Changes made by authorized Managers are shared immediately." in text
+    assert "target.hidden = true" in text
+    assert "if (target) target.hidden = false" in text

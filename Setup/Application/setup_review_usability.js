@@ -361,6 +361,20 @@ function installPreviewReviewNotice() {
 const baseSetupReviewSetAlert = setAlert;
 setAlert = function setupReviewAwareAlert(message, state = 'ok') {
   let adjusted = String(message ?? '');
+  const target = document.getElementById('app-alert');
+
+  if (
+    setupReviewIsLocalPreview()
+    && adjusted.includes(' Setup Session loaded from Production. Changes made by authorized Managers are shared immediately.')
+  ) {
+    if (target) {
+      target.textContent = '';
+      target.hidden = true;
+    }
+    return;
+  }
+
+  if (target) target.hidden = false;
   if (setupReviewIsLocalPreview()) {
     adjusted = adjusted
       .replaceAll(' saved to Production.', ' saved to the disposable review clone.')

@@ -1,7 +1,6 @@
 .pick-mode-start{font-weight:900}
-.pick-training-banner{position:sticky;top:0;z-index:70;padding:.28rem .55rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;font-size:.82rem;font-weight:950;letter-spacing:.035em;background:#8a5a00;color:#fff;border-bottom:2px solid #ffd166}
 .pick-mode-panel{position:sticky;top:0;z-index:50;margin:0 0 1rem;padding:1rem;border:4px solid currentColor;border-radius:14px;background:#171717;color:#fff}
-body.pick-training-mode .pick-mode-panel{top:2.3rem;border-color:#ffd166}
+body.pick-training-mode .pick-mode-panel{border-color:#ffd166}
 .pick-training-entry{margin:0 0 1rem;padding:.7rem .9rem;border:1px solid currentColor;border-radius:10px}
 .pick-training-entry summary{cursor:pointer;font-weight:800}
 .pick-training-entry p{margin:.55rem 0}
@@ -137,6 +136,5 @@ body.pick-mode-active .pick-mode-meta{
   .movement-record-actions{display:grid;grid-template-columns:1fr}
   .movement-record-actions button{width:100%}
   .pick-mode-feedback{font-size:1.15rem}
-  body.pick-training-mode .pick-mode-panel{top:3.4rem}
 }
 @media print{.pick-mode-panel{display:none!important}}

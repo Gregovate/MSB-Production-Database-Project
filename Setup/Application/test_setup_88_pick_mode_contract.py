@@ -40,7 +40,7 @@ def test_pick_list_defaults_to_needs_pick_and_keeps_back_navigation_while_scanni
     assert "body.pick-mode-active .page-header .controls label," in css
     assert "body.pick-mode-active .summary," in css
     assert "body.pick-mode-active .pick-training-entry{display:none!important}" in css
-    assert "padding:.28rem .55rem" in css
+    assert ".pick-training-banner" not in css
 
     assert '<option value="OUTSTANDING" selected>Needs pick</option>' in html
     assert 'id="back-button"' in html
@@ -50,12 +50,9 @@ def test_pick_list_defaults_to_needs_pick_and_keeps_back_navigation_while_scanni
     )
     assert "#back-button" not in active_rule
 
-    manager_action_rule = next(
-        line for line in css.splitlines()
-        if line.startswith("body.pick-mode-active .delay-pick")
-    )
-    assert ".edit-override" in manager_action_rule
-    assert ".cancel-override" in manager_action_rule
+    assert 'id="manager-override-panel"' not in html
+    assert 'class="edit-override' not in html
+    assert 'class="cancel-override' not in html
 
 
 def test_pick_list_is_workshop_only_and_record_location_is_separate():
@@ -362,15 +359,15 @@ def test_release_identity_and_offline_shells_are_synchronized():
     location_sw = read("setup_record_location_sw.js")
     location_html = read("record_location.html")
 
-    assert 'PRODUCTION_VERSION = "V0.3.30-pick-override-cancel"' in backend
-    assert "const CLIENT_BUILD = 'V0.3.30-pick-override-cancel';" in guard
-    assert "msb-setup-pick-mode-v14" in pick_sw
-    assert "setup_pick_mode.css?v=2026-10-01.4" in pick_sw
-    assert "setup_pick_mode.css?v=2026-10-01.4" in pick_html
+    assert 'PRODUCTION_VERSION = "V0.3.31-pick-review-fixes"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.31-pick-review-fixes';" in guard
+    assert "msb-setup-pick-mode-v15" in pick_sw
+    assert "setup_pick_mode.css?v=2026-10-01.5" in pick_sw
+    assert "setup_pick_mode.css?v=2026-10-01.5" in pick_html
     assert "setup_pick_list.js?v=2026-10-01.3" in pick_sw
     assert "setup_pick_list.js?v=2026-10-01.3" in pick_html
-    assert "setup_pick_mode.js?v=2026-10-01.2" in pick_sw
-    assert "setup_pick_mode.js?v=2026-10-01.2" in pick_html
+    assert "setup_pick_mode.js?v=2026-10-01.3" in pick_sw
+    assert "setup_pick_mode.js?v=2026-10-01.3" in pick_html
     assert "msb-setup-record-location-v6" in location_sw
     assert "setup_record_location.css?v=2026-09-30.6" in location_sw
     assert "setup_record_location.css?v=2026-09-30.6" in location_html
@@ -401,14 +398,16 @@ def test_pick_list_training_mode_is_fail_closed_and_keeps_real_pick_totals_visib
     assert handle.index("resetScanEntry();") < handle.index("parseIdentity(submitted)")
 
     assert 'id="pick-training-entry"' in html
-    assert '<summary>Training / device test</summary>' in html
+    assert 'id="pick-training-summary"' in html
     assert 'id="enter-pick-training"' in html
     assert 'id="exit-pick-training"' in html
-    assert 'id="pick-training-banner"' in html
-    assert "TRAINING — NO RECORDING" in html
-    banner = html.split('id="pick-training-banner"', 1)[1].split("</div>", 1)[0]
-    assert 'id="exit-pick-training"' in banner
-    assert "TRAINING MODE — NOTHING WILL BE RECORDED" not in banner
+    assert 'id="pick-training-banner"' not in html
+    assert ".pick-training-banner" not in css
+    assert "Training active — no recording" in ui
+    assert "WORKSHOP PICK — TRAINING" in ui
+    assert "stopButton.textContent = trainingMode ? 'Exit Training' : 'Stop Scanner';" in ui
+    assert "if (trainingMode) {" in ui
+    assert "exitTrainingMode();" in ui
     assert 'id="pick-mode-containers-picked"' in html
     assert 'id="pick-mode-training-count"' in html
     assert 'class="pick-mode-toolbar-actions"' in html

@@ -582,11 +582,7 @@
   function overrideBadgeHtml(item) {
     const overrides = Array.isArray(item.manager_overrides) ? item.manager_overrides : [];
     if (!overrides.length) return '';
-    const actions = access?.can_manage_setup
-      ? `<button type="button" class="small secondary edit-override no-print" data-container-id="${esc(item.physical_id)}">Edit Override</button>
-         <button type="button" class="small secondary cancel-override no-print" data-container-id="${esc(item.physical_id)}">Cancel Override</button>`
-      : '';
-    return `<div class="override-state"><span class="override-badge">MANAGER OVERRIDE</span>${actions}</div>`;
+    return '<div class="override-state"><span class="override-badge">MANAGER OVERRIDE</span></div>';
   }
 
 
@@ -778,16 +774,6 @@
       </div>`;
 
     renderQrCodes();
-    document.querySelectorAll('.edit-override').forEach((button) => {
-      button.addEventListener('click', () => {
-        beginEditOverride(Number(button.dataset.containerId));
-      });
-    });
-    document.querySelectorAll('.cancel-override').forEach((button) => {
-      button.addEventListener('click', () => {
-        void cancelOverride(Number(button.dataset.containerId));
-      });
-    });
     document.querySelectorAll('.delay-pick').forEach((button) => {
       button.addEventListener('click', () => {
         void setPickDelay(Number(button.dataset.containerId), true);
