@@ -65,25 +65,25 @@ These are separate facts.
 
 Creating a Person must **not** grant application access.
 
-### 2. Reserved Sheboygan Lights identity is not a Google account
+### 2. Sheboygan Lights email should represent a real Google Workspace account
 
-People Manager currently generates/reserves an `@sheboyganlights.org` value when a Person is added.
+People Manager currently generates/reserves an `@sheboyganlights.org` value when a Person is added, but the operator clarified that this behavior is undesirable.
 
-That value is a **reserved MSB/system identity string**, not a fictitious or real Google Workspace account.
+The target contract is:
+
+```text
+no real Google Workspace account
+    -> ref.person.email = NULL
+    -> use personal_email for contact
+
+real Sheboygan Lights Google Workspace account exists
+    -> ref.person.email = actual Google account
+    -> use it as the primary organization/contact email
+```
 
 There is currently no automatic People Manager -> Google Workspace provisioning link.
 
-Therefore:
-
-```text
-ref.person.email exists
-    != Google Workspace account exists
-    != mailbox is deliverable
-    != Directus user exists
-    != database application access is granted
-```
-
-The reserved identity remains useful for deterministic future identity matching even when the person never becomes a Google/Directus user.
+Creating a Person must not imply that a Google account exists or should exist.
 
 ### 3. Communication/contact is independent from system access
 
@@ -91,11 +91,19 @@ The People system is the uniform contact list for operational communication such
 
 A volunteer does not need a Google Workspace or Directus account to remain a valid communication recipient.
 
-`personal_email` remains an ordinary deliverable contact channel when known.
+The intended primary-email rule is:
 
-The system must not send mail to a reserved `ref.person.email` merely because the value exists. A future notification/scheduling consumer must use a contact address known to be deliverable rather than infer mailbox existence from the reserved MSB identity.
+```text
+actual Sheboygan Lights Google account exists
+    -> ref.person.email is primary
 
-The exact preferred-email/deliverability field or rule must be established before a scheduler automatically chooses between personal and MSB email.
+otherwise
+    -> personal_email is primary
+```
+
+This rule is intentionally independent of Directus/database authorization.
+
+Historical generated/reserved MSB emails must be audited before automated notification consumers rely on non-null `ref.person.email` as proof of deliverability.
 
 ### 4. Participation is independent from database access
 
@@ -122,38 +130,98 @@ Google Workspace user
 
 Do not infer Directus `Production Crew` authorization from Setup/Takedown helper status or ordinary Person activity.
 
-### 5. Google Workspace is authentication eligibility, not automatic authorization
+### 5. Google Workspace enables baseline Browser access; elevated roles remain explicit
 
 Database applications use Google authentication through Directus.
 
-Only people who actually have the appropriate Google Workspace identity and are intentionally granted database application access should receive a Directus user/role.
+Any real Sheboygan Lights Google Workspace user may receive the baseline `MSB Browser` Directus role, which is intended to provide read-only application access.
 
-A Google Workspace account is **necessary for Google-authenticated Directus access but is not by itself sufficient to grant database access**.
+A Google Workspace account does **not** imply Production Crew, Manager, or Administrator authorization.
 
-There are Sheboygan Lights Google users who are not Production Crew and must not be assigned the Production Crew Directus role merely because their account exists.
+There are Sheboygan Lights Google users who are not Production Crew. Those users may remain `MSB Browser` and must not be elevated merely because their Google account exists.
 
-### 6. Directus role is explicit database-application authorization
+### 6. Directus role controls database-application authorization
 
 Directus identity/role is the database-application authorization layer.
 
-The operator must explicitly choose the intended database role when provisioning access.
-
-For the People Manager workflow:
+The intended role ladder is:
 
 ```text
-Person/contact record
-    -> no database access by default
+Google Workspace user
+    -> MSB Browser (read-only baseline)
 
-operator confirms the person has the real Google Workspace account
-    + operator intentionally selects database access role
-    -> provision Directus identity
-    -> link exact Person
-    -> assign selected Directus role
+explicit Production Crew access
+    -> Production Crew
+
+explicit management authority
+    -> Manager / Administrator
 ```
 
-Creating a new Person must **not automatically provision Directus**.
+Creating a new Person must **not automatically provision Directus**, because many People records are contact-only volunteers without Google Workspace accounts.
 
-The access action is a separate governed action on the existing Person page.
+When a real Google account exists, baseline Browser access may be established through the Google/Directus bootstrap path. People Manager is still responsible for showing the resulting identity/role state and for governed elevation such as Production Crew.
+
+## Clarification — Google Users, Browser Role, and Contact Email Semantics — 2026-10-01
+
+The operator clarified two important rules that supersede the earlier assumption that every Person should receive a reserved/fictitious Sheboygan Lights email at creation time.
+
+### Any real Google Workspace user may receive the read-only Browser role
+
+The `MSB Browser` Directus role exists as the baseline read-only database-application role.
+
+The intended access model is:
+
+```text
+real Sheboygan Lights Google Workspace account
+    -> eligible to authenticate with Google
+    -> default Directus role may be MSB Browser (read-only)
+
+Production Crew role
+    -> explicit elevation above Browser
+    -> not inferred merely from having a Google account
+
+Manager / Administrator
+    -> separately governed elevated roles
+```
+
+Therefore a Google Workspace user who is not part of Production Crew may still legitimately have read-only database access through `MSB Browser`.
+
+### New Person creation must not invent a Sheboygan Lights/Google email
+
+People Manager should return to the simpler contact rule:
+
+```text
+new Person with no real Google Workspace account
+    -> store personal_email / phone
+    -> ref.person.email remains NULL
+    -> no Directus identity
+    -> no database access
+
+person later receives a real Sheboygan Lights Google Workspace account
+    -> set ref.person.email to that actual Google account
+    -> this becomes the preferred organization email
+    -> Google authentication / Directus provisioning may then use the exact address
+```
+
+Do not automatically generate a fictitious `@sheboyganlights.org` value merely to reserve a future identity.
+
+The current automatic **Build email** behavior on new Person creation is therefore a corrective target.
+
+### Primary email selection
+
+Once existing data is reconciled so `ref.person.email` represents an actual Sheboygan Lights Google account rather than a reservation, communication consumers should use:
+
+```text
+if real ref.person.email exists
+    -> use Sheboygan Lights email as primary
+
+else
+    -> use personal_email
+```
+
+This restores the simple operator meaning the user preferred: organization account when one actually exists; otherwise personal email.
+
+Until the existing population is audited, consumers must not assume every current non-null `ref.person.email` is deliverable because historical People Manager behavior may have generated reserved addresses that were never created in Google Workspace.
 
 ## Current Directus Role Evidence
 
