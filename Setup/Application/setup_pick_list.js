@@ -115,13 +115,16 @@
     const demanded = demandedContainerIds();
     const matching = containerCatalog
       .filter((row) => containerSearchText(row).includes(query));
-    const matches = matching
+    const eligible = matching.filter((row) => Number(row.goes_to_endpoint_id) !== 1);
+    const matches = eligible
       .filter((row) => !demanded.has(Number(row.container_id)))
       .slice(0, 12);
 
     let emptyMessage = 'No matching Containers';
-    if (!matches.length && matching.length) {
-      emptyMessage = 'All matching Containers are already on the Pick List.';
+    if (!eligible.length && matching.length) {
+      emptyMessage = 'Matching Containers are marked Workshop and cannot be added to the park Pick List.';
+    } else if (!matches.length && eligible.length) {
+      emptyMessage = 'All matching eligible Containers are already on the Pick List.';
     }
 
     overrideContainerResults.innerHTML = matches.length
@@ -529,7 +532,7 @@
   function overrideBadgeHtml(item) {
     const overrides = Array.isArray(item.manager_overrides) ? item.manager_overrides : [];
     if (!overrides.length) return '';
-    const cancel = access?.can_manage_setup && !itemMoved(item)
+    const cancel = access?.can_manage_setup
       ? `<button type="button" class="small secondary cancel-override no-print" data-container-id="${esc(item.physical_id)}">Cancel Override</button>`
       : '';
     return `<div class="override-state"><span class="override-badge">MANAGER OVERRIDE</span>${cancel}</div>`;
