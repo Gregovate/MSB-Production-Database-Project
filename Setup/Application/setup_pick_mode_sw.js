@@ -3,7 +3,7 @@
 const CACHE_NAME = 'msb-setup-pick-mode-v10';
 const SHELL = [
   './',
-  'assets/setup_pick_list.css?v=2026-09-30.5',
+  'assets/setup_pick_list.css?v=2026-10-01.1',
   'assets/setup_pick_mode.css?v=2026-09-30.8',
   'assets/qrcode.min.js?v=1',
   'assets/setup_pick_list.js?v=2026-10-01.3',
