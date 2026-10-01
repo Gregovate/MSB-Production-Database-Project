@@ -103,7 +103,7 @@ body.pick-mode-active .pick-mode-meta{
   font-size:.78rem;
   line-height:1.1
 }
-@media(max-width:760px){
+@media(max-width:900px){
   body.pick-mode-active .pick-mode-panel{
     grid-template-columns:1fr;
     grid-template-areas:
