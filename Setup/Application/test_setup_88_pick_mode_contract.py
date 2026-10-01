@@ -57,6 +57,8 @@ def test_pick_list_defaults_to_needs_pick_and_keeps_back_navigation_while_scanni
     assert ".edit-override" in manager_action_rule
     assert ".cancel-override" in manager_action_rule
 
+    assert "body.pick-mode-active #manager-pick-lookup{display:none!important}" in css
+
 
 def test_pick_list_is_workshop_only_and_record_location_is_separate():
     pick_html = read("pick_list.html")
@@ -364,11 +366,11 @@ def test_release_identity_and_offline_shells_are_synchronized():
 
     assert 'PRODUCTION_VERSION = "V0.3.30-pick-override-cancel"' in backend
     assert "const CLIENT_BUILD = 'V0.3.30-pick-override-cancel';" in guard
-    assert "msb-setup-pick-mode-v14" in pick_sw
+    assert "msb-setup-pick-mode-v15" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.4" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.4" in pick_html
-    assert "setup_pick_list.js?v=2026-10-01.3" in pick_sw
-    assert "setup_pick_list.js?v=2026-10-01.3" in pick_html
+    assert "setup_pick_list.js?v=2026-10-01.4" in pick_sw
+    assert "setup_pick_list.js?v=2026-10-01.4" in pick_html
     assert "setup_pick_mode.js?v=2026-10-01.2" in pick_sw
     assert "setup_pick_mode.js?v=2026-10-01.2" in pick_html
     assert "msb-setup-record-location-v6" in location_sw
