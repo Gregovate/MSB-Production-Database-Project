@@ -19,6 +19,7 @@ from setup_material_readiness_projection import (
     project_physical_demand,
 )
 from setup_next_repository import SetupNextRepository, SetupNextRepositoryError
+from setup_material_resolution import is_real_setup_scene, is_stage_level_lor_group
 
 
 class SetupMaterialReadinessRepositoryError(RuntimeError):
@@ -910,6 +911,212 @@ class SetupMaterialReadinessRepository:
                 for row in cur.fetchall()
             }
 
+    def _bulk_unscheduled_material_contexts(
+        self,
+        *,
+        setup_session_id: int,
+        task_ids: list[int],
+    ) -> dict[int, dict[str, Any]]:
+        """Resolve unscheduled reusable material for many tasks with bounded reads.
+
+        This preserves the accepted field_context material rules but avoids one
+        PostgreSQL connection/query bundle per annual task.
+        """
+        if not task_ids:
+            return {}
+
+        normalized_task_ids = sorted({int(task_id) for task_id in task_ids})
+        contexts: dict[int, dict[str, Any]] = {
+            task_id: {
+                "displays": [],
+                "support_containers": [],
+                "material_resolution": {"warning": None},
+            }
+            for task_id in normalized_task_ids
+        }
+
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    t.setup_task_id,
+                    t.stage_id,
+                    t.lor_scene_id,
+                    ls.scene_name,
+                    t.requires_display_material
+                FROM ref.setup_task AS t
+                LEFT JOIN ref.lor_scene AS ls
+                  ON ls.lor_scene_id = t.lor_scene_id
+                WHERE t.setup_task_id = ANY(%s)
+                """,
+                (normalized_task_ids,),
+            )
+            task_meta = {
+                int(row["setup_task_id"]): dict(row)
+                for row in cur.fetchall()
+            }
+
+            cur.execute(
+                """
+                SELECT setup_task_id, display_id
+                FROM ref.setup_task_display
+                WHERE setup_task_id = ANY(%s)
+                ORDER BY setup_task_id, display_id
+                """,
+                (normalized_task_ids,),
+            )
+            explicit_by_task: dict[int, set[int]] = defaultdict(set)
+            for row in cur.fetchall():
+                explicit_by_task[int(row["setup_task_id"])].add(int(row["display_id"]))
+
+            stage_ids = sorted({
+                int(meta["stage_id"])
+                for meta in task_meta.values()
+                if meta.get("stage_id") is not None
+            })
+            scene_memberships: dict[int, set[int]] = defaultdict(set)
+            stage_memberships: dict[int, list[tuple[str | None, int]]] = defaultdict(list)
+            if stage_ids:
+                cur.execute(
+                    """
+                    SELECT
+                        ls.stage_id,
+                        ls.lor_scene_id,
+                        ls.scene_name,
+                        lsd.display_id
+                    FROM ref.lor_scene AS ls
+                    JOIN ref.lor_scene_display AS lsd
+                      ON lsd.lor_scene_id = ls.lor_scene_id
+                    WHERE ls.stage_id = ANY(%s)
+                    ORDER BY ls.stage_id, ls.lor_scene_id, lsd.display_id
+                    """,
+                    (stage_ids,),
+                )
+                for row in cur.fetchall():
+                    stage_id = int(row["stage_id"])
+                    scene_id = int(row["lor_scene_id"])
+                    display_id = int(row["display_id"])
+                    scene_memberships[scene_id].add(display_id)
+                    stage_memberships[stage_id].append((row.get("scene_name"), display_id))
+
+            selected_by_task: dict[int, set[int]] = defaultdict(set)
+            for task_id, meta in task_meta.items():
+                requires_display_material = bool(meta.get("requires_display_material"))
+                stage_id = meta.get("stage_id")
+                if not requires_display_material:
+                    continue
+                if stage_id is None:
+                    contexts[task_id]["material_resolution"] = {
+                        "warning": "Display material requires a Stage or real Scene scope."
+                    }
+                    continue
+
+                selected = selected_by_task[task_id]
+                selected.update(explicit_by_task.get(task_id) or set())
+
+                scene_id = meta.get("lor_scene_id")
+                scene_name = meta.get("scene_name")
+                if scene_id is not None and is_real_setup_scene(scene_name):
+                    selected.update(scene_memberships.get(int(scene_id)) or set())
+                else:
+                    for group_name, display_id in stage_memberships.get(int(stage_id), []):
+                        if is_stage_level_lor_group(group_name):
+                            selected.add(int(display_id))
+
+            all_display_ids = sorted({
+                display_id
+                for display_ids in selected_by_task.values()
+                for display_id in display_ids
+            })
+            display_by_id: dict[int, dict[str, Any]] = {}
+            if all_display_ids:
+                cur.execute(
+                    """
+                    SELECT
+                        d.display_id,
+                        d.display_name,
+                        d.container_id,
+                        c.description AS container_description,
+                        ds.position_mode,
+                        CASE
+                            WHEN ds.position_mode = 'DETACHED' THEN ds.current_stage_id
+                            ELSE cs.current_stage_id
+                        END AS current_stage_id,
+                        current_stage.stage_key AS current_stage_key,
+                        current_stage.stage_name AS current_stage_name,
+                        CASE
+                            WHEN ds.position_mode = 'DETACHED' THEN ds.current_location_note
+                            ELSE cs.current_location_note
+                        END AS current_location_note,
+                        c.location_code AS home_location_code
+                    FROM ref.display AS d
+                    JOIN ref.display_status AS status
+                      ON status.display_status_id = d.display_status_id
+                    LEFT JOIN ref.container AS c
+                      ON c.container_id = d.container_id
+                    LEFT JOIN ops.setup_display_state AS ds
+                      ON ds.setup_session_id = %s
+                     AND ds.display_id = d.display_id
+                    LEFT JOIN ops.setup_container_state AS cs
+                      ON cs.setup_session_id = %s
+                     AND cs.container_id = d.container_id
+                    LEFT JOIN ref.stage AS current_stage
+                      ON current_stage.stage_id = CASE
+                          WHEN ds.position_mode = 'DETACHED' THEN ds.current_stage_id
+                          ELSE cs.current_stage_id
+                      END
+                    WHERE d.display_id = ANY(%s)
+                      AND upper(status.display_status_name) = 'ACTIVE'
+                    ORDER BY d.container_id NULLS LAST, d.display_name, d.display_id
+                    """,
+                    (setup_session_id, setup_session_id, all_display_ids),
+                )
+                display_by_id = {
+                    int(row["display_id"]): dict(row)
+                    for row in cur.fetchall()
+                }
+
+            for task_id, display_ids in selected_by_task.items():
+                contexts[task_id]["displays"] = [
+                    dict(display_by_id[display_id])
+                    for display_id in sorted(display_ids)
+                    if display_id in display_by_id
+                ]
+
+            cur.execute(
+                """
+                SELECT
+                    tc.setup_task_id,
+                    c.container_id,
+                    c.description AS container_description,
+                    c.location_code AS home_location_code,
+                    cs.current_stage_id,
+                    s.stage_key AS current_stage_key,
+                    s.stage_name AS current_stage_name,
+                    cs.current_location_note,
+                    tc.relationship_type,
+                    tc.notes AS relationship_notes
+                FROM ref.setup_task_container_support AS tc
+                JOIN ref.container AS c
+                  ON c.container_id = tc.container_id
+                LEFT JOIN ops.setup_container_state AS cs
+                  ON cs.setup_session_id = %s
+                 AND cs.container_id = c.container_id
+                LEFT JOIN ref.stage AS s
+                  ON s.stage_id = cs.current_stage_id
+                WHERE tc.setup_task_id = ANY(%s)
+                ORDER BY tc.setup_task_id, c.container_id
+                """,
+                (setup_session_id, normalized_task_ids),
+            )
+            for row in cur.fetchall():
+                task_id = int(row["setup_task_id"])
+                if task_id in contexts:
+                    contexts[task_id]["support_containers"].append(dict(row))
+
+        return contexts
+
+
     def manager_material_status(self, season_year: int) -> dict[str, Any]:
         """Manager-only annual material oversight across scheduled and unscheduled work.
 
@@ -1014,7 +1221,10 @@ class SetupMaterialReadinessRepository:
         for row in self._extra_material_rows(candidate_task_ids, season_year):
             extra_by_task[int(row["setup_task_id"])].append(row)
 
-        next_repo = SetupNextRepository(self.dsn)
+        bulk_context_by_task = self._bulk_unscheduled_material_contexts(
+            setup_session_id=setup_session_id,
+            task_ids=candidate_task_ids,
+        )
 
         def ensure_item(
             physical_type: str,
@@ -1072,10 +1282,11 @@ class SetupMaterialReadinessRepository:
 
         for task in candidate_tasks:
             task_id = int(task["setup_task_id"])
-            try:
-                context = next_repo.field_context(task_id=task_id, season_year=season_year)
-            except SetupNextRepositoryError as exc:
-                raise SetupMaterialReadinessRepositoryError(str(exc)) from exc
+            context = bulk_context_by_task.get(task_id) or {
+                "displays": [],
+                "support_containers": [],
+                "material_resolution": {"warning": None},
+            }
 
             material_resolution = dict(context.get("material_resolution") or {})
             if material_resolution.get("warning"):
