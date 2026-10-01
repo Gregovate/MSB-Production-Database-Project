@@ -422,8 +422,8 @@ def test_pick_list_training_mode_is_fail_closed_and_keeps_real_pick_totals_visib
     assert " · NOT RECORDED" in ui
     assert "TRAINING — READY" not in ui
     assert "if (trainingMode || syncing || !navigator.onLine) return;" in ui
-    assert "TRAINING — WOULD PICK " in ui
-    assert "NOTHING RECORDED" in ui
+    assert "TRAINING — WOULD PICK " not in ui
+    assert "NOTHING RECORDED" not in ui
     assert "containersPickedCount" in list_ui
     assert "item.current_observation?.has_pick_event" in list_ui
     assert "has_pick_event: true" in list_ui
