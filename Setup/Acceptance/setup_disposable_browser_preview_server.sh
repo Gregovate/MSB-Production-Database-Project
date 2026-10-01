@@ -95,7 +95,6 @@ echo "Candidate SHA: $TARGET_SHA"
 echo "Target ref:    $TARGET_REF"
 echo "Preview port:  $PREVIEW_PORT"
 echo "Preview user:  $PREVIEW_EMAIL"
-echo "Preview bind:  127.0.0.1 (server loopback only)"
 echo "Expected ver:  ${EXPECTED_VERSION:-not pinned}"
 echo "Concurrent Production writes allowed: $ALLOW_CONCURRENT_PRODUCTION_WRITES"
 echo "Migrations:    ${#MIGRATIONS[@]}"
@@ -399,7 +398,7 @@ resume_existing_preview() {
 
     echo
     echo "SETUP REUSABLE DISPOSABLE BROWSER REVIEW RESUMED"
-    echo "Browser URL through workstation SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/"
+    echo "Browser URL through SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/"
     echo "Candidate SHA: $TARGET_SHA"
     echo "Preview identity: $PREVIEW_EMAIL"
     echo "Expected version: $EXPECTED_VERSION"
@@ -816,7 +815,7 @@ echo "Reconnect state: $STATE_FILE"
 cat <<CHECKLIST
 
 SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY
-Browser URL through workstation SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/
+Browser URL through SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/
 Candidate SHA: $TARGET_SHA
 Candidate ref: $TARGET_REF
 Preview identity: $PREVIEW_EMAIL
