@@ -11,7 +11,8 @@ param(
     [string]$ExpectedVersion,
     [string[]]$MigrationPaths = @(),
     [string[]]$ValidationPaths = @(),
-    [switch]$AllowConcurrentProductionWrites
+    [switch]$AllowConcurrentProductionWrites,
+    [switch]$InternalNetworkPreview
 )
 
 $ErrorActionPreference = 'Stop'
@@ -164,7 +165,8 @@ $remoteBundle = "/tmp/$bundleName"
 $localRunner = Join-Path $localBundle 'setup_disposable_browser_preview_server.sh'
 $localManifest = Join-Path $localBundle 'preview_manifest.tsv'
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-$browserUrl = "http://127.0.0.1:$PreviewPort/"
+$previewBindHost = if ($InternalNetworkPreview) { '192.168.5.9' } else { '127.0.0.1' }
+$browserUrl = "http://${previewBindHost}:$PreviewPort/"
 
 try {
     New-Item -ItemType Directory -Path $localBundle -Force | Out-Null
@@ -178,6 +180,7 @@ try {
         "target_ref`t$TargetRef",
         "preview_port`t$PreviewPort",
         "preview_email`t$PreviewEmail",
+        "preview_bind_host`t$previewBindHost",
         "allow_concurrent_production_writes`t$($AllowConcurrentProductionWrites.IsPresent.ToString().ToLowerInvariant())"
     )
     if (-not [string]::IsNullOrWhiteSpace($ExpectedVersion)) {
@@ -205,6 +208,7 @@ try {
     Write-Host "Target ref:      $TargetRef"
     Write-Host "Preview port:    $PreviewPort"
     Write-Host "Browser URL:     $browserUrl"
+    Write-Host "Preview bind:    $previewBindHost"
     Write-Host "Preview user:    $PreviewEmail"
     Write-Host "Expected version:$ExpectedVersion"
     Write-Host "Concurrent Prod: $($AllowConcurrentProductionWrites.IsPresent)"
@@ -217,6 +221,11 @@ try {
         Write-Host 'NOTE: the disposable clone is a point-in-time snapshot. Production edits made after preview start are NOT visible in this preview.'
     }
     Write-Host 'All migration/API/browser writes from the preview: disposable current-Production clone only.'
+    if ($InternalNetworkPreview) {
+        Write-Host 'Tablet mode: temporary preview is exposed only on the private MSB server address; no public proxy/routing is changed.'
+    } else {
+        Write-Host 'Desktop mode: preview is reachable only through the local SSH tunnel.'
+    }
     Write-Host 'Keep this PowerShell window open for the complete review and cleanup.'
     Write-Host
 
@@ -238,7 +247,11 @@ try {
     while ($true) {
         $command = if ($mode -eq 'start') { $initialCommand } else { $resumeCommand }
 
-        & ssh -tt -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -L "${PreviewPort}:127.0.0.1:${PreviewPort}" $Server $command
+        if ($InternalNetworkPreview) {
+            & ssh -tt -o ServerAliveInterval=15 -o ServerAliveCountMax=3 $Server $command
+        } else {
+            & ssh -tt -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -L "${PreviewPort}:127.0.0.1:${PreviewPort}" $Server $command
+        }
         $remoteExit = $LASTEXITCODE
 
         if ($remoteExit -eq 0) {
