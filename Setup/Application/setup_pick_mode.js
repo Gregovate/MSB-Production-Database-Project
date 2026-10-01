@@ -73,9 +73,7 @@
 
   function updateNetwork() {
     if (trainingMode) {
-      networkState.textContent = navigator.onLine
-        ? 'ONLINE · TRAINING READ-ONLY'
-        : 'OFFLINE · TRAINING READ-ONLY';
+      networkState.textContent = navigator.onLine ? 'ONLINE' : 'OFFLINE';
       return;
     }
     networkState.textContent = navigator.onLine
@@ -234,7 +232,7 @@
         return assetKey(row.asset_type, row.asset_id);
       }));
       queueState.textContent = trainingMode
-        ? 'Training — movement queue disabled' + (rows.length ? ' · real pending queue: ' + rows.length : '')
+        ? 'Queue disabled' + (rows.length ? ' · real pending: ' + rows.length : '')
         : 'Offline queue: ' + rows.length;
       refreshPanelCounts();
       return rows;
@@ -322,7 +320,7 @@
     if (trainingMode) {
       trainingPickCount += 1;
       refreshPanelCounts();
-      setFeedback('success', 'TRAINING — WOULD PICK ' + identity.identity + ' FOR PARK TRANSPORT · NOTHING RECORDED');
+      setFeedback('success', 'WOULD PICK ' + identity.identity + ' FOR PARK TRANSPORT · NOT RECORDED');
       return;
     }
 
@@ -429,9 +427,7 @@
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     setFeedback(
       'ready',
-      trainingMode
-        ? 'TRAINING — READY — scan the next Pick List item · NOTHING WILL BE RECORDED'
-        : 'READY — scan the next Pick List item'
+      'READY — scan the next Pick List item'
     );
     refreshPanelCounts();
     void refreshQueueState();
