@@ -361,11 +361,11 @@ def test_release_identity_and_offline_shells_are_synchronized():
 
     assert 'PRODUCTION_VERSION = "V0.3.32-manager-material-status"' in backend
     assert "const CLIENT_BUILD = 'V0.3.32-manager-material-status';" in guard
-    assert "msb-setup-pick-mode-v15" in pick_sw
+    assert "msb-setup-pick-mode-v16" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_html
-    assert "setup_pick_list.js?v=2026-10-01.3" in pick_sw
-    assert "setup_pick_list.js?v=2026-10-01.3" in pick_html
+    assert "setup_pick_list.js?v=2026-10-01.4" in pick_sw
+    assert "setup_pick_list.js?v=2026-10-01.4" in pick_html
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_sw
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_html
     assert "msb-setup-record-location-v6" in location_sw
