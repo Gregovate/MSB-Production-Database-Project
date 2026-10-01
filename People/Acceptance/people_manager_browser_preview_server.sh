@@ -8,9 +8,9 @@ IMAGE="postgis/postgis:16-3.5"
 NETWORK="msb-stack_default"
 FIELDWIRING_ROOT="/opt/fieldwiring"
 PRODUCTION_PYTHON="/opt/fieldwiring/.venv/bin/python"
-TARGET_REF="agent/people-manager-milestone1-20260908"
-TARGET_SHA="de549757c8d040d34494304a08944f7f4b444b30"
-DB_ACCEPTED_SHA="deaa9157282e59e8acd6a7da2a82fc9296e44f20"
+TARGET_REF="agent/people-identity-link-acceptance-gap-20260910"
+TARGET_SHA="9ef05fbb0ac20505ee12c246e9f5df742fdf082d"
+DB_ACCEPTED_SHA="9ef05fbb0ac20505ee12c246e9f5df742fdf082d"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PREVIEW_ENTRY="$SCRIPT_DIR/people_manager_browser_preview_entry.py"
 PREVIEW_PORT="${1:?preview port argument is required}"
@@ -210,9 +210,10 @@ sudo git -C "$FIELDWIRING_ROOT" worktree add --detach "$CANDIDATE_WORKTREE" "$TA
 MIGRATION_001="$CANDIDATE_WORKTREE/People/Database/001_create_people_manager_contract.sql"
 MIGRATION_002="$CANDIDATE_WORKTREE/People/Database/002_harden_people_search_phone_filter.sql"
 MIGRATION_003="$CANDIDATE_WORKTREE/People/Database/003_create_people_metadata_contract.sql"
+MIGRATION_004="$CANDIDATE_WORKTREE/People/Database/004_stop_automatic_msb_email_generation.sql"
 APP_DIR="$CANDIDATE_WORKTREE/People/Application"
 TEST_FILE="$CANDIDATE_WORKTREE/People/Application/test_people_manager_contract.py"
-for f in "$MIGRATION_001" "$MIGRATION_002" "$MIGRATION_003" "$APP_DIR/backend.py" "$APP_DIR/index.html" "$APP_DIR/people.css" "$APP_DIR/static/people_theme.js" "$TEST_FILE"; do
+for f in "$MIGRATION_001" "$MIGRATION_002" "$MIGRATION_003" "$MIGRATION_004" "$APP_DIR/backend.py" "$APP_DIR/index.html" "$APP_DIR/people.css" "$APP_DIR/static/people_theme.js" "$TEST_FILE"; do
     [[ -s "$f" ]] || { echo "FAIL: exact browser candidate file missing: $f"; exit 15; }
 done
 
@@ -274,12 +275,13 @@ psql_test_quiet() {
 }
 
 echo
-echo "--- Apply accepted People migrations 001-003 to disposable clone ---"
+echo "--- Apply accepted People migrations 001-004 to disposable clone ---"
 psql_test -c "CREATE ROLE people_app LOGIN PASSWORD '$APP_PASSWORD';"
 psql_test < "$MIGRATION_001"
 psql_test < "$MIGRATION_002"
 psql_test < "$MIGRATION_003"
-echo "People candidate migrations 001-003 applied to disposable clone only"
+psql_test < "$MIGRATION_004"
+echo "People candidate migrations 001-004 applied to disposable clone only"
 
 echo
 echo "--- Validate preview authorization and least-privilege boundary ---"
@@ -437,14 +439,14 @@ echo "People review checklist:"
 echo "  1. Confirm shared MSB header/logo, button treatment, and Dark/Light mode match the other browser apps."
 echo "  2. Confirm list/detail cards are compact and separated; protected system state is collapsed at the bottom, not blocking editable metadata."
 echo "  3. Search by name/email/phone and try Include inactive."
-echo "  4. Add a clone-only person; Build email and Save person."
-echo "  5. Edit/deactivate/reactivate the same clone-only person."
+echo "  4. Add a clone-only person with Personal email and leave Sheboygan Lights email blank; Save person and confirm the MSB email remains blank."
+echo "  5. Edit/deactivate/reactivate the same clone-only person and confirm no Sheboygan Lights email is generated."
 echo "  6. Add a capability catalog item, assign it, edit notes, deactivate/reactivate it."
 echo "  7. Add a qualification type and person qualification; exercise dates, role, certificate, evidence, notes, and active state."
 echo "  8. Toggle Setup Volunteer, Takedown Volunteer, Captain Candidate, and Advisor Candidate; reopen and confirm persistence."
 echo "  9. Open a person with current Captain/Alternate/Advisor assignments and confirm leadership is visible but not editable here."
 echo " 10. Open a Directus-linked person; confirm protected MSB email/identity behavior remains correct."
-echo " 11. Trigger duplicate-name/contact and MSB-email collision review paths."
+echo " 11. Trigger duplicate-name/contact review; confirm there is no Build email control on the Person form."
 echo " 12. Confirm there is no person delete action and no merge action in this candidate."
 echo
 echo "Suggested clone-only last name for easy review: Preview$STAMP"
