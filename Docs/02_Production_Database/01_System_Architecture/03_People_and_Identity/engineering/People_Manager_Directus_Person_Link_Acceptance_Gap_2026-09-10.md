@@ -187,6 +187,34 @@ updated_by_person_id       17
 
 This proves the database-side reconciliation can be completed safely with existing audit triggers enabled and a valid mapped human actor. The remaining Adam pilot step is to assign the intended Production Crew role and verify the final authorization state before repeating or automating the process for additional users.
 
+That final authorization step subsequently passed. Production validation showed:
+
+```text
+person_id                  1
+person email               abiebel@sheboyganlights.org
+person.directus_user_id    2e2100a3-cb20-4c54-b3dd-bf9bd4673131
+Directus UUID              2e2100a3-cb20-4c54-b3dd-bf9bd4673131
+provider                   google
+external_identifier        abiebel@sheboyganlights.org
+status                     active
+role_id                    edd36182-2029-4bfa-b6ca-1fa9a9b771a9
+role                       Production Crew
+```
+
+The Adam pilot therefore proves the complete no-first-login provisioning sequence:
+
+```text
+existing Person + existing Google account
+    -> Administrator pre-creates Google-backed Directus user
+    -> Directus UUID exists before first user login
+    -> governed exact-email Person reconciliation links the UUID
+    -> intended Production Crew role is assigned
+    -> final identity and authorization state validates
+```
+
+This pilot does not authorize blind bulk creation. A batch tool must preserve the same preflight, fail-closed identity checks, governed audit attribution, and post-write validation for each user.
+
+
 
 
 ## Impact
