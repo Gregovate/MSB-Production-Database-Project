@@ -72,7 +72,7 @@ def test_record_location_preserves_many_identity_entry_options_and_scan_handoff(
     assert 'id="movement-search-input"' in html
 
 
-def test_record_location_training_mode_uses_real_reads_but_never_writes_or_queues():
+def test_record_location_training_mode_isolates_offline_rehearsal_from_production():
     ui = read("setup_record_location.js")
     html = read("record_location.html")
 
@@ -82,15 +82,32 @@ def test_record_location_training_mode_uses_real_reads_but_never_writes_or_queue
     assert 'id="training-exit"' in html
     assert 'id="training-toggle"' not in html
     assert 'id="training-banner"' in html
-    assert "TRAINING MODE — NOTHING WILL BE RECORDED" in html
+    assert "TRAINING MODE — NOTHING WILL BE RECORDED OR SENT TO PRODUCTION" in html
+    assert "separate local training queue" in html
     assert "const trainingMode = pageParams.get('training') === '1';" in ui
     assert "window.confirm(" in ui
     assert "enterTrainingMode" in ui
     assert "exitTrainingMode" in ui
+
+    # Training may rehearse the offline lifecycle, but it must never use either
+    # the Production write path or the Production IndexedDB queue.
     assert "Training Mode blocks Setup movement writes." in ui
-    assert "Training Mode blocks the offline movement queue." in ui
-    assert "if (trainingMode || syncing || !navigator.onLine) return;" in ui
-    assert "if (navigator.onLine && !trainingMode) void syncQueue();" in ui
+    assert "Training Mode cannot use the Production movement queue." in ui
+    assert "const TRAINING_DB_NAME = 'msb-setup-movement-training';" in ui
+    assert "const TRAINING_STORE_NAME = 'movement-training-queue';" in ui
+    assert "queue_status: 'TRAINING_QUEUED'" in ui
+    assert "training_only: true" in ui
+    assert "WILL NEVER SYNC TO PRODUCTION" in ui
+    assert "TRAINING REPLAY SIMULATED" in ui
+    assert "NOTHING SENT TO PRODUCTION" in ui
+    assert "if (navigator.onLine) void syncQueue();" in ui
+
+    replay = ui.split("async function simulateTrainingReplay()", 1)[1].split(
+        "async function sendOrQueue", 1
+    )[0]
+    assert "postMovement(" not in replay
+    assert "/api/setup/movements" not in replay
+
     assert "TRAINING — WOULD RECORD " in ui
     assert "NOTHING RECORDED" in ui
     assert "fetchContainerContents" in ui
@@ -338,20 +355,20 @@ def test_release_identity_and_offline_shells_are_synchronized():
     location_sw = read("setup_record_location_sw.js")
     location_html = read("record_location.html")
 
-    assert 'PRODUCTION_VERSION = "V0.3.29-pick-clarity"' in backend
-    assert "const CLIENT_BUILD = 'V0.3.29-pick-clarity';" in guard
-    assert "msb-setup-pick-mode-v9" in pick_sw
+    assert 'PRODUCTION_VERSION = "V0.3.31-offline-rehearsal"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.31-offline-rehearsal';" in guard
+    assert "msb-setup-pick-mode-v10" in pick_sw
     assert "setup_pick_mode.css?v=2026-09-30.8" in pick_sw
     assert "setup_pick_mode.css?v=2026-09-30.8" in pick_html
     assert "setup_pick_list.js?v=2026-09-30.9" in pick_sw
     assert "setup_pick_list.js?v=2026-09-30.9" in pick_html
-    assert "setup_pick_mode.js?v=2026-09-30.7" in pick_sw
-    assert "setup_pick_mode.js?v=2026-09-30.7" in pick_html
-    assert "msb-setup-record-location-v6" in location_sw
+    assert "setup_pick_mode.js?v=2026-10-01.1" in pick_sw
+    assert "setup_pick_mode.js?v=2026-10-01.1" in pick_html
+    assert "msb-setup-record-location-v7" in location_sw
     assert "setup_record_location.css?v=2026-09-30.6" in location_sw
     assert "setup_record_location.css?v=2026-09-30.6" in location_html
-    assert "setup_record_location.js?v=2026-09-30.6" in location_sw
-    assert "setup_record_location.js?v=2026-09-30.6" in location_html
+    assert "setup_record_location.js?v=2026-10-01.1" in location_sw
+    assert "setup_record_location.js?v=2026-10-01.1" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():
@@ -362,7 +379,7 @@ def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_am
     assert "ON CONFLICT (setup_session_id, display_id)" not in sql
 
 
-def test_pick_list_training_mode_is_fail_closed_and_keeps_real_pick_totals_visible():
+def test_pick_list_training_mode_is_fail_closed_and_rehearses_offline_queue():
     html = read("pick_list.html")
     ui = read("setup_pick_mode.js")
     css = read("setup_pick_mode.css")
@@ -373,15 +390,31 @@ def test_pick_list_training_mode_is_fail_closed_and_keeps_real_pick_totals_visib
     assert 'id="enter-pick-training"' in html
     assert 'id="exit-pick-training"' in html
     assert 'id="pick-training-banner"' in html
-    assert "TRAINING MODE — NOTHING WILL BE RECORDED" in html
+    assert "TRAINING MODE — NOTHING WILL BE RECORDED OR SENT TO PRODUCTION" in html
+    assert "isolated local training queue" in html
     assert 'id="pick-mode-containers-picked"' in html
     assert 'id="pick-mode-training-count"' in html
     assert 'class="pick-mode-toolbar-actions"' in html
     assert 'class="pick-mode-toolbar-counts"' in html
     assert "const trainingMode = pageParams.get('training') === '1';" in ui
     assert "Training Mode blocks Setup movement writes." in ui
-    assert "Training Mode blocks the offline movement queue." in ui
-    assert "if (trainingMode || syncing || !navigator.onLine) return;" in ui
+    assert "Training Mode cannot use the Production movement queue." in ui
+    assert "const TRAINING_DB_NAME = 'msb-setup-movement-training';" in ui
+    assert "const TRAINING_STORE_NAME = 'movement-training-queue';" in ui
+    assert "queue_status: 'TRAINING_QUEUED'" in ui
+    assert "training_only: true" in ui
+    assert "PICK QUEUED LOCALLY OFFLINE" in ui
+    assert "WILL NEVER SYNC TO PRODUCTION" in ui
+    assert "TRAINING REPLAY SIMULATED" in ui
+    assert "NOTHING SENT TO PRODUCTION" in ui
+    assert "if (navigator.onLine) void syncQueue();" in ui
+
+    replay = ui.split("async function simulateTrainingReplay()", 1)[1].split(
+        "async function sendOrQueue", 1
+    )[0]
+    assert "postMovement(" not in replay
+    assert "/api/setup/movements" not in replay
+
     assert "TRAINING — WOULD PICK " in ui
     assert "NOTHING RECORDED" in ui
     assert "containersPickedCount" in list_ui

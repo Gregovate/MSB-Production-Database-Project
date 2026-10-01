@@ -424,16 +424,18 @@ This section supersedes earlier UI details where they conflict.
 
 ### Training applies to both material-handler workflows
 
-Training is deliberately read-only but uses the real authenticated Production context and real device hardware.
+Training is deliberately non-writing to Production but uses the real authenticated Production read context and real device hardware.
 
 ```text
 Workshop Pick List — TRAINING
     -> real current Pick List
     -> real Zebra HID / manual identity validation
     -> delayed / not-demanded / already-moved feedback remains real
-    -> WOULD PICK feedback
+    -> connected: WOULD PICK feedback
+    -> offline: training-only PICKED observation queued locally
     -> NO movement POST
-    -> NO offline movement queue
+    -> NO Production offline queue
+    -> reconnect: simulated local replay/drain only
     -> NO real Pick List suppression
     -> NO change to persisted Containers-picked totals
 
@@ -441,12 +443,16 @@ Record Location — TRAINING
     -> real Container/Display lookup
     -> real Zebra / camera / GPS / reference data
     -> real mixed-Container review
-    -> WOULD RECORD feedback
+    -> connected: WOULD RECORD feedback
+    -> offline: training-only movement/location observation queued locally
     -> NO movement POST
-    -> NO offline movement queue
+    -> NO Production offline queue
+    -> reconnect: simulated local replay/drain only
 ```
 
-Training entry remains explicit and confirmation-gated. Active training must continuously show **TRAINING MODE — NOTHING WILL BE RECORDED** and provide an obvious Exit Training action.
+The isolated Training queue is stored separately from the real Production movement queue and may never call the movement API during replay. It exists specifically to prove durable offline capture, reload/background survival, reconnect detection, ordering, and queue drain without creating Production movement history.
+
+Training entry remains explicit and confirmation-gated. Active training must continuously show **TRAINING MODE — NOTHING WILL BE RECORDED OR SENT TO PRODUCTION** and provide an obvious Exit Training action.
 
 ### Pick List field feedback
 

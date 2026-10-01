@@ -20,7 +20,7 @@
 </header>
 
 <div id="training-banner" class="training-banner" hidden>
-  TRAINING MODE — NOTHING WILL BE RECORDED
+  TRAINING MODE — NOTHING WILL BE RECORDED OR SENT TO PRODUCTION
 </div>
 
 <div class="compact-status-shell">
@@ -137,11 +137,11 @@
 
   <details id="training-entry" class="training-entry">
     <summary>Training / device test</summary>
-    <p class="muted">Use this only for deliberate phone/tablet/Zebra/GPS practice. Training uses real read-only context but never records or queues a Setup movement.</p>
+    <p class="muted">Use this only for deliberate phone/tablet/Zebra/GPS practice. Offline rehearsal uses a separate local training queue that never writes or syncs to Production.</p>
     <button id="training-enter" type="button">Enter Training Mode</button>
   </details>
 </main>
 
-<script src="assets/setup_record_location.js?v=2026-09-30.6"></script>
+<script src="assets/setup_record_location.js?v=2026-10-01.1"></script>
 </body>
 </html>

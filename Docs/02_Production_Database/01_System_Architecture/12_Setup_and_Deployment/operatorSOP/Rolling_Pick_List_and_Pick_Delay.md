@@ -59,13 +59,15 @@ Use **Training / device test** when teaching or checking the forklift tablet/Zeb
 
 Training uses the real current Pick List and the same scan validation, including delayed, already-moved, and not-on-current-list feedback, but:
 
-- it does **not** record a `PICKED` movement;
-- it does **not** add anything to the offline movement queue;
+- it does **not** record a Production `PICKED` movement;
+- while offline, it may add a training-marked observation to the **isolated local Training queue**;
+- that Training queue is separate from the Production movement queue and can never sync to Production;
+- reconnect performs only a simulated local replay/drain in captured order;
 - it does **not** remove the item from the real **Needs pick** list;
 - it does **not** change the real **Containers picked** count; and
 - it may show a temporary **Training picks** count for the current training page/session only.
 
-Entering Training requires deliberate confirmation. While active, the screen must continuously show **TRAINING MODE — NOTHING WILL BE RECORDED** and provide **Exit Training**.
+Entering Training requires deliberate confirmation. While active, the screen must continuously show **TRAINING MODE — NOTHING WILL BE RECORDED OR SENT TO PRODUCTION** and provide **Exit Training**.
 
 Use normal Pick Mode only when the physical item is actually being picked for park transport.
 

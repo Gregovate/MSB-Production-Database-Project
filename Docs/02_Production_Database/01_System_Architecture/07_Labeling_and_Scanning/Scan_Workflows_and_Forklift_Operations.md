@@ -293,9 +293,11 @@ For Container return, the screen must resolve and show the canonical Home Locati
 
 Both workshop Pick List and Record Location require a deliberate Training mode for teaching material handlers with the real tablet/scanner workflow.
 
-Training uses real authenticated read context and real device hardware/sensors, but it must not create movement events or add events to the offline queue.
+Training uses real authenticated read context and real device hardware/sensors, but it must never create or sync Production movement events. V0.3.30 adds an **isolated local training queue** shared by Pick Mode and Record Location so the real offline lifecycle can be rehearsed without touching Production movement history.
 
-Active Training must be unmistakable with **TRAINING MODE — NOTHING WILL BE RECORDED** and an obvious exit action.
+The training queue is separate from the Production movement queue, stores only training-marked local observations, and performs simulated replay/drain after reconnect without calling the movement API.
+
+Active Training must be unmistakable with **TRAINING MODE — NOTHING WILL BE RECORDED OR SENT TO PRODUCTION** and an obvious exit action.
 
 ### Mobile browser account-selection failure
 
