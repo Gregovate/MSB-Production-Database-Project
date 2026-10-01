@@ -160,3 +160,17 @@ def test_manager_material_status_batches_unscheduled_material_resolution() -> No
     assert "next_repo.field_context(" not in manager
     assert "SetupNextRepository(self.dsn)" not in manager
 
+
+
+def test_manager_material_status_shows_contents_and_routes_unresolved_to_audit() -> None:
+    html = read("material_status.html")
+    ui = read("setup_material_status.js")
+
+    assert 'id="open-material-audit"' in html
+    assert "Unresolved material is read-only here." in html
+    assert "function renderContents(item)" in ui
+    assert "reason.display_names" in ui
+    assert "reason.extra_material_name" in ui
+    assert 'class="material-contents"' in ui
+    assert "function renderReasons(item)" not in ui
+    assert "location.href = '../material-audit/'" in ui
