@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Setup Pick List</title>
   <link rel="stylesheet" href="assets/setup_pick_list.css?v=2026-10-01.1">
-  <link rel="stylesheet" href="assets/setup_pick_mode.css?v=2026-10-01.4">
+  <link rel="stylesheet" href="assets/setup_pick_mode.css?v=2026-10-01.5">
 </head>
 <body>
 <header class="page-header">
@@ -30,10 +30,6 @@
     <button id="back-button" type="button">Back to Setup</button>
   </div>
 </header>
-<div id="pick-training-banner" class="pick-training-banner no-print" hidden>
-  <span>TRAINING — NO RECORDING</span>
-  <button id="exit-pick-training" type="button" hidden>Exit Training</button>
-</div>
 <main>
   <section id="pick-mode-panel" class="pick-mode-panel no-print" hidden aria-live="polite">
     <div class="pick-mode-toolbar">
@@ -69,9 +65,10 @@
   <section class="summary" id="summary"></section>
 
   <details id="pick-training-entry" class="pick-training-entry no-print">
-    <summary>Training / device test</summary>
+    <summary id="pick-training-summary">Training / device test</summary>
     <p>Use the real Pick List and Zebra workflow without recording or queueing PICKED movement.</p>
     <button id="enter-pick-training" type="button">Enter Training Mode</button>
+    <button id="exit-pick-training" type="button" hidden>Exit Training</button>
   </details>
 
   <section id="manager-override-panel" class="panel manager-override-panel no-print" hidden>
@@ -123,6 +120,6 @@
 </footer>
 <script src="assets/qrcode.min.js?v=1"></script>
 <script src="assets/setup_pick_list.js?v=2026-10-01.3"></script>
-<script src="assets/setup_pick_mode.js?v=2026-10-01.2"></script>
+<script src="assets/setup_pick_mode.js?v=2026-10-01.3"></script>
 </body>
 </html>
