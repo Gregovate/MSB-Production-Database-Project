@@ -420,12 +420,15 @@ def test_manager_status_action_eligibility_blocks_workshop_schedule_and_movement
     assert "and not moved" in repo
     assert "and not workshop" in repo
     assert 'item["can_remove_from_pick_list"] = bool(' in repo
+    assert 'item["can_remove_manager_override"] = bool(' in repo
+    assert 'item["can_edit_pick_list_override"] = bool(' in repo
     assert "and has_override" in repo
     assert "and not has_schedule_demand" in repo
+    assert "and has_schedule_demand" in repo
     assert "Container is already on the Pick List from scheduled material demand" in repo
     assert "c.goes_to_endpoint_id" in source_api
     assert "Workshop Containers cannot be added to the Setup Pick List" in correction
-    assert "if (!item?.can_remove_from_pick_list) return;" in ui
+    assert "!item?.can_remove_from_pick_list && !item?.can_remove_manager_override" in ui
 
 def test_manager_material_status_preserves_unscheduled_and_unresolved_annual_truth() -> None:
     repo = read("setup_material_readiness_repository.py")
