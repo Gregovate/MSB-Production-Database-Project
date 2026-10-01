@@ -286,7 +286,10 @@ def test_manager_override_ui_is_explicit_and_dedupes_into_normal_pick_rows() -> 
     assert "overrideDestinationStage.value" in ui
     assert "overrideReason.value = override.override_reason || '';" in ui
     assert "Update Override" in ui
+    assert "Edit Manager Pick Override" in ui
+    assert 'id="manager-override-title"' in html
     assert 'id="override-edit-cancel"' in html
+    assert "override-form-actions" in css
     override_badge = ui.split("function overrideBadgeHtml(item)", 1)[1].split("function delayActionHtml", 1)[0]
     assert "access?.can_manage_setup" in override_badge
     assert "!itemMoved(item)" not in override_badge
@@ -461,5 +464,5 @@ def test_delayed_pick_warning_survives_print_when_delayed_rows_are_shown() -> No
     assert 'class="print-delay-badge">DELAYED — DO NOT PICK YET</div>' in ui
     assert ".print-delay-badge{display:none" in css
     assert ".print-delay-badge{display:inline-block!important" in css
-    assert "setup_pick_list.css?v=2026-09-30.5" in html
+    assert "setup_pick_list.css?v=2026-10-01.1" in html
     assert "setup_pick_list.js?v=2026-10-01.3" in html
