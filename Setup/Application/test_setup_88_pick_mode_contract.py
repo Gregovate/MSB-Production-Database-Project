@@ -25,6 +25,17 @@ def test_pick_list_defaults_to_needs_pick_and_keeps_back_navigation_while_scanni
     html = read("pick_list.html")
     css = read("setup_pick_mode.css")
 
+    assert "background:#171717;color:#fff" in css
+    assert "body.pick-mode-active .pick-mode-panel{" in css
+    assert 'grid-template-areas:' in css
+    assert '"toolbar toolbar"' in css
+    assert '"entry feedback"' in css
+    assert '"meta meta"' in css
+    assert "body.pick-mode-active .pick-mode-toolbar .eyebrow" in css
+    assert "body.pick-mode-active .movement-manual-entry>label{display:none}" in css
+    assert "body.pick-mode-active .pick-mode-feedback{" in css
+    assert "font-size:1rem" in css
+
     assert '<option value="OUTSTANDING" selected>Needs pick</option>' in html
     assert 'id="back-button"' in html
     active_rule = next(
@@ -340,9 +351,9 @@ def test_release_identity_and_offline_shells_are_synchronized():
 
     assert 'PRODUCTION_VERSION = "V0.3.30-pick-override-cancel"' in backend
     assert "const CLIENT_BUILD = 'V0.3.30-pick-override-cancel';" in guard
-    assert "msb-setup-pick-mode-v10" in pick_sw
-    assert "setup_pick_mode.css?v=2026-09-30.8" in pick_sw
-    assert "setup_pick_mode.css?v=2026-09-30.8" in pick_html
+    assert "msb-setup-pick-mode-v11" in pick_sw
+    assert "setup_pick_mode.css?v=2026-10-01.2" in pick_sw
+    assert "setup_pick_mode.css?v=2026-10-01.2" in pick_html
     assert "setup_pick_list.js?v=2026-10-01.2" in pick_sw
     assert "setup_pick_list.js?v=2026-10-01.2" in pick_html
     assert "setup_pick_mode.js?v=2026-09-30.7" in pick_sw
