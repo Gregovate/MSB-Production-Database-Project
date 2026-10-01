@@ -1106,78 +1106,13 @@ class SetupSchedulingBoardRepository:
         ready: bool,
         readiness_note: str | None,
     ) -> dict[str, Any]:
-        """Update annual-only readiness without mutating reusable Catalog knowledge."""
+        """Update annual-only readiness through one governed atomic command."""
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT
-                    st.annual_task_name,
-                    st.annual_stage_id,
-                    st.annual_lor_scene_id,
-                    st.annual_task_action_type,
-                    st.annual_normal_crew_min,
-                    st.annual_normal_crew_max,
-                    st.annual_expected_duration_minutes,
-                    st.annual_effort_level,
-                    st.annual_completion_point,
-                    st.annual_weather_note,
-                    st.linked_work_order_id,
-                    st.linked_work_order_gate,
-                    st.annual_notes,
-                    st.actual_started_at,
-                    st.actual_completed_at,
-                    EXISTS (
-                        SELECT 1
-                        FROM ops.setup_task_progress p
-                        WHERE p.setup_session_task_id = st.setup_session_task_id
-                    ) AS has_progress
-                FROM ops.setup_session_task st
-                WHERE st.setup_session_task_id = %s
-                FOR UPDATE
+                SELECT * FROM ops.set_setup_annual_hold(%s,%s,%s,%s)
                 """,
-                (session_task_id,),
-            )
-            current = self._one(cur, "Annual Setup task was not found")
-
-            if (
-                current.get("actual_started_at") is not None
-                or current.get("actual_completed_at") is not None
-                or current.get("has_progress")
-            ):
-                raise SetupSchedulingBoardRepositoryError(
-                    "Actual work exists for this annual task; annual readiness is historical."
-                )
-
-            cur.execute(
-                """
-                SELECT * FROM ops.update_setup_annual_task_definition(
-                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
-                )
-                """,
-                (
-                    email,
-                    session_task_id,
-                    current["annual_task_name"],
-                    current["annual_stage_id"],
-                    current["annual_lor_scene_id"],
-                    current["annual_task_action_type"],
-                    current["annual_normal_crew_min"],
-                    current["annual_normal_crew_max"],
-                    current["annual_expected_duration_minutes"],
-                    current["annual_effort_level"],
-                    current["annual_completion_point"],
-                    readiness_note,
-                    current["annual_weather_note"],
-                    current["linked_work_order_id"],
-                    current["linked_work_order_gate"],
-                    current["annual_notes"],
-                ),
-            )
-            self._one(cur, "Annual-only readiness-note update returned no result")
-
-            cur.execute(
-                "SELECT * FROM ops.set_setup_annual_task_readiness(%s,%s,%s)",
-                (email, session_task_id, ready),
+                (email, session_task_id, ready, readiness_note),
             )
             result = self._one(cur, "Annual Setup readiness command returned no result")
             conn.commit()
