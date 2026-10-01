@@ -504,12 +504,26 @@ def test_205_scheduler_panes_scroll_independently_with_drag_edge_autoscroll() ->
     assert ".setup-board205-board {" in css
     assert "overflow-y: auto" in css
     assert "height: calc(100vh - 6.25rem)" in css
-    assert "grid-template-columns: minmax(22rem, 0.95fr) minmax(34rem, 1.55fr)" in css
+    assert "grid-template-columns: minmax(22rem, 0.72fr) minmax(34rem, 1.9fr)" in css
+    assert "body.setup-schedule-active main" in css
+    assert "max-width: none" in css
+    assert "grid-template-columns: minmax(10rem, 0.55fr) repeat(2, minmax(14rem, 1fr))" in css
     assert ".setup-board205-right {" in css
     assert "grid-template-rows: auto minmax(0, 1fr)" in css
     assert "setup-board205-planning-header" in ui
     assert "margin: 0.2rem 0 0.55rem" in css
     assert "overflow-y: visible" in css
+
+
+def test_205_schedule_view_scopes_wide_desktop_layout() -> None:
+    production = read_app("setup_production.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "document.body.classList.toggle('setup-schedule-active', name === 'schedule')" in production
+    assert "body.setup-schedule-active main" in css
+    assert "width: 100%" in css
+    assert "max-width: none" in css
+    assert "@media (max-width: 1100px)" in css
 
 
 def test_205_captain_learning_cancel_wording_preserves_schedule_only() -> None:
@@ -624,12 +638,22 @@ def test_205_annual_hold_is_season_only_and_does_not_write_reusable_readiness() 
     assert "does not change reusable Catalog readiness knowledge" in ui
     assert "/annual-hold" in api
     assert "set_annual_hold" in repository
-    assert "ops.update_setup_annual_task_definition" in repository
-    assert "ops.set_setup_annual_task_readiness" in repository
+    assert "ops.set_setup_annual_hold" in repository
     annual_hold = repository.split("def set_annual_hold(", 1)[1].split(
         "def reconcile_season_task_placement(", 1
     )[0]
+    assert "FOR UPDATE" not in annual_hold
+    assert "ops.update_setup_annual_task_definition" not in annual_hold
+    assert "ops.set_setup_annual_task_readiness" not in annual_hold
     assert "ref.update_setup_task" not in annual_hold
+
+    hold_sql = read_db("067_fix_setup_annual_readiness_command.sql")
+    assert "CREATE OR REPLACE FUNCTION ops.set_setup_annual_hold" in hold_sql
+    assert "SECURITY DEFINER" in hold_sql
+    assert "FOR UPDATE" in hold_sql
+    assert "Actual work exists for this annual task; annual readiness is historical." in hold_sql
+    assert "GRANT EXECUTE ON FUNCTION ops.set_setup_annual_hold" in hold_sql
+    assert "GRANT UPDATE ON" not in hold_sql
 
 
 def test_205_api_uses_governed_manager_commands_for_plan_mutations() -> None:

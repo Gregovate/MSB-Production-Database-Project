@@ -187,6 +187,7 @@ function showView(name) {
   document.querySelectorAll('.view').forEach((view) => view.classList.remove('active-view'));
   const target = el(`${name}-view`);
   if (target) target.classList.add('active-view');
+  document.body.classList.toggle('setup-schedule-active', name === 'schedule');
 }
 
 function currentSetupViewName() {
