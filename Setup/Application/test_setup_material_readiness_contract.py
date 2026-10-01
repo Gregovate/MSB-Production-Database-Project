@@ -268,6 +268,51 @@ def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_a
     assert "set_setup_session_task_dependency" not in repo
 
 
+def test_pick_list_manager_edit_controls_are_invisible_to_ordinary_operators() -> None:
+    html = read("pick_list.html")
+    ui = read("setup_pick_list.js")
+    api = read("setup_material_readiness_api.py")
+
+    # Fail closed in the static page: Manager panel is hidden until access is proven.
+    assert 'id="manager-override-panel" class="panel manager-override-panel no-print" hidden' in html
+
+    # Runtime visibility is capability-gated.
+    access_block = ui.split("function applyAccess()", 1)[1].split("function seasonFromUrl", 1)[0]
+    assert "access?.can_manage_setup" in access_block
+    assert "overridePanel.hidden = !Boolean(" in access_block
+
+    override_actions = ui.split("function overrideBadgeHtml(item)", 1)[1].split(
+        "function delayActionHtml", 1
+    )[0]
+    assert "access?.can_manage_setup" in override_actions
+    assert "Edit Override" in override_actions
+    assert "Cancel Override" in override_actions
+
+    edit_block = ui.split("function beginEditOverride(containerId)", 1)[1].split(
+        "function demandedContainerIds", 1
+    )[0]
+    assert "if (!access?.can_manage_setup) return;" in edit_block
+
+    # Even a forged browser request remains Manager-authorized server-side.
+    set_route = api.split(
+        '@setup_material_readiness_api.post("/api/setup/material-readiness/overrides")',
+        1,
+    )[1].split(
+        '@setup_material_readiness_api.delete',
+        1,
+    )[0]
+    assert "require_manager()" in set_route
+
+    remove_route = api.split(
+        '@setup_material_readiness_api.delete(\n    "/api/setup/material-readiness/overrides/<int:container_id>"',
+        1,
+    )[1].split(
+        '@setup_material_readiness_api.post("/api/setup/material-readiness/delays")',
+        1,
+    )[0]
+    assert "require_manager()" in remove_route
+
+
 def test_manager_override_ui_is_explicit_and_dedupes_into_normal_pick_rows() -> None:
     html = read("pick_list.html")
     ui = read("setup_pick_list.js")
