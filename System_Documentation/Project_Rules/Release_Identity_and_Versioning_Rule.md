@@ -6,7 +6,7 @@
 | Repository | MSB Production Database Project |
 | Status | CURRENT |
 | Owner | Production project owner / administrator |
-| Last Reviewed | 2026-09-30 |
+| Last Reviewed | 2026-10-01 |
 
 ## Purpose
 
@@ -54,6 +54,7 @@ Every accepted Production release must be tracked with:
     + acceptance record
     + merged-main SHA
     + exact deployed Production SHA
+    + reverse-chronological Production deployment change-log entry
 
 Do not use the visible version alone as proof of deployed source. Do not use the Git SHA alone as the normal operator-facing release label. Both are required.
 
@@ -110,6 +111,22 @@ After deployment, the acceptance/closeout record must state the visible Producti
 
 If the deployed application SHA differs from a later documentation/tooling closeout SHA, record both. Never imply the documentation/tooling SHA is the deployed application merely because it is newer.
 
+## Mandatory Production Deployment Change Log
+
+The repository-wide reverse-chronological deployment history is:
+
+`System_Documentation/Production_Deployment_Change_Log.md`
+
+Every Production deployment covered by this repository must add or update the newest entry in that log as part of deployment closeout.
+
+The entry must record the deployment date, subsystem/application, visible version when applicable, concise operator-visible or operational changes, exact deployed SHA, merged-main SHA when different, migration identity when applicable, owning issue(s), PR(s), acceptance result, and rollback/report evidence when generated.
+
+The change log is a navigation and operational-history record. It does not replace the detailed acceptance record, issue, PR, migration, rollback evidence, or Git history.
+
+A Production deployment is not documentation-closeout complete until the change-log entry exists in the repository. Do not leave the only record of what changed in chat, an issue comment, a deployment transcript, or an acceptance file.
+
+Keep the log reverse chronological: newest Production deployment first. Do not silently rewrite historical entries to match current architecture; append/correct with traceable evidence.
+
 ## Issue and PR Discipline
 
 For application work that can reach Production, the owning engineering issue and implementation/integration PR must carry the release identity requirement before closeout.
@@ -124,6 +141,8 @@ At minimum, acceptance/closeout must answer:
 
 If those answers are missing or ambiguous, release closeout is incomplete.
 
+The owning work must also prove that the Production deployment change log has been updated for the deployed release.
+
 ## Relationship to Repository Closeout
 
 Version identity does not replace repository closeout. A release is not fully closed until Production identity is proven and accepted repository history is integrated and proven.
@@ -132,7 +151,7 @@ Follow the [Repository Change Workflow](Repository_Change_Workflow.md) and [Issu
 
 ## Simple Rule
 
-> **New Production behavior gets a new visible release version. Exact SHA proves precisely what it is. Record both.**
+> **New Production behavior gets a new visible release version. Exact SHA proves precisely what it is. Record both, and add the Production deployment to the reverse-chronological change log.**
 
 ## Related Rules
 
