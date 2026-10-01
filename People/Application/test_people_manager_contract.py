@@ -5,7 +5,8 @@ ROOT = BASE_DIR.parent
 SQL_001 = (ROOT / "Database" / "001_create_people_manager_contract.sql").read_text(encoding="utf-8")
 SQL_002 = (ROOT / "Database" / "002_harden_people_search_phone_filter.sql").read_text(encoding="utf-8")
 SQL_003 = (ROOT / "Database" / "003_create_people_metadata_contract.sql").read_text(encoding="utf-8")
-SQL = SQL_001 + "\n" + SQL_002 + "\n" + SQL_003
+SQL_004 = (ROOT / "Database" / "004_stop_automatic_msb_email_generation.sql").read_text(encoding="utf-8")
+SQL = SQL_001 + "\n" + SQL_002 + "\n" + SQL_003 + "\n" + SQL_004
 BACKEND = (BASE_DIR / "backend.py").read_text(encoding="utf-8")
 HTML = (BASE_DIR / "index.html").read_text(encoding="utf-8")
 CSS = (BASE_DIR / "people.css").read_text(encoding="utf-8")
@@ -45,11 +46,30 @@ def test_database_contract_has_no_person_delete_command() -> None:
     assert "delete from ref.person" not in lowered
 
 
-def test_manual_create_reserves_msb_identity() -> None:
-    assert "@sheboyganlights.org" in SQL_001
-    assert "left(v_first_slug, 1) || v_last_slug" in SQL_001
-    assert "Non-standard MSB email requires explicit collision/exception review" in SQL_001
-    assert "Reserved MSB email is already in use" in SQL_001
+def test_manual_create_does_not_generate_msb_identity() -> None:
+    create_section = SQL_004.split(
+        "CREATE OR REPLACE FUNCTION ref.create_person_from_people_manager", 1
+    )[1].split(
+        "CREATE OR REPLACE FUNCTION ref.update_person_from_people_manager", 1
+    )[0]
+
+    assert "v_reserved text := nullif(lower(btrim(coalesce(p_reserved_email, ''))), '')" in create_section
+    assert "v_standard_email" not in create_section
+    assert "left(v_first_slug, 1) || v_last_slug" not in create_section
+    assert "IF v_reserved IS NULL THEN" not in create_section
+    assert "v_reserved IS NOT NULL" in create_section
+    assert "Sheboygan Lights email must use the sheboyganlights.org domain" in create_section
+
+
+def test_update_allows_blank_unlinked_msb_email_but_protects_directus_linked_identity() -> None:
+    update_section = SQL_004.split(
+        "CREATE OR REPLACE FUNCTION ref.update_person_from_people_manager", 1
+    )[1]
+
+    assert "IF v_old.directus_user_id IS NOT NULL THEN" in update_section
+    assert "IF v_reserved IS NULL THEN" in update_section
+    assert "Directus-linked MSB email is protected" in update_section
+    assert "v_standard_email" not in update_section
 
 
 def test_duplicate_and_concurrency_guards_are_database_side() -> None:
@@ -166,12 +186,19 @@ def test_ui_uses_shared_msb_application_shell_and_theme() -> None:
     assert 'id="identityPanel" class="card technical-details"' in HTML
 
 
-def test_ui_loads_versioned_analytics_and_explains_reserved_email() -> None:
+def test_ui_loads_versioned_analytics_and_does_not_offer_email_generation() -> None:
     assert "static/analytics.js?v=2026-09-09.1" in HTML
-    assert "people.js?v=2026-09-09.3" in HTML
-    assert "Reserving it does not create the Google Workspace account" in HTML
+    assert "people.js?v=2026-10-01.1" in HTML
+    assert "Enter only an actual sheboyganlights.org Google Workspace account" in HTML
+    assert 'id="suggestEmailButton"' not in HTML
+    assert "Build email" not in HTML
     assert "Potential duplicate review" in HTML
     assert "People Manager exposes no person delete action" in HTML
+
+    save_section = JS.split("async function savePerson(event)", 1)[1].split(
+        "function renderCapabilities()", 1
+    )[0]
+    assert "buildEmailCandidates()" not in save_section
 
 
 def test_ui_exposes_people_metadata_fields() -> None:
