@@ -21,7 +21,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 from psycopg2 import Error as PsycopgError
 from psycopg2.extras import RealDictCursor
 
-APP_VERSION = "V0.2.0"
+APP_VERSION = "V0.2.1"
 BASE_DIR = Path(__file__).resolve().parent
 PEOPLE_COMMAND_HEADER = "X-MSB-People-Command"
 CLOUDFLARE_EMAIL_HEADER = "Cf-Access-Authenticated-User-Email"
