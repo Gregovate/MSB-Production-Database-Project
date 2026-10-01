@@ -5,15 +5,17 @@
 | Document Type | Engineering Handoff Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
-| Status | CURRENT HANDOFF — real 2026 Setup Session live; #206 Pick List/Pick Delay V0.3.22 Production accepted; movement execution handed to #88 |
+| Status | CURRENT HANDOFF — real 2026 Setup Session live; V0.3.31 Pick review fixes Production accepted; #205/#206 launch-stabilization work continues |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-30 |
+| Last Reviewed | 2026-10-01 |
 
 Operator-facing instructions are separate under [`../operatorSOP/`](../operatorSOP/README.md).
 
+Repository-wide Production deployment history is maintained newest-first in [`../../../../../../System_Documentation/Production_Deployment_Change_Log.md`](../../../../../../System_Documentation/Production_Deployment_Change_Log.md).
+
 ## 2026 Launch Status
 
-The real 2026 Setup Session has been created and is now the active annual planning/execution context. The initial accepted Scheduling Board launch target was `06a6536d92db5c7352beeed496563ed9bfdb7146`. The current Production runtime is `6f53d7f0c4b15f7175e773a2069595eef3f0e698` (`V0.3.22-pick-list-delay`), with #205 rolling Scheduling Board/Captain dispatch, #206 bounded Pick List demand/frontier + transient Pick Delay, #175 Perform Work / #132 Report Work, and #172 Report Correction accepted; migrations 059 + 060 + 061 + 062 + the accepted Pick Delay migration `063_add_setup_pick_list_delay.sql` remain installed.
+The real 2026 Setup Session has been created and is now the active annual planning/execution context. The initial accepted Scheduling Board launch target was `06a6536d92db5c7352beeed496563ed9bfdb7146`. As of 2026-10-01, the current Production runtime is `79574e3a7d16e82ef3e045eb2c7c96cff624e4e1` (`V0.3.31-pick-review-fixes`). The accepted Setup surface includes #205 rolling Scheduling Board/Captain dispatch, #206 bounded Pick List demand/frontier + transient Pick Delay, #88 persisted movement capture, #175 Perform Work / #132 Report Work, and #172 Report Correction. The migration tail now includes 063 Pick List Delay, 064 Extra Material requirement restore, 065 Setup movement capture, and 066 Manager override cancel-after-movement correction.
 
 The launch deployment installed migrations 057/058 after the exact candidate passed the full Setup/Application regression (458/458) and disposable browser acceptance. The Scheduling Board preserves the accepted Catalog/Plan ordering, lavender material-task cue, Day-view filters, completed/cancelled-day handling, performance improvements, and current scheduling behavior.
 
@@ -42,10 +44,10 @@ The real 2026 Setup Session has since been created under #122 and is live. Mater
 ```text
 protected application = https://my.sheboyganlights.org/setup/
 initial Scheduling Board launch target = 06a6536d92db5c7352beeed496563ed9bfdb7146
-current live Setup SHA = 6f53d7f0c4b15f7175e773a2069595eef3f0e698
-version = V0.3.22-pick-list-delay
-current accepted migrations = 059 reusable task-name synchronization + 060 Pick List Manager override + 061 Report Work + 062 Report Correction Intake + 063 Pick List Delay
-deployment-closeout Setup business fingerprint = 4b6ab1b5f61530d24bfd547555f4eacb
+current live Setup SHA = 79574e3a7d16e82ef3e045eb2c7c96cff624e4e1
+version = V0.3.31-pick-review-fixes
+current accepted migration tail = 063 Pick List Delay + 064 Extra Material requirement restore + 065 Setup movement capture + 066 Manager override cancel-after-movement correction
+deployment-closeout Setup business fingerprint = 9951600040f7b01c75b8c104b4ddeb8c
 current annual reusable-name mismatches = 0
 2025 Setup Session = historical / verification evidence
 2026 Setup Session = LIVE annual planning/execution context
