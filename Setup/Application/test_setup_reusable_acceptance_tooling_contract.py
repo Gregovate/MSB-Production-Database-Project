@@ -72,6 +72,21 @@ def test_reusable_launchers_fail_before_server_contact_on_setup_build_identity_d
     assert "does not match exact candidate Setup build" in browser
 
 
+def test_reusable_browser_preview_supports_explicit_private_network_tablet_mode() -> None:
+    launcher = read_acceptance("run_setup_disposable_browser_preview.ps1")
+    server = read_acceptance("setup_disposable_browser_preview_server.sh")
+
+    assert "[switch]$InternalNetworkPreview" in launcher
+    assert "$previewBindHost = if ($InternalNetworkPreview) { '192.168.5.9' } else { '127.0.0.1' }" in launcher
+    assert "preview_bind_host`t$previewBindHost" in launcher
+    assert "if ($InternalNetworkPreview) {" in launcher
+    assert '-L "${PreviewPort}:127.0.0.1:${PreviewPort}"' in launcher
+    assert 'PREVIEW_BIND_HOST="127.0.0.1"' in server
+    assert 'preview_bind_host) PREVIEW_BIND_HOST="$value" ;;' in server
+    assert 'MSB_SETUP_PREVIEW_HOST="$PREVIEW_BIND_HOST"' in server
+    assert 'Browser URL: http://$PREVIEW_BIND_HOST:$PREVIEW_PORT/' in server
+    assert "192.168.5.9" in server
+
 def test_reusable_browser_preview_recovers_transport_loss_without_rebuilding_clone() -> None:
     launcher = read_acceptance("run_setup_disposable_browser_preview.ps1")
     server = read_acceptance("setup_disposable_browser_preview_server.sh")
