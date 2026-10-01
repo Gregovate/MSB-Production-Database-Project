@@ -73,11 +73,25 @@ The generated/reserved `@sheboyganlights.org` value is a durable MSB/system iden
 - Manager/Administrator-authorized person search and detail;
 - create/edit contact information;
 - active/inactive lifecycle with reactivation of the same durable `person_id`;
-- collision-safe reserved `@sheboyganlights.org` identity candidates;
+- Sheboygan Lights email recorded when a real Google Workspace account exists; contact-only people may keep this field null;
 - strong duplicate review before create/identity-changing edits;
 - protected Directus/PostgreSQL identity fields;
 - dynamic visibility of current foreign-key relationships; and
 - no browser hard-delete or merge action.
+
+### Primary contact email
+
+The intended communication rule is:
+
+```text
+real ref.person.email / Google Workspace account exists
+    -> use Sheboygan Lights email as primary
+
+otherwise
+    -> use personal_email
+```
+
+People Manager should not automatically invent an MSB email for a new contact-only Person. Historical generated/reserved values require reconciliation before automated notification consumers treat every non-null MSB email as deliverable.
 
 ### Global capability catalog
 
@@ -136,13 +150,13 @@ Identity/contact, participation, Google Workspace, and database application acce
 ```text
 ref.person                    -> durable contact/person identity
 personal_email / phone        -> ordinary contact channels
-reserved MSB email            -> system identity; not proof of mailbox
+ref.person.email              -> actual Sheboygan Lights Google account when one exists
 Setup/Takedown participation  -> operational participation only
 Google Workspace account      -> Google authentication eligibility
 Directus identity / role      -> database application identity/authorization
 ```
 
-Creating a Person or assigning Setup/Takedown participation must not automatically provision Directus. A Google Workspace account is required for Google-authenticated application access but does not by itself grant Production Crew, Manager, or Administrator authorization.
+Creating a Person or assigning Setup/Takedown participation must not automatically provision Directus. Any real Sheboygan Lights Google Workspace user may receive the baseline `MSB Browser` read-only role. Production Crew, Manager, and Administrator remain explicit elevated Directus roles and are not inferred from participation.
 
 Cloudflare Access authenticates the browser user. PostgreSQL then resolves the current Directus authorization context.
 
