@@ -9,6 +9,7 @@ DECLARE
     v_workshop_container_id integer;
     v_destination_stage_id integer;
     v_override_id bigint;
+    v_updated_override_id bigint;
     v_operator text;
     v_movement_event_id bigint;
     v_movement_uuid uuid;
@@ -123,8 +124,8 @@ BEGIN
         'gliebig@sheboyganlights.org',
         2026,
         v_container_id,
-        DATE '2026-12-29',
-        DATE '2026-12-30',
+        DATE '2026-10-01',
+        DATE '2026-10-01',
         v_destination_stage_id,
         '[PREVIEW ONLY] #206 Manager early-pick override validation',
         true
@@ -140,14 +141,54 @@ BEGIN
         WHERE o.setup_pick_list_override_id = v_override_id
           AND o.setup_session_id = v_session_id
           AND o.container_id = v_container_id
-          AND o.pick_by_date = DATE '2026-12-29'
-          AND o.needed_for_date = DATE '2026-12-30'
+          AND o.pick_by_date = DATE '2026-10-01'
+          AND o.needed_for_date = DATE '2026-10-01'
           AND o.destination_stage_id = v_destination_stage_id
           AND o.active_flag
           AND o.created_by_person_id IS NOT NULL
           AND o.updated_by_person_id IS NOT NULL
     ) THEN
         RAISE EXCEPTION 'Manager override row did not retain required session/container/timing/audit state';
+    END IF;
+
+    SELECT r.setup_pick_list_override_id
+      INTO v_updated_override_id
+    FROM ops.set_setup_pick_list_override(
+        'gliebig@sheboyganlights.org',
+        2026,
+        v_container_id,
+        DATE '2026-10-05',
+        DATE '2026-10-05',
+        v_destination_stage_id,
+        '[PREVIEW ONLY] #206 corrected Manager pick timing',
+        true
+    ) r;
+
+    IF v_updated_override_id IS DISTINCT FROM v_override_id THEN
+        RAISE EXCEPTION 'Editing Manager override timing created a second override identity';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM ops.setup_pick_list_override o
+        WHERE o.setup_pick_list_override_id = v_override_id
+          AND o.setup_session_id = v_session_id
+          AND o.container_id = v_container_id
+          AND o.pick_by_date = DATE '2026-10-05'
+          AND o.needed_for_date = DATE '2026-10-05'
+          AND o.override_reason = '[PREVIEW ONLY] #206 corrected Manager pick timing'
+          AND o.active_flag
+    ) THEN
+        RAISE EXCEPTION 'Manager override timing edit did not update the existing demand row';
+    END IF;
+
+    IF (
+        SELECT count(*)
+        FROM ops.setup_pick_list_override o
+        WHERE o.setup_session_id = v_session_id
+          AND o.container_id = v_container_id
+    ) <> 1 THEN
+        RAISE EXCEPTION 'Manager override timing edit produced duplicate Container demand rows';
     END IF;
 
     v_movement_uuid := md5(clock_timestamp()::text || random()::text)::uuid;
