@@ -9,8 +9,9 @@ FIELDWIRING_ROOT="/opt/fieldwiring"
 PRODUCTION_PYTHON="/opt/fieldwiring/.venv/bin/python"
 PEOPLE_SERVICE="msb-people.service"
 PEOPLE_PORT="8796"
-TARGET_REF="agent/people-nullable-email-production-20261001"
-TARGET_SHA="953f2b71487de80519f4fc2f8005467ca41983e9"
+TARGET_REF="main"
+ACCEPTED_RUNTIME_SHA="953f2b71487de80519f4fc2f8005467ca41983e9"
+TARGET_SHA="${1:?merged main target SHA is required}"
 EXPECTED_OLD_VERSION="V0.2.0"
 EXPECTED_NEW_VERSION="V0.2.1"
 PREVIEW_EMAIL="gliebig@sheboyganlights.org"
@@ -36,8 +37,9 @@ exec > >(tee "$REPORT") 2>&1
 echo "========== PEOPLE NULLABLE MSB EMAIL PRODUCTION DEPLOYMENT =========="
 echo "Authority:   MSB-Server-Management — Production_Database_Change_Deployment_Runbook.md"
 echo "Report:      $REPORT"
-echo "Target ref:  $TARGET_REF"
-echo "Target SHA:  $TARGET_SHA"
+echo "Target ref:          $TARGET_REF"
+echo "Accepted runtime:    $ACCEPTED_RUNTIME_SHA"
+echo "Merged-main target:  $TARGET_SHA"
 echo "Service:     $PEOPLE_SERVICE"
 echo "Listener:    192.168.5.9:$PEOPLE_PORT"
 echo
@@ -183,14 +185,36 @@ PROD_BEFORE="$(prod_person_fingerprint)"
 echo "Pre-deploy ref.person fingerprint: $PROD_BEFORE"
 
 echo
-echo "--- Fetch and verify exact accepted runtime target ---"
+echo "--- Fetch and verify exact merged-main deployment target ---"
 sudo git -C "$FIELDWIRING_ROOT" fetch origin "$TARGET_REF"
 sudo git -C "$FIELDWIRING_ROOT" cat-file -e "$TARGET_SHA^{commit}"
+sudo git -C "$FIELDWIRING_ROOT" cat-file -e "$ACCEPTED_RUNTIME_SHA^{commit}"
 
-if ! sudo git -C "$FIELDWIRING_ROOT" merge-base --is-ancestor "$OLD_HEAD" "$TARGET_SHA"; then
-    echo "FAIL: accepted target is not a fast-forward descendant of verified live checkout"
+REMOTE_MAIN="$(sudo git -C "$FIELDWIRING_ROOT" rev-parse origin/main)"
+if [[ "$REMOTE_MAIN" != "$TARGET_SHA" ]]; then
+    echo "FAIL: requested deployment SHA is not current origin/main"
+    echo "origin/main: $REMOTE_MAIN"
+    echo "requested:   $TARGET_SHA"
     exit 6
 fi
+
+if ! sudo git -C "$FIELDWIRING_ROOT" merge-base --is-ancestor "$OLD_HEAD" "$TARGET_SHA"; then
+    echo "FAIL: merged-main target is not a fast-forward descendant of verified live checkout"
+    exit 7
+fi
+
+if ! sudo git -C "$FIELDWIRING_ROOT" merge-base --is-ancestor "$ACCEPTED_RUNTIME_SHA" "$TARGET_SHA"; then
+    echo "FAIL: merged main does not contain the accepted runtime commit"
+    exit 8
+fi
+
+if ! sudo git -C "$FIELDWIRING_ROOT" diff --quiet "$ACCEPTED_RUNTIME_SHA" "$TARGET_SHA" -- People/Application People/Database; then
+    echo "FAIL: People Application/Database changed after accepted runtime SHA"
+    sudo git -C "$FIELDWIRING_ROOT" diff --name-only "$ACCEPTED_RUNTIME_SHA" "$TARGET_SHA" -- People/Application People/Database
+    exit 9
+fi
+
+echo "PASS: merged main contains byte-identical accepted People runtime"
 
 echo
 echo "--- Detached Production-runtime regression ---"
