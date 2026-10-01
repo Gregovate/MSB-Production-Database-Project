@@ -414,9 +414,13 @@ casual volunteer
     -> use personal email while Google account does not yet exist
     -> later create the Google Workspace account when the person becomes a team member
     -> MSB email becomes usable business email once Google provisioning is confirmed
-    -> Directus identity is established
-    -> exact-email reconciliation links the existing person_id
+    -> People Manager may pre-provision the Google-backed Directus identity before first Directus login
+    -> exact-email governed reconciliation links the returned Directus UUID to the existing person_id
+    -> intended Directus role is assigned
+    -> first Directus login is authentication, not identity creation
 ```
+
+The 2026-10-01 Adam Biebel Production pilot proved that a Directus UUID can be created administratively before first user authentication. See [People Manager Directus Access Provisioning Contract](People_Manager_Directus_Access_Provisioning_Contract_2026-10-01.md).
 
 People Manager must not infer Directus authorization roles from the person's email address.
 
@@ -470,24 +474,56 @@ Before the corrected lifecycle is accepted, prove at least:
 11. the corrected design proves what event establishes a Directus UID without relying on undocumented operator behavior; and
 12. no Production Flow/database mutation occurs without the separate Production gate.
 
-## Remaining Evidence Before Implementing Hardening
+## 2026-10-01 Evidence Completed Before Hardening
 
-The Flow trigger, accountability, operation graph, and operation permission context are now fully captured.
+The previously required actor/constraint evidence is now captured.
 
-Before implementing a durable reconciliation command or changing actor behavior, inspect the current Production definitions and constraints for:
+Production proved:
 
 ```text
 ref.resolve_actor()
+    1. transaction-local app.directus_user_uuid -> ref.person.directus_user_id
+    2. ref.person.pg_login_name = current_user
+    3. fallback current_user text with person_id NULL
+
 ref.set_actor_on_update()
-ref.person.directus_user_id constraints/indexes
+    -> preserves an already-supplied actor
+    -> otherwise uses ref.resolve_actor()
+    -> hard-fails if updated_by_person_id remains NULL
+
+ref.set_actor_on_insert()
+    -> attempts the same actor resolution
+    -> does not hard-fail when person-level actor fields remain NULL
 ```
 
-That evidence is required because a reconciliation mechanism must preserve MSB person-level audit attribution and fail closed on UUID conflicts.
+Identity protection is also confirmed:
 
-Separately, before eliminating the human visit to Directus, establish a supported and controlled mechanism for creating/provisioning the Directus identity from the Google/MSB onboarding process. Do not pre-create Directus users by unsupported direct table manipulation.
+```text
+ref.person.directus_user_id UNIQUE
+nonblank ref.person.email UNIQUE case-insensitively
+```
+
+The bounded September Manager repair succeeded under `msbadmin` because that PostgreSQL login maps to Person 17, providing valid person-level audit attribution.
+
+The 2026-10-01 Adam Biebel pilot then proved a supported operational direction:
+
+```text
+Administrator pre-creates Google-backed Directus user
+    -> Directus UUID exists before first user login
+    -> current Flow assigns MSB Browser
+    -> current Flow does not complete existing-Person linkage in this path
+    -> governed exact-email Person linkage succeeds with audit trigger enabled
+    -> Production Crew role assignment succeeds
+```
+
+Therefore the human visit to Directus is no longer a required identity-creation event. The remaining implementation work is to move the proven sequence behind a governed People Manager action so operators do not need Directus record editing, shell, or SQL.
+
+See [People Manager Directus Access Provisioning Contract](People_Manager_Directus_Access_Provisioning_Contract_2026-10-01.md) for the current implementation and acceptance contract.
 
 ## Current Boundary
 
-This document records observed Production behavior and required hardening direction.
+This document records observed Production behavior and the corrected identity lifecycle.
 
-It does **not** authorize changing the Production Directus Flow, creating Google Workspace accounts, modifying additional Production Person rows, or deploying a new reconciliation mechanism.
+The Adam pilot proves the mechanics but does **not** authorize blind bulk provisioning or unsupported direct writes to Directus tables. The next implementation belongs behind the existing People Manager governed boundary and must preserve the same fail-closed identity checks, person-level audit attribution, and final validation recorded in the 2026-10-01 provisioning contract.
+
+Production Directus Flow changes, broad user provisioning, Google Workspace account creation, or a new reconciliation command still require their normal separate Production gate.
