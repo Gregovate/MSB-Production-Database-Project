@@ -136,7 +136,8 @@ cleanup() {
         fi
     fi
 
-    if sudo git -C "$REPO_ROOT" worktree list --porcelain 2>/dev/null | grep -Fq "worktree $CANDIDATE_WORKTREE"; then
+    WORKTREE_LIST="$(sudo git -C "$REPO_ROOT" worktree list --porcelain 2>/dev/null || true)"
+    if [[ "$WORKTREE_LIST" == *"worktree $CANDIDATE_WORKTREE"* ]]; then
         sudo git -C "$REPO_ROOT" worktree remove --force "$CANDIDATE_WORKTREE" >/dev/null 2>&1 || true
     fi
     sudo git -C "$REPO_ROOT" worktree prune >/dev/null 2>&1 || true
@@ -188,7 +189,8 @@ mkdir -p "$BACKUP_DIR" "$REPORT_DIR"
 echo "--- Verify current Production runtime ---"
 sudo docker inspect "$PROD_CONTAINER" >/dev/null
 [[ "$(sudo docker inspect "$PROD_CONTAINER" --format '{{.Config.Image}}')" == "postgis/postgis:16-3.5" ]]
-sudo git -C "$REPO_ROOT" worktree list --porcelain | grep -Fq "worktree $SETUP_ROOT"
+WORKTREE_LIST="$(sudo git -C "$REPO_ROOT" worktree list --porcelain)"
+[[ "$WORKTREE_LIST" == *"worktree $SETUP_ROOT"* ]]
 [[ -z "$(sudo git -C "$REPO_ROOT" status --porcelain)" ]]
 [[ -z "$(sudo git -C "$SETUP_ROOT" status --porcelain)" ]]
 systemctl is-active --quiet "$SETUP_SERVICE"
@@ -266,7 +268,8 @@ sudo docker exec "$PROD_CONTAINER" \
     pg_dump -U "$DB_ACTOR" -d "$PROD_DB" -Fc > "$BACKUP_FILE"
 test -s "$BACKUP_FILE"
 BACKUP_CREATED=1
-BACKUP_SHA="$(sha256sum "$BACKUP_FILE" | awk '{print $1}')"
+BACKUP_SHA="$(sha256sum "$BACKUP_FILE")"
+BACKUP_SHA="${BACKUP_SHA%% *}"
 sudo docker exec -i "$PROD_CONTAINER" pg_restore --list < "$BACKUP_FILE" >/dev/null
 echo "Rollback archive: $BACKUP_FILE"
 echo "SHA256:          $BACKUP_SHA"
