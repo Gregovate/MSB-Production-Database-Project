@@ -221,7 +221,7 @@ def test_pick_list_sorts_by_pick_deadline_then_physical_rack_walk_order() -> Non
     assert "left.column - right.column" in ui
     assert "left.level.localeCompare" in ui
     assert "left.slot - right.slot" in ui
-    assert "setup_pick_list.js?v=2026-10-01.2" in html
+    assert "setup_pick_list.js?v=2026-10-01.3" in html
 
 
 def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_assignment() -> None:
@@ -278,7 +278,15 @@ def test_manager_override_ui_is_explicit_and_dedupes_into_normal_pick_rows() -> 
     assert 'id="override-reason"' in html
     assert "This does not schedule work or mark the Container picked." in html
     assert "MANAGER OVERRIDE" in ui
+    assert "Edit Override" in ui
     assert "Cancel Override" in ui
+    assert "function beginEditOverride(containerId)" in ui
+    assert "overridePickBy.value = override.pick_by_date || '';" in ui
+    assert "overrideNeededFor.value = override.needed_for_date || '';" in ui
+    assert "overrideDestinationStage.value" in ui
+    assert "overrideReason.value = override.override_reason || '';" in ui
+    assert "Update Override" in ui
+    assert 'id="override-edit-cancel"' in html
     override_badge = ui.split("function overrideBadgeHtml(item)", 1)[1].split("function delayActionHtml", 1)[0]
     assert "access?.can_manage_setup" in override_badge
     assert "!itemMoved(item)" not in override_badge
@@ -454,4 +462,4 @@ def test_delayed_pick_warning_survives_print_when_delayed_rows_are_shown() -> No
     assert ".print-delay-badge{display:none" in css
     assert ".print-delay-badge{display:inline-block!important" in css
     assert "setup_pick_list.css?v=2026-09-30.5" in html
-    assert "setup_pick_list.js?v=2026-10-01.2" in html
+    assert "setup_pick_list.js?v=2026-10-01.3" in html
