@@ -48,7 +48,7 @@ The source is stored in the Production Database repository because it operates d
 
 The detailed deployed runtime hash, rollback artifacts, restart/recovery sequence, and Synology `/scan/` proxy behavior are maintained in `Gregovate/MSB-Server-Management`.
 
-**#219 Scan + GPS field acceptance harness is currently deployed.** The protected `/scan/field-test` route is a read-only engineering surface used with the real HOTWAV/Zebra/browser-GPS path. Its current live artifact was re-verified during #88 preflight as SHA-256 `5b456bb682daad50673e5b7b2514cb7b98ce0d4fabb5551d79b1b0f4e98ffb50` / Git blob `c131458fb549ab4127ede1fd8d4277d115cebaa0`. #219 owns the harness; #171 remains the GIS/reference-location authority and is not complete. Preserve the harness while that evidence work remains useful. It does not write Setup movement/GPS state to PostgreSQL.
+**#219/#88 Scan integration is currently deployed.** The protected `/scan/field-test` route remains a read-only engineering surface used with the real HOTWAV/Zebra/browser-GPS path, and the resolved Display/Container Scan pages now include explicit **Record Location** handoffs into Setup V0.3.29. Current live Scan identity is SHA-256 `c2bc2d4e7d9d7ff86c57a7d30a52d427f9897f538aa2ce68c5ffc4f0a305bfea` / Git blob `6de1ba35c85f0c6585e5849b6dfc135c27af4b68`, deployed on 2026-10-01 from merged candidate `413c8dc215873bcdb47c3490493b6b458d015c1e`. The field-test route still does not write Setup movement/GPS state to PostgreSQL; Record Location remains an explicit operator action. #219 owns the Scan harness/runtime handoff and #171 remains the GIS/reference-location authority. Immediate rollback is `/home/msbadmin/backups/directus-scan/pre-issue219-20261001T004354Z/index.js`, SHA-256 `5b456bb682daad50673e5b7b2514cb7b98ce0d4fabb5551d79b1b0f4e98ffb50`.
 
 
 **FieldWiring Scan Integration is accepted production work.** The Display scan hub currently includes the additive **Field Wiring** action using only the already-resolved permanent `display_id`:
@@ -261,7 +261,7 @@ Zebra/manual: CTRL:<controller_id>
     -> Search filtered and exact Controller detail opened
 ```
 
-The September 3 Controller deployment established the route and physical Controller 1031 phone/Zebra path. PR #121 later repaired landing-page HID focus. #219 subsequently deployed the read-only `/scan/field-test` harness and exercised the real tablet/Zebra/browser-GPS path. The current live Scan artifact is SHA-256 `5b456bb682daad50673e5b7b2514cb7b98ce0d4fabb5551d79b1b0f4e98ffb50` / Git blob `c131458fb549ab4127ede1fd8d4277d115cebaa0`.
+The September 3 Controller deployment established the route and physical Controller 1031 phone/Zebra path. PR #121 later repaired landing-page HID focus. #219 subsequently deployed the read-only `/scan/field-test` harness and exercised the real tablet/Zebra/browser-GPS path. On 2026-10-01 the merged #219/#88 candidate was promoted through the governed Windows PowerShell -> foreground SSH -> reviewed server-runner path. The current live Scan artifact is SHA-256 `c2bc2d4e7d9d7ff86c57a7d30a52d427f9897f538aa2ce68c5ffc4f0a305bfea` / Git blob `6de1ba35c85f0c6585e5849b6dfc135c27af4b68` and includes the explicit Display/Container Record Location handoffs.
 
 #171 remains open as GIS/reference-location authority, so the field harness remains useful. #88 adds explicit Record Location handoffs from resolved Display/Container Scan pages; those links are additive and must preserve the existing field-test route and normal Scan behavior.
 
