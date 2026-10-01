@@ -435,6 +435,9 @@
       }));
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+      if (!editingContainerId && statusFilter.value === 'UNSCHEDULED_PICKABLE') {
+        statusFilter.value = '';
+      }
       dialog.close();
       editingContainerId = null;
       await load();
@@ -462,6 +465,9 @@
       );
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+      if (item.can_remove_from_pick_list && statusFilter.value === 'SCHEDULED_TO_PICK') {
+        statusFilter.value = '';
+      }
       await load();
     } catch (error) {
       window.alert(error.message || error);
