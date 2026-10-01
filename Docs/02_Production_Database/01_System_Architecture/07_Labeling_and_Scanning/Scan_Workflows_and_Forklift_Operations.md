@@ -254,9 +254,9 @@ normal QR scan
     -> NO Setup movement write solely because scanning occurred
 ```
 
-A resolved Display or Container page may offer **Record Location** as an explicit action. That action may hand the already-resolved `DISP:` or `CONT:` identity into the Setup Record Location workflow so a second scan is unnecessary.
+The general **MSB Scan** landing page exposes **Record Location** as an explicit action so an operator can enter the Setup field workflow before scanning an asset. A resolved Display or Container page also offers **Record Location** and hands the already-resolved `DISP:` or `CONT:` identity into that workflow so a second scan is unnecessary.
 
-The dedicated Record Location workflow remains distinct from both the general Scan hub and the workshop Pick List.
+The dedicated Record Location workflow remains Setup-owned and distinct from the Scan resolver itself and from the workshop Pick List. Scan provides the operator entry/handoff; Setup owns movement meaning, GPS evidence, offline queueing, and writes.
 
 ### Identity and location evidence are separate
 
