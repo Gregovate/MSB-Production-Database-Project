@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Setup Pick List</title>
   <link rel="stylesheet" href="assets/setup_pick_list.css?v=2026-10-01.1">
-  <link rel="stylesheet" href="assets/setup_pick_mode.css?v=2026-10-01.3">
+  <link rel="stylesheet" href="assets/setup_pick_mode.css?v=2026-10-01.4">
 </head>
 <body>
 <header class="page-header">
@@ -26,13 +26,13 @@
     </label>
     <label class="delayed-filter"><input id="show-delayed-picks" type="checkbox" checked> Show delayed picks</label>
     <button id="start-pick-mode" type="button" class="pick-mode-start">Start Picking</button>
-    <button id="exit-pick-training" type="button" hidden>Exit Training</button>
     <button id="print-button" type="button">Print</button>
     <button id="back-button" type="button">Back to Setup</button>
   </div>
 </header>
 <div id="pick-training-banner" class="pick-training-banner no-print" hidden>
-  TRAINING MODE — NOTHING WILL BE RECORDED
+  <span>TRAINING — NO RECORDING</span>
+  <button id="exit-pick-training" type="button" hidden>Exit Training</button>
 </div>
 <main>
   <section id="pick-mode-panel" class="pick-mode-panel no-print" hidden aria-live="polite">
@@ -123,6 +123,6 @@
 </footer>
 <script src="assets/qrcode.min.js?v=1"></script>
 <script src="assets/setup_pick_list.js?v=2026-10-01.3"></script>
-<script src="assets/setup_pick_mode.js?v=2026-10-01.1"></script>
+<script src="assets/setup_pick_mode.js?v=2026-10-01.2"></script>
 </body>
 </html>
