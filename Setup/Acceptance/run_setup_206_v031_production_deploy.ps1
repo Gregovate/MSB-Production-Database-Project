@@ -14,7 +14,7 @@ $MigrationPath = 'Setup/Database/066_allow_manager_pick_override_cancel_after_mo
 $AcceptedMigrationBlob = 'a27574d99af70d5de0e247ef6ffb73974708f127'
 $ValidationPath = 'Setup/Acceptance/setup_206_pick_list_override_disposable_validation.sql'
 $AcceptedValidationBlob = 'a0b2fad96de64e0083078e4dbcb504efc62d7450'
-$AcceptedServerRunnerBlob = '54fbb0de2b8c6b25248e9d9f1ad7182f1d59226e'
+$AcceptedServerRunnerBlob = 'b5651e0a1e9fb432733dc2ec0328d5f3e833f590'
 
 if (-not (Test-Path -LiteralPath $ServerScript -PathType Leaf)) {
     throw "Required #206 V0.3.31 Production deployment runner is missing: $ServerScript"
