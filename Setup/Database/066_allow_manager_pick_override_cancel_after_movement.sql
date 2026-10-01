@@ -64,6 +64,16 @@ BEGIN
     END IF;
 
     IF coalesce(p_active, true) THEN
+        IF EXISTS (
+            SELECT 1
+            FROM ref.container c
+            WHERE c.container_id = p_container_id
+              AND c.goes_to_endpoint_id = 1
+        ) THEN
+            RAISE EXCEPTION USING ERRCODE = '23514',
+                MESSAGE = 'Workshop Containers cannot be added to the Setup Pick List';
+        END IF;
+
         IF p_pick_by_date IS NULL THEN
             RAISE EXCEPTION USING ERRCODE = '22023',
                 MESSAGE = 'Pick By date is required for a Manager Pick List override';
