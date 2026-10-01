@@ -132,6 +132,45 @@ For an already-established Manager whose Directus role is non-null, a later logi
 
 The prior operation-by-operation review accurately described the individual Flow operations but incorrectly treated that as sufficient validation of the complete identity lifecycle. The `role IS NULL` gate should have been identified as a coverage limitation before People Manager Production acceptance.
 
+
+## Administrator Pre-Provisioning Pilot — Adam Biebel — 2026-10-01
+
+To remove the operational dependency on a person first visiting Directus, an Administrator manually created a Google-backed Directus user for existing Person 1, Adam Biebel, before Adam authenticated to Directus.
+
+The user was created with:
+
+```text
+email                abiebel@sheboyganlights.org
+provider             google
+external_identifier  abiebel@sheboyganlights.org
+status               active
+role at create        NULL
+```
+
+Production evidence immediately after create showed:
+
+```text
+Directus user UUID    2e2100a3-cb20-4c54-b3dd-bf9bd4673131
+Directus role         MSB Browser
+ref.person person_id  1
+ref.person email      abiebel@sheboyganlights.org
+ref.person.directus_user_id = NULL
+```
+
+Therefore administrator-side Directus pre-provisioning **does create the Google-backed Directus identity and UUID without first user login**, and the existing onboarding Flow also advances far enough to assign the default `MSB Browser` role. However, the Flow does **not** successfully complete the existing-Person linkage for this case.
+
+This proves that Directus identity pre-provisioning and Person reconciliation are separable lifecycle steps:
+
+```text
+Administrator creates Google Directus user
+    -> Directus UUID exists before first login
+    -> default MSB Browser role is assigned
+    -> existing exact-email Person remains unlinked
+```
+
+Do not infer that first user login is required to create the UUID. Do not batch-provision additional users until the existing-Person reconciliation step is explicitly repaired or governed separately.
+
+
 ## Impact
 
 An affected user may:
