@@ -221,13 +221,14 @@ def test_pick_list_sorts_by_pick_deadline_then_physical_rack_walk_order() -> Non
     assert "left.column - right.column" in ui
     assert "left.level.localeCompare" in ui
     assert "left.slot - right.slot" in ui
-    assert "setup_pick_list.js?v=2026-09-30.9" in html
+    assert "setup_pick_list.js?v=2026-10-01.2" in html
 
 
 def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_assignment() -> None:
     api = read("setup_material_readiness_api.py")
     repo = read("setup_material_readiness_repository.py")
     migration = (DB_DIR / "060_add_setup_pick_list_manager_override.sql").read_text(encoding="utf-8")
+    correction = (DB_DIR / "066_allow_manager_pick_override_cancel_after_movement.sql").read_text(encoding="utf-8")
     validation = (APP_DIR.parent / "Acceptance" / "setup_206_pick_list_override_disposable_validation.sql").read_text(encoding="utf-8")
 
     assert "CREATE TABLE IF NOT EXISTS ops.setup_pick_list_override" in migration
@@ -244,7 +245,14 @@ def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_a
     assert "last_movement_event_id IS NOT NULL" in migration
     assert "Cannot cancel a Manager Pick List override after the Container has movement evidence" in migration
     assert "ops.set_setup_pick_list_override" in migration
+    assert "CREATE OR REPLACE FUNCTION ops.set_setup_pick_list_override" in correction
+    assert "Cannot cancel a Manager Pick List override after the Container has movement evidence" not in correction
+    assert "Workshop Containers cannot be added to the Setup Pick List" in correction
+    assert "c.goes_to_endpoint_id = 1" in correction
     assert "SETUP_206_PICK_LIST_OVERRIDE_DISPOSABLE_VALIDATION_PASS" in validation
+    assert "Workshop-marked Container was incorrectly accepted" in validation
+    assert "Canceling Manager override incorrectly removed physical movement history" in validation
+    assert "Canceling Manager override incorrectly changed current Container movement state" in validation
     assert "fieldwiring_app has forbidden broad Pick List override DML" in validation
 
     assert '@setup_material_readiness_api.post("/api/setup/material-readiness/overrides")' in api
@@ -271,6 +279,9 @@ def test_manager_override_ui_is_explicit_and_dedupes_into_normal_pick_rows() -> 
     assert "This does not schedule work or mark the Container picked." in html
     assert "MANAGER OVERRIDE" in ui
     assert "Cancel Override" in ui
+    override_badge = ui.split("function overrideBadgeHtml(item)", 1)[1].split("function delayActionHtml", 1)[0]
+    assert "access?.can_manage_setup" in override_badge
+    assert "!itemMoved(item)" not in override_badge
     assert "Schedule-derived demand, if any, will remain." in ui
     assert "override_destination" in ui
     assert "../api/setup/stages" in ui
@@ -296,6 +307,9 @@ def test_manager_override_container_selection_is_name_first_search() -> None:
     assert "containerSearchText(row)" in ui
     assert "container_description" in ui
     assert "home_location_code" in ui
+    assert "goes_to_endpoint_id" in ui
+    assert "Number(row.goes_to_endpoint_id) !== 1" in ui
+    assert "marked Workshop and cannot be added to the park Pick List" in ui
     assert "Select a Container from the search results." in ui
 
 
@@ -332,14 +346,18 @@ def test_manager_override_destination_uses_governed_stage_authority() -> None:
 
 
 
-def test_manager_search_hides_containers_already_on_the_pick_list() -> None:
+def test_manager_search_hides_workshop_and_already_demanded_containers() -> None:
     ui = read("setup_pick_list.js")
     repo = read("setup_material_readiness_repository.py")
     api = read("setup_material_readiness_api.py")
+    source_api = read("setup_extra_material_api.py")
 
     assert "function demandedContainerIds()" in ui
+    assert "Number(row.goes_to_endpoint_id) !== 1" in ui
     assert "!demanded.has(Number(row.container_id))" in ui
-    assert "All matching Containers are already on the Pick List." in ui
+    assert "Matching Containers are marked Workshop and cannot be added to the park Pick List." in ui
+    assert "All matching eligible Containers are already on the Pick List." in ui
+    assert "c.goes_to_endpoint_id" in source_api
     assert "Container is already on the Pick List from scheduled material demand" in repo
     assert "SetupMaterialReadinessConflictError" in repo
     assert "@setup_material_readiness_api.errorhandler(SetupMaterialReadinessConflictError)" in api
@@ -436,4 +454,4 @@ def test_delayed_pick_warning_survives_print_when_delayed_rows_are_shown() -> No
     assert ".print-delay-badge{display:none" in css
     assert ".print-delay-badge{display:inline-block!important" in css
     assert "setup_pick_list.css?v=2026-09-30.5" in html
-    assert "setup_pick_list.js?v=2026-09-30.9" in html
+    assert "setup_pick_list.js?v=2026-10-01.2" in html
