@@ -5,7 +5,8 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$TargetRef,
     [string[]]$MigrationPaths = @(),
-    [string[]]$ValidationPaths = @()
+    [string[]]$ValidationPaths = @(),
+    [switch]$AllowConcurrentProductionWrites
 )
 
 $ErrorActionPreference = 'Stop'
@@ -138,7 +139,8 @@ try {
 
     $manifestLines = @(
         "candidate_sha`t$CandidateSha",
-        "target_ref`t$TargetRef"
+        "target_ref`t$TargetRef",
+        "allow_concurrent_production_writes`t$($AllowConcurrentProductionWrites.IsPresent.ToString().ToLowerInvariant())"
     )
     foreach ($path in $MigrationPaths) {
         $manifestLines += "migration`t$path"
@@ -158,6 +160,7 @@ try {
     Write-Host "Server:        $Server"
     Write-Host "Candidate SHA: $CandidateSha"
     Write-Host "Target ref:    $TargetRef"
+    Write-Host "Concurrent Production writes allowed: $($AllowConcurrentProductionWrites.IsPresent.ToString().ToLowerInvariant())"
     Write-Host "Migrations:    $($MigrationPaths.Count)"
     Write-Host "Validations:   $($ValidationPaths.Count)"
     Write-Host
