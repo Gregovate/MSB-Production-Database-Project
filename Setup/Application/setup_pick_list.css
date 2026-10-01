@@ -14,11 +14,6 @@ button,select{font:inherit;padding:.55rem .7rem}
 .meta,.muted{opacity:.72}.empty{padding:1.5rem 0;opacity:.7;text-align:center}
 .unresolved{border-left:3px solid currentColor;padding:.45rem .65rem;margin:.4rem 0;background:color-mix(in srgb,CanvasText 4%,Canvas)}
 
-.manager-pick-lookup{border:1px dashed color-mix(in srgb,CanvasText 30%,transparent);border-radius:.55rem;padding:.6rem .75rem;margin-bottom:.75rem}
-.manager-pick-lookup-row{display:grid;grid-template-columns:auto minmax(260px,1fr) auto;gap:.5rem;align-items:center}
-.manager-pick-lookup-row label{font-weight:850}
-.manager-pick-lookup-row input{font:inherit;padding:.5rem .6rem;min-width:0}
-.manager-pick-lookup .muted{margin-top:.35rem}
 .manager-override-panel{border-style:dashed}
 .manager-override-form{display:grid;grid-template-columns:minmax(260px,1.35fr) minmax(150px,.8fr) minmax(150px,.8fr) minmax(220px,1.3fr) minmax(260px,1.7fr) auto;gap:.65rem;align-items:end}
 .manager-override-form label{display:grid;gap:.2rem;font-size:.84rem;font-weight:700}
@@ -104,13 +99,8 @@ button,select{font:inherit;padding:.55rem .7rem}
 }
 @media(max-width:900px){
   .page-header{display:block}.controls{margin-top:1rem}.summary{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .manager-pick-lookup-row{grid-template-columns:1fr auto}
-  .manager-pick-lookup-row label{grid-column:1/-1}
 }
 @media(max-width:620px){
-  .manager-pick-lookup-row{grid-template-columns:1fr}
-  .manager-pick-lookup-row label{grid-column:auto}
-  .manager-pick-lookup-row button{width:100%}
   .manager-override-form{grid-template-columns:1fr}
   .override-reason-field{grid-column:auto}
   .pick-row{
