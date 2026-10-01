@@ -46,6 +46,10 @@ Cloudflare Access identifies the signed-in user. People Manager then checks the 
 - If someone stops participating, normally mark the person **inactive** rather than creating a replacement person later.
 - If that same person returns, reactivate the existing person record.
 - The Sheboygan Lights email stored in People Manager is a **reserved system identity**. It does not create a Google Workspace mailbox.
+- Creating a Person does **not** create a Google Workspace account, Directus identity, or database-application access.
+- Setup/Takedown participation or Production help does **not** automatically grant database access.
+- A person may remain contact-only and still receive schedules/notifications through ordinary contact information.
+- A real Google Workspace account is required for Google-authenticated database access, but Google account existence alone does not grant a Directus role.
 - Google Workspace remains the authority for whether the MSB email account actually exists and is deliverable.
 - A Directus-linked Sheboygan Lights email is protected from ordinary People contact editing.
 - Capabilities describe reusable skill, experience, or MSB-specific knowledge.
@@ -205,6 +209,30 @@ The **Reusable-task leadership** panel shows current Setup relationships where t
 This panel is intentionally read-only in People Manager. Actual reusable-task leadership is maintained by the Setup application/authority.
 
 Use this panel to answer questions such as "What Setup knowledge responsibility does this person currently own?" without creating a second competing leadership record.
+
+## Contact-Only People and Database Access
+
+
+People Manager is the uniform contact list, not a membership/access list.
+
+A Person may legitimately be:
+
+```text
+active volunteer/contact
++ personal email / phone
++ reserved Sheboygan Lights identity
++ Setup/Takedown participation
++ notifications/schedules
++ NO Google Workspace account
++ NO Directus identity
++ NO database application access
+```
+
+Do not provision Directus merely because someone helps Production or Setup.
+
+When the future **System Access & Identity** action is available, Directus provisioning will be a separate Manager/Administrator action for people whose real Google Workspace identity has been confirmed and who intentionally need database application access.
+
+Until that workflow is deployed, the current **Protected system state** remains read-only context.
 
 ## Protected System State and Duplicate Safety
 
