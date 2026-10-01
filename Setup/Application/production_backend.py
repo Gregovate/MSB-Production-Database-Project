@@ -39,7 +39,7 @@ from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.31-pick-review-fixes"
+PRODUCTION_VERSION = "V0.3.33-material-status-review-fixes"
 
 # #222 lightweight Production request instrumentation.
 #
@@ -147,6 +147,12 @@ MATERIAL_AUDIT_ASSETS = frozenset(
     {
         "setup_material_audit.css",
         "setup_material_audit.js",
+    }
+)
+MATERIAL_STATUS_ASSETS = frozenset(
+    {
+        "setup_material_status.css",
+        "setup_material_status.js",
     }
 )
 PICK_LIST_ASSETS = frozenset(
@@ -424,6 +430,21 @@ def material_audit():
 @app.get("/material-audit/assets/<path:name>")
 def material_audit_asset(name: str):
     if name not in MATERIAL_AUDIT_ASSETS:
+        abort(404)
+    mimetype = "application/javascript" if name.casefold().endswith(".js") else None
+    return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
+
+
+@app.get("/material-status")
+@app.get("/material-status/")
+def material_status():
+    """Manager-facing live annual material oversight and Pick List control."""
+    return _no_store(send_from_directory(BASE_DIR, "material_status.html"))
+
+
+@app.get("/material-status/assets/<path:name>")
+def material_status_asset(name: str):
+    if name not in MATERIAL_STATUS_ASSETS:
         abort(404)
     mimetype = "application/javascript" if name.casefold().endswith(".js") else None
     return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB Setup Manager Material Status</title>
+  <link rel="stylesheet" href="assets/setup_material_status.css?v=2026-10-01.3">
+</head>
+<body>
+<header class="page-header">
+  <div>
+    <div class="eyebrow">Live annual Setup · Manager</div>
+    <h1>Material Status</h1>
+    <p id="status-line">Loading annual material status…</p>
+  </div>
+  <div class="header-actions">
+    <label>Season
+      <select id="season-select"></select>
+    </label>
+    <button id="back-button" type="button">Back to Setup</button>
+  </div>
+</header>
+
+<main>
+  <section id="summary" class="summary" aria-live="polite"></section>
+
+  <section class="filters panel" aria-label="Material Status filters">
+    <label>Search
+      <input id="search-filter" type="search" autocomplete="off" placeholder="Display, Container, task, location, date, reason">
+    </label>
+    <label>Stage
+      <select id="stage-filter"><option value="">All Stages</option></select>
+    </label>
+    <label>Scene
+      <select id="scene-filter"><option value="">All Scenes</option></select>
+    </label>
+    <label>Status
+      <select id="status-filter">
+        <option value="">All material</option>
+        <option value="PICKED_MOVED">Picked / moved</option>
+        <option value="SCHEDULED_TO_PICK">Scheduled to pick</option>
+        <option value="UNSCHEDULED_PICKABLE">Unscheduled / pickable</option>
+        <option value="WORKSHOP">Workshop / do not mobilize</option>
+        <option value="UNRESOLVED">Unresolved / data problem</option>
+      </select>
+    </label>
+    <label>Sort
+      <select id="sort-mode">
+        <option value="STAGE">Stage / Scene</option>
+        <option value="STATUS">Status</option>
+        <option value="PICK_BY">Pick By</option>
+        <option value="NEEDED_FOR">Needed For</option>
+        <option value="HOME">Home Location</option>
+        <option value="IDENTITY">Container / Display</option>
+      </select>
+    </label>
+  </section>
+
+  <section class="panel">
+    <div class="section-heading">
+      <div>
+        <div class="eyebrow">Physical material</div>
+        <h2>2026 annual material view</h2>
+      </div>
+      <div id="visible-count" class="muted"></div>
+    </div>
+    <div id="material-list" class="material-list"></div>
+  </section>
+
+  <section id="unresolved-panel" class="panel">
+    <div class="section-heading">
+      <div>
+        <div class="eyebrow">Data quality / authority</div>
+        <h2>Unresolved</h2>
+      </div>
+      <button id="open-material-audit" type="button" class="secondary">Open Material Audit</button>
+    </div>
+    <p class="muted">Unresolved material is read-only here. Correct material authority in Material Audit, then return to this status view.</p>
+    <div id="unresolved-list" class="unresolved-list"></div>
+  </section>
+</main>
+
+<dialog id="override-dialog">
+  <form id="override-form" method="dialog">
+    <input id="override-container-id" type="hidden">
+    <div>
+      <div class="eyebrow">Manager Pick List override</div>
+      <h2 id="override-title">Add to Pick List</h2>
+      <p id="override-item" class="muted"></p>
+    </div>
+    <div class="form-grid">
+      <label>Pick By
+        <input id="override-pick-by" type="date" required>
+      </label>
+      <label>Needed For
+        <input id="override-needed-for" type="date">
+      </label>
+      <label>Destination
+        <select id="override-destination" required>
+          <option value="">Select destination Stage</option>
+        </select>
+      </label>
+      <label class="reason-field">Reason
+        <input id="override-reason" type="text" maxlength="500" required placeholder="Why this material must be pulled before schedule demand">
+      </label>
+    </div>
+    <div id="override-message" class="form-message" aria-live="polite"></div>
+    <menu>
+      <button id="override-cancel" type="button" class="secondary">Cancel</button>
+      <button id="override-submit" type="submit">Add to Pick List</button>
+    </menu>
+  </form>
+</dialog>
+
+<footer><span id="generated-at"></span></footer>
+<script src="assets/setup_material_status.js?v=2026-10-01.4"></script>
+</body>
+</html>

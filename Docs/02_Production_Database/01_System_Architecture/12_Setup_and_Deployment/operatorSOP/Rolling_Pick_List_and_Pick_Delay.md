@@ -8,7 +8,7 @@
 | Audience | Production Crew, warehouse/pickers, Setup Managers |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-30 |
+| Last Reviewed | 2026-10-01 |
 | Keywords | Setup, 2026 Setup, Rolling Pick List, Pick By, Needed For, Pick Delay, Resume Pick, early-pick |
 
 ## Purpose
@@ -65,7 +65,7 @@ Training uses the real current Pick List and the same scan validation, including
 - it does **not** change the real **Containers picked** count; and
 - it may show a temporary **Training picks** count for the current training page/session only.
 
-Entering Training requires deliberate confirmation. While active, the compact safety strip must continuously show **TRAINING — NO RECORDING** and provide **Exit Training**. A successful training scan reports **WOULD PICK … · NOT RECORDED** without repeating the same Training warning across the scanner panel.
+Entering Training requires deliberate confirmation. While active, Training is identified inside the scanner controls rather than by a sticky page-wide banner, and **Exit Training** remains directly available. A successful training scan reports **WOULD PICK … · NOT RECORDED** without covering Pick List counts or the working list.
 
 Use normal Pick Mode only when the physical item is actually being picked for park transport.
 
@@ -84,7 +84,9 @@ An early-pick override:
 - does not assign material to a reusable task; and
 - does not mark anything physically picked or moved.
 
-The **Pick By** and **Needed For** dates on a Manager override remain editable. Use **Edit Override** when a manual pick was entered with the wrong timing. The Container identity is locked during that edit; changing a Container means canceling the mistaken override and creating the correct one.
+The **Pick By** and **Needed For** dates on a Manager override remain editable from **Manager Material Status**. Use **Edit Dates / Override** when a manual pick was entered with the wrong timing. The Container identity is locked during that edit; changing a Container means removing the mistaken override and creating the correct one.
+
+**Needed For is optional.** When it is blank, the override's effective Needed For date is its **Pick By** date for Pick List date filtering and ordering. A blank Needed For must never make the override disappear from a date-filtered Pick List.
 
 Pick List working order is:
 
@@ -99,6 +101,34 @@ That means an override accidentally dated earlier than the main pull can jump ah
 Schedule-derived Pick By / Needed For dates remain schedule-owned. Correct those through the Scheduling/Setup authority rather than editing them as if they were Manager overrides.
 
 Use an early-pick override only when the physical pull is intentionally needed early.
+
+## Manager Material Status
+
+Managers use **Material Status** for live annual material oversight, search, sorting, and one-item-at-a-time Pick List override control.
+
+Material Status may be searched by Display/Container identity or name, task, Stage/Scene, Home Location, Manager reason, and Pick/Needed dates. It may be sorted by Stage/Scene, status, Pick By, Needed For, Home Location, or physical identity.
+
+Demand source is explicit:
+
+```text
+SCHEDULE
+MANAGER_OVERRIDE
+BOTH
+NONE
+```
+
+When an item already has a Manager override and later becomes schedule-derived demand, the schedule does **not** replace, deactivate, or rewrite the Manager override. The item becomes **BOTH**. The Manager's Pick By / Needed For dates remain exactly as entered until a Manager explicitly edits or removes that override.
+
+Removing an override from **BOTH** demand removes only the Manager override. The schedule-derived Pick List demand remains.
+
+Safety rules:
+
+- no bulk Add All / Remove All;
+- Workshop / do-not-mobilize Containers cannot be added;
+- unresolved material authority cannot be forced onto the Pick List;
+- picked/moved truth cannot be removed;
+- schedule-derived demand cannot be removed as if it were a Manager override; and
+- all override writes continue through the governed Manager command.
 
 ## Pick Delay
 

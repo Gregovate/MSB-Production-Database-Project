@@ -56,6 +56,12 @@ def api_setup_material_readiness() -> Response:
     return jsonify(readiness=repo().material_readiness(required_year()))
 
 
+@setup_material_readiness_api.get("/api/setup/material-status")
+def api_setup_manager_material_status() -> Response:
+    require_manager()
+    return jsonify(material_status=repo().manager_material_status(required_year()))
+
+
 @setup_material_readiness_api.post("/api/setup/material-readiness/overrides")
 def api_setup_material_readiness_override_set() -> tuple[Response, int]:
     require_setup_command()
