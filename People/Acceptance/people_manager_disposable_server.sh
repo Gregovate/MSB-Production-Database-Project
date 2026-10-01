@@ -19,7 +19,7 @@ exec > >(tee "$REPORT") 2>&1
 echo "========== PEOPLE MANAGER DISPOSABLE ACCEPTANCE =========="
 echo "Report: $REPORT"
 echo "Production access: pg_dump + SELECT only"
-echo "Candidate migrations: People 001 + 002 + 003"
+echo "Candidate migrations: People 001 + 002 + 003 + 004"
 echo "Authority: MSB-Server-Management — PostgreSQL_Disposable_Acceptance_Standard.md"
 echo
 
@@ -61,7 +61,8 @@ sudo docker network inspect "$NETWORK" >/dev/null
 SQL001="$SCRIPT_DIR/001_create_people_manager_contract.sql"
 SQL002="$SCRIPT_DIR/002_harden_people_search_phone_filter.sql"
 SQL003="$SCRIPT_DIR/003_create_people_metadata_contract.sql"
-for f in "$SQL001" "$SQL002" "$SQL003"; do [[ -s "$f" ]] || { echo "FAIL: missing migration $f"; exit 3; }; done
+SQL004="$SCRIPT_DIR/004_stop_automatic_msb_email_generation.sql"
+for f in "$SQL001" "$SQL002" "$SQL003" "$SQL004"; do [[ -s "$f" ]] || { echo "FAIL: missing migration $f"; exit 3; }; done
 
 PROD_BEFORE="$(prod_fingerprint)"
 echo "Production ref.person fingerprint: $PROD_BEFORE"
@@ -106,7 +107,8 @@ SQL
 psql_test < "$SQL001"
 psql_test < "$SQL002"
 psql_test < "$SQL003"
-echo "PASS: migrations 001 + 002 + 003 applied to disposable clone"
+psql_test < "$SQL004"
+echo "PASS: migrations 001 + 002 + 003 + 004 applied to disposable clone"
 
 psql_test <<'SQL'
 DO $b$
@@ -136,19 +138,28 @@ echo "Acceptance actor: $MANAGER_EMAIL -> person_id $MANAGER_PERSON_ID"
 
 FIRST="Acceptance"
 LAST="Metadata${STAMP}"
-MSB_EMAIL="a$(echo "$LAST" | tr '[:upper:]' '[:lower:]')@sheboyganlights.org"
+MSB_EMAIL="acceptance${STAMP}@sheboyganlights.org"
 CREATE_ROW="$(psql_q -F '|' -c "SET ROLE people_app; SELECT person_id,reserved_email FROM ref.create_person_from_people_manager('$MANAGER_EMAIL','$FIRST','$LAST',NULL,NULL,'acceptance.${STAMP}@example.invalid','9205550001',true,false,false);")"
 IFS='|' read -r PERSON_ID CREATED_EMAIL <<< "$CREATE_ROW"
-[[ "$CREATED_EMAIL" == "$MSB_EMAIL" && "$PERSON_ID" =~ ^[0-9]+$ ]] || { echo "FAIL: clone person create/email: $CREATE_ROW"; exit 6; }
-echo "PASS: clone person create and reserved email"
+[[ -z "$CREATED_EMAIL" && "$PERSON_ID" =~ ^[0-9]+$ ]] || { echo "FAIL: clone person create should leave MSB email NULL: $CREATE_ROW"; exit 6; }
+[[ "$(psql_q -c "SELECT email IS NULL FROM ref.person WHERE person_id=$PERSON_ID;")" == "t" ]] || { echo "FAIL: new Person received an automatic MSB email"; exit 6; }
+echo "PASS: clone person create leaves MSB email NULL"
 
 TS="$(psql_q -c "SELECT updated_at FROM ref.person WHERE person_id=$PERSON_ID;")"
-psql_q -c "SET ROLE people_app; SELECT * FROM ref.update_person_from_people_manager('$MANAGER_EMAIL',$PERSON_ID,'$FIRST','$LAST',NULL,'$MSB_EMAIL','acceptance.${STAMP}@example.invalid','9205550001',false,'$TS',false,false);" >/dev/null
-[[ "$(psql_q -c "SELECT active_flag FROM ref.person WHERE person_id=$PERSON_ID;")" == "f" ]] || { echo "FAIL: deactivate person"; exit 7; }
-TS="$(psql_q -c "SELECT updated_at FROM ref.person WHERE person_id=$PERSON_ID;")"
 psql_q -c "SET ROLE people_app; SELECT * FROM ref.update_person_from_people_manager('$MANAGER_EMAIL',$PERSON_ID,'$FIRST','$LAST',NULL,'$MSB_EMAIL','acceptance.${STAMP}@example.invalid','9205550001',true,'$TS',false,false);" >/dev/null
+[[ "$(psql_q -c "SELECT email FROM ref.person WHERE person_id=$PERSON_ID;")" == "$MSB_EMAIL" ]] || { echo "FAIL: explicit real MSB email was not stored"; exit 7; }
+echo "PASS: explicit Sheboygan Lights email can be stored"
+
+TS="$(psql_q -c "SELECT updated_at FROM ref.person WHERE person_id=$PERSON_ID;")"
+psql_q -c "SET ROLE people_app; SELECT * FROM ref.update_person_from_people_manager('$MANAGER_EMAIL',$PERSON_ID,'$FIRST','$LAST',NULL,NULL,'acceptance.${STAMP}@example.invalid','9205550001',false,'$TS',false,false);" >/dev/null
+[[ "$(psql_q -c "SELECT email IS NULL FROM ref.person WHERE person_id=$PERSON_ID;")" == "t" ]] || { echo "FAIL: clearing unlinked MSB email did not persist NULL"; exit 8; }
+[[ "$(psql_q -c "SELECT active_flag FROM ref.person WHERE person_id=$PERSON_ID;")" == "f" ]] || { echo "FAIL: deactivate person"; exit 8; }
+
+TS="$(psql_q -c "SELECT updated_at FROM ref.person WHERE person_id=$PERSON_ID;")"
+psql_q -c "SET ROLE people_app; SELECT * FROM ref.update_person_from_people_manager('$MANAGER_EMAIL',$PERSON_ID,'$FIRST','$LAST',NULL,NULL,'acceptance.${STAMP}@example.invalid','9205550001',true,'$TS',false,false);" >/dev/null
+[[ "$(psql_q -c "SELECT email IS NULL FROM ref.person WHERE person_id=$PERSON_ID;")" == "t" ]] || { echo "FAIL: reactivate regenerated MSB email"; exit 8; }
 [[ "$(psql_q -c "SELECT active_flag FROM ref.person WHERE person_id=$PERSON_ID;")" == "t" ]] || { echo "FAIL: reactivate person"; exit 8; }
-echo "PASS: same person_id deactivate/reactivate"
+echo "PASS: same person_id deactivate/reactivate without MSB email generation"
 
 CAP_ID="$(psql_q -c "SET ROLE people_app; SELECT person_capability_type_id FROM ref.upsert_people_capability_type('$MANAGER_EMAIL',NULL,'Acceptance Welding ${STAMP}','TRADE','clone only',true,10);")"
 psql_q -c "SET ROLE people_app; SELECT * FROM ref.set_people_person_capability('$MANAGER_EMAIL',$PERSON_ID,$CAP_ID,true,'clone only');" >/dev/null
