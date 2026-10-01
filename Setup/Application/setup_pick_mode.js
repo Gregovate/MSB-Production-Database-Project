@@ -23,6 +23,8 @@
   const DB_NAME = 'msb-setup-movement';
   const DB_VERSION = 1;
   const STORE_NAME = 'movement-queue';
+  const TRAINING_DB_NAME = 'msb-setup-movement-training';
+  const TRAINING_STORE_NAME = 'movement-training-queue';
   const DEVICE_KEY = 'msb.setup.movement.device-id';
   const SCAN_RESET_MS = 5000;
 
@@ -74,8 +76,8 @@
   function updateNetwork() {
     if (trainingMode) {
       networkState.textContent = navigator.onLine
-        ? 'ONLINE · TRAINING READ-ONLY'
-        : 'OFFLINE · TRAINING READ-ONLY';
+        ? 'ONLINE · TRAINING REHEARSAL'
+        : 'OFFLINE · TRAINING REHEARSAL';
       return;
     }
     networkState.textContent = navigator.onLine
@@ -95,7 +97,7 @@
   function enterTrainingMode() {
     const confirmed = window.confirm(
       'Enter Pick List Training Mode?\n\n'
-      + 'Nothing will be recorded or queued. The real Pick List and scanner validation will still be used.'
+      + 'Nothing will be written or synced to Production. Offline rehearsal uses the same isolated local training queue as Record Location.'
     );
     if (!confirmed) return;
     const url = new URL(location.href);
@@ -167,17 +169,24 @@
     return {ok: true, item: item};
   }
 
-  function openQueueDb() {
+  function queueConfig(training) {
+    return training
+      ? {dbName: TRAINING_DB_NAME, storeName: TRAINING_STORE_NAME}
+      : {dbName: DB_NAME, storeName: STORE_NAME};
+  }
+
+  function openQueueDb(training) {
+    const config = queueConfig(Boolean(training));
     return new Promise(function (resolve, reject) {
       if (!('indexedDB' in window)) {
         reject(new Error('Durable offline storage is not available in this browser.'));
         return;
       }
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      const request = indexedDB.open(config.dbName, DB_VERSION);
       request.onupgradeneeded = function () {
         const db = request.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          const store = db.createObjectStore(STORE_NAME, {keyPath: 'client_event_id'});
+        if (!db.objectStoreNames.contains(config.storeName)) {
+          const store = db.createObjectStore(config.storeName, {keyPath: 'client_event_id'});
           store.createIndex('occurred_at', 'occurred_at', {unique: false});
         }
       };
@@ -186,14 +195,19 @@
     });
   }
 
-  async function queueRows() {
-    const db = await openQueueDb();
+  async function queueRows(training) {
+    const config = queueConfig(Boolean(training));
+    const db = await openQueueDb(training);
     return new Promise(function (resolve, reject) {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const request = tx.objectStore(STORE_NAME).getAll();
+      const tx = db.transaction(config.storeName, 'readonly');
+      const request = tx.objectStore(config.storeName).getAll();
       request.onsuccess = function () {
         const rows = Array.isArray(request.result) ? request.result : [];
-        rows.sort(function (a, b) { return String(a.occurred_at).localeCompare(String(b.occurred_at)); });
+        rows.sort(function (a, b) {
+          const timeOrder = String(a.occurred_at).localeCompare(String(b.occurred_at));
+          if (timeOrder) return timeOrder;
+          return String(a.client_event_id).localeCompare(String(b.client_event_id));
+        });
         resolve(rows);
       };
       request.onerror = function () { reject(request.error); };
@@ -201,11 +215,12 @@
     });
   }
 
-  async function putQueue(row) {
-    const db = await openQueueDb();
+  async function putQueue(row, training) {
+    const config = queueConfig(Boolean(training));
+    const db = await openQueueDb(training);
     await new Promise(function (resolve, reject) {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      tx.objectStore(STORE_NAME).put(row);
+      const tx = db.transaction(config.storeName, 'readwrite');
+      tx.objectStore(config.storeName).put(row);
       tx.oncomplete = resolve;
       tx.onerror = function () { reject(tx.error); };
       tx.onabort = function () { reject(tx.error); };
@@ -213,11 +228,12 @@
     db.close();
   }
 
-  async function deleteQueue(clientEventId) {
-    const db = await openQueueDb();
+  async function deleteQueue(clientEventId, training) {
+    const config = queueConfig(Boolean(training));
+    const db = await openQueueDb(training);
     await new Promise(function (resolve, reject) {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      tx.objectStore(STORE_NAME).delete(clientEventId);
+      const tx = db.transaction(config.storeName, 'readwrite');
+      tx.objectStore(config.storeName).delete(clientEventId);
       tx.oncomplete = resolve;
       tx.onerror = function () { reject(tx.error); };
       tx.onabort = function () { reject(tx.error); };
@@ -227,19 +243,21 @@
 
   async function refreshQueueState() {
     try {
-      const rows = await queueRows();
+      const rows = await queueRows(trainingMode);
       queuedPickKeys = new Set(rows.filter(function (row) {
         return row.movement_action === 'PICKED';
       }).map(function (row) {
         return assetKey(row.asset_type, row.asset_id);
       }));
       queueState.textContent = trainingMode
-        ? 'Training — movement queue disabled' + (rows.length ? ' · real pending queue: ' + rows.length : '')
+        ? 'Training queue: ' + rows.length + ' · local only · never syncs'
         : 'Offline queue: ' + rows.length;
       refreshPanelCounts();
       return rows;
     } catch (_error) {
-      queueState.textContent = 'Offline queue unavailable';
+      queueState.textContent = trainingMode
+        ? 'Training queue unavailable'
+        : 'Offline queue unavailable';
       return [];
     }
   }
@@ -286,14 +304,48 @@
 
   async function queueMovement(payload) {
     if (trainingMode) {
-      throw new Error('Training Mode blocks the offline movement queue.');
+      throw new Error('Training Mode cannot use the Production movement queue.');
     }
     await putQueue(Object.assign({}, payload, {
       offline_captured: true,
       queue_status: 'QUEUED'
-    }));
+    }), false);
     queuedPickKeys.add(assetKey(payload.asset_type, payload.asset_id));
     await refreshQueueState();
+  }
+
+  async function queueTrainingMovement(payload) {
+    if (!trainingMode) {
+      throw new Error('Training queue is available only in Training Mode.');
+    }
+    await putQueue(Object.assign({}, payload, {
+      offline_captured: true,
+      queue_status: 'TRAINING_QUEUED',
+      training_only: true
+    }), true);
+    queuedPickKeys.add(assetKey(payload.asset_type, payload.asset_id));
+    await refreshQueueState();
+  }
+
+  async function simulateTrainingReplay() {
+    if (!trainingMode || !navigator.onLine) return;
+    const rows = await queueRows(true);
+    if (!rows.length) return;
+
+    const first = rows[0];
+    const last = rows[rows.length - 1];
+    for (const row of rows) {
+      await deleteQueue(row.client_event_id, true);
+    }
+    await refreshQueueState();
+    setFeedback(
+      'success',
+      'TRAINING REPLAY SIMULATED — ' + rows.length + ' event'
+        + (rows.length === 1 ? '' : 's')
+        + ' in captured order · '
+        + String(first.occurred_at) + ' → ' + String(last.occurred_at)
+        + ' · NOTHING SENT TO PRODUCTION'
+    );
   }
 
   async function sendOrQueue(payload) {
@@ -322,7 +374,20 @@
     if (trainingMode) {
       trainingPickCount += 1;
       refreshPanelCounts();
-      setFeedback('success', 'TRAINING — WOULD PICK ' + identity.identity + ' FOR PARK TRANSPORT · NOTHING RECORDED');
+      if (!navigator.onLine) {
+        try {
+          await queueTrainingMovement(movementPayload(identity, captureMethod));
+          setFeedback(
+            'offline',
+            'TRAINING — ' + identity.identity
+              + ' PICK QUEUED LOCALLY OFFLINE · WILL NEVER SYNC TO PRODUCTION'
+          );
+        } catch (error) {
+          setFeedback('warning', identity.identity + ' — training queue failed: ' + (error.message || error));
+        }
+      } else {
+        setFeedback('success', 'TRAINING — WOULD PICK ' + identity.identity + ' FOR PARK TRANSPORT · NOTHING RECORDED');
+      }
       return;
     }
 
@@ -437,7 +502,16 @@
   }
 
   async function syncQueue() {
-    if (trainingMode || syncing || !navigator.onLine) return;
+    if (syncing || !navigator.onLine) return;
+    if (trainingMode) {
+      syncing = true;
+      try {
+        await simulateTrainingReplay();
+      } finally {
+        syncing = false;
+      }
+      return;
+    }
     syncing = true;
     try {
       const rows = await queueRows();
@@ -505,5 +579,5 @@
   updateNetwork();
   void refreshQueueState();
   void registerServiceWorker();
-  if (navigator.onLine && !trainingMode) void syncQueue();
+  if (navigator.onLine) void syncQueue();
 })();
