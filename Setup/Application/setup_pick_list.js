@@ -10,6 +10,10 @@
   const pickList = document.getElementById('pick-list');
   const statusLine = document.getElementById('status-line');
   const generatedAt = document.getElementById('generated-at');
+  const managerLookupPanel = document.getElementById('manager-pick-lookup');
+  const managerLookupInput = document.getElementById('manager-pick-search');
+  const managerLookupClear = document.getElementById('manager-pick-search-clear');
+  const managerLookupStatus = document.getElementById('manager-pick-search-status');
   const overridePanel = document.getElementById('manager-override-panel');
   const overrideForm = document.getElementById('manager-override-form');
   const overrideContainerSearch = document.getElementById('override-container-search');
@@ -223,13 +227,14 @@
   }
 
   function applyAccess() {
-    if (!overridePanel) return;
     const status = String(readiness?.session?.session_status || '').toUpperCase();
-    overridePanel.hidden = !Boolean(
+    const managerActive = Boolean(
       access?.can_manage_setup
       && readiness?.session
       && !['COMPLETE', 'HISTORICAL_VERIFICATION'].includes(status)
     );
+    if (overridePanel) overridePanel.hidden = !managerActive;
+    if (managerLookupPanel) managerLookupPanel.hidden = !managerActive;
   }
 
   function seasonFromUrl() {
@@ -396,6 +401,44 @@
       parts.push([qty, r.extra_material_name].filter(Boolean).join(' '));
     }
     return parts.join(' — ');
+  }
+
+  function pickLookupText(item) {
+    const reasons = Array.isArray(item.reasons) ? item.reasons : [];
+    return [
+      humanReadableIdentity(item),
+      item.identity,
+      item.label,
+      item.home_location_code,
+      item.physical_id,
+      destinationText(reasons),
+      ...reasons.map(reasonText)
+    ].filter(Boolean).join(' ').toLowerCase();
+  }
+
+  function managerLookupQuery() {
+    if (!access?.can_manage_setup || !managerLookupInput) return '';
+    return managerLookupInput.value.trim().toLowerCase();
+  }
+
+  function managerLookupMatches() {
+    const query = managerLookupQuery();
+    if (!query) return [];
+    return (readiness?.physical_items || []).filter((item) => pickLookupText(item).includes(query));
+  }
+
+  function renderManagerLookupStatus(matches) {
+    if (!managerLookupStatus) return;
+    const query = managerLookupQuery();
+    if (!query) {
+      managerLookupStatus.textContent = 'Search the full current Pick List, regardless of date/status filters.';
+      return;
+    }
+    if (!matches.length) {
+      managerLookupStatus.textContent = `No current Pick List demand matches “${managerLookupInput.value.trim()}”.`;
+      return;
+    }
+    managerLookupStatus.textContent = `${matches.length} current Pick List match${matches.length === 1 ? '' : 'es'} — showing full demand regardless of screen filters.`;
   }
 
   function humanReadableIdentity(item) {
@@ -693,17 +736,24 @@
   }
 
   function renderItems(date) {
+    const lookupQuery = managerLookupQuery();
+    const lookupMatches = lookupQuery ? managerLookupMatches() : [];
+    renderManagerLookupStatus(lookupMatches);
+
     const status = pickStatusFilter?.value || 'ALL';
     const items = (readiness?.physical_items || []).filter((item) => {
+      if (lookupQuery) return pickLookupText(item).includes(lookupQuery);
       if (!itemReasonsForDate(item, date).length) return false;
       if (!showDelayedPicks?.checked && itemDelayed(item)) return false;
       if (status === 'OUTSTANDING') return !itemMoved(item);
       if (status === 'MOVED') return itemMoved(item);
       return true;
-    }).sort((a, b) => comparePickListOrder(a, b, date));
+    }).sort((a, b) => comparePickListOrder(a, b, lookupQuery ? '' : date));
 
     if (!items.length) {
-      pickList.innerHTML = '<div class="empty">No physical demand resolves from the selected scheduled work.</div>';
+      pickList.innerHTML = lookupQuery
+        ? '<div class="empty">No current Pick List demand matches this Manager lookup.</div>'
+        : '<div class="empty">No physical demand resolves from the selected scheduled work.</div>';
       return items;
     }
 
@@ -859,6 +909,12 @@
   dateFilter.addEventListener('change', render);
   pickStatusFilter?.addEventListener('change', render);
   showDelayedPicks?.addEventListener('change', render);
+  managerLookupInput?.addEventListener('input', render);
+  managerLookupClear?.addEventListener('click', () => {
+    managerLookupInput.value = '';
+    render();
+    managerLookupInput.focus();
+  });
   overrideForm?.addEventListener('submit', (event) => { void submitOverride(event); });
   overrideEditCancel?.addEventListener('click', () => {
     resetOverrideForm();
