@@ -393,7 +393,7 @@ resume_existing_preview() {
         exit 79
     fi
 
-    HEALTH="$(curl -fsS --max-time 5 "http://127.0.0.1:$PREVIEW_PORT/api/health")" || {
+    HEALTH="$(curl -fsS --max-time 5 "http://$PREVIEW_BIND_HOST:$PREVIEW_PORT/api/health")" || {
         echo "FAIL: resumable preview health check failed"
         exit 80
     }
@@ -791,7 +791,7 @@ PREVIEW_OWNED_PORT=1
 
 preview_ready=0
 for _ in $(seq 1 60); do
-    if curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health" >/dev/null 2>&1; then
+    if curl -fsS "http://$PREVIEW_BIND_HOST:$PREVIEW_PORT/api/health" >/dev/null 2>&1; then
         preview_ready=1
         break
     fi
@@ -803,7 +803,7 @@ if [[ "$preview_ready" -ne 1 ]]; then
     exit 23
 fi
 
-HEALTH="$(curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/health")"
+HEALTH="$(curl -fsS "http://$PREVIEW_BIND_HOST:$PREVIEW_PORT/api/health")"
 echo "Preview health: $HEALTH"
 if [[ -n "$EXPECTED_VERSION" ]]; then
     HEALTH_VERSION="$(printf '%s' "$HEALTH" | sudo -u fieldwiring -H "$PYTHON" -c 'import json,sys; print(json.load(sys.stdin).get("version", ""))')"
@@ -813,7 +813,7 @@ if [[ -n "$EXPECTED_VERSION" ]]; then
     fi
     echo "Preview version pin: PASS ($HEALTH_VERSION)"
 fi
-curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/setup/access" >/dev/null
+curl -fsS "http://$PREVIEW_BIND_HOST:$PREVIEW_PORT/api/setup/access" >/dev/null
 echo "Preview authorization: PASS"
 
 write_resume_state
@@ -822,7 +822,7 @@ echo "Reconnect state: $STATE_FILE"
 cat <<CHECKLIST
 
 SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY
-Browser URL through SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/
+Browser URL: http://$PREVIEW_BIND_HOST:$PREVIEW_PORT/
 Candidate SHA: $TARGET_SHA
 Candidate ref: $TARGET_REF
 Preview identity: $PREVIEW_EMAIL
