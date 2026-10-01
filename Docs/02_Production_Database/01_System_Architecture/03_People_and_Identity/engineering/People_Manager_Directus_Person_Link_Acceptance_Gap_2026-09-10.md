@@ -170,6 +170,24 @@ Administrator creates Google Directus user
 
 Do not infer that first user login is required to create the UUID. Do not batch-provision additional users until the existing-Person reconciliation step is explicitly repaired or governed separately.
 
+The Adam pilot then passed a bounded governed link repair. Production validation after the repair showed:
+
+```text
+person_id                  1
+person email               abiebel@sheboyganlights.org
+person.directus_user_id    2e2100a3-cb20-4c54-b3dd-bf9bd4673131
+Directus UUID              2e2100a3-cb20-4c54-b3dd-bf9bd4673131
+provider                   google
+external_identifier        abiebel@sheboyganlights.org
+status                     active
+role                       MSB Browser
+updated_by                 Greg
+updated_by_person_id       17
+```
+
+This proves the database-side reconciliation can be completed safely with existing audit triggers enabled and a valid mapped human actor. The remaining Adam pilot step is to assign the intended Production Crew role and verify the final authorization state before repeating or automating the process for additional users.
+
+
 
 ## Impact
 
