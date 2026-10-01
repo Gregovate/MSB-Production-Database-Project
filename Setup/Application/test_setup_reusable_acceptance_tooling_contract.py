@@ -224,6 +224,19 @@ def test_candidate_paths_are_restricted_to_feature_owned_directories() -> None:
         assert "Unsafe $Kind candidate-relative path" in launcher
 
 
+def test_reusable_disposable_acceptance_concurrent_production_mode_is_explicit_and_default_strict() -> None:
+    launcher = read_acceptance("run_setup_disposable_acceptance.ps1")
+    server = read_acceptance("setup_disposable_acceptance_server.sh")
+
+    assert "[switch]$AllowConcurrentProductionWrites" in launcher
+    assert "allow_concurrent_production_writes`t$($AllowConcurrentProductionWrites.IsPresent.ToString().ToLowerInvariant())" in launcher
+    assert 'ALLOW_CONCURRENT_PRODUCTION_WRITES="false"' in server
+    assert 'allow_concurrent_production_writes) ALLOW_CONCURRENT_PRODUCTION_WRITES="$value" ;;' in server
+    assert 'if [[ "$ALLOW_CONCURRENT_PRODUCTION_WRITES" == "true" ]]' in server
+    assert "PASS WITH CONCURRENT ACTIVITY" in server
+    assert "FAIL: Production Setup fingerprint changed during disposable acceptance" in server
+    assert "the disposable clone remained the point-in-time database captured at acceptance start" in server
+
 def test_reusable_browser_preview_concurrent_production_mode_is_explicit_and_default_strict() -> None:
     launcher = read_acceptance("run_setup_disposable_browser_preview.ps1")
     server = read_acceptance("setup_disposable_browser_preview_server.sh")
