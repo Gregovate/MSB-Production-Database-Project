@@ -11,8 +11,7 @@ param(
     [string]$ExpectedVersion,
     [string[]]$MigrationPaths = @(),
     [string[]]$ValidationPaths = @(),
-    [switch]$AllowConcurrentProductionWrites,
-    [switch]$TabletViaWorkstation
+    [switch]$AllowConcurrentProductionWrites
 )
 
 $ErrorActionPreference = 'Stop'
@@ -165,146 +164,7 @@ $remoteBundle = "/tmp/$bundleName"
 $localRunner = Join-Path $localBundle 'setup_disposable_browser_preview_server.sh'
 $localManifest = Join-Path $localBundle 'preview_manifest.tsv'
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-$workstationAddress = '127.0.0.1'
-if ($TabletViaWorkstation) {
-    $routeProbe = Test-NetConnection -ComputerName '192.168.5.9' -Port 22 -InformationLevel Detailed -WarningAction SilentlyContinue
-    if (-not $routeProbe.TcpTestSucceeded -or -not $routeProbe.SourceAddress) {
-        throw 'STOP before preview start: unable to resolve a workstation source address for the private MSB server route.'
-    }
-    $workstationAddress = $routeProbe.SourceAddress.IPAddress
-    if ($workstationAddress -notmatch '^192\.168\.5\.\d+
-
-try {
-    New-Item -ItemType Directory -Path $localBundle -Force | Out-Null
-
-    $runnerText = [System.IO.File]::ReadAllText($serverScript)
-    $runnerText = $runnerText.Replace("`r`n", "`n").Replace("`r", "`n")
-    [System.IO.File]::WriteAllText($localRunner, $runnerText, $utf8NoBom)
-
-    $manifestLines = @(
-        "candidate_sha`t$CandidateSha",
-        "target_ref`t$TargetRef",
-        "preview_port`t$PreviewPort",
-        "preview_email`t$PreviewEmail",
-        "allow_concurrent_production_writes`t$($AllowConcurrentProductionWrites.IsPresent.ToString().ToLowerInvariant())"
-    )
-    if (-not [string]::IsNullOrWhiteSpace($ExpectedVersion)) {
-        $manifestLines += "expected_version`t$ExpectedVersion"
-    }
-    foreach ($path in $MigrationPaths) {
-        $manifestLines += "migration`t$path"
-    }
-    foreach ($path in $ValidationPaths) {
-        $manifestLines += "validation`t$path"
-    }
-    $manifestText = ($manifestLines -join "`n") + "`n"
-    [System.IO.File]::WriteAllText($localManifest, $manifestText, $utf8NoBom)
-
-    if ($runnerText.Contains("`r") -or $manifestText.Contains("`r")) {
-        throw 'Generated Linux preview bundle contains CR characters; refusing to upload.'
-    }
-
-    Write-Host '========== SETUP REUSABLE DISPOSABLE BROWSER PREVIEW =========='
-    Write-Host 'Authority: Gregovate/MSB-Server-Management — docs/server/Pre_Production_Browser_Review_Runbook.md'
-    Write-Host 'Disposable standard: docs/server/PostgreSQL_Disposable_Acceptance_Standard.md'
-    Write-Host "Server:          $Server"
-    Write-Host "Candidate SHA:   $CandidateSha"
-    Write-Host "Tooling SHA:     $toolingHead"
-    Write-Host "Target ref:      $TargetRef"
-    Write-Host "Preview port:    $PreviewPort"
-    Write-Host "Browser URL:     $browserUrl"
-    Write-Host "Preview user:    $PreviewEmail"
-    Write-Host "Expected version:$ExpectedVersion"
-    Write-Host "Concurrent Prod: $($AllowConcurrentProductionWrites.IsPresent)"
-    Write-Host "Migrations:      $($MigrationPaths.Count)"
-    Write-Host "Validations:     $($ValidationPaths.Count)"
-    Write-Host
-    Write-Host 'Production database contract: pg_dump + SELECT only from this preview harness.'
-    if ($AllowConcurrentProductionWrites) {
-        Write-Host 'Concurrent Production application edits are allowed; fingerprint drift will be reported, not failed.'
-        Write-Host 'NOTE: the disposable clone is a point-in-time snapshot. Production edits made after preview start are NOT visible in this preview.'
-    }
-    Write-Host 'All migration/API/browser writes from the preview: disposable current-Production clone only.'
-    if ($TabletViaWorkstation) {
-        Write-Host "Tablet relay:    workstation $workstationAddress -> SSH -> server loopback $PreviewPort"
-        Write-Host 'Production UFW and public proxy/routing are unchanged.'
-    } else {
-        Write-Host 'Desktop mode: preview is reachable only through workstation loopback.'
-    }
-    Write-Host 'Keep this PowerShell window open for the complete review and cleanup.'
-    Write-Host
-
-    & scp -r $localBundle "${Server}:/tmp/"
-    if ($LASTEXITCODE -ne 0) {
-        throw "SCP preview bundle upload failed with exit code $LASTEXITCODE"
-    }
-
-    $remoteRunner = "$remoteBundle/setup_disposable_browser_preview_server.sh"
-    $remoteManifest = "$remoteBundle/preview_manifest.tsv"
-    $initialCommand = "chmod 700 '$remoteRunner' && bash -n '$remoteRunner' && timeout --foreground --signal=TERM 28800s bash '$remoteRunner' '$remoteManifest' start"
-    $resumeCommand = "timeout --foreground --signal=TERM 28800s bash '$remoteRunner' '$remoteManifest' resume"
-
-    $mode = 'start'
-    $reconnectAttempts = 0
-    $maxReconnectAttempts = 12
-    $initialExit = 0
-
-    while ($true) {
-        $command = if ($mode -eq 'start') { $initialCommand } else { $resumeCommand }
-
-        if ($TabletViaWorkstation) {
-            & ssh -tt -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -g -L "${workstationAddress}:${PreviewPort}:127.0.0.1:${PreviewPort}" $Server $command
-        } else {
-            & ssh -tt -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -L "${PreviewPort}:127.0.0.1:${PreviewPort}" $Server $command
-        }
-        $remoteExit = $LASTEXITCODE
-
-        if ($remoteExit -eq 0) {
-            break
-        }
-
-        if ($mode -eq 'start') {
-            $initialExit = $remoteExit
-            if ($remoteExit -notin @(75, 255)) {
-                throw "Reusable Setup browser preview start failed with exit code $remoteExit. The start failure is not resumable; review the retained remote report."
-            }
-            Write-Warning "Browser-review SSH transport ended with exit code $remoteExit. Checking whether the exact healthy preview can be resumed without rebuilding it..."
-            $mode = 'resume'
-        }
-        elseif ($remoteExit -notin @(75, 255)) {
-            throw "Reusable Setup browser preview could not be resumed (initial exit $initialExit; resume exit $remoteExit). Review the retained remote report."
-        }
-
-        $reconnectAttempts += 1
-        if ($reconnectAttempts -gt $maxReconnectAttempts) {
-            throw "Reusable Setup browser preview tunnel could not be re-established after $maxReconnectAttempts attempts. The remote preview may still be preserved; do not start another preview until its state is inspected."
-        }
-
-        $localListeners = @(Get-NetTCPConnection -LocalPort $PreviewPort -State Listen -ErrorAction SilentlyContinue)
-        foreach ($listener in $localListeners) {
-            $owner = Get-Process -Id $listener.OwningProcess -ErrorAction SilentlyContinue
-            if ($null -eq $owner) { continue }
-            if ($owner.ProcessName -ne 'ssh') {
-                throw "Local preview port $PreviewPort became owned by non-SSH process $($owner.ProcessName) PID $($owner.Id) during reconnect."
-            }
-            Stop-Process -Id $owner.Id -Force
-        }
-
-        Start-Sleep -Seconds 2
-        Write-Host "Reconnecting to preserved Setup browser preview on port $PreviewPort (attempt $reconnectAttempts/$maxReconnectAttempts)..."
-    }
-
-    Write-Host
-    Write-Host 'SETUP REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT'
-}
-finally {
-    Remove-Item -LiteralPath $localBundle -Recurse -Force -ErrorAction SilentlyContinue
-}
-) {
-        throw "STOP before preview start: workstation route to msb-prod-db uses unexpected source address '$workstationAddress'."
-    }
-}
-$browserUrl = "http://${workstationAddress}:$PreviewPort/"
+$browserUrl = "http://127.0.0.1:$PreviewPort/"
 
 try {
     New-Item -ItemType Directory -Path $localBundle -Force | Out-Null
