@@ -50,12 +50,9 @@ def test_pick_list_defaults_to_needs_pick_and_keeps_back_navigation_while_scanni
     )
     assert "#back-button" not in active_rule
 
-    manager_action_rule = next(
-        line for line in css.splitlines()
-        if line.startswith("body.pick-mode-active .delay-pick")
-    )
-    assert ".edit-override" in manager_action_rule
-    assert ".cancel-override" in manager_action_rule
+    assert 'id="manager-override-panel"' not in html
+    assert 'class="edit-override' not in html
+    assert 'class="cancel-override' not in html
 
 
 def test_pick_list_is_workshop_only_and_record_location_is_separate():
@@ -370,7 +367,7 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "setup_pick_list.js?v=2026-10-01.3" in pick_sw
     assert "setup_pick_list.js?v=2026-10-01.3" in pick_html
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_sw
-    assert "setup_pick_mode.js?v=2026-10-01.2" in pick_html
+    assert "setup_pick_mode.js?v=2026-10-01.3" in pick_html
     assert "msb-setup-record-location-v6" in location_sw
     assert "setup_record_location.css?v=2026-09-30.6" in location_sw
     assert "setup_record_location.css?v=2026-09-30.6" in location_html
