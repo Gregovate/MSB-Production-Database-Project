@@ -186,13 +186,18 @@ echo "Pre-deploy ref.person fingerprint: $PROD_BEFORE"
 
 echo
 echo "--- Fetch and verify exact merged-main deployment target ---"
-sudo git -C "$FIELDWIRING_ROOT" fetch origin "$TARGET_REF"
+# The Production checkout intentionally uses a narrow remote refspec. A plain
+# 'git fetch origin main' updates FETCH_HEAD but may leave origin/main stale.
+# Refresh the tracking ref explicitly, matching the repository's established
+# recovery/deployment pattern.
+sudo git -C "$FIELDWIRING_ROOT" fetch origin \
+    "+refs/heads/main:refs/remotes/origin/main"
 sudo git -C "$FIELDWIRING_ROOT" cat-file -e "$TARGET_SHA^{commit}"
 sudo git -C "$FIELDWIRING_ROOT" cat-file -e "$ACCEPTED_RUNTIME_SHA^{commit}"
 
 REMOTE_MAIN="$(sudo git -C "$FIELDWIRING_ROOT" rev-parse origin/main)"
 if [[ "$REMOTE_MAIN" != "$TARGET_SHA" ]]; then
-    echo "FAIL: requested deployment SHA is not current origin/main"
+    echo "FAIL: requested deployment SHA is not current origin/main after explicit refresh"
     echo "origin/main: $REMOTE_MAIN"
     echo "requested:   $TARGET_SHA"
     exit 6
