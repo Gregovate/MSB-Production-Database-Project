@@ -352,13 +352,13 @@ def test_release_identity_and_offline_shells_are_synchronized():
 
     assert 'PRODUCTION_VERSION = "V0.3.30-pick-override-cancel"' in backend
     assert "const CLIENT_BUILD = 'V0.3.30-pick-override-cancel';" in guard
-    assert "msb-setup-pick-mode-v11" in pick_sw
+    assert "msb-setup-pick-mode-v12" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.2" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.2" in pick_html
     assert "setup_pick_list.js?v=2026-10-01.3" in pick_sw
     assert "setup_pick_list.js?v=2026-10-01.3" in pick_html
-    assert "setup_pick_mode.js?v=2026-09-30.7" in pick_sw
-    assert "setup_pick_mode.js?v=2026-09-30.7" in pick_html
+    assert "setup_pick_mode.js?v=2026-10-01.1" in pick_sw
+    assert "setup_pick_mode.js?v=2026-10-01.1" in pick_html
     assert "msb-setup-record-location-v6" in location_sw
     assert "setup_record_location.css?v=2026-09-30.6" in location_sw
     assert "setup_record_location.css?v=2026-09-30.6" in location_html
@@ -379,6 +379,14 @@ def test_pick_list_training_mode_is_fail_closed_and_keeps_real_pick_totals_visib
     ui = read("setup_pick_mode.js")
     css = read("setup_pick_mode.css")
     list_ui = read("setup_pick_list.js")
+
+    assert "function resetScanEntry()" in ui
+    assert "if (manualInput) manualInput.value = '';" in ui
+    assert "const submitted = String(raw || '').trim();" in ui
+    handle = ui.split("async function handleIdentity(raw, captureMethod)", 1)[1].split(
+        "function clearScanTimer", 1
+    )[0]
+    assert handle.index("resetScanEntry();") < handle.index("parseIdentity(submitted)")
 
     assert 'id="pick-training-entry"' in html
     assert '<summary>Training / device test</summary>' in html
