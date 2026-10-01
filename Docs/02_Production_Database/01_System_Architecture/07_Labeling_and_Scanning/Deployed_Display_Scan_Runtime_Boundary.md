@@ -93,7 +93,7 @@ Verified production routes include:
 /scan/DISP/:key/work-orders
 ```
 
-The scan landing page supports camera scanning, QR codes, 1-D barcodes, manual entry, and URL handling.
+The scan landing page supports camera scanning, QR codes, 1-D barcodes, manual entry, URL handling, and an explicit **Record Location** action into the Setup-owned field workflow.
 
 ## Display Identity Resolution
 
