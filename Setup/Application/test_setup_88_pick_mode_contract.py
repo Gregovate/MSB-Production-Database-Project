@@ -57,6 +57,7 @@ def test_pick_list_defaults_to_needs_pick_and_keeps_back_navigation_while_scanni
     assert ".edit-override" in manager_action_rule
     assert ".cancel-override" in manager_action_rule
 
+    assert "body.pick-mode-active #manager-override-panel," in css
     assert "body.pick-mode-active #manager-pick-lookup{display:none!important}" in css
 
 
