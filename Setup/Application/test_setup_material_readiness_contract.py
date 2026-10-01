@@ -268,6 +268,7 @@ def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_a
 def test_manager_override_ui_is_explicit_and_dedupes_into_normal_pick_rows() -> None:
     html = read("pick_list.html")
     ui = read("setup_pick_list.js")
+    css = read("setup_pick_list.css")
     assert 'id="manager-override-panel"' in html
     assert "Add Container to Pick List" in html
     assert 'id="override-container-id"' in html
