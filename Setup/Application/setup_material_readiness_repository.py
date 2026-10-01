@@ -887,6 +887,478 @@ class SetupMaterialReadinessRepository:
             "current_observation": observation or None,
         }
 
+    def _container_endpoint_policy(
+        self, container_ids: list[int]
+    ) -> dict[int, int | None]:
+        if not container_ids:
+            return {}
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT c.container_id, c.goes_to_endpoint_id
+                FROM ref.container AS c
+                WHERE c.container_id = ANY(%s)
+                """,
+                (container_ids,),
+            )
+            return {
+                int(row["container_id"]): (
+                    int(row["goes_to_endpoint_id"])
+                    if row.get("goes_to_endpoint_id") is not None
+                    else None
+                )
+                for row in cur.fetchall()
+            }
+
+    def manager_material_status(self, season_year: int) -> dict[str, Any]:
+        """Manager-only annual material oversight across scheduled and unscheduled work.
+
+        The Rolling Pick List remains the execution surface. This projection
+        extends the same accepted material authorities to included annual work
+        that is not yet scheduled, then overlays movement truth and Workshop
+        endpoint policy without creating a second material store.
+        """
+        readiness = self.material_readiness(season_year)
+        session = readiness.get("session")
+        if session is None:
+            return {
+                "session": None,
+                "items": [],
+                "unresolved_requirements": [],
+                "stages": [],
+                "summary": {
+                    "picked_moved": 0,
+                    "scheduled_to_pick": 0,
+                    "unscheduled_pickable": 0,
+                    "workshop": 0,
+                    "unresolved": 0,
+                },
+            }
+
+        setup_session_id = int(session["setup_session_id"])
+        tasks_by_session_id, _downstream = self._annual_demand_graph(setup_session_id)
+        material_bearing_ids = self._material_bearing_session_task_ids(setup_session_id)
+        for session_task_id, task in tasks_by_session_id.items():
+            task["material_bearing"] = session_task_id in material_bearing_ids
+
+        items_by_key: dict[tuple[str, int], dict[str, Any]] = {}
+        for source in readiness.get("physical_items") or []:
+            item = dict(source)
+            item["reasons"] = [dict(reason) for reason in source.get("reasons") or []]
+            item["manager_overrides"] = [
+                dict(row) for row in source.get("manager_overrides") or []
+            ]
+            items_by_key[
+                (str(item["physical_type"]).upper(), int(item["physical_id"]))
+            ] = item
+
+        schedule_origins = {"DIRECT_SCHEDULE", "DOWNSTREAM_FROM_SCHEDULE"}
+        demanded_session_task_ids: set[int] = set()
+        for item in items_by_key.values():
+            for reason in item.get("reasons") or []:
+                if str(reason.get("demand_origin") or "").upper() not in schedule_origins:
+                    continue
+                session_task_id = reason.get("setup_session_task_id")
+                if session_task_id is not None:
+                    demanded_session_task_ids.add(int(session_task_id))
+
+        unresolved = [dict(row) for row in readiness.get("unresolved_requirements") or []]
+        unresolved_session_task_ids = {
+            int(row["setup_session_task_id"])
+            for row in unresolved
+            if row.get("setup_session_task_id") is not None
+        }
+
+        candidate_tasks: list[dict[str, Any]] = []
+        for session_task_id, task in tasks_by_session_id.items():
+            execution_status = str(task.get("execution_status") or "").upper()
+            if execution_status in {"COMPLETE", "DEFERRED"}:
+                continue
+            if session_task_id in demanded_session_task_ids:
+                continue
+
+            if task.get("setup_task_id") is None:
+                if session_task_id not in unresolved_session_task_ids:
+                    unresolved.append({
+                        "setup_work_day_task_id": None,
+                        "setup_session_task_id": session_task_id,
+                        "setup_task_id": None,
+                        "task_name": task.get("task_name"),
+                        "setup_day_number": None,
+                        "work_date": None,
+                        "shift_code": None,
+                        "crew_lane": None,
+                        "stage_id": task.get("stage_id"),
+                        "stage_key": task.get("stage_key"),
+                        "stage_name": task.get("stage_name"),
+                        "lor_scene_id": task.get("lor_scene_id"),
+                        "scene_name": task.get("scene_name"),
+                        "demand_origin": "UNSCHEDULED_ANNUAL",
+                        "requirement_type": "SEASON_ONLY_MATERIAL_AUTHORITY",
+                        "message": (
+                            "Season-only annual work has no reusable material authority. "
+                            "Review whether physical material is required before adding Pick List demand."
+                        ),
+                    })
+                continue
+
+            if task.get("material_bearing"):
+                candidate_tasks.append(task)
+
+        candidate_task_ids = sorted({
+            int(task["setup_task_id"])
+            for task in candidate_tasks
+            if task.get("setup_task_id") is not None
+        })
+        extra_by_task: dict[int, list[dict[str, Any]]] = defaultdict(list)
+        for row in self._extra_material_rows(candidate_task_ids, season_year):
+            extra_by_task[int(row["setup_task_id"])].append(row)
+
+        next_repo = SetupNextRepository(self.dsn)
+
+        def ensure_item(
+            physical_type: str,
+            physical_id: int,
+            *,
+            identity: str,
+            label: str | None,
+            home_location_code: str | None,
+        ) -> dict[str, Any]:
+            key = (physical_type, int(physical_id))
+            item = items_by_key.get(key)
+            if item is None:
+                item = {
+                    "physical_type": physical_type,
+                    "physical_id": int(physical_id),
+                    "identity": identity,
+                    "label": label,
+                    "home_location_code": home_location_code,
+                    "earliest_needed_for_work": None,
+                    "target_staged_by": None,
+                    "reasons": [],
+                    "manager_overrides": [],
+                    "override_only": False,
+                }
+                items_by_key[key] = item
+            else:
+                if not item.get("label") and label:
+                    item["label"] = label
+                if not item.get("home_location_code") and home_location_code:
+                    item["home_location_code"] = home_location_code
+            return item
+
+        def base_reason(task: dict[str, Any]) -> dict[str, Any]:
+            return {
+                "setup_work_day_task_id": None,
+                "setup_session_task_id": task.get("setup_session_task_id"),
+                "setup_task_id": task.get("setup_task_id"),
+                "task_name": task.get("task_name"),
+                "setup_day_number": None,
+                "work_date": None,
+                "target_staged_by": None,
+                "shift_code": None,
+                "crew_lane": None,
+                "stage_id": task.get("stage_id"),
+                "stage_key": task.get("stage_key"),
+                "stage_name": task.get("stage_name"),
+                "lor_scene_id": task.get("lor_scene_id"),
+                "scene_name": task.get("scene_name"),
+                "demand_origin": "UNSCHEDULED_ANNUAL",
+                "scheduled_trigger_setup_work_day_task_id": None,
+                "scheduled_trigger_setup_session_task_id": None,
+                "scheduled_trigger_setup_task_id": None,
+                "scheduled_trigger_task_name": None,
+            }
+
+        for task in candidate_tasks:
+            task_id = int(task["setup_task_id"])
+            try:
+                context = next_repo.field_context(task_id=task_id, season_year=season_year)
+            except SetupNextRepositoryError as exc:
+                raise SetupMaterialReadinessRepositoryError(str(exc)) from exc
+
+            material_resolution = dict(context.get("material_resolution") or {})
+            if material_resolution.get("warning"):
+                unresolved.append({
+                    **base_reason(task),
+                    "requirement_type": "DISPLAY_MATERIAL_OWNERSHIP",
+                    "message": material_resolution.get("warning"),
+                })
+
+            grouped_displays: dict[tuple[str, int], list[dict[str, Any]]] = defaultdict(list)
+            for display in context.get("displays") or []:
+                position_mode = str(display.get("position_mode") or "WITH_CONTAINER").upper()
+                container_id = display.get("container_id")
+                if position_mode == "DETACHED" or container_id is None:
+                    key = ("DISPLAY", int(display["display_id"]))
+                else:
+                    key = ("CONTAINER", int(container_id))
+                grouped_displays[key].append(dict(display))
+
+            for (physical_type, physical_id), displays in grouped_displays.items():
+                first = displays[0]
+                names = [str(row.get("display_name") or row["display_id"]) for row in displays]
+                item = ensure_item(
+                    physical_type,
+                    physical_id,
+                    identity=f"{'CONT' if physical_type == 'CONTAINER' else 'DISP'}:{physical_id}",
+                    label=(
+                        first.get("container_description")
+                        if physical_type == "CONTAINER"
+                        else first.get("display_name")
+                    ),
+                    home_location_code=first.get("home_location_code"),
+                )
+                item["reasons"].append({
+                    **base_reason(task),
+                    "reason_type": "DISPLAY_MATERIAL",
+                    "reason_label": f"{len(displays)} required Display{'s' if len(displays) != 1 else ''}",
+                    "reason_detail": ", ".join(names),
+                    "display_ids": [int(row["display_id"]) for row in displays],
+                    "display_names": names,
+                })
+
+            for support in context.get("support_containers") or []:
+                container_id = int(support["container_id"])
+                relationship = str(support.get("relationship_type") or "SUPPORT")
+                item = ensure_item(
+                    "CONTAINER",
+                    container_id,
+                    identity=f"CONT:{container_id}",
+                    label=support.get("container_description") or f"Container {container_id}",
+                    home_location_code=support.get("home_location_code"),
+                )
+                item["reasons"].append({
+                    **base_reason(task),
+                    "reason_type": relationship,
+                    "reason_label": relationship.replace("_", " ").title(),
+                    "reason_detail": support.get("relationship_notes"),
+                    "display_ids": [],
+                    "display_names": [],
+                })
+
+            requirement_sources: dict[int, int] = defaultdict(int)
+            for extra in extra_by_task.get(task_id, []):
+                requirement_id = int(extra["setup_task_extra_material_id"])
+                if extra.get("container_id") is None:
+                    continue
+                requirement_sources[requirement_id] += 1
+                container_id = int(extra["container_id"])
+                material_name = str(extra.get("material_name") or "Extra Material")
+                item = ensure_item(
+                    "CONTAINER",
+                    container_id,
+                    identity=f"CONT:{container_id}",
+                    label=extra.get("container_description") or f"Container {container_id}",
+                    home_location_code=extra.get("home_location_code"),
+                )
+                item["reasons"].append({
+                    **base_reason(task),
+                    "reason_type": "EXTRA_MATERIAL_SOURCE",
+                    "reason_label": material_name,
+                    "reason_detail": extra.get("source_verification_state"),
+                    "display_ids": [],
+                    "display_names": [],
+                    "extra_material_id": extra.get("setup_extra_material_id"),
+                    "extra_material_name": material_name,
+                    "quantity_required": extra.get("quantity_required"),
+                    "quantity_uom": extra.get("quantity_uom"),
+                    "quantity_qualifier": extra.get("quantity_qualifier"),
+                    "size_text": extra.get("size_text"),
+                    "length_value": extra.get("length_value"),
+                    "length_unit": extra.get("length_unit"),
+                    "color": extra.get("color"),
+                    "requirement_notes": extra.get("requirement_notes"),
+                    "source_expected_quantity": extra.get("expected_quantity"),
+                    "source_verification_state": extra.get("source_verification_state"),
+                })
+
+            seen_requirements: set[int] = set()
+            for extra in extra_by_task.get(task_id, []):
+                requirement_id = int(extra["setup_task_extra_material_id"])
+                if requirement_id in seen_requirements:
+                    continue
+                seen_requirements.add(requirement_id)
+                if requirement_sources.get(requirement_id, 0) == 0:
+                    unresolved.append({
+                        **base_reason(task),
+                        "requirement_type": "EXTRA_MATERIAL_SOURCE",
+                        "extra_material_id": extra.get("setup_extra_material_id"),
+                        "extra_material_name": extra.get("material_name"),
+                        "quantity_required": extra.get("quantity_required"),
+                        "quantity_uom": extra.get("quantity_uom"),
+                        "message": "Required Extra Material has no active expected-source Container.",
+                    })
+
+        items = list(items_by_key.values())
+        container_ids = sorted({
+            int(item["physical_id"])
+            for item in items
+            if item["physical_type"] == "CONTAINER"
+        })
+        display_ids = sorted({
+            int(item["physical_id"])
+            for item in items
+            if item["physical_type"] == "DISPLAY"
+        })
+        observation_state = self._observation_state(
+            setup_session_id=setup_session_id,
+            container_ids=container_ids,
+            display_ids=display_ids,
+        )
+        endpoint_policy = self._container_endpoint_policy(container_ids)
+
+        outbound_statuses = {
+            "PICKED",
+            "LOADED",
+            "IN_TRANSIT",
+            "DELIVERED",
+            "UNLOADED",
+            "STAGED",
+            "PLACED",
+            "RELOCATED",
+            "CONTAINER_MOVE",
+            "DISPLAY_MOVE",
+            "TASK_UNLOAD",
+        }
+
+        for item in items:
+            key = (str(item["physical_type"]).upper(), int(item["physical_id"]))
+            observation = dict(observation_state.get(key) or {})
+            item["current_observation"] = observation or None
+
+            origins = {
+                str(reason.get("demand_origin") or "").upper()
+                for reason in item.get("reasons") or []
+            }
+            has_schedule_demand = bool(origins & schedule_origins)
+            has_unscheduled_demand = "UNSCHEDULED_ANNUAL" in origins
+            has_override = bool(item.get("manager_overrides"))
+            movement_status = str(observation.get("movement_status") or "").upper()
+            moved = bool(
+                observation.get("has_pick_event")
+                or movement_status in outbound_statuses
+            )
+            workshop = bool(
+                item["physical_type"] == "CONTAINER"
+                and endpoint_policy.get(int(item["physical_id"])) == 1
+            )
+
+            if moved:
+                status = "PICKED_MOVED"
+            elif workshop:
+                status = "WORKSHOP"
+            elif has_schedule_demand:
+                status = "SCHEDULED_TO_PICK"
+            else:
+                status = "UNSCHEDULED_PICKABLE"
+
+            if has_schedule_demand and has_override:
+                demand_source = "BOTH"
+            elif has_schedule_demand:
+                demand_source = "SCHEDULE"
+            elif has_override:
+                demand_source = "MANAGER_OVERRIDE"
+            else:
+                demand_source = "NONE"
+
+            item["status"] = status
+            item["demand_source"] = demand_source
+            item["on_pick_list"] = bool(has_schedule_demand or has_override)
+            item["workshop_do_not_mobilize"] = workshop
+            item["goes_to_endpoint_id"] = (
+                endpoint_policy.get(int(item["physical_id"]))
+                if item["physical_type"] == "CONTAINER"
+                else None
+            )
+            item["can_add_to_pick_list"] = bool(
+                item["physical_type"] == "CONTAINER"
+                and has_unscheduled_demand
+                and not has_schedule_demand
+                and not has_override
+                and not moved
+                and not workshop
+            )
+            item["can_remove_from_pick_list"] = bool(
+                item["physical_type"] == "CONTAINER"
+                and has_override
+                and not has_schedule_demand
+                and not moved
+            )
+            item["can_edit_pick_list_override"] = item["can_remove_from_pick_list"]
+
+        stage_rows: dict[int, dict[str, Any]] = {}
+        for task in tasks_by_session_id.values():
+            stage_id = task.get("stage_id")
+            if stage_id is None:
+                continue
+            stage_rows[int(stage_id)] = {
+                "stage_id": int(stage_id),
+                "stage_key": task.get("stage_key"),
+                "stage_name": task.get("stage_name"),
+            }
+        stages = sorted(
+            stage_rows.values(),
+            key=lambda row: (
+                str(row.get("stage_key") or ""),
+                str(row.get("stage_name") or ""),
+                int(row["stage_id"]),
+            ),
+        )
+
+        status_order = {
+            "PICKED_MOVED": 0,
+            "SCHEDULED_TO_PICK": 1,
+            "UNSCHEDULED_PICKABLE": 2,
+            "WORKSHOP": 3,
+        }
+
+        def item_stage_sort(item: dict[str, Any]) -> tuple[str, str]:
+            reasons = item.get("reasons") or []
+            stage_keys = sorted(
+                str(reason.get("stage_key"))
+                for reason in reasons
+                if reason.get("stage_key")
+            )
+            stage_names = sorted(
+                str(reason.get("stage_name"))
+                for reason in reasons
+                if reason.get("stage_name")
+            )
+            return (
+                stage_keys[0] if stage_keys else "ZZZ",
+                stage_names[0] if stage_names else "",
+            )
+
+        items.sort(
+            key=lambda item: (
+                item_stage_sort(item),
+                status_order.get(str(item.get("status")), 9),
+                0 if item["physical_type"] == "CONTAINER" else 1,
+                int(item["physical_id"]),
+            )
+        )
+
+        summary = {
+            "picked_moved": sum(1 for item in items if item["status"] == "PICKED_MOVED"),
+            "scheduled_to_pick": sum(
+                1 for item in items if item["status"] == "SCHEDULED_TO_PICK"
+            ),
+            "unscheduled_pickable": sum(
+                1 for item in items if item["status"] == "UNSCHEDULED_PICKABLE"
+            ),
+            "workshop": sum(1 for item in items if item["status"] == "WORKSHOP"),
+            "unresolved": len(unresolved),
+        }
+
+        return {
+            "session": dict(session),
+            "items": items,
+            "unresolved_requirements": unresolved,
+            "stages": stages,
+            "summary": summary,
+        }
+
     def material_readiness(self, season_year: int) -> dict[str, Any]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
