@@ -65,7 +65,7 @@ Training uses the real current Pick List and the same scan validation, including
 - it does **not** change the real **Containers picked** count; and
 - it may show a temporary **Training picks** count for the current training page/session only.
 
-Entering Training requires deliberate confirmation. While active, the screen must continuously show **TRAINING MODE — NOTHING WILL BE RECORDED** and provide **Exit Training**.
+Entering Training requires deliberate confirmation. While active, the compact safety strip must continuously show **TRAINING — NO RECORDING** and provide **Exit Training**. A successful training scan reports **WOULD PICK … · NOT RECORDED** without repeating the same Training warning across the scanner panel.
 
 Use normal Pick Mode only when the physical item is actually being picked for park transport.
 
