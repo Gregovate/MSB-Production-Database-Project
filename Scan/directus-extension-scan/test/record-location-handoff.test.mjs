@@ -5,8 +5,9 @@ import assert from 'node:assert/strict';
 const src = fs.readFileSync(new URL('../src/index.js', import.meta.url), 'utf8');
 const dist = fs.readFileSync(new URL('../dist/index.js', import.meta.url), 'utf8');
 
-test('resolved Display and Container pages offer explicit Record Location handoff', () => {
+test('Scan landing plus resolved Display and Container pages offer Record Location handoff', () => {
   for (const text of [src, dist]) {
+    assert.match(text, /href="https:\/\/my\.sheboyganlights\.org\/setup\/record-location\/">Record Location<\/a>/);
     assert.match(text, /setup\/record-location\/\?asset=DISP:/);
     assert.match(text, /setup\/record-location\/\?asset=CONT:/);
     assert.match(text, />Record Location</);
