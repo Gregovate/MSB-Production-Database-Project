@@ -18,6 +18,7 @@ TARGET_SHA=""
 TARGET_REF=""
 MIGRATIONS=()
 VALIDATIONS=()
+ALLOW_CONCURRENT_PRODUCTION_WRITES="false"
 
 while IFS=$'\t' read -r kind value extra; do
     [[ -z "$kind" ]] && continue
@@ -26,6 +27,7 @@ while IFS=$'\t' read -r kind value extra; do
     case "$kind" in
         candidate_sha) TARGET_SHA="$value" ;;
         target_ref) TARGET_REF="$value" ;;
+        allow_concurrent_production_writes) ALLOW_CONCURRENT_PRODUCTION_WRITES="$value" ;;
         migration) MIGRATIONS+=("$value") ;;
         validation) VALIDATIONS+=("$value") ;;
         *) echo "FAIL: unsupported manifest key: $kind"; exit 3 ;;
@@ -34,6 +36,11 @@ done < "$MANIFEST"
 
 : "${TARGET_SHA:?manifest candidate_sha is required}"
 : "${TARGET_REF:?manifest target_ref is required}"
+
+if [[ "$ALLOW_CONCURRENT_PRODUCTION_WRITES" != "true" && "$ALLOW_CONCURRENT_PRODUCTION_WRITES" != "false" ]]; then
+    echo "FAIL: allow_concurrent_production_writes must be true or false"
+    exit 3
+fi
 
 for rel in "${MIGRATIONS[@]}" "${VALIDATIONS[@]}"; do
     [[ -z "$rel" ]] && continue
@@ -64,6 +71,7 @@ echo "========== SETUP REUSABLE DISPOSABLE ACCEPTANCE =========="
 echo "Authority: Gregovate/MSB-Server-Management — docs/server/PostgreSQL_Disposable_Acceptance_Standard.md"
 echo "Candidate SHA: $TARGET_SHA"
 echo "Target ref:    $TARGET_REF"
+echo "Concurrent Production writes allowed: $ALLOW_CONCURRENT_PRODUCTION_WRITES"
 echo "Migrations:    ${#MIGRATIONS[@]}"
 echo "Validations:   ${#VALIDATIONS[@]}"
 echo "Report:        $REPORT"
@@ -108,9 +116,18 @@ cleanup() {
         PROD_AFTER="$(prod_fingerprint 2>/dev/null)"
         echo "Production Setup fingerprint before: $PROD_BEFORE"
         echo "Production Setup fingerprint after:  $PROD_AFTER"
-        if [[ -z "$PROD_AFTER" || "$PROD_AFTER" != "$PROD_BEFORE" ]]; then
-            echo "FAIL: Production Setup fingerprint changed during disposable acceptance"
+        if [[ -z "$PROD_AFTER" ]]; then
+            echo "FAIL: Production Setup fingerprint after-check was empty"
             status=97
+        elif [[ "$PROD_AFTER" != "$PROD_BEFORE" ]]; then
+            if [[ "$ALLOW_CONCURRENT_PRODUCTION_WRITES" == "true" ]]; then
+                echo "INFO: Production Setup fingerprint changed during disposable acceptance"
+                echo "PASS WITH CONCURRENT ACTIVITY: fingerprint drift is allowed for this explicitly concurrent acceptance"
+                echo "NOTE: the disposable clone remained the point-in-time database captured at acceptance start"
+            else
+                echo "FAIL: Production Setup fingerprint changed during disposable acceptance"
+                status=97
+            fi
         else
             echo "PASS: Production Setup fingerprint unchanged"
         fi
