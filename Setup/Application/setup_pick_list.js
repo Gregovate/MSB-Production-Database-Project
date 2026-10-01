@@ -20,12 +20,15 @@
   const overrideDestinationStage = document.getElementById('override-destination-stage');
   const overrideReason = document.getElementById('override-reason');
   const overrideMessage = document.getElementById('override-message');
+  const overrideSubmit = document.getElementById('override-submit');
+  const overrideEditCancel = document.getElementById('override-edit-cancel');
 
   let readiness = null;
   let access = null;
   let containerCatalog = [];
   let stageCatalog = [];
   const settledPickEvidence = new Map();
+  let editingOverrideContainerId = null;
 
   function esc(value) {
     return String(value ?? '').replace(/[&<>"']/g, c => ({
@@ -92,6 +95,50 @@
     overrideContainerSearch.value = row.container_description || `Container ${row.container_id}`;
     overrideContainerResults.hidden = true;
     overrideContainerResults.innerHTML = '';
+  }
+
+  function resetOverrideForm() {
+    editingOverrideContainerId = null;
+    overrideContainerId.value = '';
+    overrideContainerSearch.value = '';
+    overrideContainerSearch.disabled = false;
+    overrideContainerResults.hidden = true;
+    overrideContainerResults.innerHTML = '';
+    overridePickBy.value = todayIso();
+    overrideNeededFor.value = '';
+    overrideDestinationStage.value = '';
+    overrideReason.value = '';
+    if (overrideSubmit) overrideSubmit.textContent = 'Add Override';
+    if (overrideEditCancel) overrideEditCancel.hidden = true;
+  }
+
+  function beginEditOverride(containerId) {
+    if (!access?.can_manage_setup) return;
+    const item = (readiness?.physical_items || []).find(
+      (row) => row.physical_type === 'CONTAINER' && Number(row.physical_id) === Number(containerId)
+    );
+    const override = Array.isArray(item?.manager_overrides) ? item.manager_overrides[0] : null;
+    if (!item || !override) {
+      overrideMessage.textContent = `Manager override for Container ${containerId} is no longer active.`;
+      return;
+    }
+
+    editingOverrideContainerId = Number(containerId);
+    overrideContainerId.value = String(containerId);
+    overrideContainerSearch.value = item.label || `Container ${containerId}`;
+    overrideContainerSearch.disabled = true;
+    overrideContainerResults.hidden = true;
+    overrideContainerResults.innerHTML = '';
+    overridePickBy.value = override.pick_by_date || '';
+    overrideNeededFor.value = override.needed_for_date || '';
+    overrideDestinationStage.value = override.destination_stage_id == null
+      ? ''
+      : String(override.destination_stage_id);
+    overrideReason.value = override.override_reason || '';
+    if (overrideSubmit) overrideSubmit.textContent = 'Update Override';
+    if (overrideEditCancel) overrideEditCancel.hidden = false;
+    overrideMessage.textContent = `Editing Manager override for Container ${containerId}. Change Pick By / Needed For and save.`;
+    overridePanel?.scrollIntoView({behavior: 'smooth', block: 'start'});
   }
 
   function demandedContainerIds() {
@@ -532,10 +579,11 @@
   function overrideBadgeHtml(item) {
     const overrides = Array.isArray(item.manager_overrides) ? item.manager_overrides : [];
     if (!overrides.length) return '';
-    const cancel = access?.can_manage_setup
-      ? `<button type="button" class="small secondary cancel-override no-print" data-container-id="${esc(item.physical_id)}">Cancel Override</button>`
+    const actions = access?.can_manage_setup
+      ? `<button type="button" class="small secondary edit-override no-print" data-container-id="${esc(item.physical_id)}">Edit Override</button>
+         <button type="button" class="small secondary cancel-override no-print" data-container-id="${esc(item.physical_id)}">Cancel Override</button>`
       : '';
-    return `<div class="override-state"><span class="override-badge">MANAGER OVERRIDE</span>${cancel}</div>`;
+    return `<div class="override-state"><span class="override-badge">MANAGER OVERRIDE</span>${actions}</div>`;
   }
 
 
@@ -610,13 +658,11 @@
       );
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-      overrideMessage.textContent = `Container ${containerId} added to Pick List demand.`;
-      overrideContainerId.value = '';
-      overrideContainerSearch.value = '';
-      overrideContainerResults.hidden = true;
-      overrideContainerResults.innerHTML = '';
-      overrideDestinationStage.value = '';
-      overrideReason.value = '';
+      const wasEditing = editingOverrideContainerId === containerId;
+      overrideMessage.textContent = wasEditing
+        ? `Manager override for Container ${containerId} updated.`
+        : `Container ${containerId} added to Pick List demand.`;
+      resetOverrideForm();
       await load();
     } catch (error) {
       overrideMessage.textContent = error.message || error;
@@ -636,6 +682,7 @@
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
       overrideMessage.textContent = `Manager override for Container ${containerId} cancelled.`;
+      if (editingOverrideContainerId === Number(containerId)) resetOverrideForm();
       await load();
     } catch (error) {
       overrideMessage.textContent = error.message || error;
@@ -728,6 +775,11 @@
       </div>`;
 
     renderQrCodes();
+    document.querySelectorAll('.edit-override').forEach((button) => {
+      button.addEventListener('click', () => {
+        beginEditOverride(Number(button.dataset.containerId));
+      });
+    });
     document.querySelectorAll('.cancel-override').forEach((button) => {
       button.addEventListener('click', () => {
         void cancelOverride(Number(button.dataset.containerId));
@@ -805,6 +857,10 @@
   pickStatusFilter?.addEventListener('change', render);
   showDelayedPicks?.addEventListener('change', render);
   overrideForm?.addEventListener('submit', (event) => { void submitOverride(event); });
+  overrideEditCancel?.addEventListener('click', () => {
+    resetOverrideForm();
+    overrideMessage.textContent = 'Override edit cancelled.';
+  });
   overrideContainerSearch?.addEventListener('input', renderContainerSearchResults);
   overrideContainerSearch?.addEventListener('focus', renderContainerSearchResults);
   overridePickBy?.addEventListener('change', normalizeOverridePickBy);
