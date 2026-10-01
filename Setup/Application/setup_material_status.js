@@ -228,21 +228,38 @@
     ].map(([label, value]) => `<div class="summary-card"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join('');
   }
 
-  function renderReasons(item) {
-    const reasons = item.reasons || [];
-    if (!reasons.length) return '<div class="muted">No annual material reason recorded.</div>';
-    return reasons.map(reason => {
-      const timing = reason.work_date
-        ? `Needed ${reason.work_date}`
-        : reason.demand_origin === 'MANAGER_OVERRIDE'
-          ? 'Manager override'
-          : 'Annual work not scheduled';
-      return `<div class="reason">
-        <strong>${esc(reason.task_name || reason.reason_label || 'Material reason')}</strong>
-        <span>${esc(stageText(reason))} · ${esc(timing)}</span>
-        ${reason.reason_label ? `<div>${esc(reason.reason_label)}${reason.reason_detail ? ` — ${esc(reason.reason_detail)}` : ''}</div>` : ''}
-      </div>`;
-    }).join('');
+  function renderContents(item) {
+    const displayNames = [...new Set(
+      (item.reasons || []).flatMap(reason => reason.display_names || [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
+
+    const extraMaterialNames = [...new Set(
+      (item.reasons || [])
+        .map(reason => String(reason.extra_material_name || '').trim())
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
+
+    const parts = [];
+    if (displayNames.length) {
+      const shown = displayNames.slice(0, 4);
+      parts.push(`<div><strong>${esc(displayNames.length)} Display${displayNames.length === 1 ? '' : 's'}</strong></div>`);
+      parts.push(`<div>${shown.map(esc).join(', ')}${displayNames.length > shown.length ? ` +${displayNames.length - shown.length} more` : ''}</div>`);
+    }
+    if (extraMaterialNames.length) {
+      const shown = extraMaterialNames.slice(0, 4);
+      parts.push(`<div><strong>Extra material</strong></div>`);
+      parts.push(`<div>${shown.map(esc).join(', ')}${extraMaterialNames.length > shown.length ? ` +${extraMaterialNames.length - shown.length} more` : ''}</div>`);
+    }
+
+    if (!parts.length) {
+      if (item.physical_type === 'DISPLAY') {
+        return `<div><strong>Display</strong></div><div>${esc(item.label || item.identity)}</div>`;
+      }
+      return '<div class="muted">No Display contents recorded.</div>';
+    }
+    return parts.join('');
   }
 
   function actionHtml(item) {
@@ -287,7 +304,10 @@
         <div class="material-home">
           <strong>Current</strong><div>${esc(currentLocation(item))}</div>
         </div>
-        <div class="material-reasons reasons">${renderReasons(item)}</div>
+        <div class="material-contents">
+          <strong class="contents-heading">Contents</strong>
+          ${renderContents(item)}
+        </div>
         <div class="actions">${actionHtml(item)}</div>
       </article>
     `).join('') : '<div class="empty">No material matches the selected filters.</div>';
