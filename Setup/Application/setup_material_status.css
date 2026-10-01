@@ -1,0 +1,45 @@
+:root{font-family:Arial,Helvetica,sans-serif;line-height:1.4;color-scheme:light dark}
+*{box-sizing:border-box}
+body{margin:0;background:Canvas;color:CanvasText}
+button,input,select{font:inherit}
+button{cursor:pointer;min-height:42px;padding:.55rem .75rem}
+input,select{min-height:42px;padding:.5rem .6rem;width:100%}
+.page-header,main,footer{max-width:1800px;margin:0 auto;padding:1rem}
+.page-header{display:flex;justify-content:space-between;align-items:end;gap:1rem}
+.page-header h1,.section-heading h2{margin:.15rem 0}
+.header-actions,.filters,.section-heading,menu{display:flex;flex-wrap:wrap;gap:.65rem;align-items:end}
+.header-actions label,.filters label{display:grid;gap:.2rem;font-size:.84rem;font-weight:700}
+.eyebrow{text-transform:uppercase;letter-spacing:.08em;font-size:.72rem;opacity:.72;font-weight:800}
+.muted{opacity:.72}
+.panel{border:1px solid color-mix(in srgb,CanvasText 22%,transparent);border-radius:.7rem;padding:.85rem;margin-bottom:1rem;background:Canvas}
+.filters label:first-child{flex:2 1 22rem}.filters label{flex:1 1 11rem}
+.summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.65rem;margin-bottom:1rem}
+.summary-card{border:1px solid color-mix(in srgb,CanvasText 22%,transparent);border-radius:.65rem;padding:.7rem .8rem}
+.summary-card strong{display:block;font-size:1.55rem}
+.section-heading{justify-content:space-between}
+.material-list,.unresolved-list{display:grid;gap:.65rem}
+.material-row{display:grid;grid-template-columns:minmax(11rem,1.1fr) minmax(10rem,.9fr) minmax(11rem,1fr) minmax(12rem,1.1fr) minmax(17rem,2fr) auto;gap:.7rem;align-items:start;border-top:1px solid color-mix(in srgb,CanvasText 14%,transparent);padding:.75rem 0}
+.material-row:first-child{border-top:0}
+.identity{font-weight:900;font-size:1.03rem}.label{margin-top:.15rem}.home{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.badges{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.3rem}.badge{display:inline-block;border:1px solid currentColor;border-radius:999px;padding:.08rem .4rem;font-size:.72rem;font-weight:850}
+.status-PICKED_MOVED{font-weight:900}.status-WORKSHOP{font-weight:900}.status-UNSCHEDULED_PICKABLE{font-weight:800}
+.reasons{display:grid;gap:.3rem}.reason{border-left:3px solid color-mix(in srgb,CanvasText 35%,transparent);padding-left:.5rem;font-size:.86rem}.reason strong{display:block}
+.actions{display:flex;flex-direction:column;gap:.4rem;min-width:9rem}.actions button{white-space:nowrap}
+.secondary{background:transparent}
+.unresolved-row{border-top:1px solid color-mix(in srgb,CanvasText 14%,transparent);padding:.65rem 0}.unresolved-row:first-child{border-top:0}.unresolved-row strong{display:block}
+.empty{padding:1rem;opacity:.7;text-align:center}
+dialog{width:min(720px,calc(100% - 2rem));border:1px solid color-mix(in srgb,CanvasText 30%,transparent);border-radius:.75rem;background:Canvas;color:CanvasText;padding:1rem}
+dialog::backdrop{background:rgb(0 0 0/.5)}
+dialog form{display:grid;gap:.8rem}.form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem}.reason-field{grid-column:1/-1}.form-message{min-height:1.4rem;font-weight:700}menu{justify-content:flex-end;margin:0;padding:0}
+footer{text-align:center;font-size:.82rem;opacity:.7}
+@media(max-width:1150px){
+  .summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .material-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"identity status" "stage home" "reasons reasons" "actions actions"}
+  .material-identity{grid-area:identity}.material-status{grid-area:status}.material-stage{grid-area:stage}.material-home{grid-area:home}.material-reasons{grid-area:reasons}.actions{grid-area:actions;flex-direction:row;flex-wrap:wrap}
+}
+@media(max-width:650px){
+  .page-header{align-items:stretch;flex-direction:column}.header-actions{width:100%}.header-actions label{flex:1}
+  .summary{grid-template-columns:1fr 1fr}.filters{display:grid;grid-template-columns:1fr}
+  .material-row{grid-template-columns:1fr;grid-template-areas:"identity" "status" "stage" "home" "reasons" "actions"}
+  .form-grid{grid-template-columns:1fr}.reason-field{grid-column:auto}
+}
