@@ -23,7 +23,7 @@ input,select{min-height:42px;padding:.5rem .6rem;width:100%}
 .identity{font-weight:900;font-size:1.03rem}.label{margin-top:.15rem}.home{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
 .badges{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.3rem}.badge{display:inline-block;border:1px solid currentColor;border-radius:999px;padding:.08rem .4rem;font-size:.72rem;font-weight:850}
 .status-PICKED_MOVED{font-weight:900}.status-WORKSHOP{font-weight:900}.status-UNSCHEDULED_PICKABLE{font-weight:800}
-.reasons{display:grid;gap:.3rem}.reason{border-left:3px solid color-mix(in srgb,CanvasText 35%,transparent);padding-left:.5rem;font-size:.86rem}.reason strong{display:block}
+.material-contents{font-size:.86rem}.contents-heading{display:block;margin-bottom:.2rem}
 .actions{display:flex;flex-direction:column;gap:.4rem;min-width:9rem}.actions button{white-space:nowrap}
 .secondary{background:transparent}
 .unresolved-row{border-top:1px solid color-mix(in srgb,CanvasText 14%,transparent);padding:.65rem 0}.unresolved-row:first-child{border-top:0}.unresolved-row strong{display:block}
