@@ -443,6 +443,56 @@ do not create Person automatically
 do not guess by name
 ```
 
+## Role-Governance Correction — 2026-10-01
+
+The People Manager must **not** expose a free-form Directus role selector to ordinary Managers.
+
+The operator clarified that a Manager must not be able to:
+
+- choose an arbitrary Directus role while provisioning a user;
+- elevate a Browser user to Production Crew by personal judgment;
+- switch a Production Crew user to Manager or Administrator;
+- downgrade an existing Manager or Administrator; or
+- otherwise use People Manager as a generic Directus role editor.
+
+The access model is therefore:
+
+```text
+real Sheboygan Lights Google Workspace account
+    -> baseline Directus role may be MSB Browser
+    -> role is selected by system rule, not by Manager choice
+
+Production Crew
+    -> elevated database role
+    -> must come from a separate authoritative eligibility/approval source
+    -> exact authority still to be finalized after current identity cleanup
+
+Manager / Administrator
+    -> privileged administrative roles
+    -> never assignable or switchable by ordinary People Manager workflow
+```
+
+For Managers, Directus role/state is **read-only visibility**.
+
+A Manager-facing provisioning action, if retained, may only request/trigger the single role allowed by a deterministic rule. The backend must compute the resulting role and reject any caller-supplied role value.
+
+Privileged role assignment remains outside ordinary People Manager contact maintenance.
+
+### Current sequencing decision
+
+Do not finalize the Production Crew provisioning authority until the existing `ref.person.email` population has been reconciled against the real Google Workspace population.
+
+First:
+
+```text
+remove generated/bogus Sheboygan Lights emails
+    -> establish which People actually have Google Workspace accounts
+    -> reconcile existing Directus identity/link state
+    -> then define the authoritative Production Crew elevation rule
+```
+
+This cleanup is intentionally separate from changing Directus authorization.
+
 ## Required People Manager Operator Workflow
 
 Directus provisioning belongs on the existing Person detail page in People Manager because that is already the operator's durable Person management surface.
@@ -465,22 +515,30 @@ PostgreSQL login
     Linked / Not linked
 ```
 
-For an active Person with a valid reserved MSB identity and no Directus identity, the Manager/Administrator workflow should expose a **separate access action**, not an automatic side effect of Person creation:
+For an active Person with a real Sheboygan Lights Google Workspace identity and no Directus identity, the Manager-facing workflow must not expose a role selector.
+
+The intended shape is:
 
 ```text
-Google Workspace account confirmed by operator    [ ]
-Requested database access                         [ None / MSB Browser / Production Crew / Manager ]
+Google Workspace identity
+    actual-user@sheboyganlights.org
 
-[ Provision Directus access ]
+Directus identity
+    Not provisioned
+
+Computed baseline access
+    MSB Browser — read only
+
+[ Provision Browser access ]
 ```
 
-Default database access is `None`.
+The backend, not the Manager, determines the baseline role.
 
-The action remains unavailable until the operator explicitly confirms that the real Google Workspace account exists for the exact reserved MSB identity.
+Production Crew elevation is a separate governed decision whose authoritative source is still to be finalized after current email/identity cleanup.
 
-The provisioning action must perform the entire governed sequence without requiring the operator to leave People Manager.
+Manager and Administrator role assignment are not People Manager operations.
 
-Setup/Takedown participation, Production help, active Person state, capabilities, qualifications, or notification eligibility must not automatically select a Directus role.
+Setup/Takedown participation, Production help, active Person state, capabilities, qualifications, or notification eligibility must not automatically select an elevated Directus role.
 
 ## Required Provisioning Command Behavior
 
