@@ -9,6 +9,7 @@ This is the engineering starting point for Production Database work involving pe
 - [`Directus_Access_and_Identity_Bootstrap_Contract_2026-09-10.md`](Directus_Access_and_Identity_Bootstrap_Contract_2026-09-10.md) — Directus bootstrap access, `$t:public_label` purpose, policy/permission layers, and required collection/action permission evidence
 - [`Directus_Onboarding_Identity_Error_Propagation_Finding_2026-09-10.md`](Directus_Onboarding_Identity_Error_Propagation_Finding_2026-09-10.md) — corrected `mark@sheboyganlights.org` provenance and evidence that the current no-match branch can propagate an onboarding mistake into a new durable Person
 - [`People_Manager_Directus_Person_Link_Acceptance_Gap_2026-09-10.md`](People_Manager_Directus_Person_Link_Acceptance_Gap_2026-09-10.md) — **required before changing Directus/Person identity linkage**; records the missed People Manager acceptance requirement, affected Production identity state, and Randy Miller repeat-login proof
+- [`People_Manager_Directus_Access_Provisioning_Contract_2026-10-01.md`](People_Manager_Directus_Access_Provisioning_Contract_2026-10-01.md) — **current authority for no-first-login Directus provisioning from People Manager**; records the Adam Biebel Production pilot, Production Crew role contract, fail-closed Person rules, and required System Access & Identity workflow
 - [`People_Manager_Metadata_Implementation_2026-09-09.md`](People_Manager_Metadata_Implementation_2026-09-09.md) — capability/qualification/Setup-role implementation
 - [`Internal_Web_Backbone_Handoff.md`](Internal_Web_Backbone_Handoff.md) — source-owned Production intranet integration handoff
 - [`../../../../../People/README.md`](../../../../../People/README.md) — current People Manager implementation/runtime summary
@@ -54,6 +55,12 @@ The documented Directus User Onboarding Flow is gated to Google users whose Dire
 Do not treat repeat login, additional Setup table permissions, or Manager policy changes as a repair for this identity-link condition. Read [`People_Manager_Directus_Person_Link_Acceptance_Gap_2026-09-10.md`](People_Manager_Directus_Person_Link_Acceptance_Gap_2026-09-10.md) before changing this boundary.
 
 The 2026-09-10 onboarding provenance review also confirmed that `mark@sheboyganlights.org` belongs to Mark Rozmarynowski and was created under the wrong MSB address during onboarding. The current Flow then propagated that upstream mistake into a new `ref.person` row because its no-match branch creates a Person automatically. This is not evidence about Mark Hayon (`mhayon@sheboyganlights.org`). See [`Directus_Onboarding_Identity_Error_Propagation_Finding_2026-09-10.md`](Directus_Onboarding_Identity_Error_Propagation_Finding_2026-09-10.md).
+
+### No-first-login Directus provisioning finding — 2026-10-01
+
+The Adam Biebel Production pilot proved that an Administrator can create a Google-backed Directus user and obtain a Directus UUID **before the user ever authenticates to Directus**. The existing Flow assigned the default `MSB Browser` role but did not complete the existing-Person link. A bounded governed database repair linked the UUID with normal audit triggers enabled, after which Adam was assigned and validated as `Production Crew`.
+
+The required operator workflow is now owned by People Manager: the Person page must expose Directus identity/status/role and a governed provisioning action rather than forcing operators to leave People Manager, create users manually in Directus, run SQL, or require first login. See [`People_Manager_Directus_Access_Provisioning_Contract_2026-10-01.md`](People_Manager_Directus_Access_Provisioning_Contract_2026-10-01.md).
 
 ## Identity and Onboarding
 
