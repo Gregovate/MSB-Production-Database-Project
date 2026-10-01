@@ -12,9 +12,9 @@ $RepoRoot = (Resolve-Path (Join-Path $ScriptDir '..\..')).Path
 $ServerScript = Join-Path $ScriptDir 'people_manager_browser_preview_server.sh'
 $PreviewEntry = Join-Path $ScriptDir 'people_manager_browser_preview_entry.py'
 $CleanupServerScript = Join-Path $ScriptDir 'people_manager_browser_preview_cleanup_server.sh'
-$ExpectedBranch = 'agent/people-manager-milestone1-20260908'
-$CandidateSha = 'de549757c8d040d34494304a08944f7f4b444b30'
-$DatabaseAcceptedSha = 'deaa9157282e59e8acd6a7da2a82fc9296e44f20'
+$ExpectedBranch = 'agent/people-identity-link-acceptance-gap-20260910'
+$CandidateSha = '9ef05fbb0ac20505ee12c246e9f5df742fdf082d'
+$DatabaseAcceptedSha = '9ef05fbb0ac20505ee12c246e9f5df742fdf082d'
 
 foreach ($path in @($ServerScript, $PreviewEntry, $CleanupServerScript)) {
     if (-not (Test-Path -LiteralPath $path)) {
@@ -116,8 +116,8 @@ Write-Host "Preview user:        $PreviewEmail"
 Write-Host 'Authority: MSB-Server-Management — Pre_Production_Browser_Review_Runbook.md'
 Write-Host 'Clone authority: MSB-Server-Management — PostgreSQL_Disposable_Acceptance_Standard.md'
 Write-Host
-Write-Host 'The browser candidate keeps the disposable-accepted People database/backend behavior unchanged.'
-Write-Host 'Its additional changes are presentation/theme/static-regression corrections from browser review.'
+Write-Host 'The browser candidate is the exact disposable-accepted nullable-MSB-email candidate.'
+Write-Host 'The preview verifies the browser no longer generates a Sheboygan Lights email for a new contact-only Person.'
 Write-Host 'Production ref.person, the Production checkout, and fieldwiring.service are not changed.'
 Write-Host 'The browser is not auto-opened; wait for BROWSER REVIEW READY before opening the URL shown above.'
 Write-Host 'Keep this PowerShell window open during review.'
