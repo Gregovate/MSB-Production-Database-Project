@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Setup Pick List</title>
-  <link rel="stylesheet" href="assets/setup_pick_list.css?v=2026-10-01.1">
+  <link rel="stylesheet" href="assets/setup_pick_list.css?v=2026-10-01.2">
   <link rel="stylesheet" href="assets/setup_pick_mode.css?v=2026-10-01.4">
 </head>
 <body>
@@ -68,6 +68,15 @@
 
   <section class="summary" id="summary"></section>
 
+  <section id="manager-pick-lookup" class="manager-pick-lookup no-print" hidden>
+    <div class="manager-pick-lookup-row">
+      <label for="manager-pick-search">Manager Pick List Lookup</label>
+      <input id="manager-pick-search" type="search" autocomplete="off" placeholder="Container / Display name, ID, rack, destination, task">
+      <button id="manager-pick-search-clear" type="button" class="secondary">Clear</button>
+    </div>
+    <div id="manager-pick-search-status" class="muted">Search the full current Pick List, regardless of date/status filters.</div>
+  </section>
+
   <details id="pick-training-entry" class="pick-training-entry no-print">
     <summary>Training / device test</summary>
     <p>Use the real Pick List and Zebra workflow without recording or queueing PICKED movement.</p>
@@ -122,7 +131,7 @@
   <p>Schedule demand and Manager overrides are planning intent. A workshop scan records an actual PICKED event. Other movement/location observations are recorded through their own explicit workflows. Record Location is a separate field workflow; appearing here does not record a park location.</p>
 </footer>
 <script src="assets/qrcode.min.js?v=1"></script>
-<script src="assets/setup_pick_list.js?v=2026-10-01.3"></script>
+<script src="assets/setup_pick_list.js?v=2026-10-01.4"></script>
 <script src="assets/setup_pick_mode.js?v=2026-10-01.2"></script>
 </body>
 </html>
