@@ -145,6 +145,7 @@ Only after explicit operator acceptance switch to the Server Management `Product
 
 ## Current Production Acceptance Records
 
+- `Setup_206_V033_Manager_Material_Status_Production_Acceptance_2026-10-01.md` — #206 Manager Material Status / Manager override controls / Pick List Needed For correction / performance batching / V0.3.33 source-only Production acceptance.
 - `Setup_206_V0322_Pick_List_Delay_Production_Acceptance_2026-09-30.md` — #206 bounded material frontier / transient Pick Delay / automatic schedule-release / V0.3.22 Production acceptance; persisted physical movement remains #88.
 - `Setup_205_Scheduling_Board_Production_Acceptance_2026-09-29.md` — #205 rolling Scheduling Board / season-only Work Order placement / Captain live-dispatch default / planned-vs-actual labor KPI / V0.3.21 source-only Production acceptance and #206 handoff.
 - `Setup_172_Report_Correction_Production_Acceptance_2026-09-27.md` — #172 Report Correction -> Work Order Intake / migration 062 / Directus items.create manager-notification boundary / Production acceptance.
