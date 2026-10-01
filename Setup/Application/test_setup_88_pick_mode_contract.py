@@ -338,13 +338,13 @@ def test_release_identity_and_offline_shells_are_synchronized():
     location_sw = read("setup_record_location_sw.js")
     location_html = read("record_location.html")
 
-    assert 'PRODUCTION_VERSION = "V0.3.29-pick-clarity"' in backend
-    assert "const CLIENT_BUILD = 'V0.3.29-pick-clarity';" in guard
-    assert "msb-setup-pick-mode-v9" in pick_sw
+    assert 'PRODUCTION_VERSION = "V0.3.30-pick-override-cancel"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.30-pick-override-cancel';" in guard
+    assert "msb-setup-pick-mode-v10" in pick_sw
     assert "setup_pick_mode.css?v=2026-09-30.8" in pick_sw
     assert "setup_pick_mode.css?v=2026-09-30.8" in pick_html
-    assert "setup_pick_list.js?v=2026-09-30.9" in pick_sw
-    assert "setup_pick_list.js?v=2026-09-30.9" in pick_html
+    assert "setup_pick_list.js?v=2026-10-01.2" in pick_sw
+    assert "setup_pick_list.js?v=2026-10-01.2" in pick_html
     assert "setup_pick_mode.js?v=2026-09-30.7" in pick_sw
     assert "setup_pick_mode.js?v=2026-09-30.7" in pick_html
     assert "msb-setup-record-location-v6" in location_sw
