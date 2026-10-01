@@ -82,7 +82,8 @@ def api_setup_extra_material_source_containers() -> Response:
                 c.description AS container_description,
                 c.container_type_id,
                 c.display_pallet,
-                c.location_code AS home_location_code
+                c.location_code AS home_location_code,
+                c.goes_to_endpoint_id
             FROM ref.container AS c
             ORDER BY c.container_id
             """
