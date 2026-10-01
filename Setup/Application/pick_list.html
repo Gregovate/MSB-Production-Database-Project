@@ -26,6 +26,7 @@
     </label>
     <label class="delayed-filter"><input id="show-delayed-picks" type="checkbox" checked> Show delayed picks</label>
     <button id="start-pick-mode" type="button" class="pick-mode-start">Start Picking</button>
+    <button id="manager-material-status-link" type="button" hidden>Material Status</button>
     <button id="print-button" type="button">Print</button>
     <button id="back-button" type="button">Back to Setup</button>
   </div>
@@ -73,42 +74,6 @@
     <p>Use the real Pick List and Zebra workflow without recording or queueing PICKED movement.</p>
     <button id="enter-pick-training" type="button">Enter Training Mode</button>
   </details>
-
-  <section id="manager-override-panel" class="panel manager-override-panel no-print" hidden>
-    <div class="section-heading">
-      <div>
-        <div class="eyebrow">Manager safety override</div>
-        <h2 id="manager-override-title">Add Container to Pick List</h2>
-      </div>
-    </div>
-    <p class="muted">Use this when a Container must be pulled early or the schedule/material model has not surfaced it yet. This does not schedule work or mark the Container picked.</p>
-    <form id="manager-override-form" class="manager-override-form">
-      <label class="override-container-field">Container
-        <input id="override-container-search" type="search" autocomplete="off" required placeholder="Search by Container name">
-        <input id="override-container-id" type="hidden">
-        <div id="override-container-results" class="container-search-results" hidden></div>
-      </label>
-      <label>Pick By
-        <input id="override-pick-by" type="date" required>
-      </label>
-      <label>Needed For
-        <input id="override-needed-for" type="date">
-      </label>
-      <label>Destination
-        <select id="override-destination-stage" required>
-          <option value="">Select destination Stage</option>
-        </select>
-      </label>
-      <label class="override-reason-field">Reason
-        <input id="override-reason" type="text" required placeholder="Why this Container needs an early/manual pick">
-      </label>
-      <div class="override-form-actions">
-        <button id="override-submit" type="submit">Add Override</button>
-        <button id="override-edit-cancel" type="button" class="secondary" hidden>Cancel Edit</button>
-      </div>
-    </form>
-    <div id="override-message" class="muted" aria-live="polite"></div>
-  </section>
 
   <section class="panel">
     <div class="section-heading">
