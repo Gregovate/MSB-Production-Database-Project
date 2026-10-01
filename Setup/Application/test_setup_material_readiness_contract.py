@@ -328,11 +328,15 @@ def test_manager_pick_list_lookup_searches_full_current_demand_not_screen_filter
     assert "function pickLookupText(item)" in ui
     assert "item.home_location_code" in ui
     assert "destinationText(reasons)" in ui
+    assert "reason.display_names" in ui
+    assert "reason.display_ids" in ui
+    assert "...carriedDisplayTerms" in ui
     assert "...reasons.map(reasonText)" in ui
     assert "function managerLookupQuery()" in ui
     assert "function managerLookupMatches()" in ui
     assert "if (lookupQuery) return pickLookupText(item).includes(lookupQuery);" in ui
     assert "lookupQuery ? '' : date" in ui
+    assert "itemReasonsForDate(item, lookupQuery ? '' : date)" in ui
     assert "full current Pick List" in html
     assert ".manager-pick-lookup{" in css
 
