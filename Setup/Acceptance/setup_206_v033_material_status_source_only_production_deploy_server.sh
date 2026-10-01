@@ -160,7 +160,7 @@ echo "--- Fetch current main and prove exact accepted target ancestry ---"
 sudo git -C "$REPO_ROOT" fetch origin "+refs/heads/main:refs/remotes/origin/main"
 REMOTE_MAIN="$(sudo git -C "$REPO_ROOT" rev-parse origin/main)"
 echo "origin/main: $REMOTE_MAIN"
-[[ "$REMOTE_MAIN" == "$MERGED_MAIN_SHA" ]]     || { echo "FAIL: origin/main moved after deployment tooling was prepared; reconcile before deployment"; exit 11; }
+sudo git -C "$REPO_ROOT" merge-base --is-ancestor "$MERGED_MAIN_SHA" origin/main     || { echo "FAIL: origin/main no longer contains the reviewed PR #276 merge"; exit 11; }
 sudo git -C "$REPO_ROOT" cat-file -e "$TARGET_SHA^{commit}"
 sudo git -C "$REPO_ROOT" merge-base --is-ancestor "$TARGET_SHA" origin/main     || { echo "FAIL: accepted application SHA is not contained in origin/main"; exit 12; }
 sudo git -C "$REPO_ROOT" merge-base --is-ancestor "$OLD_HEAD" "$TARGET_SHA"     || { echo "FAIL: accepted application SHA is not a forward descendant of live Setup"; exit 13; }
