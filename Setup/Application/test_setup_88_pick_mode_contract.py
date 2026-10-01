@@ -27,6 +27,7 @@ def test_pick_list_defaults_to_needs_pick_and_keeps_back_navigation_while_scanni
 
     assert "background:#171717;color:#fff" in css
     assert "body.pick-mode-active .pick-mode-panel{" in css
+    assert "@media(max-width:900px){" in css
     assert 'grid-template-areas:' in css
     assert '"toolbar toolbar"' in css
     assert '"entry feedback"' in css
@@ -354,8 +355,8 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "msb-setup-pick-mode-v11" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.2" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.2" in pick_html
-    assert "setup_pick_list.js?v=2026-10-01.2" in pick_sw
-    assert "setup_pick_list.js?v=2026-10-01.2" in pick_html
+    assert "setup_pick_list.js?v=2026-10-01.3" in pick_sw
+    assert "setup_pick_list.js?v=2026-10-01.3" in pick_html
     assert "setup_pick_mode.js?v=2026-09-30.7" in pick_sw
     assert "setup_pick_mode.js?v=2026-09-30.7" in pick_html
     assert "msb-setup-record-location-v6" in location_sw
