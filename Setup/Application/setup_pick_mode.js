@@ -353,8 +353,17 @@
     }
   }
 
+  function resetScanEntry() {
+    clearScanTimer();
+    scanBuffer = '';
+    if (manualInput) manualInput.value = '';
+  }
+
   async function handleIdentity(raw, captureMethod) {
-    const identity = parseIdentity(raw);
+    const submitted = String(raw || '').trim();
+    resetScanEntry();
+
+    const identity = parseIdentity(submitted);
     if (!identity) {
       setFeedback('blocked', 'INVALID IDENTITY — expected CONT:<id>, DISP:<id>, or a permanent scan URL.');
       return;
