@@ -380,14 +380,17 @@ Training must reuse the real authenticated read path and real device sensors:
 Training must **never**:
 
 - POST a Setup movement event;
-- enqueue an offline movement event for later replay;
+- enqueue anything into the **Production** offline movement queue;
+- sync a training observation to Production;
 - fabricate GPS, Container contents, or named reference data; or
 - silently fall back into live write mode.
+
+For safe offline acceptance after go-live, Training may use the separate local Training queue shared with Pick Mode. That queue is training-marked, survives offline reload/backgrounding, and drains only through a simulated reconnect replay that does not call the movement API.
 
 The normal Record Location page must not expose an easy one-click training toggle in its primary controls. Entry is deliberately tucked under a collapsed **Training / device test** section and requires an explicit confirmation. Once active, the page must display a persistent, unmistakable:
 
 ```text
-TRAINING MODE — NOTHING WILL BE RECORDED
+TRAINING MODE — NOTHING WILL BE RECORDED OR SENT TO PRODUCTION
 ```
 
 banner. Leaving Training Mode should be simple and obvious.
