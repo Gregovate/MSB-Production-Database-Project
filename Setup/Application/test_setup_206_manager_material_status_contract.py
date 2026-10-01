@@ -140,3 +140,23 @@ def test_manager_material_status_safety_blocks_workshop_and_movement_overreach()
     assert "and not moved" in repo
     assert "and not workshop" in repo
     assert "!item?.can_remove_from_pick_list && !item?.can_remove_manager_override" in ui
+
+
+def test_manager_material_status_batches_unscheduled_material_resolution() -> None:
+    repo = read("setup_material_readiness_repository.py")
+
+    assert "def _bulk_unscheduled_material_contexts(" in repo
+    assert "is_real_setup_scene" in repo
+    assert "is_stage_level_lor_group" in repo
+    assert "ref.setup_task_display" in repo
+    assert "ref.lor_scene_display" in repo
+    assert "upper(status.display_status_name) = 'ACTIVE'" in repo
+    assert "ref.setup_task_container_support" in repo
+
+    manager = repo.split("def manager_material_status(", 1)[1].split(
+        "def material_readiness(", 1
+    )[0]
+    assert "_bulk_unscheduled_material_contexts(" in manager
+    assert "next_repo.field_context(" not in manager
+    assert "SetupNextRepository(self.dsn)" not in manager
+
