@@ -211,6 +211,8 @@
     }
     if (item.can_remove_from_pick_list) {
       buttons.push(`<button type="button" class="remove-pick secondary" data-id="${esc(item.physical_id)}">Remove from Pick List</button>`);
+    } else if (item.can_remove_manager_override) {
+      buttons.push(`<button type="button" class="remove-pick secondary" data-id="${esc(item.physical_id)}">Remove Override</button>`);
     }
     return buttons.join('');
   }
@@ -378,8 +380,12 @@
     const item = (data?.items || []).find(row =>
       row.physical_type === 'CONTAINER' && Number(row.physical_id) === Number(containerId)
     );
-    if (!item?.can_remove_from_pick_list) return;
-    if (!window.confirm(`Remove the Manager Pick List override for ${item.identity}? Schedule demand and movement truth are never removed here.`)) return;
+    if (!item?.can_remove_from_pick_list && !item?.can_remove_manager_override) return;
+    const scheduleRemains = Boolean(item.can_remove_manager_override);
+    const prompt = scheduleRemains
+      ? `Remove only the Manager override for ${item.identity}? Schedule-derived Pick List demand will remain.`
+      : `Remove ${item.identity} from the Pick List by cancelling its Manager override? Movement truth is never removed here.`;
+    if (!window.confirm(prompt)) return;
     try {
       const response = await fetch(
         `../api/setup/material-readiness/overrides/${encodeURIComponent(containerId)}`,
