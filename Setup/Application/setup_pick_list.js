@@ -20,6 +20,7 @@
   const overrideDestinationStage = document.getElementById('override-destination-stage');
   const overrideReason = document.getElementById('override-reason');
   const overrideMessage = document.getElementById('override-message');
+  const overrideTitle = document.getElementById('manager-override-title');
   const overrideSubmit = document.getElementById('override-submit');
   const overrideEditCancel = document.getElementById('override-edit-cancel');
 
@@ -104,10 +105,11 @@
     overrideContainerSearch.disabled = false;
     overrideContainerResults.hidden = true;
     overrideContainerResults.innerHTML = '';
-    overridePickBy.value = todayIso();
+    overridePickBy.value = noSundayPickDate(todayIso());
     overrideNeededFor.value = '';
     overrideDestinationStage.value = '';
     overrideReason.value = '';
+    if (overrideTitle) overrideTitle.textContent = 'Add Container to Pick List';
     if (overrideSubmit) overrideSubmit.textContent = 'Add Override';
     if (overrideEditCancel) overrideEditCancel.hidden = true;
   }
@@ -135,6 +137,7 @@
       ? ''
       : String(override.destination_stage_id);
     overrideReason.value = override.override_reason || '';
+    if (overrideTitle) overrideTitle.textContent = 'Edit Manager Pick Override';
     if (overrideSubmit) overrideSubmit.textContent = 'Update Override';
     if (overrideEditCancel) overrideEditCancel.hidden = false;
     overrideMessage.textContent = `Editing Manager override for Container ${containerId}. Change Pick By / Needed For and save.`;
