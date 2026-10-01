@@ -6,9 +6,12 @@ DO $validation$
 DECLARE
     v_session_id bigint;
     v_container_id integer;
+    v_workshop_container_id integer;
     v_destination_stage_id integer;
     v_override_id bigint;
     v_operator text;
+    v_movement_event_id bigint;
+    v_movement_uuid uuid;
 BEGIN
     IF to_regclass('ops.setup_pick_list_override') IS NULL THEN
         RAISE EXCEPTION 'Pick List override table is missing';
@@ -18,6 +21,12 @@ BEGIN
         'ops.set_setup_pick_list_override(text,integer,integer,date,date,integer,text,boolean)'
     ) IS NULL THEN
         RAISE EXCEPTION 'Pick List override command is missing';
+    END IF;
+
+    IF to_regprocedure(
+        'ops.record_setup_movement_event(text,integer,uuid,text,bigint,text,timestamptz,text,text,text,boolean,numeric,numeric,numeric,integer,text,text,bigint[],timestamptz,integer,text,text)'
+    ) IS NULL THEN
+        RAISE EXCEPTION 'Setup movement command is required for override-cancel preservation validation';
     END IF;
 
     SELECT ss.setup_session_id
@@ -31,9 +40,21 @@ BEGIN
     END IF;
 
     SELECT c.container_id
+      INTO v_workshop_container_id
+    FROM ref.container c
+    WHERE c.goes_to_endpoint_id = 1
+    ORDER BY c.container_id
+    LIMIT 1;
+
+    IF v_workshop_container_id IS NULL THEN
+        RAISE EXCEPTION 'A Workshop-marked Container is required for #206 override exclusion validation';
+    END IF;
+
+    SELECT c.container_id
       INTO v_container_id
     FROM ref.container c
-    WHERE NOT EXISTS (
+    WHERE c.goes_to_endpoint_id IS DISTINCT FROM 1
+      AND NOT EXISTS (
         SELECT 1
         FROM ops.setup_container_state cs
         WHERE cs.setup_session_id = v_session_id
@@ -57,6 +78,25 @@ BEGIN
     IF v_destination_stage_id IS NULL THEN
         RAISE EXCEPTION 'No governed destination Stage is available for disposable override validation';
     END IF;
+
+    BEGIN
+        PERFORM ops.set_setup_pick_list_override(
+            'gliebig@sheboyganlights.org',
+            2026,
+            v_workshop_container_id,
+            DATE '2026-12-29',
+            DATE '2026-12-30',
+            v_destination_stage_id,
+            '[PREVIEW ONLY] Workshop Container rejection',
+            true
+        );
+        RAISE EXCEPTION 'Workshop-marked Container was incorrectly accepted as Manager Pick List demand';
+    EXCEPTION
+        WHEN SQLSTATE '23514' THEN
+            IF SQLERRM NOT LIKE '%Workshop Containers cannot be added%' THEN
+                RAISE;
+            END IF;
+    END;
 
     BEGIN
         PERFORM ops.set_setup_pick_list_override(
@@ -110,6 +150,28 @@ BEGIN
         RAISE EXCEPTION 'Manager override row did not retain required session/container/timing/audit state';
     END IF;
 
+    v_movement_uuid := md5(clock_timestamp()::text || random()::text)::uuid;
+
+    SELECT r.setup_movement_event_id
+      INTO v_movement_event_id
+    FROM ops.record_setup_movement_event(
+        p_email => 'gliebig@sheboyganlights.org',
+        p_season_year => 2026,
+        p_client_event_id => v_movement_uuid,
+        p_asset_type => 'CONTAINER',
+        p_asset_id => v_container_id,
+        p_movement_action => 'PICKED',
+        p_occurred_at => clock_timestamp(),
+        p_device_id => 'DISPOSABLE-OVERRIDE-CANCEL',
+        p_captured_operator_email => 'gliebig@sheboyganlights.org',
+        p_capture_method => 'MANUAL_ENTRY',
+        p_notes => '[PREVIEW ONLY] prove physical movement survives override cancellation'
+    ) r;
+
+    IF v_movement_event_id IS NULL THEN
+        RAISE EXCEPTION 'Disposable movement evidence was not created before override cancellation';
+    END IF;
+
     PERFORM ops.set_setup_pick_list_override(
         'gliebig@sheboyganlights.org',
         2026,
@@ -120,6 +182,27 @@ BEGIN
         NULL,
         false
     );
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM ops.setup_movement_event me
+        WHERE me.setup_movement_event_id = v_movement_event_id
+          AND me.container_id = v_container_id
+          AND me.event_type = 'PICKED'
+    ) THEN
+        RAISE EXCEPTION 'Canceling Manager override incorrectly removed physical movement history';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM ops.setup_container_state cs
+        WHERE cs.setup_session_id = v_session_id
+          AND cs.container_id = v_container_id
+          AND cs.last_movement_event_id = v_movement_event_id
+          AND cs.movement_status = 'PICKED'
+    ) THEN
+        RAISE EXCEPTION 'Canceling Manager override incorrectly changed current Container movement state';
+    END IF;
 
     IF EXISTS (
         SELECT 1
