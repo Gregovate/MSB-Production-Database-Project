@@ -52,10 +52,8 @@ body.pick-training-mode #exit-pick-training{min-height:30px;padding:.2rem .5rem;
 .pick-mode-meta{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-top:.65rem;font-weight:800}
 .movement-select{display:none}
 body.pick-mode-active .movement-select{display:inline-block;margin-top:.45rem}
-body.pick-mode-active #manager-override-panel,
-body.pick-mode-active #manager-pick-lookup{display:none!important}
-body.pick-mode-active .delay-pick,body.pick-mode-active .resume-pick,body.pick-mode-active .edit-override,body.pick-mode-active .cancel-override{display:none!important}
-body.pick-mode-active #print-button,body.pick-mode-active #start-pick-mode,body.pick-mode-active #start-park-mode{display:none!important}
+body.pick-mode-active .delay-pick,body.pick-mode-active .resume-pick{display:none!important}
+body.pick-mode-active #print-button,body.pick-mode-active #start-pick-mode,body.pick-mode-active #start-park-mode,body.pick-mode-active #manager-material-status-link{display:none!important}
 
 /* While scanning, keep only operator-critical navigation above the compact picker. */
 body.pick-mode-active .page-header{padding:.2rem 1rem;justify-content:flex-end;align-items:center}
