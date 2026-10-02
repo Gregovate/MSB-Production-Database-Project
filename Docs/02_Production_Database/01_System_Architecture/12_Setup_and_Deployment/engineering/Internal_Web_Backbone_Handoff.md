@@ -5,7 +5,7 @@
 | Document Type | Internal Web Backbone Integration Handoff |
 | Source System | Production Database — Setup and Deployment |
 | Consuming System | `Gregovate/MSB-Internal-Web-Backbone` |
-| Status | CURRENT HANDOFF — source Setup state reconciled through V0.3.22 live 2026 scheduling / field execution / Pick List |
+| Status | CURRENT HANDOFF — source Setup state reconciled through V0.3.34 live 2026 scheduling / field execution / material status / movement |
 | Owner | MSB Production Database / Setup documentation owner |
 | Last Reviewed | 2026-09-30 |
 
@@ -36,7 +36,7 @@ post-deployment invariants            = PASS
 
 The **runtime and 2026 Scheduling Board are accepted**. The real 2026 Setup Session is now the current annual planning/execution context. 2025 Historical Verification remains available only for intentional historical/review work. Backbone navigation must lead with current 2026 Setup work rather than presenting 2025 review/training as the primary Setup action.
 
-Current accepted operator workflows also include **Perform Work / Report Work**, **Report Correction -> Work Order Intake**, and the **Rolling Pick List / Pick Delay** release. The current Production application identity is **V0.3.22-pick-list-delay**. Persisted physical PICKED/movement execution remains separate.
+Current accepted operator workflows also include **Perform Work / Report Work**, **Report Correction -> Work Order Intake**, **Rolling Pick List / Pick Delay**, persisted Setup movement capture, and **Manager Material Status**. The current Production application identity is **V0.3.34-scheduling-readiness-fixes**.
 
 ## Canonical Operator Portal
 
@@ -166,7 +166,7 @@ Secondary historical action when useful:
 Review 2025 Setup History
 ```
 
-Do not label the application as a prototype. The annual Scheduling Board, Perform Work / Report Work, Report Correction intake, and Rolling Pick List / Pick Delay workflows are live Production software. Persisted physical movement/scanning remains under its owning workstream.
+Do not label the application as a prototype. The annual Scheduling Board, Perform Work / Report Work, Report Correction intake, Rolling Pick List / Pick Delay, persisted movement capture, and Manager Material Status workflows are live Production software.
 
 ## Search / Discovery Metadata
 
@@ -233,9 +233,9 @@ Engineering material may remain available through a clearly separated contributo
 
 ## Current Feature Boundary
 
-The Rolling Pick List and transient Pick Delay are current Production workflows and may be exposed in operator navigation.
+The Rolling Pick List, transient Pick Delay, persisted Setup movement capture, and Manager Material Status are current Production workflows and may be exposed in operator navigation.
 
-Do **not** describe the Pick List as proof that material physically moved or was picked. Persisted physical PICKED/movement execution and Container/Display movement/scanning writes remain separate work.
+Do **not** treat schedule or Pick List demand as proof of physical movement. Physical movement truth remains the persisted Setup movement/observation state recorded through the accepted movement workflow.
 
 ## Backbone Implementation
 
@@ -277,7 +277,7 @@ Backbone integration is VERIFIED only when all applicable checks pass:
 ## Backbone State
 
 ```text
-SOURCE FOLLOW-UP REQUIRED — existing Production landing copy predates the live 2026 Scheduling Board / Perform Work / Report Correction / V0.3.22 Pick List workflow
+SOURCE FOLLOW-UP REQUIRED — existing Production landing copy may still predate the live V0.3.34 2026 Scheduling / Perform Work / Report Correction / Pick List / movement / Manager Material Status workflow
 ```
 
 The canonical source documentation is current through the accepted 2026 operator workflow. Backbone presentation must be refreshed from this handoff and then live-verified through its controlled one-file publish process.
