@@ -6,12 +6,13 @@
 | Document type | Engineering operations and recovery runbook |
 | Status | CURRENT — PRINT-SERVER production deployment accepted 2026-08-25 |
 | Owner | MSB Database Administrator |
-| Initial release / current revision | 2026-08-17 / 2026-08-25 |
+| Initial release / current revision | 2026-08-17 / 2026-10-02 |
 
 ## Revision History
 
 | Date | Change |
 |---|---|
+| 2026-10-02 | Corrected the normal repository-upgrade section to name PRINT-SERVER / Print Service as the active production host, recorded the already-accepted V1.7.0 baseline from #77/#78, and removed stale Office-PC/logon wording that blocked a governed V1.7.1 hotfix deployment. |
 | 2026-08-25 | Corrected the false Session-0 Google Drive conclusion; recorded the required Print Service autologon, completed V1.6.0 cutover, reboot/parser/ingest/Run 13 acceptance, and remaining startup limitations. |
 | 2026-08-25 | Recorded the initial PRINT-SERVER Session-0 path probe and added the V1.6.0 `PrintServerUnattended` installation and cutover procedure. |
 | 2026-08-25 | Recorded the Office Desktop as a temporary/test host and PRINT-SERVER as the approved permanent production host; added transfer prerequisites and acceptance boundary. |
@@ -40,7 +41,7 @@ Production host: PRINT-SERVER (192.168.5.56)
 Permanent account: PRINT-SERVER\Print Service
 Repository: C:\MSB_LORRunner
 Listener: 192.168.5.56:8791
-Runner: V1.6.0
+Runner: V1.7.0
 Transfer status: PRODUCTION ACCEPTED
 ```
 
@@ -230,7 +231,7 @@ A healthy result must show:
 - protected runner token `AVAILABLE`;
 - protected PostgreSQL ingest credential `AVAILABLE`;
 - runner health `ok`; and
-- runner version `V1.6.0` or the later version documented by the deployed
+- runner version `V1.7.0` or the later version documented by the deployed
   release.
 
 The displayed credential fingerprint is not a secret. It is safe to use when
@@ -239,19 +240,31 @@ copy the token itself.
 
 ## Normal Restart or Repository Upgrade
 
+Production authority for this section is the accepted PRINT-SERVER deployment:
+
+```text
+Host: PRINT-SERVER
+Account: PRINT-SERVER\Print Service
+Repository: C:\MSB_LORRunner
+Profile: PrintServerUnattended
+```
+
 Do not restart while the parser or ingest is running.
 
-1. Pull the reviewed repository change on the Office PC.
-2. Run the release's required Python tests and PowerShell syntax check.
-3. From the repository root, run:
+1. In the interactive Print Service session on PRINT-SERVER, confirm Google
+   Drive is mounted and work from `C:\MSB_LORRunner`.
+2. Pull the reviewed repository change into the existing production checkout.
+   Do not re-pair Linux merely because source code changed.
+3. Run the release's required Python tests and PowerShell syntax check.
+4. From the repository root, run:
 
    ```powershell
    .\run_lor_runner.ps1 -Action Install
    ```
 
-4. When an existing protected token is retained, do not run `PairServer`.
-5. Run `Status` and require a healthy local result.
-6. Confirm the LOR2DB dashboard shows the same runner version.
+5. When the existing protected token is retained, do not run `PairServer`.
+6. Run `Status` and require a healthy local result.
+7. Confirm the LOR2DB dashboard shows the same runner version.
 
 `Install` safely stops only the managed runner process whose command line
 matches this repository, listener address, and port. It refuses to stop an
@@ -266,7 +279,9 @@ For a deliberate stop or start:
 .\run_lor_runner.ps1 -Action Status
 ```
 
-Normally the Scheduled Task starts the runner automatically at user logon.
+The production Scheduled Task uses the `PrintServerUnattended` startup profile
+with a one-minute delay. The accepted boot dependency remains Print Service
+Autologon followed by the interactive Google Drive `G:` mount.
 
 ## After a Reboot or Windows Update
 
