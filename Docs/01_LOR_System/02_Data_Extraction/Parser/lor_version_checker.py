@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-CHECKER_VERSION = "V1.4.0"
+CHECKER_VERSION = "V1.4.1"
 MANIFEST_VERSION = 4
 CRITICAL_ELEMENTS = {"PreviewClass", "Scene", "PropClass"}
 UUID_RE = re.compile(
@@ -530,8 +530,15 @@ def compare_file_contracts(
             ))
             continue
         if identity not in new_files:
+            # Removing an entire PreviewClass under the already-approved LOR
+            # version is source-set maintenance, not evidence of a new XML
+            # schema. Keep the loss visible for operator review because an
+            # accidentally unsynchronized file can look identical here, but
+            # reserve parser-breaking BLOCKING severity for cross-version
+            # compatibility review.
+            removal_severity = "REVIEW" if same_version else "BLOCKING"
             findings.append(Finding(
-                "BLOCKING", "preview set",
+                removal_severity, "preview set",
                 f"Approved preview identity removed: {old_files[identity]['filename']} ({identity}).",
             ))
             continue
