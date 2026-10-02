@@ -60,6 +60,19 @@ class ApprovedVersionMaintenanceTests(unittest.TestCase):
         manifest = checker.build_manifest(folder, version, filename)
         return temporary, manifest
 
+    def manifest_files(
+        self,
+        files: dict[str, str],
+        version: str = "6.6.10",
+        deep_preview: str = "Master.lorprev",
+    ):
+        temporary = tempfile.TemporaryDirectory()
+        folder = Path(temporary.name)
+        for filename, xml in files.items():
+            (folder / filename).write_text(xml, encoding="utf-8")
+        manifest = checker.build_manifest(folder, version, deep_preview)
+        return temporary, manifest
+
     def compare(self, old_xml: str, new_xml: str, new_version: str = "6.6.10"):
         old_temp, baseline = self.manifest(old_xml)
         new_temp, candidate = self.manifest(new_xml, new_version)
@@ -122,6 +135,84 @@ class ApprovedVersionMaintenanceTests(unittest.TestCase):
         self.assertTrue(all(finding.severity == "INFO" for finding in findings))
         self.assertEqual(report["status"], "PASSED")
         self.assertFalse(report["approval_blocked"])
+
+    def test_same_version_complete_preview_replacement_is_review_not_blocking(self) -> None:
+        stable = preview(BLANK_DISPLAY)
+        old_sign = preview().replace(
+            "11111111-1111-4111-8111-111111111111",
+            "44444444-4444-4444-8444-444444444444",
+        )
+        new_sign_one = preview().replace(
+            "11111111-1111-4111-8111-111111111111",
+            "55555555-5555-4555-8555-555555555555",
+        )
+        new_sign_two = preview().replace(
+            "11111111-1111-4111-8111-111111111111",
+            "66666666-6666-4666-8666-666666666666",
+        )
+
+        old_temp, baseline = self.manifest_files({
+            "Master.lorprev": stable,
+            "Show Background Stage 01 FE Open-Close Sign.lorprev": old_sign,
+        })
+        new_temp, candidate = self.manifest_files({
+            "Master.lorprev": stable,
+            "Show Background Stage 01 FE Open-Close Sign RGB 01.lorprev": new_sign_one,
+            "Show Background Stage 01 FE Open-Close Sign RGB 02.lorprev": new_sign_two,
+        })
+        self.addCleanup(old_temp.cleanup)
+        self.addCleanup(new_temp.cleanup)
+
+        findings = checker.compare_manifests(baseline, candidate)
+        preview_set_findings = [
+            finding for finding in findings if finding.area == "preview set"
+        ]
+
+        self.assertTrue(any(
+            finding.severity == "REVIEW"
+            and "Approved preview identity removed" in finding.message
+            for finding in preview_set_findings
+        ))
+        self.assertEqual(
+            2,
+            sum(
+                finding.severity == "REVIEW"
+                and "New preview identity/file" in finding.message
+                for finding in preview_set_findings
+            ),
+        )
+        self.assertFalse(any(
+            finding.severity == "BLOCKING" for finding in findings
+        ))
+
+    def test_different_version_complete_preview_removal_stays_blocking(self) -> None:
+        stable = preview(BLANK_DISPLAY)
+        old_sign = preview().replace(
+            "11111111-1111-4111-8111-111111111111",
+            "44444444-4444-4444-8444-444444444444",
+        )
+        new_sign = preview().replace(
+            "11111111-1111-4111-8111-111111111111",
+            "55555555-5555-4555-8555-555555555555",
+        )
+
+        old_temp, baseline = self.manifest_files({
+            "Master.lorprev": stable,
+            "Show Background Stage 01 FE Open-Close Sign.lorprev": old_sign,
+        })
+        new_temp, candidate = self.manifest_files({
+            "Master.lorprev": stable,
+            "Show Background Stage 01 FE Open-Close Sign RGB.lorprev": new_sign,
+        }, version="6.6.11")
+        self.addCleanup(old_temp.cleanup)
+        self.addCleanup(new_temp.cleanup)
+
+        findings = checker.compare_manifests(baseline, candidate)
+        self.assertTrue(any(
+            finding.severity == "BLOCKING"
+            and "Approved preview identity removed" in finding.message
+            for finding in findings
+        ))
 
     def test_different_version_keeps_the_same_content_differences_strict(self) -> None:
         findings, report = self.compare(
