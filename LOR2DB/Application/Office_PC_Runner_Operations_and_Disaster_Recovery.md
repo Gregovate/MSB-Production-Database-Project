@@ -12,6 +12,7 @@
 
 | Date | Change |
 |---|---|
+| 2026-10-02 | Added the bounded source-only restart variant for an unchanged existing PRINT-SERVER task definition so SSH-key administration can reuse the registered Password-logon task without re-entering the task password. |
 | 2026-10-02 | Corrected the normal repository-upgrade section to name PRINT-SERVER / Print Service as the active production host, recorded the already-accepted V1.7.0 baseline from #77/#78, and removed stale Office-PC/logon wording that blocked a governed V1.7.1 hotfix deployment. |
 | 2026-08-25 | Corrected the false Session-0 Google Drive conclusion; recorded the required Print Service autologon, completed V1.6.0 cutover, reboot/parser/ingest/Run 13 acceptance, and remaining startup limitations. |
 | 2026-08-25 | Recorded the initial PRINT-SERVER Session-0 path probe and added the V1.6.0 `PrintServerUnattended` installation and cutover procedure. |
@@ -282,6 +283,48 @@ For a deliberate stop or start:
 The production Scheduled Task uses the `PrintServerUnattended` startup profile
 with a one-minute delay. The accepted boot dependency remains Print Service
 Autologon followed by the interactive Google Drive `G:` mount.
+
+### Bounded source-only restart with unchanged task registration
+
+When a reviewed LOR runner release changes only source loaded by the existing
+registered task and does **not** change the task account, trigger, logon type,
+run level, working directory, listener, deployment profile, or protected
+credential/pairing contract, do not re-register the task merely to reload
+Python source.
+
+This variant is allowed only when all of the following have been proven in the
+current workstream:
+
+- the existing `MSB LOR Operator Runner` task definition matches the accepted
+  PRINT-SERVER contract;
+- the task is already registered under `Print Service` with Password logon and
+  Highest run level;
+- the runner token and PostgreSQL ingest credential are both available;
+- Google Drive and `runner-state.json` are available;
+- neither parser nor ingest activity is `RUNNING`;
+- the exact source candidate has passed the required Python regression and
+  PowerShell syntax checks; and
+- the source delta has been bounded to the intended LOR runtime files.
+
+Use:
+
+```powershell
+.\run_lor_runner.ps1 -Action Stop
+Start-ScheduledTask -TaskName 'MSB LOR Operator Runner'
+Start-Sleep -Seconds 3
+.\run_lor_runner.ps1 -Action Status
+```
+
+The first command uses the launcher's existing safety checks to refuse the stop
+while parser/ingest is running and to stop only the managed runner listener.
+Starting the already-registered Scheduled Task then reuses its stored Windows
+task credential and existing DPAPI pairing material. Do not run
+`PairServer`.
+
+If the task definition itself changed, the task is missing, the deployment
+profile changed, a protected credential must be replaced, or the bounded
+restart does not return healthy status, stop and use the full `Install`
+procedure instead. Do not improvise a task-registration repair.
 
 ## After a Reboot or Windows Update
 
