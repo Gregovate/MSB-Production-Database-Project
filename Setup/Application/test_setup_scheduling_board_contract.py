@@ -337,6 +337,24 @@ def test_205_am_to_pm_spillover_is_advisory_not_a_third_shift() -> None:
     assert '<option value="ALL_DAY">All Day</option>' not in ui
 
 
+def test_205_scheduled_task_finder_locates_existing_schedule_assignments() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "Find scheduled task" in ui
+    assert 'id="setup-board205-scheduled-search"' in ui
+    assert 'id="setup-board205-scheduled-search-results"' in ui
+    assert "function board205ScheduledSearchMatches" in ui
+    assert "function board205RevealScheduledAssignment" in ui
+    assert "function board205RenderScheduledSearch" in ui
+    assert "board205CompareAssignmentOrder" in ui
+    assert "Task name or Task #" in ui
+    assert "scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })" in ui
+    assert "scheduled-search-hit" in ui
+    assert ".setup-board205-scheduled-search" in css
+    assert ".setup-board205-assignment.scheduled-search-hit" in css
+
+
 def test_122_schedule_board_compacts_crew_controls_and_prints_operational_board() -> None:
     ui = read_app("setup_scheduling_board.js")
     css = read_app("setup_scheduling_board.css")
@@ -759,7 +777,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
     assert "setup_scheduling_board.css?v=2026-10-01.1" in html
-    assert "setup_scheduling_board.js?v=2026-10-02.1" in html
+    assert "setup_scheduling_board.js?v=2026-10-02.2" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
