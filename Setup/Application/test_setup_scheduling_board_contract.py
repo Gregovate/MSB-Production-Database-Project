@@ -614,6 +614,25 @@ def test_205_existing_season_gate_can_reconcile_annual_placement_without_rewriti
     assert "previous_downstream_session_task_id=nullable_int(" in api
 
 
+
+def test_205_quick_readiness_uses_existing_governed_readiness_command() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    repository = read_app("setup_scheduling_board_repository.py")
+
+    quick = ui.split("async function board205SetReadiness(task)", 1)[1].split(
+        "async function board205AddCrew", 1
+    )[0]
+    assert "/readiness" in quick
+    assert "/annual-hold" not in quick
+    assert "readiness_note" not in quick
+
+    set_readiness = repository.split("def set_readiness(", 1)[1].split(
+        "def set_dependency(", 1
+    )[0]
+    assert "ops.set_setup_annual_task_readiness" in set_readiness
+    assert "FOR UPDATE" not in set_readiness
+
+
 def test_205_annual_hold_is_season_only_and_uses_one_governed_command() -> None:
     ui = read_app("setup_scheduling_board.js")
     api = read_app("setup_scheduling_board_api.py")
