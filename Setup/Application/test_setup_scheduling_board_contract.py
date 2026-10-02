@@ -153,6 +153,8 @@ def test_205_work_day_crews_are_dynamic_and_shift_specific() -> None:
     assert "+ Add Crew" in ui
     assert "am_planned_crew_count" in ui
     assert "pm_planned_crew_count" in ui
+    assert "AM Crew w/Captain" in ui
+    assert "PM Crew w/Captain" in ui
     assert "setup-board205-crew-captain-select" in ui
     assert "preserve the Crew Captain as history" in sql
     assert "preserve the planned AM crew count as history" in sql
