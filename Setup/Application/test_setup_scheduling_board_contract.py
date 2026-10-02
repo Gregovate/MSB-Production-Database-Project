@@ -816,11 +816,10 @@ def test_122_b1a_finder_explains_blocker_classes() -> None:
     ui = read_app("setup_scheduling_board.js")
 
     assert "function board205BlockerDetails(task, deps)" in ui
+    assert "Readiness condition · soft" not in ui
     assert "Hard predecessor" in ui
-    assert "Readiness condition · soft" in ui
     assert "Work Order gate" in ui
     assert "Complete first:" in ui
-    assert "keep visible for operator judgement; mark Ready when the condition is actually met." in ui
     assert "clear when that Work Order is completed." in ui
 
 
