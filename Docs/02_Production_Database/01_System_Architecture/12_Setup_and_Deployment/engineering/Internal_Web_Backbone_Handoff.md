@@ -5,7 +5,7 @@
 | Document Type | Internal Web Backbone Integration Handoff |
 | Source System | Production Database — Setup and Deployment |
 | Consuming System | `Gregovate/MSB-Internal-Web-Backbone` |
-| Status | CURRENT HANDOFF — source Setup state reconciled through V0.3.33 live 2026 scheduling / field execution / movement / Manager Material Status |
+| Status | CURRENT HANDOFF — source Setup state reconciled through V0.3.22 live 2026 scheduling / field execution / Pick List |
 | Owner | MSB Production Database / Setup documentation owner |
 | Last Reviewed | 2026-09-30 |
 
