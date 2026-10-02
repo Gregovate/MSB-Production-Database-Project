@@ -342,8 +342,8 @@ def test_122_schedule_board_compacts_crew_controls_and_prints_operational_board(
     css = read_app("setup_scheduling_board.css")
 
     assert "Crew / Captain / Volunteers" in ui
-    assert ">AM Crew <" in ui
-    assert ">PM Crew <" in ui
+    assert ">AM Crew w/Captain <" in ui
+    assert ">PM Crew w/Captain <" in ui
     assert "setup-board205-crew-title-row" in ui
     assert '<button type="button" class="small setup-board205-save-crew">Save</button>' in ui
     assert "secondary setup-board205-save-crew" not in ui
@@ -759,7 +759,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
     assert "setup_scheduling_board.css?v=2026-10-01.1" in html
-    assert "setup_scheduling_board.js?v=2026-09-29.5" in html
+    assert "setup_scheduling_board.js?v=2026-10-02.1" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
