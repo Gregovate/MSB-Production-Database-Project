@@ -38,6 +38,57 @@ Each deployment entry must record, when applicable:
 
 Documentation-only repository changes that do not alter Production do not require a deployment entry.
 
+## 2026-10-01 — Setup V0.3.34-scheduling-readiness-fixes
+
+**Subsystem:** Setup and Deployment  
+**Owning work:** #205 under #122  
+**Production result:** PASS
+
+### Changes deployed
+
+- Restored inline Mark Ready / Mark Not Ready to the existing governed annual-readiness command after the newer Annual Readiness path caused an app-role row-lock permission failure.
+- Added migration 067 with governed SECURITY DEFINER `ops.set_setup_annual_hold(text,bigint,boolean,text)` for annual note + explicit READY / NOT_READY changes without granting broad UPDATE on `ops.setup_session_task`.
+- Removed duplicate readiness wording from Scheduling task cards.
+- Removed the persistent informational Production banner while retaining actionable save/error feedback.
+- Expanded Plan / Schedule to use available desktop width, with additional wide-screen space directed primarily to the board / AM / PM lanes while preserving the <=1100px stacked layout.
+
+### Identity
+
+```text
+visible Production version = V0.3.34-scheduling-readiness-fixes
+accepted/deployed application SHA = e103eedbf8caaf580ce6fe5df392fbd68c0cb7f4
+application PR #281 merge = 8e0e40f73038d16452034d7b2c44846b89bdaed8
+deployment tooling PR #283 merge / main = 64de3d2cfac17ad8688a47a3fd6d227d47e7745c
+migration = Setup/Database/067_fix_setup_annual_hold_command.sql
+migration blob = ee2e9417efc22a9821258df0522a7f518117b5e8
+```
+
+### Production acceptance
+
+```text
+marker = SETUP #205 V0.3.34 SETUP/POSTGRESQL PRODUCTION DEPLOYMENT WRAPPER: PASS
+governed Setup fingerprint before/after = 9951600040f7b01c75b8c104b4ddeb8c unchanged
+2026 Setup Session count before/after = 1 unchanged
+exit status = 0
+```
+
+Rollback/evidence:
+
+```text
+rollback archive = /home/msbadmin/backups/setup-205/msb-pre-setup-205-v034-20261002T005512.dump
+rollback SHA256 = 7d2017c6f55993b7464d10ccbd3b80f0fe85ff1fac866f6521d63e50b1e01f66
+deployment report = /home/msbadmin/setup-deployment-reports/Setup_205_V034_Production_Deploy_20261002T005512.txt
+```
+
+Pre-Production acceptance:
+
+- full Setup/Application regression: 654 passed in 1.85s;
+- reusable disposable acceptance: CLEAN EXIT;
+- exact-candidate browser review: operator PASS;
+- reusable disposable browser preview: CLEAN EXIT.
+
+---
+
 ## 2026-10-01 — Setup V0.3.33-material-status-review-fixes
 
 **Subsystem:** Setup and Deployment  
