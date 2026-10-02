@@ -416,6 +416,96 @@ function board205DayViewState(day) {
   return hasUnfinished ? 'UNFINISHED' : 'COMPLETED';
 }
 
+function board205ScheduledSearchMatches(query = null) {
+  const raw = query == null
+    ? document.getElementById('setup-board205-scheduled-search')?.value
+    : query;
+  const search = String(raw || '').trim().toLowerCase();
+  if (!search) return [];
+
+  return [...(setupBoard205State.board.assignments || [])]
+    .filter((item) => {
+      const task = board205Task(item.setup_session_task_id) || item;
+      const haystack = [
+        task.task_name || item.task_name || '',
+        task.setup_task_id == null ? '' : String(task.setup_task_id),
+        task.setup_task_id == null ? '' : `task ${task.setup_task_id}`
+      ].join(' ').toLowerCase();
+      return haystack.includes(search);
+    })
+    .sort(board205CompareAssignmentOrder);
+}
+
+function board205ScheduledSearchLabel(item) {
+  const task = board205Task(item.setup_session_task_id) || item;
+  const day = (setupBoard205State.board.work_days || []).find(
+    (row) => Number(row.setup_work_day_id) === Number(item.setup_work_day_id)
+  );
+  const crew = board205CrewRow(item.setup_work_day_crew_id);
+  const shift = item.shift_code === 'MORNING'
+    ? 'AM'
+    : item.shift_code === 'AFTERNOON'
+      ? 'PM'
+      : 'All Day';
+  const taskId = task.setup_task_id == null ? 'annual-only' : task.setup_task_id;
+  return `Task ${taskId} · ${task.task_name || item.task_name || 'Unnamed task'} — Day ${day?.setup_day_number ?? '—'} · ${day?.work_date || 'date TBD'} · Crew ${crew?.crew_code || '—'} · ${shift}`;
+}
+
+function board205RevealScheduledAssignment(item) {
+  if (!item) return;
+  const day = (setupBoard205State.board.work_days || []).find(
+    (row) => Number(row.setup_work_day_id) === Number(item.setup_work_day_id)
+  );
+  if (day) {
+    const state = board205DayViewState(day);
+    const unfinished = document.getElementById('setup-board205-show-unfinished-days');
+    const completed = document.getElementById('setup-board205-show-completed-days');
+    const empty = document.getElementById('setup-board205-show-empty-days');
+    if (state === 'UNFINISHED' && unfinished) unfinished.checked = true;
+    if (state === 'COMPLETED' && completed) completed.checked = true;
+    if (state === 'EMPTY' && empty) empty.checked = true;
+  }
+
+  board205RenderBoard();
+  window.requestAnimationFrame(() => {
+    const card = document.querySelector(
+      `.setup-board205-assignment[data-assignment-id="${Number(item.setup_work_day_task_id)}"]`
+    );
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    card.classList.add('scheduled-search-hit');
+    window.setTimeout(() => card.classList.remove('scheduled-search-hit'), 2600);
+  });
+}
+
+function board205RenderScheduledSearch() {
+  const target = document.getElementById('setup-board205-scheduled-search-results');
+  if (!target) return;
+  const input = document.getElementById('setup-board205-scheduled-search');
+  const search = String(input?.value || '').trim();
+  if (!search) {
+    target.innerHTML = '';
+    return;
+  }
+
+  const matches = board205ScheduledSearchMatches(search);
+  target.innerHTML = matches.length
+    ? matches.map((item) => `
+        <button type="button" class="setup-board205-scheduled-search-result"
+          data-assignment-id="${board205Esc(item.setup_work_day_task_id)}">
+          ${board205Esc(board205ScheduledSearchLabel(item))}
+        </button>`
+      ).join('')
+    : '<div class="setup-board205-scheduled-search-empty">No scheduled task matches that search.</div>';
+
+  target.querySelectorAll('.setup-board205-scheduled-search-result').forEach((button) => {
+    button.addEventListener('click', () => {
+      const item = board205Assignment(Number(button.dataset.assignmentId || 0));
+      board205RevealScheduledAssignment(item);
+    });
+  });
+}
+
 function board205VisibleDays() {
   const showUnfinished = document.getElementById('setup-board205-show-unfinished-days')?.checked !== false;
   const showCompleted = Boolean(document.getElementById('setup-board205-show-completed-days')?.checked);
@@ -1601,6 +1691,7 @@ function board205Render() {
   if (!historicalReview) {
     board205RenderWorkDayCalendar();
     board205RenderBoard();
+    board205RenderScheduledSearch();
     board205PopulateDialogSelects();
   }
 }
@@ -2671,6 +2762,11 @@ function board205InstallView() {
                 <button id="setup-board205-print" type="button" class="small">Print Schedule</button>
               </div>
               <p class="muted">Each work day starts with Crew A. Add crews only when needed. Schedule in AM/PM shifts; planned headcount is optional by crew and shift. Historical actual assignments are locked.</p>
+              <div class="setup-board205-scheduled-search">
+                <label for="setup-board205-scheduled-search">Find scheduled task</label>
+                <input id="setup-board205-scheduled-search" type="search" autocomplete="off" placeholder="Task name or Task #">
+                <div id="setup-board205-scheduled-search-results" class="setup-board205-scheduled-search-results" aria-live="polite"></div>
+              </div>
               <div class="setup-board205-day-filters" aria-label="Day view">
                 <strong>Day view</strong>
                 <label><input id="setup-board205-show-unfinished-days" type="checkbox" checked> Scheduled / unfinished</label>
@@ -2847,6 +2943,15 @@ function board205InstallView() {
   });
   document.querySelectorAll('.setup-board205-day-filters input').forEach((control) => {
     control.addEventListener('change', board205RenderBoard);
+  });
+  const scheduledSearch = document.getElementById('setup-board205-scheduled-search');
+  scheduledSearch?.addEventListener('input', board205RenderScheduledSearch);
+  scheduledSearch?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    const first = board205ScheduledSearchMatches()[0];
+    if (!first) return;
+    event.preventDefault();
+    board205RevealScheduledAssignment(first);
   });
   document.querySelectorAll('.setup-board205-backlog, .setup-board205-board').forEach((pane) => {
     pane.addEventListener('dragover', (event) => board205AutoScrollPane(pane, event), true);
