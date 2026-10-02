@@ -63,6 +63,7 @@ function commandOptions(method, body) {
 
 function setAlert(message, state = 'ok') {
   const target = el('app-alert');
+  target.hidden = false;
   target.textContent = message;
   target.dataset.state = state;
 }
@@ -181,6 +182,7 @@ function sortedTasks(tasks = appState.tasks) {
 }
 
 function showView(name) {
+  document.body.classList.toggle('setup-schedule-view', name === 'schedule');
   document.querySelectorAll('.tab').forEach((button) => {
     button.classList.toggle('active', button.dataset.view === name);
   });
@@ -789,12 +791,12 @@ async function loadSeason(year) {
     renderSummary();
     renderReviewList();
     renderLibrary();
-    setAlert(
-      season?.setup_session_id
-        ? `${appState.seasonYear} Setup Session loaded from Production. Changes made by authorized Managers are shared immediately.`
-        : `${appState.seasonYear} has no annual Setup Session yet. The reusable catalog remains available.`,
-      'ok'
-    );
+    const alert = el('app-alert');
+    if (alert) {
+      alert.hidden = true;
+      alert.textContent = '';
+      delete alert.dataset.state;
+    }
   } catch (error) {
     setAlert(error.message || error, 'error');
     throw error;
