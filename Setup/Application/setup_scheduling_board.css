@@ -456,6 +456,52 @@
   margin: 0;
 }
 
+.setup-board205-scheduled-search {
+  display: grid;
+  grid-template-columns: minmax(9rem, auto) minmax(14rem, 1fr);
+  gap: 0.35rem 0.55rem;
+  align-items: center;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.5rem;
+  background: var(--soft, #f5f8fb);
+}
+
+.setup-board205-scheduled-search label {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.setup-board205-scheduled-search input {
+  min-width: 0;
+  width: 100%;
+}
+
+.setup-board205-scheduled-search-results {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.setup-board205-scheduled-search-result {
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+  min-height: 2.2rem;
+  padding: 0.42rem 0.55rem;
+}
+
+.setup-board205-scheduled-search-empty {
+  color: var(--muted, #64748b);
+  font-size: 0.8rem;
+}
+
+.setup-board205-assignment.scheduled-search-hit {
+  outline: 3px solid var(--accent, #0b6ea8);
+  outline-offset: 2px;
+}
+
 .setup-board205-day-filters {
   display: flex;
   flex-wrap: wrap;
@@ -933,7 +979,8 @@
   }
 
   .setup-board205-primary-filters,
-  .setup-board205-work-order-picker {
+  .setup-board205-work-order-picker,
+  .setup-board205-scheduled-search {
     grid-template-columns: 1fr;
   }
 }
@@ -960,6 +1007,7 @@
   #schedule-view .setup-board205-backlog,
   #schedule-view .setup-board205-day-form,
   #schedule-view .setup-board205-day-filters,
+  #schedule-view .setup-board205-scheduled-search,
   #schedule-view .setup-board205-board-heading p,
   #schedule-view button,
   #schedule-view .setup-board205-cell-empty {
