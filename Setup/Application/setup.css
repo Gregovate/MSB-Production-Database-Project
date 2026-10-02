@@ -73,6 +73,13 @@ button { cursor: pointer; }
 
 main { max-width: 1500px; margin: 0 auto; padding: 18px 20px 48px; }
 
+@media (min-width: 1101px) {
+  body.setup-schedule-view main {
+    max-width: none;
+    width: 100%;
+  }
+}
+
 .notice {
   background: #fffbe8;
   border: 1px solid #eadc92;
