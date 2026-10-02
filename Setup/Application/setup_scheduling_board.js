@@ -1635,11 +1635,8 @@ async function board205SetReadiness(task) {
   try {
     setBusy(true);
     await api(
-      `api/setup/scheduling-board/season-tasks/${task.setup_session_task_id}/annual-hold`,
-      commandOptions('PATCH', {
-        ready,
-        readiness_note: task.readiness_note || null
-      })
+      `api/setup/scheduling-board/season-tasks/${task.setup_session_task_id}/readiness`,
+      commandOptions('PATCH', { ready })
     );
     await board205Load();
     setAlert(ready ? 'Annual readiness marked Ready.' : 'Annual readiness marked Not Ready.', 'ok');
