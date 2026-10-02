@@ -129,7 +129,7 @@ cleanup() {
 
         if [[ "$DB_MIGRATION_COMMITTED" -eq 1 ]]; then
             echo "Migration 067 reached committed state and is intentionally not auto-restored."
-            echo "The replacement function keeps the same signature and is backward-compatible with the prior application."
+            echo "The new annual-hold function is not used by the prior V0.3.33 application and is left installed for governed recovery review."
             echo "Use the retained rollback archive only through a separately governed recovery decision if database rollback is required."
         else
             echo "Migration 067 did not reach committed-success state."
@@ -243,7 +243,8 @@ grep -Fq "CLIENT_BUILD = 'V0.3.34-scheduling-readiness-fixes'" \
 
 sudo -u fieldwiring -H env PYTHONPYCACHEPREFIX="$DETACHED_PYCACHE" bash -c \
     "cd '$CANDIDATE_WORKTREE' && '$PYTHON' -m pytest -q -p no:cacheprovider Setup/Application"
-echo "DETACHED SETUP CANDIDATE REGRESSION: PASS"\necho "DETACHED SETUP CANDIDATE HEAD: $TARGET_SHA"
+echo "DETACHED SETUP CANDIDATE REGRESSION: PASS"
+echo "DETACHED SETUP CANDIDATE HEAD: $TARGET_SHA"
 
 echo
 echo "--- Freeze Setup writes for bounded Production mutation window ---"
@@ -316,7 +317,7 @@ echo "MIGRATION 067: COMMITTED"
 echo
 echo "--- Run exact rollback-safe validation against Production while writes are frozen ---"
 VALIDATION_OUTPUT="$(psql_prod < "$V067")"
-if [[ "$VALIDATION_OUTPUT" != *"SETUP_206_PICK_LIST_OVERRIDE_DISPOSABLE_VALIDATION_PASS"* ]]; then
+if [[ "$VALIDATION_OUTPUT" != *"SETUP_205_ANNUAL_HOLD_DISPOSABLE_VALIDATION_PASS"* ]]; then
     echo "FAIL: exact migration 067 validation marker was not returned"
     printf '%s\n' "$VALIDATION_OUTPUT"
     exit 19
@@ -366,7 +367,7 @@ DEPLOYED_STATUS="$(sudo git -C "$SETUP_ROOT" status --porcelain)"
 echo "Setup checkout advanced exactly to $DEPLOYED_HEAD"
 
 echo
-echo "--- Restart and verify Setup V0.3.31 runtime ---"
+echo "--- Restart and verify Setup V0.3.34 runtime ---"
 restart_setup
 SETUP_POST="$(curl -fsS http://192.168.5.9:8794/api/health)"
 echo "Post-deploy Setup health: $SETUP_POST"
@@ -436,7 +437,8 @@ echo "PROTECTED ANNUAL READINESS NEGATIVE PATH: PASS"
 echo "--- Live Setup regression ---"
 sudo -u fieldwiring -H env PYTHONPYCACHEPREFIX="$LIVE_PYCACHE" bash -c \
     "cd '$SETUP_ROOT' && '$PYTHON' -m pytest -q -p no:cacheprovider Setup/Application"
-echo "LIVE SETUP REGRESSION: PASS"\necho "LIVE SETUP HEAD: $TARGET_SHA"
+echo "LIVE SETUP REGRESSION: PASS"
+echo "LIVE SETUP HEAD: $TARGET_SHA"
 
 echo
 echo "--- Final Production invariants ---"
