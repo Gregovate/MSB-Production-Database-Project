@@ -9,6 +9,56 @@
 
 **Production mutation commands are forbidden until the governing runbook has been retrieved from the responsible repository and read in the current workstream.**
 
+## Production Database Maintenance Boundary
+
+Production Database work must be classified before the Production mutation step.
+
+```text
+DATABASE-CHANGING
+  schema / table / column / constraint
+  function / procedure / trigger
+  migration-bearing release
+  governed Production data repair/correction
+  any deployment that requires a PostgreSQL rollback archive
+
+SOURCE-ONLY / NON-MIGRATION
+  screen / HTML / CSS / JS
+  report / presentation
+  application-only code
+  documentation
+  other explicitly proven no-PostgreSQL-mutation deployment
+```
+
+For **DATABASE-CHANGING** Production work, the governing deployment runner/runbook must use the Server Management Issue #37 maintenance controller around the short Production mutation window:
+
+```text
+Development / disposable acceptance / browser review
+    -> Production remains ONLINE
+
+Production migration gate
+    -> ENTER MAINTENANCE
+    -> require freeze proof
+    -> create validated rollback snapshot
+    -> apply only the approved migration/repair
+    -> validate
+    -> RETURN TO SERVICE
+    -> require ONLINE/health proof
+```
+
+Do not apply a Production PostgreSQL migration, schema change, function/trigger change, or governed data correction outside that maintenance boundary.
+
+For **SOURCE-ONLY / NON-MIGRATION** work, continue the established live application-specific deployment procedure. Do not take the database-wide maintenance window merely for a screen, report, static asset, or application-only release that has been explicitly proven not to mutate PostgreSQL.
+
+Normal development does not require maintenance mode. Production is expected to continue operating while engineering, disposable-clone work, and browser review occur; only the bounded Production database mutation window is fenced.
+
+Server/runtime authority for the switch remains:
+
+```text
+Gregovate/MSB-Server-Management
+docs/server/Production_Database_Maintenance_Mode.md
+docs/server/Production_Database_Change_Deployment_Runbook.md
+```
+
 Chat history, model memory, summaries, remembered commands, or a previously used procedure do not satisfy this gate when a repository-owned runbook exists.
 
 ## Required Procedure
