@@ -89,7 +89,7 @@ def test_reusable_save_preserves_pending_annual_fields_across_reload():
 
 def test_client_build_is_visible_and_write_paths_fail_closed_on_mismatch():
     js = guard_source()
-    assert "V0.3.34-scheduling-readiness-fixes" in js
+    assert "V0.3.35-crew-headcount-clarity" in js
     assert "const CLIENT_BADGE = `Client ${CLIENT_BUILD.split('-')[0]}`;" in js
     assert "badge.textContent = CLIENT_BADGE;" in js
     assert "badge.textContent = ok ? CLIENT_BADGE" in js
