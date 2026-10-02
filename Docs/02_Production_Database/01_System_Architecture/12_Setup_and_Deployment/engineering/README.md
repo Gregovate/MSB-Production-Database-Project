@@ -266,7 +266,7 @@ Before the next Setup change:
 - [#205 Production Acceptance — 2026-09-29](../../../../../Setup/Acceptance/Setup_205_Scheduling_Board_Production_Acceptance_2026-09-29.md) — exact V0.3.21 source-only Production acceptance and #206 handoff.
 
 
-## #88 Pick Mode / Movement Capture — ACCEPTED FOUNDATION / HISTORICAL RELEASE CONTEXT
+## #88 Pick Mode / Movement Capture — ACTIVE LAUNCH GATE / V0.3.29 RELEASE CONTEXT
 
 V0.3.29 Pick Mode / Movement Capture was Production accepted and later superseded by V0.3.31 and the current V0.3.33 Setup application:
 
