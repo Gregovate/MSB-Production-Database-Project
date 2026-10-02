@@ -614,22 +614,58 @@ def test_205_existing_season_gate_can_reconcile_annual_placement_without_rewriti
     assert "previous_downstream_session_task_id=nullable_int(" in api
 
 
-def test_205_annual_hold_is_season_only_and_does_not_write_reusable_readiness() -> None:
+
+def test_205_quick_readiness_uses_existing_governed_readiness_command() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    repository = read_app("setup_scheduling_board_repository.py")
+
+    quick = ui.split("async function board205SetReadiness(task)", 1)[1].split(
+        "async function board205AddCrew", 1
+    )[0]
+    assert "/readiness" in quick
+    assert "/annual-hold" not in quick
+    assert "readiness_note" not in quick
+
+    set_readiness = repository.split("def set_readiness(", 1)[1].split(
+        "def set_dependency(", 1
+    )[0]
+    assert "ops.set_setup_annual_task_readiness" in set_readiness
+    assert "FOR UPDATE" not in set_readiness
+
+
+def test_205_annual_hold_is_season_only_and_uses_one_governed_command() -> None:
     ui = read_app("setup_scheduling_board.js")
     api = read_app("setup_scheduling_board_api.py")
     repository = read_app("setup_scheduling_board_repository.py")
+    sql = read_db("067_fix_setup_annual_hold_command.sql")
+    validation = read_acceptance("setup_205_annual_hold_disposable_validation.sql")
 
     assert "Annual readiness…" in ui
     assert "THIS SEASON ONLY." in ui
     assert "does not change reusable Catalog readiness knowledge" in ui
     assert "/annual-hold" in api
-    assert "set_annual_hold" in repository
-    assert "ops.update_setup_annual_task_definition" in repository
-    assert "ops.set_setup_annual_task_readiness" in repository
+
     annual_hold = repository.split("def set_annual_hold(", 1)[1].split(
         "def reconcile_season_task_placement(", 1
     )[0]
+    assert "ops.set_setup_annual_hold" in annual_hold
+    assert "FOR UPDATE" not in annual_hold
+    assert "ops.update_setup_annual_task_definition" not in annual_hold
+    assert "ops.set_setup_annual_task_readiness" not in annual_hold
     assert "ref.update_setup_task" not in annual_hold
+
+    assert "CREATE OR REPLACE FUNCTION ops.set_setup_annual_hold" in sql
+    assert "SECURITY DEFINER" in sql
+    assert "FOR UPDATE" in sql
+    assert "Actual work exists for this annual task; annual readiness is historical." in sql
+    assert "SET annual_readiness_note = v_note" in sql
+    assert "SET annual_readiness_state = v_state" in sql
+    assert "GRANT EXECUTE ON FUNCTION ops.set_setup_annual_hold" in sql
+    assert "GRANT UPDATE ON ops.setup_session_task" not in sql
+
+    assert "SETUP_205_ANNUAL_HOLD_DISPOSABLE_VALIDATION_PASS" in validation
+    assert "fieldwiring_app unexpectedly has broad UPDATE" in validation
+    assert "Annual hold READY-with-note mutation failed" in validation
 
 
 def test_205_api_uses_governed_manager_commands_for_plan_mutations() -> None:
@@ -720,7 +756,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-09-29.2" in html
+    assert "setup_scheduling_board.css?v=2026-10-01.1" in html
     assert "setup_scheduling_board.js?v=2026-09-29.5" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
@@ -780,11 +816,10 @@ def test_122_b1a_finder_explains_blocker_classes() -> None:
     ui = read_app("setup_scheduling_board.js")
 
     assert "function board205BlockerDetails(task, deps)" in ui
+    assert "Readiness condition · soft" not in ui
     assert "Hard predecessor" in ui
-    assert "Readiness condition · soft" in ui
     assert "Work Order gate" in ui
     assert "Complete first:" in ui
-    assert "keep visible for operator judgement; mark Ready when the condition is actually met." in ui
     assert "clear when that Work Order is completed." in ui
 
 
@@ -959,7 +994,7 @@ def test_122_b1a_reusable_task_audit_is_visible() -> None:
     assert "<strong>Audit:</strong>" in ui
     assert "reusable-task-audit" in html
     assert "Created ${createdAt} by ${createdBy} · Last updated ${updatedAt} by ${updatedBy}" in production
-    assert "setup_production.js?v=2026-10-01.1" in html
+    assert "setup_production.js?v=2026-10-01.2" in html
 
 
 def test_122_b1a_historical_overlay_preserves_fresh_board_audit_after_write() -> None:
@@ -1243,3 +1278,35 @@ def test_122_season_only_unworked_task_delete_is_governed() -> None:
     assert "CREATE OR REPLACE FUNCTION ops.delete_unworked_setup_season_task" in migration
     assert "reported work/progress" in migration
     assert "DELETE FROM ops.setup_work_day_task" in migration
+
+
+def test_205_schedule_view_expands_on_wide_displays_without_changing_mobile_stack() -> None:
+    base_css = read_app("setup.css")
+    board_css = read_app("setup_scheduling_board.css")
+    production = read_app("setup_production.js")
+
+    assert "document.body.classList.toggle('setup-schedule-view', name === 'schedule')" in production
+    assert "body.setup-schedule-view main" in base_css
+    assert "max-width: none" in base_css
+    assert "@media (min-width: 1101px)" in base_css
+    assert "@media (min-width: 1600px)" in board_css
+    assert "minmax(20rem, 0.72fr) minmax(48rem, 2.28fr)" in board_css
+    assert "minmax(10rem, 0.58fr) repeat(2, minmax(18rem, 1fr))" in board_css
+    assert "@media (max-width: 1100px)" in board_css
+
+
+def test_205_production_notice_is_not_persistent_after_successful_load() -> None:
+    html = read_app("production.html")
+    production = read_app("setup_production.js")
+
+    assert 'id="app-alert" class="notice production-notice" aria-live="polite" hidden' in html
+    set_alert = production.split("function setAlert(message, state = 'ok')", 1)[1].split(
+        "function setBusy", 1
+    )[0]
+    assert "target.hidden = false" in set_alert
+
+    load_season = production.split("async function loadSeason(", 1)[1].split(
+        "function chooseInitialSeason", 1
+    )[0]
+    assert "alert.hidden = true" in load_season
+    assert "Setup Session loaded from Production" not in load_season

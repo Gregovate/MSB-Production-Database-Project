@@ -184,6 +184,16 @@
   min-height: 38rem;
 }
 
+@media (min-width: 1600px) {
+  .setup-board205-main {
+    grid-template-columns: minmax(20rem, 0.72fr) minmax(48rem, 2.28fr);
+  }
+
+  .setup-board205-grid {
+    grid-template-columns: minmax(10rem, 0.58fr) repeat(2, minmax(18rem, 1fr));
+  }
+}
+
 .setup-board205-backlog,
 .setup-board205-board {
   min-width: 0;

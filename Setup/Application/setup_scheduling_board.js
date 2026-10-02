@@ -966,12 +966,6 @@ function board205BlockerDetails(task, deps) {
       text: `Complete first: ${incomplete.map((dep) => dep.prerequisite_task_name).join('; ')}`
     });
   }
-  if (task?.readiness_state === 'NOT_READY') {
-    details.push({
-      label: 'Readiness condition · soft',
-      text: `${task.readiness_note || 'Marked Not Ready'} · keep visible for operator judgement; mark Ready when the condition is actually met.`
-    });
-  }
   if (
     task?.linked_work_order_gate
     && task.linked_work_order_id
@@ -1635,11 +1629,8 @@ async function board205SetReadiness(task) {
   try {
     setBusy(true);
     await api(
-      `api/setup/scheduling-board/season-tasks/${task.setup_session_task_id}/annual-hold`,
-      commandOptions('PATCH', {
-        ready,
-        readiness_note: task.readiness_note || null
-      })
+      `api/setup/scheduling-board/season-tasks/${task.setup_session_task_id}/readiness`,
+      commandOptions('PATCH', { ready })
     );
     await board205Load();
     setAlert(ready ? 'Annual readiness marked Ready.' : 'Annual readiness marked Not Ready.', 'ok');
