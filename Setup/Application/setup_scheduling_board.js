@@ -1390,8 +1390,8 @@ function board205Day(day) {
           <select class="setup-board205-crew-captain-select">${board205CaptainOptions(crew.captain_person_id)}</select>
         </label>
         <div class="setup-board205-crew-counts">
-          <label>AM Crew <input class="setup-board205-crew-am" type="number" min="0" value="${board205Esc(crew.am_planned_crew_count ?? '')}" placeholder="—"></label>
-          <label>PM Crew <input class="setup-board205-crew-pm" type="number" min="0" value="${board205Esc(crew.pm_planned_crew_count ?? '')}" placeholder="—"></label>
+          <label>AM Crew w/Captain <input class="setup-board205-crew-am" type="number" min="0" value="${board205Esc(crew.am_planned_crew_count ?? '')}" placeholder="—"></label>
+          <label>PM Crew w/Captain <input class="setup-board205-crew-pm" type="number" min="0" value="${board205Esc(crew.pm_planned_crew_count ?? '')}" placeholder="—"></label>
         </div>
       </div>
       ${board205Cell(day, 'MORNING', crew)}
