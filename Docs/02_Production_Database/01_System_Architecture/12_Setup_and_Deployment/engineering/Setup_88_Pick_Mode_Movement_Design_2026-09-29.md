@@ -605,3 +605,164 @@ prove 065 already installed
 ```
 
 Do not reapply migration 065 and do not invent a new #88-specific audit workaround.
+
+## 2026-10-03 V0.3.36 Record Location scanner-mode correction
+
+Physical rugged-tablet testing after the accepted Setup releases showed that the workshop Pick scanner path was reliable while the separate Record Location surface could fail to select a Zebra/HID-scanned Container or Display.
+
+Read-only source tracing established that both applications already used the same capture-phase document HID collector and compact V5 Zebra payload + Enter contract. The relevant difference was scanner arming/focus policy:
+
+```text
+Pick Mode
+    -> Start Picking explicitly arms HID capture
+    -> active editable control is blurred
+    -> repeated scanner input is handled by the focusless document collector
+
+Record Location before V0.3.36
+    -> HID collector was always installed
+    -> collector intentionally ignored editable targets
+    -> no explicit scanner-armed state established focus ownership
+```
+
+The correction is an explicit Record Location scanner mode rather than changing scanner programming, permanent QR identity, or movement semantics.
+
+V0.3.36 candidate behavior:
+
+- **Start Scanner** explicitly arms Record Location HID capture;
+- starting scanner mode stops any active camera scan;
+- camera scanning is disabled while scanner mode is armed;
+- scanner activation blurs the currently active control so Android HID starts in the same focusless capture state used by Pick Mode;
+- **Stop Scanner** disarms the document HID collector and re-enables camera scanning;
+- scanner mode remains armed while the operator starts/stops GPS, chooses a GPS-derived nearby reference, chooses a known park reference, or adds an exception/location note;
+- editable location controls may temporarily own focus while the operator enters information, but completing that interaction restores focusless scanner capture so the next Zebra scan does not require another **Start Scanner** tap;
+- camera/manual/search/Scan-handoff identity paths remain available when scanner mode is not armed;
+- camera, HID, manual, touch/search, and Scan-handoff identities converge on the same Record Location identity-selection logic;
+- the visible identity input is updated with the resolved canonical `CONT:` / `DISP:` value regardless of capture source;
+- free-text location notes remain observation evidence for later review; they do not automatically create or alter #171 GIS/reference authority or #230 permanent Home Location/reference records;
+- Pick List behavior is unchanged;
+- Zebra V5 ADF / Enter behavior is unchanged;
+- permanent label / QR payload identity is unchanged;
+- PostgreSQL movement schema and movement semantics are unchanged.
+
+The Record Location service-worker cache generation advances from v6 to v7 and the JavaScript asset pin advances to `2026-10-03.1` so tablet acceptance cannot be satisfied by a stale pre-scanner-mode shell.
+
+This candidate is based on current `main` after V0.3.35 schedule-usability, so the scanner correction uses the distinct release identity `V0.3.36-record-location-scanner`.
+
+Required acceptance remains exact-candidate Setup regression, disposable/browser review, then real rugged-tablet + Zebra/camera/GPS verification before Production deployment.
+
+## 2026-10-03 V0.3.37 browser-review correction
+
+The first V0.3.36 disposable browser review was intentionally stopped as **CHANGES REQUIRED** after the operator proved initial focusless HID capture, then found the next-asset workflow too dependent on browser focus after entering location evidence.
+
+Observed failure mode:
+
+```text
+Start Scanner
+  -> CONT:<id> + Enter works
+  -> operator enters/selects location evidence
+  -> editable field temporarily owns keyboard focus
+  -> scanner still says ON, but operator must understand blur/focus details
+  -> successful Record leaves prior identity visible
+  -> next-asset readiness is not explicit
+```
+
+This is an operator-workflow defect, not operator error and not a Zebra programming defect.
+
+The corrected V0.3.37 contract is:
+
+```text
+Start Scanner
+  -> scanner ready; no field focus required
+  -> scan asset
+  -> Zebra Enter terminates the asset identity only
+  -> scanner pauses while that asset is pending
+  -> operator chooses a known/nearby reference or enters a manual location note
+  -> Record or Clear
+  -> prior identity/location-entry evidence is cleared
+  -> scanner explicitly returns to ready
+  -> scan next asset without Use and without re-focusing the identity field
+```
+
+The Record action remains explicit. The scanner's Enter suffix never Records movement. Enter in a free-text location/GPS-quality note only finishes note editing; scanner capture remains paused until the pending asset is Record/Clear. A second scan cannot silently replace the pending asset.
+
+The corrected candidate uses the visible release `V0.3.37-record-location-scanner`, Record Location cache generation v10, Record Location JavaScript pin `2026-10-03.3`, Record Location CSS pin `2026-10-03.1`, and shared Setup client-build asset pin `2026-10-03.2`.
+
+
+### 2026-10-03 launch reference refresh
+
+For launch, the known-location chooser continues to use a curated versioned reference file until #171 provides a proper maintenance/import workflow.
+
+The launch-time authority is ExpertGPS / Garmin GIS data in the accepted working CRS:
+
+`EPSG:8158 — NAD83 HARN WISCRS Sheboygan County Feet (USft)`
+
+The 2026-10-03 Church correction supplied by the operator updates `15-Church-Bells-CH` and adds `15-Church-ParkingLot`. The source Easting/Northing values are retained in the reference JSON together with the transformed browser-facing WGS84 latitude/longitude values. This is a temporary curated launch mechanism, not a new permanent GIS store.
+
+### Scanner-on desktop layout correction
+
+A later V0.3.37 disposable browser review exposed a presentation defect when **Start Scanner** was enabled at desktop width. The identity entry area collapsed into a narrow strip because the scanner/camera action column was sized as `auto` and its longer Scanner ON status text consumed most of the grid width.
+
+The corrected layout gives the identity column a real desktop minimum width, bounds the action column so its controls/status wrap internally, and stacks the two areas below 900 px. This is presentation-only; it does not change scanner state, movement semantics, or release identity.
+
+### Pick-style compact scanner presentation
+
+A later V0.3.37 browser review showed that simply preserving desktop widths was still not the right field design. The operator confirmed that when Scanner is armed, Record Location should follow the same compact interaction pattern already accepted for Workshop Pick.
+
+Required presentation:
+
+```text
+Scanner OFF
+    -> full normal Record Location entry
+    -> manual entry / Find / camera visible
+
+Scanner ON, waiting for asset
+    -> compact Step 1 scanner strip
+    -> identity input + Stop Scanner + scanner status
+    -> camera and explanatory help hidden
+
+Scanner ON, asset pending
+    -> Step 1 collapses further
+    -> pending asset + Stop Scanner remain visible
+    -> screen priority moves to Location Evidence + Review / Record
+    -> scanner remains paused until Record or Clear
+
+Stop Scanner
+    -> full normal entry surface restored
+```
+
+This is presentation-only and deliberately mirrors the accepted Pick List scanner-mode body-class pattern. It does not change the V0.3.37 scanner state machine, movement semantics, or release identity.
+
+Record Location service-worker cache generation advances to v11 and the CSS asset pin advances to `2026-10-03.2` so browser acceptance cannot reuse the prior non-compact layout.
+
+### Compact location-evidence presentation
+
+Browser review also showed duplicate nearest-reference text and buttons consumed unnecessary tablet space.
+
+For V0.3.37:
+- the three nearest-reference choices are shown as vertically stacked buttons to the right of the **Where is it now?** / GPS summary at wider widths;
+- the duplicate inline `Nearest: ...` text is hidden from normal operator view;
+- the layout stacks naturally at narrower widths;
+- **Known park reference** remains below the GPS/nearest-choice area;
+- **Reference data** provenance is hidden during normal operation and remains available only in Training/device-test mode.
+
+This is presentation-only. Reference ranking, selected-reference meaning, raw GPS evidence, and movement semantics are unchanged.
+
+### Operator GPS diagnostics boundary
+
+Launch Record Location should not ask unload operators to rate GPS quality.
+
+The normal operator surface now retains the useful evidence automatically:
+
+- browser latitude / longitude;
+- device-reported accuracy;
+- fix timestamp / age;
+- chosen known reference when confirmed;
+- manually entered location when the real location is not in the known-reference list.
+
+The former **GPS quality / uncertainty** operator controls are removed from Record Location. Movement payloads continue to carry the existing neutral `UNASSESSED` / no-note values so the persisted contract remains compatible without implying an operator judgment that was never made.
+
+The fallback free-text control is intentionally framed as **Location not listed? Enter another location**. It exists for a meaningful real-world drop location that is not yet in the curated known-reference set, not as a general diagnostic comment field.
+
+Engineering GPS/device quality work remains owned by the read-only `/scan/field-test` harness under #219.
+
+The failed V0.3.36 browser review does not carry acceptance forward. V0.3.37 must restart exact-candidate regression, reusable disposable acceptance, and browser review.

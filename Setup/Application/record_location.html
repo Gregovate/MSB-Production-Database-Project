@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Setup — Record Location</title>
-  <link rel="stylesheet" href="assets/setup_record_location.css?v=2026-09-30.6">
+  <link rel="stylesheet" href="assets/setup_record_location.css?v=2026-10-03.3">
 </head>
 <body>
 <header class="page-header">
@@ -38,20 +38,23 @@
     <div class="section-heading">
       <div>
         <div class="eyebrow">1 · Select the asset</div>
-        <h2>Container / Display</h2>
+        <h2 id="movement-identity-title">Container / Display</h2>
       </div>
       <span id="operator-badge" class="pill">Checking access…</span>
     </div>
 
     <div class="entry-grid">
       <div>
-        <label for="movement-manual-input">Scan with Zebra or enter identity / QR URL</label>
+        <label for="movement-manual-input">Asset identity / QR URL</label>
         <div class="entry-row">
           <input id="movement-manual-input" autocomplete="off" inputmode="text" placeholder="CONT:34, DISP:141, or scan URL">
           <button id="movement-manual-go" type="button">Use</button>
         </div>
+        <div class="muted">With Scanner on, Zebra capture is focusless — do not click Use after a scan. Use/Enter is for manual entry.</div>
       </div>
       <div class="camera-actions">
+        <button id="movement-scanner-toggle" type="button">Start Scanner</button>
+        <span id="movement-scanner-status" class="muted">Scanner off</span>
         <button id="movement-camera-toggle" type="button">Scan with Camera</button>
         <span id="movement-camera-status" class="muted">Camera off</span>
       </div>
@@ -73,17 +76,22 @@
   </section>
 
   <section class="panel location-panel">
-    <div class="section-heading">
-      <div>
-        <div class="eyebrow">2 · Location evidence</div>
-        <h2>Where is it now?</h2>
-      </div>
-      <button id="movement-gps-toggle" type="button">Start GPS</button>
-    </div>
+    <div class="location-overview">
+      <div class="location-overview-main">
+        <div class="section-heading">
+          <div>
+            <div class="eyebrow">2 · Location evidence</div>
+            <h2>Where is it now?</h2>
+          </div>
+          <button id="movement-gps-toggle" type="button">Start GPS</button>
+        </div>
 
-    <div id="movement-gps" class="gps-state">GPS OFF</div>
-    <div id="movement-gps-candidates" class="gps-candidates">GPS is off. Start it when location evidence is needed.</div>
-    <div id="movement-gps-candidate-buttons" class="reference-buttons"></div>
+        <div id="movement-gps" class="gps-state">GPS OFF</div>
+        <div id="movement-gps-candidates" class="gps-candidates" hidden>GPS is off. Start it when location evidence is needed.</div>
+      </div>
+
+      <div id="movement-gps-candidate-buttons" class="reference-buttons location-nearest-buttons"></div>
+    </div>
 
     <label for="movement-known-reference">Known park reference
       <select id="movement-known-reference">
@@ -92,27 +100,14 @@
     </label>
 
     <details class="location-note-details">
-      <summary>Other location note</summary>
-      <label for="movement-location-note">Optional location note
-        <input id="movement-location-note" autocomplete="off" placeholder="Use only when GPS/reference does not fully describe this location">
+      <summary>Location not listed? Enter another location</summary>
+      <label for="movement-location-note">Location / note
+        <input id="movement-location-note" autocomplete="off" placeholder="Type a meaningful location that is not in Known park reference">
       </label>
+      <div class="muted">Use this when the actual drop location is not one of the standard known references. If Scanner is on, press Enter/Done or tap away to finish editing; the scanner stays paused until this asset is Record/Clear.</div>
     </details>
 
-    <details class="gps-quality">
-      <summary>GPS quality / uncertainty</summary>
-      <label for="movement-gps-quality">GPS quality
-        <select id="movement-gps-quality">
-          <option value="UNASSESSED">Not flagged</option>
-          <option value="QUESTIONABLE">Questionable</option>
-          <option value="BAD">Bad — keep movement, discount GPS later</option>
-        </select>
-      </label>
-      <label for="movement-gps-quality-note">GPS quality note
-        <input id="movement-gps-quality-note" autocomplete="off" placeholder="Tree cover, jump/drift, structure, obvious wrong fix…">
-      </label>
-    </details>
-
-    <details class="reference-data-details">
+    <details class="reference-data-details training-reference-data">
       <summary>Reference data</summary>
       <div id="movement-reference-status" class="reference-status">Location references not loaded yet.</div>
     </details>
@@ -142,6 +137,6 @@
   </details>
 </main>
 
-<script src="assets/setup_record_location.js?v=2026-09-30.6"></script>
+<script src="assets/setup_record_location.js?v=2026-10-03.4"></script>
 </body>
 </html>

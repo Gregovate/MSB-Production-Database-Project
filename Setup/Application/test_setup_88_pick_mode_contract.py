@@ -93,6 +93,54 @@ def test_record_location_preserves_many_identity_entry_options_and_scan_handoff(
     assert 'id="movement-search-input"' in html
 
 
+def test_record_location_scanner_mode_matches_pick_focusless_hid_contract():
+    ui = read("setup_record_location.js")
+    html = read("record_location.html")
+
+    assert 'id="movement-scanner-toggle"' in html
+    assert "Start Scanner" in html
+    assert "let scannerActive = false;" in ui
+    assert "if (!scannerActive || pendingIdentity || event.defaultPrevented || event.isComposing) return;" in ui
+    assert "async function toggleScanner()" in ui
+    scanner = ui.split("async function toggleScanner()", 1)[1].split("async function stopCamera()", 1)[0]
+    assert "await stopCamera();" in scanner
+    assert "cameraToggle.disabled = true;" in scanner
+    assert "restoreScannerCapture();" in scanner
+    assert "SCANNER READY" in scanner
+    restore = ui.split("function restoreScannerCapture()", 1)[1].split(
+        "function finishScannerTypingOnEnter", 1
+    )[0]
+    assert "document.activeElement" in restore
+    assert "active.blur()" in restore
+    assert "function stopScanner()" in ui
+    assert "cameraToggle.disabled = false;" in ui
+    assert "Stop Scanner before using the camera." in ui
+    assert "manualInput.value = identity.identity;" in ui
+    assert "await handleIdentity(raw, 'CAMERA_SCAN');" in ui
+    assert "function restoreScannerCapture()" in ui
+    assert "locationNote.addEventListener('blur', restoreScannerCapture)" in ui
+    assert "searchAssets().finally(restoreScannerCapture)" in ui
+    assert "function pauseScannerForTyping(label)" in ui
+    assert "Scanner paused — " in ui
+    assert "Scanner ready — no field focus needed" in ui
+    assert "function finishScannerTypingOnEnter(event)" in ui
+    assert "locationNote.addEventListener('keydown', finishScannerTypingOnEnter)" in ui
+    assert "function resetAssetEntryForNextScan()" in ui
+    assert "manualInput.value = '';" in ui
+    assert "SCANNER READY — scan next asset" in ui
+    assert "Scanner paused — record or clear " in ui
+    assert "pendingIdentity || event.defaultPrevented" in ui
+    assert "resetAssetEntryForNextScan();" in ui
+    assert "function renderScannerLayoutState()" in ui
+    assert "record-location-scanner-active" in ui
+    assert "record-location-asset-pending" in ui
+    assert 'id="movement-identity-title"' in html
+    assert "With Scanner on, Zebra capture is focusless" in html
+    assert "Location not listed? Enter another location" in html
+    assert "press Enter/Done or tap away to finish editing" in html
+    assert "scanner stays paused until this asset is Record/Clear" in html
+
+
 def test_record_location_training_mode_uses_real_reads_but_never_writes_or_queues():
     ui = read("setup_record_location.js")
     html = read("record_location.html")
@@ -131,7 +179,7 @@ def test_record_location_gps_is_explicit_and_identity_can_precede_gps():
     initialize = ui.split("async function initialize()", 1)[1]
     assert "stopGps();" in initialize
     assert "startGps();" not in initialize
-    assert "selectIdentity(identity, 'TOUCH_SELECT')" in initialize
+    assert "handleIdentity(requested, 'TOUCH_SELECT')" in initialize
 
 
 def test_reference_locations_are_refreshable_versioned_and_not_hardcoded_in_js():
@@ -150,6 +198,23 @@ def test_reference_locations_are_refreshable_versioned_and_not_hardcoded_in_js()
     assert len(data["points"]) >= 30
     assert any(row["name"] == "04-Food Collection-FC" for row in data["points"])
     assert any(row["name"] == "30-Santa's Station-QV" for row in data["points"])
+    assert data["version"] == "2026-stage-reference-20261003.1"
+    assert data["coordinate_authority"].startswith("EPSG:8158")
+
+    church = next(row for row in data["points"] if row["name"] == "15-Church-Bells-CH")
+    assert church["latitude"] == 43.77834874374555
+    assert church["longitude"] == -87.74912934177036
+    assert church["source_crs"] == "EPSG:8158"
+    assert church["source_easting_usft"] == 209406.108
+    assert church["source_northing_usft"] == 186577.937
+
+    parking = next(row for row in data["points"] if row["name"] == "15-Church-ParkingLot")
+    assert parking["reference_id"] == "church-parking-lot"
+    assert parking["latitude"] == 43.77906580810078
+    assert parking["longitude"] == -87.74933211615861
+    assert parking["source_crs"] == "EPSG:8158"
+    assert parking["source_easting_usft"] == 209353.179
+    assert parking["source_northing_usft"] == 186839.461
 
 
 def test_record_location_offline_queue_is_durable_and_mixed_unload_fails_conservatively():
@@ -359,8 +424,8 @@ def test_release_identity_and_offline_shells_are_synchronized():
     location_sw = read("setup_record_location_sw.js")
     location_html = read("record_location.html")
 
-    assert 'PRODUCTION_VERSION = "V0.3.35-schedule-usability"' in backend
-    assert "const CLIENT_BUILD = 'V0.3.35-schedule-usability';" in guard
+    assert 'PRODUCTION_VERSION = "V0.3.37-record-location-scanner"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.37-record-location-scanner';" in guard
     assert "msb-setup-pick-mode-v16" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_html
@@ -368,11 +433,11 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "setup_pick_list.js?v=2026-10-01.4" in pick_html
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_sw
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_html
-    assert "msb-setup-record-location-v6" in location_sw
-    assert "setup_record_location.css?v=2026-09-30.6" in location_sw
-    assert "setup_record_location.css?v=2026-09-30.6" in location_html
-    assert "setup_record_location.js?v=2026-09-30.6" in location_sw
-    assert "setup_record_location.js?v=2026-09-30.6" in location_html
+    assert "msb-setup-record-location-v13" in location_sw
+    assert "setup_record_location.css?v=2026-10-03.3" in location_sw
+    assert "setup_record_location.css?v=2026-10-03.3" in location_html
+    assert "setup_record_location.js?v=2026-10-03.4" in location_sw
+    assert "setup_record_location.js?v=2026-10-03.4" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():
@@ -442,8 +507,14 @@ def test_record_location_requires_visible_location_review_before_record_action()
     assert 'id="movement-review-location"' in html
     assert 'id="movement-record-here" type="button" class="primary" disabled' in html
     assert 'id="movement-compact-status"' in html
-    assert '<summary>Other location note</summary>' in html
+    assert '<summary>Location not listed? Enter another location</summary>' in html
     assert '<summary>Reference data</summary>' in html
+    assert 'id="movement-gps-quality"' not in html
+    assert 'id="movement-gps-quality-note"' not in html
+    assert "const gpsQuality =" not in ui
+    assert "const gpsQualityNote =" not in ui
+    assert "gps_quality: 'UNASSESSED'" in ui
+    assert "gps_quality_note: null" in ui
     assert 'class="panel status-panel"' not in html
     assert "function currentLocationEvidence()" in ui
     assert "function renderRecordReadiness()" in ui
@@ -452,6 +523,19 @@ def test_record_location_requires_visible_location_review_before_record_action()
     assert "scrollIntoView({behavior: 'smooth', block: 'start'})" in ui
     assert "locationNote.addEventListener('input', renderRecordReadiness)" in ui
     assert ".compact-status" in css
+    assert "grid-template-columns:minmax(320px,2fr) minmax(0,3fr)" in css
+    assert "body.record-location-scanner-active .identity-panel{" in css
+    assert "grid-template-columns:minmax(360px,1fr) minmax(360px,.9fr)" in css
+    assert "body.record-location-scanner-active.record-location-asset-pending .identity-panel .entry-grid" in css
+    assert "body.record-location-scanner-active .identity-panel .find-asset" in css
+    assert "body.record-location-scanner-active #movement-camera-toggle" in css
+    assert ".location-overview{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,420px)" in css
+    assert ".location-nearest-buttons{display:grid;grid-template-columns:1fr" in css
+    assert 'id="movement-gps-candidates" class="gps-candidates" hidden' in html
+    assert ".reference-data-details{display:none}" in css
+    assert "body.training-mode .reference-data-details{display:block}" in css
+    assert "@media(max-width:900px){" in css
+    assert ".camera-actions .muted{min-width:0;overflow-wrap:anywhere}" in css
     assert 'id="movement-home-location"' in html
     assert "Home Location:" in ui
     assert "Manager correction required before return" in ui

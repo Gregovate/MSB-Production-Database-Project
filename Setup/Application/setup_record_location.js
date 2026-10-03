@@ -7,6 +7,9 @@
   const searchInput = el('movement-search-input');
   const searchGo = el('movement-search-go');
   const searchResults = el('movement-search-results');
+  const scannerToggle = el('movement-scanner-toggle');
+  const scannerStatus = el('movement-scanner-status');
+  const identityTitle = el('movement-identity-title');
   const cameraToggle = el('movement-camera-toggle');
   const cameraStatus = el('movement-camera-status');
   const cameraPanel = el('movement-camera-panel');
@@ -17,8 +20,6 @@
   const gpsCandidateButtons = el('movement-gps-candidate-buttons');
   const knownReference = el('movement-known-reference');
   const locationNote = el('movement-location-note');
-  const gpsQuality = el('movement-gps-quality');
-  const gpsQualityNote = el('movement-gps-quality-note');
   const referenceStatus = el('movement-reference-status');
   const pendingPanel = el('movement-pending');
   const pendingTitle = el('movement-pending-title');
@@ -61,6 +62,7 @@
   let pendingStateRow = null;
   let scanBuffer = '';
   let scanResetTimer = null;
+  let scannerActive = false;
   let syncing = false;
   let cameraStream = null;
   let cameraFrame = null;
@@ -100,6 +102,23 @@
   function setFeedback(kind, message) {
     feedback.className = 'feedback ' + kind;
     feedback.textContent = message;
+  }
+
+  function renderScannerLayoutState() {
+    document.body.classList.toggle('record-location-scanner-active', scannerActive);
+    document.body.classList.toggle(
+      'record-location-asset-pending',
+      Boolean(scannerActive && pendingIdentity)
+    );
+
+    if (!identityTitle) return;
+    if (scannerActive && pendingIdentity) {
+      identityTitle.textContent = pendingIdentity.identity + ' — location pending';
+    } else if (scannerActive) {
+      identityTitle.textContent = 'RECORD LOCATION — SCANNER';
+    } else {
+      identityTitle.textContent = 'Container / Display';
+    }
   }
 
   function updateNetwork() {
@@ -397,6 +416,7 @@
       button.addEventListener('click', function () {
         knownReference.value = item.name;
         renderRecordReadiness();
+        restoreScannerCapture();
       });
       gpsCandidateButtons.appendChild(button);
     });
@@ -512,8 +532,8 @@
       gps_accuracy_m: snapshot.accuracy_m,
       gps_fix_at: snapshot.fix_at,
       gps_fix_age_ms: snapshot.fix_age_ms,
-      gps_quality: String(gpsQuality.value || 'UNASSESSED').toUpperCase(),
-      gps_quality_note: String(gpsQualityNote.value || '').trim() || null
+      gps_quality: 'UNASSESSED',
+      gps_quality_note: null
     };
   }
 
@@ -542,8 +562,8 @@
       destination_location_note: action === 'RETURNED' ? null : destinationNote(),
       notes: action === 'RETURNED' ? null : referenceProvenanceNote(),
       unloaded_display_ids: unloadedDisplayIds || [],
-      gps_quality: String(gpsQuality.value || 'UNASSESSED').toUpperCase(),
-      gps_quality_note: String(gpsQualityNote.value || '').trim() || null
+      gps_quality: 'UNASSESSED',
+      gps_quality_note: null
     };
     return Object.assign(payload, gpsPayload());
   }
@@ -621,6 +641,7 @@
     returnHome.hidden = true;
     returnHome.disabled = false;
     returnHome.textContent = trainingMode ? 'Test Return Home' : 'Returned to Home Location';
+    renderScannerLayoutState();
     renderRecordReadiness();
   }
 
@@ -751,6 +772,7 @@
 
     pendingIdentity = identity;
     pendingCaptureMethod = captureMethod;
+    renderScannerLayoutState();
     pendingContents = null;
     pendingStateRow = null;
     setFeedback('ready', identity.identity + ' — loading current movement context…');
@@ -813,12 +835,12 @@
         if (gps) message += ' · GPS ±' + Math.round(Number(gps.accuracy_m || 0) * 3.280839895) + ' ft';
         if (unloaded.length) message += ' · would leave ' + unloaded.length + ' Display' + (unloaded.length === 1 ? '' : 's') + ' here';
       }
-      setFeedback('success', message + ' · NOTHING RECORDED');
-      clearPending();
-      knownReference.value = '';
-      locationNote.value = '';
-      gpsQuality.value = 'UNASSESSED';
-      gpsQualityNote.value = '';
+      resetAssetEntryForNextScan();
+      setFeedback(
+        'success',
+        message + ' · NOTHING RECORDED'
+          + (scannerActive ? ' · SCANNER READY — scan next asset' : '')
+      );
       return;
     }
 
@@ -841,11 +863,10 @@
         setFeedback('success', message);
       }
 
-      clearPending();
-      knownReference.value = '';
-      locationNote.value = '';
-      gpsQuality.value = 'UNASSESSED';
-      gpsQualityNote.value = '';
+      resetAssetEntryForNextScan();
+      if (scannerActive) {
+        feedback.textContent += ' · SCANNER READY — scan next asset';
+      }
     } catch (error) {
       setFeedback('warning', identity.identity + ' — ' + (error.message || error));
     }
@@ -855,9 +876,46 @@
     const identity = parseIdentity(raw);
     if (!identity) {
       setFeedback('blocked', 'INVALID IDENTITY — expected CONT:<id>, DISP:<id>, or a permanent scan URL.');
+      restoreScannerCapture();
       return;
     }
+    manualInput.value = identity.identity;
     await selectIdentity(identity, captureMethod);
+    restoreScannerCapture();
+  }
+
+  function pauseScannerForTyping(label) {
+    if (!scannerActive) return;
+    clearScanTimer();
+    scanBuffer = '';
+    scannerStatus.textContent = 'Scanner paused — ' + label;
+  }
+
+  function restoreScannerCapture() {
+    if (!scannerActive) return;
+    clearScanTimer();
+    scanBuffer = '';
+    const active = document.activeElement;
+    if (active && active.blur) active.blur();
+    if (pendingIdentity) {
+      scannerStatus.textContent = 'Scanner paused — record or clear ' + pendingIdentity.identity;
+      return;
+    }
+    scannerStatus.textContent = 'Scanner ready — no field focus needed';
+  }
+
+  function finishScannerTypingOnEnter(event) {
+    if (!scannerActive || event.key !== 'Enter') return;
+    event.preventDefault();
+    event.currentTarget.blur();
+  }
+
+  function resetAssetEntryForNextScan() {
+    clearPending();
+    manualInput.value = '';
+    knownReference.value = '';
+    locationNote.value = '';
+    restoreScannerCapture();
   }
 
   function clearScanTimer() {
@@ -881,7 +939,7 @@
   }
 
   function captureKeydown(event) {
-    if (event.defaultPrevented || event.isComposing) return;
+    if (!scannerActive || pendingIdentity || event.defaultPrevented || event.isComposing) return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (isEditableTarget(event.target)) return;
 
@@ -929,6 +987,45 @@
     }
   }
 
+  function stopScanner() {
+    scannerActive = false;
+    clearScanTimer();
+    scanBuffer = '';
+    scannerToggle.textContent = 'Start Scanner';
+    scannerStatus.textContent = 'Scanner off';
+    renderScannerLayoutState();
+    cameraToggle.disabled = false;
+    cameraStatus.textContent = 'Camera off';
+  }
+
+  async function toggleScanner() {
+    if (scannerActive) {
+      stopScanner();
+      setFeedback('ready', 'Scanner off — use manual entry, Find, camera, or start the scanner again.');
+      return;
+    }
+    if (!access || !access.can_move_setup_assets) {
+      setFeedback('blocked', 'Movement authorization is not available.');
+      return;
+    }
+
+    await stopCamera();
+    scannerActive = true;
+    clearScanTimer();
+    scanBuffer = '';
+    scannerToggle.textContent = 'Stop Scanner';
+    renderScannerLayoutState();
+    cameraToggle.disabled = true;
+    cameraStatus.textContent = 'Camera disabled while scanner is on';
+    restoreScannerCapture();
+    setFeedback(
+      'ready',
+      pendingIdentity
+        ? 'SCANNER PAUSED — record or clear ' + pendingIdentity.identity
+        : 'SCANNER READY — scan a Container or Display'
+    );
+  }
+
   async function stopCamera() {
     if (cameraFrame) cancelAnimationFrame(cameraFrame);
     cameraFrame = null;
@@ -949,7 +1046,7 @@
         const identity = parseIdentity(raw);
         if (identity) {
           await stopCamera();
-          await selectIdentity(identity, 'CAMERA_SCAN');
+          await handleIdentity(raw, 'CAMERA_SCAN');
           return;
         }
       }
@@ -958,6 +1055,10 @@
   }
 
   async function startCamera() {
+    if (scannerActive) {
+      setFeedback('warning', 'Stop Scanner before using the camera.');
+      return;
+    }
     if (cameraStream) {
       await stopCamera();
       return;
@@ -1028,18 +1129,29 @@
   manualGo.addEventListener('click', function () {
     if (manualInput.value.trim()) void handleIdentity(manualInput.value, 'MANUAL_ENTRY');
   });
+  manualInput.addEventListener('focus', function () {
+    pauseScannerForTyping('manual identity entry');
+  });
+  manualInput.addEventListener('blur', restoreScannerCapture);
   manualInput.addEventListener('keydown', function (event) {
     if (event.key !== 'Enter') return;
     event.preventDefault();
     if (manualInput.value.trim()) void handleIdentity(manualInput.value, 'MANUAL_ENTRY');
   });
-  searchGo.addEventListener('click', function () { void searchAssets(); });
+  searchGo.addEventListener('click', function () {
+    void searchAssets().finally(restoreScannerCapture);
+  });
+  searchInput.addEventListener('focus', function () {
+    pauseScannerForTyping('Find field active');
+  });
+  searchInput.addEventListener('blur', restoreScannerCapture);
   searchInput.addEventListener('keydown', function (event) {
     if (event.key === 'Enter') {
       event.preventDefault();
-      void searchAssets();
+      void searchAssets().finally(restoreScannerCapture);
     }
   });
+  scannerToggle.addEventListener('click', function () { void toggleScanner(); });
   cameraToggle.addEventListener('click', function () { void startCamera(); });
   gpsToggle.addEventListener('click', function () {
     if (watchId === null) startGps();
@@ -1048,13 +1160,28 @@
   recordHere.addEventListener('click', function () { void recordPending(false); });
   returnHome.addEventListener('click', function () { void recordPending(true); });
   clearPendingButton.addEventListener('click', function () {
-    clearPending();
-    setFeedback('ready', 'READY — scan, search, or choose an asset');
+    resetAssetEntryForNextScan();
+    setFeedback(
+      'ready',
+      scannerActive
+        ? 'SCANNER READY — scan a Container or Display'
+        : 'READY — scan, search, or choose an asset'
+    );
+  });
+  knownReference.addEventListener('focus', function () {
+    pauseScannerForTyping('choosing a park reference');
   });
   knownReference.addEventListener('change', function () {
     renderRecordReadiness();
+    restoreScannerCapture();
+  });
+  knownReference.addEventListener('blur', restoreScannerCapture);
+  locationNote.addEventListener('focus', function () {
+    pauseScannerForTyping('typing location note');
   });
   locationNote.addEventListener('input', renderRecordReadiness);
+  locationNote.addEventListener('keydown', finishScannerTypingOnEnter);
+  locationNote.addEventListener('blur', restoreScannerCapture);
   trainingEnter.addEventListener('click', enterTrainingMode);
   trainingExit.addEventListener('click', exitTrainingMode);
   el('back-setup').addEventListener('click', function () {
@@ -1067,11 +1194,15 @@
     void loadReferenceSet();
   });
   window.addEventListener('offline', updateNetwork);
-  window.addEventListener('pagehide', function () { void stopCamera(); });
+  window.addEventListener('pagehide', function () {
+    stopScanner();
+    void stopCamera();
+  });
   window.setInterval(function () { renderGps(); }, 1000);
 
   async function initialize() {
     applyTrainingMode();
+    renderScannerLayoutState();
     stopGps();
     updateNetwork();
     await refreshQueueState();
@@ -1089,7 +1220,7 @@
     if (requested) {
       const identity = parseIdentity(requested);
       if (identity) {
-        await selectIdentity(identity, 'TOUCH_SELECT');
+        await handleIdentity(requested, 'TOUCH_SELECT');
       } else {
         setFeedback('warning', 'The supplied Record Location asset was not a valid CONT:/DISP: identity.');
       }
