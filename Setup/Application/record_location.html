@@ -100,25 +100,11 @@
     </label>
 
     <details class="location-note-details">
-      <summary>Other location note</summary>
-      <label for="movement-location-note">Optional location note
-        <input id="movement-location-note" autocomplete="off" placeholder="Use only when GPS/reference does not fully describe this location">
+      <summary>Location not listed? Enter another location</summary>
+      <label for="movement-location-note">Location / note
+        <input id="movement-location-note" autocomplete="off" placeholder="Type a meaningful location that is not in Known park reference">
       </label>
-      <div class="muted">If Scanner is on, typing a note temporarily owns keyboard input. Press Enter/Done or tap away to finish editing; the scanner stays paused until this asset is Record/Clear.</div>
-    </details>
-
-    <details class="gps-quality">
-      <summary>GPS quality / uncertainty</summary>
-      <label for="movement-gps-quality">GPS quality
-        <select id="movement-gps-quality">
-          <option value="UNASSESSED">Not flagged</option>
-          <option value="QUESTIONABLE">Questionable</option>
-          <option value="BAD">Bad — keep movement, discount GPS later</option>
-        </select>
-      </label>
-      <label for="movement-gps-quality-note">GPS quality note
-        <input id="movement-gps-quality-note" autocomplete="off" placeholder="Tree cover, jump/drift, structure, obvious wrong fix…">
-      </label>
+      <div class="muted">Use this when the actual drop location is not one of the standard known references. If Scanner is on, press Enter/Done or tap away to finish editing; the scanner stays paused until this asset is Record/Clear.</div>
     </details>
 
     <details class="reference-data-details training-reference-data">
@@ -151,6 +137,6 @@
   </details>
 </main>
 
-<script src="assets/setup_record_location.js?v=2026-10-03.3"></script>
+<script src="assets/setup_record_location.js?v=2026-10-03.4"></script>
 </body>
 </html>
