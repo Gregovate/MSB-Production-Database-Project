@@ -1487,3 +1487,12 @@ def test_205_production_notice_is_not_persistent_after_successful_load() -> None
     )[0]
     assert "alert.hidden = true" in load_season
     assert "Setup Session loaded from Production" not in load_season
+
+
+def test_205_past_empty_work_days_are_suppressed_but_future_empty_days_remain_filterable() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "const today = board205TodayIso();" in ui
+    assert "state === 'EMPTY' && workDate && workDate < today" in ui
+    assert "return false;" in ui
+    assert "return showEmpty;" in ui
