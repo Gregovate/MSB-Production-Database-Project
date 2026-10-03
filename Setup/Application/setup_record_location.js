@@ -7,6 +7,8 @@
   const searchInput = el('movement-search-input');
   const searchGo = el('movement-search-go');
   const searchResults = el('movement-search-results');
+  const scannerToggle = el('movement-scanner-toggle');
+  const scannerStatus = el('movement-scanner-status');
   const cameraToggle = el('movement-camera-toggle');
   const cameraStatus = el('movement-camera-status');
   const cameraPanel = el('movement-camera-panel');
@@ -61,6 +63,7 @@
   let pendingStateRow = null;
   let scanBuffer = '';
   let scanResetTimer = null;
+  let scannerActive = false;
   let syncing = false;
   let cameraStream = null;
   let cameraFrame = null;
@@ -397,6 +400,7 @@
       button.addEventListener('click', function () {
         knownReference.value = item.name;
         renderRecordReadiness();
+        restoreScannerCapture();
       });
       gpsCandidateButtons.appendChild(button);
     });
@@ -855,9 +859,21 @@
     const identity = parseIdentity(raw);
     if (!identity) {
       setFeedback('blocked', 'INVALID IDENTITY — expected CONT:<id>, DISP:<id>, or a permanent scan URL.');
+      restoreScannerCapture();
       return;
     }
+    manualInput.value = identity.identity;
     await selectIdentity(identity, captureMethod);
+    restoreScannerCapture();
+  }
+
+  function restoreScannerCapture() {
+    if (!scannerActive) return;
+    clearScanTimer();
+    scanBuffer = '';
+    const active = document.activeElement;
+    if (active && active.blur) active.blur();
+    scannerStatus.textContent = 'Scanner on';
   }
 
   function clearScanTimer() {
@@ -881,7 +897,7 @@
   }
 
   function captureKeydown(event) {
-    if (event.defaultPrevented || event.isComposing) return;
+    if (!scannerActive || event.defaultPrevented || event.isComposing) return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (isEditableTarget(event.target)) return;
 
@@ -929,6 +945,39 @@
     }
   }
 
+  function stopScanner() {
+    scannerActive = false;
+    clearScanTimer();
+    scanBuffer = '';
+    scannerToggle.textContent = 'Start Scanner';
+    scannerStatus.textContent = 'Scanner off';
+    cameraToggle.disabled = false;
+    cameraStatus.textContent = 'Camera off';
+  }
+
+  async function toggleScanner() {
+    if (scannerActive) {
+      stopScanner();
+      setFeedback('ready', 'Scanner off — use manual entry, Find, camera, or start the scanner again.');
+      return;
+    }
+    if (!access || !access.can_move_setup_assets) {
+      setFeedback('blocked', 'Movement authorization is not available.');
+      return;
+    }
+
+    await stopCamera();
+    scannerActive = true;
+    clearScanTimer();
+    scanBuffer = '';
+    scannerToggle.textContent = 'Stop Scanner';
+    scannerStatus.textContent = 'Scanner on';
+    cameraToggle.disabled = true;
+    cameraStatus.textContent = 'Camera disabled while scanner is on';
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    setFeedback('ready', 'SCANNER READY — scan a Container or Display');
+  }
+
   async function stopCamera() {
     if (cameraFrame) cancelAnimationFrame(cameraFrame);
     cameraFrame = null;
@@ -949,7 +998,7 @@
         const identity = parseIdentity(raw);
         if (identity) {
           await stopCamera();
-          await selectIdentity(identity, 'CAMERA_SCAN');
+          await handleIdentity(raw, 'CAMERA_SCAN');
           return;
         }
       }
@@ -958,6 +1007,10 @@
   }
 
   async function startCamera() {
+    if (scannerActive) {
+      setFeedback('warning', 'Stop Scanner before using the camera.');
+      return;
+    }
     if (cameraStream) {
       await stopCamera();
       return;
@@ -1033,13 +1086,16 @@
     event.preventDefault();
     if (manualInput.value.trim()) void handleIdentity(manualInput.value, 'MANUAL_ENTRY');
   });
-  searchGo.addEventListener('click', function () { void searchAssets(); });
+  searchGo.addEventListener('click', function () {
+    void searchAssets().finally(restoreScannerCapture);
+  });
   searchInput.addEventListener('keydown', function (event) {
     if (event.key === 'Enter') {
       event.preventDefault();
-      void searchAssets();
+      void searchAssets().finally(restoreScannerCapture);
     }
   });
+  scannerToggle.addEventListener('click', function () { void toggleScanner(); });
   cameraToggle.addEventListener('click', function () { void startCamera(); });
   gpsToggle.addEventListener('click', function () {
     if (watchId === null) startGps();
@@ -1053,8 +1109,12 @@
   });
   knownReference.addEventListener('change', function () {
     renderRecordReadiness();
+    restoreScannerCapture();
   });
   locationNote.addEventListener('input', renderRecordReadiness);
+  locationNote.addEventListener('blur', restoreScannerCapture);
+  gpsQuality.addEventListener('change', restoreScannerCapture);
+  gpsQualityNote.addEventListener('blur', restoreScannerCapture);
   trainingEnter.addEventListener('click', enterTrainingMode);
   trainingExit.addEventListener('click', exitTrainingMode);
   el('back-setup').addEventListener('click', function () {
@@ -1067,7 +1127,10 @@
     void loadReferenceSet();
   });
   window.addEventListener('offline', updateNetwork);
-  window.addEventListener('pagehide', function () { void stopCamera(); });
+  window.addEventListener('pagehide', function () {
+    stopScanner();
+    void stopCamera();
+  });
   window.setInterval(function () { renderGps(); }, 1000);
 
   async function initialize() {
@@ -1089,7 +1152,7 @@
     if (requested) {
       const identity = parseIdentity(requested);
       if (identity) {
-        await selectIdentity(identity, 'TOUCH_SELECT');
+        await handleIdentity(requested, 'TOUCH_SELECT');
       } else {
         setFeedback('warning', 'The supplied Record Location asset was not a valid CONT:/DISP: identity.');
       }
