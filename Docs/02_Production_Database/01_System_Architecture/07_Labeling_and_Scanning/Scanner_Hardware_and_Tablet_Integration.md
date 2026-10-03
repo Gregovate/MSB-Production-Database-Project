@@ -431,3 +431,29 @@ For application work, preserve HID keyboard input as a first-class scan path whi
 - [FieldWiring Scan Integration Engineering Handoff](FieldWiring_Scan_Integration_Engineering_Handoff_2026-08-22.md)
 - [Setup and Deployment](../12_Setup_and_Deployment/README.md)
 - [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md)
+
+## Record Location explicit HID mode — 2026-10-03
+
+The Setup **Record Location** page uses the same Zebra Bluetooth HID / compact canonical identifier contract as the workshop Pick workflow, but the operator intent is separate.
+
+Field tracing found that Record Location had a document-level HID collector but did not explicitly arm a focusless scanner state. Because that collector intentionally ignored editable targets, Android focus on a text/select control could divert the scanner sequence away from the intended HID path.
+
+The V0.3.36 candidate follows the already-working Pick interaction model:
+
+```text
+Record Location
+    -> Start Scanner
+    -> stop/disable camera capture
+    -> blur current editable focus
+    -> arm document HID capture
+    -> Zebra emits CONT:<id> / DISP:<id> + Enter
+    -> normal Record Location identity resolution
+
+Stop Scanner
+    -> disarm document HID capture
+    -> camera path available again
+```
+
+Scanner mode does **not** disable GPS or location evidence entry. The operator may keep the Zebra armed while starting/stopping GPS, selecting one of the nearby GPS-derived references, selecting a known park reference, or entering an exception/location note. Select controls return to scanner capture immediately after selection; text-note controls return when editing is complete.
+
+This is application focus/input plumbing under #113. It does not change Zebra programming, the canonical payload contract, permanent physical labels, or #88 movement meaning. Camera, manual, search/touch, Scan handoff, and Zebra HID remain alternate capture sources for the same permanent asset identity. Free-text location notes remain raw Record Location evidence for later evaluation and do not automatically promote a new GIS/reference location or permanent Home Location.
