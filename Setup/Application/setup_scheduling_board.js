@@ -3128,49 +3128,50 @@ function board205InstallView() {
                 <button id="setup-board205-add-season-task" type="button" class="manager-only">Add Task</button>
               </div>
             </div>
-            <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
-              <div class="setup-board205-work-day-collapsed">
-                <button id="setup-board205-toggle-work-days" type="button" class="small" aria-expanded="false">+ Add Work Days</button>
-                <span class="setup-board205-auto-day-note">Open only when you need to add dates.</span>
-              </div>
-              <div id="setup-board205-work-day-picker-body" class="setup-board205-work-day-picker" hidden>
-                <div class="setup-board205-work-day-picker-copy">
-                  <strong>Add Work Days</strong>
-                  <span class="setup-board205-auto-day-note">Tap dates to select or deselect them. Existing Work Days are disabled. Setup Day # is assigned automatically in chronological order.</span>
+            <div class="setup-board205-dispatch-controls">
+              <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
+                <div class="setup-board205-work-day-collapsed">
+                  <button id="setup-board205-toggle-work-days" type="button" class="small" aria-expanded="false">+ Add Work Days</button>
                 </div>
-                <div id="setup-board205-work-day-calendar" class="setup-board205-work-day-calendar" aria-label="Select Work Day dates"></div>
-                <div id="setup-board205-work-day-selection" class="muted" aria-live="polite"></div>
-                <label class="setup-board205-volunteer-note">Volunteer / capacity note<input id="setup-board205-volunteer-note" type="text" placeholder="Optional; applied to all selected dates"></label>
-                <div class="setup-board205-work-day-actions">
-                  <button id="setup-board205-add-work-days" type="submit" disabled>Add Selected Work Days</button>
-                  <button id="setup-board205-cancel-work-days" type="button" class="secondary">Cancel</button>
+                <div id="setup-board205-work-day-picker-body" class="setup-board205-work-day-picker" hidden>
+                  <div class="setup-board205-work-day-picker-copy">
+                    <strong>Add Work Days</strong>
+                    <span class="setup-board205-auto-day-note">Tap dates to select or deselect them. Existing Work Days are disabled. Setup Day # is assigned automatically in chronological order.</span>
+                  </div>
+                  <div id="setup-board205-work-day-calendar" class="setup-board205-work-day-calendar" aria-label="Select Work Day dates"></div>
+                  <div id="setup-board205-work-day-selection" class="muted" aria-live="polite"></div>
+                  <label class="setup-board205-volunteer-note">Volunteer / capacity note<input id="setup-board205-volunteer-note" type="text" placeholder="Optional; applied to all selected dates"></label>
+                  <div class="setup-board205-work-day-actions">
+                    <button id="setup-board205-add-work-days" type="submit" disabled>Add Selected Work Days</button>
+                    <button id="setup-board205-cancel-work-days" type="button" class="secondary">Cancel</button>
+                  </div>
                 </div>
+              </form>
+
+              <div class="setup-board205-scheduled-search">
+                <label for="setup-board205-scheduled-search">Find scheduled task</label>
+                <input id="setup-board205-scheduled-search" type="search" autocomplete="off" placeholder="Stage, task name, or Captain">
+                <div id="setup-board205-scheduled-search-results" class="setup-board205-scheduled-search-results" aria-live="polite"></div>
               </div>
-            </form>
+
+              <div class="setup-board205-day-filters" aria-label="Day view">
+                <strong>Day view</strong>
+                <label><input id="setup-board205-show-unfinished-days" type="checkbox" checked> Unfinished</label>
+                <label><input id="setup-board205-show-completed-days" type="checkbox"> Completed</label>
+                <label><input id="setup-board205-show-empty-days" type="checkbox" checked> Empty</label>
+              </div>
+
+              <span id="setup-board205-selection-count" class="setup-board205-selection-count" hidden></span>
+              <button id="setup-board205-print" type="button" class="small">Print Schedule</button>
+            </div>
           </section>
 
           <section id="setup-board205-board-pane" class="card setup-board205-board">
-            <div class="eyebrow">Setup Day Number · DOW · Date</div>
             <div class="setup-board205-board-heading">
               <div class="setup-board205-board-title-row">
                 <h3>Rolling Work Days</h3>
-                <div class="setup-board205-board-title-actions">
-                  <span id="setup-board205-selection-count" class="setup-board205-selection-count" hidden></span>
-                  <button id="setup-board205-print" type="button" class="small">Print Schedule</button>
-                </div>
+                <span class="setup-board205-board-key">Setup Day # · DOW · Date</span>
               </div>
-              <p class="muted">Each work day starts with Crew A. Add crews only when needed. Schedule in AM/PM shifts; planned headcount is optional by crew and shift. Historical actual assignments are locked.</p>
-            </div>
-            <div class="setup-board205-scheduled-search setup-board205-scheduled-search-sticky">
-              <label for="setup-board205-scheduled-search">Find scheduled task</label>
-              <input id="setup-board205-scheduled-search" type="search" autocomplete="off" placeholder="Stage, task name, or Captain">
-              <div id="setup-board205-scheduled-search-results" class="setup-board205-scheduled-search-results" aria-live="polite"></div>
-            </div>
-            <div class="setup-board205-day-filters" aria-label="Day view">
-              <strong>Day view</strong>
-              <label><input id="setup-board205-show-unfinished-days" type="checkbox" checked> Scheduled / unfinished</label>
-              <label><input id="setup-board205-show-completed-days" type="checkbox"> Completed / cancelled</label>
-              <label><input id="setup-board205-show-empty-days" type="checkbox" checked> Empty days</label>
             </div>
             <div id="setup-board205-days" class="setup-board205-days"></div>
           </section>

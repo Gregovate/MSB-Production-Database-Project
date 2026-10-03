@@ -357,9 +357,30 @@ def test_205_scheduled_task_finder_locates_existing_schedule_assignments() -> No
     assert "scheduled-search-hit" in ui
     assert ".setup-board205-scheduled-search" in css
     assert ".setup-board205-assignment.scheduled-search-hit" in css
-    assert "setup-board205-scheduled-search-sticky" in ui
-    assert "position: sticky;" in css
+    assert "setup-board205-dispatch-controls" in ui
+    assert "setup-board205-scheduled-search-sticky" not in ui
+    assert ".setup-board205-dispatch-controls .setup-board205-scheduled-search-results" in css
+    assert "position: absolute;" in css
     assert "function board205CollapseScheduledSearchResults" in ui
+
+
+def test_205_schedule_command_bar_preserves_board_height_and_controls() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "setup-board205-dispatch-controls" in ui
+    assert "+ Add Work Days" in ui
+    assert "Find scheduled task" in ui
+    assert "> Unfinished</label>" in ui
+    assert "> Completed</label>" in ui
+    assert "> Empty</label>" in ui
+    assert "setup-board205-selection-count" in ui
+    assert "Print Schedule" in ui
+    assert "Open only when you need to add dates." not in ui
+    assert "Each work day starts with Crew A." not in ui
+    assert "setup-board205-board-key" in ui
+    assert "grid-template-columns: auto minmax(16rem, 1fr) auto auto auto;" in css
+    assert "max-height: min(22rem, 55vh);" in css
 
 
 def test_205_schedule_badges_use_consistent_semantic_colors() -> None:
@@ -901,8 +922,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-10-02.7" in html
-    assert "setup_scheduling_board.js?v=2026-10-02.7" in html
+    assert "setup_scheduling_board.css?v=2026-10-02.8" in html
+    assert "setup_scheduling_board.js?v=2026-10-02.8" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
