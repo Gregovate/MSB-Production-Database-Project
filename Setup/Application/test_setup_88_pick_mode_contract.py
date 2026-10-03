@@ -93,6 +93,32 @@ def test_record_location_preserves_many_identity_entry_options_and_scan_handoff(
     assert 'id="movement-search-input"' in html
 
 
+def test_record_location_scanner_mode_matches_pick_focusless_hid_contract():
+    ui = read("setup_record_location.js")
+    html = read("record_location.html")
+
+    assert 'id="movement-scanner-toggle"' in html
+    assert "Start Scanner" in html
+    assert "let scannerActive = false;" in ui
+    assert "if (!scannerActive || event.defaultPrevented || event.isComposing) return;" in ui
+    assert "async function toggleScanner()" in ui
+    scanner = ui.split("async function toggleScanner()", 1)[1].split("async function stopCamera()", 1)[0]
+    assert "await stopCamera();" in scanner
+    assert "cameraToggle.disabled = true;" in scanner
+    assert "document.activeElement.blur()" in scanner
+    assert "SCANNER READY" in scanner
+    assert "function stopScanner()" in ui
+    assert "cameraToggle.disabled = false;" in ui
+    assert "Stop Scanner before using the camera." in ui
+    assert "manualInput.value = identity.identity;" in ui
+    assert "await handleIdentity(raw, 'CAMERA_SCAN');" in ui
+    assert "function restoreScannerCapture()" in ui
+    assert "locationNote.addEventListener('blur', restoreScannerCapture)" in ui
+    assert "gpsQuality.addEventListener('change', restoreScannerCapture)" in ui
+    assert "gpsQualityNote.addEventListener('blur', restoreScannerCapture)" in ui
+    assert "searchAssets().finally(restoreScannerCapture)" in ui
+
+
 def test_record_location_training_mode_uses_real_reads_but_never_writes_or_queues():
     ui = read("setup_record_location.js")
     html = read("record_location.html")
@@ -131,7 +157,7 @@ def test_record_location_gps_is_explicit_and_identity_can_precede_gps():
     initialize = ui.split("async function initialize()", 1)[1]
     assert "stopGps();" in initialize
     assert "startGps();" not in initialize
-    assert "selectIdentity(identity, 'TOUCH_SELECT')" in initialize
+    assert "handleIdentity(requested, 'TOUCH_SELECT')" in initialize
 
 
 def test_reference_locations_are_refreshable_versioned_and_not_hardcoded_in_js():
@@ -359,8 +385,8 @@ def test_release_identity_and_offline_shells_are_synchronized():
     location_sw = read("setup_record_location_sw.js")
     location_html = read("record_location.html")
 
-    assert 'PRODUCTION_VERSION = "V0.3.35-schedule-usability"' in backend
-    assert "const CLIENT_BUILD = 'V0.3.35-schedule-usability';" in guard
+    assert 'PRODUCTION_VERSION = "V0.3.36-record-location-scanner"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.36-record-location-scanner';" in guard
     assert "msb-setup-pick-mode-v16" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_html
@@ -368,11 +394,11 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "setup_pick_list.js?v=2026-10-01.4" in pick_html
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_sw
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_html
-    assert "msb-setup-record-location-v6" in location_sw
+    assert "msb-setup-record-location-v7" in location_sw
     assert "setup_record_location.css?v=2026-09-30.6" in location_sw
     assert "setup_record_location.css?v=2026-09-30.6" in location_html
-    assert "setup_record_location.js?v=2026-09-30.6" in location_sw
-    assert "setup_record_location.js?v=2026-09-30.6" in location_html
+    assert "setup_record_location.js?v=2026-10-03.1" in location_sw
+    assert "setup_record_location.js?v=2026-10-03.1" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():
