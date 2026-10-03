@@ -605,3 +605,47 @@ prove 065 already installed
 ```
 
 Do not reapply migration 065 and do not invent a new #88-specific audit workaround.
+
+## 2026-10-03 V0.3.36 Record Location scanner-mode correction
+
+Physical rugged-tablet testing after the accepted Setup releases showed that the workshop Pick scanner path was reliable while the separate Record Location surface could fail to select a Zebra/HID-scanned Container or Display.
+
+Read-only source tracing established that both applications already used the same capture-phase document HID collector and compact V5 Zebra payload + Enter contract. The relevant difference was scanner arming/focus policy:
+
+```text
+Pick Mode
+    -> Start Picking explicitly arms HID capture
+    -> active editable control is blurred
+    -> repeated scanner input is handled by the focusless document collector
+
+Record Location before V0.3.36
+    -> HID collector was always installed
+    -> collector intentionally ignored editable targets
+    -> no explicit scanner-armed state established focus ownership
+```
+
+The correction is an explicit Record Location scanner mode rather than changing scanner programming, permanent QR identity, or movement semantics.
+
+V0.3.36 candidate behavior:
+
+- **Start Scanner** explicitly arms Record Location HID capture;
+- starting scanner mode stops any active camera scan;
+- camera scanning is disabled while scanner mode is armed;
+- scanner activation blurs the currently active control so Android HID starts in the same focusless capture state used by Pick Mode;
+- **Stop Scanner** disarms the document HID collector and re-enables camera scanning;
+- scanner mode remains armed while the operator starts/stops GPS, chooses a GPS-derived nearby reference, chooses a known park reference, or adds an exception/location note;
+- editable location controls may temporarily own focus while the operator enters information, but completing that interaction restores focusless scanner capture so the next Zebra scan does not require another **Start Scanner** tap;
+- camera/manual/search/Scan-handoff identity paths remain available when scanner mode is not armed;
+- camera, HID, manual, touch/search, and Scan-handoff identities converge on the same Record Location identity-selection logic;
+- the visible identity input is updated with the resolved canonical `CONT:` / `DISP:` value regardless of capture source;
+- free-text location notes remain observation evidence for later review; they do not automatically create or alter #171 GIS/reference authority or #230 permanent Home Location/reference records;
+- Pick List behavior is unchanged;
+- Zebra V5 ADF / Enter behavior is unchanged;
+- permanent label / QR payload identity is unchanged;
+- PostgreSQL movement schema and movement semantics are unchanged.
+
+The Record Location service-worker cache generation advances from v6 to v7 and the JavaScript asset pin advances to `2026-10-03.1` so tablet acceptance cannot be satisfied by a stale pre-scanner-mode shell.
+
+This candidate is based on current `main` after V0.3.35 schedule-usability, so the scanner correction uses the distinct release identity `V0.3.36-record-location-scanner`.
+
+Required acceptance remains exact-candidate Setup regression, disposable/browser review, then real rugged-tablet + Zebra/camera/GPS verification before Production deployment.
