@@ -364,6 +364,17 @@ def test_205_scheduled_task_finder_locates_existing_schedule_assignments() -> No
     assert "function board205CollapseScheduledSearchResults" in ui
 
 
+def test_205_light_mode_strengthens_schedule_structure_without_changing_dark_palette() -> None:
+    css = read_app("setup_scheduling_board.css")
+
+    assert 'html[data-theme="light"] .setup-board205-day' in css
+    assert "border-color: #b8c4d0;" in css
+    assert 'html[data-theme="light"] .setup-board205-assignment' in css
+    assert "border-color: #bdc9d5;" in css
+    assert "background: #eef3f7;" in css
+    assert "background: #fbfcfe;" in css
+
+
 def test_205_schedule_command_bar_preserves_board_height_and_controls() -> None:
     ui = read_app("setup_scheduling_board.js")
     css = read_app("setup_scheduling_board.css")
@@ -922,7 +933,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-10-02.8" in html
+    assert "setup_scheduling_board.css?v=2026-10-02.9" in html
     assert "setup_scheduling_board.js?v=2026-10-02.8" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html

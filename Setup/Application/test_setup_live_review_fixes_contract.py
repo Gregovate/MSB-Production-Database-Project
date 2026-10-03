@@ -5,6 +5,12 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent
 
 
+
+def test_global_setup_search_is_hidden_outside_searchable_views() -> None:
+    text = (APP_DIR / "setup_live_review_fixes.js").read_text(encoding="utf-8")
+    assert "['review', 'library', 'perform'].includes(view)" in text
+    assert "search.hidden = !['review', 'library', 'perform'].includes(view);" in text
+
 def test_live_review_dark_mode_defines_next_pass_surface_aliases() -> None:
     css = (APP_DIR / "setup_live_review_fixes.css").read_text(encoding="utf-8")
     assert "--panel: var(--card);" in css

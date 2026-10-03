@@ -1254,6 +1254,39 @@ html[data-theme="dark"] {
   }
 }
 
+/* Light mode needs stronger structural separation than the dark palette naturally provides. */
+html[data-theme="light"] .setup-board205-day {
+  border-color: #b8c4d0;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 10%);
+}
+
+html[data-theme="light"] .setup-board205-grid-head,
+html[data-theme="light"] .setup-board205-crew-label,
+html[data-theme="light"] .setup-board205-cell {
+  border-color: #c2ccd7;
+}
+
+html[data-theme="light"] .setup-board205-grid-head,
+html[data-theme="light"] .setup-board205-crew-label {
+  background: #eef3f7;
+}
+
+html[data-theme="light"] .setup-board205-cell {
+  background: #fbfcfe;
+}
+
+html[data-theme="light"] .setup-board205-task-card,
+html[data-theme="light"] .setup-board205-assignment {
+  border-color: #bdc9d5;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 8%);
+}
+
+html[data-theme="light"] .setup-board205-capacity-note,
+html[data-theme="light"] .setup-board205-carryover {
+  border-color: #b8c4d0;
+  background: #f7f9fb;
+}
+
 
 @media print {
   @page {

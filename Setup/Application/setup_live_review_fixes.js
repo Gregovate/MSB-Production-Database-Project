@@ -252,7 +252,7 @@
 
     const syncSearchVisibility = () => {
       const view = typeof currentSetupViewName === 'function' ? currentSetupViewName() : '';
-      search.hidden = view === 'schedule';
+      search.hidden = !['review', 'library', 'perform'].includes(view);
     };
 
     const applyActiveSearch = () => {
