@@ -1,0 +1,154 @@
+# Appliance PC Setup
+
+> **Status:** Work in progress. This document is being built from the actual setup of the MSB Show PC. Only steps that have been verified on the machine should be promoted into the confirmed procedure.
+
+## Purpose
+
+This procedure documents how to build or rebuild a Windows 11 Pro PC that operates as a shared MSB appliance-style workstation, such as the Show PC.
+
+The intended operating model is:
+
+- one shared local Windows account;
+- local administrator access;
+- no Microsoft account dependency for Windows sign-in;
+- automatic Windows logon after boot;
+- automatic application startup after logon;
+- no per-user permission model;
+- normal Windows Update and security maintenance without using Microsoft cloud identity for the operator account.
+
+## Security and Credential Rule
+
+Do **not** place the Windows account password, recovery keys, API keys, or other credentials in this repository.
+
+The Show PC is intentionally configured for unattended/shared operation. Physical access to the PC should therefore be treated as access to the logged-in appliance account.
+
+---
+
+## 1. Install Windows 11 Pro
+
+Install or reset the PC with **Windows 11 Pro 64-bit**.
+
+### Current OOBE behavior observed
+
+During the current Windows 11 Pro cloud reinstall, Windows required progression through the network portion of OOBE.
+
+The older `BypassNRO` registry method did **not** expose the expected offline/limited-setup option on this build and is not part of this confirmed procedure.
+
+### Create the local appliance account
+
+At the Microsoft account sign-in screen:
+
+1. Open Command Prompt with:
+
+   ```text
+   Shift + F10
+   ```
+
+   On hardware where the function keys require it, use:
+
+   ```text
+   Fn + Shift + F10
+   ```
+
+2. Run:
+
+   ```cmd
+   start ms-cxh:localonly
+   ```
+
+3. The local-user creation dialog should open.
+
+4. Create the local appliance account:
+
+   ```text
+   Light-O-Rama
+   ```
+
+5. Use a local password, but **do not record the password in this repository**.
+
+6. Complete Windows setup using the local account. Do not convert the Windows sign-in to a Microsoft account.
+
+> **Verified:** `start ms-cxh:localonly` successfully opened the local-account setup during the 2026 Show PC build.
+
+---
+
+## 2. Configure Automatic Logon
+
+The Show PC must log in automatically after Windows boots so the show can recover without an operator entering credentials.
+
+Use **Microsoft Sysinternals Autologon**.
+
+### Choose the correct executable
+
+The Sysinternals Autologon package contains multiple executables:
+
+| File | Architecture | Use |
+|---|---|---|
+| `Autologon.exe` | 32-bit x86 | Older 32-bit Windows systems |
+| `Autologon64.exe` | 64-bit x64 | **Use for the MSB Intel/AMD Windows 11 Show PC** |
+| `Autologon64a.exe` | ARM64 | ARM-based Windows PCs |
+
+For the MSB Show PC, run:
+
+```text
+Autologon64.exe
+```
+
+### Enable automatic logon
+
+1. Run `Autologon64.exe` as Administrator.
+2. Verify the username is:
+
+   ```text
+   Light-O-Rama
+   ```
+
+3. Verify the domain/computer field identifies the local PC.
+4. Enter the local account password.
+5. Click **Enable**.
+6. Restart the PC.
+7. Verify Windows boots directly to the `Light-O-Rama` desktop without prompting for credentials.
+
+Sysinternals stores the automatic-logon password as an LSA secret rather than as a normal visible password value. An administrator with access to the computer can still recover it, so this mechanism should not be treated as protection against someone who already has administrative or physical access.
+
+### Temporarily bypass automatic logon
+
+Hold **Shift** during startup/logon to bypass Autologon for that boot.
+
+---
+
+## 3. Confirmed Appliance Account Model
+
+The target Windows account model is:
+
+```text
+Local account:   Light-O-Rama
+Account type:    Local Administrator
+Microsoft login: None
+Automatic login: Enabled
+```
+
+---
+
+## 4. Remaining Setup Steps
+
+The following items still need to be performed and verified on the new Show PC before they become part of the confirmed procedure:
+
+- set and verify the final computer name;
+- complete Windows Update and driver installation;
+- configure the normal MSB LAN interface;
+- configure the dedicated E1.31 interface(s);
+- verify E1.31 interfaces have no unintended default gateway;
+- install and verify the dedicated broadcast audio device;
+- configure both show monitors;
+- configure power, sleep, hibernation, and restart behavior for appliance operation;
+- verify recovery after loss of AC power;
+- install and configure Light-O-Rama software;
+- configure automatic startup of the required show applications;
+- configure Google Drive and required drive mapping;
+- verify USB/serial controller interfaces and COM-port assignments;
+- perform a complete reboot-to-ready test;
+- perform an actual show-load test;
+- document backup and recovery requirements.
+
+Add each item to the confirmed procedure only after it has been tested on the actual appliance PC.
