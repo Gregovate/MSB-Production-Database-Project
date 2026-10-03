@@ -105,8 +105,13 @@ def test_record_location_scanner_mode_matches_pick_focusless_hid_contract():
     scanner = ui.split("async function toggleScanner()", 1)[1].split("async function stopCamera()", 1)[0]
     assert "await stopCamera();" in scanner
     assert "cameraToggle.disabled = true;" in scanner
-    assert "document.activeElement.blur()" in scanner
+    assert "restoreScannerCapture();" in scanner
     assert "SCANNER READY" in scanner
+    restore = ui.split("function restoreScannerCapture()", 1)[1].split(
+        "function finishScannerTypingOnEnter", 1
+    )[0]
+    assert "document.activeElement" in restore
+    assert "active.blur()" in restore
     assert "function stopScanner()" in ui
     assert "cameraToggle.disabled = false;" in ui
     assert "Stop Scanner before using the camera." in ui
