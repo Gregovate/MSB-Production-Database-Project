@@ -117,6 +117,16 @@ def test_record_location_scanner_mode_matches_pick_focusless_hid_contract():
     assert "gpsQuality.addEventListener('change', restoreScannerCapture)" in ui
     assert "gpsQualityNote.addEventListener('blur', restoreScannerCapture)" in ui
     assert "searchAssets().finally(restoreScannerCapture)" in ui
+    assert "function pauseScannerForTyping(label)" in ui
+    assert "Scanner paused — " in ui
+    assert "Scanner ready — no field focus needed" in ui
+    assert "function finishScannerTypingOnEnter(event)" in ui
+    assert "locationNote.addEventListener('keydown', finishScannerTypingOnEnter)" in ui
+    assert "function resetRecordedAssetForNextEntry()" in ui
+    assert "manualInput.value = '';" in ui
+    assert "SCANNER READY — scan next asset" in ui
+    assert "With Scanner on, Zebra capture is focusless" in html
+    assert "Press Enter/Done or tap away to return to scanner-ready" in html
 
 
 def test_record_location_training_mode_uses_real_reads_but_never_writes_or_queues():
@@ -385,8 +395,8 @@ def test_release_identity_and_offline_shells_are_synchronized():
     location_sw = read("setup_record_location_sw.js")
     location_html = read("record_location.html")
 
-    assert 'PRODUCTION_VERSION = "V0.3.36-record-location-scanner"' in backend
-    assert "const CLIENT_BUILD = 'V0.3.36-record-location-scanner';" in guard
+    assert 'PRODUCTION_VERSION = "V0.3.37-record-location-scanner"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.37-record-location-scanner';" in guard
     assert "msb-setup-pick-mode-v16" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_html
@@ -394,11 +404,11 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "setup_pick_list.js?v=2026-10-01.4" in pick_html
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_sw
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_html
-    assert "msb-setup-record-location-v7" in location_sw
+    assert "msb-setup-record-location-v8" in location_sw
     assert "setup_record_location.css?v=2026-09-30.6" in location_sw
     assert "setup_record_location.css?v=2026-09-30.6" in location_html
-    assert "setup_record_location.js?v=2026-10-03.1" in location_sw
-    assert "setup_record_location.js?v=2026-10-03.1" in location_html
+    assert "setup_record_location.js?v=2026-10-03.2" in location_sw
+    assert "setup_record_location.js?v=2026-10-03.2" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():
