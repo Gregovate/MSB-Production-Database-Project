@@ -244,7 +244,7 @@ Official source:
 
 Install the **Windows x64 User Installer**.
 
-> **Installed on MSB-SHOW_PC2. Version verification pending.**
+> **Verified on MSB-SHOW_PC2:** VS Code `1.140.0` x64 is installed and available from the command line.
 
 During installation:
 
@@ -262,7 +262,7 @@ Official source:
 
 Install the **x64** build.
 
-> **Installed on MSB-SHOW_PC2 using the documented installer selections. Version/configuration verification pending.**
+> **Verified on MSB-SHOW_PC2:** Git for Windows `2.56.0.windows.1` is installed. Effective line-ending configuration still requires verification with `git config --show-origin --get core.autocrlf`.
 
 Use these installer selections for the MSB appliance PC:
 
@@ -330,7 +330,34 @@ On MSB-SHOW_PC2, the Python Install Manager was installed from PowerShell with:
 winget install 9NQ7512CXL7T
 ```
 
-This WinGet package installs the **Python Install Manager**. It does not by itself prove that a Python 3.13 runtime is installed or that the `python` command is correctly available in PATH.
+The install manager updated itself to version **26.3**.
+
+The first `py list` showed no runtimes. Running `py --version` with no runtime installed triggered the install manager's automatic-install behavior and installed **Python 3.14.8**. This is expected behavior for the current Python Install Manager when no runtime exists, but Python 3.14 is **not** the selected MSB repository runtime.
+
+The current MSB target remains **Python 3.13 x64** because the repository includes `psycopg2-binary==2.9.10`, which publishes a Windows x64 wheel for CPython 3.13 but not CPython 3.14.
+
+Correct the runtime before using Python for MSB repository work:
+
+```powershell
+py install 3.13
+py list
+```
+
+After confirming Python 3.13 is installed, remove the unintended 3.14 runtime:
+
+```powershell
+py uninstall 3.14
+```
+
+Open a new PowerShell window and verify:
+
+```powershell
+py list
+py --version
+python --version
+```
+
+Both launch commands should resolve to Python 3.13.x.
 
 Open a **new PowerShell window** after installation and verify:
 
@@ -367,7 +394,7 @@ python --version
 py list
 git --version
 code --version
-git config --global core.autocrlf
+git config --show-origin --get core.autocrlf
 ```
 
 Expected Git line-ending result:
@@ -375,6 +402,8 @@ Expected Git line-ending result:
 ```text
 input
 ```
+
+The installer may store this setting at system scope, so a blank result from `git config --global core.autocrlf` alone does **not** prove the setting is missing. Use `--show-origin --get` to check the effective configuration.
 
 Record the actual installed versions after verification.
 
