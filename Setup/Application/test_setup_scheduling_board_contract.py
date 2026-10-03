@@ -216,7 +216,7 @@ def test_205_board_uses_dynamic_crews_am_pm_and_accessible_move_controls() -> No
     css = read_app("setup_scheduling_board.css")
 
     for phrase in (
-        "Crew A",
+        "Crew ${board205Esc(crew.crew_code)}",
         "+ Add Crew",
         "MORNING",
         "AFTERNOON",
@@ -644,12 +644,12 @@ def test_205_rolling_board_filters_days_by_operational_state() -> None:
     assert "if (status === 'COMPLETE' || status === 'CANCELLED') return 'COMPLETED';" in ui
     assert "if (!assignments.length) return 'EMPTY';" in ui
     assert "return hasUnfinished ? 'UNFINISHED' : 'COMPLETED';" in ui
-    assert "Completed / cancelled" in ui
+    assert "> Completed</label>" in ui
     assert "cancelled-day" in ui
     assert 'id="setup-board205-show-unfinished-days" type="checkbox" checked' in ui
     assert 'id="setup-board205-show-completed-days" type="checkbox"' in ui
     assert 'id="setup-board205-show-empty-days" type="checkbox"' in ui
-    assert "Scheduled / unfinished" in ui
+    assert "> Unfinished</label>" in ui
     assert "if (showEmptyDays) showEmptyDays.checked = true;" in ui
     assert "setup-board205-show-history" not in ui
     assert "day-band-odd" in ui
