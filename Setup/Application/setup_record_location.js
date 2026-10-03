@@ -20,8 +20,6 @@
   const gpsCandidateButtons = el('movement-gps-candidate-buttons');
   const knownReference = el('movement-known-reference');
   const locationNote = el('movement-location-note');
-  const gpsQuality = el('movement-gps-quality');
-  const gpsQualityNote = el('movement-gps-quality-note');
   const referenceStatus = el('movement-reference-status');
   const pendingPanel = el('movement-pending');
   const pendingTitle = el('movement-pending-title');
@@ -534,8 +532,8 @@
       gps_accuracy_m: snapshot.accuracy_m,
       gps_fix_at: snapshot.fix_at,
       gps_fix_age_ms: snapshot.fix_age_ms,
-      gps_quality: String(gpsQuality.value || 'UNASSESSED').toUpperCase(),
-      gps_quality_note: String(gpsQualityNote.value || '').trim() || null
+      gps_quality: 'UNASSESSED',
+      gps_quality_note: null
     };
   }
 
@@ -564,8 +562,8 @@
       destination_location_note: action === 'RETURNED' ? null : destinationNote(),
       notes: action === 'RETURNED' ? null : referenceProvenanceNote(),
       unloaded_display_ids: unloadedDisplayIds || [],
-      gps_quality: String(gpsQuality.value || 'UNASSESSED').toUpperCase(),
-      gps_quality_note: String(gpsQualityNote.value || '').trim() || null
+      gps_quality: 'UNASSESSED',
+      gps_quality_note: null
     };
     return Object.assign(payload, gpsPayload());
   }
@@ -917,8 +915,6 @@
     manualInput.value = '';
     knownReference.value = '';
     locationNote.value = '';
-    gpsQuality.value = 'UNASSESSED';
-    gpsQualityNote.value = '';
     restoreScannerCapture();
   }
 
@@ -1186,16 +1182,6 @@
   locationNote.addEventListener('input', renderRecordReadiness);
   locationNote.addEventListener('keydown', finishScannerTypingOnEnter);
   locationNote.addEventListener('blur', restoreScannerCapture);
-  gpsQuality.addEventListener('focus', function () {
-    pauseScannerForTyping('choosing GPS quality');
-  });
-  gpsQuality.addEventListener('change', restoreScannerCapture);
-  gpsQuality.addEventListener('blur', restoreScannerCapture);
-  gpsQualityNote.addEventListener('focus', function () {
-    pauseScannerForTyping('typing GPS quality note');
-  });
-  gpsQualityNote.addEventListener('keydown', finishScannerTypingOnEnter);
-  gpsQualityNote.addEventListener('blur', restoreScannerCapture);
   trainingEnter.addEventListener('click', enterTrainingMode);
   trainingExit.addEventListener('click', exitTrainingMode);
   el('back-setup').addEventListener('click', function () {
