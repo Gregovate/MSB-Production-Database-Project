@@ -429,9 +429,9 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "setup_pick_list.js?v=2026-10-01.4" in pick_html
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_sw
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_html
-    assert "msb-setup-record-location-v9" in location_sw
-    assert "setup_record_location.css?v=2026-09-30.6" in location_sw
-    assert "setup_record_location.css?v=2026-09-30.6" in location_html
+    assert "msb-setup-record-location-v10" in location_sw
+    assert "setup_record_location.css?v=2026-10-03.1" in location_sw
+    assert "setup_record_location.css?v=2026-10-03.1" in location_html
     assert "setup_record_location.js?v=2026-10-03.3" in location_sw
     assert "setup_record_location.js?v=2026-10-03.3" in location_html
 
@@ -513,6 +513,9 @@ def test_record_location_requires_visible_location_review_before_record_action()
     assert "scrollIntoView({behavior: 'smooth', block: 'start'})" in ui
     assert "locationNote.addEventListener('input', renderRecordReadiness)" in ui
     assert ".compact-status" in css
+    assert "grid-template-columns:minmax(320px,2fr) minmax(0,3fr)" in css
+    assert "@media(max-width:900px){.entry-grid{grid-template-columns:1fr}}" in css
+    assert ".camera-actions .muted{min-width:0;overflow-wrap:anywhere}" in css
     assert 'id="movement-home-location"' in html
     assert "Home Location:" in ui
     assert "Manager correction required before return" in ui
