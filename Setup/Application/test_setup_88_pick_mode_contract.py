@@ -433,9 +433,9 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "setup_pick_list.js?v=2026-10-01.4" in pick_html
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_sw
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_html
-    assert "msb-setup-record-location-v11" in location_sw
-    assert "setup_record_location.css?v=2026-10-03.2" in location_sw
-    assert "setup_record_location.css?v=2026-10-03.2" in location_html
+    assert "msb-setup-record-location-v12" in location_sw
+    assert "setup_record_location.css?v=2026-10-03.3" in location_sw
+    assert "setup_record_location.css?v=2026-10-03.3" in location_html
     assert "setup_record_location.js?v=2026-10-03.3" in location_sw
     assert "setup_record_location.js?v=2026-10-03.3" in location_html
 
@@ -523,6 +523,11 @@ def test_record_location_requires_visible_location_review_before_record_action()
     assert "body.record-location-scanner-active.record-location-asset-pending .identity-panel .entry-grid" in css
     assert "body.record-location-scanner-active .identity-panel .find-asset" in css
     assert "body.record-location-scanner-active #movement-camera-toggle" in css
+    assert ".location-overview{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,420px)" in css
+    assert ".location-nearest-buttons{display:grid;grid-template-columns:1fr" in css
+    assert 'id="movement-gps-candidates" class="gps-candidates" hidden' in html
+    assert ".reference-data-details{display:none}" in css
+    assert "body.training-mode .reference-data-details{display:block}" in css
     assert "@media(max-width:900px){" in css
     assert ".camera-actions .muted{min-width:0;overflow-wrap:anywhere}" in css
     assert 'id="movement-home-location"' in html
