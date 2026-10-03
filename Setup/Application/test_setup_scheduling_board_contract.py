@@ -1487,3 +1487,38 @@ def test_205_production_notice_is_not_persistent_after_successful_load() -> None
     )[0]
     assert "alert.hidden = true" in load_season
     assert "Setup Session loaded from Production" not in load_season
+
+
+
+def test_205_manager_can_delete_only_empty_planned_work_day() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    api = read_app("setup_scheduling_board_api.py")
+    repo = read_app("setup_scheduling_board_repository.py")
+    migration = read_db("064_add_guarded_empty_work_day_delete.sql")
+
+    assert "Delete Work Day" in ui
+    assert "board205DayViewState(day) === 'EMPTY'" in ui
+    assert "String(day.day_status || '').toUpperCase() === 'PLANNED'" in ui
+    assert "function board205RemoveWorkDay" in ui
+    assert "Only a PLANNED day with no scheduled or reported work can be deleted." in ui
+    assert "commandOptions('DELETE')" in ui
+
+    assert '@setup_scheduling_board_api.delete("/api/setup/scheduling-board/work-days/<int:setup_work_day_id>")' in api
+    assert "repo().remove_work_day" in api
+    assert "ops.remove_empty_setup_work_day" in repo
+
+    assert "CREATE OR REPLACE FUNCTION ops.remove_empty_setup_work_day" in migration
+    assert "Only an unused PLANNED Setup work day can be removed" in migration
+    assert "Move or remove scheduled work before removing this Setup work day" in migration
+    assert "Reported work exists for this Setup work day and it cannot be removed" in migration
+    assert "DELETE FROM ops.setup_work_day" in migration
+    assert "PERFORM ops.resequence_setup_future_work_days(v_session_id)" in migration
+    assert "GRANT EXECUTE ON FUNCTION ops.remove_empty_setup_work_day(text,bigint) TO fieldwiring_app" in migration
+
+
+def test_205_empty_day_filter_remains_operator_controlled() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "setup-board205-show-empty-days" in ui
+    assert "return showEmpty;" in ui
+    assert "workDate < today" not in ui

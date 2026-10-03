@@ -88,6 +88,7 @@ Accepted durable foundation / reconstruction migrations now include:
 061_add_live_assignment_report_work.sql
 062_add_setup_context_work_order_intake.sql
 063_add_setup_pick_list_delay.sql
+064_add_guarded_empty_work_day_delete.sql
 ```
 
 #184 is the durable model/runtime; #167 is the completed one-time data reconstruction only.
