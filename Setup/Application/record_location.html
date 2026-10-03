@@ -45,11 +45,12 @@
 
     <div class="entry-grid">
       <div>
-        <label for="movement-manual-input">Scan with Zebra or enter identity / QR URL</label>
+        <label for="movement-manual-input">Asset identity / QR URL</label>
         <div class="entry-row">
           <input id="movement-manual-input" autocomplete="off" inputmode="text" placeholder="CONT:34, DISP:141, or scan URL">
           <button id="movement-manual-go" type="button">Use</button>
         </div>
+        <div class="muted">With Scanner on, Zebra capture is focusless — do not click Use after a scan. Use/Enter is for manual entry.</div>
       </div>
       <div class="camera-actions">
         <button id="movement-scanner-toggle" type="button">Start Scanner</button>
@@ -98,6 +99,7 @@
       <label for="movement-location-note">Optional location note
         <input id="movement-location-note" autocomplete="off" placeholder="Use only when GPS/reference does not fully describe this location">
       </label>
+      <div class="muted">If Scanner is on, typing a note pauses HID capture. Press Enter/Done or tap away to return to scanner-ready.</div>
     </details>
 
     <details class="gps-quality">
@@ -144,6 +146,6 @@
   </details>
 </main>
 
-<script src="assets/setup_record_location.js?v=2026-10-03.1"></script>
+<script src="assets/setup_record_location.js?v=2026-10-03.2"></script>
 </body>
 </html>
