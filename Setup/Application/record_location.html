@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Setup — Record Location</title>
-  <link rel="stylesheet" href="assets/setup_record_location.css?v=2026-10-03.2">
+  <link rel="stylesheet" href="assets/setup_record_location.css?v=2026-10-03.3">
 </head>
 <body>
 <header class="page-header">
@@ -76,17 +76,22 @@
   </section>
 
   <section class="panel location-panel">
-    <div class="section-heading">
-      <div>
-        <div class="eyebrow">2 · Location evidence</div>
-        <h2>Where is it now?</h2>
-      </div>
-      <button id="movement-gps-toggle" type="button">Start GPS</button>
-    </div>
+    <div class="location-overview">
+      <div class="location-overview-main">
+        <div class="section-heading">
+          <div>
+            <div class="eyebrow">2 · Location evidence</div>
+            <h2>Where is it now?</h2>
+          </div>
+          <button id="movement-gps-toggle" type="button">Start GPS</button>
+        </div>
 
-    <div id="movement-gps" class="gps-state">GPS OFF</div>
-    <div id="movement-gps-candidates" class="gps-candidates">GPS is off. Start it when location evidence is needed.</div>
-    <div id="movement-gps-candidate-buttons" class="reference-buttons"></div>
+        <div id="movement-gps" class="gps-state">GPS OFF</div>
+        <div id="movement-gps-candidates" class="gps-candidates" hidden>GPS is off. Start it when location evidence is needed.</div>
+      </div>
+
+      <div id="movement-gps-candidate-buttons" class="reference-buttons location-nearest-buttons"></div>
+    </div>
 
     <label for="movement-known-reference">Known park reference
       <select id="movement-known-reference">
@@ -116,7 +121,7 @@
       </label>
     </details>
 
-    <details class="reference-data-details">
+    <details class="reference-data-details training-reference-data">
       <summary>Reference data</summary>
       <div id="movement-reference-status" class="reference-status">Location references not loaded yet.</div>
     </details>
