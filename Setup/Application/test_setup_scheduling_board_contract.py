@@ -348,11 +348,52 @@ def test_205_scheduled_task_finder_locates_existing_schedule_assignments() -> No
     assert "function board205RevealScheduledAssignment" in ui
     assert "function board205RenderScheduledSearch" in ui
     assert "board205CompareAssignmentOrder" in ui
-    assert "Task name or Task #" in ui
+    assert "Stage, task name, or Captain" in ui
+    assert "captain_display_name" in ui
+    assert "stage_name" in ui
+    assert "function board205ScheduledStageLabel" in ui
+    assert "function board205CompactDayContext" in ui
     assert "scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })" in ui
     assert "scheduled-search-hit" in ui
     assert ".setup-board205-scheduled-search" in css
     assert ".setup-board205-assignment.scheduled-search-hit" in css
+
+
+def test_205_schedule_board_multi_select_moves_only_unworked_assignments() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "selectedAssignmentIds: new Set()" in ui
+    assert "lastSelectedAssignmentId: null" in ui
+    assert "event.ctrlKey || event.metaKey" in ui
+    assert "event.shiftKey" in ui
+    assert "function board205SelectAssignmentCard" in ui
+    assert "function board205SelectedAssignmentItems" in ui
+    assert "kind: 'assignments'" in ui
+    assert "drag any selected task to move the group" in ui
+    assert "item && !item.historical_locked" in ui
+    assert "moved before the operation stopped" in ui
+    assert "board205MaybeLearnCaptainForTasks" in ui
+    assert ".setup-board205-assignment.selected" in css
+
+
+def test_205_schedule_board_repeats_day_context_at_crew_and_compacts_print() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "setup-board205-crew-day-context" in ui
+    assert "board205CompactDayContext(day)" in ui
+    assert "setup-board205-crew-row" in ui
+    assert "print-empty-day" in ui
+    assert "print-empty-crew" in ui
+    assert "setup-board205-assignment-captain" in ui
+    assert ".setup-board205-crew-row" in css
+    assert "break-inside: avoid;" in css
+    assert "#schedule-view .print-empty-day" in css
+    assert "#schedule-view .print-empty-crew" in css
+    assert "#schedule-view .setup-board205-planning-header" in css
+    assert "#schedule-view .setup-board205-assignment-captain" in css
+    assert "min-height: 0 !important;" in css
 
 
 def test_122_schedule_board_compacts_crew_controls_and_prints_operational_board() -> None:
@@ -776,8 +817,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-10-01.1" in html
-    assert "setup_scheduling_board.js?v=2026-10-02.2" in html
+    assert "setup_scheduling_board.css?v=2026-10-02.2" in html
+    assert "setup_scheduling_board.js?v=2026-10-02.3" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html

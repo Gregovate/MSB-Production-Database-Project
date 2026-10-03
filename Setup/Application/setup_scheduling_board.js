@@ -5,6 +5,8 @@
 const setupBoard205State = {
   board: { session: null, work_days: [], crews: [], captain_candidates: [], work_orders: [], tasks: [], assignments: [], dependencies: [] },
   dragged: null,
+  selectedAssignmentIds: new Set(),
+  lastSelectedAssignmentId: null,
   editSeasonTaskId: null,
   editPlanningTaskId: null,
   editPlanningReusableTaskId: null,
@@ -96,6 +98,127 @@ function board205Assignment(assignmentId) {
   return (setupBoard205State.board.assignments || []).find(
     (item) => Number(item.setup_work_day_task_id) === Number(assignmentId)
   );
+}
+
+function board205PruneAssignmentSelection() {
+  const movable = new Set(
+    (setupBoard205State.board.assignments || [])
+      .filter((item) => !item.historical_locked)
+      .map((item) => Number(item.setup_work_day_task_id))
+  );
+  setupBoard205State.selectedAssignmentIds.forEach((assignmentId) => {
+    if (!movable.has(Number(assignmentId))) {
+      setupBoard205State.selectedAssignmentIds.delete(Number(assignmentId));
+    }
+  });
+  if (
+    setupBoard205State.lastSelectedAssignmentId != null
+    && !movable.has(Number(setupBoard205State.lastSelectedAssignmentId))
+  ) {
+    setupBoard205State.lastSelectedAssignmentId = null;
+  }
+}
+
+function board205ClearAssignmentSelection(updateUi = true) {
+  setupBoard205State.selectedAssignmentIds.clear();
+  setupBoard205State.lastSelectedAssignmentId = null;
+  if (updateUi) board205UpdateAssignmentSelectionUi();
+}
+
+function board205UpdateAssignmentSelectionUi() {
+  board205PruneAssignmentSelection();
+  document.querySelectorAll('.setup-board205-assignment').forEach((card) => {
+    const assignmentId = Number(card.dataset.assignmentId || 0);
+    card.classList.toggle(
+      'selected',
+      setupBoard205State.selectedAssignmentIds.has(assignmentId)
+    );
+  });
+  const count = document.getElementById('setup-board205-selection-count');
+  if (!count) return;
+  const selectedCount = setupBoard205State.selectedAssignmentIds.size;
+  count.hidden = selectedCount === 0;
+  count.textContent = selectedCount
+    ? `${selectedCount} task${selectedCount === 1 ? '' : 's'} selected · drag any selected task to move the group`
+    : '';
+}
+
+function board205SelectAssignmentCard(card, event) {
+  if (!card || !appState.access?.can_manage_setup) return;
+  const assignmentId = Number(card.dataset.assignmentId || 0);
+  const item = board205Assignment(assignmentId);
+  if (!assignmentId || !item || item.historical_locked) return;
+
+  const toggle = Boolean(event.ctrlKey || event.metaKey);
+  const cards = [
+    ...document.querySelectorAll(
+      '#setup-board205-days .setup-board205-assignment[draggable="true"]'
+    )
+  ];
+
+  if (event.shiftKey && setupBoard205State.lastSelectedAssignmentId != null) {
+    const anchorIndex = cards.findIndex(
+      (candidate) => Number(candidate.dataset.assignmentId || 0)
+        === Number(setupBoard205State.lastSelectedAssignmentId)
+    );
+    const currentIndex = cards.indexOf(card);
+    if (anchorIndex >= 0 && currentIndex >= 0) {
+      if (!toggle) setupBoard205State.selectedAssignmentIds.clear();
+      const start = Math.min(anchorIndex, currentIndex);
+      const end = Math.max(anchorIndex, currentIndex);
+      cards.slice(start, end + 1).forEach((candidate) => {
+        const candidateId = Number(candidate.dataset.assignmentId || 0);
+        if (candidateId) setupBoard205State.selectedAssignmentIds.add(candidateId);
+      });
+    } else {
+      if (!toggle) setupBoard205State.selectedAssignmentIds.clear();
+      setupBoard205State.selectedAssignmentIds.add(assignmentId);
+    }
+  } else if (toggle) {
+    if (setupBoard205State.selectedAssignmentIds.has(assignmentId)) {
+      setupBoard205State.selectedAssignmentIds.delete(assignmentId);
+    } else {
+      setupBoard205State.selectedAssignmentIds.add(assignmentId);
+    }
+  } else {
+    setupBoard205State.selectedAssignmentIds.clear();
+    setupBoard205State.selectedAssignmentIds.add(assignmentId);
+  }
+
+  setupBoard205State.lastSelectedAssignmentId = assignmentId;
+  board205UpdateAssignmentSelectionUi();
+}
+
+function board205AssignmentVisualSortKey(item) {
+  const day = (setupBoard205State.board.work_days || []).find(
+    (row) => Number(row.setup_work_day_id) === Number(item.setup_work_day_id)
+  );
+  const crew = board205CrewRow(item.setup_work_day_crew_id);
+  const shiftRank = { MORNING: 1, AFTERNOON: 2, ALL_DAY: 3 };
+  return [
+    day?.work_date || item.work_date || '9999-12-31',
+    Number(crew?.crew_number ?? 999999),
+    shiftRank[item.shift_code] || 9,
+    Number(item.sort_order) || 0,
+    Number(item.setup_work_day_task_id) || 0
+  ];
+}
+
+function board205CompareAssignmentVisualOrder(a, b) {
+  const ak = board205AssignmentVisualSortKey(a);
+  const bk = board205AssignmentVisualSortKey(b);
+  return ak[0].localeCompare(bk[0])
+    || ak[1] - bk[1]
+    || ak[2] - bk[2]
+    || ak[3] - bk[3]
+    || ak[4] - bk[4];
+}
+
+function board205SelectedAssignmentItems() {
+  return [...setupBoard205State.selectedAssignmentIds]
+    .map(board205Assignment)
+    .filter((item) => item && !item.historical_locked)
+    .sort(board205CompareAssignmentVisualOrder);
 }
 
 function board205CrewRow(crewId) {
@@ -416,22 +539,56 @@ function board205DayViewState(day) {
   return hasUnfinished ? 'UNFINISHED' : 'COMPLETED';
 }
 
+function board205CompactWorkDate(value) {
+  const raw = String(value || '').trim();
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[2]}/${match[3]}` : (raw || 'date TBD');
+}
+
+function board205CompactDayContext(day) {
+  const dayNumber = day?.setup_day_number ?? '—';
+  const dow = String(day?.day_of_week || '').trim().toUpperCase();
+  const date = board205CompactWorkDate(day?.work_date);
+  return `D${dayNumber}${dow ? ` · ${dow}` : ''} · ${date}`;
+}
+
+function board205ScheduledStageLabel(task) {
+  if (task?.stage_id == null) return 'Site-wide / Infrastructure';
+  const stageKey = task.stage_key || task.stage_id || '—';
+  const stageName = task.stage_name ? ` — ${task.stage_name}` : '';
+  const sceneName = task.scene_name ? ` / ${task.scene_name}` : '';
+  return `Stage ${stageKey}${stageName}${sceneName}`;
+}
+
 function board205ScheduledSearchMatches(query = null) {
   const raw = query == null
     ? document.getElementById('setup-board205-scheduled-search')?.value
     : query;
   const search = String(raw || '').trim().toLowerCase();
   if (!search) return [];
+  const terms = search.split(/\s+/).filter(Boolean);
 
   return [...(setupBoard205State.board.assignments || [])]
     .filter((item) => {
       const task = board205Task(item.setup_session_task_id) || item;
+      const day = (setupBoard205State.board.work_days || []).find(
+        (row) => Number(row.setup_work_day_id) === Number(item.setup_work_day_id)
+      );
+      const crew = board205CrewRow(item.setup_work_day_crew_id);
       const haystack = [
         task.task_name || item.task_name || '',
+        task.stage_key || item.stage_key || '',
+        task.stage_name || item.stage_name || '',
+        task.scene_name || item.scene_name || '',
+        board205Scope(task),
+        crew?.captain_display_name || '',
+        crew?.crew_code || '',
+        day?.day_of_week || '',
+        day?.work_date || '',
         task.setup_task_id == null ? '' : String(task.setup_task_id),
         task.setup_task_id == null ? '' : `task ${task.setup_task_id}`
       ].join(' ').toLowerCase();
-      return haystack.includes(search);
+      return terms.every((term) => haystack.includes(term));
     })
     .sort(board205CompareAssignmentOrder);
 }
@@ -447,8 +604,7 @@ function board205ScheduledSearchLabel(item) {
     : item.shift_code === 'AFTERNOON'
       ? 'PM'
       : 'All Day';
-  const taskId = task.setup_task_id == null ? 'annual-only' : task.setup_task_id;
-  return `Task ${taskId} · ${task.task_name || item.task_name || 'Unnamed task'} — Day ${day?.setup_day_number ?? '—'} · ${day?.work_date || 'date TBD'} · Crew ${crew?.crew_code || '—'} · ${shift}`;
+  return `${board205ScheduledStageLabel(task)} · ${task.task_name || item.task_name || 'Unnamed task'} · Captain ${crew?.captain_display_name || 'TBD'} — ${board205CompactDayContext(day)} · Crew ${crew?.crew_code || '—'} · ${shift}`;
 }
 
 function board205RevealScheduledAssignment(item) {
@@ -506,7 +662,7 @@ function board205RenderScheduledSearch() {
   });
 }
 
-function board205VisibleDays() {
+function board205VisibleDays() {function board205VisibleDays() {
   const showUnfinished = document.getElementById('setup-board205-show-unfinished-days')?.checked !== false;
   const showCompleted = Boolean(document.getElementById('setup-board205-show-completed-days')?.checked);
   const showEmpty = Boolean(document.getElementById('setup-board205-show-empty-days')?.checked);
@@ -1421,7 +1577,7 @@ function board205AssignmentCard(item) {
       <div class="setup-board205-meta">${board205Esc(board205Scope(item))}</div>
       <div class="setup-board205-meta">Min crew ${board205Esc(minCrew ?? 'TBD')} · ${board205Esc(board205Duration(task.expected_duration_minutes))}</div>
       <div class="setup-board205-meta"><strong>Planned crew:</strong> ${board205Esc(planned ?? 'TBD')} · <strong>Est. labor:</strong> ${board205Esc(plannedLabor)}</div>
-      <div class="setup-board205-meta"><strong>Crew Captain:</strong> ${board205Esc(crew?.captain_display_name || 'TBD')}</div>
+      <div class="setup-board205-meta setup-board205-assignment-captain"><strong>Crew Captain:</strong> ${board205Esc(crew?.captain_display_name || 'TBD')}</div>
       ${task.readiness_state === 'NOT_READY' ? `<div class="setup-board205-warning">⚠ Readiness not met: ${board205Esc(task.readiness_note || 'annual readiness condition')}</div>` : ''}
       ${understaffed ? `<div class="setup-board205-warning setup-board205-short-crew-warning"><strong>SHORT CREW</strong> · Planned ${board205Esc(item.shift_code === 'MORNING' ? 'AM' : 'PM')} ${board205Esc(planned)} / minimum ${board205Esc(minCrew)} · short by ${board205Esc(shortBy)}.</div>` : ''}
       ${heavyWarning ? `<div class="setup-board205-warning">⚠ ${board205Esc(heavyWarning)}</div>` : ''}
@@ -1468,24 +1624,44 @@ function board205Day(day) {
   const dayNote = [day.volunteer_note, day.weather_note, day.notes].filter(Boolean).join(' · ');
   const crews = board205CrewsForDay(day.setup_work_day_id);
   const canManage = Boolean(appState.access?.can_manage_setup);
+  const compactDay = board205CompactDayContext(day);
+  const meaningfulCrewIds = new Set(
+    crews
+      .filter((crew) => (
+        crew.captain_person_id != null
+        || crew.am_planned_crew_count != null
+        || crew.pm_planned_crew_count != null
+        || (setupBoard205State.board.assignments || []).some(
+          (item) => Number(item.setup_work_day_crew_id) === Number(crew.setup_work_day_crew_id)
+        )
+      ))
+      .map((crew) => Number(crew.setup_work_day_crew_id))
+  );
+  const printEmptyDay = !dayNote && meaningfulCrewIds.size === 0;
   const crewRows = crews.map((crew) => {
     const legacy = board205AssignmentsFor(day.setup_work_day_id, 'ALL_DAY', crew.setup_work_day_crew_id);
+    const printEmptyCrew = !meaningfulCrewIds.has(Number(crew.setup_work_day_crew_id));
     return `
-      <div class="setup-board205-crew-label" data-crew-id="${crew.setup_work_day_crew_id}">
-        <div class="setup-board205-crew-title-row">
-          <strong>Crew ${board205Esc(crew.crew_code)}</strong>
-          ${canManage ? `<div class="setup-board205-crew-actions"><button type="button" class="small setup-board205-save-crew">Save</button>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
+      <div class="setup-board205-crew-row${printEmptyCrew ? ' print-empty-crew' : ''}">
+        <div class="setup-board205-crew-label" data-crew-id="${crew.setup_work_day_crew_id}">
+          <div class="setup-board205-crew-title-row">
+            <div class="setup-board205-crew-title-context">
+              <strong>Crew ${board205Esc(crew.crew_code)}</strong>
+              <span class="setup-board205-crew-day-context">${board205Esc(compactDay)}</span>
+            </div>
+            ${canManage ? `<div class="setup-board205-crew-actions"><button type="button" class="small setup-board205-save-crew">Save</button>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
+          </div>
+          <label class="setup-board205-crew-captain">Captain
+            <select class="setup-board205-crew-captain-select">${board205CaptainOptions(crew.captain_person_id)}</select>
+          </label>
+          <div class="setup-board205-crew-counts">
+            <label>AM Crew w/Captain <input class="setup-board205-crew-am" type="number" min="0" value="${board205Esc(crew.am_planned_crew_count ?? '')}" placeholder="—"></label>
+            <label>PM Crew w/Captain <input class="setup-board205-crew-pm" type="number" min="0" value="${board205Esc(crew.pm_planned_crew_count ?? '')}" placeholder="—"></label>
+          </div>
         </div>
-        <label class="setup-board205-crew-captain">Captain
-          <select class="setup-board205-crew-captain-select">${board205CaptainOptions(crew.captain_person_id)}</select>
-        </label>
-        <div class="setup-board205-crew-counts">
-          <label>AM Crew w/Captain <input class="setup-board205-crew-am" type="number" min="0" value="${board205Esc(crew.am_planned_crew_count ?? '')}" placeholder="—"></label>
-          <label>PM Crew w/Captain <input class="setup-board205-crew-pm" type="number" min="0" value="${board205Esc(crew.pm_planned_crew_count ?? '')}" placeholder="—"></label>
-        </div>
+        ${board205Cell(day, 'MORNING', crew)}
+        ${board205Cell(day, 'AFTERNOON', crew)}
       </div>
-      ${board205Cell(day, 'MORNING', crew)}
-      ${board205Cell(day, 'AFTERNOON', crew)}
       ${legacy.length ? `
         <div class="setup-board205-crew-label setup-board205-legacy-label">Crew ${board205Esc(crew.crew_code)} · Legacy All Day</div>
         <div class="setup-board205-legacy-all-day">${legacy.map(board205AssignmentCard).join('')}</div>` : ''}
@@ -1493,7 +1669,7 @@ function board205Day(day) {
   }).join('');
 
   return `
-    <section class="setup-board205-day ${dayClass}" data-day-id="${day.setup_work_day_id}">
+    <section class="setup-board205-day ${dayClass}${printEmptyDay ? ' print-empty-day' : ''}" data-day-id="${day.setup_work_day_id}">
       <div class="setup-board205-day-header">
         <div>
           <strong>Day ${board205Esc(day.setup_day_number)} · ${board205Esc(day.day_of_week)} · ${board205Esc(day.work_date)}</strong>
@@ -1517,7 +1693,7 @@ function board205Day(day) {
     </section>`;
 }
 
-function board205RenderBoard() {
+function board205RenderBoard() {function board205RenderBoard() {
   const target = document.getElementById('setup-board205-days');
   if (!target) return;
   const days = board205VisibleDays();
@@ -1559,12 +1735,30 @@ function board205RenderBoard() {
   target.querySelectorAll('.setup-board205-assignment').forEach((card) => {
     const assignmentId = Number(card.dataset.assignmentId);
     const item = board205Assignment(assignmentId);
+
+    card.addEventListener('click', (event) => {
+      if (event.target.closest('button,input,select,textarea,a')) return;
+      board205SelectAssignmentCard(card, event);
+    });
+
     card.addEventListener('dragstart', (event) => {
       if (!item || item.historical_locked) return;
-      setupBoard205State.dragged = { kind: 'assignment', id: assignmentId };
+      if (!setupBoard205State.selectedAssignmentIds.has(assignmentId)) {
+        setupBoard205State.selectedAssignmentIds.clear();
+        setupBoard205State.selectedAssignmentIds.add(assignmentId);
+        setupBoard205State.lastSelectedAssignmentId = assignmentId;
+        board205UpdateAssignmentSelectionUi();
+      }
+      const selected = board205SelectedAssignmentItems();
+      const selectedIds = selected.map((row) => Number(row.setup_work_day_task_id));
+      setupBoard205State.dragged = selectedIds.length > 1
+        ? { kind: 'assignments', ids: selectedIds }
+        : { kind: 'assignment', id: assignmentId };
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', JSON.stringify(setupBoard205State.dragged));
-      card.classList.add('dragging');
+      document.querySelectorAll('.setup-board205-assignment.selected').forEach((node) => {
+        node.classList.add('dragging');
+      });
     });
     card.addEventListener('dragover', (event) => {
       if (!setupBoard205State.dragged || item?.historical_locked) return;
@@ -1578,6 +1772,12 @@ function board205RenderBoard() {
       event.stopPropagation();
       card.classList.remove('drop-target');
       if (!item) return;
+      const draggedIds = setupBoard205State.dragged?.kind === 'assignments'
+        ? setupBoard205State.dragged.ids || []
+        : setupBoard205State.dragged?.kind === 'assignment'
+          ? [setupBoard205State.dragged.id]
+          : [];
+      if (draggedIds.some((value) => Number(value) === assignmentId)) return;
       await board205DropToCell(
         setupBoard205State.dragged,
         Number(item.setup_work_day_id),
@@ -1600,6 +1800,8 @@ function board205RenderBoard() {
     });
     card.querySelector('.setup-board205-remove')?.addEventListener('click', () => board205RemoveAssignment(item));
   });
+  board205PruneAssignmentSelection();
+  board205UpdateAssignmentSelectionUi();
 }
 
 function board205RenderKpis() {
@@ -1801,16 +2003,86 @@ function board205EndSort(dayId, shift, crewId) {
   return items.length ? Math.max(...items.map((item) => Number(item.sort_order) || 0)) + 10 : 10;
 }
 
+function board205DraggedAssignmentItems(dragged) {
+  const ids = dragged?.kind === 'assignments'
+    ? dragged.ids || []
+    : dragged?.kind === 'assignment'
+      ? [dragged.id]
+      : [];
+  return [...new Set(ids.map((value) => Number(value)).filter((value) => value > 0))]
+    .map(board205Assignment)
+    .filter((item) => item && !item.historical_locked)
+    .sort(board205CompareAssignmentVisualOrder);
+}
+
+function board205ConfirmAssignmentGroupPlacement(items, crewId, shift) {
+  const warnings = [];
+  const destinationCrew = board205CrewRow(crewId);
+  for (const item of items) {
+    const changedPlacement = (
+      Number(item.setup_work_day_id) !== Number(destinationCrew?.setup_work_day_id)
+      || String(item.shift_code === 'ALL_DAY' ? 'MORNING' : item.shift_code) !== String(shift)
+      || Number(item.setup_work_day_crew_id) !== Number(crewId)
+    );
+    if (!changedPlacement) continue;
+    const task = board205Task(item.setup_session_task_id) || item;
+    for (const warning of board205PlacementWarnings(task, crewId, shift)) {
+      warnings.push(`${task.task_name || item.task_name}: ${warning}`);
+    }
+  }
+  if (!warnings.length) return true;
+  const noun = items.length === 1 ? 'this task' : `${items.length} selected tasks`;
+  return window.confirm(`${warnings.join('\n\n')}\n\nMove ${noun} anyway?`);
+}
+
+async function board205MaybeLearnCaptainForTasks(tasks, crewId) {
+  const crew = board205CrewRow(crewId);
+  const captainPersonId = crew?.captain_person_id == null ? null : Number(crew.captain_person_id);
+  if (captainPersonId == null) return;
+
+  const uniqueTasks = new Map();
+  for (const task of tasks || []) {
+    if (
+      task?.task_origin === 'REUSABLE'
+      && !board205TaskHasReusableCaptain(task, captainPersonId)
+    ) {
+      uniqueTasks.set(Number(task.setup_session_task_id), task);
+    }
+  }
+  const missing = [...uniqueTasks.values()];
+  if (!missing.length) return;
+  if (missing.length === 1) {
+    await board205MaybeLearnCaptainForTask(missing[0], crewId, captainPersonId);
+    return;
+  }
+
+  const person = board205CaptainCandidate(captainPersonId);
+  const name = person?.display_name || crew?.captain_display_name || `Person ${captainPersonId}`;
+  const confirmed = window.confirm(
+    `${name} is Captain of destination Crew ${crew?.crew_code || ''}.\n\nOK = Add/promote ${name} as a reusable Captain for ${missing.length} moved reusable tasks.\nCancel = Keep the schedule move only.\n\nExisting Captains will remain.`
+  );
+  if (!confirmed) return;
+
+  for (const task of missing) {
+    await api(
+      `api/setup/scheduling-board/season-tasks/${task.setup_session_task_id}/crew-captain/${crewId}/promote`,
+      commandOptions('POST', {})
+    );
+  }
+}
+
 async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) {
   if (!dragged || !appState.access?.can_manage_setup) return;
-  const sortOrder = requestedSort == null ? board205EndSort(dayId, shift, crewId) : requestedSort;
+  let movedCount = 0;
+  let totalMoveCount = 0;
+
   try {
     setBusy(true);
-    let task = null;
     if (dragged.kind === 'task') {
-      task = board205Task(dragged.id);
+      const task = board205Task(dragged.id);
       if (!task || task.effective_complete || task.task_action_type === 'GATE') return;
       if (!board205ConfirmPlacement(task, crewId, shift)) return;
+      const sortOrder = requestedSort == null ? board205EndSort(dayId, shift, crewId) : requestedSort;
       await api('api/setup/scheduling-board/assignments', commandOptions('POST', {
         setup_work_day_id: dayId,
         setup_session_task_id: task.setup_session_task_id,
@@ -1818,35 +2090,64 @@ async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) 
         setup_work_day_crew_id: crewId,
         sort_order: sortOrder
       }));
-    } else if (dragged.kind === 'assignment') {
-      const item = board205Assignment(dragged.id);
-      if (!item || item.historical_locked) return;
-      task = board205Task(item.setup_session_task_id);
-      const changedPlacement = (
-        Number(item.setup_work_day_id) !== Number(dayId)
-        || String(item.shift_code === 'ALL_DAY' ? 'MORNING' : item.shift_code) !== String(shift)
-        || Number(item.setup_work_day_crew_id) !== Number(crewId)
-      );
-      if (changedPlacement && !board205ConfirmPlacement(task, crewId, shift)) return;
-      await api(`api/setup/scheduling-board/assignments/${item.setup_work_day_task_id}`, commandOptions('PATCH', {
-        setup_work_day_id: dayId,
-        shift_code: shift,
-        setup_work_day_crew_id: crewId,
-        sort_order: sortOrder
-      }));
+      await board205MaybeLearnCaptainForTask(task, crewId);
+      await board205Load();
+      return;
     }
-    if (task) await board205MaybeLearnCaptainForTask(task, crewId);
+
+    const items = board205DraggedAssignmentItems(dragged);
+    if (!items.length) return;
+    totalMoveCount = items.length;
+    if (!board205ConfirmAssignmentGroupPlacement(items, crewId, shift)) return;
+
+    const baseSort = requestedSort == null
+      ? board205EndSort(dayId, shift, crewId)
+      : Number(requestedSort) - Math.max(items.length - 1, 0);
+    const movedTasks = [];
+
+    for (const [index, item] of items.entries()) {
+      await api(
+        `api/setup/scheduling-board/assignments/${item.setup_work_day_task_id}`,
+        commandOptions('PATCH', {
+          setup_work_day_id: dayId,
+          shift_code: shift,
+          setup_work_day_crew_id: crewId,
+          sort_order: baseSort + index
+        })
+      );
+      movedCount += 1;
+      const task = board205Task(item.setup_session_task_id);
+      if (task) movedTasks.push(task);
+    }
+
+    await board205MaybeLearnCaptainForTasks(movedTasks, crewId);
+    board205ClearAssignmentSelection(false);
     await board205Load();
+    if (movedCount > 1) {
+      const crew = board205CrewRow(crewId);
+      setAlert(
+        `${movedCount} tasks moved to Crew ${crew?.crew_code || '—'} · ${shift === 'MORNING' ? 'AM' : 'PM'}.`,
+        'ok'
+      );
+    }
   } catch (error) {
-    setAlert(error.message || error, 'error');
-    window.alert(error.message || error);
+    let prefix = '';
+    if (totalMoveCount && movedCount && movedCount < totalMoveCount) {
+      prefix = `${movedCount} of ${totalMoveCount} selected tasks moved before the operation stopped. `;
+    } else if (totalMoveCount > 1 && movedCount === totalMoveCount) {
+      prefix = `All ${totalMoveCount} schedule moves completed, but a follow-up action failed. `;
+    }
+    board205ClearAssignmentSelection(false);
+    try { await board205Load(); } catch (_reloadError) {}
+    setAlert(prefix + (error.message || error), 'error');
+    window.alert(prefix + (error.message || error));
   } finally {
     setupBoard205State.dragged = null;
     setBusy(false);
   }
 }
 
-async function board205NudgeAssignment(item, direction) {
+async function board205NudgeAssignment(item, direction) {async function board205NudgeAssignment(item, direction) {
   if (!item || item.historical_locked) return;
   const peers = board205AssignmentsFor(item.setup_work_day_id, item.shift_code, item.setup_work_day_crew_id);
   const index = peers.findIndex((row) => Number(row.setup_work_day_task_id) === Number(item.setup_work_day_task_id));
@@ -2759,12 +3060,15 @@ function board205InstallView() {
             <div class="setup-board205-board-heading">
               <div class="setup-board205-board-title-row">
                 <h3>Rolling Work Days</h3>
-                <button id="setup-board205-print" type="button" class="small">Print Schedule</button>
+                <div class="setup-board205-board-title-actions">
+                  <span id="setup-board205-selection-count" class="setup-board205-selection-count" hidden></span>
+                  <button id="setup-board205-print" type="button" class="small">Print Schedule</button>
+                </div>
               </div>
               <p class="muted">Each work day starts with Crew A. Add crews only when needed. Schedule in AM/PM shifts; planned headcount is optional by crew and shift. Historical actual assignments are locked.</p>
               <div class="setup-board205-scheduled-search">
                 <label for="setup-board205-scheduled-search">Find scheduled task</label>
-                <input id="setup-board205-scheduled-search" type="search" autocomplete="off" placeholder="Task name or Task #">
+                <input id="setup-board205-scheduled-search" type="search" autocomplete="off" placeholder="Stage, task name, or Captain">
                 <div id="setup-board205-scheduled-search-results" class="setup-board205-scheduled-search-results" aria-live="polite"></div>
               </div>
               <div class="setup-board205-day-filters" aria-label="Day view">

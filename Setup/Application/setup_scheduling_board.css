@@ -397,6 +397,26 @@
   opacity: 0.45;
 }
 
+.setup-board205-assignment.selected {
+  outline: 3px solid var(--accent, #0b6ea8);
+  outline-offset: 2px;
+}
+
+.setup-board205-selection-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.setup-board205-selection-count[hidden] {
+  display: none;
+}
+
 .setup-board205-task-title {
   display: flex;
   flex-wrap: wrap;
@@ -446,6 +466,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.setup-board205-board-title-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
 }
 
 .setup-board205-board-heading h3 {
@@ -605,6 +633,10 @@
   min-width: 44rem;
 }
 
+.setup-board205-crew-row {
+  display: contents;
+}
+
 .setup-board205-grid-head,
 .setup-board205-crew-label,
 .setup-board205-cell {
@@ -679,6 +711,18 @@
 
 .setup-board205-crew-title-row {
   justify-content: space-between;
+}
+
+.setup-board205-crew-title-context {
+  display: grid;
+  gap: 0.08rem;
+}
+
+.setup-board205-crew-day-context {
+  color: var(--muted, #64748b);
+  font-size: 0.68rem;
+  font-weight: 750;
+  white-space: nowrap;
 }
 
 .setup-board205-toolbar-actions {
@@ -989,12 +1033,13 @@
 @media print {
   @page {
     size: landscape;
-    margin: 0.35in;
+    margin: 0.3in;
   }
 
   body {
     background: #fff !important;
     color: #000 !important;
+    font-size: 9pt;
   }
 
   header,
@@ -1005,12 +1050,17 @@
   .view:not(#schedule-view),
   #schedule-view dialog,
   #schedule-view .setup-board205-backlog,
+  #schedule-view .setup-board205-planning-header,
   #schedule-view .setup-board205-day-form,
   #schedule-view .setup-board205-day-filters,
   #schedule-view .setup-board205-scheduled-search,
   #schedule-view .setup-board205-board-heading p,
   #schedule-view button,
-  #schedule-view .setup-board205-cell-empty {
+  #schedule-view .setup-board205-cell-empty,
+  #schedule-view .setup-board205-selection-count,
+  #schedule-view .print-empty-day,
+  #schedule-view .print-empty-crew,
+  #schedule-view .setup-board205-assignment-captain {
     display: none !important;
   }
 
@@ -1029,12 +1079,48 @@
     grid-template-columns: 1fr !important;
   }
 
-  .setup-board205-planning-header,
-  #setup-board205-board-pane,
-  .setup-board205-day,
-  .setup-board205-assignment {
-    break-inside: avoid;
+  #setup-board205-board-pane {
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  .setup-board205-board-heading {
+    margin: 0 0 0.08in;
+    gap: 0.02in;
+  }
+
+  .setup-board205-board-title-row {
+    min-height: 0;
+  }
+
+  .setup-board205-board-title-row h3 {
+    font-size: 12pt;
+    line-height: 1.1;
+  }
+
+  .setup-board205-days {
+    gap: 0.12in;
+  }
+
+  .setup-board205-day {
+    break-inside: auto;
     box-shadow: none !important;
+    border-radius: 0.08in;
+  }
+
+  .setup-board205-day-header {
+    padding: 0.06in 0.1in;
+    gap: 0.05in;
+  }
+
+  .setup-board205-day-header strong {
+    font-size: 9.5pt;
+  }
+
+  .setup-board205-day-note,
+  .setup-board205-sunday-warning {
+    font-size: 7.5pt;
+    line-height: 1.15;
   }
 
   .setup-board205-table-wrap {
@@ -1043,15 +1129,102 @@
 
   .setup-board205-grid {
     min-width: 0 !important;
-    grid-template-columns: minmax(8rem, 0.72fr) repeat(2, minmax(12rem, 1fr));
+    grid-template-columns: minmax(1.45in, 0.72fr) repeat(2, minmax(2.6in, 1fr));
+  }
+
+  .setup-board205-grid-head {
+    padding: 0.04in 0.06in;
+    font-size: 7.5pt;
+  }
+
+  .setup-board205-shift-hint {
+    font-size: 6.5pt;
+  }
+
+  .setup-board205-crew-row {
+    display: grid !important;
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(1.45in, 0.72fr) repeat(2, minmax(2.6in, 1fr));
+    break-inside: avoid;
+  }
+
+  .setup-board205-crew-label,
+  .setup-board205-cell {
+    min-height: 0 !important;
+    padding: 0.05in 0.06in;
+  }
+
+  .setup-board205-crew-label {
+    font-size: 8pt;
+  }
+
+  .setup-board205-crew-captain {
+    gap: 0;
+    margin-top: 0.03in;
+    font-size: 6.8pt;
+  }
+
+  .setup-board205-crew-counts {
+    gap: 0.04in;
+    margin-top: 0.03in;
+  }
+
+  .setup-board205-crew-counts label {
+    gap: 0;
+    font-size: 6.8pt;
+  }
+
+  .setup-board205-crew-day-context {
+    color: #000 !important;
+    font-size: 6.5pt;
+  }
+
+  .setup-board205-capacity-note,
+  .setup-board205-carryover {
+    margin-bottom: 0.04in;
+    padding: 0.03in 0.04in;
+    border-radius: 0.03in;
+    font-size: 6.8pt;
+    line-height: 1.1;
+  }
+
+  .setup-board205-assignment {
+    margin-bottom: 0.04in;
+    padding: 0.05in;
+    border: 1px solid #777 !important;
+    border-radius: 0.04in;
+    break-inside: avoid;
+  }
+
+  .setup-board205-task-title {
+    gap: 0.03in;
+    font-size: 8pt;
+    line-height: 1.1;
+  }
+
+  .setup-board205-badge {
+    padding: 0.01in 0.04in;
+    font-size: 6.5pt;
+  }
+
+  .setup-board205-meta {
+    margin-top: 0.02in;
+    font-size: 7pt;
+    line-height: 1.15;
+  }
+
+  .setup-board205-warning,
+  .setup-board205-readiness {
+    margin-top: 0.03in;
+    padding: 0.03in 0.04in;
+    font-size: 6.8pt;
+    line-height: 1.15;
   }
 
   .setup-board205-kpis {
-    display: flex !important;
-    color: #000 !important;
+    display: none !important;
   }
 
-  .setup-board205-kpis strong,
   .setup-board205-grid-head,
   .setup-board205-crew-label,
   .setup-board205-cell,
@@ -1068,12 +1241,9 @@
     border: 0 !important;
     background: transparent !important;
     color: #000 !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
-
-  .setup-board205-assignment {
-    border: 1px solid #777 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    font-size: 7pt;
   }
 }
 
