@@ -223,6 +223,7 @@ These applications are part of the normal Show PC setup.
 | draw.io Desktop | [draw.io Offline/Desktop](https://www.drawio.com/docs/manual/editor/offline/) | Install the standalone Windows desktop application so diagrams remain usable without Internet access. |
 | CableIQ Reporter | [Fluke Networks Downloads](https://www.flukenetworks.com/support/downloads) | On the Fluke download page, locate **CableIQ Reporter Software V2.0** and the **64Bit USB Drivers for DTX, OptiFiber and CableIQ** if the tester requires them. Windows 11 operation must be verified on this PC because Fluke's current CableIQ Reporter description does not explicitly list Windows 11. |
 | ExpertGPS | [ExpertGPS Download](https://www.expertgps.com/download.asp) | Install the Windows version from the official ExpertGPS site. Preserve existing license information outside the repository. |
+| AnyDesk | [AnyDesk Download](https://anydesk.com/en/downloads/windows) | Install for remote support. Configure **Unattended Access** for the appliance PC and do not store the unattended-access password in this repository. Verify AnyDesk starts with Windows and remains reachable after a reboot. |
 
 ### Standard application verification
 
@@ -561,6 +562,32 @@ Operational rule:
 2. Perform updates only during a planned maintenance window.
 3. Reboot after updates when required.
 4. Verify Light-O-Rama, audio, E1.31 networking, USB/serial interfaces, Google Drive, and automatic logon before returning the PC to unattended show service.
+
+### Microsoft Defender updates must remain enabled
+
+Disabling automatic **Windows OS** updates does **not** mean disabling antivirus protection updates.
+
+Microsoft Defender security intelligence/signature updates must remain current. If Windows reports **Virus protection is out of date**, update Defender immediately.
+
+The current Defender signature update can be triggered from Windows Security or from an elevated PowerShell session:
+
+```powershell
+Update-MpSignature
+```
+
+Do not disable Microsoft Defender real-time protection or its security intelligence updates as part of the appliance update policy. The goal is to prevent an unexpected Windows feature/cumulative-update reboot during show operation, not to freeze malware definitions.
+
+Defender security intelligence update settings under:
+
+```text
+Computer Configuration
+  -> Administrative Templates
+  -> Windows Components
+  -> Microsoft Defender Antivirus
+  -> Security Intelligence Updates
+```
+
+should remain **Not Configured** unless a deliberate update-source policy is later documented.
 
 > **Pending verification on MSB-SHOW_PC2:** Windows Update Group Policy has not yet been confirmed as disabled.
 
