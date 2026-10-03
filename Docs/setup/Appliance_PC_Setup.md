@@ -262,7 +262,7 @@ Official source:
 
 Install the **x64** build.
 
-> **Verified on MSB-SHOW_PC2:** Git for Windows `2.56.0.windows.1` is installed. Effective line-ending configuration still requires verification with `git config --show-origin --get core.autocrlf`.
+> **Installed on MSB-SHOW_PC2:** Git for Windows `2.56.0.windows.1` was previously verified immediately after installation. A later PowerShell session did not recognize `git` before the first reboot, so PATH propagation still requires verification after reopening the shell or rebooting. Effective line-ending configuration is still pending.
 
 Use these installer selections for the MSB appliance PC:
 
@@ -343,15 +343,11 @@ py install 3.13
 py list
 ```
 
-> **Verified on MSB-SHOW_PC2:** Python 3.13.16 is installed alongside Python 3.14.8. The `py list` output marks Python 3.14.8 with `*`, meaning 3.14 is still the default runtime.
+> **Verified on MSB-SHOW_PC2:** Python 3.13.16 is installed and is the active/default runtime. `py --version` and `python --version` both return `Python 3.13.16`.
 
-Remove the unintended 3.14 runtime so the appliance has one unambiguous MSB Python runtime:
+The unintended Python 3.14 runtime was removed so the appliance has one unambiguous MSB Python runtime.
 
-```powershell
-py uninstall 3.14
-```
-
-Open a new PowerShell window and verify:
+Verified commands:
 
 ```powershell
 py list
@@ -359,7 +355,7 @@ py --version
 python --version
 ```
 
-Both launch commands should resolve to Python 3.13.16.
+Confirmed result: Python 3.13.16.
 
 Open a **new PowerShell window** after installation and verify:
 
