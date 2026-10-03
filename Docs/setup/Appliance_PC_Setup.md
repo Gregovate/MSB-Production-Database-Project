@@ -176,6 +176,10 @@ Do not blindly reassign every Edge-associated file type or protocol. Some entrie
 
 Optional file types such as PDF, SVG, or XML may be assigned based on the operational preference for the Show PC; they are not required to make Chrome the default web browser.
 
+### Chrome administrator profile
+
+An administrator Chrome profile was added after Chrome installation so an MSB administrator can use browser-based management and setup tools when needed. This is separate from the Windows `Light-O-Rama` local appliance account and does not change the Windows sign-in model.
+
 ---
 
 ## 5. Install Google Drive for Desktop
@@ -192,7 +196,60 @@ Optional file types such as PDF, SVG, or XML may be assigned based on the operat
 
 ---
 
-## 6. Remaining Setup Steps
+## 6. Install MSB Maintenance Tools
+
+The Show PC also needs the normal MSB maintenance/development tools used to inspect and support the repository.
+
+### Visual Studio Code
+
+Install **Visual Studio Code for Windows x64** from the official Visual Studio Code site.
+
+For this single-user appliance PC, the normal **User Installer x64** is acceptable.
+
+During installation:
+
+- leave the normal installer options enabled;
+- keep **Add to PATH** enabled;
+- enabling **Open with Code** Explorer integration is useful but optional.
+
+### Git for Windows
+
+Install **Git for Windows x64** so VS Code can clone and work with the MSB repository.
+
+Use the normal installer defaults unless an MSB procedure specifically requires something different.
+
+### Python
+
+Install **Python 3.13 x64**, not Python 3.14 or the Python 3.15 prerelease, for the current MSB repository environment.
+
+Current repository requirements include `psycopg2-binary==2.9.10`. That release provides a Windows x64 wheel for CPython 3.13, while its published wheel set does not provide a CPython 3.14 Windows wheel. For the appliance PC, Python 3.13 therefore avoids introducing an unnecessary package-build compatibility problem.
+
+Current selected maintenance release during this build:
+
+```text
+Python 3.13.16 64-bit
+```
+
+During Python installation:
+
+1. Select the **64-bit Windows installer**.
+2. Enable **Add python.exe to PATH**.
+3. Complete the standard installation.
+4. If offered, enable **Disable path length limit** after installation.
+
+After installation, verify from Command Prompt:
+
+```cmd
+python --version
+git --version
+code --version
+```
+
+Record the actual installed versions after verification.
+
+---
+
+## 7. Remaining Setup Steps
 
 The following items still need to be performed and verified on the new Show PC before they become part of the confirmed procedure:
 
