@@ -9,6 +9,7 @@
   const searchResults = el('movement-search-results');
   const scannerToggle = el('movement-scanner-toggle');
   const scannerStatus = el('movement-scanner-status');
+  const identityTitle = el('movement-identity-title');
   const cameraToggle = el('movement-camera-toggle');
   const cameraStatus = el('movement-camera-status');
   const cameraPanel = el('movement-camera-panel');
@@ -103,6 +104,23 @@
   function setFeedback(kind, message) {
     feedback.className = 'feedback ' + kind;
     feedback.textContent = message;
+  }
+
+  function renderScannerLayoutState() {
+    document.body.classList.toggle('record-location-scanner-active', scannerActive);
+    document.body.classList.toggle(
+      'record-location-asset-pending',
+      Boolean(scannerActive && pendingIdentity)
+    );
+
+    if (!identityTitle) return;
+    if (scannerActive && pendingIdentity) {
+      identityTitle.textContent = pendingIdentity.identity + ' — location pending';
+    } else if (scannerActive) {
+      identityTitle.textContent = 'RECORD LOCATION — SCANNER';
+    } else {
+      identityTitle.textContent = 'Container / Display';
+    }
   }
 
   function updateNetwork() {
@@ -625,6 +643,7 @@
     returnHome.hidden = true;
     returnHome.disabled = false;
     returnHome.textContent = trainingMode ? 'Test Return Home' : 'Returned to Home Location';
+    renderScannerLayoutState();
     renderRecordReadiness();
   }
 
@@ -755,6 +774,7 @@
 
     pendingIdentity = identity;
     pendingCaptureMethod = captureMethod;
+    renderScannerLayoutState();
     pendingContents = null;
     pendingStateRow = null;
     setFeedback('ready', identity.identity + ' — loading current movement context…');
@@ -977,6 +997,7 @@
     scanBuffer = '';
     scannerToggle.textContent = 'Start Scanner';
     scannerStatus.textContent = 'Scanner off';
+    renderScannerLayoutState();
     cameraToggle.disabled = false;
     cameraStatus.textContent = 'Camera off';
   }
@@ -997,6 +1018,7 @@
     clearScanTimer();
     scanBuffer = '';
     scannerToggle.textContent = 'Stop Scanner';
+    renderScannerLayoutState();
     cameraToggle.disabled = true;
     cameraStatus.textContent = 'Camera disabled while scanner is on';
     restoreScannerCapture();
@@ -1194,6 +1216,7 @@
 
   async function initialize() {
     applyTrainingMode();
+    renderScannerLayoutState();
     stopGps();
     updateNetwork();
     await refreshQueueState();
