@@ -704,4 +704,34 @@ A later V0.3.37 disposable browser review exposed a presentation defect when **S
 
 The corrected layout gives the identity column a real desktop minimum width, bounds the action column so its controls/status wrap internally, and stacks the two areas below 900 px. This is presentation-only; it does not change scanner state, movement semantics, or release identity.
 
+### Pick-style compact scanner presentation
+
+A later V0.3.37 browser review showed that simply preserving desktop widths was still not the right field design. The operator confirmed that when Scanner is armed, Record Location should follow the same compact interaction pattern already accepted for Workshop Pick.
+
+Required presentation:
+
+```text
+Scanner OFF
+    -> full normal Record Location entry
+    -> manual entry / Find / camera visible
+
+Scanner ON, waiting for asset
+    -> compact Step 1 scanner strip
+    -> identity input + Stop Scanner + scanner status
+    -> camera and explanatory help hidden
+
+Scanner ON, asset pending
+    -> Step 1 collapses further
+    -> pending asset + Stop Scanner remain visible
+    -> screen priority moves to Location Evidence + Review / Record
+    -> scanner remains paused until Record or Clear
+
+Stop Scanner
+    -> full normal entry surface restored
+```
+
+This is presentation-only and deliberately mirrors the accepted Pick List scanner-mode body-class pattern. It does not change the V0.3.37 scanner state machine, movement semantics, or release identity.
+
+Record Location service-worker cache generation advances to v11 and the CSS asset pin advances to `2026-10-03.2` so browser acceptance cannot reuse the prior non-compact layout.
+
 The failed V0.3.36 browser review does not carry acceptance forward. V0.3.37 must restart exact-candidate regression, reusable disposable acceptance, and browser review.
