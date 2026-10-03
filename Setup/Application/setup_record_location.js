@@ -817,12 +817,12 @@
         if (gps) message += ' · GPS ±' + Math.round(Number(gps.accuracy_m || 0) * 3.280839895) + ' ft';
         if (unloaded.length) message += ' · would leave ' + unloaded.length + ' Display' + (unloaded.length === 1 ? '' : 's') + ' here';
       }
-      setFeedback('success', message + ' · NOTHING RECORDED');
-      clearPending();
-      knownReference.value = '';
-      locationNote.value = '';
-      gpsQuality.value = 'UNASSESSED';
-      gpsQualityNote.value = '';
+      resetRecordedAssetForNextEntry();
+      setFeedback(
+        'success',
+        message + ' · NOTHING RECORDED'
+          + (scannerActive ? ' · SCANNER READY — scan next asset' : '')
+      );
       return;
     }
 
@@ -845,11 +845,10 @@
         setFeedback('success', message);
       }
 
-      clearPending();
-      knownReference.value = '';
-      locationNote.value = '';
-      gpsQuality.value = 'UNASSESSED';
-      gpsQualityNote.value = '';
+      resetRecordedAssetForNextEntry();
+      if (scannerActive) {
+        feedback.textContent += ' · SCANNER READY — scan next asset';
+      }
     } catch (error) {
       setFeedback('warning', identity.identity + ' — ' + (error.message || error));
     }
@@ -867,13 +866,36 @@
     restoreScannerCapture();
   }
 
+  function pauseScannerForTyping(label) {
+    if (!scannerActive) return;
+    clearScanTimer();
+    scanBuffer = '';
+    scannerStatus.textContent = 'Scanner paused — ' + label;
+  }
+
   function restoreScannerCapture() {
     if (!scannerActive) return;
     clearScanTimer();
     scanBuffer = '';
     const active = document.activeElement;
     if (active && active.blur) active.blur();
-    scannerStatus.textContent = 'Scanner on';
+    scannerStatus.textContent = 'Scanner ready — no field focus needed';
+  }
+
+  function finishScannerTypingOnEnter(event) {
+    if (!scannerActive || event.key !== 'Enter') return;
+    event.preventDefault();
+    event.currentTarget.blur();
+  }
+
+  function resetRecordedAssetForNextEntry() {
+    clearPending();
+    manualInput.value = '';
+    knownReference.value = '';
+    locationNote.value = '';
+    gpsQuality.value = 'UNASSESSED';
+    gpsQualityNote.value = '';
+    restoreScannerCapture();
   }
 
   function clearScanTimer() {
@@ -971,7 +993,7 @@
     clearScanTimer();
     scanBuffer = '';
     scannerToggle.textContent = 'Stop Scanner';
-    scannerStatus.textContent = 'Scanner on';
+    scannerStatus.textContent = 'Scanner ready — no field focus needed';
     cameraToggle.disabled = true;
     cameraStatus.textContent = 'Camera disabled while scanner is on';
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -1081,6 +1103,10 @@
   manualGo.addEventListener('click', function () {
     if (manualInput.value.trim()) void handleIdentity(manualInput.value, 'MANUAL_ENTRY');
   });
+  manualInput.addEventListener('focus', function () {
+    pauseScannerForTyping('manual identity entry');
+  });
+  manualInput.addEventListener('blur', restoreScannerCapture);
   manualInput.addEventListener('keydown', function (event) {
     if (event.key !== 'Enter') return;
     event.preventDefault();
@@ -1089,6 +1115,10 @@
   searchGo.addEventListener('click', function () {
     void searchAssets().finally(restoreScannerCapture);
   });
+  searchInput.addEventListener('focus', function () {
+    pauseScannerForTyping('Find field active');
+  });
+  searchInput.addEventListener('blur', restoreScannerCapture);
   searchInput.addEventListener('keydown', function (event) {
     if (event.key === 'Enter') {
       event.preventDefault();
@@ -1105,15 +1135,38 @@
   returnHome.addEventListener('click', function () { void recordPending(true); });
   clearPendingButton.addEventListener('click', function () {
     clearPending();
-    setFeedback('ready', 'READY — scan, search, or choose an asset');
+    manualInput.value = '';
+    restoreScannerCapture();
+    setFeedback(
+      'ready',
+      scannerActive
+        ? 'SCANNER READY — scan a Container or Display'
+        : 'READY — scan, search, or choose an asset'
+    );
+  });
+  knownReference.addEventListener('focus', function () {
+    pauseScannerForTyping('choosing a park reference');
   });
   knownReference.addEventListener('change', function () {
     renderRecordReadiness();
     restoreScannerCapture();
   });
+  knownReference.addEventListener('blur', restoreScannerCapture);
+  locationNote.addEventListener('focus', function () {
+    pauseScannerForTyping('typing location note');
+  });
   locationNote.addEventListener('input', renderRecordReadiness);
+  locationNote.addEventListener('keydown', finishScannerTypingOnEnter);
   locationNote.addEventListener('blur', restoreScannerCapture);
+  gpsQuality.addEventListener('focus', function () {
+    pauseScannerForTyping('choosing GPS quality');
+  });
   gpsQuality.addEventListener('change', restoreScannerCapture);
+  gpsQuality.addEventListener('blur', restoreScannerCapture);
+  gpsQualityNote.addEventListener('focus', function () {
+    pauseScannerForTyping('typing GPS quality note');
+  });
+  gpsQualityNote.addEventListener('keydown', finishScannerTypingOnEnter);
   gpsQualityNote.addEventListener('blur', restoreScannerCapture);
   trainingEnter.addEventListener('click', enterTrainingMode);
   trainingExit.addEventListener('click', exitTrainingMode);
