@@ -109,6 +109,8 @@ Autologon64.exe
 6. Restart the PC.
 7. Verify Windows boots directly to the `Light-O-Rama` desktop without prompting for credentials.
 
+> **Verified on MSB-SHOW_PC2:** Sysinternals Autologon is working and the PC logs directly into the `Light-O-Rama` desktop after restart.
+
 Sysinternals stores the automatic-logon password as an LSA secret rather than as a normal visible password value. An administrator with access to the computer can still recover it, so this mechanism should not be treated as protection against someone who already has administrative or physical access.
 
 ### Temporarily bypass automatic logon
@@ -141,7 +143,56 @@ Do not store the password in this repository.
 
 ---
 
-## 4. Remaining Setup Steps
+## 4. Configure the Web Browser
+
+The Show PC uses **Google Chrome** as the normal web browser.
+
+### Install and pin Chrome
+
+1. Unpin Microsoft Edge from the Windows taskbar.
+2. Download and install Google Chrome.
+3. Pin Google Chrome to the taskbar if desired.
+
+### Set Chrome as the default browser
+
+Open:
+
+```text
+Settings -> Apps -> Default apps -> Google Chrome
+```
+
+Select **Set default**.
+
+For normal web browsing, verify these associations are assigned to Google Chrome:
+
+```text
+HTTP
+HTTPS
+.htm
+.html
+```
+
+Do not blindly reassign every Edge-associated file type or protocol. Some entries are file viewers rather than browser defaults, and the Windows `microsoft-edge:` protocol explicitly launches Microsoft Edge.
+
+Optional file types such as PDF, SVG, or XML may be assigned based on the operational preference for the Show PC; they are not required to make Chrome the default web browser.
+
+---
+
+## 5. Install Google Drive for Desktop
+
+1. Download and install **Google Drive for desktop**.
+2. Sign in using the dedicated Show PC Google Workspace account:
+
+   ```text
+   showpc@sheboyganlights.org
+   ```
+
+3. Do not store the Google account password or recovery information in this repository.
+4. Drive mapping and synchronization behavior will be documented after they are verified on the new PC.
+
+---
+
+## 6. Remaining Setup Steps
 
 The following items still need to be performed and verified on the new Show PC before they become part of the confirmed procedure:
 
