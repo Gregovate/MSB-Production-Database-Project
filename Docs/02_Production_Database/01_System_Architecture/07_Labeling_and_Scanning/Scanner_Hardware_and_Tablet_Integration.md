@@ -472,6 +472,17 @@ V0.3.37 therefore makes scanner ownership explicit:
 - Enter/Done in a location note only finishes note editing; it never executes Record.
 - A successful Record or deliberate Clear removes the prior identity/location-entry evidence and explicitly returns to **SCANNER READY — scan next asset**.
 
+### Record Location compact armed-scanner presentation
+
+For the Record Location workflow, scanner arming changes presentation as well as input ownership:
+
+- Scanner OFF keeps the full manual/camera/Find entry surface.
+- Scanner ON uses a compact field toolbar patterned after Workshop Pick.
+- Once an asset is selected, the identity-entry controls collapse further because the operator's next job is location selection and Record/Clear.
+- Stopping Scanner restores the full normal entry surface.
+
+This preserves both portrait and landscape tablet use instead of forcing a device orientation merely to make the screen fit.
+
 This remains browser/HID input plumbing under #113. No Zebra ADF change, permanent QR change, movement-schema change, GIS promotion, or Home Location mutation is introduced.
 
 For 2026 launch, known park references are still a curated, versioned file consumed by Record Location. The authoritative map source remains ExpertGPS/Garmin in the #171 EPSG:8158 working CRS; browser-facing WGS84 values are derived for distance/ranking use. This temporary reference-maintenance path is launch scaffolding until #171 provides a maintainable import/editor workflow.
