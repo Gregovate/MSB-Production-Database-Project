@@ -747,4 +747,22 @@ For V0.3.37:
 
 This is presentation-only. Reference ranking, selected-reference meaning, raw GPS evidence, and movement semantics are unchanged.
 
+### Operator GPS diagnostics boundary
+
+Launch Record Location should not ask unload operators to rate GPS quality.
+
+The normal operator surface now retains the useful evidence automatically:
+
+- browser latitude / longitude;
+- device-reported accuracy;
+- fix timestamp / age;
+- chosen known reference when confirmed;
+- manually entered location when the real location is not in the known-reference list.
+
+The former **GPS quality / uncertainty** operator controls are removed from Record Location. Movement payloads continue to carry the existing neutral `UNASSESSED` / no-note values so the persisted contract remains compatible without implying an operator judgment that was never made.
+
+The fallback free-text control is intentionally framed as **Location not listed? Enter another location**. It exists for a meaningful real-world drop location that is not yet in the curated known-reference set, not as a general diagnostic comment field.
+
+Engineering GPS/device quality work remains owned by the read-only `/scan/field-test` harness under #219.
+
 The failed V0.3.36 browser review does not carry acceptance forward. V0.3.37 must restart exact-candidate regression, reusable disposable acceptance, and browser review.
