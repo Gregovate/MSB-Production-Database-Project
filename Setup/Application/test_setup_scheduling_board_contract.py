@@ -357,6 +357,30 @@ def test_205_scheduled_task_finder_locates_existing_schedule_assignments() -> No
     assert "scheduled-search-hit" in ui
     assert ".setup-board205-scheduled-search" in css
     assert ".setup-board205-assignment.scheduled-search-hit" in css
+    assert "setup-board205-scheduled-search-sticky" in ui
+    assert "position: sticky;" in css
+    assert "function board205CollapseScheduledSearchResults" in ui
+
+
+def test_205_schedule_board_shows_cumulative_progress_without_deriving_time() -> None:
+    repo = read_app("setup_scheduling_board_repository.py")
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "max(p.percent_complete) AS percent_complete" in repo
+    assert "coalesce(progress.percent_complete, 0) AS percent_complete" in repo
+    assert "function board205ProgressPercent(task)" in ui
+    assert "function board205ProgressGauge(task)" in ui
+    assert 'class="setup-board205-progress-gauge"' in ui
+    assert 'role="progressbar"' in ui
+    assert "aria-valuenow" in ui
+    assert "!locked ? board205ProgressGauge(task) : ''" in ui
+    assert ".setup-board205-progress-gauge" in css
+    assert "width: var(--setup-board205-progress, 0%);" in css
+    assert "background: var(--success, #277a43);" in css
+    assert "remaining" not in ui.split("function board205ProgressGauge(task)", 1)[1].split(
+        "function board205AuditWhen", 1
+    )[0]
 
 
 def test_205_schedule_board_multi_select_moves_only_unworked_assignments() -> None:
@@ -842,8 +866,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-10-02.4" in html
-    assert "setup_scheduling_board.js?v=2026-10-02.5" in html
+    assert "setup_scheduling_board.css?v=2026-10-02.5" in html
+    assert "setup_scheduling_board.js?v=2026-10-02.6" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html

@@ -637,6 +637,11 @@ function board205RevealScheduledAssignment(item) {
   });
 }
 
+function board205CollapseScheduledSearchResults() {
+  const target = document.getElementById('setup-board205-scheduled-search-results');
+  if (target) target.innerHTML = '';
+}
+
 function board205RenderScheduledSearch() {
   const target = document.getElementById('setup-board205-scheduled-search-results');
   if (!target) return;
@@ -660,6 +665,7 @@ function board205RenderScheduledSearch() {
   target.querySelectorAll('.setup-board205-scheduled-search-result').forEach((button) => {
     button.addEventListener('click', () => {
       const item = board205Assignment(Number(button.dataset.assignmentId || 0));
+      board205CollapseScheduledSearchResults();
       board205RevealScheduledAssignment(item);
     });
   });
@@ -865,6 +871,25 @@ function board205AssignmentPlannedCrew(item) {
     return Number(item.planned_crew_count);
   }
   return null;
+}
+
+function board205ProgressPercent(task) {
+  const raw = Number(task?.percent_complete || 0);
+  if (!Number.isFinite(raw)) return 0;
+  return Math.max(0, Math.min(100, Math.round(raw)));
+}
+
+function board205ProgressGauge(task) {
+  const percent = board205ProgressPercent(task);
+  if (percent <= 0) return '';
+  return `<div class="setup-board205-progress-gauge"
+    style="--setup-board205-progress: ${percent}%"
+    role="progressbar"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    aria-valuenow="${percent}"
+    aria-label="${percent}% complete"
+    title="${percent}% complete"></div>`;
 }
 
 function board205AuditWhen(value) {
@@ -1378,7 +1403,8 @@ function board205ApplyHistoricalCatalogOverlay() {
       // baseline: 2025 completion does not satisfy future prerequisites.
       board_status: hasHardPrerequisite ? 'BLOCKED' : 'CATALOG_ONLY',
       effective_complete: annual?.effective_complete || false,
-      progress_entries: annual?.progress_entries || 0
+      progress_entries: annual?.progress_entries || 0,
+      percent_complete: annual?.percent_complete || 0
     };
     merged.push(row);
   }
@@ -1451,6 +1477,7 @@ function board205TaskCard(task) {
         ${canManage && !historicalReview && !task.catalog_only && !task.progress_entries && !task.effective_complete ? '<button type="button" class="small secondary setup-board205-edit-planning-info">Edit Planning Info</button>' : ''}
         ${canManage && !historicalReview && seasonOnly ? '<button type="button" class="small secondary setup-board205-edit-season-task">Edit season task</button>' : ''}
       </div>
+      ${board205ProgressGauge(task)}
     </article>`;
 }
 
@@ -1639,6 +1666,7 @@ function board205AssignmentCard(item) {
           ${!task.progress_entries && !task.effective_complete ? '<button type="button" class="small secondary setup-board205-edit-planning-info">Edit Info</button>' : ''}
           <button type="button" class="small secondary setup-board205-remove">Remove</button>
         </div>` : ''}
+      ${!locked ? board205ProgressGauge(task) : ''}
     </article>`;
 }
 
@@ -3115,17 +3143,17 @@ function board205InstallView() {
                 </div>
               </div>
               <p class="muted">Each work day starts with Crew A. Add crews only when needed. Schedule in AM/PM shifts; planned headcount is optional by crew and shift. Historical actual assignments are locked.</p>
-              <div class="setup-board205-scheduled-search">
-                <label for="setup-board205-scheduled-search">Find scheduled task</label>
-                <input id="setup-board205-scheduled-search" type="search" autocomplete="off" placeholder="Stage, task name, or Captain">
-                <div id="setup-board205-scheduled-search-results" class="setup-board205-scheduled-search-results" aria-live="polite"></div>
-              </div>
-              <div class="setup-board205-day-filters" aria-label="Day view">
-                <strong>Day view</strong>
-                <label><input id="setup-board205-show-unfinished-days" type="checkbox" checked> Scheduled / unfinished</label>
-                <label><input id="setup-board205-show-completed-days" type="checkbox"> Completed / cancelled</label>
-                <label><input id="setup-board205-show-empty-days" type="checkbox" checked> Empty days</label>
-              </div>
+            </div>
+            <div class="setup-board205-scheduled-search setup-board205-scheduled-search-sticky">
+              <label for="setup-board205-scheduled-search">Find scheduled task</label>
+              <input id="setup-board205-scheduled-search" type="search" autocomplete="off" placeholder="Stage, task name, or Captain">
+              <div id="setup-board205-scheduled-search-results" class="setup-board205-scheduled-search-results" aria-live="polite"></div>
+            </div>
+            <div class="setup-board205-day-filters" aria-label="Day view">
+              <strong>Day view</strong>
+              <label><input id="setup-board205-show-unfinished-days" type="checkbox" checked> Scheduled / unfinished</label>
+              <label><input id="setup-board205-show-completed-days" type="checkbox"> Completed / cancelled</label>
+              <label><input id="setup-board205-show-empty-days" type="checkbox" checked> Empty days</label>
             </div>
             <div id="setup-board205-days" class="setup-board205-days"></div>
           </section>
@@ -3304,6 +3332,7 @@ function board205InstallView() {
     const first = board205ScheduledSearchMatches()[0];
     if (!first) return;
     event.preventDefault();
+    board205CollapseScheduledSearchResults();
     board205RevealScheduledAssignment(first);
   });
   document.querySelectorAll('.setup-board205-backlog, .setup-board205-board').forEach((pane) => {

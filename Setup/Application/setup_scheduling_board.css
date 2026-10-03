@@ -380,6 +380,8 @@
 
 .setup-board205-task-card,
 .setup-board205-assignment {
+  position: relative;
+  overflow: hidden;
   border: 1px solid var(--border, #d9e0e8);
   border-radius: 0.55rem;
   background: var(--panel, #fff);
@@ -494,6 +496,14 @@
   border: 1px solid var(--border, #d9e0e8);
   border-radius: 0.5rem;
   background: var(--soft, #f5f8fb);
+}
+
+.setup-board205-scheduled-search-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 7;
+  margin: 0.45rem 0;
+  box-shadow: 0 0.2rem 0.55rem rgb(0 0 0 / 12%);
 }
 
 .setup-board205-scheduled-search label {
@@ -785,6 +795,24 @@
 
 .setup-board205-assignment:last-child {
   margin-bottom: 0;
+}
+
+.setup-board205-progress-gauge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0.38rem;
+  background: color-mix(in srgb, var(--success, #277a43) 18%, transparent);
+  pointer-events: none;
+}
+
+.setup-board205-progress-gauge::after {
+  content: '';
+  display: block;
+  width: var(--setup-board205-progress, 0%);
+  height: 100%;
+  background: var(--success, #277a43);
 }
 
 .setup-board205-assignment.locked {
