@@ -262,7 +262,7 @@ Official source:
 
 Install the **x64** build.
 
-> **Installed on MSB-SHOW_PC2:** Git for Windows `2.56.0.windows.1` is present at `C:\\Program Files\\Git\\cmd\\git.exe`. The persistent Machine PATH correctly contains `C:\\Program Files\\Git\\cmd`. The PowerShell session used during installation was started before the PATH change and therefore did not resolve `git` by name. No manual PATH edit is required; open a new shell (or reboot if necessary) and verify. Effective line-ending configuration is still pending.
+> **Verified on MSB-SHOW_PC2:** Git for Windows `2.56.0.windows.1` is installed, resolves normally from a fresh PowerShell session, and `C:\\Program Files\\Git\\cmd` is present in the Machine PATH. Effective line-ending configuration is also verified as `core.autocrlf=input` from `C:/Program Files/Git/etc/gitconfig`.
 
 Use these installer selections for the MSB appliance PC:
 
@@ -429,7 +429,15 @@ input
 
 The installer may store this setting at system scope, so a blank result from `git config --global core.autocrlf` alone does **not** prove the setting is missing. Use `--show-origin --get` to check the effective configuration.
 
-Record the actual installed versions after verification.
+> **Verified on MSB-SHOW_PC2:** `git config --show-origin --get core.autocrlf` returns `file:C:/Program Files/Git/etc/gitconfig input`.
+
+Verified advanced-tool versions:
+
+```text
+Python 3.13.16
+Git 2.56.0.windows.1
+VS Code 1.140.0 x64
+```
 
 ---
 
