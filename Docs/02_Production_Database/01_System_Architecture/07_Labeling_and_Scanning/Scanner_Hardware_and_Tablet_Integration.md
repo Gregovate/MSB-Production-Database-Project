@@ -466,9 +466,12 @@ V0.3.37 therefore makes scanner ownership explicit:
 
 - Scanner ready means Zebra HID is captured without focusing the identity field.
 - **Use** / Enter on the identity field is manual-entry behavior only; a Zebra scan does not require the Use button.
-- Focusing a manual/search/location/GPS-quality editable control changes scanner status to **Scanner paused**.
-- Completing the selection, pressing Enter/Done in a note, or leaving the editable control restores **Scanner ready — no field focus needed**.
-- A successful Record clears the prior asset identity and explicitly returns to **SCANNER READY — scan next asset**.
-- Enter in a location note never executes the physical Record action.
+- A valid Zebra asset scan uses the scanner's Enter suffix only to finish the asset identity.
+- Once an asset is selected, scanner capture pauses until that asset is **Record** or **Clear**.
+- Location/reference/manual-note controls may be used while the asset is pending without allowing a second scan to replace it.
+- Enter/Done in a location note only finishes note editing; it never executes Record.
+- A successful Record or deliberate Clear removes the prior identity/location-entry evidence and explicitly returns to **SCANNER READY — scan next asset**.
 
 This remains browser/HID input plumbing under #113. No Zebra ADF change, permanent QR change, movement-schema change, GIS promotion, or Home Location mutation is introduced.
+
+For 2026 launch, known park references are still a curated, versioned file consumed by Record Location. The authoritative map source remains ExpertGPS/Garmin in the #171 EPSG:8158 working CRS; browser-facing WGS84 values are derived for distance/ranking use. This temporary reference-maintenance path is launch scaffolding until #171 provides a maintainable import/editor workflow.
