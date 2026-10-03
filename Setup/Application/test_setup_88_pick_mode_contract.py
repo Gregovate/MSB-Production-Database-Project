@@ -119,8 +119,6 @@ def test_record_location_scanner_mode_matches_pick_focusless_hid_contract():
     assert "await handleIdentity(raw, 'CAMERA_SCAN');" in ui
     assert "function restoreScannerCapture()" in ui
     assert "locationNote.addEventListener('blur', restoreScannerCapture)" in ui
-    assert "gpsQuality.addEventListener('change', restoreScannerCapture)" in ui
-    assert "gpsQualityNote.addEventListener('blur', restoreScannerCapture)" in ui
     assert "searchAssets().finally(restoreScannerCapture)" in ui
     assert "function pauseScannerForTyping(label)" in ui
     assert "Scanner paused — " in ui
@@ -433,11 +431,11 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "setup_pick_list.js?v=2026-10-01.4" in pick_html
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_sw
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_html
-    assert "msb-setup-record-location-v12" in location_sw
+    assert "msb-setup-record-location-v13" in location_sw
     assert "setup_record_location.css?v=2026-10-03.3" in location_sw
     assert "setup_record_location.css?v=2026-10-03.3" in location_html
-    assert "setup_record_location.js?v=2026-10-03.3" in location_sw
-    assert "setup_record_location.js?v=2026-10-03.3" in location_html
+    assert "setup_record_location.js?v=2026-10-03.4" in location_sw
+    assert "setup_record_location.js?v=2026-10-03.4" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():
@@ -507,8 +505,14 @@ def test_record_location_requires_visible_location_review_before_record_action()
     assert 'id="movement-review-location"' in html
     assert 'id="movement-record-here" type="button" class="primary" disabled' in html
     assert 'id="movement-compact-status"' in html
-    assert '<summary>Other location note</summary>' in html
+    assert '<summary>Location not listed? Enter another location</summary>' in html
     assert '<summary>Reference data</summary>' in html
+    assert 'id="movement-gps-quality"' not in html
+    assert 'id="movement-gps-quality-note"' not in html
+    assert "const gpsQuality =" not in ui
+    assert "const gpsQualityNote =" not in ui
+    assert "gps_quality: 'UNASSESSED'" in ui
+    assert "gps_quality_note: null" in ui
     assert 'class="panel status-panel"' not in html
     assert "function currentLocationEvidence()" in ui
     assert "function renderRecordReadiness()" in ui
