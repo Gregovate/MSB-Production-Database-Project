@@ -435,3 +435,21 @@ The operator has an explicit **NEW / CLEAR** action so stale location-sample fie
 ### Scan focus
 
 Zebra HID capture remains the primary fast path. The page restores focus to Scan after completed secondary actions and also accepts HID characters while non-text controls such as buttons, checkboxes, and dropdowns hold focus. It does not hijack characters while the operator is actively typing in another text field or textarea.
+
+## Post-launch refresh from Record Location learnings
+
+The V0.3.37 Record Location launch work established several operator patterns that should be folded back into this engineering harness in a later #219 update after launch stabilization.
+
+The harness remains the richer engineering surface. Record Location is deliberately simpler.
+
+Future harness refresh should evaluate:
+
+- the compact scanner-armed presentation now used by Workshop Pick / Record Location;
+- explicit scanner-ready versus pending-asset ownership;
+- the current versioned known-reference set, including launch-added supplemental locations;
+- preservation of ExpertGPS waypoint type/category for future layered reference testing under #171;
+- the launch distinction between a normal known reference and **Location not listed?** free-text operator evidence;
+- GPS/device-quality diagnostics that are intentionally absent from the normal Record Location operator UI; and
+- whether current field-test candidate ranking and location-learning controls can better reflect the real Record Location confirmation sequence.
+
+This is **not** a launch blocker for Record Location and does not authorize changing the deployed Scan harness inside the Setup launch PR. The route remains read-only engineering tooling under #219 and should be updated deliberately after the launch workflow is accepted.
