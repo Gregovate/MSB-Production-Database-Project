@@ -136,7 +136,9 @@ def test_record_location_scanner_mode_matches_pick_focusless_hid_contract():
     assert "record-location-asset-pending" in ui
     assert 'id="movement-identity-title"' in html
     assert "With Scanner on, Zebra capture is focusless" in html
-    assert "Press Enter/Done or tap away to finish editing" in html
+    assert "Location not listed? Enter another location" in html
+    assert "press Enter/Done or tap away to finish editing" in html
+    assert "scanner stays paused until this asset is Record/Clear" in html
 
 
 def test_record_location_training_mode_uses_real_reads_but_never_writes_or_queues():
