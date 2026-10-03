@@ -685,7 +685,7 @@ Start Scanner
 
 The Record action remains explicit. The scanner's Enter suffix never Records movement. Enter in a free-text location/GPS-quality note only finishes note editing; scanner capture remains paused until the pending asset is Record/Clear. A second scan cannot silently replace the pending asset.
 
-The corrected candidate uses the visible release `V0.3.37-record-location-scanner`, Record Location cache generation v9, Record Location JavaScript pin `2026-10-03.3`, and shared Setup client-build asset pin `2026-10-03.2`.
+The corrected candidate uses the visible release `V0.3.37-record-location-scanner`, Record Location cache generation v10, Record Location JavaScript pin `2026-10-03.3`, Record Location CSS pin `2026-10-03.1`, and shared Setup client-build asset pin `2026-10-03.2`.
 
 
 ### 2026-10-03 launch reference refresh
@@ -697,5 +697,11 @@ The launch-time authority is ExpertGPS / Garmin GIS data in the accepted working
 `EPSG:8158 — NAD83 HARN WISCRS Sheboygan County Feet (USft)`
 
 The 2026-10-03 Church correction supplied by the operator updates `15-Church-Bells-CH` and adds `15-Church-ParkingLot`. The source Easting/Northing values are retained in the reference JSON together with the transformed browser-facing WGS84 latitude/longitude values. This is a temporary curated launch mechanism, not a new permanent GIS store.
+
+### Scanner-on desktop layout correction
+
+A later V0.3.37 disposable browser review exposed a presentation defect when **Start Scanner** was enabled at desktop width. The identity entry area collapsed into a narrow strip because the scanner/camera action column was sized as `auto` and its longer Scanner ON status text consumed most of the grid width.
+
+The corrected layout gives the identity column a real desktop minimum width, bounds the action column so its controls/status wrap internally, and stacks the two areas below 900 px. This is presentation-only; it does not change scanner state, movement semantics, or release identity.
 
 The failed V0.3.36 browser review does not carry acceptance forward. V0.3.37 must restart exact-candidate regression, reusable disposable acceptance, and browser review.
