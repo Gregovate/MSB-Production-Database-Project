@@ -218,7 +218,7 @@ These applications are part of the normal Show PC setup.
 
 | Application | Official source | Setup note |
 |---|---|---|
-| Light-O-Rama ShowTime Sequencing Suite | [Light-O-Rama Software Downloads](https://store.lightorama.com/pages/download-software) | **Installed on MSB-SHOW_PC2.** Record the exact installed version and license level before final cutover. Do not change major versions merely because a newer release is available. |
+| Light-O-Rama ShowTime Sequencing Suite | [Light-O-Rama Software Downloads](https://store.lightorama.com/pages/download-software) | **Installed and verified working on MSB-SHOW_PC2.** Record the exact installed version and license level before final cutover. Do not change major versions merely because a newer release is available. |
 | GIMP | [GIMP Downloads](https://www.gimp.org/downloads/) | Use the official Windows installer from GIMP.org rather than the Microsoft Store package. |
 | draw.io Desktop | [draw.io Offline/Desktop](https://www.drawio.com/docs/manual/editor/offline/) | Install the standalone Windows desktop application so diagrams remain usable without Internet access. |
 | CableIQ Reporter | [Fluke Networks Downloads](https://www.flukenetworks.com/support/downloads) | On the Fluke download page, locate **CableIQ Reporter Software V2.0** and the **64Bit USB Drivers for DTX, OptiFiber and CableIQ** if the tester requires them. Windows 11 operation must be verified on this PC because Fluke's current CableIQ Reporter description does not explicitly list Windows 11. |
@@ -484,7 +484,6 @@ The following items still need to be performed and verified on the new Show PC b
 - configure both show monitors;
 - configure power, sleep, hibernation, and restart behavior for appliance operation;
 - verify recovery after loss of AC power;
-- install and configure Light-O-Rama software;
 - configure automatic startup of the required show applications;
 - configure Google Drive and required drive mapping;
 - verify USB/serial controller interfaces and COM-port assignments;
