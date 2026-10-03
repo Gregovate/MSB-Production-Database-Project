@@ -373,9 +373,23 @@ py list
 
 ### Python command/path verification
 
-The Python runtime version is confirmed, but the command resolution/path mechanism still needs to be documented. With the Python Install Manager, `python.exe` and `py.exe` may resolve through Windows App Execution Aliases rather than through a traditional Python installation directory added directly to PATH.
+> **Verified on MSB-SHOW_PC2:** Python command resolution is working through the Windows App Execution Aliases installed by the Python Install Manager. No manual Python PATH edit is required.
 
-Verify with:
+Verified command resolution:
+
+```text
+python.exe -> C:\Users\Light-O-Rama\AppData\Local\Microsoft\WindowsApps\python.exe
+py.exe     -> C:\Users\Light-O-Rama\AppData\Local\Microsoft\WindowsApps\py.exe
+```
+
+Verified active runtime:
+
+```text
+Python 3.13.16
+C:\Users\Light-O-Rama\AppData\Local\Python\pythoncore-3.13-64\python.exe
+```
+
+Verification commands:
 
 ```powershell
 Get-Command python | Format-List Name,CommandType,Source,Path
@@ -385,7 +399,7 @@ where.exe py
 py -0p
 ```
 
-Do not manually add a Python runtime directory to PATH unless these checks show it is actually required.
+Do **not** manually add the runtime directory to PATH. The Python Install Manager aliases are the intended command-entry points for this installation.
 
 The unintended Python 3.14 runtime was removed so the appliance has one unambiguous MSB Python runtime.
 
