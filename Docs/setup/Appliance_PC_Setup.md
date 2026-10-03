@@ -122,11 +122,22 @@ Hold **Shift** during startup/logon to bypass Autologon for that boot.
 The target Windows account model is:
 
 ```text
+Computer name:   MSB-SHOW_PC2
 Local account:   Light-O-Rama
 Account type:    Local Administrator
 Microsoft login: None
 Automatic login: Enabled
 ```
+
+For Sysinternals Autologon on this local account, use the computer name as the Domain value:
+
+```text
+Username: Light-O-Rama
+Domain:   MSB-SHOW_PC2
+Password: <local account password>
+```
+
+Do not store the password in this repository.
 
 ---
 
