@@ -1,7 +1,7 @@
 {
-  "version": "2026-stage-gpx-20260930.1",
+  "version": "2026-stage-reference-20261003.1",
   "source": "2026_msb.gpx",
-  "source_context": "#219 field-test accepted Stage reference set; consumed by #88 Record Location; #171 remains GIS authority",
+  "source_context": "#219 field-test accepted Stage reference set; 2026-10-03 Church launch corrections from ExpertGPS EPSG:8158 export; consumed by #88 Record Location; #171 remains GIS authority",
   "points": [
     {
       "reference_id": "stage-01",
@@ -84,8 +84,24 @@
     {
       "reference_id": "stage-14",
       "name": "15-Church-Bells-CH",
-      "latitude": 43.77852769,
-      "longitude": -87.74910923
+      "latitude": 43.77834874374555,
+      "longitude": -87.74912934177036,
+      "source_authority": "ExpertGPS",
+      "source_crs": "EPSG:8158",
+      "source_easting_usft": 209406.108,
+      "source_northing_usft": 186577.937,
+      "source_note": "2026-10-03 operator map correction"
+    },
+    {
+      "reference_id": "church-parking-lot",
+      "name": "15-Church-ParkingLot",
+      "latitude": 43.77906580810078,
+      "longitude": -87.74933211615861,
+      "source_authority": "ExpertGPS",
+      "source_crs": "EPSG:8158",
+      "source_easting_usft": 209353.179,
+      "source_northing_usft": 186839.461,
+      "source_note": "2026-10-03 operator-authored parking-lot waypoint for launch unloads"
     },
     {
       "reference_id": "stage-15",
@@ -189,5 +205,6 @@
       "latitude": 43.77955255,
       "longitude": -87.74491109
     }
-  ]
+  ],
+  "coordinate_authority": "EPSG:8158 NAD83 HARN WISCRS Sheboygan County Feet (USft)"
 }
