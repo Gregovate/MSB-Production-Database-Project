@@ -244,6 +244,8 @@ Official source:
 
 Install the **Windows x64 User Installer**.
 
+> **Installed on MSB-SHOW_PC2. Version verification pending.**
+
 During installation:
 
 - leave the normal installer options enabled;
@@ -259,6 +261,8 @@ Official source:
 [Git for Windows](https://git-scm.com/install/windows)
 
 Install the **x64** build.
+
+> **Installed on MSB-SHOW_PC2 using the documented installer selections. Version/configuration verification pending.**
 
 Use these installer selections for the MSB appliance PC:
 
@@ -314,25 +318,62 @@ input
 
 Official source:
 
-[Python 3.13.16](https://www.python.org/downloads/release/python-31316/)
+[Python for Windows](https://www.python.org/downloads/windows/)
 
-Install **Python 3.13.16 Windows 64-bit** for the current MSB repository environment.
+The current MSB repository target for this appliance is **Python 3.13 x64**. Python 3.13.16 is the current maintenance release used as the setup target.
 
-Do not install Python 3.14 on this appliance yet. Current repository requirements include `psycopg2-binary==2.9.10`, and the current package compatibility is already established for CPython 3.13 Windows x64.
+#### Python Install Manager
 
-During Python installation:
+On MSB-SHOW_PC2, the Python Install Manager was installed from PowerShell with:
 
-1. Select the **Windows installer (64-bit)**.
-2. Enable **Add python.exe to PATH**.
-3. Complete the standard installation.
-4. If offered, enable **Disable path length limit** after installation.
+```powershell
+winget install 9NQ7512CXL7T
+```
 
-After VS Code, Git, and Python are installed, verify from Command Prompt:
+This WinGet package installs the **Python Install Manager**. It does not by itself prove that a Python 3.13 runtime is installed or that the `python` command is correctly available in PATH.
 
-```cmd
+Open a **new PowerShell window** after installation and verify:
+
+```powershell
+py list
+py --version
 python --version
+where.exe py
+where.exe python
+```
+
+If `py list` does not show a Python 3.13 runtime, install it explicitly:
+
+```powershell
+py install 3.13
+```
+
+Then run the Python Install Manager configuration check:
+
+```powershell
+py install --configure -y
+```
+
+Reopen PowerShell and repeat the verification commands.
+
+Do not record Python as fully installed in this procedure until `python --version` and `py list` confirm the runtime actually in use.
+
+### Verify Advanced Tool Installation
+
+After VS Code, Git, and Python are installed, open a **new PowerShell window** and run:
+
+```powershell
+python --version
+py list
 git --version
 code --version
+git config --global core.autocrlf
+```
+
+Expected Git line-ending result:
+
+```text
+input
 ```
 
 Record the actual installed versions after verification.
