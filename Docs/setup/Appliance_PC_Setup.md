@@ -343,7 +343,9 @@ py install 3.13
 py list
 ```
 
-After confirming Python 3.13 is installed, remove the unintended 3.14 runtime:
+> **Verified on MSB-SHOW_PC2:** Python 3.13.16 is installed alongside Python 3.14.8. The `py list` output marks Python 3.14.8 with `*`, meaning 3.14 is still the default runtime.
+
+Remove the unintended 3.14 runtime so the appliance has one unambiguous MSB Python runtime:
 
 ```powershell
 py uninstall 3.14
@@ -357,7 +359,7 @@ py --version
 python --version
 ```
 
-Both launch commands should resolve to Python 3.13.x.
+Both launch commands should resolve to Python 3.13.16.
 
 Open a **new PowerShell window** after installation and verify:
 
