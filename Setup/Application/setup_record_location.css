@@ -94,7 +94,7 @@ body.record-location-scanner-active.record-location-asset-pending .identity-pane
 .reference-buttons{display:flex;flex-wrap:wrap;gap:.45rem;margin:.5rem 0}.reference-buttons button{background:#172943;color:var(--text);border:1px solid var(--line)}
 .location-nearest-buttons{display:grid;grid-template-columns:1fr;gap:.45rem;margin:0}
 .location-nearest-buttons button{width:100%;text-align:left;min-height:44px}
-.location-panel>label,.gps-quality label,.location-note-details label{margin-top:.75rem}.location-panel input,.location-panel select{display:block;width:100%;margin-top:.25rem}
+.location-panel>label,.location-note-details label{margin-top:.75rem}.location-panel input,.location-panel select{display:block;width:100%;margin-top:.25rem}
 .location-note-details,.reference-data-details{margin-top:.7rem}
 .reference-data-details{display:none}
 body.training-mode .reference-data-details{display:block}
