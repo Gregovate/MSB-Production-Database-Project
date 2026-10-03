@@ -100,7 +100,7 @@ def test_record_location_scanner_mode_matches_pick_focusless_hid_contract():
     assert 'id="movement-scanner-toggle"' in html
     assert "Start Scanner" in html
     assert "let scannerActive = false;" in ui
-    assert "if (!scannerActive || event.defaultPrevented || event.isComposing) return;" in ui
+    assert "if (!scannerActive || pendingIdentity || event.defaultPrevented || event.isComposing) return;" in ui
     assert "async function toggleScanner()" in ui
     scanner = ui.split("async function toggleScanner()", 1)[1].split("async function stopCamera()", 1)[0]
     assert "await stopCamera();" in scanner
@@ -122,11 +122,14 @@ def test_record_location_scanner_mode_matches_pick_focusless_hid_contract():
     assert "Scanner ready — no field focus needed" in ui
     assert "function finishScannerTypingOnEnter(event)" in ui
     assert "locationNote.addEventListener('keydown', finishScannerTypingOnEnter)" in ui
-    assert "function resetRecordedAssetForNextEntry()" in ui
+    assert "function resetAssetEntryForNextScan()" in ui
     assert "manualInput.value = '';" in ui
     assert "SCANNER READY — scan next asset" in ui
+    assert "Scanner paused — record or clear " in ui
+    assert "pendingIdentity || event.defaultPrevented" in ui
+    assert "resetAssetEntryForNextScan();" in ui
     assert "With Scanner on, Zebra capture is focusless" in html
-    assert "Press Enter/Done or tap away to return to scanner-ready" in html
+    assert "Press Enter/Done or tap away to finish editing" in html
 
 
 def test_record_location_training_mode_uses_real_reads_but_never_writes_or_queues():
@@ -186,6 +189,23 @@ def test_reference_locations_are_refreshable_versioned_and_not_hardcoded_in_js()
     assert len(data["points"]) >= 30
     assert any(row["name"] == "04-Food Collection-FC" for row in data["points"])
     assert any(row["name"] == "30-Santa's Station-QV" for row in data["points"])
+    assert data["version"] == "2026-stage-reference-20261003.1"
+    assert data["coordinate_authority"].startswith("EPSG:8158")
+
+    church = next(row for row in data["points"] if row["name"] == "15-Church-Bells-CH")
+    assert church["latitude"] == 43.77834874374555
+    assert church["longitude"] == -87.74912934177036
+    assert church["source_crs"] == "EPSG:8158"
+    assert church["source_easting_usft"] == 209406.108
+    assert church["source_northing_usft"] == 186577.937
+
+    parking = next(row for row in data["points"] if row["name"] == "15-Church-ParkingLot")
+    assert parking["reference_id"] == "church-parking-lot"
+    assert parking["latitude"] == 43.77906580810078
+    assert parking["longitude"] == -87.74933211615861
+    assert parking["source_crs"] == "EPSG:8158"
+    assert parking["source_easting_usft"] == 209353.179
+    assert parking["source_northing_usft"] == 186839.461
 
 
 def test_record_location_offline_queue_is_durable_and_mixed_unload_fails_conservatively():
@@ -404,11 +424,11 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "setup_pick_list.js?v=2026-10-01.4" in pick_html
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_sw
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_html
-    assert "msb-setup-record-location-v8" in location_sw
+    assert "msb-setup-record-location-v9" in location_sw
     assert "setup_record_location.css?v=2026-09-30.6" in location_sw
     assert "setup_record_location.css?v=2026-09-30.6" in location_html
-    assert "setup_record_location.js?v=2026-10-03.2" in location_sw
-    assert "setup_record_location.js?v=2026-10-03.2" in location_html
+    assert "setup_record_location.js?v=2026-10-03.3" in location_sw
+    assert "setup_record_location.js?v=2026-10-03.3" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():
