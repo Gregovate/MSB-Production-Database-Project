@@ -260,13 +260,41 @@ Official source:
 
 Install the **x64** build.
 
-For most installer screens, use the normal defaults. For **Configuring the line ending conversions**, select:
+Use these installer selections for the MSB appliance PC:
+
+| Git for Windows installer screen | Selection |
+|---|---|
+| Choosing the default editor used by Git | **Use Visual Studio Code as Git's default editor** |
+| Adjusting the name of the initial branch in new repositories | **Override the default branch name for new repositories: `main`** |
+| Adjusting the PATH environment | **Git from the command line and also from 3rd-party software** |
+| Choosing the SSH executable | **Use bundled OpenSSH** |
+| Choosing HTTPS transport backend | **Use the native Windows Secure Channel library** |
+| Configuring the line ending conversions | **Checkout as-is, commit Unix-style line endings** |
+| Configuring the terminal emulator to use with Git Bash | **Use MinTTY** |
+| Choose the default behavior of `git pull` | **Only ever fast-forward** |
+| Choose a credential helper | **Git Credential Manager** |
+| Configuring extra options — file system caching | **Enable file system caching** |
+| Configuring extra options — symbolic links | **Do not enable symbolic links** |
+
+### Why these Git choices are used
+
+- `main` matches the MSB repository's normal primary branch naming. This setting affects newly initialized repositories; clones keep the branch names supplied by the remote repository.
+- **Git from the command line and also from 3rd-party software** makes Git available to VS Code, PowerShell, Command Prompt, and other approved tools.
+- **Bundled OpenSSH** keeps Git's SSH implementation self-contained and avoids depending on a separately configured Windows OpenSSH installation.
+- **Windows Secure Channel** uses the Windows certificate store and Windows-native TLS integration.
+- **MinTTY** is retained as the normal Git Bash terminal; normal MSB work can still use PowerShell or the VS Code integrated terminal.
+- **Only ever fast-forward** prevents `git pull` from silently creating a merge commit when local and remote history have diverged. A divergence must be handled deliberately.
+- **Git Credential Manager** provides the supported credential helper for GitHub authentication.
+- **File system caching** remains enabled for normal performance.
+- **Symbolic links** remain disabled because the current MSB Windows workflow does not require them and enabling them introduces additional Windows privilege/developer-mode behavior.
+
+### Line ending policy
+
+The line-ending selection above corresponds to:
 
 ```text
-Checkout as-is, commit Unix-style line endings
+core.autocrlf=input
 ```
-
-This corresponds to `core.autocrlf=input`.
 
 The MSB repository contains both Windows PowerShell files (`.ps1`) and Unix shell files (`.sh`). The repository currently does not define a root `.gitattributes` or `.editorconfig` policy, so the appliance PC should avoid rewriting files to CRLF during checkout. This option preserves files as stored in the repository while normalizing any CRLF line endings to LF when committed.
 
