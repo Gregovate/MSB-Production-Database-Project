@@ -196,15 +196,53 @@ An administrator Chrome profile was added after Chrome installation so an MSB ad
 
 ---
 
-## 6. Install MSB Maintenance Tools
+## 6. Application Installation Source Rule
 
-The Show PC also needs the normal MSB maintenance/development tools used to inspect and support the repository.
+For this appliance PC, install Windows applications from the **official vendor website**, not from the Microsoft Store, unless this procedure explicitly documents an exception.
+
+Reasons:
+
+- the Show PC uses a local Windows account and should not depend on a Microsoft Store account;
+- vendor installers are easier to reproduce during a rebuild;
+- installers can be archived when a production-approved version must be preserved;
+- vendor download pages make the source and version easier to document;
+- Light-O-Rama is not distributed through the Microsoft Store.
+
+Do not use third-party download sites.
+
+---
+
+## 7. Standard Setup Applications
+
+These applications are part of the normal Show PC setup.
+
+| Application | Official source | Setup note |
+|---|---|---|
+| Light-O-Rama ShowTime Sequencing Suite | [Light-O-Rama Software Downloads](https://store.lightorama.com/pages/download-software) | Install the production-approved ShowTime version. Do not change major versions merely because a newer release is available. Verify the required license/version against the production Show PC before final cutover. |
+| GIMP | [GIMP Downloads](https://www.gimp.org/downloads/) | Use the official Windows installer from GIMP.org rather than the Microsoft Store package. |
+| draw.io Desktop | [draw.io Offline/Desktop](https://www.drawio.com/docs/manual/editor/offline/) | Install the standalone Windows desktop application so diagrams remain usable without Internet access. |
+| CableIQ Reporter | [Fluke Networks Downloads](https://www.flukenetworks.com/support/downloads) | On the Fluke download page, locate **CableIQ Reporter Software V2.0** and the **64Bit USB Drivers for DTX, OptiFiber and CableIQ** if the tester requires them. Windows 11 operation must be verified on this PC because Fluke's current CableIQ Reporter description does not explicitly list Windows 11. |
+| ExpertGPS | [ExpertGPS Download](https://www.expertgps.com/download.asp) | Install the Windows version from the official ExpertGPS site. Preserve existing license information outside the repository. |
+
+### Standard application verification
+
+After installation, verify each application launches under the automatic-logon `Light-O-Rama` account.
+
+For Light-O-Rama, also record the installed version and license level after they are confirmed on the production setup.
+
+---
+
+## 8. Advanced Applications
+
+These applications are installed when the Show PC will also be used for MSB engineering, repository maintenance, diagnostics, or controlled scripting.
 
 ### Visual Studio Code
 
-Install **Visual Studio Code for Windows x64** from the official Visual Studio Code site.
+Official source:
 
-For this single-user appliance PC, the normal **User Installer x64** is acceptable.
+[Visual Studio Code](https://code.visualstudio.com/)
+
+Install the **Windows x64 User Installer**.
 
 During installation:
 
@@ -212,32 +250,34 @@ During installation:
 - keep **Add to PATH** enabled;
 - enabling **Open with Code** Explorer integration is useful but optional.
 
-### Git for Windows
+#### Git for repository work
 
-Install **Git for Windows x64** so VS Code can clone and work with the MSB repository.
+VS Code requires Git when this PC will clone or maintain the MSB repository.
 
-Use the normal installer defaults unless an MSB procedure specifically requires something different.
+Official source:
+
+[Git for Windows](https://git-scm.com/install/windows)
+
+Install the **x64** build using normal defaults unless another MSB procedure explicitly requires different settings.
 
 ### Python
 
-Install **Python 3.13 x64**, not Python 3.14 or the Python 3.15 prerelease, for the current MSB repository environment.
+Official source:
 
-Current repository requirements include `psycopg2-binary==2.9.10`. That release provides a Windows x64 wheel for CPython 3.13, while its published wheel set does not provide a CPython 3.14 Windows wheel. For the appliance PC, Python 3.13 therefore avoids introducing an unnecessary package-build compatibility problem.
+[Python 3.13.16](https://www.python.org/downloads/release/python-31316/)
 
-Current selected maintenance release during this build:
+Install **Python 3.13.16 Windows 64-bit** for the current MSB repository environment.
 
-```text
-Python 3.13.16 64-bit
-```
+Do not install Python 3.14 on this appliance yet. Current repository requirements include `psycopg2-binary==2.9.10`, and the current package compatibility is already established for CPython 3.13 Windows x64.
 
 During Python installation:
 
-1. Select the **64-bit Windows installer**.
+1. Select the **Windows installer (64-bit)**.
 2. Enable **Add python.exe to PATH**.
 3. Complete the standard installation.
 4. If offered, enable **Disable path length limit** after installation.
 
-After installation, verify from Command Prompt:
+After VS Code, Git, and Python are installed, verify from Command Prompt:
 
 ```cmd
 python --version
@@ -249,7 +289,7 @@ Record the actual installed versions after verification.
 
 ---
 
-## 7. Remaining Setup Steps
+## 9. Remaining Setup Steps
 
 The following items still need to be performed and verified on the new Show PC before they become part of the confirmed procedure:
 
