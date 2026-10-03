@@ -28,28 +28,33 @@ def test_plain_english_manager_help_covers_current_live_workflows() -> None:
     text = (APP_DIR / "setup_review_usability.js").read_text(encoding="utf-8")
     for phrase in (
         "How Setup Session Works",
-        "Verify 2025",
-        "Reusable tasks and Stage sequence",
+        "Reusable work vs. this season",
+        "annual Session",
         "Prerequisites and readiness",
-        "Scheduling model",
-        "Setup Work",
-        "Wait / Gate",
-        "not scheduled to a crew or work day",
-        "linked Work Order",
-        "downstream work unblocks without duplicate reporting",
-        "Support / Prep",
-        "Locate Power & Network is Setup Work",
-        "Pick Lists",
-        "live annual Session",
-        "early-pick Container override",
-        "Movement and scanning",
-        "Morning",
-        "Afternoon",
-        "All Day",
-        "parallel crews",
-        "multi-day work",
+        "Blocking ON",
+        "NOT READY",
+        "The Scheduling Board is live dispatch",
+        "operational system, not a post-it board",
+        "AM or PM",
+        "Ctrl/Cmd+click",
+        "Shift+click",
+        "Find scheduled task",
+        "Stage, task name, or Captain",
+        "Materials and movement",
+        "Pick List",
+        "Record Location",
+        "Perform Work and Report Work",
+        "cumulative percent complete",
+        "locked history",
+        "Needs Scheduling Again",
+        "does <strong>not</strong> mean the same percentage of expected hours",
+        "Report Correction",
+        "Future unworked assignments can move; reported work stays historical",
     ):
         assert phrase in text
+
+    assert "Verify 2025" not in text
+    assert "2025 Annual Historical Actual" not in text
 
 
 def test_reusable_catalog_supports_stage_reordering_and_copy() -> None:
