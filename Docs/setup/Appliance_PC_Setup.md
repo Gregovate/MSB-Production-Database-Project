@@ -262,7 +262,7 @@ Official source:
 
 Install the **x64** build.
 
-> **Installed on MSB-SHOW_PC2:** Git for Windows `2.56.0.windows.1` was previously verified immediately after installation. A later PowerShell session did not recognize `git` before the first reboot, so PATH propagation still requires verification after reopening the shell or rebooting. Effective line-ending configuration is still pending.
+> **Installed on MSB-SHOW_PC2:** Git for Windows `2.56.0.windows.1` is present at `C:\\Program Files\\Git\\cmd\\git.exe` and runs successfully when invoked by full path. The current PowerShell session does not resolve `git` by name, so Git PATH configuration/propagation is still pending. Effective line-ending configuration is also still pending.
 
 Use these installer selections for the MSB appliance PC:
 
@@ -291,6 +291,24 @@ Use these installer selections for the MSB appliance PC:
 - **Git Credential Manager** provides the supported credential helper for GitHub authentication.
 - **File system caching** remains enabled for normal performance.
 - **Symbolic links** remain disabled because the current MSB Windows workflow does not require them and enabling them introduces additional Windows privilege/developer-mode behavior.
+
+### Verify Git command PATH
+
+If `git` is not recognized after installation, first verify the executable exists:
+
+```powershell
+Test-Path "C:\Program Files\Git\cmd\git.exe"
+& "C:\Program Files\Git\cmd\git.exe" --version
+```
+
+On MSB-SHOW_PC2 this is currently confirmed:
+
+```text
+C:\Program Files\Git\cmd\git.exe
+git version 2.56.0.windows.1
+```
+
+Do not manually edit PATH until the persistent User and Machine PATH values have been checked. A reboot may also be required before all processes inherit a newly written PATH.
 
 ### Line ending policy
 
