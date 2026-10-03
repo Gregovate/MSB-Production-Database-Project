@@ -87,6 +87,16 @@ def api_setup_scheduling_board_work_day() -> tuple[Response, int]:
     return jsonify(work_day=result), 201
 
 
+@setup_scheduling_board_api.delete("/api/setup/scheduling-board/work-days/<int:setup_work_day_id>")
+def api_setup_scheduling_board_work_day_remove(
+    setup_work_day_id: int,
+) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    result = repo().remove_work_day(email=email, work_day_id=setup_work_day_id)
+    return jsonify(work_day=result)
+
+
 @setup_scheduling_board_api.post("/api/setup/scheduling-board/work-days/<int:setup_work_day_id>/crews")
 def api_setup_scheduling_board_crew_add(
     setup_work_day_id: int,
