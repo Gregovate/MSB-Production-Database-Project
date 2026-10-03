@@ -400,7 +400,10 @@ def test_205_schedule_board_repeats_day_context_at_crew_and_compacts_print() -> 
     css = read_app("setup_scheduling_board.css")
 
     assert "setup-board205-crew-day-context" in ui
+    assert "Crew ${board205Esc(crew.crew_code)} <span class=\"setup-board205-crew-day-context\">· ${board205Esc(compactDay)}</span>" in ui
     assert "board205CompactDayContext(day)" in ui
+    assert "font-size: inherit;" in css
+    assert "font-weight: inherit;" in css
     assert "setup-board205-crew-row" in ui
     assert "print-empty-day" in ui
     assert "print-empty-crew" in ui
@@ -839,8 +842,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-10-02.3" in html
-    assert "setup_scheduling_board.js?v=2026-10-02.4" in html
+    assert "setup_scheduling_board.css?v=2026-10-02.4" in html
+    assert "setup_scheduling_board.js?v=2026-10-02.5" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html

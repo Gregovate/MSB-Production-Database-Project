@@ -715,14 +715,13 @@
 }
 
 .setup-board205-crew-title-context {
-  display: grid;
-  gap: 0.08rem;
+  min-width: 0;
 }
 
 .setup-board205-crew-day-context {
-  color: var(--muted, #64748b);
-  font-size: 0.68rem;
-  font-weight: 750;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
   white-space: nowrap;
 }
 

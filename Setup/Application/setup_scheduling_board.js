@@ -1695,8 +1695,7 @@ function board205Day(day) {
         <div class="setup-board205-crew-label" data-crew-id="${crew.setup_work_day_crew_id}">
           <div class="setup-board205-crew-title-row">
             <div class="setup-board205-crew-title-context">
-              <strong>Crew ${board205Esc(crew.crew_code)}</strong>
-              <span class="setup-board205-crew-day-context">${board205Esc(compactDay)}</span>
+              <strong>Crew ${board205Esc(crew.crew_code)} <span class="setup-board205-crew-day-context">· ${board205Esc(compactDay)}</span></strong>
             </div>
             ${canManage ? `<div class="setup-board205-crew-actions"><button type="button" class="small setup-board205-save-crew">Save</button>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
           </div>
