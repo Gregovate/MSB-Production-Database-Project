@@ -47,6 +47,34 @@ Those source EPSG:8158 coordinates are retained with the transformed WGS84 value
 
 A maintainable reference editor/import process remains open #171 work.
 
+## Waypoint Type / Layer Classification Direction
+
+ExpertGPS does not treat every waypoint as the same kind of feature. The source data carries waypoint types/categories, including the operator-confirmed **Stages** type, and the broader file contains multiple other waypoint types.
+
+That classification is operationally valuable because it makes the map easier to layer, filter, and interpret. Future #171 reference/location design should therefore preserve waypoint type/category as first-class source metadata rather than flattening every waypoint into one generic location list.
+
+Required direction:
+
+```text
+ExpertGPS waypoint
+    -> stable source identity/name
+    -> source waypoint type/category
+    -> EPSG:8158 reference coordinates
+    -> optional transformed WGS84 browser coordinates
+    -> application-specific associations/ranking
+```
+
+Important boundaries:
+
+- preserve the original ExpertGPS type/category value as source provenance;
+- support type-based map layers and filters, such as showing **Stages** separately from other waypoint classes;
+- do not equate waypoint type with exclusive Stage ownership;
+- a waypoint may be useful to Setup without becoming a Stage, Scene, Display, Container, or Home Location identity;
+- if a future normalized internal category is introduced, retain the original ExpertGPS type alongside it rather than replacing the source classification;
+- the temporary launch reference JSON may remain a simplified consumption layer, but the long-term #171 maintenance/import path should carry type/category through from the authoritative GIS source.
+
+This classification requirement is especially important because the full ExpertGPS/Garmin source contains many waypoint classes beyond the current launch reference subset. Preserving them will make later GIS/map layering substantially easier and avoid having to infer feature meaning from names after import.
+
 ## Design Intent
 
 PostgreSQL should provide durable identity, relationships, and useful location history for physical site infrastructure while preserving appropriate survey/GIS tools for collection and visualization.
