@@ -258,7 +258,29 @@ Official source:
 
 [Git for Windows](https://git-scm.com/install/windows)
 
-Install the **x64** build using normal defaults unless another MSB procedure explicitly requires different settings.
+Install the **x64** build.
+
+For most installer screens, use the normal defaults. For **Configuring the line ending conversions**, select:
+
+```text
+Checkout as-is, commit Unix-style line endings
+```
+
+This corresponds to `core.autocrlf=input`.
+
+The MSB repository contains both Windows PowerShell files (`.ps1`) and Unix shell files (`.sh`). The repository currently does not define a root `.gitattributes` or `.editorconfig` policy, so the appliance PC should avoid rewriting files to CRLF during checkout. This option preserves files as stored in the repository while normalizing any CRLF line endings to LF when committed.
+
+After installation, verify:
+
+```cmd
+git config --global core.autocrlf
+```
+
+Expected result:
+
+```text
+input
+```
 
 ### Python
 
