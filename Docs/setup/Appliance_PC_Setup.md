@@ -262,7 +262,7 @@ Official source:
 
 Install the **x64** build.
 
-> **Installed on MSB-SHOW_PC2:** Git for Windows `2.56.0.windows.1` is present at `C:\\Program Files\\Git\\cmd\\git.exe` and runs successfully when invoked by full path. The current PowerShell session does not resolve `git` by name, so Git PATH configuration/propagation is still pending. Effective line-ending configuration is also still pending.
+> **Installed on MSB-SHOW_PC2:** Git for Windows `2.56.0.windows.1` is present at `C:\\Program Files\\Git\\cmd\\git.exe`. The persistent Machine PATH correctly contains `C:\\Program Files\\Git\\cmd`. The PowerShell session used during installation was started before the PATH change and therefore did not resolve `git` by name. No manual PATH edit is required; open a new shell (or reboot if necessary) and verify. Effective line-ending configuration is still pending.
 
 Use these installer selections for the MSB appliance PC:
 
@@ -308,7 +308,15 @@ C:\Program Files\Git\cmd\git.exe
 git version 2.56.0.windows.1
 ```
 
-Do not manually edit PATH until the persistent User and Machine PATH values have been checked. A reboot may also be required before all processes inherit a newly written PATH.
+Do not manually edit PATH until the persistent User and Machine PATH values have been checked.
+
+On MSB-SHOW_PC2, the persistent Machine PATH was verified to contain:
+
+```text
+C:\Program Files\Git\cmd
+```
+
+Therefore no PATH repair is required. Close all existing PowerShell/Windows Terminal/VS Code processes and open a fresh shell so the process inherits the updated PATH. If a fresh shell still does not resolve `git`, reboot Windows and verify again.
 
 ### Line ending policy
 
