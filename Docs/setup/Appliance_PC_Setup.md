@@ -471,18 +471,111 @@ VS Code 1.140.0 x64
 
 ---
 
-## 9. Remaining Setup Steps
+## 9. Configure Appliance Uptime and Windows Update
+
+The Show PC is an appliance. During show operation, the computer must remain running continuously. The display may turn off when idle, but Windows must not put the computer to sleep or hibernate and must not force an unattended restart for Windows Update.
+
+### Power and display settings
+
+Open:
+
+```text
+Settings -> System -> Power & battery -> Screen, sleep, & hibernate timeouts
+```
+
+Configure:
+
+```text
+Turn my screen off after:          Allowed / operator preference
+Make my device sleep after:        Never
+```
+
+> **Verified on MSB-SHOW_PC2:** the PC sleep timeout was changed to **Never**. The monitors are allowed to turn off when idle.
+
+Disable hibernation from an elevated PowerShell or Command Prompt:
+
+```powershell
+powercfg /hibernate off
+```
+
+This prevents an unattended hibernation state and also removes Hybrid/Fast Startup behavior that depends on hibernation.
+
+### Do not require credentials after display-off / resume
+
+This appliance must return to the running desktop without requiring an operator password.
+
+Open:
+
+```text
+Settings -> Accounts -> Sign-in options
+```
+
+Under the additional sign-in settings, set the option that controls when Windows requires sign-in after being away to:
+
+```text
+Never
+```
+
+Also check:
+
+```text
+Settings -> Personalization -> Lock screen -> Screen saver
+```
+
+Either use **None** for the screen saver or ensure **On resume, display logon screen** is not selected.
+
+The monitors may power down; that must not lock the appliance session.
+
+### Disable automatic Windows Update installation
+
+Do **not** disable or stop the Windows Update service. Use the supported Windows policy so updates remain available for deliberate maintenance while the Show PC cannot update or restart itself unexpectedly.
+
+Open:
+
+```text
+gpedit.msc
+```
+
+Navigate to:
+
+```text
+Computer Configuration
+  -> Administrative Templates
+  -> Windows Components
+  -> Windows Update
+  -> Manage end user experience
+  -> Configure Automatic Updates
+```
+
+Set:
+
+```text
+Configure Automatic Updates: Disabled
+```
+
+On Windows 11 Pro, this disables automatic updating through Windows Update. Available updates must then be downloaded and installed manually from Windows Update.
+
+Operational rule:
+
+1. Do not install Windows updates during active show operation.
+2. Perform updates only during a planned maintenance window.
+3. Reboot after updates when required.
+4. Verify Light-O-Rama, audio, E1.31 networking, USB/serial interfaces, Google Drive, and automatic logon before returning the PC to unattended show service.
+
+> **Pending verification on MSB-SHOW_PC2:** Windows Update Group Policy has not yet been confirmed as disabled.
+
+---
+
+## 10. Remaining Setup Steps
 
 The following items still need to be performed and verified on the new Show PC before they become part of the confirmed procedure:
 
 - set and verify the final computer name;
-- complete Windows Update and driver installation;
 - configure the normal MSB LAN interface;
 - configure the dedicated E1.31 interface(s);
 - verify E1.31 interfaces have no unintended default gateway;
 - install and verify the dedicated broadcast audio device;
 - configure both show monitors;
-- configure power, sleep, hibernation, and restart behavior for appliance operation;
 - verify recovery after loss of AC power;
 - configure automatic startup of the required show applications;
 - configure Google Drive and required drive mapping;
