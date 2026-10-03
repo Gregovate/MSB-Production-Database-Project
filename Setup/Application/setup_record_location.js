@@ -817,7 +817,7 @@
         if (gps) message += ' · GPS ±' + Math.round(Number(gps.accuracy_m || 0) * 3.280839895) + ' ft';
         if (unloaded.length) message += ' · would leave ' + unloaded.length + ' Display' + (unloaded.length === 1 ? '' : 's') + ' here';
       }
-      resetRecordedAssetForNextEntry();
+      resetAssetEntryForNextScan();
       setFeedback(
         'success',
         message + ' · NOTHING RECORDED'
@@ -845,7 +845,7 @@
         setFeedback('success', message);
       }
 
-      resetRecordedAssetForNextEntry();
+      resetAssetEntryForNextScan();
       if (scannerActive) {
         feedback.textContent += ' · SCANNER READY — scan next asset';
       }
@@ -892,7 +892,7 @@
     event.currentTarget.blur();
   }
 
-  function resetRecordedAssetForNextEntry() {
+  function resetAssetEntryForNextScan() {
     clearPending();
     manualInput.value = '';
     knownReference.value = '';
@@ -1142,9 +1142,7 @@
   recordHere.addEventListener('click', function () { void recordPending(false); });
   returnHome.addEventListener('click', function () { void recordPending(true); });
   clearPendingButton.addEventListener('click', function () {
-    clearPending();
-    manualInput.value = '';
-    restoreScannerCapture();
+    resetAssetEntryForNextScan();
     setFeedback(
       'ready',
       scannerActive
