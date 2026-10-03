@@ -457,3 +457,18 @@ Stop Scanner
 Scanner mode does **not** disable GPS or location evidence entry. The operator may keep the Zebra armed while starting/stopping GPS, selecting one of the nearby GPS-derived references, selecting a known park reference, or entering an exception/location note. Select controls return to scanner capture immediately after selection; text-note controls return when editing is complete.
 
 This is application focus/input plumbing under #113. It does not change Zebra programming, the canonical payload contract, permanent physical labels, or #88 movement meaning. Camera, manual, search/touch, Scan handoff, and Zebra HID remain alternate capture sources for the same permanent asset identity. Free-text location notes remain raw Record Location evidence for later evaluation and do not automatically promote a new GIS/reference location or permanent Home Location.
+
+## V0.3.37 browser-review correction — 2026-10-03
+
+The first V0.3.36 browser review proved that focusless HID capture works, but exposed a usability gap when an operator enters location text or chooses a reference. Scanner state must be understandable from the field UI rather than from hidden browser-focus behavior.
+
+V0.3.37 therefore makes scanner ownership explicit:
+
+- Scanner ready means Zebra HID is captured without focusing the identity field.
+- **Use** / Enter on the identity field is manual-entry behavior only; a Zebra scan does not require the Use button.
+- Focusing a manual/search/location/GPS-quality editable control changes scanner status to **Scanner paused**.
+- Completing the selection, pressing Enter/Done in a note, or leaving the editable control restores **Scanner ready — no field focus needed**.
+- A successful Record clears the prior asset identity and explicitly returns to **SCANNER READY — scan next asset**.
+- Enter in a location note never executes the physical Record action.
+
+This remains browser/HID input plumbing under #113. No Zebra ADF change, permanent QR change, movement-schema change, GIS promotion, or Home Location mutation is introduced.
