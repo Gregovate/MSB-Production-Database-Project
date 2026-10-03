@@ -283,46 +283,39 @@ function installSetupHowItWorks() {
     <div class="card setup-help-card">
       <div class="eyebrow">Plain-English Manager guide</div>
       <h2>How Setup Session Works</h2>
-      <p>The reusable Catalog defines recurring Setup work. The live annual Session owns current scheduling/execution, and the Pick List turns that schedule into physical material demand. Movement/scanning records what actually moved.</p>
+      <p>The reusable Catalog holds what we know about recurring Setup work. The annual Session is the live plan for this season. The Scheduling Board connects that plan to Crews/Captains, material demand, field execution, and Report Work. <strong>It is an operational system, not a post-it board.</strong></p>
       <div class="setup-help-grid">
         <section class="setup-help-section">
-          <h3>1. Verify 2025</h3>
-          <p><strong>Reusable Task Definition</strong> is the normal job we expect to do again. <strong>2025 Annual Historical Actual</strong> is what happened in 2025.</p>
-          <ul>
-            <li><strong>Verified</strong>: the reusable task and 2025 information are reasonable.</li>
-            <li><strong>Needs Correction</strong>: something needs to be fixed before accepting it.</li>
-            <li><strong>Unverified</strong>: nobody has accepted it yet.</li>
-          </ul>
+          <h3>1. Reusable work vs. this season</h3>
+          <p><strong>Reusable tasks</strong> hold the normal knowledge we expect to use again: task name, Stage/Scene, crew/time expectations, instructions, resources, and normal sequence.</p>
+          <p>The <strong>annual Session</strong> is this season's working copy. Scheduling, readiness, progress, Captains, and actual work can change during Setup without rewriting what happened in another season.</p>
         </section>
         <section class="setup-help-section">
-          <h3>2. Reusable tasks and Stage sequence</h3>
-          <p>A reusable task is practical work worth planning each season. Sequence numbers 10, 20, 30, etc. mean the normal precedence <strong>within that Stage</strong>. They do not mean the entire Setup day runs as one serial queue.</p>
-          <p>Managers can drag tasks within a Stage or use ↑ / ↓. Use <strong>Copy</strong> for a similar task; equipment/resources copy, but prerequisites and annual history do not.</p>
+          <h3>2. Prerequisites and readiness</h3>
+          <p>A <strong>prerequisite</strong> means another task should be completed first. Blocking ON keeps hard-blocked work out of the normal scheduling candidates so crews are not accidentally sent into work that cannot proceed.</p>
+          <p><strong>Readiness</strong> is different. It is a current condition such as weather, leaves, access, or another outside dependency. NOT READY keeps the condition visible and warns a Manager if the task is deliberately scheduled anyway.</p>
         </section>
         <section class="setup-help-section">
-          <h3>3. Prerequisites and readiness</h3>
-          <p>A prerequisite means the next task cannot practically proceed until another task is complete. Dependencies may cross Stages, such as the Arch Trailer unload route.</p>
-          <p>Readiness is different: a task such as Festive Trees can remain NOT_READY until an outside condition is satisfied, such as leaves falling from the trees.</p>
-          <p>Dependency editing is not exposed yet. During this review, flag missing or wrong prerequisites.</p>
+          <h3>3. The Scheduling Board is live dispatch</h3>
+          <p>Work is assigned to a Setup Day, <strong>AM or PM</strong>, and a Crew. The Captain belongs to that Crew. Moving work to another Crew changes who is responsible for it.</p>
+          <p>Unworked assignments are deliberately movable because plans change. Click one task, <strong>Ctrl/Cmd+click</strong> to add or remove individual tasks, or <strong>Shift+click</strong> to select a range, then drag any selected task to move the group. Use <strong>Find scheduled task</strong> when you know the Stage, task name, or Captain but not where the task landed.</p>
+          <p>The schedule drives more than the screen: it feeds Captain work, near-term material demand, and the operational record of what we intended to do.</p>
         </section>
         <section class="setup-help-section">
-          <h3>4. Scheduling model</h3>
-          <p>One task can span multiple days. One day can have parallel crews. Scheduled work is grouped by <strong>Morning</strong>, <strong>Afternoon</strong>, or <strong>All Day</strong>.</p>
-          <p><strong>Setup Work</strong> is real crew work and becomes schedulable when its hard prerequisites are complete. A linked Work Order can be reference/context only, or its completion can be configured to complete the Setup task too so downstream work unblocks without duplicate reporting.</p>
-          <p><strong>Wait / Gate</strong> is different: it is <strong>not scheduled to a crew or work day</strong>. Use it only when downstream Setup must wait for an outside condition, such as a linked Work Order being completed elsewhere.</p>
-          <p>If MSB volunteers must perform the repair or other work, use <strong>Setup Work</strong>, not Wait / Gate.</p>
-          <p><strong>Support / Prep</strong> is schedulable enabling work around Setup, such as training, arranging rental equipment, or positioning support infrastructure. <strong>Locate Power & Network is Setup Work</strong>, not Support / Prep.</p>
-          <p>The reusable Stage sequence is a planning starting point; the actual work-day plan can intentionally run Stow Storm, Elf Choir, and other work in parallel.</p>
+          <h3>4. Materials and movement</h3>
+          <p>The <strong>Pick List</strong> is derived from live scheduled work plus bounded early demand. It tells the workshop what physical Displays, Containers, Kits, and Extra Material sources are needed; it does not mean the work itself is complete.</p>
+          <p><strong>Record Location</strong> records where a Container or Display actually moved in the field. A normal QR scan identifies the item and opens its actions; scanning by itself is not a movement write.</p>
         </section>
         <section class="setup-help-section">
-          <h3>5. Pick Lists</h3>
-          <p>The Pick List is derived from live scheduled work and bounded early downstream demand: required Displays → their current Containers + supplemental support/KIT Containers + Extra Material sources → one deduplicated physical pull list.</p>
-          <p>Managers may add an explicit early-pick Container override when bulk/shared stock or a schedule/material-model gap requires a deliberate pull. That override creates demand only; it does not schedule a task or mark anything picked.</p>
-          <p>A Pick List replaces manual material bookkeeping, not real labor. A true Prepare/Load task remains a task if people actually spend meaningful time doing that work.</p>
+          <h3>5. Perform Work and Report Work</h3>
+          <p>Captains use <strong>Perform Work</strong> for the work assigned to their Crew. <strong>Report Work</strong> records what actually happened: work date, crew size, time spent, cumulative percent complete, and what was done or remains.</p>
+          <p>Once work is reported, that scheduled assignment becomes <strong>locked history</strong>. At 100% the task is complete. If it is only partially complete, the task returns to <strong>Needs Scheduling Again</strong> with its progress preserved and can be assigned to a different Crew/Captain later.</p>
+          <p>Percent complete describes progress only. It does <strong>not</strong> mean the same percentage of expected hours has been used or remains.</p>
         </section>
         <section class="setup-help-section">
-          <h3>6. Movement and scanning</h3>
-          <p><strong>Pick List</strong> is the workshop pull operation. <strong>Record Location</strong> is the deliberate field operation for recording where a Container or Display is now. Normal permanent QR scans still open the MSB Scan identity/action hub; scanning alone does not imply a movement write.</p>
+          <h3>6. Corrections preserve history</h3>
+          <p>If a work report was entered wrong, use <strong>Report Correction</strong> rather than trying to move or rewrite the historical assignment. Corrections update the reported facts while preserving the work/report identity and audit trail.</p>
+          <p>The plan is expected to change frequently. Future unworked assignments can move; reported work stays historical. That distinction lets the board stay flexible without losing what actually happened.</p>
         </section>
       </div>
     </div>

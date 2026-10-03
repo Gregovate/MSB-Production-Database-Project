@@ -153,6 +153,8 @@ def test_205_work_day_crews_are_dynamic_and_shift_specific() -> None:
     assert "+ Add Crew" in ui
     assert "am_planned_crew_count" in ui
     assert "pm_planned_crew_count" in ui
+    assert "AM Crew w/Captain" in ui
+    assert "PM Crew w/Captain" in ui
     assert "setup-board205-crew-captain-select" in ui
     assert "preserve the Crew Captain as history" in sql
     assert "preserve the planned AM crew count as history" in sql
@@ -214,7 +216,7 @@ def test_205_board_uses_dynamic_crews_am_pm_and_accessible_move_controls() -> No
     css = read_app("setup_scheduling_board.css")
 
     for phrase in (
-        "Crew A",
+        "Crew ${board205Esc(crew.crew_code)}",
         "+ Add Crew",
         "MORNING",
         "AFTERNOON",
@@ -335,13 +337,184 @@ def test_205_am_to_pm_spillover_is_advisory_not_a_third_shift() -> None:
     assert '<option value="ALL_DAY">All Day</option>' not in ui
 
 
+def test_205_scheduled_task_finder_locates_existing_schedule_assignments() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "Find scheduled task" in ui
+    assert 'id="setup-board205-scheduled-search"' in ui
+    assert 'id="setup-board205-scheduled-search-results"' in ui
+    assert "function board205ScheduledSearchMatches" in ui
+    assert "function board205RevealScheduledAssignment" in ui
+    assert "function board205RenderScheduledSearch" in ui
+    assert "board205CompareAssignmentOrder" in ui
+    assert "Stage, task name, or Captain" in ui
+    assert "captain_display_name" in ui
+    assert "stage_name" in ui
+    assert "function board205ScheduledStageLabel" in ui
+    assert "function board205CompactDayContext" in ui
+    assert "scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })" in ui
+    assert "scheduled-search-hit" in ui
+    assert ".setup-board205-scheduled-search" in css
+    assert ".setup-board205-assignment.scheduled-search-hit" in css
+    assert "setup-board205-dispatch-controls" in ui
+    assert "setup-board205-scheduled-search-sticky" not in ui
+    assert ".setup-board205-dispatch-controls .setup-board205-scheduled-search-results" in css
+    assert "position: absolute;" in css
+    assert "function board205CollapseScheduledSearchResults" in ui
+
+
+def test_205_light_mode_strengthens_schedule_structure_without_changing_dark_palette() -> None:
+    css = read_app("setup_scheduling_board.css")
+
+    assert 'html[data-theme="light"] .setup-board205-day' in css
+    assert "border-color: #b8c4d0;" in css
+    assert 'html[data-theme="light"] .setup-board205-assignment' in css
+    assert "border-color: #bdc9d5;" in css
+    assert "background: #eef3f7;" in css
+    assert "background: #fbfcfe;" in css
+
+
+def test_205_schedule_command_bar_preserves_board_height_and_controls() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "setup-board205-dispatch-controls" in ui
+    assert "+ Add Work Days" in ui
+    assert "Find scheduled task" in ui
+    assert "> Unfinished</label>" in ui
+    assert "> Completed</label>" in ui
+    assert "> Empty</label>" in ui
+    assert "setup-board205-selection-count" in ui
+    assert "Print Schedule" in ui
+    assert "Open only when you need to add dates." not in ui
+    assert "Each work day starts with Crew A." not in ui
+    assert "setup-board205-board-key" in ui
+    assert "grid-template-columns: auto minmax(16rem, 1fr) auto auto auto;" in css
+    assert "max-height: min(22rem, 55vh);" in css
+
+
+def test_205_schedule_badges_use_consistent_semantic_colors() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "function board205StatusBadgeClass" in ui
+    for token in (
+        "status-ready",
+        "status-reschedule",
+        "status-scheduled",
+        "status-complete",
+        "status-blocked",
+        "status-waiting",
+        "status-deferred",
+        "status-catalog",
+        "wo-open",
+        "wo-complete",
+        "gate-badge",
+        "effort-light",
+        "effort-moderate",
+        "effort-heavy",
+        "effort-unknown",
+    ):
+        assert token in ui or token in css
+
+    assert "--setup-board205-badge-info-bg: #dbeafe;" in css
+    assert "--setup-board205-badge-warn-bg: #fff1c7;" in css
+    assert "--setup-board205-badge-danger-bg: #fee2e2;" in css
+    assert "--setup-board205-badge-success-bg: #dcfce7;" in css
+    assert "--setup-board205-badge-neutral-bg: #eef2f7;" in css
+    assert "--setup-board205-badge-info-bg: #17365d;" in css
+    assert "background: var(--setup-board205-badge-effort-bg);" in css
+    assert ".setup-board205-badge.short-crew-badge" in css
+    assert ".setup-board205-badge.effort-heavy" in css
+
+
+def test_205_schedule_board_shows_cumulative_progress_without_deriving_time() -> None:
+    repo = read_app("setup_scheduling_board_repository.py")
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "max(p.percent_complete) AS percent_complete" in repo
+    assert "coalesce(progress.percent_complete, 0) AS percent_complete" in repo
+    assert "function board205ProgressPercent(task)" in ui
+    assert "function board205ProgressGauge(task)" in ui
+    assert 'class="setup-board205-progress-gauge"' in ui
+    assert 'role="progressbar"' in ui
+    assert "aria-valuenow" in ui
+    assert "!locked ? board205ProgressGauge(task) : ''" in ui
+    assert ".setup-board205-progress-gauge" in css
+    assert "width: var(--setup-board205-progress, 0%);" in css
+    assert "background: var(--success, #277a43);" in css
+    assert "remaining" not in ui.split("function board205ProgressGauge(task)", 1)[1].split(
+        "function board205AuditWhen", 1
+    )[0]
+
+
+def test_205_schedule_board_multi_select_moves_only_unworked_assignments() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "selectedAssignmentIds: new Set()" in ui
+    assert "lastSelectedAssignmentId: null" in ui
+    assert "event.ctrlKey || event.metaKey" in ui
+    assert "event.shiftKey" in ui
+    assert "function board205SelectAssignmentCard" in ui
+    assert "function board205SelectedAssignmentItems" in ui
+    assert "kind: 'assignments'" in ui
+    assert "drag any selected task to move the group" in ui
+    assert "item && !item.historical_locked" in ui
+    assert "moved before the operation stopped" in ui
+    assert "board205MaybeLearnCaptainForTasks" in ui
+    assert ".setup-board205-assignment.selected" in css
+    assert "background: var(--setup-material-action-bg" in css
+    assert "box-shadow: 0 0 0 2px var(--setup-material-action-focus" in css
+
+
+def test_205_needs_scheduling_card_keeps_scheduler_context_compact() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    task_card = ui.split("function board205TaskCard(task)", 1)[1].split(
+        "function board205QueueTasks()", 1
+    )[0]
+    assert "<strong>Resources:</strong>" not in task_card
+    assert "Reusable notes:" in task_card
+    assert "Hard predecessor(s):" in task_card
+    assert "Readiness:" in task_card
+    assert "Min crew:" in task_card
+    assert "Expected:" in task_card
+    assert "return `Updated ${board205AuditWhen(task.reusable_updated_at)} by ${updatedBy}`;" in ui
+    assert "Created ${board205AuditWhen(task.reusable_created_at)}" not in ui
+
+
+def test_205_schedule_board_repeats_day_context_at_crew_and_compacts_print() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "setup-board205-crew-day-context" in ui
+    assert "Crew ${board205Esc(crew.crew_code)} <span class=\"setup-board205-crew-day-context\">· ${board205Esc(compactDay)}</span>" in ui
+    assert "board205CompactDayContext(day)" in ui
+    assert "font-size: inherit;" in css
+    assert "font-weight: inherit;" in css
+    assert "setup-board205-crew-row" in ui
+    assert "print-empty-day" in ui
+    assert "print-empty-crew" in ui
+    assert "setup-board205-assignment-captain" in ui
+    assert ".setup-board205-crew-row" in css
+    assert "break-inside: avoid;" in css
+    assert "#schedule-view .print-empty-day" in css
+    assert "#schedule-view .print-empty-crew" in css
+    assert "#schedule-view .setup-board205-planning-header" in css
+    assert "#schedule-view .setup-board205-assignment-captain" in css
+    assert "min-height: 0 !important;" in css
+
+
 def test_122_schedule_board_compacts_crew_controls_and_prints_operational_board() -> None:
     ui = read_app("setup_scheduling_board.js")
     css = read_app("setup_scheduling_board.css")
 
     assert "Crew / Captain / Volunteers" in ui
-    assert ">AM Crew <" in ui
-    assert ">PM Crew <" in ui
+    assert ">AM Crew w/Captain <" in ui
+    assert ">PM Crew w/Captain <" in ui
     assert "setup-board205-crew-title-row" in ui
     assert '<button type="button" class="small setup-board205-save-crew">Save</button>' in ui
     assert "secondary setup-board205-save-crew" not in ui
@@ -482,12 +655,12 @@ def test_205_rolling_board_filters_days_by_operational_state() -> None:
     assert "if (status === 'COMPLETE' || status === 'CANCELLED') return 'COMPLETED';" in ui
     assert "if (!assignments.length) return 'EMPTY';" in ui
     assert "return hasUnfinished ? 'UNFINISHED' : 'COMPLETED';" in ui
-    assert "Completed / cancelled" in ui
+    assert "> Completed</label>" in ui
     assert "cancelled-day" in ui
     assert 'id="setup-board205-show-unfinished-days" type="checkbox" checked' in ui
     assert 'id="setup-board205-show-completed-days" type="checkbox"' in ui
     assert 'id="setup-board205-show-empty-days" type="checkbox"' in ui
-    assert "Scheduled / unfinished" in ui
+    assert "> Unfinished</label>" in ui
     assert "if (showEmptyDays) showEmptyDays.checked = true;" in ui
     assert "setup-board205-show-history" not in ui
     assert "day-band-odd" in ui
@@ -499,6 +672,10 @@ def test_205_scheduler_panes_scroll_independently_with_drag_edge_autoscroll() ->
     ui = read_app("setup_scheduling_board.js")
     css = read_app("setup_scheduling_board.css")
     assert "board205AutoScrollPane" in ui
+    assert "board205AutoScrollTick" in ui
+    assert "board205StopAutoScroll" in ui
+    assert "requestAnimationFrame(board205AutoScrollTick)" in ui
+    assert "visibleBottom = Math.min(rect.bottom, window.innerHeight)" in ui
     assert "pane.scrollTop" in ui
     assert ".setup-board205-backlog," in css
     assert ".setup-board205-board {" in css
@@ -756,8 +933,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-10-01.1" in html
-    assert "setup_scheduling_board.js?v=2026-09-29.5" in html
+    assert "setup_scheduling_board.css?v=2026-10-02.9" in html
+    assert "setup_scheduling_board.js?v=2026-10-02.8" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html

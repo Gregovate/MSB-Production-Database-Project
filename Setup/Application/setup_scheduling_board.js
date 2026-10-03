@@ -5,6 +5,8 @@
 const setupBoard205State = {
   board: { session: null, work_days: [], crews: [], captain_candidates: [], work_orders: [], tasks: [], assignments: [], dependencies: [] },
   dragged: null,
+  selectedAssignmentIds: new Set(),
+  lastSelectedAssignmentId: null,
   editSeasonTaskId: null,
   editPlanningTaskId: null,
   editPlanningReusableTaskId: null,
@@ -19,7 +21,10 @@ const setupBoard205State = {
   finderCompact: null,
   workDaySelection: new Set(),
   workDayCalendarMonth: null,
-  workDayPickerExpanded: false
+  workDayPickerExpanded: false,
+  dragAutoScrollPane: null,
+  dragAutoScrollClientY: null,
+  dragAutoScrollFrame: null
 };
 
 const SETUP_BOARD205_TYPICAL_AM_MINUTES = 180;
@@ -96,6 +101,127 @@ function board205Assignment(assignmentId) {
   return (setupBoard205State.board.assignments || []).find(
     (item) => Number(item.setup_work_day_task_id) === Number(assignmentId)
   );
+}
+
+function board205PruneAssignmentSelection() {
+  const movable = new Set(
+    (setupBoard205State.board.assignments || [])
+      .filter((item) => !item.historical_locked)
+      .map((item) => Number(item.setup_work_day_task_id))
+  );
+  setupBoard205State.selectedAssignmentIds.forEach((assignmentId) => {
+    if (!movable.has(Number(assignmentId))) {
+      setupBoard205State.selectedAssignmentIds.delete(Number(assignmentId));
+    }
+  });
+  if (
+    setupBoard205State.lastSelectedAssignmentId != null
+    && !movable.has(Number(setupBoard205State.lastSelectedAssignmentId))
+  ) {
+    setupBoard205State.lastSelectedAssignmentId = null;
+  }
+}
+
+function board205ClearAssignmentSelection(updateUi = true) {
+  setupBoard205State.selectedAssignmentIds.clear();
+  setupBoard205State.lastSelectedAssignmentId = null;
+  if (updateUi) board205UpdateAssignmentSelectionUi();
+}
+
+function board205UpdateAssignmentSelectionUi() {
+  board205PruneAssignmentSelection();
+  document.querySelectorAll('.setup-board205-assignment').forEach((card) => {
+    const assignmentId = Number(card.dataset.assignmentId || 0);
+    card.classList.toggle(
+      'selected',
+      setupBoard205State.selectedAssignmentIds.has(assignmentId)
+    );
+  });
+  const count = document.getElementById('setup-board205-selection-count');
+  if (!count) return;
+  const selectedCount = setupBoard205State.selectedAssignmentIds.size;
+  count.hidden = selectedCount === 0;
+  count.textContent = selectedCount
+    ? `${selectedCount} task${selectedCount === 1 ? '' : 's'} selected · drag any selected task to move the group`
+    : '';
+}
+
+function board205SelectAssignmentCard(card, event) {
+  if (!card || !appState.access?.can_manage_setup) return;
+  const assignmentId = Number(card.dataset.assignmentId || 0);
+  const item = board205Assignment(assignmentId);
+  if (!assignmentId || !item || item.historical_locked) return;
+
+  const toggle = Boolean(event.ctrlKey || event.metaKey);
+  const cards = [
+    ...document.querySelectorAll(
+      '#setup-board205-days .setup-board205-assignment[draggable="true"]'
+    )
+  ];
+
+  if (event.shiftKey && setupBoard205State.lastSelectedAssignmentId != null) {
+    const anchorIndex = cards.findIndex(
+      (candidate) => Number(candidate.dataset.assignmentId || 0)
+        === Number(setupBoard205State.lastSelectedAssignmentId)
+    );
+    const currentIndex = cards.indexOf(card);
+    if (anchorIndex >= 0 && currentIndex >= 0) {
+      if (!toggle) setupBoard205State.selectedAssignmentIds.clear();
+      const start = Math.min(anchorIndex, currentIndex);
+      const end = Math.max(anchorIndex, currentIndex);
+      cards.slice(start, end + 1).forEach((candidate) => {
+        const candidateId = Number(candidate.dataset.assignmentId || 0);
+        if (candidateId) setupBoard205State.selectedAssignmentIds.add(candidateId);
+      });
+    } else {
+      if (!toggle) setupBoard205State.selectedAssignmentIds.clear();
+      setupBoard205State.selectedAssignmentIds.add(assignmentId);
+    }
+  } else if (toggle) {
+    if (setupBoard205State.selectedAssignmentIds.has(assignmentId)) {
+      setupBoard205State.selectedAssignmentIds.delete(assignmentId);
+    } else {
+      setupBoard205State.selectedAssignmentIds.add(assignmentId);
+    }
+  } else {
+    setupBoard205State.selectedAssignmentIds.clear();
+    setupBoard205State.selectedAssignmentIds.add(assignmentId);
+  }
+
+  setupBoard205State.lastSelectedAssignmentId = assignmentId;
+  board205UpdateAssignmentSelectionUi();
+}
+
+function board205AssignmentVisualSortKey(item) {
+  const day = (setupBoard205State.board.work_days || []).find(
+    (row) => Number(row.setup_work_day_id) === Number(item.setup_work_day_id)
+  );
+  const crew = board205CrewRow(item.setup_work_day_crew_id);
+  const shiftRank = { MORNING: 1, AFTERNOON: 2, ALL_DAY: 3 };
+  return [
+    day?.work_date || item.work_date || '9999-12-31',
+    Number(crew?.crew_number ?? 999999),
+    shiftRank[item.shift_code] || 9,
+    Number(item.sort_order) || 0,
+    Number(item.setup_work_day_task_id) || 0
+  ];
+}
+
+function board205CompareAssignmentVisualOrder(a, b) {
+  const ak = board205AssignmentVisualSortKey(a);
+  const bk = board205AssignmentVisualSortKey(b);
+  return ak[0].localeCompare(bk[0])
+    || ak[1] - bk[1]
+    || ak[2] - bk[2]
+    || ak[3] - bk[3]
+    || ak[4] - bk[4];
+}
+
+function board205SelectedAssignmentItems() {
+  return [...setupBoard205State.selectedAssignmentIds]
+    .map(board205Assignment)
+    .filter((item) => item && !item.historical_locked)
+    .sort(board205CompareAssignmentVisualOrder);
 }
 
 function board205CrewRow(crewId) {
@@ -416,6 +542,135 @@ function board205DayViewState(day) {
   return hasUnfinished ? 'UNFINISHED' : 'COMPLETED';
 }
 
+function board205CompactWorkDate(value) {
+  const raw = String(value || '').trim();
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[2]}/${match[3]}` : (raw || 'date TBD');
+}
+
+function board205CompactDayContext(day) {
+  const dayNumber = day?.setup_day_number ?? '—';
+  const dow = String(day?.day_of_week || '').trim().toUpperCase();
+  const date = board205CompactWorkDate(day?.work_date);
+  return `D${dayNumber}${dow ? ` · ${dow}` : ''} · ${date}`;
+}
+
+function board205ScheduledStageLabel(task) {
+  if (task?.stage_id == null) return 'Site-wide / Infrastructure';
+  const stageKey = task.stage_key || task.stage_id || '—';
+  const stageName = task.stage_name ? ` — ${task.stage_name}` : '';
+  const sceneName = task.scene_name ? ` / ${task.scene_name}` : '';
+  return `Stage ${stageKey}${stageName}${sceneName}`;
+}
+
+function board205ScheduledSearchMatches(query = null) {
+  const raw = query == null
+    ? document.getElementById('setup-board205-scheduled-search')?.value
+    : query;
+  const search = String(raw || '').trim().toLowerCase();
+  if (!search) return [];
+  const terms = search.split(/\s+/).filter(Boolean);
+
+  return [...(setupBoard205State.board.assignments || [])]
+    .filter((item) => {
+      const task = board205Task(item.setup_session_task_id) || item;
+      const day = (setupBoard205State.board.work_days || []).find(
+        (row) => Number(row.setup_work_day_id) === Number(item.setup_work_day_id)
+      );
+      const crew = board205CrewRow(item.setup_work_day_crew_id);
+      const haystack = [
+        task.task_name || item.task_name || '',
+        task.stage_key || item.stage_key || '',
+        task.stage_name || item.stage_name || '',
+        task.scene_name || item.scene_name || '',
+        board205Scope(task),
+        crew?.captain_display_name || '',
+        crew?.crew_code || '',
+        day?.day_of_week || '',
+        day?.work_date || '',
+        task.setup_task_id == null ? '' : String(task.setup_task_id),
+        task.setup_task_id == null ? '' : `task ${task.setup_task_id}`
+      ].join(' ').toLowerCase();
+      return terms.every((term) => haystack.includes(term));
+    })
+    .sort(board205CompareAssignmentOrder);
+}
+
+function board205ScheduledSearchLabel(item) {
+  const task = board205Task(item.setup_session_task_id) || item;
+  const day = (setupBoard205State.board.work_days || []).find(
+    (row) => Number(row.setup_work_day_id) === Number(item.setup_work_day_id)
+  );
+  const crew = board205CrewRow(item.setup_work_day_crew_id);
+  const shift = item.shift_code === 'MORNING'
+    ? 'AM'
+    : item.shift_code === 'AFTERNOON'
+      ? 'PM'
+      : 'All Day';
+  return `${board205ScheduledStageLabel(task)} · ${task.task_name || item.task_name || 'Unnamed task'} · Captain ${crew?.captain_display_name || 'TBD'} — ${board205CompactDayContext(day)} · Crew ${crew?.crew_code || '—'} · ${shift}`;
+}
+
+function board205RevealScheduledAssignment(item) {
+  if (!item) return;
+  const day = (setupBoard205State.board.work_days || []).find(
+    (row) => Number(row.setup_work_day_id) === Number(item.setup_work_day_id)
+  );
+  if (day) {
+    const state = board205DayViewState(day);
+    const unfinished = document.getElementById('setup-board205-show-unfinished-days');
+    const completed = document.getElementById('setup-board205-show-completed-days');
+    const empty = document.getElementById('setup-board205-show-empty-days');
+    if (state === 'UNFINISHED' && unfinished) unfinished.checked = true;
+    if (state === 'COMPLETED' && completed) completed.checked = true;
+    if (state === 'EMPTY' && empty) empty.checked = true;
+  }
+
+  board205RenderBoard();
+  window.requestAnimationFrame(() => {
+    const card = document.querySelector(
+      `.setup-board205-assignment[data-assignment-id="${Number(item.setup_work_day_task_id)}"]`
+    );
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    card.classList.add('scheduled-search-hit');
+    window.setTimeout(() => card.classList.remove('scheduled-search-hit'), 2600);
+  });
+}
+
+function board205CollapseScheduledSearchResults() {
+  const target = document.getElementById('setup-board205-scheduled-search-results');
+  if (target) target.innerHTML = '';
+}
+
+function board205RenderScheduledSearch() {
+  const target = document.getElementById('setup-board205-scheduled-search-results');
+  if (!target) return;
+  const input = document.getElementById('setup-board205-scheduled-search');
+  const search = String(input?.value || '').trim();
+  if (!search) {
+    target.innerHTML = '';
+    return;
+  }
+
+  const matches = board205ScheduledSearchMatches(search);
+  target.innerHTML = matches.length
+    ? matches.map((item) => `
+        <button type="button" class="setup-board205-scheduled-search-result"
+          data-assignment-id="${board205Esc(item.setup_work_day_task_id)}">
+          ${board205Esc(board205ScheduledSearchLabel(item))}
+        </button>`
+      ).join('')
+    : '<div class="setup-board205-scheduled-search-empty">No scheduled task matches that search.</div>';
+
+  target.querySelectorAll('.setup-board205-scheduled-search-result').forEach((button) => {
+    button.addEventListener('click', () => {
+      const item = board205Assignment(Number(button.dataset.assignmentId || 0));
+      board205CollapseScheduledSearchResults();
+      board205RevealScheduledAssignment(item);
+    });
+  });
+}
+
 function board205VisibleDays() {
   const showUnfinished = document.getElementById('setup-board205-show-unfinished-days')?.checked !== false;
   const showCompleted = Boolean(document.getElementById('setup-board205-show-completed-days')?.checked);
@@ -429,15 +684,62 @@ function board205VisibleDays() {
   });
 }
 
-function board205AutoScrollPane(pane, event) {
-  if (!pane || !setupBoard205State.dragged) return;
+function board205StopAutoScroll() {
+  if (setupBoard205State.dragAutoScrollFrame != null) {
+    window.cancelAnimationFrame(setupBoard205State.dragAutoScrollFrame);
+  }
+  setupBoard205State.dragAutoScrollPane = null;
+  setupBoard205State.dragAutoScrollClientY = null;
+  setupBoard205State.dragAutoScrollFrame = null;
+}
+
+function board205AutoScrollTick() {
+  setupBoard205State.dragAutoScrollFrame = null;
+  const pane = setupBoard205State.dragAutoScrollPane;
+  const clientY = setupBoard205State.dragAutoScrollClientY;
+  if (!pane || clientY == null || !setupBoard205State.dragged || !pane.isConnected) {
+    board205StopAutoScroll();
+    return;
+  }
+
   const rect = pane.getBoundingClientRect();
-  const edge = Math.min(110, Math.max(70, rect.height * 0.14));
-  const step = 34;
-  if (event.clientY <= rect.top + edge) {
-    pane.scrollTop = Math.max(0, pane.scrollTop - step);
-  } else if (event.clientY >= rect.bottom - edge) {
-    pane.scrollTop += step;
+  const visibleTop = Math.max(rect.top, 0);
+  const visibleBottom = Math.min(rect.bottom, window.innerHeight);
+  const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+  if (visibleHeight <= 0) {
+    board205StopAutoScroll();
+    return;
+  }
+
+  const edge = Math.min(120, Math.max(72, visibleHeight * 0.16));
+  let direction = 0;
+  let pressure = 0;
+
+  if (clientY >= visibleTop - 12 && clientY <= visibleTop + edge) {
+    direction = -1;
+    pressure = Math.min(1, Math.max(0, (visibleTop + edge - clientY) / edge));
+  } else if (clientY <= visibleBottom + 12 && clientY >= visibleBottom - edge) {
+    direction = 1;
+    pressure = Math.min(1, Math.max(0, (clientY - (visibleBottom - edge)) / edge));
+  }
+
+  if (direction) {
+    const step = 8 + Math.round(34 * pressure);
+    pane.scrollTop += direction * step;
+  }
+
+  setupBoard205State.dragAutoScrollFrame = window.requestAnimationFrame(board205AutoScrollTick);
+}
+
+function board205AutoScrollPane(pane, event) {
+  if (!pane || !setupBoard205State.dragged) {
+    board205StopAutoScroll();
+    return;
+  }
+  setupBoard205State.dragAutoScrollPane = pane;
+  setupBoard205State.dragAutoScrollClientY = event.clientY;
+  if (setupBoard205State.dragAutoScrollFrame == null) {
+    setupBoard205State.dragAutoScrollFrame = window.requestAnimationFrame(board205AutoScrollTick);
   }
 }
 
@@ -571,6 +873,25 @@ function board205AssignmentPlannedCrew(item) {
   return null;
 }
 
+function board205ProgressPercent(task) {
+  const raw = Number(task?.percent_complete || 0);
+  if (!Number.isFinite(raw)) return 0;
+  return Math.max(0, Math.min(100, Math.round(raw)));
+}
+
+function board205ProgressGauge(task) {
+  const percent = board205ProgressPercent(task);
+  if (percent <= 0) return '';
+  return `<div class="setup-board205-progress-gauge"
+    style="--setup-board205-progress: ${percent}%"
+    role="progressbar"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    aria-valuenow="${percent}"
+    aria-label="${percent}% complete"
+    title="${percent}% complete"></div>`;
+}
+
 function board205AuditWhen(value) {
   if (!value) return 'unknown time';
   if (typeof formatTimestamp === 'function') return formatTimestamp(value);
@@ -580,9 +901,8 @@ function board205AuditWhen(value) {
 
 function board205AuditLine(task) {
   if (!task || task.task_origin !== 'REUSABLE') return '';
-  const createdBy = task.reusable_created_by_display || task.reusable_created_by || 'unknown actor';
   const updatedBy = task.reusable_updated_by_display || task.reusable_updated_by || 'unknown actor';
-  return `Created ${board205AuditWhen(task.reusable_created_at)} by ${createdBy} · Last updated ${board205AuditWhen(task.reusable_updated_at)} by ${updatedBy}`;
+  return `Updated ${board205AuditWhen(task.reusable_updated_at)} by ${updatedBy}`;
 }
 
 function board205Crew(task) {
@@ -599,6 +919,23 @@ function board205StatusLabel(status) {
   return String(status || '').replaceAll('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function board205StatusBadgeClass(task, catalogReview, hardBlocked, readinessOnly) {
+  if (hardBlocked) return 'status-blocked';
+  if (readinessOnly) return 'status-waiting';
+  const status = catalogReview ? 'CATALOG_ONLY' : String(task?.board_status || '').toUpperCase();
+  const classes = {
+    READY_TO_SCHEDULE: 'status-ready',
+    NEEDS_SCHEDULING_AGAIN: 'status-reschedule',
+    SCHEDULED: 'status-scheduled',
+    COMPLETE: 'status-complete',
+    BLOCKED: 'status-blocked',
+    WAITING_ON_WORK_ORDER: 'status-waiting',
+    DEFERRED: 'status-deferred',
+    CATALOG_ONLY: 'status-catalog'
+  };
+  return classes[status] || 'status-neutral';
+}
+
 function board205TaskDependencies(taskId) {
   return (setupBoard205State.board.dependencies || []).filter(
     (dep) => Number(dep.setup_session_task_id) === Number(taskId)
@@ -609,7 +946,7 @@ function board205WorkOrderBadge(task) {
   if (!task?.linked_work_order_id) return '';
   const complete = Boolean(task.linked_work_order_completed_at);
   const problem = String(task.linked_work_order_problem || '').trim();
-  return `<span class="setup-board205-badge ${complete ? '' : 'waiting'}" title="${board205Esc(problem)}">WO ${board205Esc(task.linked_work_order_id)} · ${complete ? 'complete' : 'open'}${problem ? ` · ${board205Esc(problem)}` : ''}</span>`;
+  return `<span class="setup-board205-badge ${complete ? 'wo-complete' : 'wo-open'}" title="${board205Esc(problem)}">WO ${board205Esc(task.linked_work_order_id)} · ${complete ? 'complete' : 'open'}${problem ? ` · ${board205Esc(problem)}` : ''}</span>`;
 }
 
 function board205HistoricalReviewMode() {
@@ -1083,7 +1420,8 @@ function board205ApplyHistoricalCatalogOverlay() {
       // baseline: 2025 completion does not satisfy future prerequisites.
       board_status: hasHardPrerequisite ? 'BLOCKED' : 'CATALOG_ONLY',
       effective_complete: annual?.effective_complete || false,
-      progress_entries: annual?.progress_entries || 0
+      progress_entries: annual?.progress_entries || 0,
+      percent_complete: annual?.percent_complete || 0
     };
     merged.push(row);
   }
@@ -1128,8 +1466,8 @@ function board205TaskCard(task) {
       <div class="setup-board205-task-title">
         <span>Task ${board205Esc(task.setup_task_id ?? 'annual-only')} · ${board205Esc(task.task_name)}</span>
         ${!catalogReview && seasonOnly ? '<span class="setup-board205-badge season-only">THIS SEASON ONLY</span>' : ''}
-        ${isGate ? '<span class="setup-board205-badge">GATE</span>' : ''}
-        <span class="setup-board205-badge ${hardBlocked ? 'blocked' : readinessOnly ? 'waiting' : ''}">${board205Esc(
+        ${isGate ? '<span class="setup-board205-badge gate-badge">GATE</span>' : ''}
+        <span class="setup-board205-badge ${board205StatusBadgeClass(task, catalogReview, hardBlocked, readinessOnly)}">${board205Esc(
           catalogReview
             ? hardBlocked
               ? 'HARD BLOCKED'
@@ -1143,7 +1481,6 @@ function board205TaskCard(task) {
       </div>
       <div class="setup-board205-meta">${board205Esc(board205Scope(task))}</div>
       <div class="setup-board205-meta"><strong>Min crew:</strong> ${board205Esc(task.normal_crew_min ?? 'TBD')} · <strong>Expected:</strong> ${board205Esc(board205Duration(task.expected_duration_minutes))}</div>
-      ${task.resource_summary ? `<div class="setup-board205-meta"><strong>Resources:</strong> ${board205Esc(task.resource_summary)}</div>` : ''}
       ${task.reusable_notes ? `<div class="setup-board205-meta setup-board205-reusable-notes"><strong>Reusable notes:</strong> ${board205Esc(task.reusable_notes)}</div>` : ''}
       ${canManage && task.task_origin === 'REUSABLE' ? `<div class="setup-board205-meta setup-board205-audit"><strong>Audit:</strong> ${board205Esc(board205AuditLine(task))}</div>` : ''}
       <div class="setup-board205-meta"><strong>Hard predecessor(s):</strong> ${board205Esc(depText)}</div>
@@ -1157,6 +1494,7 @@ function board205TaskCard(task) {
         ${canManage && !historicalReview && !task.catalog_only && !task.progress_entries && !task.effective_complete ? '<button type="button" class="small secondary setup-board205-edit-planning-info">Edit Planning Info</button>' : ''}
         ${canManage && !historicalReview && seasonOnly ? '<button type="button" class="small secondary setup-board205-edit-season-task">Edit season task</button>' : ''}
       </div>
+      ${board205ProgressGauge(task)}
     </article>`;
 }
 
@@ -1270,6 +1608,7 @@ function board205RenderQueue() {
     });
     card.addEventListener('dragend', () => {
       setupBoard205State.dragged = null;
+      board205StopAutoScroll();
       document.querySelectorAll('.dragging,.drop-target').forEach((item) => item.classList.remove('dragging', 'drop-target'));
     });
     card.querySelector('.setup-board205-schedule-task')?.addEventListener('click', () => {
@@ -1331,7 +1670,7 @@ function board205AssignmentCard(item) {
       <div class="setup-board205-meta">${board205Esc(board205Scope(item))}</div>
       <div class="setup-board205-meta">Min crew ${board205Esc(minCrew ?? 'TBD')} · ${board205Esc(board205Duration(task.expected_duration_minutes))}</div>
       <div class="setup-board205-meta"><strong>Planned crew:</strong> ${board205Esc(planned ?? 'TBD')} · <strong>Est. labor:</strong> ${board205Esc(plannedLabor)}</div>
-      <div class="setup-board205-meta"><strong>Crew Captain:</strong> ${board205Esc(crew?.captain_display_name || 'TBD')}</div>
+      <div class="setup-board205-meta setup-board205-assignment-captain"><strong>Crew Captain:</strong> ${board205Esc(crew?.captain_display_name || 'TBD')}</div>
       ${task.readiness_state === 'NOT_READY' ? `<div class="setup-board205-warning">⚠ Readiness not met: ${board205Esc(task.readiness_note || 'annual readiness condition')}</div>` : ''}
       ${understaffed ? `<div class="setup-board205-warning setup-board205-short-crew-warning"><strong>SHORT CREW</strong> · Planned ${board205Esc(item.shift_code === 'MORNING' ? 'AM' : 'PM')} ${board205Esc(planned)} / minimum ${board205Esc(minCrew)} · short by ${board205Esc(shortBy)}.</div>` : ''}
       ${heavyWarning ? `<div class="setup-board205-warning">⚠ ${board205Esc(heavyWarning)}</div>` : ''}
@@ -1344,6 +1683,7 @@ function board205AssignmentCard(item) {
           ${!task.progress_entries && !task.effective_complete ? '<button type="button" class="small secondary setup-board205-edit-planning-info">Edit Info</button>' : ''}
           <button type="button" class="small secondary setup-board205-remove">Remove</button>
         </div>` : ''}
+      ${!locked ? board205ProgressGauge(task) : ''}
     </article>`;
 }
 
@@ -1378,24 +1718,43 @@ function board205Day(day) {
   const dayNote = [day.volunteer_note, day.weather_note, day.notes].filter(Boolean).join(' · ');
   const crews = board205CrewsForDay(day.setup_work_day_id);
   const canManage = Boolean(appState.access?.can_manage_setup);
+  const compactDay = board205CompactDayContext(day);
+  const meaningfulCrewIds = new Set(
+    crews
+      .filter((crew) => (
+        crew.captain_person_id != null
+        || crew.am_planned_crew_count != null
+        || crew.pm_planned_crew_count != null
+        || (setupBoard205State.board.assignments || []).some(
+          (item) => Number(item.setup_work_day_crew_id) === Number(crew.setup_work_day_crew_id)
+        )
+      ))
+      .map((crew) => Number(crew.setup_work_day_crew_id))
+  );
+  const printEmptyDay = !dayNote && meaningfulCrewIds.size === 0;
   const crewRows = crews.map((crew) => {
     const legacy = board205AssignmentsFor(day.setup_work_day_id, 'ALL_DAY', crew.setup_work_day_crew_id);
+    const printEmptyCrew = !meaningfulCrewIds.has(Number(crew.setup_work_day_crew_id));
     return `
-      <div class="setup-board205-crew-label" data-crew-id="${crew.setup_work_day_crew_id}">
-        <div class="setup-board205-crew-title-row">
-          <strong>Crew ${board205Esc(crew.crew_code)}</strong>
-          ${canManage ? `<div class="setup-board205-crew-actions"><button type="button" class="small setup-board205-save-crew">Save</button>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
+      <div class="setup-board205-crew-row${printEmptyCrew ? ' print-empty-crew' : ''}">
+        <div class="setup-board205-crew-label" data-crew-id="${crew.setup_work_day_crew_id}">
+          <div class="setup-board205-crew-title-row">
+            <div class="setup-board205-crew-title-context">
+              <strong>Crew ${board205Esc(crew.crew_code)} <span class="setup-board205-crew-day-context">· ${board205Esc(compactDay)}</span></strong>
+            </div>
+            ${canManage ? `<div class="setup-board205-crew-actions"><button type="button" class="small setup-board205-save-crew">Save</button>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
+          </div>
+          <label class="setup-board205-crew-captain">Captain
+            <select class="setup-board205-crew-captain-select">${board205CaptainOptions(crew.captain_person_id)}</select>
+          </label>
+          <div class="setup-board205-crew-counts">
+            <label>AM Crew w/Captain <input class="setup-board205-crew-am" type="number" min="0" value="${board205Esc(crew.am_planned_crew_count ?? '')}" placeholder="—"></label>
+            <label>PM Crew w/Captain <input class="setup-board205-crew-pm" type="number" min="0" value="${board205Esc(crew.pm_planned_crew_count ?? '')}" placeholder="—"></label>
+          </div>
         </div>
-        <label class="setup-board205-crew-captain">Captain
-          <select class="setup-board205-crew-captain-select">${board205CaptainOptions(crew.captain_person_id)}</select>
-        </label>
-        <div class="setup-board205-crew-counts">
-          <label>AM Crew <input class="setup-board205-crew-am" type="number" min="0" value="${board205Esc(crew.am_planned_crew_count ?? '')}" placeholder="—"></label>
-          <label>PM Crew <input class="setup-board205-crew-pm" type="number" min="0" value="${board205Esc(crew.pm_planned_crew_count ?? '')}" placeholder="—"></label>
-        </div>
+        ${board205Cell(day, 'MORNING', crew)}
+        ${board205Cell(day, 'AFTERNOON', crew)}
       </div>
-      ${board205Cell(day, 'MORNING', crew)}
-      ${board205Cell(day, 'AFTERNOON', crew)}
       ${legacy.length ? `
         <div class="setup-board205-crew-label setup-board205-legacy-label">Crew ${board205Esc(crew.crew_code)} · Legacy All Day</div>
         <div class="setup-board205-legacy-all-day">${legacy.map(board205AssignmentCard).join('')}</div>` : ''}
@@ -1403,7 +1762,7 @@ function board205Day(day) {
   }).join('');
 
   return `
-    <section class="setup-board205-day ${dayClass}" data-day-id="${day.setup_work_day_id}">
+    <section class="setup-board205-day ${dayClass}${printEmptyDay ? ' print-empty-day' : ''}" data-day-id="${day.setup_work_day_id}">
       <div class="setup-board205-day-header">
         <div>
           <strong>Day ${board205Esc(day.setup_day_number)} · ${board205Esc(day.day_of_week)} · ${board205Esc(day.work_date)}</strong>
@@ -1469,12 +1828,30 @@ function board205RenderBoard() {
   target.querySelectorAll('.setup-board205-assignment').forEach((card) => {
     const assignmentId = Number(card.dataset.assignmentId);
     const item = board205Assignment(assignmentId);
+
+    card.addEventListener('click', (event) => {
+      if (event.target.closest('button,input,select,textarea,a')) return;
+      board205SelectAssignmentCard(card, event);
+    });
+
     card.addEventListener('dragstart', (event) => {
       if (!item || item.historical_locked) return;
-      setupBoard205State.dragged = { kind: 'assignment', id: assignmentId };
+      if (!setupBoard205State.selectedAssignmentIds.has(assignmentId)) {
+        setupBoard205State.selectedAssignmentIds.clear();
+        setupBoard205State.selectedAssignmentIds.add(assignmentId);
+        setupBoard205State.lastSelectedAssignmentId = assignmentId;
+        board205UpdateAssignmentSelectionUi();
+      }
+      const selected = board205SelectedAssignmentItems();
+      const selectedIds = selected.map((row) => Number(row.setup_work_day_task_id));
+      setupBoard205State.dragged = selectedIds.length > 1
+        ? { kind: 'assignments', ids: selectedIds }
+        : { kind: 'assignment', id: assignmentId };
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', JSON.stringify(setupBoard205State.dragged));
-      card.classList.add('dragging');
+      document.querySelectorAll('.setup-board205-assignment.selected').forEach((node) => {
+        node.classList.add('dragging');
+      });
     });
     card.addEventListener('dragover', (event) => {
       if (!setupBoard205State.dragged || item?.historical_locked) return;
@@ -1488,6 +1865,12 @@ function board205RenderBoard() {
       event.stopPropagation();
       card.classList.remove('drop-target');
       if (!item) return;
+      const draggedIds = setupBoard205State.dragged?.kind === 'assignments'
+        ? setupBoard205State.dragged.ids || []
+        : setupBoard205State.dragged?.kind === 'assignment'
+          ? [setupBoard205State.dragged.id]
+          : [];
+      if (draggedIds.some((value) => Number(value) === assignmentId)) return;
       await board205DropToCell(
         setupBoard205State.dragged,
         Number(item.setup_work_day_id),
@@ -1498,6 +1881,7 @@ function board205RenderBoard() {
     });
     card.addEventListener('dragend', () => {
       setupBoard205State.dragged = null;
+      board205StopAutoScroll();
       document.querySelectorAll('.dragging,.drop-target').forEach((node) => node.classList.remove('dragging', 'drop-target'));
     });
     card.querySelector('.setup-board205-up')?.addEventListener('click', () => board205NudgeAssignment(item, -1));
@@ -1510,6 +1894,8 @@ function board205RenderBoard() {
     });
     card.querySelector('.setup-board205-remove')?.addEventListener('click', () => board205RemoveAssignment(item));
   });
+  board205PruneAssignmentSelection();
+  board205UpdateAssignmentSelectionUi();
 }
 
 function board205RenderKpis() {
@@ -1601,6 +1987,7 @@ function board205Render() {
   if (!historicalReview) {
     board205RenderWorkDayCalendar();
     board205RenderBoard();
+    board205RenderScheduledSearch();
     board205PopulateDialogSelects();
   }
 }
@@ -1710,16 +2097,86 @@ function board205EndSort(dayId, shift, crewId) {
   return items.length ? Math.max(...items.map((item) => Number(item.sort_order) || 0)) + 10 : 10;
 }
 
+function board205DraggedAssignmentItems(dragged) {
+  const ids = dragged?.kind === 'assignments'
+    ? dragged.ids || []
+    : dragged?.kind === 'assignment'
+      ? [dragged.id]
+      : [];
+  return [...new Set(ids.map((value) => Number(value)).filter((value) => value > 0))]
+    .map(board205Assignment)
+    .filter((item) => item && !item.historical_locked)
+    .sort(board205CompareAssignmentVisualOrder);
+}
+
+function board205ConfirmAssignmentGroupPlacement(items, crewId, shift) {
+  const warnings = [];
+  const destinationCrew = board205CrewRow(crewId);
+  for (const item of items) {
+    const changedPlacement = (
+      Number(item.setup_work_day_id) !== Number(destinationCrew?.setup_work_day_id)
+      || String(item.shift_code === 'ALL_DAY' ? 'MORNING' : item.shift_code) !== String(shift)
+      || Number(item.setup_work_day_crew_id) !== Number(crewId)
+    );
+    if (!changedPlacement) continue;
+    const task = board205Task(item.setup_session_task_id) || item;
+    for (const warning of board205PlacementWarnings(task, crewId, shift)) {
+      warnings.push(`${task.task_name || item.task_name}: ${warning}`);
+    }
+  }
+  if (!warnings.length) return true;
+  const noun = items.length === 1 ? 'this task' : `${items.length} selected tasks`;
+  return window.confirm(`${warnings.join('\n\n')}\n\nMove ${noun} anyway?`);
+}
+
+async function board205MaybeLearnCaptainForTasks(tasks, crewId) {
+  const crew = board205CrewRow(crewId);
+  const captainPersonId = crew?.captain_person_id == null ? null : Number(crew.captain_person_id);
+  if (captainPersonId == null) return;
+
+  const uniqueTasks = new Map();
+  for (const task of tasks || []) {
+    if (
+      task?.task_origin === 'REUSABLE'
+      && !board205TaskHasReusableCaptain(task, captainPersonId)
+    ) {
+      uniqueTasks.set(Number(task.setup_session_task_id), task);
+    }
+  }
+  const missing = [...uniqueTasks.values()];
+  if (!missing.length) return;
+  if (missing.length === 1) {
+    await board205MaybeLearnCaptainForTask(missing[0], crewId, captainPersonId);
+    return;
+  }
+
+  const person = board205CaptainCandidate(captainPersonId);
+  const name = person?.display_name || crew?.captain_display_name || `Person ${captainPersonId}`;
+  const confirmed = window.confirm(
+    `${name} is Captain of destination Crew ${crew?.crew_code || ''}.\n\nOK = Add/promote ${name} as a reusable Captain for ${missing.length} moved reusable tasks.\nCancel = Keep the schedule move only.\n\nExisting Captains will remain.`
+  );
+  if (!confirmed) return;
+
+  for (const task of missing) {
+    await api(
+      `api/setup/scheduling-board/season-tasks/${task.setup_session_task_id}/crew-captain/${crewId}/promote`,
+      commandOptions('POST', {})
+    );
+  }
+}
+
 async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) {
   if (!dragged || !appState.access?.can_manage_setup) return;
-  const sortOrder = requestedSort == null ? board205EndSort(dayId, shift, crewId) : requestedSort;
+  let movedCount = 0;
+  let totalMoveCount = 0;
+
   try {
     setBusy(true);
-    let task = null;
     if (dragged.kind === 'task') {
-      task = board205Task(dragged.id);
+      const task = board205Task(dragged.id);
       if (!task || task.effective_complete || task.task_action_type === 'GATE') return;
       if (!board205ConfirmPlacement(task, crewId, shift)) return;
+      const sortOrder = requestedSort == null ? board205EndSort(dayId, shift, crewId) : requestedSort;
       await api('api/setup/scheduling-board/assignments', commandOptions('POST', {
         setup_work_day_id: dayId,
         setup_session_task_id: task.setup_session_task_id,
@@ -1727,28 +2184,57 @@ async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) 
         setup_work_day_crew_id: crewId,
         sort_order: sortOrder
       }));
-    } else if (dragged.kind === 'assignment') {
-      const item = board205Assignment(dragged.id);
-      if (!item || item.historical_locked) return;
-      task = board205Task(item.setup_session_task_id);
-      const changedPlacement = (
-        Number(item.setup_work_day_id) !== Number(dayId)
-        || String(item.shift_code === 'ALL_DAY' ? 'MORNING' : item.shift_code) !== String(shift)
-        || Number(item.setup_work_day_crew_id) !== Number(crewId)
-      );
-      if (changedPlacement && !board205ConfirmPlacement(task, crewId, shift)) return;
-      await api(`api/setup/scheduling-board/assignments/${item.setup_work_day_task_id}`, commandOptions('PATCH', {
-        setup_work_day_id: dayId,
-        shift_code: shift,
-        setup_work_day_crew_id: crewId,
-        sort_order: sortOrder
-      }));
+      await board205MaybeLearnCaptainForTask(task, crewId);
+      await board205Load();
+      return;
     }
-    if (task) await board205MaybeLearnCaptainForTask(task, crewId);
+
+    const items = board205DraggedAssignmentItems(dragged);
+    if (!items.length) return;
+    totalMoveCount = items.length;
+    if (!board205ConfirmAssignmentGroupPlacement(items, crewId, shift)) return;
+
+    const baseSort = requestedSort == null
+      ? board205EndSort(dayId, shift, crewId)
+      : Number(requestedSort) - Math.max(items.length - 1, 0);
+    const movedTasks = [];
+
+    for (const [index, item] of items.entries()) {
+      await api(
+        `api/setup/scheduling-board/assignments/${item.setup_work_day_task_id}`,
+        commandOptions('PATCH', {
+          setup_work_day_id: dayId,
+          shift_code: shift,
+          setup_work_day_crew_id: crewId,
+          sort_order: baseSort + index
+        })
+      );
+      movedCount += 1;
+      const task = board205Task(item.setup_session_task_id);
+      if (task) movedTasks.push(task);
+    }
+
+    await board205MaybeLearnCaptainForTasks(movedTasks, crewId);
+    board205ClearAssignmentSelection(false);
     await board205Load();
+    if (movedCount > 1) {
+      const crew = board205CrewRow(crewId);
+      setAlert(
+        `${movedCount} tasks moved to Crew ${crew?.crew_code || '—'} · ${shift === 'MORNING' ? 'AM' : 'PM'}.`,
+        'ok'
+      );
+    }
   } catch (error) {
-    setAlert(error.message || error, 'error');
-    window.alert(error.message || error);
+    let prefix = '';
+    if (totalMoveCount && movedCount && movedCount < totalMoveCount) {
+      prefix = `${movedCount} of ${totalMoveCount} selected tasks moved before the operation stopped. `;
+    } else if (totalMoveCount > 1 && movedCount === totalMoveCount) {
+      prefix = `All ${totalMoveCount} schedule moves completed, but a follow-up action failed. `;
+    }
+    board205ClearAssignmentSelection(false);
+    try { await board205Load(); } catch (_reloadError) {}
+    setAlert(prefix + (error.message || error), 'error');
+    window.alert(prefix + (error.message || error));
   } finally {
     setupBoard205State.dragged = null;
     setBusy(false);
@@ -2642,40 +3128,49 @@ function board205InstallView() {
                 <button id="setup-board205-add-season-task" type="button" class="manager-only">Add Task</button>
               </div>
             </div>
-            <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
-              <div class="setup-board205-work-day-collapsed">
-                <button id="setup-board205-toggle-work-days" type="button" class="small" aria-expanded="false">+ Add Work Days</button>
-                <span class="setup-board205-auto-day-note">Open only when you need to add dates.</span>
-              </div>
-              <div id="setup-board205-work-day-picker-body" class="setup-board205-work-day-picker" hidden>
-                <div class="setup-board205-work-day-picker-copy">
-                  <strong>Add Work Days</strong>
-                  <span class="setup-board205-auto-day-note">Tap dates to select or deselect them. Existing Work Days are disabled. Setup Day # is assigned automatically in chronological order.</span>
+            <div class="setup-board205-dispatch-controls">
+              <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
+                <div class="setup-board205-work-day-collapsed">
+                  <button id="setup-board205-toggle-work-days" type="button" class="small" aria-expanded="false">+ Add Work Days</button>
                 </div>
-                <div id="setup-board205-work-day-calendar" class="setup-board205-work-day-calendar" aria-label="Select Work Day dates"></div>
-                <div id="setup-board205-work-day-selection" class="muted" aria-live="polite"></div>
-                <label class="setup-board205-volunteer-note">Volunteer / capacity note<input id="setup-board205-volunteer-note" type="text" placeholder="Optional; applied to all selected dates"></label>
-                <div class="setup-board205-work-day-actions">
-                  <button id="setup-board205-add-work-days" type="submit" disabled>Add Selected Work Days</button>
-                  <button id="setup-board205-cancel-work-days" type="button" class="secondary">Cancel</button>
+                <div id="setup-board205-work-day-picker-body" class="setup-board205-work-day-picker" hidden>
+                  <div class="setup-board205-work-day-picker-copy">
+                    <strong>Add Work Days</strong>
+                    <span class="setup-board205-auto-day-note">Tap dates to select or deselect them. Existing Work Days are disabled. Setup Day # is assigned automatically in chronological order.</span>
+                  </div>
+                  <div id="setup-board205-work-day-calendar" class="setup-board205-work-day-calendar" aria-label="Select Work Day dates"></div>
+                  <div id="setup-board205-work-day-selection" class="muted" aria-live="polite"></div>
+                  <label class="setup-board205-volunteer-note">Volunteer / capacity note<input id="setup-board205-volunteer-note" type="text" placeholder="Optional; applied to all selected dates"></label>
+                  <div class="setup-board205-work-day-actions">
+                    <button id="setup-board205-add-work-days" type="submit" disabled>Add Selected Work Days</button>
+                    <button id="setup-board205-cancel-work-days" type="button" class="secondary">Cancel</button>
+                  </div>
                 </div>
+              </form>
+
+              <div class="setup-board205-scheduled-search">
+                <label for="setup-board205-scheduled-search">Find scheduled task</label>
+                <input id="setup-board205-scheduled-search" type="search" autocomplete="off" placeholder="Stage, task name, or Captain">
+                <div id="setup-board205-scheduled-search-results" class="setup-board205-scheduled-search-results" aria-live="polite"></div>
               </div>
-            </form>
+
+              <div class="setup-board205-day-filters" aria-label="Day view">
+                <strong>Day view</strong>
+                <label><input id="setup-board205-show-unfinished-days" type="checkbox" checked> Unfinished</label>
+                <label><input id="setup-board205-show-completed-days" type="checkbox"> Completed</label>
+                <label><input id="setup-board205-show-empty-days" type="checkbox" checked> Empty</label>
+              </div>
+
+              <span id="setup-board205-selection-count" class="setup-board205-selection-count" hidden></span>
+              <button id="setup-board205-print" type="button" class="small">Print Schedule</button>
+            </div>
           </section>
 
           <section id="setup-board205-board-pane" class="card setup-board205-board">
-            <div class="eyebrow">Setup Day Number · DOW · Date</div>
             <div class="setup-board205-board-heading">
               <div class="setup-board205-board-title-row">
                 <h3>Rolling Work Days</h3>
-                <button id="setup-board205-print" type="button" class="small">Print Schedule</button>
-              </div>
-              <p class="muted">Each work day starts with Crew A. Add crews only when needed. Schedule in AM/PM shifts; planned headcount is optional by crew and shift. Historical actual assignments are locked.</p>
-              <div class="setup-board205-day-filters" aria-label="Day view">
-                <strong>Day view</strong>
-                <label><input id="setup-board205-show-unfinished-days" type="checkbox" checked> Scheduled / unfinished</label>
-                <label><input id="setup-board205-show-completed-days" type="checkbox"> Completed / cancelled</label>
-                <label><input id="setup-board205-show-empty-days" type="checkbox" checked> Empty days</label>
+                <span class="setup-board205-board-key">Setup Day # · DOW · Date</span>
               </div>
             </div>
             <div id="setup-board205-days" class="setup-board205-days"></div>
@@ -2847,6 +3342,16 @@ function board205InstallView() {
   });
   document.querySelectorAll('.setup-board205-day-filters input').forEach((control) => {
     control.addEventListener('change', board205RenderBoard);
+  });
+  const scheduledSearch = document.getElementById('setup-board205-scheduled-search');
+  scheduledSearch?.addEventListener('input', board205RenderScheduledSearch);
+  scheduledSearch?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    const first = board205ScheduledSearchMatches()[0];
+    if (!first) return;
+    event.preventDefault();
+    board205CollapseScheduledSearchResults();
+    board205RevealScheduledAssignment(first);
   });
   document.querySelectorAll('.setup-board205-backlog, .setup-board205-board').forEach((pane) => {
     pane.addEventListener('dragover', (event) => board205AutoScrollPane(pane, event), true);

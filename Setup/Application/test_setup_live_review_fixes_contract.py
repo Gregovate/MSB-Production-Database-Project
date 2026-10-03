@@ -5,6 +5,12 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent
 
 
+
+def test_global_setup_search_is_hidden_outside_searchable_views() -> None:
+    text = (APP_DIR / "setup_live_review_fixes.js").read_text(encoding="utf-8")
+    assert "['review', 'library', 'perform'].includes(view)" in text
+    assert "search.hidden = !['review', 'library', 'perform'].includes(view);" in text
+
 def test_live_review_dark_mode_defines_next_pass_surface_aliases() -> None:
     css = (APP_DIR / "setup_live_review_fixes.css").read_text(encoding="utf-8")
     assert "--panel: var(--card);" in css
@@ -47,7 +53,7 @@ def test_live_review_restores_task_and_stage_search() -> None:
     assert "renderLibraryWithLiveSearch" in js
     assert "applyActiveSearch" in js
     assert "taskMap = new Map" in js
-    assert "search.hidden = view === 'schedule'" in js
+    assert "search.hidden = !['review', 'library', 'perform'].includes(view);" in js
     assert "showViewWithSearchVisibility" in js
     for field in ("task_name", "stage_key", "stage_name", "scene_name", "task_action_type"):
         assert field in js
@@ -56,13 +62,13 @@ def test_live_review_restores_task_and_stage_search() -> None:
 def test_changed_live_review_assets_use_fresh_cache_keys() -> None:
     html = (APP_DIR / "production.html").read_text(encoding="utf-8")
 
-    # Issue #152 changes the resource catalog assets, so that pair advances
-    # together. The live-review pair remains at its accepted revision.
+    # Issue #152 resource assets remain pinned; the live-review JS advances
+    # because global search visibility now excludes non-searchable views such as Help.
     for asset in (
         "setup_resource_review.css?v=2026-09-11.2",
         "setup_resource_review.js?v=2026-09-11.2",
         "setup_live_review_fixes.css?v=2026-09-08.3",
-        "setup_live_review_fixes.js?v=2026-09-24.2",
+        "setup_live_review_fixes.js?v=2026-10-02.1",
     ):
         assert asset in html
 

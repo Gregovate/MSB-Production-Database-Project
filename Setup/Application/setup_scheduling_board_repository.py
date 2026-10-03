@@ -226,6 +226,7 @@ class SetupSchedulingBoardRepository:
                     coalesce(sched.historical_assignment_count, 0) AS historical_assignment_count,
                     coalesce(progress.progress_entries, 0) AS progress_entries,
                     coalesce(progress.completed_quantity, 0) AS completed_quantity,
+                    coalesce(progress.percent_complete, 0) AS percent_complete,
                     CASE
                         WHEN st.execution_status = 'COMPLETE'
                              OR (
@@ -457,7 +458,8 @@ class SetupSchedulingBoardRepository:
                 LEFT JOIN LATERAL (
                     SELECT
                         count(*) AS progress_entries,
-                        sum(coalesce(p.completed_quantity, 0)) AS completed_quantity
+                        sum(coalesce(p.completed_quantity, 0)) AS completed_quantity,
+                        max(p.percent_complete) AS percent_complete
                     FROM ops.setup_task_progress p
                     WHERE p.setup_session_task_id = st.setup_session_task_id
                 ) progress ON true
