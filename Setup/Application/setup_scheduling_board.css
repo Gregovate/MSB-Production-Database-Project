@@ -398,8 +398,9 @@
 }
 
 .setup-board205-assignment.selected {
-  outline: 3px solid var(--accent, #0b6ea8);
-  outline-offset: 2px;
+  border-color: var(--setup-material-action-border, #8a73c5);
+  background: var(--setup-material-action-bg, #251f35);
+  box-shadow: 0 0 0 2px var(--setup-material-action-focus, rgba(174, 149, 235, .32));
 }
 
 .setup-board205-selection-count {

@@ -21,7 +21,10 @@ const setupBoard205State = {
   finderCompact: null,
   workDaySelection: new Set(),
   workDayCalendarMonth: null,
-  workDayPickerExpanded: false
+  workDayPickerExpanded: false,
+  dragAutoScrollPane: null,
+  dragAutoScrollClientY: null,
+  dragAutoScrollFrame: null
 };
 
 const SETUP_BOARD205_TYPICAL_AM_MINUTES = 180;
@@ -675,15 +678,62 @@ function board205VisibleDays() {
   });
 }
 
-function board205AutoScrollPane(pane, event) {
-  if (!pane || !setupBoard205State.dragged) return;
+function board205StopAutoScroll() {
+  if (setupBoard205State.dragAutoScrollFrame != null) {
+    window.cancelAnimationFrame(setupBoard205State.dragAutoScrollFrame);
+  }
+  setupBoard205State.dragAutoScrollPane = null;
+  setupBoard205State.dragAutoScrollClientY = null;
+  setupBoard205State.dragAutoScrollFrame = null;
+}
+
+function board205AutoScrollTick() {
+  setupBoard205State.dragAutoScrollFrame = null;
+  const pane = setupBoard205State.dragAutoScrollPane;
+  const clientY = setupBoard205State.dragAutoScrollClientY;
+  if (!pane || clientY == null || !setupBoard205State.dragged || !pane.isConnected) {
+    board205StopAutoScroll();
+    return;
+  }
+
   const rect = pane.getBoundingClientRect();
-  const edge = Math.min(110, Math.max(70, rect.height * 0.14));
-  const step = 34;
-  if (event.clientY <= rect.top + edge) {
-    pane.scrollTop = Math.max(0, pane.scrollTop - step);
-  } else if (event.clientY >= rect.bottom - edge) {
-    pane.scrollTop += step;
+  const visibleTop = Math.max(rect.top, 0);
+  const visibleBottom = Math.min(rect.bottom, window.innerHeight);
+  const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+  if (visibleHeight <= 0) {
+    board205StopAutoScroll();
+    return;
+  }
+
+  const edge = Math.min(120, Math.max(72, visibleHeight * 0.16));
+  let direction = 0;
+  let pressure = 0;
+
+  if (clientY >= visibleTop - 12 && clientY <= visibleTop + edge) {
+    direction = -1;
+    pressure = Math.min(1, Math.max(0, (visibleTop + edge - clientY) / edge));
+  } else if (clientY <= visibleBottom + 12 && clientY >= visibleBottom - edge) {
+    direction = 1;
+    pressure = Math.min(1, Math.max(0, (clientY - (visibleBottom - edge)) / edge));
+  }
+
+  if (direction) {
+    const step = 8 + Math.round(34 * pressure);
+    pane.scrollTop += direction * step;
+  }
+
+  setupBoard205State.dragAutoScrollFrame = window.requestAnimationFrame(board205AutoScrollTick);
+}
+
+function board205AutoScrollPane(pane, event) {
+  if (!pane || !setupBoard205State.dragged) {
+    board205StopAutoScroll();
+    return;
+  }
+  setupBoard205State.dragAutoScrollPane = pane;
+  setupBoard205State.dragAutoScrollClientY = event.clientY;
+  if (setupBoard205State.dragAutoScrollFrame == null) {
+    setupBoard205State.dragAutoScrollFrame = window.requestAnimationFrame(board205AutoScrollTick);
   }
 }
 
@@ -826,9 +876,8 @@ function board205AuditWhen(value) {
 
 function board205AuditLine(task) {
   if (!task || task.task_origin !== 'REUSABLE') return '';
-  const createdBy = task.reusable_created_by_display || task.reusable_created_by || 'unknown actor';
   const updatedBy = task.reusable_updated_by_display || task.reusable_updated_by || 'unknown actor';
-  return `Created ${board205AuditWhen(task.reusable_created_at)} by ${createdBy} · Last updated ${board205AuditWhen(task.reusable_updated_at)} by ${updatedBy}`;
+  return `Updated ${board205AuditWhen(task.reusable_updated_at)} by ${updatedBy}`;
 }
 
 function board205Crew(task) {
@@ -1389,7 +1438,6 @@ function board205TaskCard(task) {
       </div>
       <div class="setup-board205-meta">${board205Esc(board205Scope(task))}</div>
       <div class="setup-board205-meta"><strong>Min crew:</strong> ${board205Esc(task.normal_crew_min ?? 'TBD')} · <strong>Expected:</strong> ${board205Esc(board205Duration(task.expected_duration_minutes))}</div>
-      ${task.resource_summary ? `<div class="setup-board205-meta"><strong>Resources:</strong> ${board205Esc(task.resource_summary)}</div>` : ''}
       ${task.reusable_notes ? `<div class="setup-board205-meta setup-board205-reusable-notes"><strong>Reusable notes:</strong> ${board205Esc(task.reusable_notes)}</div>` : ''}
       ${canManage && task.task_origin === 'REUSABLE' ? `<div class="setup-board205-meta setup-board205-audit"><strong>Audit:</strong> ${board205Esc(board205AuditLine(task))}</div>` : ''}
       <div class="setup-board205-meta"><strong>Hard predecessor(s):</strong> ${board205Esc(depText)}</div>
@@ -1516,6 +1564,7 @@ function board205RenderQueue() {
     });
     card.addEventListener('dragend', () => {
       setupBoard205State.dragged = null;
+      board205StopAutoScroll();
       document.querySelectorAll('.dragging,.drop-target').forEach((item) => item.classList.remove('dragging', 'drop-target'));
     });
     card.querySelector('.setup-board205-schedule-task')?.addEventListener('click', () => {
@@ -1788,6 +1837,7 @@ function board205RenderBoard() {
     });
     card.addEventListener('dragend', () => {
       setupBoard205State.dragged = null;
+      board205StopAutoScroll();
       document.querySelectorAll('.dragging,.drop-target').forEach((node) => node.classList.remove('dragging', 'drop-target'));
     });
     card.querySelector('.setup-board205-up')?.addEventListener('click', () => board205NudgeAssignment(item, -1));

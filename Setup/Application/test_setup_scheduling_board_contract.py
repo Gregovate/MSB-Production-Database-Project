@@ -375,6 +375,24 @@ def test_205_schedule_board_multi_select_moves_only_unworked_assignments() -> No
     assert "moved before the operation stopped" in ui
     assert "board205MaybeLearnCaptainForTasks" in ui
     assert ".setup-board205-assignment.selected" in css
+    assert "background: var(--setup-material-action-bg" in css
+    assert "box-shadow: 0 0 0 2px var(--setup-material-action-focus" in css
+
+
+def test_205_needs_scheduling_card_keeps_scheduler_context_compact() -> None:
+    ui = read_app("setup_scheduling_board.js")
+
+    task_card = ui.split("function board205TaskCard(task)", 1)[1].split(
+        "function board205QueueTasks()", 1
+    )[0]
+    assert "<strong>Resources:</strong>" not in task_card
+    assert "Reusable notes:" in task_card
+    assert "Hard predecessor(s):" in task_card
+    assert "Readiness:" in task_card
+    assert "Min crew:" in task_card
+    assert "Expected:" in task_card
+    assert "return `Updated ${board205AuditWhen(task.reusable_updated_at)} by ${updatedBy}`;" in ui
+    assert "Created ${board205AuditWhen(task.reusable_created_at)}" not in ui
 
 
 def test_205_schedule_board_repeats_day_context_at_crew_and_compacts_print() -> None:
@@ -560,6 +578,10 @@ def test_205_scheduler_panes_scroll_independently_with_drag_edge_autoscroll() ->
     ui = read_app("setup_scheduling_board.js")
     css = read_app("setup_scheduling_board.css")
     assert "board205AutoScrollPane" in ui
+    assert "board205AutoScrollTick" in ui
+    assert "board205StopAutoScroll" in ui
+    assert "requestAnimationFrame(board205AutoScrollTick)" in ui
+    assert "visibleBottom = Math.min(rect.bottom, window.innerHeight)" in ui
     assert "pane.scrollTop" in ui
     assert ".setup-board205-backlog," in css
     assert ".setup-board205-board {" in css
@@ -817,8 +839,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-10-02.2" in html
-    assert "setup_scheduling_board.js?v=2026-10-02.3" in html
+    assert "setup_scheduling_board.css?v=2026-10-02.3" in html
+    assert "setup_scheduling_board.js?v=2026-10-02.4" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
