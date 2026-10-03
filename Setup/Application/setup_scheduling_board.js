@@ -675,9 +675,16 @@ function board205VisibleDays() {
   const showUnfinished = document.getElementById('setup-board205-show-unfinished-days')?.checked !== false;
   const showCompleted = Boolean(document.getElementById('setup-board205-show-completed-days')?.checked);
   const showEmpty = Boolean(document.getElementById('setup-board205-show-empty-days')?.checked);
+  const today = board205TodayIso();
 
   return (setupBoard205State.board.work_days || []).filter((day) => {
     const state = board205DayViewState(day);
+    const workDate = String(day.work_date || '').slice(0, 10);
+
+    // Launch cleanup: a past day with no assignments has no operational value on
+    // the live board. Keep the database row/history intact; suppress only the UI.
+    if (state === 'EMPTY' && workDate && workDate < today) return false;
+
     if (state === 'UNFINISHED') return showUnfinished;
     if (state === 'COMPLETED') return showCompleted;
     return showEmpty;
