@@ -674,17 +674,28 @@ The corrected V0.3.37 contract is:
 Start Scanner
   -> scanner ready; no field focus required
   -> scan asset
-  -> editable location/search/manual field, if used:
-       scanner status explicitly shows paused while typing/choosing
-       Enter/Done, selection, or leaving the field restores focusless capture
-  -> Record
-  -> prior identity is cleared
+  -> Zebra Enter terminates the asset identity only
+  -> scanner pauses while that asset is pending
+  -> operator chooses a known/nearby reference or enters a manual location note
+  -> Record or Clear
+  -> prior identity/location-entry evidence is cleared
   -> scanner explicitly returns to ready
   -> scan next asset without Use and without re-focusing the identity field
 ```
 
-The Record action remains explicit; Enter in a free-text location/GPS-quality note finishes note entry and returns to scanner-ready rather than recording a movement. This avoids making the Zebra Enter suffix or ordinary keyboard Enter capable of accidentally executing the physical Record command.
+The Record action remains explicit. The scanner's Enter suffix never Records movement. Enter in a free-text location/GPS-quality note only finishes note editing; scanner capture remains paused until the pending asset is Record/Clear. A second scan cannot silently replace the pending asset.
 
-The corrected candidate advances the visible release to `V0.3.37-record-location-scanner`, Record Location cache generation to v8, Record Location JavaScript pin to `2026-10-03.2`, and shared Setup client-build asset pin to `2026-10-03.2`.
+The corrected candidate uses the visible release `V0.3.37-record-location-scanner`, Record Location cache generation v9, Record Location JavaScript pin `2026-10-03.3`, and shared Setup client-build asset pin `2026-10-03.2`.
+
+
+### 2026-10-03 launch reference refresh
+
+For launch, the known-location chooser continues to use a curated versioned reference file until #171 provides a proper maintenance/import workflow.
+
+The launch-time authority is ExpertGPS / Garmin GIS data in the accepted working CRS:
+
+`EPSG:8158 — NAD83 HARN WISCRS Sheboygan County Feet (USft)`
+
+The 2026-10-03 Church correction supplied by the operator updates `15-Church-Bells-CH` and adds `15-Church-ParkingLot`. The source Easting/Northing values are retained in the reference JSON together with the transformed browser-facing WGS84 latitude/longitude values. This is a temporary curated launch mechanism, not a new permanent GIS store.
 
 The failed V0.3.36 browser review does not carry acceptance forward. V0.3.37 must restart exact-candidate regression, reusable disposable acceptance, and browser review.
