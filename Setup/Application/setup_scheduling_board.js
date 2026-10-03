@@ -662,7 +662,7 @@ function board205RenderScheduledSearch() {
   });
 }
 
-function board205VisibleDays() {function board205VisibleDays() {
+function board205VisibleDays() {
   const showUnfinished = document.getElementById('setup-board205-show-unfinished-days')?.checked !== false;
   const showCompleted = Boolean(document.getElementById('setup-board205-show-completed-days')?.checked);
   const showEmpty = Boolean(document.getElementById('setup-board205-show-empty-days')?.checked);
@@ -1693,7 +1693,7 @@ function board205Day(day) {
     </section>`;
 }
 
-function board205RenderBoard() {function board205RenderBoard() {
+function board205RenderBoard() {
   const target = document.getElementById('setup-board205-days');
   if (!target) return;
   const days = board205VisibleDays();
@@ -2147,7 +2147,7 @@ async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) 
   }
 }
 
-async function board205NudgeAssignment(item, direction) {async function board205NudgeAssignment(item, direction) {
+async function board205NudgeAssignment(item, direction) {
   if (!item || item.historical_locked) return;
   const peers = board205AssignmentsFor(item.setup_work_day_id, item.shift_code, item.setup_work_day_crew_id);
   const index = peers.findIndex((row) => Number(row.setup_work_day_task_id) === Number(item.setup_work_day_task_id));
