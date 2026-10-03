@@ -18,6 +18,74 @@ main{max-width:1050px;margin:0 auto;padding:1rem}
 .camera-actions{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;min-width:0}
 .camera-actions .muted{min-width:0;overflow-wrap:anywhere}.muted{color:var(--muted)}
 .camera-panel{margin-top:.8rem}.camera-panel video{width:100%;max-height:360px;background:#000;border-radius:10px}
+
+/* Match the accepted Pick List field pattern: Scanner ON turns Step 1 into a compact
+   operator strip; Stop Scanner restores the normal manual/camera/find surface. */
+body.record-location-scanner-active .identity-panel{
+  padding:.45rem .6rem;
+  margin-bottom:.55rem;
+  border-width:2px;
+  border-radius:10px
+}
+body.record-location-scanner-active .identity-panel .section-heading{
+  align-items:center;
+  margin-bottom:.25rem
+}
+body.record-location-scanner-active .identity-panel .section-heading .eyebrow{display:none}
+body.record-location-scanner-active .identity-panel .section-heading h2{
+  margin:0;
+  font-size:1.05rem;
+  line-height:1.1
+}
+body.record-location-scanner-active .identity-panel .pill{
+  padding:.22rem .45rem;
+  font-size:.78rem
+}
+body.record-location-scanner-active .identity-panel .entry-grid{
+  grid-template-columns:minmax(360px,1fr) minmax(360px,.9fr);
+  gap:.35rem .7rem;
+  align-items:center
+}
+body.record-location-scanner-active .identity-panel .entry-grid>div:first-child>label,
+body.record-location-scanner-active .identity-panel .entry-grid>div:first-child>.muted,
+body.record-location-scanner-active .identity-panel .find-asset,
+body.record-location-scanner-active #movement-camera-toggle,
+body.record-location-scanner-active #movement-camera-status{display:none!important}
+body.record-location-scanner-active .identity-panel .entry-row{margin-top:0}
+body.record-location-scanner-active .identity-panel .entry-row input{
+  min-height:44px;
+  font-size:1rem
+}
+body.record-location-scanner-active .identity-panel .entry-row button{
+  min-width:72px;
+  min-height:44px
+}
+body.record-location-scanner-active .identity-panel .camera-actions{
+  justify-content:flex-end;
+  flex-wrap:nowrap;
+  gap:.45rem
+}
+body.record-location-scanner-active #movement-scanner-toggle{
+  min-height:44px;
+  padding:.55rem .8rem;
+  white-space:nowrap
+}
+body.record-location-scanner-active #movement-scanner-status{
+  font-weight:800;
+  overflow-wrap:normal
+}
+
+/* Once an asset is selected, Step 1 is only a scanner/pending-state strip. */
+body.record-location-scanner-active.record-location-asset-pending .identity-panel .entry-grid{
+  grid-template-columns:1fr
+}
+body.record-location-scanner-active.record-location-asset-pending .identity-panel .entry-grid>div:first-child{
+  display:none
+}
+body.record-location-scanner-active.record-location-asset-pending .identity-panel .camera-actions{
+  justify-content:flex-start
+}
+
 .find-asset{margin-top:1rem}.find-asset summary,.gps-quality summary,.location-note-details summary,.reference-data-details summary{cursor:pointer;font-weight:850}
 .search-results{display:grid;gap:.45rem;margin-top:.65rem}.search-results button{text-align:left;background:#172943;color:var(--text);border:1px solid var(--line)}
 .gps-state{font-size:1.25rem;font-weight:900;margin:.5rem 0}.gps-candidates{color:var(--muted);margin-bottom:.5rem}
@@ -35,7 +103,11 @@ main{max-width:1050px;margin:0 auto;padding:1rem}
 .compact-status{max-width:1050px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.45rem .6rem;border:1px solid var(--line);border-radius:9px;background:#0d1728}
 .feedback{padding:.3rem .5rem;border-radius:7px;font-size:.92rem;font-weight:850;border:1px solid currentColor}.feedback.ready{background:#12341e}.feedback.success{background:var(--ok)}.feedback.warning{background:var(--warn)}.feedback.blocked{background:var(--bad)}.feedback.offline{background:#704b00}
 .status-meta{display:flex;gap:.75rem;flex-wrap:wrap;font-size:.82rem;font-weight:800;color:var(--muted)}
-@media(max-width:900px){.entry-grid{grid-template-columns:1fr}}
+@media(max-width:900px){
+  .entry-grid{grid-template-columns:1fr}
+  body.record-location-scanner-active .identity-panel .entry-grid{grid-template-columns:1fr}
+  body.record-location-scanner-active .identity-panel .camera-actions{justify-content:flex-start;flex-wrap:wrap}
+}
 @media(max-width:720px){.page-header{display:block}.header-actions{margin-top:.8rem}.entry-grid{grid-template-columns:1fr}.camera-actions button,.record-actions button{width:100%}.record-actions{display:grid;grid-template-columns:1fr}}
 
 .training-banner{position:sticky;top:0;z-index:20;padding:.8rem 1rem;text-align:center;font-size:1.05rem;font-weight:950;letter-spacing:.04em;background:#8a5a00;color:#fff;border-bottom:3px solid #ffd166}
