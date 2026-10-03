@@ -879,6 +879,10 @@
     scanBuffer = '';
     const active = document.activeElement;
     if (active && active.blur) active.blur();
+    if (pendingIdentity) {
+      scannerStatus.textContent = 'Scanner paused — record or clear ' + pendingIdentity.identity;
+      return;
+    }
     scannerStatus.textContent = 'Scanner ready — no field focus needed';
   }
 
@@ -919,7 +923,7 @@
   }
 
   function captureKeydown(event) {
-    if (!scannerActive || event.defaultPrevented || event.isComposing) return;
+    if (!scannerActive || pendingIdentity || event.defaultPrevented || event.isComposing) return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (isEditableTarget(event.target)) return;
 
@@ -993,11 +997,15 @@
     clearScanTimer();
     scanBuffer = '';
     scannerToggle.textContent = 'Stop Scanner';
-    scannerStatus.textContent = 'Scanner ready — no field focus needed';
     cameraToggle.disabled = true;
     cameraStatus.textContent = 'Camera disabled while scanner is on';
-    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    setFeedback('ready', 'SCANNER READY — scan a Container or Display');
+    restoreScannerCapture();
+    setFeedback(
+      'ready',
+      pendingIdentity
+        ? 'SCANNER PAUSED — record or clear ' + pendingIdentity.identity
+        : 'SCANNER READY — scan a Container or Display'
+    );
   }
 
   async function stopCamera() {
