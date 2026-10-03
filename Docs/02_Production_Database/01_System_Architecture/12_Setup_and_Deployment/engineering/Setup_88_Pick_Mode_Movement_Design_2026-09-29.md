@@ -734,4 +734,17 @@ This is presentation-only and deliberately mirrors the accepted Pick List scanne
 
 Record Location service-worker cache generation advances to v11 and the CSS asset pin advances to `2026-10-03.2` so browser acceptance cannot reuse the prior non-compact layout.
 
+### Compact location-evidence presentation
+
+Browser review also showed duplicate nearest-reference text and buttons consumed unnecessary tablet space.
+
+For V0.3.37:
+- the three nearest-reference choices are shown as vertically stacked buttons to the right of the **Where is it now?** / GPS summary at wider widths;
+- the duplicate inline `Nearest: ...` text is hidden from normal operator view;
+- the layout stacks naturally at narrower widths;
+- **Known park reference** remains below the GPS/nearest-choice area;
+- **Reference data** provenance is hidden during normal operation and remains available only in Training/device-test mode.
+
+This is presentation-only. Reference ranking, selected-reference meaning, raw GPS evidence, and movement semantics are unchanged.
+
 The failed V0.3.36 browser review does not carry acceptance forward. V0.3.37 must restart exact-candidate regression, reusable disposable acceptance, and browser review.
