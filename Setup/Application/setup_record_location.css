@@ -11,10 +11,12 @@ main{max-width:1050px;margin:0 auto;padding:1rem}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:1rem;margin-bottom:1rem}
 .section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}.section-heading h2{margin:.2rem 0}
 .pill{border:1px solid var(--line);border-radius:999px;padding:.35rem .6rem;font-size:.85rem}
-.entry-grid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1rem;align-items:end}
+.entry-grid{display:grid;grid-template-columns:minmax(320px,2fr) minmax(0,3fr);gap:1rem;align-items:end}
+.entry-grid>div{min-width:0}
 .entry-grid label,.location-panel label{display:block;font-weight:750}
 .entry-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.5rem;margin-top:.35rem}
-.camera-actions{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}.muted{color:var(--muted)}
+.camera-actions{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;min-width:0}
+.camera-actions .muted{min-width:0;overflow-wrap:anywhere}.muted{color:var(--muted)}
 .camera-panel{margin-top:.8rem}.camera-panel video{width:100%;max-height:360px;background:#000;border-radius:10px}
 .find-asset{margin-top:1rem}.find-asset summary,.gps-quality summary,.location-note-details summary,.reference-data-details summary{cursor:pointer;font-weight:850}
 .search-results{display:grid;gap:.45rem;margin-top:.65rem}.search-results button{text-align:left;background:#172943;color:var(--text);border:1px solid var(--line)}
@@ -33,6 +35,7 @@ main{max-width:1050px;margin:0 auto;padding:1rem}
 .compact-status{max-width:1050px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.45rem .6rem;border:1px solid var(--line);border-radius:9px;background:#0d1728}
 .feedback{padding:.3rem .5rem;border-radius:7px;font-size:.92rem;font-weight:850;border:1px solid currentColor}.feedback.ready{background:#12341e}.feedback.success{background:var(--ok)}.feedback.warning{background:var(--warn)}.feedback.blocked{background:var(--bad)}.feedback.offline{background:#704b00}
 .status-meta{display:flex;gap:.75rem;flex-wrap:wrap;font-size:.82rem;font-weight:800;color:var(--muted)}
+@media(max-width:900px){.entry-grid{grid-template-columns:1fr}}
 @media(max-width:720px){.page-header{display:block}.header-actions{margin-top:.8rem}.entry-grid{grid-template-columns:1fr}.camera-actions button,.record-actions button{width:100%}.record-actions{display:grid;grid-template-columns:1fr}}
 
 .training-banner{position:sticky;top:0;z-index:20;padding:.8rem 1rem;text-align:center;font-size:1.05rem;font-weight:950;letter-spacing:.04em;background:#8a5a00;color:#fff;border-bottom:3px solid #ffd166}
