@@ -133,6 +133,10 @@ def test_record_location_scanner_mode_matches_pick_focusless_hid_contract():
     assert "Scanner paused — record or clear " in ui
     assert "pendingIdentity || event.defaultPrevented" in ui
     assert "resetAssetEntryForNextScan();" in ui
+    assert "function renderScannerLayoutState()" in ui
+    assert "record-location-scanner-active" in ui
+    assert "record-location-asset-pending" in ui
+    assert 'id="movement-identity-title"' in html
     assert "With Scanner on, Zebra capture is focusless" in html
     assert "Press Enter/Done or tap away to finish editing" in html
 
@@ -429,9 +433,9 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "setup_pick_list.js?v=2026-10-01.4" in pick_html
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_sw
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_html
-    assert "msb-setup-record-location-v10" in location_sw
-    assert "setup_record_location.css?v=2026-10-03.1" in location_sw
-    assert "setup_record_location.css?v=2026-10-03.1" in location_html
+    assert "msb-setup-record-location-v11" in location_sw
+    assert "setup_record_location.css?v=2026-10-03.2" in location_sw
+    assert "setup_record_location.css?v=2026-10-03.2" in location_html
     assert "setup_record_location.js?v=2026-10-03.3" in location_sw
     assert "setup_record_location.js?v=2026-10-03.3" in location_html
 
@@ -514,7 +518,12 @@ def test_record_location_requires_visible_location_review_before_record_action()
     assert "locationNote.addEventListener('input', renderRecordReadiness)" in ui
     assert ".compact-status" in css
     assert "grid-template-columns:minmax(320px,2fr) minmax(0,3fr)" in css
-    assert "@media(max-width:900px){.entry-grid{grid-template-columns:1fr}}" in css
+    assert "body.record-location-scanner-active .identity-panel{" in css
+    assert "grid-template-columns:minmax(360px,1fr) minmax(360px,.9fr)" in css
+    assert "body.record-location-scanner-active.record-location-asset-pending .identity-panel .entry-grid" in css
+    assert "body.record-location-scanner-active .identity-panel .find-asset" in css
+    assert "body.record-location-scanner-active #movement-camera-toggle" in css
+    assert "@media(max-width:900px){" in css
     assert ".camera-actions .muted{min-width:0;overflow-wrap:anywhere}" in css
     assert 'id="movement-home-location"' in html
     assert "Home Location:" in ui
