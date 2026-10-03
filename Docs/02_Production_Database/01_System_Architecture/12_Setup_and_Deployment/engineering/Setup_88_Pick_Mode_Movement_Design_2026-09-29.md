@@ -649,3 +649,42 @@ The Record Location service-worker cache generation advances from v6 to v7 and t
 This candidate is based on current `main` after V0.3.35 schedule-usability, so the scanner correction uses the distinct release identity `V0.3.36-record-location-scanner`.
 
 Required acceptance remains exact-candidate Setup regression, disposable/browser review, then real rugged-tablet + Zebra/camera/GPS verification before Production deployment.
+
+## 2026-10-03 V0.3.37 browser-review correction
+
+The first V0.3.36 disposable browser review was intentionally stopped as **CHANGES REQUIRED** after the operator proved initial focusless HID capture, then found the next-asset workflow too dependent on browser focus after entering location evidence.
+
+Observed failure mode:
+
+```text
+Start Scanner
+  -> CONT:<id> + Enter works
+  -> operator enters/selects location evidence
+  -> editable field temporarily owns keyboard focus
+  -> scanner still says ON, but operator must understand blur/focus details
+  -> successful Record leaves prior identity visible
+  -> next-asset readiness is not explicit
+```
+
+This is an operator-workflow defect, not operator error and not a Zebra programming defect.
+
+The corrected V0.3.37 contract is:
+
+```text
+Start Scanner
+  -> scanner ready; no field focus required
+  -> scan asset
+  -> editable location/search/manual field, if used:
+       scanner status explicitly shows paused while typing/choosing
+       Enter/Done, selection, or leaving the field restores focusless capture
+  -> Record
+  -> prior identity is cleared
+  -> scanner explicitly returns to ready
+  -> scan next asset without Use and without re-focusing the identity field
+```
+
+The Record action remains explicit; Enter in a free-text location/GPS-quality note finishes note entry and returns to scanner-ready rather than recording a movement. This avoids making the Zebra Enter suffix or ordinary keyboard Enter capable of accidentally executing the physical Record command.
+
+The corrected candidate advances the visible release to `V0.3.37-record-location-scanner`, Record Location cache generation to v8, Record Location JavaScript pin to `2026-10-03.2`, and shared Setup client-build asset pin to `2026-10-03.2`.
+
+The failed V0.3.36 browser review does not carry acceptance forward. V0.3.37 must restart exact-candidate regression, reusable disposable acceptance, and browser review.
