@@ -435,6 +435,71 @@
   line-height: 1.35;
 }
 
+:root {
+  --setup-board205-badge-info-bg: #dbeafe;
+  --setup-board205-badge-info-border: #2563eb;
+  --setup-board205-badge-info-text: #1e40af;
+  --setup-board205-badge-warn-bg: #fff1c7;
+  --setup-board205-badge-warn-border: #c17b13;
+  --setup-board205-badge-warn-text: #7a4a00;
+  --setup-board205-badge-danger-bg: #fee2e2;
+  --setup-board205-badge-danger-border: #dc2626;
+  --setup-board205-badge-danger-text: #991b1b;
+  --setup-board205-badge-success-bg: #dcfce7;
+  --setup-board205-badge-success-border: #16a34a;
+  --setup-board205-badge-success-text: #166534;
+  --setup-board205-badge-neutral-bg: #eef2f7;
+  --setup-board205-badge-neutral-border: #94a3b8;
+  --setup-board205-badge-neutral-text: #475569;
+  --setup-board205-badge-effort-bg: #f8fafc;
+  --setup-board205-badge-effort-border: #cbd5e1;
+  --setup-board205-badge-effort-text: #475569;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --setup-board205-badge-info-bg: #17365d;
+    --setup-board205-badge-info-border: #60a5fa;
+    --setup-board205-badge-info-text: #dbeafe;
+    --setup-board205-badge-warn-bg: #4a3310;
+    --setup-board205-badge-warn-border: #fbbf24;
+    --setup-board205-badge-warn-text: #fde68a;
+    --setup-board205-badge-danger-bg: #4a1d23;
+    --setup-board205-badge-danger-border: #f87171;
+    --setup-board205-badge-danger-text: #fecaca;
+    --setup-board205-badge-success-bg: #123d2a;
+    --setup-board205-badge-success-border: #4ade80;
+    --setup-board205-badge-success-text: #bbf7d0;
+    --setup-board205-badge-neutral-bg: #1f2937;
+    --setup-board205-badge-neutral-border: #64748b;
+    --setup-board205-badge-neutral-text: #cbd5e1;
+    --setup-board205-badge-effort-bg: #172033;
+    --setup-board205-badge-effort-border: #475569;
+    --setup-board205-badge-effort-text: #cbd5e1;
+  }
+}
+
+html[data-theme="dark"] {
+  --setup-board205-badge-info-bg: #17365d;
+  --setup-board205-badge-info-border: #60a5fa;
+  --setup-board205-badge-info-text: #dbeafe;
+  --setup-board205-badge-warn-bg: #4a3310;
+  --setup-board205-badge-warn-border: #fbbf24;
+  --setup-board205-badge-warn-text: #fde68a;
+  --setup-board205-badge-danger-bg: #4a1d23;
+  --setup-board205-badge-danger-border: #f87171;
+  --setup-board205-badge-danger-text: #fecaca;
+  --setup-board205-badge-success-bg: #123d2a;
+  --setup-board205-badge-success-border: #4ade80;
+  --setup-board205-badge-success-text: #bbf7d0;
+  --setup-board205-badge-neutral-bg: #1f2937;
+  --setup-board205-badge-neutral-border: #64748b;
+  --setup-board205-badge-neutral-text: #cbd5e1;
+  --setup-board205-badge-effort-bg: #172033;
+  --setup-board205-badge-effort-border: #475569;
+  --setup-board205-badge-effort-text: #cbd5e1;
+}
+
 .setup-board205-badge {
   display: inline-flex;
   align-items: center;
@@ -449,9 +514,9 @@
 }
 
 .setup-board205-badge.status-ready {
-  border-color: color-mix(in srgb, var(--success) 62%, var(--accent));
-  background: color-mix(in srgb, var(--success-soft) 68%, var(--accent-soft));
-  color: color-mix(in srgb, var(--success) 68%, var(--accent));
+  border-color: var(--setup-board205-badge-info-border);
+  background: var(--setup-board205-badge-info-bg);
+  color: var(--setup-board205-badge-info-text);
   font-weight: 850;
 }
 
@@ -459,32 +524,32 @@
 .setup-board205-badge.status-waiting,
 .setup-board205-badge.wo-open,
 .setup-board205-badge.gate-badge {
-  border-color: var(--warning);
-  background: var(--warning-soft);
-  color: var(--warning);
+  border-color: var(--setup-board205-badge-warn-border);
+  background: var(--setup-board205-badge-warn-bg);
+  color: var(--setup-board205-badge-warn-text);
   font-weight: 850;
 }
 
 .setup-board205-badge.status-scheduled {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
+  border-color: var(--setup-board205-badge-info-border);
+  background: var(--setup-board205-badge-info-bg);
+  color: var(--setup-board205-badge-info-text);
   font-weight: 850;
 }
 
 .setup-board205-badge.status-complete,
 .setup-board205-badge.wo-complete {
-  border-color: var(--success);
-  background: var(--success-soft);
-  color: var(--success);
+  border-color: var(--setup-board205-badge-success-border);
+  background: var(--setup-board205-badge-success-bg);
+  color: var(--setup-board205-badge-success-text);
   font-weight: 850;
 }
 
 .setup-board205-badge.status-blocked,
 .setup-board205-badge.short-crew-badge {
-  border-color: var(--danger);
-  background: var(--danger-soft);
-  color: var(--danger);
+  border-color: var(--setup-board205-badge-danger-border);
+  background: var(--setup-board205-badge-danger-bg);
+  color: var(--setup-board205-badge-danger-text);
   font-weight: 900;
 }
 
@@ -492,35 +557,32 @@
 .setup-board205-badge.status-catalog,
 .setup-board205-badge.status-neutral,
 .setup-board205-badge.effort-unknown {
-  border-color: var(--border, #d9e0e8);
-  background: var(--theme-pill, transparent);
-  color: var(--muted, #64748b);
+  border-color: var(--setup-board205-badge-neutral-border);
+  background: var(--setup-board205-badge-neutral-bg);
+  color: var(--setup-board205-badge-neutral-text);
 }
 
 .setup-board205-badge.season-only {
   border-style: dashed;
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
+  border-color: var(--setup-board205-badge-info-border);
+  background: var(--setup-board205-badge-info-bg);
+  color: var(--setup-board205-badge-info-text);
 }
 
-.setup-board205-badge.effort-light {
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
-  background: color-mix(in srgb, var(--accent-soft) 55%, var(--card));
-  color: color-mix(in srgb, var(--accent) 65%, var(--muted));
+.setup-board205-badge.effort-light,
+.setup-board205-badge.effort-moderate,
+.setup-board205-badge.effort-heavy {
+  border-color: var(--setup-board205-badge-effort-border);
+  background: var(--setup-board205-badge-effort-bg);
+  color: var(--setup-board205-badge-effort-text);
 }
 
 .setup-board205-badge.effort-moderate {
-  border-color: color-mix(in srgb, var(--warning) 72%, var(--border));
-  background: color-mix(in srgb, var(--warning-soft) 68%, var(--card));
-  color: var(--warning);
+  border-width: 1.5px;
 }
 
 .setup-board205-badge.effort-heavy {
-  border-color: var(--danger);
-  background: var(--danger-soft);
-  color: var(--danger);
-  border-style: double;
+  border-width: 2px;
   font-weight: 850;
 }
 
