@@ -444,15 +444,84 @@
   font-size: 0.72rem;
   font-weight: 750;
   white-space: nowrap;
+  background: var(--theme-pill, transparent);
+  color: var(--theme-pill-text, var(--text, #172033));
+}
+
+.setup-board205-badge.status-ready {
+  border-color: color-mix(in srgb, var(--success) 62%, var(--accent));
+  background: color-mix(in srgb, var(--success-soft) 68%, var(--accent-soft));
+  color: color-mix(in srgb, var(--success) 68%, var(--accent));
+  font-weight: 850;
+}
+
+.setup-board205-badge.status-reschedule,
+.setup-board205-badge.status-waiting,
+.setup-board205-badge.wo-open,
+.setup-board205-badge.gate-badge {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-weight: 850;
+}
+
+.setup-board205-badge.status-scheduled {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 850;
+}
+
+.setup-board205-badge.status-complete,
+.setup-board205-badge.wo-complete {
+  border-color: var(--success);
+  background: var(--success-soft);
+  color: var(--success);
+  font-weight: 850;
+}
+
+.setup-board205-badge.status-blocked,
+.setup-board205-badge.short-crew-badge {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-weight: 900;
+}
+
+.setup-board205-badge.status-deferred,
+.setup-board205-badge.status-catalog,
+.setup-board205-badge.status-neutral,
+.setup-board205-badge.effort-unknown {
+  border-color: var(--border, #d9e0e8);
+  background: var(--theme-pill, transparent);
+  color: var(--muted, #64748b);
 }
 
 .setup-board205-badge.season-only {
   border-style: dashed;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
-.setup-board205-badge.blocked,
-.setup-board205-badge.waiting {
-  font-weight: 800;
+.setup-board205-badge.effort-light {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 55%, var(--card));
+  color: color-mix(in srgb, var(--accent) 65%, var(--muted));
+}
+
+.setup-board205-badge.effort-moderate {
+  border-color: color-mix(in srgb, var(--warning) 72%, var(--border));
+  background: color-mix(in srgb, var(--warning-soft) 68%, var(--card));
+  color: var(--warning);
+}
+
+.setup-board205-badge.effort-heavy {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-style: double;
+  font-weight: 850;
 }
 
 .setup-board205-board {
@@ -822,11 +891,11 @@
 .setup-board205-assignment.short-crew {
   border-width: 2px;
   border-style: solid;
+  border-color: var(--danger);
 }
 
 .setup-board205-badge.short-crew-badge {
   border-width: 2px;
-  font-weight: 900;
 }
 
 .setup-board205-short-crew-warning {
@@ -859,10 +928,6 @@
 
 .setup-board205-readiness.not-ready {
   font-weight: 800;
-  border-style: double;
-}
-
-.setup-board205-badge.effort-heavy {
   border-style: double;
 }
 
@@ -1262,6 +1327,12 @@
   .setup-board205-shift-hint {
     color: #000 !important;
     background: #fff !important;
+  }
+
+  .setup-board205-badge {
+    color: #000 !important;
+    background: #fff !important;
+    border-color: #777 !important;
   }
 
   .setup-board205-crew-captain select,

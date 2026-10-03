@@ -362,6 +362,39 @@ def test_205_scheduled_task_finder_locates_existing_schedule_assignments() -> No
     assert "function board205CollapseScheduledSearchResults" in ui
 
 
+def test_205_schedule_badges_use_consistent_semantic_colors() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "function board205StatusBadgeClass" in ui
+    for token in (
+        "status-ready",
+        "status-reschedule",
+        "status-scheduled",
+        "status-complete",
+        "status-blocked",
+        "status-waiting",
+        "status-deferred",
+        "status-catalog",
+        "wo-open",
+        "wo-complete",
+        "gate-badge",
+        "effort-light",
+        "effort-moderate",
+        "effort-heavy",
+        "effort-unknown",
+    ):
+        assert token in ui or token in css
+
+    assert "var(--success-soft)" in css
+    assert "var(--warning-soft)" in css
+    assert "var(--danger-soft)" in css
+    assert "var(--accent-soft)" in css
+    assert "border-color: var(--danger);" in css
+    assert ".setup-board205-badge.short-crew-badge" in css
+    assert ".setup-board205-badge.effort-heavy" in css
+
+
 def test_205_schedule_board_shows_cumulative_progress_without_deriving_time() -> None:
     repo = read_app("setup_scheduling_board_repository.py")
     ui = read_app("setup_scheduling_board.js")
@@ -866,8 +899,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-10-02.5" in html
-    assert "setup_scheduling_board.js?v=2026-10-02.6" in html
+    assert "setup_scheduling_board.css?v=2026-10-02.6" in html
+    assert "setup_scheduling_board.js?v=2026-10-02.7" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html

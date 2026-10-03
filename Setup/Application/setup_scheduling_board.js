@@ -919,6 +919,23 @@ function board205StatusLabel(status) {
   return String(status || '').replaceAll('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function board205StatusBadgeClass(task, catalogReview, hardBlocked, readinessOnly) {
+  if (hardBlocked) return 'status-blocked';
+  if (readinessOnly) return 'status-waiting';
+  const status = catalogReview ? 'CATALOG_ONLY' : String(task?.board_status || '').toUpperCase();
+  const classes = {
+    READY_TO_SCHEDULE: 'status-ready',
+    NEEDS_SCHEDULING_AGAIN: 'status-reschedule',
+    SCHEDULED: 'status-scheduled',
+    COMPLETE: 'status-complete',
+    BLOCKED: 'status-blocked',
+    WAITING_ON_WORK_ORDER: 'status-waiting',
+    DEFERRED: 'status-deferred',
+    CATALOG_ONLY: 'status-catalog'
+  };
+  return classes[status] || 'status-neutral';
+}
+
 function board205TaskDependencies(taskId) {
   return (setupBoard205State.board.dependencies || []).filter(
     (dep) => Number(dep.setup_session_task_id) === Number(taskId)
@@ -929,7 +946,7 @@ function board205WorkOrderBadge(task) {
   if (!task?.linked_work_order_id) return '';
   const complete = Boolean(task.linked_work_order_completed_at);
   const problem = String(task.linked_work_order_problem || '').trim();
-  return `<span class="setup-board205-badge ${complete ? '' : 'waiting'}" title="${board205Esc(problem)}">WO ${board205Esc(task.linked_work_order_id)} · ${complete ? 'complete' : 'open'}${problem ? ` · ${board205Esc(problem)}` : ''}</span>`;
+  return `<span class="setup-board205-badge ${complete ? 'wo-complete' : 'wo-open'}" title="${board205Esc(problem)}">WO ${board205Esc(task.linked_work_order_id)} · ${complete ? 'complete' : 'open'}${problem ? ` · ${board205Esc(problem)}` : ''}</span>`;
 }
 
 function board205HistoricalReviewMode() {
@@ -1449,8 +1466,8 @@ function board205TaskCard(task) {
       <div class="setup-board205-task-title">
         <span>Task ${board205Esc(task.setup_task_id ?? 'annual-only')} · ${board205Esc(task.task_name)}</span>
         ${!catalogReview && seasonOnly ? '<span class="setup-board205-badge season-only">THIS SEASON ONLY</span>' : ''}
-        ${isGate ? '<span class="setup-board205-badge">GATE</span>' : ''}
-        <span class="setup-board205-badge ${hardBlocked ? 'blocked' : readinessOnly ? 'waiting' : ''}">${board205Esc(
+        ${isGate ? '<span class="setup-board205-badge gate-badge">GATE</span>' : ''}
+        <span class="setup-board205-badge ${board205StatusBadgeClass(task, catalogReview, hardBlocked, readinessOnly)}">${board205Esc(
           catalogReview
             ? hardBlocked
               ? 'HARD BLOCKED'
