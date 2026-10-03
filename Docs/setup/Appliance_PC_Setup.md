@@ -218,7 +218,7 @@ These applications are part of the normal Show PC setup.
 
 | Application | Official source | Setup note |
 |---|---|---|
-| Light-O-Rama ShowTime Sequencing Suite | [Light-O-Rama Software Downloads](https://store.lightorama.com/pages/download-software) | Install the production-approved ShowTime version. Do not change major versions merely because a newer release is available. Verify the required license/version against the production Show PC before final cutover. |
+| Light-O-Rama ShowTime Sequencing Suite | [Light-O-Rama Software Downloads](https://store.lightorama.com/pages/download-software) | **Installed on MSB-SHOW_PC2.** Record the exact installed version and license level before final cutover. Do not change major versions merely because a newer release is available. |
 | GIMP | [GIMP Downloads](https://www.gimp.org/downloads/) | Use the official Windows installer from GIMP.org rather than the Microsoft Store package. |
 | draw.io Desktop | [draw.io Offline/Desktop](https://www.drawio.com/docs/manual/editor/offline/) | Install the standalone Windows desktop application so diagrams remain usable without Internet access. |
 | CableIQ Reporter | [Fluke Networks Downloads](https://www.flukenetworks.com/support/downloads) | On the Fluke download page, locate **CableIQ Reporter Software V2.0** and the **64Bit USB Drivers for DTX, OptiFiber and CableIQ** if the tester requires them. Windows 11 operation must be verified on this PC because Fluke's current CableIQ Reporter description does not explicitly list Windows 11. |
@@ -262,7 +262,7 @@ Official source:
 
 Install the **x64** build.
 
-> **Verified on MSB-SHOW_PC2:** Git for Windows `2.56.0.windows.1` is installed, resolves normally from a fresh PowerShell session, and `C:\\Program Files\\Git\\cmd` is present in the Machine PATH. Effective line-ending configuration is also verified as `core.autocrlf=input` from `C:/Program Files/Git/etc/gitconfig`.
+> **Verified on MSB-SHOW_PC2:** Git for Windows `2.56.0.windows.1` is installed, resolves normally from PowerShell after reboot, and `C:\\Program Files\\Git\\cmd` is present in the Machine PATH. Effective line-ending configuration is verified as `core.autocrlf=input` from `C:/Program Files/Git/etc/gitconfig`.
 
 Use these installer selections for the MSB appliance PC:
 
@@ -370,6 +370,22 @@ py list
 ```
 
 > **Verified on MSB-SHOW_PC2:** Python 3.13.16 is installed and is the active/default runtime. `py --version` and `python --version` both return `Python 3.13.16`.
+
+### Python command/path verification
+
+The Python runtime version is confirmed, but the command resolution/path mechanism still needs to be documented. With the Python Install Manager, `python.exe` and `py.exe` may resolve through Windows App Execution Aliases rather than through a traditional Python installation directory added directly to PATH.
+
+Verify with:
+
+```powershell
+Get-Command python | Format-List Name,CommandType,Source,Path
+Get-Command py | Format-List Name,CommandType,Source,Path
+where.exe python
+where.exe py
+py -0p
+```
+
+Do not manually add a Python runtime directory to PATH unless these checks show it is actually required.
 
 The unintended Python 3.14 runtime was removed so the appliance has one unambiguous MSB Python runtime.
 
