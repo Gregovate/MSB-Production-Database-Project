@@ -38,7 +38,7 @@ BEGIN
     SELECT ss.setup_session_id, ss.season_year
       INTO v_session_id, v_year
     FROM ops.setup_session ss
-    WHERE ss.session_status <> 'HISTORICAL_VERIFICATION'
+    WHERE ss.session_status IN ('PLANNING','ACTIVE')
     ORDER BY ss.season_year DESC, ss.setup_session_id DESC
     LIMIT 1;
 
