@@ -386,7 +386,7 @@ def test_205_empty_work_day_removal_is_fail_closed_end_to_end() -> None:
     assert "one Crew A, Captain TBD, and no tasks assigned." in ui
     assert "function board205ExistingWorkDayDates()" in ui
     assert "const alreadyExists = existing.has(date);" in ui
-    assert "if (existing.has(date)) setupBoard205State.workDaySelection.delete(date);" in ui
+    assert "if (existing.has(date) || date < todayKey) setupBoard205State.workDaySelection.delete(date);" in ui
 
 
 def test_205_schedule_print_keeps_landscape_while_task_cover_sheet_is_portrait() -> None:
@@ -966,7 +966,7 @@ def test_122_work_day_calendar_supports_tablet_multiselect_without_overwriting_e
     assert "setup-board205-calendar-day:not(:disabled)" in ui
     assert "setupBoard205State.workDaySelection.delete(date)" in ui
     assert "setupBoard205State.workDaySelection.add(date)" in ui
-    assert "alreadyExists ? 'disabled aria-disabled=\"true\"'" in ui
+    assert "alreadyExists || inPast ? 'disabled aria-disabled=\"true\"' : ''" in ui
     assert "Existing Work Days are disabled." in ui
     calendar_form = ui.split('<form id="setup-board205-day-form"', 1)[1].split("</form>", 1)[0]
     assert "Ctrl" not in calendar_form
@@ -1148,7 +1148,7 @@ def test_122_b1a_task_search_is_name_only_not_resource_or_blocker_text() -> None
     ui = read_app("setup_scheduling_board.js")
 
     queue = ui.split("function board205QueueTasks()", 1)[1].split(
-        "function board205RenderQueue()", 1
+        "function board205SchedulableTasksForReport()", 1
     )[0]
 
     assert "task.task_name" in queue
