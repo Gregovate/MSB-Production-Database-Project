@@ -1288,6 +1288,26 @@ html[data-theme="light"] .setup-board205-carryover {
 }
 
 
+.setup-board205-finder-report-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.setup-board205-finder-report-row > .muted {
+  min-width: 0;
+}
+
+.setup-board205-calendar-day.past {
+  opacity: 0.45;
+}
+
+#setup-board205-schedulable-print-sheet {
+  display: none;
+}
+
+
 @media print {
   @page {
     size: landscape;
@@ -1369,6 +1389,7 @@ html[data-theme="light"] .setup-board205-carryover {
   .setup-board205-day-header {
     padding: 0.06in 0.1in;
     gap: 0.05in;
+    break-after: avoid;
   }
 
   .setup-board205-day-header strong {
@@ -1393,6 +1414,7 @@ html[data-theme="light"] .setup-board205-carryover {
   .setup-board205-grid-head {
     padding: 0.04in 0.06in;
     font-size: 7.5pt;
+    break-after: avoid;
   }
 
   .setup-board205-shift-hint {
@@ -1512,6 +1534,96 @@ html[data-theme="light"] .setup-board205-carryover {
 }
 
 
+@media print {
+  body.setup-print-schedulable-tasks > * {
+    display: none !important;
+  }
+
+  body.setup-print-schedulable-tasks > #setup-board205-schedulable-print-sheet {
+    display: block !important;
+  }
+
+  body.setup-print-schedulable-tasks #schedule-view {
+    display: none !important;
+  }
+
+  body.setup-print-schedulable-tasks #setup-board205-schedulable-print-sheet {
+    page: setup-schedulable-tasks;
+    width: 100% !important;
+    max-width: none !important;
+    color: #000 !important;
+    background: #fff !important;
+    font-size: 9pt;
+  }
+
+  body.setup-print-schedulable-tasks #setup-board205-schedulable-print-sheet * {
+    color: #000 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  body.setup-print-schedulable-tasks .setup-board205-report-header {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 0.2in;
+    border-bottom: 2px solid #000;
+    padding-bottom: 0.08in;
+    margin-bottom: 0.08in;
+  }
+
+  body.setup-print-schedulable-tasks .setup-board205-report-header h1 {
+    margin: 0.02in 0 0;
+    font-size: 16pt;
+  }
+
+  body.setup-print-schedulable-tasks .setup-board205-report-rule {
+    margin: 0 0 0.12in;
+    font-size: 8pt;
+  }
+
+  body.setup-print-schedulable-tasks .setup-board205-report-scope {
+    margin: 0.12in 0 0.04in;
+    padding-bottom: 0.02in;
+    border-bottom: 1px solid #888;
+    font-size: 10pt;
+    break-after: avoid;
+  }
+
+  body.setup-print-schedulable-tasks .setup-board205-report-task {
+    padding: 0.035in 0.05in;
+    border-bottom: 1px solid #ddd;
+    break-inside: avoid;
+    line-height: 1.18;
+  }
+
+  body.setup-print-schedulable-tasks .setup-board205-report-task-title {
+    display: flex !important;
+    justify-content: space-between;
+    gap: 0.08in;
+  }
+
+  body.setup-print-schedulable-tasks .setup-board205-report-badge {
+    border: 1px solid #777;
+    border-radius: 999px;
+    padding: 0 0.04in;
+    font-size: 7pt;
+    white-space: nowrap;
+  }
+
+  body.setup-print-schedulable-tasks .setup-board205-report-readiness {
+    margin-top: 0.02in;
+    font-size: 7.5pt;
+    font-weight: 600;
+  }
+
+  @page setup-schedulable-tasks {
+    size: portrait;
+    margin: 0.4in;
+  }
+}
+
+
 /* #175 task-cover-sheet print mode.
    The Scheduling Board owns the normal page-level print stylesheet above.
    When Perform Work explicitly prints one task, override that global rule and
@@ -1530,6 +1642,7 @@ html[data-theme="light"] .setup-board205-carryover {
   }
 
   body.setup-print-perform-task #setup-perform-print-sheet {
+    page: setup-perform-task;
     width: 100% !important;
     max-width: none !important;
     color: #000 !important;
@@ -1601,7 +1714,7 @@ html[data-theme="light"] .setup-board205-carryover {
       ) !important;
   }
 
-  @page {
+  @page setup-perform-task {
     size: portrait;
     margin: 0.5in;
   }

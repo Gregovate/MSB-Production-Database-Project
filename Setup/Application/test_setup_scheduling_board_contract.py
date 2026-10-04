@@ -364,6 +364,77 @@ def test_205_scheduled_task_finder_locates_existing_schedule_assignments() -> No
     assert "function board205CollapseScheduledSearchResults" in ui
 
 
+def test_205_empty_work_day_removal_is_fail_closed_end_to_end() -> None:
+    sql = read_db("068_add_setup_empty_work_day_removal.sql")
+    api = read_app("setup_scheduling_board_api.py")
+    repo = read_app("setup_scheduling_board_repository.py")
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "ops.remove_empty_setup_work_day" in sql
+    assert "v_day_status <> 'PLANNED'" in sql
+    assert "v_crew_count <> 1" in sql
+    assert "v_crew_number <> 1" in sql
+    assert "v_crew_code <> 'A'" in sql
+    assert "v_captain_person_id IS NOT NULL" in sql
+    assert "FROM ops.setup_work_day_task wdt" in sql
+    assert "FROM ops.setup_task_progress p" in sql
+    assert "ops.resequence_setup_future_work_days(v_session_id)" in sql
+    assert '@setup_scheduling_board_api.delete("/api/setup/scheduling-board/work-days/<int:setup_work_day_id>")' in api
+    assert "def remove_work_day(" in repo
+    assert "function board205CanRemoveWorkDay(day)" in ui
+    assert "Remove Empty Day" in ui
+    assert "one Crew A, Captain TBD, and no tasks assigned." in ui
+    assert "function board205ExistingWorkDayDates()" in ui
+    assert "const alreadyExists = existing.has(date);" in ui
+    assert "if (existing.has(date) || date < todayKey) setupBoard205State.workDaySelection.delete(date);" in ui
+
+
+def test_205_schedule_print_keeps_landscape_while_task_cover_sheet_is_portrait() -> None:
+    css = read_app("setup_scheduling_board.css")
+
+    assert "@page {" in css
+    assert "size: landscape;" in css
+    assert "@page setup-perform-task {" in css
+    assert "size: portrait;" in css
+    assert "page: setup-perform-task;" in css
+    assert css.count("@page {") == 1
+    assert "break-after: avoid;" in css
+
+
+def test_205_work_day_calendar_and_database_reject_past_dates() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    sql = read_db("068_add_setup_empty_work_day_removal.sql")
+    validation = read_acceptance("setup_205_empty_work_day_removal_disposable_validation.sql")
+
+    assert "function board205TodayDateKey()" in ui
+    assert "const inPast = date < todayKey;" in ui
+    assert "Past dates cannot be added as Setup Work Days" in ui
+    assert "date < board205TodayDateKey()" in ui
+    assert "ops.reject_past_setup_work_day_insert" in sql
+    assert "NEW.work_date < current_date" in sql
+    assert "Setup work days cannot be added in the past" in sql
+    assert "Past Setup work day was unexpectedly addable" in validation
+
+
+def test_205_schedulable_tasks_print_is_separate_blocking_on_report() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "Print Schedulable Tasks" in ui
+    assert "function board205SchedulableTasksForReport()" in ui
+    assert "!board205HasHardBlock(task)" in ui
+    assert "board205FinderStatusFamily(task) === 'READY'" in ui
+    assert "Number(task.unworked_assignment_count || 0) === 0" in ui
+    assert "String(task.task_action_type || '').toUpperCase() !== 'GATE'" in ui
+    assert "board205FinderCompare(a, b, 'STAGE')" in ui
+    assert "Hard prerequisite blockers excluded" in ui
+    assert "NOT READY conditions shown for Manager judgment" in ui
+    assert "Stage / Scene order" in ui
+    assert "setup-print-schedulable-tasks" in ui
+    assert "@page setup-schedulable-tasks" in css
+    assert "page: setup-schedulable-tasks;" in css
+
+
 def test_205_light_mode_strengthens_schedule_structure_without_changing_dark_palette() -> None:
     css = read_app("setup_scheduling_board.css")
 
@@ -895,7 +966,7 @@ def test_122_work_day_calendar_supports_tablet_multiselect_without_overwriting_e
     assert "setup-board205-calendar-day:not(:disabled)" in ui
     assert "setupBoard205State.workDaySelection.delete(date)" in ui
     assert "setupBoard205State.workDaySelection.add(date)" in ui
-    assert "alreadyExists ? 'disabled aria-disabled=\"true\"'" in ui
+    assert "alreadyExists || inPast ? 'disabled aria-disabled=\"true\"' : ''" in ui
     assert "Existing Work Days are disabled." in ui
     calendar_form = ui.split('<form id="setup-board205-day-form"', 1)[1].split("</form>", 1)[0]
     assert "Ctrl" not in calendar_form
@@ -933,8 +1004,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-10-02.9" in html
-    assert "setup_scheduling_board.js?v=2026-10-02.8" in html
+    assert "setup_scheduling_board.css?v=2026-10-03.2" in html
+    assert "setup_scheduling_board.js?v=2026-10-03.3" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
@@ -1077,7 +1148,7 @@ def test_122_b1a_task_search_is_name_only_not_resource_or_blocker_text() -> None
     ui = read_app("setup_scheduling_board.js")
 
     queue = ui.split("function board205QueueTasks()", 1)[1].split(
-        "function board205RenderQueue()", 1
+        "function board205SchedulableTasksForReport()", 1
     )[0]
 
     assert "task.task_name" in queue
