@@ -1836,3 +1836,41 @@ html[data-theme="dark"] {
   color: var(--setup-status-complete-text);
   border-color: var(--setup-status-complete-border);
 }
+
+/* Launch effort cues: teal intensity, separate from warning and Material colors. */
+.setup-board205-badge.effort-light {
+  background: #f0fdfa;
+  border-color: #99d5cd;
+  color: #285e59;
+}
+.setup-board205-badge.effort-moderate {
+  background: #bce9e1;
+  border-color: #4caaa0;
+  color: #174f4a;
+}
+.setup-board205-badge.effort-heavy {
+  background: #206d66;
+  border-color: #16534e;
+  color: #ffffff;
+}
+html[data-theme="dark"] .setup-board205-badge.effort-light {
+  background: #183c39;
+  border-color: #43736c;
+  color: #c5e7df;
+}
+html[data-theme="dark"] .setup-board205-badge.effort-moderate {
+  background: #28635c;
+  border-color: #68aaa0;
+  color: #e3f5ee;
+}
+html[data-theme="dark"] .setup-board205-badge.effort-heavy {
+  background: #98d4c8;
+  border-color: #b9e6dc;
+  color: #153d38;
+}
+/* Blocked is attention/amber; Short Crew retains the established danger/red cue. */
+.setup-board205-badge.status-blocked {
+  background: var(--setup-board205-badge-warn-bg);
+  border-color: var(--setup-board205-badge-warn-border);
+  color: var(--setup-board205-badge-warn-text);
+}
