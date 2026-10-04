@@ -276,3 +276,15 @@ def test_setup_access_exposes_signed_in_captain_identity() -> None:
     assert "captain_person_id" in repo
     assert "ref.setup_captain_person_list()" in repo
     assert "lower(captain.email) = lower(caps.email)" in repo
+
+
+def test_completed_perform_work_status_uses_neutral_gray_pill() -> None:
+    ui = read_app("setup_next_pass.js")
+    css = read_app("setup_next_pass.css")
+
+    assert "next-perform-complete-pill" in ui
+    assert "status === 'COMPLETE' ? 'next-perform-complete-pill'" in ui
+    assert ".next-perform-complete-pill" in css
+    assert 'html[data-theme="dark"] .next-perform-complete-pill' in css
+    assert "background: #293241;" in css
+    assert "border-color: #64748b;" in css
