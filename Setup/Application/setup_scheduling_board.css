@@ -224,7 +224,7 @@
 
 .setup-board205-dispatch-controls {
   display: grid;
-  grid-template-columns: auto minmax(16rem, 1fr) auto auto auto;
+  grid-template-columns: auto auto minmax(16rem, 1fr) auto auto auto;
   gap: 0.45rem;
   align-items: center;
 }
@@ -1250,6 +1250,56 @@ html[data-theme="dark"] {
   }
 
   .setup-board205-dispatch-controls .setup-board205-scheduled-search {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+.setup-annual-milestones {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin: 0.35rem 0 0.5rem;
+}
+
+.setup-annual-milestone {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.1rem 0.5rem;
+  align-items: baseline;
+  min-width: 0;
+  padding: 0.38rem 0.5rem;
+  border: 1px solid var(--border, #d9e0e8);
+  border-radius: 0.5rem;
+  background: var(--soft, #f5f8fb);
+  font-size: 0.78rem;
+}
+
+.setup-annual-milestone.primary {
+  border-width: 2px;
+  border-color: color-mix(in srgb, var(--accent, #0b6ea8) 65%, var(--border, #d9e0e8));
+  background: color-mix(in srgb, var(--accent, #0b6ea8) 10%, var(--panel, #fff));
+}
+
+.setup-annual-milestone-label {
+  grid-column: 1 / -1;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+}
+
+.setup-annual-milestone strong {
+  font-size: 0.9rem;
+}
+
+.setup-annual-milestone > span:last-child {
+  justify-self: end;
+  color: var(--muted, #64748b);
+  font-weight: 750;
+}
+
+@media (max-width: 900px) {
+  .setup-annual-milestones {
     grid-template-columns: 1fr;
   }
 }
