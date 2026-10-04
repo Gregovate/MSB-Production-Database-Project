@@ -2,7 +2,7 @@
 
 Initial release: 2026-08-13 V1.0.0
 
-Current version: 2026-10-02 V1.7.1
+Current version: 2026-10-04 V1.7.2
 
 V1.5.0 adds the fixed, digest-locked PostgreSQL ingest operation and bounded
 read-only ingest console. Parser execution remains repeatable and never starts
@@ -19,6 +19,11 @@ V1.7.1 uses compatibility checker V1.4.1 so an intentional complete
 PreviewClass removal/replacement under the already-approved LOR version remains
 visible as review evidence without being misclassified as parser-breaking XML.
 Cross-version preview removal remains blocking.
+
+V1.7.2 builds a fresh manifest from the live approved-version Preview folder
+before a new-version compatibility check. This prevents legitimate same-version
+authoring completed after the original software-version approval from being
+misclassified as changes introduced by the candidate LOR release.
 
 The production LOR2DB API runs on Linux. This small internal service owns the
 Windows/G-drive execution boundary and exposes only version-scoped operations;
@@ -48,7 +53,7 @@ from urllib.parse import urlparse
 from lor_version_checker import build_manifest, compare_manifests, manifest_source_signature, write_json
 
 
-RUNNER_VERSION = "V1.7.1"
+RUNNER_VERSION = "V1.7.2"
 MAX_BROWSER_CONSOLE_CHARACTERS = 500_000
 
 AUTHORITATIVE_OUTPUT_TABLES = (
@@ -1094,15 +1099,52 @@ class Runner:
             raise ValueError(f"Candidate preview folder does not exist: {folder}")
 
         report_dir = self.reports_root / f"V{version}" / "compatibility"
+        live_baseline_manifest_path = report_dir / "baseline-live-manifest.json"
         candidate_manifest = report_dir / "candidate-manifest.json"
         report_json = report_dir / "compatibility-report.json"
         report_md = report_dir / "compatibility-report.md"
+
+        # The approved manifest is the software-contract authority, but normal
+        # authoring continues after a LOR version is approved. Before comparing
+        # a different LOR release, rebuild the baseline from the live current
+        # Preview folder and first prove that it remains compatible with the
+        # approved same-version contract. The cross-version comparison must then
+        # compare equivalent current content, not a months-old content snapshot.
+        approved_manifest = json.loads(
+            Path(state["current_manifest_path"]).read_text(encoding="utf-8")
+        )
+        live_baseline_manifest = build_manifest(
+            Path(state["current_preview_folder"]),
+            state["current_lor_version"],
+            approved_manifest.get("deep_preview"),
+            deep_identity=approved_manifest.get("deep_preview_identity"),
+        )
+        current_blocking = [
+            finding
+            for finding in compare_manifests(
+                approved_manifest,
+                live_baseline_manifest,
+            )
+            if finding.severity == "BLOCKING"
+        ]
+        if current_blocking:
+            detail = "; ".join(
+                f"{finding.area}: {finding.message}"
+                for finding in current_blocking
+            )
+            raise ValueError(
+                "The current approved-version Preview folder contains "
+                "parser-breaking XML changes relative to its approved "
+                f"LOR {state['current_lor_version']} contract: {detail}"
+            )
+        write_json(live_baseline_manifest_path, live_baseline_manifest)
+
         command = [
             sys.executable, str(self.checker_path), "compare",
-            "--baseline", state["current_manifest_path"],
+            "--baseline", str(live_baseline_manifest_path),
             "--new-lor-version", version,
             "--preview-folder", str(folder),
-            "--deep-preview", state["deep_preview"],
+            "--deep-preview", live_baseline_manifest["deep_preview"],
             "--candidate-manifest", str(candidate_manifest),
             "--report-json", str(report_json),
             "--report-md", str(report_md),
@@ -1116,6 +1158,10 @@ class Runner:
             "checked_by": actor,
             "report_json": str(report_json),
             "report_markdown": str(report_md),
+            "baseline_manifest_path": str(live_baseline_manifest_path),
+            "baseline_source_signature_sha256": manifest_source_signature(
+                live_baseline_manifest
+            ),
             "candidate_manifest_path": str(candidate_manifest),
             "stdout": completed.stdout.strip(),
         }
