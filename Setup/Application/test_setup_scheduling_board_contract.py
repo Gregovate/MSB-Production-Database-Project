@@ -461,7 +461,7 @@ def test_205_schedule_command_bar_preserves_board_height_and_controls() -> None:
     assert "Open only when you need to add dates." not in ui
     assert "Each work day starts with Crew A." not in ui
     assert "setup-board205-board-key" in ui
-    assert "grid-template-columns: auto minmax(16rem, 1fr) auto auto auto;" in css
+    assert "grid-template-columns: auto auto minmax(16rem, 1fr) auto auto auto;" in css
     assert "max-height: min(22rem, 55vh);" in css
 
 
@@ -1004,8 +1004,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-10-03.2" in html
-    assert "setup_scheduling_board.js?v=2026-10-03.3" in html
+    assert "setup_scheduling_board.css?v=2026-10-03.3" in html
+    assert "setup_scheduling_board.js?v=2026-10-03.4" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
