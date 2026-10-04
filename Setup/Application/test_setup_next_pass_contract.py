@@ -152,3 +152,30 @@ def test_perform_work_shows_planned_and_actual_person_hours() -> None:
     assert "completedCount += 1;" in text
     assert "reported work in Captain scope" in text
     assert "no completed assignments in Captain scope" in text
+
+
+def test_205_annual_launch_milestones_are_derived_from_season_year_and_visible() -> None:
+    next_pass = (APP_DIR / "setup_next_pass.js").read_text(encoding="utf-8")
+    board = (APP_DIR / "setup_scheduling_board.js").read_text(encoding="utf-8")
+    css = (APP_DIR / "setup_scheduling_board.css").read_text(encoding="utf-8")
+
+    assert "function setupAnnualMilestoneDates(seasonYear)" in next_pass
+    assert "firstThursday + 21" in next_pass
+    assert "setupComplete.setUTCDate(setupComplete.getUTCDate() - 7)" in next_pass
+    assert "foodBankRunWalk.setUTCDate(foodBankRunWalk.getUTCDate() - 5)" in next_pass
+    assert "openingNight.setUTCDate(openingNight.getUTCDate() + 1)" in next_pass
+    assert "SETUP COMPLETE · VIP SPONSOR NIGHT" in next_pass
+    assert "FOOD BANK RUN/WALK" in next_pass
+    assert "OPENING NIGHT · BLACK FRIDAY" in next_pass
+    assert "window.renderSetupAnnualMilestones = renderSetupAnnualMilestones" in next_pass
+    assert 'id="setup-perform-milestones"' in next_pass
+    assert "renderSetupAnnualMilestones(document.getElementById('setup-perform-milestones')" in next_pass
+
+    assert 'id="setup-board205-milestones"' in board
+    assert "function board205RenderMilestones()" in board
+    assert "window.renderSetupAnnualMilestones(target, Number(appState.seasonYear))" in board
+    assert "board205RenderMilestones();" in board
+
+    assert ".setup-annual-milestones" in css
+    assert ".setup-annual-milestone.primary" in css
+    assert "grid-template-columns: repeat(3, minmax(0, 1fr));" in css
