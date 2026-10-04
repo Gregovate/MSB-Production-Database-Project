@@ -1645,8 +1645,10 @@ def test_205_assignment_move_history_is_passive_and_does_not_require_reason() ->
     assert "v_to_work_date" in move_fn
     assert "v_to_day_number" in move_fn
     assert "event_note" not in move_fn
-    assert "reason" not in ui.split(
-        "async function board205MoveAssignmentGroup", 1
+    move_ui = ui.split(
+        "async function board205DropToCell", 1
     )[1].split(
-        "async function board205RemoveAssignment", 1
+        "async function board205NudgeAssignment", 1
     )[0].lower()
+    assert "move reason" not in move_ui
+    assert "reason:" not in move_ui
