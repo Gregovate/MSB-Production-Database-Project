@@ -384,6 +384,9 @@ def test_205_empty_work_day_removal_is_fail_closed_end_to_end() -> None:
     assert "function board205CanRemoveWorkDay(day)" in ui
     assert "Remove Empty Day" in ui
     assert "one Crew A, Captain TBD, and no tasks assigned." in ui
+    assert "function board205ExistingWorkDayDates()" in ui
+    assert "const alreadyExists = existing.has(date);" in ui
+    assert "if (existing.has(date)) setupBoard205State.workDaySelection.delete(date);" in ui
 
 
 def test_205_schedule_print_keeps_landscape_while_task_cover_sheet_is_portrait() -> None:
