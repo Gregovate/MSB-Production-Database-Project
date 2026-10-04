@@ -1214,6 +1214,11 @@ function nextPerformAssignmentCard(assignment) {
   const status = nextPerformAssignmentStatus(assignment);
   const plannedCrew = nextPerformPlannedCrew(assignment);
   const plannedLabor = nextLaborHoursText(plannedCrew, task.expected_duration_minutes);
+  const effort = String(task.effort_level || 'unknown').toLowerCase();
+  const effortLabel = ['light', 'moderate', 'heavy'].includes(effort) ? effort.toUpperCase() : 'EFFORT TBD';
+  const minimumCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
+  const shortCrew = plannedCrew != null && minimumCrew != null && plannedCrew < minimumCrew;
+
   const readinessWarning = task.readiness_state === 'NOT_READY'
     ? `<div class="next-perform-readiness-warning"><strong>Readiness condition:</strong> ${escapeHtml(task.readiness_note || 'Marked Not Ready')} <span class="muted">· soft planning condition; actual work may still be reported</span></div>`
     : '';
@@ -1226,7 +1231,11 @@ function nextPerformAssignmentCard(assignment) {
         <span><strong>${escapeHtml(assignment.task_name)}</strong>
           <span class="muted"> · ${escapeHtml(nextTaskScopeLabel(assignment))}</span>
         </span>
-        <span class="pill setup-work-status" data-work-status="${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span>
+        <span class="next-perform-assignment-pills">
+          <span class="setup-board205-badge effort-${escapeHtml(effort)}">${escapeHtml(effortLabel)}</span>
+          ${shortCrew ? `<span class="setup-board205-badge short-crew-badge" title="Planned crew ${escapeHtml(plannedCrew)} / minimum ${escapeHtml(minimumCrew)}">SHORT CREW</span>` : ''}
+          <span class="pill setup-work-status" data-work-status="${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span>
+        </span>
       </summary>
       <div class="next-perform-assignment-context">
         Crew ${escapeHtml(assignment.crew_lane || '—')} · ${escapeHtml(captain)}
