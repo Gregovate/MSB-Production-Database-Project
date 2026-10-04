@@ -1707,6 +1707,29 @@ function board205Cell(day, shift, crew) {
 
 
 
+function board205CanRemoveWorkDay(day) {
+  if (!day || String(day.day_status || '').toUpperCase() !== 'PLANNED') return false;
+  if ([day.volunteer_note, day.weather_note, day.notes].some((value) => String(value || '').trim())) {
+    return false;
+  }
+  const crews = board205CrewsForDay(day.setup_work_day_id);
+  if (crews.length !== 1) return false;
+  const crew = crews[0];
+  if (
+    Number(crew.crew_number) !== 1
+    || String(crew.crew_code || '').toUpperCase() !== 'A'
+    || crew.captain_person_id != null
+    || crew.am_planned_crew_count != null
+    || crew.pm_planned_crew_count != null
+  ) {
+    return false;
+  }
+  return !(setupBoard205State.board.assignments || []).some(
+    (item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id)
+  );
+}
+
+
 function board205Day(day) {
   const dayClass = [
     Number(day.iso_day_of_week) === 6 ? 'saturday' : '',
@@ -1718,6 +1741,7 @@ function board205Day(day) {
   const dayNote = [day.volunteer_note, day.weather_note, day.notes].filter(Boolean).join(' · ');
   const crews = board205CrewsForDay(day.setup_work_day_id);
   const canManage = Boolean(appState.access?.can_manage_setup);
+  const canRemoveDay = canManage && board205CanRemoveWorkDay(day);
   const compactDay = board205CompactDayContext(day);
   const meaningfulCrewIds = new Set(
     crews
@@ -1772,6 +1796,7 @@ function board205Day(day) {
         </div>
         <div class="setup-board205-day-actions">
           <span class="setup-board205-badge">${board205Esc(day.day_status)}</span>
+          ${canRemoveDay ? '<button type="button" class="small secondary setup-board205-remove-empty-day">Remove Empty Day</button>' : ''}
           ${canManage ? '<button type="button" class="small setup-board205-add-crew">+ Add Crew</button>' : ''}
         </div>
       </div>
@@ -1817,6 +1842,7 @@ function board205RenderBoard() {
 
   target.querySelectorAll('.setup-board205-day').forEach((dayNode) => {
     const dayId = Number(dayNode.dataset.dayId);
+    dayNode.querySelector('.setup-board205-remove-empty-day')?.addEventListener('click', () => board205RemoveEmptyWorkDay(dayId));
     dayNode.querySelector('.setup-board205-add-crew')?.addEventListener('click', () => board205AddCrew(dayId));
     dayNode.querySelectorAll('.setup-board205-crew-label[data-crew-id]').forEach((crewNode) => {
       const crewId = Number(crewNode.dataset.crewId);
@@ -2028,6 +2054,36 @@ async function board205SetReadiness(task) {
     setBusy(false);
   }
 }
+
+async function board205RemoveEmptyWorkDay(dayId) {
+  const day = (setupBoard205State.board.work_days || []).find(
+    (row) => Number(row.setup_work_day_id) === Number(dayId)
+  );
+  if (!day || !board205CanRemoveWorkDay(day)) return;
+
+  const label = `Setup Day ${day.setup_day_number} · ${day.day_of_week} · ${day.work_date}`;
+  if (!window.confirm(
+    `Remove ${label}?\n\nOnly a truly empty Planned day can be removed: Crew A only, Captain TBD, no staffing counts, no tasks, and no day notes.`
+  )) {
+    return;
+  }
+
+  try {
+    setBusy(true);
+    await api(
+      `api/setup/scheduling-board/work-days/${dayId}`,
+      commandOptions('DELETE')
+    );
+    await board205Load();
+    setAlert(`${label} removed.`, 'ok');
+  } catch (error) {
+    setAlert(error.message || error, 'error');
+    window.alert(error.message || error);
+  } finally {
+    setBusy(false);
+  }
+}
+
 
 async function board205AddCrew(dayId) {
   try {
