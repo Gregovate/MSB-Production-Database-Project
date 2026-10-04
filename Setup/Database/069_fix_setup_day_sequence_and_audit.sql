@@ -21,6 +21,9 @@ BEGIN
        OR to_regclass('ops.setup_work_day_crew') IS NULL
        OR to_regclass('ops.setup_session') IS NULL
        OR to_regprocedure('ref.setup_management_actor(text,boolean)') IS NULL
+       OR to_regprocedure('ref.set_actor_on_insert()') IS NULL
+       OR to_regprocedure('ref.set_actor_on_update()') IS NULL
+       OR to_regprocedure('ops.upsert_setup_work_day(text,integer,date,integer,text,text,text,text)') IS NULL
        OR to_regprocedure('ops.resequence_setup_future_work_days(bigint)') IS NULL
        OR to_regprocedure('ops.update_setup_work_day_assignment(text,bigint,bigint,text,bigint,integer)') IS NULL
        OR to_regprocedure('ops.remove_empty_setup_work_day(text,bigint)') IS NULL THEN
