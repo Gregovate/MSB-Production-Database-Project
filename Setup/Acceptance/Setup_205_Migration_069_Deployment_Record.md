@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | DRAFT — review hold; not an execution instruction |
+| Status | CURRENT release record — Production execution pending host checks |
 | Owner | MSB Production Database project owner |
 | Prepared | 2026-10-04 |
 | Owning issue | [#205](https://github.com/Gregovate/MSB-Production-Database-Project/issues/205) |
@@ -14,7 +14,7 @@
 
 This record supplies the release-specific gates beneath the Server Management procedure. It does not replace that procedure or create another maintenance implementation.
 
-Greg authorized Production deployment after merge, then explicitly held execution until the workflow was deliberately documented and reviewed. That hold remains in force. No new maintenance entry, snapshot, migration, application checkout move, or service restart has occurred.
+Greg authorized Production deployment after merge and requested a documented, repeatable workflow before continuing. The release-specific runner, plain-language operator procedure and failure-path tests are now prepared. Host preflight is still required; no new maintenance entry, snapshot, migration, application checkout move, or service restart has occurred.
 
 The previously supplied inline preflight block is withdrawn pending this review. It did not include the full database and recovery gates. Do not resume from that block.
 
@@ -115,7 +115,7 @@ No OS upgrade, reboot, maintenance reinstall, unrelated service deployment or sh
 
 ## Command source and execution preparation
 
-The release runner must be pinned and reviewed before Stage A is issued. Commands are adaptations of the governing runbooks, not recalled chat commands.
+The release runner is `Setup/Acceptance/setup_maintenance_deploy.py`, with pinned release manifest `setup_205_069_release.json` and failure-path tests `test_setup_maintenance_deploy.py`. Despite its transport-oriented name, its baseline and SQL checks are specific to migration 069; future migrations require their own reviewed checks. Eight orchestration tests passed locally. Actual PostgreSQL checks are exercised in host preflight before maintenance. The exact tooling commit is pinned in the supplied launch command. Commands are adaptations of the governing runbooks, not recalled chat commands.
 
 Known controller interface, to be used only by the reviewed stages:
 
@@ -138,12 +138,9 @@ Dedicated Setup promotion follows the successful 068 boundary: `sudo git -C /opt
 
 During maintenance Setup is stopped and its port may serve the maintenance responder. Do not expect normal Setup health until return to service. Validate source/database before OFF; then require the controller's bounded service health and the exact release version.
 
-Required execution artifacts still to complete:
+Execution controls: the runner writes a retained stage journal and full report, checks live identity and 068 prerequisites, captures the proposed Day mapping and read-only business invariants, runs detached regression, then uses the installed controller for ON/snapshot/OFF. It checks all ref/ops business tables; only open-day sequence and three update-audit columns are excluded from equality. Historical rows remain exact. Snapshot and migration order, drift stops, interrupted migration, validation failure, and failed return-to-service are covered by eight local failure-path tests. These tests do not substitute for real host SQL or controller acceptance.
 
-1. Versioned staged runner with stage journal, error trap, safe temp cleanup and concise terminal summaries.
-2. Non-writing Production SQL checks plus frozen preservation capture/comparison, including all open sessions and audit attribution.
-3. Failure-path tests showing no automatic migration retry, snapshot before freeze, OFF after failure, or partial-success message.
-4. A documented recovery disposition for committed 069 failures; if restore is selected, retrieve the responsible server recovery authority and review its exact commands before they are used.
+The cooperative `$HOME/.msb-production-deploy.lock` prevents overlapping instances of this runner. It does not block direct dashboard actions or unrelated scripts. All active chats must honor the single directing-chat rule in the server procedure, including avoiding manual dashboard changes during deployment.
 
 ## Failure and recovery decisions
 
@@ -159,7 +156,7 @@ Required execution artifacts still to complete:
 | OFF failed | Controller's fail-closed ERROR path governs; do not manually open HBA/start writers to force green health |
 | Failure after ONLINE | Normal writes may exist; no automatic whole-database restore; reconcile them before any separately reviewed recovery |
 
-**RUNBOOK GAP FOUND:** the generic deployment runbook's newly-installed-function rollback example does not fully specify reversal of 069's replacements of existing functions plus persisted Day renumbering. This record defines a safe containment decision (remain fenced and inspect) but does not claim an executable restore procedure has been validated. Complete the appropriate recovery authority or accepted release-specific forward-recovery plan before execution clearance. Do not improvise DROP commands or restore the database merely to undo a UI issue.
+Committed-migration recovery uses the server-owned containment procedure: leave maintenance in place, retain the validated archive, inspect commit state and invariants, and select a separately reviewed forward correction or database restore. Automatic inverse SQL or whole-database restore is not part of this runner. This is a documented stop/recovery boundary, not a claim that a complete restore has been rehearsed. The newly-installed-function DROP example must not be applied to 069.
 
 A thread loss is not an instruction to retry. Read this record, staged journal, current controller status, exact live checkout and migration catalog state before choosing the next action. A snapshot path alone is not proof of a completed snapshot; require validation and hash evidence.
 
@@ -173,10 +170,10 @@ Update [Production Deployment Change Log](../../System_Documentation/Production_
 
 ## Review disposition
 
-Current status: documentation review draft; execution artifacts and committed-migration recovery resolution pending. Production unchanged. Do not resume execution until Greg's documentation-review hold is lifted and outstanding mechanical gates are satisfied.
+Current status: authorized release preparation complete; host preflight, migration, live acceptance and closeout pending. Production unchanged. Run preflight without `--deploy` first and inspect the short result. Only after that gate passes issue the authorized `--deploy` command. STOP never means rerun. See [plain-language operator instructions](../operatorSOP/Install_a_Reviewed_Setup_Change.md).
 
 ## Revision history
 
 | Date | Revision | Change |
 |---|---|---|
-| 2026-10-04 | Draft 1 | Captures merged release, verified evidence, maintenance stages, preservation contract, review hold and recovery gap |
+| 2026-10-04 | 1 | Adds tested runner and operator procedure; captures merged release, verified evidence, maintenance stages, preservation contract, review hold and recovery gap |
