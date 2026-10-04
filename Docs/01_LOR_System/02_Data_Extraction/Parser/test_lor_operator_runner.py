@@ -572,13 +572,19 @@ class OperatorRunnerTests(unittest.TestCase):
             result["baseline_manifest_path"]
         )
         self.assertTrue(baseline_path.is_file())
-        self.assertIn(
-            "Stage 01 current",
-            json.dumps(
-                json.loads(
-                    baseline_path.read_text(encoding="utf-8")
-                )
-            ),
+        baseline_manifest = json.loads(
+            baseline_path.read_text(encoding="utf-8")
+        )
+        expected_current_sha256 = runner_module.hashlib.sha256(
+            (self.current / "test.lorprev").read_bytes()
+        ).hexdigest()
+        self.assertEqual(
+            baseline_manifest["deep_contract"]["sha256"],
+            expected_current_sha256,
+        )
+        self.assertEqual(
+            baseline_manifest["files"][0]["sha256"],
+            expected_current_sha256,
         )
 
     def test_candidate_is_resolved_only_from_versioned_preview_root(self) -> None:
