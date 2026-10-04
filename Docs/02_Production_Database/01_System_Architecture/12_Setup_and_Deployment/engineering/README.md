@@ -13,13 +13,11 @@ Operator-facing instructions are separate under [`../operatorSOP/`](../operatorS
 
 Repository-wide Production deployment history is maintained newest-first in [`../../../../../../System_Documentation/Production_Deployment_Change_Log.md`](../../../../../../System_Documentation/Production_Deployment_Change_Log.md).
 
-## V0.3.38 day sequence and maintenance closeout
+## Current migration 069 / V0.3.38 evidence
 
-Migration 069 and PR #293 are Production accepted. Work Day numbers follow chronological dates in PLANNING/ACTIVE sessions, with stable day IDs and historical rows preserved. Historical Day Add, noted empty-day removal, passive scheduling audit and milestones are accepted. Ordinary + Add Work Days remains today/future only.
+[Controlled migration 069 record](../../../../../Setup/Acceptance/Setup_205_Migration_069_Deployment_Record.md): exact accepted/deployed identities, validated backup/hash, server maintenance PASS and Greg's protected browser PASS. Work Day sequence repair, Historical Day Add, noted empty-day removal, passive audit and milestones are accepted. The footer-date and dashboard wrapping/stage corrections are source-only presentation closeout, with installation still pending. Do not rerun migration 069.
 
-[Migration 069 controlled record](../../../../../Setup/Acceptance/Setup_205_Migration_069_Deployment_Record.md) contains the exact accepted/deployed identity, validated backup hash and retained maintenance/validation evidence. Greg accepted Production numbering, milestones, scrolling and Perform Work navigation. The October 4 footer and dashboard wrapping/stage corrections are source-only presentation closeout; their exact deployment is still pending. Do not rerun the successful migration or use chat memory as current runtime authority.
-
-[Install a reviewed Setup change](../../../../../Setup/operatorSOP/Install_a_Reviewed_Setup_Change.md) provides plain-language PASS/STOP and interrupted-terminal steps. Every UI candidate must pass the footer-date check before deployment.
+[Install a reviewed Setup change](../../../../../Setup/operatorSOP/Install_a_Reviewed_Setup_Change.md) provides the current plain-language procedure. Every UI candidate must pass the visible date check before deployment; every resumed chat must read the current server runbook and release record. Historical sections below remain evidence, not current runtime instructions.
 
 ## 2026 Launch Status
 
@@ -237,7 +235,7 @@ Server/runtime authority remains `Gregovate/MSB-Server-Management`.
 
 The accepted #184 and #167 rollback archives are retained. Restoration is a governed database operation and must reconcile legitimate post-deployment work; do not use those archives as casual UI rollback points.
 
-The current live Setup application is `e2f58d016f015f1ac695940e9ab67c61c04a8a8a` (`V0.3.38-setup-day-milestones`). V0.3.34 installed migration 067 and therefore has a migration-aware rollback boundary. The validated pre-deployment archive is `/home/msbadmin/backups/setup-205/msb-pre-setup-205-v034-20261002T005512.dump` with SHA256 `7d2017c6f55993b7464d10ccbd3b80f0fe85ff1fac866f6521d63e50b1e01f66`; governed Setup fingerprint remained `9951600040f7b01c75b8c104b4ddeb8c` through deployment. Use the Production Database change runbook for any rollback or recovery; do not treat a source checkout rollback as sufficient across migration 067. Older #206/#88/#172/#175/#132/#184/#167/#204 rollback archives remain historical recovery evidence for the releases that created them.
+The current live Setup application is `e2f58d016f015f1ac695940e9ab67c61c04a8a8a` (`V0.3.38-setup-day-milestones`). The migration 069 archive/hash and accepted report are in the controlled record linked above. The V0.3.34 material below is historical rollback evidence. V0.3.34 installed migration 067 and therefore has a migration-aware rollback boundary. The validated pre-deployment archive is `/home/msbadmin/backups/setup-205/msb-pre-setup-205-v034-20261002T005512.dump` with SHA256 `7d2017c6f55993b7464d10ccbd3b80f0fe85ff1fac866f6521d63e50b1e01f66`; governed Setup fingerprint remained `9951600040f7b01c75b8c104b4ddeb8c` through deployment. Use the Production Database change runbook for any rollback or recovery; do not treat a source checkout rollback as sufficient across migration 067. Older #206/#88/#172/#175/#132/#184/#167/#204 rollback archives remain historical recovery evidence for the releases that created them.
 
 ## Resume Checklist
 
