@@ -401,6 +401,40 @@ def test_205_schedule_print_keeps_landscape_while_task_cover_sheet_is_portrait()
     assert "break-after: avoid;" in css
 
 
+def test_205_work_day_calendar_and_database_reject_past_dates() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    sql = read_db("068_add_setup_empty_work_day_removal.sql")
+    validation = read_acceptance("setup_205_empty_work_day_removal_disposable_validation.sql")
+
+    assert "function board205TodayDateKey()" in ui
+    assert "const inPast = date < todayKey;" in ui
+    assert "Past dates cannot be added as Setup Work Days" in ui
+    assert "date < board205TodayDateKey()" in ui
+    assert "ops.reject_past_setup_work_day_insert" in sql
+    assert "NEW.work_date < current_date" in sql
+    assert "Setup work days cannot be added in the past" in sql
+    assert "Past Setup work day was unexpectedly addable" in validation
+
+
+def test_205_schedulable_tasks_print_is_separate_blocking_on_report() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert "Print Schedulable Tasks" in ui
+    assert "function board205SchedulableTasksForReport()" in ui
+    assert "!board205HasHardBlock(task)" in ui
+    assert "board205FinderStatusFamily(task) === 'READY'" in ui
+    assert "Number(task.unworked_assignment_count || 0) === 0" in ui
+    assert "String(task.task_action_type || '').toUpperCase() !== 'GATE'" in ui
+    assert "board205FinderCompare(a, b, 'STAGE')" in ui
+    assert "Hard prerequisite blockers excluded" in ui
+    assert "NOT READY conditions shown for Manager judgment" in ui
+    assert "Stage / Scene order" in ui
+    assert "setup-print-schedulable-tasks" in ui
+    assert "@page setup-schedulable-tasks" in css
+    assert "page: setup-schedulable-tasks;" in css
+
+
 def test_205_light_mode_strengthens_schedule_structure_without_changing_dark_palette() -> None:
     css = read_app("setup_scheduling_board.css")
 
