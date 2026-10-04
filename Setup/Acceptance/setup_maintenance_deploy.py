@@ -71,6 +71,8 @@ class Deploy:
         self.stage = stage
         self.log.write('STAGE ' + stage + '\n')
         self.journal()
+        if self.maintenance_started:
+            self.controller('stage', 'PR293 ' + stage)
 
     @staticmethod
     def frozen(state):
