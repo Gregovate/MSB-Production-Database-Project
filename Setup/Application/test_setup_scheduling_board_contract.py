@@ -757,7 +757,7 @@ def test_205_scheduler_panes_scroll_independently_with_drag_edge_autoscroll() ->
     assert "grid-template-rows: auto minmax(0, 1fr)" in css
     assert "setup-board205-planning-header" in ui
     assert "margin: 0.2rem 0 0.55rem" in css
-    assert "overflow-y: visible" in css
+    assert "max-height: min(30rem, 65vh)" in css
 
 
 def test_205_captain_learning_cancel_wording_preserves_schedule_only() -> None:
@@ -1004,7 +1004,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-10-04.3" in html
+    assert "setup_scheduling_board.css?v=2026-10-04.4" in html
     assert "setup_scheduling_board.js?v=2026-10-04.2" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
@@ -1664,3 +1664,19 @@ def test_historical_day_action_remains_visible_in_dark_mode() -> None:
     assert "background: #1c3148;" in css
     assert "border-color: #4f8fc3;" in css
     assert "color: #e8f2fb;" in css
+
+
+def test_historical_button_rule_does_not_split_shared_scroll_container_selector() -> None:
+    css = read_app("setup_scheduling_board.css")
+    import re
+    shared = re.search(r"\.setup-board205-backlog,\s*\.setup-board205-board\s*\{([^}]+)\}", css)
+    assert shared is not None
+    assert "overflow-y: auto;" in shared.group(1)
+    assert "min-width: 0;" in shared.group(1)
+    assert not re.search(r"\.setup-board205-backlog,\s*#setup-board205-historical-day", css)
+
+
+def test_narrow_board_keeps_large_task_lists_in_scrollable_panels():
+    css = read_app("setup_scheduling_board.css")
+    assert "max-height: min(30rem, 65vh);" in css
+    assert "overflow-y: visible;" not in css

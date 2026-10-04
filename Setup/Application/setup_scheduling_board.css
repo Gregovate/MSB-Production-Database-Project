@@ -194,8 +194,6 @@
   }
 }
 
-.setup-board205-backlog,
-
 #setup-board205-historical-day {
   border-color: color-mix(in srgb, var(--accent, #0b6ea8) 50%, var(--border, #d9e0e8));
   background: color-mix(in srgb, var(--accent, #0b6ea8) 12%, var(--panel, #fff));
@@ -209,6 +207,7 @@ html[data-theme="dark"] #setup-board205-historical-day {
   color: #e8f2fb;
 }
 
+.setup-board205-backlog,
 .setup-board205-board {
   min-width: 0;
   max-height: none;
@@ -1150,9 +1149,10 @@ html[data-theme="dark"] {
   .setup-board205-backlog,
   .setup-board205-board {
     height: auto;
-    max-height: none;
-    overflow-y: visible;
-    scrollbar-gutter: auto;
+    min-height: 0;
+    max-height: min(30rem, 65vh);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
   }
 
   .setup-board205-form-grid {
