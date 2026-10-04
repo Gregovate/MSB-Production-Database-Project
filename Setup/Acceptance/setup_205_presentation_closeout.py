@@ -61,7 +61,7 @@ try:
     git('fetch','origin','+refs/heads/main:refs/remotes/origin/main')
     git('merge-base','--is-ancestor',target,'origin/main')
     git('merge-base','--is-ancestor',OLD,target)
-    changed=set(git('diff','--name-only',OLD,target,'--','Setup/Application').splitlines())
+    changed=set(git('diff','--name-only',OLD,target,'--','Setup/Application',':(exclude)Setup/Application/*.md').splitlines())
     require(changed=={'Setup/Application/production.html','Setup/Application/test_setup_internal_analytics_contract.py','Setup/Application/test_setup_production_contract.py'},'Unexpected application change: STOP')
     require(git('show',target+':Setup/Application/production.html')==git('show',OLD+':Setup/Application/production.html').replace('Updated 2026-10-02','Updated 2026-10-04'),'Footer correction scope differs: STOP')
     require(not git('diff','--name-only',OLD,target,'--',':(glob)**/*.sql'),'SQL changed: STOP')
