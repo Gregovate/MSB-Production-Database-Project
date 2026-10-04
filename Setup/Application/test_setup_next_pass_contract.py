@@ -128,7 +128,7 @@ def test_next_pass_catalog_waits_for_organization_readiness() -> None:
     assert "priorNextRenderLibrary" not in text
     assert "if (!setupNextState.scenes.length)" not in text
     assert "if (setupNextState.scenes.length) renderLibrary();" not in text
-    assert "setup_next_pass.js?v=2026-09-30.10" in html
+    assert "setup_next_pass.js?v=2026-10-03.1" in html
 
 
 def test_perform_work_shows_planned_and_actual_person_hours() -> None:
