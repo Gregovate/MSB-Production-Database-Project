@@ -364,6 +364,42 @@ def test_205_scheduled_task_finder_locates_existing_schedule_assignments() -> No
     assert "function board205CollapseScheduledSearchResults" in ui
 
 
+def test_205_empty_work_day_removal_is_fail_closed_end_to_end() -> None:
+    sql = read_db("068_add_setup_empty_work_day_removal.sql")
+    api = read_app("setup_scheduling_board_api.py")
+    repo = read_app("setup_scheduling_board_repository.py")
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "ops.remove_empty_setup_work_day" in sql
+    assert "v_day_status <> 'PLANNED'" in sql
+    assert "v_crew_count <> 1" in sql
+    assert "v_crew_number <> 1" in sql
+    assert "v_crew_code <> 'A'" in sql
+    assert "v_captain_person_id IS NOT NULL" in sql
+    assert "v_am_planned_crew_count IS NOT NULL" in sql
+    assert "v_pm_planned_crew_count IS NOT NULL" in sql
+    assert "FROM ops.setup_work_day_task wdt" in sql
+    assert "FROM ops.setup_task_progress p" in sql
+    assert "ops.resequence_setup_future_work_days(v_session_id)" in sql
+    assert '@setup_scheduling_board_api.delete("/api/setup/scheduling-board/work-days/<int:setup_work_day_id>")' in api
+    assert "def remove_work_day(" in repo
+    assert "function board205CanRemoveWorkDay(day)" in ui
+    assert "Remove Empty Day" in ui
+    assert "Crew A only, Captain TBD, no staffing counts, no tasks, and no day notes." in ui
+
+
+def test_205_schedule_print_keeps_landscape_while_task_cover_sheet_is_portrait() -> None:
+    css = read_app("setup_scheduling_board.css")
+
+    assert "@page {" in css
+    assert "size: landscape;" in css
+    assert "@page setup-perform-task {" in css
+    assert "size: portrait;" in css
+    assert "page: setup-perform-task;" in css
+    assert css.count("@page {") == 1
+    assert "break-after: avoid;" in css
+
+
 def test_205_light_mode_strengthens_schedule_structure_without_changing_dark_palette() -> None:
     css = read_app("setup_scheduling_board.css")
 
@@ -933,8 +969,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-10-02.9" in html
-    assert "setup_scheduling_board.js?v=2026-10-02.8" in html
+    assert "setup_scheduling_board.css?v=2026-10-03.1" in html
+    assert "setup_scheduling_board.js?v=2026-10-03.1" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
