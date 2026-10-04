@@ -1193,17 +1193,18 @@ async function openNextCorrectionIntake(details) {
   correctionForm.querySelector('.next-problem-text')?.focus();
 }
 
+// Shared assignment state: readiness and historical locking remain separate cues.
+function nextSetupAssignmentStatus(task) {
+  const executionStatus = String(task.execution_status || '').toUpperCase();
+  const boardStatus = String(task.board_status || '').toUpperCase();
+  if (task.effective_complete || executionStatus === 'COMPLETE' || boardStatus === 'COMPLETE') return 'COMPLETE';
+  if (executionStatus === 'IN_PROGRESS' || boardStatus === 'NEEDS_SCHEDULING_AGAIN') return 'IN_PROGRESS';
+  return 'SCHEDULED';
+}
+
 function nextPerformAssignmentStatus(assignment) {
   const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
-  const executionStatus = String(task.execution_status || 'PLANNED').toUpperCase();
-  const boardStatus = String(task.board_status || '').toUpperCase();
-  return executionStatus === 'COMPLETE' || executionStatus === 'IN_PROGRESS'
-    ? executionStatus
-    : boardStatus === 'SCHEDULED'
-      ? 'SCHEDULED'
-      : boardStatus === 'NEEDS_SCHEDULING_AGAIN'
-        ? 'IN_PROGRESS'
-        : executionStatus;
+  return nextSetupAssignmentStatus(task);
 }
 
 function nextPerformAssignmentCard(assignment) {
@@ -1225,7 +1226,7 @@ function nextPerformAssignmentCard(assignment) {
         <span><strong>${escapeHtml(assignment.task_name)}</strong>
           <span class="muted"> · ${escapeHtml(nextTaskScopeLabel(assignment))}</span>
         </span>
-        <span class="pill ${status === 'COMPLETE' ? 'verified' : status === 'IN_PROGRESS' ? 'unverified' : ''}">${escapeHtml(status)}</span>
+        <span class="pill setup-work-status" data-work-status="${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span>
       </summary>
       <div class="next-perform-assignment-context">
         Crew ${escapeHtml(assignment.crew_lane || '—')} · ${escapeHtml(captain)}

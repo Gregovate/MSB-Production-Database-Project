@@ -1784,35 +1784,55 @@ html[data-theme="light"] .setup-board205-carryover {
   }
 }
 
-/* Completion is separate from historical locking: reported work may be unfinished. */
-.setup-board205-assignment.completed-assignment {
-  background: #e2e8f0;
-  border-color: #94a3b8;
-  border-left: 5px solid #64748b;
+/* Shared task-state palette for Schedule and Perform Work. */
+:root {
+  --setup-status-scheduled-bg: #dbeafe;
+  --setup-status-scheduled-text: #1e40af;
+  --setup-status-scheduled-border: #60a5fa;
+  --setup-status-progress-bg: #fef3c7;
+  --setup-status-progress-text: #92400e;
+  --setup-status-progress-border: #d97706;
+  --setup-status-complete-bg: #e2e8f0;
+  --setup-status-complete-text: #334155;
+  --setup-status-complete-border: #94a3b8;
 }
-.setup-board205-assignment.completed-assignment .setup-board205-task-title,
-.setup-board205-assignment.completed-assignment .setup-board205-meta,
-.setup-board205-assignment.completed-assignment .setup-board205-lock {
-  color: #334155;
+html[data-theme="dark"] {
+  --setup-status-scheduled-bg: #1e3a5f;
+  --setup-status-scheduled-text: #bfdbfe;
+  --setup-status-scheduled-border: #60a5fa;
+  --setup-status-progress-bg: #493514;
+  --setup-status-progress-text: #fde68a;
+  --setup-status-progress-border: #fbbf24;
+  --setup-status-complete-bg: #334155;
+  --setup-status-complete-text: #e2e8f0;
+  --setup-status-complete-border: #94a3b8;
 }
-.setup-board205-assignment .completed-assignment-badge {
-  background: #cbd5e1;
-  border-color: #64748b;
-  color: #334155;
+.setup-work-status {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  font-size: 0.75rem;
   font-weight: 800;
+  white-space: nowrap;
 }
-html[data-theme="dark"] .setup-board205-assignment.completed-assignment {
-  background: #293241;
-  border-color: #94a3b8;
-  border-left-color: #94a3b8;
+.setup-work-status[data-work-status="SCHEDULED"],
+.setup-work-status[data-work-status="PLANNED"],
+.setup-board205-badge.status-scheduled {
+  background: var(--setup-status-scheduled-bg);
+  color: var(--setup-status-scheduled-text);
+  border-color: var(--setup-status-scheduled-border);
 }
-html[data-theme="dark"] .setup-board205-assignment.completed-assignment .setup-board205-task-title,
-html[data-theme="dark"] .setup-board205-assignment.completed-assignment .setup-board205-meta,
-html[data-theme="dark"] .setup-board205-assignment.completed-assignment .setup-board205-lock {
-  color: #d6dde7;
+.setup-work-status[data-work-status="IN_PROGRESS"],
+.setup-board205-badge.status-reschedule {
+  background: var(--setup-status-progress-bg);
+  color: var(--setup-status-progress-text);
+  border-color: var(--setup-status-progress-border);
 }
-html[data-theme="dark"] .setup-board205-assignment .completed-assignment-badge {
-  background: #475569;
-  border-color: #94a3b8;
-  color: #f1f5f9;
+.setup-work-status[data-work-status="COMPLETE"],
+.setup-board205-badge.status-complete {
+  background: var(--setup-status-complete-bg);
+  color: var(--setup-status-complete-text);
+  border-color: var(--setup-status-complete-border);
 }
