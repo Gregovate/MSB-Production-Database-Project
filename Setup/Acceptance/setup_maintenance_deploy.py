@@ -7,6 +7,7 @@ except ImportError:  # Allows non-Linux engineering tests; execution is Linux-on
     fcntl = None
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -119,6 +120,13 @@ class Deploy:
         require(self.git('rev-parse', m['candidate'] + '^{tree}') == m['tree'], 'Candidate tree changed')
         require(self.git('rev-parse', m['target'] + ':' + m['migration']) == m['migration_blob'],
                 'Migration blob changed')
+        ui_date = self.git('log', '-1', '--format=%cs', m['target'], '--',
+                           ':(glob)Setup/Application/**/*.html',
+                           ':(glob)Setup/Application/**/*.css',
+                           ':(glob)Setup/Application/**/*.js')
+        footer = self.git('show', m['target'] + ':Setup/Application/production.html')
+        require(bool(ui_date) and re.findall(r'Updated\s+(\d{4}-\d{2}-\d{2})', footer) == [ui_date],
+                'Stale visible UI date: update footer before deployment')
         self.sql("""DO $$ BEGIN
           IF to_regprocedure('ops.remove_empty_setup_work_day(text,bigint)') IS NULL
              OR to_regprocedure('ops.reject_past_setup_work_day_insert()') IS NULL
@@ -289,3 +297,4 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
+
