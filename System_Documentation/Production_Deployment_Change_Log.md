@@ -38,6 +38,15 @@ Each deployment entry must record, when applicable:
 
 Documentation-only repository changes that do not alter Production do not require a deployment entry.
 
+## 2026-10-04 — Setup footer and maintenance dashboard presentation — PASS
+
+- Current Setup source: PR [#295](https://github.com/Gregovate/MSB-Production-Database-Project/pull/295) merge `9b9d6a431c322f37221c24ef1901439acc063ad7`; version `V0.3.38-setup-day-milestones`; visible footer `Updated 2026-10-04`.
+- Administrator dashboard now wraps long backup paths/hashes within cards and shows the PR293 stage. Source: Server Management PR [#63](https://github.com/Gregovate/MSB-Server-Management/pull/63), merge `8ddc11a4b8cf056d3d6e03de3f9b158e21529645`; installed blob `08394cc176b0534bebe17c01d30e4cfb66da7b56`.
+- Initial cross-repository fetch prompted before installation. Corrected transfer tooling PR [#296](https://github.com/Gregovate/MSB-Production-Database-Project/pull/296), merge `13a3e91b72cca70841442a8325ec578ba8387967`, packages and verifies the accepted artifact without another repository login. Tooling identity differs from deployed application identity.
+- Source-only host regression, UI date gate, focused live regression, health, unchanged Setup data fingerprint/shared checkout and ONLINE state PASS. No migration or maintenance re-entry; only Setup and administrator services restarted.
+- Report: `/home/msbadmin/setup-deployment-reports/PR293-presentation-20261004T133051Z`. Greg confirmed footer and refreshed dashboard PASS.
+- Prior application source: `e2f58d016f015f1ac695940e9ab67c61c04a8a8a`; prior administrator source retained in the report folder. [Controlled record](../Setup/Acceptance/Setup_205_Migration_069_Deployment_Record.md) owns detailed evidence and migration backup boundary. Owning issue: [#205](https://github.com/Gregovate/MSB-Production-Database-Project/issues/205).
+
 ## 2026-10-04 — Setup V0.3.38 / migration 069 — Production accepted
 
 - Work Day numbers now follow chronological dates in open sessions; Historical Day Add, noted empty-day removal, passive scheduling audit and annual milestones are accepted.
@@ -46,7 +55,7 @@ Documentation-only repository changes that do not alter Production do not requir
 - Installed maintenance controller entry/freeze/snapshot/migration/preservation/promotion/return/health/regression PASS; Greg observed maintenance and accepted refreshed Production screens. Shared checkout unchanged.
 - Reports: `/home/msbadmin/setup-deployment-reports/PR293-20261004T124235Z` and `PR293-20261004T124422Z`.
 - Validated rollback dump: `/home/msbadmin/backups/setup-205/msb-pre-pr293-069-PR293-20261004T124422Z.dump`; SHA-256 `d1a8ec4f9345d5fee6b8f0168c72f9f857aeea8d66a81b257ad92de1bd8d4450`.
-- [Controlled acceptance record](../Setup/Acceptance/Setup_205_Migration_069_Deployment_Record.md). Issue [#205](https://github.com/Gregovate/MSB-Production-Database-Project/issues/205) remains in presentation closeout for stale footer date and dashboard wrapping/stage. No second migration is required.
+- [Controlled acceptance record](../Setup/Acceptance/Setup_205_Migration_069_Deployment_Record.md). The presentation correction completed afterward, as recorded above. No second migration was required.
 
 ## 2026-10-01 — Setup V0.3.34-scheduling-readiness-fixes
 

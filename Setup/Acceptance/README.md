@@ -168,3 +168,11 @@ Only after explicit operator acceptance switch to the Server Management `Product
 - `Setup_Extra_Material_Catalog_UOM_Production_Acceptance_2026-09-15.md` — #189 inline Extra Material catalog workflow plus #191 governed UOM catalog/migration 049.
 - `Setup_Extra_Material_Source_Containers_Production_Acceptance_2026-09-16.md` — #198 Manager expected-source Container maintenance, source-allocation audit, and Northern Lights 66-EA correction.
 - `Setup_Expected_Duration_Hours_Minutes_Production_Acceptance_2026-09-17.md` — #204 reusable expected duration Hours / Minutes UI with total-minute durable storage.
+
+## Current V0.3.38 Production closeout
+
+[Migration 069 and presentation acceptance](Setup_205_Migration_069_Deployment_Record.md) records the current deployed source, validated migration backup, retained reports and operator PASS. The successful migration and presentation installer are historical execution tools, not commands to rerun after success.
+
+Every UI deployment must run `check_setup_ui_update_date.py` against the exact target before mutation. It compares the visible footer to the latest HTML/CSS/JS commit date; documentation-only commits do not advance that date. Full application regression remains required by the governing workflow.
+
+Package accepted cross-repository artifacts with their owning source/merge and exact file identity. Do not derive a second private-repository URL from the Production origin or assume shared credentials. Keep report output on the server and return only PASS/STOP and its location.

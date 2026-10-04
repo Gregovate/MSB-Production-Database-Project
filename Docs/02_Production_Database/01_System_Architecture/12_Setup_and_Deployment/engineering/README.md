@@ -5,23 +5,23 @@
 | Document Type | Engineering Handoff Portal |
 | System | Production Database — Setup and Deployment |
 | Audience | Greg, maintainers, database administrators, future engineering sessions |
-| Status | CURRENT HANDOFF — V0.3.38 migration 069 Production accepted; presentation closeout pending |
+| Status | CURRENT HANDOFF — V0.3.38 migration 069 and presentation Production accepted |
 | Owner | MSB Production Database engineering |
 | Last Reviewed | 2026-10-04 |
 
 Operator-facing instructions are separate under [`../operatorSOP/`](../operatorSOP/README.md).
 
-Repository-wide Production deployment history is maintained newest-first in [`../../../../../../System_Documentation/Production_Deployment_Change_Log.md`](../../../../../../System_Documentation/Production_Deployment_Change_Log.md).
+Repository-wide Production deployment history is maintained newest-first in [`../../../../../System_Documentation/Production_Deployment_Change_Log.md`](../../../../../System_Documentation/Production_Deployment_Change_Log.md).
 
 ## Current migration 069 / V0.3.38 evidence
 
-[Controlled migration 069 record](../../../../../Setup/Acceptance/Setup_205_Migration_069_Deployment_Record.md): exact accepted/deployed identities, validated backup/hash, server maintenance PASS and Greg's protected browser PASS. Work Day sequence repair, Historical Day Add, noted empty-day removal, passive audit and milestones are accepted. The footer-date and dashboard wrapping/stage corrections are source-only presentation closeout, with installation still pending. Do not rerun migration 069.
+[Controlled migration 069 record](../../../../../Setup/Acceptance/Setup_205_Migration_069_Deployment_Record.md): exact accepted/deployed identities, validated backup/hash, server maintenance PASS and Greg's protected browser PASS. Work Day sequence repair, Historical Day Add, noted empty-day removal, passive audit and milestones are accepted. The footer-date and dashboard wrapping/stage corrections passed source-only installation and refreshed operator review. Current Setup source is PR #295 merge `9b9d6a431c322f37221c24ef1901439acc063ad7`, with visible date October 4. The transfer runner PR #296 merge is separate tooling, not the application identity. Do not rerun migration 069.
 
 [Install a reviewed Setup change](../../../../../Setup/operatorSOP/Install_a_Reviewed_Setup_Change.md) provides the current plain-language procedure. Every UI candidate must pass the visible date check before deployment; every resumed chat must read the current server runbook and release record. Historical sections below remain evidence, not current runtime instructions.
 
 ## 2026 Launch Status
 
-The real 2026 Setup Session has been created and is now the active annual planning/execution context. The initial accepted Scheduling Board launch target was `06a6536d92db5c7352beeed496563ed9bfdb7146`. As of 2026-10-04, the current Production runtime is `e2f58d016f015f1ac695940e9ab67c61c04a8a8a` (`V0.3.38-setup-day-milestones`). The accepted Setup surface includes #205 rolling Scheduling Board/Captain dispatch, #206 bounded Pick List demand/frontier + transient Pick Delay, #88 persisted movement capture, #175 Perform Work / #132 Report Work, and #172 Report Correction. The migration tail now includes 063 Pick List Delay, 064 Extra Material requirement restore, 065 Setup movement capture, and 066 Manager override cancel-after-movement correction.
+The real 2026 Setup Session has been created and is now the active annual planning/execution context. The initial accepted Scheduling Board launch target was `06a6536d92db5c7352beeed496563ed9bfdb7146`. As of 2026-10-04, the current Production runtime is `9b9d6a431c322f37221c24ef1901439acc063ad7` (`V0.3.38-setup-day-milestones`). The accepted Setup surface includes #205 rolling Scheduling Board/Captain dispatch, #206 bounded Pick List demand/frontier + transient Pick Delay, #88 persisted movement capture, #175 Perform Work / #132 Report Work, and #172 Report Correction. The accepted migration tail includes 063 Pick List Delay, 064 Extra Material requirement restore, 065 movement capture, 066 override cancellation, 067 Annual Readiness hold, 068 empty-day removal and 069 chronological Day numbering/historical commands/passive scheduling audit.
 
 The launch deployment installed migrations 057/058 after the exact candidate passed the full Setup/Application regression (458/458) and disposable browser acceptance. The Scheduling Board preserves the accepted Catalog/Plan ordering, lavender material-task cue, Day-view filters, completed/cancelled-day handling, performance improvements, and current scheduling behavior.
 
@@ -50,9 +50,9 @@ The real 2026 Setup Session has since been created under #122 and is live. Mater
 ```text
 protected application = https://my.sheboyganlights.org/setup/
 initial Scheduling Board launch target = 06a6536d92db5c7352beeed496563ed9bfdb7146
-current live Setup SHA = e2f58d016f015f1ac695940e9ab67c61c04a8a8a
+current live Setup SHA = 9b9d6a431c322f37221c24ef1901439acc063ad7
 version = V0.3.38-setup-day-milestones
-current accepted migration tail = 063 Pick List Delay + 064 Extra Material requirement restore + 065 Setup movement capture + 066 Manager override cancel-after-movement correction + 067 governed Annual Readiness hold command
+current accepted migration tail = through 069 chronological Day numbering/historical commands/passive audit; prior accepted 068 empty-day removal and 067 Annual Readiness hold retained
 current preservation proof = migration069 retained report; online business data continues changing
 current annual reusable-name mismatches = 0
 2025 Setup Session = historical / verification evidence
@@ -220,7 +220,7 @@ Acceptance record:
 #175 Captain Work List / Procedure context — PRODUCTION ACCEPTED / CLOSED
 #132 Report Work — PRODUCTION ACCEPTED / CLOSED
 #172 Report Correction / field observation intake — PRODUCTION ACCEPTED / CLOSED
-#205 Scheduling Board / Captain dispatch — migration069 PRODUCTION ACCEPTED / presentation closeout pending
+#205 Scheduling Board / Captain dispatch — migration069 and presentation PRODUCTION ACCEPTED / repository closeout recorded
 #206 Pick List / material readiness / Pick Delay — PRODUCTION ACCEPTED / CLOSEOUT COMPLETE
 #88 persisted PICKED/movement execution — ACTIVE LAUNCH GATE
 #222 performance protection in parallel
@@ -235,7 +235,7 @@ Server/runtime authority remains `Gregovate/MSB-Server-Management`.
 
 The accepted #184 and #167 rollback archives are retained. Restoration is a governed database operation and must reconcile legitimate post-deployment work; do not use those archives as casual UI rollback points.
 
-The current live Setup application is `e2f58d016f015f1ac695940e9ab67c61c04a8a8a` (`V0.3.38-setup-day-milestones`). The migration 069 archive/hash and accepted report are in the controlled record linked above. The V0.3.34 material below is historical rollback evidence. V0.3.34 installed migration 067 and therefore has a migration-aware rollback boundary. The validated pre-deployment archive is `/home/msbadmin/backups/setup-205/msb-pre-setup-205-v034-20261002T005512.dump` with SHA256 `7d2017c6f55993b7464d10ccbd3b80f0fe85ff1fac866f6521d63e50b1e01f66`; governed Setup fingerprint remained `9951600040f7b01c75b8c104b4ddeb8c` through deployment. Use the Production Database change runbook for any rollback or recovery; do not treat a source checkout rollback as sufficient across migration 067. Older #206/#88/#172/#175/#132/#184/#167/#204 rollback archives remain historical recovery evidence for the releases that created them.
+The current live Setup application is `9b9d6a431c322f37221c24ef1901439acc063ad7` (`V0.3.38-setup-day-milestones`). The migration 069 archive/hash and accepted report are in the controlled record linked above. The V0.3.34 material below is historical rollback evidence. V0.3.34 installed migration 067 and therefore has a migration-aware rollback boundary. The validated pre-deployment archive is `/home/msbadmin/backups/setup-205/msb-pre-setup-205-v034-20261002T005512.dump` with SHA256 `7d2017c6f55993b7464d10ccbd3b80f0fe85ff1fac866f6521d63e50b1e01f66`; governed Setup fingerprint remained `9951600040f7b01c75b8c104b4ddeb8c` through deployment. Use the Production Database change runbook for any rollback or recovery; do not treat a source checkout rollback as sufficient across migration 067. Older #206/#88/#172/#175/#132/#184/#167/#204 rollback archives remain historical recovery evidence for the releases that created them.
 
 ## Resume Checklist
 
@@ -274,11 +274,11 @@ Before the next Setup change:
 
 ## #88 Pick Mode / Movement Capture — ACTIVE LAUNCH GATE / V0.3.29 RELEASE CONTEXT
 
-V0.3.29 Pick Mode / Movement Capture was Production accepted and later superseded by V0.3.31 and the current V0.3.33 Setup application:
+V0.3.29 Pick Mode / Movement Capture was Production accepted and later superseded by V0.3.31 and V0.3.33. The following is the historical V0.3.33 checkpoint; current runtime is recorded above:
 
 ```text
 historical #88 release = V0.3.29-pick-clarity
-current Production     = e9839123e7483d7ced630b3dc6ab8f377c3f3262 / V0.3.33-material-status-review-fixes
+historical V0.3.33 source = e9839123e7483d7ced630b3dc6ab8f377c3f3262 / V0.3.33-material-status-review-fixes
 ```
 
 The #88 movement-capture foundation remains active behavior inside the current Setup release; this section preserves release/design context rather than declaring V0.3.29 to be the current runtime.
