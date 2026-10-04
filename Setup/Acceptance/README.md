@@ -137,9 +137,11 @@ Older Setup acceptance files remain historical evidence for the feature that cre
 
 If the reusable launchers cannot safely express a future requirement, treat that as an acceptance-tooling gap: improve the reusable tooling first, contract-test the improvement, then rerun the exact candidate. Do not substitute an ad-hoc interactive SSH procedure.
 
-## Migration 069 deployment review — DRAFT
+## Migration 069 controlled deployment
 
-[Setup #205 Migration 069 Deployment Record](Setup_205_Migration_069_Deployment_Record.md) records the merged release, verified live/acceptance evidence, Issue #37 maintenance stages, preservation checks, failure decisions and the current operator review hold. It is a draft and does not clear Production execution. Runtime procedure remains owned by Server Management.
+[Setup #205 Migration 069 Deployment Record](Setup_205_Migration_069_Deployment_Record.md) records the merged release, verified live/acceptance evidence, Issue #37 maintenance stages, preservation checks and failure decisions. The release-specific runner and its failure-path tests are versioned here. Host preflight must PASS before the authorized deployment. Runtime procedure remains owned by Server Management.
+
+Operator instructions: [Install a reviewed Setup change](../operatorSOP/Install_a_Reviewed_Setup_Change.md).
 
 ## Production gate
 
