@@ -6,6 +6,25 @@
 
 BEGIN;
 
+CREATE OR REPLACE FUNCTION ops.reject_past_setup_work_day_insert()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = pg_catalog, ops
+AS $function$
+BEGIN
+    IF NEW.work_date < current_date THEN
+        RAISE EXCEPTION USING ERRCODE = '22023',
+            MESSAGE = 'Setup work days cannot be added in the past';
+    END IF;
+    RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS trg_setup_work_day_reject_past_insert ON ops.setup_work_day;
+CREATE TRIGGER trg_setup_work_day_reject_past_insert
+BEFORE INSERT ON ops.setup_work_day
+FOR EACH ROW EXECUTE FUNCTION ops.reject_past_setup_work_day_insert();
+
 CREATE OR REPLACE FUNCTION ops.remove_empty_setup_work_day(
     p_email text,
     p_setup_work_day_id bigint
@@ -117,5 +136,8 @@ GRANT EXECUTE ON FUNCTION ops.remove_empty_setup_work_day(text,bigint) TO fieldw
 
 COMMIT;
 
-SELECT to_regprocedure('ops.remove_empty_setup_work_day(text,bigint)') IS NOT NULL
-    AS empty_work_day_removal_ready;
+SELECT
+    to_regprocedure('ops.remove_empty_setup_work_day(text,bigint)') IS NOT NULL
+        AS empty_work_day_removal_ready,
+    to_regprocedure('ops.reject_past_setup_work_day_insert()') IS NOT NULL
+        AS past_work_day_insert_guard_ready;
