@@ -98,7 +98,7 @@ CREATE INDEX IF NOT EXISTS ix_setup_schedule_event_assignment
     WHERE setup_work_day_task_id IS NOT NULL;
 
 REVOKE ALL ON ops.setup_schedule_event FROM PUBLIC;
-GRANT SELECT ON ops.setup_schedule_event TO fieldwiring_app;
+REVOKE ALL ON ops.setup_schedule_event FROM fieldwiring_app;
 
 /* --------------------------------------------------------------------------
    SETUP DAY NUMBER = CHRONOLOGICAL POSITION OF RETAINED WORK DAYS
@@ -168,7 +168,7 @@ BEGIN
     FOR v_session_id IN
         SELECT ss.setup_session_id
         FROM ops.setup_session ss
-        WHERE ss.session_status <> 'HISTORICAL_VERIFICATION'
+        WHERE ss.session_status IN ('PLANNING','ACTIVE')
         ORDER BY ss.season_year, ss.setup_session_id
     LOOP
         PERFORM ops.resequence_setup_future_work_days(v_session_id);
@@ -261,43 +261,27 @@ BEGIN
             MESSAGE = 'A Setup work day already exists for this date';
     END IF;
 
-    SELECT coalesce(max(wd.setup_day_number), 0) + 1
-      INTO v_day_number
-    FROM ops.setup_work_day wd
-    WHERE wd.setup_session_id = v_session_id;
-
     PERFORM pg_catalog.set_config('app.directus_user_uuid', v_directus_user_id::text, true);
     PERFORM pg_catalog.set_config('app.setup_allow_past_work_day', '1', true);
 
-    INSERT INTO ops.setup_work_day(
-        setup_session_id,
-        work_date,
-        setup_day_number,
-        day_status,
-        notes
-    ) VALUES (
-        v_session_id,
+    /* Route the correction through the accepted governed work-day command so
+       Crew A creation, normal validation, and future command semantics stay in
+       one place. The private transaction-local setting only bypasses the
+       ordinary past-date trigger for this Manager correction call. */
+    SELECT u.setup_work_day_id,
+           u.setup_day_number
+      INTO v_day_id,
+           v_day_number
+    FROM ops.upsert_setup_work_day(
+        p_email,
+        p_season_year,
         p_work_date,
-        v_day_number,
+        NULL,
         'PLANNED',
-        nullif(btrim(p_note), '')
-    )
-    RETURNING ops.setup_work_day.setup_work_day_id
-         INTO v_day_id;
-
-    INSERT INTO ops.setup_work_day_crew(
-        setup_work_day_id,
-        crew_number,
-        crew_code
-    )
-    VALUES (v_day_id, 1, 'A');
-
-    PERFORM ops.resequence_setup_future_work_days(v_session_id);
-
-    SELECT wd.setup_day_number
-      INTO v_day_number
-    FROM ops.setup_work_day wd
-    WHERE wd.setup_work_day_id = v_day_id;
+        NULL,
+        NULL,
+        p_note
+    ) u;
 
     INSERT INTO ops.setup_schedule_event(
         setup_session_id,
