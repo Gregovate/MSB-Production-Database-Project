@@ -95,7 +95,7 @@ class OperatorRunnerTests(unittest.TestCase):
         self.assertIn("READINESS TIMEOUT", source)
         self.assertIn("$state = Wait-RunnerPrerequisites", source)
         self.assertIn("$ProductionSqlitePath", source)
-        self.assertIn("Starting runner V1.7.1", source)
+        self.assertIn("Starting runner V1.7.2", source)
 
     def test_http_access_log_uses_stdout_not_stderr(self) -> None:
         """A successful request must not become a PowerShell native error."""
@@ -470,6 +470,122 @@ class OperatorRunnerTests(unittest.TestCase):
             )
 
         run.assert_not_called()
+
+    @patch("lor_operator_runner.subprocess.run")
+    def test_version_check_uses_live_current_content_as_cross_version_baseline(
+        self, run
+    ) -> None:
+        """Routine authoring after approval must not be blamed on a new LOR version."""
+        original_manifest = json.loads(
+            Path(self.store.read()["current_manifest_path"]).read_text(
+                encoding="utf-8"
+            )
+        )
+        original_signature = runner_module.manifest_source_signature(
+            original_manifest
+        )
+
+        # Simulate routine same-version maintenance completed after the original
+        # LOR software-version approval. The candidate contains that same current
+        # business content under the new LOR version.
+        current_xml = PREVIEW_XML.replace(
+            'Name="Stage 01"',
+            'Name="Stage 01 current"',
+        )
+        (self.current / "test.lorprev").write_text(
+            current_xml,
+            encoding="utf-8",
+        )
+        (self.candidate / "test.lorprev").write_text(
+            current_xml,
+            encoding="utf-8",
+        )
+        self.runner.select_candidate(
+            "6.6.11",
+            "operator@example.com",
+        )
+
+        def complete(command, **_kwargs):
+            baseline_path = Path(
+                command[command.index("--baseline") + 1]
+            )
+            candidate_manifest_path = Path(
+                command[command.index("--candidate-manifest") + 1]
+            )
+            report_json_path = Path(
+                command[command.index("--report-json") + 1]
+            )
+            report_md_path = Path(
+                command[command.index("--report-md") + 1]
+            )
+
+            baseline = json.loads(
+                baseline_path.read_text(encoding="utf-8")
+            )
+            live_signature = runner_module.manifest_source_signature(
+                baseline
+            )
+            self.assertNotEqual(
+                live_signature,
+                original_signature,
+            )
+
+            candidate = build_manifest(
+                self.candidate,
+                "6.6.11",
+                baseline["deep_preview"],
+                deep_identity=baseline["deep_preview_identity"],
+            )
+            write_json(candidate_manifest_path, candidate)
+            report = {
+                "status": "PASSED",
+                "approval_blocked": False,
+                "blocking_count": 0,
+                "review_count": 0,
+                "parser_modifications_required": [],
+                "findings": [],
+                "report_json": str(report_json_path),
+                "report_markdown": str(report_md_path),
+            }
+            write_json(report_json_path, report)
+            report_md_path.write_text(
+                "# compatibility passed\n",
+                encoding="utf-8",
+            )
+            return argparse.Namespace(
+                returncode=0,
+                stdout="[PASSED] 0 blocking; 0 review\n",
+                stderr="",
+            )
+
+        run.side_effect = complete
+        result = self.runner.run_compatibility_check(
+            "operator@example.com"
+        )
+
+        self.assertEqual(result["status"], "PASSED")
+        self.assertNotEqual(
+            result["baseline_source_signature_sha256"],
+            original_signature,
+        )
+        baseline_path = Path(
+            result["baseline_manifest_path"]
+        )
+        self.assertTrue(baseline_path.is_file())
+        baseline_manifest = json.loads(
+            baseline_path.read_text(encoding="utf-8")
+        )
+        expected_current_sha256 = runner_module.hashlib.sha256(
+            (self.current / "test.lorprev").read_bytes()
+        ).hexdigest()
+        self.assertEqual(
+            baseline_manifest["deep_contract"]["sha256"],
+            expected_current_sha256,
+        )
+        self.assertEqual(
+            baseline_manifest["files"][0]["sha256"],
+            expected_current_sha256,
+        )
 
     def test_candidate_is_resolved_only_from_versioned_preview_root(self) -> None:
         state = self.runner.select_candidate("6.6.11", "operator@example.com")
