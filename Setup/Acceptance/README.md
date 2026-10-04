@@ -137,6 +137,10 @@ Older Setup acceptance files remain historical evidence for the feature that cre
 
 If the reusable launchers cannot safely express a future requirement, treat that as an acceptance-tooling gap: improve the reusable tooling first, contract-test the improvement, then rerun the exact candidate. Do not substitute an ad-hoc interactive SSH procedure.
 
+## Migration 069 deployment review — DRAFT
+
+[Setup #205 Migration 069 Deployment Record](Setup_205_Migration_069_Deployment_Record.md) records the merged release, verified live/acceptance evidence, Issue #37 maintenance stages, preservation checks, failure decisions and the current operator review hold. It is a draft and does not clear Production execution. Runtime procedure remains owned by Server Management.
+
 ## Production gate
 
 A green disposable acceptance and accepted browser review do **not** authorize Production mutation by themselves.
