@@ -250,10 +250,10 @@ def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
     assert "setup_next_pass.css?v=2026-09-30.2" in html
-    assert "setup_next_pass.js?v=2026-09-30.10" in html
+    assert "setup_next_pass.js?v=2026-10-03.1" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
     assert "setup_acceptance_fixes.js?v=2026-09-26.1" in html
-    assert "setup_scheduling_board.css?v=2026-10-03.2" in html
+    assert "setup_scheduling_board.css?v=2026-10-03.3" in html
     assert "setup_stage_order.js?v=2026-09-25.1" in html
 
 
