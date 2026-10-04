@@ -6,7 +6,7 @@
 | Repository | MSB Production Database Project |
 | Status | CURRENT |
 | Owner | Production project owner / administrator |
-| Last Reviewed | 2026-10-01 |
+| Last Reviewed | 2026-10-04 |
 
 ## Purpose
 
@@ -41,6 +41,12 @@ A new visible version is not required merely for documentation-only commits afte
 A UI change **does** require a new release version when it changes workflow semantics, available actions, safety behavior, persisted state, or another operational capability rather than presentation alone.
 
 Those commits may have different repository SHAs while still referring to the same deployed application SHA/version. Documentation must state that distinction explicitly.
+
+## Visible UI Update Date
+
+Every UI change, including presentation-only changes, must update the visible `Updated YYYY-MM-DD` date in the same candidate. For Setup this is the footer in `Setup/Application/production.html`. Update date-sensitive contracts and verify the footer in the served Production page during browser acceptance. Use the date of the UI change, not the current browser date; a refresh must not change it. A stale footer is a release-check failure even when the version badge is correct.
+
+Presentation-only corrections may retain the application version under the rule above, but their accepted and deployed source SHAs must still be recorded. Never patch the live file outside merged repository history.
 
 ## Release Identity Tuple
 

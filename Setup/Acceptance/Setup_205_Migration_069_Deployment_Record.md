@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT release record — Production execution pending host checks |
+| Status | CURRENT release record — migration deployed and browser accepted; presentation closeout pending |
 | Owner | MSB Production Database project owner |
 | Prepared | 2026-10-04 |
 | Owning issue | [#205](https://github.com/Gregovate/MSB-Production-Database-Project/issues/205) |
@@ -10,13 +10,24 @@
 | Runtime authority | Gregovate/MSB-Server-Management |
 | Scope | Setup migration 069 and V0.3.38 deployment only |
 
-## Purpose and hold
+## Actual Production outcome — 2026-10-04
 
-This record supplies the release-specific gates beneath the Server Management procedure. It does not replace that procedure or create another maintenance implementation.
+Migration 069 and V0.3.38 are installed at `e2f58d016f015f1ac695940e9ab67c61c04a8a8a`. Server deployment PASS and protected Production browser PASS are recorded. Greg observed maintenance entry and return to Production. Work Day numbers, milestones, independent scrolling and Perform Work navigation passed. Historical Day Add was visible after refreshing a stale browser window.
 
-Greg authorized Production deployment after merge and requested a documented, repeatable workflow before continuing. The release-specific runner, plain-language operator procedure and failure-path tests are now prepared. Host preflight is still required; no new maintenance entry, snapshot, migration, application checkout move, or service restart has occurred.
+- Preflight: `/home/msbadmin/setup-deployment-reports/PR293-20261004T124235Z` — PASS.
+- Deployment: `/home/msbadmin/setup-deployment-reports/PR293-20261004T124422Z` — PASS.
+- Validated archive: `/home/msbadmin/backups/setup-205/msb-pre-pr293-069-PR293-20261004T124422Z.dump`, 9,412,162 bytes.
+- SHA-256: `d1a8ec4f9345d5fee6b8f0168c72f9f857aeea8d66a81b257ad92de1bd8d4450`.
+- Freeze, snapshot, committed catalog, numbering/privilege/object validation, business preservation, exact Setup promotion, unchanged shared checkout, ONLINE return, health and live regression passed in the governed runner.
+- Shared checkout remains `6dd05c4aa5ef8f50fe172145c3ae281cc245a101`.
 
-The previously supplied inline preflight block is withdrawn pending this review. It did not include the full database and recovery gates. Do not resume from that block.
+### Presentation correction pending
+
+The accepted UI carried a stale hard-coded October 2 footer. The operator also found backup path/hash overflow and the dashboard's old PR292 stage label. A presentation-only correction changes the footer to October 4, wraps dashboard text inside cards, and publishes current runner stages. The version remains V0.3.38 under the presentation-only exception in the version rule. This correction has 676 Setup regression tests PASS, two existing dashboard HTTP tests PASS, nine orchestration tests PASS and four real-Git date-gate tests PASS. The date gate rejects later UI changes with a stale footer while allowing newer documentation-only commits.
+
+Use `setup_205_presentation_closeout.py` under the existing source-only Setup runbook and source-only maintenance-files installation boundary. It verifies main ancestry and the exact footer-only application diff, prohibits SQL changes, runs host regression and the UI date gate, retains prior source, checks read-only fingerprints, updates only Setup and the administrator dashboard, and remains ONLINE. **Do not rerun migration 069.** Record its actual deployed SHA/report and refreshed-browser result before final issue closeout.
+
+The remaining sections retain the migration's reviewed execution and recovery contract. Their baseline is the pre-069 baseline, not a command to rerun after success.
 
 ## Governing authority
 
@@ -39,8 +50,8 @@ Latest accepted precedent: [migration 068 / PR #292 server acceptance](https://g
 | Accepted candidate | `3063a92877d89e5ec00b3b8187da20d208498254` |
 | Accepted tree | `1ed39fd16c97da09fb28d500af1b186d5a10ce0d` |
 | PR #293 merge | `e2f58d016f015f1ac695940e9ab67c61c04a8a8a` |
-| Proposed deployed Setup SHA | `e2f58d016f015f1ac695940e9ab67c61c04a8a8a` |
-| Proposed visible version | `V0.3.38-setup-day-milestones` |
+| Migration-deployed Setup SHA | `e2f58d016f015f1ac695940e9ab67c61c04a8a8a` |
+| Visible version | `V0.3.38-setup-day-milestones` |
 | Migration | `Setup/Database/069_fix_setup_day_sequence_and_audit.sql` |
 | Migration blob | `a49b25cf7325da86fc9810e8a75465de07f8cadf` |
 | Disposable validation | `Setup/Acceptance/setup_205_day_sequence_history_disposable_validation.sql` |
@@ -115,7 +126,7 @@ No OS upgrade, reboot, maintenance reinstall, unrelated service deployment or sh
 
 ## Command source and execution preparation
 
-The release runner is `Setup/Acceptance/setup_maintenance_deploy.py`, with pinned release manifest `setup_205_069_release.json` and failure-path tests `test_setup_maintenance_deploy.py`. Despite its transport-oriented name, its baseline and SQL checks are specific to migration 069; future migrations require their own reviewed checks. Eight orchestration tests passed locally. Actual PostgreSQL checks are exercised in host preflight before maintenance. The exact tooling commit is pinned in the supplied launch command. Commands are adaptations of the governing runbooks, not recalled chat commands.
+The release runner is `Setup/Acceptance/setup_maintenance_deploy.py`, with pinned release manifest `setup_205_069_release.json` and failure-path tests `test_setup_maintenance_deploy.py`. Despite its transport-oriented name, its baseline and SQL checks are specific to migration 069; future migrations require their own reviewed checks. Nine orchestration tests and four UI date-gate tests passed locally. Actual PostgreSQL checks are exercised in host preflight before maintenance. The exact tooling commit is pinned in the supplied launch command. Commands are adaptations of the governing runbooks, not recalled chat commands.
 
 Known controller interface, to be used only by the reviewed stages:
 
@@ -138,7 +149,7 @@ Dedicated Setup promotion follows the successful 068 boundary: `sudo git -C /opt
 
 During maintenance Setup is stopped and its port may serve the maintenance responder. Do not expect normal Setup health until return to service. Validate source/database before OFF; then require the controller's bounded service health and the exact release version.
 
-Execution controls: the runner writes a retained stage journal and full report, checks live identity and 068 prerequisites, captures the proposed Day mapping and read-only business invariants, runs detached regression, then uses the installed controller for ON/snapshot/OFF. It checks all ref/ops business tables; only open-day sequence and three update-audit columns are excluded from equality. Historical rows remain exact. Snapshot and migration order, drift stops, interrupted migration, validation failure, and failed return-to-service are covered by eight local failure-path tests. These tests do not substitute for real host SQL or controller acceptance.
+Execution controls: the runner writes a retained stage journal and full report, checks live identity and 068 prerequisites, captures the proposed Day mapping and read-only business invariants, runs detached regression, then uses the installed controller for ON/snapshot/OFF. It checks all ref/ops business tables; only open-day sequence and three update-audit columns are excluded from equality. Historical rows remain exact. Snapshot and migration order, drift stops, interrupted migration, validation failure, and failed return-to-service are covered by nine local failure-path tests. These tests do not substitute for real host SQL or controller acceptance.
 
 The cooperative `$HOME/.msb-production-deploy.lock` prevents overlapping instances of this runner. It does not block direct dashboard actions or unrelated scripts. All active chats must honor the single directing-chat rule in the server procedure, including avoiding manual dashboard changes during deployment.
 

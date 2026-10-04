@@ -10,7 +10,7 @@
 
 1. Tell the active chats which change is being installed. Only one chat directs the installation. Other chats may prepare fixes, but must not change the running system.
 2. The directing chat must read the current server instructions and issue record. A new chat must read them again.
-3. Confirm the change is merged into main and has passed testing and your screen review.
+3. Confirm the change is merged into main and has passed testing and your screen review. The release check must confirm the visible Updated date matches the latest UI change. A stale date means STOP.
 4. Run the check command supplied by that chat. Send back only PASS or STOP and the report folder.
 5. Do not start maintenance if any check says STOP.
 
@@ -24,7 +24,7 @@ Maintenance keeps the wiring lookup available. Other affected screens show the â
 
 ## Read the result
 
-- **PASS:** the server checks passed. Open the normal Setup screen and complete the short screen check supplied by the directing chat.
+- **PASS:** the server checks passed. Refresh the normal Setup screen and complete the short screen check supplied by the directing chat. Confirm both the Client version and the Updated date. An older window can keep showing the previous screen.
 - **STOP:** do not run the command again. Send the STOP line and report folder to the directing chat.
 - **No result, lost connection, or closed terminal:** do not assume the change failed or succeeded. Give the new chat the issue and report folder. It must check the saved stage and the running system before doing anything.
 

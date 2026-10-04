@@ -108,5 +108,12 @@ class SafetyTests(unittest.TestCase):
                        {'live': {'database_fenced':True, 'sessions':[{'usename':'directus_app','client_addr':'remote'}]}}):
             state=frozen(); state.update(change)
             with self.assertRaises(mod.Stop): mod.Deploy.frozen(state)
+    def test_current_deployment_stage_reaches_dashboard(self):
+        d = self.make()
+        d.mark('preflight PASS')
+        self.assertNotIn('stage', d.calls)
+        d.maintenance_started = True
+        d.mark('migration committed')
+        self.assertIn('stage', d.calls)
 
 if __name__ == '__main__': unittest.main()
