@@ -8,6 +8,7 @@ DECLARE
     v_session_id bigint;
     v_year integer;
     v_date date;
+    v_past_date date;
     v_day_id bigint;
     v_readded_day_id bigint;
     v_crew_a_id bigint;
@@ -57,7 +58,7 @@ BEGIN
     SELECT d::date
       INTO v_date
     FROM generate_series(
-        make_date(v_year, 1, 1),
+        greatest(make_date(v_year, 1, 1), current_date),
         make_date(v_year, 12, 31),
         interval '1 day'
     ) AS g(d)
@@ -72,6 +73,45 @@ BEGIN
 
     IF v_date IS NULL THEN
         RAISE EXCEPTION 'No unused date is available for disposable empty-day validation';
+    END IF;
+
+    SELECT d::date
+      INTO v_past_date
+    FROM generate_series(
+        make_date(v_year, 1, 1),
+        least(make_date(v_year, 12, 31), current_date - 1),
+        interval '1 day'
+    ) AS g(d)
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM ops.setup_work_day wd
+        WHERE wd.setup_session_id = v_session_id
+          AND wd.work_date = d::date
+    )
+    ORDER BY d DESC
+    LIMIT 1;
+
+    IF v_past_date IS NOT NULL THEN
+        v_blocked := false;
+        BEGIN
+            PERFORM *
+            FROM ops.upsert_setup_work_day(
+                v_admin_email,
+                v_year,
+                v_past_date,
+                NULL,
+                'PLANNED',
+                NULL,
+                NULL,
+                NULL
+            );
+        EXCEPTION
+            WHEN invalid_parameter_value THEN
+                v_blocked := true;
+        END;
+        IF NOT v_blocked THEN
+            RAISE EXCEPTION 'Past Setup work day was unexpectedly addable';
+        END IF;
     END IF;
 
     SELECT setup_work_day_id
