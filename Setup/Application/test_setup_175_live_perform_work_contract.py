@@ -249,11 +249,11 @@ def test_live_report_work_database_contract() -> None:
 def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
-    assert "setup_next_pass.css?v=2026-10-03.1" in html
-    assert "setup_next_pass.js?v=2026-10-03.2" in html
+    assert "setup_next_pass.css?v=2026-10-04.1" in html
+    assert "setup_next_pass.js?v=2026-10-04.1" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
     assert "setup_acceptance_fixes.js?v=2026-09-26.1" in html
-    assert "setup_scheduling_board.css?v=2026-10-03.4" in html
+    assert "setup_scheduling_board.css?v=2026-10-04.1" in html
     assert "setup_stage_order.js?v=2026-09-25.1" in html
 
 
@@ -278,13 +278,8 @@ def test_setup_access_exposes_signed_in_captain_identity() -> None:
     assert "lower(captain.email) = lower(caps.email)" in repo
 
 
-def test_completed_perform_work_status_uses_neutral_gray_pill() -> None:
+def test_perform_work_preserves_original_status_colors() -> None:
     ui = read_app("setup_next_pass.js")
-    css = read_app("setup_next_pass.css")
-
-    assert "next-perform-complete-pill" in ui
-    assert "status === 'COMPLETE' ? 'next-perform-complete-pill'" in ui
-    assert ".next-perform-complete-pill" in css
-    assert 'html[data-theme="dark"] .next-perform-complete-pill' in css
-    assert "background: #293241;" in css
-    assert "border-color: #64748b;" in css
+    assert "status === 'COMPLETE' ? 'verified'" in ui
+    assert "status === 'IN_PROGRESS' ? 'unverified'" in ui
+    assert "next-perform-complete-pill" not in ui

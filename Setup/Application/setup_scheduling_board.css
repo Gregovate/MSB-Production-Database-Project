@@ -1783,3 +1783,36 @@ html[data-theme="light"] .setup-board205-carryover {
     margin: 0.5in;
   }
 }
+
+/* Completion is separate from historical locking: reported work may be unfinished. */
+.setup-board205-assignment.completed-assignment {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  border-left: 5px solid #64748b;
+}
+.setup-board205-assignment.completed-assignment .setup-board205-task-title,
+.setup-board205-assignment.completed-assignment .setup-board205-meta,
+.setup-board205-assignment.completed-assignment .setup-board205-lock {
+  color: #334155;
+}
+.setup-board205-assignment .completed-assignment-badge {
+  background: #cbd5e1;
+  border-color: #64748b;
+  color: #334155;
+  font-weight: 800;
+}
+html[data-theme="dark"] .setup-board205-assignment.completed-assignment {
+  background: #293241;
+  border-color: #94a3b8;
+  border-left-color: #94a3b8;
+}
+html[data-theme="dark"] .setup-board205-assignment.completed-assignment .setup-board205-task-title,
+html[data-theme="dark"] .setup-board205-assignment.completed-assignment .setup-board205-meta,
+html[data-theme="dark"] .setup-board205-assignment.completed-assignment .setup-board205-lock {
+  color: #d6dde7;
+}
+html[data-theme="dark"] .setup-board205-assignment .completed-assignment-badge {
+  background: #475569;
+  border-color: #94a3b8;
+  color: #f1f5f9;
+}

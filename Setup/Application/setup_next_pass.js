@@ -1225,7 +1225,7 @@ function nextPerformAssignmentCard(assignment) {
         <span><strong>${escapeHtml(assignment.task_name)}</strong>
           <span class="muted"> · ${escapeHtml(nextTaskScopeLabel(assignment))}</span>
         </span>
-        <span class="pill ${status === 'COMPLETE' ? 'next-perform-complete-pill' : status === 'IN_PROGRESS' ? 'unverified' : ''}">${escapeHtml(status)}</span>
+        <span class="pill ${status === 'COMPLETE' ? 'verified' : status === 'IN_PROGRESS' ? 'unverified' : ''}">${escapeHtml(status)}</span>
       </summary>
       <div class="next-perform-assignment-context">
         Crew ${escapeHtml(assignment.crew_lane || '—')} · ${escapeHtml(captain)}

@@ -1739,6 +1739,7 @@ function board205AssignmentCard(item) {
   const crew = board205CrewRow(item.setup_work_day_crew_id);
   const canManage = Boolean(appState.access?.can_manage_setup);
   const locked = Boolean(item.historical_locked);
+  const complete = Boolean(task.effective_complete) || String(task.board_status || '').toUpperCase() === 'COMPLETE';
   const planned = board205AssignmentPlannedCrew(item);
   const minCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
   const plannedLabor = board205LaborHoursText(planned, task.expected_duration_minutes);
@@ -1746,11 +1747,12 @@ function board205AssignmentCard(item) {
   const shortBy = understaffed ? minCrew - planned : 0;
   const heavyWarning = board205HeavyWarning(item);
   return `
-    <article class="setup-board205-assignment ${task.requires_display_material ? 'setup-material-task' : ''} ${locked ? 'locked' : ''} ${understaffed ? 'short-crew' : ''}"
+    <article class="setup-board205-assignment ${task.requires_display_material ? 'setup-material-task' : ''} ${locked ? 'locked' : ''} ${complete ? 'completed-assignment' : ''} ${understaffed ? 'short-crew' : ''}"
       data-assignment-id="${item.setup_work_day_task_id}"
       draggable="${canManage && !locked ? 'true' : 'false'}">
       <div class="setup-board205-task-title">
         <span>${board205Esc(item.task_name)}</span>
+        ${complete ? '<span class="setup-board205-badge completed-assignment-badge">COMPLETE</span>' : ''}
         ${task.task_origin === 'SEASON_ONLY' ? '<span class="setup-board205-badge season-only">THIS SEASON ONLY</span>' : ''}
         <span class="setup-board205-badge effort-${board205Esc(String(task.effort_level || 'unknown').toLowerCase())}">${board205Esc(board205Effort(task))}</span>
         ${understaffed ? '<span class="setup-board205-badge short-crew-badge">SHORT CREW</span>' : ''}
