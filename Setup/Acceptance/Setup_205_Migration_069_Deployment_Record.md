@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT release record — migration deployed and browser accepted; presentation closeout pending |
+| Status | CURRENT release record — migration and presentation deployed; operator acceptance PASS |
 | Owner | MSB Production Database project owner |
 | Prepared | 2026-10-04 |
 | Owning issue | [#205](https://github.com/Gregovate/MSB-Production-Database-Project/issues/205) |
@@ -27,11 +27,22 @@ The first presentation attempt fetched Production Database main successfully, th
 
 The corrected runner transports the already-merged Server Management dashboard file as an immutable compressed bundle and verifies its Git blob identity before any installation. The server fetches only its established Production Database origin; Git prompting is disabled. The application target stays pinned to PR295 merge `9b9d6a431c322f37221c24ef1901439acc063ad7`; the transfer-only tooling commit is a separate identity. No application, migration, credential, or dashboard behavior was changed by the transfer correction.
 
-### Presentation correction pending
+### Presentation correction — Production PASS
 
 The accepted UI carried a stale hard-coded October 2 footer. The operator also found backup path/hash overflow and the dashboard's old PR292 stage label. A presentation-only correction changes the footer to October 4, wraps dashboard text inside cards, and publishes current runner stages. The version remains V0.3.38 under the presentation-only exception in the version rule. This correction has 676 Setup regression tests PASS, two existing dashboard HTTP tests PASS, nine orchestration tests PASS and four real-Git date-gate tests PASS. The date gate rejects later UI changes with a stale footer while allowing newer documentation-only commits.
 
-Use `setup_205_presentation_closeout.py` under the existing source-only Setup runbook and source-only maintenance-files installation boundary. It verifies main ancestry and the exact footer-only application diff, prohibits SQL changes, runs host regression and the UI date gate, retains prior source, checks read-only fingerprints, updates only Setup and the administrator dashboard, and remains ONLINE. **Do not rerun migration 069.** Record its actual deployed SHA/report and refreshed-browser result before final issue closeout.
+The corrected `setup_205_presentation_closeout.py` completed under the existing source-only Setup runbook and source-only maintenance-files installation boundary. It verifies main ancestry and the exact footer-only application diff, prohibits SQL changes, runs host regression and the UI date gate, retains prior source, checks read-only fingerprints, updates only Setup and the administrator dashboard, and remains ONLINE. **Do not rerun migration 069.**
+
+Actual source-only outcome:
+
+- Current `/opt/msb-setup` SHA: `9b9d6a431c322f37221c24ef1901439acc063ad7` (PR #295 merge); clean; version remains `V0.3.38-setup-day-milestones`.
+- Executed transfer-only tooling: PR #296 merge `13a3e91b72cca70841442a8325ec578ba8387967`; this is not the deployed application identity.
+- Installed dashboard source: Server Management PR #63 merge `8ddc11a4b8cf056d3d6e03de3f9b158e21529645`, exact file blob `08394cc176b0534bebe17c01d30e4cfb66da7b56`.
+- Report: `/home/msbadmin/setup-deployment-reports/PR293-presentation-20261004T133051Z` — PASS.
+- Exact application diff, absence of SQL change, target/main ancestry, date gate, host candidate regression, prior-source retention, matching pre/post governed Setup fingerprint, live focused regression, health, unchanged shared checkout and ONLINE controller passed.
+- Only `msb-setup.service` and `msb-maintenance-admin.service` restarted. No migration or maintenance re-entry occurred.
+- Greg confirmed `Updated 2026-10-04`, refreshed dashboard wrapping and PR293 stage — PASS.
+- Application-only rollback source for this presentation correction is `e2f58d016f015f1ac695940e9ab67c61c04a8a8a`. The prior administrator source is retained as `msb_maintenance_admin.previous.py` in the presentation report folder. The earlier database snapshot is for governed migration recovery, not an ordinary UI reversal.
 
 The remaining sections retain the migration's reviewed execution and recovery contract. Their baseline is the pre-069 baseline, not a command to rerun after success.
 
@@ -41,7 +52,7 @@ Retrieve and read these current repository documents before execution:
 
 - [Production Database Change Deployment Runbook](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/Production_Database_Change_Deployment_Runbook.md), observed blob `19bd65f11b11f92d7ae8c0f06bda54ceb9a554dd`.
 - [Production Database Maintenance Mode](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/Production_Database_Maintenance_Mode.md), observed blob `919da2182d6d211d789c213ab37b3bdb085f8208`. Its launch closeout supersedes the historical prototype blockers.
-- [Setup Production Runtime](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/Setup_Production_Runtime.md). Its historical SHA sections must be reconciled with the verified live baseline below.
+- [Setup Production Runtime](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/Setup_Production_Runtime.md). Its current section records the accepted V0.3.38 state; historical sections remain dated evidence.
 - [Runbook-First Production Rule](../../System_Documentation/Project_Rules/Runbook_First_Production_Rule.md).
 - [Release Identity and Versioning Rule](../../System_Documentation/Project_Rules/Release_Identity_and_Versioning_Rule.md).
 
@@ -56,7 +67,9 @@ Latest accepted precedent: [migration 068 / PR #292 server acceptance](https://g
 | Accepted candidate | `3063a92877d89e5ec00b3b8187da20d208498254` |
 | Accepted tree | `1ed39fd16c97da09fb28d500af1b186d5a10ce0d` |
 | PR #293 merge | `e2f58d016f015f1ac695940e9ab67c61c04a8a8a` |
-| Migration-deployed Setup SHA | `e2f58d016f015f1ac695940e9ab67c61c04a8a8a` |
+| Initial migration-deployed Setup SHA | `e2f58d016f015f1ac695940e9ab67c61c04a8a8a` |
+| Current presentation-deployed Setup SHA | `9b9d6a431c322f37221c24ef1901439acc063ad7` |
+| Current visible UI date | `Updated 2026-10-04` |
 | Visible version | `V0.3.38-setup-day-milestones` |
 | Migration | `Setup/Database/069_fix_setup_day_sequence_and_audit.sql` |
 | Migration blob | `a49b25cf7325da86fc9810e8a75465de07f8cadf` |
@@ -65,7 +78,7 @@ Latest accepted precedent: [migration 068 / PR #292 server acceptance](https://g
 
 Deploy the merged application target, as migration 068 did, only after proving its full tree equals the accepted candidate tree. A later documentation/tooling commit is not a new application target. If tree equality fails, stop and reconcile; do not redefine acceptance.
 
-## Verified evidence and live baseline
+## Historical pre-069 evidence and baseline
 
 Operator-supplied server output establishes:
 
