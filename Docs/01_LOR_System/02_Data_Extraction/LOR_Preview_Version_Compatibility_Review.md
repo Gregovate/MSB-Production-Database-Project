@@ -4,7 +4,7 @@
 |---|---|
 | Status | CURRENT — controlled engineering procedure |
 | Applies to | Any new Light-O-Rama release that can change `.lorprev` output |
-| Current revision | 2026-08-25 |
+| Current revision | 2026-10-04 |
 | Owner | MSB Database Administrator |
 
 ## Purpose
@@ -55,6 +55,14 @@ The approved record currently identifies LOR 6.6.10 and `Database Previews
 V6.6.10`. A later candidate must use its own `Database Previews V<version>`
 folder. Approval changes the record; it does not rename or delete the previous
 versioned folder.
+
+Before each cross-version comparison, the runner rebuilds a **live baseline
+manifest** from the current approved-version Preview folder. It first verifies
+that this live folder still satisfies the approved same-version XML contract,
+then compares the new LOR version against that live content. This is required
+because routine approved-version authoring continues between software releases;
+the original software-approval manifest is a schema/compatibility authority,
+not a frozen forever copy of production business content.
 
 ## Mandatory Automated Gate
 
