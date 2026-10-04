@@ -21,6 +21,12 @@ Migration 069 and V0.3.38 are installed at `e2f58d016f015f1ac695940e9ab67c61c04a
 - Freeze, snapshot, committed catalog, numbering/privilege/object validation, business preservation, exact Setup promotion, unchanged shared checkout, ONLINE return, health and live regression passed in the governed runner.
 - Shared checkout remains `6dd05c4aa5ef8f50fe172145c3ae281cc245a101`.
 
+### Presentation transfer interruption — corrected before installation
+
+The first presentation attempt fetched Production Database main successfully, then prompted for GitHub credentials while fetching the separate private Server Management repository. That prompt occurred before source installation or service restart. The operator was instructed to cancel. Do not enter or change credentials, repeat the old runner, or infer that repository access is shared.
+
+The corrected runner transports the already-merged Server Management dashboard file as an immutable compressed bundle and verifies its Git blob identity before any installation. The server fetches only its established Production Database origin; Git prompting is disabled. The application target stays pinned to PR295 merge `9b9d6a431c322f37221c24ef1901439acc063ad7`; the transfer-only tooling commit is a separate identity. No application, migration, credential, or dashboard behavior was changed by the transfer correction.
+
 ### Presentation correction pending
 
 The accepted UI carried a stale hard-coded October 2 footer. The operator also found backup path/hash overflow and the dashboard's old PR292 stage label. A presentation-only correction changes the footer to October 4, wraps dashboard text inside cards, and publishes current runner stages. The version remains V0.3.38 under the presentation-only exception in the version rule. This correction has 676 Setup regression tests PASS, two existing dashboard HTTP tests PASS, nine orchestration tests PASS and four real-Git date-gate tests PASS. The date gate rejects later UI changes with a stale footer while allowing newer documentation-only commits.
