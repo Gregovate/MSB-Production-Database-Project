@@ -70,7 +70,7 @@ try:
     server_origin=origin.replace('MSB-Production-Database-Project','MSB-Server-Management')
     run(['sudo','git','-C',REPO,'fetch',server_origin,SERVER_TARGET],record=False)
     require(git('rev-parse',SERVER_TARGET+':scripts/msb_maintenance_admin.py')==ADMIN_BLOB,'Dashboard source differs')
-    source=git('show',SERVER_TARGET+':scripts/msb_maintenance_admin.py')+'\n'
+    source=subprocess.check_output(['sudo','git','-C',REPO,'show',SERVER_TARGET+':scripts/msb_maintenance_admin.py'],text=True)
     compile(source,admin,'exec')
     (root/'msb_maintenance_admin.accepted.py').write_text(source)
     git('worktree','add','--detach',candidate,target)
@@ -83,6 +83,7 @@ try:
     git('checkout','--detach',target,root=SETUP); advanced=True
     run(['sudo','systemctl','restart','msb-setup.service']); health()
     run(['sudo','install','-o',owner,'-g',group,'-m',mode,str(root/'msb_maintenance_admin.accepted.py'),admin]); installed=True
+    require(git('hash-object',admin)==ADMIN_BLOB,'Installed dashboard differs from accepted source')
     run(['sudo','systemctl','restart','msb-maintenance-admin.service'])
     for _ in range(30):
         try:
