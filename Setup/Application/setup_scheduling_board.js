@@ -1709,9 +1709,6 @@ function board205Cell(day, shift, crew) {
 
 function board205CanRemoveWorkDay(day) {
   if (!day || String(day.day_status || '').toUpperCase() !== 'PLANNED') return false;
-  if ([day.volunteer_note, day.weather_note, day.notes].some((value) => String(value || '').trim())) {
-    return false;
-  }
   const crews = board205CrewsForDay(day.setup_work_day_id);
   if (crews.length !== 1) return false;
   const crew = crews[0];
@@ -1719,8 +1716,6 @@ function board205CanRemoveWorkDay(day) {
     Number(crew.crew_number) !== 1
     || String(crew.crew_code || '').toUpperCase() !== 'A'
     || crew.captain_person_id != null
-    || crew.am_planned_crew_count != null
-    || crew.pm_planned_crew_count != null
   ) {
     return false;
   }
@@ -2063,7 +2058,7 @@ async function board205RemoveEmptyWorkDay(dayId) {
 
   const label = `Setup Day ${day.setup_day_number} · ${day.day_of_week} · ${day.work_date}`;
   if (!window.confirm(
-    `Remove ${label}?\n\nOnly a truly empty Planned day can be removed: Crew A only, Captain TBD, no staffing counts, no tasks, and no day notes.`
+    `Remove ${label}?\n\nOnly an empty Planned day can be removed: one Crew A, Captain TBD, and no tasks assigned.`
   )) {
     return;
   }
