@@ -447,6 +447,14 @@ function board205ApplyWorkDayPickerExpanded() {
   toggle.textContent = expanded ? 'Hide Work Day Calendar' : '+ Add Work Days';
 }
 
+function board205TodayDateKey() {
+  const today = new Date();
+  return String(today.getFullYear())
+    + '-' + String(today.getMonth() + 1).padStart(2, '0')
+    + '-' + String(today.getDate()).padStart(2, '0');
+}
+
+
 function board205RenderWorkDayCalendar() {
   board205ApplyWorkDayPickerExpanded();
   const target = document.getElementById('setup-board205-work-day-calendar');
@@ -455,8 +463,9 @@ function board205RenderWorkDayCalendar() {
   if (!target || !summary || !submit) return;
 
   const existing = board205ExistingWorkDayDates();
+  const todayKey = board205TodayDateKey();
   for (const date of [...setupBoard205State.workDaySelection]) {
-    if (existing.has(date)) setupBoard205State.workDaySelection.delete(date);
+    if (existing.has(date) || date < todayKey) setupBoard205State.workDaySelection.delete(date);
   }
 
   const monthStart = board205CalendarMonthStart();
@@ -477,13 +486,14 @@ function board205RenderWorkDayCalendar() {
   for (let day = 1; day <= daysInMonth; day += 1) {
     const date = String(year) + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
     const alreadyExists = existing.has(date);
+    const inPast = date < todayKey;
     const selected = setupBoard205State.workDaySelection.has(date);
     const weekday = new Date(date + 'T00:00:00Z').toLocaleDateString(undefined, {
       weekday: 'long',
       timeZone: 'UTC'
     });
     cells.push(
-      '<button type="button" class="setup-board205-calendar-day' + (selected ? ' selected' : '') + (alreadyExists ? ' existing' : '') + '" data-work-date="' + date + '" aria-pressed="' + (selected ? 'true' : 'false') + '" ' + (alreadyExists ? 'disabled aria-disabled="true"' : '') + ' title="' + (alreadyExists ? 'Work Day already exists' : 'Select ' + weekday + ', ' + date) + '"><span>' + day + '</span>' + (alreadyExists ? '<small>Work Day</small>' : '') + '</button>'
+      '<button type="button" class="setup-board205-calendar-day' + (selected ? ' selected' : '') + (alreadyExists ? ' existing' : '') + (inPast ? ' past' : '') + '" data-work-date="' + date + '" aria-pressed="' + (selected ? 'true' : 'false') + '" ' + (alreadyExists || inPast ? 'disabled aria-disabled="true"' : '') + ' title="' + (alreadyExists ? 'Work Day already exists' : inPast ? 'Past dates cannot be added as Setup Work Days' : 'Select ' + weekday + ', ' + date) + '"><span>' + day + '</span>' + (alreadyExists ? '<small>Work Day</small>' : inPast ? '<small>Past</small>' : '') + '</button>'
     );
   }
 
@@ -517,7 +527,7 @@ function board205RenderWorkDayCalendar() {
   target.querySelectorAll('.setup-board205-calendar-day:not(:disabled)').forEach((button) => {
     button.addEventListener('click', () => {
       const date = button.dataset.workDate;
-      if (!date || board205ExistingWorkDayDates().has(date)) return;
+      if (!date || date < board205TodayDateKey() || board205ExistingWorkDayDates().has(date)) return;
       if (setupBoard205State.workDaySelection.has(date)) {
         setupBoard205State.workDaySelection.delete(date);
       } else {
@@ -1569,6 +1579,85 @@ function board205QueueTasks() {
     })
     .sort((a, b) => board205FinderCompare(a, b, sortMode));
 }
+
+function board205SchedulableTasksForReport() {
+  return [...(setupBoard205State.board.tasks || [])]
+    .filter((task) => (
+      !task.catalog_only
+      && !task.effective_complete
+      && String(task.task_action_type || '').toUpperCase() !== 'GATE'
+      && !board205HasHardBlock(task)
+      && board205FinderStatusFamily(task) === 'READY'
+      && Number(task.unworked_assignment_count || 0) === 0
+    ))
+    .sort((a, b) => board205FinderCompare(a, b, 'STAGE'));
+}
+
+function board205SchedulableReportScope(task) {
+  return board205Scope(task) || 'Site-wide / Infrastructure';
+}
+
+function board205SchedulableReportTask(task) {
+  const continuation = String(task.board_status || '').toUpperCase() === 'NEEDS_SCHEDULING_AGAIN'
+    ? '<span class="setup-board205-report-badge">Needs Scheduling Again</span>'
+    : '';
+  const readiness = task.readiness_state === 'NOT_READY'
+    ? `<div class="setup-board205-report-readiness"><strong>NOT READY:</strong> ${board205Esc(task.readiness_note || 'annual readiness condition')}</div>`
+    : '';
+  return `
+    <article class="setup-board205-report-task">
+      <div class="setup-board205-report-task-title"><strong>${board205Esc(task.task_name || 'Unnamed task')}</strong>${continuation}</div>
+      <div>Min crew: ${board205Esc(task.normal_crew_min ?? 'TBD')} · Expected: ${board205Esc(board205Duration(task.expected_duration_minutes))} · Effort: ${board205Esc(board205Effort(task))}</div>
+      ${readiness}
+    </article>`;
+}
+
+function board205PrintSchedulableTasks() {
+  if (board205HistoricalReviewMode()) return;
+  const tasks = board205SchedulableTasksForReport();
+  if (!tasks.length) {
+    window.alert('No currently schedulable tasks are available with hard blockers excluded.');
+    return;
+  }
+
+  document.getElementById('setup-board205-schedulable-print-sheet')?.remove();
+  const sheet = document.createElement('section');
+  sheet.id = 'setup-board205-schedulable-print-sheet';
+
+  let priorScope = null;
+  const rows = [];
+  for (const task of tasks) {
+    const scope = board205SchedulableReportScope(task);
+    if (scope !== priorScope) {
+      rows.push(`<h2 class="setup-board205-report-scope">${board205Esc(scope)}</h2>`);
+      priorScope = scope;
+    }
+    rows.push(board205SchedulableReportTask(task));
+  }
+
+  sheet.innerHTML = `
+    <header class="setup-board205-report-header">
+      <div>
+        <div class="eyebrow">Setup Planning</div>
+        <h1>Schedulable Tasks</h1>
+      </div>
+      <div><strong>${board205Esc(tasks.length)}</strong> task${tasks.length === 1 ? '' : 's'}</div>
+    </header>
+    <p class="setup-board205-report-rule">Hard prerequisite blockers excluded · already-scheduled work excluded · NOT READY conditions shown for Manager judgment · Stage / Scene order.</p>
+    <div class="setup-board205-report-list">${rows.join('')}</div>
+  `;
+
+  document.body.appendChild(sheet);
+  document.body.classList.add('setup-print-schedulable-tasks');
+
+  const cleanup = () => {
+    document.body.classList.remove('setup-print-schedulable-tasks');
+    document.getElementById('setup-board205-schedulable-print-sheet')?.remove();
+  };
+  window.addEventListener('afterprint', cleanup, { once: true });
+  window.print();
+}
+
 
 function board205RenderQueue() {
   const target = document.getElementById('setup-board205-queue');
@@ -3163,7 +3252,10 @@ function board205InstallView() {
             </select></label>
             </div>
           </div>
-          <div id="setup-board205-finder-summary" class="muted"></div>
+          <div class="setup-board205-finder-report-row">
+            <div id="setup-board205-finder-summary" class="muted"></div>
+            <button id="setup-board205-print-schedulable" type="button" class="small secondary">Print Schedulable Tasks</button>
+          </div>
           <div id="setup-board205-queue" class="setup-board205-queue"></div>
         </section>
 
@@ -3408,6 +3500,7 @@ function board205InstallView() {
     pane.addEventListener('dragover', (event) => board205AutoScrollPane(pane, event), true);
   });
   document.getElementById('setup-board205-print')?.addEventListener('click', () => window.print());
+  document.getElementById('setup-board205-print-schedulable')?.addEventListener('click', board205PrintSchedulableTasks);
   document.getElementById('setup-board205-add-season-task').addEventListener('click', board205OpenAddTaskIntentDialog);
   document.getElementById('setup-board205-create-session')?.addEventListener('click', board205CreateAnnualSession);
   document.getElementById('setup-board205-add-reusable')?.addEventListener('click', () => { void board205ChooseReusableTask(); });
