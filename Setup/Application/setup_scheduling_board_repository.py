@@ -700,11 +700,38 @@ class SetupSchedulingBoardRepository:
             conn.commit()
             return result
 
-    def remove_work_day(self, *, email: str, work_day_id: int) -> dict[str, Any]:
+    def add_historical_work_day(
+        self,
+        *,
+        email: str,
+        season_year: int,
+        work_date: str,
+        note: str | None,
+    ) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
-                "SELECT * FROM ops.remove_empty_setup_work_day(%s,%s)",
-                (email, work_day_id),
+                """
+                SELECT * FROM ops.add_historical_setup_work_day(
+                    %s,%s,%s::date,%s
+                )
+                """,
+                (email, season_year, work_date, note),
+            )
+            result = self._one(cur, "Historical Setup work-day command returned no result")
+            conn.commit()
+            return result
+
+    def remove_work_day(
+        self,
+        *,
+        email: str,
+        work_day_id: int,
+        note: str | None,
+    ) -> dict[str, Any]:
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM ops.remove_empty_setup_work_day(%s,%s,%s)",
+                (email, work_day_id, note),
             )
             result = self._one(cur, "Remove empty Setup work day returned no result")
             conn.commit()
