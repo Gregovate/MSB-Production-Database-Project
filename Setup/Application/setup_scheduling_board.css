@@ -1369,6 +1369,7 @@ html[data-theme="light"] .setup-board205-carryover {
   .setup-board205-day-header {
     padding: 0.06in 0.1in;
     gap: 0.05in;
+    break-after: avoid;
   }
 
   .setup-board205-day-header strong {
@@ -1393,6 +1394,7 @@ html[data-theme="light"] .setup-board205-carryover {
   .setup-board205-grid-head {
     padding: 0.04in 0.06in;
     font-size: 7.5pt;
+    break-after: avoid;
   }
 
   .setup-board205-shift-hint {
@@ -1530,6 +1532,7 @@ html[data-theme="light"] .setup-board205-carryover {
   }
 
   body.setup-print-perform-task #setup-perform-print-sheet {
+    page: setup-perform-task;
     width: 100% !important;
     max-width: none !important;
     color: #000 !important;
@@ -1601,7 +1604,7 @@ html[data-theme="light"] .setup-board205-carryover {
       ) !important;
   }
 
-  @page {
+  @page setup-perform-task {
     size: portrait;
     margin: 0.5in;
   }
