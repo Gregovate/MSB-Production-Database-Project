@@ -21,7 +21,7 @@ Repository-wide Production deployment history is maintained newest-first in [`..
 
 ## 2026 Launch Status
 
-The real 2026 Setup Session has been created and is now the active annual planning/execution context. The initial accepted Scheduling Board launch target was `06a6536d92db5c7352beeed496563ed9bfdb7146`. As of 2026-10-04, the current Production runtime is `9b9d6a431c322f37221c24ef1901439acc063ad7` (`V0.3.38-setup-day-milestones`). The accepted Setup surface includes #205 rolling Scheduling Board/Captain dispatch, #206 bounded Pick List demand/frontier + transient Pick Delay, #88 persisted movement capture, #175 Perform Work / #132 Report Work, and #172 Report Correction. The migration tail now includes 063 Pick List Delay, 064 Extra Material requirement restore, 065 Setup movement capture, and 066 Manager override cancel-after-movement correction.
+The real 2026 Setup Session has been created and is now the active annual planning/execution context. The initial accepted Scheduling Board launch target was `06a6536d92db5c7352beeed496563ed9bfdb7146`. As of 2026-10-04, the current Production runtime is `9b9d6a431c322f37221c24ef1901439acc063ad7` (`V0.3.38-setup-day-milestones`). The accepted Setup surface includes #205 rolling Scheduling Board/Captain dispatch, #206 bounded Pick List demand/frontier + transient Pick Delay, #88 persisted movement capture, #175 Perform Work / #132 Report Work, and #172 Report Correction. The accepted migration tail includes 063 Pick List Delay, 064 Extra Material requirement restore, 065 movement capture, 066 override cancellation, 067 Annual Readiness hold, 068 empty-day removal and 069 chronological Day numbering/historical commands/passive scheduling audit.
 
 The launch deployment installed migrations 057/058 after the exact candidate passed the full Setup/Application regression (458/458) and disposable browser acceptance. The Scheduling Board preserves the accepted Catalog/Plan ordering, lavender material-task cue, Day-view filters, completed/cancelled-day handling, performance improvements, and current scheduling behavior.
 
@@ -52,7 +52,7 @@ protected application = https://my.sheboyganlights.org/setup/
 initial Scheduling Board launch target = 06a6536d92db5c7352beeed496563ed9bfdb7146
 current live Setup SHA = 9b9d6a431c322f37221c24ef1901439acc063ad7
 version = V0.3.38-setup-day-milestones
-current accepted migration tail = 063 Pick List Delay + 064 Extra Material requirement restore + 065 Setup movement capture + 066 Manager override cancel-after-movement correction + 067 governed Annual Readiness hold command
+current accepted migration tail = through 069 chronological Day numbering/historical commands/passive audit; prior accepted 068 empty-day removal and 067 Annual Readiness hold retained
 current preservation proof = migration069 retained report; online business data continues changing
 current annual reusable-name mismatches = 0
 2025 Setup Session = historical / verification evidence
@@ -274,11 +274,11 @@ Before the next Setup change:
 
 ## #88 Pick Mode / Movement Capture — ACTIVE LAUNCH GATE / V0.3.29 RELEASE CONTEXT
 
-V0.3.29 Pick Mode / Movement Capture was Production accepted and later superseded by V0.3.31 and the current V0.3.33 Setup application:
+V0.3.29 Pick Mode / Movement Capture was Production accepted and later superseded by V0.3.31 and V0.3.33. The following is the historical V0.3.33 checkpoint; current runtime is recorded above:
 
 ```text
 historical #88 release = V0.3.29-pick-clarity
-current Production     = e9839123e7483d7ced630b3dc6ab8f377c3f3262 / V0.3.33-material-status-review-fixes
+historical V0.3.33 source = e9839123e7483d7ced630b3dc6ab8f377c3f3262 / V0.3.33-material-status-review-fixes
 ```
 
 The #88 movement-capture foundation remains active behavior inside the current Setup release; this section preserves release/design context rather than declaring V0.3.29 to be the current runtime.
