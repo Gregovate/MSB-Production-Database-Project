@@ -7,7 +7,7 @@
 | Audience | MSB reviewers, managers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-30 |
+| Last Reviewed | 2026-10-04 |
 | Keywords | Setup, 2026 Setup, Scheduling Board, Perform Work, Report Work, Report Correction, Rolling Pick List, Pick Delay, reusable task, verification, Display Ownership, Kit, Extra Materials, T-Post, prerequisites |
 
 Use this page to decide **what you are trying to do in Setup** and where to go next.
@@ -19,6 +19,16 @@ Use this page to decide **what you are trying to do in Setup** and where to go n
 The real **2026 Setup Session is live** and is the current annual planning, scheduling, and field-execution context.
 
 **2025 — Historical Verification** remains available as historical/review evidence. Do not use the 2025 view as the current schedule.
+
+## Work Days and planning dates
+
+Work Days are numbered in date order. Adding a missing date can change the displayed Day numbers; existing work and its history stay attached to the same date.
+
+Use **+ Add Work Days** for today and future dates. Use the historical-day action for a missing past date. Removing an empty day requires a note; days with protected work history cannot be removed. The milestone strip shows important season dates alongside the schedule.
+
+If a screen appears old after an update, refresh it and check the Client version and Updated date. The accepted October 4 release displays Client V0.3.38 and Updated 2026-10-04.
+
+[Install a reviewed Setup change](../../../../Setup/operatorSOP/Install_a_Reviewed_Setup_Change.md) explains the installation checks and what PASS or STOP means.
 
 ## What Do You Need to Do?
 
