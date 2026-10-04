@@ -461,7 +461,7 @@ def test_205_schedule_command_bar_preserves_board_height_and_controls() -> None:
     assert "Open only when you need to add dates." not in ui
     assert "Each work day starts with Crew A." not in ui
     assert "setup-board205-board-key" in ui
-    assert "grid-template-columns: auto minmax(16rem, 1fr) auto auto auto;" in css
+    assert "grid-template-columns: auto auto minmax(16rem, 1fr) auto auto auto;" in css
     assert "max-height: min(22rem, 55vh);" in css
 
 
@@ -757,7 +757,7 @@ def test_205_scheduler_panes_scroll_independently_with_drag_edge_autoscroll() ->
     assert "grid-template-rows: auto minmax(0, 1fr)" in css
     assert "setup-board205-planning-header" in ui
     assert "margin: 0.2rem 0 0.55rem" in css
-    assert "overflow-y: visible" in css
+    assert "max-height: min(30rem, 65vh)" in css
 
 
 def test_205_captain_learning_cancel_wording_preserves_schedule_only() -> None:
@@ -1004,8 +1004,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-10-03.2" in html
-    assert "setup_scheduling_board.js?v=2026-10-03.3" in html
+    assert "setup_scheduling_board.css?v=2026-10-04.4" in html
+    assert "setup_scheduling_board.js?v=2026-10-04.2" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
@@ -1558,3 +1558,125 @@ def test_205_production_notice_is_not_persistent_after_successful_load() -> None
     )[0]
     assert "alert.hidden = true" in load_season
     assert "Setup Session loaded from Production" not in load_season
+
+
+def test_205_day_number_repair_historical_correction_and_passive_audit_are_governed() -> None:
+    migration = read_db("069_fix_setup_day_sequence_and_audit.sql")
+    validation = read_acceptance("setup_205_day_sequence_history_disposable_validation.sql")
+    api = read_app("setup_scheduling_board_api.py")
+    repository = read_app("setup_scheduling_board_repository.py")
+    ui = read_app("setup_scheduling_board.js")
+
+    assert "CREATE TABLE IF NOT EXISTS ops.setup_schedule_event" in migration
+    assert "ASSIGNMENT_MOVED" in migration
+    assert "WORK_DAY_DELETED" in migration
+    assert "HISTORICAL_WORK_DAY_ADDED" in migration
+    assert "REVOKE ALL ON ops.setup_schedule_event FROM fieldwiring_app" in migration
+
+    resequence = migration.split(
+        "CREATE OR REPLACE FUNCTION ops.resequence_setup_future_work_days", 1
+    )[1].split("REVOKE ALL ON FUNCTION ops.resequence_setup_future_work_days", 1)[0]
+    assert "row_number() OVER" in resequence
+    assert "ORDER BY wd.work_date, wd.setup_work_day_id" in resequence
+    assert "1000000 + ranked.rn" in resequence
+    assert "SET setup_day_number = ranked.rn" in resequence
+    assert "v_last_historical_date" not in resequence
+    assert "max(wd.setup_day_number)" not in resequence
+
+    assert "ss.session_status IN ('PLANNING','ACTIVE')" in migration
+    assert "ops.add_historical_setup_work_day" in migration
+    assert "app.setup_allow_past_work_day" in migration
+    assert "ops.upsert_setup_work_day(" in migration
+    assert "Historical correction is only for dates before today" in migration
+    assert "A Setup work day already exists for this date" in migration
+    assert "ops.remove_empty_setup_work_day(" in migration
+    assert "p_note text" in migration
+    assert "event_note" in migration
+    assert "Required lift unavailable" in validation
+    assert "SETUP_205_DAY_SEQUENCE_HISTORY_VALIDATION_PASS" in validation
+
+    assert '@setup_scheduling_board_api.post("/api/setup/scheduling-board/work-days/historical")' in api
+    assert "def add_historical_work_day(" in repository
+    assert "ops.add_historical_setup_work_day" in repository
+    assert "request.get_json(silent=True) or {}" in api
+    assert "note=optional_text(payload.get(\"note\"))" in api
+    assert "ops.remove_empty_setup_work_day(%s,%s,%s)" in repository
+
+    assert "Historical Day…" in ui
+    assert "setup-board205-historical-day-dialog" in ui
+    assert "board205SubmitHistoricalDayCorrection" in ui
+    assert "api/setup/scheduling-board/work-days/historical" in ui
+    assert "Historical correction is only for dates before today" in ui
+    assert "window.prompt(" in ui
+    assert "Optional note (leave blank if this date was simply added by mistake)" in ui
+    assert "commandOptions('DELETE', { note:" in ui
+
+
+def test_205_normal_add_work_days_remains_future_only_after_historical_correction() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    migration068 = read_db("068_add_setup_empty_work_day_removal.sql")
+    migration069 = read_db("069_fix_setup_day_sequence_and_audit.sql")
+
+    assert "const inPast = date < todayKey;" in ui
+    assert "alreadyExists || inPast ? 'disabled aria-disabled=\"true\"' : ''" in ui
+    assert "date < board205TodayDateKey()" in ui
+    assert "NEW.work_date < current_date" in migration068
+    assert "Setup work days cannot be added in the past" in migration068
+    assert "app.setup_allow_past_work_day" in migration069
+    assert "coalesce(" in migration069
+    assert "<> '1'" in migration069
+
+
+def test_205_assignment_move_history_is_passive_and_does_not_require_reason() -> None:
+    migration = read_db("069_fix_setup_day_sequence_and_audit.sql")
+    ui = read_app("setup_scheduling_board.js")
+
+    move_fn = migration.split(
+        "CREATE OR REPLACE FUNCTION ops.update_setup_work_day_assignment(", 1
+    )[1].split(
+        "REVOKE ALL ON FUNCTION ops.update_setup_work_day_assignment", 1
+    )[0]
+
+    assert "'ASSIGNMENT_MOVED'" in move_fn
+    assert "v_from_work_day_id" in move_fn
+    assert "v_from_work_date" in move_fn
+    assert "v_from_shift" in move_fn
+    assert "v_from_crew_code" in move_fn
+    assert "v_to_work_date" in move_fn
+    assert "v_to_day_number" in move_fn
+    assert "event_note" not in move_fn
+    move_ui = ui.split(
+        "async function board205DropToCell", 1
+    )[1].split(
+        "async function board205NudgeAssignment", 1
+    )[0].lower()
+    assert "move reason" not in move_ui
+    assert "reason:" not in move_ui
+
+
+def test_historical_day_action_remains_visible_in_dark_mode() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert 'id="setup-board205-historical-day"' in ui
+    assert "#setup-board205-historical-day" in css
+    assert 'html[data-theme="dark"] #setup-board205-historical-day' in css
+    assert "background: #1c3148;" in css
+    assert "border-color: #4f8fc3;" in css
+    assert "color: #e8f2fb;" in css
+
+
+def test_historical_button_rule_does_not_split_shared_scroll_container_selector() -> None:
+    css = read_app("setup_scheduling_board.css")
+    import re
+    shared = re.search(r"\.setup-board205-backlog,\s*\.setup-board205-board\s*\{([^}]+)\}", css)
+    assert shared is not None
+    assert "overflow-y: auto;" in shared.group(1)
+    assert "min-width: 0;" in shared.group(1)
+    assert not re.search(r"\.setup-board205-backlog,\s*#setup-board205-historical-day", css)
+
+
+def test_narrow_board_keeps_large_task_lists_in_scrollable_panels():
+    css = read_app("setup_scheduling_board.css")
+    assert "max-height: min(30rem, 65vh);" in css
+    assert "overflow-y: visible;" not in css

@@ -6,7 +6,7 @@
 | System | Production Database — Setup Session |
 | Status | CURRENT — operator-confirmed planning model |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-09 |
+| Last Reviewed | 2026-10-03 |
 | Related Work | Issue #122; PR #125; 2025 Historical Review / Training |
 
 ## Purpose
@@ -66,6 +66,34 @@ Reasons include:
 - one day may include several small tasks or only part of one large task.
 
 The system should preserve planned-versus-actual history, but it should not encourage false precision by filling the entire Setup season with fixed dates far in advance.
+
+## Setup Day Number and Work-Day History
+
+**Setup Day # is a chronological operating label, not durable database identity.**
+
+For an annual Setup Session:
+
+- retained Setup Work Days are numbered `1..N` in chronological `work_date` order;
+- skipped calendar dates do not create gaps in Setup Day numbering;
+- a Work Day that is removed after its work is moved away no longer consumes a Setup Day number;
+- stable history remains anchored by `setup_work_day_id`, `setup_work_day_task_id`, and reported progress rather than by the displayed Day number;
+- adding a legitimate omitted historical Work Day through the Manager correction path may therefore renumber later displayed Setup Day labels without rewriting those stable identities.
+
+Ordinary **+ Add Work Days** remains current/future-only. A separate Manager historical-correction path exists for legitimate omitted past dates or recovery corrections so the normal scheduler does not become a casual backfill tool.
+
+Removing an empty Planned Work Day may retain a lightweight deletion audit event containing the date, operator/time, and an **optional** note. The deleted day does not need to remain visible on the live Scheduling Board merely to preserve evidence. A reason is not required for normal task moves; schedule-move evidence should be captured passively where available so frequent replanning does not add operator burden.
+
+## Fixed Annual Launch Milestones
+
+The annual Setup season has three standing hard milestones derived from the season year:
+
+1. **Thursday before Thanksgiving** — Setup must be complete; this is VIP Sponsor Night / pre-show launch.
+2. **Saturday preceding Thanksgiving** — Food Bank Run/Walk.
+3. **Black Friday** — Opening Night.
+
+These are permanent operating rules, not dates Managers should re-enter each year. The application should derive them automatically and keep them visible during active Setup, with the Thursday completion deadline receiving the strongest emphasis.
+
+The short-horizon scheduling model still applies. These milestones provide the fixed end-of-Setup and launch context; they do **not** justify building a rigid season-long task calendar.
 
 ## Sunday Rule
 
@@ -423,8 +451,12 @@ Future Setup engineering must preserve these rules:
 13. represent grass-cutting completion as a cord-laying readiness dependency rather than a guessed date;
 14. support tasks spanning multiple work days and partial progress;
 15. treat historical crew/hours as evidence, not automatic exact values;
-16. use 2022/2025 evidence to identify missing reusable tasks/steps when evidence supports them; and
-17. keep annual historical facts separate from reusable planning knowledge.
+16. use 2022/2025 evidence to identify missing reusable tasks/steps when evidence supports them;
+17. keep annual historical facts separate from reusable planning knowledge;
+18. treat Setup Day # as a derived chronological label while stable row/assignment identities preserve history;
+19. keep ordinary Work Day creation current/future-only and use a separate Manager correction path for legitimate historical dates;
+20. preserve low-overhead schedule-change evidence without requiring a reason for routine replanning; and
+21. derive and display the Thursday-before-Thanksgiving completion/VIP milestone, preceding Saturday Food Bank Run/Walk, and Black Friday Opening Night every season.
 
 ## Related Durable Sources
 

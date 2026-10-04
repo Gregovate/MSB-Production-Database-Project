@@ -1739,6 +1739,7 @@ function board205AssignmentCard(item) {
   const crew = board205CrewRow(item.setup_work_day_crew_id);
   const canManage = Boolean(appState.access?.can_manage_setup);
   const locked = Boolean(item.historical_locked);
+  const status = nextSetupAssignmentStatus(task);
   const planned = board205AssignmentPlannedCrew(item);
   const minCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
   const plannedLabor = board205LaborHoursText(planned, task.expected_duration_minutes);
@@ -1751,6 +1752,7 @@ function board205AssignmentCard(item) {
       draggable="${canManage && !locked ? 'true' : 'false'}">
       <div class="setup-board205-task-title">
         <span>${board205Esc(item.task_name)}</span>
+        <span class="setup-board205-badge setup-work-status" data-work-status="${board205Esc(status)}">${board205Esc(status.replaceAll('_', ' '))}</span>
         ${task.task_origin === 'SEASON_ONLY' ? '<span class="setup-board205-badge season-only">THIS SEASON ONLY</span>' : ''}
         <span class="setup-board205-badge effort-${board205Esc(String(task.effort_level || 'unknown').toLowerCase())}">${board205Esc(board205Effort(task))}</span>
         ${understaffed ? '<span class="setup-board205-badge short-crew-badge">SHORT CREW</span>' : ''}
@@ -2051,6 +2053,7 @@ function board205Render() {
   const addSeason = document.getElementById('setup-board205-add-season-task');
   const createSession = document.getElementById('setup-board205-create-session');
   const dayForm = document.getElementById('setup-board205-day-form');
+  const historicalDayButton = document.getElementById('setup-board205-historical-day');
   const boardPane = document.getElementById('setup-board205-board-pane');
   const historicalNote = document.getElementById('setup-board205-historical-note');
   const finderTitle = document.getElementById('setup-board205-finder-title');
@@ -2067,13 +2070,18 @@ function board205Render() {
     createSession.hidden = Boolean(session) || !canAdmin;
     createSession.disabled = Boolean(session) || !canAdmin;
   }
+  const canScheduleDays = Boolean(session) && canManage && !historicalReview;
   if (dayForm) {
-    const canScheduleDays = Boolean(session) && canManage && !historicalReview;
     dayForm.hidden = !canScheduleDays;
     dayForm.querySelectorAll('input,button,select').forEach((control) => {
       control.disabled = !canScheduleDays;
     });
   }
+  if (historicalDayButton) {
+    historicalDayButton.hidden = !canScheduleDays;
+    historicalDayButton.disabled = !canScheduleDays;
+  }
+  board205RenderMilestones();
   if (boardPane) boardPane.hidden = historicalReview;
   if (historicalNote) historicalNote.hidden = !historicalReview;
   if (finderTitle) finderTitle.textContent = historicalReview
@@ -2120,6 +2128,76 @@ async function board205Load() {
 loadNextSchedule = board205Load;
 
 
+function board205RenderMilestones() {
+  const target = document.getElementById('setup-board205-milestones');
+  if (!target || typeof window.renderSetupAnnualMilestones !== 'function') return;
+  window.renderSetupAnnualMilestones(target, Number(appState.seasonYear));
+}
+
+function board205OpenHistoricalDayCorrection() {
+  if (!appState.access?.can_manage_setup || board205HistoricalReviewMode()) return;
+  const dialog = document.getElementById('setup-board205-historical-day-dialog');
+  const form = document.getElementById('setup-board205-historical-day-form');
+  const date = document.getElementById('setup-board205-historical-day-date');
+  const note = document.getElementById('setup-board205-historical-day-note');
+  if (!dialog || !form || !date || !note) return;
+
+  form.reset();
+  const today = board205TodayDateKey();
+  const maxDate = new Date(today + 'T00:00:00');
+  maxDate.setDate(maxDate.getDate() - 1);
+  const year = maxDate.getFullYear();
+  const month = String(maxDate.getMonth() + 1).padStart(2, '0');
+  const day = String(maxDate.getDate()).padStart(2, '0');
+  date.max = `${year}-${month}-${day}`;
+  note.value = '';
+  dialog.showModal();
+}
+
+async function board205SubmitHistoricalDayCorrection(event) {
+  event.preventDefault();
+  if (!appState.access?.can_manage_setup) return;
+
+  const dialog = document.getElementById('setup-board205-historical-day-dialog');
+  const workDate = String(document.getElementById('setup-board205-historical-day-date')?.value || '').trim();
+  const note = String(document.getElementById('setup-board205-historical-day-note')?.value || '').trim() || null;
+  if (!workDate) return;
+
+  if (workDate >= board205TodayDateKey()) {
+    window.alert('Historical correction is only for dates before today. Use + Add Work Days for today or future dates.');
+    return;
+  }
+  if (board205ExistingWorkDayDates().has(workDate)) {
+    window.alert('A Setup Work Day already exists for that date.');
+    return;
+  }
+
+  try {
+    setBusy(true);
+    const payload = await api(
+      'api/setup/scheduling-board/work-days/historical',
+      commandOptions('POST', {
+        season_year: Number(appState.seasonYear),
+        work_date: workDate,
+        note
+      })
+    );
+    dialog?.close();
+    await board205Load();
+    const dayNumber = payload.work_day?.setup_day_number;
+    setAlert(
+      `Historical Work Day ${workDate} added${dayNumber == null ? '' : ` as Setup Day ${dayNumber}`}.`,
+      'ok'
+    );
+  } catch (error) {
+    setAlert(error.message || error, 'error');
+    window.alert(error.message || error);
+  } finally {
+    setBusy(false);
+  }
+}
+
+
 async function board205SetReadiness(task) {
   if (!task || !task.setup_session_task_id || !appState.access?.can_manage_setup) return;
   const ready = task.readiness_state === 'NOT_READY';
@@ -2146,17 +2224,17 @@ async function board205RemoveEmptyWorkDay(dayId) {
   if (!day || !board205CanRemoveWorkDay(day)) return;
 
   const label = `Setup Day ${day.setup_day_number} · ${day.day_of_week} · ${day.work_date}`;
-  if (!window.confirm(
-    `Remove ${label}?\n\nOnly an empty Planned day can be removed: one Crew A, Captain TBD, and no tasks assigned.`
-  )) {
-    return;
-  }
+  const note = window.prompt(
+    `Remove ${label}?\n\nOnly an empty Planned day can be removed: one Crew A, Captain TBD, and no tasks assigned.\n\nOptional note (leave blank if this date was simply added by mistake):`,
+    ''
+  );
+  if (note === null) return;
 
   try {
     setBusy(true);
     await api(
       `api/setup/scheduling-board/work-days/${dayId}`,
-      commandOptions('DELETE')
+      commandOptions('DELETE', { note: String(note || '').trim() || null })
     );
     await board205Load();
     setAlert(`${label} removed.`, 'ok');
@@ -3271,6 +3349,7 @@ function board205InstallView() {
                 <button id="setup-board205-add-season-task" type="button" class="manager-only">Add Task</button>
               </div>
             </div>
+            <div id="setup-board205-milestones"></div>
             <div class="setup-board205-dispatch-controls">
               <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
                 <div class="setup-board205-work-day-collapsed">
@@ -3290,6 +3369,7 @@ function board205InstallView() {
                   </div>
                 </div>
               </form>
+              <button id="setup-board205-historical-day" type="button" class="small secondary manager-only" hidden>Historical Day…</button>
 
               <div class="setup-board205-scheduled-search">
                 <label for="setup-board205-scheduled-search">Find scheduled task</label>
@@ -3321,6 +3401,16 @@ function board205InstallView() {
         </div>
       </div>
     </div>
+
+    <dialog id="setup-board205-historical-day-dialog" class="setup-board205-dialog">
+      <form id="setup-board205-historical-day-form">
+        <h3>Add Historical Work Day</h3>
+        <p class="muted">Manager correction only. Normal + Add Work Days stays future-only. Use this when a real past Setup date was omitted or needs to be restored for correction.</p>
+        <label>Past work date<input id="setup-board205-historical-day-date" type="date" required></label>
+        <label>Correction note <span class="muted">(optional)</span><textarea id="setup-board205-historical-day-note" rows="3" placeholder="e.g. Restored to record why the day was removed"></textarea></label>
+        <menu><button type="button" class="secondary setup-board205-dialog-cancel">Cancel</button><button type="submit">Add Historical Day</button></menu>
+      </form>
+    </dialog>
 
     <dialog id="setup-board205-schedule-dialog" class="setup-board205-dialog">
       <form id="setup-board205-schedule-dialog-form">
@@ -3473,6 +3563,8 @@ function board205InstallView() {
     if (control.type === 'search' || control.type === 'number') board205RenderQueue();
   });
   document.getElementById('setup-board205-day-form').addEventListener('submit', board205AddWorkDay);
+  document.getElementById('setup-board205-historical-day')?.addEventListener('click', board205OpenHistoricalDayCorrection);
+  document.getElementById('setup-board205-historical-day-form')?.addEventListener('submit', board205SubmitHistoricalDayCorrection);
   document.getElementById('setup-board205-toggle-work-days')?.addEventListener('click', () => {
     setupBoard205State.workDayPickerExpanded = !setupBoard205State.workDayPickerExpanded;
     board205ApplyWorkDayPickerExpanded();

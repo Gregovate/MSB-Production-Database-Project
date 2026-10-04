@@ -153,7 +153,8 @@ def test_perform_work_status_separates_schedule_from_readiness() -> None:
     ui = read_app("setup_next_pass.js")
 
     assert "task.board_status" in ui
-    assert "boardStatus === 'SCHEDULED'" in ui
+    assert "return nextSetupAssignmentStatus(task);" in ui
+    assert "return 'SCHEDULED';" in ui
     assert "next-perform-readiness-warning" in ui
     assert "soft planning condition; actual work may still be reported" in ui
 
@@ -249,11 +250,11 @@ def test_live_report_work_database_contract() -> None:
 def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
-    assert "setup_next_pass.css?v=2026-09-30.2" in html
-    assert "setup_next_pass.js?v=2026-09-30.10" in html
+    assert "setup_next_pass.css?v=2026-10-04.2" in html
+    assert "setup_next_pass.js?v=2026-10-04.3" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
     assert "setup_acceptance_fixes.js?v=2026-09-26.1" in html
-    assert "setup_scheduling_board.css?v=2026-10-03.2" in html
+    assert "setup_scheduling_board.css?v=2026-10-04.4" in html
     assert "setup_stage_order.js?v=2026-09-25.1" in html
 
 
@@ -276,3 +277,18 @@ def test_setup_access_exposes_signed_in_captain_identity() -> None:
     assert "captain_person_id" in repo
     assert "ref.setup_captain_person_list()" in repo
     assert "lower(captain.email) = lower(caps.email)" in repo
+
+
+def test_schedule_and_perform_work_share_status_palette_and_labels() -> None:
+    perform = read_app("setup_next_pass.js")
+    board = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+    assert "const status = nextSetupAssignmentStatus(task);" in board
+    for ui in (perform, board):
+        assert "setup-work-status" in ui
+        assert 'data-work-status="${' in ui
+        assert "status.replaceAll('_', ' ')" in ui
+    for status in ("SCHEDULED", "IN_PROGRESS", "COMPLETE"):
+        assert f'[data-work-status="{status}"]' in css
+    assert "completed-assignment" not in css
+    assert "next-perform-complete-pill" not in perform

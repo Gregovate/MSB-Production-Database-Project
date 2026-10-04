@@ -87,13 +87,38 @@ def api_setup_scheduling_board_work_day() -> tuple[Response, int]:
     return jsonify(work_day=result), 201
 
 
+@setup_scheduling_board_api.post("/api/setup/scheduling-board/work-days/historical")
+def api_setup_scheduling_board_historical_work_day() -> tuple[Response, int]:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+
+    season_year = required_int(payload.get("season_year"), "season_year")
+    work_date = str(payload.get("work_date") or "").strip()
+    if not work_date:
+        raise SetupCommandError("work_date is required")
+
+    result = repo().add_historical_work_day(
+        email=email,
+        season_year=season_year,
+        work_date=work_date,
+        note=optional_text(payload.get("note")),
+    )
+    return jsonify(work_day=result), 201
+
+
 @setup_scheduling_board_api.delete("/api/setup/scheduling-board/work-days/<int:setup_work_day_id>")
 def api_setup_scheduling_board_work_day_remove(
     setup_work_day_id: int,
 ) -> Response:
     require_setup_command()
     _base_repo, email, _access = require_manager()
-    result = repo().remove_work_day(email=email, work_day_id=setup_work_day_id)
+    payload = request.get_json(silent=True) or {}
+    result = repo().remove_work_day(
+        email=email,
+        work_day_id=setup_work_day_id,
+        note=optional_text(payload.get("note")),
+    )
     return jsonify(work_day=result)
 
 
