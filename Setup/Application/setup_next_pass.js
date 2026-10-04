@@ -123,6 +123,78 @@ function nextTaskLabel(task) {
   return `${stage}${scope} — ${task.task_name}`;
 }
 
+function setupAnnualMilestoneDates(seasonYear) {
+  const year = Number(seasonYear);
+  if (!Number.isInteger(year) || year < 2000 || year > 2200) return null;
+
+  const novemberFirst = new Date(Date.UTC(year, 10, 1));
+  const firstThursday = 1 + ((4 - novemberFirst.getUTCDay() + 7) % 7);
+  const thanksgiving = new Date(Date.UTC(year, 10, firstThursday + 21));
+
+  const setupComplete = new Date(thanksgiving);
+  setupComplete.setUTCDate(setupComplete.getUTCDate() - 7);
+
+  const foodBankRunWalk = new Date(thanksgiving);
+  foodBankRunWalk.setUTCDate(foodBankRunWalk.getUTCDate() - 5);
+
+  const openingNight = new Date(thanksgiving);
+  openingNight.setUTCDate(openingNight.getUTCDate() + 1);
+
+  return { setupComplete, foodBankRunWalk, openingNight };
+}
+
+function setupMilestoneDateLabel(value) {
+  return value.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'UTC'
+  });
+}
+
+function setupMilestoneCountdown(value) {
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate());
+  const days = Math.round((target - today) / 86400000);
+  if (days === 0) return 'TODAY';
+  if (days === 1) return '1 day';
+  if (days > 1) return `${days} days`;
+  return 'passed';
+}
+
+function renderSetupAnnualMilestones(target, seasonYear) {
+  if (!target) return;
+  const milestones = setupAnnualMilestoneDates(seasonYear);
+  if (!milestones) {
+    target.innerHTML = '';
+    return;
+  }
+
+  target.innerHTML = `
+    <div class="setup-annual-milestones" aria-label="Annual Setup launch milestones">
+      <div class="setup-annual-milestone primary">
+        <span class="setup-annual-milestone-label">SETUP COMPLETE · VIP SPONSOR NIGHT</span>
+        <strong>${escapeHtml(setupMilestoneDateLabel(milestones.setupComplete))}</strong>
+        <span>${escapeHtml(setupMilestoneCountdown(milestones.setupComplete))}</span>
+      </div>
+      <div class="setup-annual-milestone">
+        <span class="setup-annual-milestone-label">FOOD BANK RUN/WALK</span>
+        <strong>${escapeHtml(setupMilestoneDateLabel(milestones.foodBankRunWalk))}</strong>
+        <span>${escapeHtml(setupMilestoneCountdown(milestones.foodBankRunWalk))}</span>
+      </div>
+      <div class="setup-annual-milestone">
+        <span class="setup-annual-milestone-label">OPENING NIGHT · BLACK FRIDAY</span>
+        <strong>${escapeHtml(setupMilestoneDateLabel(milestones.openingNight))}</strong>
+        <span>${escapeHtml(setupMilestoneCountdown(milestones.openingNight))}</span>
+      </div>
+    </div>`;
+}
+
+window.setupAnnualMilestoneDates = setupAnnualMilestoneDates;
+window.renderSetupAnnualMilestones = renderSetupAnnualMilestones;
+
+
 function nextTaskScopeLabel(task) {
   if (nextIsSitewide(task)) return 'Site-wide / Infrastructure';
   return `Stage ${task.stage_key || '—'}${task.scene_name ? ` / ${task.scene_name}` : ' / Stage-level'}`;
@@ -707,6 +779,7 @@ function installNextTabs() {
     <div class="card">
       <div class="section-title"><div><div class="eyebrow">Captain / field execution</div><h2>Perform Setup Work</h2></div></div>
       <p class="muted">Only scheduled work appears here. Work is organized by Setup Day, AM/PM, and Crew/Captain. Report Work records actual crew, elapsed time, and percent complete against the exact scheduled assignment.</p>
+      <div id="setup-perform-milestones"></div>
       <div class="next-perform-toolbar">
         <label>Captain
           <select id="next-perform-captain-filter" aria-label="Filter Perform Work by Captain"></select>
@@ -813,6 +886,7 @@ async function loadNextExecution() {
   ]);
   setupNextState.executionTasks = executionPayload.tasks || [];
   setupNextState.performBoard = boardPayload.board || { session: null, work_days: [], crews: [], tasks: [], assignments: [] };
+  renderSetupAnnualMilestones(document.getElementById('setup-perform-milestones'), Number(appState.seasonYear));
   renderNextExecution();
 }
 
