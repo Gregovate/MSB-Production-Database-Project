@@ -1652,3 +1652,15 @@ def test_205_assignment_move_history_is_passive_and_does_not_require_reason() ->
     )[0].lower()
     assert "move reason" not in move_ui
     assert "reason:" not in move_ui
+
+
+def test_historical_day_action_remains_visible_in_dark_mode() -> None:
+    ui = read_app("setup_scheduling_board.js")
+    css = read_app("setup_scheduling_board.css")
+
+    assert 'id="setup-board205-historical-day"' in ui
+    assert "#setup-board205-historical-day" in css
+    assert 'html[data-theme="dark"] #setup-board205-historical-day' in css
+    assert "background: #1c3148;" in css
+    assert "border-color: #4f8fc3;" in css
+    assert "color: #e8f2fb;" in css
