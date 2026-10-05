@@ -16,7 +16,7 @@ Do not treat files manually overwritten in that shared folder as authoritative e
 
 ## Current checkpoint
 
-Current test candidate: **v0.2.2 (2026-10-04)**; live deployment remains unverified.
+Current test candidate: **v0.2.3 (2026-10-04)**; live deployment remains unverified.
 
 Frozen previous checkpoint: v0.2.1 at `5e08db5374826b91c4b372044f013dcb3d9f9bbd`.
 
@@ -113,8 +113,9 @@ Deployment/apply is still blocked pending:
 2. Include the recovered [tree/star icon](artifacts/MSB%20Preview%20Update%20Tree%20v2.ico)
    when building the next committed runtime package. Neither existing source archive
    contains it; the installer requires it. The supplied icon loads as 32 x 32.
-3. Review unresolved apply protections before live writes: LOR closure is currently
-   operator acknowledgement only; input XML/candidate can change while review is open;
+3. Review unresolved apply protections before live writes: process detection is
+   limited to verified `LORSequencer` and legacy `LORSequenceEditor` executable names;
+   input XML/candidate can change while review is open;
    install does not revalidate the reviewed input/candidate immediately before replacement;
    reports validate names/revisions/file membership, not master content hashes;
    shared logs omit before/after file hashes and application commit identity.
@@ -155,6 +156,28 @@ are not committed. Candidate XML and action CSV remain local acceptance evidence
 No real-library install or Production write was performed. Remaining resume point:
 complete the apply protections above, then test exact committed runtime startup,
 single-instance behavior, copied-library recovery, LOR reopen and both PCs.
+
+## Acknowledgement retest candidate — v0.2.3
+
+The [v0.2.3 source archive](artifacts/LOR2DB_2PC_Sync_SOURCE_v0.2.3.zip) has
+SHA-256 `8d018cd611829ff108fc45eba2a75bc8bd65a09edead1b7a0e6002319e7aee19`.
+It includes the recovered icon and comparison-only acknowledgement launcher.
+Raw Run 29 HTML remains an operational input and is excluded from the archive.
+
+- Review explicitly names `C:\lor\CommonData\LORPreviews.xml`.
+- Both closure and change acknowledgement are mandatory for additions or replacements.
+- Review continuation and actual install both check for `LORSequencer` or
+  `LORSequenceEditor`; the installed `LORSequencer.exe` name was verified on this PC.
+- `-ReviewOnly` exercises the review and blocking checks, logs the result and exits
+  before installation. The supplied retest launcher passes a separate copied library.
+- Eight disposable engine checks plus running Sequencer, running legacy editor and
+  no-Sequencer guard cases passed in Windows PowerShell 5.1.
+
+Retest the actual UI with Sequencer open (continuation must block), then close it,
+acknowledge both checkboxes and require the retest-only success message. No live-file
+apply is authorized by this retest. Remaining apply protections and two-PC/live
+acceptance listed above are still required before rollout. Visible retest date/version
+are recorded in `VERSION.txt`; application source identifies v0.2.3.
 
 ## Related authorities
 
