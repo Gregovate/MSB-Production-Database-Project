@@ -2,11 +2,11 @@
 param([string]$TargetPath = 'G:\Shared drives\MSB Database\UserPreviewStaging\LOR2DB_2PC_Sync', [switch]$NoDialog)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-$expectedArchiveHash = '32c3c0c8025ca1cd0fa9f3d2e8cd9d666f3b13ad70f556afc95dd46e04a2c024'
-$applicationCommit = '9f2f971f9650d7a4413886ce20a43a5d74b093d4'
+$expectedArchiveHash = '8e75b89bcc04fb632e4b90660fe8a7440f2dc4ae1f2886558c71fbc2bbb8df29'
+$applicationCommit = '4f12ca7e4a0bcaf4b25234593ad4078ed8de65ea'
 $expectedReportHash = '5ea35295371319cbc06be4d084a3cc4e5d347298a11f7117bf05b063b29de837'
 $reportName = 'lor-reconciliation-20261004-195521-run-29.html'
-$archivePath = Join-Path $PSScriptRoot 'LOR2DB_2PC_Sync_SOURCE_v0.2.7.zip'
+$archivePath = Join-Path $PSScriptRoot 'LOR2DB_2PC_Sync_SOURCE_v0.2.8.zip'
 $realTarget = 'G:\Shared drives\MSB Database\UserPreviewStaging\LOR2DB_2PC_Sync'
 $resolvedTarget = [IO.Path]::GetFullPath($TargetPath).TrimEnd('\')
 $testPrefix = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'installer-test')).TrimEnd('\')
@@ -28,7 +28,7 @@ try {
     if ((Get-FileHash -LiteralPath $reportSource).Hash -ne $expectedReportHash) { throw 'Run 29 report differs from the tested report; deployment blocked.' }
     $names = @('Update_MSB_Previews.ps1','MSB Preview Update Tree v2.ico','VERSION.txt','DEPLOYMENT.json','CONTROLLED_PC_TEST.txt','Update your PC Previews to LOR Master Files.lnk')
     $metadata = [ordered]@{
-        version = '0.2.7'; commit = $applicationCommit; issue = 299; pr = 300
+        version = '0.2.8'; commit = $applicationCommit; issue = 299; pr = 300
         # Application gate identifies this as the same laptop-tested candidate.
         status = 'LAPTOP_ACCEPTANCE'; intended_use = 'CONTROLLED_MULTI_PC_TEST_NOT_GENERAL_ROLLOUT'
         archive_sha256 = $expectedArchiveHash
@@ -75,7 +75,7 @@ Greg: preserve logs and record each PC's results under #299/#300.
     $link.Arguments = '-NoLogo -NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File "' + (Join-Path $resolvedTarget 'Update_MSB_Previews.ps1') + '"'
     $link.WorkingDirectory = $resolvedTarget
     $link.IconLocation = (Join-Path $resolvedTarget 'MSB Preview Update Tree v2.ico') + ',0'
-    $link.Description = 'MSB Preview Sync v0.2.7 - Controlled PC Acceptance'
+    $link.Description = 'MSB Preview Sync v0.2.8 - Controlled PC Acceptance'
     $link.WindowStyle = 7
     $link.Save()
     $metadata.files['Update your PC Previews to LOR Master Files.lnk'] = (Get-FileHash -LiteralPath $shortcutPath).Hash
@@ -109,3 +109,5 @@ Greg: preserve logs and record each PC's results under #299/#300.
 } finally {
     # The temporary staging directory is retained for inspection; no recursive deletion.
 }
+
+
