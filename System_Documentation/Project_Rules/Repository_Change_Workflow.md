@@ -20,6 +20,30 @@ Do not assume that repository state remembered from an earlier conversation is s
 
 For connector/API-based work where a local `git pull` is not available, creating the work branch directly from current remote `main` and reading the current remote files satisfies the refresh requirement.
 
+## Greg's Workstation and Checkout Context
+
+Confirmed by Greg on 2026-10-05. Greg actively switches between machines; use the latest pasted PowerShell prompt as the working-location indicator. Do not assume the machine or checkout stayed the same between messages.
+
+| Machine | Primary repository checkout / prompt path |
+|---|---|
+| Desktop | `C:\Users\Greg\Github\MSB-Production-Database-Project` |
+| Laptop | `C:\lor\ImportExport\VSCode` |
+| Park workstation | Pending: Greg will provide the path when park WiFi is operational. Do not invent a location. |
+
+A prompt ending in `MSB-Production-Database-Project-81-vcheck` identifies a separate worktree observed on the desktop; it is not the primary checkout above. The suffix alone does not establish its current purpose, branch, or whether it can be removed. Check those before cleanup.
+
+### Required Command Handoff and Cleanup
+
+- Give commands for the machine and checkout shown in the latest prompt. Include an explicit `Set-Location` when returning from a preview worktree to the primary checkout.
+- Refresh remote `main` before preparing changes and refresh the operator's primary `main` checkout before running merged release tooling. Use fast-forward-only pulls; do not assume `pull.ff=only` is configured on every PC.
+- Inspect branch/worktree state before recommending `git switch main`. When main is already checked out in another worktree, use that existing checkout rather than forcing a second checkout or resetting branches.
+- Provide the complete sequence: prepare isolated change, test, obtain Production approval, merge, deploy under the governing runbook, close out documentation, clean up this task's disposable work, and return the operator to updated primary `main`.
+- Include concrete cleanup commands in the handoff. Check ownership, branch, clean status, and merged history before removing a worktree or local branch. Preserve unrelated worktrees and uncommitted work. Do not use forced removal/reset to bypass a failure.
+- Commands must stop on failure. If a switch or pull fails, subsequent deployment must not run; do not provide a multiline sequence that silently continues after a native Git failure.
+- Never confuse reusable preview CLEAN EXIT (server disposable cleanup) with local Git worktree cleanup; both have their own disposition.
+
+Greg coordinates several concurrent workstreams during launch. Correct checkout selection, complete command sequences, and cleanup are the assistant's responsibility rather than work Greg should have to reconstruct from chat.
+
 ## Concurrent Project Work
 
 When another sub-project has changed the same area since the current branch was created:
