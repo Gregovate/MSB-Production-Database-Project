@@ -68,3 +68,9 @@ Test branch `fix/205-search-dismissal` adds explicit popup visibility state. Sel
 Validation: 678 Setup/Application tests passed; focused Scheduling contracts 91 passed; direct JavaScript execution confirms explicit opening, selection/drag dismissal, dismissal surviving refresh, and retained query; JavaScript syntax/whitespace checks pass. Operator disposable browser review is pending. No Production installation authorized for this follow-up until testing and approval.
 
 Acceptance: search for a scheduled task and select it, then drag/drop that task. Results must stay closed after the board refresh; the query remains available. Click search to reopen; Escape/outside click dismiss. Repeat with a new finder task and a grouped move. Exit preview cleanly.
+
+### Follow-up operator approval — 2026-10-05
+
+Greg reported the search-menu defect fixed in the exact-candidate disposable browser preview and reported `SETUP REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT`. He explicitly instructed merge and Production deployment. Accepted application SHA: `00de4635b0ee49658f2e6b5782d758e91054ca02`. This approval covers the search dismissal correction, not unrelated changes. Reports remain operator-reported; raw preview report was not independently inspected here.
+
+`run_setup_303_source_only_deploy.ps1` uses the already-proven #301 source-only installer procedure, with release pins updated to this accepted target and old live SHA `0783b76bfdaa5c794a3922dd5e1e0d37b788a2c9`; old/new visible version remains V0.3.39 for this presentation correction. No migration, maintenance entry, or other service restart. Five boundary/rollback tests against the new pins passed. Server installation and protected-route check remain pending until actual runner evidence.
