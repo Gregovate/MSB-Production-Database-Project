@@ -290,3 +290,42 @@ and the timestamped backup matches the original
 `d5f4588d7b581cc34d9fd7b915df4cc9b5c3919da3f35625a202407c04b8fd6f`.
 LOR reopen/usability, closed-LOR idempotent repeat, second PC and shared deployment
 remain pending. Production and master previews were not changed.
+
+## Controlled office-PC deployment installer
+
+Greg requested shared G: deployment for controlled testing on additional office PCs
+on 2026-10-05. This is a pilot, not general rollout or Production acceptance.
+The [one-click installer](artifacts/Install%20MSB%20Controlled%20PC%20Test.vbs)
+runs the [checkpoint deployment script](artifacts/Install-Controlled-PC-Test.ps1).
+Keep both alongside the unchanged v0.2.7 source archive and the exact tested Run 29
+HTML operational input. The report is not committed as application source.
+
+The default and only live target is
+`G:\Shared drives\MSB Database\UserPreviewStaging\LOR2DB_2PC_Sync`.
+Installer testing is restricted to a disposable `installer-test` directory beneath
+the installer folder. Close existing MSB sync windows before shared deployment.
+
+The installer verifies the archive and existing/supplied report hashes before writes,
+backs up each replaced application file under `deployment-backups`, installs only
+named committed runtime files, checks deployed hashes, creates the tree shortcut,
+and writes `DEPLOYMENT.json` with exact application commit
+`9f2f971f9650d7a4413886ce20a43a5d74b093d4`, v0.2.7, per-file hashes and backup path.
+Existing reports and logs are preserved; missing tested Run 29 report can be installed
+from the supplied operational copy. On installation failure, replaced files are
+restored and newly installed named files removed; recovery errors stop deployment.
+No blanket ZIP-overwrite procedure or direct G: source editing is used.
+
+Runtime metadata retains `LAPTOP_ACCEPTANCE` as the candidate's established
+acceptance level, with `intended_use=CONTROLLED_MULTI_PC_TEST_NOT_GENERAL_ROLLOUT`.
+The app's identity gate accepts that previously tested release status; this does not
+claim the other PCs have passed. The installer itself never changes local previews,
+the controlled master folder or Production. Each programmer must explicitly approve
+the local update in the review window and retain the backup/reopen/repeat evidence.
+
+Disposable Windows PowerShell 5.1 installer verification passed: previous version
+backup, runtime hash match, shortcut/report/identity creation, and changed-report
+preflight rejection without application mutation. Actual G: installation is still
+pending because this agent session receives access denied to G:. Greg runs the
+prepared installer through normal Windows access, then supplies its success/failure
+message. Record each additional PC's apply result, backup, LOR reopen and idempotent
+repeat under #299/#300 before wider rollout. The known large-preview pause remains open.
