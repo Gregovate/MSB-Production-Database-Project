@@ -16,7 +16,7 @@ Do not treat files manually overwritten in that shared folder as authoritative e
 
 ## Current checkpoint
 
-Current test candidate: **v0.2.5 (2026-10-04)**; live deployment remains unverified.
+Current test candidate: **v0.2.6 (2026-10-04)**; live deployment remains unverified.
 
 Frozen previous checkpoint: v0.2.1 at `5e08db5374826b91c4b372044f013dcb3d9f9bbd`.
 
@@ -218,6 +218,22 @@ The review-only launcher remains non-installing. This presentation change does
 not fix or establish acceptance of the UI-thread comparison delay. Next steps:
 verify path readability, correct the remaining startup blocking work, then resume
 the pending live/two-PC acceptance gates.
+
+### Comparison-stage feedback — v0.2.6
+
+Greg accepted the improved splash folder display and clarified that the observed
+`Not Responding` pause occurs while comparing the large Master Musical Preview
+(preview 1 of 34). The screenshot already shows the correct per-preview operation.
+Do not classify this as absent preview feedback or an accepted responsiveness fix.
+
+The [v0.2.6 source candidate](artifacts/LOR2DB_2PC_Sync_SOURCE_v0.2.6.zip) has
+SHA-256 `33db6a5c71933358049197779184bee5e23afdb7568705ac3da72df610fffa99`.
+It additionally reports local-library reading, XML validation, identity/duplicate
+checking, candidate construction and final verification. Existing per-preview
+messages and persistent master-folder display remain. Windows PowerShell 5.1
+compilation and the eight disposable engine checks passed. Runtime comparison
+semantics are unchanged; review-only retest still exits before installation.
+Large-preview UI-thread blocking and full acceptance remain unresolved.
 
 - [Preview Merger ownership boundary](../preview_merger/README.md)
 - [LOR version compatibility review](../../Docs/01_LOR_System/02_Data_Extraction/LOR_Preview_Version_Compatibility_Review.md)
