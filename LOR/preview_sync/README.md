@@ -110,8 +110,9 @@ Deployment/apply is still blocked pending:
 1. Read access to the G: deployment/report/master inputs. Greg confirmed the folder
    exists on this PC, but this session receives access denied even after read permission
    was granted. Do not interpret that error as evidence the folder is absent.
-2. Recover and verify the existing `MSB Preview Update Tree v2.ico` from deployment.
-   Neither committed source archive contains it; the installer requires it.
+2. Include the recovered [tree/star icon](artifacts/MSB%20Preview%20Update%20Tree%20v2.ico)
+   when building the next committed runtime package. Neither existing source archive
+   contains it; the installer requires it. The supplied icon loads as 32 x 32.
 3. Review unresolved apply protections before live writes: LOR closure is currently
    operator acknowledgement only; input XML/candidate can change while review is open;
    install does not revalidate the reviewed input/candidate immediately before replacement;
@@ -125,6 +126,35 @@ Deployment/apply is still blocked pending:
 No G: deployment, real local-library write, LOR2DB state change, or Production operation
 was performed in this continuation. #299 remains open and #300 remains draft.
 Do not classify v0.2.2 as accepted for programmer rollout until the remaining gates pass.
+
+## Copied-input acceptance — 2026-10-04
+
+Greg supplied local copies of the Run 29 HTML report, shortcut icon and complete
+`Database Previews V6.6.12` folder including its extraction manifest. G: itself
+remains inaccessible to this session; copied-input validation does not establish
+the state of the current G: deployment.
+
+Using Windows PowerShell 5.1 and v0.2.2 application commit
+`318d74b17805435c4e8dd4f72d6ea6f094420d42`:
+
+- Report parser recognizes completed Run 29 and its 34 source previews.
+- Copied master matches report filenames, names, revisions and count.
+- All 34 master files match the supplied manifest's raw SHA-256 values;
+  manifest PreviewIDs/names match the parsed files, with no duplicate manifest filenames.
+- Local library contains 40 previews: 21 current, 3 revision-only NOOP,
+  8 controlled replacements, 2 controlled additions, 8 unmanaged identities preserved.
+- Candidate re-comparison requires zero additions/replacements.
+- Live local XML SHA-256 before and after comparison is identical:
+  `d5f4588d7b581cc34d9fd7b915df4cc9b5c3919da3f35625a202407c04b8fd6f`.
+- Read/compare/validate plus second candidate comparison took 27.640 seconds
+  against copied files. This does not measure G: access or prove GUI responsiveness.
+
+The [copied-input result](artifacts/acceptance-v0.2.2-run29.json) records input
+and candidate hashes. Raw report/XML/master files remain operational inputs and
+are not committed. Candidate XML and action CSV remain local acceptance evidence.
+No real-library install or Production write was performed. Remaining resume point:
+complete the apply protections above, then test exact committed runtime startup,
+single-instance behavior, copied-library recovery, LOR reopen and both PCs.
 
 ## Related authorities
 

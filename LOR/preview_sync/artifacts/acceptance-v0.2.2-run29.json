@@ -1,0 +1,27 @@
+﻿{
+    "candidate_commit":  "318d74b17805435c4e8dd4f72d6ea6f094420d42",
+    "run":  29,
+    "recorded_source_folder":  "G:\\Shared drives\\MSB Database\\Database Previews V6.6.12",
+    "master_count":  34,
+    "manifest_count":  34,
+    "manifest_raw_hash_differences":  [
+
+                                      ],
+    "report_sha256":  "5EA35295371319CBC06BE4D084A3CC4E5D347298A11F7117BF05B063B29DE837",
+    "manifest_sha256":  "CFFEBAE9080204AB8FCAE9F45316B9F76C337F6F8FB3528FDA27DF88B6B7B64C",
+    "icon_sha256":  "22D4EB845B041D04983696BA34A8771DC17E06314102920F93ED9741D5109665",
+    "local_count":  40,
+    "unmanaged_count":  8,
+    "current":  21,
+    "revision_only":  3,
+    "replace":  8,
+    "add":  2,
+    "repeat_replace":  0,
+    "repeat_add":  0,
+    "live_sha256_before":  "D5F4588D7B581CC34D9FD7B915DF4CC9B5C3919DA3F35625A202407C04B8FD6F",
+    "live_sha256_after":  "D5F4588D7B581CC34D9FD7B915DF4CC9B5C3919DA3F35625A202407C04B8FD6F",
+    "candidate_sha256":  "EFD348871A9C9924D539BA11EEF76C6CE309AE64081DC92520097BC220C99A1F",
+    "comparison_seconds":  27.64,
+    "applied":  false,
+    "evidence_folder":  "C:\\Users\\greg\\.codex\\.chatgpt-projects\\g-p-677ab110b5908191ac63ef0277c5dbc4\\pc-sync-acceptance-v021\\acceptance-20261004-221406"
+}
