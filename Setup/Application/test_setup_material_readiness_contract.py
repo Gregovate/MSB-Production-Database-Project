@@ -221,7 +221,7 @@ def test_pick_list_sorts_by_pick_deadline_then_physical_rack_walk_order() -> Non
     assert "left.column - right.column" in ui
     assert "left.level.localeCompare" in ui
     assert "left.slot - right.slot" in ui
-    assert "setup_pick_list.js?v=2026-10-01.4" in html
+    assert "setup_pick_list.js?v=2026-10-05.1" in html
 
 
 def test_manager_pick_override_is_session_scoped_governed_demand_not_fake_task_assignment() -> None:
@@ -467,5 +467,15 @@ def test_delayed_pick_warning_survives_print_when_delayed_rows_are_shown() -> No
     assert 'class="print-delay-badge">DELAYED — DO NOT PICK YET</div>' in ui
     assert ".print-delay-badge{display:none" in css
     assert ".print-delay-badge{display:inline-block!important" in css
-    assert "setup_pick_list.css?v=2026-10-01.1" in html
-    assert "setup_pick_list.js?v=2026-10-01.4" in html
+    assert "setup_pick_list.css?v=2026-10-05.1" in html
+    assert "setup_pick_list.js?v=2026-10-05.1" in html
+
+
+def test_pick_list_shows_authenticated_user_in_compact_scanner_header():
+    html = (APP_DIR / "pick_list.html").read_text(encoding="utf-8")
+    js = (APP_DIR / "setup_pick_list.js").read_text(encoding="utf-8")
+    identity_index = html.index('id="pick-user-identity"')
+    assert html.index('<div class="controls no-print">') < identity_index < html.index('id="back-button"')
+    assert "access.display_name || access.authenticated_email" in js
+    assert 'identity.textContent = user ? `Signed in: ${user}`' in js
+    assert "Unable to verify signed-in user" in js

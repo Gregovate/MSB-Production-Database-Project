@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Setup Pick List</title>
-  <link rel="stylesheet" href="assets/setup_pick_list.css?v=2026-10-01.1">
+  <link rel="stylesheet" href="assets/setup_pick_list.css?v=2026-10-05.1">
   <link rel="stylesheet" href="assets/setup_pick_mode.css?v=2026-10-01.5">
 </head>
 <body>
@@ -15,6 +15,7 @@
     <p id="status-line">Loading live scheduled material demand…</p>
   </div>
   <div class="controls no-print">
+    <span id="pick-user-identity" class="pick-user-identity" role="status">Checking signed-in user…</span>
     <label>Season <select id="season-select"></select></label>
     <label>Needed for <select id="date-filter"><option value="">All scheduled dates</option></select></label>
     <label>Status
@@ -83,7 +84,7 @@
   <p>Schedule demand and Manager overrides are planning intent. A workshop scan records an actual PICKED event. Other movement/location observations are recorded through their own explicit workflows. Record Location is a separate field workflow; appearing here does not record a park location.</p>
 </footer>
 <script src="assets/qrcode.min.js?v=1"></script>
-<script src="assets/setup_pick_list.js?v=2026-10-01.4"></script>
+<script src="assets/setup_pick_list.js?v=2026-10-05.1"></script>
 <script src="assets/setup_pick_mode.js?v=2026-10-01.3"></script>
 </body>
 </html>

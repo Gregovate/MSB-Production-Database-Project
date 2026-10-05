@@ -757,7 +757,7 @@ def test_205_scheduler_panes_scroll_independently_with_drag_edge_autoscroll() ->
     assert "grid-template-rows: auto minmax(0, 1fr)" in css
     assert "setup-board205-planning-header" in ui
     assert "margin: 0.2rem 0 0.55rem" in css
-    assert "max-height: min(30rem, 65vh)" in css
+    assert "max-height: none;" in css
 
 
 def test_205_captain_learning_cancel_wording_preserves_schedule_only() -> None:
@@ -1004,8 +1004,8 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert "app.register_blueprint(setup_scheduling_board_api)" in host
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
-    assert "setup_scheduling_board.css?v=2026-10-04.4" in html
-    assert "setup_scheduling_board.js?v=2026-10-04.2" in html
+    assert "setup_scheduling_board.css?v=2026-10-05.1" in html
+    assert "setup_scheduling_board.js?v=2026-10-05.1" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
@@ -1676,7 +1676,24 @@ def test_historical_button_rule_does_not_split_shared_scroll_container_selector(
     assert not re.search(r"\.setup-board205-backlog,\s*#setup-board205-historical-day", css)
 
 
-def test_narrow_board_keeps_large_task_lists_in_scrollable_panels():
+def test_narrow_board_has_direct_panel_navigation_and_page_scroll():
     css = read_app("setup_scheduling_board.css")
-    assert "max-height: min(30rem, 65vh);" in css
-    assert "overflow-y: visible;" not in css
+    assert "overflow-y: visible;" in css
+    assert 'data-tablet-pane="board"' in css
+    assert 'data-tablet-pane="tasks"' in css
+    assert '.setup-board205-main:not(.finder-only)' in css
+    ui = read_app("setup_scheduling_board.js")
+    assert 'aria-controls="setup-board205-right"' in ui
+    assert 'aria-controls="setup-board205-backlog"' in ui
+    assert "board205SetTabletPane(setupBoard205State.tabletPane);" in ui
+
+
+def test_launch_quick_progress_filter_is_outside_collapsed_filters():
+    ui = read_app("setup_scheduling_board.js")
+    assert ui.index('id="setup-board205-in-progress-only"') < ui.index('<div class="setup-board205-secondary-filters">')
+    assert "inProgressOnly: checked('setup-board205-in-progress-only')" in ui
+    assert "setChecked('setup-board205-in-progress-only', state.inProgressOnly)" in ui
+    assert "if (task.execution_status !== 'IN_PROGRESS') return false;" in ui
+    assert "else if (!hardBlocked && !statuses.has(family)) return false;" in ui
+    css = read_app("setup_scheduling_board.css")
+    assert "body.setup-schedule-view .site-header { position: static; }" in css

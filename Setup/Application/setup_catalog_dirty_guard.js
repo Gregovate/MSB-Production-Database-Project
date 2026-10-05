@@ -12,7 +12,7 @@
 (() => {
   'use strict';
 
-  const CLIENT_BUILD = 'V0.3.38-setup-day-milestones';
+  const CLIENT_BUILD = 'V0.3.39-tablet-launch-debug';
   const CLIENT_BADGE = `Client ${CLIENT_BUILD.split('-')[0]}`;
   const reusableFieldIds = new Set([
     'edit-task-name',
