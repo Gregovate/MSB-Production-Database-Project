@@ -58,3 +58,13 @@ Greg subsequently explicitly authorized deployment after testing and accepted th
 From a clean merged-main Windows checkout, run `Setup/Acceptance/run_setup_301_source_only_deploy.ps1`. Its pinned Python installer follows Server Management's `docs/server/Setup_Source_Only_Application_Deployment_Runbook.md`, verifies the expected live/shared SHAs, accepted target ancestry, UI date, regression, and read-only data preservation; then advances only `/opt/msb-setup`. It retains reports under `/home/msbadmin/setup-deployment-reports/PR301-*` and restores the old source on deployment failure. Do not rerun a STOP result without investigating the retained report.
 
 Installer verification: five isolated tests passed for exact Setup-only installation, live-source drift, failed-health rollback, preflight data drift, and interruption recovery; Python compile and whitespace checks passed. Protected-route Production check and deployment/runtime closeout remain pending until actual installation evidence is supplied.
+
+## Follow-up: dismissed scheduled-search results reopen after drop
+
+Reported 2026-10-05 under #205/#122, after the operator-reported V0.3.39 Production installer PASS (report `/home/msbadmin/setup-deployment-reports/PR301-20261005T164341Z`; protected-route closeout remains pending). Screenshot shows retained `layout` query with the custom search results covering the board after a drop. Cause: `board205Render()` calls the search renderer on every board reload, ignoring prior dismissal.
+
+Test branch `fix/205-search-dismissal` adds explicit popup visibility state. Selecting a result, starting either drag type, clicking outside, or Escape dismisses results. Board refresh preserves dismissal and query text. Typing, clicking, or focusing search opens results deliberately. Placement commands and persisted data are unchanged. This presentation correction retains V0.3.39 under the release rule; the new exact candidate SHA distinguishes it. Footer remains Updated 2026-10-05, today's UI-change date.
+
+Validation: 678 Setup/Application tests passed; focused Scheduling contracts 91 passed; direct JavaScript execution confirms explicit opening, selection/drag dismissal, dismissal surviving refresh, and retained query; JavaScript syntax/whitespace checks pass. Operator disposable browser review is pending. No Production installation authorized for this follow-up until testing and approval.
+
+Acceptance: search for a scheduled task and select it, then drag/drop that task. Results must stay closed after the board refresh; the query remains available. Click search to reopen; Escape/outside click dismiss. Repeat with a new finder task and a grouped move. Exit preview cleanly.
