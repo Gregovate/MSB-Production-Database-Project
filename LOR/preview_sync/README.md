@@ -16,7 +16,7 @@ Do not treat files manually overwritten in that shared folder as authoritative e
 
 ## Current checkpoint
 
-Current test candidate: **v0.2.7 (2026-10-04)**; laptop live acceptance authorized by Greg, not yet completed; shared deployment remains unverified.
+Current test candidate: **v0.2.7 (2026-10-04)**; laptop live installation passed; LOR reopen/repeat acceptance pending; shared deployment remains unverified.
 
 Frozen previous checkpoint: v0.2.1 at `5e08db5374826b91c4b372044f013dcb3d9f9bbd`.
 
@@ -280,4 +280,13 @@ list, acknowledge both controls, and explicitly click Update PC Previews. Reopen
 LOR after success, verify managed/personal previews, close LOR and rerun; require
 no adds/replacements. Preserve backup and logs. Known long Master Musical UI-thread
 pause remains open for wider rollout; this bounded acceptance does not mark it fixed.
-No laptop installation has yet been performed by this workstream.
+Greg completed the first live laptop installation on YOGA-GREG at 23:14
+America/Chicago, 2026-10-04, using application commit
+`9f2f971f9650d7a4413886ce20a43a5d74b093d4`. The success screenshot and APPLIED log
+report 8 replacements, 2 additions and 8 unmanaged identities preserved.
+Independent read-only hash verification confirms installed bytes match the reviewed
+candidate `efd348871a9c9924d539ba11eef76c6ce309ae64081dc92520097bc220c99a1f`
+and the timestamped backup matches the original
+`d5f4588d7b581cc34d9fd7b915df4cc9b5c3919da3f35625a202407c04b8fd6f`.
+LOR reopen/usability, closed-LOR idempotent repeat, second PC and shared deployment
+remain pending. Production and master previews were not changed.
