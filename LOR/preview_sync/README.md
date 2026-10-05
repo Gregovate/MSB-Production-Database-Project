@@ -16,7 +16,7 @@ Do not treat files manually overwritten in that shared folder as authoritative e
 
 ## Current checkpoint
 
-Current test candidate: **v0.2.3 (2026-10-04)**; live deployment remains unverified.
+Current test candidate: **v0.2.4 (2026-10-04)**; live deployment remains unverified.
 
 Frozen previous checkpoint: v0.2.1 at `5e08db5374826b91c4b372044f013dcb3d9f9bbd`.
 
@@ -180,6 +180,27 @@ acceptance listed above are still required before rollout. Visible retest date/v
 are recorded in `VERSION.txt`; application source identifies v0.2.3.
 
 ## Related authorities
+
+### Operator acceptance and taskbar retest
+
+Greg's v0.2.3 screenshots confirm that an open Sequencer blocks continuation even
+after both acknowledgements are ticked, and closing Sequencer permits the
+retest-only success message. Greg explicitly confirmed that acknowledgements worked.
+This establishes review/Sequencer-guard acceptance on this PC, not live apply acceptance.
+The screenshot also shows a PowerShell taskbar icon despite the tree icon on the form.
+
+The [v0.2.4 source candidate](artifacts/LOR2DB_2PC_Sync_SOURCE_v0.2.4.zip)
+has SHA-256 `0d70a222d74e2f511f456a8616c6525c0d84f6f3d766fbf171c97a366b5b39d4`.
+It sets process AppUserModelID `MSB.LOR.PreviewSync` before opening windows to
+separate taskbar grouping from the PowerShell host. Form tree-icon assignments
+remain in place. The window title identifies v0.2.4 and Updated 2026-10-04.
+Windows PowerShell 5.1 compilation, eight disposable engine checks and successful
+native taskbar-identity registration passed. Actual taskbar appearance remains an
+operator retest item. Use the included review-only launcher on a copied library;
+do not proceed to live install or rollout based on the taskbar correction alone.
+
+Microsoft's [AppUserModelID documentation](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-setcurrentprocessexplicitappusermodelid)
+owns the Windows process taskbar identity API contract.
 
 - [Preview Merger ownership boundary](../preview_merger/README.md)
 - [LOR version compatibility review](../../Docs/01_LOR_System/02_Data_Extraction/LOR_Preview_Version_Compatibility_Review.md)
