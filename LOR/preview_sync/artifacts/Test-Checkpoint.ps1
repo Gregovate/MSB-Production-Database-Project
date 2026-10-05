@@ -43,9 +43,32 @@ Assert-Check ($counts.Replace -eq 1 -and $counts.Add -eq 1) 'controlled replacem
 Assert-Check ($build.Candidate.Contains($personal)) 'unmanaged raw fragment preserved'
 Assert-Check ((Get-FileHash $live).Hash -eq $before) 'comparison does not mutate input'
 Write-CandidateFile -Build $build -Path $candidatePath
-$backup = Install-Candidate -CandidatePath $candidatePath -LivePath $live
+$installArgs = @{ CandidatePath = $candidatePath; LivePath = $live }
+if ((Get-Command Install-Candidate).Parameters.ContainsKey('ExpectedOriginalHash')) {
+    $installArgs.ExpectedOriginalHash = $before
+    $installArgs.ExpectedCandidateHash = (Get-FileHash $candidatePath).Hash
+    [IO.File]::AppendAllText($live, ' ')
+    $changedHash = (Get-FileHash $live).Hash
+    $blocked = $false
+    try { $null = Install-Candidate @installArgs } catch { if ($_.Exception.Message -match 'changed after comparison') { $blocked = $true } else { throw } }
+    Assert-Check ($blocked -and (Get-FileHash $live).Hash -eq $changedHash) 'local edit during review blocks without overwriting'
+    [IO.File]::WriteAllText($live, $local, (New-Object Text.UTF8Encoding($true)))
+    [IO.File]::AppendAllText($candidatePath, ' ')
+    $blocked = $false
+    try { $null = Install-Candidate @installArgs } catch { if ($_.Exception.Message -match 'changed after review') { $blocked = $true } else { throw } }
+    Assert-Check ($blocked -and (Get-FileHash $live).Hash -eq $before) 'candidate edit during review blocks without overwriting'
+    Write-CandidateFile -Build $build -Path $candidatePath
+}
+$backup = Install-Candidate @installArgs
 Assert-Check ((Get-FileHash $backup).Hash -eq $before) 'backup matches original bytes'
 Assert-Check ((Get-FileHash $live).Hash -eq (Get-FileHash $candidatePath).Hash) 'disposable atomic install matches candidate'
+if ($installArgs.ContainsKey('ExpectedOriginalHash')) {
+    $restoreCandidate = Join-Path $fixtureRoot 'restore.xml'
+    Copy-Item -LiteralPath $backup -Destination $restoreCandidate
+    $null = Install-Candidate -CandidatePath $restoreCandidate -LivePath $live -ExpectedOriginalHash (Get-FileHash $live).Hash -ExpectedCandidateHash $before
+    Assert-Check ((Get-FileHash $live).Hash -eq $before) 'backup restoration reproduces original bytes'
+    $null = Install-Candidate -CandidatePath $candidatePath -LivePath $live -ExpectedOriginalHash $before -ExpectedCandidateHash (Get-FileHash $candidatePath).Hash
+}
 $second = Build-SyncCandidate -MasterRecords $master -LocalPath $live -ProgressWindow $null
 $counts = Get-ActionCounts $second.Rows
 Assert-Check ($counts.Noop -eq 2 -and $counts.Replace -eq 0 -and $counts.Add -eq 0) 'second comparison is idempotent'

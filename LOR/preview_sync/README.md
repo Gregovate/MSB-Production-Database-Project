@@ -16,7 +16,7 @@ Do not treat files manually overwritten in that shared folder as authoritative e
 
 ## Current checkpoint
 
-Current test candidate: **v0.2.6 (2026-10-04)**; live deployment remains unverified.
+Current test candidate: **v0.2.7 (2026-10-04)**; laptop live acceptance authorized by Greg, not yet completed; shared deployment remains unverified.
 
 Frozen previous checkpoint: v0.2.1 at `5e08db5374826b91c4b372044f013dcb3d9f9bbd`.
 
@@ -243,3 +243,41 @@ second-PC acceptance or resolution of the separately observed responsiveness iss
 - [Preview Merger ownership boundary](../preview_merger/README.md)
 - [LOR version compatibility review](../../Docs/01_LOR_System/02_Data_Extraction/LOR_Preview_Version_Compatibility_Review.md)
 - [Repository change workflow](../../System_Documentation/Project_Rules/Repository_Change_Workflow.md)
+
+## Laptop live acceptance candidate — v0.2.7
+
+Greg authorized using his laptop for the first live update and confirmed he saved
+a separate copy of its `LORPreviews.xml`. This is bounded laptop acceptance;
+Production, approved master files and G: application source remain untouched.
+The laptop's observed original SHA-256 remains
+`d5f4588d7b581cc34d9fd7b915df4cc9b5c3919da3f35625a202407c04b8fd6f`.
+
+The [v0.2.7 source candidate](artifacts/LOR2DB_2PC_Sync_SOURCE_v0.2.7.zip) has
+SHA-256 `32c3c0c8025ca1cd0fa9f3d2e8cd9d666f3b13ad70f556afc95dd46e04a2c024`.
+It freezes the original-library and reviewed-candidate hashes before review,
+blocks changed files, reparses the candidate, rechecks Sequencer before install,
+and atomically captures the actual displaced original in a unique backup.
+A concurrent-change backup mismatch restores the displaced original and stops.
+Installed content is hash checked. Audit logs include version, deployed commit
+metadata, original/current/candidate hashes and local destination. Missing or
+mismatched `DEPLOYMENT.json` identity blocks the live installation.
+
+Master files are still read once per launch; their raw hashes, identities and names
+must match `_MSB_CONTROLLED_PREVIEW_MANIFEST.csv`, as well as Run 29's inventory.
+This detects content changes that filename/name/revision checks alone would miss.
+Normal season-start MASTER -> LOCAL authority remains unchanged. Later smart
+Master Musical motion-row versus protected-channel comparison is deferred #299
+work; current substantive replacements retain full warning/acknowledgement.
+
+Windows PowerShell 5.1 checks passed for eleven disposable engine/install/recovery
+cases, including stale local/candidate rejection and byte-exact backup restore.
+All 34 copied master files passed report/manifest validation, and a simulated raw
+hash mismatch blocked. This is not live installation or LOR reopen evidence.
+
+The new `Update Laptop Previews - Acceptance.vbs` launcher targets the real local
+library (unlike review-only retests). Greg must close Sequencer, review the complete
+list, acknowledge both controls, and explicitly click Update PC Previews. Reopen
+LOR after success, verify managed/personal previews, close LOR and rerun; require
+no adds/replacements. Preserve backup and logs. Known long Master Musical UI-thread
+pause remains open for wider rollout; this bounded acceptance does not mark it fixed.
+No laptop installation has yet been performed by this workstream.
