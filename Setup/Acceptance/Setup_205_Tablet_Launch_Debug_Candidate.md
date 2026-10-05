@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | CANDIDATE — disposable/browser/operator acceptance pending |
+| Status | OPERATOR ACCEPTED — Production deployment authorized; installation pending |
 | Reviewed | 2026-10-05 |
 | Owner | #205, commanding #122 |
 | Branch | `fix/205-tablet-launch-debug` |
@@ -48,3 +48,13 @@ The current launcher forwards only localhost on the PC. PC viewport review can p
 ## Additional Pick List identity correction — 2026-10-05
 
 Greg requested the logged-in user on Pick List before tablet acceptance. The existing access API supplies display_name with authenticated_email fallback; a passive Signed in line lives in the header controls so active scanner mode does not hide it. No identity is inferred from scanner input or URL, no permission change or database mutation. Pick service-worker cache and asset pins refreshed. Review normal Pick List and active Workshop Pick mode on the tablet, including name/email wrapping and failed access-load messaging. This expands draft PR #301; prior candidate SHA is superseded and any prior exact-candidate acceptance must be repeated.
+
+## Operator acceptance and source-only deployment — 2026-10-05
+
+Greg reported reusable disposable acceptance CLEAN EXIT and browser preview CLEAN EXIT for exact application candidate `0783b76bfdaa5c794a3922dd5e1e0d37b788a2c9`. Pick List signed-in identity in normal/scanner modes, passive countdown, reduced-window Scheduling layout, In Progress placement/filter, and scheduling a continuation were accepted. Actual tablet touch and a separate future-assignment Move mutation were not independently established. Reports were operator-reported rather than inspected here.
+
+Greg subsequently explicitly authorized deployment after testing and accepted the few-second Setup-only service restart. No maintenance entry, database mutation, or other service restart is included. Production remains unverified until the server runner reports PASS and the protected route is checked.
+
+From a clean merged-main Windows checkout, run `Setup/Acceptance/run_setup_301_source_only_deploy.ps1`. Its pinned Python installer follows Server Management's `docs/server/Setup_Source_Only_Application_Deployment_Runbook.md`, verifies the expected live/shared SHAs, accepted target ancestry, UI date, regression, and read-only data preservation; then advances only `/opt/msb-setup`. It retains reports under `/home/msbadmin/setup-deployment-reports/PR301-*` and restores the old source on deployment failure. Do not rerun a STOP result without investigating the retained report.
+
+Installer verification: five isolated tests passed for exact Setup-only installation, live-source drift, failed-health rollback, preflight data drift, and interruption recovery; Python compile and whitespace checks passed. Protected-route Production check and deployment/runtime closeout remain pending until actual installation evidence is supplied.
