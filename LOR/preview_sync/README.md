@@ -235,6 +235,11 @@ compilation and the eight disposable engine checks passed. Runtime comparison
 semantics are unchanged; review-only retest still exits before installation.
 Large-preview UI-thread blocking and full acceptance remain unresolved.
 
+Greg explicitly reported the v0.2.6 progress-feedback retest PASS at application
+commit `125af7aaa6c956b556aa5d64ba15176afe4f6359`. This accepts the requested
+feedback change only; it does not establish live apply/recovery, LOR reopen,
+second-PC acceptance or resolution of the separately observed responsiveness issue.
+
 - [Preview Merger ownership boundary](../preview_merger/README.md)
 - [LOR version compatibility review](../../Docs/01_LOR_System/02_Data_Extraction/LOR_Preview_Version_Compatibility_Review.md)
 - [Repository change workflow](../../System_Documentation/Project_Rules/Repository_Change_Workflow.md)
