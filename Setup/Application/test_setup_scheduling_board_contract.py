@@ -362,6 +362,12 @@ def test_205_scheduled_task_finder_locates_existing_schedule_assignments() -> No
     assert ".setup-board205-dispatch-controls .setup-board205-scheduled-search-results" in css
     assert "position: absolute;" in css
     assert "function board205CollapseScheduledSearchResults" in ui
+    assert "scheduledSearchOpen: false" in ui
+    assert "setupBoard205State.scheduledSearchOpen = false;" in ui
+    assert "if (!search || !setupBoard205State.scheduledSearchOpen)" in ui
+    assert "scheduledSearch?.addEventListener('input', openScheduledSearch)" in ui
+    assert "scheduledSearch?.addEventListener('click', openScheduledSearch)" in ui
+    assert "if (event.key === 'Escape')" in ui
 
 
 def test_205_empty_work_day_removal_is_fail_closed_end_to_end() -> None:

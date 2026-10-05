@@ -20,6 +20,7 @@ const setupBoard205State = {
   scheduleTarget: null,
   finderCompact: null,
   tabletPane: 'board',
+  scheduledSearchOpen: false,
   workDaySelection: new Set(),
   workDayCalendarMonth: null,
   workDayPickerExpanded: false,
@@ -649,6 +650,8 @@ function board205RevealScheduledAssignment(item) {
 }
 
 function board205CollapseScheduledSearchResults() {
+  // Keep dismissal across data reloads; retained query text must not reopen it.
+  setupBoard205State.scheduledSearchOpen = false;
   const target = document.getElementById('setup-board205-scheduled-search-results');
   if (target) target.innerHTML = '';
 }
@@ -658,7 +661,7 @@ function board205RenderScheduledSearch() {
   if (!target) return;
   const input = document.getElementById('setup-board205-scheduled-search');
   const search = String(input?.value || '').trim();
-  if (!search) {
+  if (!search || !setupBoard205State.scheduledSearchOpen) {
     target.innerHTML = '';
     return;
   }
@@ -1699,6 +1702,7 @@ function board205RenderQueue() {
     const taskId = sessionTaskId;
     card.addEventListener('dragstart', (event) => {
       if (!task || !taskId || task.task_action_type === 'GATE') return;
+      board205CollapseScheduledSearchResults();
       setupBoard205State.dragged = { kind: 'task', id: taskId };
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', JSON.stringify(setupBoard205State.dragged));
@@ -1963,6 +1967,7 @@ function board205RenderBoard() {
         setupBoard205State.lastSelectedAssignmentId = assignmentId;
         board205UpdateAssignmentSelectionUi();
       }
+      board205CollapseScheduledSearchResults();
       const selected = board205SelectedAssignmentItems();
       const selectedIds = selected.map((row) => Number(row.setup_work_day_task_id));
       setupBoard205State.dragged = selectedIds.length > 1
@@ -3611,8 +3616,24 @@ function board205InstallView() {
     control.addEventListener('change', board205RenderBoard);
   });
   const scheduledSearch = document.getElementById('setup-board205-scheduled-search');
-  scheduledSearch?.addEventListener('input', board205RenderScheduledSearch);
+  const openScheduledSearch = () => {
+    setupBoard205State.scheduledSearchOpen = true;
+    board205RenderScheduledSearch();
+  };
+  scheduledSearch?.addEventListener('input', openScheduledSearch);
+  scheduledSearch?.addEventListener('click', openScheduledSearch);
+  scheduledSearch?.addEventListener('focus', openScheduledSearch);
+  // Dismiss when leaving search, without clearing the operator's query.
+  document.addEventListener('pointerdown', (event) => {
+    if (!event.target.closest('.setup-board205-scheduled-search')) {
+      board205CollapseScheduledSearchResults();
+    }
+  });
   scheduledSearch?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      board205CollapseScheduledSearchResults();
+      return;
+    }
     if (event.key !== 'Enter') return;
     const first = board205ScheduledSearchMatches()[0];
     if (!first) return;
