@@ -1,12 +1,12 @@
 'use strict';
 
-const CACHE_NAME = 'msb-setup-pick-mode-v16';
+const CACHE_NAME = 'msb-setup-pick-mode-v17';
 const SHELL = [
   './',
-  'assets/setup_pick_list.css?v=2026-10-01.1',
+  'assets/setup_pick_list.css?v=2026-10-05.1',
   'assets/setup_pick_mode.css?v=2026-10-01.5',
   'assets/qrcode.min.js?v=1',
-  'assets/setup_pick_list.js?v=2026-10-01.4',
+  'assets/setup_pick_list.js?v=2026-10-05.1',
   'assets/setup_pick_mode.js?v=2026-10-01.3'
 ];
 

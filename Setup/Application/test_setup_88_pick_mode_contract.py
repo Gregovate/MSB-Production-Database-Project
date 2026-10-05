@@ -426,11 +426,11 @@ def test_release_identity_and_offline_shells_are_synchronized():
 
     assert 'PRODUCTION_VERSION = "V0.3.39-tablet-launch-debug"' in backend
     assert "const CLIENT_BUILD = 'V0.3.39-tablet-launch-debug';" in guard
-    assert "msb-setup-pick-mode-v16" in pick_sw
+    assert "msb-setup-pick-mode-v17" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_html
-    assert "setup_pick_list.js?v=2026-10-01.4" in pick_sw
-    assert "setup_pick_list.js?v=2026-10-01.4" in pick_html
+    assert "setup_pick_list.js?v=2026-10-05.1" in pick_sw
+    assert "setup_pick_list.js?v=2026-10-05.1" in pick_html
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_sw
     assert "setup_pick_mode.js?v=2026-10-01.3" in pick_html
     assert "msb-setup-record-location-v13" in location_sw

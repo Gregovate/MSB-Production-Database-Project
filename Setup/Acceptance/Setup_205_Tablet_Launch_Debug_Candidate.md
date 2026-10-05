@@ -20,7 +20,7 @@ No current active PR is a safe carrier: #291 contains separate empty-day databas
 
 ## Local verification
 
-- Full Setup/Application regression: 677 passed.
+- Full Setup/Application regression: 678 passed.
 - Changed JavaScript syntax and git diff whitespace checks: PASS.
 - Direct execution of candidate JavaScript with synthetic task/control state: PASS for unfinished 90%-case population, scheduled continuations, blockers ON/OFF, task-name search, restoring normal filter population, panel selection, and 2026 milestone dates (Nov 19/21/27).
 - Browser/viewport acceptance: NOT RUN. Workspace Chromium absent; automated browser download returned invalid/truncated archive. These results do not establish tablet layout/touch acceptance.
@@ -44,3 +44,7 @@ Operator checklist:
 7. Finish preview with ENTER and retain CLEAN EXIT plus Production-after checks. Record exact SHA, preview port/operator, observations, and any outstanding actual-tablet acceptance.
 
 The current launcher forwards only localhost on the PC. PC viewport review can proceed first; it does not provide actual-tablet reachability. Do not infer an actual-tablet PASS from PC review, and do not expose this authenticated preview publicly to bypass that limitation.
+
+## Additional Pick List identity correction — 2026-10-05
+
+Greg requested the logged-in user on Pick List before tablet acceptance. The existing access API supplies display_name with authenticated_email fallback; a passive Signed in line lives in the header controls so active scanner mode does not hide it. No identity is inferred from scanner input or URL, no permission change or database mutation. Pick service-worker cache and asset pins refreshed. Review normal Pick List and active Workshop Pick mode on the tablet, including name/email wrapping and failed access-load messaging. This expands draft PR #301; prior candidate SHA is superseded and any prior exact-candidate acceptance must be repeated.
