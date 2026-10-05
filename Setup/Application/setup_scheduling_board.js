@@ -19,6 +19,7 @@ const setupBoard205State = {
   },
   scheduleTarget: null,
   finderCompact: null,
+  tabletPane: 'board',
   workDaySelection: new Set(),
   workDayCalendarMonth: null,
   workDayPickerExpanded: false,
@@ -983,6 +984,7 @@ function board205CaptureFinderState() {
     search: value('setup-board205-task-search'),
     blocking: checked('setup-board205-blocking-toggle'),
     readyOnly: checked('setup-board205-ready-only'),
+    inProgressOnly: checked('setup-board205-in-progress-only'),
     statusReady: checked('setup-board205-status-ready'),
     statusScheduled: checked('setup-board205-status-scheduled'),
     statusComplete: checked('setup-board205-status-complete'),
@@ -1021,6 +1023,7 @@ function board205RestoreFinderState(state) {
   setValue('setup-board205-task-search', state.search);
   setChecked('setup-board205-blocking-toggle', state.blocking);
   setChecked('setup-board205-ready-only', state.readyOnly);
+  setChecked('setup-board205-in-progress-only', state.inProgressOnly);
   setChecked('setup-board205-status-ready', state.statusReady);
   setChecked('setup-board205-status-scheduled', state.statusScheduled);
   setChecked('setup-board205-status-complete', state.statusComplete);
@@ -1522,6 +1525,7 @@ function board205QueueTasks() {
   const effort = document.getElementById('setup-board205-effort-filter')?.value || '';
   const readyOnly = board205ReadyOnlyEnabled();
   const statuses = board205FinderSelectedStatuses();
+  const inProgressOnly = Boolean(document.getElementById('setup-board205-in-progress-only')?.checked);
 
   return [...(setupBoard205State.board.tasks || [])]
     .filter((task) => {
@@ -1537,10 +1541,13 @@ function board205QueueTasks() {
       // only; it does not rewrite readiness state or make readiness a hard gate.
       if (readyOnly && task.readiness_state === 'NOT_READY') return false;
 
-      // Task-name search narrows the current finder population; it does not
-      // resurrect tasks that moved into a different status such as SCHEDULED.
+      // Normal status filtering preserves the existing finder population.
       // With Blocking OFF, hard-blocked work is still included automatically.
-      if (!hardBlocked && !statuses.has(family)) return false;
+      // The quick filter finds unfinished work even when its continuation is
+      // already scheduled. Keep the explicit blocking/readiness filters above.
+      if (inProgressOnly) {
+        if (task.execution_status !== 'IN_PROGRESS') return false;
+      } else if (!hardBlocked && !statuses.has(family)) return false;
 
       if (stageValue === 'SITE_WIDE') {
         if (task.stage_id != null) return false;
@@ -1670,7 +1677,9 @@ function board205RenderQueue() {
     summary.textContent = `${tasks.length} of ${(setupBoard205State.board.tasks || []).length} ${noun}`
       + ` · Blocking ${board205BlockingEnabled() ? 'ON' : 'OFF'}`
       + (board205ReadyOnlyEnabled() ? ' · Ready only' : ' · soft readiness shown')
-      + (search ? ' · task-name search keeps status filters' : '')
+      + (document.getElementById('setup-board205-in-progress-only')?.checked
+        ? ' · In Progress only (including scheduled continuations)'
+        : (search ? ' · task-name search keeps status filters' : ''))
       + (!board205BlockingEnabled()
         ? ' · hard-blocked work included'
         : ' · hard blockers hidden');
@@ -2092,6 +2101,9 @@ function board205Render() {
     setupBoard205State.finderCompact = true;
   }
   board205ApplyFinderCompact();
+  board205SetTabletPane(setupBoard205State.tabletPane);
+  const paneNavigation = document.getElementById('setup-board205-pane-navigation');
+  if (paneNavigation) paneNavigation.hidden = !session || historicalReview;
   board205RenderKpis();
   if (!session) {
     if (noSession) noSession.hidden = false;
@@ -2127,6 +2139,17 @@ async function board205Load() {
    the global function at click time, so this keeps the accepted tab shell. */
 loadNextSchedule = board205Load;
 
+
+/* On tablets, expose the board immediately without making the operator scroll
+   through the finder. Desktop keeps both independently scrolling panels. */
+function board205SetTabletPane(pane) {
+  setupBoard205State.tabletPane = pane === 'tasks' ? 'tasks' : 'board';
+  const workspace = document.getElementById('setup-board205-workspace');
+  if (workspace) workspace.dataset.tabletPane = setupBoard205State.tabletPane;
+  document.querySelectorAll('[data-board205-pane]').forEach((button) => {
+    button.setAttribute('aria-pressed', String(button.dataset.board205Pane === setupBoard205State.tabletPane));
+  });
+}
 
 function board205RenderMilestones() {
   const target = document.getElementById('setup-board205-milestones');
@@ -3283,8 +3306,12 @@ function board205InstallView() {
         </div>
       </div>
 
-      <div id="setup-board205-workspace" class="setup-board205-main">
-        <section class="card setup-board205-backlog">
+      <div id="setup-board205-pane-navigation" class="setup-board205-pane-navigation" role="group" aria-label="Scheduling workspace" hidden>
+        <button type="button" data-board205-pane="board" aria-controls="setup-board205-right" aria-pressed="true">Scheduling Board</button>
+        <button type="button" data-board205-pane="tasks" aria-controls="setup-board205-backlog" aria-pressed="false">Find Tasks</button>
+      </div>
+      <div id="setup-board205-workspace" class="setup-board205-main" data-tablet-pane="board">
+        <section id="setup-board205-backlog" class="card setup-board205-backlog">
           <div class="eyebrow">Current reusable Catalog</div>
           <h3 id="setup-board205-finder-title">Current Reusable Task Finder</h3>
           <div id="setup-board205-historical-note" class="notice" hidden>
@@ -3306,6 +3333,7 @@ function board205InstallView() {
             <label id="setup-board205-scene-label" hidden>Scene / scope<select id="setup-board205-scene-filter" disabled><option value="">All scope details</option></select></label>
             <label class="setup-board205-search">Task name<input id="setup-board205-task-search" type="search" placeholder="e.g. locate"></label>
             <label class="setup-board205-blocking-toggle"><input id="setup-board205-blocking-toggle" type="checkbox" checked> Blocking ON</label>
+            <label class="setup-board205-blocking-toggle"><input id="setup-board205-in-progress-only" type="checkbox"> In Progress</label>
             <button id="setup-board205-filter-density" type="button" class="small secondary" aria-expanded="true">Compact filters</button>
             <div class="setup-board205-blocking-help">ON hides tasks whose hard predecessor is incomplete. A Work Order gate task itself stays visible; the task after it remains hard-blocked until the Work Order clears. Readiness stays a soft blocker; use Ready only when you want to temporarily hide NOT READY work.</div>
             <div class="setup-board205-secondary-filters">
@@ -3337,7 +3365,7 @@ function board205InstallView() {
           <div id="setup-board205-queue" class="setup-board205-queue"></div>
         </section>
 
-        <div class="setup-board205-right">
+        <div id="setup-board205-right" class="setup-board205-right">
           <section class="card setup-board205-planning-header">
             <div class="setup-board205-toolbar">
               <div class="setup-board205-title">
@@ -3516,6 +3544,10 @@ function board205InstallView() {
       </form>
     </dialog>
   `;
+
+  document.querySelectorAll('[data-board205-pane]').forEach((button) => {
+    button.addEventListener('click', () => board205SetTabletPane(button.dataset.board205Pane));
+  });
 
   document.getElementById('setup-board205-filter-density')?.addEventListener('click', () => {
     setupBoard205State.finderCompact = !Boolean(setupBoard205State.finderCompact);

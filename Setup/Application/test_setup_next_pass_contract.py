@@ -128,7 +128,7 @@ def test_next_pass_catalog_waits_for_organization_readiness() -> None:
     assert "priorNextRenderLibrary" not in text
     assert "if (!setupNextState.scenes.length)" not in text
     assert "if (setupNextState.scenes.length) renderLibrary();" not in text
-    assert "setup_next_pass.js?v=2026-10-04.3" in html
+    assert "setup_next_pass.js?v=2026-10-05.1" in html
 
 
 def test_perform_work_shows_planned_and_actual_person_hours() -> None:
@@ -164,7 +164,7 @@ def test_205_annual_launch_milestones_are_derived_from_season_year_and_visible()
     assert "setupComplete.setUTCDate(setupComplete.getUTCDate() - 7)" in next_pass
     assert "foodBankRunWalk.setUTCDate(foodBankRunWalk.getUTCDate() - 5)" in next_pass
     assert "openingNight.setUTCDate(openingNight.getUTCDate() + 1)" in next_pass
-    assert "SETUP COMPLETE · VIP SPONSOR NIGHT" in next_pass
+    assert "COMPLETE SETUP · VIP SPONSOR NIGHT" in next_pass
     assert "FOOD BANK RUN/WALK" in next_pass
     assert "OPENING NIGHT · BLACK FRIDAY" in next_pass
     assert "window.renderSetupAnnualMilestones = renderSetupAnnualMilestones" in next_pass
@@ -178,4 +178,7 @@ def test_205_annual_launch_milestones_are_derived_from_season_year_and_visible()
 
     assert ".setup-annual-milestones" in css
     assert ".setup-annual-milestone.primary" in css
-    assert "grid-template-columns: repeat(3, minmax(0, 1fr));" in css
+    milestones = css.split(".setup-annual-milestones {", 1)[1].split("/* Explicit panel selection", 1)[0]
+    assert "display: flex;" in milestones
+    assert "border:" not in milestones
+    assert "background:" not in milestones

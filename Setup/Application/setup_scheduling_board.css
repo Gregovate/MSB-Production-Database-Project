@@ -1150,8 +1150,8 @@ html[data-theme="dark"] {
   .setup-board205-board {
     height: auto;
     min-height: 0;
-    max-height: min(30rem, 65vh);
-    overflow-y: auto;
+    max-height: none;
+    overflow-y: visible;
     scrollbar-gutter: stable;
   }
 
@@ -1269,53 +1269,71 @@ html[data-theme="dark"] {
 }
 
 
+/* Launch dates are passive information, never button-shaped cards. */
 .setup-annual-milestones {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
   margin: 0.35rem 0 0.5rem;
+  color: var(--muted, #64748b);
+  font-size: 0.78rem;
+  line-height: 1.5;
 }
 
 .setup-annual-milestone {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.1rem 0.5rem;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
   align-items: baseline;
-  min-width: 0;
-  padding: 0.38rem 0.5rem;
-  border: 1px solid var(--border, #d9e0e8);
-  border-radius: 0.5rem;
-  background: var(--soft, #f5f8fb);
-  font-size: 0.78rem;
 }
 
-.setup-annual-milestone.primary {
-  border-width: 2px;
-  border-color: color-mix(in srgb, var(--accent, #0b6ea8) 65%, var(--border, #d9e0e8));
-  background: color-mix(in srgb, var(--accent, #0b6ea8) 10%, var(--panel, #fff));
-}
+.setup-annual-milestone.primary { font-weight: 800; }
 
 .setup-annual-milestone-label {
-  grid-column: 1 / -1;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.025em;
+  font-weight: 700;
 }
 
 .setup-annual-milestone strong {
-  font-size: 0.9rem;
+  color: var(--text, #172033);
+  font-size: inherit;
 }
 
-.setup-annual-milestone > span:last-child {
-  justify-self: end;
-  color: var(--muted, #64748b);
-  font-weight: 750;
-}
+/* Explicit panel selection prevents a long finder from burying the tablet
+   board. Normal page scrolling preserves touch access to every crew/control. */
+.setup-board205-pane-navigation { display: none; }
 
-@media (max-width: 900px) {
-  .setup-annual-milestones {
-    grid-template-columns: 1fr;
+@media screen and (max-width: 1100px) {
+  body.setup-schedule-view .site-header { position: static; }
+
+  .setup-board205-pane-navigation:not([hidden]) {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    padding-block: 0.4rem;
+    background: var(--card, #fff);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
+
+  .setup-board205-pane-navigation button { min-height: 2.75rem; }
+  .setup-board205-pane-navigation button[aria-pressed="true"] {
+    outline: 2px solid var(--accent, #0b6ea8);
+    outline-offset: 2px;
+  }
+
+  .setup-board205-main:not(.finder-only)[data-tablet-pane="board"] > .setup-board205-backlog,
+  .setup-board205-main:not(.finder-only)[data-tablet-pane="tasks"] > .setup-board205-right {
+    display: none;
+  }
+
+  .setup-board205-backlog,
+  .setup-board205-board {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .setup-board205-filters { position: static; }
 }
 
 /* Light mode needs stronger structural separation than the dark palette naturally provides. */

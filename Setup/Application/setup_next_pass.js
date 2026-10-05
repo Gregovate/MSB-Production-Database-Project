@@ -174,7 +174,7 @@ function renderSetupAnnualMilestones(target, seasonYear) {
   target.innerHTML = `
     <div class="setup-annual-milestones" aria-label="Annual Setup launch milestones">
       <div class="setup-annual-milestone primary">
-        <span class="setup-annual-milestone-label">SETUP COMPLETE · VIP SPONSOR NIGHT</span>
+        <span class="setup-annual-milestone-label">COMPLETE SETUP · VIP SPONSOR NIGHT</span>
         <strong>${escapeHtml(setupMilestoneDateLabel(milestones.setupComplete))}</strong>
         <span>${escapeHtml(setupMilestoneCountdown(milestones.setupComplete))}</span>
       </div>
@@ -778,8 +778,8 @@ function installNextTabs() {
   perform.innerHTML = `
     <div class="card">
       <div class="section-title"><div><div class="eyebrow">Captain / field execution</div><h2>Perform Setup Work</h2></div></div>
-      <p class="muted">Only scheduled work appears here. Work is organized by Setup Day, AM/PM, and Crew/Captain. Report Work records actual crew, elapsed time, and percent complete against the exact scheduled assignment.</p>
       <div id="setup-perform-milestones"></div>
+      <p class="muted">Only scheduled work appears here. Work is organized by Setup Day, AM/PM, and Crew/Captain. Report Work records actual crew, elapsed time, and percent complete against the exact scheduled assignment.</p>
       <div class="next-perform-toolbar">
         <label>Captain
           <select id="next-perform-captain-filter" aria-label="Filter Perform Work by Captain"></select>

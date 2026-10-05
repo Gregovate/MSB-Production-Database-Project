@@ -176,3 +176,7 @@ Only after explicit operator acceptance switch to the Server Management `Product
 Every UI deployment must run `check_setup_ui_update_date.py` against the exact target before mutation. It compares the visible footer to the latest HTML/CSS/JS commit date; documentation-only commits do not advance that date. Full application regression remains required by the governing workflow.
 
 Package accepted cross-repository artifacts with their owning source/merge and exact file identity. Do not derive a second private-repository URL from the Production origin or assume shared credentials. Keep report output on the server and return only PASS/STOP and its location.
+
+## Tablet launch-debug candidate
+
+[All three #205/#122 tablet launch corrections](Setup_205_Tablet_Launch_Debug_Candidate.md) are a source-only candidate. Local regression passes; disposable/browser/operator acceptance remains pending. Production is unchanged.

@@ -878,3 +878,7 @@ Disposable acceptance must prove at minimum:
 29. the reusable Planning Summary remains reusable-only;
 30. #132/#172/#175 can identify the exact annual assignment/context needed for downstream reporting/publication without #205 taking ownership of those workflows; and
 31. no Production mutation occurs until the exact candidate passes disposable regression/browser acceptance and the governing Server Management runbook is retrieved in the deployment thread.
+
+## 2026-10-05 tablet launch-debug candidate (not Production accepted)
+
+DBG-2026-001/002/003 are being reviewed together: passive COMPLETE SETUP countdowns, direct board/task panel navigation at <=1100 CSS pixels, and a visible In Progress execution-status filter. Existing annual/history/authorization and desktop scroll boundaries remain authoritative. [Candidate scope and acceptance checklist](../../../../../Setup/Acceptance/Setup_205_Tablet_Launch_Debug_Candidate.md) records the exact branch, local validation and pending disposable/tablet acceptance. Production acceptance above does not accept this candidate.
