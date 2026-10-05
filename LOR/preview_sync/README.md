@@ -329,3 +329,18 @@ pending because this agent session receives access denied to G:. Greg runs the
 prepared installer through normal Windows access, then supplies its success/failure
 message. Record each additional PC's apply result, backup, LOR reopen and idempotent
 repeat under #299/#300 before wider rollout. The known large-preview pause remains open.
+
+## Result-dialog tree icon retest — v0.2.8
+
+Greg observed the PowerShell taskbar icon returning when v0.2.7 displays its
+Already Current message. Show-Message used an ownerless native MessageBox;
+splash/review forms already assigned the tree icon. v0.2.8 supplies a temporary
+icon-bearing taskbar owner for each Show-Message dialog and disposes it after
+dismissal. Comparison and installation logic are unchanged except checkpoint
+identity advances to v0.2.8. Archive SHA-256:
+`8e75b89bcc04fb632e4b90660fe8a7440f2dc4ae1f2886558c71fbc2bbb8df29`.
+All eleven Windows PowerShell 5.1 disposable sync/recovery checks passed.
+Automated modal-window probing did not complete and was stopped; actual Windows
+taskbar appearance is explicitly an operator retest, not claimed passed.
+Install from this committed checkpoint with the controlled-PC installer; retain
+backup/report/log folders. No broader acceptance or responsiveness claim changes.
