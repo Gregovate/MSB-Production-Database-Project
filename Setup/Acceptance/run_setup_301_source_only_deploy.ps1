@@ -8,9 +8,12 @@ $target = '0783b76bfdaa5c794a3922dd5e1e0d37b788a2c9'
 & git -C $repo merge-base --is-ancestor $target HEAD
 if ($LASTEXITCODE -ne 0) { throw 'STOP: main does not contain approved candidate.' }
 $runner = Join-Path $repo 'Setup\Acceptance\setup_301_source_only_deploy.py'
-$tracked = (git -C $repo show 'HEAD:Setup/Acceptance/setup_301_source_only_deploy.py') -join "`n"
-$local = [System.IO.File]::ReadAllText($runner).Replace("`r", '').TrimEnd()
-if ($tracked.TrimEnd() -ne $local) { throw 'STOP: installer differs from committed source.' }
+# Git hashes apply repository line-ending rules without decoding native output.
+$trackedHash = (git -C $repo rev-parse 'HEAD:Setup/Acceptance/setup_301_source_only_deploy.py').Trim()
+if ($LASTEXITCODE -ne 0) { throw 'STOP: committed installer is unavailable.' }
+$localHash = (git -C $repo hash-object --path=Setup/Acceptance/setup_301_source_only_deploy.py $runner).Trim()
+if ($LASTEXITCODE -ne 0 -or $trackedHash -ne $localHash) { throw 'STOP: installer differs from committed source.' }
+$local = [System.IO.File]::ReadAllText($runner, [System.Text.Encoding]::UTF8).Replace("`r", '').TrimEnd()
 $bundleName = 'msb-setup-301-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
 $bundle = Join-Path ([System.IO.Path]::GetTempPath()) $bundleName
 $remote = "/tmp/$bundleName"
