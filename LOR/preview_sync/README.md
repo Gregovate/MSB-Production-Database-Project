@@ -16,7 +16,7 @@ Do not treat files manually overwritten in that shared folder as authoritative e
 
 ## Current checkpoint
 
-Current test candidate: **v0.2.4 (2026-10-04)**; live deployment remains unverified.
+Current test candidate: **v0.2.5 (2026-10-04)**; live deployment remains unverified.
 
 Frozen previous checkpoint: v0.2.1 at `5e08db5374826b91c4b372044f013dcb3d9f9bbd`.
 
@@ -201,6 +201,23 @@ do not proceed to live install or rollout based on the taskbar correction alone.
 
 Microsoft's [AppUserModelID documentation](https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-setcurrentprocessexplicitappusermodelid)
 owns the Windows process taskbar identity API contract.
+
+### Splash folder display — v0.2.5
+
+Greg confirmed the v0.2.4 taskbar icon is correct and that full acceptance has not
+yet been attempted. The supplied startup screenshot shows Windows `Not Responding`
+during comparison of the first master preview; startup responsiveness is still a
+launch blocker and must not be marked passed based on the eventual review screen.
+
+The [v0.2.5 source candidate](artifacts/LOR2DB_2PC_Sync_SOURCE_v0.2.5.zip) has
+SHA-256 `c92c5da939c1779bcbef723f9c7bf40c88c4161a710540bd9e622cd4ff5d69af`.
+Its enlarged splash has a persistent, wrapping master-folder label separate from
+per-preview progress. The label starts with accepted-source discovery feedback,
+then displays the exact folder from the completed report while comparison runs.
+The review-only launcher remains non-installing. This presentation change does
+not fix or establish acceptance of the UI-thread comparison delay. Next steps:
+verify path readability, correct the remaining startup blocking work, then resume
+the pending live/two-PC acceptance gates.
 
 - [Preview Merger ownership boundary](../preview_merger/README.md)
 - [LOR version compatibility review](../../Docs/01_LOR_System/02_Data_Extraction/LOR_Preview_Version_Compatibility_Review.md)
