@@ -7,8 +7,8 @@
 | Owner | #175, commanding #122 / DBG-2026-001; #88 movement dependency |
 | Baseline main | `8ea3d42224c25e9fdf2d01edd8bee3b9cc5693b6` |
 | Branch | `fix/175-current-location-evidence` |
-| Release | `V0.3.41-current-location` |
-| Application candidate SHA | `68ffe5bdd126140833c4c77455699e5506842ae9` |
+| Release | `V0.3.42-current-location` |
+| Application candidate SHA | `7390012daea2e67e1cab92ee80616da7d0524d47` |
 | Database migrations | None |
 
 ## Bounded correction
@@ -20,8 +20,9 @@ unload events. No new observations, reference-data cleanup, or schema changes.
 
 The material panel, its task-cover-sheet copy, and the older overlay share truthful
 Current/Home presentation. Named evidence is preserved; GPS-only evidence shows
-`Current: GPS observation · ±10 ft` for 3 m accuracy. GPS does not establish a
-park boundary. Unnamed movement and no observation have explicit text. Home storage
+a nearest known waypoint name and distance, recorded GPS coordinates, and ±10 ft
+accuracy for a 3 m fix. It uses the existing versioned Record Location reference
+set; proximity does not confirm placement at that waypoint. Unnamed movement and no observation have explicit text. Home storage
 is a separate reference line. Grouped legacy Displays retain individual locations.
 
 No appropriate healthy open implementation PR owns this bounded defect. #266 is
@@ -29,8 +30,8 @@ stale and unrelated offline rehearsal; #230 reference cleanup is outside this fi
 
 ## Verification and limitations
 
-- Linux engineering verification: full `Setup/Application` regression **697 passed**; `Setup/Acceptance` **31 passed**; combined **728 passed**. On Windows, run `Setup/Application` only; the acceptance-tooling suite includes Linux-only installer imports (`fcntl`).
-- 19 tests execute the actual projection SELECTs using SQLite with only text casts
+- Linux engineering verification: full `Setup/Application` regression **700 passed**; `Setup/Acceptance` **31 passed**; combined **731 passed**. On Windows, run `Setup/Application` only; the acceptance-tooling suite includes Linux-only installer imports (`fcntl`).
+- 22 tests execute the actual projection SELECTs using SQLite with only text casts
   array binds and placeholders translated, classify evidence, exercise Flask Decimal/timestamp
   transport, and execute the actual JS helpers/legacy grouping under Node.
 - Checks cover GPS-only Container, attached/no-override Display inheritance,
@@ -38,7 +39,7 @@ stale and unrelated offline rehearsal; #230 reference cleanup is outside this fi
   season isolation, named Stage/Scene scope, unresolved movement, quality/accuracy,
   explicit RETURNED note, no-observation Home separation, and escaped output.
 - SQLite is a local semantic fixture, not PostgreSQL/current-Production acceptance.
-- Changed JavaScript syntax and whitespace checks pass. Exact committed footer gate: PASS, Updated 2026-10-06; server/client identity both V0.3.41-current-location.
+- Changed JavaScript syntax and whitespace checks pass. Exact committed footer gate: PASS, Updated 2026-10-06; server/client identity both V0.3.42-current-location.
 - Browser execution was not possible here: no installed Chromium; Playwright's
   browser download returned a truncated/invalid archive.
 - This workspace has no established MSB private SSH/server access. No current
@@ -76,6 +77,37 @@ This is still a source-only correction with **no migrations**. The new exact can
 requires fresh disposable acceptance and browser review on registered port **8898**.
 Finish the old preview with ENTER and retain CLEAN EXIT before launching the new one.
 
+## Operator presentation correction — V0.3.42
+
+The next browser screenshot shows GPS observations and accuracy for the steeples
+and crosses, proving the active read-path correction reached the screen. Greg
+requested changes because `GPS observation · ±10 ft` does not say where the asset is.
+
+V0.3.42 retains the effective recorded coordinates and derives a nearest waypoint
+from the existing `setup_location_references.json`, version
+`2026-stage-reference-20261003.1`. The nearest-reference calculation uses the same
+spherical distance in feet as Record Location, with already-transformed WGS84
+coordinates. The reference file, source EPSG:8158 anchors, movement history and
+Stage assignments are unchanged.
+
+Expected steeple presentation:
+
+- C177 Displays: `Current: nearest waypoint 15-Church-Bells-CH · 46 ft away · ±10 ft`;
+  `Recorded GPS: 43.778465, -87.749201`.
+- C178 Displays: `Current: nearest waypoint 15-Church-Bells-CH · 76 ft away · ±10 ft`;
+  `Recorded GPS: 43.778556, -87.749142`.
+- Home storage remains a separate reference line.
+- A confirmed named Stage/note takes precedence. Nearest means geographical
+  proximity to an anchor in this curated set, not confirmed destination/placement.
+- Missing reference data falls back to recorded coordinates, never Home or a
+  guessed waypoint. Invalid observations/reference points cannot generate a label.
+
+The full installed-Production API tests check nearest name/distance/provenance for
+all six steeples. Additional cases cover confirmed-name precedence, absent reference
+data, invalid coordinates/waypoints, coordinate formatting and escaped waypoint labels.
+**V0.3.41 browser disposition: CHANGES REQUIRED.** New-candidate disposable/browser
+acceptance remains pending; Production is untouched.
+
 ## Governed disposable review
 
 Authorities retrieved and read for this workstream:
@@ -101,7 +133,7 @@ From that worktree, using the exact SHA recorded in the PR:
 ```powershell
 & {
     $ErrorActionPreference = 'Stop'
-    $Candidate = '68ffe5bdd126140833c4c77455699e5506842ae9'
+    $Candidate = '7390012daea2e67e1cab92ee80616da7d0524d47'
     $TargetRef = 'fix/175-current-location-evidence'
     $Validation = @('Setup/Acceptance/setup_175_current_location_readonly_validation.sql')
 
@@ -118,7 +150,7 @@ From that worktree, using the exact SHA recorded in the PR:
     # STOP on an occupied/unknown listener instead of replacing it.
     .\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
       -CandidateSha $Candidate -TargetRef $TargetRef -PreviewPort 8898 `
-      -ExpectedVersion 'V0.3.41-current-location' `
+      -ExpectedVersion 'V0.3.42-current-location' `
       -MigrationPaths @() -ValidationPaths $Validation `
       -AllowConcurrentProductionWrites
     if ($LASTEXITCODE -ne 0) { throw 'STOP: browser preview failed; inspect retained report.' }
@@ -147,7 +179,10 @@ CLEAN EXIT, exact SHA/version, before/after evidence and report locations.
    Steeples & Crosses**, Oct 5 / Crew 4. Open its material panel.
 3. Inspect C177 Displays 853/860/861 and C178 Displays 834/840/848. Current must
    reflect each effective state/event from the cloned data. GPS-only observations
-   must show GPS with available accuracy; `Z-BLDG-B-EAST` appears only as Home storage
+   must show the nearest known waypoint and distance, raw recorded coordinates and
+   available accuracy. Against the recorded steeple evidence and current reference
+   set, C177 is about 46 ft and C178 about 76 ft from 15-Church-Bells-CH;
+   `Z-BLDG-B-EAST` appears only as Home storage
    unless a real RETURNED/named observation explicitly establishes it as current.
 4. Check one attached and one detached Display against API evidence. Detached
    Displays retain their own unload/movement event rather than later Container evidence.
