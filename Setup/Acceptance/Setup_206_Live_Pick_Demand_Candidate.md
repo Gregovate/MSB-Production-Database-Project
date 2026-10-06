@@ -13,3 +13,11 @@ Verification: 683 Setup/Application tests; direct JavaScript stale-tab refresh e
 Operator acceptance: disposable current-Production browser preview, verify matching V0.3.40 identity, scan CONT:12; exactly one PICKED event, correct container, no manager dependency. Confirm delayed/already-picked assets remain rejected. Keep a tab open, change material demand in the clone, then scan and verify refreshed eligibility. End preview CLEAN EXIT. Production deployment requires Greg's testing approval.
 
 Greg's fallback request remains an operator-level accountable override, not a manager-only planning override; it is not implemented by this candidate. His preferred correction is eliminating this erroneous rejection.
+
+## Operator acceptance and deployment authorization
+
+2026-10-06: Greg confirmed CONT:12 succeeds in the exact candidate, with screenshot showing PICKED FOR PARK TRANSPORT. He reported a slight delay, accepted correctness, reported reusable disposable browser preview CLEAN EXIT, and explicitly authorized Production deployment following project rules. Refreshing the old Production browser did not solve the defect. Raw server preview reports were not independently inspected here.
+
+Approved target `0caed843bb37e7f1f1400972d8f6eb0b03f202d4`; installer old live pin `00de4635b0ee49658f2e6b5782d758e91054ca02`, supported by Greg's PR303 runner PASS at `/home/msbadmin/setup-deployment-reports/PR303-20261005T181340Z`. Server runtime documentation still lists the older V0.3.38 baseline; runner verifies the real exact live SHA before mutation and stops on drift.
+
+Deployment command: `Setup/Acceptance/run_setup_306_source_only_deploy.ps1` from clean merged primary main. Authority: Server Management `docs/server/Setup_Source_Only_Application_Deployment_Runbook.md`. Five installer boundary/rollback tests pass. Advances only /opt/msb-setup, restarts only Setup, no database migration or maintenance. Exact-candidate regression, read-only data preservation, UI date, health/build, rollback, and candidate-worktree cleanup use the proven source-only procedure. Actual installation report, Production screen confirmation, deployment change log, and server runtime closeout remain pending execution evidence.
