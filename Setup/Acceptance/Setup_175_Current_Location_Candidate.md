@@ -96,13 +96,15 @@ From that worktree, using the exact SHA recorded in the PR:
 
 Reuse Greg's established Setup review URL `http://127.0.0.1:8898/` under
 [the Server Management port register](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/Application_and_Test_Port_Register.md).
-The initial #175 launch was configured on 8806; Greg reported that URL did not work
-and cancelled the run. This does not establish the underlying listener/tunnel failure
-or prove remote cleanup. The retained browser report is
+The initial #175 startup attempt was configured on 8806. Greg confirms the browser
+review never started. The workstation launcher reported start exit code `-1` and
+classified it as not resumable. This does not identify the underlying remote failure. The retained browser report is
 `/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20261006T114947.txt`.
-Read that report and inspect the recognized preview through the existing governed
-cleanup/resume flow before starting a fresh review on 8898. Readiness, browser PASS
-and CLEAN EXIT remain unverified. A new candidate does not require a new port.
+Read that report first; do not assume there is a running review to finish. If the
+report shows preview resources were created, inspect only that recognized instance
+through the governed diagnostic/cleanup flow before a fresh launch on 8898.
+BROWSER REVIEW READY and browser acceptance did not occur. The wrapper does not
+automatically resume start exit `-1`. A new candidate does not require a new port.
 
 Do not open the URL until **BROWSER REVIEW READY**. Finish with ENTER and retain
 CLEAN EXIT, exact SHA/version, before/after evidence and report locations.
