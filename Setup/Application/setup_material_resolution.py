@@ -362,6 +362,17 @@ def _field_context(
                         WHEN ds.position_mode = 'DETACHED' THEN ds.current_location_note
                         ELSE cs.current_location_note
                     END AS current_location_note,
+                    CASE WHEN ds.position_mode = 'DETACHED' THEN ds.movement_status
+                         ELSE cs.movement_status END AS current_movement_status,
+                    CASE WHEN ds.position_mode = 'DETACHED' THEN ds.last_movement_event_id
+                         ELSE cs.last_movement_event_id END AS current_movement_event_id,
+                    me.occurred_at AS current_observed_at,
+                    me.gps_latitude AS current_gps_latitude,
+                    me.gps_longitude AS current_gps_longitude,
+                    me.gps_accuracy_m AS current_gps_accuracy_m,
+                    me.gps_fix_age_ms AS current_gps_fix_age_ms,
+                    me.gps_quality AS current_gps_quality,
+                    me.capture_method AS current_capture_method,
                     c.location_code AS home_location_code
                 FROM ref.display AS d
                 JOIN ref.display_status AS status
@@ -376,6 +387,13 @@ def _field_context(
                 LEFT JOIN ops.setup_container_state AS cs
                   ON cs.setup_session_id = ss.setup_session_id
                  AND cs.container_id = d.container_id
+                -- Detached Displays retain their own observation, including a
+                -- shared Container unload; attached Displays follow the parent.
+                LEFT JOIN ops.setup_movement_event AS me
+                  ON me.setup_movement_event_id = CASE
+                      WHEN ds.position_mode = 'DETACHED' THEN ds.last_movement_event_id
+                      ELSE cs.last_movement_event_id END
+                 AND me.setup_session_id = ss.setup_session_id
                 LEFT JOIN ref.stage AS current_stage
                   ON current_stage.stage_id = CASE
                       WHEN ds.position_mode = 'DETACHED' THEN ds.current_stage_id
@@ -388,7 +406,7 @@ def _field_context(
                 (season_year, display_ids),
             )
             for row in cur.fetchall():
-                item = dict(row)
+                item = self._field_location(dict(row))
                 source = membership[int(item["display_id"])]
                 item["relationship_type"] = ", ".join(source["relationship_types"]) or "REQUIRED"
                 item["relationship_source"] = ", ".join(source["sources"])
@@ -409,6 +427,15 @@ def _field_context(
                 s.stage_key AS current_stage_key,
                 s.stage_name AS current_stage_name,
                 cs.current_location_note,
+                cs.movement_status AS current_movement_status,
+                cs.last_movement_event_id AS current_movement_event_id,
+                me.occurred_at AS current_observed_at,
+                me.gps_latitude AS current_gps_latitude,
+                me.gps_longitude AS current_gps_longitude,
+                me.gps_accuracy_m AS current_gps_accuracy_m,
+                me.gps_fix_age_ms AS current_gps_fix_age_ms,
+                me.gps_quality AS current_gps_quality,
+                me.capture_method AS current_capture_method,
                 tc.relationship_type,
                 tc.notes AS relationship_notes
             FROM ref.setup_task_container_support AS tc
@@ -419,6 +446,9 @@ def _field_context(
             LEFT JOIN ops.setup_container_state AS cs
               ON cs.setup_session_id = ss.setup_session_id
              AND cs.container_id = c.container_id
+            LEFT JOIN ops.setup_movement_event AS me
+              ON me.setup_movement_event_id = cs.last_movement_event_id
+             AND me.setup_session_id = ss.setup_session_id
             LEFT JOIN ref.stage AS s
               ON s.stage_id = cs.current_stage_id
             WHERE tc.setup_task_id = %s
@@ -426,7 +456,7 @@ def _field_context(
             """,
             (season_year, task_id),
         )
-        support_containers = [dict(row) for row in cur.fetchall()]
+        support_containers = [self._field_location(dict(row)) for row in cur.fetchall()]
 
     container_ids = sorted({
         int(item["container_id"])

@@ -30,6 +30,28 @@ BEGIN
         WHERE ss.season_year = 2026 AND cs.container_id IN (177,178)) <> 2 THEN
         RAISE EXCEPTION 'C177/C178 current movement evidence missing: inspect clone before review';
     END IF;
+    -- Parent-only proof missed the first browser failure. Require effective
+    -- evidence for every detached/attached Display in the real acceptance set.
+    IF (SELECT count(DISTINCT d.display_id)
+        FROM ref.display d
+        JOIN ops.setup_session ss ON ss.season_year = 2026
+        LEFT JOIN ops.setup_display_state ds
+          ON ds.setup_session_id = ss.setup_session_id AND ds.display_id = d.display_id
+        LEFT JOIN ops.setup_container_state cs
+          ON cs.setup_session_id = ss.setup_session_id AND cs.container_id = d.container_id
+        LEFT JOIN ops.setup_movement_event me
+          ON me.setup_movement_event_id = CASE
+              WHEN ds.position_mode = 'DETACHED' THEN ds.last_movement_event_id
+              ELSE cs.last_movement_event_id END
+         AND me.setup_session_id = ss.setup_session_id
+        WHERE d.display_id IN (834,840,848,853,860,861)
+          AND ((me.gps_latitude IS NOT NULL AND me.gps_longitude IS NOT NULL)
+               OR CASE WHEN ds.position_mode = 'DETACHED' THEN ds.current_stage_id
+                       ELSE cs.current_stage_id END IS NOT NULL
+               OR nullif(btrim(CASE WHEN ds.position_mode = 'DETACHED' THEN ds.current_location_note
+                                    ELSE cs.current_location_note END), '') IS NOT NULL)) <> 6 THEN
+        RAISE EXCEPTION 'Effective steeple Display observations missing: inspect clone before browser review';
+    END IF;
 END
 $validation$;
 

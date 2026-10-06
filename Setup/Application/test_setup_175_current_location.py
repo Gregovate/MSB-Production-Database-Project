@@ -9,6 +9,7 @@ from datetime import datetime
 from decimal import Decimal
 import json
 from pathlib import Path
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -33,10 +34,28 @@ class ProjectionCursor:
 
     def execute(self, sql, params):
         assert sql.lstrip().startswith(("WITH", "SELECT"))
-        self.rows = self.conn.execute(sql.replace("::text", "").replace("%s", "?"), params)
+        # Execute the real installed queries; expand PostgreSQL ANY array binds
+        # into SQLite IN binds without replacing projection/join behavior.
+        binds = iter(params)
+        values = []
+
+        def bind(match):
+            value = next(binds)
+            if match.group() != "%s":
+                values.extend(value)
+                return "IN (" + ",".join("?" for _ in value) + ")"
+            values.append(value)
+            return "?"
+
+        translated = re.sub(r"=\s*ANY\(%s\)|%s", bind, sql.replace("::text", ""))
+        self.rows = self.conn.execute(translated, values)
+
+    def fetchone(self):
+        row = self.rows.fetchone()
+        return dict(row) if row is not None else None
 
     def fetchall(self):
-        return self.rows.fetchall()
+        return [dict(row) for row in self.rows.fetchall()]
 
 
 class ProjectionConnection:
@@ -177,6 +196,103 @@ def test_event_join_is_scoped_to_current_session(projection):
     item = repo.field_context(task_id=1, season_year=2026)["displays"][0]
     assert item["current_location_kind"] == "UNRESOLVED_FIELD"
     assert item["current_gps_latitude"] is None
+
+
+def _installed_production_location_case(case):
+    """Run in a child process: Production's installers mutate repository methods."""
+    monkeypatch = pytest.MonkeyPatch()
+    fixture = projection.__wrapped__(monkeypatch)
+    repo, conn = next(fixture)
+    conn.executescript("""
+        ALTER TABLE ref.setup_task ADD COLUMN task_name TEXT DEFAULT 'Steeples';
+        ALTER TABLE ref.setup_task ADD COLUMN stage_id INTEGER DEFAULT 15;
+        ALTER TABLE ref.setup_task ADD COLUMN requires_display_material INTEGER DEFAULT 1;
+        ALTER TABLE ref.setup_task ADD COLUMN active_flag INTEGER DEFAULT 1;
+        ALTER TABLE ref.setup_task ADD COLUMN task_action_type TEXT DEFAULT 'SETUP';
+        ALTER TABLE ref.setup_task ADD COLUMN display_order INTEGER DEFAULT 1;
+        ALTER TABLE ref.setup_task_display ADD COLUMN updated_at TEXT;
+        ALTER TABLE ref.setup_task_display ADD COLUMN updated_by_person_id INTEGER;
+        ALTER TABLE ref.display ADD COLUMN display_status_id INTEGER DEFAULT 1;
+        CREATE TABLE ref.display_status (display_status_id INTEGER, display_status_name TEXT);
+        INSERT INTO ref.display_status VALUES (1, 'ACTIVE');
+        CREATE TABLE ref.lor_scene (
+            lor_scene_id INTEGER, stage_id INTEGER, scene_name TEXT,
+            scene_uuid TEXT, preview_uuid TEXT);
+        INSERT INTO ref.lor_scene VALUES (90,15,'15-Steeples & Crosses',NULL,NULL);
+        UPDATE ref.setup_task SET lor_scene_id=90;
+        UPDATE ref.setup_task SET active_flag=0 WHERE setup_task_id=2;
+        DELETE FROM ref.setup_task_display;
+        INSERT INTO ref.container VALUES (177,'Left steeple','Z-BLDG-B-EAST');
+        INSERT INTO ref.display VALUES
+            (840,'CH-Steeple-RH-Top',178,1), (848,'CH-Steeple-RH-Mid',178,1),
+            (853,'CH-Steeple-LH-Mid',177,1), (860,'CH-Steeple-LH-Top',177,1),
+            (861,'CH-Steeple-LH-Base',177,1);
+        INSERT INTO ref.lor_scene_display VALUES
+            (90,840),(90,848),(90,853),(90,860),(90,861);
+        INSERT INTO ops.setup_container_state VALUES (1,177,NULL,NULL,'CONTAINER_MOVE',43);
+        UPDATE ops.setup_container_state SET movement_status='CONTAINER_MOVE';
+        INSERT INTO ops.setup_movement_event VALUES
+            (43,1,'2026-10-05T14:50:15-05:00',43.778465,-87.749201,3.00,0,'UNASSESSED','TOUCH_SELECT');
+        INSERT INTO ops.setup_display_state
+            SELECT 1,display_id,'DETACHED',NULL,NULL,'TASK_UNLOAD',
+                CASE WHEN container_id=177 THEN 43 ELSE 44 END
+            FROM ref.display;
+    """)
+    if case == "attached":
+        conn.execute("UPDATE ops.setup_display_state SET position_mode='WITH_CONTAINER', last_movement_event_id=41")
+    elif case == "later_parent":
+        conn.execute("UPDATE ops.setup_container_state SET current_stage_id=15, current_location_note='later parent location', last_movement_event_id=41")
+    elif case == "missing":
+        conn.execute("UPDATE ops.setup_display_state SET movement_status=NULL,last_movement_event_id=NULL")
+    elif case == "explicit":
+        conn.execute("UPDATE ref.setup_task SET active_flag=1 WHERE setup_task_id=2")
+        conn.execute("INSERT INTO ref.setup_task_display (setup_task_id,display_id,relationship_type) SELECT CASE WHEN display_id=834 THEN 2 ELSE 1 END,display_id,'REQUIRED' FROM ref.display")
+
+    # Import the real host, which installs material -> ownership -> assignment
+    # exactly as the disposable browser/Production process does.
+    import production_backend
+    import setup_next_api
+    import setup_material_resolution
+
+    monkeypatch.setenv("SETUP_DATABASE_DSN", "projection-fixture-only")
+    monkeypatch.setattr(SetupNextRepository, "connect", lambda self: repo.connect())
+    monkeypatch.setattr(setup_next_api, "require_reader", lambda: None)
+
+    year = 2025 if case == "other_season" else 2026
+    # Verify the underlying material/support projection as well as the final
+    # assignment replacement. No repository result or location field is mocked.
+    material = setup_material_resolution._field_context(repo, task_id=1, season_year=year)
+    response = production_backend.app.test_client().get(
+        f"/api/setup/tasks/1/field-context?season_year={year}")
+    assert response.status_code == 200, response.get_data(as_text=True)
+    context = response.get_json()["context"]
+    assert len(material["displays"]) == 6
+    assert len(context["displays"]) == (5 if case == "explicit" else 6)
+    assert context["display_ownership"]["mode"] == ("EXPLICIT_MULTI" if case == "explicit" else "IMPLICIT_SINGLE")
+
+    for item in [*material["displays"], *context["displays"], *context["display_ownership"]["assignments"]]:
+        assert item["home_location_code"] == "Z-BLDG-B-EAST"
+        if case in ("missing", "other_season"):
+            assert item["current_location_kind"] == "NONE"
+            assert item["current_gps_latitude"] is None
+        else:
+            assert item["current_location_kind"] == "GPS"
+            assert item["current_movement_event_id"] == (43 if item["container_id"] == 177 else 44)
+            assert item["current_gps_accuracy_m"] == 3
+            assert item["current_gps_latitude"] == (43.778465 if item["container_id"] == 177 else 43.778556)
+    support = context["support_containers"][0]
+    assert support["current_location_kind"] == ("NONE" if case == "other_season" else "NAMED" if case == "later_parent" else "GPS")
+
+
+@pytest.mark.parametrize("case", ["detached", "attached", "later_parent", "missing", "explicit", "other_season"])
+def test_installed_production_api_preserves_effective_movement_evidence(case):
+    # Isolate method installers from the unit tests that exercise the base class.
+    result = subprocess.run(
+        [sys.executable, "-c", "from test_setup_175_current_location import _installed_production_location_case; "
+         f"_installed_production_location_case({case!r})"],
+        cwd=APP_DIR, capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_field_context_api_serializes_postgresql_observation_types(monkeypatch, projection):
