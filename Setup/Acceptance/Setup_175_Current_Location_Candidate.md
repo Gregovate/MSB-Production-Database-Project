@@ -8,7 +8,7 @@
 | Baseline main | `8ea3d42224c25e9fdf2d01edd8bee3b9cc5693b6` |
 | Branch | `fix/175-current-location-evidence` |
 | Release | `V0.3.40-current-location` |
-| Application candidate SHA | Recorded in the implementation PR before server acceptance |
+| Application candidate SHA | `c54019d671497d30d5d8992f212afd0bd816108e` |
 | Database migrations | None |
 
 ## Bounded correction
@@ -29,7 +29,7 @@ stale and unrelated offline rehearsal; #230 reference cleanup is outside this fi
 
 ## Verification and limitations
 
-- Full `Setup/Application` regression and `Setup/Acceptance` tests: results recorded in PR.
+- Full `Setup/Application` regression: **691 passed**. `Setup/Acceptance`: **31 passed**. Combined: **722 passed**.
 - 13 new tests execute the actual projection SELECTs using SQLite with only text casts
   and placeholders translated, classify evidence, exercise Flask Decimal/timestamp
   transport, and execute the actual JS helpers/legacy grouping under Node.
@@ -38,7 +38,7 @@ stale and unrelated offline rehearsal; #230 reference cleanup is outside this fi
   season isolation, named Stage/Scene scope, unresolved movement, quality/accuracy,
   explicit RETURNED note, no-observation Home separation, and escaped output.
 - SQLite is a local semantic fixture, not PostgreSQL/current-Production acceptance.
-- JavaScript syntax and whitespace checks pass; exact footer/build gate is required after commit.
+- Changed JavaScript syntax and whitespace checks pass. Exact committed footer gate: PASS, Updated 2026-10-06; server/client identity both V0.3.40-current-location.
 - Browser execution was not possible here: no installed Chromium; Playwright's
   browser download returned a truncated/invalid archive.
 - This workspace has no established MSB private SSH/server access. No current
@@ -62,7 +62,7 @@ From that worktree, using the exact SHA recorded in the PR:
 
 ```powershell
 $ErrorActionPreference = 'Stop'
-$Candidate = '<exact application SHA from this PR>'
+$Candidate = 'c54019d671497d30d5d8992f212afd0bd816108e'
 $TargetRef = 'fix/175-current-location-evidence'
 $Validation = @('Setup/Acceptance/setup_175_current_location_readonly_validation.sql')
 
