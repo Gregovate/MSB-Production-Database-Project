@@ -6,6 +6,7 @@ Setup acceptance consumes the runtime/safety rules owned by `Gregovate/MSB-Serve
 
 - `docs/server/PostgreSQL_Disposable_Acceptance_Standard.md`
 - `docs/server/Pre_Production_Browser_Review_Runbook.md`
+- [Application and Test Port Register](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/Application_and_Test_Port_Register.md)
 - `docs/server/Production_Database_Change_Deployment_Runbook.md`
 
 The Production Database repository owns Setup feature migrations, validation SQL, application behavior, and the reusable Setup launchers that consume those server/runtime contracts.
@@ -110,19 +111,18 @@ This requirement was strengthened after #205 on 2026-09-29 proved that the brows
 
 ## Stable Setup review URL
 
-Reuse **8898**, the established Setup review port shown in Greg's operator history,
-for sequential Setup browser reviews: `http://127.0.0.1:8898/`.
-Pass `-PreviewPort 8898` explicitly; retain the
-existing local/server ownership and unused-port checks. A new issue, candidate,
-version, branch, date, or fresh disposable clone does not require a new port.
+Port allocation is owned by the Server Management
+[Application and Test Port Register](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/Application_and_Test_Port_Register.md).
+Read that register before supplying a review command. Its recorded Setup review
+allocation is **8898**: `http://127.0.0.1:8898/`.
+Pass `-PreviewPort 8898` explicitly and retain the existing local/server
+availability and ownership checks.
 
-If the preferred port is occupied, identify the owning process/review and use the
-existing governed resume/cleanup procedure. Do not silently select another port,
-kill an unrelated listener, or discard an active review merely to reuse the URL.
-Use an additional port only for a demonstrated concurrent-review/conflict need,
-explain the reason, and record the alternate URL in the owning issue/report.
-An already-running review keeps its configured port until clean exit.
-Other applications such as People Manager have separate listener/preview identities.
+Reuse the recorded allocation for sequential reviews. If occupied, identify the
+owner and follow the governed resume/cleanup procedure. A demonstrated need for an
+alternate must be recorded in the server register before launch. An active review
+keeps its configured port until governed cleanup; cancelling the local command does
+not prove remote cleanup.
 
 ## Reusable disposable browser review
 
