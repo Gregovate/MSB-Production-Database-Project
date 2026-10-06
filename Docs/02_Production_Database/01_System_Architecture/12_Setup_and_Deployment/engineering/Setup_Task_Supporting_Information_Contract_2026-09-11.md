@@ -61,13 +61,19 @@ The API-derived `current_location_kind` is a presentation contract, not a databa
 | Kind | Evidence | Presentation |
 |---|---|---|
 | NAMED | Current Stage key or nonblank location note | Current: named Stage/reference/note |
-| GPS | Both coordinates on the effective event | Current: GPS observation; recorded accuracy in feet when available |
+| GPS | Both coordinates on the effective event | Current: nearest known waypoint and distance, plus recorded coordinates/accuracy; coordinates alone if references unavailable |
 | UNRESOLVED_FIELD | Movement status/event pointer or unresolved Stage ID | Current: Location recorded — unnamed |
 | NONE | No effective movement/location evidence | Current location not recorded |
 
 Named current evidence takes precedence over GPS. A recorded return-home note
 can legitimately name Home as current; reference Home alone cannot.
-GPS is an observation, not live tracking or automatic proof of a park boundary.
+GPS is a recorded observation, not live tracking or automatic proof of a park boundary.
+Nearest waypoint context comes from the existing versioned Record Location reference
+JSON using its transformed WGS84 points and Record Location's distance calculation.
+Show the waypoint name/distance and retain the actual recorded coordinates. Nearest
+means proximity within this curated set, not confirmed placement or Stage assignment.
+Keep confirmed Stage/note precedence; if references are unavailable, show coordinates.
+Derivation must not write observations or change curated reference anchors.
 QUESTIONABLE/BAD GPS quality remains visible when GPS is the displayed evidence.
 Home storage stays on a separately labeled reference line. This distinction
 also applies to the task cover sheet and older material-rendering overlay;
