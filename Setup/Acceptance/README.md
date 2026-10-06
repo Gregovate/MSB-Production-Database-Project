@@ -110,8 +110,9 @@ This requirement was strengthened after #205 on 2026-09-29 proved that the brows
 
 ## Stable Setup review URL
 
-Use **8806** as the consistent preferred port for sequential Setup browser reviews:
-`http://127.0.0.1:8806/`. Pass `-PreviewPort 8806` explicitly; retain the
+Reuse **8898**, the established Setup review port shown in Greg's operator history,
+for sequential Setup browser reviews: `http://127.0.0.1:8898/`.
+Pass `-PreviewPort 8898` explicitly; retain the
 existing local/server ownership and unused-port checks. A new issue, candidate,
 version, branch, date, or fresh disposable clone does not require a new port.
 
@@ -129,7 +130,7 @@ After disposable acceptance passes, use:
 
 ```powershell
 .\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
-  -PreviewPort 8806 `
+  -PreviewPort 8898 `
   -CandidateSha <same-exact-sha> `
   -TargetRef <same-exact-branch> `
   -ExpectedVersion <candidate-health-version> `
