@@ -1473,16 +1473,35 @@ function nextLocationText(item) {
       ? ` · ±${Math.ceil(Number(accuracy) / 0.3048)} ft` : '';
     const quality = ['QUESTIONABLE', 'BAD'].includes(item.current_gps_quality)
       ? ` · GPS quality ${item.current_gps_quality.toLowerCase()}` : '';
-    return `Current: GPS observation${feet}${quality}`;
+    const reference = item.current_nearest_reference;
+    if (reference?.name && Number.isFinite(Number(reference.distance_ft))) {
+      // A nearby waypoint is context for the recorded fix, not confirmed placement.
+      return `Current: nearest waypoint ${reference.name} · ${Math.round(Number(reference.distance_ft))} ft away${feet}${quality}`;
+    }
+    const coordinates = nextRecordedGpsText(item);
+    return `Current: GPS ${coordinates || 'observation'}${feet}${quality}`;
   }
   if (item.current_location_kind === 'UNRESOLVED_FIELD') return 'Current: Location recorded — unnamed';
   return 'Current location not recorded';
 }
 
+function nextRecordedGpsText(item) {
+  const lat = item.current_gps_latitude;
+  const lon = item.current_gps_longitude;
+  if (lat === null || lat === undefined || lat === '' || lon === null || lon === undefined || lon === '') return '';
+  const latitude = Number(lat);
+  const longitude = Number(lon);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return '';
+  return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+}
+
 function nextLocationMarkup(item) {
+  const coordinates = nextRecordedGpsText(item);
+  const recorded = coordinates && (item.current_location_kind !== 'GPS' || item.current_nearest_reference?.name)
+    ? `<br><span class="muted">Recorded GPS: ${escapeHtml(coordinates)}</span>` : '';
   const home = item.home_location_code
     ? `<br><span class="muted">Home storage: ${escapeHtml(item.home_location_code)}</span>` : '';
-  return `<strong>${escapeHtml(nextLocationText(item))}</strong>${home}`;
+  return `<strong>${escapeHtml(nextLocationText(item))}</strong>${recorded}${home}`;
 }
 
 function nextProgressAuditText(progress) {

@@ -6,6 +6,7 @@ from typing import Any, Iterator
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from setup_location_evidence import nearest_recorded_reference
 
 
 class SetupNextRepositoryError(RuntimeError):
@@ -391,6 +392,8 @@ class SetupNextRepository:
         else:
             kind = "NONE"
         item["current_location_kind"] = kind
+        item["current_nearest_reference"] = nearest_recorded_reference(
+            item.get("current_gps_latitude"), item.get("current_gps_longitude"))
         return item
 
     def record_progress(self, *, email: str, session_task_id: int,

@@ -275,11 +275,16 @@ def _installed_production_location_case(case):
         if case in ("missing", "other_season"):
             assert item["current_location_kind"] == "NONE"
             assert item["current_gps_latitude"] is None
+            assert item["current_nearest_reference"] is None
         else:
             assert item["current_location_kind"] == "GPS"
             assert item["current_movement_event_id"] == (43 if item["container_id"] == 177 else 44)
             assert item["current_gps_accuracy_m"] == 3
             assert item["current_gps_latitude"] == (43.778465 if item["container_id"] == 177 else 43.778556)
+            reference = item["current_nearest_reference"]
+            assert reference["name"] == "15-Church-Bells-CH"
+            assert round(reference["distance_ft"]) == (46 if item["container_id"] == 177 else 76)
+            assert reference["reference_set_version"] == "2026-stage-reference-20261003.1"
     support = context["support_containers"][0]
     assert support["current_location_kind"] == ("NONE" if case == "other_season" else "NAMED" if case == "later_parent" else "GPS")
 
@@ -327,6 +332,38 @@ def test_location_evidence_classification(evidence, kind):
     assert SetupNextRepository._field_location(evidence)["current_location_kind"] == kind
 
 
+def test_nearest_waypoint_uses_recorded_fix_without_replacing_named_evidence():
+    evidence = {"current_location_note": "operator-confirmed location",
+                "current_gps_latitude": Decimal("43.778465"),
+                "current_gps_longitude": Decimal("-87.749201")}
+    result = SetupNextRepository._field_location(evidence.copy())
+    assert result["current_location_kind"] == "NAMED"
+    assert result["current_location_note"] == evidence["current_location_note"]
+    assert result["current_gps_latitude"] == evidence["current_gps_latitude"]
+    assert result["current_nearest_reference"]["name"] == "15-Church-Bells-CH"
+    assert 46 < result["current_nearest_reference"]["distance_ft"] < 47
+
+
+def test_missing_reference_set_preserves_recorded_coordinates(monkeypatch):
+    import setup_location_evidence
+    monkeypatch.setattr(setup_location_evidence, "_reference_set", lambda: {})
+    result = SetupNextRepository._field_location({"current_gps_latitude": 43.778465,
+                                                "current_gps_longitude": -87.749201})
+    assert result["current_location_kind"] == "GPS"
+    assert result["current_nearest_reference"] is None
+    assert result["current_gps_latitude"] == 43.778465
+
+
+def test_invalid_waypoints_and_observations_cannot_produce_nearest_labels(monkeypatch):
+    import setup_location_evidence
+    monkeypatch.setattr(setup_location_evidence, "_reference_set", lambda: {"points": [
+        {"name": "bad", "latitude": "NaN", "longitude": -87},
+        {"name": "outside", "latitude": 100, "longitude": -87},
+    ]})
+    for latitude, longitude in [(43, -87), (None, -87), ("NaN", -87), (True, -87), (43, 181)]:
+        assert setup_location_evidence.nearest_recorded_reference(latitude, longitude) is None
+
+
 def test_actual_browser_helpers_separate_current_from_home(projection):
     node = shutil.which("node")
     if node is None:
@@ -345,22 +382,28 @@ def test_actual_browser_helpers_separate_current_from_home(projection):
         }
         vm.runInThisContext(source.slice(start, end));
         const gps = JSON.parse(process.argv[2]);
-        assert.equal(nextLocationText(gps), 'Current: GPS observation · ±10 ft');
-        assert.equal(nextLocationText({...gps, current_gps_accuracy_m: null}), 'Current: GPS observation');
-        assert.equal(nextLocationText({...gps, current_gps_accuracy_m: '', current_gps_quality: 'BAD'}), 'Current: GPS observation · GPS quality bad');
-        assert.equal(nextLocationText({...gps, current_gps_accuracy_m: '1.58', current_gps_quality: 'QUESTIONABLE'}), 'Current: GPS observation · ±6 ft · GPS quality questionable');
+        const nearest = 'Current: nearest waypoint 15-Church-Bells-CH · 76 ft away';
+        assert.equal(nextLocationText(gps), nearest + ' · ±10 ft');
+        assert.equal(nextLocationText({...gps, current_gps_accuracy_m: null}), nearest);
+        assert.equal(nextLocationText({...gps, current_gps_accuracy_m: '', current_gps_quality: 'BAD'}), nearest + ' · GPS quality bad');
+        assert.equal(nextLocationText({...gps, current_gps_accuracy_m: '1.58', current_gps_quality: 'QUESTIONABLE'}), nearest + ' · ±6 ft · GPS quality questionable');
+        assert.equal(nextLocationText({...gps, current_nearest_reference:null}), 'Current: GPS 43.778556, -87.749142 · ±10 ft');
+        assert.equal(nextRecordedGpsText({current_gps_latitude:0,current_gps_longitude:0}), '0.000000, 0.000000');
+        assert.equal(nextRecordedGpsText({current_gps_latitude:null,current_gps_longitude:0}), '');
         assert.equal(nextLocationText({current_location_kind:'UNRESOLVED_FIELD', home_location_code:'Z-BLDG-B-EAST'}), 'Current: Location recorded — unnamed');
         assert.equal(nextLocationText({home_location_code:'RC05-A-01'}), 'Current location not recorded');
         assert.equal(nextLocationText({current_stage_key:'15',current_stage_name:'Church-ParkingLot',current_location_note:'beside tower'}), 'Current: Stage 15 — Church-ParkingLot · beside tower');
         assert.equal(nextLocationText({current_location_kind:'NAMED',current_location_note:'RC05-A-01',current_movement_status:'RETURNED'}), 'Current: RC05-A-01');
-        assert.equal(nextLocationMarkup(gps), '<strong>Current: GPS observation · ±10 ft</strong><br><span class="muted">Home storage: Z-BLDG-B-EAST</span>');
+        assert.equal(nextLocationMarkup(gps), '<strong>' + nearest + ' · ±10 ft</strong><br><span class="muted">Recorded GPS: 43.778556, -87.749142</span><br><span class="muted">Home storage: Z-BLDG-B-EAST</span>');
+        assert.ok(nextLocationMarkup({...gps,current_nearest_reference:{name:'<img>',distance_ft:1}}).includes('&lt;img&gt;'));
         assert.ok(!nextLocationMarkup({current_location_note:'<script>',home_location_code:'<img>'}).includes('<script>'));
         assert.ok(nextLocationMarkup({current_location_note:'<script>',home_location_code:'<img>'}).includes('&lt;img&gt;'));
         // The older grouped overlay must also preserve each Display's location.
         const overlay = fs.readFileSync(process.argv[3], 'utf8');
         vm.runInThisContext(overlay.slice(overlay.indexOf('function acceptanceMaterialMarkup('), overlay.indexOf('const setupAcceptanceBaseLoadNextTaskExecution')));
         const grouped = acceptanceMaterialMarkup({displays: [gps, {...gps, display_id: 840, position_mode:'DETACHED', current_location_note:'separate placement'}]});
-        assert.ok(grouped.includes('Current: GPS observation · ±10 ft'));
+        assert.ok(grouped.includes(nearest + ' · ±10 ft'));
+        assert.ok(grouped.includes('Recorded GPS: 43.778556, -87.749142'));
         assert.ok(grouped.includes('Current: separate placement'));
         assert.ok(grouped.includes('Home storage: Z-BLDG-B-EAST'));
         console.log('Current/Home renderer behavior PASS');
