@@ -5,10 +5,10 @@
 | Status | LOCAL REGRESSION PASS — disposable/browser acceptance pending |
 | Reviewed | 2026-10-06 |
 | Owner | #175, commanding #122 / DBG-2026-001; #88 movement dependency |
-| Baseline main | `8ea3d42224c25e9fdf2d01edd8bee3b9cc5693b6` |
+| Baseline main | `5109fff5145122525c7ea9ae5d2bc0ff5d6b994a` |
 | Branch | `fix/175-current-location-evidence` |
 | Release | `V0.3.42-current-location` |
-| Application candidate SHA | `7390012daea2e67e1cab92ee80616da7d0524d47` |
+| Application candidate SHA | `cb0538022ed066ff90675e832daa1cd95488114a` |
 | Database migrations | None |
 
 ## Bounded correction
@@ -20,17 +20,17 @@ unload events. No new observations, reference-data cleanup, or schema changes.
 
 The material panel, its task-cover-sheet copy, and the older overlay share truthful
 Current/Home presentation. Named evidence is preserved; GPS-only evidence shows
-a nearest known waypoint name and distance, recorded GPS coordinates, and ±10 ft
-accuracy for a 3 m fix. It uses the existing versioned Record Location reference
+a compact nearest known waypoint name/distance with recorded GPS coordinates and
+accuracy behind an expandable GPS disclosure. It uses the existing versioned Record Location reference
 set; proximity does not confirm placement at that waypoint. Unnamed movement and no observation have explicit text. Home storage
-is a separate reference line. Grouped legacy Displays retain individual locations.
+is a separately labeled inline reference. Grouped legacy Displays retain individual locations.
 
 No appropriate healthy open implementation PR owns this bounded defect. #266 is
 stale and unrelated offline rehearsal; #230 reference cleanup is outside this fix.
 
 ## Verification and limitations
 
-- Linux engineering verification: full `Setup/Application` regression **700 passed**; `Setup/Acceptance` **31 passed**; combined **731 passed**. On Windows, run `Setup/Application` only; the acceptance-tooling suite includes Linux-only installer imports (`fcntl`).
+- Linux engineering verification: full `Setup/Application` regression **705 passed**; `Setup/Acceptance` **31 passed**; combined **736 passed**. On Windows, run `Setup/Application` only; the acceptance-tooling suite includes Linux-only installer imports (`fcntl`).
 - 22 tests execute the actual projection SELECTs using SQLite with only text casts
   array binds and placeholders translated, classify evidence, exercise Flask Decimal/timestamp
   transport, and execute the actual JS helpers/legacy grouping under Node.
@@ -108,6 +108,43 @@ data, invalid coordinates/waypoints, coordinate formatting and escaped waypoint 
 **V0.3.41 browser disposition: CHANGES REQUIRED.** New-candidate disposable/browser
 acceptance remains pending; Production is untouched.
 
+## Compact presentation and concurrent Pick reconciliation — 2026-10-06
+
+Greg confirmed the original V0.3.42 candidate `7390012daea2e67e1cab92ee80616da7d0524d47`
+is working. His screenshot `image(20261006-144217).png` shows the two crosses and
+all six steeple Displays with Church-Bells proximity, recorded coordinates and
+Home references. **Location evidence is working; presentation CHANGES REQUIRED: too wordy.**
+
+The current candidate keeps V0.3.42 under the presentation-only exception in the
+Release Identity and Versioning Rule. Its exact SHA above supersedes the earlier
+candidate for review. Main was refreshed to `5109fff5145122525c7ea9ae5d2bc0ff5d6b994a`;
+accepted PR #306 live Pick demand resolution, online cache refresh and scanner
+shell v18 are integrated without reverting them.
+
+Default rows now show:
+- C177: `Current: near 15-Church-Bells-CH (46 ft) · Home: Z-BLDG-B-EAST`.
+- C178: `Current: near 15-Church-Bells-CH (76 ft) · Home: Z-BLDG-B-EAST`.
+- Crosses C8: `Current: near 15-Church-Bells-CH (64 ft) · Home: RC05-A-01`.
+
+A small native GPS disclosure retains coordinates and accuracy, initially collapsed
+and operable by touch/keyboard. GPS quality warnings remain visible in the current
+location line. Without a usable reference, the coordinates remain directly visible.
+The printed task sheet expands the disclosures in its copy, leaving the live page
+collapsed. Nearest means proximity, not confirmed placement. No database/API evidence
+semantics, reference anchors or movement history changed.
+
+**705 application + 31 acceptance-tooling = 736 passed** on Linux, including the
+five live Pick demand regressions. Tested/uploaded tree:
+`c9a174f76a2aa06b244960cff6164faac7e2e9ce`. Actual rendering-helper checks cover
+compact labels, default-closed GPS details, coordinate/accuracy retention, quality,
+escaping, no-observation rows and legacy grouping. JS syntax, whitespace and exact
+committed footer gate pass. Fresh disposable acceptance/browser review of the
+combined exact candidate remains pending; no #175 Production deployment or merge.
+
+End the existing preview with ENTER and wait for CLEAN EXIT before running the
+updated command below. Keep port 8898. Closing the browser alone does not clean up
+the remote preview; network loss can preserve it for reconnect.
+
 ## Governed disposable review
 
 Authorities retrieved and read for this workstream:
@@ -133,7 +170,17 @@ From that worktree, using the exact SHA recorded in the PR:
 ```powershell
 & {
     $ErrorActionPreference = 'Stop'
-    $Candidate = '7390012daea2e67e1cab92ee80616da7d0524d47'
+    # Local VS Code Windows PowerShell; use your existing candidate checkout.
+    function Invoke-Git175 {
+        & git @args
+        if ($LASTEXITCODE -ne 0) { throw "STOP: Git failed: $args" }
+    }
+    if (Invoke-Git175 status --porcelain) { throw 'STOP: local changes need preservation.' }
+    Invoke-Git175 fetch origin
+    Invoke-Git175 switch fix/175-current-location-evidence
+    Invoke-Git175 pull --ff-only origin fix/175-current-location-evidence
+
+    $Candidate = 'cb0538022ed066ff90675e832daa1cd95488114a'
     $TargetRef = 'fix/175-current-location-evidence'
     $Validation = @('Setup/Acceptance/setup_175_current_location_readonly_validation.sql')
 
@@ -174,21 +221,21 @@ CLEAN EXIT, exact SHA/version, before/after evidence and report locations.
 
 ## Exact browser checklist
 
-1. Verify disposable banner, Client/server V0.3.40 identity and Updated 2026-10-06.
+1. Verify disposable banner, Client/server V0.3.42 identity and Updated 2026-10-06.
 2. Perform Work -> All scheduled work -> Show completed -> completed **Setup
    Steeples & Crosses**, Oct 5 / Crew 4. Open its material panel.
 3. Inspect C177 Displays 853/860/861 and C178 Displays 834/840/848. Current must
    reflect each effective state/event from the cloned data. GPS-only observations
-   must show the nearest known waypoint and distance, raw recorded coordinates and
-   available accuracy. Against the recorded steeple evidence and current reference
+   must show the nearest known waypoint/distance; expand GPS to see raw recorded
+   coordinates and accuracy. Verify keyboard and touch disclosure operation. Against the recorded steeple evidence and current reference
    set, C177 is about 46 ft and C178 about 76 ft from 15-Church-Bells-CH;
-   `Z-BLDG-B-EAST` appears only as Home storage
+   `Z-BLDG-B-EAST` appears only after the Home label
    unless a real RETURNED/named observation explicitly establishes it as current.
 4. Check one attached and one detached Display against API evidence. Detached
    Displays retain their own unload/movement event rather than later Container evidence.
 5. Check named current Stage, support Container and an asset with no observation.
    No observation says Current location not recorded; Home is reference-only.
-6. Print Task preview must preserve Current/Home separation. Check phone/portrait
+6. Print Task preview must preserve Current/Home separation and expand GPS details. Check phone/portrait
    width for readable wrapping and usable Report Work controls.
 7. Do not report new real work for this read fix. Record actual review observations
    and any missing representative case; do not substitute fixture tests for operator PASS.
