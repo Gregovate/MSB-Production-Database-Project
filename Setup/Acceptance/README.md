@@ -180,3 +180,5 @@ Package accepted cross-repository artifacts with their owning source/merge and e
 ## Tablet launch-debug candidate
 
 [All three #205/#122 tablet launch corrections](Setup_205_Tablet_Launch_Debug_Candidate.md) are a source-only candidate. Local regression passes; disposable/browser/operator acceptance remains pending. Production is unchanged.
+
+- [#206 live Pick demand correction candidate](Setup_206_Live_Pick_Demand_Candidate.md) — reconciles focused validation misses with visible live physical demand and refreshes stale online scan data.
