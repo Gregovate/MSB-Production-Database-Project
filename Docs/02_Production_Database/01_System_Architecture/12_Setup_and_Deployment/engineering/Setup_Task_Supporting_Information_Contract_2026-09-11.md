@@ -50,6 +50,12 @@ existing #88 state pointer, without writing observations or altering history:
 - Event evidence is joined by the effective `last_movement_event_id` and Session,
   never by the latest event globally or a guessed Display-only event type.
 
+Production installs automatic material resolution, Display ownership and the corrected
+assignment layer over the base repository method. Effective event/GPS projection and
+classification must survive those active material/support and assignment-source queries.
+Verification must import the real Production host and exercise its installed field-context
+API; testing only the base class missed the first #175 browser failure.
+
 The API-derived `current_location_kind` is a presentation contract, not a database column:
 
 | Kind | Evidence | Presentation |
