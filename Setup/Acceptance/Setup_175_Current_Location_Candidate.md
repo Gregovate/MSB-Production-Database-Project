@@ -95,11 +95,14 @@ From that worktree, using the exact SHA recorded in the PR:
 ```
 
 Reuse Greg's established Setup review URL `http://127.0.0.1:8898/` under
-[the acceptance port convention](README.md#stable-setup-review-url).
-The initial #175 launch was configured on 8806; Greg reported that URL did not work.
-This does not establish the underlying listener/tunnel failure. End/inspect that
-preview through the existing governed cleanup/resume flow before starting a fresh
-review on 8898. A new candidate does not require a new port.
+[the Server Management port register](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/Application_and_Test_Port_Register.md).
+The initial #175 launch was configured on 8806; Greg reported that URL did not work
+and cancelled the run. This does not establish the underlying listener/tunnel failure
+or prove remote cleanup. The retained browser report is
+`/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20261006T114947.txt`.
+Read that report and inspect the recognized preview through the existing governed
+cleanup/resume flow before starting a fresh review on 8898. Readiness, browser PASS
+and CLEAN EXIT remain unverified. A new candidate does not require a new port.
 
 Do not open the URL until **BROWSER REVIEW READY**. Finish with ENTER and retain
 CLEAN EXIT, exact SHA/version, before/after evidence and report locations.
