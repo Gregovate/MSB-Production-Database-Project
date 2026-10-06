@@ -877,7 +877,7 @@ class SetupMaterialReadinessRepository:
         )
         observation = dict(state.get((normalized_type, int(asset_id))) or {})
 
-        return {
+        status = {
             "demanded": bool(origins),
             "pick_delayed": bool(
                 normalized_type == "CONTAINER"
@@ -886,6 +886,37 @@ class SetupMaterialReadinessRepository:
             ),
             "demand_origins": sorted(origins),
             "current_observation": observation or None,
+        }
+
+        # The focused mapping is an optimization, not an independent authority.
+        # Stage-level LOR membership and ownership can yield current demand that
+        # has no explicit task-display row. Confirm misses against the same live
+        # projection used by Pick List/Material Status before rejecting a scan.
+        return self._reconcile_pick_demand(
+            season_year=season_year, asset_type=normalized_type,
+            asset_id=asset_id, status=status,
+        )
+
+    def _reconcile_pick_demand(
+        self, *, season_year: int, asset_type: str, asset_id: int,
+        status: dict[str, Any],
+    ) -> dict[str, Any]:
+        if status.get("demanded"):
+            return status
+        readiness = self.material_readiness(season_year)
+        item = next((row for row in readiness.get("physical_items") or []
+                     if str(row.get("physical_type") or "").upper() == asset_type
+                     and int(row.get("physical_id") or 0) == int(asset_id)), None)
+        if item is None:
+            return status
+        return {
+            "demanded": True,
+            "pick_delayed": bool(item.get("pick_delayed")),
+            "demand_origins": sorted({
+                str(reason.get("demand_origin") or "DIRECT_SCHEDULE")
+                for reason in item.get("reasons") or []
+            }),
+            "current_observation": item.get("current_observation"),
         }
 
     def _container_endpoint_policy(

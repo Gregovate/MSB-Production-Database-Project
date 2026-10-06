@@ -319,7 +319,18 @@
   }
 
   async function recordPick(identity, captureMethod) {
-    const validation = cachedPickValidation(identity);
+    let validation = cachedPickValidation(identity);
+    // A picker may keep this page open while live demand/container membership
+    // changes. Online rejections must use refreshed demand, not yesterday's tab.
+    if (!validation.ok && navigator.onLine && bridge()?.reload) {
+      try {
+        await bridge().reload();
+        validation = cachedPickValidation(identity);
+      } catch (error) {
+        setFeedback('warning', 'Unable to verify live Pick List: ' + (error.message || error));
+        return;
+      }
+    }
     if (!validation.ok) {
       setFeedback(validation.kind, validation.message);
       return;
