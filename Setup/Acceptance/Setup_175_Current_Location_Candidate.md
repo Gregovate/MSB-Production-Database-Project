@@ -73,17 +73,17 @@ From that worktree, using the exact SHA recorded in the PR:
     $Candidate = 'c54019d671497d30d5d8992f212afd0bd816108e'
     $TargetRef = 'fix/175-current-location-evidence'
     $Validation = @('Setup/Acceptance/setup_175_current_location_readonly_validation.sql')
-    
+
     python -m pytest -q -p no:cacheprovider Setup/Application
     if ($LASTEXITCODE -ne 0) { throw 'STOP: local application regression failed.' }
-    
+
     .\Setup\Acceptance\run_setup_disposable_acceptance.ps1 `
       -CandidateSha $Candidate -TargetRef $TargetRef `
       -MigrationPaths @() -ValidationPaths $Validation `
       -AllowConcurrentProductionWrites
     if ($LASTEXITCODE -ne 0) { throw 'STOP: disposable acceptance failed; inspect retained report.' }
-    
-    # 8806 is a proposed review port. The existing runner must prove it is unused;
+
+    # Reuse the preferred Setup review port 8806; the runner must prove it is unused;
     # STOP on an occupied/unknown listener instead of replacing it.
     .\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
       -CandidateSha $Candidate -TargetRef $TargetRef -PreviewPort 8806 `
@@ -93,6 +93,10 @@ From that worktree, using the exact SHA recorded in the PR:
     if ($LASTEXITCODE -ne 0) { throw 'STOP: browser preview failed; inspect retained report.' }
 }
 ```
+
+Use the consistent Setup review URL `http://127.0.0.1:8806/`; reuse this port
+for sequential reviews under [the acceptance port convention](README.md#stable-setup-review-url).
+A new candidate does not need a new port. Keep the current review on 8806 through clean exit.
 
 Do not open the URL until **BROWSER REVIEW READY**. Finish with ENTER and retain
 CLEAN EXIT, exact SHA/version, before/after evidence and report locations.
