@@ -108,13 +108,28 @@ Automatic reconnect remains foreground and bounded. It does not use `ssh -N`, `s
 
 This requirement was strengthened after #205 on 2026-09-29 proved that the browser application remained healthy while the workstation SSH/PTTY reset. The old wrapper then lost terminal input and failed cleanup, forcing repeated operator work despite an intact disposable preview.
 
+## Stable Setup review URL
+
+Use **8806** as the consistent preferred port for sequential Setup browser reviews:
+`http://127.0.0.1:8806/`. Pass `-PreviewPort 8806` explicitly; retain the
+existing local/server ownership and unused-port checks. A new issue, candidate,
+version, branch, date, or fresh disposable clone does not require a new port.
+
+If the preferred port is occupied, identify the owning process/review and use the
+existing governed resume/cleanup procedure. Do not silently select another port,
+kill an unrelated listener, or discard an active review merely to reuse the URL.
+Use an additional port only for a demonstrated concurrent-review/conflict need,
+explain the reason, and record the alternate URL in the owning issue/report.
+An already-running review keeps its configured port until clean exit.
+Other applications such as People Manager have separate listener/preview identities.
+
 ## Reusable disposable browser review
 
 After disposable acceptance passes, use:
 
 ```powershell
 .\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
-  -PreviewPort <unused-nonproduction-port> `
+  -PreviewPort 8806 `
   -CandidateSha <same-exact-sha> `
   -TargetRef <same-exact-branch> `
   -ExpectedVersion <candidate-health-version> `
