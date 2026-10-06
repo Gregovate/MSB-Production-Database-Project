@@ -29,7 +29,7 @@ stale and unrelated offline rehearsal; #230 reference cleanup is outside this fi
 
 ## Verification and limitations
 
-- Full `Setup/Application` regression: **691 passed**. `Setup/Acceptance`: **31 passed**. Combined: **722 passed**.
+- Linux engineering verification: full `Setup/Application` regression **691 passed**; `Setup/Acceptance` **31 passed**; combined **722 passed**. On Windows, run `Setup/Application` only; the acceptance-tooling suite includes Linux-only installer imports (`fcntl`).
 - 13 new tests execute the actual projection SELECTs using SQLite with only text casts
   and placeholders translated, classify evidence, exercise Flask Decimal/timestamp
   transport, and execute the actual JS helpers/legacy grouping under Node.
@@ -58,28 +58,40 @@ existing launcher contract. The review is read-only against Production;
 all application writes are confined to its disposable clone. No maintenance
 window or Production deployment is included.
 
+On Windows, local regression is `python -m pytest -q -p no:cacheprovider Setup/Application`.
+Do not include `Setup/Acceptance` in that Windows invocation: its Linux deployment
+installer tests import `fcntl`. The reusable server runner independently runs the
+exact candidate's full `Setup/Application` regression on Linux before cloning.
+
+Run the sequence as one PowerShell script block so a thrown failure ends the whole
+sequence. Separately pasted interactive commands can still run after an earlier throw.
 From that worktree, using the exact SHA recorded in the PR:
 
 ```powershell
-$ErrorActionPreference = 'Stop'
-$Candidate = 'c54019d671497d30d5d8992f212afd0bd816108e'
-$TargetRef = 'fix/175-current-location-evidence'
-$Validation = @('Setup/Acceptance/setup_175_current_location_readonly_validation.sql')
-
-.\Setup\Acceptance\run_setup_disposable_acceptance.ps1 `
-  -CandidateSha $Candidate -TargetRef $TargetRef `
-  -MigrationPaths @() -ValidationPaths $Validation `
-  -AllowConcurrentProductionWrites
-if ($LASTEXITCODE -ne 0) { throw 'STOP: disposable acceptance failed; inspect retained report.' }
-
-# 8806 is a proposed review port. The existing runner must prove it is unused;
-# STOP on an occupied/unknown listener instead of replacing it.
-.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
-  -CandidateSha $Candidate -TargetRef $TargetRef -PreviewPort 8806 `
-  -ExpectedVersion 'V0.3.40-current-location' `
-  -MigrationPaths @() -ValidationPaths $Validation `
-  -AllowConcurrentProductionWrites
-if ($LASTEXITCODE -ne 0) { throw 'STOP: browser preview failed; inspect retained report.' }
+& {
+    $ErrorActionPreference = 'Stop'
+    $Candidate = 'c54019d671497d30d5d8992f212afd0bd816108e'
+    $TargetRef = 'fix/175-current-location-evidence'
+    $Validation = @('Setup/Acceptance/setup_175_current_location_readonly_validation.sql')
+    
+    python -m pytest -q -p no:cacheprovider Setup/Application
+    if ($LASTEXITCODE -ne 0) { throw 'STOP: local application regression failed.' }
+    
+    .\Setup\Acceptance\run_setup_disposable_acceptance.ps1 `
+      -CandidateSha $Candidate -TargetRef $TargetRef `
+      -MigrationPaths @() -ValidationPaths $Validation `
+      -AllowConcurrentProductionWrites
+    if ($LASTEXITCODE -ne 0) { throw 'STOP: disposable acceptance failed; inspect retained report.' }
+    
+    # 8806 is a proposed review port. The existing runner must prove it is unused;
+    # STOP on an occupied/unknown listener instead of replacing it.
+    .\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
+      -CandidateSha $Candidate -TargetRef $TargetRef -PreviewPort 8806 `
+      -ExpectedVersion 'V0.3.40-current-location' `
+      -MigrationPaths @() -ValidationPaths $Validation `
+      -AllowConcurrentProductionWrites
+    if ($LASTEXITCODE -ne 0) { throw 'STOP: browser preview failed; inspect retained report.' }
+}
 ```
 
 Do not open the URL until **BROWSER REVIEW READY**. Finish with ENTER and retain
