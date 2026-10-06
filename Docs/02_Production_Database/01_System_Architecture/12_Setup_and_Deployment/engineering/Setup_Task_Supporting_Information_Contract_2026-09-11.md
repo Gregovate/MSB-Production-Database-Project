@@ -61,7 +61,7 @@ The API-derived `current_location_kind` is a presentation contract, not a databa
 | Kind | Evidence | Presentation |
 |---|---|---|
 | NAMED | Current Stage key or nonblank location note | Current: named Stage/reference/note |
-| GPS | Both coordinates on the effective event | Current: nearest known waypoint and distance, plus recorded coordinates/accuracy; coordinates alone if references unavailable |
+| GPS | Both coordinates on the effective event | Current: near waypoint (distance); expandable GPS coordinates/accuracy; coordinates directly if references unavailable |
 | UNRESOLVED_FIELD | Movement status/event pointer or unresolved Stage ID | Current: Location recorded — unnamed |
 | NONE | No effective movement/location evidence | Current location not recorded |
 
@@ -74,8 +74,8 @@ Show the waypoint name/distance and retain the actual recorded coordinates. Near
 means proximity within this curated set, not confirmed placement or Stage assignment.
 Keep confirmed Stage/note precedence; if references are unavailable, show coordinates.
 Derivation must not write observations or change curated reference anchors.
-QUESTIONABLE/BAD GPS quality remains visible when GPS is the displayed evidence.
-Home storage stays on a separately labeled reference line. This distinction
+Recorded coordinates and accuracy remain available in a native GPS disclosure, initially collapsed for compact field rows. The task-cover-sheet copy expands it for printing without expanding the live page. QUESTIONABLE/BAD GPS quality remains visible when GPS is the displayed evidence.
+Home storage stays separately labeled as an inline Home reference. This distinction
 also applies to the task cover sheet and older material-rendering overlay;
 grouping Displays by Container cannot assign the first Display's location to all of them.
 
