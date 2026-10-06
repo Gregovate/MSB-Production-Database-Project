@@ -303,7 +303,8 @@ def test_online_workshop_pick_is_still_checked_against_authoritative_pick_list()
         "def _container_endpoint_policy(", 1
     )[0]
     assert "field_context(" not in focused
-    assert "material_readiness(" not in focused
+    assert 'if status.get("demanded")' in focused
+    assert "self.material_readiness(season_year)" in focused
     assert "ref.setup_task_display" in readiness_repo
     assert "ref.lor_scene_display" in readiness_repo
     assert "ref.setup_task_container_support" in readiness_repo
@@ -426,13 +427,13 @@ def test_release_identity_and_offline_shells_are_synchronized():
 
     assert 'PRODUCTION_VERSION = "V0.3.42-current-location"' in backend
     assert "const CLIENT_BUILD = 'V0.3.42-current-location';" in guard
-    assert "msb-setup-pick-mode-v17" in pick_sw
+    assert "msb-setup-pick-mode-v18" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_html
     assert "setup_pick_list.js?v=2026-10-05.1" in pick_sw
     assert "setup_pick_list.js?v=2026-10-05.1" in pick_html
-    assert "setup_pick_mode.js?v=2026-10-01.3" in pick_sw
-    assert "setup_pick_mode.js?v=2026-10-01.3" in pick_html
+    assert "setup_pick_mode.js?v=2026-10-06.1" in pick_sw
+    assert "setup_pick_mode.js?v=2026-10-06.1" in pick_html
     assert "msb-setup-record-location-v13" in location_sw
     assert "setup_record_location.css?v=2026-10-03.3" in location_sw
     assert "setup_record_location.css?v=2026-10-03.3" in location_html

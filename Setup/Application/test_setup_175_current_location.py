@@ -382,19 +382,29 @@ def test_actual_browser_helpers_separate_current_from_home(projection):
         }
         vm.runInThisContext(source.slice(start, end));
         const gps = JSON.parse(process.argv[2]);
-        const nearest = 'Current: nearest waypoint 15-Church-Bells-CH · 76 ft away';
-        assert.equal(nextLocationText(gps), nearest + ' · ±10 ft');
+        const nearest = 'Current: near 15-Church-Bells-CH (76 ft)';
+        assert.equal(nextLocationText(gps), nearest);
         assert.equal(nextLocationText({...gps, current_gps_accuracy_m: null}), nearest);
         assert.equal(nextLocationText({...gps, current_gps_accuracy_m: '', current_gps_quality: 'BAD'}), nearest + ' · GPS quality bad');
-        assert.equal(nextLocationText({...gps, current_gps_accuracy_m: '1.58', current_gps_quality: 'QUESTIONABLE'}), nearest + ' · ±6 ft · GPS quality questionable');
-        assert.equal(nextLocationText({...gps, current_nearest_reference:null}), 'Current: GPS 43.778556, -87.749142 · ±10 ft');
+        assert.equal(nextLocationText({...gps, current_gps_accuracy_m: '1.58', current_gps_quality: 'QUESTIONABLE'}), nearest + ' · GPS quality questionable');
+        assert.equal(nextLocationText({...gps, current_nearest_reference:null}), 'Current: GPS 43.778556, -87.749142');
         assert.equal(nextRecordedGpsText({current_gps_latitude:0,current_gps_longitude:0}), '0.000000, 0.000000');
         assert.equal(nextRecordedGpsText({current_gps_latitude:null,current_gps_longitude:0}), '');
         assert.equal(nextLocationText({current_location_kind:'UNRESOLVED_FIELD', home_location_code:'Z-BLDG-B-EAST'}), 'Current: Location recorded — unnamed');
         assert.equal(nextLocationText({home_location_code:'RC05-A-01'}), 'Current location not recorded');
         assert.equal(nextLocationText({current_stage_key:'15',current_stage_name:'Church-ParkingLot',current_location_note:'beside tower'}), 'Current: Stage 15 — Church-ParkingLot · beside tower');
         assert.equal(nextLocationText({current_location_kind:'NAMED',current_location_note:'RC05-A-01',current_movement_status:'RETURNED'}), 'Current: RC05-A-01');
-        assert.equal(nextLocationMarkup(gps), '<strong>' + nearest + ' · ±10 ft</strong><br><span class="muted">Recorded GPS: 43.778556, -87.749142</span><br><span class="muted">Home storage: Z-BLDG-B-EAST</span>');
+        const markup = nextLocationMarkup(gps);
+        assert.ok(markup.startsWith('<strong>' + nearest + '</strong>'));
+        assert.ok(markup.includes(' · Home: Z-BLDG-B-EAST'));
+        assert.ok(markup.includes('<details class="setup-location-details"><summary>GPS</summary>'));
+        assert.ok(!markup.includes(' open'));
+        assert.ok(markup.includes('Recorded GPS: 43.778556, -87.749142<br>Accuracy: ±10 ft'));
+        assert.ok(nextLocationMarkup({...gps,current_gps_accuracy_m:'1.58'}).includes('Accuracy: ±6 ft'));
+        assert.ok(!nextLocationMarkup({...gps,current_gps_accuracy_m:null}).includes('Accuracy:'));
+        assert.ok(!nextLocationMarkup({...gps,current_gps_accuracy_m:-1}).includes('Accuracy:'));
+        assert.ok(!nextLocationMarkup({home_location_code:'RC05-A-01'}).includes('<details'));
+        assert.ok(source.includes("sheet.querySelectorAll('details.setup-location-details')"));
         assert.ok(nextLocationMarkup({...gps,current_nearest_reference:{name:'<img>',distance_ft:1}}).includes('&lt;img&gt;'));
         assert.ok(!nextLocationMarkup({current_location_note:'<script>',home_location_code:'<img>'}).includes('<script>'));
         assert.ok(nextLocationMarkup({current_location_note:'<script>',home_location_code:'<img>'}).includes('&lt;img&gt;'));
@@ -402,10 +412,10 @@ def test_actual_browser_helpers_separate_current_from_home(projection):
         const overlay = fs.readFileSync(process.argv[3], 'utf8');
         vm.runInThisContext(overlay.slice(overlay.indexOf('function acceptanceMaterialMarkup('), overlay.indexOf('const setupAcceptanceBaseLoadNextTaskExecution')));
         const grouped = acceptanceMaterialMarkup({displays: [gps, {...gps, display_id: 840, position_mode:'DETACHED', current_location_note:'separate placement'}]});
-        assert.ok(grouped.includes(nearest + ' · ±10 ft'));
+        assert.ok(grouped.includes(nearest));
         assert.ok(grouped.includes('Recorded GPS: 43.778556, -87.749142'));
         assert.ok(grouped.includes('Current: separate placement'));
-        assert.ok(grouped.includes('Home storage: Z-BLDG-B-EAST'));
+        assert.ok(grouped.includes('Home: Z-BLDG-B-EAST'));
         console.log('Current/Home renderer behavior PASS');
     """
     result = subprocess.run([node, "-e", script, str(APP_DIR / "setup_next_pass.js"), json.dumps(gps),

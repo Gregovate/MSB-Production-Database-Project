@@ -1453,6 +1453,8 @@ async function printNextPerformTask(details) {
     </section>
   `;
   document.body.appendChild(sheet);
+  // Include recorded evidence on paper without expanding the live task rows.
+  sheet.querySelectorAll('details.setup-location-details').forEach((detail) => { detail.open = true; });
   document.body.classList.add('setup-print-perform-task');
 
   const cleanup = () => {
@@ -1468,18 +1470,15 @@ function nextLocationText(item) {
   if (item.current_location_note?.trim()) return `Current: ${item.current_location_note.trim()}`;
   if (item.current_location_kind === 'GPS') {
     // This is a recorded observation, not live GPS or proof of a park boundary.
-    const accuracy = item.current_gps_accuracy_m;
-    const feet = accuracy !== null && accuracy !== undefined && accuracy !== '' && Number.isFinite(Number(accuracy)) && Number(accuracy) >= 0
-      ? ` · ±${Math.ceil(Number(accuracy) / 0.3048)} ft` : '';
     const quality = ['QUESTIONABLE', 'BAD'].includes(item.current_gps_quality)
       ? ` · GPS quality ${item.current_gps_quality.toLowerCase()}` : '';
     const reference = item.current_nearest_reference;
     if (reference?.name && Number.isFinite(Number(reference.distance_ft))) {
       // A nearby waypoint is context for the recorded fix, not confirmed placement.
-      return `Current: nearest waypoint ${reference.name} · ${Math.round(Number(reference.distance_ft))} ft away${feet}${quality}`;
+      return `Current: near ${reference.name} (${Math.round(Number(reference.distance_ft))} ft)${quality}`;
     }
     const coordinates = nextRecordedGpsText(item);
-    return `Current: GPS ${coordinates || 'observation'}${feet}${quality}`;
+    return `Current: GPS ${coordinates || 'observation'}${quality}`;
   }
   if (item.current_location_kind === 'UNRESOLVED_FIELD') return 'Current: Location recorded — unnamed';
   return 'Current location not recorded';
@@ -1497,10 +1496,15 @@ function nextRecordedGpsText(item) {
 
 function nextLocationMarkup(item) {
   const coordinates = nextRecordedGpsText(item);
-  const recorded = coordinates && (item.current_location_kind !== 'GPS' || item.current_nearest_reference?.name)
-    ? `<br><span class="muted">Recorded GPS: ${escapeHtml(coordinates)}</span>` : '';
+  const accuracy = item.current_gps_accuracy_m;
+  const accuracyText = accuracy !== null && accuracy !== undefined && accuracy !== '' && Number.isFinite(Number(accuracy)) && Number(accuracy) >= 0
+    ? `<br>Accuracy: ±${Math.ceil(Number(accuracy) / 0.3048)} ft` : '';
+  // Keep the field list compact; native details work with touch and keyboard.
+  const recorded = coordinates
+    ? ` <details class="setup-location-details"><summary>GPS</summary><span class="muted">Recorded GPS: ${escapeHtml(coordinates)}${accuracyText}</span></details>`
+    : '';
   const home = item.home_location_code
-    ? `<br><span class="muted">Home storage: ${escapeHtml(item.home_location_code)}</span>` : '';
+    ? `<span class="muted"> · Home: ${escapeHtml(item.home_location_code)}</span>` : '';
   return `<strong>${escapeHtml(nextLocationText(item))}</strong>${recorded}${home}`;
 }
 
