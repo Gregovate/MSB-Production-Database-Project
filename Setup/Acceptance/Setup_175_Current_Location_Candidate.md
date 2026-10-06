@@ -83,10 +83,10 @@ From that worktree, using the exact SHA recorded in the PR:
       -AllowConcurrentProductionWrites
     if ($LASTEXITCODE -ne 0) { throw 'STOP: disposable acceptance failed; inspect retained report.' }
 
-    # Reuse the preferred Setup review port 8806; the runner must prove it is unused;
+    # Reuse the established Setup review port 8898; verify it is unused.
     # STOP on an occupied/unknown listener instead of replacing it.
     .\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
-      -CandidateSha $Candidate -TargetRef $TargetRef -PreviewPort 8806 `
+      -CandidateSha $Candidate -TargetRef $TargetRef -PreviewPort 8898 `
       -ExpectedVersion 'V0.3.40-current-location' `
       -MigrationPaths @() -ValidationPaths $Validation `
       -AllowConcurrentProductionWrites
@@ -94,9 +94,12 @@ From that worktree, using the exact SHA recorded in the PR:
 }
 ```
 
-Use the consistent Setup review URL `http://127.0.0.1:8806/`; reuse this port
-for sequential reviews under [the acceptance port convention](README.md#stable-setup-review-url).
-A new candidate does not need a new port. Keep the current review on 8806 through clean exit.
+Reuse Greg's established Setup review URL `http://127.0.0.1:8898/` under
+[the acceptance port convention](README.md#stable-setup-review-url).
+The initial #175 launch was configured on 8806; Greg reported that URL did not work.
+This does not establish the underlying listener/tunnel failure. End/inspect that
+preview through the existing governed cleanup/resume flow before starting a fresh
+review on 8898. A new candidate does not require a new port.
 
 Do not open the URL until **BROWSER REVIEW READY**. Finish with ENTER and retain
 CLEAN EXIT, exact SHA/version, before/after evidence and report locations.
