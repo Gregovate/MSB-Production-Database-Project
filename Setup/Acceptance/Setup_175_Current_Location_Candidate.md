@@ -7,8 +7,8 @@
 | Owner | #175, commanding #122 / DBG-2026-001; #88 movement dependency |
 | Baseline main | `8ea3d42224c25e9fdf2d01edd8bee3b9cc5693b6` |
 | Branch | `fix/175-current-location-evidence` |
-| Release | `V0.3.40-current-location` |
-| Application candidate SHA | `c54019d671497d30d5d8992f212afd0bd816108e` |
+| Release | `V0.3.41-current-location` |
+| Application candidate SHA | `68ffe5bdd126140833c4c77455699e5506842ae9` |
 | Database migrations | None |
 
 ## Bounded correction
@@ -29,21 +29,52 @@ stale and unrelated offline rehearsal; #230 reference cleanup is outside this fi
 
 ## Verification and limitations
 
-- Linux engineering verification: full `Setup/Application` regression **691 passed**; `Setup/Acceptance` **31 passed**; combined **722 passed**. On Windows, run `Setup/Application` only; the acceptance-tooling suite includes Linux-only installer imports (`fcntl`).
-- 13 new tests execute the actual projection SELECTs using SQLite with only text casts
-  and placeholders translated, classify evidence, exercise Flask Decimal/timestamp
+- Linux engineering verification: full `Setup/Application` regression **697 passed**; `Setup/Acceptance` **31 passed**; combined **728 passed**. On Windows, run `Setup/Application` only; the acceptance-tooling suite includes Linux-only installer imports (`fcntl`).
+- 19 tests execute the actual projection SELECTs using SQLite with only text casts
+  array binds and placeholders translated, classify evidence, exercise Flask Decimal/timestamp
   transport, and execute the actual JS helpers/legacy grouping under Node.
 - Checks cover GPS-only Container, attached/no-override Display inheritance,
   detached unload evidence after Container movement, missing detached evidence,
   season isolation, named Stage/Scene scope, unresolved movement, quality/accuracy,
   explicit RETURNED note, no-observation Home separation, and escaped output.
 - SQLite is a local semantic fixture, not PostgreSQL/current-Production acceptance.
-- Changed JavaScript syntax and whitespace checks pass. Exact committed footer gate: PASS, Updated 2026-10-06; server/client identity both V0.3.40-current-location.
+- Changed JavaScript syntax and whitespace checks pass. Exact committed footer gate: PASS, Updated 2026-10-06; server/client identity both V0.3.41-current-location.
 - Browser execution was not possible here: no installed Chromium; Playwright's
   browser download returned a truncated/invalid archive.
 - This workspace has no established MSB private SSH/server access. No current
   Production clone or real steeple browser check was performed here.
 - Production is untouched. #175 and DBG-2026-001 remain open pending acceptance/deployment.
+
+## First browser rejection and active-path correction
+
+Greg's V0.3.40 browser check on 2026-10-06 showed all six steeple Displays as
+`Current location not recorded`, while DBeaver's read-only Production query
+confirmed Session 2 / 2026, DETACHED / TASK_UNLOAD, effective event 43 for
+853/860/861 and event 44 for 834/840/848. Both events have 3.00 m GPS accuracy:
+43 is (43.778465, -87.749201), 44 is (43.778556, -87.749142).
+The screenshot proves the changed renderer was loaded, not that its evidence was correct.
+
+Root cause: `production_backend` installs automatic material resolution, Display
+ownership, then the corrected assignment layer. These replace the base
+`SetupNextRepository.field_context`; their active projection queries omitted
+movement/GPS fields and the location classification. The first candidate fixed
+the base method only. Its tests exercised that uninstalled method and missed
+the actual Production API path. **V0.3.40 / c54019d671497d30d5d8992f212afd0bd816108e
+failed browser acceptance and is superseded.**
+
+V0.3.41 adds effective state/event/GPS projection and classification to the active
+material resolver, support-Container query and assignment source query. It preserves
+LOR membership and assignment filtering. Six additional isolated-process cases import
+the real Production host, install its full method chain, execute its SELECTs and call
+the real Flask field-context route with all six steeples. Cases cover detached unload,
+attachment, later parent movement, explicit ownership filtering, no observation and
+another season. All six new cases fail on the prior candidate's missing classification;
+all pass on the corrected candidate. The clone SQL gate now checks effective evidence
+for every steeple Display as well as the two parent Containers.
+
+This is still a source-only correction with **no migrations**. The new exact candidate
+requires fresh disposable acceptance and browser review on registered port **8898**.
+Finish the old preview with ENTER and retain CLEAN EXIT before launching the new one.
 
 ## Governed disposable review
 
@@ -70,7 +101,7 @@ From that worktree, using the exact SHA recorded in the PR:
 ```powershell
 & {
     $ErrorActionPreference = 'Stop'
-    $Candidate = 'c54019d671497d30d5d8992f212afd0bd816108e'
+    $Candidate = '68ffe5bdd126140833c4c77455699e5506842ae9'
     $TargetRef = 'fix/175-current-location-evidence'
     $Validation = @('Setup/Acceptance/setup_175_current_location_readonly_validation.sql')
 
@@ -87,7 +118,7 @@ From that worktree, using the exact SHA recorded in the PR:
     # STOP on an occupied/unknown listener instead of replacing it.
     .\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
       -CandidateSha $Candidate -TargetRef $TargetRef -PreviewPort 8898 `
-      -ExpectedVersion 'V0.3.40-current-location' `
+      -ExpectedVersion 'V0.3.41-current-location' `
       -MigrationPaths @() -ValidationPaths $Validation `
       -AllowConcurrentProductionWrites
     if ($LASTEXITCODE -ne 0) { throw 'STOP: browser preview failed; inspect retained report.' }
