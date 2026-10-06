@@ -11,6 +11,15 @@
 
 Operator-facing instructions are separate under [`../operatorSOP/`](../operatorSOP/README.md).
 
+## #175 Current Location launch defect — candidate pending acceptance
+
+DBG-2026-001 is the reopened Perform Work presentation defect reported on the
+installed C177/C178 steeples. The bounded V0.3.40 candidate separates effective
+#88 observation evidence from reference Home storage, with no schema/history changes.
+See [candidate, test evidence, and exact disposable review handoff](../../../../../Setup/Acceptance/Setup_175_Current_Location_Candidate.md)
+and [effective-location contract](Setup_Task_Supporting_Information_Contract_2026-09-11.md#effective-current-location--175--dbg-2026-001).
+Current-clone PostgreSQL and operator browser acceptance are still required; no deployment is claimed.
+
 Repository-wide Production deployment history is maintained newest-first in [`../../../../../System_Documentation/Production_Deployment_Change_Log.md`](../../../../../System_Documentation/Production_Deployment_Change_Log.md).
 
 ## Current migration 069 / V0.3.38 evidence

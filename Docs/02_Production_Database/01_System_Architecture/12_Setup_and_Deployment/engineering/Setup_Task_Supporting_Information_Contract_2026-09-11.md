@@ -6,8 +6,8 @@
 | System | Production Database — Setup and Deployment |
 | Status | CURRENT CONTRACT — 2026 annual Session live; supporting-information model remains authoritative |
 | Owner | MSB Production Database engineering |
-| Last Reviewed | 2026-09-25 |
-| Related Work | #122, #132, #145, #167, #171, #172, #175 |
+| Last Reviewed | 2026-10-06 |
+| Related Work | #88, #122, #132, #145, #167, #171, #172, #175 |
 
 ## Purpose
 
@@ -34,6 +34,42 @@ Preserve accepted V0.3.7 through V0.3.13 behavior, the working Stage/Scene Displ
 A reusable Setup task is a meaningful operational control point, not a transcription of every procedure step.
 
 Keep detailed how-to steps in the Procedure unless the step needs independent planning/completion, a hard predecessor, meaningful handoff, independent progress/history, or materially different resource/material demand.
+
+## Effective Current Location — #175 / DBG-2026-001
+
+Home storage (`ref.container.location_code`) is permanent reference information.
+It never proves current operational location, including for assets with no movement observation.
+Task completion also does not independently prove a physical location.
+
+Perform Work's `field_context()` resolves effective annual evidence through the
+existing #88 state pointer, without writing observations or altering history:
+
+- WITH_CONTAINER, or no Display override: Container current state/event.
+- DETACHED: Display current state/event, including its existing shared Container-unload event.
+- A detached Display without an observation does not borrow a later Container observation.
+- Event evidence is joined by the effective `last_movement_event_id` and Session,
+  never by the latest event globally or a guessed Display-only event type.
+
+The API-derived `current_location_kind` is a presentation contract, not a database column:
+
+| Kind | Evidence | Presentation |
+|---|---|---|
+| NAMED | Current Stage key or nonblank location note | Current: named Stage/reference/note |
+| GPS | Both coordinates on the effective event | Current: GPS observation; recorded accuracy in feet when available |
+| UNRESOLVED_FIELD | Movement status/event pointer or unresolved Stage ID | Current: Location recorded — unnamed |
+| NONE | No effective movement/location evidence | Current location not recorded |
+
+Named current evidence takes precedence over GPS. A recorded return-home note
+can legitimately name Home as current; reference Home alone cannot.
+GPS is an observation, not live tracking or automatic proof of a park boundary.
+QUESTIONABLE/BAD GPS quality remains visible when GPS is the displayed evidence.
+Home storage stays on a separately labeled reference line. This distinction
+also applies to the task cover sheet and older material-rendering overlay;
+grouping Displays by Container cannot assign the first Display's location to all of them.
+
+Implementation/acceptance remains tracked in
+[the #175 candidate record](../../../../../Setup/Acceptance/Setup_175_Current_Location_Candidate.md).
+Production acceptance must be recorded separately; this contract does not claim deployment.
 
 ## Display Ownership — Implemented #141 Contract
 

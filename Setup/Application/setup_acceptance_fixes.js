@@ -157,8 +157,8 @@ function acceptanceMaterialMarkup(context) {
     blocks.push(`
       <div class="acceptance-material-group">
         <strong>Container ${escapeHtml(containerId)}${description}</strong>
-        <div class="muted">${escapeHtml(nextLocationText(first))}${sceneCount ? ` · ${sceneCount} Display${sceneCount === 1 ? '' : 's'} from current Scene membership` : ''}</div>
-        <ul>${items.map((item) => `<li>Display ${item.display_id} — ${escapeHtml(item.display_name)}</li>`).join('')}</ul>
+        ${sceneCount ? `<div class="muted">${sceneCount} Display${sceneCount === 1 ? '' : 's'} from current Scene membership</div>` : ''}
+        <ul>${items.map((item) => `<li>Display ${item.display_id} — ${escapeHtml(item.display_name)} · ${nextLocationMarkup(item)}</li>`).join('')}</ul>
       </div>`);
   }
 
@@ -166,7 +166,7 @@ function acceptanceMaterialMarkup(context) {
     blocks.push(`
       <div class="acceptance-material-group">
         <strong>Loose / detached Displays</strong>
-        <ul>${loose.map((item) => `<li>Display ${item.display_id} — ${escapeHtml(item.display_name)} · ${escapeHtml(nextLocationText(item))}</li>`).join('')}</ul>
+        <ul>${loose.map((item) => `<li>Display ${item.display_id} — ${escapeHtml(item.display_name)} · ${nextLocationMarkup(item)}</li>`).join('')}</ul>
       </div>`);
   }
 
@@ -174,7 +174,7 @@ function acceptanceMaterialMarkup(context) {
     blocks.push(`
       <div class="acceptance-material-group">
         <strong>Support Container ${item.container_id}${item.container_description ? ` — ${escapeHtml(item.container_description)}` : ''}</strong>
-        <div class="muted">${escapeHtml(nextLocationText(item))}</div>
+        <div class="muted">${nextLocationMarkup(item)}</div>
       </div>`);
   }
   return blocks.join('');

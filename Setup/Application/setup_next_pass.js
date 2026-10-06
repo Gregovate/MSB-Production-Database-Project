@@ -1464,10 +1464,25 @@ async function printNextPerformTask(details) {
 }
 
 function nextLocationText(item) {
-  if (item.current_stage_key) return `Stage ${item.current_stage_key}${item.current_stage_name ? ` — ${item.current_stage_name}` : ''}${item.current_location_note ? ` · ${item.current_location_note}` : ''}`;
-  if (item.current_location_note) return item.current_location_note;
-  if (item.home_location_code) return `Home storage ${item.home_location_code}`;
-  return 'Location not yet recorded';
+  if (item.current_stage_key) return `Current: Stage ${item.current_stage_key}${item.current_stage_name ? ` — ${item.current_stage_name}` : ''}${item.current_location_note ? ` · ${item.current_location_note}` : ''}`;
+  if (item.current_location_note?.trim()) return `Current: ${item.current_location_note.trim()}`;
+  if (item.current_location_kind === 'GPS') {
+    // This is a recorded observation, not live GPS or proof of a park boundary.
+    const accuracy = item.current_gps_accuracy_m;
+    const feet = accuracy !== null && accuracy !== undefined && accuracy !== '' && Number.isFinite(Number(accuracy)) && Number(accuracy) >= 0
+      ? ` · ±${Math.ceil(Number(accuracy) / 0.3048)} ft` : '';
+    const quality = ['QUESTIONABLE', 'BAD'].includes(item.current_gps_quality)
+      ? ` · GPS quality ${item.current_gps_quality.toLowerCase()}` : '';
+    return `Current: GPS observation${feet}${quality}`;
+  }
+  if (item.current_location_kind === 'UNRESOLVED_FIELD') return 'Current: Location recorded — unnamed';
+  return 'Current location not recorded';
+}
+
+function nextLocationMarkup(item) {
+  const home = item.home_location_code
+    ? `<br><span class="muted">Home storage: ${escapeHtml(item.home_location_code)}</span>` : '';
+  return `<strong>${escapeHtml(nextLocationText(item))}</strong>${home}`;
 }
 
 function nextProgressAuditText(progress) {
@@ -1599,8 +1614,8 @@ async function loadNextTaskExecution(details, focusReport = false) {
     const procedureError = procedureResult.error;
     const docs = procedurePayload.instructions?.current_documents || procedurePayload.instructions?.documents || [];
     const assets = [
-      ...(context.displays || []).map((item) => `<li>Display ${item.display_id} — ${escapeHtml(item.display_name)}${item.container_id ? ` · Container ${item.container_id}` : ''} · <strong>${escapeHtml(nextLocationText(item))}</strong></li>`),
-      ...(context.support_containers || []).map((item) => `<li>Support Container ${item.container_id} · <strong>${escapeHtml(nextLocationText(item))}</strong></li>`)
+      ...(context.displays || []).map((item) => `<li>Display ${item.display_id} — ${escapeHtml(item.display_name)}${item.container_id ? ` · Container ${item.container_id}` : ''} · ${nextLocationMarkup(item)}</li>`),
+      ...(context.support_containers || []).map((item) => `<li>Support Container ${item.container_id} · ${nextLocationMarkup(item)}</li>`)
     ];
     const assignmentProgress = progress.filter((p) => Number(p.setup_work_day_task_id) === assignmentId);
     const lastPercent = assignmentProgress.length

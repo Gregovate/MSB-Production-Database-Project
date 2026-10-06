@@ -311,6 +311,17 @@ class SetupNextRepository:
                        current_stage.stage_name AS current_stage_name,
                        CASE WHEN ds.position_mode = 'DETACHED' THEN ds.current_location_note
                             ELSE cs.current_location_note END AS current_location_note,
+                       CASE WHEN ds.position_mode = 'DETACHED' THEN ds.movement_status
+                            ELSE cs.movement_status END AS current_movement_status,
+                       CASE WHEN ds.position_mode = 'DETACHED' THEN ds.last_movement_event_id
+                            ELSE cs.last_movement_event_id END AS current_movement_event_id,
+                       me.occurred_at AS current_observed_at,
+                       me.gps_latitude AS current_gps_latitude,
+                       me.gps_longitude AS current_gps_longitude,
+                       me.gps_accuracy_m AS current_gps_accuracy_m,
+                       me.gps_fix_age_ms AS current_gps_fix_age_ms,
+                       me.gps_quality AS current_gps_quality,
+                       me.capture_method AS current_capture_method,
                        c.location_code AS home_location_code,
                        scope.relationship_type, scope.relationship_notes,
                        scope.relationship_source
@@ -322,30 +333,65 @@ class SetupNextRepository:
                   ON ds.setup_session_id = ss.setup_session_id AND ds.display_id = d.display_id
                 LEFT JOIN ops.setup_container_state cs
                   ON cs.setup_session_id = ss.setup_session_id AND cs.container_id = d.container_id
+                -- A detached Display retains its own event pointer, including a
+                -- shared Container-unload event; later Container moves must not follow it.
+                LEFT JOIN ops.setup_movement_event me
+                  ON me.setup_movement_event_id = CASE
+                      WHEN ds.position_mode = 'DETACHED' THEN ds.last_movement_event_id
+                      ELSE cs.last_movement_event_id END
+                 AND me.setup_session_id = ss.setup_session_id
                 LEFT JOIN ref.stage current_stage
                   ON current_stage.stage_id = CASE
                       WHEN ds.position_mode = 'DETACHED' THEN ds.current_stage_id
                       ELSE cs.current_stage_id END
                 ORDER BY d.container_id NULLS LAST, d.display_name, d.display_id
             """, (task_id, season_year))
-            displays = [dict(r) for r in cur.fetchall()]
+            displays = [self._field_location(dict(r)) for r in cur.fetchall()]
             cur.execute("""
                 SELECT c.container_id, c.description AS container_description,
                        c.location_code AS home_location_code,
                        cs.current_stage_id, s.stage_key AS current_stage_key,
                        s.stage_name AS current_stage_name, cs.current_location_note,
+                       cs.movement_status AS current_movement_status,
+                       cs.last_movement_event_id AS current_movement_event_id,
+                       me.occurred_at AS current_observed_at,
+                       me.gps_latitude AS current_gps_latitude,
+                       me.gps_longitude AS current_gps_longitude,
+                       me.gps_accuracy_m AS current_gps_accuracy_m,
+                       me.gps_fix_age_ms AS current_gps_fix_age_ms,
+                       me.gps_quality AS current_gps_quality,
+                       me.capture_method AS current_capture_method,
                        tc.relationship_type, tc.notes AS relationship_notes
                 FROM ref.setup_task_container_support tc
                 JOIN ref.container c ON c.container_id = tc.container_id
                 LEFT JOIN ops.setup_session ss ON ss.season_year = %s
                 LEFT JOIN ops.setup_container_state cs
                   ON cs.setup_session_id = ss.setup_session_id AND cs.container_id = c.container_id
+                LEFT JOIN ops.setup_movement_event me
+                  ON me.setup_movement_event_id = cs.last_movement_event_id
+                 AND me.setup_session_id = ss.setup_session_id
                 LEFT JOIN ref.stage s ON s.stage_id = cs.current_stage_id
                 WHERE tc.setup_task_id = %s
                 ORDER BY c.container_id
             """, (season_year, task_id))
-            containers = [dict(r) for r in cur.fetchall()]
+            containers = [self._field_location(dict(r)) for r in cur.fetchall()]
         return {"displays": displays, "support_containers": containers}
+
+    @staticmethod
+    def _field_location(item: dict[str, Any]) -> dict[str, Any]:
+        """Classify effective observation evidence; Home storage is reference only."""
+        if item.get("current_stage_key") or str(item.get("current_location_note") or "").strip():
+            kind = "NAMED"
+        elif item.get("current_gps_latitude") is not None and item.get("current_gps_longitude") is not None:
+            kind = "GPS"
+        elif (item.get("current_movement_event_id") is not None
+              or item.get("current_movement_status")
+              or item.get("current_stage_id") is not None):
+            kind = "UNRESOLVED_FIELD"
+        else:
+            kind = "NONE"
+        item["current_location_kind"] = kind
+        return item
 
     def record_progress(self, *, email: str, session_task_id: int,
                         assignment_id: int | None, work_day_id: int | None,

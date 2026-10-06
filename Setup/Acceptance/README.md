@@ -10,6 +10,11 @@ Setup acceptance consumes the runtime/safety rules owned by `Gregovate/MSB-Serve
 
 The Production Database repository owns Setup feature migrations, validation SQL, application behavior, and the reusable Setup launchers that consume those server/runtime contracts.
 
+The reopened #175 / DBG-2026-001 Current Location candidate has
+[one acceptance record and review handoff](Setup_175_Current_Location_Candidate.md).
+It uses the existing reusable launchers, no migrations, and the read-only
+`setup_175_current_location_readonly_validation.sql` evidence gate.
+
 ## Required lifecycle
 
 For database-affecting Setup work, use the same sequence every time:
