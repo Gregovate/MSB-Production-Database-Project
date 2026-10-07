@@ -2,13 +2,13 @@
 
 | Document control | Value |
 |---|---|
-| Status | V0.3.42 installed — hide-Home presentation candidate awaiting browser review |
+| Status | V0.3.42 installed — Home visibility and missing-location status candidate awaiting browser review |
 | Reviewed | 2026-10-07 |
 | Owner | #175, commanding #122 / DBG-2026-001; #88 movement dependency |
 | Baseline main | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
 | Branch | `fix/175-hide-home-with-gps` |
 | Release | `V0.3.42-current-location` |
-| Application candidate SHA | `be082fd078f99faae182ffc983f7e8392f98c9eb` |
+| Application candidate SHA | `6e4cc77eed51559554a528ab1c8ab1ec7e04ba92` |
 | Currently deployed application SHA | `cb0538022ed066ff90675e832daa1cd95488114a` |
 | Database migrations | None |
 
@@ -26,6 +26,9 @@ accuracy behind an expandable GPS disclosure. It uses the existing versioned Rec
 set; proximity does not confirm placement at that waypoint. Unnamed movement and no observation have explicit text.
 Home storage is shown only when valid recorded GPS coordinates are unavailable.
 Grouped legacy Displays retain individual locations. The print sheet uses the same rule.
+Without GPS/named location, show the actual recorded movement status (for example,
+Picked or Unloaded) followed by `current location not recorded`. Do not hide that
+status behind the former `Location recorded — unnamed` wording or infer Not Picked.
 
 No appropriate healthy open implementation PR owns this bounded defect. #266 is
 stale and unrelated offline rehearsal; #230 reference cleanup is outside this fix.
@@ -414,7 +417,8 @@ it from the installed October 6 presentation. Engineering regression **748 passe
 exact-candidate UI-date gate PASS. Remote application tree matches tested local tree
 `bd93d8b9af6dea22fbcbf1136a4aee994a5da267`.
 
-Current review handoff supersedes the earlier cb053802/old-branch commands above.
+Current review handoff uses the later movement-status refinement described below
+and supersedes the earlier cb053802/old-branch commands above.
 Run in local laptop VS Code Windows PowerShell. The browser launcher runs full
 candidate regression, applies the existing read-only validation to its current-Production
 disposable clone and checks health before readiness. Reuse registered **8898**; no migration.
@@ -438,7 +442,7 @@ disposable clone and checks health before readiness. Reuse registered **8898**; 
         Invoke-Git175 switch --create $Branch175 --track "origin/$Branch175"
     }
     .\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
-        -CandidateSha 'be082fd078f99faae182ffc983f7e8392f98c9eb' `
+        -CandidateSha '6e4cc77eed51559554a528ab1c8ab1ec7e04ba92' `
         -TargetRef $Branch175 -PreviewPort 8898 `
         -ExpectedVersion 'V0.3.42-current-location' `
         -MigrationPaths @() `
@@ -455,6 +459,50 @@ After operator acceptance, merge to main before preparing a new source-only inst
 pinned from currently installed cb053802 to the new candidate. **Do not rerun the
 completed #305 installer:** it targets the prior application and prior V0.3.40 baseline.
 Keep #175/DBG-2026-001 open; #88 owns the unload-checkbox follow-up.
+
+## 2026-10-07 Elf Choir missing-location wording refinement
+
+During the new preview Greg reports Church is fine, but Elf Choir Displays in
+Container 15 and Support Container 60 repeat `Current: Location recorded — unnamed`.
+He cannot determine whether they were picked or where they are. The Scaffold in
+Container 122 already has GPS context near 08-Elf Choir-EC (44 ft).
+
+Existing API rows already include effective `current_movement_status`; the renderer
+discarded that distinction whenever location kind was UNRESOLVED_FIELD. That kind
+means there is movement/state evidence without usable named/GPS location; it does
+not prove a named location was captured, a Pick occurred, or Home is the current place.
+The actual statuses/history of Containers 15/60 have not yet been supplied.
+
+Latest exact candidate `6e4cc77eed51559554a528ab1c8ab1ec7e04ba92` replaces the vague
+wording with the recorded movement label, such as `Picked — current location not recorded`,
+`In transit — current location not recorded`, `Unloaded — current location not recorded`
+or `Moved — current location not recorded`. A missing/unrecognized status falls back
+to `Movement recorded — current location not recorded`, never Not Picked. Named/GPS
+rows, including Church, remain unchanged. The renderer still hides Home on GPS rows
+and retains it as a separately labeled reference when GPS is absent.
+
+This adds no API/history query or movement/schema/data change. Presentation-only
+V0.3.42 and Updated 2026-10-07 remain; JS cache pin advances to 2026-10-07.2.
+The candidate supersedes be082fd for the next browser review. Engineering verification:
+**748 passed** (705 application + 43 tooling), isolated location **22 passed**, Node
+syntax and exact UI-date gate PASS; tested remote/local application tree
+`812a77015b4a138fe53b671be3836289d936a94f`. Assertions cover every governed movement
+status, unknown values, Home fallback and the grouped overlay without weakening GPS cases.
+
+Read-only diagnostic [setup_175_current_location_status_probe.sql](setup_175_current_location_status_probe.sql)
+inspects Container 15/60/122 state and whether each has a recorded Pick in the 2026
+session, plus effective Display state/event for the Elf Choir rows. Detached Displays
+use their own event; attached Displays inherit the Container. The recorded Pick source
+is shown from its event, separately from current Home. Run the complete script in DBeaver
+and retain both result sets. No data repair, inference or SQL mutation is authorized by
+this diagnostic. A false Pick-history flag means no Pick record in this session,
+not proof that an unrecorded physical Pick did not occur.
+
+Finish the existing preview with ENTER/CLEAN EXIT, pull the updated branch, then use
+the updated current handoff above for exact 6e4cc77. The new candidate is not deployed;
+current live remains cb053802. Keep PR #308 draft and #175/DBG-2026-001 open until
+the ambiguity is resolved, exact-candidate browser acceptance and subsequent main
+integration/new pinned deployment are complete. #88 still owns unload-workflow changes.
 
 ## Local worktree disposition
 

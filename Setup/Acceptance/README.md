@@ -29,10 +29,14 @@ retains the report, rollback evidence and corrected verification.
 
 The corrected install completed with server PASS at deployed `cb053802` / V0.3.42;
 the completed #305 installer is not a replay command. Greg's follow-up requests hiding
-Home on GPS rows. The current presentation candidate `be082fd` retains V0.3.42,
+Home on GPS rows. The current presentation candidate `6e4cc77` retains V0.3.42,
 updates the footer to October 7 and awaits browser review on registered port 8898.
 Use [the latest handoff](Setup_175_Current_Location_Candidate.md#2026-10-07-successful-install-and-hide-home-presentation-follow-up),
 then merge accepted changes to main before a new pinned source-only installation.
+It also shows the recorded movement status when a current location is missing,
+instead of `Location recorded — unnamed`. The [read-only status probe](setup_175_current_location_status_probe.sql)
+separates recorded Pick/history, Container state and effective detached/attached
+Display evidence for Greg's Elf Choir examples; physical whereabouts are not inferred.
 
 ## Required lifecycle
 
