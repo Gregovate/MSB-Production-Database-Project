@@ -14,7 +14,11 @@ The Production Database repository owns Setup feature migrations, validation SQL
 The reopened #175 / DBG-2026-001 Current Location candidate has
 [one acceptance record and review handoff](Setup_175_Current_Location_Candidate.md).
 It uses the existing reusable launchers, no migrations, and the read-only
-`setup_175_current_location_readonly_validation.sql` evidence gate.
+`setup_175_current_location_readonly_validation.sql` evidence gate. Operator acceptance
+is recorded. The source-only installer is `run_setup_305_source_only_deploy.ps1`,
+with pinned server runner `setup_305_source_only_deploy.py`; it enforces clean merged
+main, the confirmed V0.3.40 live baseline, stopped preview, exact V0.3.42 target,
+read-only movement preservation and source rollback. No migration.
 
 ## Required lifecycle
 

@@ -163,11 +163,11 @@ No #175 merge or Production installation is claimed.
 
 The governing source-only runbook was retrieved/read again on Oct 7. Runtime docs
 still carry the older Oct 4 V0.3.38 pin; PR #306's record lacks execution evidence.
-Before freezing the expected-old installer pin, retrieve current live Setup HEAD/health
-and shared checkout HEAD using a read-only command from local PowerShell. The approved
+The required live Setup HEAD/health and shared checkout baseline was subsequently
+supplied by Greg; see the pinned source-only section below. The approved
 application target remains `cb0538022ed066ff90675e832daa1cd95488114a`.
-Installer preparation and separate Production authorization follow confirmed baseline
-and cleanup. Do not reuse the historical migration-bearing #175/#132 installer.
+The prepared source-only installer pins that confirmed baseline; actual installation
+follows main integration, preview cleanup and the authorized operator-run install window. Do not reuse the historical migration-bearing #175/#132 installer.
 
 ## Governed disposable review
 
@@ -267,6 +267,77 @@ CLEAN EXIT, exact SHA/version, before/after evidence and report locations.
 After acceptance, retrieve/read the governing source-only deployment runbook and
 prepare the reviewed exact-candidate install. Production authorization is a separate
 step. Never rerun the old #175/#132 migration-bearing installer for this fix.
+
+## Pinned source-only deployment — prepared 2026-10-07
+
+Greg explicitly requires merging PR #305 back to main before deployment. Use a
+normal merge commit so the exact accepted application candidate remains an ancestor
+of main. Documentation/deployment-tooling commits do not change the accepted application.
+
+Read-only live baseline supplied by Greg on Oct 7:
+
+```text
+/opt/msb-setup = 0caed843bb37e7f1f1400972d8f6eb0b03f202d4
+health = postgres / ok / V0.3.40-live-pick-demand
+/opt/fieldwiring = 6dd05c4aa5ef8f50fe172145c3ae281cc245a101
+```
+
+Pinned target: `cb0538022ed066ff90675e832daa1cd95488114a`, V0.3.42-current-location.
+Authority: Server Management `docs/server/Setup_Source_Only_Application_Deployment_Runbook.md`.
+New wrapper `run_setup_305_source_only_deploy.ps1` and server runner
+`setup_305_source_only_deploy.py` may run only from a clean main checkout that contains
+this accepted target. The server independently fetches main and proves target ancestry,
+old-to-target forward ancestry and no Setup/Database source changes.
+
+The runner stops if preview port 8898 still listens, live/shared source drifts, a checkout
+is dirty or the exact server/client build differs. It runs exact-candidate regression as
+fieldwiring, checks the committed footer date, fingerprints Setup data including movement
+history and Container/Display state in READ ONLY transactions, advances only /opt/msb-setup,
+restarts only msb-setup.service, verifies health and focused regression, and checks data
+preservation before operator writes. Rollback restores only the old source/service.
+Temporary regression worktree cleanup is mandatory; failure returns STOP, not PASS.
+No migration, environment/proxy/service-unit change or shared-checkout promotion.
+
+Ten new mocked installer-boundary tests pass, covering success, live/preflight drift,
+failed-health rollback, unmerged target, active preview, read-only movement coverage,
+signal handling and cleanup-failure propagation. Prior 705 application/31 tooling checks
+remain valid for the unchanged accepted source; the revised acceptance-tooling suite has
+41 tests. PowerShell is not installed in this engineering container; the wrapper follows
+the established foreground SSH/line-ending-safe transfer pattern.
+
+Before running: finish the preview with ENTER and retain CLEAN EXIT; pause Setup edits for
+the short install window. Production execution is performed by Greg from local PowerShell,
+not by this assistant through private SSH. No installation is claimed by preparing tooling.
+After PR #305 is merged, run from the laptop primary checkout (desktop path is separately
+recorded in Repository Change Workflow):
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    Set-Location 'C:\lor\ImportExport\VSCode'
+    function Invoke-Git175 {
+        & git @args
+        if ($LASTEXITCODE -ne 0) { throw "STOP: Git failed: $args" }
+    }
+    if (Invoke-Git175 status --porcelain) { throw 'STOP: uncommitted changes.' }
+    Invoke-Git175 worktree list
+    Invoke-Git175 fetch origin
+    Invoke-Git175 switch main
+    Invoke-Git175 pull --ff-only origin main
+    Invoke-Git175 merge-base --is-ancestor cb0538022ed066ff90675e832daa1cd95488114a HEAD
+    .\Setup\Acceptance\run_setup_305_source_only_deploy.ps1
+    if ($LASTEXITCODE -ne 0) { throw 'STOP: deployment failed; retain report; do not rerun.' }
+}
+```
+
+Then refresh the real protected `https://my.sheboyganlights.org/setup/` route and verify
+Client/server V0.3.42, Updated 2026-10-06, Current/Home separation, compact waypoint/GPS
+behavior for real movement evidence, and the already accepted Pick behavior. No fake
+Production movements or tasks for this read fix. Retain report path, exact deployed SHA,
+health/fingerprint result and protected-route operator disposition. Add the actual install
+to Production Deployment Change Log and reconcile Server Management runtime docs only
+after execution evidence. Close #175/DBG-2026-001 only after accepted installation;
+#88 unload-checkbox feedback remains separate active work.
 
 ## Local worktree disposition
 
