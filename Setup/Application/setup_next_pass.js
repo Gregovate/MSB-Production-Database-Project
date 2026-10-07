@@ -1480,7 +1480,21 @@ function nextLocationText(item) {
     const coordinates = nextRecordedGpsText(item);
     return `Current: GPS ${coordinates || 'observation'}${quality}`;
   }
-  if (item.current_location_kind === 'UNRESOLVED_FIELD') return 'Current: Location recorded — unnamed';
+  if (item.current_location_kind === 'UNRESOLVED_FIELD') {
+    // A Pick or other movement can be recorded without a destination or GPS.
+    // Show that recorded action without implying that Home is the current place.
+    const labels = {
+      PICKED: 'Picked', LOADED: 'Loaded', IN_TRANSIT: 'In transit',
+      DELIVERED: 'Delivered', UNLOADED: 'Unloaded', TASK_UNLOAD: 'Unloaded',
+      STAGED: 'Staged', PLACED: 'Placed', RELOCATED: 'Moved',
+      CONTAINER_MOVE: 'Moved', DISPLAY_MOVE: 'Moved', RETURNED: 'Returned',
+      DISPLAY_REATTACH: 'Reattached to container'
+    };
+    const status = item.current_movement_status;
+    const movement = Object.prototype.hasOwnProperty.call(labels, status)
+      ? labels[status] : 'Movement recorded';
+    return `${movement} — current location not recorded`;
+  }
   return 'Current location not recorded';
 }
 

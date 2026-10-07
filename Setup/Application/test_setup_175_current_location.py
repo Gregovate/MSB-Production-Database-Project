@@ -390,7 +390,19 @@ def test_actual_browser_helpers_separate_current_from_home(projection):
         assert.equal(nextLocationText({...gps, current_nearest_reference:null}), 'Current: GPS 43.778556, -87.749142');
         assert.equal(nextRecordedGpsText({current_gps_latitude:0,current_gps_longitude:0}), '0.000000, 0.000000');
         assert.equal(nextRecordedGpsText({current_gps_latitude:null,current_gps_longitude:0}), '');
-        assert.equal(nextLocationText({current_location_kind:'UNRESOLVED_FIELD', home_location_code:'Z-BLDG-B-EAST'}), 'Current: Location recorded — unnamed');
+        assert.equal(nextLocationText({current_location_kind:'UNRESOLVED_FIELD', home_location_code:'Z-BLDG-B-EAST'}), 'Movement recorded — current location not recorded');
+        // State must explain a movement that has no GPS/named destination.
+        for (const [status, label] of Object.entries({PICKED:'Picked',LOADED:'Loaded',IN_TRANSIT:'In transit',
+          DELIVERED:'Delivered',UNLOADED:'Unloaded',TASK_UNLOAD:'Unloaded',STAGED:'Staged',PLACED:'Placed',
+          RELOCATED:'Moved',CONTAINER_MOVE:'Moved',DISPLAY_MOVE:'Moved',RETURNED:'Returned',DISPLAY_REATTACH:'Reattached to container'})) {
+          const row = {current_location_kind:'UNRESOLVED_FIELD',current_movement_status:status,home_location_code:'RA03-A-01'};
+          assert.equal(nextLocationText(row), label + ' — current location not recorded');
+          assert.ok(nextLocationMarkup(row).includes('Home: RA03-A-01'));
+          assert.ok(!nextLocationMarkup(row).includes('Location recorded — unnamed'));
+        }
+        for (const status of [null, 'UNKNOWN', 'constructor']) {
+          assert.equal(nextLocationText({current_location_kind:'UNRESOLVED_FIELD',current_movement_status:status}), 'Movement recorded — current location not recorded');
+        }
         assert.equal(nextLocationText({home_location_code:'RC05-A-01'}), 'Current location not recorded');
         assert.equal(nextLocationText({current_stage_key:'15',current_stage_name:'Church-ParkingLot',current_location_note:'beside tower'}), 'Current: Stage 15 — Church-ParkingLot · beside tower');
         assert.equal(nextLocationText({current_location_kind:'NAMED',current_location_note:'RC05-A-01',current_movement_status:'RETURNED'}), 'Current: RC05-A-01');
@@ -431,6 +443,11 @@ def test_actual_browser_helpers_separate_current_from_home(projection):
         assert.ok(!grouped.includes('Home:'));
         const mixed = acceptanceMaterialMarkup({displays: [gps, {...gps,display_id:840,current_gps_latitude:null}]});
         assert.equal((mixed.match(/Home: Z-BLDG-B-EAST/g) || []).length, 1);
+        const picked = acceptanceMaterialMarkup({displays: [{...gps,current_location_kind:'UNRESOLVED_FIELD',
+          current_movement_status:'PICKED',current_nearest_reference:null,current_gps_latitude:null,current_gps_longitude:null,
+          home_location_code:'RA03-A-01'}]});
+        assert.ok(picked.includes('Picked — current location not recorded'));
+        assert.ok(picked.includes('Home: RA03-A-01'));
         console.log('Current/Home renderer behavior PASS');
     """
     result = subprocess.run([node, "-e", script, str(APP_DIR / "setup_next_pass.js"), json.dumps(gps),
