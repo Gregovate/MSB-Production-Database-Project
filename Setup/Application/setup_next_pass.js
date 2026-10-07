@@ -1503,7 +1503,8 @@ function nextLocationMarkup(item) {
   const recorded = coordinates
     ? ` <details class="setup-location-details"><summary>GPS</summary><span class="muted">Recorded GPS: ${escapeHtml(coordinates)}${accuracyText}</span></details>`
     : '';
-  const home = item.home_location_code
+  // Home is useful only when a usable recorded GPS location is unavailable.
+  const home = !coordinates && item.home_location_code
     ? `<span class="muted"> · Home: ${escapeHtml(item.home_location_code)}</span>` : '';
   return `<strong>${escapeHtml(nextLocationText(item))}</strong>${recorded}${home}`;
 }

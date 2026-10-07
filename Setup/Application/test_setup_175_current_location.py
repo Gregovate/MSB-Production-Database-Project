@@ -396,7 +396,8 @@ def test_actual_browser_helpers_separate_current_from_home(projection):
         assert.equal(nextLocationText({current_location_kind:'NAMED',current_location_note:'RC05-A-01',current_movement_status:'RETURNED'}), 'Current: RC05-A-01');
         const markup = nextLocationMarkup(gps);
         assert.ok(markup.startsWith('<strong>' + nearest + '</strong>'));
-        assert.ok(markup.includes(' · Home: Z-BLDG-B-EAST'));
+        assert.ok(!markup.includes('Home:'));
+        assert.ok(!markup.includes('Z-BLDG-B-EAST'));
         assert.ok(markup.includes('<details class="setup-location-details"><summary>GPS</summary>'));
         assert.ok(!markup.includes(' open'));
         assert.ok(markup.includes('Recorded GPS: 43.778556, -87.749142<br>Accuracy: ±10 ft'));
@@ -404,6 +405,18 @@ def test_actual_browser_helpers_separate_current_from_home(projection):
         assert.ok(!nextLocationMarkup({...gps,current_gps_accuracy_m:null}).includes('Accuracy:'));
         assert.ok(!nextLocationMarkup({...gps,current_gps_accuracy_m:-1}).includes('Accuracy:'));
         assert.ok(!nextLocationMarkup({home_location_code:'RC05-A-01'}).includes('<details'));
+        assert.ok(nextLocationMarkup({home_location_code:'RC05-A-01'}).includes('Home: RC05-A-01'));
+        // Valid zero coordinates and named locations with GPS also hide Home.
+        assert.ok(!nextLocationMarkup({...gps,current_gps_latitude:0,current_gps_longitude:0}).includes('Home:'));
+        assert.ok(!nextLocationMarkup({...gps,current_location_note:'beside tower'}).includes('Home:'));
+        assert.ok(!nextLocationMarkup({...gps,current_nearest_reference:null}).includes('Home:'));
+        // Missing/invalid coordinates or accuracy alone keep the Home fallback.
+        for (const [lat, lon] of [[null,-87], [43,null], ['',-87], ['NaN',-87], [91,-87], [43,181]]) {
+          const fallback = nextLocationMarkup({...gps,current_gps_latitude:lat,current_gps_longitude:lon});
+          assert.ok(fallback.includes('Home: Z-BLDG-B-EAST'));
+          assert.ok(!fallback.includes('<details'));
+        }
+        assert.ok(nextLocationMarkup({home_location_code:'RC05-A-01',current_gps_accuracy_m:3}).includes('Home: RC05-A-01'));
         assert.ok(source.includes("sheet.querySelectorAll('details.setup-location-details')"));
         assert.ok(nextLocationMarkup({...gps,current_nearest_reference:{name:'<img>',distance_ft:1}}).includes('&lt;img&gt;'));
         assert.ok(!nextLocationMarkup({current_location_note:'<script>',home_location_code:'<img>'}).includes('<script>'));
@@ -415,7 +428,9 @@ def test_actual_browser_helpers_separate_current_from_home(projection):
         assert.ok(grouped.includes(nearest));
         assert.ok(grouped.includes('Recorded GPS: 43.778556, -87.749142'));
         assert.ok(grouped.includes('Current: separate placement'));
-        assert.ok(grouped.includes('Home: Z-BLDG-B-EAST'));
+        assert.ok(!grouped.includes('Home:'));
+        const mixed = acceptanceMaterialMarkup({displays: [gps, {...gps,display_id:840,current_gps_latitude:null}]});
+        assert.equal((mixed.match(/Home: Z-BLDG-B-EAST/g) || []).length, 1);
         console.log('Current/Home renderer behavior PASS');
     """
     result = subprocess.run([node, "-e", script, str(APP_DIR / "setup_next_pass.js"), json.dumps(gps),
