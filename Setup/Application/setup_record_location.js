@@ -60,6 +60,12 @@
   let pendingCaptureMethod = 'HID_SCAN';
   let pendingContents = null;
   let pendingStateRow = null;
+  let contentsDecision = null;
+  let identifyRemaining = false;
+  let displayPlacement = null;
+  let placementStageId = null;
+  let recording = false;
+  let selectionGeneration = 0;
   let scanBuffer = '';
   let scanResetTimer = null;
   let scannerActive = false;
@@ -415,6 +421,11 @@
       button.textContent = item.name + ' · ' + item.distance_ft.toFixed(0) + ' ft';
       button.addEventListener('click', function () {
         knownReference.value = item.name;
+        const stage = placementStages().find(row => String(row.stage_key) === item.name.split('-')[0]);
+        if (needsDisplayPlacement() && displayPlacement === 'YES' && stage) {
+          confirmPlacementStage(stage.stage_id);
+          renderDisplayPlacement();
+        }
         renderRecordReadiness();
         restoreScannerCapture();
       });
@@ -464,6 +475,16 @@
     const note = String(locationNote.value || '').trim();
     const gps = currentGpsSnapshot();
 
+    const stage = needsDisplayPlacement() && displayPlacement === 'YES'
+      && placementStages().find(row => Number(row.stage_id) === placementStageId);
+    if (stage) {
+      return {
+        ready: true,
+        label: stage.stage_key + ' · ' + stage.stage_name,
+        detail: 'Actual Stage confirmed' + (gps ? ' · GPS ±' + Math.round(Number(gps.accuracy_m || 0) * 3.280839895) + ' ft' : '')
+      };
+    }
+
     if (note) {
       const context = [];
       if (reference) context.push('named reference ' + reference + ' confirmed');
@@ -508,7 +529,14 @@
     }
 
     const evidence = currentLocationEvidence();
-    recordHere.disabled = !evidence.ready;
+    const decisionReady = pendingIdentity.asset_type !== 'CONTAINER' || Boolean(contentsDecision);
+    recordHere.disabled = recording || !evidence.ready || !decisionReady
+      || (needsDisplayPlacement() && (displayPlacement !== 'YES' || !placementStageId))
+      || (pendingIdentity.asset_type === 'DISPLAY' && pendingStateRow && pendingStateRow.can_detach === false);
+    if (pendingIdentity.asset_type === 'CONTAINER') {
+      returnHome.disabled = recording || contentsDecision !== 'EMPTY' || !pendingContents
+        || !pendingContents.reconciliation_allowed || !pendingContents.home_location_code;
+    }
     reviewLocation.className = 'review-location ' + (evidence.ready ? 'ready' : 'blocked');
 
     if (evidence.ready) {
@@ -565,7 +593,7 @@
       gps_quality: 'UNASSESSED',
       gps_quality_note: null
     };
-    return Object.assign(payload, gpsPayload());
+    return action === 'RETURNED' ? payload : Object.assign(payload, gpsPayload());
   }
 
   async function postMovement(payload) {
@@ -595,8 +623,9 @@
   }
 
   async function sendOrQueue(payload) {
-    if (!navigator.onLine) {
+    if (!navigator.onLine || (await queueRows()).length) {
       await queueMovement(payload);
+      if (navigator.onLine) void syncQueue();
       return {queued: true};
     }
     try {
@@ -614,18 +643,86 @@
     const url = '../api/setup/movements/state?season_year=' + encodeURIComponent(seasonYear())
       + '&asset_type=' + encodeURIComponent(identity.asset_type)
       + '&asset_id=' + encodeURIComponent(identity.asset_id);
-    const data = await apiJson(url, {cache: 'no-store'});
-    return data.state || null;
+    const key = 'msb.setup.display-context.' + seasonYear() + '.' + identity.asset_id;
+    let state;
+    try {
+      const data = await apiJson(url, {cache: 'no-store'});
+      state = data.state || null;
+      localStorage.setItem(key, JSON.stringify(state));
+    } catch (error) {
+      if (navigator.onLine) throw error;
+      state = JSON.parse(localStorage.getItem(key) || 'null');
+      if (!state) throw error;
+    }
+    const rows = await queueRows().catch(() => []);
+    if (state && rows.some(row => row.asset_type === 'DISPLAY' && Number(row.asset_id) === identity.asset_id
+        && Number(row.season_year) === seasonYear() && row.movement_action === 'DISPLAY_MOVE'
+        && row.queue_status !== 'FAILED')) state.position_mode = 'DETACHED';
+    return state;
+  }
+
+  function applyQueuedContainerContext(contents, rows, containerId) {
+    if (!contents) return null;
+    const context = JSON.parse(JSON.stringify(contents));
+    // Direct Display scans drain before later Container commands in the same queue.
+    const detached = rows.filter(row => row.asset_type === 'DISPLAY' && row.movement_action === 'DISPLAY_MOVE'
+      && row.queue_status !== 'FAILED' && Number(row.season_year) === seasonYear()).map(row => Number(row.asset_id));
+    context.displays = (context.displays || []).filter(display => !detached.includes(Number(display.display_id)));
+    const queued = rows.filter(row => row.asset_type === 'CONTAINER'
+      && Number(row.asset_id) === Number(containerId) && Number(row.season_year) === seasonYear())
+      .sort((a, b) => String(a.occurred_at).localeCompare(String(b.occurred_at)));
+    for (const row of queued) {
+      if (row.queue_status === 'FAILED') {
+        context.reconciliation_allowed = false;
+        context.queue_conflict = true;
+        break;
+      }
+      if (context.last_movement_at && Date.parse(row.occurred_at) <= Date.parse(context.last_movement_at)) continue;
+      const decision = row.reconciliation;
+      if (decision && (decision.decision === 'EMPTY' || decision.identify_remaining)) {
+        const remaining = decision.remaining_display_ids || [];
+        context.displays = (context.displays || []).filter(display => remaining.includes(Number(display.display_id)));
+      } else if ((row.unloaded_display_ids || []).length) {
+        context.displays = (context.displays || []).filter(display => !row.unloaded_display_ids.includes(Number(display.display_id)));
+      }
+      const previous = context.prior_location;
+      context.prior_location = {
+        event_type: row.movement_action, occurred_at: row.occurred_at,
+        destination_location_note: row.destination_location_note,
+        named_context: row.movement_action === 'RETURNED' ? null :
+          (row.destination_location_note || (previous && previous.named_context)),
+        gps_latitude: row.gps_latitude, gps_longitude: row.gps_longitude, gps_accuracy_m: row.gps_accuracy_m
+      };
+      context.last_movement_event_id = null;
+      context.prior_client_event_id = row.client_event_id;
+      context.movement_status = row.movement_action + ' · queued offline';
+      context.last_movement_at = row.occurred_at;
+    }
+    return context;
   }
 
   async function fetchContainerContents(containerId) {
     const url = '../api/setup/movements/container-contents?season_year=' + encodeURIComponent(seasonYear())
       + '&container_id=' + encodeURIComponent(containerId);
-    const data = await apiJson(url, {cache: 'no-store'});
-    return data.container || null;
+    const key = 'msb.setup.container-context.' + seasonYear() + '.' + containerId;
+    try {
+      const data = await apiJson(url, {cache: 'no-store'});
+      localStorage.setItem(key, JSON.stringify(data.container));
+      return applyQueuedContainerContext(data.container || null, await queueRows().catch(() => []), containerId);
+    } catch (error) {
+      if (navigator.onLine) throw error;
+      const cached = localStorage.getItem(key);
+      if (!cached) throw error;
+      return applyQueuedContainerContext(JSON.parse(cached), await queueRows(), containerId);
+    }
   }
 
   function clearPending() {
+    selectionGeneration += 1;
+    contentsDecision = null;
+    identifyRemaining = false;
+    displayPlacement = null;
+    placementStageId = null;
     pendingIdentity = null;
     pendingCaptureMethod = 'HID_SCAN';
     pendingContents = null;
@@ -645,20 +742,211 @@
     renderRecordReadiness();
   }
 
-  function selectedUnloadedDisplayIds() {
-    const result = [];
-    unloadGroups.querySelectorAll('input[data-display-ids]:checked').forEach(function (input) {
-      String(input.dataset.displayIds || '').split(',').map(Number).forEach(function (id) {
-        if (Number.isSafeInteger(id) && id > 0) result.push(id);
-      });
-    });
-    return Array.from(new Set(result));
+  function currentDisplays() {
+    return pendingContents && Array.isArray(pendingContents.displays) ? pendingContents.displays : [];
   }
 
-  function setAllUnloadGroups(checked) {
-    unloadGroups.querySelectorAll('input[data-display-ids]:not(:disabled)').forEach(function (input) {
-      input.checked = checked;
+  function reconciliationPayload() {
+    if (!contentsDecision) throw new Error('Choose Empty, Not Empty, or Not Sure first.');
+    const result = {decision: contentsDecision, identify_remaining: identifyRemaining};
+    if (contentsDecision === 'EMPTY' || identifyRemaining) {
+      if (!pendingContents || !pendingContents.reconciliation_allowed) {
+        throw new Error('Contents cannot be reconciled for this item. Choose Not Sure to record location only.');
+      }
+      result.prior_event_id = pendingContents.last_movement_event_id || null;
+      if (pendingContents.prior_client_event_id) result.prior_client_event_id = pendingContents.prior_client_event_id;
+      result.expected_display_ids = currentDisplays().map(row => Number(row.display_id));
+      result.remaining_display_ids = identifyRemaining
+        ? Array.from(unloadGroups.querySelectorAll('input[data-display-id]:checked')).map(input => Number(input.dataset.displayId))
+        : [];
+      if (identifyRemaining && !result.remaining_display_ids.length) {
+        throw new Error('Not Empty requires at least one Display Name still present. Otherwise choose Empty.');
+      }
+    }
+    return result;
+  }
+
+  function priorLocationText() {
+    const prior = pendingContents && pendingContents.prior_location;
+    if (!prior || prior.event_type === 'RETURNED'
+        || prior.named_context === pendingContents.home_location_code) return 'Unload location unresolved';
+    let text = prior.named_context || prior.destination_location_note ||
+      (prior.destination_stage_id ? 'previous recorded Stage' : 'previous GPS observation');
+    if (prior.gps_accuracy_m != null) text += ' · ±' + Math.round(Number(prior.gps_accuracy_m) / 0.3048) + ' ft';
+    return text + ' · observed ' + prior.occurred_at;
+  }
+
+  function renderContentsDecision() {
+    unloadGroups.innerHTML = '';
+    if (!pendingIdentity || pendingIdentity.asset_type !== 'CONTAINER') return;
+    const intro = document.createElement('p');
+    intro.textContent = 'Prior last-known location: ' + priorLocationText();
+    unloadGroups.appendChild(intro);
+    const heading = document.createElement('h3');
+    heading.textContent = 'Is this Container empty?';
+    unloadGroups.appendChild(heading);
+    const choices = document.createElement('div');
+    choices.className = 'group-actions';
+    [['EMPTY', 'Empty'], ['NOT_EMPTY', 'Not Empty'], ['NOT_SURE', 'Not Sure']].forEach(([value, label]) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.setAttribute('aria-pressed', String(contentsDecision === value));
+      button.disabled = value === 'EMPTY' && (!pendingContents || !pendingContents.reconciliation_allowed);
+      button.addEventListener('click', () => {
+        contentsDecision = value;
+        identifyRemaining = false;
+        renderContentsDecision();
+        renderRecordReadiness();
+      });
+      choices.appendChild(button);
     });
+    unloadGroups.appendChild(choices);
+    const explanation = document.createElement('p');
+    if (!pendingContents) explanation.textContent = 'Contents context unavailable. Record location only; reconnect and rescan for reconciliation or Return Empty.';
+    else if (pendingContents.queue_conflict) explanation.textContent = 'An earlier offline reconciliation failed. Reconnect and review it before changing contents or returning this Container.';
+    else if (!pendingContents.reconciliation_allowed) explanation.textContent = 'This Standalone / singular Display-Pallet is one physical object. Its Display stays with it. Record the Container location only.';
+    else if (contentsDecision === 'EMPTY') explanation.textContent = currentDisplays().length + ' Displays will stop following this Container. Their unload location is inferred from the prior observation, never this new scan or Workshop Home.';
+    else if (contentsDecision === 'NOT_SURE') explanation.textContent = 'Location only. Displays keep following this Container; contents need later review.';
+    else explanation.textContent = 'No Displays change until you identify what remains and review the result.';
+    unloadGroups.appendChild(explanation);
+    if (contentsDecision !== 'NOT_EMPTY' || !pendingContents || !pendingContents.reconciliation_allowed) return;
+    const identify = document.createElement('button');
+    identify.type = 'button';
+    identify.textContent = identifyRemaining ? 'I cannot identify what remains — location only' : 'I can identify what remains';
+    identify.addEventListener('click', () => {
+      identifyRemaining = !identifyRemaining;
+      renderContentsDecision();
+      renderRecordReadiness();
+    });
+    unloadGroups.appendChild(identify);
+    if (!identifyRemaining) return;
+    const prompt = document.createElement('p');
+    prompt.textContent = 'Which Display Names are STILL on this Container? Checked names stay with it. Unchecked names came off at the prior last-known location.';
+    unloadGroups.appendChild(prompt);
+    currentDisplays().forEach(row => {
+      const label = document.createElement('label');
+      label.className = 'unload-group';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.dataset.displayId = row.display_id;
+      input.checked = true; // Safe default: none are detached just by opening the list.
+      input.addEventListener('change', renderRecordReadiness);
+      const name = document.createElement('span');
+      name.textContent = row.display_name;
+      label.appendChild(input);
+      label.appendChild(name);
+      unloadGroups.appendChild(label);
+    });
+  }
+
+  function contentsReview(reconciliation) {
+    const rows = currentDisplays();
+    const remaining = reconciliation.identify_remaining ? reconciliation.remaining_display_ids :
+      (reconciliation.decision === 'EMPTY' ? [] : rows.map(row => Number(row.display_id)));
+    const removed = rows.filter(row => !remaining.includes(Number(row.display_id)));
+    return 'Contents: ' + reconciliation.decision.replaceAll('_', ' ') + '\n'
+      + (removed.length ? 'Stop following this Container:\n' + removed.map(row => row.display_name).join('\n')
+          + '\nInferred unload location: ' + priorLocationText() : 'No Display attachment changes.')
+      + (remaining.length ? '\nStill on Container:\n' + rows.filter(row => remaining.includes(Number(row.display_id))).map(row => row.display_name).join('\n') : '')
+      + (reconciliation.decision === 'NOT_SURE' || (reconciliation.decision === 'NOT_EMPTY' && !reconciliation.identify_remaining)
+          ? '\nContents flagged for later review.' : '');
+  }
+
+  function needsDisplayPlacement() {
+    return Boolean(pendingIdentity && pendingIdentity.asset_type === 'DISPLAY'
+      && (!pendingStateRow || !Array.isArray(pendingStateRow.placement_stages) || pendingStateRow.container_id)
+      && (!pendingStateRow || pendingStateRow.position_mode !== 'DETACHED'));
+  }
+
+  function placementStages() {
+    return (pendingStateRow && pendingStateRow.placement_stages) || [];
+  }
+
+  function confirmPlacementStage(id) {
+    const stage = placementStages().find(row => Number(row.stage_id) === Number(id));
+    if (!stage) return;
+    placementStageId = Number(stage.stage_id);
+    // A previously selected Container reference/note is not this Display's placement.
+    knownReference.value = '';
+    locationNote.value = stage.stage_key + ' · ' + stage.stage_name;
+    renderRecordReadiness();
+  }
+
+  function renderDisplayPlacement() {
+    unloadGroups.innerHTML = '';
+    const message = document.createElement('p');
+    unloadGroups.appendChild(message);
+    if (pendingStateRow && pendingStateRow.can_detach === false) {
+      message.textContent = 'This Display is one object with its Standalone / singular Display-Pallet. Scan the Container to record its location.';
+      return;
+    }
+    if (!needsDisplayPlacement()) {
+      message.textContent = 'This Display is independent. Recording its current location moves only this Display.';
+      return;
+    }
+    message.textContent = 'Is this Display at its setup location now? Confirm what you see here, not where it is going.';
+    const choices = document.createElement('div');
+    choices.className = 'group-actions';
+    [['YES', 'Yes'], ['NO', 'No'], ['NOT_SURE', 'Not Sure']].forEach(([value, label]) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.setAttribute('aria-pressed', String(displayPlacement === value));
+      button.addEventListener('click', () => {
+        displayPlacement = value;
+        placementStageId = null;
+        renderDisplayPlacement();
+        renderRecordReadiness();
+      });
+      choices.appendChild(button);
+    });
+    unloadGroups.appendChild(choices);
+    const explanation = document.createElement('p');
+    explanation.textContent = displayPlacement === 'YES'
+      ? 'Confirm the actual Stage below or choose its nearest GPS Stage above. Only this Display will stop following its Container; other Displays stay attached.'
+      : 'No / Not Sure leaves this Display attached and records nothing. Scan the Container to record its location.';
+    unloadGroups.appendChild(explanation);
+    if (displayPlacement !== 'YES') return;
+    const stages = placementStages();
+    if (!stages.length) {
+      explanation.textContent = 'Stage context unavailable. Reconnect and rescan before detaching this Display.';
+      return;
+    }
+    const label = document.createElement('label');
+    label.className = 'placement-stage';
+    label.textContent = 'Actual Stage now (confirm even when assigned)';
+    const select = document.createElement('select');
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Confirm actual Stage…';
+    select.appendChild(placeholder);
+    stages.forEach(stage => {
+      const option = document.createElement('option');
+      option.value = stage.stage_id;
+      option.textContent = stage.stage_key + ' · ' + stage.stage_name + (stage.assigned ? ' (assigned)' : '');
+      select.appendChild(option);
+    });
+    select.value = placementStageId || '';
+    select.addEventListener('change', () => {placementStageId = null; confirmPlacementStage(select.value); renderRecordReadiness();});
+    label.appendChild(select);
+    unloadGroups.appendChild(label);
+    const candidates = document.createElement('div');
+    candidates.className = 'group-actions';
+    const ranked = rankedReferences(currentGpsSnapshot());
+    const suggestions = [...stages.filter(stage => stage.assigned), ...ranked.map(point =>
+      stages.find(stage => String(stage.stage_key) === point.name.split('-')[0])).filter(Boolean).slice(0, 3)];
+    const seen = new Set();
+    suggestions.forEach(stage => {
+      if (seen.has(stage.stage_id)) return;
+      seen.add(stage.stage_id);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = 'Confirm ' + stage.stage_key + ' · ' + stage.stage_name + (stage.assigned ? ' (assigned)' : ' (near GPS)');
+      button.addEventListener('click', () => {confirmPlacementStage(stage.stage_id); select.value = stage.stage_id;});
+      candidates.appendChild(button);
+    });
+    unloadGroups.appendChild(candidates);
   }
 
   function renderPending() {
@@ -683,7 +971,7 @@
       returnHome.hidden = false;
       if (home) {
         returnHome.disabled = false;
-        returnHome.textContent = (trainingMode ? 'Test returned ' : 'Returned ')
+        returnHome.textContent = (trainingMode ? 'Test Return Empty ' : 'Return Empty ')
           + pendingIdentity.identity + ' to ' + home;
         if (homeLocationReview) {
           homeLocationReview.hidden = false;
@@ -704,64 +992,11 @@
     renderRecordReadiness();
 
     if (pendingIdentity.asset_type !== 'CONTAINER') {
-      unloadGroups.innerHTML = '<p>Recording this Display here detaches only this Display from its Container. Later Container moves will not move it.</p>';
+      renderDisplayPlacement();
       return;
     }
-
-    if (!pendingContents) {
-      unloadGroups.innerHTML = '<div class="group-warning"><strong>Container contents unavailable.</strong> You may record the Container location, but Display unload groups are disabled so offline/stale data cannot detach the wrong Displays.</div>';
-      return;
-    }
-
-    const groups = Array.isArray(pendingContents.groups) ? pendingContents.groups : [];
-    if (!groups.length) {
-      unloadGroups.innerHTML = '<p>No active Displays remain with this Container. Record the Container location only.</p>';
-      return;
-    }
-
-    const selectable = groups.filter(function (group) { return group.bulk_selectable; });
-    const reviewOnly = groups.filter(function (group) { return !group.bulk_selectable; });
-    unloadGroups.innerHTML = '<div class="group-heading"><strong>What came off here?</strong><span>Anything not selected stays WITH_CONTAINER and follows the next Container location.</span></div>';
-
-    selectable.forEach(function (group) {
-      const label = document.createElement('label');
-      label.className = 'unload-group';
-      const input = document.createElement('input');
-      input.type = 'checkbox';
-      input.dataset.displayIds = (group.display_ids || []).join(',');
-      const span = document.createElement('span');
-      span.innerHTML = '<strong>' + escapeHtml(group.label) + '</strong><br>'
-        + Number(group.display_count || 0) + ' Display'
-        + (Number(group.display_count || 0) === 1 ? '' : 's') + ' came off here';
-      label.appendChild(input);
-      label.appendChild(span);
-      unloadGroups.appendChild(label);
-    });
-
-    if (selectable.length) {
-      const actions = document.createElement('div');
-      actions.className = 'group-actions';
-      const all = document.createElement('button');
-      all.type = 'button';
-      all.textContent = 'All remaining groups';
-      all.addEventListener('click', function () { setAllUnloadGroups(true); });
-      const none = document.createElement('button');
-      none.type = 'button';
-      none.textContent = 'None came off';
-      none.addEventListener('click', function () { setAllUnloadGroups(false); });
-      actions.appendChild(all);
-      actions.appendChild(none);
-      unloadGroups.appendChild(actions);
-    }
-
-    reviewOnly.forEach(function (group) {
-      const warning = document.createElement('div');
-      warning.className = 'group-warning';
-      warning.innerHTML = '<strong>' + escapeHtml(group.label) + '</strong> · '
-        + Number(group.display_count || 0) + ' Display'
-        + (Number(group.display_count || 0) === 1 ? '' : 's');
-      unloadGroups.appendChild(warning);
-    });
+    renderContentsDecision();
+    renderRecordReadiness();
   }
 
   async function selectIdentity(identity, captureMethod) {
@@ -770,6 +1005,12 @@
       return;
     }
 
+    if (recording) return;
+    const generation = ++selectionGeneration;
+    contentsDecision = null;
+    identifyRemaining = false;
+    displayPlacement = null;
+    placementStageId = null;
     pendingIdentity = identity;
     pendingCaptureMethod = captureMethod;
     renderScannerLayoutState();
@@ -779,12 +1020,17 @@
 
     try {
       if (identity.asset_type === 'CONTAINER') {
-        pendingContents = await fetchContainerContents(identity.asset_id);
+        const contents = await fetchContainerContents(identity.asset_id);
+        if (generation !== selectionGeneration) return;
+        pendingContents = contents;
         pendingStateRow = pendingContents;
       } else {
-        pendingStateRow = await fetchState(identity);
+        const state = await fetchState(identity);
+        if (generation !== selectionGeneration) return;
+        pendingStateRow = state;
       }
     } catch (error) {
+      if (generation !== selectionGeneration) return;
       if (navigator.onLine) {
         clearPending();
         setFeedback('warning', identity.identity + ' — ' + (error.message || error));
@@ -798,30 +1044,62 @@
 
     renderPending();
     renderRecordReadiness();
-    setFeedback('ready', identity.identity + ' — now confirm location evidence, then review and record');
+    setFeedback('ready', identity.identity + (needsDisplayPlacement()
+      ? ' — answer the setup location question, then confirm the actual Stage'
+      : ' — now confirm location evidence, then review and record'));
     if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches && locationPanel) {
       locationPanel.scrollIntoView({behavior: 'smooth', block: 'start'});
     }
   }
 
   async function recordPending(returningHome) {
+    if (recording) return;
     if (!pendingIdentity) {
       setFeedback('blocked', 'Select a Container or Display first.');
       return;
     }
 
     const identity = pendingIdentity;
+    if (needsDisplayPlacement() && (displayPlacement !== 'YES' || !placementStageId)) {
+      setFeedback('blocked', 'Confirm Yes and the actual Stage before detaching this Display. No / Not Sure records nothing.');
+      return;
+    }
+    if (identity.asset_type === 'DISPLAY' && pendingStateRow && pendingStateRow.can_detach === false) {
+      setFeedback('blocked', 'Scan the Container for this Standalone / singular Display-Pallet.');
+      return;
+    }
     const action = returningHome
       ? 'RETURNED'
       : (identity.asset_type === 'CONTAINER' ? 'CONTAINER_MOVE' : 'DISPLAY_MOVE');
 
-    if (!returningHome && !currentGpsSnapshot() && !destinationNote()) {
+    if (!returningHome && !currentGpsSnapshot() && !destinationNote() && !placementStageId) {
       setFeedback('blocked', 'LOCATION NEEDED — start GPS, confirm a named reference, or enter a location note.');
       return;
     }
 
-    const unloaded = action === 'CONTAINER_MOVE' ? selectedUnloadedDisplayIds() : [];
+    const unloaded = [];
     const payload = movementPayload(identity, action, pendingCaptureMethod, unloaded);
+    if (needsDisplayPlacement()) {
+      const stage = placementStages().find(row => Number(row.stage_id) === placementStageId);
+      payload.display_placement = 'YES';
+      payload.destination_stage_id = placementStageId;
+      payload.destination_location_note = stage.stage_key + ' · ' + stage.stage_name;
+      payload.notes = 'display_setup_location_confirmed=true; direct_display_observation=true';
+      if (!window.confirm('Confirm ' + pendingStateRow.label + ' is at its setup location NOW:\n'
+          + payload.destination_location_note + '\n\nDetach only this Display from its Container and record here?')) return;
+    }
+    if (identity.asset_type === 'CONTAINER') {
+      try {
+        payload.reconciliation = reconciliationPayload();
+        if (returningHome && payload.reconciliation.decision !== 'EMPTY') throw new Error('Confirm Empty before Return Empty.');
+      } catch (error) {
+        setFeedback('blocked', error.message);
+        return;
+      }
+      const destination = returningHome ? 'Return Empty to ' + pendingContents.home_location_code + ' (no GPS needed)'
+        : 'Record where Container is NOW: ' + currentLocationEvidence().label;
+      if (!window.confirm(destination + '\n\n' + contentsReview(payload.reconciliation) + '\n\nRecord this reconciliation?')) return;
+    }
 
     if (trainingMode) {
       const gps = currentGpsSnapshot();
@@ -835,6 +1113,11 @@
         if (gps) message += ' · GPS ±' + Math.round(Number(gps.accuracy_m || 0) * 3.280839895) + ' ft';
         if (unloaded.length) message += ' · would leave ' + unloaded.length + ' Display' + (unloaded.length === 1 ? '' : 's') + ' here';
       }
+      if (payload.reconciliation && (payload.reconciliation.decision === 'EMPTY' || payload.reconciliation.identify_remaining)) {
+        const count = currentDisplays().length - (payload.reconciliation.remaining_display_ids || []).length;
+        if (count) message += ' · would reconcile ' + count + ' Displays at prior location';
+      }
+      if (payload.display_placement) message += ' · would detach only this Display at confirmed Stage';
       resetAssetEntryForNextScan();
       setFeedback(
         'success',
@@ -844,6 +1127,8 @@
       return;
     }
 
+    recording = true;
+    renderRecordReadiness();
     setFeedback('ready', identity.identity + ' — recording physical observation…');
 
     try {
@@ -852,13 +1137,16 @@
         setFeedback('offline', identity.identity + ' — OBSERVATION QUEUED OFFLINE');
       } else if (returningHome) {
         setFeedback('success', identity.identity + ' — RETURNED HOME '
-          + String((result.movement && result.movement.home_location_code) || ''));
+          + String((result.movement && result.movement.home_location_code) || '')
+          + (result.movement && result.movement.unloaded_display_count
+            ? ' · ' + result.movement.unloaded_display_count + ' Displays reconciled at prior location' : ''));
       } else {
         const movement = result.movement || {};
         const unloadCount = Number(movement.unloaded_display_count || 0);
         const gps = currentGpsSnapshot();
         let message = identity.identity + ' — LOCATION RECORDED';
-        if (unloadCount) message += ' · ' + unloadCount + ' Display' + (unloadCount === 1 ? '' : 's') + ' left here';
+        if (payload.display_placement) message += ' · ONLY THIS DISPLAY DETACHED';
+        if (unloadCount) message += ' · ' + unloadCount + ' Display' + (unloadCount === 1 ? '' : 's') + ' reconciled at prior location';
         if (gps) message += ' · GPS ±' + Math.round(Number(gps.accuracy_m || 0) * 3.280839895) + ' ft';
         setFeedback('success', message);
       }
@@ -869,6 +1157,9 @@
       }
     } catch (error) {
       setFeedback('warning', identity.identity + ' — ' + (error.message || error));
+    } finally {
+      recording = false;
+      renderRecordReadiness();
     }
   }
 
@@ -1160,6 +1451,7 @@
   recordHere.addEventListener('click', function () { void recordPending(false); });
   returnHome.addEventListener('click', function () { void recordPending(true); });
   clearPendingButton.addEventListener('click', function () {
+    if (recording) return;
     resetAssetEntryForNextScan();
     setFeedback(
       'ready',

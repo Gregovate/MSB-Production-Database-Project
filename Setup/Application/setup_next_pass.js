@@ -1466,6 +1466,7 @@ async function printNextPerformTask(details) {
 }
 
 function nextLocationText(item) {
+  if (item.current_location_inferred && item.current_location_kind === 'UNRESOLVED_FIELD') return 'Current: unloaded — location unresolved';
   if (item.current_stage_key) return `Current: Stage ${item.current_stage_key}${item.current_stage_name ? ` — ${item.current_stage_name}` : ''}${item.current_location_note ? ` · ${item.current_location_note}` : ''}`;
   if (item.current_location_note?.trim()) return `Current: ${item.current_location_note.trim()}`;
   if (item.current_location_kind === 'GPS') {
@@ -1505,7 +1506,10 @@ function nextLocationMarkup(item) {
     : '';
   const home = item.home_location_code
     ? `<span class="muted"> · Home: ${escapeHtml(item.home_location_code)}</span>` : '';
-  return `<strong>${escapeHtml(nextLocationText(item))}</strong>${recorded}${home}`;
+  const provenance = item.current_location_inferred
+    ? ' · inferred unload from prior Container observation'
+    : (item.current_named_context_inherited ? ' · earlier named context retained' : '');
+  return `<strong>${escapeHtml(nextLocationText(item))}</strong>${escapeHtml(provenance)}${recorded}${home}`;
 }
 
 function nextProgressAuditText(progress) {

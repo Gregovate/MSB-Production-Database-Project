@@ -101,6 +101,7 @@ body.training-mode .reference-data-details{display:block}
 .reference-status{margin-top:.5rem;color:var(--muted);font-size:.85rem}
 .pending-panel{border-width:3px}.pending-panel h2{margin:.25rem 0}
 .unload-groups{margin-top:.8rem}.group-heading{display:grid;gap:.15rem;margin-bottom:.55rem}
+.placement-stage{display:block;font-weight:750;margin-top:.75rem}.placement-stage select{display:block;width:100%;max-width:100%;margin-top:.35rem}
 .unload-group{display:flex;align-items:flex-start;gap:.65rem;padding:.65rem;margin:.35rem 0;border:2px solid var(--line);border-radius:9px}
 .unload-group input{width:24px;height:24px;margin:.1rem 0 0}.group-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem}
 .group-warning{margin-top:.5rem;padding:.55rem;border:2px dashed var(--line);border-radius:8px}
@@ -142,3 +143,7 @@ body.training-mode #training-exit{background:#8a5a00;color:#fff}
 }
 
 .home-location-review{margin:.65rem 0;padding:.6rem .75rem;border:2px solid var(--line);border-radius:9px;font-weight:850}
+
+/* Contents decisions are touch targets with a persistent selected state. */
+.group-actions button[aria-pressed="true"] {background:#214c7a;color:#fff;outline:2px solid #214c7a;}
+.unload-group input {min-width:24px;min-height:24px;}

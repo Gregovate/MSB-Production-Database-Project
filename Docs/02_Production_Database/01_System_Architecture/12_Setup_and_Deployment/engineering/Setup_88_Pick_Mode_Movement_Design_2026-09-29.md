@@ -9,6 +9,16 @@
 | Production Setup runtime | `6f53d7f0c4b15f7175e773a2069595eef3f0e698` / `V0.3.22-pick-list-delay` |
 | Owner | Setup movement / Labeling and Scanning integration |
 
+## 2026-10-07 contents reconciliation successor — candidate
+
+The accepted DBG-2026-007/009/010 physical decision model supersedes the older
+always-visible “what came off” checkboxes in Record Location. See the
+[current candidate and review contract](../../../../../Setup/Acceptance/Setup_88_Contents_Reconciliation_Candidate.md).
+Every selected Container now has Empty / Not Empty / Not Sure decisions;
+partial reconciliation asks which Display Names remain. Inference uses prior
+last-known evidence; Return Empty uses canonical Home without Workshop GPS.
+No schema additions or historical repairs. Production/operator acceptance is pending.
+
 ## Purpose
 
 Define the launch Pick Mode and shared Setup movement-capture contract without creating a second movement model, changing permanent labels, or turning the Pick List into a location-tracking screen.

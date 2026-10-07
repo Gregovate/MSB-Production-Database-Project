@@ -1,5 +1,12 @@
 # Setup Session Application
 
+## #88 guided contents reconciliation candidate
+
+[Implementation, reconnaissance, verification and exact-candidate review handoff](../Acceptance/Setup_88_Contents_Reconciliation_Candidate.md).
+V0.3.43 reuses existing movement/event tables with function-only migration 070.
+Current-clone/browser acceptance and Production deployment remain pending.
+
+
 For a reviewed update or urgent fix, use [Install a reviewed Setup change](../operatorSOP/Install_a_Reviewed_Setup_Change.md). It explains the checks, maintenance window, STOP result and required documentation closeout.
 
 Status: **PRODUCTION RUNTIME OPERATIONAL — 2026 ANNUAL SETUP SESSION LIVE**

@@ -1,5 +1,12 @@
 # Setup Acceptance Tooling
 
+## #88 contents reconciliation browser candidate
+
+[Implementation, reconnaissance, verification and exact-candidate review handoff](Setup_88_Contents_Reconciliation_Candidate.md).
+V0.3.43 reuses existing movement/event tables with function-only migration 070.
+Current-clone/browser acceptance and Production deployment remain pending.
+
+
 ## Authority
 
 Setup acceptance consumes the runtime/safety rules owned by `Gregovate/MSB-Server-Management`:
