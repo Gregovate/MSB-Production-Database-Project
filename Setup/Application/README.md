@@ -3,7 +3,9 @@
 ## #88 guided contents reconciliation candidate
 
 [Implementation, reconnaissance, verification and exact-candidate review handoff](../Acceptance/Setup_88_Contents_Reconciliation_Candidate.md).
-V0.3.43 reuses existing movement/event tables with function-only migration 070.
+V0.3.44 reuses existing movement/event tables with function-only migration 070.
+The accepted Stage-group **What came off here?** unload remains available alongside
+prior-location reconciliation for missed unloads. Each path names its location basis.
 Current-clone/browser acceptance and Production deployment remain pending.
 
 

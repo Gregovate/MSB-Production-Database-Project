@@ -1,10 +1,10 @@
 'use strict';
 
-const CACHE_NAME = 'msb-setup-record-location-v15';
+const CACHE_NAME = 'msb-setup-record-location-v16';
 const SHELL = [
   './',
   'assets/setup_record_location.css?v=2026-10-07.2',
-  'assets/setup_record_location.js?v=2026-10-07.2',
+  'assets/setup_record_location.js?v=2026-10-07.3',
   'location-references.json'
 ];
 

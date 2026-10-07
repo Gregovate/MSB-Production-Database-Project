@@ -100,5 +100,25 @@ try {
  assert.equal((await state(12)).last_movement_event_id,direct.setup_movement_event_id);
  assert.equal((await state(12)).current_location_note,'16 · Actual placement elsewhere');
  assert.equal((await db.query(directQuery,directParams)).rows[0].duplicate_event,true);
+ // Existing Stage-group unload uses the NEW observed location, not reconciliation's prior anchor.
+ await db.exec("INSERT INTO ref.container VALUES(34,1,'RC03-A-04','Stage group fixture'); INSERT INTO ref.display VALUES(14,34,1,'Group member A'),(15,34,1,'Group member B'),(16,34,1,'Next Stage stays attached')");
+ await record(34,'CONTAINER_MOVE','2026-10-07T17:00:00Z','Earlier Container drop',null,null,null,null,[43.70,-87.70,3]);
+ const groupParams=['fixture@example.org',2026,uuid(),'CONTAINER',34,'CONTAINER_MOVE','2026-10-07T17:10:00Z',null,
+  'fixture@example.org','HID_SCAN',false,43.80,-87.80,5.12,null,'Observed group unload here','direct_container_unload=true',[14,15],null,null,'UNASSESSED',null];
+ const groupQuery=`SELECT * FROM ops.record_setup_movement_event(${groupParams.map((_,i)=>'$'+(i+1)).join(',')})`;
+ const group=(await db.query(groupQuery,groupParams)).rows[0];
+ assert.equal(group.unloaded_display_count,2);
+ for(const display of [14,15]) {
+  assert.equal((await state(display)).position_mode,'DETACHED');
+  assert.equal((await state(display)).current_location_note,'Observed group unload here');
+  assert.equal((await state(display)).last_movement_event_id,group.setup_movement_event_id);
+ }
+ assert.equal(await state(16),undefined);
+ const groupEvent=(await db.query('SELECT * FROM ops.setup_movement_event WHERE setup_movement_event_id=$1',[group.setup_movement_event_id])).rows[0];
+ assert.equal(Number(groupEvent.gps_latitude),43.80);assert.match(groupEvent.notes,/direct_container_unload=true/);
+ assert.ok(!groupEvent.notes.includes('inferred_unload=true'));
+ await record(34,'CONTAINER_MOVE','2026-10-07T17:20:00Z','Next Stage Container drop','NOT_SURE');
+ assert.equal((await state(14)).last_movement_event_id,group.setup_movement_event_id);
+ assert.equal((await db.query(groupQuery,groupParams)).rows[0].duplicate_event,true);
  console.log('SETUP_88_LOCAL_POSTGRES_RECONCILIATION_PASS');
 } finally {await db.close();}

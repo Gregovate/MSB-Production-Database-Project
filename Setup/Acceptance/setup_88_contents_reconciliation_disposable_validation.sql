@@ -8,7 +8,7 @@ DECLARE
  v_email text; v_container integer; v_ids bigint[]; v_remaining bigint[];
  v_session bigint; v_prior bigint; v_partial bigint; v_return bigint;
  v_home text; v_count integer; v_before bigint; v_child bigint; v_result record;
- v_stage integer; v_direct bigint;
+ v_stage integer; v_direct bigint; v_group bigint;
  v_time timestamptz := clock_timestamp()+interval '1 day';
 BEGIN
  SELECT u.email INTO v_email FROM public.directus_users u
@@ -50,6 +50,20 @@ BEGIN
     AND display_id=v_ids[1])<>v_direct THEN RAISE EXCEPTION 'Container dragged directly placed Display'; END IF;
   IF (SELECT container_id FROM ref.display WHERE display_id=v_ids[1])<>v_container THEN
    RAISE EXCEPTION 'Direct placement changed permanent Container assignment'; END IF;
+  SELECT setup_movement_event_id INTO v_group FROM ops.record_setup_movement_event(
+   v_email,2026,'88000000-0000-4000-8000-000000007093','CONTAINER',v_container,'CONTAINER_MOVE',v_time+interval '45 seconds',
+   'disposable-88',v_email,'MANUAL_ENTRY',false,43.71,-87.71,3,NULL,'Fixture observed group unload here',
+   'direct_container_unload=true',ARRAY[v_ids[2]]);
+  IF NOT EXISTS(SELECT 1 FROM ops.setup_display_state ds JOIN ops.setup_movement_event e
+    ON e.setup_movement_event_id=ds.last_movement_event_id WHERE ds.setup_session_id=v_session AND ds.display_id=v_ids[2]
+    AND ds.position_mode='DETACHED' AND ds.current_location_note='Fixture observed group unload here'
+    AND e.gps_latitude=43.71 AND e.notes LIKE '%direct_container_unload=true%') THEN
+   RAISE EXCEPTION 'Grouped unload did not retain its current observed location'; END IF;
+  PERFORM * FROM ops.record_setup_movement_event(
+   v_email,2026,'88000000-0000-4000-8000-000000007094','CONTAINER',v_container,'CONTAINER_MOVE',v_time+interval '50 seconds',
+   'disposable-88',v_email,'MANUAL_ENTRY',false,NULL,NULL,NULL,NULL,'Fixture after grouped unload');
+  IF (SELECT last_movement_event_id FROM ops.setup_display_state WHERE setup_session_id=v_session
+    AND display_id=v_ids[2])<>v_group THEN RAISE EXCEPTION 'Container dragged observed group unload'; END IF;
   RAISE EXCEPTION 'Rollback successful direct placement probe' USING ERRCODE='ZX088';
  EXCEPTION WHEN SQLSTATE 'ZX088' THEN NULL;
  END;

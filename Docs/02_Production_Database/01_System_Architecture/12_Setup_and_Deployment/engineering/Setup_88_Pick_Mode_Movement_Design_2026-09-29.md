@@ -11,8 +11,11 @@
 
 ## 2026-10-07 contents reconciliation successor — candidate
 
-The accepted DBG-2026-007/009/010 physical decision model supersedes the older
-always-visible “what came off” checkboxes in Record Location. See the
+The DBG-2026-007/009/010 physical decision model adds missed-unload reconciliation
+alongside the accepted “What came off here?” Stage-group unload controls. The
+first reconciliation candidate incorrectly removed those controls; V0.3.44
+restores current-location group unloading without mixing it with prior-location
+inference. See the
 [current candidate and review contract](../../../../../Setup/Acceptance/Setup_88_Contents_Reconciliation_Candidate.md).
 Every selected Container now has Empty / Not Empty / Not Sure decisions;
 partial reconciliation asks which Display Names remain. Inference uses prior

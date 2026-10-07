@@ -19,29 +19,32 @@ def test_actual_record_location_decisions_review_and_payload():
       renderContentsDecision, reconciliationPayload, contentsReview, priorLocationText,
       movementPayload, recordPending, renderRecordReadiness, applyQueuedContainerContext,
       renderDisplayPlacement, confirmPlacementStage, needsDisplayPlacement,
+      setAllUnloadGroups, selectedUnloadedDisplayIds, selectUnloadHere, directUnloadReview,
       display: (state) => {pendingIdentity={asset_type:'DISPLAY',asset_id:901,identity:'DISP:901'};
-        pendingStateRow=state;displayPlacement=null;placementStageId=null;pendingContents=null;},
+        pendingStateRow=state;displayPlacement=null;placementStageId=null;pendingContents=null;unloadedHereDisplayIds=new Set();},
       placement: (value) => {displayPlacement=value;placementStageId=null;},
       gpsOff: () => {watchId=null;latestPosition=null;},
-      select: (contents) => {pendingIdentity={asset_type:'CONTAINER',asset_id:216,identity:'CONT:216'};
-        pendingContents=contents;pendingStateRow=contents;access={can_move_setup_assets:true,authenticated_email:'operator@example.org'};},
-      decide: (value, identify=false) => {contentsDecision=value;identifyRemaining=identify;},
+      select: (contents, id=216) => {pendingIdentity={asset_type:'CONTAINER',asset_id:id,identity:'CONT:'+id};
+        pendingContents=contents;pendingStateRow=contents;unloadedHereDisplayIds=new Set();contentsDecision=null;identifyRemaining=false;
+        access={can_move_setup_assets:true,authenticated_email:'operator@example.org'};},
+      decide: (value, identify=false) => {contentsDecision=value;identifyRemaining=identify;unloadedHereDisplayIds=new Set();},
       gps: () => {watchId=1;latestPosition={timestamp:Date.now(),coords:{latitude:1,longitude:2,accuracy:3}};}
     };'''
     source = source.replace('  void initialize();', exports)
     source = source.replace('async function sendOrQueue(payload) {',
-                            'async function sendOrQueue(payload) { globalThis.saved=payload; return {movement:{},queued:false};')
+                            'async function sendOrQueue(payload) { globalThis.saved=payload; return {movement:{unloaded_display_count:payload.unloaded_display_ids.length},queued:false};')
     harness = r'''
     const assert=require('node:assert/strict');
     class Element {
-      constructor(){this.children=[];this.dataset={};this.value='';this.textContent='';this.disabled=false;this.hidden=false;this.checked=false;}
+      constructor(tag){this.tag=tag;this.children=[];this.dataset={};this.listeners={};this.value='';this.textContent='';this.disabled=false;this.hidden=false;this.checked=false;}
       set innerHTML(value){this.children=[];this._html=value;} get innerHTML(){return this._html||'';}
-      appendChild(child){this.children.push(child);} addEventListener(){} setAttribute(k,v){this[k]=v;}
+      appendChild(child){this.children.push(child);} addEventListener(k,fn){this.listeners[k]=fn;} setAttribute(k,v){this[k]=v;}
       focus(){} blur(){}
       querySelectorAll(query){const all=this.children.flatMap(c=>[c,...c.querySelectorAll('*')]);
-        return query.includes('input') ? all.filter(c=>c.dataset.displayId && (!query.includes(':checked')||c.checked)) : all;}
+        return query.includes('input') ? all.filter(c=>(query.includes('data-display-ids') ? c.dataset.displayIds : c.dataset.displayId)
+          && (!query.includes(':checked')||c.checked)) : query==='button' ? all.filter(c=>c.tag==='button') : all;}
     }
-    const elements={};globalThis.document={getElementById:id=>elements[id]??=new Element(),createElement:()=>new Element(),
+    const elements={};globalThis.document={getElementById:id=>elements[id]??=new Element(),createElement:tag=>new Element(tag),
       querySelector:()=>new Element(),addEventListener(){},body:{classList:{toggle(){}}}};
     globalThis.window={crypto:{randomUUID:()=> '88000000-0000-4000-8000-000000000001'},setInterval(){},addEventListener(){},confirm:()=>false};
     globalThis.navigator={onLine:true};globalThis.location={search:'?season_year=2026'};
@@ -66,7 +69,7 @@ def test_actual_record_location_decisions_review_and_payload():
     assert.equal(returned.gps_latitude,undefined);assert.equal(returned.destination_location_note,null);
     assert.match(w.priorLocationText(),/±17 ft/);
     w.select({...contents,reconciliation_allowed:false});w.decide('EMPTY');assert.throws(()=>w.reconciliationPayload(),/cannot be reconciled/);
-    w.renderContentsDecision();let empty=elements['movement-unload-groups'].children[2].children[0];assert.ok(empty.disabled);
+    w.renderContentsDecision();let empty=elements['movement-unload-groups'].querySelectorAll('button').find(button=>button.textContent==='Empty');assert.ok(empty.disabled);
     w.select(null);w.decide('EMPTY');assert.throws(()=>w.reconciliationPayload(),/cannot be reconciled/);
     w.decide('NOT_SURE');w.renderRecordReadiness();assert.ok(elements['movement-return-home'].disabled);
     const queued={season_year:2026,asset_type:'CONTAINER',asset_id:216,client_event_id:'offline-prior',occurred_at:'2026-10-07T11:00:00Z',
@@ -104,6 +107,37 @@ def test_actual_record_location_decisions_review_and_payload():
     w.placement('YES');await w.recordPending(false);assert.equal(saved,undefined);
     assert.deepEqual(w.applyQueuedContainerContext(contents,[{asset_type:'DISPLAY',asset_id:901,season_year:2026,
       movement_action:'DISPLAY_MOVE',queue_status:'QUEUED'}],216).displays.map(row=>row.display_id),[900]);
+    // C034-style Stage-group unload must coexist with prior-location reconciliation.
+    const third={display_id:902,display_name:'WV-MtCrumpitPanel-03'};
+    const groups=[{label:'15 — Church-ParkingLot',bulk_selectable:true,display_ids:[900,902],displays:[contents.displays[0],third]},
+      {label:'01 — Front Entrance',bulk_selectable:true,display_ids:[901],displays:[contents.displays[1]]}];
+    const grouped={...contents,displays:[...contents.displays,third],groups};
+    w.select(grouped,34);w.renderContentsDecision();
+    let groupBoxes=elements['movement-unload-groups'].querySelectorAll('input[data-display-ids]');
+    assert.equal(groupBoxes.length,2);assert.ok(groupBoxes.every(box=>!box.checked));
+    assert.ok(elements['movement-unload-groups'].querySelectorAll('*').some(el=>el.textContent==='What came off here?'));
+    groupBoxes[0].checked=true;groupBoxes[0].listeners.change();
+    assert.deepEqual(w.selectedUnloadedDisplayIds(),[900,902]);assert.throws(()=>w.reconciliationPayload(),/current location/);
+    elements['movement-location-note'].value='';elements['movement-known-reference'].value='Current park unload';w.renderRecordReadiness();
+    assert.ok(!elements['movement-record-here'].disabled);assert.ok(elements['movement-return-home'].disabled);
+    assert.match(w.directUnloadReview([900,902]),/Current park unload/);assert.match(w.directUnloadReview([900,902]),/CH-PeaceOnEarth/);
+    assert.ok(!w.directUnloadReview([900,902]).includes('Prior park drop'));
+    window.confirm=()=>false;await w.recordPending(false);assert.equal(saved,undefined);
+    window.confirm=()=>true;await w.recordPending(false);
+    assert.equal(saved.asset_id,34);assert.deepEqual(saved.unloaded_display_ids,[900,902]);assert.equal(saved.reconciliation,undefined);
+    assert.equal(saved.destination_location_note,'Current park unload');assert.match(saved.notes,/direct_container_unload=true/);
+    assert.match(elements['movement-feedback'].textContent,/unloaded here/);
+    w.select(grouped,34);w.setAllUnloadGroups(true);assert.deepEqual(w.selectedUnloadedDisplayIds(),[900,902,901]);
+    empty=elements['movement-unload-groups'].querySelectorAll('button').find(button=>button.textContent==='Empty');empty.listeners.click();
+    assert.deepEqual(w.selectedUnloadedDisplayIds(),[]);assert.deepEqual(w.reconciliationPayload().expected_display_ids,[900,901,902]);
+    w.setAllUnloadGroups(true);w.setAllUnloadGroups(false);assert.deepEqual(w.selectedUnloadedDisplayIds(),[]);
+    assert.equal(w.reconciliationPayload().decision,'NOT_EMPTY');
+    const queuedUnload={...queued,unloaded_display_ids:[900,902],reconciliation:undefined};
+    const projected=w.applyQueuedContainerContext(grouped,[queuedUnload],216);
+    assert.deepEqual(projected.groups.map(group=>group.display_ids),[[901]]);
+    w.select({...grouped,reconciliation_allowed:false},34);w.setAllUnloadGroups(true);assert.deepEqual(w.selectedUnloadedDisplayIds(),[]);
+    w.select({...grouped,groups:[groups[0],{...groups[1],bulk_selectable:false}]},34);w.setAllUnloadGroups(true);
+    assert.deepEqual(w.selectedUnloadedDisplayIds(),[900,902]); // Ambiguous/unassigned groups stay review-only.
     console.log('guided decisions PASS');
     '''
     script = harness + source + '(async()=>{' + assertions + '})().catch(e=>{console.error(e);process.exit(1)});'
@@ -145,6 +179,12 @@ def test_reconciliation_api_passes_snapshot_through_governed_command(monkeypatch
     assert app.test_client().post('/api/setup/movements',json=payload).status_code==201
     assert captured['destination_stage_id']==15
     assert captured['movement_action']=='DISPLAY_MOVE'
+    payload.pop('display_placement')
+    payload.update(asset_type='CONTAINER',asset_id=34,movement_action='CONTAINER_MOVE',
+                   unloaded_display_ids=[900],destination_location_note='Observed unload here')
+    assert app.test_client().post('/api/setup/movements',json=payload).status_code==201
+    assert captured['unloaded_display_ids']==[900]
+    assert captured['reconciliation'] is None
 
 
 def test_c095_latest_gps_keeps_prior_named_context_without_history_update():

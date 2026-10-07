@@ -62,6 +62,7 @@
   let pendingStateRow = null;
   let contentsDecision = null;
   let identifyRemaining = false;
+  let unloadedHereDisplayIds = new Set();
   let displayPlacement = null;
   let placementStageId = null;
   let recording = false;
@@ -529,7 +530,8 @@
     }
 
     const evidence = currentLocationEvidence();
-    const decisionReady = pendingIdentity.asset_type !== 'CONTAINER' || Boolean(contentsDecision);
+    const decisionReady = pendingIdentity.asset_type !== 'CONTAINER'
+      || selectedUnloadedDisplayIds().length > 0 || Boolean(contentsDecision);
     recordHere.disabled = recording || !evidence.ready || !decisionReady
       || (needsDisplayPlacement() && (displayPlacement !== 'YES' || !placementStageId))
       || (pendingIdentity.asset_type === 'DISPLAY' && pendingStateRow && pendingStateRow.can_detach === false);
@@ -698,6 +700,12 @@
       context.movement_status = row.movement_action + ' · queued offline';
       context.last_movement_at = row.occurred_at;
     }
+    // The original Stage groups must reflect locally queued detachments too.
+    const remainingIds = new Set((context.displays || []).map(display => Number(display.display_id)));
+    context.groups = (context.groups || []).map(group => {
+      const displays = (group.displays || []).filter(display => remainingIds.has(Number(display.display_id)));
+      return Object.assign({}, group, {displays, display_ids: displays.map(display => Number(display.display_id)), display_count: displays.length});
+    }).filter(group => group.display_count > 0);
     return context;
   }
 
@@ -721,6 +729,7 @@
     selectionGeneration += 1;
     contentsDecision = null;
     identifyRemaining = false;
+    unloadedHereDisplayIds = new Set();
     displayPlacement = null;
     placementStageId = null;
     pendingIdentity = null;
@@ -746,7 +755,93 @@
     return pendingContents && Array.isArray(pendingContents.displays) ? pendingContents.displays : [];
   }
 
+  function selectableUnloadGroups() {
+    if (!pendingContents || !pendingContents.reconciliation_allowed) return [];
+    const attached = new Set(currentDisplays().map(display => Number(display.display_id)));
+    return (pendingContents.groups || []).filter(group => group.bulk_selectable).map(group => {
+      const ids = (group.display_ids || []).map(Number).filter(id => attached.has(id));
+      return Object.assign({}, group, {display_ids: ids,
+        displays: (group.displays || []).filter(display => ids.includes(Number(display.display_id)))});
+    }).filter(group => group.display_ids.length > 0);
+  }
+
+  function selectedUnloadedDisplayIds() {
+    const allowed = new Set(selectableUnloadGroups().flatMap(group => group.display_ids));
+    return Array.from(unloadedHereDisplayIds).filter(id => allowed.has(id));
+  }
+
+  function selectUnloadHere(ids, checked) {
+    ids.forEach(id => checked ? unloadedHereDisplayIds.add(Number(id)) : unloadedHereDisplayIds.delete(Number(id)));
+    // Direct observation and prior-location inference are mutually exclusive.
+    contentsDecision = selectedUnloadedDisplayIds().length ? null : 'NOT_EMPTY';
+    identifyRemaining = false;
+    renderContentsDecision();
+    renderRecordReadiness();
+  }
+
+  function setAllUnloadGroups(checked) {
+    unloadedHereDisplayIds = new Set();
+    selectUnloadHere(selectableUnloadGroups().flatMap(group => group.display_ids), checked);
+  }
+
+  function renderUnloadHere() {
+    if (!pendingContents || !pendingContents.reconciliation_allowed) return;
+    const groups = selectableUnloadGroups();
+    const reviewOnly = (pendingContents.groups || []).filter(group => !group.bulk_selectable);
+    if (!groups.length && !reviewOnly.length) return;
+    const heading = document.createElement('h3');
+    heading.textContent = 'What came off here?';
+    unloadGroups.appendChild(heading);
+    const prompt = document.createElement('p');
+    prompt.textContent = 'Select the Stage groups unloaded at your current confirmed location. Unselected Displays stay with this Container.';
+    unloadGroups.appendChild(prompt);
+    groups.forEach(group => {
+      const label = document.createElement('label');
+      label.className = 'unload-group';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.dataset.displayIds = group.display_ids.join(',');
+      input.checked = group.display_ids.every(id => unloadedHereDisplayIds.has(id));
+      input.addEventListener('change', () => selectUnloadHere(group.display_ids, input.checked));
+      const span = document.createElement('span');
+      span.innerHTML = '<strong>' + escapeHtml(group.label) + '</strong><br>'
+        + group.display_ids.length + ' Display' + (group.display_ids.length === 1 ? '' : 's') + ' came off here<br>'
+        + group.displays.map(display => escapeHtml(display.display_name)).join('<br>');
+      label.appendChild(input);
+      label.appendChild(span);
+      unloadGroups.appendChild(label);
+    });
+    if (groups.length) {
+      const actions = document.createElement('div');
+      actions.className = 'group-actions';
+      [['All remaining groups', true], ['None came off', false]].forEach(([text, checked]) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = text;
+        button.addEventListener('click', () => setAllUnloadGroups(checked));
+        actions.appendChild(button);
+      });
+      unloadGroups.appendChild(actions);
+    }
+    reviewOnly.forEach(group => {
+      const warning = document.createElement('p');
+      warning.className = 'group-warning';
+      warning.textContent = group.label + ': ' + (group.displays || []).map(display => display.display_name).join(', ');
+      unloadGroups.appendChild(warning);
+    });
+  }
+
+  function directUnloadReview(ids) {
+    const removed = currentDisplays().filter(display => ids.includes(Number(display.display_id)));
+    const remaining = currentDisplays().filter(display => !ids.includes(Number(display.display_id)));
+    return 'Observed unload HERE: ' + currentLocationEvidence().label + '\n'
+      + removed.map(display => display.display_name).join('\n')
+      + '\n\nStill on Container:\n' + (remaining.length ? remaining.map(display => display.display_name).join('\n') : 'None — empty after this unload')
+      + '\n\nRecord these Displays at the current location?';
+  }
+
   function reconciliationPayload() {
+    if (selectedUnloadedDisplayIds().length) throw new Error('Review the selected unload at the current location, or clear it before reconciling earlier unloads.');
     if (!contentsDecision) throw new Error('Choose Empty, Not Empty, or Not Sure first.');
     const result = {decision: contentsDecision, identify_remaining: identifyRemaining};
     if (contentsDecision === 'EMPTY' || identifyRemaining) {
@@ -779,6 +874,10 @@
   function renderContentsDecision() {
     unloadGroups.innerHTML = '';
     if (!pendingIdentity || pendingIdentity.asset_type !== 'CONTAINER') return;
+    renderUnloadHere();
+    const earlier = document.createElement('h3');
+    earlier.textContent = 'Missed an earlier unload? Review contents';
+    unloadGroups.appendChild(earlier);
     const intro = document.createElement('p');
     intro.textContent = 'Prior last-known location: ' + priorLocationText();
     unloadGroups.appendChild(intro);
@@ -794,6 +893,7 @@
       button.setAttribute('aria-pressed', String(contentsDecision === value));
       button.disabled = value === 'EMPTY' && (!pendingContents || !pendingContents.reconciliation_allowed);
       button.addEventListener('click', () => {
+        unloadedHereDisplayIds = new Set();
         contentsDecision = value;
         identifyRemaining = false;
         renderContentsDecision();
@@ -806,6 +906,7 @@
     if (!pendingContents) explanation.textContent = 'Contents context unavailable. Record location only; reconnect and rescan for reconciliation or Return Empty.';
     else if (pendingContents.queue_conflict) explanation.textContent = 'An earlier offline reconciliation failed. Reconnect and review it before changing contents or returning this Container.';
     else if (!pendingContents.reconciliation_allowed) explanation.textContent = 'This Standalone / singular Display-Pallet is one physical object. Its Display stays with it. Record the Container location only.';
+    else if (selectedUnloadedDisplayIds().length) explanation.textContent = 'Selected Stage groups will unload at the current location. Choosing a contents answer switches to reconciliation at the prior location.';
     else if (contentsDecision === 'EMPTY') explanation.textContent = currentDisplays().length + ' Displays will stop following this Container. Their unload location is inferred from the prior observation, never this new scan or Workshop Home.';
     else if (contentsDecision === 'NOT_SURE') explanation.textContent = 'Location only. Displays keep following this Container; contents need later review.';
     else explanation.textContent = 'No Displays change until you identify what remains and review the result.';
@@ -1009,6 +1110,7 @@
     const generation = ++selectionGeneration;
     contentsDecision = null;
     identifyRemaining = false;
+    unloadedHereDisplayIds = new Set();
     displayPlacement = null;
     placementStageId = null;
     pendingIdentity = identity;
@@ -1077,7 +1179,11 @@
       return;
     }
 
-    const unloaded = [];
+    const unloaded = identity.asset_type === 'CONTAINER' ? selectedUnloadedDisplayIds() : [];
+    if (returningHome && unloaded.length) {
+      setFeedback('blocked', 'Record the observed unload here first, then confirm Empty for Return Empty.');
+      return;
+    }
     const payload = movementPayload(identity, action, pendingCaptureMethod, unloaded);
     if (needsDisplayPlacement()) {
       const stage = placementStages().find(row => Number(row.stage_id) === placementStageId);
@@ -1089,16 +1195,21 @@
           + payload.destination_location_note + '\n\nDetach only this Display from its Container and record here?')) return;
     }
     if (identity.asset_type === 'CONTAINER') {
-      try {
-        payload.reconciliation = reconciliationPayload();
-        if (returningHome && payload.reconciliation.decision !== 'EMPTY') throw new Error('Confirm Empty before Return Empty.');
-      } catch (error) {
-        setFeedback('blocked', error.message);
-        return;
+      if (unloaded.length) {
+        payload.notes = [payload.notes, 'direct_container_unload=true'].filter(Boolean).join('; ');
+        if (!window.confirm(directUnloadReview(unloaded))) return;
+      } else {
+        try {
+          payload.reconciliation = reconciliationPayload();
+          if (returningHome && payload.reconciliation.decision !== 'EMPTY') throw new Error('Confirm Empty before Return Empty.');
+        } catch (error) {
+          setFeedback('blocked', error.message);
+          return;
+        }
+        const destination = returningHome ? 'Return Empty to ' + pendingContents.home_location_code + ' (no GPS needed)'
+          : 'Record where Container is NOW: ' + currentLocationEvidence().label;
+        if (!window.confirm(destination + '\n\n' + contentsReview(payload.reconciliation) + '\n\nRecord this reconciliation?')) return;
       }
-      const destination = returningHome ? 'Return Empty to ' + pendingContents.home_location_code + ' (no GPS needed)'
-        : 'Record where Container is NOW: ' + currentLocationEvidence().label;
-      if (!window.confirm(destination + '\n\n' + contentsReview(payload.reconciliation) + '\n\nRecord this reconciliation?')) return;
     }
 
     if (trainingMode) {
@@ -1146,7 +1257,8 @@
         const gps = currentGpsSnapshot();
         let message = identity.identity + ' — LOCATION RECORDED';
         if (payload.display_placement) message += ' · ONLY THIS DISPLAY DETACHED';
-        if (unloadCount) message += ' · ' + unloadCount + ' Display' + (unloadCount === 1 ? '' : 's') + ' reconciled at prior location';
+        if (unloadCount) message += ' · ' + unloadCount + ' Display' + (unloadCount === 1 ? '' : 's')
+          + (payload.reconciliation ? ' reconciled at prior location' : ' unloaded here');
         if (gps) message += ' · GPS ±' + Math.round(Number(gps.accuracy_m || 0) * 3.280839895) + ' ft';
         setFeedback('success', message);
       }

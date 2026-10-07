@@ -7,7 +7,7 @@
 | Reviewed | 2026-10-07 |
 | Baseline main | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
 | Branch | `fix/88-container-contents-reconciliation` |
-| Release | `V0.3.43-container-reconciliation` |
+| Release | `V0.3.44-container-unload-reconciliation` |
 | Exact application candidate | `f9748464247ba668a5592cba3fb951d2e7bc4b32` |
 | Migration | `070_reconcile_setup_container_contents.sql` — functions only |
 | Preview allocation | Setup `8898` |
@@ -39,8 +39,19 @@ same transaction. Failure rolls the entire operation back. Existing Home and
 
 ## Resulting workflow
 
-Record Location asks each selected Container **Empty / Not Empty / Not Sure**.
+Record Location preserves **What came off here?** Stage-group unloading and adds
+**Empty / Not Empty / Not Sure** for missed-unload reconciliation.
 Pick Mode retains its separately accepted immediate PICKED interaction.
+
+- **Observed unload here:** select one or more existing Stage groups, **All
+  remaining groups**, or **None came off**. Group labels and Display Names remain
+  visible. Selected Displays detach at the current confirmed location using the
+  original grouped-unload command. Unselected Displays keep following the Container.
+  No prior-location inference applies to an unload observed here.
+- Current-unload selection and prior-location reconciliation are mutually
+  exclusive. Choosing a contents answer clears the current-unload selection;
+  selecting a Stage group clears the inferred-reconciliation choice. Final review
+  names every affected Display and identifies the actual location basis.
 
 - **Empty:** all active Displays still WITH_CONTAINER are reconciled as detached.
 - **Not Empty:** location only until the operator chooses “I can identify what
@@ -104,6 +115,8 @@ A dependent return carries its predecessor's client UUID; replay resolves the
 committed predecessor to the server event ID and still validates attached IDs.
 Older queued observations drain before new observations. Failed/conflicting
 replay stays in the queue and blocks dependent reconciliation for review.
+Queued direct unloads also remove Displays from cached Stage groups, preserving
+the same selection rules for the next offline scan.
 With no cached contents, Not Sure/location-only remains available; Empty/Return
 Empty cannot guess the contents. Training still performs no writes or queueing.
 
@@ -129,6 +142,11 @@ Empty cannot guess the contents. Training still performs no writes or queueing.
   explicit actual Stage without GPS, cancelled final review, one-Display payload,
   protected objects and the queued Display overlay. API tests reject No / Not Sure
   writes and Yes without an actual Stage.
+- C034-style Stage-group regression tests exercise immediately visible groups,
+  multiple Display Names per group, all/none, current-location payloads, cancellation,
+  exclusion of ambiguous groups, protected objects, switching to prior-location
+  reconciliation, and queued group projection. Actual PostgreSQL movement checks
+  prove observed group unloads retain current GPS/names after later Container moves.
 - C095-style continuity is exercised through the real installed Production API
   chain, including latest PICKED with older location evidence.
 
@@ -200,27 +218,42 @@ Verification after this correction: full Linux suite with Node **753 passed**;
 local dependency-absence simulation without Node or fcntl **708 passed, 2 skipped**.
 Actual Windows retry and current-clone/browser acceptance remain pending.
 
+### Operator review regression — C034
+
+Greg opened the f9748464 browser candidate and rejected the missing accepted
+Stage-group unload controls when scanning Container 34. The earlier candidate had
+replaced the original **What came off here?** workflow with missed-unload
+reconciliation; this was a regression, not an accepted workflow change.
+V0.3.44 restores that observed-unload path alongside prior-location reconciliation.
+The event model, migration 070 and permanent assignments are unchanged. Previous
+browser disposition does not accept the new candidate; start a fresh review.
+
 Review these cases:
 
-1. C030 or another already-empty Container: Empty -> Return Empty to the named
+1. C034 or another multi-Stage Container: **What came off here?** must immediately
+   expose the existing Stage groups and Display Names. Select one group, cancel
+   review once, then record at a current park reference. Selected Displays use that
+   current location; other groups stay attached. Verify all/none controls and a
+   later Container move. Then verify the separate missed-unload contents choices.
+2. C030 or another already-empty Container: Empty -> Return Empty to the named
    Home Location, GPS off; detached Displays must keep their park evidence.
-2. C216 or another mixed Container: Not Empty -> identify remaining names;
+3. C216 or another mixed Container: Not Empty -> identify remaining names;
    uncheck one known removed Display; review must name the complement and prior
    location. After record, move Container again and verify that Display stays put.
-3. Empty with Displays still attached: all reconcile at the *prior* observation,
+4. Empty with Displays still attached: all reconcile at the *prior* observation,
    including a return initiated at Workshop without GPS.
-4. Not Sure / cannot identify: no detach; event indicates later contents review.
-5. Standalone C199 and a singular Display Pallet: no Empty/unload path; normal
+5. Not Sure / cannot identify: no detach; event indicates later contents review.
+6. Standalone C199 and a singular Display Pallet: no Empty/unload path; normal
    Container location recording remains available. Multi-Display Pallet unloads
    must remain usable.
-6. C095-style named observation followed by GPS-only: newer GPS/time plus retained
+7. C095-style named observation followed by GPS-only: newer GPS/time plus retained
    earlier named context; accuracy in feet.
-7. No prior location: detach is marked inferred/unresolved, never Home.
-8. Warm offline drop -> empty/partial -> reload -> reconnect: queue survives,
+8. No prior location: detach is marked inferred/unresolved, never Home.
+9. Warm offline drop -> empty/partial -> reload -> reconnect: queue survives,
    predecessor order is retained and each command applies exactly once. Changing
    server contents before replay must leave a visible conflict for review.
-9. Review cancellation and repeated rapid scan/Record input: no unintended writes.
-10. Scan an attached Display such as CH-PeaceOnEarth: No / Not Sure records
+10. Review cancellation and repeated rapid scan/Record input: no unintended writes.
+11. Scan an attached Display such as CH-PeaceOnEarth: No / Not Sure records
     nothing. Yes without actual Stage confirmation cannot record. Confirm the
     actual Stage (assigned or nearest/manual), cancel once, then confirm and record.
     Only that Display detaches. Move its Container and verify the Display remains
