@@ -471,7 +471,7 @@ Existing API rows already include effective `current_movement_status`; the rende
 discarded that distinction whenever location kind was UNRESOLVED_FIELD. That kind
 means there is movement/state evidence without usable named/GPS location; it does
 not prove a named location was captured, a Pick occurred, or Home is the current place.
-The actual statuses/history of Containers 15/60 have not yet been supplied.
+Greg subsequently supplied the read-only probe results, recorded below.
 
 Latest exact candidate `6e4cc77eed51559554a528ab1c8ab1ec7e04ba92` replaces the vague
 wording with the recorded movement label, such as `Picked — current location not recorded`,
@@ -503,6 +503,35 @@ the updated current handoff above for exact 6e4cc77. The new candidate is not de
 current live remains cb053802. Keep PR #308 draft and #175/DBG-2026-001 open until
 the ambiguity is resolved, exact-candidate browser acceptance and subsequent main
 integration/new pinned deployment are complete. #88 still owns unload-workflow changes.
+
+## 2026-10-07 Elf Choir read-only results — recorded Pick confirmed
+
+Greg supplied both DBeaver result sets from the complete status probe. Times below
+are America/Chicago on **2026-10-06**; these are recorded actions, not live tracking.
+
+| Asset | Latest effective record | Recorded source/location | Interpretation |
+|---|---|---|---|
+| Container 15 — Elf Choir and Note panels | PICKED at 10:36:00.909; session Pick flag true | Pick source RA03-A-01; no current Stage/note/GPS | Pick recorded; current location not recorded |
+| Container 60 — Elf Choir Kit includes spacers | PICKED at 10:38:21.392; session Pick flag true | Pick source RC05-B-01; no current Stage/note/GPS | Pick recorded; current location not recorded |
+| Container 122 — EC/GG Scaffold | CONTAINER_MOVE at 11:58:32.321; session Pick flag true | GPS 43.777833, -87.743384 | Container has its own later movement observation |
+| Display 525 — EC-Scaffold | DETACHED / TASK_UNLOAD at 11:52:25.636 | GPS 43.779476, -87.746089 | Retain this Display's unloading location after Container 122 moves |
+| All 41 returned Container 15 Display rows | WITH_CONTAINER / PICKED at 10:36:00.909 | Same recorded Pick source RA03-A-01; no GPS/note | Inherit the Container's recorded state; no recorded detach in these rows |
+
+The Elf Choir ambiguity is confirmed as a presentation defect: the latest state
+already says PICKED, but the prior renderer omitted it. No recorded current destination
+is present in these state/event results for Containers 15 and 60. Do not claim either
+is still at Home or infer its present physical whereabouts. The new renderer will show
+`Picked — current location not recorded`, with Home retained as a separate reference.
+Source RA03-A-01/RC05-B-01 is recorded in the Pick event, not inferred from today's Home.
+
+No database repair or movement write is indicated by these results. The current
+candidate `6e4cc77eed51559554a528ab1c8ab1ec7e04ba92` already handles these confirmed
+PICKED cases; no new application SHA or repeat engineering regression is needed.
+Updated exact-candidate browser review remains pending. Finish the current preview
+with ENTER/CLEAN EXIT, pull the same updated branch and use the 6e4cc77 handoff above
+on 8898. Verify Church stays compact and the Elf Choir rows show Picked explicitly.
+Retain separate Display 525 vs Container 122 locations. Merge to main only after review,
+then prepare/run the new pinned source-only installer under the owning runbook.
 
 ## Local worktree disposition
 
