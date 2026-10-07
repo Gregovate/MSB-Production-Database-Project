@@ -8,7 +8,7 @@
 | Baseline main | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
 | Branch | `fix/88-container-contents-reconciliation` |
 | Release | `V0.3.44-container-unload-reconciliation` |
-| Exact application candidate | `f9748464247ba668a5592cba3fb951d2e7bc4b32` |
+| Exact application candidate | `884c885948563012050142a60b6a6c886e06d178` |
 | Migration | `070_reconcile_setup_container_contents.sql` — functions only |
 | Preview allocation | Setup `8898` |
 
@@ -186,7 +186,7 @@ do not change that application identity.
     if (Test-Path $Review) { throw 'STOP: inspect the existing review worktree; do not overwrite it.' }
     Invoke-Git88 -C $Primary worktree add -b fix/88-container-contents-reconciliation $Review origin/fix/88-container-contents-reconciliation
     Set-Location $Review
-    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha 'f9748464247ba668a5592cba3fb951d2e7bc4b32'
+    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha '884c885948563012050142a60b6a6c886e06d178'
 }
 ```
 
