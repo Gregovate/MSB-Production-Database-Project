@@ -9,7 +9,9 @@ $ErrorActionPreference = 'Stop'
 $targetRef = 'fix/88-container-contents-reconciliation'
 $migrations = @('Setup/Database/070_reconcile_setup_container_contents.sql')
 $validations = @('Setup/Acceptance/setup_88_contents_reconciliation_disposable_validation.sql')
-& python -m pytest -q -p no:cacheprovider Setup/Application Setup/Acceptance
+# Windows runs the full application suite. Setup/Acceptance also contains Linux
+# deployment-tool tests (fcntl/systemd); those are a separate Linux engineering gate.
+& python -m pytest -q -p no:cacheprovider Setup/Application
 if ($LASTEXITCODE -ne 0) { throw 'STOP: Setup Application regression failed.' }
 & "$PSScriptRoot/run_setup_disposable_acceptance.ps1" -Server $Server `
     -CandidateSha $CandidateSha -TargetRef $targetRef -MigrationPaths $migrations `

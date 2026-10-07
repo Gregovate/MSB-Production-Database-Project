@@ -172,13 +172,21 @@ do not change that application identity.
 }
 ```
 
-The wrapper runs full Windows Setup/Application and Setup/Acceptance regression, then reusable
+The wrapper runs the full Windows Setup/Application regression, then reusable
 current-Production-clone acceptance with migration 070 and
 `setup_88_contents_reconciliation_disposable_validation.sql`, then launches a
 fresh exact-candidate browser clone. All writes are clone-only. Normal Production
 activity remains online, with explicit concurrent-write mode. Open
 `http://127.0.0.1:8898/record-location/?season_year=2026` only after **BROWSER REVIEW
 READY**; use normal mode inside the disposable clone to verify actual persistence.
+
+Windows launcher correction: the first operator attempt stopped during local
+pytest collection because Linux deployment-tool tests in Setup/Acceptance import
+`fcntl`. Greg reports this is the second occurrence of this Windows/Linux
+test-scope mistake. The launcher now runs Setup/Application on Windows; the full combined
+753-test Linux engineering gate remains separately verified. No server contact
+occurred before that collection stop. The application candidate SHA and migration
+remain unchanged; only the acceptance tooling/documentation advance.
 
 Review these cases:
 
