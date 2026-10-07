@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | LOCAL REGRESSION PASS — disposable/browser acceptance pending |
+| Status | CURRENT LOCATION OPERATOR PASS — cleanup/source-only deployment pending |
 | Reviewed | 2026-10-06 |
 | Owner | #175, commanding #122 / DBG-2026-001; #88 movement dependency |
 | Baseline main | `5109fff5145122525c7ea9ae5d2bc0ff5d6b994a` |
@@ -144,6 +144,30 @@ combined exact candidate remains pending; no #175 Production deployment or merge
 End the existing preview with ENTER and wait for CLEAN EXIT before running the
 updated command below. Keep port 8898. Closing the browser alone does not clean up
 the remote preview; network loss can preserve it for reconnect.
+
+## Operator acceptance — 2026-10-07
+
+Greg confirms the requested Current Location behavior is now working. Screenshot
+`image(20261007-100206).png` shows Mt. Crumpit Displays 2/3/4 near 07-Whoville-WV
+at 51/50/47 ft, standalone pipes 1132/1133/1134 at 39 ft, with compact GPS controls
+and Home references where present. Many additional Containers moved on Oct 6.
+Earlier Church/Cross evidence is retained above. **Current Location operator PASS.**
+
+Record Location's unload-checkbox confusion remains tracked under #88. Select
+only Displays/groups physically removed here; unselected groups remain WITH_CONTAINER
+and follow later Container movements. This candidate changes no unload/history semantics.
+
+Preview CLEAN EXIT/report evidence is still pending. GPS expansion and Print Task
+were requested but no separate evidence was supplied; no completed check is inferred.
+No #175 merge or Production installation is claimed.
+
+The governing source-only runbook was retrieved/read again on Oct 7. Runtime docs
+still carry the older Oct 4 V0.3.38 pin; PR #306's record lacks execution evidence.
+Before freezing the expected-old installer pin, retrieve current live Setup HEAD/health
+and shared checkout HEAD using a read-only command from local PowerShell. The approved
+application target remains `cb0538022ed066ff90675e832daa1cd95488114a`.
+Installer preparation and separate Production authorization follow confirmed baseline
+and cleanup. Do not reuse the historical migration-bearing #175/#132 installer.
 
 ## Governed disposable review
 
