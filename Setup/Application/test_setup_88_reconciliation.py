@@ -1,6 +1,7 @@
 """Executable regression for guided contents decisions and installed projections."""
 from pathlib import Path
 import subprocess
+import shutil
 import json
 import pytest
 
@@ -8,7 +9,12 @@ APP = Path(__file__).parent
 
 
 def test_actual_record_location_decisions_review_and_payload():
-    source = (APP / 'setup_record_location.js').read_text()
+    # Match the existing renderer tests: Node is an engineering dependency,
+    # optional on the Windows browser-review workstation.
+    node = shutil.which('node')
+    if node is None:
+        pytest.skip('Node unavailable; run the guided workflow check on the engineering workstation')
+    source = (APP / 'setup_record_location.js').read_text(encoding='utf-8')
     exports = '''globalThis.workflow = {
       renderContentsDecision, reconciliationPayload, contentsReview, priorLocationText,
       movementPayload, recordPending, renderRecordReadiness, applyQueuedContainerContext,
@@ -101,7 +107,8 @@ def test_actual_record_location_decisions_review_and_payload():
     console.log('guided decisions PASS');
     '''
     script = harness + source + '(async()=>{' + assertions + '})().catch(e=>{console.error(e);process.exit(1)});'
-    result = subprocess.run(['node', '-e', script], text=True, capture_output=True)
+    # stdin avoids Windows' command-line size limit for the embedded application.
+    result = subprocess.run([node, '-'], input=script, encoding='utf-8', capture_output=True)
     assert result.returncode == 0, result.stdout + result.stderr
 
 

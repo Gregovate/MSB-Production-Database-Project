@@ -185,8 +185,20 @@ pytest collection because Linux deployment-tool tests in Setup/Acceptance import
 `fcntl`. Greg reports this is the second occurrence of this Windows/Linux
 test-scope mistake. The launcher now runs Setup/Application on Windows; the full combined
 753-test Linux engineering gate remains separately verified. No server contact
-occurred before that collection stop. The application candidate SHA and migration
-remain unchanged; only the acceptance tooling/documentation advance.
+occurred before that collection stop. That launcher-only correction left the
+application candidate and migration unchanged.
+
+The next Windows attempt passed 708 tests, skipped one existing Node renderer
+check, and failed when the new guided-workflow test tried to start missing Node.
+The new harness now follows the existing optional-Node convention and sends UTF-8
+JavaScript through stdin to avoid Windows command-line length and encoding limits.
+The exact review SHA advances to include this test correction, because the server
+also runs tests from the pinned candidate. Runtime application files and migration
+070 are unchanged. Missing-Node checks are skips, never claimed as executed passes;
+the engineering run with Node still executes both checks.
+Verification after this correction: full Linux suite with Node **753 passed**;
+local dependency-absence simulation without Node or fcntl **708 passed, 2 skipped**.
+Actual Windows retry and current-clone/browser acceptance remain pending.
 
 Review these cases:
 
