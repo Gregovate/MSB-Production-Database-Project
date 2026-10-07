@@ -20,6 +20,13 @@ with pinned server runner `setup_305_source_only_deploy.py`; it enforces clean m
 main, the confirmed V0.3.40 live baseline, stopped preview, exact V0.3.42 target,
 read-only movement preservation and source rollback. No migration.
 
+The 2026-10-07 first install rolled back after focused tests shared Production's
+process-global repository installers with a base-projection SQLite fixture.
+The corrected runner launches that location test file separately, retains every
+focused test, and proves the identical focused groups in the candidate worktree
+before live mutation. [The acceptance record](Setup_175_Current_Location_Candidate.md#2026-10-07-failed-install-and-tooling-recovery)
+retains the report, rollback evidence and corrected verification.
+
 ## Required lifecycle
 
 For database-affecting Setup work, use the same sequence every time:

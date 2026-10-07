@@ -53,6 +53,44 @@ def test_success_pins_only_setup_and_retains_evidence(tmp_path):
     assert '"operator_production_check": "PENDING"' in (tmp_path / 'result.json').read_text()
 
 
+def test_focused_groups_are_isolated_and_proved_before_live_checkout(tmp_path):
+    obj = installer(tmp_path)
+    obj.deploy()
+    # Each regression call launches a fresh interpreter. Every focused test is
+    # retained, and both identical groups run on the candidate before mutation.
+    assert m.LOCATION_TEST not in m.FOCUSED
+    regressions = [c for c in obj.calls if c[0] == 'regression']
+    assert regressions == [
+        ('regression', obj.candidate, ['Setup/Application']),
+        ('regression', obj.candidate, m.FOCUSED),
+        ('regression', obj.candidate, [m.LOCATION_TEST]),
+        ('regression', m.LIVE, m.FOCUSED),
+        ('regression', m.LIVE, [m.LOCATION_TEST]),
+    ]
+    checkout = obj.calls.index(('git', m.LIVE, ('checkout', '--detach', m.TARGET)))
+    assert all(obj.calls.index(c) < checkout for c in regressions[:3])
+
+
+def test_isolated_location_failure_stops_before_live_mutation(tmp_path):
+    obj = installer(tmp_path)
+    original = obj.regression
+
+    def regression(root, tests):
+        original(root, tests)
+        if tests == [m.LOCATION_TEST]:
+            raise RuntimeError('location regression failed')
+
+    obj.regression = regression
+    with pytest.raises(RuntimeError, match='location regression failed'):
+        obj.deploy()
+    assert not obj.advanced
+    obj.rollback()
+    obj.cleanup()
+    assert not obj.worktree_created
+    assert not any(c[0] == 'git' and c[2][0] == 'checkout' for c in obj.calls)
+    assert not any(c[0] == 'run' and 'restart' in c[1] for c in obj.calls)
+
+
 def test_live_drift_stops_without_checkout_or_restart(tmp_path):
     obj = installer(tmp_path, drift=True)
     with pytest.raises(RuntimeError, match='Live Setup changed'):

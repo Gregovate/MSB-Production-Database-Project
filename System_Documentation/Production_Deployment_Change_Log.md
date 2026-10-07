@@ -38,6 +38,14 @@ Each deployment entry must record, when applicable:
 
 Documentation-only repository changes that do not alter Production do not require a deployment entry.
 
+## 2026-10-07 — Setup V0.3.42 Current Location attempt — rolled back
+
+- Owning work: [#175](https://github.com/Gregovate/MSB-Production-Database-Project/issues/175), #122 / DBG-2026-001. Application and installer PR [#305](https://github.com/Gregovate/MSB-Production-Database-Project/pull/305) merged to main at `5cbd4cfe156b62c484fe128b43b8119938c6fbef` before deployment.
+- Attempted exact application target: `cb0538022ed066ff90675e832daa1cd95488114a`, `V0.3.42-current-location`. No migration. The target briefly reached live source, but focused regression failed because the test process mixed installed Production repository methods with the base SQLite fixture (`ref.lor_scene` missing in that fixture).
+- Source rollback PASS: live restored to `0caed843bb37e7f1f1400972d8f6eb0b03f202d4`, postgres/ok/`V0.3.40-live-pick-demand`. Only Setup source/service changed; database fingerprint `07f14ba04cee4f17a2611c7b34c33b1e` matched the original. Disposable regression worktree removal completed.
+- Operator-supplied retained report: `/home/msbadmin/setup-deployment-reports/PR305-20261007T103430Z/report.txt`. Subsequent read-only live SHA/health check confirms rollback. **V0.3.42 is not installed or accepted in Production.**
+- [Controlled acceptance/recovery record](../Setup/Acceptance/Setup_175_Current_Location_Candidate.md#2026-10-07-failed-install-and-tooling-recovery) records the corrected test-process grouping and pre-mutation focused checks. A later successful attempt requires its own result and protected-route acceptance; do not treat tooling preparation as installation.
+
 ## 2026-10-04 — Setup footer and maintenance dashboard presentation — PASS
 
 - Current Setup source: PR [#295](https://github.com/Gregovate/MSB-Production-Database-Project/pull/295) merge `9b9d6a431c322f37221c24ef1901439acc063ad7`; version `V0.3.38-setup-day-milestones`; visible footer `Updated 2026-10-04`.
