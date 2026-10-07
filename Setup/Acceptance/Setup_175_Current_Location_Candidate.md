@@ -2,8 +2,8 @@
 
 | Document control | Value |
 |---|---|
-| Status | CURRENT LOCATION OPERATOR PASS — cleanup/source-only deployment pending |
-| Reviewed | 2026-10-06 |
+| Status | CURRENT LOCATION OPERATOR PASS — first install rolled back; corrected source-only deployment pending |
+| Reviewed | 2026-10-07 |
 | Owner | #175, commanding #122 / DBG-2026-001; #88 movement dependency |
 | Baseline main | `5109fff5145122525c7ea9ae5d2bc0ff5d6b994a` |
 | Branch | `fix/175-current-location-evidence` |
@@ -338,6 +338,46 @@ health/fingerprint result and protected-route operator disposition. Add the actu
 to Production Deployment Change Log and reconcile Server Management runtime docs only
 after execution evidence. Close #175/DBG-2026-001 only after accepted installation;
 #88 unload-checkbox feedback remains separate active work.
+
+## 2026-10-07 failed install and tooling recovery
+
+PR #305 merged into main at `5cbd4cfe156b62c484fe128b43b8119938c6fbef`.
+Greg ran the merged installer from his local laptop PowerShell checkout. Retained report:
+`/home/msbadmin/setup-deployment-reports/PR305-20261007T103430Z/report.txt`.
+The target briefly reached live Setup, then focused regression returned
+**8 failed, 198 passed, 1 skipped**. All eight failures were the location test's
+SQLite fixture encountering `no such table: ref.lor_scene` after another test
+imported the Production host and globally installed repository method replacements.
+This is a test-process isolation failure, not evidence of a missing PostgreSQL table.
+Full application regression did not expose this particular grouping/import order.
+
+The documented rollback returned live Setup to
+`0caed843bb37e7f1f1400972d8f6eb0b03f202d4`, restarted only Setup and verified
+postgres/ok/**V0.3.40-live-pick-demand**. Rollback fingerprint
+`07f14ba04cee4f17a2611c7b34c33b1e` matched the original; the report records
+`SOURCE ROLLBACK PASS; database not mutated`. Candidate worktree
+`/tmp/PR305-20261007T103430Z` removal completed without a cleanup failure.
+Greg's subsequent read-only SHA/health check independently confirms the restored baseline.
+V0.3.42 is **not installed or accepted in Production**.
+
+Recovery changes only the installer and its documentation/boundary tests. The accepted
+application target remains `cb0538022ed066ff90675e832daa1cd95488114a`; no application,
+Database, reference data or validation SQL changed. The location test file now runs
+in its own fresh Python process. Its installed-host/API cases continue to use their
+existing child processes. All other approved focused tests remain in the other group;
+none are removed, marked skipped or weakened. Both exact groups also run against the
+candidate before any live checkout, so a focused failure stops before service mutation.
+The same groups repeat on live source after restart under the existing runbook.
+
+Engineering verification reproduced the grouped failure (nine failures with Node
+available; the server skipped that additional renderer test). Corrected focused
+groups: **185 passed + 22 passed**. Full application suite: **705 passed**.
+Acceptance tooling: **43 passed**, including new isolation/order and focused-preflight
+failure tests. These are engineering results, not a claim of another server deployment.
+The governing source-only runbook was retrieved and re-read after failure. A new
+operator attempt must pull the merged recovery tooling first; retain the failed report.
+No database repair or migration is needed. #175/DBG-2026-001 stay open until successful
+installation and protected-route acceptance; #88 retains unload-checkbox follow-up.
 
 ## Local worktree disposition
 

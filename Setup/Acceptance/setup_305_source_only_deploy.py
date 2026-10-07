@@ -28,9 +28,9 @@ FOCUSED = [
     'Setup/Application/test_setup_88_pick_mode_contract.py',
     'Setup/Application/test_setup_next_pass_contract.py',
     'Setup/Application/test_setup_live_pick_demand.py',
-    'Setup/Application/test_setup_175_current_location.py',
     'Setup/Application/test_setup_175_live_perform_work_contract.py',
 ]
+LOCATION_TEST = 'Setup/Application/test_setup_175_current_location.py'
 
 
 def require(condition, message):
@@ -93,6 +93,14 @@ class Installer:
         return self.run(['sudo', '-u', 'fieldwiring', '-H', 'env',
                          'PYTHONDONTWRITEBYTECODE=1', 'bash', '-c', command], timeout=600)
 
+    def focused_regression(self, root):
+        # Production contract tests import the host, whose installers replace
+        # repository methods globally. The base-projection fixture must run in
+        # a fresh process; its installed-host cases already use child processes.
+        # Retain every approved test rather than skipping the location fixture.
+        self.regression(root, FOCUSED)
+        self.regression(root, [LOCATION_TEST])
+
     def rollback(self):
         if self.advanced:
             self.git('checkout', '--detach', EXPECTED_OLD, root=LIVE)
@@ -129,6 +137,8 @@ class Installer:
         self.worktree_created = True
         self.run(['sudo', 'python3', self.candidate + '/Setup/Acceptance/check_setup_ui_update_date.py', '--repository', REPO, '--target', TARGET])
         self.regression(self.candidate, ['Setup/Application'])
+        # Prove the exact post-restart test grouping before any live checkout.
+        self.focused_regression(self.candidate)
         require(self.fingerprint() == self.before, 'Setup data changed during preflight: STOP')
         require(self.git('rev-parse', 'HEAD', root=LIVE) == EXPECTED_OLD and not self.git('status', '--porcelain', root=LIVE), 'Live drift during preflight: STOP')
         self.log.write('Authority: Gregovate/MSB-Server-Management — docs/server/Setup_Source_Only_Application_Deployment_Runbook.md\nProcedure: Controlled Production Mutation\nThis step: advance only /opt/msb-setup to ' + TARGET + '\n')
@@ -139,7 +149,7 @@ class Installer:
         require(self.git('rev-parse', 'HEAD', root=LIVE) == TARGET and not self.git('status', '--porcelain', root=LIVE), 'Deployed identity differs')
         self.run(['sudo', 'systemctl', 'restart', 'msb-setup.service'])
         self.health(VERSION)
-        self.regression(LIVE, FOCUSED)
+        self.focused_regression(LIVE)
         require(self.git('rev-parse', 'HEAD') == SHARED, 'Shared checkout moved')
         require(self.fingerprint() == self.before, 'Setup data changed during deployment: inspect report')
         (self.root / 'result.json').write_text(json.dumps({'result': 'PASS', 'old_setup': EXPECTED_OLD,
