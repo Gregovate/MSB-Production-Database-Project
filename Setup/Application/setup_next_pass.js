@@ -1480,7 +1480,21 @@ function nextLocationText(item) {
     const coordinates = nextRecordedGpsText(item);
     return `Current: GPS ${coordinates || 'observation'}${quality}`;
   }
-  if (item.current_location_kind === 'UNRESOLVED_FIELD') return 'Current: Location recorded — unnamed';
+  if (item.current_location_kind === 'UNRESOLVED_FIELD') {
+    // A Pick or other movement can be recorded without a destination or GPS.
+    // Show that recorded action without implying that Home is the current place.
+    const labels = {
+      PICKED: 'Picked', LOADED: 'Loaded', IN_TRANSIT: 'In transit',
+      DELIVERED: 'Delivered', UNLOADED: 'Unloaded', TASK_UNLOAD: 'Unloaded',
+      STAGED: 'Staged', PLACED: 'Placed', RELOCATED: 'Moved',
+      CONTAINER_MOVE: 'Moved', DISPLAY_MOVE: 'Moved', RETURNED: 'Returned',
+      DISPLAY_REATTACH: 'Reattached to container'
+    };
+    const status = item.current_movement_status;
+    const movement = Object.prototype.hasOwnProperty.call(labels, status)
+      ? labels[status] : 'Movement recorded';
+    return `${movement} — current location not recorded`;
+  }
   return 'Current location not recorded';
 }
 
@@ -1503,7 +1517,8 @@ function nextLocationMarkup(item) {
   const recorded = coordinates
     ? ` <details class="setup-location-details"><summary>GPS</summary><span class="muted">Recorded GPS: ${escapeHtml(coordinates)}${accuracyText}</span></details>`
     : '';
-  const home = item.home_location_code
+  // Home is useful only when a usable recorded GPS location is unavailable.
+  const home = !coordinates && item.home_location_code
     ? `<span class="muted"> · Home: ${escapeHtml(item.home_location_code)}</span>` : '';
   return `<strong>${escapeHtml(nextLocationText(item))}</strong>${recorded}${home}`;
 }

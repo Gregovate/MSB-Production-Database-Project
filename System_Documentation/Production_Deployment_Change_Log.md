@@ -38,12 +38,20 @@ Each deployment entry must record, when applicable:
 
 Documentation-only repository changes that do not alter Production do not require a deployment entry.
 
-## 2026-10-07 — Setup V0.3.42 Current Location attempt — rolled back
+## 2026-10-07 — Setup V0.3.42 Current Location — server install PASS; presentation follow-up
+
+- Deployed application: `cb0538022ed066ff90675e832daa1cd95488114a`, `V0.3.42-current-location`. Compact nearest-waypoint/current-location evidence is visible with expandable recorded GPS; effective Container/Display evidence and accepted live Pick behavior are retained. No migration.
+- Application PR [#305](https://github.com/Gregovate/MSB-Production-Database-Project/pull/305) merged at `5cbd4cfe156b62c484fe128b43b8119938c6fbef`; corrected installer PR [#307](https://github.com/Gregovate/MSB-Production-Database-Project/pull/307) merged at `3ddda03221ae475ffec5399ea4955e9c1e728419` before this installation. Exact installed source is the application candidate, not either merge/tooling SHA.
+- Operator-supplied final result: `PASS: Setup V0.3.42 installed; protected browser check pending`; report `/home/msbadmin/setup-deployment-reports/PR305-20261007T105751Z`. Runner PASS includes source/health/regression/shared-checkout/data-preservation gates and candidate-worktree cleanup. Successful fingerprint literal remains in the retained server report, not supplied here.
+- Prior source/rollback unit: `0caed843bb37e7f1f1400972d8f6eb0b03f202d4` / V0.3.40-live-pick-demand. Only Setup source/service changed. No PostgreSQL rollback archive required for this source-only release.
+- Protected-screen follow-up: Greg's screenshot confirms nearest-waypoint rows but requests removing Home when GPS has data. Presentation candidate `be082fd078f99faae182ffc983f7e8392f98c9eb` is **not deployed**; #175 / #122 DBG-2026-001 remain open. [Detailed installed/review record](../Setup/Acceptance/Setup_175_Current_Location_Candidate.md#2026-10-07-successful-install-and-hide-home-presentation-follow-up). Unload-checkbox clarification remains under #88.
+
+## 2026-10-07 — Setup V0.3.42 Current Location first attempt — rolled back
 
 - Owning work: [#175](https://github.com/Gregovate/MSB-Production-Database-Project/issues/175), #122 / DBG-2026-001. Application and installer PR [#305](https://github.com/Gregovate/MSB-Production-Database-Project/pull/305) merged to main at `5cbd4cfe156b62c484fe128b43b8119938c6fbef` before deployment.
 - Attempted exact application target: `cb0538022ed066ff90675e832daa1cd95488114a`, `V0.3.42-current-location`. No migration. The target briefly reached live source, but focused regression failed because the test process mixed installed Production repository methods with the base SQLite fixture (`ref.lor_scene` missing in that fixture).
 - Source rollback PASS: live restored to `0caed843bb37e7f1f1400972d8f6eb0b03f202d4`, postgres/ok/`V0.3.40-live-pick-demand`. Only Setup source/service changed; database fingerprint `07f14ba04cee4f17a2611c7b34c33b1e` matched the original. Disposable regression worktree removal completed.
-- Operator-supplied retained report: `/home/msbadmin/setup-deployment-reports/PR305-20261007T103430Z/report.txt`. Subsequent read-only live SHA/health check confirms rollback. **V0.3.42 is not installed or accepted in Production.**
+- Operator-supplied retained report: `/home/msbadmin/setup-deployment-reports/PR305-20261007T103430Z/report.txt`. Subsequent read-only live SHA/health check confirms rollback. At the end of this first attempt, V0.3.42 was not installed or accepted in Production; the later successful install is recorded above.
 - [Controlled acceptance/recovery record](../Setup/Acceptance/Setup_175_Current_Location_Candidate.md#2026-10-07-failed-install-and-tooling-recovery) records the corrected test-process grouping and pre-mutation focused checks. A later successful attempt requires its own result and protected-route acceptance; do not treat tooling preparation as installation.
 
 ## 2026-10-04 — Setup footer and maintenance dashboard presentation — PASS
