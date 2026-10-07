@@ -156,6 +156,17 @@ def _source_displays(
                     WHEN ds.position_mode = 'DETACHED' THEN ds.current_location_note
                     ELSE cs.current_location_note
                 END AS current_location_note,
+                CASE WHEN ds.position_mode = 'DETACHED' THEN ds.movement_status
+                     ELSE cs.movement_status END AS current_movement_status,
+                CASE WHEN ds.position_mode = 'DETACHED' THEN ds.last_movement_event_id
+                     ELSE cs.last_movement_event_id END AS current_movement_event_id,
+                me.occurred_at AS current_observed_at,
+                me.gps_latitude AS current_gps_latitude,
+                me.gps_longitude AS current_gps_longitude,
+                me.gps_accuracy_m AS current_gps_accuracy_m,
+                me.gps_fix_age_ms AS current_gps_fix_age_ms,
+                me.gps_quality AS current_gps_quality,
+                me.capture_method AS current_capture_method,
                 c.location_code AS home_location_code
             FROM ref.display AS d
             JOIN ref.display_status AS status
@@ -170,6 +181,13 @@ def _source_displays(
             LEFT JOIN ops.setup_container_state AS cs
               ON cs.setup_session_id = ss.setup_session_id
              AND cs.container_id = d.container_id
+            -- This source set replaces the earlier resolver rows in Production;
+            -- preserve effective movement evidence through assignment filtering.
+            LEFT JOIN ops.setup_movement_event AS me
+              ON me.setup_movement_event_id = CASE
+                  WHEN ds.position_mode = 'DETACHED' THEN ds.last_movement_event_id
+                  ELSE cs.last_movement_event_id END
+             AND me.setup_session_id = ss.setup_session_id
             LEFT JOIN ref.stage AS current_stage
               ON current_stage.stage_id = CASE
                   WHEN ds.position_mode = 'DETACHED' THEN ds.current_stage_id
@@ -181,7 +199,7 @@ def _source_displays(
             """,
             (season_year, display_ids),
         )
-        rows = [dict(row) for row in cur.fetchall()]
+        rows = [self._field_location(dict(row)) for row in cur.fetchall()]
 
     for row in rows:
         source = display_sources[int(row["display_id"])]

@@ -1,5 +1,21 @@
 /* Setup V0.3 browser-review Site-wide/Stage/Scene, planning, crew-lane, and Captain surfaces. */
 
+/* Compact movement evidence; the GPS disclosure expands only on request. */
+.setup-location-details {
+  display: inline;
+}
+
+.setup-location-details > summary {
+  display: inline list-item;
+  margin-left: 0.4rem;
+  cursor: pointer;
+  color: var(--muted, #64748b);
+}
+
+.setup-location-details[open] > span {
+  display: block;
+}
+
 .next-library-tools {
   display: flex;
   flex-wrap: wrap;

@@ -6,9 +6,19 @@ Setup acceptance consumes the runtime/safety rules owned by `Gregovate/MSB-Serve
 
 - `docs/server/PostgreSQL_Disposable_Acceptance_Standard.md`
 - `docs/server/Pre_Production_Browser_Review_Runbook.md`
+- [Application and Test Port Register](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/Application_and_Test_Port_Register.md)
 - `docs/server/Production_Database_Change_Deployment_Runbook.md`
 
 The Production Database repository owns Setup feature migrations, validation SQL, application behavior, and the reusable Setup launchers that consume those server/runtime contracts.
+
+The reopened #175 / DBG-2026-001 Current Location candidate has
+[one acceptance record and review handoff](Setup_175_Current_Location_Candidate.md).
+It uses the existing reusable launchers, no migrations, and the read-only
+`setup_175_current_location_readonly_validation.sql` evidence gate. Operator acceptance
+is recorded. The source-only installer is `run_setup_305_source_only_deploy.ps1`,
+with pinned server runner `setup_305_source_only_deploy.py`; it enforces clean merged
+main, the confirmed V0.3.40 live baseline, stopped preview, exact V0.3.42 target,
+read-only movement preservation and source rollback. No migration.
 
 ## Required lifecycle
 
@@ -103,13 +113,28 @@ Automatic reconnect remains foreground and bounded. It does not use `ssh -N`, `s
 
 This requirement was strengthened after #205 on 2026-09-29 proved that the browser application remained healthy while the workstation SSH/PTTY reset. The old wrapper then lost terminal input and failed cleanup, forcing repeated operator work despite an intact disposable preview.
 
+## Stable Setup review URL
+
+Port allocation is owned by the Server Management
+[Application and Test Port Register](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/Application_and_Test_Port_Register.md).
+Read that register before supplying a review command. Its recorded Setup review
+allocation is **8898**: `http://127.0.0.1:8898/`.
+Pass `-PreviewPort 8898` explicitly and retain the existing local/server
+availability and ownership checks.
+
+Reuse the recorded allocation for sequential reviews. If occupied, identify the
+owner and follow the governed resume/cleanup procedure. A demonstrated need for an
+alternate must be recorded in the server register before launch. An active review
+keeps its configured port until governed cleanup; cancelling the local command does
+not prove remote cleanup.
+
 ## Reusable disposable browser review
 
 After disposable acceptance passes, use:
 
 ```powershell
 .\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
-  -PreviewPort <unused-nonproduction-port> `
+  -PreviewPort 8898 `
   -CandidateSha <same-exact-sha> `
   -TargetRef <same-exact-branch> `
   -ExpectedVersion <candidate-health-version> `

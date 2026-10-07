@@ -38,6 +38,13 @@ Do not ask the operator to reformat ExpertGPS output into latitude/longitude man
 
 The curated Setup reference file is **not** a replacement GIS database. It exists so launch can use known references while preserving provenance and coordinate authority.
 
+Perform Work's #175 Current Location candidate also consumes this exact versioned
+set to describe recorded effective movement coordinates with a nearest waypoint
+name/distance. It preserves the raw observation and confirmed named-location
+precedence. This is derived presentation, not a new Stage assignment, reference
+edit, historical rewrite or claim that the asset is placed at the anchor.
+See [the Current Location contract](../12_Setup_and_Deployment/engineering/Setup_Task_Supporting_Information_Contract_2026-09-11.md#effective-current-location--175--dbg-2026-001).
+
 On 2026-10-03 the operator supplied an ExpertGPS correction/export that:
 
 - moved `15-Church-Bells-CH` to the corrected map position; and
