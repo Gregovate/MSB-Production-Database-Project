@@ -7,12 +7,12 @@ const {PGlite} = await import(process.env.MSB_PGLITE_MODULE || '@electric-sql/pg
 const db = new PGlite();
 let id = 100;
 const uuid = () => '88000000-0000-4000-8000-' + String(++id).padStart(12,'0');
-async function record(container, action, time, note, decision, expected, prior, remaining, gps=[], priorClient=null) {
+async function record(container, action, time, note, decision, expected, prior, remaining, gps=[], priorClient=null, reviewContext=null) {
  const key=uuid();
  const sql=decision ? 'ops.record_setup_container_reconciliation' : 'ops.record_setup_movement_event';
  const params=['fixture@example.org',2026,key,'CONTAINER',container,action,time,null,'fixture@example.org','HID_SCAN',false,
  ...[gps[0]??null,gps[1]??null,gps[2]??null],null,note,null,[],null,null,'UNASSESSED',null];
- if(decision) params.push(JSON.stringify({decision,identify_remaining:remaining!==undefined,expected_display_ids:expected,prior_event_id:prior,remaining_display_ids:remaining,prior_client_event_id:priorClient}));
+ if(decision) params.push(JSON.stringify({decision,identify_remaining:remaining!==undefined,expected_display_ids:expected,prior_event_id:prior,remaining_display_ids:remaining,prior_client_event_id:priorClient,...(reviewContext ? {review_context:reviewContext} : {})}));
  const query=`SELECT * FROM ${sql}(${params.map((_,i)=>'$'+(i+1)).join(',')})`;
  const result=await db.query(query,params);
  return {...result.rows[0],query,params};
@@ -120,5 +120,24 @@ try {
  await record(34,'CONTAINER_MOVE','2026-10-07T17:20:00Z','Next Stage Container drop','NOT_SURE');
  assert.equal((await state(14)).last_movement_event_id,group.setup_movement_event_id);
  assert.equal((await db.query(groupQuery,groupParams)).rows[0].duplicate_event,true);
+ // Consecutive interim stops explicitly confirm the full load; no Display detaches.
+ await db.exec("INSERT INTO ref.container VALUES(225,1,'RC07-A-05','Unchanged interim stops'); INSERT INTO ref.display VALUES(17,225,1,'Still here A'),(18,225,1,'Still here B')");
+ let unchanged=await record(225,'CONTAINER_MOVE','2026-10-07T18:00:00Z','First stop',null);
+ for(let stop=1;stop<=3;stop++) {
+  unchanged=await record(225,'CONTAINER_MOVE',`2026-10-07T18:0${stop}:00Z`,`Interim stop ${stop}`,'NOT_EMPTY',[17,18],unchanged.setup_movement_event_id,[17,18]);
+  assert.equal(unchanged.unloaded_display_count,0);
+  assert.equal(await state(17),undefined);assert.equal(await state(18),undefined);
+  const note=(await db.query('SELECT notes FROM ops.setup_movement_event WHERE setup_movement_event_id=$1',[unchanged.setup_movement_event_id])).rows[0].notes;
+  assert.ok(!note.includes('contents_review_required=true'));
+ }
+ const context={context_available:true,prior_event_id:unchanged.setup_movement_event_id,
+  expected_displays:[{display_id:17,display_name:'Still here A'},{display_id:18,display_name:'Still here B'}],
+  prior_observation:{destination_location_note:'Interim stop 3'}};
+ const uncertain=await record(225,'CONTAINER_MOVE','2026-10-07T18:04:00Z','Uncertain stop','NOT_SURE',[17,18],unchanged.setup_movement_event_id,undefined,[],null,context);
+ const frozenNote=(await db.query('SELECT notes FROM ops.setup_movement_event WHERE setup_movement_event_id=$1',[uncertain.setup_movement_event_id])).rows[0].notes;
+ assert.match(frozenNote,/contents_review_required=true/);assert.match(frozenNote,/Still here B/);assert.match(frozenNote,/Interim stop 3/);
+ const laterPartial=await record(225,'CONTAINER_MOVE','2026-10-07T18:05:00Z','Later stop','NOT_EMPTY',[17,18],uncertain.setup_movement_event_id,[17]);
+ assert.equal(laterPartial.unloaded_display_count,1);assert.equal((await state(18)).current_location_note,'Uncertain stop');
+ assert.equal((await db.query('SELECT notes FROM ops.setup_movement_event WHERE setup_movement_event_id=$1',[uncertain.setup_movement_event_id])).rows[0].notes,frozenNote);
  console.log('SETUP_88_LOCAL_POSTGRES_RECONCILIATION_PASS');
 } finally {await db.close();}

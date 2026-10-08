@@ -65,8 +65,9 @@
   let pendingStateRow = null;
   let contentsDecision = null;
   let identifyRemaining = false;
+  let remainingMode = null;
   let unloadedHereDisplayIds = new Set();
-  let contentsView = 'DROP';
+  let contentsView = 'CONTENTS';
   let remainingDisplayIds = null;
   let remainingSearch = '';
   let reviewing = false;
@@ -538,14 +539,13 @@
     }
 
     const evidence = currentLocationEvidence();
-    const decisionReady = pendingIdentity.asset_type !== 'CONTAINER'
-      || contentsView === 'DROP' || selectedUnloadedDisplayIds().length > 0 || Boolean(contentsDecision);
+    const decisionReady = containerDecisionReady();
     renderSelectionSummary();
     recordHere.disabled = recording || reviewing || !evidence.ready || !decisionReady
       || (needsDisplayPlacement() && (displayPlacement !== 'YES' || !placementStageId))
       || (pendingIdentity.asset_type === 'DISPLAY' && pendingStateRow && pendingStateRow.can_detach === false);
     if (pendingIdentity.asset_type === 'CONTAINER') {
-      returnHome.hidden = contentsView !== 'CONTENTS';
+      returnHome.hidden = protectedContainer() || contentsView !== 'CONTENTS';
       returnHome.disabled = recording || reviewing || contentsDecision !== 'EMPTY' || !pendingContents
         || !pendingContents.reconciliation_allowed || !pendingContents.home_location_code;
     }
@@ -557,6 +557,8 @@
         + '<div class="muted">' + escapeHtml(evidence.detail) + '</div>';
       recordHere.textContent = (trainingMode ? 'Review test' : 'Review and record')
         + ' · ' + pendingIdentity.identity;
+      if (!decisionReady) recordHere.textContent = contentsView === 'UNLOAD'
+        ? 'Select Displays removed here' : 'Confirm Container contents first';
     } else {
       reviewLocation.textContent = evidence.detail;
       recordHere.textContent = 'Choose a location first';
@@ -739,8 +741,9 @@
     selectionGeneration += 1;
     contentsDecision = null;
     identifyRemaining = false;
+    remainingMode = null;
     unloadedHereDisplayIds = new Set();
-    contentsView = 'DROP';
+    contentsView = 'CONTENTS';
     remainingDisplayIds = null;
     remainingSearch = '';
     displayPlacement = null;
@@ -768,6 +771,23 @@
     return pendingContents && Array.isArray(pendingContents.displays) ? pendingContents.displays : [];
   }
 
+  function protectedContainer() {
+    // A failed offline command also disables reconciliation; that is not a
+    // protected physical object and must never bypass the contents question.
+    return Boolean(pendingContents && pendingContents.reconciliation_allowed === false
+      && !pendingContents.queue_conflict);
+  }
+
+  function containerDecisionReady() {
+    if (!pendingIdentity || pendingIdentity.asset_type !== 'CONTAINER') return true;
+    if (protectedContainer()) return true;
+    if (contentsView === 'UNLOAD') return selectedUnloadedDisplayIds().length > 0;
+    if (contentsDecision === 'EMPTY') return Boolean(pendingContents && pendingContents.reconciliation_allowed);
+    if (contentsDecision === 'NOT_SURE') return true;
+    return contentsDecision === 'NOT_EMPTY' && (remainingMode === 'UNKNOWN'
+      || (identifyRemaining && selectedRemainingDisplayIds().length > 0));
+  }
+
   function selectableUnloadGroups() {
     if (!pendingContents || !pendingContents.reconciliation_allowed) return [];
     const attached = new Set(currentDisplays().map(display => Number(display.display_id)));
@@ -791,6 +811,7 @@
     // Direct observation and prior-location inference are mutually exclusive.
     contentsDecision = null;
     identifyRemaining = false;
+    remainingMode = null;
     remainingDisplayIds = null;
     // Do not rebuild rows on a checkbox change: expanded names and focus stay put.
     unloadGroups.querySelectorAll('input[data-display-ids]').forEach(input => {
@@ -822,11 +843,15 @@
   }
 
   function switchContentsView(view) {
-    if (recording || reviewing || !['DROP', 'UNLOAD', 'CONTENTS'].includes(view)) return;
+    // Legacy callers cannot reopen the old location-only shortcut.
+    if (view === 'DROP') view = 'CONTENTS';
+    if (recording || reviewing || !['UNLOAD', 'CONTENTS'].includes(view)) return;
+    if (view === 'UNLOAD' && (!pendingContents || !pendingContents.reconciliation_allowed)) return;
     contentsView = view;
     unloadedHereDisplayIds = new Set();
     contentsDecision = null;
     identifyRemaining = false;
+    remainingMode = null;
     remainingDisplayIds = null;
     remainingSearch = '';
     renderContentsDecision();
@@ -899,11 +924,19 @@
       text.textContent = unloaded.length + ' removed HERE · ' + (count - unloaded.length) + ' staying';
     } else if (identifyRemaining) {
       const remaining = selectedRemainingDisplayIds().length;
-      text.textContent = remaining + ' staying · ' + (count - remaining) + ' removed at PRIOR location';
+      text.textContent = remaining === count
+        ? 'All ' + count + ' last recorded Displays still here · Container moves only'
+        : remaining + ' staying · ' + (count - remaining) + ' removed at PRIOR location';
     } else if (contentsDecision === 'EMPTY') {
       text.textContent = count + ' removed at PRIOR location · Confirmed Empty';
-    } else if (contentsView === 'DROP' || contentsDecision) {
-      text.textContent = 'Location only — Display attachments unchanged';
+    } else if (protectedContainer()) {
+      text.textContent = 'Display stays with its Container · location only';
+    } else if (contentsDecision === 'NOT_SURE' || remainingMode === 'UNKNOWN') {
+      text.textContent = 'Location only · contents flagged for later review';
+    } else if (contentsView === 'CONTENTS') {
+      text.textContent = contentsDecision === 'NOT_EMPTY'
+        ? 'Confirm all still here, identify remaining names, or flag for review'
+        : 'Answer Empty / Not Empty / Not Sure';
     } else {
       text.textContent = 'Select Displays physically removed before recording';
     }
@@ -911,7 +944,7 @@
     const location = document.createElement('div');
     location.className = 'selection-location';
     location.textContent = unloaded.length ? 'HERE: ' + (currentLocationEvidence().label || 'Choose a location')
-      : (contentsDecision === 'EMPTY' || identifyRemaining) ? 'PRIOR: ' + priorLocationText()
+      : (contentsDecision === 'EMPTY' || (identifyRemaining && selectedRemainingDisplayIds().length < count)) ? 'PRIOR: ' + priorLocationText()
       : currentLocationEvidence().label || 'Choose a location';
     selectionSummary.appendChild(location);
     if (unloaded.length) {
@@ -972,6 +1005,23 @@
         throw new Error('Not Empty requires at least one Display Name still present. Otherwise choose Empty.');
       }
     }
+    if (!containerDecisionReady()) throw new Error('Confirm all still here, identify remaining Display Names, or choose Not Sure.');
+    if (contentsDecision === 'NOT_SURE' || remainingMode === 'UNKNOWN') {
+      // Freeze the evidence available at this stop in the existing event notes.
+      // This is review context, not a claim of physical contents or a repair.
+      const prior = pendingContents && pendingContents.prior_location;
+      result.review_context = {
+        context_available: Boolean(pendingContents),
+        prior_event_id: pendingContents && pendingContents.last_movement_event_id || null,
+        prior_client_event_id: pendingContents && pendingContents.prior_client_event_id || null,
+        expected_displays: currentDisplays().map(row => ({display_id: Number(row.display_id), display_name: row.display_name})),
+        prior_observation: prior ? Object.fromEntries([
+          'setup_movement_event_id', 'client_event_id', 'event_type', 'occurred_at', 'received_at',
+          'destination_stage_id', 'destination_location_note', 'named_context', 'named_context_event_id',
+          'gps_latitude', 'gps_longitude', 'gps_accuracy_m', 'gps_fix_at', 'gps_fix_age_ms', 'gps_quality'
+        ].filter(key => prior[key] !== undefined).map(key => [key, prior[key]])) : null
+      };
+    }
     return result;
   }
 
@@ -985,46 +1035,49 @@
     return text + ' · observed ' + prior.occurred_at;
   }
 
+  function chooseRemaining(mode) {
+    if (recording || reviewing || contentsDecision !== 'NOT_EMPTY') return;
+    if (mode !== 'UNKNOWN' && (!pendingContents || !pendingContents.reconciliation_allowed || !currentDisplays().length)) return;
+    remainingMode = mode;
+    identifyRemaining = mode !== 'UNKNOWN';
+    remainingDisplayIds = identifyRemaining ? new Set(currentDisplays().map(row => Number(row.display_id))) : null;
+    remainingSearch = '';
+    renderContentsDecision();
+    renderRecordReadiness();
+  }
+
   function renderContentsDecision() {
     unloadGroups.innerHTML = '';
     if (!pendingIdentity || pendingIdentity.asset_type !== 'CONTAINER') return;
-    const hasGroups = pendingContents && pendingContents.reconciliation_allowed && selectableUnloadGroups().length > 0;
-    const intents = document.createElement('div');
-    intents.className = 'group-actions container-intents';
-    [['DROP', 'Record Container drop — keep Displays attached'],
-      ['UNLOAD', 'Displays physically removed from this Container'],
-      ['CONTENTS', 'Check what is physically on this Container']].forEach(([view, label]) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = label;
-      button.setAttribute('aria-pressed', String(contentsView === view));
-      button.disabled = view === 'UNLOAD' && !hasGroups;
-      button.addEventListener('click', () => switchContentsView(view));
-      intents.appendChild(button);
-    });
-    unloadGroups.appendChild(intents);
     const tracked = document.createElement('p');
     tracked.className = 'muted';
     tracked.textContent = pendingContents
       ? 'Last recorded contents: ' + currentDisplays().length + ' Displays. Physical contents are unconfirmed until checked.'
       : 'Contents context unavailable. Physical contents are unconfirmed.';
-    unloadGroups.appendChild(tracked);
-    if (contentsView === 'DROP') {
+    if (protectedContainer()) {
+      const heading = document.createElement('h3');
+      heading.textContent = 'This Display stays with its Container';
+      unloadGroups.appendChild(heading);
       const explanation = document.createElement('p');
-      explanation.textContent = 'Record where the Container is now. Its Display attachments stay unchanged, including when the loaded Container is taken off a truck.';
+      explanation.textContent = 'Standalone / single-Display Pallet: record where this physical object stopped. Its Display is not emptied or removed from the Container.';
       unloadGroups.appendChild(explanation);
+      if (pendingContents.detached_display_count) {
+        const warning = document.createElement('p');
+        warning.textContent = 'An earlier record shows its Display detached. This needs a historical contents review; this scan records location only.';
+        unloadGroups.appendChild(warning);
+      }
       return;
     }
     if (contentsView === 'UNLOAD') {
+      const back = document.createElement('button');
+      back.type = 'button';
+      back.textContent = 'Back to contents question';
+      back.addEventListener('click', () => switchContentsView('CONTENTS'));
+      unloadGroups.appendChild(back);
+      unloadGroups.appendChild(tracked);
       renderUnloadHere();
       return;
     }
-    const earlier = document.createElement('h3');
-    earlier.textContent = 'Confirm physical contents / missed earlier removal';
-    unloadGroups.appendChild(earlier);
-    const intro = document.createElement('p');
-    intro.textContent = 'Prior last-known location: ' + priorLocationText();
-    unloadGroups.appendChild(intro);
     const heading = document.createElement('h3');
     heading.textContent = 'Is this Container empty?';
     unloadGroups.appendChild(heading);
@@ -1037,9 +1090,11 @@
       button.setAttribute('aria-pressed', String(contentsDecision === value));
       button.disabled = value === 'EMPTY' && (!pendingContents || !pendingContents.reconciliation_allowed);
       button.addEventListener('click', () => {
+        if (recording || reviewing || button.disabled) return;
         unloadedHereDisplayIds = new Set();
         contentsDecision = value;
         identifyRemaining = false;
+        remainingMode = null;
         remainingDisplayIds = null;
         remainingSearch = '';
         renderContentsDecision();
@@ -1048,50 +1103,62 @@
       choices.appendChild(button);
     });
     unloadGroups.appendChild(choices);
+    unloadGroups.appendChild(tracked);
     const explanation = document.createElement('p');
-    if (!pendingContents) explanation.textContent = 'Contents context unavailable. Record location only; reconnect and rescan for reconciliation or Return Empty.';
+    if (!pendingContents) explanation.textContent = 'No cached contents. Not Sure records location and flags review; reconnect before changing Display attachments or returning Empty.';
     else if (pendingContents.queue_conflict) explanation.textContent = 'An earlier offline reconciliation failed. Reconnect and review it before changing contents or returning this Container.';
-    else if (!pendingContents.reconciliation_allowed) explanation.textContent = 'This Standalone / singular Display-Pallet is one physical object. Its Display stays with it. Record the Container location only.';
-    else if (selectedUnloadedDisplayIds().length) explanation.textContent = 'Selected Stage groups were removed at the current location. Contents reconciliation uses the prior location.';
-    else if (contentsDecision === 'EMPTY') explanation.textContent = currentDisplays().length + ' Displays will stop following this Container. Their removal location is inferred from the prior observation, never this new scan or Workshop Home.';
-    else if (contentsDecision === 'NOT_SURE') explanation.textContent = 'Location only. Displays keep following this Container; contents need later review.';
-    else explanation.textContent = 'No Displays change until you identify what remains and review the result.';
+    else if (contentsDecision === 'EMPTY') explanation.textContent = currentDisplays().length + ' last recorded Displays will stop following this Container. Their removal location is inferred from the prior observation: ' + priorLocationText();
+    else if (contentsDecision === 'NOT_SURE' || remainingMode === 'UNKNOWN') explanation.textContent = 'Record location only and flag contents for later review. No Display attachment changes are guessed.';
+    else if (remainingMode === 'ALL') explanation.textContent = 'All last recorded Displays confirmed still here. They follow this Container to its new stop; nothing is removed.';
+    else explanation.textContent = 'A loaded Container can stop here without any Displays being removed. Taking it off a truck is a Container drop, not Display removal.';
     unloadGroups.appendChild(explanation);
-    if (contentsDecision !== 'NOT_EMPTY' || !pendingContents || !pendingContents.reconciliation_allowed) return;
-    const identify = document.createElement('button');
-    identify.type = 'button';
-    identify.textContent = identifyRemaining ? 'I cannot identify what remains — location only' : 'I can identify what remains';
-    identify.addEventListener('click', () => {
-      identifyRemaining = !identifyRemaining;
-      remainingDisplayIds = identifyRemaining ? new Set(currentDisplays().map(row => Number(row.display_id))) : null;
-      remainingSearch = '';
-      renderContentsDecision();
-      renderRecordReadiness();
-    });
-    unloadGroups.appendChild(identify);
-    if (!identifyRemaining) return;
-    const prompt = document.createElement('p');
-    prompt.textContent = 'Which Display Names are STILL on this Container? Checked names stay with it. Unchecked names were removed at the prior last-known location.';
-    unloadGroups.appendChild(prompt);
-    if (!remainingDisplayIds) remainingDisplayIds = new Set(currentDisplays().map(row => Number(row.display_id)));
-    const searchLabel = document.createElement('label');
-    searchLabel.className = 'remaining-search';
-    searchLabel.textContent = 'Find a Display Name';
-    const search = document.createElement('input');
-    search.type = 'search';
-    search.placeholder = 'Search names — selections stay checked';
-    search.value = remainingSearch;
-    const list = document.createElement('div');
-    search.addEventListener('focus', () => pauseScannerForTyping('searching Display Names'));
-    search.addEventListener('input', () => {
-      remainingSearch = search.value;
-      renderRemainingList(list);
-    });
-    search.addEventListener('blur', restoreScannerCapture);
-    searchLabel.appendChild(search);
-    unloadGroups.appendChild(searchLabel);
-    unloadGroups.appendChild(list);
-    renderRemainingList(list);
+    if (contentsDecision === 'NOT_EMPTY') {
+      const remainingChoices = document.createElement('div');
+      remainingChoices.className = 'group-actions remaining-choices';
+      [['ALL', 'All last recorded Displays are still here'],
+        ['SELECT', 'Fewer remain — select Display Names'],
+        ['UNKNOWN', 'Cannot identify what remains — flag review']].forEach(([mode, label]) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = label;
+        button.setAttribute('aria-pressed', String(remainingMode === mode));
+        button.disabled = mode !== 'UNKNOWN' && (!pendingContents || !pendingContents.reconciliation_allowed || !currentDisplays().length);
+        button.addEventListener('click', () => chooseRemaining(mode));
+        remainingChoices.appendChild(button);
+      });
+      unloadGroups.appendChild(remainingChoices);
+      if (remainingMode === 'SELECT') {
+        if (!remainingDisplayIds) remainingDisplayIds = new Set(currentDisplays().map(row => Number(row.display_id)));
+        const prompt = document.createElement('p');
+        prompt.textContent = 'Which Display Names are STILL on this Container? Checked names stay with it. Unchecked names were removed at the prior last-known location: ' + priorLocationText();
+        unloadGroups.appendChild(prompt);
+        const searchLabel = document.createElement('label');
+        searchLabel.className = 'remaining-search';
+        searchLabel.textContent = 'Find a Display Name';
+        const search = document.createElement('input');
+        search.type = 'search';
+        search.placeholder = 'Search names — selections stay checked';
+        search.value = remainingSearch;
+        const list = document.createElement('div');
+        search.addEventListener('focus', () => pauseScannerForTyping('searching Display Names'));
+        search.addEventListener('input', () => {
+          remainingSearch = search.value;
+          renderRemainingList(list);
+        });
+        search.addEventListener('blur', restoreScannerCapture);
+        searchLabel.appendChild(search);
+        unloadGroups.appendChild(searchLabel);
+        unloadGroups.appendChild(list);
+        renderRemainingList(list);
+      }
+    }
+    if (pendingContents && pendingContents.reconciliation_allowed && selectableUnloadGroups().length) {
+      const here = document.createElement('button');
+      here.type = 'button';
+      here.textContent = 'Displays were physically removed HERE — select Stage groups';
+      here.addEventListener('click', () => switchContentsView('UNLOAD'));
+      unloadGroups.appendChild(here);
+    }
   }
 
   async function confirmContainerMovement(payload, returningHome) {
@@ -1110,6 +1177,15 @@
     destination.textContent = returningHome ? 'Return Empty to ' + pendingContents.home_location_code + ' · no GPS needed'
       : 'Container NOW: ' + currentLocationEvidence().label;
     reviewBody.appendChild(destination);
+    if (reconciliation) {
+      const confirmation = document.createElement('p');
+      confirmation.textContent = reconciliation.decision === 'EMPTY' ? 'Contents confirmation: Empty'
+        : reconciliation.decision === 'NOT_SURE' || !reconciliation.identify_remaining
+          ? 'Contents confirmation: uncertain — flag for later review'
+          : removed.length ? 'Contents confirmation: remaining Display Names selected'
+            : 'Contents confirmation: all last recorded Displays still here';
+      reviewBody.appendChild(confirmation);
+    }
     const basis = document.createElement('p');
     basis.textContent = removed.length ? removed.length + ' physically removed · '
       + (payload.unloaded_display_ids.length ? 'observed HERE: ' + currentLocationEvidence().label : 'inferred PRIOR: ' + priorLocationText())
@@ -1298,8 +1374,9 @@
     const generation = ++selectionGeneration;
     contentsDecision = null;
     identifyRemaining = false;
+    remainingMode = null;
     unloadedHereDisplayIds = new Set();
-    contentsView = 'DROP';
+    contentsView = 'CONTENTS';
     remainingDisplayIds = null;
     remainingSearch = '';
     displayPlacement = null;
@@ -1339,7 +1416,9 @@
     renderRecordReadiness();
     setFeedback('ready', identity.identity + (needsDisplayPlacement()
       ? ' — answer the setup location question, then confirm the actual Stage'
-      : ' — now confirm location evidence, then review and record'));
+      : identity.asset_type === 'CONTAINER' && !protectedContainer()
+        ? ' — answer Empty / Not Empty / Not Sure, confirm location, then review'
+        : ' — now confirm location evidence, then review and record'));
     if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches && locationPanel) {
       locationPanel.scrollIntoView({behavior: 'smooth', block: 'start'});
     }
@@ -1359,6 +1438,10 @@
     }
     if (identity.asset_type === 'DISPLAY' && pendingStateRow && pendingStateRow.can_detach === false) {
       setFeedback('blocked', 'Scan the Container for this Standalone / singular Display-Pallet.');
+      return;
+    }
+    if (identity.asset_type === 'CONTAINER' && !containerDecisionReady()) {
+      setFeedback('blocked', 'Answer Empty / Not Empty / Not Sure and confirm the contents before recording.');
       return;
     }
     const action = returningHome
@@ -1388,9 +1471,8 @@
     if (identity.asset_type === 'CONTAINER') {
       if (unloaded.length) {
         payload.notes = [payload.notes, 'direct_container_unload=true'].filter(Boolean).join('; ');
-      } else if (contentsView === 'DROP' && !returningHome) {
-        // A Container drop is the existing location-only move, never an Empty claim.
-        payload.notes = [payload.notes, 'container_drop_contents_unchanged=true'].filter(Boolean).join('; ');
+      } else if (protectedContainer() && !returningHome) {
+        payload.notes = [payload.notes, 'protected_container_move=true'].filter(Boolean).join('; ');
       } else {
         try {
           payload.reconciliation = reconciliationPayload();
@@ -1421,6 +1503,7 @@
         if (count) message += ' · would reconcile ' + count + ' Displays at prior location';
       }
       if (payload.display_placement) message += ' · would detach only this Display at confirmed Stage';
+      if (payload.reconciliation && payload.reconciliation.review_context) message += ' · would flag contents for later review';
       resetAssetEntryForNextScan();
       setFeedback(
         'success',
@@ -1437,7 +1520,8 @@
     try {
       const result = await sendOrQueue(payload);
       if (result.queued) {
-        setFeedback('offline', identity.identity + ' — OBSERVATION QUEUED OFFLINE');
+        setFeedback('offline', identity.identity + ' — OBSERVATION QUEUED OFFLINE'
+          + (payload.reconciliation && payload.reconciliation.review_context ? ' · CONTENTS REVIEW QUEUED' : ''));
       } else if (returningHome) {
         setFeedback('success', identity.identity + ' — RETURNED HOME '
           + String((result.movement && result.movement.home_location_code) || '')
@@ -1449,6 +1533,7 @@
         const gps = currentGpsSnapshot();
         let message = identity.identity + ' — LOCATION RECORDED';
         if (payload.display_placement) message += ' · ONLY THIS DISPLAY DETACHED';
+        if (payload.reconciliation && payload.reconciliation.review_context) message += ' · CONTENTS FLAGGED FOR REVIEW';
         if (unloadCount) message += ' · ' + unloadCount + ' Display' + (unloadCount === 1 ? '' : 's')
           + (payload.reconciliation ? ' reconciled at prior location' : ' physically removed here');
         if (gps) message += ' · GPS ±' + Math.round(Number(gps.accuracy_m || 0) * 3.280839895) + ' ft';

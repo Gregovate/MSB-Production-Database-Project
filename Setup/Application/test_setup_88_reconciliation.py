@@ -20,16 +20,16 @@ def test_actual_record_location_decisions_review_and_payload():
       movementPayload, recordPending, renderRecordReadiness, applyQueuedContainerContext,
       renderDisplayPlacement, confirmPlacementStage, needsDisplayPlacement,
       setAllUnloadGroups, selectedUnloadedDisplayIds, selectUnloadHere,
-      switchContentsView, selectedRemainingDisplayIds,
+      switchContentsView, selectedRemainingDisplayIds, chooseRemaining,
       display: (state) => {pendingIdentity={asset_type:'DISPLAY',asset_id:901,identity:'DISP:901'};
         pendingStateRow=state;displayPlacement=null;placementStageId=null;pendingContents=null;unloadedHereDisplayIds=new Set();},
       placement: (value) => {displayPlacement=value;placementStageId=null;},
       gpsOff: () => {watchId=null;latestPosition=null;},
       select: (contents, id=216) => {pendingIdentity={asset_type:'CONTAINER',asset_id:id,identity:'CONT:'+id};
         pendingContents=contents;pendingStateRow=contents;unloadedHereDisplayIds=new Set();contentsDecision=null;identifyRemaining=false;
-        contentsView='DROP';remainingDisplayIds=null;remainingSearch='';
+        contentsView='CONTENTS';remainingMode=null;remainingDisplayIds=null;remainingSearch='';
         access={can_move_setup_assets:true,authenticated_email:'operator@example.org'};},
-      decide: (value, identify=false) => {contentsDecision=value;identifyRemaining=identify;unloadedHereDisplayIds=new Set();contentsView='CONTENTS';remainingDisplayIds=null;},
+      decide: (value, identify=false) => {contentsDecision=value;identifyRemaining=identify;unloadedHereDisplayIds=new Set();contentsView='CONTENTS';remainingMode=identify?'SELECT':value==='NOT_EMPTY'?'UNKNOWN':null;remainingDisplayIds=null;},
       gps: () => {watchId=1;latestPosition={timestamp:Date.now(),coords:{latitude:1,longitude:2,accuracy:3}};}
     };'''
     source = source.replace('  void initialize();', exports)
@@ -60,7 +60,12 @@ def test_actual_record_location_decisions_review_and_payload():
       displays:[{display_id:900,display_name:'WV-MtCrumpitPanel-01'},{display_id:901,display_name:'CH-PeaceOnEarth'}],
       prior_location:{event_type:'CONTAINER_MOVE',named_context:'Prior park drop',gps_accuracy_m:5.12,occurred_at:'2026-10-07T10:00:00Z'}};
     w.select(contents);assert.throws(()=>w.reconciliationPayload(),/Choose Empty/);
-    w.decide('NOT_SURE');assert.deepEqual(w.reconciliationPayload(),{decision:'NOT_SURE',identify_remaining:false});
+    w.decide('NOT_SURE');const unsure=w.reconciliationPayload();
+    assert.equal(unsure.decision,'NOT_SURE');assert.equal(unsure.identify_remaining,false);
+    assert.equal(unsure.review_context.context_available,true);
+    assert.equal(unsure.review_context.prior_event_id,33);
+    assert.deepEqual(unsure.review_context.expected_displays,contents.displays);
+    assert.equal(unsure.review_context.prior_observation.named_context,'Prior park drop');
     w.decide('EMPTY');let p=w.reconciliationPayload();assert.deepEqual(p.expected_display_ids,[900,901]);assert.equal(p.prior_event_id,33);
     w.decide('NOT_EMPTY',true);w.renderContentsDecision();let boxes=elements['movement-unload-groups'].querySelectorAll('input');
     assert.equal(boxes.length,2);assert.ok(boxes.every(x=>x.checked));boxes[1].checked=false;boxes[1].listeners.change();
@@ -71,7 +76,7 @@ def test_actual_record_location_decisions_review_and_payload():
     assert.equal(returned.gps_latitude,undefined);assert.equal(returned.destination_location_note,null);
     assert.match(w.priorLocationText(),/±17 ft/);
     w.select({...contents,reconciliation_allowed:false});w.decide('EMPTY');assert.throws(()=>w.reconciliationPayload(),/cannot be reconciled/);
-    w.renderContentsDecision();let empty=elements['movement-unload-groups'].querySelectorAll('button').find(button=>button.textContent==='Empty');assert.ok(empty.disabled);
+    w.renderContentsDecision();let empty=elements['movement-unload-groups'].querySelectorAll('button').find(button=>button.textContent==='Empty');assert.equal(empty,undefined);
     w.select(null);w.decide('EMPTY');assert.throws(()=>w.reconciliationPayload(),/cannot be reconciled/);
     w.decide('NOT_SURE');w.renderRecordReadiness();assert.ok(elements['movement-return-home'].disabled);
     const queued={season_year:2026,asset_type:'CONTAINER',asset_id:216,client_event_id:'offline-prior',occurred_at:'2026-10-07T11:00:00Z',
@@ -114,26 +119,62 @@ def test_actual_record_location_decisions_review_and_payload():
     const groups=[{label:'15 — Church-ParkingLot',bulk_selectable:true,display_ids:[900,902],displays:[contents.displays[0],third]},
       {label:'01 — Front Entrance',bulk_selectable:true,display_ids:[901],displays:[contents.displays[1]]}];
     const grouped={...contents,displays:[...contents.displays,third],groups};
-    // A park Container drop must never imply physical Display removal or Empty.
+    // Every ordinary stop leads with the contents question. No default drop bypass.
+    const root=elements['movement-unload-groups'];
     w.select(grouped,34);w.renderContentsDecision();
-    let intentButtons=elements['movement-unload-groups'].querySelectorAll('button');
-    assert.ok(intentButtons.some(button=>button.textContent==='Record Container drop — keep Displays attached'));
-    assert.ok(intentButtons.some(button=>button.textContent==='Displays physically removed from this Container'));
-    assert.equal(elements['movement-unload-groups'].querySelectorAll('input[data-display-ids]').length,0);
+    let intentButtons=root.querySelectorAll('button');
+    assert.ok(intentButtons.some(button=>button.textContent==='Empty'));
+    assert.ok(intentButtons.some(button=>button.textContent==='Not Empty'));
+    assert.ok(intentButtons.some(button=>button.textContent==='Not Sure'));
+    assert.ok(!intentButtons.some(button=>button.textContent.includes('Record Container drop')));
+    assert.equal(root.querySelectorAll('input[data-display-ids]').length,0);
     w.selectUnloadHere([900,902],true);assert.deepEqual(w.selectedUnloadedDisplayIds(),[]);
     elements['movement-known-reference'].value='Park staging drop';w.gpsOff();w.renderRecordReadiness();
-    assert.ok(!elements['movement-record-here'].disabled);assert.ok(elements['movement-return-home'].hidden);
+    assert.ok(elements['movement-record-here'].disabled);
+    globalThis.saved=undefined;window.confirm=()=>true;await w.recordPending(false);assert.equal(saved,undefined);
+    root.querySelectorAll('button').find(button=>button.textContent==='Not Empty').listeners.click();
+    assert.ok(elements['movement-record-here'].disabled); // Not Empty needs a specific contents confirmation.
+    w.chooseRemaining('ALL');assert.ok(!elements['movement-record-here'].disabled);
+    assert.equal(root.querySelectorAll('input[data-display-id]').length,0); // No inventory paging for unchanged loads.
+    assert.deepEqual(w.reconciliationPayload().remaining_display_ids,[900,901,902]);
     window.confirm=()=>false;await w.recordPending(false);assert.equal(saved,undefined);
     window.confirm=()=>true;await w.recordPending(false);
     assert.equal(saved.movement_action,'CONTAINER_MOVE');assert.deepEqual(saved.unloaded_display_ids,[]);
-    assert.equal(saved.reconciliation,undefined);assert.match(saved.notes,/container_drop_contents_unchanged=true/);
+    assert.equal(saved.reconciliation.decision,'NOT_EMPTY');assert.equal(saved.reconciliation.identify_remaining,true);
+    assert.deepEqual(saved.reconciliation.remaining_display_ids,[900,901,902]);
+    // Repeated interim staging can retain the complete load at every stop.
+    let interim=grouped;
+    for (let stop=0;stop<3;stop++) {
+      w.select(interim,34);w.renderContentsDecision();
+      root.querySelectorAll('button').find(button=>button.textContent==='Not Empty').listeners.click();
+      w.chooseRemaining('ALL');elements['movement-known-reference'].value='Interim stop '+stop;
+      await w.recordPending(false);
+      assert.deepEqual(saved.unloaded_display_ids,[]);
+      interim=w.applyQueuedContainerContext(interim,[{...saved,asset_id:34,queue_status:'QUEUED',
+        client_event_id:'stop-'+stop,occurred_at:'2026-10-08T1'+stop+':00:00Z'}],34);
+      assert.deepEqual(interim.displays.map(row=>row.display_id),[900,901,902]);
+      assert.equal(interim.prior_location.destination_location_note,'Interim stop '+stop);
+    }
     // Historical zero contents is not a physical Empty confirmation.
     w.select({...grouped,displays:[],groups:[]},216);w.renderContentsDecision();w.renderRecordReadiness();
-    assert.ok(elements['movement-unload-groups'].querySelectorAll('*').some(node=>node.textContent.includes('Last recorded contents: 0 Displays. Physical contents are unconfirmed')));
-    assert.ok(elements['movement-return-home'].disabled);
-    // A no-context drop is still location-only, never a guessed reconciliation.
-    w.select(null,34);window.confirm=()=>true;await w.recordPending(false);
-    assert.deepEqual(saved.unloaded_display_ids,[]);assert.equal(saved.reconciliation,undefined);
+    assert.ok(root.querySelectorAll('*').some(node=>node.textContent.includes('Last recorded contents: 0 Displays. Physical contents are unconfirmed')));
+    assert.ok(elements['movement-return-home'].disabled);assert.ok(elements['movement-record-here'].disabled);
+    // No-context stops require Not Sure, never an unchecked location-only bypass.
+    w.select(null,34);globalThis.saved=undefined;await w.recordPending(false);assert.equal(saved,undefined);
+    w.decide('NOT_SURE');elements['movement-known-reference'].value='Uncertain stop';await w.recordPending(false);
+    assert.deepEqual(saved.unloaded_display_ids,[]);assert.equal(saved.reconciliation.decision,'NOT_SURE');
+    assert.equal(saved.reconciliation.review_context.context_available,false);
+    assert.deepEqual(saved.reconciliation.review_context.expected_displays,[]);
+    // Protected objects show no Empty/removal controls and never detach.
+    w.select({...grouped,reconciliation_allowed:false},199);w.renderContentsDecision();w.renderRecordReadiness();
+    assert.ok(!root.querySelectorAll('button').some(button=>button.textContent==='Empty'));
+    assert.ok(!root.querySelectorAll('button').some(button=>button.textContent.includes('physically removed')));
+    elements['movement-known-reference'].value='Standalone stop';await w.recordPending(false);assert.deepEqual(saved.unloaded_display_ids,[]);
+    assert.equal(saved.reconciliation,undefined);assert.match(saved.notes,/protected_container_move=true/);
+    // A failed offline reconciliation must not be mistaken for a protected object.
+    w.select({...grouped,reconciliation_allowed:false,queue_conflict:true},34);w.renderContentsDecision();w.renderRecordReadiness();
+    assert.ok(elements['movement-record-here'].disabled);
+    assert.ok(root.querySelectorAll('button').find(button=>button.textContent==='Empty').disabled);
     globalThis.saved=undefined;
     w.select(grouped,34);w.switchContentsView('UNLOAD');w.renderContentsDecision();
     let groupBoxes=elements['movement-unload-groups'].querySelectorAll('input[data-display-ids]');
@@ -163,7 +204,6 @@ def test_actual_record_location_decisions_review_and_payload():
 
     // Expanding names does not change selection; changes keep the same row DOM.
     w.select(grouped,34);w.switchContentsView('UNLOAD');w.renderContentsDecision();
-    const root=elements['movement-unload-groups'];
     assert.ok(!root.querySelectorAll('button').some(button=>button.textContent==='Empty'));
     const details=root.querySelectorAll('*').filter(node=>node.tag==='details');
     assert.equal(details.length,2);assert.ok(details.every(node=>!node.open));
@@ -176,7 +216,7 @@ def test_actual_record_location_decisions_review_and_payload():
     w.switchContentsView('CONTENTS');assert.deepEqual(w.selectedUnloadedDisplayIds(),[]);
     assert.equal(root.querySelectorAll('input[data-display-ids]').length,0);
     root.querySelectorAll('button').find(button=>button.textContent==='Not Empty').listeners.click();
-    root.querySelectorAll('button').find(button=>button.textContent==='I can identify what remains').listeners.click();
+    root.querySelectorAll('button').find(button=>button.textContent==='Fewer remain — select Display Names').listeners.click();
     let remainingBoxes=root.querySelectorAll('input[data-display-id]');
     remainingBoxes[1].checked=false;remainingBoxes[1].listeners.change();
     const search=root.querySelectorAll('*').find(node=>node.type==='search');
@@ -200,10 +240,10 @@ def test_actual_record_location_decisions_review_and_payload():
     // Returning to group unload resets the contents decision, leaving no hidden changes.
     w.switchContentsView('UNLOAD');assert.throws(()=>w.reconciliationPayload(),/Choose Empty/);
     assert.deepEqual(w.selectedUnloadedDisplayIds(),[]);
-    w.setAllUnloadGroups(true);w.switchContentsView('DROP');
+    w.setAllUnloadGroups(true);w.switchContentsView('CONTENTS');
     assert.deepEqual(w.selectedUnloadedDisplayIds(),[]);assert.throws(()=>w.reconciliationPayload(),/Choose Empty/);
     window.confirm=()=>true;globalThis.saved=undefined;await w.recordPending(false);
-    assert.deepEqual(saved.unloaded_display_ids,[]);assert.equal(saved.reconciliation,undefined);
+    assert.equal(saved,undefined); // Switching back requires a fresh contents answer.
     w.select(grouped,34);w.switchContentsView('UNLOAD');
     // Modal close/back cancels without writes and leaves selection intact.
     w.setAllUnloadGroups(true);globalThis.saved=undefined;window.confirm=()=>false;

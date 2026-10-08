@@ -8,7 +8,7 @@ DECLARE
  v_email text; v_container integer; v_ids bigint[]; v_remaining bigint[];
  v_session bigint; v_prior bigint; v_partial bigint; v_return bigint;
  v_home text; v_count integer; v_before bigint; v_child bigint; v_result record;
- v_stage integer; v_direct bigint; v_group bigint;
+ v_stage integer; v_direct bigint; v_group bigint; v_stop integer; v_review bigint; v_review_context jsonb;
  v_time timestamptz := clock_timestamp()+interval '1 day';
 BEGIN
  SELECT u.email INTO v_email FROM public.directus_users u
@@ -66,6 +66,43 @@ BEGIN
     AND display_id=v_ids[2])<>v_group THEN RAISE EXCEPTION 'Container dragged observed group unload'; END IF;
   RAISE EXCEPTION 'Rollback successful direct placement probe' USING ERRCODE='ZX088';
  EXCEPTION WHEN SQLSTATE 'ZX088' THEN NULL;
+ END;
+ -- The guided quick-confirm path must allow repeated stops with an unchanged load.
+ -- Keep uncertainty evidence in its original event notes for a later review.
+ BEGIN
+  SELECT setup_movement_event_id INTO v_prior FROM ops.record_setup_movement_event(
+   v_email,2026,'88000000-0000-4000-8000-000000007080','CONTAINER',v_container,'CONTAINER_MOVE',v_time,
+   'disposable-88',v_email,'MANUAL_ENTRY',false,NULL,NULL,NULL,NULL,'Fixture unchanged initial stop');
+  FOR v_stop IN 1..3 LOOP
+   SELECT * INTO v_result FROM ops.record_setup_container_reconciliation(
+    v_email,2026,('88000000-0000-4000-8000-'||lpad((7080+v_stop)::text,12,'0'))::uuid,
+    'CONTAINER',v_container,'CONTAINER_MOVE',v_time+v_stop*interval '1 minute',
+    'disposable-88',v_email,'MANUAL_ENTRY',false,NULL,NULL,NULL,NULL,'Fixture unchanged interim stop '||v_stop,
+    NULL,ARRAY[]::bigint[],NULL,NULL,'UNASSESSED',NULL,
+    jsonb_build_object('decision','NOT_EMPTY','identify_remaining',true,
+     'expected_display_ids',to_jsonb(v_ids),'remaining_display_ids',to_jsonb(v_ids),'prior_event_id',v_prior));
+   v_prior:=v_result.setup_movement_event_id;
+   IF v_result.unloaded_display_count<>0 OR EXISTS(SELECT 1 FROM ops.setup_display_state
+     WHERE setup_session_id=v_session AND display_id=ANY(v_ids) AND position_mode='DETACHED') THEN
+    RAISE EXCEPTION 'Unchanged stop detached a Display'; END IF;
+   IF EXISTS(SELECT 1 FROM ops.setup_movement_event WHERE setup_movement_event_id=v_prior
+     AND notes LIKE '%contents_review_required=true%') THEN RAISE EXCEPTION 'Confirmed unchanged stop flagged review'; END IF;
+  END LOOP;
+  SELECT jsonb_build_object('context_available',true,'prior_event_id',v_prior,
+   'expected_displays',jsonb_agg(jsonb_build_object('display_id',display_id,'display_name',display_name)),
+   'prior_observation',jsonb_build_object('destination_location_note','Fixture unchanged interim stop 3'))
+   INTO v_review_context FROM ref.display WHERE display_id=ANY(v_ids);
+  SELECT * INTO v_result FROM ops.record_setup_container_reconciliation(
+   v_email,2026,'88000000-0000-4000-8000-000000007084','CONTAINER',v_container,'CONTAINER_MOVE',v_time+interval '4 minutes',
+   'disposable-88',v_email,'MANUAL_ENTRY',false,NULL,NULL,NULL,NULL,'Fixture uncertain stop',NULL,ARRAY[]::bigint[],
+   NULL,NULL,'UNASSESSED',NULL,jsonb_build_object('decision','NOT_SURE','identify_remaining',false,'review_context',v_review_context));
+  v_review:=v_result.setup_movement_event_id;
+  IF v_result.unloaded_display_count<>0 OR NOT EXISTS(SELECT 1 FROM ops.setup_movement_event
+    WHERE setup_movement_event_id=v_review AND notes LIKE '%contents_review_required=true%'
+    AND notes LIKE '%Fixture unchanged interim stop 3%' AND notes LIKE '%expected_displays%') THEN
+   RAISE EXCEPTION 'Uncertain stop lost its frozen review evidence'; END IF;
+  RAISE EXCEPTION 'Rollback successful unchanged-load/review probe' USING ERRCODE='ZX089';
+ EXCEPTION WHEN SQLSTATE 'ZX089' THEN NULL;
  END;
  v_remaining := v_ids[1:cardinality(v_ids)-1];
  SELECT setup_movement_event_id INTO v_prior FROM ops.record_setup_movement_event(
