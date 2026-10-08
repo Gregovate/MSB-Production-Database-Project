@@ -886,3 +886,14 @@ Standalone exception. Workshop-only Empty/Home return is recommended when prior
 field evidence is trustworthy; a compulsory park-departure scan remains an open
 choice. Full scenario table and acceptance boundary are in the candidate handoff's
 Scan-at-stop design authority section. No application change in this clarification.
+
+
+Repeated interim stops can retain the entire load: Workshop -> temporary staging
+-> another temporary stop -> Display staging does not imply removal at any point.
+Advance Container/attached-Display location after each unchanged-load confirmation;
+use the latest prior stop for inferred missing contents only if a subsequent scan
+actually reports a contents change. Fewer/empty are conditional branches, not an
+expected next-stop state. Add consecutive unchanged loaded stops to acceptance,
+with quick confirmation and no per-Display re-entry. Road-work staging and network
+repairs make low-attention, offline-capable operation a launch requirement. This
+clarification changes no application source and requests no further browser test.

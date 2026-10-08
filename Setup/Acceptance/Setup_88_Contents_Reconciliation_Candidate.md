@@ -52,11 +52,27 @@ is usual but is not a prerequisite for location capture or independent Display
 placement. Preserve the last scanned field location before processing this new
 stop so missed removals cannot be assigned to the new destination by accident.
 
+**Repeated interim stops are normal, not an unloading sequence.** A full Container
+can move from Workshop to temporary staging, to another area to clear road work,
+then to Display staging with no Display removed at any stop. Each confirmed
+unchanged-load scan advances the Container location and its still-attached
+Displays without any detachment. That latest confirmed stop becomes the prior
+location for a later scan only if that later scan actually reports missing contents.
+The words "fewer Displays" or "empty" describe conditional branches, never what
+must happen on the next move. An unchanged-load confirmation must be quick and
+must not require revisiting every Display Name or claiming something was unloaded.
+
+Greg reports road work forcing interim staging alongside damaged network runs,
+park internet/antenna repairs and tablet provisioning. The operator interaction
+must reduce the attention required during that disrupted launch, preserve offline
+recording, and avoid repeated redesign/test handoffs. Add acceptance coverage for
+multiple consecutive unchanged loaded stops before any optional partial removal.
+
 | Physical situation | Guided question/action | Recorded consequence |
 |---|---|---|
 | Container stopped; nothing removed | Not Empty; confirm all last recorded Display Names remain | Container moves; attached Displays continue following it |
-| Container stopped again; fewer Displays remain | Not Empty; identify the remaining Display Names, with an all-still-here shortcut | Missing complement uses the prior last scanned Container location; remaining Displays follow the new stop |
-| Container stopped again; now empty | Empty confirmation | Last recorded attached Displays use the prior last scanned location; Container alone records the new stop |
+| Only if a later scan reports fewer Displays remain | Not Empty; identify the remaining Display Names, with an all-still-here shortcut | Missing complement uses the prior last scanned Container location; remaining Displays follow the new stop |
+| Only if a later scan confirms it is empty | Empty confirmation | Last recorded attached Displays use the prior last scanned location; Container alone records the new stop |
 | Contents cannot be established | Not Sure / cannot identify | No guessed removal; record location with contents needing review |
 | Arch/antenna trailer unloading observed here | Retain scan -> confirm Location/GPS -> select Stage group(s) physically removed here -> record -> repeat at next stop | Explicit selected groups stay HERE; other groups follow the trailer |
 | One or more Displays moved without their Container | Scan each moved Display; confirm setup location and actual Stage | Only the scanned Display detaches and records its own location; Container stays put, whether picked or not |
