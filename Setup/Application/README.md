@@ -19,11 +19,11 @@ Setup/Application/production_backend.py
 Current reported version and Production application target:
 
 ```text
-V0.3.22-pick-list-delay
-6f53d7f0c4b15f7175e773a2069595eef3f0e698
+V0.3.50-container-movement-report
+6c44a082dd520b75881c50ad2ce78feb029ff87d
 ```
 
-The visible Production version is `V0.3.22-pick-list-delay`. #206 adds the accepted bounded material frontier and transient Manager Pick Delay behavior on top of the #205 Scheduling Board release. Persisted physical PICKED/movement execution remains owned by #88.
+Production server installation passed on 2026-10-08, report `Setup88Read-20261008T214153Z`; protected browser check remains pending. #88 adds the read-only Container Movement report and a separately approved two-column type-name SELECT grant. Guided Container reconciliation remains an unmerged draft. Accepted #206 Pick Delay and #205 scheduling behavior remain; persisted physical PICKED/movement execution remains owned by #88.
 
 ## Current Production Meaning
 
@@ -128,7 +128,7 @@ Permanent source checkout:
 /opt/msb-setup
 ```
 
-The current exact Production application target is `6f53d7f0c4b15f7175e773a2069595eef3f0e698`. The accepted Pick Delay migration `063_add_setup_pick_list_delay.sql` is installed in addition to migrations through 062. Later merge, deployment-tooling, or closeout-only commits do not redefine the deployed application target.
+The current exact Production application target is `6c44a082dd520b75881c50ad2ce78feb029ff87d`, V0.3.50. The previous Setup source was `cb0538022ed066ff90675e832daa1cd95488114a`; #88 server PASS installed narrow read migration 071. Its validated snapshot metadata remains in `Setup88Read-20261008T214153Z/snapshot.json`; path/hash transcription and protected browser closeout are pending. The accepted Pick Delay migration `063_add_setup_pick_list_delay.sql` is installed in addition to migrations through 062. Later merge, deployment-tooling, or closeout-only commits do not redefine the deployed application target.
 
 The #206 V0.3.22 validated rollback archive is `/home/msbadmin/backups/setup-206/msb-pre-setup-206-v0322-pick-list-delay-20260930T091257.dump` with SHA256 `1415868b93bca4b0ad073b65d741087f34851d134dd8ce18346cce45061154af`. The #172 rollback archive and older accepted rollback archives remain historical recovery evidence. Do not restore any database archive without reconciling legitimate post-deployment Production work.
 
