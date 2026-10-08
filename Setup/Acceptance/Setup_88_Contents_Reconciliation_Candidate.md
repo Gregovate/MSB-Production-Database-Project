@@ -172,6 +172,28 @@ software cannot infer an unreported removal from Container movement history alon
 Do not require an account for the reporting helper; the authorized reviewer records
 who supplied the evidence without claiming to be the original physical remover.
 
+**Opportunistic Display checks:** Greg does not expect crews to scan every Display
+and asks whether an existing Display scan is a useful time to verify its location.
+Use normal Setup scans to offer a short check for that one Display, showing the
+recorded location and whether it is inferred from a Container/unverified. The
+candidate already has attached-Display setup-location confirmation, explicit Stage
+selection and one-Display detachment. Keep that independent-placement meaning;
+confirming that a Display is still loaded at its Container's location is not an
+instruction to detach it. Standalone verification remains a Container operation.
+For already detached Displays, a confirmed current location or explicitly selected
+correction can provide fresh evidence, with reason/source and observation time.
+No scan/GPS/assigned Stage alone may silently establish physical placement.
+
+This is incremental verification rather than a mandatory full-Display inventory.
+Later evidence can resolve the known current status of the scanned Display; it
+cannot close an entire Container review or prove all earlier physical contents.
+Retain unresolved Names and distinguish today's verified location from an earlier
+unknown removal. A crew report can also inform desk review without scanning every
+Display or requiring the reporter to have an account. The connection to a Manager
+review queue and generalized detached-Display verification are proposed requirements,
+not implemented behavior. Do not make unrelated label/inventory scans write movement
+without explicit Setup intent and confirmation.
+
 This capability is required before calling the Not Sure workflow operationally
 complete. Prove snapshot/resolution/audit handling against the existing movement
 and notes model before considering any schema change. No Manager queue, correction

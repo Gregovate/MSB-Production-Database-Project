@@ -918,3 +918,14 @@ model/schema is justified without first proving use of existing event/notes scop
 Full proposed tool and acceptance cases are in the candidate handoff's Delayed
 contents review section. This capability is unimplemented and required before the
 Not Sure workflow can be considered complete; no runtime or Production change.
+
+
+Greg proposes using existing Display scans to double-check location instead of
+expecting a full-Display scan inventory. Offer a one-Display check with recorded
+location/provenance and explicit actual-location confirmation. The candidate already
+supports attached independent placement with confirmed Stage; still loaded at the
+Container's location must not be interpreted as detachment. Standalone remains
+attached. Fresh verification helps only the established Display scope/current
+facts; it cannot prove older unknown contents or close the whole Container review.
+Linking this evidence into the delayed Manager queue and detached-Display checks
+remains proposed/unimplemented; no implicit movement on unrelated scan intents.
