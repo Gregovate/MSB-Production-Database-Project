@@ -532,6 +532,15 @@ def pick_list_asset(name: str):
     return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
 
 
+
+
+# Issue #171 — additive, read-only park GIS preview. No PostgreSQL access/writes.
+@app.get("/locate")
+@app.get("/locate/")
+def locate_preview():
+    """Serve the current reviewed GIS reference snapshot inside the protected Setup app."""
+    return _no_store(send_from_directory(BASE_DIR, "locate_preview.html"))
+
 @app.get("/record-location")
 @app.get("/record-location/")
 def record_location():
