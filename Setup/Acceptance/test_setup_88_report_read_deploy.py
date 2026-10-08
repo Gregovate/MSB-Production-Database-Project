@@ -225,6 +225,32 @@ def test_permission_sensitive_clone_consumes_actual_read_exporter():
     assert not any(bad in source for bad in ['pg_restore -d msb','GRANT SELECT ON ALL','setup_205_069_release.json'])
 
 
+@pytest.mark.parametrize('corrupt', [False, True])
+def test_clone_launch_uses_pinned_corrected_tooling_not_old_candidate(tmp_path, corrupt):
+    runner=Path(__file__).with_name('setup_disposable_acceptance_server.sh').read_bytes()
+    assert mod.git_blob(runner)==mod.CLONE_RUNNER_BLOB
+    d=mod.ReadDeploy.__new__(mod.ReadDeploy)
+    requested=[]; bundles=[]
+    def git(*args):
+        requested.append(args)
+        return (runner.decode()+'unexpected' if corrupt else runner.decode()).strip()
+    def run(argv,timeout):
+        bundle=Path(argv[1]).parent; bundles.append(bundle)
+        assert Path(argv[1]).read_bytes()==runner
+        assert 'candidate_sha\t'+mod.GRANT_TARGET+'\n' in (bundle/'manifest.tsv').read_text()
+        assert 'production_read_boundary\ttrue\n' in (bundle/'manifest.tsv').read_text()
+        assert timeout==1200
+    d.git=git; d.run=run
+    if corrupt:
+        with pytest.raises(mod.Stop,match='runner differs'):
+            d.clone_acceptance()
+        assert not bundles
+    else:
+        d.clone_acceptance()
+        assert bundles and not bundles[0].exists()
+    assert requested==[('cat-file','blob',mod.CLONE_RUNNER_BLOB)]
+
+
 def test_windows_transport_normalization_matches_exact_helper_pins():
     for name,blob in mod.HELPERS.items():
         source=Path(__file__).with_name(name).read_bytes()

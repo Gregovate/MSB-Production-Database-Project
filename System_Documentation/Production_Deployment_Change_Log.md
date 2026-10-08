@@ -38,6 +38,13 @@ Each deployment entry must record, when applicable:
 
 Documentation-only repository changes that do not alter Production do not require a deployment entry.
 
+## 2026-10-08 — #88 disposable ACL export STOP — report still pending
+
+- Deployment preflight report `Setup88Read-20261008T195058Z`, child acceptance `Setup_Disposable_Acceptance_20261008T195100.txt`: exit 23, empty Production SELECT boundary export. Exact frozen candidate Application regression: 716 passed / 2 skipped; clone restore succeeded, migration was not reached.
+- Tooling omitted `docker exec -i` when streaming the host SQL file. Corrected reusable runner and separate exact blob selection preserve original report/migration identities; no broader privilege workaround.
+- Disposable cleanup completed. Production Setup fingerprint remained `9d6f8d09a129ba7cbd839c4286c8d8c0`, live Setup remained `cb0538022ed066ff90675e832daa1cd95488114a`. No maintenance entry, Production migration or source promotion occurred.
+- [Controlled prerequisite record](../Setup/Acceptance/Setup_88_Report_Read_Prerequisite.md#2026-10-08-1450-cdt--disposable-acl-export-stop) retains failure, correction and engineering proof. Actual current-clone acceptance, two-column grant, exact V0.3.50 installation and protected browser result remain pending.
+
 ## 2026-10-08 — #88 backup preflight STOP — backup recovery accepted; report pending
 
 - Combined attempt retained at `/home/msbadmin/setup-deployment-reports/Setup88Read-20261008T161235Z`: `Backup chain not current`, ONLINE preflight, maintenance/migration not started. No grant or report promotion.

@@ -19,6 +19,9 @@ from datetime import datetime, timezone
 from setup_maintenance_deploy import Deploy, Stop, require, fcntl, REPO, SETUP
 
 GRANT_TARGET = '6b04d1afff67e2b79a068316198ee7ad95a635f7'  # Exact accepted migration/clone-artifact commit.
+# Pin corrected infrastructure independently of frozen application/migration
+# sources. The old candidate shell omitted Docker stdin forwarding for ACL SQL.
+CLONE_RUNNER_BLOB = '2025db912621f8258356cdb3e7f474ea0ca763f1'
 MIGRATION = 'Setup/Database/071_grant_setup_container_type_report_read.sql'
 MIGRATION_BLOB = '1fd5de8f3de7665336e0eabead498e94ed915883'
 REPORT_TARGET = '6c44a082dd520b75881c50ad2ce78feb029ff87d'
@@ -53,6 +56,7 @@ class ReadDeploy(Deploy):
     def __init__(self, root):
         self.report = None
         super().__init__(dict(issue=88, grant_target=GRANT_TARGET,
+                             clone_runner_blob=CLONE_RUNNER_BLOB,
                              report_target=REPORT_TARGET, migration=MIGRATION,
                              migration_blob=MIGRATION_BLOB, old_setup=OLD_SETUP,
                              shared=SHARED), root)
@@ -156,7 +160,13 @@ class ReadDeploy(Deploy):
         bundle = Path(tempfile.mkdtemp(prefix='setup-88-read-clone-',dir='/tmp'))
         try:
             runner = bundle / 'setup_disposable_acceptance_server.sh'
-            shutil.copyfile(Path(self.worktree)/'Setup/Acceptance'/runner.name,runner)
+            # Fetch has made the merged, content-addressed runner available.
+            # Deploy.run strips output; restore its single final LF and prove
+            # exact bytes before execution. Candidate SQL still comes from 6b04.
+            source = (self.git('cat-file','blob',CLONE_RUNNER_BLOB)+'\n').encode()
+            require(git_blob(source) == CLONE_RUNNER_BLOB,
+                    'Disposable clone runner differs from accepted blob')
+            runner.write_bytes(source)
             manifest = bundle / 'manifest.tsv'
             manifest.write_text('candidate_sha\t'+GRANT_TARGET+'\ntarget_ref\tmain\n'
                 'allow_concurrent_production_writes\ttrue\nproduction_read_boundary\ttrue\n'
