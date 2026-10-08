@@ -551,6 +551,11 @@ class SetupMaterialReadinessRepository:
                         cs.last_movement_event_id,
                         me.event_type AS last_event_type,
                         me.occurred_at AS last_observed_at,
+                        me.gps_latitude,
+                        me.gps_longitude,
+                        me.gps_accuracy_m,
+                        me.gps_quality,
+                        me.gps_fix_age_ms,
                         me.destination_stage_id,
                         me.destination_location_note,
                         EXISTS (
@@ -593,6 +598,11 @@ class SetupMaterialReadinessRepository:
                         ds.last_movement_event_id,
                         me.event_type AS last_event_type,
                         me.occurred_at AS last_observed_at,
+                        me.gps_latitude,
+                        me.gps_longitude,
+                        me.gps_accuracy_m,
+                        me.gps_quality,
+                        me.gps_fix_age_ms,
                         me.destination_stage_id,
                         me.destination_location_note
                     FROM ref.display AS d

@@ -425,8 +425,8 @@ def test_release_identity_and_offline_shells_are_synchronized():
     location_sw = read("setup_record_location_sw.js")
     location_html = read("record_location.html")
 
-    assert 'PRODUCTION_VERSION = "V0.3.46-container-drop-intent"' in backend
-    assert "const CLIENT_BUILD = 'V0.3.46-container-drop-intent';" in guard
+    assert 'PRODUCTION_VERSION = "V0.3.47-production-report"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.47-production-report';" in guard
     assert "msb-setup-pick-mode-v18" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_html

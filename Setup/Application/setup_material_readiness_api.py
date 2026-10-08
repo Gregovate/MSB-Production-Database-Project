@@ -4,6 +4,8 @@ from __future__ import annotations
 import psycopg2
 from flask import Blueprint, Response, jsonify, request
 
+from setup_production_report import movement_picture, render_report
+
 from setup_api import (
     SetupAuthenticationError,
     SetupCommandError,
@@ -60,6 +62,26 @@ def api_setup_material_readiness() -> Response:
 def api_setup_manager_material_status() -> Response:
     require_manager()
     return jsonify(material_status=repo().manager_material_status(required_year()))
+
+
+@setup_material_readiness_api.get("/api/setup/material-status/report")
+def api_setup_manager_production_report() -> Response | tuple[Response, int]:
+    """Fresh Manager-only evidence report; GET never records or repairs work."""
+    require_manager()
+    year = required_year()
+    raw = request.args.get("since_event_id", "").strip()
+    if raw and (not raw.isdigit() or len(raw) > 18):
+        return jsonify(error="Comparison event must be a nonnegative event number."), 400
+    since_event_id = int(raw or "0")
+    repository = repo()
+    material = repository.manager_material_status(year)
+    if material.get("session") is None:
+        return jsonify(error=f"No active Setup Session exists for {year}."), 404
+    picture = movement_picture(repository, int(material["session"]["setup_session_id"]))
+    response = Response(render_report(material, picture, since_event_id), mimetype="text/html")
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @setup_material_readiness_api.post("/api/setup/material-readiness/overrides")
