@@ -125,6 +125,62 @@ record, an unpicked Peace-on-Earth-style independent Display placement, repeated
 trailer Stage-group removal, and Standalone movement. Passing code tests alone does
 not establish that V0.3.46's optional contents entry satisfies this design.
 
+## Delayed contents review — required tool, not implemented
+
+Greg asks how a Not Sure scan can be resolved two or three days later when nobody
+is near the Container. Source inspection establishes a gap: migration 070 writes
+contents_review_required=true into event notes, but no application consumer lists
+or resolves that flag. The current record-location screen is a fresh-observation
+workflow, not a historical-review/correction tool. It cannot safely replace review
+of an earlier uncertain stop with a new scan at today's Container location.
+Not Sure currently stores only decision/identify_remaining in reconciliation JSON,
+not a frozen expected Display-ID list or pinned prior observation. Container-only
+moves do not record a complete attached-Display snapshot in event-display rows.
+Existing history is useful evidence but does not prove unobserved physical contents.
+
+A usable Not Sure path requires a **Manager Contents Review** capability within
+#88, not a chat-only flag or a new competing movement model:
+
+- List unresolved Container contents checks by Container number/name, flagged
+  observation time, recorded operator, last field evidence and age. Open from a
+  desk without a physical QR scan or fabricated GPS/field observation.
+- Preserve the exact flagged event, known-at-capture expected Display IDs/names
+  and prior-location anchor when available. Mark missing snapshot context unknown;
+  do not reconstruct it solely from today's master assignments/current state.
+  Show subsequent Container/Display observations and reports so interim moves do
+  not silently become proof of where a missing Display was removed.
+- Resolve with the exact Display Names confirmed still attached, or specific
+  Displays confirmed elsewhere. Allow documented Stage/location evidence from an
+  existing Display observation, an operator/crew report or physical verification,
+  recording source, effective observation time and the later recording time.
+  Distinguish facts confirmed now from claims about the earlier flagged stop.
+- Provide a reviewed, guarded, audited correction linked to the flagged event,
+  with refreshed current-state preconditions, preserving original history and
+  subsequent valid work. No fake new scan, direct history deletion or silent
+  override of a newer valid Display placement. Resolve/close the flag only for
+  the scope actually established; partial resolution may leave outstanding names.
+- Permit **Keep unresolved — verification needed**. Display location derived
+  through unresolved Container contents must be visibly assumed/unverified, not
+  presented as a confirmed physical observation. A review several days later is
+  not evidence by itself and cannot safely imply the latest Container stop was
+  the removal location.
+
+Nobody being nearby does not prohibit desk review of existing observations or a
+reliable report from someone who did the work. If no evidence establishes physical
+contents/location, the tool must leave the case unresolved for the next visit;
+software cannot infer an unreported removal from Container movement history alone.
+Do not require an account for the reporting helper; the authorized reviewer records
+who supplied the evidence without claiming to be the original physical remover.
+
+This capability is required before calling the Not Sure workflow operationally
+complete. Prove snapshot/resolution/audit handling against the existing movement
+and notes model before considering any schema change. No Manager queue, correction
+command or uncertainty projection has been implemented in this clarification, and
+no Production repair is authorized or performed. Acceptance must cover two/three-day
+delay, multiple intervening Container moves, later valid Display placement, partial
+resolution and no reliable evidence. The existing historical audit is diagnostic,
+not a substitute for the operator/Manager review tool.
+
 ## V0.3.46 implemented workflow — acceptance paused
 
 Record Location opens on **Record Container drop — keep Displays attached**.
@@ -164,7 +220,8 @@ Pick Mode retains its separately accepted immediate PICKED interaction.
   remains.” The list uses Display Names; all names are initially checked. Checked
   names remain WITH_CONTAINER; the unchecked complement is reconciled.
 - **Not Sure / cannot identify:** location only, unchanged attachment state,
-  `contents_review_required=true` in the new event notes.
+  `contents_review_required=true` in the new event notes. **No Manager review queue
+  or resolution tool exists yet; see Delayed contents review above.**
 - A final review names the Displays remaining and detaching, and the inferred
   prior location, before any reconciliation write. Cancelling records nothing.
 - **Return Empty:** requires Empty confirmation, displays canonical Home Location,

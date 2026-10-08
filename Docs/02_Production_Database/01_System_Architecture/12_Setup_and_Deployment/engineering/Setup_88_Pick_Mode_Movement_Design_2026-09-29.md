@@ -897,3 +897,24 @@ expected next-stop state. Add consecutive unchanged loaded stops to acceptance,
 with quick confirmation and no per-Display re-entry. Road-work staging and network
 repairs make low-attention, offline-capable operation a launch requirement. This
 clarification changes no application source and requests no further browser test.
+
+
+### Delayed Not Sure review — required completion gap, 2026-10-07
+
+Greg asks about desk review two/three days later with nobody near the Container.
+Current source writes contents_review_required=true in notes; no UI consumer or
+resolution command exists. Not Sure payloads have no frozen expected contents or
+pinned prior event, and Container-only event-display rows do not preserve the full
+attached scope. A fresh scan/latest-stop reconciliation is not historical review.
+
+#88 needs a Manager contents-review queue retaining the original uncertain stop,
+known snapshot/prior anchor, subsequent movement evidence and unresolved scope.
+Desk actions must capture documented evidence, actual observation versus recording
+time and guarded audited corrections linked to the original event, preserving
+later valid work. Confirmed-now facts cannot automatically resolve earlier unknown
+physical history. Partial/no-evidence cases remain unresolved; derived Display
+location must show uncertainty. Reporting helpers need not have accounts. No new
+model/schema is justified without first proving use of existing event/notes scope.
+Full proposed tool and acceptance cases are in the candidate handoff's Delayed
+contents review section. This capability is unimplemented and required before the
+Not Sure workflow can be considered complete; no runtime or Production change.
