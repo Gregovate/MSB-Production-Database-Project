@@ -2,17 +2,83 @@
 
 | Document control | Value |
 |---|---|
-| Status | DRAFT — stop-guidance alignment required before further browser acceptance |
+| Status | DRAFT — guided-stop source ready; current-clone/operator acceptance and delayed review resolution pending |
 | Owner | #88; commanding #122 / DBG-2026-007, 009, 010 |
-| Reviewed | 2026-10-08 (Chicago; nearest-reference report candidate) |
+| Reviewed | 2026-10-08 (Chicago; required guided Container stops) |
 | Baseline main | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
 | Branch | `fix/88-container-contents-reconciliation` |
-| Release | `V0.3.48-nearest-stage-report` |
-| Exact application candidate | `b47f51089c2d5066ff05c243a8d24e0493bb8953` |
+| Release | `V0.3.49-guided-container-stop` |
+| Exact application candidate | `fe801e18f58acc58c0d4d6798d9ab6c334648b2e` |
 | Migration | `070_reconcile_setup_container_contents.sql` — functions only |
 | Preview allocation | Setup `8898` |
 
-## V0.3.48 Container Movement — current source candidate
+## V0.3.49 required guided Container stops — current source candidate
+
+Every ordinary Container stop now requires **Empty / Not Empty / Not Sure**;
+there is no preselected location-only drop shortcut. Pick is not required. A
+Container can stop repeatedly with the same load. **Not Empty** requires one of:
+
+- **All last recorded Displays are still here**: quick confirmation, no long
+  Display list; move the Container with all its recorded attachments unchanged.
+- **Fewer remain — select Display Names**: searchable checked names stay with
+  the Container; unchecked names stop following it at the **PRIOR** last-known
+  observation. Filtering preserves hidden checked selections and the dock count.
+- **Cannot identify what remains — flag review**: record location only and retain
+  an uncertainty flag; do not guess attachment changes.
+
+The existing compact trailer workflow remains available as **Displays were
+physically removed HERE — select Stage groups**. It records observed removals at
+this scan's location/GPS; inferred contents reconciliation uses the prior
+observation instead. Stage names/counts remain compact with Display Names
+collapsed. Final review distinguishes HERE / PRIOR and supports Back to selection.
+
+**Empty** infers the final recorded load at the prior observation. **Return Empty**
+uses canonical Home without Workshop GPS. A zero recorded count is still physically
+unconfirmed and does not auto-select Empty. Standalone / singular Display-Pallet
+scans offer location recording only, with no Empty/removal controls. Existing
+one-Display setup-location/actual-Stage confirmation and detach rules remain.
+
+Not Sure and unidentified Not Empty include **review_context** in the existing
+reconciliation event notes: captured last recorded Display IDs/Names and selected
+prior-observation fields, plus availability/prior event/client anchors. This is
+operator/device evidence, not a verified manifest or trusted historical correction.
+Prior notes are excluded to prevent nested snapshots growing on repeated scans.
+The original uncertainty event remains inspectable after later moves; no closed
+review state is invented. Existing offline queue, predecessor UUID replay,
+snapshot guards and protected server commands are reused. **No migration change,
+new table/column or alternative movement model.** Migration 070 is unchanged.
+
+**Not complete:** delayed Manager review resolution, guarded recovery of erroneous
+historical detaches, takedown loading and real offline tablet/Zebra acceptance.
+The Container Movement report shows historical flags, but this candidate does
+not provide the safe Manager correction/resolve tool discussed with Greg. Keep
+#88/#122 and PR #309 draft. No Production repair, merge or deployment is claimed.
+
+Exact source **fe801e18f58acc58c0d4d6798d9ab6c334648b2e**, version **V0.3.49-guided-container-stop**,
+visible UI date **2026-10-08**; main baseline unchanged. Verification:
+
+- **766 full Setup tests**, **59 targeted** reconciliation/current-location/report
+  contracts, JS syntax, diff and exact-commit UI date gate PASS.
+- **720 application tests / 3 engineering-only skips** with Node absent from PATH;
+  Windows launcher runs Application only, avoiding Linux fcntl collection. No Node
+  installation is required on Greg's workstation.
+- Actual migration in synthetic PostgreSQL/WASM PASS, including three unchanged
+  interim stops with zero detach effects, later partial removal and frozen Not
+  Sure context retention. Exact disposable validation SQL also runs PASS on the
+  synthetic fixture with its narrow role/assertions. This is not a current-clone
+  or Production audit/privilege pass.
+- Actual Record Location routes/JS in Chromium with a synthetic repository and
+  captured API commands PASS: required choices, quick unchanged load, cancellation,
+  filtered names, compact Stage groups HERE, uncertain snapshot, GPS-free Return,
+  protected location only, training without writes/queue and no JS errors. Inspected
+  tablet screenshots. Material Status/report browser/print/tablet regression PASS.
+
+The reusable 8898 launcher prepares **current-Production disposable clones** on
+Greg's server for its remaining acceptance/browser gates. This workspace cannot
+reach the private MSB SSH server. Start at **Record Location**, verify V0.3.49,
+and use the exact handoff below after the preceding preview's CLEAN EXIT.
+
+## V0.3.48 Container Movement — preceding report candidate
 
 Greg renamed the report **Container Movement** because Production Report suggests
 a broader Setup production report. The Material Status button, report title and
@@ -543,8 +609,8 @@ No Node installation is required. The Python environment is ignored by Git.
         Set-Location $Review88
         if (Git88 status --porcelain) { throw 'STOP: review checkout has changes; preserve them.' }
         Git88 merge --ff-only origin/fix/88-container-contents-reconciliation
-        $Candidate88 = 'b47f51089c2d5066ff05c243a8d24e0493bb8953'
-        Git88 diff --exit-code $Candidate88 HEAD -- Setup/Application Setup/Acceptance/run_setup_88_contents_browser_review.ps1
+        $Candidate88 = 'fe801e18f58acc58c0d4d6798d9ab6c334648b2e'
+        Git88 diff --exit-code $Candidate88 HEAD -- Setup/Application Setup/Acceptance/run_setup_88_contents_browser_review.ps1 Setup/Acceptance/setup_88_contents_reconciliation_disposable_validation.sql
         if (-not (Test-Path '.venv\Scripts\python.exe')) {
             & python -m venv .venv
             if ($LASTEXITCODE -ne 0) { throw 'STOP: Python environment creation failed.' }
@@ -562,8 +628,10 @@ No Node installation is required. The Python environment is ignored by Git.
 ```
 
 After BROWSER REVIEW READY, open
-`http://127.0.0.1:8898/material-status/?season_year=2026` -> Container Movement.
-Check both recorded and calculated fields together. Finish with ENTER in the
+`http://127.0.0.1:8898/record-location/?season_year=2026`.
+Verify **V0.3.49-guided-container-stop**. Test the required contents question and
+quick unchanged load first; then the preserved Stage-group removal shortcut.
+Material Status -> Container Movement remains available for recorded/calculated evidence. Finish with ENTER in the
 launcher and retain CLEAN EXIT; the block returns to the primary checkout.
 Keep the unmerged review worktree for follow-up; do not force-remove it.
 
@@ -586,14 +654,14 @@ After the active preview exits cleanly, this stop-on-failure block refreshes it:
     if (Invoke-Git88 status --porcelain) { throw 'STOP: preserve review checkout changes first.' }
     Invoke-Git88 fetch origin
     Invoke-Git88 merge --ff-only origin/fix/88-container-contents-reconciliation
-    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha 'b47f51089c2d5066ff05c243a8d24e0493bb8953'
+    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha 'fe801e18f58acc58c0d4d6798d9ab6c334648b2e'
 }
 ```
 
 This launcher requires Python, not Node, on Greg's workstation. When READY appears,
 open `http://127.0.0.1:8898/record-location/?season_year=2026` and verify
-**V0.3.48-nearest-stage-report** before testing. Report-only review uses Material Status;
-guided scan acceptance remains paused. The acceptance/preview runner uses
+**V0.3.49-guided-container-stop** before testing. Container Movement report review uses Material Status.
+Guided scan acceptance is now ready for this exact disposable candidate. The acceptance/preview runner uses
 a disposable current-Production clone; this command does not correct Production.
 
 ### First-time review worktree only
@@ -619,7 +687,7 @@ do not change that application identity.
     if (Test-Path $Review) { throw 'STOP: inspect the existing review worktree; do not overwrite it.' }
     Invoke-Git88 -C $Primary worktree add -b fix/88-container-contents-reconciliation $Review origin/fix/88-container-contents-reconciliation
     Set-Location $Review
-    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha 'b47f51089c2d5066ff05c243a8d24e0493bb8953'
+    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha 'fe801e18f58acc58c0d4d6798d9ab6c334648b2e'
 }
 ```
 

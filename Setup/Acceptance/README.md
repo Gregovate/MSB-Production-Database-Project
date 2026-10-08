@@ -9,14 +9,18 @@ read-only SQL for the existing query client: day activity, event/Display evidenc
 current recorded contents/location and historical review flags. Default report day
 is October 7, 2026 Chicago; run the whole script. It cannot establish unrecorded or
 unsynced work, physical contents, or resolved reviews. No Node dependency.
-V0.3.48 includes a Manager **Container Movement** report from Material Status: fresh printable
+V0.3.49 retains a Manager **Container Movement** report from Material Status: fresh printable
 movement/location trail, all unresolved reasons and receipt comparison after a
 prior event (123 for the October 6 snapshot). GPS-only Current display is fixed;
 GPS-only report headings now show the nearest Stage reference and distance in
 feet as an estimate, using each asset's own observation. Recorded destination/GPS
 and calculated nearest Stage are explicitly labelled and shown together. Exact current source and
 reference version are in the candidate handoff. Read-only source, not deployed.
-Guided-stop acceptance remains paused. The overall branch reuses movement/event tables with migration 070.
+V0.3.49 makes Empty / Not Empty / Not Sure required at ordinary Container stops,
+adds quick All still here confirmation, and preserves compact observed-HERE
+Stage-group removal. Uncertain event notes retain the named scope/prior evidence.
+Delayed Manager review resolution, historical correction and takedown loading remain
+unfinished. The overall branch reuses movement/event tables with unchanged migration 070.
 Current-clone/browser acceptance and Production deployment remain pending.
 
 

@@ -1014,3 +1014,34 @@ Route and permissions unchanged; the final exact source above includes the renam
 Browser checks proved the visible button, report heading and tab title, alongside
 766 full and 40 targeted tests. Current preview retains its earlier source until
 clean exit/relaunch. No report-name-specific migration or new release version.
+
+
+### V0.3.49 required guided Container stops — 2026-10-08 Chicago
+
+Exact source `fe801e18f58acc58c0d4d6798d9ab6c334648b2e` replaces optional default Drop with mandatory
+Empty / Not Empty / Not Sure at every ordinary stop. Not Empty explicitly offers
+All last recorded Displays still here, searchable remaining Display Names, or
+unidentified contents for review. Repeated interim stops can keep the full load
+without paging a list. Selected missing complements use prior observation;
+compact physically removed HERE Stage-group selection remains available and
+retains current observed location/GPS. Standalone/singular Display-Pallet has
+no Empty/removal controls. Return Empty canonical Home needs no GPS. Independent
+Display actual-setup-location confirmation remains unchanged.
+
+Uncertain commands freeze captured Display IDs/Names and prior-observation fields
+in existing reconciliation notes for later evidence; no prior notes recursion,
+new schema or migration 070 change. These snapshots do not resolve review or
+make historical attachments verified. Delayed Manager resolve/correct tools,
+guarded erroneous-detach recovery and takedown loading remain open. No Production
+mutation/deployment. Keep #88 and draft #309 open.
+
+Validation: 766 full Setup tests; 59 targeted; no-Node simulation 720 application
+passed / 3 engineering-only skipped. Actual migration and exact disposable SQL
+execute on synthetic PostgreSQL/WASM; repeated unchanged stops detach zero and
+retain uncertainty snapshots. Real Chromium app-route/JS checks with synthetic
+repo/API command captures cover mandatory choices, quick full load, filtered
+names, cancel, compact HERE groups, Not Sure, Return without GPS, protected scans,
+training no writes and tablet layout; inspected screenshots and report/print
+regression PASS. Diff/JS/exact source UI date gate PASS. This does not substitute
+for current-Production-clone/audit/privilege/operator/tablet acceptance. Reusable
+8898 exact-candidate handoff is in the acceptance record.
