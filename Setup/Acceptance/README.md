@@ -8,6 +8,13 @@ It is separate from the guided-stop draft: no migration, database copy, or movem
 workflow change. The expected live rollback pin is the operator-reported installed
 V0.3.42 / cb053802 from #175. Installation/protected-route result remain pending.
 
+The October 8 server attempt stopped at the read-only preflight because the
+application cannot SELECT Container type names. Production remains healthy on
+V0.3.42; V0.3.50 was not installed. **Do not rerun the report installer yet.**
+[Prepared two-column read prerequisite and proof](Setup_88_Report_Read_Prerequisite.md)
+requires a separate controlled database permission step; the source installer
+continues to perform no SQL mutations.
+
 ## Authority
 
 Setup acceptance consumes the runtime/safety rules owned by `Gregovate/MSB-Server-Management`:

@@ -38,6 +38,15 @@ Each deployment entry must record, when applicable:
 
 Documentation-only repository changes that do not alter Production do not require a deployment entry.
 
+## 2026-10-08 — Container Movement report attempt — stopped before mutation
+
+- Intended #88 / PR #310 application: `6c44a082dd520b75881c50ad2ce78feb029ff87d`, V0.3.50.
+- Read-only preflight under `fieldwiring_app` failed: `permission denied for table container_type`.
+- No live advancement, service restart, SQL mutation or rollback was required; temporary candidate removed.
+- Operator readback: exact live `cb0538022ed066ff90675e832daa1cd95488114a`, active Setup, PostgreSQL healthy, V0.3.42.
+- Retained report: `/home/msbadmin/setup-deployment-reports/Setup88Report-20261008T151700Z/report.txt`.
+- [Acceptance / blocked handoff](../Setup/Acceptance/Setup_88_Container_Movement_Report_Deployment.md) and [proposed narrow read prerequisite](../Setup/Acceptance/Setup_88_Report_Read_Prerequisite.md). Report installation remains pending.
+
 ## 2026-10-07 — Setup V0.3.42 Current Location attempt — rolled back
 
 - Owning work: [#175](https://github.com/Gregovate/MSB-Production-Database-Project/issues/175), #122 / DBG-2026-001. Application and installer PR [#305](https://github.com/Gregovate/MSB-Production-Database-Project/pull/305) merged to main at `5cbd4cfe156b62c484fe128b43b8119938c6fbef` before deployment.

@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | APPROVED REPORT; exact release prepared, server installation pending |
+| Status | APPROVED REPORT; first attempt STOPPED before mutation; read prerequisite unresolved |
 | Owner | #88, commanding #122; Material Status #206 |
 | Reviewed | 2026-10-08 America/Chicago |
 | Current main at reconnaissance | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
@@ -13,6 +13,30 @@
 | Migration / PostgreSQL writes | NONE |
 | Integration PR / merged main | Recorded on the release PR; integration must precede installer execution |
 | Actual deployed source / report / protected-route result | PENDING — never infer from the prepared runner |
+
+## October 8 preflight STOP — Production unchanged
+
+The first server attempt retained
+`/home/msbadmin/setup-deployment-reports/Setup88Report-20261008T151700Z/report.txt`.
+The exact report read probe failed under `fieldwiring_app` with
+`permission denied for table container_type`, before live checkout or service
+restart. Temporary candidate cleanup succeeded. Operator readback proves live
+`cb0538022ed066ff90675e832daa1cd95488114a`, service active, PostgreSQL healthy,
+`V0.3.42-current-location`. V0.3.50 was **not installed**.
+
+The report's type-name join is required for its reviewed Container type labels
+and protected Standalone/single-Display Pallet warnings. Existing Setup reads
+avoid that lookup for Kit Boxes by using the governed ID 2; that does not supply
+all report types. No approved general type-name view was found. Do not invent
+numeric type IDs, suppress the warnings, or run the probe as administrator.
+The separate `ref.display_status` read is already granted by migration 025.
+
+[Proposed narrow read prerequisite](Setup_88_Report_Read_Prerequisite.md) adds
+SELECT on only `container_type_id` and `container_type_name`; it has no business
+data, structure or write-privilege changes. It is **not authorized/applied** by
+the previous source-only handoff. Its controlled database gate must finish
+before another report install attempt. The pinned source installer remains SQL
+read-only and must not apply the grant implicitly. Do not rerun it now.
 
 ## Authorization and release boundary
 
@@ -91,7 +115,9 @@ No environment/service-unit/shared checkout/proxy/firewall change is performed.
 - Private SSH from this workspace reports network unreachable. No assistant server
   install, live fingerprint, service restart or Production report result is claimed.
 
-## Workstation install — after main integration
+## Historical workstation handoff — BLOCKED by read prerequisite
+
+**Do not execute this handoff until the read prerequisite is accepted and proven.**
 
 Confirmed current prompt: laptop `C:\lor\ImportExport\VSCode`. Run there. This
 finds main by reading worktree inventory line by line. If no worktree has main,
