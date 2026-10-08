@@ -20,9 +20,9 @@ try {
     & python (Join-Path $repo 'Setup/Acceptance/setup_88_report_transport.py') $repo $bundle
     if ($LASTEXITCODE -ne 0) { throw 'STOP: committed runner packaging failed before server contact.' }
     Write-Host 'Authority: Server Management — Production_Database_Change_Deployment_Runbook.md'
-    Write-Host 'Disposable clone test first; grant SELECT on only Container type ID/name under maintenance; then install the approved report.'
+    Write-Host 'Disposable clone and report tests first; one server maintenance window covers the two-column grant and approved report installation.'
     Write-Host 'Finish preview CLEAN EXIT. This chat owns the deployment; do not use the maintenance dashboard during this run.'
-    Write-Host 'Pause Setup edits during the final report source change so preservation checks can compare unchanged data.'
+    Write-Host 'The maintenance controller blocks writes during installation. No operator pause is required before or after that window.'
     $mode = '--deploy'
     if ($PreflightOnly) { $mode = '' }
     & scp -r $bundle "$($Server):/tmp/"

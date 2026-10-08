@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""#88 approved read prerequisite, then the unchanged pinned report installer.
+"""#88 approved read prerequisite and report in one controller maintenance window.
 
 Reuse the installed maintenance-controller orchestration and disposable clone
 pattern. Failure never retries a grant, opens the fence, or restores a database.
@@ -25,6 +25,7 @@ REPORT_TARGET = '6c44a082dd520b75881c50ad2ce78feb029ff87d'
 OLD_SETUP = 'cb0538022ed066ff90675e832daa1cd95488114a'
 SHARED = '6dd05c4aa5ef8f50fe172145c3ae281cc245a101'
 OLD_VERSION = 'V0.3.42-current-location'
+REPORT_VERSION = 'V0.3.50-container-movement-report'
 VALIDATION = 'Setup/Acceptance/setup_88_report_read_validation.sql'
 HELPERS = {'setup_maintenance_deploy.py': '9bf50a37b44d142f253b927b06bf4dc1960eb92b',
            'setup_88_report_source_only_deploy.py': '0fe7e1115579f3d4dbdb56fbdcd61bde599612fa'}
@@ -50,10 +51,18 @@ def report_queries(source):
 
 class ReadDeploy(Deploy):
     def __init__(self, root):
+        self.report = None
         super().__init__(dict(issue=88, grant_target=GRANT_TARGET,
                              report_target=REPORT_TARGET, migration=MIGRATION,
                              migration_blob=MIGRATION_BLOB, old_setup=OLD_SETUP,
                              shared=SHARED), root)
+
+    def journal(self, **extra):
+        # Retain source-promotion evidence across subsequent stage updates.
+        if self.report is not None:
+            extra.update(report_directory=str(self.report.root),
+                         application_promotion_started=self.report.advanced)
+        super().journal(**extra)
 
     def git(self, *args, root=REPO):
         return self.run(['sudo', 'env', 'GIT_TERMINAL_PROMPT=0', 'git', '-C', root, *args])
@@ -182,14 +191,40 @@ class ReadDeploy(Deploy):
         os.chmod(self.worktree,0o755)
         self.git('worktree','add','--detach',self.worktree,GRANT_TARGET)
         self.clone_acceptance()
+        self.prepare_report()
         self.baseline(); self.online(); self.missing_read()
         self.mark('current-Production clone acceptance PASS')
 
+    def prepare_report(self):
+        """Reuse pinned source checks/tests while operators can keep working."""
+        from setup_88_report_source_only_deploy import Installer
+        self.report = Installer()
+        report = self.report
+        (self.root/'report-directory.txt').write_text(str(report.root)+'\n')
+        self.journal()
+        require(not report.git('diff','--name-only',OLD_SETUP,REPORT_TARGET,
+                               '--','Setup/Database'), 'Report Database source changed')
+        require(report.git('show',REPORT_TARGET+':Setup/Application/production_backend.py')
+                .count('PRODUCTION_VERSION = "'+REPORT_VERSION+'"') == 1,
+                'Report server identity differs')
+        require("CLIENT_BUILD = '"+REPORT_VERSION+"'" in report.git('show',
+                REPORT_TARGET+':Setup/Application/setup_catalog_dirty_guard.js'),
+                'Report client identity differs')
+        # Mark ownership before creation so a partial Git failure is cleaned up.
+        report.worktree_created = True
+        report.git('worktree','add','--detach',report.candidate,REPORT_TARGET)
+        report.run(['sudo','python3',report.candidate+'/Setup/Acceptance/check_setup_ui_update_date.py',
+                    '--repository',REPO,'--target',REPORT_TARGET])
+        report.regression(report.candidate,['Setup/Application'])
+        report.focused_regression(report.candidate)
+        self.mark('exact report source regression PASS')
+
     def deploy(self):
         self.baseline(); self.online(); self.missing_read()
+        require(self.report is not None, 'Exact report regression not prepared')
         self.log.write('Authority: Server Management — Production_Database_Change_Deployment_Runbook.md\n'
                        'Procedure: controlled database-changing deployment\n'
-                       'This step: controller ON; snapshot; only migration 071; validate; OFF\n')
+                       'This step: controller ON; snapshot; only migration 071; report promotion; frozen validation; OFF\n')
         self.mark('entering maintenance')
         self.maintenance_started = True; self.journal()
         self.frozen(self.controller('on'))
@@ -222,44 +257,94 @@ class ReadDeploy(Deploy):
         self.frozen(self.controller('status'))
         require(self.git('rev-parse','HEAD',root=SETUP)==OLD_SETUP
                 and self.git('rev-parse','HEAD')==SHARED, 'Checkout changed during grant')
-        self.mark('permission validation PASS; returning to service')
+        self.mark('permission validation PASS; installing report while frozen')
+        self.promote_report()
+        # Compare business data before OFF. Normal work after OFF is legitimate
+        # and must never trigger a stale-fingerprint rollback.
+        self.validate()
+        after=self.capture(); acl_after=self.acl_preservation()
+        (self.root/'after-report-invariants.jsonl').write_text(after+'\n')
+        (self.root/'after-report-type-acl.json').write_text(acl_after+'\n')
+        require(after==before and acl_after==acl_before,
+                'Data or unapproved ACL changed during report promotion')
+        self.frozen(self.controller('status'))
+        self.mark('grant and report frozen validation PASS; returning to service')
         state=self.controller('off')
         require(state.get('state')=='ONLINE' and not state.get('last_error')
                 and state.get('live',{}).get('database_fenced') is False
                 and state.get('gates',{}).get('online_proof',{}).get('ok') is True,
                 'Return to service not proven')
         self.maintenance_started=False; self.journal()
-        self.baseline(); self.validate()
-        self.mark('permission prerequisite PASS; installing reviewed report')
-        self.install_report()
+        self.finish_report()
         self.mark('grant and report server PASS; protected browser check pending')
 
-    def install_report(self):
-        # Call the unchanged installer under our existing cooperative lock;
-        # invoking its CLI would try to acquire the same lock twice.
-        from setup_88_report_source_only_deploy import Installer
-        report=Installer()
-        (self.root/'report-directory.txt').write_text(str(report.root)+'\n')
-        self.journal(report_directory=str(report.root))
+    def promote_report(self):
+        """Advance only Setup; the controller still owns all stopped writers."""
+        require(self.report is not None, 'Exact report regression not prepared')
+        self.frozen(self.controller('status'))
+        report=self.report
+        report.advanced=True; self.journal()
+        report.git('checkout','--detach',REPORT_TARGET,root=SETUP)
+        require(report.git('rev-parse','HEAD',root=SETUP)==REPORT_TARGET
+                and not report.git('status','--porcelain',root=SETUP),
+                'Promoted report identity differs')
+        require(report.git('rev-parse','HEAD')==SHARED
+                and not report.git('status','--porcelain'), 'Shared checkout changed')
+        report.focused_regression(SETUP)
+        report.report_read_probe()
+
+    def finish_report(self):
+        """Validate after controller OFF without comparing reopened business rows."""
+        report=self.report
+        self.online()
         try:
-            report.deploy()
+            report.health(REPORT_VERSION)
+            report.focused_regression(SETUP)
+            report.report_read_probe()
+            require(report.git('rev-parse','HEAD',root=SETUP)==REPORT_TARGET
+                    and not report.git('status','--porcelain',root=SETUP),
+                    'Final report source differs')
+            require(report.git('rev-parse','HEAD')==SHARED
+                    and not report.git('status','--porcelain'), 'Shared checkout changed')
         except BaseException as exc:
             report.log.write('STOP '+repr(exc)+'\n')
+            # OFF was proven. Restore only source/service on a failed live
+            # application check; keep the validated grant and legitimate work.
             try:
+                state=self.controller('status')
+                require(state.get('state')=='ONLINE' and not state.get('last_error')
+                        and state.get('live',{}).get('database_fenced') is False,
+                        'Source rollback requires current healthy ONLINE controller')
+                require(report.git('rev-parse','HEAD',root=SETUP)==REPORT_TARGET,
+                        'Source changed outside this run; do not overwrite')
                 report.rollback()
             except Exception as recovery:
                 report.log.write('ROLLBACK FAILED '+repr(recovery)+'\n')
                 raise RuntimeError('Report failed and source rollback failed; inspect both reports') from recovery
             raise
-        finally:
-            try:
-                report.cleanup()
-            finally:
-                report.log.close()
         (self.root/'result.json').write_text(json.dumps(dict(result='PASS',
             migration=MIGRATION,migration_blob=MIGRATION_BLOB,grant_target=GRANT_TARGET,
             report_directory=str(report.root),app_target=REPORT_TARGET,
-            version='V0.3.50-container-movement-report',operator_check='PENDING'),indent=2)+'\n')
+            version=REPORT_VERSION,preservation='ref/ops rows and unapproved ACL unchanged while frozen',
+            operator_check='PENDING'),indent=2)+'\n')
+
+    def cleanup(self):
+        # Cleanup never opens maintenance or restarts a writer on a failed gate.
+        errors=[]
+        if self.report is not None:
+            try:
+                self.report.cleanup()
+            except Exception as exc:
+                errors.append(exc)
+            finally:
+                self.report.log.close()
+        if self.worktree:
+            try:
+                super().cleanup()
+                self.worktree=None
+            except Exception as exc:
+                errors.append(exc)
+        require(not errors, 'Owned worktree cleanup failed: '+repr(errors))
 
 
 def interrupted(signum, frame):
@@ -286,7 +371,7 @@ def main():
             deploy.journal(error=str(exc)); deploy.log.write('STOP '+repr(exc)+'\n')
             try: deploy.cleanup()
             except Exception as cleanup: deploy.log.write('CLEANUP FAILED '+repr(cleanup)+'\n')
-            print('STOP: '+deploy.stage+'; report: '+str(deploy.root)+
+            print('STOP: '+deploy.stage+'; error: '+str(exc)+'; report: '+str(deploy.root)+
                   '; do not rerun or change maintenance; inspect retained journal')
             return 1
         finally:

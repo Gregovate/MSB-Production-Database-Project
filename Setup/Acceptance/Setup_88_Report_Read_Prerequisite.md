@@ -2,13 +2,13 @@
 
 | Document control | Value |
 |---|---|
-| Status | AUTHORIZED 2026-10-08 10:33 CDT; prepared runner/engineering proof PASS; host acceptance/deployment pending |
+| Status | AUTHORIZED 2026-10-08 10:33 CDT; one-window maintenance correction directed 14:20 CDT; host acceptance/deployment pending |
 | Reviewed | 2026-10-08 America/Chicago |
 | Owning issues | #88, #122 |
 | Proposed permission migration | `Setup/Database/071_grant_setup_container_type_report_read.sql` |
 | Frozen grant/clone-artifact source | `6b04d1afff67e2b79a068316198ee7ad95a635f7` |
 | Frozen source tree | `73a3454c4da0838a87a3fce117d7fc58039048ba` |
-| Integration | PR #312; merge before execution |
+| Integration | PR #312/#313 merged; one-window correction must be merged before execution |
 | Exact migration blob | `1fd5de8f3de7665336e0eabead498e94ed915883` |
 | Application | Existing approved V0.3.50 / `6c44a082dd520b75881c50ad2ce78feb029ff87d`; unchanged |
 | Current live proof | V0.3.42 / `cb0538022ed066ff90675e832daa1cd95488114a`; healthy |
@@ -84,15 +84,22 @@ The controlled sequence is:
    reads. Production remains ONLINE; no credentials or write grants are copied.
 3. Current clone restore, full Application regression, migration 071 on the clone,
    and exact committed report/least-privilege validation. Cleanup before maintenance.
+   Prepare the exact report worktree and run its full and isolated focused
+   regressions, version and UI-date gates while Production is still ONLINE.
+   Reuse the pinned helper's tests; no ONLINE fingerprint equality gate.
 4. Recheck live state. Controller ON, current freeze proof, retained validated
    rollback snapshot, all ref/ops row hashes and Container-type ACL evidence.
 5. Apply only verified migration 071. Exact report statements run READ ONLY as
    `fieldwiring_app`; all ref/ops rows and every unapproved type ACL must match.
-6. Controller OFF, ONLINE/health proof, unchanged V0.3.42 and shared checkout.
-7. Invoke the unchanged report Installer under the same cooperative lock. Its
-   merged/forward source guards, real role query probe, full/focused tests,
-   preservation comparisons and old-source rollback remain. Only Setup advances
-   to `6c44a082` / V0.3.50. Report directory is retained separately and linked.
+6. After the grant validates, advance only Setup to `6c44a082` / V0.3.50 while
+   the same controller fence remains active. Run deployed focused tests and exact
+   role SELECTs. All ref/ops rows and unapproved type ACLs must still match the
+   frozen baseline before OFF. Shared checkout stays pinned.
+7. Controller OFF restores the services at the new Setup source. Require current
+   ONLINE/unfenced/services, V0.3.50 health, isolated focused tests, real role
+   SELECTs and exact clean source identities. Normal work may resume immediately;
+   no frozen fingerprint comparison or operator pause crosses this boundary.
+   Retain the source helper report directory and promotion state in every journal.
 
 The disposable clone is restored once for this run. The later frozen rollback
 snapshot is a Production recovery archive, not another disposable download or
@@ -104,21 +111,27 @@ run; the authorized default completes the sequence above.
 Retrieved/read in this workstream:
 
 - [Production Database Change Deployment Runbook](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/Production_Database_Change_Deployment_Runbook.md), blob `d307771d15baf27b0086b8c421c0c84146b74887`.
+  The combined prerequisite/Setup promotion section is recorded by Server Management
+  PR #67, updated blob `d185c0bf183b1d7d3a7cb5b432142f80e36de123`.
 - [Production Database Maintenance Mode](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/Production_Database_Maintenance_Mode.md), blob `919da2182d6d211d789c213ab37b3bdb085f8208`.
 - [PostgreSQL Disposable Acceptance Standard](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/PostgreSQL_Disposable_Acceptance_Standard.md).
 - [Setup Source-Only Application Deployment Runbook](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/Setup_Source_Only_Application_Deployment_Runbook.md), blob `4d243cc8b0c712fd47a38b77ef0a83ac474bbf77`.
 - [Runbook-First Production Rule](../../System_Documentation/Project_Rules/Runbook_First_Production_Rule.md).
 
 This chat owns the window. Do not use the maintenance dashboard or another
-Deployment chat while the runner is active. Pause Setup edits for the final
-source-only preservation check. No new browser preview is needed for an unchanged
+Deployment chat while the runner is active. The server controller enforces the
+write freeze for both grant and source promotion; no operator edit pause is
+required before or after maintenance. No new browser preview is needed for an unchanged
 reviewed UI; current-clone/permission checks are required.
 
 Any failed maintenance/grant gate stops without automatic OFF, grant retry,
 inverse SQL or database restore. Inspect the retained journal and controller
 state. An interrupted psql command does not prove rollback; inspect actual ACLs.
-After the grant and ONLINE proof pass, a source-install failure uses the existing
-source rollback; the approved read grant remains. Do not restore a whole database
+Any frozen source-promotion or preservation failure also keeps maintenance
+closed; it must not restart a writer or call the standalone source installer.
+After OFF is proven, a failed live application check uses the existing source
+rollback only after a fresh ONLINE/unfenced check and exact-source guard; the
+approved read grant and legitimate new work remain. Do not restore a whole database
 or revoke access that existed before this prerequisite.
 
 ## Workstation handoff after integration
@@ -156,3 +169,35 @@ changing packaged bytes, reject actual code changes, and reject a missing blob.
 Full Setup after this correction: **791 passed / one optional native engineering
 check skipped**. The corrected launcher must be pulled from merged main before
 execution; do not edit/reset the helper locally to satisfy the old guard.
+
+## October 8 backup recovery and maintenance ordering correction
+
+The retained combined attempt `Setup88Read-20261008T161235Z` stopped on the first
+ONLINE backup check: `Backup chain not current`. Maintenance and migration never
+started. An unreadable root-owned October 5 rollback dump made NAS replication
+exit 23 before Directus copies. Server Management #65/#66 record the one-file
+owner repair, unchanged archive hash/mode, successful replication at 14:11:57 CDT
+and current matching local/NAS backups plus ONLINE/unfenced services.
+
+At 14:20 CDT Greg rejected a manual operator pause and directed use of the real
+server maintenance routine. At 14:20:48 he confirmed **no new run had started**.
+The old combined ordering (OFF before report install) is superseded. The corrected
+runner prepares all exact report regressions ONLINE, uses one existing controller
+ON/freeze/snapshot boundary for the grant and report promotion, compares all
+preservation evidence while frozen, then uses controller OFF and live checks.
+It reuses the unchanged pinned source helper methods; it does not invoke that
+helper's standalone ONLINE deployment routine. Application/UI, grant/clone pin,
+migration bytes, shared source and transport helper pins do not change.
+
+Failure tests cover partial checkout, frozen source tests/probes/preservation,
+OFF failure, live source rollback, controller drift, retained promotion journal
+and legitimate operator work immediately after OFF. The terminal now prints the
+failed gate reason beside the retained report path. Actual current-clone and
+Production installation remain pending until the corrected host run passes.
+
+Engineering acceptance of the one-window correction: **803 full Setup passed / 1
+optional native PostgreSQL check skipped**; **55 targeted report/orchestration/
+transport/legacy-installer checks passed**. The unchanged migration/exact report
+SQL least-privilege proof also passes in PostgreSQL/WASM. Simulated absence of
+`fcntl`: **27 portable tests passed / 2 Linux-only checks skipped**, with no
+collection error. No Node install or new workstation package is required.

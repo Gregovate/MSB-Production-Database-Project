@@ -6,10 +6,33 @@ import setup_88_report_read_deploy as mod
 from test_setup_maintenance_deploy import frozen
 
 
+class FakeReport:
+    """Observe real orchestration phases without touching services or data."""
+    def __init__(self, owner):
+        self.owner=owner; self.root=owner.root/'source-report'; self.advanced=False
+        self.before=None; self.log=owner.log
+    def git(self,*args,**kwargs): return self.owner.git(*args,**kwargs)
+    def focused_regression(self,root):
+        phase='frozen' if self.owner.maintenance_started else 'online'
+        self.owner.calls.append('tests:'+phase)
+        if self.owner.failure=='tests:'+phase: raise mod.Stop('injected tests '+phase)
+    def report_read_probe(self):
+        phase='frozen' if self.owner.maintenance_started else 'online'
+        self.owner.calls.append('probe:'+phase)
+        if self.owner.failure=='probe:'+phase: raise mod.Stop('injected probe '+phase)
+    def health(self,version):
+        self.owner.calls.append('health:'+version)
+        if self.owner.failure=='health': raise mod.Stop('injected health')
+    def rollback(self):
+        assert self.before is None  # No equality gate across legitimate ONLINE work.
+        self.owner.calls.append('source-rollback'); self.owner.head=mod.OLD_SETUP
+
+
 class FakeDeploy(mod.ReadDeploy):
     def __init__(self, root, failure=None):
         super().__init__(root)
         self.calls=[]; self.failure=failure; self.captures=0; self.acls=0
+        self.head=mod.OLD_SETUP; self.report=FakeReport(self)
     def controller(self, action, *args):
         self.calls.append(action)
         if self.failure==action: raise mod.Stop('injected '+action)
@@ -19,24 +42,34 @@ class FakeDeploy(mod.ReadDeploy):
         if action=='off':
             state=dict(state='ONLINE',last_error=None,live={'database_fenced':False},
                        gates={'online_proof':{'ok':True}})
+        elif action=='status' and not self.maintenance_started:
+            state=dict(state='ONLINE',last_error=None,live={'database_fenced':False})
         return state
     def baseline(self): self.calls.append('baseline')
     def online(self): self.calls.append('online')
     def missing_read(self): self.calls.append('missing_read')
     def capture(self):
         self.captures+=1
-        return 'drift' if self.failure=='data' and self.captures==3 else 'same'
+        assert self.maintenance_started, 'Fingerprint comparison must stay frozen'
+        return 'drift' if ((self.failure=='data' and self.captures==3)
+                         or (self.failure=='report-data' and self.captures==4)) else 'same'
     def acl_preservation(self):
         self.acls+=1
-        return 'drift' if self.failure=='acl' and self.acls==3 else 'same'
+        assert self.maintenance_started
+        return 'drift' if ((self.failure=='acl' and self.acls==3)
+                         or (self.failure=='report-acl' and self.acls==4)) else 'same'
     def validate(self):
         self.calls.append('validate')
         if self.failure=='validate': raise mod.Stop('injected validate')
     def git(self,*args,root=mod.REPO):
         self.calls.append('git:'+args[0])
+        if args[0]=='checkout':
+            assert self.maintenance_started
+            self.head=args[2]
+            if self.failure=='checkout': raise mod.Stop('injected partial checkout')
         if args[0]=='show':
             return Path(__file__).parents[1].joinpath('Database/071_grant_setup_container_type_report_read.sql').read_text().rstrip()
-        if args[0]=='rev-parse': return mod.OLD_SETUP if root==mod.SETUP else mod.SHARED
+        if args[0]=='rev-parse': return self.head if root==mod.SETUP else mod.SHARED
         return ''
     def run(self,args,**kwargs):
         if 'sha256sum' in args: return 'a'*64+' archive'
@@ -44,11 +77,6 @@ class FakeDeploy(mod.ReadDeploy):
     def sql(self,query):
         self.calls.append('migration')
         if self.failure=='migration': raise mod.Stop('injected migration interruption')
-    def install_report(self):
-        self.calls.append('report')
-        if self.failure=='report': raise mod.Stop('injected report')
-
-
 @pytest.fixture
 def deploy(tmp_path):
     made=[]
@@ -58,34 +86,124 @@ def deploy(tmp_path):
     for d in made: d.log.close()
 
 
-def test_complete_order_uses_snapshot_before_grant_and_online_before_report(deploy):
+def test_complete_order_keeps_grant_and_report_inside_one_maintenance_window(deploy):
     d=deploy(); d.deploy()
     for first,second in [('on','snapshot'),('snapshot','migration'),('migration','validate'),
-                         ('validate','off'),('off','report')]:
+                         ('validate','git:checkout'),('git:checkout','tests:frozen'),
+                         ('probe:frozen','off'),('off','health:'+mod.REPORT_VERSION)]:
         assert d.calls.index(first)<d.calls.index(second)
     assert d.committed and not d.maintenance_started
-    assert not any(c=='git:checkout' for c in d.calls)
+    assert d.head==mod.REPORT_TARGET and d.captures==4 and d.acls==4
+    assert d.calls.count('on')==1 and d.calls.count('off')==1
+    assert d.calls.count('tests:online')==1 and d.calls.count('probe:online')==1
+    assert 'source-rollback' not in d.calls
 
 
 @pytest.mark.parametrize('failure,forbidden',[
- ('on',['snapshot','migration','off','report']),
- ('snapshot',['migration','off','report']),
- ('migration',['validate','off','report']),
- ('validate',['off','report']),('data',['off','report']),('acl',['off','report']),
- ('off',['report'])])
+ ('on',['snapshot','migration','off','git:checkout']),
+ ('snapshot',['migration','off','git:checkout']),
+ ('migration',['validate','off','git:checkout']),
+ ('validate',['off','git:checkout']),('data',['off','git:checkout']),('acl',['off','git:checkout']),
+ ('checkout',['off','tests:online']),('tests:frozen',['off','tests:online']),
+ ('probe:frozen',['off','probe:online']),('report-data',['off']),('report-acl',['off']),
+ ('off',['tests:online','probe:online'])])
 def test_failure_does_not_reopen_or_continue(deploy,failure,forbidden):
     d=deploy(failure)
     with pytest.raises(mod.Stop): d.deploy()
     assert all(c not in d.calls for c in forbidden)
     if failure=='migration': assert d.migration_started and not d.committed
-    if failure in ['validate','data','acl','off']: assert d.committed
+    if failure in ['validate','data','acl','off','checkout','tests:frozen','probe:frozen',
+                    'report-data','report-acl']: assert d.committed
+    assert 'source-rollback' not in d.calls
+    assert d.maintenance_started
 
 
-def test_report_failure_leaves_proven_grant_and_no_database_recovery(deploy):
-    d=deploy('report')
+@pytest.mark.parametrize('failure',['health','tests:online','probe:online'])
+def test_live_report_failure_rolls_back_only_source_after_proven_online(deploy,failure):
+    d=deploy(failure)
     with pytest.raises(mod.Stop): d.deploy()
     assert d.committed and not d.maintenance_started
     assert d.calls.count('migration')==1 and d.calls.count('off')==1
+    assert d.calls.count('source-rollback')==1 and d.head==mod.OLD_SETUP
+    journal=json.loads((d.root/'state.json').read_text())
+    assert journal['migration_confirmed'] and journal['application_promotion_started']
+
+
+def test_unprepared_report_cannot_enter_maintenance(deploy):
+    d=deploy(); d.report=None
+    with pytest.raises(mod.Stop,match='not prepared'): d.deploy()
+    assert 'on' not in d.calls
+
+
+def test_controller_drift_prevents_online_source_rollback(deploy):
+    d=deploy('health'); real=d.controller
+    def changed(action,*args):
+        if action=='status' and not d.maintenance_started:
+            return frozen()
+        return real(action,*args)
+    d.controller=changed
+    with pytest.raises(RuntimeError,match='rollback failed'): d.deploy()
+    assert 'source-rollback' not in d.calls and d.head==mod.REPORT_TARGET
+
+
+def test_exact_report_preparation_runs_before_any_production_mutation(tmp_path,monkeypatch):
+    pytest.importorskip('fcntl',reason='Pinned preparation helper is Linux-only')
+    import setup_88_report_source_only_deploy as pinned
+    calls=[]
+    class Prepared:
+        def __init__(self):
+            self.root=tmp_path/'report'; self.root.mkdir()
+            self.candidate='/tmp/owned-exact-report'
+            self.advanced=False; self.worktree_created=False
+            self.log=(self.root/'report.txt').open('w')
+        def git(self,*args):
+            calls.append(args)
+            if args[0]=='show':
+                return ('PRODUCTION_VERSION = "'+mod.REPORT_VERSION+'"' if 'production_backend.py' in args[1]
+                        else "CLIENT_BUILD = '"+mod.REPORT_VERSION+"'")
+            return ''
+        def run(self,args): calls.append(tuple(args))
+        def regression(self,root,tests): calls.append(('full',root,tuple(tests)))
+        def focused_regression(self,root): calls.append(('focused',root))
+        def cleanup(self): calls.append(('cleanup',))
+    monkeypatch.setattr(pinned,'Installer',Prepared)
+    d=mod.ReadDeploy(tmp_path/'deployment')
+    try:
+        d.prepare_report()
+        assert ('worktree','add','--detach','/tmp/owned-exact-report',mod.REPORT_TARGET) in calls
+        assert ('full','/tmp/owned-exact-report',('Setup/Application',)) in calls
+        assert ('focused','/tmp/owned-exact-report') in calls
+        assert any('--target' in c and mod.REPORT_TARGET in c for c in calls)
+        assert not d.maintenance_started and not d.migration_started and not d.report.advanced
+        assert not any(c[0]=='checkout' for c in calls)
+    finally:
+        d.cleanup(); d.log.close()
+
+
+def test_frozen_failure_journal_retains_source_promotion_evidence(deploy):
+    d=deploy('probe:frozen')
+    with pytest.raises(mod.Stop): d.deploy()
+    d.journal(error='retained failure')
+    journal=json.loads((d.root/'state.json').read_text())
+    assert journal['maintenance_started'] and journal['migration_confirmed']
+    assert journal['application_promotion_started'] and journal['report_directory']==str(d.report.root)
+    assert 'off' not in d.calls and 'source-rollback' not in d.calls
+
+
+def test_legitimate_work_after_off_does_not_trigger_preservation_rollback(deploy):
+    d=deploy(); controller=d.controller; capture=d.capture
+    changed=False
+    def with_operator_work(action,*args):
+        nonlocal changed
+        state=controller(action,*args)
+        if action=='off': changed=True
+        return state
+    def business_rows():
+        assert not changed, 'Do not compare reopened rows with the frozen baseline'
+        return capture()
+    d.controller=with_operator_work; d.capture=business_rows
+    d.deploy()
+    assert changed and d.head==mod.REPORT_TARGET and 'source-rollback' not in d.calls
 
 
 def test_exact_validation_is_bound_to_report_statements():
