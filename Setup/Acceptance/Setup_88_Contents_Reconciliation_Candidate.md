@@ -775,6 +775,39 @@ is claimed. Exact candidate and browser acceptance are recorded separately below
 
 ## Remaining gates
 
+### Daily field visibility — morning briefing, 2026-10-08
+
+Greg needs a fresh operational picture before more workflow testing. The supplied
+audit covers October 5–6 only; October 7 Production activity has not been retrieved.
+The 19 scans / 18 Containers / 152 detachment effects are review candidates, not
+152 proven physical mistakes. Do not substitute that static audit for today's state.
+
+[Reusable read-only daily field picture](setup_88_daily_field_picture_readonly.sql)
+produces four result sets: observed/received-day summary, unaggregated event/Display
+timeline, current recorded Container/Display picture, and historical explicit
+contents-review flags even after subsequent moves. Run the whole script in the
+existing SQL client; change only `msb.report_day` (default October 7 Chicago).
+Current state is query-time state, not an end-of-report-day reconstruction. Includes
+empty-assignment Containers, unassigned active Displays, protected-type review
+indicators, separate prior named context/provenance and GPS accuracy in feet.
+Permanent assignments and recorded counts do not establish physical contents.
+Flags have no implemented closed-state/resolution consumer; absence of a legacy
+flag is not verification. Unrecorded work and unsynced tablet queues remain unknown.
+
+Validated all four SELECTs against a disposable PostgreSQL/WASM fixture: late
+offline receipt, Container-only events, feet conversion, prior named context and
+RETURNED boundary, active/empty/unassigned coverage, flags surviving a later move,
+and no data mutation. SQL parser confirms SELECT/transaction/settings statements
+only. No Production query, runtime/schema change or new browser pass is claimed.
+
+The October 8 two-page crew briefing presents the proposed scan flow and known
+audit scope. Explicit physical Load/Remove actions use All / None / Select; the
+normal-stop Empty / Not Empty / Not Sure question remains the lead check. Preserve
+the trailer Stage-group shortcut and Standalone protection. Takedown loading is
+proposed, not implemented. Still needed in-app: Today activity, Container picture,
+and Manager contents-review/resolution tools. Prioritize visibility alongside the
+guided flow rather than requiring another blind operator test.
+
 Current-clone acceptance, exact-candidate browser/operator disposition and real
 offline rugged-tablet/Zebra acceptance remain pending. Then merge to main,
 refresh/prove ancestry, and perform the separately authorized migration-bearing

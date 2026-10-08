@@ -3,6 +3,12 @@
 ## #88 contents reconciliation browser candidate
 
 [Implementation, reconnaissance, verification and exact-candidate review handoff](Setup_88_Contents_Reconciliation_Candidate.md).
+
+[Reusable #88 daily field picture](setup_88_daily_field_picture_readonly.sql) is
+read-only SQL for the existing query client: day activity, event/Display evidence,
+current recorded contents/location and historical review flags. Default report day
+is October 7, 2026 Chicago; run the whole script. It cannot establish unrecorded or
+unsynced work, physical contents, or resolved reviews. No Node dependency.
 V0.3.43 reuses existing movement/event tables with function-only migration 070.
 Current-clone/browser acceptance and Production deployment remain pending.
 

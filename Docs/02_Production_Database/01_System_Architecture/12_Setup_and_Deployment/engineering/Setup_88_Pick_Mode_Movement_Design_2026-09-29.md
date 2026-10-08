@@ -946,3 +946,15 @@ prove representation within current objects before any schema proposal. Preserve
 permanent assignments, event history and reason/source for historical corrections.
 Detailed reverse-flow requirements and acceptance are in the candidate handoff.
 This is not an implemented takedown feature or a new Production change.
+
+### Field visibility before further operator testing — 2026-10-08
+
+Greg needs a current operational picture and a short crew briefing. The supplied
+October 5–6 audit does not describe October 7. A reusable read-only report now lives
+at `Setup/Acceptance/setup_88_daily_field_picture_readonly.sql`; the candidate
+handoff documents its four result sets, query-time state, validation and limits.
+No Production results are claimed. Live Today activity, Container picture and
+Manager review/resolution tools remain required, unimplemented work. Confirmed
+physical Load/Remove uses All / None / Select while ordinary stops lead with the
+Empty question; takedown reattachment remains proposed. Preserve the accepted
+trailer shortcut. No runtime/schema change or additional operator test requested.
