@@ -48,13 +48,31 @@ import ast,json,sys
 from pathlib import Path
 f=next(n for n in ast.parse(Path(sys.argv[1]).read_text()).body
        if isinstance(n,ast.FunctionDef) and n.name=='movement_picture')
-print(json.dumps([n.args[0].value for n in ast.walk(f)
+queries=[n.args[0].value for n in ast.walk(f)
  if isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute)
- and n.func.attr=='execute' and isinstance(n.args[0],ast.Constant)]))
-`, resolve(root,'Setup/Application/setup_production_report.py')], {encoding:'utf8'});
+ and n.func.attr=='execute' and isinstance(n.args[0],ast.Constant)]
+c=next(n for n in ast.parse(Path(sys.argv[2]).read_text()).body if isinstance(n,ast.ClassDef) and n.name=='ReadDeploy')
+helpers={}
+for method in c.body:
+ if isinstance(method,ast.FunctionDef) and method.name in ('capture','acl_preservation'):
+  helpers[method.name]=next(n.args[0].value for n in ast.walk(method)
+   if isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute) and n.func.attr=='sql')
+print(json.dumps(dict(queries=queries,helpers=helpers)))
+`, resolve(root,'Setup/Application/setup_production_report.py'),resolve(root,'Setup/Acceptance/setup_88_report_read_deploy.py')], {encoding:'utf8'});
 assert.equal(extracted.status,0,extracted.stderr);
-const queries=JSON.parse(extracted.stdout);
+const {queries,helpers}=JSON.parse(extracted.stdout);
 assert.equal(queries.length,6);
+const exporter=readFileSync(resolve(root,'Setup/Acceptance/setup_production_read_boundary.sql'),'utf8')
+ .replace('BEGIN READ ONLY;','').replace('ROLLBACK;','');
+const initialReads=(await db.query(exporter)).rows.map(r=>r.statement);
+assert(!initialReads.some(s=>s.includes('ref.container_type')));
+assert(initialReads.some(s=>s.includes('ref.display_status')));
+const standalone=sql=>sql.replace('BEGIN READ ONLY;','').replace('ROLLBACK;','');
+const aclBefore=(await db.query(standalone(helpers.acl_preservation))).rows;
+const captureStatements=(await db.query(standalone(helpers.capture).replace('\\gexec',''))).rows.map(r=>r.format);
+assert.equal(captureStatements.length,10);
+const captureBefore=[];
+for(const sql of captureStatements) captureBefore.push((await db.query(sql)).rows);
 const before=(await db.query(`SELECT jsonb_agg(to_jsonb(t)) AS data FROM ref.container_type t`)).rows;
 await db.exec('SET ROLE fieldwiring_app');
 await assert.rejects(db.query(queries[4].replace('%s','$1'),[2]),
@@ -62,6 +80,18 @@ await assert.rejects(db.query(queries[4].replace('%s','$1'),[2]),
 await db.exec('RESET ROLE');
 await db.exec(readFileSync(resolve(root,'Setup/Database/071_grant_setup_container_type_report_read.sql'),'utf8'));
 assert.deepEqual((await db.query(`SELECT jsonb_agg(to_jsonb(t)) AS data FROM ref.container_type t`)).rows,before);
+assert.deepEqual((await db.query(standalone(helpers.acl_preservation))).rows,aclBefore);
+const captureAfter=[];
+for(const sql of captureStatements) captureAfter.push((await db.query(sql)).rows);
+assert.deepEqual(captureAfter,captureBefore);
+// Exercise the actual committed validation, including its DO ACL assertion and
+// every wrapped SELECT. psql variable/meta-command handling is covered by the
+// optional native check; the statements themselves run in PostgreSQL/WASM.
+const validation=readFileSync(resolve(root,'Setup/Acceptance/setup_88_report_read_validation.sql'),'utf8');
+await db.exec(validation.replace('\\gset','').replaceAll(':report_session_id','2'));
+const correctedReads=(await db.query(exporter)).rows.map(r=>r.statement);
+assert(correctedReads.includes('GRANT SELECT (container_type_id,container_type_name) ON TABLE ref.container_type TO fieldwiring_app;'));
+assert(!correctedReads.includes('GRANT SELECT ON TABLE ref.container_type TO fieldwiring_app;'));
 await db.exec('SET ROLE fieldwiring_app');
 // The added read scope is two columns, not all table columns or any DML.
 await assert.rejects(db.query('SELECT private_notes FROM ref.container_type'),/permission denied/);

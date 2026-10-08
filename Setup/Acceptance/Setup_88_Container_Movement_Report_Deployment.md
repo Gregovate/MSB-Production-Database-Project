@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | APPROVED REPORT; first attempt STOPPED before mutation; read prerequisite unresolved |
+| Status | APPROVED REPORT; first attempt STOPPED before mutation; read prerequisite authorized; combined launcher prepared |
 | Owner | #88, commanding #122; Material Status #206 |
 | Reviewed | 2026-10-08 America/Chicago |
 | Current main at reconnaissance | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
@@ -33,10 +33,11 @@ The separate `ref.display_status` read is already granted by migration 025.
 
 [Proposed narrow read prerequisite](Setup_88_Report_Read_Prerequisite.md) adds
 SELECT on only `container_type_id` and `container_type_name`; it has no business
-data, structure or write-privilege changes. It is **not authorized/applied** by
-the previous source-only handoff. Its controlled database gate must finish
-before another report install attempt. The pinned source installer remains SQL
-read-only and must not apply the grant implicitly. Do not rerun it now.
+data, structure or write-privilege changes. Greg separately approved it at
+10:33 CDT. Use the combined controlled launcher in that record: clone acceptance,
+maintenance/grant/ONLINE proof, then the unchanged pinned source installer. It
+remains SQL read-only and does not apply the grant implicitly. The combined host
+result is still pending; do not blindly rerun the failed handoff.
 
 ## Authorization and release boundary
 

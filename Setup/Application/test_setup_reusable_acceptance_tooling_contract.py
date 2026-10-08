@@ -290,7 +290,9 @@ def test_reusable_acl_batch_block_is_complete_before_role_lockdown() -> None:
         server = read_acceptance(name)
         assert 'grant_count="$(wc -l < "$GRANTS_FILE" | tr -d \'[:space:]\')"' in server
         count_at = server.index("Production function ACL statements extracted:")
-        replay_at = server.index('psql_test -q < "$GRANTS_FILE"')
+        # A permission-sensitive clone may replay SELECT ACLs first. This gate
+        # governs the later command-function ACL batch, after its count proof.
+        replay_at = server.index('psql_test -q < "$GRANTS_FILE"', count_at)
         pass_at = server.index("Production function ACL batch replay: PASS")
         readonly_at = server.index(
             'psql_test -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"'

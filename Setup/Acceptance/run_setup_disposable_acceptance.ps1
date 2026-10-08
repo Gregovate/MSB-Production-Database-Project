@@ -6,7 +6,8 @@ param(
     [string]$TargetRef,
     [string[]]$MigrationPaths = @(),
     [string[]]$ValidationPaths = @(),
-    [switch]$AllowConcurrentProductionWrites
+    [switch]$AllowConcurrentProductionWrites,
+    [switch]$ProductionReadBoundary
 )
 
 $ErrorActionPreference = 'Stop'
@@ -141,6 +142,7 @@ try {
         "candidate_sha`t$CandidateSha",
         "target_ref`t$TargetRef",
         "allow_concurrent_production_writes`t$($AllowConcurrentProductionWrites.IsPresent.ToString().ToLowerInvariant())"
+        "production_read_boundary`t$($ProductionReadBoundary.IsPresent.ToString().ToLowerInvariant())"
     )
     foreach ($path in $MigrationPaths) {
         $manifestLines += "migration`t$path"
