@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | DRAFT — implementation verified locally; current-clone/browser acceptance pending |
+| Status | DRAFT — stop-guidance alignment required before further browser acceptance |
 | Owner | #88; commanding #122 / DBG-2026-007, 009, 010 |
 | Reviewed | 2026-10-07 |
 | Baseline main | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
@@ -37,7 +37,79 @@ prior location evidence, then records the Container observation/RETURNED in the
 same transaction. Failure rolls the entire operation back. Existing Home and
 `ref.display.container_id` assignments are never rewritten.
 
-## Resulting workflow
+## Scan-at-stop design authority — Greg's clarification, 2026-10-07
+
+This section governs the next interaction and supersedes V0.3.46's optional
+three-intent menu. The core behavior was already designed before browser testing;
+restoring Stage-group unloading and changing terminology must not turn the required
+physical-contents question into an optional workflow that the driver must know to
+open. Pause browser acceptance of V0.3.46 as the final interaction. No new application
+change is included in this clarification commit.
+
+A scan is normally a **Container stopped here** observation, not proof of pick,
+park arrival, physical Display removal, task completion or Captain action. Picking
+is usual but is not a prerequisite for location capture or independent Display
+placement. Preserve the last scanned field location before processing this new
+stop so missed removals cannot be assigned to the new destination by accident.
+
+| Physical situation | Guided question/action | Recorded consequence |
+|---|---|---|
+| Container stopped; nothing removed | Not Empty; confirm all last recorded Display Names remain | Container moves; attached Displays continue following it |
+| Container stopped again; fewer Displays remain | Not Empty; identify the remaining Display Names, with an all-still-here shortcut | Missing complement uses the prior last scanned Container location; remaining Displays follow the new stop |
+| Container stopped again; now empty | Empty confirmation | Last recorded attached Displays use the prior last scanned location; Container alone records the new stop |
+| Contents cannot be established | Not Sure / cannot identify | No guessed removal; record location with contents needing review |
+| Arch/antenna trailer unloading observed here | Retain scan -> confirm Location/GPS -> select Stage group(s) physically removed here -> record -> repeat at next stop | Explicit selected groups stay HERE; other groups follow the trailer |
+| One or more Displays moved without their Container | Scan each moved Display; confirm setup location and actual Stage | Only the scanned Display detaches and records its own location; Container stays put, whether picked or not |
+| Standalone Display wrapper moved | Container location observation; no empty/detach operation | Display always remains with its Container |
+| Empty Container returned to Workshop | Physical Empty confirmation; Return Empty to canonical Home | Remaining recorded contents use prior field evidence; Container returns Home without Workshop GPS |
+
+For ordinary movable loads, ask **Is this Container empty? Empty / Not Empty /
+Not Sure** as part of the stop sequence. Not Empty must make **all still here**
+quick and open the remaining Display Name list only when something changed. Keep
+compact Stage rows, searchable remaining names, persistent counts and focused
+review. Do not page through every Display merely to record an unchanged loaded
+Container. Standalone objects explain that their Display stays with them rather
+than inviting an invalid Empty/removal decision. Container type alone does not
+prove a physical unload; normal multi-Display Pallets/wood/steel loads need the
+contents guidance, while the accepted Stage-group method remains available for
+observed removals. Do not replace that method again.
+
+Helpers may remove/setup Displays without a sheboyganlights account and may not
+record Captain actions. An authorized scanner operator later observes physical
+contents; this is why missed-removal reconciliation exists. Do not require the
+actual helper to have recorded an unload, assume every helper is a Captain, or
+attribute the earlier physical removal to the person recording the later scan.
+Keep existing authorization for writes; no anonymous write mechanism is proposed.
+
+Prior-location inference is evidence-based and labelled inferred. It is not proof
+of the exact physical removal time/place, especially after unobserved movement.
+Missing or untrustworthy evidence remains unresolved. Direct Display placement
+and observed Stage-group removal use the confirmed current location instead.
+Reconciliation at the prior stop and removal observed here have different location
+bases; neither may silently be used in place of the other.
+
+**Open operational choice:** scan an empty Container before leaving the park, or
+only when it reaches Workshop. Recommendation: scanning at Workshop with explicit
+Empty and canonical Home is sufficient when the prior field stop is trustworthy;
+a departure scan may be optional. This recommendation is not an accepted requirement
+for a compulsory extra scan. Always preserve detached Displays' park evidence.
+
+**January testing:** Greg identified that the testing process depends on Containers.
+That workflow remains to be designed separately. It is not an exception permitting
+Standalone Display detachment in the current Setup workflow.
+
+Tom now understands the physical-removal meaning. Historical review and any recovery
+remain separate from accepting the guiding stop workflow. Do not assume all audited
+unloads were wrong or require completion of the 152-effect physical audit merely
+to settle the operator interaction.
+
+Acceptance must cover these physical scenarios, including unchanged loaded stops,
+partial contents at the next stop, a now-empty return, helper work with no earlier
+record, an unpicked Peace-on-Earth-style independent Display placement, repeated
+trailer Stage-group removal, and Standalone movement. Passing code tests alone does
+not establish that V0.3.46's optional contents entry satisfies this design.
+
+## V0.3.46 implemented workflow — acceptance paused
 
 Record Location opens on **Record Container drop — keep Displays attached**.
 This records only the Container location, with no removal IDs or reconciliation

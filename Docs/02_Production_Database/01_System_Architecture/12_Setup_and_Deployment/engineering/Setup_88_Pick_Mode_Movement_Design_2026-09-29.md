@@ -864,3 +864,25 @@ counts, including zero, say physical contents are unconfirmed. No schema, API or
 change was necessary. Full Setup regression 753 passed, targeted movement/location
 46 passed, no-Node Windows application simulation 708 passed / two skipped. Real
 browser/current-Production-clone acceptance remains pending; no historical repair.
+
+
+### Scan-at-stop clarification — 2026-10-07
+
+Greg restated the already intended physical workflow: scans normally occur when
+Containers stop; pick is not required. Ordinary loads need a guided Empty / Not
+Empty / Not Sure check at the stop, including an all-still-here shortcut and
+remaining Display Names when contents changed. Missing contents use the previous
+scanned Container location before the new location is recorded. V0.3.46 instead
+makes contents checking optional behind three intent views; this does not yet
+satisfy the instructional workflow and final browser acceptance is paused.
+
+Preserve the accepted trailer scan -> Location/GPS -> Stage-group physical removal
+-> move -> repeat method. Independent Display placement can detach only that Display
+without a Container move or prior pick. Standalone Displays never detach. Helpers
+without accounts need not have recorded earlier removal; an authorized operator
+can report later physical contents, without claiming to be the earlier remover.
+January Container-based testing remains separately undesigned and is not a
+Standalone exception. Workshop-only Empty/Home return is recommended when prior
+field evidence is trustworthy; a compulsory park-departure scan remains an open
+choice. Full scenario table and acceptance boundary are in the candidate handoff's
+Scan-at-stop design authority section. No application change in this clarification.
