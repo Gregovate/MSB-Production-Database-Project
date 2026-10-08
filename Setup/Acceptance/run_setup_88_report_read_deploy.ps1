@@ -12,19 +12,13 @@ if ($LASTEXITCODE -ne 0) { throw 'STOP: main does not contain the accepted read 
 $bundleName = 'msb-setup-88-read-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
 $bundle = Join-Path ([System.IO.Path]::GetTempPath()) $bundleName
 $remote = "/tmp/$bundleName"
-$files = @('setup_88_report_read_deploy.py','setup_maintenance_deploy.py','setup_88_report_source_only_deploy.py')
 try {
     New-Item -ItemType Directory -Path $bundle | Out-Null
-    foreach ($name in $files) {
-        $relative = "Setup/Acceptance/$name"
-        $path = Join-Path $repo $relative
-        $tracked = (git -C $repo rev-parse "HEAD:$relative").Trim()
-        if ($LASTEXITCODE -ne 0) { throw "STOP: missing committed file $name" }
-        $actual = (git -C $repo hash-object --path=$relative $path).Trim()
-        if ($LASTEXITCODE -ne 0 -or $actual -ne $tracked) { throw "STOP: uncommitted file $name" }
-        $text = [System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8).Replace("`r", '')
-        [System.IO.File]::WriteAllText((Join-Path $bundle $name), $text, (New-Object System.Text.UTF8Encoding($false)))
-    }
+    # Git's Windows clean filter can hash a clean mixed-EOL file differently
+    # from its stored blob. Existing Python reads the blob as bytes, verifies
+    # its identity, compares normalized local content, and packages committed LF.
+    & python (Join-Path $repo 'Setup/Acceptance/setup_88_report_transport.py') $repo $bundle
+    if ($LASTEXITCODE -ne 0) { throw 'STOP: committed runner packaging failed before server contact.' }
     Write-Host 'Authority: Server Management — Production_Database_Change_Deployment_Runbook.md'
     Write-Host 'Disposable clone test first; grant SELECT on only Container type ID/name under maintenance; then install the approved report.'
     Write-Host 'Finish preview CLEAN EXIT. This chat owns the deployment; do not use the maintenance dashboard during this run.'
