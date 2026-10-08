@@ -8,7 +8,7 @@
 | Baseline main | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
 | Branch | `fix/88-container-contents-reconciliation` |
 | Release | `V0.3.46-container-drop-intent` |
-| Exact application candidate | Pending publication of V0.3.46 |
+| Exact application candidate | `3dcb362609caac046afbafdf62bcab366ca03ff4` |
 | Migration | `070_reconcile_setup_container_contents.sql` — functions only |
 | Preview allocation | Setup `8898` |
 
@@ -187,6 +187,36 @@ Greg authorized branch publication, a draft PR and issue evidence updates on
 First finish any active Setup review with ENTER and retain its **CLEAN EXIT**.
 Reuse 8898; never replace an unknown listener. The shared launcher enforces this.
 
+### Existing Greg desktop review worktree
+
+Use the already-existing review worktree shown in Greg's latest PowerShell prompt.
+After the active preview exits cleanly, this stop-on-failure block refreshes it:
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    Set-Location 'C:\Users\Greg\Github\MSB-Production-Database-Project-88-contents-review'
+    function Invoke-Git88 {
+        & git @args
+        if ($LASTEXITCODE -ne 0) { throw "STOP: Git failed: $args" }
+    }
+    if ((Invoke-Git88 branch --show-current).Trim() -ne 'fix/88-container-contents-reconciliation') {
+        throw 'STOP: unexpected review branch; preserve it.'
+    }
+    if (Invoke-Git88 status --porcelain) { throw 'STOP: preserve review checkout changes first.' }
+    Invoke-Git88 fetch origin
+    Invoke-Git88 merge --ff-only origin/fix/88-container-contents-reconciliation
+    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha '3dcb362609caac046afbafdf62bcab366ca03ff4'
+}
+```
+
+This launcher requires Python, not Node, on Greg's workstation. When READY appears,
+open `http://127.0.0.1:8898/record-location/?season_year=2026` and verify
+**V0.3.46-container-drop-intent** before testing. The acceptance/preview runner uses
+a disposable current-Production clone; this command does not correct Production.
+
+### First-time review worktree only
+
 Use the PowerShell block below from the existing primary MSB repository. It
 creates a separate adjacent worktree and leaves the primary checkout in place.
 Do not create a second worktree if this branch is already checked out elsewhere;
@@ -208,7 +238,7 @@ do not change that application identity.
     if (Test-Path $Review) { throw 'STOP: inspect the existing review worktree; do not overwrite it.' }
     Invoke-Git88 -C $Primary worktree add -b fix/88-container-contents-reconciliation $Review origin/fix/88-container-contents-reconciliation
     Set-Location $Review
-    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha 'c9aac967190b262cce4d85869c3503e4e5f698c5'
+    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha '3dcb362609caac046afbafdf62bcab366ca03ff4'
 }
 ```
 
