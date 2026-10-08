@@ -1,0 +1,154 @@
+# #88 Container Movement report — source-only deployment
+
+| Document control | Value |
+|---|---|
+| Status | APPROVED REPORT; exact release prepared, server installation pending |
+| Owner | #88, commanding #122; Material Status #206 |
+| Reviewed | 2026-10-08 America/Chicago |
+| Current main at reconnaissance | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
+| Visible release | `V0.3.50-container-movement-report` |
+| Exact application source | `6c44a082dd520b75881c50ad2ce78feb029ff87d` |
+| Expected live / rollback source | `cb0538022ed066ff90675e832daa1cd95488114a` / `V0.3.42-current-location` |
+| Expected shared checkout | `6dd05c4aa5ef8f50fe172145c3ae281cc245a101` — remains in place |
+| Migration / PostgreSQL writes | NONE |
+| Integration PR / merged main | Recorded on the release PR; integration must precede installer execution |
+| Actual deployed source / report / protected-route result | PENDING — never infer from the prepared runner |
+
+## Authorization and release boundary
+
+On October 8 at 09:33 CDT Greg said the candidate looked good and reported browser
+CLEAN EXIT. At 09:35 he explicitly instructed **deploy the new report**. This
+approves Container Movement, not migration 070, historical repair or the unfinished
+review/loading tools. PR #309 remains the guided-scan draft.
+
+The report was extracted from reviewed source
+`fe801e18f58acc58c0d4d6798d9ab6c334648b2e` onto current main as a separate report-only
+release. Report module/template, Material Status API/screen/JS/CSS are byte-identical
+to the reviewed report. Material Status's existing observation SELECTs additionally
+return recorded GPS/accuracy/quality/age. Its planning/ownership model and commands
+are unchanged. The new report test's miniature SQLite fixture explicitly supplies
+existing event destination columns; this is a test fixture change, not a migration.
+
+Server/client identities use V0.3.50 to distinguish this bounded Production release
+from V0.3.49 guided-stop preview. Root visible Updated date is October 8, with a
+new client asset pin. Record Location JS/CSS/service-worker, movement repository/
+API, assignment/ownership layers, Perform Work renderer, location references and
+all Setup/Database files remain identical to current main. Existing V0.3.42
+Current Location remains; the pending #308 Home refinement is not silently released.
+
+From **Material Status → Container Movement**, the Manager-only fresh read shows
+current recorded assignments and complete movement/effect trails, Display Names,
+recorded destination/GPS alongside calculated nearest Stage/distance in feet,
+separate prior named context, all unresolved material-authority reasons and
+historical review flags. Compare after an event and Print/Save PDF remain. A
+calculated nearest point is not recorded placement; recorded detachment does
+not establish physical removal. No report action repairs or resolves contents.
+
+## Live baseline and authority
+
+[Latest #175 operator installation evidence](https://github.com/Gregovate/MSB-Production-Database-Project/issues/175#issuecomment-6015355015)
+records corrected installer PASS at
+`/home/msbadmin/setup-deployment-reports/PR305-20261007T105751Z`, installing
+cb053802 / V0.3.42. The earlier V0.3.40 rollback is superseded as expected live
+source. Full new report/fingerprint and protected-route acceptance were not
+supplied; do not reuse the failed attempt's fingerprint. The new installer obtains
+fresh SHA/health/data checks and refuses drift. Never rerun the historical #305 runner.
+
+Governing authority retrieved/read in this workstream:
+[Server Management — Setup Source-Only Application Deployment Runbook](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/Setup_Source_Only_Application_Deployment_Runbook.md),
+blob `4d243cc8b0c712fd47a38b77ef0a83ac474bbf77`. It requires a clean forward
+application update, exact target regression, before/after read-only preservation,
+only Setup service restart and old-source rollback. This is not a database-changing
+release and does not enter database-wide maintenance or make a rollback dump.
+
+The source-only runner is adapted from the corrected merged #305/#307 pattern.
+It checks 8898 is stopped, exact clean detached live source, expected shared
+checkout and baseline health; fetches explicit main without credential prompts;
+proves target is merged/forward and no Database source differs; verifies exact
+server/client version and UI date; runs full Application and focused groups on a
+temporary detached candidate as fieldwiring before mutation. The location fixture
+runs in a separate interpreter to prevent the known installed-method contamination.
+The identical focused groups repeat after restart.
+
+It also executes the exact report SELECTs on Production **READ ONLY under
+fieldwiring_app** before and after installation, using count wrappers to avoid
+logging field records. The deployment's data fingerprint covers governed Setup
+planning/session data and Container/Display state/events/master assignments.
+Failure after advancement returns to exact V0.3.42 and restarts only Setup. Only
+this runner's temporary regression worktree is cleaned; reports are retained.
+No environment/service-unit/shared checkout/proxy/firewall change is performed.
+
+## Verification
+
+- Exact application-only candidate: **761 full Setup tests**, browser/print/tablet
+  checks PASS on actual Material Status/report routes with synthetic data; exact
+  read-only report SELECTs executed in PostgreSQL/WASM; JS/diff/UI date gate PASS.
+- With pinned installer: **775 full Setup tests**, **14 installer boundary tests**,
+  identical focused groups **198 + 22 passed**. Node-absent Windows simulation:
+  **716 Application passed / 2 engineering checks skipped**; no Node install needed.
+- Original report fixture/API permission/comparison/escaping/attached/detached and
+  supplied nearest-reference regressions retained. No broad DB write permission.
+- Private SSH from this workspace reports network unreachable. No assistant server
+  install, live fingerprint, service restart or Production report result is claimed.
+
+## Workstation install — after main integration
+
+Run from any existing MSB repository checkout on Greg's current machine. This
+finds the existing main worktree rather than assuming laptop/desktop paths or
+forcing main into the review worktree. Native failures stop the whole sequence.
+The main checkout must be clean. Setup edits should pause during the brief
+source/service change so the preservation comparison can remain unchanged.
+Greg already reported preview CLEAN EXIT; server preflight independently checks.
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    function GitReport88 {
+        & git @args
+        if ($LASTEXITCODE -ne 0) { throw "STOP: Git failed: $args" }
+    }
+    $RecordsReport88 = (GitReport88 worktree list --porcelain | Out-String) -split '\r?\n\r?\n'
+    $MainReport88 = @($RecordsReport88 | Where-Object {
+        $_ -match '(?m)^branch refs/heads/main\r?$'
+    })
+    if ($MainReport88.Count -ne 1) { throw 'STOP: could not identify the existing primary main worktree.' }
+    $PrimaryReport88 = ([regex]::Match($MainReport88[0], '(?m)^worktree (.+)').Groups[1].Value).Trim()
+    Set-Location $PrimaryReport88
+    try {
+        if (GitReport88 status --porcelain) { throw 'STOP: preserve main checkout changes first.' }
+        GitReport88 pull --ff-only origin main
+        .\Setup\Acceptance\run_setup_88_report_source_only_deploy.ps1
+        if ($LASTEXITCODE -ne 0) { throw 'STOP: installation failed; retain report and do not rerun.' }
+    }
+    finally {
+        Set-Location $PrimaryReport88
+    }
+}
+```
+
+The wrapper requires clean merged main and packages the committed pinned runner
+using the established UTF-8/line-ending-safe transfer pattern. Foreground SSH
+owns password/sudo interaction. It prints the exact old/new source and authority.
+Retain final PASS/STOP plus server report path. No database is copied by this install.
+
+After PASS, refresh the real protected Setup route, confirm **Client/server V0.3.50**
+and **Updated 2026-10-08**, then **Material Status → Container Movement**. Verify a
+fresh real report/database/session/watermark, both recorded and calculated fields,
+GPS feet and print. Do not create fake Production movements to test a read-only
+report. A deployed-source report failure follows the runbook's source rollback.
+
+## Closeout and local worktree disposition
+
+Actual installer result, deployed SHA/version, fresh fingerprint, report path,
+protected-route check and rollback disposition remain pending until supplied.
+After server/operator proof, update this record, owning issue/PR/#122, the
+reverse-chronological Production Deployment Change Log and Server Management
+runtime authority. Later documentation commits are not another installed source.
+Do not close #88 or DBG-2026-007/009/010: Manager review resolution, historical
+correction and takedown loading remain unfinished.
+
+The unmerged guided-scan review worktree/branch must be preserved. CLEAN EXIT
+cleaned the server preview, not that local engineering worktree. This install
+returns the operator to updated primary main. Report-only worktree cleanup is
+safe only after checking its branch, clean status and merged containment; never
+force-remove unrelated/unmerged work.

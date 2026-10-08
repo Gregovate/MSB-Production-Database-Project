@@ -1,5 +1,13 @@
 # Setup Acceptance Tooling
 
+## #88 report-only Production release
+
+[Approved Container Movement source-only release and pinned install handoff](Setup_88_Container_Movement_Report_Deployment.md)
+uses V0.3.50 / exact application 6c44a082dd520b75881c50ad2ce78feb029ff87d.
+It is separate from the guided-stop draft: no migration, database copy, or movement
+workflow change. The expected live rollback pin is the operator-reported installed
+V0.3.42 / cb053802 from #175. Installation/protected-route result remain pending.
+
 ## Authority
 
 Setup acceptance consumes the runtime/safety rules owned by `Gregovate/MSB-Server-Management`:
