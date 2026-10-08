@@ -231,7 +231,9 @@ if [[ "$PRODUCTION_READ_BOUNDARY" == "true" ]]; then
     # Permission-sensitive acceptance must not mask missing live reads with
     # blanket clone grants. Replay effective schema/table/column reads, including
     # inherited/PUBLIC access, without importing credentials or granting DML.
-    sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" \
+    # Keep host-file stdin attached; without -i psql sees EOF and exits with no
+    # statements, falsely reporting an empty Production read boundary.
+    sudo docker exec -i "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" \
         < "$CANDIDATE_WORKTREE/Setup/Acceptance/setup_production_read_boundary.sql" > "$GRANTS_FILE"
     [[ -s "$GRANTS_FILE" ]] || { echo "FAIL: Production read ACL extraction was empty"; exit 23; }
     psql_test -q < "$GRANTS_FILE"

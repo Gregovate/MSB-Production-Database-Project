@@ -25,6 +25,11 @@ The subsequent backup-chain STOP occurred before maintenance; Server Management
 #65/#66 record its accepted one-file owner repair and current NAS replication.
 Greg confirmed no new deployment run had started when directing the one-window
 maintenance correction at 14:20 CDT. The older OFF-before-report sequence is retired.
+The 14:50 run stopped before maintenance in disposable ACL export: the shell
+omitted Docker stdin forwarding. [The prerequisite record](Setup_88_Report_Read_Prerequisite.md#2026-10-08-1450-cdt--disposable-acl-export-stop)
+records unchanged Production proof and the separately pinned corrected runner.
+Pull merged corrected tooling before a new run; the frozen report/migration stay
+unchanged. No manual privilege or maintenance adjustment is required.
 
 ## Authority
 

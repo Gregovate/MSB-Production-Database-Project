@@ -8,13 +8,54 @@
 | Proposed permission migration | `Setup/Database/071_grant_setup_container_type_report_read.sql` |
 | Frozen grant/clone-artifact source | `6b04d1afff67e2b79a068316198ee7ad95a635f7` |
 | Frozen source tree | `73a3454c4da0838a87a3fce117d7fc58039048ba` |
-| Integration | PR #312/#313 merged; one-window correction must be merged before execution |
+| Integration | PR #312/#313/#314 merged; ACL stdin tooling correction required before the next run |
 | Exact migration blob | `1fd5de8f3de7665336e0eabead498e94ed915883` |
+| Corrected disposable runner blob | `2025db912621f8258356cdb3e7f474ea0ca763f1`; separate tooling identity, not application/migration source |
 | Application | Existing approved V0.3.50 / `6c44a082dd520b75881c50ad2ce78feb029ff87d`; unchanged |
 | Current live proof | V0.3.42 / `cb0538022ed066ff90675e832daa1cd95488114a`; healthy |
 | Production permission change / report installation | NOT APPLIED |
 
 ## Failure and concrete correction
+
+### 2026-10-08 14:50 CDT — disposable ACL export STOP
+
+The combined runner stopped during ONLINE preflight, before controller ON,
+Production migration or Setup source promotion. Retained deployment report:
+`/home/msbadmin/setup-deployment-reports/Setup88Read-20261008T195058Z`.
+Its child report is
+`/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Acceptance_20261008T195100.txt`.
+The exact 6b04 candidate passed **716 Application tests / 2 skipped** and restored
+the current-Production clone, then failed with `Production read ACL extraction
+was empty` (exit 23). Disposable cleanup ran. Production Setup fingerprints
+before/after both equal `9d6f8d09a129ba7cbd839c4286c8d8c0`; live Setup remained
+`cb0538022ed066ff90675e832daa1cd95488114a` before/after.
+
+This was a tooling defect, not evidence that Production has no application read
+permissions. The shell redirected the host SQL file to `docker exec` without
+`-i`; Docker did not forward stdin, so psql exited without executing the exporter.
+The server standard already requires `docker exec -i` for host-file SQL input.
+The corrected reusable shell keeps that flag. The combined launcher loads its
+separately pinned Git blob and verifies exact bytes before execution; copying the
+old shell from frozen 6b04 would repeat the failure. Candidate application,
+migration and validation SQL still come from the original frozen artifacts.
+
+Engineering acceptance: **809 full Setup passed / 1 optional native PostgreSQL
+check skipped**; **61 targeted passed**. Executed shell transport tests prove
+host-file delivery and clone replay, reproduce the old missing-flag failure, and
+stop before replay on empty/failed SQL exports. Their Docker CLI double models
+stdin attachment; this is not a real host/container acceptance claim. Runner
+selection tests prove the corrected blob is used with the frozen candidate and
+reject altered bytes. PostgreSQL/WASM exact migration, six report queries and
+least-privilege proof PASS; shell syntax and diff whitespace checks PASS.
+
+The old run is complete and failed before mutation. A new invocation is permitted
+only from merged corrected tooling; it rechecks ONLINE/services/backups, exact
+sources and missing-grant baseline, then reruns current-clone acceptance before
+entering the existing single maintenance window. Do not resume the old process,
+manually grant reads or alter maintenance. Actual host acceptance, installation
+and protected browser verification remain pending.
+
+### Original report read denial
 
 The October 8 source-only installer correctly stopped before mutation when the
 exact application-role query joined `ref.container_type`. Administrative fixture
