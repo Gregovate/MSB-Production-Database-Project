@@ -322,32 +322,55 @@ main with `git pull --ff-only`, prove the accepted SHA is its ancestor, then rem
 only this merged feature branch. Do not force-remove worktrees or change an
 unrelated primary branch during review cleanup.
 
-## C216 attachment discrepancy — read-only investigation pending
+## C216 Production attachment discrepancy — event cause established; recovery pending
 
-Greg's next screenshot shows **CONT:216 — Mt Crumpit Panels & Peace on Earth**
-with **0 Displays on Container**. Greg physically confirms Mt. Crumpit panels
-remain on the Container and that only Peace on Earth was intended to be removed
-in Production on **2026-10-06**. This is a discrepancy, not an Empty confirmation.
-The screenshot alone does not establish whether the empty list originates in
-Production state, a clone test change or the browser's queued-movement projection.
+Greg's screenshot shows **CONT:216 — Mt Crumpit Panels & Peace on Earth** with
+**0 Displays on Container**. Greg confirms the Mt. Crumpit panels remain physically
+loaded and that only Peace on Earth was intended to leave the Container on
+**2026-10-06**. Greg ran the read-only audit against Production and supplied the
+Display-state and event-history results on **2026-10-07**. The Container/database
+identity result set was not included in that paste; Production is the operator's
+stated source. Repeated Display-state output in the paste is one result, not an
+additional observation.
 
-The current contents query includes active permanent C216 assignments whose
-seasonal position is WITH_CONTAINER (default when no Display state exists).
-Missing/multiple Stage membership remains a visible non-selectable group and does
-not remove Displays from contents. The individual DISPLAY_MOVE branch targets
-only its one Display ID; this is source evidence, not proof of what yesterday's
-Production command actually did. Disposable validation probes end in ROLLBACK.
+| Event | Observed America/Chicago | Capture | Display effects |
+|---|---|---|---|
+| 48 | 2026-10-06 08:24:21.587 | CAMERA_SCAN, online | CH-PeaceOnEarth only, UNLOADED; named 15-Church-Bells-CH |
+| 122 | 2026-10-06 15:03:25.108 | HID_SCAN, online | Seven WV-MtCrumpitPanel Displays plus WV-WhoMatrix, all UNLOADED; destination note NULL |
 
-Use [the C216 read-only audit](setup_88_c216_contents_readonly_audit.sql) against
-Production **msb** and retain all three result sets. It identifies the database,
-2026 sessions, permanent assignments/statuses, explicit/current attachment state,
-last-event links and all relevant 2026 event scopes/names/effects. Times are in
-America/Chicago; observation and receipt timestamps are separate to retain delayed
-offline evidence. The audit executes only SELECT/local settings inside READ ONLY
-and ends with ROLLBACK. Syntax and synthetic-schema execution were checked.
-This workspace cannot route to the private MSB server; actual Production results
-are pending Greg's read-only query. No attachment repair, historical rewrite,
-migration or Production change is authorized or performed by this investigation.
+Session **2 / PLANNING** now has all nine active permanent C216 assignments marked
+DETACHED. CH-PeaceOnEarth (850) links to event 48. Mt. Crumpit panels 01–07
+(6, 13, 1, 10, 12, 7, 9) and WV-WhoMatrix (213) link to event 122. Permanent
+Container assignments are still 216. The contents query consequently excludes
+all nine. This is established stored Production attachment state, not a missing
+Stage-group rendering problem. Both events are CONTAINER_MOVE with UNLOADED
+Display effects; event 122 is a later grouped unload, not the original one-panel
+Peace on Earth action. Blank named location alone does not prove missing GPS;
+coordinates were deliberately not included in this diagnostic.
+
+The movement command detaches the explicitly supplied unloaded Display IDs on
+Container moves. The audit establishes the affected list but does not retain the
+operator's checkbox gestures, raw browser request, or installed client SHA; it
+cannot distinguish a deliberate group/all selection from accidental or stale
+selection. Do not blame an operator or invent a browser gesture from event scope.
+The baseline client source has no final group-unload review; V0.3.45 now makes the
+selected Stage/counts and HERE basis explicit before recording. That does not
+repair existing attachment state.
+
+Recovery scope: keep the valid Peace on Earth detachment at event 48. Restore only
+physically confirmed loaded Displays to follow C216, using an audited corrective
+attachment event/guarded projection and preserving events 48 and 122. The seven
+panels are operator-confirmed loaded. **WV-WhoMatrix's physical location is not yet
+confirmed**; do not automatically include it in an eight-Display repair. No
+reattachment correction or Production write has been performed. Prepare and prove
+the concrete guarded recovery separately before any Production approval.
+
+[The C216 read-only audit](setup_88_c216_contents_readonly_audit.sql) captures current
+assignment/status, attachment/event links and complete relevant 2026 event
+scopes/names/effects. America/Chicago observation and receipt times are separate,
+so delayed offline evidence remains visible. It executes only SELECT/local settings
+inside READ ONLY and ends with ROLLBACK; syntax and synthetic-schema execution
+passed. This workspace cannot route to the private MSB server.
 
 ## Remaining gates
 
