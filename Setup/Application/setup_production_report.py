@@ -14,6 +14,8 @@ from zoneinfo import ZoneInfo
 from flask import render_template_string
 from psycopg2.extras import RealDictCursor
 
+from setup_location_evidence import nearest_recorded_reference
+
 CHICAGO = ZoneInfo("America/Chicago")
 # Same current-fix window as setup_record_location.js; stored evidence stays intact.
 GPS_CURRENT_MS = 15000
@@ -124,6 +126,8 @@ def report_context(material: dict, picture: dict, since_event_id: int) -> dict:
         event["observed"] = chicago_time(event.get("occurred_at"))
         event["received"] = chicago_time(event.get("received_at"))
         event["gps"] = gps_text(event)
+        event["nearest_reference"] = nearest_recorded_reference(
+            event.get("gps_latitude"), event.get("gps_longitude"))
     containers = []
     for state in picture["containers"]:
         history = [e for e in ordered if e.get("container_id") == state["container_id"]]
@@ -137,7 +141,8 @@ def report_context(material: dict, picture: dict, since_event_id: int) -> dict:
                 prior_name = None
             elif (event.get("destination_location_note") or "").strip():
                 prior_name = event["destination_location_note"]
-        assigned = [{**d, "gps": gps_text(events.get(d.get("last_movement_event_id"), {}))}
+        assigned = [{**d, "gps": gps_text(events.get(d.get("last_movement_event_id"), {})),
+                     "nearest_reference": events.get(d.get("last_movement_event_id"), {}).get("nearest_reference")}
                     for d in picture["displays"] if d.get("container_id") == state["container_id"]]
         containers.append({**state, "history": history, "latest": latest,
                            "prior_named_context": prior_name,
@@ -151,6 +156,8 @@ def report_context(material: dict, picture: dict, since_event_id: int) -> dict:
         if latest.get("stage_name") or latest.get("destination_location_note"):
             return " — ".join(str(latest.get(k) or "") for k in ("stage_key","stage_name","destination_location_note") if latest.get(k))
         if latest.get("gps_latitude") is not None and latest.get("gps_longitude") is not None:
+            if latest.get("nearest_reference"):
+                return "Near " + latest["nearest_reference"]["name"] + " — GPS estimate"
             return "GPS only" + (f" / prior named context {row['prior_named_context']}" if row["prior_named_context"] else " / no named reference")
         return "Picked / movement status only — no location in latest event"
     for row in containers:
@@ -161,6 +168,8 @@ def report_context(material: dict, picture: dict, since_event_id: int) -> dict:
             "new_events": [e for e in ordered if e["new_receipt"]],
             "direct_events": [e for e in ordered if e.get("container_id") is None],
             "generated": chicago_time(picture.get("generated_at")),
+            "reference_versions": sorted({e["nearest_reference"]["reference_set_version"] for e in ordered
+                                          if e["nearest_reference"] and e["nearest_reference"].get("reference_set_version")}),
             "gps_text": gps_text}
 
 

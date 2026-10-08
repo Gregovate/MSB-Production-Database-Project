@@ -1,5 +1,6 @@
 """#88 report regressions: actual evidence, permissions and GPS-only visibility."""
 from datetime import datetime, timezone
+from copy import deepcopy
 from pathlib import Path
 import shutil
 import subprocess
@@ -9,6 +10,7 @@ import pytest
 
 from setup_api import SetupCommandError
 import setup_material_readiness_api as api
+import setup_production_report as report
 from setup_material_readiness_repository import SetupMaterialReadinessRepository
 from setup_production_report import gps_text, report_context, render_report
 from test_setup_175_current_location import projection
@@ -42,7 +44,8 @@ def fixture_data():
     return material,picture
 
 
-def test_report_receipt_comparison_preserves_late_observation_and_effect_scope():
+def test_report_receipt_comparison_preserves_late_observation_and_effect_scope(monkeypatch):
+    monkeypatch.setattr(report, 'nearest_recorded_reference', lambda lat,lon: None)
     material,picture=fixture_data()
     ctx=report_context(material,picture,123)
     assert [e['setup_movement_event_id'] for e in ctx['new_events']] == [124,125]
@@ -58,7 +61,8 @@ def test_report_receipt_comparison_preserves_late_observation_and_effect_scope()
     assert ctx['new_events'][1]['unloaded_names'] == []
 
 
-def test_return_boundary_and_latest_event_cutoff_do_not_borrow_future_name():
+def test_return_boundary_and_latest_event_cutoff_do_not_borrow_future_name(monkeypatch):
+    monkeypatch.setattr(report, 'nearest_recorded_reference', lambda lat,lon: None)
     material,picture=fixture_data()
     returned=dict(picture['effect_rows'][-1],setup_movement_event_id=49,event_type='RETURNED',
                   occurred_at=datetime(2026,10,6,17,tzinfo=timezone.utc),destination_location_note='Home')
@@ -68,6 +72,60 @@ def test_return_boundary_and_latest_event_cutoff_do_not_borrow_future_name():
     c=report_context(material,picture,0)['containers'][0]
     assert c['prior_named_context'] is None
     assert c['location_group']=='GPS only / no named reference'
+
+
+@pytest.mark.parametrize('latitude,longitude,name,distance', [
+    (43.779459,-87.745102,'07-Whoville-WV',61),
+    (43.778944,-87.749335,'15-Church-ParkingLot',44),
+    (43.776886,-87.746098,"19-Santa's Workshop-SW",88),
+])
+def test_report_supplied_gps_only_observations_show_nearest_without_rewriting_evidence(latitude,longitude,name,distance):
+    material,picture=fixture_data()
+    picture['effect_rows'][-1].update(gps_latitude=latitude,gps_longitude=longitude,
+                                    gps_quality='QUESTIONABLE',gps_fix_age_ms=45000)
+    original=deepcopy(picture)
+    c=report_context(material,picture,0)['containers'][0]
+    assert c['location_group']==f'Near {name} — GPS estimate'
+    assert c['prior_named_context']=='Church'
+    assert c['latest']['destination_location_note'] is None
+    assert c['latest']['stage_name'] is None
+    assert round(c['latest']['nearest_reference']['distance_ft'])==distance
+    assert c['latest']['nearest_reference']['reference_set_version']=='2026-stage-reference-20261003.1'
+    with Flask(__name__).app_context():
+        html=render_report(material,picture,0)
+    assert f'{distance} ft from reference point' in html
+    assert '[QUESTIONABLE] [STALE FIX]' in html
+    assert 'not a Stage boundary' in html
+    assert 'Prior named context: Church' in html
+    assert picture==original
+
+
+def test_report_independent_display_uses_its_own_observation_not_container_fix():
+    material,picture=fixture_data()
+    picture['effect_rows'][-1].update(gps_latitude=43.779459,gps_longitude=-87.745102)
+    for event in picture['effect_rows'][:2]:
+        event.update(gps_latitude=43.778944,gps_longitude=-87.749335)
+    c=report_context(material,picture,0)['containers'][0]
+    assert c['latest']['nearest_reference']['name']=='07-Whoville-WV'
+    assert c['detached'][0]['nearest_reference']['name']=='15-Church-ParkingLot'
+    picture['displays'][0]['last_movement_event_id']=48
+    c=report_context(material,picture,0)['containers'][0]
+    assert c['detached'][0]['nearest_reference'] is None
+    assert c['detached'][0]['gps']=='No GPS recorded'
+
+
+def test_report_recorded_stage_remains_primary_and_nearest_label_is_escaped(monkeypatch):
+    material,picture=fixture_data()
+    picture['effect_rows'][-1]['destination_location_note']='Operator chosen destination'
+    monkeypatch.setattr(report, 'nearest_recorded_reference',lambda lat,lon:
+        dict(name='<script>nearest</script>',distance_ft=61,reference_set_version='test-set')
+        if lat is not None and lon is not None else None)
+    assert report_context(material,picture,0)['containers'][0]['location_group']=='Operator chosen destination'
+    with Flask(__name__).app_context():
+        html=render_report(material,picture,0)
+    assert '<script>nearest</script>' not in html
+    assert '&lt;script&gt;nearest&lt;/script&gt;' in html
+    assert 'GPS reference set: test-set' in html
 
 
 def test_report_html_escapes_evidence_and_explains_unresolved_and_uncertainty():
