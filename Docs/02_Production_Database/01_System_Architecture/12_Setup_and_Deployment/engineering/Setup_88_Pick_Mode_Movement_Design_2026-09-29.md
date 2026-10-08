@@ -795,3 +795,30 @@ Stage/counts and HERE/PRIOR basis, with names expandable. Back/Escape cancels,
 preserves selection and writes nothing; an open review blocks repeated commands
 and asset replacement. Movement/event payloads and migration 070 are unchanged.
 Browser/tablet acceptance of this candidate is still required.
+
+
+### Container drop and physical Display removal — operator meaning, 2026-10-07
+
+Greg reports that an operator interpreted "unload Container" as removing the
+loaded Container from its vehicle at park staging. Many scans therefore combined
+a Container location observation with Display detachment even though Displays
+stayed physically loaded. C216 Production event 48 detached only Peace on Earth
+correctly; later event 122 detached seven Mt. Crumpit panels and WhoMatrix. The
+panels are confirmed still loaded. This establishes a wider workflow meaning
+problem; it does not prove all unload events are wrong or confirm WhoMatrix's
+physical contents. See the controlled candidate handoff for evidence and the
+broader SELECT-only audit.
+
+The next interaction must separate Container drop (contents stay attached),
+Displays physically removed (explicit Stage-group selection and here-location
+review), and current physical contents checking (Empty / Not Empty / Not Sure;
+prior evidence for missed removal). Generic "unload" or "came off" cannot supply
+operator intent. Park arrival/Stage suggestion cannot select removal. Retain the
+quick grouped method, compact rows, expandable names and persistent summary.
+Label historical derived contents as last recorded contents rather than physical
+confirmation. This design is pending implementation/acceptance; V0.3.45's current
+labels and review do not by themselves resolve the reported meaning problem.
+No new schema/event model is justified. Historical correction is separate from
+preventing new mistaken commands: audit all relevant grouped-unload events,
+confirm actual contents, preserve subsequent valid work and original history,
+and prove a guarded corrective event/projection before Production authorization.

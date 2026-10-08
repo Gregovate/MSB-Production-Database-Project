@@ -372,6 +372,50 @@ so delayed offline evidence remains visible. It executes only SELECT/local setti
 inside READ ONLY and ends with ROLLBACK; syntax and synthetic-schema execution
 passed. This workspace cannot route to the private MSB server.
 
+## Container drop versus physical Display removal — workflow meaning correction
+
+After the C216 audit, Greg explained the actual operator interpretation: Tom used
+**unloading a Container** to mean taking the still-loaded Container off the truck
+at park staging. He recorded unloads with many Container moves even though the
+Displays remained on the Container. This is a wider workflow meaning problem;
+C216 event 122 is one confirmed event, not necessarily the entire recovery scope.
+Do not interpret the report as proof that every unload by either Tom actor was
+incorrect. C216's earlier Peace on Earth event 48 remains valid.
+
+V0.3.45 still uses generic **unload / came off** labels. Its selection review and
+compact layout improve visibility but do not adequately remove this ambiguity.
+The next workflow needs explicit intent before Display selection:
+
+| Operator action | Attachment consequence |
+|---|---|
+| **Record Container drop — keep Displays attached** | Record the Container's new location; no Display detachment |
+| **Displays physically removed from this Container** | Preserve the quick Stage-group method; only explicitly selected removed Displays detach here |
+| **Check what is physically on this Container** | Empty / Not Empty / Not Sure and Display-Name remaining list; reconcile missed removal using prior evidence |
+
+Use **removed from this Container / still on this Container**, rather than generic
+**unload**, throughout the choices and confirmation. Removing the Container from
+a vehicle is a Container move. Record location cannot silently select Displays
+for removal. Stage assignment/park arrival is not evidence of physical removal.
+Preserve the compact rows, expandable Display Names, persistent selected summary
+and focused review; do not remove the accepted Stage-group capability again.
+Tracked contents are **last recorded contents**, not an independently confirmed
+physical count. A wrong historical empty projection must not be mistaken for an
+operator's physical Empty confirmation. Current V0.3.45 is not accepted as the
+final solution to this newly clarified meaning problem; the explicit-intent
+workflow remains a concrete design for the next candidate, not implemented source.
+The existing event/command model can represent Container-only moves and separate
+Display removal without a new table or column.
+
+[The broader read-only audit](setup_88_container_drop_unload_readonly_audit.sql)
+reports all 2026 CONTAINER_MOVE events with UNLOADED Display effects, grouped by
+recorded operator/Chicago date, then lists exact Container/Display scope and current
+state. It intentionally does not assume which Tom actor Greg meant or label all
+reported unloads incorrect. The review includes changed-since event state so we
+avoid overwriting subsequent valid work. Read-only syntax and synthetic-schema
+execution passed. Actual wider Production output and physical confirmation remain
+pending. Preserve legitimate unloads and history; prepare any guarded recovery
+only after affected scope and current physical contents are confirmed.
+
 ## Remaining gates
 
 Current-clone acceptance, exact-candidate browser/operator disposition and real
