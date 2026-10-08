@@ -8,11 +8,15 @@
 | Baseline main | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
 | Branch | `fix/88-container-contents-reconciliation` |
 | Release | `V0.3.48-nearest-stage-report` |
-| Exact application candidate | `9719a4e65f05d022821e6d2cc9bb2f19e0482029` |
+| Exact application candidate | `b47f51089c2d5066ff05c243a8d24e0493bb8953` |
 | Migration | `070_reconcile_setup_container_contents.sql` — functions only |
 | Preview allocation | Setup `8898` |
 
-## V0.3.48 nearest Stage references — current source candidate
+## V0.3.48 Container Movement — current source candidate
+
+Greg renamed the report **Container Movement** because Production Report suggests
+a broader Setup production report. The Material Status button, report title and
+browser-tab title use the new name. The existing URL and permissions are unchanged.
 
 Greg's laptop report feedback identifies the remaining GPS-only readability gap.
 The report now reuses `setup_location_evidence.nearest_recorded_reference`, already
@@ -23,6 +27,15 @@ show the nearest reference and distance in feet; each detached Display uses its
 own last movement event, not the Container's newer location. Recorded named
 observations remain primary. GPS accuracy/quality/stale flags remain visible.
 Missing GPS or unavailable references retain the previous fallback.
+
+Greg then clarified that recorded and calculated evidence must both be shown,
+with their origins explicit. The current-card and history labels now pair
+**Recorded destination** / **Recorded GPS** with **Calculated nearest Stage
+reference (from recorded GPS)**. A GPS-only observation explicitly says no
+Stage/name was recorded. Prior named context remains separate. The earlier
+nearest-reference source `9719a4e65f05d022821e6d2cc9bb2f19e0482029` is superseded by
+the presentation-only provenance/name correction; V0.3.48 and the October 8 UI date are retained.
+The 766 full / 40 targeted tests and synthetic browser checks were rerun PASS.
 
 | Supplied observation | Nearest reference point | Distance | Supplied GPS accuracy |
 |---|---|---|---|
@@ -36,7 +49,7 @@ Stage assignments, movement/effect history and contents are unchanged. Peace on
 Earth's event 48 retains its independent Church note and no-GPS evidence. No
 schema, SQL-query, API-route or write change; no historical attachment repair.
 
-Exact source **9719a4e65f05d022821e6d2cc9bb2f19e0482029**, version
+Exact source **b47f51089c2d5066ff05c243a8d24e0493bb8953**, version
 **V0.3.48-nearest-stage-report**, visible UI date **2026-10-08**. Validation:
 **766 full Setup tests**, **40 targeted report/current-location/reconciliation
 checks**, diff and mechanical UI date gate PASS. Synthetic browser/print/tablet
@@ -45,8 +58,8 @@ inspected. Earlier SQL/no-Node validation below belongs to V0.3.47; report queri
 are unchanged. Greg supplied report feedback from his laptop, not an exact V0.3.48
 current-clone/operator acceptance transcript.
 
-The wrapper now expects V0.3.48 and this exact source. An already running V0.3.47
-preview keeps its source until CLEAN EXIT and a fresh exact-candidate launch.
+The wrapper expects V0.3.48 and this exact source. An already running preview
+keeps its source and wording until CLEAN EXIT and a fresh exact-candidate launch.
 Use the existing handoff below when ready; do not change files underneath a
 running preview. Production is unchanged and guided-stop acceptance remains
 paused. This report extension does not complete delayed contents review or
@@ -501,6 +514,59 @@ Greg authorized branch publication, a draft PR and issue evidence updates on
 First finish any active Setup review with ENTER and retain its **CLEAN EXIT**.
 Reuse 8898; never replace an unknown listener. The shared launcher enforces this.
 
+### Existing Greg laptop review worktree
+
+Confirmed primary checkout: `C:\lor\ImportExport\VSCode`. Run this only after
+the active preview has reached CLEAN EXIT. It finds the existing branch worktree,
+preserves uncommitted work, refreshes remote main without changing the primary
+checkout, and stops if the fetched source differs from this exact candidate.
+No Node installation is required. The Python environment is ignored by Git.
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    $Primary88 = 'C:\lor\ImportExport\VSCode'
+    $Path88 = $env:Path
+    function Git88 {
+        & git @args
+        if ($LASTEXITCODE -ne 0) { throw "STOP: Git failed: $args" }
+    }
+    Set-Location $Primary88
+    try {
+        Git88 fetch origin main fix/88-container-contents-reconciliation
+        $Records88 = (Git88 worktree list --porcelain | Out-String) -split '\r?\n\r?\n'
+        $Match88 = @($Records88 | Where-Object {
+            $_ -match '(?m)^branch refs/heads/fix/88-container-contents-reconciliation\r?$'
+        })
+        if ($Match88.Count -ne 1) { throw 'STOP: could not identify the existing review worktree.' }
+        $Review88 = ([regex]::Match($Match88[0], '(?m)^worktree (.+)').Groups[1].Value).Trim()
+        Set-Location $Review88
+        if (Git88 status --porcelain) { throw 'STOP: review checkout has changes; preserve them.' }
+        Git88 merge --ff-only origin/fix/88-container-contents-reconciliation
+        $Candidate88 = 'b47f51089c2d5066ff05c243a8d24e0493bb8953'
+        Git88 diff --exit-code $Candidate88 HEAD -- Setup/Application Setup/Acceptance/run_setup_88_contents_browser_review.ps1
+        if (-not (Test-Path '.venv\Scripts\python.exe')) {
+            & python -m venv .venv
+            if ($LASTEXITCODE -ne 0) { throw 'STOP: Python environment creation failed.' }
+        }
+        $env:Path = "$Review88\.venv\Scripts;$Path88"
+        & python -m pip install -r Setup/Application/requirements.txt pytest
+        if ($LASTEXITCODE -ne 0) { throw 'STOP: Python dependency installation failed.' }
+        .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha $Candidate88
+    }
+    finally {
+        $env:Path = $Path88
+        Set-Location $Primary88
+    }
+}
+```
+
+After BROWSER REVIEW READY, open
+`http://127.0.0.1:8898/material-status/?season_year=2026` -> Container Movement.
+Check both recorded and calculated fields together. Finish with ENTER in the
+launcher and retain CLEAN EXIT; the block returns to the primary checkout.
+Keep the unmerged review worktree for follow-up; do not force-remove it.
+
 ### Existing Greg desktop review worktree
 
 Use the already-existing review worktree shown in Greg's latest PowerShell prompt.
@@ -520,7 +586,7 @@ After the active preview exits cleanly, this stop-on-failure block refreshes it:
     if (Invoke-Git88 status --porcelain) { throw 'STOP: preserve review checkout changes first.' }
     Invoke-Git88 fetch origin
     Invoke-Git88 merge --ff-only origin/fix/88-container-contents-reconciliation
-    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha '9719a4e65f05d022821e6d2cc9bb2f19e0482029'
+    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha 'b47f51089c2d5066ff05c243a8d24e0493bb8953'
 }
 ```
 
@@ -553,7 +619,7 @@ do not change that application identity.
     if (Test-Path $Review) { throw 'STOP: inspect the existing review worktree; do not overwrite it.' }
     Invoke-Git88 -C $Primary worktree add -b fix/88-container-contents-reconciliation $Review origin/fix/88-container-contents-reconciliation
     Set-Location $Review
-    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha '9719a4e65f05d022821e6d2cc9bb2f19e0482029'
+    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha 'b47f51089c2d5066ff05c243a8d24e0493bb8953'
 }
 ```
 

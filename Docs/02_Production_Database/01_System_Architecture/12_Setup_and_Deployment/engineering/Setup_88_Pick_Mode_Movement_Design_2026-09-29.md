@@ -997,3 +997,20 @@ and schema unchanged. Existing running previews retain their exact source until
 clean exit/relaunch; current-clone/operator acceptance for V0.3.48, guided-stop
 alignment, delayed Not Sure resolution and takedown remain pending. No Production
 change. The candidate handoff owns exact preview instructions and evidence.
+
+Greg clarified the provenance labels: both saved and calculated location must be
+visible together. Current presentation correction source
+`b47f51089c2d5066ff05c243a8d24e0493bb8953` pairs Recorded destination / Recorded GPS
+with Calculated nearest Stage reference (from recorded GPS) on current cards and
+history. GPS-only events say no Stage/name recorded; prior context stays separate.
+V0.3.48/date retained under the presentation-only version exception. 766 full,
+40 targeted and synthetic browser checks rerun PASS. Existing preview wording
+persists until clean exit/relaunch. Laptop relaunch handoff is in the candidate
+record; no Production change or operator acceptance implied.
+
+The same correction names the report/button/browser title Container Movement,
+per Greg's request. Production Report was misleading for this operational trail.
+Route and permissions unchanged; the final exact source above includes the rename.
+Browser checks proved the visible button, report heading and tab title, alongside
+766 full and 40 targeted tests. Current preview retains its earlier source until
+clean exit/relaunch. No report-name-specific migration or new release version.
