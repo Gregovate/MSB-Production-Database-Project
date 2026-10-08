@@ -19,6 +19,7 @@ TARGET_REF=""
 MIGRATIONS=()
 VALIDATIONS=()
 ALLOW_CONCURRENT_PRODUCTION_WRITES="false"
+PRODUCTION_READ_BOUNDARY="false"
 
 while IFS=$'\t' read -r kind value extra; do
     [[ -z "$kind" ]] && continue
@@ -28,6 +29,7 @@ while IFS=$'\t' read -r kind value extra; do
         candidate_sha) TARGET_SHA="$value" ;;
         target_ref) TARGET_REF="$value" ;;
         allow_concurrent_production_writes) ALLOW_CONCURRENT_PRODUCTION_WRITES="$value" ;;
+        production_read_boundary) PRODUCTION_READ_BOUNDARY="$value" ;;
         migration) MIGRATIONS+=("$value") ;;
         validation) VALIDATIONS+=("$value") ;;
         *) echo "FAIL: unsupported manifest key: $kind"; exit 3 ;;
@@ -49,6 +51,11 @@ for rel in "${MIGRATIONS[@]}" "${VALIDATIONS[@]}"; do
         exit 4
     fi
 done
+
+if [[ "$PRODUCTION_READ_BOUNDARY" != "true" && "$PRODUCTION_READ_BOUNDARY" != "false" ]]; then
+    echo "FAIL: production_read_boundary must be true or false"
+    exit 3
+fi
 
 STAMP="$(date +%Y%m%dT%H%M%S)"
 TEST_CONTAINER="msb-setup-disposable-${$}"
@@ -72,6 +79,7 @@ echo "Authority: Gregovate/MSB-Server-Management — docs/server/PostgreSQL_Disp
 echo "Candidate SHA: $TARGET_SHA"
 echo "Target ref:    $TARGET_REF"
 echo "Concurrent Production writes allowed: $ALLOW_CONCURRENT_PRODUCTION_WRITES"
+echo "Replay actual Production SELECT boundary: $PRODUCTION_READ_BOUNDARY"
 echo "Migrations:    ${#MIGRATIONS[@]}"
 echo "Validations:   ${#VALIDATIONS[@]}"
 echo "Report:        $REPORT"
@@ -219,10 +227,20 @@ psql_test -c "CREATE ROLE fieldwiring_app LOGIN PASSWORD '$APP_PASSWORD';"
 # browser-preview tooling intentionally grants read-only access across the
 # application schemas in the disposable clone while keeping all writes behind
 # narrow SECURITY DEFINER command functions.
-psql_test <<'SQL'
+if [[ "$PRODUCTION_READ_BOUNDARY" == "true" ]]; then
+    # Permission-sensitive acceptance must not mask missing live reads with
+    # blanket clone grants. Replay effective schema/table/column reads, including
+    # inherited/PUBLIC access, without importing credentials or granting DML.
+    sudo docker exec "$PROD_CONTAINER" psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" \
+        < "$CANDIDATE_WORKTREE/Setup/Acceptance/setup_production_read_boundary.sql" > "$GRANTS_FILE"
+    [[ -s "$GRANTS_FILE" ]] || { echo "FAIL: Production read ACL extraction was empty"; exit 23; }
+    psql_test -q < "$GRANTS_FILE"
+else
+    psql_test <<'SQL'
 GRANT USAGE ON SCHEMA ref, ops, lor_snap TO fieldwiring_app;
 GRANT SELECT ON ALL TABLES IN SCHEMA ref, ops, lor_snap TO fieldwiring_app;
 SQL
+fi
 
 # Preserve the real Production function boundary: replay PUBLIC revokes and
 # fieldwiring_app EXECUTE grants from catalog ACLs. This keeps internal helpers
