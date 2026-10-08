@@ -203,6 +203,51 @@ delay, multiple intervening Container moves, later valid Display placement, part
 resolution and no reliable evidence. The existing historical audit is diagnostic,
 not a substitute for the operator/Manager review tool.
 
+## Takedown loading — reverse operation required, not implemented
+
+Greg asks what happens when Displays are loaded onto Containers during takedown.
+This is a physical reattachment operation, separate from moving a Container or
+returning an empty Container. Model constraints already name DISPLAY_REATTACH and
+REATTACHED, but the current movement command/API/UI does not implement that action.
+A Container move alone cannot restore detached Displays to its contents. The current
+contents projection follows ref.display.container_id plus annual position_mode;
+it does not establish alternate temporary carrier support. No takedown loading
+capability is included in the present browser candidate.
+
+Proposed operator sequence: scan the target Container -> explicitly record loading
+-> confirm loaded Display Names or a physically loaded Stage group -> review ->
+record. After confirmation, only those Displays attach to that Container and follow
+its later stop scans. Partial loads remain possible; Displays not confirmed loaded
+retain their independent field locations. Expected permanent assignments are a
+selection aid, not proof that anything was physically loaded. Keep a quick reviewed
+all-expected-loaded option and partial Display Names/groups; do not require scanning
+every Display. A later physical contents check can also record helper loading that
+was not recorded at the time, with observation/effective-time uncertainty intact.
+
+A loaded takedown return needs **Return Loaded / Home** behavior distinct from
+**Return Empty**: record canonical Container Home and let confirmed attached
+contents follow it. Do not force a loaded Container to be called Empty, reattach
+all permanently assigned Displays just because its Container returns, or pull
+uncollected Displays off their last known park locations. Standalone Displays stay
+attached throughout both Setup and takedown; they have no detach/reattach cycle.
+Keep January testing as a separate Container-dependent workflow to be designed.
+
+**Open membership question:** do Displays always return on their assigned Container,
+or can a different Container temporarily carry them? The latter requires a proven
+operational carrier identity separate from permanent assignment. Confirm this and
+inventory current objects before claiming the present projection can represent it
+or changing schema. Preserve permanent Display/Container and Home assignments.
+
+Use existing movement/event identities, captured operator/time, per-Display effects,
+offline/idempotency conventions and audited current-state projection. Loading must
+be explicit and validated; current enum names are not a ready callable command.
+Prove reattachment, repeat/retry, partial loads, uncollected park Displays, Standalone
+return and any alternate-carrier behavior on a disposable before acceptance.
+Historical correction of an erroneous detach may share reattachment mechanics but
+must preserve its correction reason/provenance rather than pretending it was a
+physical takedown load. This records future reverse-flow requirements only; no
+runtime implementation, schema migration or Production write in this clarification.
+
 ## V0.3.46 implemented workflow — acceptance paused
 
 Record Location opens on **Record Container drop — keep Displays attached**.

@@ -929,3 +929,20 @@ attached. Fresh verification helps only the established Display scope/current
 facts; it cannot prove older unknown contents or close the whole Container review.
 Linking this evidence into the delayed Manager queue and detached-Display checks
 remains proposed/unimplemented; no implicit movement on unrelated scan intents.
+
+
+### Takedown reverse flow — proposed requirement, 2026-10-07
+
+Greg asks about loading Containers during takedown. Explicit confirmed Display
+loading must attach only the selected Display Names/groups to the actual Container
+so they follow later moves; uncollected Displays remain independent in the park.
+Provide partial/all-confirmed loading without requiring individual Display scans.
+Loaded Home return must be distinct from Return Empty. Standalone never detaches.
+DISPLAY_REATTACH/REATTACHED exist in constraints but current command/API/UI does
+not implement them. Current projection uses permanent ref.display.container_id
+plus annual attachment mode; alternate temporary carrier support is unproven.
+Whether alternate Containers can carry Displays is an open operational question;
+prove representation within current objects before any schema proposal. Preserve
+permanent assignments, event history and reason/source for historical corrections.
+Detailed reverse-flow requirements and acceptance are in the candidate handoff.
+This is not an implemented takedown feature or a new Production change.
