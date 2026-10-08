@@ -39,7 +39,7 @@ from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.45-compact-container-review"
+PRODUCTION_VERSION = "V0.3.46-container-drop-intent"
 
 # #222 lightweight Production request instrumentation.
 #

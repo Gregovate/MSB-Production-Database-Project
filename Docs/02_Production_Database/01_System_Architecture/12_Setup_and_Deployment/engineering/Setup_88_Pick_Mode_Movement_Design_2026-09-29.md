@@ -816,9 +816,51 @@ prior evidence for missed removal). Generic "unload" or "came off" cannot supply
 operator intent. Park arrival/Stage suggestion cannot select removal. Retain the
 quick grouped method, compact rows, expandable names and persistent summary.
 Label historical derived contents as last recorded contents rather than physical
-confirmation. This design is pending implementation/acceptance; V0.3.45's current
-labels and review do not by themselves resolve the reported meaning problem.
+confirmation. V0.3.45's labels and review did not resolve the reported meaning problem.
+V0.3.46 implements these explicit intent views; disposable/browser acceptance
+remains pending.
 No new schema/event model is justified. Historical correction is separate from
 preventing new mistaken commands: audit all relevant grouped-unload events,
 confirm actual contents, preserve subsequent valid work and original history,
 and prove a guarded corrective event/projection before Production authorization.
+
+
+### Wider Production audit supplied — 2026-10-07
+
+The operator supplied the read-only audit summary and event detail: database msb,
+Session 2 / PLANNING, October 5–6 Chicago observations, 19 Container scans across
+18 distinct Containers and 152 UNLOADED Display effects. All 152 still match the
+current DETACHED state's last movement event at the query snapshot. The tshircel
+account has 13 October 6 scans/127 effects and two October 5 scans/two effects.
+Five Wrap Containers account for 80 effects within 2m15s; these are physical-review
+candidates, not automatically proven mistakes. C177/C178/C199 currently have
+Standalone Display type and seven effects, exposing the type-contract cases.
+C216 event 48 remains the valid Peace on Earth removal; seven panels from event
+122 are physically confirmed loaded and WhoMatrix remains unconfirmed. Event 122
+has GPS with 13-foot accuracy despite its blank named destination. Event 99's
+EC-Scaffold has no current permanent Container, so permanent assignment alone is
+not a recovery membership proof. Full event table and recovery boundaries are in
+the linked candidate handoff. Aggregate Display-name cells in the supplied paste
+are truncated; they cannot serve as a complete Display recovery manifest.
+
+Missed-removal reconciliation cannot restore Displays already incorrectly detached.
+Historical correction needs a separately proved, guarded, auditable attachment
+operation; the existing movement command does not accept DISPLAY_REATTACH despite
+that enum being present. No correction command is ready and no Production repair
+has been performed. Keep physical confirmation, exact membership/current-state
+proof, disposable recovery validation and Production authorization separate from
+preventing future mistakes in the explicit-intent operator workflow.
+
+
+### V0.3.46 explicit Container intent — 2026-10-07
+
+New scans default to Container drop: existing CONTAINER_MOVE, empty removal IDs,
+no reconciliation claim, and container_drop_contents_unchanged=true in existing
+notes. Physical Display removal explicitly opens compact Stage-group selection;
+physical contents checking explicitly opens Empty / Not Empty / Not Sure. Switching
+intents clears hidden selections and cannot change an open review. Return Empty is
+shown only during contents checking and requires explicit Empty. Historical derived
+counts, including zero, say physical contents are unconfirmed. No schema, API or SQL
+change was necessary. Full Setup regression 753 passed, targeted movement/location
+46 passed, no-Node Windows application simulation 708 passed / two skipped. Real
+browser/current-Production-clone acceptance remains pending; no historical repair.

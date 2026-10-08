@@ -27,7 +27,7 @@ def test_actual_record_location_decisions_review_and_payload():
       gpsOff: () => {watchId=null;latestPosition=null;},
       select: (contents, id=216) => {pendingIdentity={asset_type:'CONTAINER',asset_id:id,identity:'CONT:'+id};
         pendingContents=contents;pendingStateRow=contents;unloadedHereDisplayIds=new Set();contentsDecision=null;identifyRemaining=false;
-        contentsView='UNLOAD';remainingDisplayIds=null;remainingSearch='';
+        contentsView='DROP';remainingDisplayIds=null;remainingSearch='';
         access={can_move_setup_assets:true,authenticated_email:'operator@example.org'};},
       decide: (value, identify=false) => {contentsDecision=value;identifyRemaining=identify;unloadedHereDisplayIds=new Set();contentsView='CONTENTS';remainingDisplayIds=null;},
       gps: () => {watchId=1;latestPosition={timestamp:Date.now(),coords:{latitude:1,longitude:2,accuracy:3}};}
@@ -114,10 +114,31 @@ def test_actual_record_location_decisions_review_and_payload():
     const groups=[{label:'15 — Church-ParkingLot',bulk_selectable:true,display_ids:[900,902],displays:[contents.displays[0],third]},
       {label:'01 — Front Entrance',bulk_selectable:true,display_ids:[901],displays:[contents.displays[1]]}];
     const grouped={...contents,displays:[...contents.displays,third],groups};
+    // A park Container drop must never imply physical Display removal or Empty.
     w.select(grouped,34);w.renderContentsDecision();
+    let intentButtons=elements['movement-unload-groups'].querySelectorAll('button');
+    assert.ok(intentButtons.some(button=>button.textContent==='Record Container drop — keep Displays attached'));
+    assert.ok(intentButtons.some(button=>button.textContent==='Displays physically removed from this Container'));
+    assert.equal(elements['movement-unload-groups'].querySelectorAll('input[data-display-ids]').length,0);
+    w.selectUnloadHere([900,902],true);assert.deepEqual(w.selectedUnloadedDisplayIds(),[]);
+    elements['movement-known-reference'].value='Park staging drop';w.gpsOff();w.renderRecordReadiness();
+    assert.ok(!elements['movement-record-here'].disabled);assert.ok(elements['movement-return-home'].hidden);
+    window.confirm=()=>false;await w.recordPending(false);assert.equal(saved,undefined);
+    window.confirm=()=>true;await w.recordPending(false);
+    assert.equal(saved.movement_action,'CONTAINER_MOVE');assert.deepEqual(saved.unloaded_display_ids,[]);
+    assert.equal(saved.reconciliation,undefined);assert.match(saved.notes,/container_drop_contents_unchanged=true/);
+    // Historical zero contents is not a physical Empty confirmation.
+    w.select({...grouped,displays:[],groups:[]},216);w.renderContentsDecision();w.renderRecordReadiness();
+    assert.ok(elements['movement-unload-groups'].querySelectorAll('*').some(node=>node.textContent.includes('Last recorded contents: 0 Displays. Physical contents are unconfirmed')));
+    assert.ok(elements['movement-return-home'].disabled);
+    // A no-context drop is still location-only, never a guessed reconciliation.
+    w.select(null,34);window.confirm=()=>true;await w.recordPending(false);
+    assert.deepEqual(saved.unloaded_display_ids,[]);assert.equal(saved.reconciliation,undefined);
+    globalThis.saved=undefined;
+    w.select(grouped,34);w.switchContentsView('UNLOAD');w.renderContentsDecision();
     let groupBoxes=elements['movement-unload-groups'].querySelectorAll('input[data-display-ids]');
     assert.equal(groupBoxes.length,2);assert.ok(groupBoxes.every(box=>!box.checked));
-    assert.ok(elements['movement-unload-groups'].querySelectorAll('*').some(el=>el.textContent==='What came off here?'));
+    assert.ok(elements['movement-unload-groups'].querySelectorAll('*').some(el=>el.textContent==='Which Displays were physically removed?'));
     groupBoxes[0].checked=true;groupBoxes[0].listeners.change();
     assert.deepEqual(w.selectedUnloadedDisplayIds(),[900,902]);assert.throws(()=>w.reconciliationPayload(),/current location/);
     elements['movement-location-note'].value='';elements['movement-known-reference'].value='Current park unload';w.renderRecordReadiness();
@@ -126,22 +147,22 @@ def test_actual_record_location_decisions_review_and_payload():
     window.confirm=()=>true;await w.recordPending(false);
     assert.equal(saved.asset_id,34);assert.deepEqual(saved.unloaded_display_ids,[900,902]);assert.equal(saved.reconciliation,undefined);
     assert.equal(saved.destination_location_note,'Current park unload');assert.match(saved.notes,/direct_container_unload=true/);
-    assert.match(elements['movement-feedback'].textContent,/unloaded here/);
-    w.select(grouped,34);w.setAllUnloadGroups(true);assert.deepEqual(w.selectedUnloadedDisplayIds(),[900,902,901]);
+    assert.match(elements['movement-feedback'].textContent,/physically removed here/);
+    w.select(grouped,34);w.switchContentsView('UNLOAD');w.setAllUnloadGroups(true);assert.deepEqual(w.selectedUnloadedDisplayIds(),[900,902,901]);
     w.switchContentsView('CONTENTS');
     empty=elements['movement-unload-groups'].querySelectorAll('button').find(button=>button.textContent==='Empty');empty.listeners.click();
     assert.deepEqual(w.selectedUnloadedDisplayIds(),[]);assert.deepEqual(w.reconciliationPayload().expected_display_ids,[900,901,902]);
     w.setAllUnloadGroups(true);w.setAllUnloadGroups(false);assert.deepEqual(w.selectedUnloadedDisplayIds(),[]);
-    assert.equal(w.reconciliationPayload().decision,'NOT_EMPTY');
+    assert.equal(w.reconciliationPayload().decision,'EMPTY'); // Hidden removal controls cannot change a contents answer.
     const queuedUnload={...queued,unloaded_display_ids:[900,902],reconciliation:undefined};
     const projected=w.applyQueuedContainerContext(grouped,[queuedUnload],216);
     assert.deepEqual(projected.groups.map(group=>group.display_ids),[[901]]);
     w.select({...grouped,reconciliation_allowed:false},34);w.setAllUnloadGroups(true);assert.deepEqual(w.selectedUnloadedDisplayIds(),[]);
-    w.select({...grouped,groups:[groups[0],{...groups[1],bulk_selectable:false}]},34);w.setAllUnloadGroups(true);
+    w.select({...grouped,groups:[groups[0],{...groups[1],bulk_selectable:false}]},34);w.switchContentsView('UNLOAD');w.setAllUnloadGroups(true);
     assert.deepEqual(w.selectedUnloadedDisplayIds(),[900,902]); // Ambiguous/unassigned groups stay review-only.
 
     // Expanding names does not change selection; changes keep the same row DOM.
-    w.select(grouped,34);w.renderContentsDecision();
+    w.select(grouped,34);w.switchContentsView('UNLOAD');w.renderContentsDecision();
     const root=elements['movement-unload-groups'];
     assert.ok(!root.querySelectorAll('button').some(button=>button.textContent==='Empty'));
     const details=root.querySelectorAll('*').filter(node=>node.tag==='details');
@@ -150,7 +171,7 @@ def test_actual_record_location_decisions_review_and_payload():
     const sameBox=root.querySelectorAll('input[data-display-ids]')[0];sameBox.checked=true;sameBox.listeners.change();
     assert.equal(root.querySelectorAll('input[data-display-ids]')[0],sameBox);assert.ok(details[0].open);
     let summary=elements['movement-selection-summary'].querySelectorAll('*');
-    assert.ok(summary.some(node=>node.textContent==='2 unloading HERE · 1 staying'));
+    assert.ok(summary.some(node=>node.textContent==='2 removed HERE · 1 staying'));
     assert.ok(summary.some(node=>node.textContent==='15 — Church-ParkingLot'));
     w.switchContentsView('CONTENTS');assert.deepEqual(w.selectedUnloadedDisplayIds(),[]);
     assert.equal(root.querySelectorAll('input[data-display-ids]').length,0);
@@ -168,28 +189,34 @@ def test_actual_record_location_decisions_review_and_payload():
     search.value='';search.listeners.input();
     assert.ok(!root.querySelectorAll('input[data-display-id]')[1].checked);
     summary=elements['movement-selection-summary'].querySelectorAll('*');
-    assert.ok(summary.some(node=>node.textContent==='2 staying · 1 unloading at PRIOR location'));
+    assert.ok(summary.some(node=>node.textContent==='2 staying · 1 removed at PRIOR location'));
     elements['movement-known-reference'].value='Current park unload';window.confirm=()=>false;globalThis.saved=undefined;
     await w.recordPending(false);assert.equal(saved,undefined);
     const partialReview=elements['movement-review-body'].querySelectorAll('*');
-    assert.ok(partialReview.some(node=>node.textContent.includes('1 unloading · inferred PRIOR: Prior park drop')));
+    assert.ok(partialReview.some(node=>node.textContent.includes('1 physically removed · inferred PRIOR: Prior park drop')));
     assert.ok(partialReview.some(node=>node.textContent==='CH-PeaceOnEarth'));
     assert.ok(!partialReview.some(node=>node.textContent==='901'));
     assert.deepEqual(w.reconciliationPayload().remaining_display_ids,[900,902]);
     // Returning to group unload resets the contents decision, leaving no hidden changes.
     w.switchContentsView('UNLOAD');assert.throws(()=>w.reconciliationPayload(),/Choose Empty/);
     assert.deepEqual(w.selectedUnloadedDisplayIds(),[]);
+    w.setAllUnloadGroups(true);w.switchContentsView('DROP');
+    assert.deepEqual(w.selectedUnloadedDisplayIds(),[]);assert.throws(()=>w.reconciliationPayload(),/Choose Empty/);
+    window.confirm=()=>true;globalThis.saved=undefined;await w.recordPending(false);
+    assert.deepEqual(saved.unloaded_display_ids,[]);assert.equal(saved.reconciliation,undefined);
+    w.select(grouped,34);w.switchContentsView('UNLOAD');
     // Modal close/back cancels without writes and leaves selection intact.
     w.setAllUnloadGroups(true);globalThis.saved=undefined;window.confirm=()=>false;
     elements['movement-known-reference'].value='Current park unload';
     await w.recordPending(false);assert.equal(saved,undefined);assert.equal(w.selectedUnloadedDisplayIds().length,3);
     const review=elements['movement-review-body'];
-    assert.ok(review.querySelectorAll('*').some(node=>node.textContent==='3 unloading · observed HERE: Current park unload'));
+    assert.ok(review.querySelectorAll('*').some(node=>node.textContent==='3 physically removed · observed HERE: Current park unload'));
     assert.ok(review.querySelectorAll('*').filter(node=>node.tag==='details').every(node=>!node.open));
     // A repeated record during the asynchronous review opens one review and writes nothing.
     const dialog=elements['movement-review-dialog'];let opens=0;
     dialog.showModal=()=>{dialog.open=true;opens++;};
     const first=w.recordPending(false);await w.recordPending(false);assert.equal(opens,1);assert.equal(saved,undefined);
+    w.switchContentsView('DROP');assert.equal(w.selectedUnloadedDisplayIds().length,3); // An open review keeps its operation stable.
     elements['movement-review-cancel'].listeners.click();await first;assert.equal(saved,undefined);
     console.log('guided decisions PASS');
     '''

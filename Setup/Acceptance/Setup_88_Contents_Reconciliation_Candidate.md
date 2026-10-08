@@ -4,11 +4,11 @@
 |---|---|
 | Status | DRAFT — implementation verified locally; current-clone/browser acceptance pending |
 | Owner | #88; commanding #122 / DBG-2026-007, 009, 010 |
-| Reviewed | 2026-10-08 |
+| Reviewed | 2026-10-07 |
 | Baseline main | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
 | Branch | `fix/88-container-contents-reconciliation` |
-| Release | `V0.3.45-compact-container-review` |
-| Exact application candidate | `c9aac967190b262cce4d85869c3503e4e5f698c5` |
+| Release | `V0.3.46-container-drop-intent` |
+| Exact application candidate | Pending publication of V0.3.46 |
 | Migration | `070_reconcile_setup_container_contents.sql` — functions only |
 | Preview allocation | Setup `8898` |
 
@@ -39,21 +39,25 @@ same transaction. Failure rolls the entire operation back. Existing Home and
 
 ## Resulting workflow
 
-Record Location preserves **What came off here?** Stage-group unloading and adds
-**Empty / Not Empty / Not Sure** for missed-unload reconciliation.
+Record Location opens on **Record Container drop — keep Displays attached**.
+This records only the Container location, with no removal IDs or reconciliation
+claim. **Displays physically removed from this Container** opens the retained
+compact Stage-group method. **Check what is physically on this Container** opens
+**Empty / Not Empty / Not Sure** for missed-removal reconciliation.
 Pick Mode retains its separately accepted immediate PICKED interaction.
 
-- **Observed unload here:** select one or more existing Stage groups, **All
-  remaining groups**, or **None came off**. Group labels and Display Names remain
+- **Observed physical removal here:** explicitly enter the removal view and
+  select existing Stage groups, **All listed Stage groups were removed**, or
+  **Clear selected groups**. Group labels and Display Names remain
   visible. Selected Displays detach at the current confirmed location using the
   original grouped-unload command. Unselected Displays keep following the Container.
   No prior-location inference applies to an unload observed here.
 - Stage rows show the Stage name/count; **Show Displays** expands names on demand.
   A fixed action dock keeps current selection counts, the location basis, selected
   Stage names and **Review and record** visible while the operator scrolls.
-- **Check contents / missed earlier unload** opens a separate contents view.
-  **Back to unload here** returns to Stage groups. Switching views clears the other
-  operation's selections; hidden choices cannot change attachments.
+- **Check what is physically on this Container** opens the separate contents
+  view. The three intent buttons switch views and clear the other operation's
+  selections; returning to Container drop cannot retain hidden removal IDs.
 - Partial contents has Display Name search. Checked remaining IDs are held in
   asset-local state, not visible DOM checkboxes; filtering, including zero matches,
   preserves all selections. The dock shows staying/unloading counts across filters.
@@ -160,7 +164,7 @@ Empty cannot guess the contents. Training still performs no writes or queueing.
   explicit actual Stage without GPS, cancelled final review, one-Display payload,
   protected objects and the queued Display overlay. API tests reject No / Not Sure
   writes and Yes without an actual Stage.
-- C034-style Stage-group regression tests exercise immediately visible groups,
+- C034-style Stage-group regression tests exercise explicitly opened groups,
   multiple Display Names per group, all/none, current-location payloads, cancellation,
   exclusion of ambiguous groups, protected objects, switching to prior-location
   reconciliation, and queued group projection. Actual PostgreSQL movement checks
@@ -265,13 +269,15 @@ the new interaction and the engineering gates below remain required.
 Review these cases:
 
 1. C034 or another multi-Stage Container: **What came off here?** must immediately
-   expose compact Stage rows/counts. Names expand only with **Show Displays**;
+   initially show Container drop with no Stage selection. Record a location-only
+   drop and verify all Display attachments remain unchanged. Rescan and choose
+   **Displays physically removed from this Container** to expose compact Stage rows/counts. Names expand only with **Show Displays**;
    expanding must not change the checkbox. The dock must stay visible at the top
    and bottom of the list, including narrow/tablet widths. Selected Stage names
    and counts must update without collapsing an open details list. Select one group, cancel
    review once, then record at a current park reference. Selected Displays use that
    current location; other groups stay attached. Verify all/none controls and a
-   later Container move. Then use **Check contents / missed earlier unload** to verify the separate
+   later Container move. Then use **Check what is physically on this Container** to verify the separate
    contents view; switching back must leave no hidden contents selection.
 2. C030 or another already-empty Container: Empty -> Return Empty to the named
    Home Location, GPS off; detached Displays must keep their park evidence.
@@ -329,8 +335,8 @@ Greg's screenshot shows **CONT:216 — Mt Crumpit Panels & Peace on Earth** with
 loaded and that only Peace on Earth was intended to leave the Container on
 **2026-10-06**. Greg ran the read-only audit against Production and supplied the
 Display-state and event-history results on **2026-10-07**. The Container/database
-identity result set was not included in that paste; Production is the operator's
-stated source. Repeated Display-state output in the paste is one result, not an
+identity result set was not included in that first paste; the subsequent broader
+audit explicitly reports database msb and the same Session 2. Repeated Display-state output in the paste is one result, not an
 additional observation.
 
 | Event | Observed America/Chicago | Capture | Display effects |
@@ -382,9 +388,9 @@ C216 event 122 is one confirmed event, not necessarily the entire recovery scope
 Do not interpret the report as proof that every unload by either Tom actor was
 incorrect. C216's earlier Peace on Earth event 48 remains valid.
 
-V0.3.45 still uses generic **unload / came off** labels. Its selection review and
-compact layout improve visibility but do not adequately remove this ambiguity.
-The next workflow needs explicit intent before Display selection:
+V0.3.45 used generic **unload / came off** labels. Its selection review and
+compact layout improved visibility but did not adequately remove this ambiguity.
+V0.3.46 implements explicit intent before Display selection:
 
 | Operator action | Attachment consequence |
 |---|---|
@@ -401,8 +407,8 @@ and focused review; do not remove the accepted Stage-group capability again.
 Tracked contents are **last recorded contents**, not an independently confirmed
 physical count. A wrong historical empty projection must not be mistaken for an
 operator's physical Empty confirmation. Current V0.3.45 is not accepted as the
-final solution to this newly clarified meaning problem; the explicit-intent
-workflow remains a concrete design for the next candidate, not implemented source.
+final solution to this newly clarified meaning problem. V0.3.46 implements the
+explicit-intent workflow; exact-candidate disposable/browser acceptance is pending.
 The existing event/command model can represent Container-only moves and separate
 Display removal without a new table or column.
 
@@ -412,9 +418,118 @@ recorded operator/Chicago date, then lists exact Container/Display scope and cur
 state. It intentionally does not assume which Tom actor Greg meant or label all
 reported unloads incorrect. The review includes changed-since event state so we
 avoid overwriting subsequent valid work. Read-only syntax and synthetic-schema
-execution passed. Actual wider Production output and physical confirmation remain
-pending. Preserve legitimate unloads and history; prepare any guarded recovery
-only after affected scope and current physical contents are confirmed.
+execution passed. Wider Production output was subsequently supplied and is
+summarized below; physical confirmation remains pending except the C216 findings
+already stated. Preserve legitimate unloads and history; prepare any guarded
+recovery only after affected scope and current physical contents are confirmed.
+
+## Wider Production audit — results supplied 2026-10-07
+
+Greg supplied both result sets from the broader read-only audit. The summary
+explicitly identifies **database msb, Session 2 / PLANNING**. Detail contains
+**19 Container scan events across 18 distinct Containers, with 152 UNLOADED
+Display effects** on October 5–6, America/Chicago. All 152 effects still match a
+DETACHED Display state whose last movement event is that same scan. This is a
+snapshot, not a guarantee that state stays unchanged before any future correction.
+These are affected-event candidates, not 152 confirmed physical mistakes.
+
+| Recorded operator | Chicago date | Events | Containers in this row | UNLOADED effects still current |
+|---|---|---:|---:|---:|
+| gliebig@sheboyganlights.org | 2026-10-05 | 2 | 2 | 6 |
+| rmiller@sheboyganlights.org | 2026-10-05 | 1 | 1 | 16 |
+| tshircel@sheboyganlights.org | 2026-10-05 | 2 | 2 | 2 |
+| tprisland@sheboyganlights.org | 2026-10-06 | 1 | 1 | 1 |
+| tshircel@sheboyganlights.org | 2026-10-06 | 13 | 13 | 127 |
+
+C216 appears twice, so adding row-level Container counts would incorrectly yield
+19 distinct Containers. The tshircel account has 15 events/15 Containers and 129
+effects across both days; do not merge it with the separately recorded tprisland
+account or assume all events from either account were mistakes.
+
+| Event | Container | Description from audit | Chicago observation | Detached / still current |
+|---|---|---|---|---:|
+| 13 | C134 | Volunteer Trailer Power Cord Spool | 2026-10-05 10:07:57.926 | 1 / 1 |
+| 14 | C192 | Volunteer Trailer Stairs | 2026-10-05 10:08:20.645 | 1 / 1 |
+| 42 | C030 | Church Bells | 2026-10-05 13:57:18.911 | 16 / 16 |
+| 43 | C177 | CH Steeple LH - Base (Container) | 2026-10-05 14:50:15.870 | 3 / 3 |
+| 44 | C178 | CH Steeple RH - Base (Container) | 2026-10-05 14:50:53.461 | 3 / 3 |
+| 48 | C216 | Mt Crumpit Panels & Peace on Earth | 2026-10-06 08:24:21.587 | 1 / 1 |
+| 64 | C011 | Traditional Christmas panels including Peanuts | 2026-10-06 09:51:40.974 | 6 / 6 |
+| 99 | C122 | GG-Scaffold Container | 2026-10-06 11:52:25.636 | 1 / 1 |
+| 112 | C049 | Section C Wraps | 2026-10-06 13:33:44.497 | 16 / 16 |
+| 113 | C051 | Section E Wraps | 2026-10-06 13:34:23.935 | 16 / 16 |
+| 114 | C050 | Section D Wraps | 2026-10-06 13:35:00.272 | 16 / 16 |
+| 115 | C047 | Section B Wraps | 2026-10-06 13:35:35.858 | 16 / 16 |
+| 116 | C046 | Section A Wraps | 2026-10-06 13:35:59.917 | 16 / 16 |
+| 117 | C065 | Santa's Workshop Kit | 2026-10-06 14:28:16.489 | 8 / 8 |
+| 118 | C149 | Santa and Sleigh Panels & Scaffolding & Santa's Conveyor Scaffolding | 2026-10-06 14:28:51.163 | 5 / 5 |
+| 119 | C066 | Post Office Kit | 2026-10-06 14:33:09.227 | 6 / 6 |
+| 120 | C004 | Global Warming, Elf on Shelf #5, Elf Conductor panel and Post Office panel | 2026-10-06 14:44:22.999 | 12 / 12 |
+| 122 | C216 | Mt Crumpit Panels & Peace on Earth | 2026-10-06 15:03:25.108 | 8 / 8 |
+| 123 | C199 | Bruce the Spruce | 2026-10-06 15:18:51.525 | 1 / 1 |
+
+Review findings and boundaries:
+
+- Five Wrap Containers, **C049/C051/C050/C047/C046**, events 112–116,
+  account for **80 effects** from 13:33:44.497 to 13:35:59.917 on October 6.
+  The rapid sequence is consistent with Greg's reported Container-drop meaning;
+  timing alone does not prove which Displays stayed loaded. Confirm physical
+  contents rather than reversing the whole batch from timestamps or actor alone.
+- **C177/C178/C199** currently have type Standalone Display and seven effects
+  across events 43/44/123. This exposes the type-contract cases that the new
+  unload guards address; existing stored detachments are not fixed by a new guard.
+  Current type evidence does not establish historical type changes or justify
+  erasing events. Multi-Display Display Pallets are not automatically invalid.
+- **C216 event 48 remains the known valid Peace on Earth removal**. Event 122's
+  seven Mt. Crumpit panels are confirmed physically loaded; WhoMatrix still needs
+  explicit physical confirmation. Preserve the valid one-Display operation.
+- Event 99 removed **EC-Scaffold** from C122 while its current permanent Container
+  is NULL. Recovery cannot use permanent assignment as the only membership test.
+  Establish prior operational attachment/event evidence before any reattachment.
+- Event 122 now explicitly reports GPS present, accuracy **13 feet**, despite a
+  blank named location. Blank destination notes are not proof of missing location.
+  All events except 48 report GPS; event 48 has a named location instead. All 19
+  report online capture. No coordinates are exposed by this audit.
+- The pasted aggregate Display-name cells are truncated near 255 characters.
+  Event/Container/count evidence is usable, but this paste is not a complete
+  Display-ID/Name recovery manifest. Obtain full per-Display rows or an untruncated
+  export only when the physically confirmed correction scope is established.
+- The current missed-removal reconciliation works on attached Displays. It cannot
+  reattach Displays that were already detached incorrectly. Historical recovery
+  therefore needs a separately proved, guarded, auditable attachment correction
+  using the existing movement/event model. The current command does not accept
+  DISPLAY_REATTACH simply because that enum exists. No repair command is ready,
+  and no Production correction has been executed or authorized.
+
+V0.3.46 now implements explicit Container-drop versus physical-removal intent
+while retaining compact Stage-group removal. Next: accept the disposable/browser
+workflow, confirm physical contents
+of audit candidates, prepare exact Display IDs and current-state preconditions,
+prove recovery on a disposable clone, then obtain separate Production approval
+under the current Server Management runbook. Original history and subsequent valid
+work must survive. Do not infer physical emptiness from the broken stored projection.
+
+## V0.3.46 explicit Container intent — 2026-10-07
+
+New scans open on the Container-drop view. Its existing CONTAINER_MOVE payload
+has an empty unloaded_display_ids list, no reconciliation object, and the existing
+notes field records container_drop_contents_unchanged=true. This changes no API,
+SQL function or schema. Protected/no-context Containers can still record location
+only; physical-removal selection is unavailable without valid selectable groups.
+The review explicitly says no Display attachment changes. Physical removal retains
+compact Stage rows, expandable names, all-groups/clear, selected summary and modal
+review. Its HERE basis and contents checking's PRIOR basis remain separate.
+Switching intents clears both removal and contents selections; changes are blocked
+while recording/reviewing. Return Empty appears only in the contents view and
+requires explicit Empty. Last recorded counts, including zero, say that physical
+contents are unconfirmed. A mistaken historical detach still requires recovery.
+
+Validation on V0.3.46 source: 753 full Setup tests; 46 targeted movement/location
+checks; executable UI payload/cancellation/transition checks PASS; no-Node Windows
+application simulation 708 passed / two explicit engineering checks skipped; JS
+syntax and diff checks PASS. SQL migration 070 is unchanged from the previously
+executed PostgreSQL/WASM fixture. No new visual/browser or Production-clone pass
+is claimed. Exact candidate and browser acceptance are recorded separately below.
 
 ## Remaining gates
 
