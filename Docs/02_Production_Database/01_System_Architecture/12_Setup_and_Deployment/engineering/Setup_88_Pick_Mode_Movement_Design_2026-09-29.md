@@ -978,3 +978,22 @@ historical repair or resolved-review claim. Candidate handoff owns detailed
 validation and remaining gates: 761 full Setup, 62 targeted, read-only SQL execution
 and synthetic browser/print/tablet checks PASS; actual Production clone/operator
 acceptance and guided-stop/Not Sure correction/takedown capabilities remain pending.
+
+### V0.3.48 nearest-reference report extension — 2026-10-08 Chicago
+
+Greg's laptop report feedback asks for nearest Stage names from GPS. Exact source
+`9719a4e65f05d022821e6d2cc9bb2f19e0482029` reuses the existing location-evidence helper
+and versioned `2026-stage-reference-20261003.1` points. GPS-only report headings use
+Near [reference] — GPS estimate, with feet to the point and GPS accuracy/quality
+retained. C216 event 122 is nearest Whoville (61 ft), C095 event 33 Church Parking
+Lot (44 ft), C049 event 112 Santa's Workshop (88 ft). Detached Displays use their
+own last event; named observations and raw evidence stay unchanged. This is
+presentation inference, not Stage assignment, Stage boundary containment or
+physical-contents repair. Missing coordinates/references retain fallback labels.
+
+766 full Setup and 40 targeted tests, synthetic browser/print/tablet and UI date
+gate PASS. Source version V0.3.48-nearest-stage-report, footer October 8. SQL reads
+and schema unchanged. Existing running previews retain their exact source until
+clean exit/relaunch; current-clone/operator acceptance for V0.3.48, guided-stop
+alignment, delayed Not Sure resolution and takedown remain pending. No Production
+change. The candidate handoff owns exact preview instructions and evidence.

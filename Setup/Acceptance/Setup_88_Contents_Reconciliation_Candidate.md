@@ -4,15 +4,55 @@
 |---|---|
 | Status | DRAFT — stop-guidance alignment required before further browser acceptance |
 | Owner | #88; commanding #122 / DBG-2026-007, 009, 010 |
-| Reviewed | 2026-10-07 (Chicago; report candidate added) |
+| Reviewed | 2026-10-08 (Chicago; nearest-reference report candidate) |
 | Baseline main | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
 | Branch | `fix/88-container-contents-reconciliation` |
-| Release | `V0.3.47-production-report` |
-| Exact application candidate | `321e4cfc10f98b276d82654787455520f7255886` |
+| Release | `V0.3.48-nearest-stage-report` |
+| Exact application candidate | `9719a4e65f05d022821e6d2cc9bb2f19e0482029` |
 | Migration | `070_reconcile_setup_container_contents.sql` — functions only |
 | Preview allocation | Setup `8898` |
 
-## V0.3.47 Production Report — current source candidate
+## V0.3.48 nearest Stage references — current source candidate
+
+Greg's laptop report feedback identifies the remaining GPS-only readability gap.
+The report now reuses `setup_location_evidence.nearest_recorded_reference`, already
+used by Current Location, with the candidate's existing versioned reference set
+`2026-stage-reference-20261003.1`. GPS-only Container headings use **Near [reference]
+— GPS estimate**. Current observations, historical events and detached Displays
+show the nearest reference and distance in feet; each detached Display uses its
+own last movement event, not the Container's newer location. Recorded named
+observations remain primary. GPS accuracy/quality/stale flags remain visible.
+Missing GPS or unavailable references retain the previous fallback.
+
+| Supplied observation | Nearest reference point | Distance | Supplied GPS accuracy |
+|---|---|---|---|
+| C216, event 122 | 07-Whoville-WV | 61 ft | ±13 ft |
+| C095, event 33 | 15-Church-ParkingLot | 44 ft | ±12 ft |
+| C049, event 112 | 19-Santa's Workshop-SW | 88 ft | ±15 ft |
+
+These are derived distances to points, not Stage boundaries or confirmed physical
+placement. The source reference version is displayed in the report. Raw GPS,
+Stage assignments, movement/effect history and contents are unchanged. Peace on
+Earth's event 48 retains its independent Church note and no-GPS evidence. No
+schema, SQL-query, API-route or write change; no historical attachment repair.
+
+Exact source **9719a4e65f05d022821e6d2cc9bb2f19e0482029**, version
+**V0.3.48-nearest-stage-report**, visible UI date **2026-10-08**. Validation:
+**766 full Setup tests**, **40 targeted report/current-location/reconciliation
+checks**, diff and mechanical UI date gate PASS. Synthetic browser/print/tablet
+checks on actual report routes PASS; the 61-ft Whoville report rendering was
+inspected. Earlier SQL/no-Node validation below belongs to V0.3.47; report queries
+are unchanged. Greg supplied report feedback from his laptop, not an exact V0.3.48
+current-clone/operator acceptance transcript.
+
+The wrapper now expects V0.3.48 and this exact source. An already running V0.3.47
+preview keeps its source until CLEAN EXIT and a fresh exact-candidate launch.
+Use the existing handoff below when ready; do not change files underneath a
+running preview. Production is unchanged and guided-stop acceptance remains
+paused. This report extension does not complete delayed contents review or
+container loading/removal guidance.
+
+## V0.3.47 Production Report — preceding source candidate
 
 Greg supplied the October 6 Movement / Location Trail through event 123 and a
 Material Status screenshot with 15 unresolved requirements. Today's Production
@@ -61,7 +101,7 @@ unresolved rows, comparison after 123, navigation, Unresolved drilldown, tablet
 layout, print media and no JS errors. Inspected desktop/tablet/report screenshots.
 This is synthetic visual evidence, not a current-Production-clone/operator pass.
 
-The existing Windows preview wrapper now expects V0.3.47. After its exact-source
+At this preceding candidate, the Windows preview wrapper expected V0.3.47. After its exact-source
 and disposable gates, report-only review starts at
 `http://127.0.0.1:8898/material-status/?season_year=2026`. Existing reusable launcher
 and CLEAN EXIT apply; Python only on Greg's workstation, no Node required. Do not
@@ -480,13 +520,13 @@ After the active preview exits cleanly, this stop-on-failure block refreshes it:
     if (Invoke-Git88 status --porcelain) { throw 'STOP: preserve review checkout changes first.' }
     Invoke-Git88 fetch origin
     Invoke-Git88 merge --ff-only origin/fix/88-container-contents-reconciliation
-    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha '321e4cfc10f98b276d82654787455520f7255886'
+    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha '9719a4e65f05d022821e6d2cc9bb2f19e0482029'
 }
 ```
 
 This launcher requires Python, not Node, on Greg's workstation. When READY appears,
 open `http://127.0.0.1:8898/record-location/?season_year=2026` and verify
-**V0.3.47-production-report** before testing. Report-only review uses Material Status;
+**V0.3.48-nearest-stage-report** before testing. Report-only review uses Material Status;
 guided scan acceptance remains paused. The acceptance/preview runner uses
 a disposable current-Production clone; this command does not correct Production.
 
@@ -513,7 +553,7 @@ do not change that application identity.
     if (Test-Path $Review) { throw 'STOP: inspect the existing review worktree; do not overwrite it.' }
     Invoke-Git88 -C $Primary worktree add -b fix/88-container-contents-reconciliation $Review origin/fix/88-container-contents-reconciliation
     Set-Location $Review
-    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha '321e4cfc10f98b276d82654787455520f7255886'
+    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha '9719a4e65f05d022821e6d2cc9bb2f19e0482029'
 }
 ```
 
