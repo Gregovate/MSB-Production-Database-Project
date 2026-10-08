@@ -322,6 +322,33 @@ main with `git pull --ff-only`, prove the accepted SHA is its ancestor, then rem
 only this merged feature branch. Do not force-remove worktrees or change an
 unrelated primary branch during review cleanup.
 
+## C216 attachment discrepancy — read-only investigation pending
+
+Greg's next screenshot shows **CONT:216 — Mt Crumpit Panels & Peace on Earth**
+with **0 Displays on Container**. Greg physically confirms Mt. Crumpit panels
+remain on the Container and that only Peace on Earth was intended to be removed
+in Production on **2026-10-06**. This is a discrepancy, not an Empty confirmation.
+The screenshot alone does not establish whether the empty list originates in
+Production state, a clone test change or the browser's queued-movement projection.
+
+The current contents query includes active permanent C216 assignments whose
+seasonal position is WITH_CONTAINER (default when no Display state exists).
+Missing/multiple Stage membership remains a visible non-selectable group and does
+not remove Displays from contents. The individual DISPLAY_MOVE branch targets
+only its one Display ID; this is source evidence, not proof of what yesterday's
+Production command actually did. Disposable validation probes end in ROLLBACK.
+
+Use [the C216 read-only audit](setup_88_c216_contents_readonly_audit.sql) against
+Production **msb** and retain all three result sets. It identifies the database,
+2026 sessions, permanent assignments/statuses, explicit/current attachment state,
+last-event links and all relevant 2026 event scopes/names/effects. Times are in
+America/Chicago; observation and receipt timestamps are separate to retain delayed
+offline evidence. The audit executes only SELECT/local settings inside READ ONLY
+and ends with ROLLBACK. Syntax and synthetic-schema execution were checked.
+This workspace cannot route to the private MSB server; actual Production results
+are pending Greg's read-only query. No attachment repair, historical rewrite,
+migration or Production change is authorized or performed by this investigation.
+
 ## Remaining gates
 
 Current-clone acceptance, exact-candidate browser/operator disposition and real
