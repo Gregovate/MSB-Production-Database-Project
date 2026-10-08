@@ -97,6 +97,11 @@ def test_report_supplied_gps_only_observations_show_nearest_without_rewriting_ev
     assert '[QUESTIONABLE] [STALE FIX]' in html
     assert 'not a Stage boundary' in html
     assert 'Prior named context: Church' in html
+    current_card=html.split('<article class="container">',1)[1].split('<ol class="trail">',1)[0]
+    assert 'Recorded destination: GPS only (no Stage/name recorded)' in current_card
+    assert f'Recorded GPS {latitude:.6f}, {longitude:.6f}' in current_card
+    assert 'Calculated nearest Stage reference (from recorded GPS)' in current_card
+    assert 'Observed destination:' not in html
     assert picture==original
 
 
@@ -126,6 +131,10 @@ def test_report_recorded_stage_remains_primary_and_nearest_label_is_escaped(monk
     assert '<script>nearest</script>' not in html
     assert '&lt;script&gt;nearest&lt;/script&gt;' in html
     assert 'GPS reference set: test-set' in html
+    current_card=html.split('<article class="container">',1)[1].split('<ol class="trail">',1)[0]
+    assert 'Recorded destination:   Operator chosen destination' in current_card
+    assert 'Recorded GPS 43.000000, -87.000000' in current_card
+    assert 'Calculated nearest Stage reference (from recorded GPS)' in current_card
 
 
 def test_report_html_escapes_evidence_and_explains_unresolved_and_uncertainty():

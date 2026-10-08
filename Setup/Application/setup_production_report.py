@@ -33,7 +33,7 @@ def chicago_time(value: object) -> str:
 def gps_text(row: dict) -> str:
     if row.get("gps_latitude") is None or row.get("gps_longitude") is None:
         return "No GPS recorded"
-    text = f"GPS {Decimal(str(row['gps_latitude'])):.6f}, {Decimal(str(row['gps_longitude'])):.6f}"
+    text = f"Recorded GPS {Decimal(str(row['gps_latitude'])):.6f}, {Decimal(str(row['gps_longitude'])):.6f}"
     if row.get("gps_accuracy_m") is not None:
         feet = Decimal(str(row["gps_accuracy_m"])) / Decimal("0.3048")
         text += f" ±{feet:.0f} ft"
