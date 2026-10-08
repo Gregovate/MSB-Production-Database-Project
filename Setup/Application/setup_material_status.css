@@ -16,6 +16,7 @@ input,select{min-height:42px;padding:.5rem .6rem;width:100%}
 .summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.65rem;margin-bottom:1rem}
 .summary-card{border:1px solid color-mix(in srgb,CanvasText 22%,transparent);border-radius:.65rem;padding:.7rem .8rem}
 .summary-card strong{display:block;font-size:1.55rem}
+.summary-card{text-align:left;color:inherit;background:Canvas}
 .section-heading{justify-content:space-between}
 .material-list,.unresolved-list{display:grid;gap:.65rem}
 .material-row{display:grid;grid-template-columns:minmax(11rem,1.1fr) minmax(10rem,.9fr) minmax(11rem,1fr) minmax(10rem,.9fr) minmax(12rem,1.1fr) minmax(12rem,1.15fr) auto;gap:.7rem;align-items:start;border-top:1px solid color-mix(in srgb,CanvasText 14%,transparent);padding:.75rem 0}

@@ -1,5 +1,12 @@
 # Setup and Deployment Engineering
 
+## #88 guided contents reconciliation — candidate pending acceptance
+
+[Implementation, reconnaissance, verification and exact-candidate review handoff](../../../../../Setup/Acceptance/Setup_88_Contents_Reconciliation_Candidate.md).
+V0.3.43 reuses existing movement/event tables with function-only migration 070.
+Current-clone/browser acceptance and Production deployment remain pending.
+
+
 | Document Control | Value |
 |---|---|
 | Document Type | Engineering Handoff Portal |

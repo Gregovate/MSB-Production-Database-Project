@@ -103,9 +103,19 @@ def projection(monkeypatch):
         INSERT INTO ref.setup_task_container_support VALUES (1, 178, 'KIT', NULL);
         INSERT INTO ref.stage VALUES (15, '15', 'Church-ParkingLot');
         INSERT INTO ops.setup_container_state VALUES (1, 178, NULL, NULL, 'PLACED', 44);
-        INSERT INTO ops.setup_movement_event VALUES
+        INSERT INTO ops.setup_movement_event
+            (setup_movement_event_id,setup_session_id,occurred_at,gps_latitude,gps_longitude,gps_accuracy_m,
+             gps_fix_age_ms,gps_quality,capture_method) VALUES
             (41, 1, '2026-10-05T11:58:00-05:00', 43.778657, -87.749155, 1.58, 0, 'UNASSESSED', 'GPS'),
             (44, 1, '2026-10-05T14:50:00-05:00', 43.778556, -87.749142, 3.00, 0, 'UNASSESSED', 'TOUCH_SELECT');
+    """)
+
+    conn.executescript("""
+        ALTER TABLE ops.setup_movement_event ADD COLUMN container_id INTEGER;
+        ALTER TABLE ops.setup_movement_event ADD COLUMN destination_location_note TEXT;
+        ALTER TABLE ops.setup_movement_event ADD COLUMN event_type TEXT;
+        ALTER TABLE ops.setup_movement_event ADD COLUMN notes TEXT;
+        ALTER TABLE ops.setup_movement_event ADD COLUMN destination_stage_id INTEGER;
     """)
 
     @contextmanager
@@ -231,14 +241,25 @@ def _installed_production_location_case(case):
             (90,840),(90,848),(90,853),(90,860),(90,861);
         INSERT INTO ops.setup_container_state VALUES (1,177,NULL,NULL,'CONTAINER_MOVE',43);
         UPDATE ops.setup_container_state SET movement_status='CONTAINER_MOVE';
-        INSERT INTO ops.setup_movement_event VALUES
+        INSERT INTO ops.setup_movement_event
+            (setup_movement_event_id,setup_session_id,occurred_at,gps_latitude,gps_longitude,gps_accuracy_m,
+             gps_fix_age_ms,gps_quality,capture_method) VALUES
             (43,1,'2026-10-05T14:50:15-05:00',43.778465,-87.749201,3.00,0,'UNASSESSED','TOUCH_SELECT');
         INSERT INTO ops.setup_display_state
             SELECT 1,display_id,'DETACHED',NULL,NULL,'TASK_UNLOAD',
                 CASE WHEN container_id=177 THEN 43 ELSE 44 END
             FROM ref.display;
     """)
-    if case == "attached":
+    if case in ("continuity", "location_after_pick"):
+        conn.execute("UPDATE ops.setup_display_state SET position_mode='WITH_CONTAINER'")
+        conn.execute("UPDATE ops.setup_movement_event SET container_id=178,event_type='CONTAINER_MOVE' WHERE setup_movement_event_id=44")
+        conn.execute("UPDATE ops.setup_movement_event SET container_id=177,event_type='CONTAINER_MOVE' WHERE setup_movement_event_id=43")
+        conn.executescript("""
+            INSERT INTO ops.setup_movement_event (setup_movement_event_id,setup_session_id,occurred_at,container_id,destination_location_note,event_type)
+            VALUES (10,1,'2026-10-05T12:00:00-05:00',178,'15-Church-ParkingLot','CONTAINER_MOVE'),
+                   (11,1,'2026-10-05T12:00:00-05:00',177,'15-Church-ParkingLot','CONTAINER_MOVE');
+        """)
+    elif case == "attached":
         conn.execute("UPDATE ops.setup_display_state SET position_mode='WITH_CONTAINER', last_movement_event_id=41")
     elif case == "later_parent":
         conn.execute("UPDATE ops.setup_container_state SET current_stage_id=15, current_location_note='later parent location', last_movement_event_id=41")
@@ -247,6 +268,13 @@ def _installed_production_location_case(case):
     elif case == "explicit":
         conn.execute("UPDATE ref.setup_task SET active_flag=1 WHERE setup_task_id=2")
         conn.execute("INSERT INTO ref.setup_task_display (setup_task_id,display_id,relationship_type) SELECT CASE WHEN display_id=834 THEN 2 ELSE 1 END,display_id,'REQUIRED' FROM ref.display")
+
+    if case == "location_after_pick":
+        conn.executescript("""
+            INSERT INTO ops.setup_movement_event (setup_movement_event_id,setup_session_id,occurred_at,container_id,event_type)
+            VALUES (50,1,'2026-10-05T16:00:00-05:00',178,'PICKED'),(51,1,'2026-10-05T16:00:00-05:00',177,'PICKED');
+            UPDATE ops.setup_container_state SET movement_status='PICKED',last_movement_event_id=CASE WHEN container_id=177 THEN 51 ELSE 50 END;
+        """)
 
     # Import the real host, which installs material -> ownership -> assignment
     # exactly as the disposable browser/Production process does.
@@ -277,8 +305,14 @@ def _installed_production_location_case(case):
             assert item["current_gps_latitude"] is None
             assert item["current_nearest_reference"] is None
         else:
-            assert item["current_location_kind"] == "GPS"
-            assert item["current_movement_event_id"] == (43 if item["container_id"] == 177 else 44)
+            assert item["current_location_kind"] == ("NAMED" if case in ("continuity", "location_after_pick") else "GPS")
+            if case in ("continuity", "location_after_pick"):
+                assert item["current_location_note"] == "15-Church-ParkingLot"
+                assert item["current_named_context_inherited"]
+            assert item["current_movement_event_id"] == ((51 if item["container_id"] == 177 else 50) if case == "location_after_pick" else (43 if item["container_id"] == 177 else 44))
+            if case == "location_after_pick":
+                assert item["current_movement_status"] == "PICKED"
+                assert item["current_location_event_id"] == (43 if item["container_id"] == 177 else 44)
             assert item["current_gps_accuracy_m"] == 3
             assert item["current_gps_latitude"] == (43.778465 if item["container_id"] == 177 else 43.778556)
             reference = item["current_nearest_reference"]
@@ -286,10 +320,10 @@ def _installed_production_location_case(case):
             assert round(reference["distance_ft"]) == (46 if item["container_id"] == 177 else 76)
             assert reference["reference_set_version"] == "2026-stage-reference-20261003.1"
     support = context["support_containers"][0]
-    assert support["current_location_kind"] == ("NONE" if case == "other_season" else "NAMED" if case == "later_parent" else "GPS")
+    assert support["current_location_kind"] == ("NONE" if case == "other_season" else "NAMED" if case in ("later_parent", "continuity", "location_after_pick") else "GPS")
 
 
-@pytest.mark.parametrize("case", ["detached", "attached", "later_parent", "missing", "explicit", "other_season"])
+@pytest.mark.parametrize("case", ["detached", "attached", "later_parent", "missing", "explicit", "other_season", "continuity", "location_after_pick"])
 def test_installed_production_api_preserves_effective_movement_evidence(case):
     # Isolate method installers from the unit tests that exercise the base class.
     result = subprocess.run(

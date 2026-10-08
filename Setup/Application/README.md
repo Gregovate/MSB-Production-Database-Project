@@ -1,5 +1,21 @@
 # Setup Session Application
 
+## #88 guided contents reconciliation candidate
+
+[Implementation, reconnaissance, verification and exact-candidate review handoff](../Acceptance/Setup_88_Contents_Reconciliation_Candidate.md).
+V0.3.46 reuses existing movement/event tables with function-only migration 070.
+Container drop records location only and keeps Display attachments unchanged.
+**Displays physically removed from this Container** retains Stage-group selection;
+**Check what is physically on this Container** opens prior-location reconciliation
+for missed removals. Each path names its location basis; recorded counts are not
+physical confirmation.
+Stage rows/counts stay compact; Display Names expand on demand. A persistent
+selection/action dock and focused review keep selected groups visible. Contents
+checking opens separately; Display Name filtering preserves remaining selections
+across hidden rows. Current-clone/browser acceptance and Production deployment
+remain pending.
+
+
 For a reviewed update or urgent fix, use [Install a reviewed Setup change](../operatorSOP/Install_a_Reviewed_Setup_Change.md). It explains the checks, maintenance window, STOP result and required documentation closeout.
 
 Status: **PRODUCTION RUNTIME OPERATIONAL — 2026 ANNUAL SETUP SESSION LIVE**
