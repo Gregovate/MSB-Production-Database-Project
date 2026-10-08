@@ -93,9 +93,11 @@ No environment/service-unit/shared checkout/proxy/firewall change is performed.
 
 ## Workstation install — after main integration
 
-Run from any existing MSB repository checkout on Greg's current machine. This
-finds the existing main worktree rather than assuming laptop/desktop paths or
-forcing main into the review worktree. Native failures stop the whole sequence.
+Confirmed current prompt: laptop `C:\lor\ImportExport\VSCode`. Run there. This
+finds main by reading worktree inventory line by line. If no worktree has main,
+it safely switches a clean primary checkout to the existing local main branch
+or creates main tracking origin/main. It never resets a branch or discards files.
+Native failures stop the whole sequence.
 The main checkout must be clean. Setup edits should pause during the brief
 source/service change so the preservation comparison can remain unchanged.
 Greg already reported preview CLEAN EXIT; server preflight independently checks.
@@ -103,18 +105,36 @@ Greg already reported preview CLEAN EXIT; server preflight independently checks.
 ```powershell
 & {
     $ErrorActionPreference = 'Stop'
+    $PrimaryReport88 = 'C:\lor\ImportExport\VSCode'
     function GitReport88 {
         & git @args
         if ($LASTEXITCODE -ne 0) { throw "STOP: Git failed: $args" }
     }
-    $RecordsReport88 = (GitReport88 worktree list --porcelain | Out-String) -split '\r?\n\r?\n'
-    $MainReport88 = @($RecordsReport88 | Where-Object {
-        $_ -match '(?m)^branch refs/heads/main\r?$'
-    })
-    if ($MainReport88.Count -ne 1) { throw 'STOP: could not identify the existing primary main worktree.' }
-    $PrimaryReport88 = ([regex]::Match($MainReport88[0], '(?m)^worktree (.+)').Groups[1].Value).Trim()
     Set-Location $PrimaryReport88
     try {
+        GitReport88 fetch origin main
+        $MainPathReport88 = $null
+        $WorktreePathReport88 = $null
+        foreach ($LineReport88 in @(GitReport88 worktree list --porcelain)) {
+            $LineReport88 = ([string]$LineReport88).TrimEnd()
+            if ($LineReport88.StartsWith('worktree ')) {
+                $WorktreePathReport88 = $LineReport88.Substring(9)
+            }
+            elseif ($LineReport88 -eq 'branch refs/heads/main') {
+                $MainPathReport88 = $WorktreePathReport88
+            }
+        }
+        if (-not $MainPathReport88) {
+            if (GitReport88 status --porcelain) { throw 'STOP: preserve primary checkout changes first.' }
+            if (@(GitReport88 branch --list main).Count -gt 0) {
+                GitReport88 switch main
+            }
+            else {
+                GitReport88 switch -c main --track origin/main
+            }
+            $MainPathReport88 = $PrimaryReport88
+        }
+        Set-Location $MainPathReport88
         if (GitReport88 status --porcelain) { throw 'STOP: preserve main checkout changes first.' }
         GitReport88 pull --ff-only origin main
         .\Setup\Acceptance\run_setup_88_report_source_only_deploy.ps1
@@ -152,3 +172,16 @@ cleaned the server preview, not that local engineering worktree. This install
 returns the operator to updated primary main. Report-only worktree cleanup is
 safe only after checking its branch, clean status and merged containment; never
 force-remove unrelated/unmerged work.
+
+
+### October 8 checkout handoff correction
+
+At 09:55 CDT the original blank-record inventory parser stopped with
+`cannot identify the existing main checkout` at Greg's laptop primary prompt.
+This happened before local pull or any server contact/Production action. The
+handoff incorrectly required main to already be checked out and depended on
+blank lines surviving native output. Corrected navigation parses inventory lines
+and handles main checked out elsewhere, local main not checked out, and local
+main absent, with clean-status guards and no forced removal/reset. The exact
+application/installer/rollback pins and server gates remain unchanged. No actual
+server installation or rollback is inferred from this workstation-only stop.
