@@ -9,7 +9,11 @@ read-only SQL for the existing query client: day activity, event/Display evidenc
 current recorded contents/location and historical review flags. Default report day
 is October 7, 2026 Chicago; run the whole script. It cannot establish unrecorded or
 unsynced work, physical contents, or resolved reviews. No Node dependency.
-V0.3.43 reuses existing movement/event tables with function-only migration 070.
+V0.3.47 adds a Manager **Production Report** from Material Status: fresh printable
+movement/location trail, all unresolved reasons and receipt comparison after a
+prior event (123 for the October 6 snapshot). GPS-only Current display is fixed;
+read-only report/source candidate, not deployed. Guided-stop acceptance remains
+paused. The overall branch reuses movement/event tables with migration 070.
 Current-clone/browser acceptance and Production deployment remain pending.
 
 

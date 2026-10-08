@@ -4,13 +4,75 @@
 |---|---|
 | Status | DRAFT — stop-guidance alignment required before further browser acceptance |
 | Owner | #88; commanding #122 / DBG-2026-007, 009, 010 |
-| Reviewed | 2026-10-07 |
+| Reviewed | 2026-10-07 (Chicago; report candidate added) |
 | Baseline main | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
 | Branch | `fix/88-container-contents-reconciliation` |
-| Release | `V0.3.46-container-drop-intent` |
-| Exact application candidate | `3dcb362609caac046afbafdf62bcab366ca03ff4` |
+| Release | `V0.3.47-production-report` |
+| Exact application candidate | `321e4cfc10f98b276d82654787455520f7255886` |
 | Migration | `070_reconcile_setup_container_contents.sql` — functions only |
 | Preview allocation | Setup `8898` |
+
+## V0.3.47 Production Report — current source candidate
+
+Greg supplied the October 6 Movement / Location Trail through event 123 and a
+Material Status screenshot with 15 unresolved requirements. Today's Production
+results have not been retrieved. The 15 are material-authority requirement rows,
+not a count of missing Containers, erroneous detaches or uncertain contents.
+Their existing classifications include missing Extra Material source, Display
+ownership ambiguity and season-only tasks lacking reusable material authority.
+Repeated scheduled requirements can refer to the same task. Review each reason
+in Material Audit; do not infer a movement repair from the count alone.
+
+The screenshot also exposes a renderer defect: Current ignores GPS, while the
+Material Status observation query did not return GPS. A real GPS-only scan could
+therefore display "No Setup observation". V0.3.47 adds these existing evidence
+fields to both Container/independent-Display reads and renders coordinates and
+accuracy in feet. Prior named context is labelled separately. Expected material
+replaces the misleading Contents heading; that demand list is not a load manifest.
+
+From **Material Status -> Production Report**, the fresh Manager-only GET at
+`/api/setup/material-status/report?season_year=2026` produces printable HTML with:
+
+- generation time, database, Session and movement event watermark;
+- every unresolved requirement/reason, even when the screen filter hides it;
+- Container movement/location trails, full affected Display Names, recorded
+  removal effects, GPS quality/age, operator recorder and observed/received times;
+- current recorded attached/detached assignments and historical contents-review
+  flags, without physical-empty or resolved-review claims;
+- direct Display observations and expandable all-material planning table;
+- optional **Compare after event 123**, highlighting newly received records from
+  the same Session, including offline observations describing earlier days;
+- **Print / Save PDF**, and regeneration from the running database.
+
+Comparison is movement receipt evidence only, not an audit of all planning edits.
+Unrecorded physical work and unsynced queues remain unknown. Movement/history and
+current assignment queries use one read-only repeatable-read snapshot; planning
+reuses the existing Material Status resolver and may change during generation.
+The endpoint is no-store and escapes evidence. Refresh and an Unresolved summary
+drilldown were added to the screen. No write, repair, new schema or report store.
+
+Exact source: **321e4cfc10f98b276d82654787455520f7255886**; version
+**V0.3.47-production-report**. Validation: **761 full Setup tests**, **62 targeted
+report/movement/location tests**, actual report SELECTs in read-only PostgreSQL/WASM
+PASS; no-Node application simulation **715 passed / 3 engineering-only checks
+skipped**; JS syntax/diff and UI date gate PASS. Synthetic browser check exercised
+the actual Material Status/report routes: GPS feet, popup including hidden
+unresolved rows, comparison after 123, navigation, Unresolved drilldown, tablet
+layout, print media and no JS errors. Inspected desktop/tablet/report screenshots.
+This is synthetic visual evidence, not a current-Production-clone/operator pass.
+
+The existing Windows preview wrapper now expects V0.3.47. After its exact-source
+and disposable gates, report-only review starts at
+`http://127.0.0.1:8898/material-status/?season_year=2026`. Existing reusable launcher
+and CLEAN EXIT apply; Python only on Greg's workstation, no Node required. Do not
+reuse an old SHA with the newer launcher. No fresh operator test is requested by
+this handoff. Report review does not accept the still-incomplete guided scan flow.
+No Production report data, deployment or historical correction is claimed. The
+report adds no migration, but the overall #88 branch still includes migration 070.
+
+**Remaining:** required scan-at-stop guidance, historical attachment correction,
+delayed Not Sure resolution queue and takedown loading remain unimplemented or
+unaccepted as documented below. Keep #88/PR #309 draft acceptance gates open.
 
 ## Reconnaissance and implementation boundary
 
@@ -418,13 +480,14 @@ After the active preview exits cleanly, this stop-on-failure block refreshes it:
     if (Invoke-Git88 status --porcelain) { throw 'STOP: preserve review checkout changes first.' }
     Invoke-Git88 fetch origin
     Invoke-Git88 merge --ff-only origin/fix/88-container-contents-reconciliation
-    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha '3dcb362609caac046afbafdf62bcab366ca03ff4'
+    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha '321e4cfc10f98b276d82654787455520f7255886'
 }
 ```
 
 This launcher requires Python, not Node, on Greg's workstation. When READY appears,
 open `http://127.0.0.1:8898/record-location/?season_year=2026` and verify
-**V0.3.46-container-drop-intent** before testing. The acceptance/preview runner uses
+**V0.3.47-production-report** before testing. Report-only review uses Material Status;
+guided scan acceptance remains paused. The acceptance/preview runner uses
 a disposable current-Production clone; this command does not correct Production.
 
 ### First-time review worktree only
@@ -450,7 +513,7 @@ do not change that application identity.
     if (Test-Path $Review) { throw 'STOP: inspect the existing review worktree; do not overwrite it.' }
     Invoke-Git88 -C $Primary worktree add -b fix/88-container-contents-reconciliation $Review origin/fix/88-container-contents-reconciliation
     Set-Location $Review
-    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha '3dcb362609caac046afbafdf62bcab366ca03ff4'
+    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha '321e4cfc10f98b276d82654787455520f7255886'
 }
 ```
 
@@ -744,8 +807,8 @@ Review findings and boundaries:
   and no Production correction has been executed or authorized.
 
 V0.3.46 now implements explicit Container-drop versus physical-removal intent
-while retaining compact Stage-group removal. Next: accept the disposable/browser
-workflow, confirm physical contents
+while retaining compact Stage-group removal. Next: review the report candidate and finish required scan guidance, then accept
+the disposable/browser workflow and confirm physical contents
 of audit candidates, prepare exact Display IDs and current-state preconditions,
 prove recovery on a disposable clone, then obtain separate Production approval
 under the current Server Management runbook. Original history and subsequent valid

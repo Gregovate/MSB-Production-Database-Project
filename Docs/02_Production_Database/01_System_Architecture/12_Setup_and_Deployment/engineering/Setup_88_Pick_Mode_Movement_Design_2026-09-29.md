@@ -958,3 +958,23 @@ Manager review/resolution tools remain required, unimplemented work. Confirmed
 physical Load/Remove uses All / None / Select while ordinary stops lead with the
 Empty question; takedown reattachment remains proposed. Preserve the accepted
 trailer shortcut. No runtime/schema change or additional operator test requested.
+
+### V0.3.47 field report candidate — 2026-10-07 Chicago
+
+The visibility gap above now has an implemented source candidate, not a deployed
+report. Exact application SHA `321e4cfc10f98b276d82654787455520f7255886` adds Manager
+Material Status -> Production Report, printable Container/Display event trails,
+full names/effects, current recorded assignments, historical review flags, all
+unresolved material-authority reasons, receipt comparison after event 123 and
+GPS accuracy in feet. GPS-only evidence no longer renders as No Setup observation.
+The Material Status expected-demand list is labelled Expected material.
+
+The screenshot's 15 unresolved are authority requirement rows; no movement repair
+is justified by their count. Review individual reasons in Material Audit. Report
+queries reuse existing events/state/assignments in a read-only repeatable-read
+snapshot; planning reuses the existing resolver separately. No new schema or write.
+No all-edit/daily-history reconstruction, unsynced/unrecorded physical knowledge,
+historical repair or resolved-review claim. Candidate handoff owns detailed
+validation and remaining gates: 761 full Setup, 62 targeted, read-only SQL execution
+and synthetic browser/print/tablet checks PASS; actual Production clone/operator
+acceptance and guided-stop/Not Sure correction/takedown capabilities remain pending.
