@@ -6,6 +6,9 @@
 | Reviewed | 2026-10-08 America/Chicago |
 | Owning issues | #88, #122 |
 | Proposed permission migration | `Setup/Database/071_grant_setup_container_type_report_read.sql` |
+| Frozen grant/clone-artifact source | `6b04d1afff67e2b79a068316198ee7ad95a635f7` |
+| Frozen source tree | `73a3454c4da0838a87a3fce117d7fc58039048ba` |
+| Integration | PR #312; merge before execution |
 | Exact migration blob | `1fd5de8f3de7665336e0eabead498e94ed915883` |
 | Application | Existing approved V0.3.50 / `6c44a082dd520b75881c50ad2ce78feb029ff87d`; unchanged |
 | Current live proof | V0.3.42 / `cb0538022ed066ff90675e832daa1cd95488114a`; healthy |

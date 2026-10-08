@@ -6,7 +6,7 @@ $branch = (git -C $repo branch --show-current).Trim()
 if ($LASTEXITCODE -ne 0 -or $branch -ne 'main') { throw 'Run from merged main.' }
 $dirty = git -C $repo status --porcelain
 if ($LASTEXITCODE -ne 0 -or $dirty) { throw 'STOP: preserve local changes first.' }
-$grantTarget = '1a59405ef22288c57740d822dcffa7c8d8c6d729' # Frozen pin updated before publication.
+$grantTarget = '6b04d1afff67e2b79a068316198ee7ad95a635f7' # Exact accepted migration/clone-artifact commit.
 & git -C $repo merge-base --is-ancestor $grantTarget HEAD
 if ($LASTEXITCODE -ne 0) { throw 'STOP: main does not contain the accepted read prerequisite.' }
 $bundleName = 'msb-setup-88-read-' + (Get-Date -Format 'yyyyMMdd-HHmmss')

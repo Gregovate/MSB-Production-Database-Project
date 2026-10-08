@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 
 from setup_maintenance_deploy import Deploy, Stop, require, fcntl, REPO, SETUP
 
-GRANT_TARGET = '1a59405ef22288c57740d822dcffa7c8d8c6d729'  # Frozen acceptance/tooling pin updated before publication.
+GRANT_TARGET = '6b04d1afff67e2b79a068316198ee7ad95a635f7'  # Exact accepted migration/clone-artifact commit.
 MIGRATION = 'Setup/Database/071_grant_setup_container_type_report_read.sql'
 MIGRATION_BLOB = '1fd5de8f3de7665336e0eabead498e94ed915883'
 REPORT_TARGET = '6c44a082dd520b75881c50ad2ce78feb029ff87d'
@@ -168,6 +168,8 @@ class ReadDeploy(Deploy):
             self.git('merge-base','--is-ancestor',OLD_SETUP,target)
         require(self.git('rev-parse',GRANT_TARGET+':'+MIGRATION) == MIGRATION_BLOB,
                 'Migration blob differs')
+        require(self.git('diff','--name-only',REPORT_TARGET,GRANT_TARGET,'--','Setup/Database') == MIGRATION,
+                'Unexpected Database source in read prerequisite')
         changed = self.git('diff','--name-only',REPORT_TARGET,GRANT_TARGET,'--','Setup/Application').splitlines()
         require(set(changed) <= {'Setup/Application/README.md',
                                 'Setup/Application/test_setup_reusable_acceptance_tooling_contract.py'},
