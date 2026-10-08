@@ -15,7 +15,10 @@ V0.3.42; V0.3.50 was not installed. **Do not rerun the report installer yet.**
 was authorized at October 8 10:33 CDT. Use
 `run_setup_88_report_read_deploy.ps1`: current-clone/actual-read acceptance,
 controlled maintenance permission step, ONLINE proof, then the unchanged pinned
-source installer. Host execution and protected browser results remain pending.
+source installer. Host execution and protected browser results remain pending. The October 8
+11:04 local mixed-EOL guard STOP happened before server contact. The corrected
+launcher packages verified committed bytes using existing Python; no Node install
+or local helper edit is needed.
 
 ## Authority
 

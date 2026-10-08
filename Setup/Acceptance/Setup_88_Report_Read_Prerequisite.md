@@ -133,3 +133,26 @@ do not rerun or change maintenance state.
 Production is not claimed installed until the actual host report and protected
 browser result are supplied. Closeout must record snapshot path/hash, clone
 receipt, granted columns, ONLINE proof, actual app SHA and report/browser result.
+
+## October 8 11:04 CDT — workstation transport guard correction
+
+The first combined-launcher attempt stopped in its local packaging guard with
+`STOP: uncommitted file setup_maintenance_deploy.py` even though the checkout was
+clean. No SCP/SSH, clone, maintenance entry, grant, or report install occurred.
+The helper's committed blob has mixed line endings. With Windows Git filtering,
+`hash-object --path` may normalize that clean file and disagree with its stored
+blob. This is a tooling defect, not an operator edit.
+
+The wrapper now calls the workstation's existing Python packager. It reads exact
+committed blobs through Git's binary stdout, verifies each blob hash, compares
+local bytes after the established CR removal, and packages only committed LF
+bytes. Real code differences still fail before transfer. Server helper/transport
+pins, frozen grant/clone source, migration, report source and execution sequence
+are unchanged. No Node or new workstation package is required.
+
+Four real-Git regressions pass: reproduce the hash mismatch in a clean checkout
+with `core.autocrlf=true`, verify exact pinned transport bytes, accept CRLF without
+changing packaged bytes, reject actual code changes, and reject a missing blob.
+Full Setup after this correction: **791 passed / one optional native engineering
+check skipped**. The corrected launcher must be pulled from merged main before
+execution; do not edit/reset the helper locally to satisfy the old guard.
