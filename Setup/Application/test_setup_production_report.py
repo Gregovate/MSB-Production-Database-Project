@@ -1,0 +1,243 @@
+"""#88 report regressions: actual evidence, permissions and GPS-only visibility."""
+from datetime import datetime, timezone
+from copy import deepcopy
+from pathlib import Path
+import shutil
+import subprocess
+
+from flask import Flask
+import pytest
+
+from setup_api import SetupCommandError
+import setup_material_readiness_api as api
+import setup_production_report as report
+from setup_material_readiness_repository import SetupMaterialReadinessRepository
+from setup_production_report import gps_text, report_context, render_report
+from test_setup_175_current_location import projection
+
+
+def fixture_data():
+    def event(n, day, **extra):
+        return dict(setup_movement_event_id=n,event_type='CONTAINER_MOVE',container_id=216,
+                    container_name='Panels',occurred_at=datetime(2026,10,day,15,tzinfo=timezone.utc),
+                    received_at=datetime(2026,10,7,20,tzinfo=timezone.utc),
+                    destination_location_note=None,stage_key=None,stage_name=None,
+                    gps_latitude=43,gps_longitude=-87,gps_accuracy_m=3.048,
+                    captured_operator_email='recorder',capture_method='HID_SCAN',offline_captured=False,
+                    notes=None,display_id=None,display_name=None,movement_effect=None,**extra)
+    # Receipt 124 describes an earlier day; two effect rows still count as ONE event.
+    old = event(48,6); old.update(destination_location_note='Church',gps_latitude=None,gps_longitude=None)
+    recent=event(124,5); recent.update(notes='contents_review_required=true',offline_captured=True)
+    a=dict(recent,display_id=6,display_name='Panel <one>',movement_effect='UNLOADED')
+    b=dict(recent,display_id=7,display_name='Panel two',movement_effect='UNLOADED')
+    latest=event(125,7)
+    material=dict(session=dict(setup_session_id=2,season_year=2026,session_status='PLANNING'),
+                  summary=dict(picked_moved=1,unresolved=1),items=[],
+                  unresolved_requirements=[dict(task_name='<script>alert(1)</script>',
+                    message='No active expected-source Container.',requirement_type='EXTRA_MATERIAL_SOURCE')])
+    picture=dict(database_name='fixture_only',generated_at=datetime(2026,10,8,tzinfo=timezone.utc),
+                 through_event_id=125,effect_rows=[a,b,old,latest],
+                 containers=[dict(container_id=216,container_name='Panels',last_movement_event_id=125,
+                                  container_type_name='Display Pallet',movement_status='CONTAINER_MOVE')],
+                 displays=[dict(display_id=6,display_name='Panel <one>',container_id=216,position_mode='DETACHED',last_movement_event_id=124),
+                           dict(display_id=7,display_name='Panel two',container_id=216,position_mode='WITH_CONTAINER')])
+    return material,picture
+
+
+def test_report_receipt_comparison_preserves_late_observation_and_effect_scope(monkeypatch):
+    monkeypatch.setattr(report, 'nearest_recorded_reference', lambda lat,lon: None)
+    material,picture=fixture_data()
+    ctx=report_context(material,picture,123)
+    assert [e['setup_movement_event_id'] for e in ctx['new_events']] == [124,125]
+    assert len(ctx['events']) == 3
+    assert ctx['new_events'][0]['observed'].startswith('10/05/2026')
+    assert ctx['new_events'][0]['received'].startswith('10/07/2026')
+    assert ctx['new_events'][0]['unloaded_names'] == ['Panel <one>','Panel two']
+    c=ctx['containers'][0]
+    assert c['prior_named_context']=='Church'
+    assert c['location_group']=='GPS only / prior named context Church'
+    assert len(c['review_flags']) == 1
+    assert len(c['attached']) == len(c['detached']) == 1
+    assert ctx['new_events'][1]['unloaded_names'] == []
+
+
+def test_return_boundary_and_latest_event_cutoff_do_not_borrow_future_name(monkeypatch):
+    monkeypatch.setattr(report, 'nearest_recorded_reference', lambda lat,lon: None)
+    material,picture=fixture_data()
+    returned=dict(picture['effect_rows'][-1],setup_movement_event_id=49,event_type='RETURNED',
+                  occurred_at=datetime(2026,10,6,17,tzinfo=timezone.utc),destination_location_note='Home')
+    future=dict(returned,setup_movement_event_id=126,event_type='CONTAINER_MOVE',
+                occurred_at=datetime(2026,10,8,17,tzinfo=timezone.utc),destination_location_note='Future Stage')
+    picture['effect_rows'] += [returned,future]
+    c=report_context(material,picture,0)['containers'][0]
+    assert c['prior_named_context'] is None
+    assert c['location_group']=='GPS only / no named reference'
+
+
+@pytest.mark.parametrize('latitude,longitude,name,distance', [
+    (43.779459,-87.745102,'07-Whoville-WV',61),
+    (43.778944,-87.749335,'15-Church-ParkingLot',44),
+    (43.776886,-87.746098,"19-Santa's Workshop-SW",88),
+])
+def test_report_supplied_gps_only_observations_show_nearest_without_rewriting_evidence(latitude,longitude,name,distance):
+    material,picture=fixture_data()
+    picture['effect_rows'][-1].update(gps_latitude=latitude,gps_longitude=longitude,
+                                    gps_quality='QUESTIONABLE',gps_fix_age_ms=45000)
+    original=deepcopy(picture)
+    c=report_context(material,picture,0)['containers'][0]
+    assert c['location_group']==f'Near {name} — GPS estimate'
+    assert c['prior_named_context']=='Church'
+    assert c['latest']['destination_location_note'] is None
+    assert c['latest']['stage_name'] is None
+    assert round(c['latest']['nearest_reference']['distance_ft'])==distance
+    assert c['latest']['nearest_reference']['reference_set_version']=='2026-stage-reference-20261003.1'
+    with Flask(__name__).app_context():
+        html=render_report(material,picture,0)
+    assert f'{distance} ft from reference point' in html
+    assert '[QUESTIONABLE] [STALE FIX]' in html
+    assert 'not a Stage boundary' in html
+    assert 'Prior named context: Church' in html
+    current_card=html.split('<article class="container">',1)[1].split('<ol class="trail">',1)[0]
+    assert 'Recorded destination: GPS only (no Stage/name recorded)' in current_card
+    assert f'Recorded GPS {latitude:.6f}, {longitude:.6f}' in current_card
+    assert 'Calculated nearest Stage reference (from recorded GPS)' in current_card
+    assert 'Observed destination:' not in html
+    assert picture==original
+
+
+def test_report_independent_display_uses_its_own_observation_not_container_fix():
+    material,picture=fixture_data()
+    picture['effect_rows'][-1].update(gps_latitude=43.779459,gps_longitude=-87.745102)
+    for event in picture['effect_rows'][:2]:
+        event.update(gps_latitude=43.778944,gps_longitude=-87.749335)
+    c=report_context(material,picture,0)['containers'][0]
+    assert c['latest']['nearest_reference']['name']=='07-Whoville-WV'
+    assert c['detached'][0]['nearest_reference']['name']=='15-Church-ParkingLot'
+    picture['displays'][0]['last_movement_event_id']=48
+    c=report_context(material,picture,0)['containers'][0]
+    assert c['detached'][0]['nearest_reference'] is None
+    assert c['detached'][0]['gps']=='No GPS recorded'
+
+
+def test_report_recorded_stage_remains_primary_and_nearest_label_is_escaped(monkeypatch):
+    material,picture=fixture_data()
+    picture['effect_rows'][-1]['destination_location_note']='Operator chosen destination'
+    monkeypatch.setattr(report, 'nearest_recorded_reference',lambda lat,lon:
+        dict(name='<script>nearest</script>',distance_ft=61,reference_set_version='test-set')
+        if lat is not None and lon is not None else None)
+    assert report_context(material,picture,0)['containers'][0]['location_group']=='Operator chosen destination'
+    with Flask(__name__).app_context():
+        html=render_report(material,picture,0)
+    assert '<script>nearest</script>' not in html
+    assert '&lt;script&gt;nearest&lt;/script&gt;' in html
+    assert 'GPS reference set: test-set' in html
+    current_card=html.split('<article class="container">',1)[1].split('<ol class="trail">',1)[0]
+    assert 'Recorded destination:   Operator chosen destination' in current_card
+    assert 'Recorded GPS 43.000000, -87.000000' in current_card
+    assert 'Calculated nearest Stage reference (from recorded GPS)' in current_card
+
+
+def test_report_html_escapes_evidence_and_explains_unresolved_and_uncertainty():
+    material,picture=fixture_data()
+    with Flask(__name__).app_context():
+        html=render_report(material,picture,123)
+    assert '<script>alert(1)</script>' not in html
+    assert '&lt;script&gt;alert(1)&lt;/script&gt;' in html
+    assert 'Panel &lt;one&gt;' in html
+    assert '±10 ft' in html
+    assert 'Recorded Display removals: 2' in html
+    assert 'Physical contents unconfirmed' in html
+    assert 'not a count of missing Containers' in html
+    assert 'resolution status unavailable' in html
+    assert 'Print / Save PDF' in html
+
+
+def test_gps_quality_and_missing_fix_do_not_invent_location():
+    assert gps_text(dict(gps_latitude=None,gps_longitude=-87,gps_accuracy_m=3))=='No GPS recorded'
+    result=gps_text(dict(gps_latitude=43,gps_longitude=-87,gps_accuracy_m=3.048,
+                         gps_quality='BAD',gps_fix_age_ms=45000))
+    assert '±10 ft' in result and '[BAD]' in result and '[STALE FIX]' in result
+    assert '[STALE FIX]' in gps_text(dict(gps_latitude=43,gps_longitude=-87,gps_fix_age_ms=16000))
+
+
+def test_report_endpoint_requires_manager_and_rejects_bad_comparison_before_db(monkeypatch):
+    app=Flask(__name__); app.register_blueprint(api.setup_material_readiness_api)
+    def deny(): raise SetupCommandError('Manager access is required')
+    monkeypatch.setattr(api,'require_manager',deny)
+    monkeypatch.setattr(api,'repo',lambda: pytest.fail('DB must not be read before authorization'))
+    client=app.test_client()
+    assert client.get('/api/setup/material-status/report?season_year=2026').status_code==403
+    monkeypatch.setattr(api,'require_manager',lambda: None)
+    for value in ('-1','1.5','abc','999999999999999999999'):
+        assert client.get('/api/setup/material-status/report?season_year=2026&since_event_id='+value).status_code==400
+
+
+def test_report_endpoint_fresh_html_and_no_store(monkeypatch):
+    app=Flask(__name__); app.register_blueprint(api.setup_material_readiness_api)
+    material,picture=fixture_data()
+    class Repo:
+        def manager_material_status(self,year): assert year==2026; return material
+    monkeypatch.setattr(api,'require_manager',lambda: None)
+    monkeypatch.setattr(api,'repo',Repo)
+    monkeypatch.setattr(api,'movement_picture',lambda repo,sid: picture if sid==2 else pytest.fail('wrong Session'))
+    response=app.test_client().get('/api/setup/material-status/report?season_year=2026&since_event_id=123')
+    assert response.status_code==200
+    assert response.mimetype=='text/html'
+    assert response.headers['Cache-Control']=='no-store, max-age=0'
+    assert b'event 125' in response.data
+    material['session']=None
+    assert app.test_client().get('/api/setup/material-status/report?season_year=2026').status_code==404
+
+
+def test_material_status_actual_projection_keeps_gps_only_container_and_detached_display(projection,monkeypatch):
+    next_repo,conn=projection
+    conn.executescript("""
+      ALTER TABLE ops.setup_container_state ADD COLUMN last_movement_at TEXT;
+      ALTER TABLE ops.setup_movement_event ADD COLUMN event_type TEXT;
+      ALTER TABLE ops.setup_movement_event ADD COLUMN container_id INTEGER;
+      ALTER TABLE ops.setup_movement_event ADD COLUMN destination_stage_id INTEGER;
+      ALTER TABLE ops.setup_movement_event ADD COLUMN destination_location_note TEXT;
+      ALTER TABLE ops.setup_display_state ADD COLUMN last_movement_at TEXT;
+      INSERT INTO ops.setup_display_state(setup_session_id,display_id,position_mode,last_movement_event_id)
+        VALUES(1,834,'DETACHED',41);
+      UPDATE ops.setup_movement_event SET event_type='CONTAINER_MOVE',container_id=178;
+    """)
+    repo=SetupMaterialReadinessRepository('fixture-only')
+    monkeypatch.setattr(repo,'connect',next_repo.connect)
+    state=repo._observation_state(setup_session_id=1,container_ids=[178],display_ids=[834])
+    assert state[('CONTAINER',178)]['gps_latitude']==43.778556
+    assert state[('CONTAINER',178)]['gps_accuracy_m']==3
+    assert state[('DISPLAY',834)]['gps_latitude']==43.778657
+    assert state[('DISPLAY',834)]['position_mode']=='DETACHED'
+
+
+def test_material_status_executable_ui_gps_and_report_scope():
+    node=shutil.which('node')
+    if not node: pytest.skip('Node engineering check; not required on the browser-review workstation')
+    source=Path(__file__).with_name('setup_material_status.js').read_text()
+    source=source.replace('  load().catch(showError);\n})();',
+      "  globalThis.ui={currentLocation,renderSummary,setData:value=>data=value};\n})();")
+    harness=r'''
+    const assert=require('node:assert/strict');
+    const elements={};
+    class Element{constructor(){this.value='';this.listeners={};this.options=[];}addEventListener(k,fn){this.listeners[k]=fn;}appendChild(c){this.options.push(c);}querySelectorAll(){return [];}scrollIntoView(){this.scrolled=true;}}
+    globalThis.document={getElementById:id=>elements[id]??=new Element(),createElement:()=>new Element()};
+    globalThis.location={search:'?season_year=2026'};
+    globalThis.window={open:(...args)=>globalThis.opened=args};
+    '''
+    checks=r'''
+    assert.match(ui.currentLocation({current_observation:{gps_latitude:43.77,gps_longitude:-87.74,gps_accuracy_m:3.048,last_movement_event_id:44}}),/GPS .*±10 ft/);
+    assert.doesNotMatch(ui.currentLocation({current_observation:{gps_latitude:43,gps_longitude:-87}}),/No Setup observation/);
+    assert.match(ui.currentLocation({current_observation:{current_location_note:'Church',gps_latitude:43,gps_longitude:-87}}),/prior named context/);
+    assert.match(ui.currentLocation({current_observation:{last_movement_event_id:1,last_event_type:'PICKED'}}),/PICKED recorded; no location/);
+    assert.equal(ui.currentLocation({}),'No Setup observation');
+    elements['season-select'].value='2026';elements['status-filter'].value='PICKED_MOVED';
+    elements['production-report-button'].listeners.click();
+    assert.equal(opened[0],'../api/setup/material-status/report?season_year=2026');assert.equal(opened[2],'noopener');
+    ui.setData({summary:{unresolved:15},items:[],unresolved_requirements:[{message:'missing source'}]});
+    elements['search-filter'].value='old';elements['stage-filter'].value='15';ui.renderSummary();
+    elements['show-unresolved'].listeners.click();
+    assert.equal(elements['status-filter'].value,'UNRESOLVED');assert.equal(elements['search-filter'].value,'');
+    assert.equal(elements['stage-filter'].value,'');assert.ok(elements['unresolved-panel'].scrolled);
+    '''
+    subprocess.run([node,'-e',harness+source+checks],check=True,capture_output=True,text=True)

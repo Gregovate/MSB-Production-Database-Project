@@ -159,3 +159,19 @@ Before changing the application:
 - `Setup/Acceptance/Setup_205_Scheduling_Board_Production_Acceptance_2026-09-29.md`
 - `Setup/Acceptance/Setup_172_Report_Correction_Production_Acceptance_2026-09-27.md`
 - `Setup/Acceptance/Setup_Kit_Inventory_TPost_Production_Acceptance_2026-09-15.md`
+
+
+## Container Movement report — #88 source-only release
+
+Manager **Material Status → Container Movement** opens a fresh printable read-only
+report for the selected season. Recorded destination/GPS and calculated nearest
+Stage reference remain explicitly separate; GPS accuracy and distance are in feet.
+The full movement trail, Display Name/effect scope, attached/detached state, all
+unresolved reasons and historical contents-review flags are included. Compare
+after an event highlights newly received records, including late offline scans.
+Report evidence does not establish unrecorded physical work or resolve/correct
+contents. Refresh regenerates current evidence; Print/Save PDF preserves a snapshot.
+
+[Release and source-only deployment record](../Acceptance/Setup_88_Container_Movement_Report_Deployment.md)
+tracks V0.3.50; guided Container reconciliation is a separate draft and is not
+part of this report-only release. No schema or write-model change.
