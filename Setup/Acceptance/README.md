@@ -4,32 +4,19 @@
 
 [Approved Container Movement source-only release and pinned install handoff](Setup_88_Container_Movement_Report_Deployment.md)
 uses V0.3.50 / exact application 6c44a082dd520b75881c50ad2ce78feb029ff87d.
-It is separate from the guided-stop draft: no migration, database copy, or movement
-workflow change. The expected live rollback pin is the operator-reported installed
-V0.3.42 / cb053802 from #175. Installation/protected-route result remain pending.
+Production server installation passed on October 8, receipt
+`/home/msbadmin/setup-deployment-reports/Setup88Read-20261008T214153Z`.
+The combined run installed only approved migration 071 (SELECT on two Container
+type columns) plus the exact reviewed report under one controller maintenance
+window. Current-clone acceptance, frozen preservation, ONLINE/service/health,
+deployed tests/role reads and cleanup passed. Protected browser verification and
+snapshot path/hash transcription remain pending. **Do not rerun deployment.**
 
-The October 8 server attempt stopped at the read-only preflight because the
-application cannot SELECT Container type names. Production remains healthy on
-V0.3.42; V0.3.50 was not installed. **Do not rerun the report installer yet.**
-[Prepared two-column read prerequisite and proof](Setup_88_Report_Read_Prerequisite.md)
-was authorized at October 8 10:33 CDT. Use
-`run_setup_88_report_read_deploy.ps1`: current-clone/actual-read acceptance,
-one controller maintenance window covering both permission and pinned report
-promotion, frozen preservation proof, then ONLINE/health/live checks. No operator
-edit pause is required; normal work after OFF is not compared to the frozen baseline.
-Host execution and protected browser results remain pending. The October 8
-11:04 local mixed-EOL guard STOP happened before server contact. The corrected
-launcher packages verified committed bytes using existing Python; no Node install
-or local helper edit is needed.
-The subsequent backup-chain STOP occurred before maintenance; Server Management
-#65/#66 record its accepted one-file owner repair and current NAS replication.
-Greg confirmed no new deployment run had started when directing the one-window
-maintenance correction at 14:20 CDT. The older OFF-before-report sequence is retired.
-The 14:50 run stopped before maintenance in disposable ACL export: the shell
-omitted Docker stdin forwarding. [The prerequisite record](Setup_88_Report_Read_Prerequisite.md#2026-10-08-1450-cdt--disposable-acl-export-stop)
-records unchanged Production proof and the separately pinned corrected runner.
-Pull merged corrected tooling before a new run; the frozen report/migration stay
-unchanged. No manual privilege or maintenance adjustment is required.
+[Read prerequisite, failure history and actual server receipt](Setup_88_Report_Read_Prerequisite.md)
+retain earlier transport/backup/stdin STOPs and their corrections. Execution used
+merged tooling main `cc93378f`; deployed application remains `6c44a082` / V0.3.50.
+Guided #309, migration 070 and historical movement repair remain separate. No
+operator pause or new workstation dependency was needed.
 
 ## Authority
 

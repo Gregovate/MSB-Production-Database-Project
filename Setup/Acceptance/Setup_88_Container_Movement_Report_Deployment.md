@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | APPROVED REPORT; first attempt STOPPED before mutation; read prerequisite authorized; combined launcher prepared |
+| Status | PRODUCTION SERVER PASS 2026-10-08; protected browser verification pending |
 | Owner | #88, commanding #122; Material Status #206 |
 | Reviewed | 2026-10-08 America/Chicago |
 | Current main at reconnaissance | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
@@ -10,11 +10,21 @@
 | Exact application source | `6c44a082dd520b75881c50ad2ce78feb029ff87d` |
 | Expected live / rollback source | `cb0538022ed066ff90675e832daa1cd95488114a` / `V0.3.42-current-location` |
 | Expected shared checkout | `6dd05c4aa5ef8f50fe172145c3ae281cc245a101` — remains in place |
-| Migration / PostgreSQL writes | NONE |
-| Integration PR / merged main | Recorded on the release PR; integration must precede installer execution |
-| Actual deployed source / report / protected-route result | PENDING — never infer from the prepared runner |
+| Application PostgreSQL writes | NONE; combined release installed separately approved two-column SELECT grant 071 |
+| Integration PR / execution main | #310 report; #312–#315 prerequisite/tooling; `cc93378f6ad62f353c5994860ebd98dff54a86aa` |
+| Actual deployed source / report / protected-route result | `6c44a082dd520b75881c50ad2ce78feb029ff87d` / `Setup88Read-20261008T214153Z` / browser PENDING |
 
-## October 8 preflight STOP — Production unchanged
+## October 8 Production installation — server PASS
+
+Greg supplied final combined runner PASS at 16:43 CDT, report
+`/home/msbadmin/setup-deployment-reports/Setup88Read-20261008T214153Z`.
+Exact V0.3.50 report source and the approved narrow read grant are installed;
+frozen preservation, return to ONLINE, health, deployed tests/role reads and
+cleanup passed under the runner. [The prerequisite record](Setup_88_Report_Read_Prerequisite.md#october-8--production-server-pass)
+records the receipt and remaining protected browser/archive closeout. No guided
+workflow or historical repairs were included. Do not rerun deployment.
+
+## October 8 original preflight STOP — Production unchanged at that attempt
 
 The first server attempt retained
 `/home/msbadmin/setup-deployment-reports/Setup88Report-20261008T151700Z/report.txt`.
@@ -22,7 +32,7 @@ The exact report read probe failed under `fieldwiring_app` with
 `permission denied for table container_type`, before live checkout or service
 restart. Temporary candidate cleanup succeeded. Operator readback proves live
 `cb0538022ed066ff90675e832daa1cd95488114a`, service active, PostgreSQL healthy,
-`V0.3.42-current-location`. V0.3.50 was **not installed**.
+`V0.3.42-current-location`. V0.3.50 was **not installed by that attempt**.
 
 The report's type-name join is required for its reviewed Container type labels
 and protected Standalone/single-Display Pallet warnings. Existing Setup reads
@@ -37,8 +47,8 @@ data, structure or write-privilege changes. Greg separately approved it at
 10:33 CDT. Use the combined controlled launcher in that record: clone acceptance,
 one maintenance window for the grant and report promotion, frozen preservation
 proof, then controller ONLINE/health/live checks. The report remains SQL read-only
-and does not apply the grant implicitly. The combined host
-result is still pending; do not blindly rerun the failed handoff.
+and does not apply the grant implicitly. The later combined host run passed as
+recorded above; the failed handoff and completed installer must not be rerun.
 
 ## Authorization and release boundary
 
@@ -188,8 +198,9 @@ report. A deployed-source report failure follows the runbook's source rollback.
 
 ## Closeout and local worktree disposition
 
-Actual installer result, deployed SHA/version, fresh fingerprint, report path,
-protected-route check and rollback disposition remain pending until supplied.
+Server installer PASS, deployed SHA/version, report path and frozen preservation
+are recorded above. Protected-route acceptance and snapshot path/hash
+transcription remain pending; no rollback was reported.
 After server/operator proof, update this record, owning issue/PR/#122, the
 reverse-chronological Production Deployment Change Log and Server Management
 runtime authority. Later documentation commits are not another installed source.

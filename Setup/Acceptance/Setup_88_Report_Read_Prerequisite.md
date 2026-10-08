@@ -2,18 +2,52 @@
 
 | Document control | Value |
 |---|---|
-| Status | AUTHORIZED 2026-10-08 10:33 CDT; one-window maintenance correction directed 14:20 CDT; host acceptance/deployment pending |
+| Status | PRODUCTION SERVER PASS 2026-10-08; protected browser check and archive identity transcription pending |
 | Reviewed | 2026-10-08 America/Chicago |
 | Owning issues | #88, #122 |
-| Proposed permission migration | `Setup/Database/071_grant_setup_container_type_report_read.sql` |
+| Installed permission migration | `Setup/Database/071_grant_setup_container_type_report_read.sql` |
 | Frozen grant/clone-artifact source | `6b04d1afff67e2b79a068316198ee7ad95a635f7` |
 | Frozen source tree | `73a3454c4da0838a87a3fce117d7fc58039048ba` |
-| Integration | PR #312/#313/#314 merged; ACL stdin tooling correction required before the next run |
+| Integration | PR #310 report; #312 prerequisite; #313/#314/#315 tooling; execution main `cc93378f6ad62f353c5994860ebd98dff54a86aa` |
 | Exact migration blob | `1fd5de8f3de7665336e0eabead498e94ed915883` |
 | Corrected disposable runner blob | `2025db912621f8258356cdb3e7f474ea0ca763f1`; separate tooling identity, not application/migration source |
 | Application | Existing approved V0.3.50 / `6c44a082dd520b75881c50ad2ce78feb029ff87d`; unchanged |
-| Current live proof | V0.3.42 / `cb0538022ed066ff90675e832daa1cd95488114a`; healthy |
-| Production permission change / report installation | NOT APPLIED |
+| Current live proof | Server PASS: V0.3.50 / `6c44a082dd520b75881c50ad2ce78feb029ff87d`; previous source `cb0538022ed066ff90675e832daa1cd95488114a` |
+| Production permission change / report installation | APPLIED; server PASS; protected browser PENDING |
+
+## October 8 — Production server PASS
+
+Greg supplied the completed combined runner receipt at 16:43 CDT:
+
+```text
+Setup #88: grant and report frozen validation PASS; returning to service
+Setup #88: grant and report server PASS; protected browser check pending
+PASS: grant and report server PASS; protected browser check pending; report: /home/msbadmin/setup-deployment-reports/Setup88Read-20261008T214153Z
+```
+
+The retained report began at 16:41:53 CDT. Greg noted “About 20 seconds”; the
+timed phase was not specified. This is the actual terminal receipt, not an
+engineering-only acceptance.
+Under the pinned runner, final PASS follows current-clone acceptance, exact report
+regression, controller ON/freeze/validated snapshot, migration 071, frozen row/ACL
+preservation, exact Setup source promotion, controller OFF/ONLINE/unfenced service
+proof, V0.3.50 health, deployed focused regression, application-role report reads,
+clean source pins and owned worktree cleanup. It reports no rollback or failed
+gate. Shared source remains `6dd05c4aa5ef8f50fe172145c3ae281cc245a101`.
+
+The only Production SQL change is the two-column SELECT grant. Current Setup is
+exact `6c44a082dd520b75881c50ad2ce78feb029ff87d`, not the newer tooling/docs main.
+The report remains read-only; guided #309, migration 070, historical attachment
+repair and takedown loading are not installed by this release.
+
+Protected browser verification remains PENDING: refresh the normal Setup route,
+confirm Client/server V0.3.50 and Updated 2026-10-08, open Material Status →
+Container Movement, and verify fresh recorded/calculated destination evidence and
+GPS feet. No test movements are needed. Do not rerun the grant/installer after
+this successful receipt. Keep the report's `state.json`, `result.json`,
+`snapshot.json` and `report-directory.txt`; archive path/hash and child-report
+identity have not yet been transcribed from those artifacts. Final browser and
+cross-repository runtime closeout remain open until that evidence is supplied.
 
 ## Failure and concrete correction
 
@@ -184,9 +218,10 @@ On PASS, refresh protected Setup and confirm V0.3.50, Updated 2026-10-08, then
 Material Status → Container Movement. On STOP, retain the printed report path;
 do not rerun or change maintenance state.
 
-Production is not claimed installed until the actual host report and protected
-browser result are supplied. Closeout must record snapshot path/hash, clone
-receipt, granted columns, ONLINE proof, actual app SHA and report/browser result.
+Production installation is now supported by the server PASS receipt above.
+Protected browser acceptance and archive path/hash transcription remain pending.
+Closeout must retain the clone receipt, granted columns, ONLINE proof, actual app
+SHA and report/browser result. Do not repeat the installed grant.
 
 ## October 8 11:04 CDT — workstation transport guard correction
 

@@ -38,7 +38,16 @@ Each deployment entry must record, when applicable:
 
 Documentation-only repository changes that do not alter Production do not require a deployment entry.
 
-## 2026-10-08 — #88 disposable ACL export STOP — report still pending
+## 2026-10-08 — #88 Container Movement report installed — server PASS
+
+- Actual runner receipt supplied by Greg at 16:43 CDT: `/home/msbadmin/setup-deployment-reports/Setup88Read-20261008T214153Z`, frozen validation PASS, return to service and final server PASS. Greg reported about 20 seconds.
+- Exact deployed Setup `6c44a082dd520b75881c50ad2ce78feb029ff87d`, `V0.3.50-container-movement-report`; previous source `cb0538022ed066ff90675e832daa1cd95488114a`. Execution main `cc93378f6ad62f353c5994860ebd98dff54a86aa` (#315); application #310, prerequisite #312, tooling #313/#314/#315. Shared checkout remains `6dd05c4aa5ef8f50fe172145c3ae281cc245a101`.
+- Installed only `Setup/Database/071_grant_setup_container_type_report_read.sql`, blob `1fd5de8f3de7665336e0eabead498e94ed915883`: SELECT on `container_type_id` / `container_type_name` for `fieldwiring_app`. No business-row or movement-model change.
+- Manager Material Status → Container Movement provides fresh read-only movement trails, Display Names, recorded destination/GPS separately from calculated nearest Stage, GPS feet and unresolved review evidence.
+- Pinned runner PASS follows current-clone acceptance, exact regression, controller freeze/validated snapshot, frozen ref/ops row and unapproved ACL preservation, source promotion, ONLINE/unfenced/services/health/deployed tests/role reads and cleanup. No rollback was reported.
+- Protected browser result remains PENDING. Snapshot path/hash and child source-report identity await transcription from retained `snapshot.json` / `report-directory.txt`; [detailed record](../Setup/Acceptance/Setup_88_Report_Read_Prerequisite.md#october-8--production-server-pass). Guided #309, migration 070, historical repairs and takedown loading remain separate. Do not rerun the installed grant/report.
+
+## 2026-10-08 — #88 disposable ACL export STOP — historical failed attempt
 
 - Deployment preflight report `Setup88Read-20261008T195058Z`, child acceptance `Setup_Disposable_Acceptance_20261008T195100.txt`: exit 23, empty Production SELECT boundary export. Exact frozen candidate Application regression: 716 passed / 2 skipped; clone restore succeeded, migration was not reached.
 - Tooling omitted `docker exec -i` when streaming the host SQL file. Corrected reusable runner and separate exact blob selection preserve original report/migration identities; no broader privilege workaround.
