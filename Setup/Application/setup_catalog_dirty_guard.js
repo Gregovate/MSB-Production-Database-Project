@@ -12,7 +12,7 @@
 (() => {
   'use strict';
 
-  const CLIENT_BUILD = 'V0.3.44-container-unload-reconciliation';
+  const CLIENT_BUILD = 'V0.3.45-compact-container-review';
   const CLIENT_BADGE = `Client ${CLIENT_BUILD.split('-')[0]}`;
   const reusableFieldIds = new Set([
     'edit-task-name',

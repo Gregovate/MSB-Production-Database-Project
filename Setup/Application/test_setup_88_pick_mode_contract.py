@@ -425,8 +425,8 @@ def test_release_identity_and_offline_shells_are_synchronized():
     location_sw = read("setup_record_location_sw.js")
     location_html = read("record_location.html")
 
-    assert 'PRODUCTION_VERSION = "V0.3.44-container-unload-reconciliation"' in backend
-    assert "const CLIENT_BUILD = 'V0.3.44-container-unload-reconciliation';" in guard
+    assert 'PRODUCTION_VERSION = "V0.3.45-compact-container-review"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.45-compact-container-review';" in guard
     assert "msb-setup-pick-mode-v18" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_html
@@ -434,11 +434,11 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "setup_pick_list.js?v=2026-10-05.1" in pick_html
     assert "setup_pick_mode.js?v=2026-10-06.1" in pick_sw
     assert "setup_pick_mode.js?v=2026-10-06.1" in pick_html
-    assert "msb-setup-record-location-v16" in location_sw
-    assert "setup_record_location.css?v=2026-10-07.2" in location_sw
-    assert "setup_record_location.css?v=2026-10-07.2" in location_html
-    assert "setup_record_location.js?v=2026-10-07.3" in location_sw
-    assert "setup_record_location.js?v=2026-10-07.3" in location_html
+    assert "msb-setup-record-location-v17" in location_sw
+    assert "setup_record_location.css?v=2026-10-08.1" in location_sw
+    assert "setup_record_location.css?v=2026-10-08.1" in location_html
+    assert "setup_record_location.js?v=2026-10-08.1" in location_sw
+    assert "setup_record_location.js?v=2026-10-08.1" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():

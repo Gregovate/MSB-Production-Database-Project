@@ -27,6 +27,9 @@
   const homeLocationReview = el('movement-home-location');
   const reviewLocation = el('movement-review-location');
   const unloadGroups = el('movement-unload-groups');
+  const selectionSummary = el('movement-selection-summary');
+  const reviewDialog = el('movement-review-dialog');
+  const reviewBody = el('movement-review-body');
   const recordHere = el('movement-record-here');
   const returnHome = el('movement-return-home');
   const clearPendingButton = el('movement-clear-pending');
@@ -63,6 +66,10 @@
   let contentsDecision = null;
   let identifyRemaining = false;
   let unloadedHereDisplayIds = new Set();
+  let contentsView = 'UNLOAD';
+  let remainingDisplayIds = null;
+  let remainingSearch = '';
+  let reviewing = false;
   let displayPlacement = null;
   let placementStageId = null;
   let recording = false;
@@ -113,6 +120,7 @@
 
   function renderScannerLayoutState() {
     document.body.classList.toggle('record-location-scanner-active', scannerActive);
+    document.body.classList.toggle('record-location-dock-visible', Boolean(pendingIdentity));
     document.body.classList.toggle(
       'record-location-asset-pending',
       Boolean(scannerActive && pendingIdentity)
@@ -532,11 +540,12 @@
     const evidence = currentLocationEvidence();
     const decisionReady = pendingIdentity.asset_type !== 'CONTAINER'
       || selectedUnloadedDisplayIds().length > 0 || Boolean(contentsDecision);
-    recordHere.disabled = recording || !evidence.ready || !decisionReady
+    renderSelectionSummary();
+    recordHere.disabled = recording || reviewing || !evidence.ready || !decisionReady
       || (needsDisplayPlacement() && (displayPlacement !== 'YES' || !placementStageId))
       || (pendingIdentity.asset_type === 'DISPLAY' && pendingStateRow && pendingStateRow.can_detach === false);
     if (pendingIdentity.asset_type === 'CONTAINER') {
-      returnHome.disabled = recording || contentsDecision !== 'EMPTY' || !pendingContents
+      returnHome.disabled = recording || reviewing || contentsDecision !== 'EMPTY' || !pendingContents
         || !pendingContents.reconciliation_allowed || !pendingContents.home_location_code;
     }
     reviewLocation.className = 'review-location ' + (evidence.ready ? 'ready' : 'blocked');
@@ -545,8 +554,8 @@
       reviewLocation.innerHTML = '<strong>Location confirmed:</strong> '
         + escapeHtml(evidence.label)
         + '<div class="muted">' + escapeHtml(evidence.detail) + '</div>';
-      recordHere.textContent = (trainingMode ? 'Test ' : 'Record ')
-        + pendingIdentity.identity + ' at ' + evidence.label;
+      recordHere.textContent = (trainingMode ? 'Review test' : 'Review and record')
+        + ' · ' + pendingIdentity.identity;
     } else {
       reviewLocation.textContent = evidence.detail;
       recordHere.textContent = 'Choose a location first';
@@ -730,6 +739,9 @@
     contentsDecision = null;
     identifyRemaining = false;
     unloadedHereDisplayIds = new Set();
+    contentsView = 'UNLOAD';
+    remainingDisplayIds = null;
+    remainingSearch = '';
     displayPlacement = null;
     placementStageId = null;
     pendingIdentity = null;
@@ -775,7 +787,12 @@
     // Direct observation and prior-location inference are mutually exclusive.
     contentsDecision = selectedUnloadedDisplayIds().length ? null : 'NOT_EMPTY';
     identifyRemaining = false;
-    renderContentsDecision();
+    remainingDisplayIds = null;
+    // Do not rebuild rows on a checkbox change: expanded names and focus stay put.
+    unloadGroups.querySelectorAll('input[data-display-ids]').forEach(input => {
+      input.checked = String(input.dataset.displayIds).split(',').map(Number)
+        .every(id => unloadedHereDisplayIds.has(id));
+    });
     renderRecordReadiness();
   }
 
@@ -784,18 +801,53 @@
     selectUnloadHere(selectableUnloadGroups().flatMap(group => group.display_ids), checked);
   }
 
+  function appendNames(parent, title, rows) {
+    const details = document.createElement('details');
+    details.className = 'display-names';
+    const summary = document.createElement('summary');
+    summary.textContent = title + ' · ' + rows.length + ' Displays';
+    const names = document.createElement('ul');
+    rows.forEach(row => {
+      const item = document.createElement('li');
+      item.textContent = row.display_name;
+      names.appendChild(item);
+    });
+    details.appendChild(summary);
+    details.appendChild(names);
+    parent.appendChild(details);
+  }
+
+  function switchContentsView(view) {
+    contentsView = view;
+    unloadedHereDisplayIds = new Set();
+    contentsDecision = null;
+    identifyRemaining = false;
+    remainingDisplayIds = null;
+    remainingSearch = '';
+    renderContentsDecision();
+    renderRecordReadiness();
+  }
+
   function renderUnloadHere() {
-    if (!pendingContents || !pendingContents.reconciliation_allowed) return;
-    const groups = selectableUnloadGroups();
-    const reviewOnly = (pendingContents.groups || []).filter(group => !group.bulk_selectable);
-    if (!groups.length && !reviewOnly.length) return;
     const heading = document.createElement('h3');
     heading.textContent = 'What came off here?';
     unloadGroups.appendChild(heading);
     const prompt = document.createElement('p');
-    prompt.textContent = 'Select the Stage groups unloaded at your current confirmed location. Unselected Displays stay with this Container.';
+    prompt.textContent = 'Select Stage groups unloaded here. Other Displays stay on this Container.';
     unloadGroups.appendChild(prompt);
-    groups.forEach(group => {
+    const actions = document.createElement('div');
+    actions.className = 'group-actions';
+    [['All remaining groups', true], ['None came off', false]].forEach(([text, checked]) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = text;
+      button.addEventListener('click', () => setAllUnloadGroups(checked));
+      actions.appendChild(button);
+    });
+    unloadGroups.appendChild(actions);
+    selectableUnloadGroups().forEach(group => {
+      const card = document.createElement('div');
+      card.className = 'unload-card';
       const label = document.createElement('label');
       label.className = 'unload-group';
       const input = document.createElement('input');
@@ -805,39 +857,96 @@
       input.addEventListener('change', () => selectUnloadHere(group.display_ids, input.checked));
       const span = document.createElement('span');
       span.innerHTML = '<strong>' + escapeHtml(group.label) + '</strong><br>'
-        + group.display_ids.length + ' Display' + (group.display_ids.length === 1 ? '' : 's') + ' came off here<br>'
-        + group.displays.map(display => escapeHtml(display.display_name)).join('<br>');
+        + group.display_ids.length + ' Display' + (group.display_ids.length === 1 ? '' : 's');
       label.appendChild(input);
       label.appendChild(span);
-      unloadGroups.appendChild(label);
+      card.appendChild(label);
+      // Names stay available without making a whole Stage's contents a checkbox target.
+      appendNames(card, 'Show Displays', group.displays);
+      unloadGroups.appendChild(card);
     });
-    if (groups.length) {
-      const actions = document.createElement('div');
-      actions.className = 'group-actions';
-      [['All remaining groups', true], ['None came off', false]].forEach(([text, checked]) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = text;
-        button.addEventListener('click', () => setAllUnloadGroups(checked));
-        actions.appendChild(button);
-      });
-      unloadGroups.appendChild(actions);
-    }
-    reviewOnly.forEach(group => {
-      const warning = document.createElement('p');
+    (pendingContents.groups || []).filter(group => !group.bulk_selectable).forEach(group => {
+      const warning = document.createElement('div');
       warning.className = 'group-warning';
-      warning.textContent = group.label + ': ' + (group.displays || []).map(display => display.display_name).join(', ');
+      const text = document.createElement('p');
+      text.textContent = group.label + ' — scan these Displays individually';
+      warning.appendChild(text);
+      appendNames(warning, 'Show Displays', group.displays || []);
       unloadGroups.appendChild(warning);
     });
   }
 
-  function directUnloadReview(ids) {
-    const removed = currentDisplays().filter(display => ids.includes(Number(display.display_id)));
-    const remaining = currentDisplays().filter(display => !ids.includes(Number(display.display_id)));
-    return 'Observed unload HERE: ' + currentLocationEvidence().label + '\n'
-      + removed.map(display => display.display_name).join('\n')
-      + '\n\nStill on Container:\n' + (remaining.length ? remaining.map(display => display.display_name).join('\n') : 'None — empty after this unload')
-      + '\n\nRecord these Displays at the current location?';
+  function selectedRemainingDisplayIds() {
+    // Selection belongs to the asset, not to the filtered/visible DOM rows.
+    const selected = remainingDisplayIds || new Set(currentDisplays().map(row => Number(row.display_id)));
+    return currentDisplays().map(row => Number(row.display_id)).filter(id => selected.has(id));
+  }
+
+  function renderSelectionSummary() {
+    if (!selectionSummary || !pendingIdentity) return;
+    selectionSummary.innerHTML = '';
+    const text = document.createElement('strong');
+    const count = currentDisplays().length;
+    const unloaded = selectedUnloadedDisplayIds();
+    if (pendingIdentity.asset_type !== 'CONTAINER') {
+      text.textContent = pendingIdentity.identity + ' · ' + (pendingStateRow && pendingStateRow.label || 'Display');
+    } else if (unloaded.length) {
+      text.textContent = unloaded.length + ' unloading HERE · ' + (count - unloaded.length) + ' staying';
+    } else if (identifyRemaining) {
+      const remaining = selectedRemainingDisplayIds().length;
+      text.textContent = remaining + ' staying · ' + (count - remaining) + ' unloading at PRIOR location';
+    } else if (contentsDecision === 'EMPTY') {
+      text.textContent = count + ' unloading at PRIOR location · Container empty';
+    } else if (contentsDecision) {
+      text.textContent = 'Location only · ' + count + ' Displays stay attached';
+    } else {
+      text.textContent = 'No unload selected · ' + count + ' Displays on Container';
+    }
+    selectionSummary.appendChild(text);
+    const location = document.createElement('div');
+    location.className = 'selection-location';
+    location.textContent = unloaded.length ? 'HERE: ' + (currentLocationEvidence().label || 'Choose a location')
+      : (contentsDecision === 'EMPTY' || identifyRemaining) ? 'PRIOR: ' + priorLocationText()
+      : currentLocationEvidence().label || 'Choose a location';
+    selectionSummary.appendChild(location);
+    if (unloaded.length) {
+      const selected = document.createElement('div');
+      selected.className = 'selected-stage-strip';
+      selectableUnloadGroups().filter(group => group.display_ids.every(id => unloadedHereDisplayIds.has(id))).forEach(group => {
+        const chip = document.createElement('span');
+        chip.textContent = group.label;
+        selected.appendChild(chip);
+      });
+      selectionSummary.appendChild(selected);
+    }
+  }
+
+  function renderRemainingList(list) {
+    list.innerHTML = '';
+    const matching = currentDisplays().filter(row => row.display_name.toLowerCase().includes(remainingSearch.toLowerCase()));
+    matching.forEach(row => {
+      const label = document.createElement('label');
+      label.className = 'unload-group';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.dataset.displayId = row.display_id;
+      input.checked = selectedRemainingDisplayIds().includes(Number(row.display_id));
+      input.addEventListener('change', () => {
+        const id = Number(row.display_id);
+        input.checked ? remainingDisplayIds.add(id) : remainingDisplayIds.delete(id);
+        renderRecordReadiness();
+      });
+      const name = document.createElement('span');
+      name.textContent = row.display_name;
+      label.appendChild(input);
+      label.appendChild(name);
+      list.appendChild(label);
+    });
+    if (!matching.length) {
+      const empty = document.createElement('p');
+      empty.textContent = 'No matching Display Names. Selections are preserved.';
+      list.appendChild(empty);
+    }
   }
 
   function reconciliationPayload() {
@@ -852,7 +961,7 @@
       if (pendingContents.prior_client_event_id) result.prior_client_event_id = pendingContents.prior_client_event_id;
       result.expected_display_ids = currentDisplays().map(row => Number(row.display_id));
       result.remaining_display_ids = identifyRemaining
-        ? Array.from(unloadGroups.querySelectorAll('input[data-display-id]:checked')).map(input => Number(input.dataset.displayId))
+        ? selectedRemainingDisplayIds()
         : [];
       if (identifyRemaining && !result.remaining_display_ids.length) {
         throw new Error('Not Empty requires at least one Display Name still present. Otherwise choose Empty.');
@@ -874,7 +983,18 @@
   function renderContentsDecision() {
     unloadGroups.innerHTML = '';
     if (!pendingIdentity || pendingIdentity.asset_type !== 'CONTAINER') return;
-    renderUnloadHere();
+    const hasGroups = pendingContents && pendingContents.reconciliation_allowed && selectableUnloadGroups().length > 0;
+    if (hasGroups) {
+      const switcher = document.createElement('button');
+      switcher.type = 'button';
+      switcher.textContent = contentsView === 'UNLOAD' ? 'Check contents / missed earlier unload' : 'Back to unload here';
+      switcher.addEventListener('click', () => switchContentsView(contentsView === 'UNLOAD' ? 'CONTENTS' : 'UNLOAD'));
+      unloadGroups.appendChild(switcher);
+      if (contentsView === 'UNLOAD') {
+        renderUnloadHere();
+        return;
+      }
+    }
     const earlier = document.createElement('h3');
     earlier.textContent = 'Missed an earlier unload? Review contents';
     unloadGroups.appendChild(earlier);
@@ -896,6 +1016,8 @@
         unloadedHereDisplayIds = new Set();
         contentsDecision = value;
         identifyRemaining = false;
+        remainingDisplayIds = null;
+        remainingSearch = '';
         renderContentsDecision();
         renderRecordReadiness();
       });
@@ -917,6 +1039,8 @@
     identify.textContent = identifyRemaining ? 'I cannot identify what remains — location only' : 'I can identify what remains';
     identify.addEventListener('click', () => {
       identifyRemaining = !identifyRemaining;
+      remainingDisplayIds = identifyRemaining ? new Set(currentDisplays().map(row => Number(row.display_id))) : null;
+      remainingSearch = '';
       renderContentsDecision();
       renderRecordReadiness();
     });
@@ -925,33 +1049,73 @@
     const prompt = document.createElement('p');
     prompt.textContent = 'Which Display Names are STILL on this Container? Checked names stay with it. Unchecked names came off at the prior last-known location.';
     unloadGroups.appendChild(prompt);
-    currentDisplays().forEach(row => {
-      const label = document.createElement('label');
-      label.className = 'unload-group';
-      const input = document.createElement('input');
-      input.type = 'checkbox';
-      input.dataset.displayId = row.display_id;
-      input.checked = true; // Safe default: none are detached just by opening the list.
-      input.addEventListener('change', renderRecordReadiness);
-      const name = document.createElement('span');
-      name.textContent = row.display_name;
-      label.appendChild(input);
-      label.appendChild(name);
-      unloadGroups.appendChild(label);
+    if (!remainingDisplayIds) remainingDisplayIds = new Set(currentDisplays().map(row => Number(row.display_id)));
+    const searchLabel = document.createElement('label');
+    searchLabel.className = 'remaining-search';
+    searchLabel.textContent = 'Find a Display Name';
+    const search = document.createElement('input');
+    search.type = 'search';
+    search.placeholder = 'Search names — selections stay checked';
+    search.value = remainingSearch;
+    const list = document.createElement('div');
+    search.addEventListener('focus', () => pauseScannerForTyping('searching Display Names'));
+    search.addEventListener('input', () => {
+      remainingSearch = search.value;
+      renderRemainingList(list);
     });
+    search.addEventListener('blur', restoreScannerCapture);
+    searchLabel.appendChild(search);
+    unloadGroups.appendChild(searchLabel);
+    unloadGroups.appendChild(list);
+    renderRemainingList(list);
   }
 
-  function contentsReview(reconciliation) {
-    const rows = currentDisplays();
-    const remaining = reconciliation.identify_remaining ? reconciliation.remaining_display_ids :
-      (reconciliation.decision === 'EMPTY' ? [] : rows.map(row => Number(row.display_id)));
-    const removed = rows.filter(row => !remaining.includes(Number(row.display_id)));
-    return 'Contents: ' + reconciliation.decision.replaceAll('_', ' ') + '\n'
-      + (removed.length ? 'Stop following this Container:\n' + removed.map(row => row.display_name).join('\n')
-          + '\nInferred unload location: ' + priorLocationText() : 'No Display attachment changes.')
-      + (remaining.length ? '\nStill on Container:\n' + rows.filter(row => remaining.includes(Number(row.display_id))).map(row => row.display_name).join('\n') : '')
-      + (reconciliation.decision === 'NOT_SURE' || (reconciliation.decision === 'NOT_EMPTY' && !reconciliation.identify_remaining)
-          ? '\nContents flagged for later review.' : '');
+  async function confirmContainerMovement(payload, returningHome) {
+    reviewBody.innerHTML = '';
+    el('movement-review-title').textContent = (trainingMode ? 'Review test · ' : 'Review · ') + pendingIdentity.identity;
+    el('movement-review-confirm').textContent = trainingMode ? 'Confirm test — no writes' : 'Confirm and record';
+    const reconciliation = payload.reconciliation;
+    const ids = payload.unloaded_display_ids.length ? payload.unloaded_display_ids
+      : reconciliation.identify_remaining ? currentDisplays().map(row => Number(row.display_id))
+        .filter(id => !reconciliation.remaining_display_ids.includes(id))
+      : reconciliation.decision === 'EMPTY' ? currentDisplays().map(row => Number(row.display_id)) : [];
+    const removed = currentDisplays().filter(row => ids.includes(Number(row.display_id)));
+    const remaining = currentDisplays().filter(row => !ids.includes(Number(row.display_id)));
+    const destination = document.createElement('p');
+    destination.className = 'review-location ready';
+    destination.textContent = returningHome ? 'Return Empty to ' + pendingContents.home_location_code + ' · no GPS needed'
+      : 'Container NOW: ' + currentLocationEvidence().label;
+    reviewBody.appendChild(destination);
+    const basis = document.createElement('p');
+    basis.textContent = removed.length ? removed.length + ' unloading · '
+      + (payload.unloaded_display_ids.length ? 'observed HERE: ' + currentLocationEvidence().label : 'inferred PRIOR: ' + priorLocationText())
+      : 'Location only — no Display attachment changes.';
+    reviewBody.appendChild(basis);
+    if (payload.unloaded_display_ids.length) {
+      selectableUnloadGroups().filter(group => group.display_ids.every(id => ids.includes(id)))
+        .forEach(group => appendNames(reviewBody, group.label, group.displays));
+    } else if (removed.length) {
+      appendNames(reviewBody, 'Displays unloading', removed);
+    }
+    appendNames(reviewBody, 'Staying on Container', remaining);
+    if (reconciliation && (reconciliation.decision === 'NOT_SURE'
+        || reconciliation.decision === 'NOT_EMPTY' && !reconciliation.identify_remaining)) {
+      const warning = document.createElement('p');
+      warning.textContent = 'Contents flagged for later review.';
+      reviewBody.appendChild(warning);
+    }
+    reviewing = true;
+    renderRecordReadiness();
+    try {
+      return await new Promise(resolve => {
+        reviewDialog.addEventListener('close', () => resolve(reviewDialog.returnValue === 'record'), {once: true});
+        reviewDialog.returnValue = 'cancel';
+        reviewDialog.showModal();
+      });
+    } finally {
+      reviewing = false;
+      renderRecordReadiness();
+    }
   }
 
   function needsDisplayPlacement() {
@@ -1106,11 +1270,14 @@
       return;
     }
 
-    if (recording) return;
+    if (recording || reviewing) return;
     const generation = ++selectionGeneration;
     contentsDecision = null;
     identifyRemaining = false;
     unloadedHereDisplayIds = new Set();
+    contentsView = 'UNLOAD';
+    remainingDisplayIds = null;
+    remainingSearch = '';
     displayPlacement = null;
     placementStageId = null;
     pendingIdentity = identity;
@@ -1155,7 +1322,7 @@
   }
 
   async function recordPending(returningHome) {
-    if (recording) return;
+    if (recording || reviewing) return;
     if (!pendingIdentity) {
       setFeedback('blocked', 'Select a Container or Display first.');
       return;
@@ -1197,7 +1364,6 @@
     if (identity.asset_type === 'CONTAINER') {
       if (unloaded.length) {
         payload.notes = [payload.notes, 'direct_container_unload=true'].filter(Boolean).join('; ');
-        if (!window.confirm(directUnloadReview(unloaded))) return;
       } else {
         try {
           payload.reconciliation = reconciliationPayload();
@@ -1206,11 +1372,10 @@
           setFeedback('blocked', error.message);
           return;
         }
-        const destination = returningHome ? 'Return Empty to ' + pendingContents.home_location_code + ' (no GPS needed)'
-          : 'Record where Container is NOW: ' + currentLocationEvidence().label;
-        if (!window.confirm(destination + '\n\n' + contentsReview(payload.reconciliation) + '\n\nRecord this reconciliation?')) return;
       }
     }
+
+    if (identity.asset_type === 'CONTAINER' && !await confirmContainerMovement(payload, returningHome)) return;
 
     if (trainingMode) {
       const gps = currentGpsSnapshot();
@@ -1563,7 +1728,7 @@
   recordHere.addEventListener('click', function () { void recordPending(false); });
   returnHome.addEventListener('click', function () { void recordPending(true); });
   clearPendingButton.addEventListener('click', function () {
-    if (recording) return;
+    if (recording || reviewing) return;
     resetAssetEntryForNextScan();
     setFeedback(
       'ready',
@@ -1572,6 +1737,8 @@
         : 'READY — scan, search, or choose an asset'
     );
   });
+  el('movement-review-cancel').addEventListener('click', () => reviewDialog.close('cancel'));
+  el('movement-review-confirm').addEventListener('click', () => reviewDialog.close('record'));
   knownReference.addEventListener('focus', function () {
     pauseScannerForTyping('choosing a park reference');
   });

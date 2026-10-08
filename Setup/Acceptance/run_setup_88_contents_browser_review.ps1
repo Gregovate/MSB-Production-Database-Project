@@ -19,6 +19,6 @@ if ($LASTEXITCODE -ne 0) { throw 'STOP: Setup Application regression failed.' }
 if ($LASTEXITCODE -ne 0) { throw 'STOP: disposable acceptance failed; retain and inspect the report.' }
 & "$PSScriptRoot/run_setup_disposable_browser_preview.ps1" -Server $Server `
     -CandidateSha $CandidateSha -TargetRef $targetRef -PreviewPort 8898 `
-    -PreviewEmail $PreviewEmail -ExpectedVersion 'V0.3.44-container-unload-reconciliation' `
+    -PreviewEmail $PreviewEmail -ExpectedVersion 'V0.3.45-compact-container-review' `
     -MigrationPaths $migrations -ValidationPaths $validations -AllowConcurrentProductionWrites
 if ($LASTEXITCODE -ne 0) { throw 'STOP: browser preview failed; retain and inspect the report.' }

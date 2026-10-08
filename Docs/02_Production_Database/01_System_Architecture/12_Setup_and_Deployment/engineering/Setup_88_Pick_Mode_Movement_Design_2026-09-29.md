@@ -779,3 +779,19 @@ The fallback free-text control is intentionally framed as **Location not listed?
 Engineering GPS/device quality work remains owned by the read-only `/scan/field-test` harness under #219.
 
 The failed V0.3.36 browser review does not carry acceptance forward. V0.3.37 must restart exact-candidate regression, reusable disposable acceptance, and browser review.
+
+
+### V0.3.45 compact contents interaction — 2026-10-08
+
+The restored group unload exposed every Display Name by default, making a large
+Container span many screens. Greg rejected that interaction because checked
+groups and final controls were separated by excessive paging. Stage rows now
+show Stage/count, with names in a separate disclosure. A fixed summary/action
+dock shows selected Stage names, unloading/staying counts and location basis.
+Missed-unload contents checking occupies a separate view; view changes reset the
+other operation. Remaining Display IDs are held in asset-local state so name
+filtering never drops hidden checked rows. A focused modal review shows affected
+Stage/counts and HERE/PRIOR basis, with names expandable. Back/Escape cancels,
+preserves selection and writes nothing; an open review blocks repeated commands
+and asset replacement. Movement/event payloads and migration 070 are unchanged.
+Browser/tablet acceptance of this candidate is still required.

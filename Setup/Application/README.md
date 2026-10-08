@@ -3,10 +3,14 @@
 ## #88 guided contents reconciliation candidate
 
 [Implementation, reconnaissance, verification and exact-candidate review handoff](../Acceptance/Setup_88_Contents_Reconciliation_Candidate.md).
-V0.3.44 reuses existing movement/event tables with function-only migration 070.
+V0.3.45 reuses existing movement/event tables with function-only migration 070.
 The accepted Stage-group **What came off here?** unload remains available alongside
 prior-location reconciliation for missed unloads. Each path names its location basis.
-Current-clone/browser acceptance and Production deployment remain pending.
+Stage rows/counts stay compact; Display Names expand on demand. A persistent
+selection/action dock and focused review keep selected groups visible. Contents
+checking opens separately; Display Name filtering preserves remaining selections
+across hidden rows. Current-clone/browser acceptance and Production deployment
+remain pending.
 
 
 For a reviewed update or urgent fix, use [Install a reviewed Setup change](../operatorSOP/Install_a_Reviewed_Setup_Change.md). It explains the checks, maintenance window, STOP result and required documentation closeout.

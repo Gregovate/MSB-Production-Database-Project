@@ -4,11 +4,11 @@
 |---|---|
 | Status | DRAFT — implementation verified locally; current-clone/browser acceptance pending |
 | Owner | #88; commanding #122 / DBG-2026-007, 009, 010 |
-| Reviewed | 2026-10-07 |
+| Reviewed | 2026-10-08 |
 | Baseline main | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
 | Branch | `fix/88-container-contents-reconciliation` |
-| Release | `V0.3.44-container-unload-reconciliation` |
-| Exact application candidate | `884c885948563012050142a60b6a6c886e06d178` |
+| Release | `V0.3.45-compact-container-review` |
+| Exact application candidate | Pending publication of the tested compact-review source |
 | Migration | `070_reconcile_setup_container_contents.sql` — functions only |
 | Preview allocation | Setup `8898` |
 
@@ -48,6 +48,20 @@ Pick Mode retains its separately accepted immediate PICKED interaction.
   visible. Selected Displays detach at the current confirmed location using the
   original grouped-unload command. Unselected Displays keep following the Container.
   No prior-location inference applies to an unload observed here.
+- Stage rows show the Stage name/count; **Show Displays** expands names on demand.
+  A fixed action dock keeps current selection counts, the location basis, selected
+  Stage names and **Review and record** visible while the operator scrolls.
+- **Check contents / missed earlier unload** opens a separate contents view.
+  **Back to unload here** returns to Stage groups. Switching views clears the other
+  operation's selections; hidden choices cannot change attachments.
+- Partial contents has Display Name search. Checked remaining IDs are held in
+  asset-local state, not visible DOM checkboxes; filtering, including zero matches,
+  preserves all selections. The dock shows staying/unloading counts across filters.
+- Container review uses a modal panel with current Container destination,
+  HERE/PRIOR unload basis and selected Stage/count summaries. Affected Display
+  Names and unchanged contents are expandable. Back / Escape cancels without a
+  write and preserves the selection. A review in progress blocks repeated Record
+  requests and incoming asset replacement.
 - Current-unload selection and prior-location reconciliation are mutually
   exclusive. Choosing a contents answer clears the current-unload selection;
   selecting a Stage group clears the inferred-reconciliation choice. Final review
@@ -136,6 +150,10 @@ Empty cannot guess the contents. Training still performs no writes or queueing.
   installed Stage-assignment query, confirms an actual Stage different from the
   assigned Stage, and proves only the scanned Display detaches and survives later
   Container movement, with unchanged permanent assignment and atomic retry.
+- Compact-screen UI tests cover collapsed names, unchanged row/focus on group
+  changes, persistent summary counts/Stage names, mode switching, filtered hidden
+  remaining selections (including zero matches), modal back/cancel and duplicate
+  Record while review is open.
 - Executable Node UI tests cover defaults, decisions, Display Names, review/cancel,
   feet, protected objects, no-context behavior and dependent offline context.
   Attached Display tests exercise No / Not Sure, unconfirmed assigned Stage,
@@ -186,7 +204,7 @@ do not change that application identity.
     if (Test-Path $Review) { throw 'STOP: inspect the existing review worktree; do not overwrite it.' }
     Invoke-Git88 -C $Primary worktree add -b fix/88-container-contents-reconciliation $Review origin/fix/88-container-contents-reconciliation
     Set-Location $Review
-    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha '884c885948563012050142a60b6a6c886e06d178'
+    .\Setup\Acceptance\run_setup_88_contents_browser_review.ps1 -CandidateSha 'EXACT_CANDIDATE_SHA_AFTER_PUBLICATION'
 }
 ```
 
@@ -228,18 +246,39 @@ V0.3.44 restores that observed-unload path alongside prior-location reconciliati
 The event model, migration 070 and permanent assignments are unchanged. Previous
 browser disposition does not accept the new candidate; start a fresh review.
 
+### Compact-screen correction and preview cleanup
+
+Greg subsequently reported that the expanded names required many screenfuls,
+leaving operators unable to remember checked groups by the time they reached the
+record controls. V0.3.45 replaces that layout with compact Stage rows, a persistent
+selection/action dock, a separate contents view, persistent filtered selections and
+a focused modal review. The existing command payloads, event model, migration 070,
+current-vs-prior location rules and protected-object guards are retained.
+
+Greg reported **SETUP REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT** before
+preparation of this candidate. No full report path/identity accompanied that line;
+it records cleanup, not acceptance of the compact candidate. A new exact-candidate
+clone/browser review is required. The local cloud-browser layout check stalled;
+no visual/tablet-browser pass is claimed from it. Executable workflow tests cover
+the new interaction and the engineering gates below remain required.
+
 Review these cases:
 
 1. C034 or another multi-Stage Container: **What came off here?** must immediately
-   expose the existing Stage groups and Display Names. Select one group, cancel
+   expose compact Stage rows/counts. Names expand only with **Show Displays**;
+   expanding must not change the checkbox. The dock must stay visible at the top
+   and bottom of the list, including narrow/tablet widths. Selected Stage names
+   and counts must update without collapsing an open details list. Select one group, cancel
    review once, then record at a current park reference. Selected Displays use that
    current location; other groups stay attached. Verify all/none controls and a
-   later Container move. Then verify the separate missed-unload contents choices.
+   later Container move. Then use **Check contents / missed earlier unload** to verify the separate
+   contents view; switching back must leave no hidden contents selection.
 2. C030 or another already-empty Container: Empty -> Return Empty to the named
    Home Location, GPS off; detached Displays must keep their park evidence.
 3. C216 or another mixed Container: Not Empty -> identify remaining names;
-   uncheck one known removed Display; review must name the complement and prior
-   location. After record, move Container again and verify that Display stays put.
+   uncheck one known removed Display; filter its name out, search for zero
+   matches, then clear search. Counts and checkboxes must retain the selection;
+   review must show the complement and prior location with expandable names. After record, move Container again and verify that Display stays put.
 4. Empty with Displays still attached: all reconcile at the *prior* observation,
    including a return initiated at Workshop without GPS.
 5. Not Sure / cannot identify: no detach; event indicates later contents review.
