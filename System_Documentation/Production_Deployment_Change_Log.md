@@ -38,6 +38,14 @@ Each deployment entry must record, when applicable:
 
 Documentation-only repository changes that do not alter Production do not require a deployment entry.
 
+## 2026-10-08 — #88 backup preflight STOP — backup recovery accepted; report pending
+
+- Combined attempt retained at `/home/msbadmin/setup-deployment-reports/Setup88Read-20261008T161235Z`: `Backup chain not current`, ONLINE preflight, maintenance/migration not started. No grant or report promotion.
+- NAS sender could not read the October 5 identity-repair rollback dump. Server Management [#65](https://github.com/Gregovate/MSB-Server-Management/pull/65)/[#66](https://github.com/Gregovate/MSB-Server-Management/pull/66) record its guarded owner repair: root:root 0600 → msbadmin:root 0600, same 9,603,652 bytes and validated SHA256 `f061657e71817c2aad9921ffb466f986b9ff92d7354c7e2d680a4885859ff209`.
+- Existing NAS replication succeeded 2026-10-08 14:11:57 CDT. Current controller ONLINE/unfenced, no error, all listed services active; latest local/NAS PostgreSQL and Directus backup instances match. No maintenance, restore, application restart or Database grant was part of this recovery.
+- At 14:20 CDT Greg directed one server-enforced maintenance window through both the approved grant and report promotion; at 14:20:48 he confirmed no new run had started. The old OFF-before-source/manual-pause handoff is superseded by [the controlled prerequisite record](../Setup/Acceptance/Setup_88_Report_Read_Prerequisite.md).
+- Reviewed application remains exact `6c44a082dd520b75881c50ad2ce78feb029ff87d` / V0.3.50; migration 071 bytes unchanged. Corrected tooling engineering PASS does not prove actual current-clone acceptance, grant application or report installation. Those remain pending.
+
 ## 2026-10-08 — Container Movement report attempt — stopped before mutation
 
 - Intended #88 / PR #310 application: `6c44a082dd520b75881c50ad2ce78feb029ff87d`, V0.3.50.

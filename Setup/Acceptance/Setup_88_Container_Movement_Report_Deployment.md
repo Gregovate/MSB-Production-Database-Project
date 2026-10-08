@@ -35,8 +35,9 @@ The separate `ref.display_status` read is already granted by migration 025.
 SELECT on only `container_type_id` and `container_type_name`; it has no business
 data, structure or write-privilege changes. Greg separately approved it at
 10:33 CDT. Use the combined controlled launcher in that record: clone acceptance,
-maintenance/grant/ONLINE proof, then the unchanged pinned source installer. It
-remains SQL read-only and does not apply the grant implicitly. The combined host
+one maintenance window for the grant and report promotion, frozen preservation
+proof, then controller ONLINE/health/live checks. The report remains SQL read-only
+and does not apply the grant implicitly. The combined host
 result is still pending; do not blindly rerun the failed handoff.
 
 ## Authorization and release boundary
@@ -125,8 +126,9 @@ finds main by reading worktree inventory line by line. If no worktree has main,
 it safely switches a clean primary checkout to the existing local main branch
 or creates main tracking origin/main. It never resets a branch or discards files.
 Native failures stop the whole sequence.
-The main checkout must be clean. Setup edits should pause during the brief
-source/service change so the preservation comparison can remain unchanged.
+The main checkout must be clean. This historical standalone handoff is retired;
+the current combined runner uses the controller fence through source promotion
+and does not require an operator edit pause.
 Greg already reported preview CLEAN EXIT; server preflight independently checks.
 
 ```powershell

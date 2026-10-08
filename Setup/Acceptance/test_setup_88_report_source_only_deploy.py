@@ -4,6 +4,10 @@ import importlib.util
 from pathlib import Path
 import pytest
 
+# This immutable helper executes only on Linux; keep Windows Setup collection
+# from importing its POSIX lock module. Portable orchestration tests remain active.
+pytest.importorskip('fcntl', reason='Pinned source installer uses the Linux server lock')
+
 spec = importlib.util.spec_from_file_location('deploy88report', Path(__file__).with_name('setup_88_report_source_only_deploy.py'))
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)

@@ -14,11 +14,17 @@ V0.3.42; V0.3.50 was not installed. **Do not rerun the report installer yet.**
 [Prepared two-column read prerequisite and proof](Setup_88_Report_Read_Prerequisite.md)
 was authorized at October 8 10:33 CDT. Use
 `run_setup_88_report_read_deploy.ps1`: current-clone/actual-read acceptance,
-controlled maintenance permission step, ONLINE proof, then the unchanged pinned
-source installer. Host execution and protected browser results remain pending. The October 8
+one controller maintenance window covering both permission and pinned report
+promotion, frozen preservation proof, then ONLINE/health/live checks. No operator
+edit pause is required; normal work after OFF is not compared to the frozen baseline.
+Host execution and protected browser results remain pending. The October 8
 11:04 local mixed-EOL guard STOP happened before server contact. The corrected
 launcher packages verified committed bytes using existing Python; no Node install
 or local helper edit is needed.
+The subsequent backup-chain STOP occurred before maintenance; Server Management
+#65/#66 record its accepted one-file owner repair and current NAS replication.
+Greg confirmed no new deployment run had started when directing the one-window
+maintenance correction at 14:20 CDT. The older OFF-before-report sequence is retired.
 
 ## Authority
 
