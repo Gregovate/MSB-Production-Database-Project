@@ -1825,8 +1825,10 @@ function board205AssignmentCard(item) {
   const shortBy = understaffed ? minCrew - planned : 0;
   const heavyWarning = board205HeavyWarning(item);
   const needsCaptain = !locked && crew?.captain_person_id == null;
-  const missingActualReport = !locked && item.work_date
-    && item.work_date < new Date().toISOString().slice(0, 10);
+  const assignmentDay = (setupBoard205State.board.work_days || []).find(
+    (day) => Number(day.setup_work_day_id) === Number(item.setup_work_day_id));
+  const missingActualReport = !locked && assignmentDay?.work_date
+    && assignmentDay.work_date < new Date().toISOString().slice(0, 10);
 
   return `
     <article class="setup-board205-assignment ${task.requires_display_material ? 'setup-material-task' : ''} ${locked ? 'locked' : ''} ${understaffed ? 'short-crew' : ''}"
