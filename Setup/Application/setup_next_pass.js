@@ -1380,7 +1380,10 @@ function renderNextExecution() {
     const shifts = ['MORNING', 'AFTERNOON', 'ALL_DAY'];
     return `
       <section class="next-perform-day">
-        <h3>Setup Day ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.day_of_week || '')} · ${escapeHtml(day.work_date)}</h3>
+        <div style="border-top:5px solid var(--accent, #466a86);padding:12px 0;margin-top:22px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+          <h3 style="margin:0;font-size:1.25rem">SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.day_of_week || '')} · ${escapeHtml(day.work_date)}</h3>
+          ${appState.access?.can_manage_setup ? `<button type="button" class="small secondary next-perform-manage-day" data-work-date="${escapeHtml(day.work_date)}">Manage Schedule →</button>` : ''}
+        </div>
         ${(() => {
           const crewShifts = ['MORNING', 'AFTERNOON'].flatMap((shift) =>
             [...new Set(dayAssignments.filter((a) => a.shift_code === shift).map((a) => Number(a.setup_work_day_crew_id)))]
@@ -1417,6 +1420,17 @@ function renderNextExecution() {
         }).join('')}
       </section>`;
   }).join('') : '<div class="empty-state">No scheduled or in-progress assignments match this view. Turn on Show completed to include completed work, or choose All scheduled work to see every Captain.</div>';
+
+  // Navigate through the existing route to preserve browser history and view guards.
+  target.querySelectorAll('.next-perform-manage-day').forEach((button) => {
+    button.addEventListener('click', () => {
+      const date = button.dataset.workDate;
+      const url = new URL(window.location.href);
+      url.searchParams.set('view', 'schedule');
+      url.searchParams.set('work_date', date);
+      window.location.assign(url.toString());
+    });
+  });
 
   target.querySelectorAll('.next-perform-assignment').forEach((details) => {
     details.querySelector('.next-report-work')?.addEventListener('click', async (event) => {
