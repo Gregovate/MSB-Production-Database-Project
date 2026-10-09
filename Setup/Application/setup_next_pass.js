@@ -1636,9 +1636,17 @@ async function loadNextTaskExecution(details, focusReport = false) {
     const procedurePayload = procedureResult.payload || {};
     const procedureError = procedureResult.error;
     const docs = procedurePayload.instructions?.current_documents || procedurePayload.instructions?.documents || [];
+    // Stable Container ID deep links resolve the latest #88 position when opened.
+    // The Locate reader owns map focus and handles missing coordinates honestly.
+    const containerMapLink = (rawId) => {
+      const id = Number(rawId);
+      if (!Number.isSafeInteger(id) || id <= 0) return escapeHtml(String(rawId ?? '—'));
+      const code = `C${String(id).padStart(3, '0')}`;
+      return `<a href="/setup/locate/?container_id=${id}" target="_blank" rel="noopener" title="Show ${code} on Park Map">${code}</a>`;
+    };
     const assets = [
-      ...(context.displays || []).map((item) => `<li>Display ${item.display_id} — ${escapeHtml(item.display_name)}${item.container_id ? ` · Container ${item.container_id}` : ''} · ${nextLocationMarkup(item)}</li>`),
-      ...(context.support_containers || []).map((item) => `<li>Support Container ${item.container_id} · ${nextLocationMarkup(item)}</li>`)
+      ...(context.displays || []).map((item) => `<li>Display ${item.display_id} — ${escapeHtml(item.display_name)}${item.container_id ? ` · Container ${containerMapLink(item.container_id)}` : ''} · ${nextLocationMarkup(item)}</li>`),
+      ...(context.support_containers || []).map((item) => `<li>Support Container ${containerMapLink(item.container_id)} · ${nextLocationMarkup(item)}</li>`)
     ];
     const assignmentProgress = progress.filter((p) => Number(p.setup_work_day_task_id) === assignmentId);
     const lastPercent = assignmentProgress.length
