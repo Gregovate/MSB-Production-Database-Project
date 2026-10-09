@@ -1422,17 +1422,26 @@ function renderNextExecution() {
   }).join('') : '<div class="empty-state">No scheduled or in-progress assignments match this view. Turn on Show completed to include completed work, or choose All scheduled work to see every Captain.</div>';
 
   // Navigate through the existing route to preserve browser history and view guards.
-  target.querySelectorAll('.next-perform-manage-day').forEach((button) => {
-    button.addEventListener('click', () => {
+  // Delegated listener is installed once on the stable Perform Work root.
+  // renderNextExecution replaces innerHTML repeatedly; child listeners are fragile.
+  if (target.dataset.manageScheduleInstalled !== '1') {
+    target.dataset.manageScheduleInstalled = '1';
+    target.addEventListener('click', async (event) => {
+      const button = event.target.closest('.next-perform-manage-day');
+      if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
       const date = button.dataset.workDate;
-      // Use the existing SPA router. A full reload loses the requested day
-      // because initial route parsing does not carry work_date.
-      Promise.resolve(navigateSetupView('schedule')).then((navigated) => {
-        if (!navigated) return;
-        if (typeof board205FocusWorkDate === 'function') board205FocusWorkDate(date);
-      }).catch((error) => setAlert(error.message || error, 'error'));
+      try {
+        const navigated = await navigateSetupView('schedule');
+        if (navigated && typeof board205FocusWorkDate === 'function') {
+          board205FocusWorkDate(date);
+        }
+      } catch (error) {
+        setAlert(error.message || error, 'error');
+      }
     });
-  });
+  }
 
   target.querySelectorAll('.next-perform-assignment').forEach((details) => {
     details.querySelector('.next-report-work')?.addEventListener('click', async (event) => {
