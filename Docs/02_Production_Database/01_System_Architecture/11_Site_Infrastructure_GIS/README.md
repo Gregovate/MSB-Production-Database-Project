@@ -82,6 +82,37 @@ Important boundaries:
 
 This classification requirement is especially important because the full ExpertGPS/Garmin source contains many waypoint classes beyond the current launch reference subset. Preserving them will make later GIS/map layering substantially easier and avoid having to infer feature meaning from names after import.
 
+## Operational Asset Overlay Candidate — #171
+
+The V0.3.51 candidate extends the existing Locate map with independent Container
+and independent Display layers. GET `/api/setup/locate/assets?season_year=2026`
+requires existing Setup read access and returns a no-store snapshot. It reuses
+#88 `movement_picture` with optional unobserved Container inventory inside the
+same read-only REPEATABLE READ transaction. The report default is unchanged.
+
+Coordinates come only from each state row's `last_movement_event_id`; the map
+adapter does not independently search prior history. Missing/invalid coordinates
+and RETURNED/storage state remain unlocated. This exposes the gap between the
+requested last-valid-GPS continuity and current #88 projections rather than
+silently changing the projection. Review C095 against the current clone before
+acceptance; any projection repair belongs to #88.
+
+Active WITH_CONTAINER Display associations appear inside Container popups.
+DETACHED and NO_ASSIGNED_CONTAINER Displays use their own state event, or remain
+unlocated. Expected/reference assignments, recorded position mode and physical
+contents are distinct: this baseline does not prove physical load categories,
+so every Container uses Unknown. Historical contents-review flags are shown as
+recorded evidence, without claiming they are resolved or still actionable.
+
+Exact coordinate matches share one marker/popup within a layer. Coordinates are
+never moved or snapped to Stage anchors. Observation timestamps, GPS feet,
+quality/stale-fix evidence, destination notes and capture provenance remain
+visible. Refresh clears prior operational markers before requesting new data;
+a failed request exposes an unavailable state rather than leaving stale pins.
+
+See [candidate review and limitations](../../../../Setup/Acceptance/Setup_171_Operational_Map_Candidate.md).
+This is engineering candidate documentation, not a Production deployment claim.
+
 ## Deferred Symbol Registry / Type Mapping — #171
 
 Operator-confirmed direction, 2026-10-08: ExpertGPS manages symbols by type

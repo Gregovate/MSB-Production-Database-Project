@@ -189,6 +189,23 @@ def _validate_live_pick_demand(
         )
 
 
+@setup_movement_api.get("/api/setup/locate/assets")
+def api_setup_locate_assets() -> Response:
+    """Read #88 state only; never repair missing geographic continuity here."""
+    base_repo, _email, _access = require_reader()
+    raw_year = request.args.get("season_year", "").strip()
+    if not raw_year.isdigit() or len(raw_year) != 4:
+        raise SetupCommandError("A four-digit season_year is required")
+    session = base_repo.movement_summary(int(raw_year))
+    if session.get("setup_session_id") is None:
+        return jsonify(error="No Setup Session exists for this year"), 404
+    from setup_production_report import movement_picture
+    from setup_locate_assets import locate_assets
+    response = jsonify(locate_assets(movement_picture(repo(), session["setup_session_id"], include_unobserved=True)))
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
+
+
 @setup_movement_api.get("/api/setup/movements/search")
 def api_setup_movement_search() -> Response:
     require_movement_operator()

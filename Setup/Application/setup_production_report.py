@@ -44,7 +44,7 @@ def gps_text(row: dict) -> str:
     return text
 
 
-def movement_picture(repository, session_id: int) -> dict:
+def movement_picture(repository, session_id: int, *, include_unobserved: bool = False) -> dict:
     """Use event effects for historical membership, not today's assigned count."""
     with repository.connect() as conn:
         conn.set_session(readonly=True, isolation_level="REPEATABLE READ")
@@ -89,6 +89,18 @@ def movement_picture(repository, session_id: int) -> dict:
                 WHERE cs.setup_session_id=%s ORDER BY cs.container_id
             """, (session_id,))
             containers = [dict(row) for row in cur.fetchall()]
+            if include_unobserved:
+                # Map-only inventory completeness; still in the same read snapshot.
+                cur.execute("""
+                    SELECT c.container_id, c.description AS container_name,
+                           c.location_code AS home_location_code
+                    FROM ref.container c
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM ops.setup_container_state cs
+                        WHERE cs.container_id=c.container_id AND cs.setup_session_id=%s
+                    ) ORDER BY c.container_id
+                """, (session_id,))
+                containers.extend(dict(row) for row in cur.fetchall())
             cur.execute("""
                 SELECT d.display_id, d.display_name, d.container_id,
                        coalesce(ds.position_mode,CASE WHEN d.container_id IS NULL

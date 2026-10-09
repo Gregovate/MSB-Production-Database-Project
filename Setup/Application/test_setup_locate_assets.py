@@ -1,0 +1,53 @@
+"""Map adapter must not infer state or recover coordinates independently."""
+from setup_locate_assets import geographic_position, locate_assets
+
+
+def test_location_rejects_storage_missing_and_nonfinite():
+    assert geographic_position({'gps_latitude': 43, 'gps_longitude': -87}) == [43, -87]
+    for event in ({}, {'gps_latitude': 43}, {'gps_latitude': 'nan', 'gps_longitude': -87},
+                  {'gps_latitude': 43, 'gps_longitude': -87, 'event_type': 'RETURNED'}):
+        assert geographic_position(event) is None
+
+
+def test_adapter_uses_state_event_and_does_not_infer_load_or_duplicate_attached_displays():
+    picture = dict(generated_at=None, through_event_id=2,
+                   effect_rows=[dict(setup_movement_event_id=1, gps_latitude=43, gps_longitude=-87),
+                                dict(setup_movement_event_id=2, event_type='CONTAINER_MOVE')],
+                   containers=[dict(container_id=95, container_name='Test', last_movement_event_id=2)],
+                   displays=[dict(display_id=1, display_name='Attached', container_id=95, position_mode='WITH_CONTAINER'),
+                             dict(display_id=2, display_name='Independent', container_id=95, position_mode='DETACHED', last_movement_event_id=1)])
+    result = locate_assets(picture)
+    assert result['containers'][0]['position'] is None
+    assert result['containers'][0]['load_state'] == 'UNKNOWN'
+    assert len(result['containers'][0]['contents']) == 2
+    assert [d['name'] for d in result['displays']] == ['Independent']
+    assert result['displays'][0]['position'] == [43, -87]
+
+
+def test_map_endpoint_authentication_validation_and_no_store(monkeypatch):
+    import setup_movement_api as api
+    import setup_production_report as report
+    from production_backend import app
+    from setup_api import SetupCommandError
+    def deny():
+        raise SetupCommandError("denied")
+    monkeypatch.setattr(api, 'require_reader', deny)
+    monkeypatch.setattr(api, 'repo', lambda: (_ for _ in ()).throw(AssertionError('unauthorized read')))
+    client = app.test_client()
+    assert client.get('/api/setup/locate/assets?season_year=2026').status_code == 403
+    class Base:
+        def movement_summary(self, year):
+            assert year == 2026
+            return {'setup_session_id': 1}
+    monkeypatch.setattr(api, 'require_reader', lambda: (Base(), 'reader', {}))
+    assert client.get('/api/setup/locate/assets?season_year=bad').status_code == 403
+    monkeypatch.setattr(api, 'repo', lambda: object())
+    picture = dict(generated_at=None, through_event_id=0, effect_rows=[], containers=[], displays=[])
+    monkeypatch.setattr(report, 'movement_picture', lambda repo, sid, **kwargs: picture)
+    response = client.get('/api/setup/locate/assets?season_year=2026')
+    assert response.status_code == 200
+    assert 'no-store' in response.headers['Cache-Control']
+    assert response.json['containers'] == []
+    assert client.post('/api/setup/locate/assets').status_code == 405
+    assert client.get('/locate/assets/container-unknown.svg').status_code == 200
+    assert client.get('/locate/assets/production_backend.py').status_code == 404

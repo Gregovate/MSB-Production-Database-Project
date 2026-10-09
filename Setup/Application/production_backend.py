@@ -39,7 +39,7 @@ from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.50-container-movement-report"
+PRODUCTION_VERSION = "V0.3.51-gis-asset-overlay"
 
 # #222 lightweight Production request instrumentation.
 #
@@ -534,7 +534,7 @@ def pick_list_asset(name: str):
 
 
 
-# Issue #171 — additive, read-only park GIS preview. No PostgreSQL access/writes.
+# Issue #171 — read-only park GIS reference and operational observation layers.
 @app.get("/locate")
 @app.get("/locate/")
 def locate_preview():
@@ -577,3 +577,12 @@ def record_location_asset(name: str):
     mimetype = "application/javascript" if name.casefold().endswith(".js") else None
     return _no_store(send_from_directory(BASE_DIR, name, mimetype=mimetype))
 
+
+
+@app.get("/locate/assets/<name>")
+def locate_asset(name: str):
+    allowed = {"setup_locate_assets.js", "container-loaded.svg", "container-partial.svg",
+               "container-empty.svg", "container-unknown.svg"}
+    if name not in allowed:
+        abort(404)
+    return _no_store(send_from_directory(BASE_DIR, name))
