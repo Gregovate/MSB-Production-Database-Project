@@ -1919,8 +1919,7 @@ function board205CanCollapseDay(day) {
     const task = board205Task(item.setup_session_task_id);
     return Boolean(item.historical_locked && task?.effective_complete
       && !board205NeedsContinuation(task)
-      && item.actual_duration_minutes != null
-      && Number(item.actual_duration_minutes) > 0);
+      && Number(item.actual_person_minutes || 0) > 0);
   });
 }
 
