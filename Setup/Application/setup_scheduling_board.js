@@ -1813,8 +1813,10 @@ function board205AssignmentCard(item) {
   const crew = board205CrewRow(item.setup_work_day_crew_id);
   const canManage = Boolean(appState.access?.can_manage_setup);
   const locked = Boolean(item.historical_locked);
+  // Historical assignment status describes that day's work, not current annual progress.
+  // Never show IN PROGRESS on a locked past assignment: it looks like active shift work.
   const status = locked
-    ? 'WORK REPORTED'
+    ? (task.effective_complete ? 'WORK REPORTED - COMPLETE' : 'WORK REPORTED - INCOMPLETE')
     : nextSetupAssignmentStatus(task);
   const planned = board205AssignmentPlannedCrew(item);
   const minCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
