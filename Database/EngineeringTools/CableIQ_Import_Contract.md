@@ -47,3 +47,7 @@ invalid records under this layout. Three focused tests cover positional duplicat
 headers, duplicate source provenance, mixed application outcomes, retest identity,
 invalid measurement rejection and unsupported layouts. Current Candyland cables
 require current evidence following reconstruction of 12 cut cables.
+
+Operator confirms the CSV format is fixed and draw.io Speed is reported from
+CableIQ. Preserve its verification provenance separately from configured or
+negotiated operational link speed.
