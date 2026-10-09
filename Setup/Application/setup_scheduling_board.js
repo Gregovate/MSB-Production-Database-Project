@@ -1824,6 +1824,10 @@ function board205AssignmentCard(item) {
   const understaffed = planned != null && minCrew != null && planned < minCrew;
   const shortBy = understaffed ? minCrew - planned : 0;
   const heavyWarning = board205HeavyWarning(item);
+  const needsCaptain = !locked && crew?.captain_person_id == null;
+  const missingActualReport = !locked && item.work_date
+    && item.work_date < new Date().toISOString().slice(0, 10);
+
   return `
     <article class="setup-board205-assignment ${task.requires_display_material ? 'setup-material-task' : ''} ${locked ? 'locked' : ''} ${understaffed ? 'short-crew' : ''}"
       data-assignment-id="${item.setup_work_day_task_id}"
@@ -1848,6 +1852,9 @@ function board205AssignmentCard(item) {
       ${task.readiness_state === 'NOT_READY' ? `<div class="setup-board205-warning">⚠ Readiness not met: ${board205Esc(task.readiness_note || 'annual readiness condition')}</div>` : ''}
       ${understaffed ? `<div class="setup-board205-warning setup-board205-short-crew-warning"><strong>SHORT CREW</strong> · Planned ${board205Esc(item.shift_code === 'MORNING' ? 'AM' : 'PM')} ${board205Esc(planned)} / minimum ${board205Esc(minCrew)} · short by ${board205Esc(shortBy)}.</div>` : ''}
       ${heavyWarning ? `<div class="setup-board205-warning">⚠ ${board205Esc(heavyWarning)}</div>` : ''}
+      ${needsCaptain ? '<div class="setup-board205-warning" style="border:2px solid #9d2424;font-weight:900">NEEDS CAPTAIN — assign before dispatch</div>' : ''}
+      ${missingActualReport ? '<div class="setup-board205-warning" style="font-weight:800">PAST ASSIGNMENT — NO WORK REPORTED; review or move</div>' : ''}
+
       ${locked ? '<div class="setup-board205-lock">Historical actual — locked</div>' : ''}
       ${canManage && !locked ? `
         <div class="setup-board205-card-actions">
