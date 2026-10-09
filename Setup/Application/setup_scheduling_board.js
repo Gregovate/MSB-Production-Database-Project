@@ -1805,7 +1805,10 @@ function board205AssignmentCard(item) {
   return `
     <article class="setup-board205-assignment ${task.requires_display_material ? 'setup-material-task' : ''} ${locked ? 'locked' : ''} ${understaffed ? 'short-crew' : ''}"
       data-assignment-id="${item.setup_work_day_task_id}"
-      draggable="${canManage && !locked ? 'true' : 'false'}">
+      draggable="${canManage && !locked ? 'true' : 'false'}"
+      tabindex="${canManage && !locked ? '0' : '-1'}"
+      aria-label="${board205Esc(item.task_name)}${locked ? ' — historical actual locked, cannot move' : ' — click to select, Ctrl or Shift click for multi-select'}">
+      ${locked ? '<div class="setup-board205-meta" style="font-weight:700">Historical actual — locked; selection and movement disabled</div>' : ''}
       <div class="setup-board205-task-title">
         <span>${board205Esc(item.task_name)}</span>
         <span class="setup-board205-badge setup-work-status" data-work-status="${board205Esc(status)}">${board205Esc(status.replaceAll('_', ' '))}</span>
@@ -2024,6 +2027,12 @@ function board205RenderBoard() {
     // Dragging is a separate gesture; keep Ctrl/Shift selection for clicks.
     card.addEventListener('click', (event) => {
       if (event.target.closest('button,input,select,textarea,a')) return;
+      board205SelectAssignmentCard(card, event);
+    });
+    card.addEventListener('keydown', (event) => {
+      if (event.key !== ' ' && event.key !== 'Enter') return;
+      if (event.target !== card) return;
+      event.preventDefault();
       board205SelectAssignmentCard(card, event);
     });
 
