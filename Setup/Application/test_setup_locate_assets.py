@@ -70,3 +70,10 @@ def test_locate_canonical_slash_loads_actual_overlay_script():
     assert 'javascript' in script.content_type
     assert 'Physical loads unconfirmed' in script.get_data(as_text=True)
     assert 'Asset overlay initializing' in source
+
+
+def test_locate_allows_close_inspection_without_requesting_nonexistent_tiles():
+    from pathlib import Path
+    source = Path(__file__).with_name('locate_preview.html').read_text()
+    assert "zoomControl:true,maxZoom:24" in source
+    assert 'maxZoom:24,maxNativeZoom:21' in source

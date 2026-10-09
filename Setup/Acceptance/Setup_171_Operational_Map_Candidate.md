@@ -10,7 +10,7 @@ No migrations or new Production grants are proposed.
 
 ## Engineering proof
 
-- Full Setup Application regression: 722 passed.
+- Full Setup Application regression: 723 passed.
 - Four focused adapter/API tests cover invalid/storage coordinates, no
   prior-event fallback, Unknown load, independent Display semantics, reader
   authorization, no-store and GET-only operation, and static asset allowlist.
@@ -104,3 +104,12 @@ explicitly reports overlay initialization instead of an unexplained blank.
 This explains the symptom when the slashless route is used; it is not proof
 of Greg's exact browser URL or a successful data fetch. No CRS/coordinate change
 was made. Updated exact-candidate review is required after CLEAN EXIT.
+
+## Closer zoom — operator request October 8
+
+Extended map and aerial layer maximum zoom to 24 while retaining tile native
+maximum 21. Leaflet enlarges the existing aerial tiles at zoom 22–24 rather than
+requesting nonexistent higher-resolution tiles. This provides 8× greater linear
+magnification than the former maximum, without claiming improved imagery or GPS
+accuracy. Recorded coordinates remain unchanged. Review close Container selection
+and map navigation on the next exact-candidate preview.
