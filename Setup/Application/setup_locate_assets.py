@@ -46,6 +46,7 @@ def locate_assets(picture):
                            "movement_status": state.get("movement_status"),
                            "current_location_note": state.get("current_location_note"),
                            "home_location_code": state.get("home_location_code"),
+                           "expected_location": "Workshop" if not state.get("last_movement_event_id") and not state.get("movement_status") else None,
                            "load_state": load_state,
                            "physical_load_confirmed": False,
                            "review_event_ids": sorted({e["setup_movement_event_id"] for e in picture["effect_rows"]

@@ -10,7 +10,7 @@ No migrations or new Production grants are proposed.
 
 ## Engineering proof
 
-- Full Setup Application regression: 726 passed.
+- Full Setup Application regression: 727 passed.
 - Four focused adapter/API tests cover invalid/storage coordinates, no
   prior-event fallback, recorded contents classification, independent Display semantics, reader
   authorization, no-store and GET-only operation, and static asset allowlist.
@@ -130,3 +130,8 @@ recorded. Selecting a result enables its layer and checkbox, fits the complete
 track (all segments) or point, and opens details; typing does not change layers.
 Stage popups omit source timestamps. Review Aux-I with NET disabled, C001, an
 attached Display name, an independent Display and an unlocated asset.
+
+Unobserved Containers (no movement state/event) and their attached Displays
+show Workshop as the operator-defined expected location before picking. No
+Workshop coordinates are fabricated: the authoritative Workshop waypoint has
+not been supplied. Search selection explains that missing waypoint.

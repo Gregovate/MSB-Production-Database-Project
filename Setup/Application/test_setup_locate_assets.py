@@ -108,3 +108,10 @@ def test_search_is_served_before_asset_overlay():
     assert 'id="map-search"' in page
     assert page.index('src="assets/setup_locate_search.js"') < page.index('src="assets/setup_locate_assets.js"')
     assert client.get('/locate/assets/setup_locate_search.js').status_code == 200
+
+
+def test_unobserved_container_has_expected_workshop_without_fabricated_gps():
+    result = locate_assets(dict(generated_at=None, through_event_id=0,
+        effect_rows=[], containers=[dict(container_id=1)], displays=[]))
+    assert result['containers'][0]['expected_location'] == 'Workshop'
+    assert result['containers'][0]['position'] is None

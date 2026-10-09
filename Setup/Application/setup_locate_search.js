@@ -21,7 +21,7 @@ const mapSearch = (() => {
   }
   function select(entry) {
     if (!entry.markers.length) {
-      status.textContent = `${entry.name}: Location not recorded.`;
+      status.textContent = `${entry.name}: ${entry.expectedLocation ? entry.expectedLocation + " — expected before picking; waypoint not recorded." : "Location not recorded."}`;
       return;
     }
     // Selecting reveals only the required layer; other layer choices persist.
@@ -49,7 +49,7 @@ const mapSearch = (() => {
       button.style.display = 'block';
       button.style.width = '100%';
       button.style.textAlign = 'left';
-      button.textContent = `${entry.name} · ${entry.kind}${entry.markers.length ? '' : ' · Location not recorded'}`;
+      button.textContent = `${entry.name} · ${entry.kind}${entry.markers.length ? '' : entry.expectedLocation ? ' · Workshop (not picked)' : ' · Location not recorded'}`;
       button.addEventListener('click', () => select(entry));
       results.appendChild(button);
     }
@@ -62,12 +62,13 @@ const mapSearch = (() => {
       const entry = {name: container ? `${code} — ${asset.name}` : asset.name,
         kind: container ? 'Container' : 'Display', layer: container ? 'containers' : 'displays',
         markers: marker ? [marker] : [], terms: `${code} ${asset.name}`,
+        expectedLocation: asset.expected_location,
         numericId: container ? String(asset.container_id) : null};
       assets.push(entry);
       if (container) {
         for (const display of asset.contents.filter(d => d.position_mode === 'WITH_CONTAINER')) {
           assets.push({name: display.display_name, terms: display.display_name, kind: 'Display',
-            layer: 'containers', markers: entry.markers, association: `With ${code}`});
+            layer: 'containers', markers: entry.markers, expectedLocation: asset.expected_location, association: `With ${code}`});
         }
       }
       update();
