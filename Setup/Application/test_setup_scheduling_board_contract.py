@@ -735,7 +735,7 @@ def test_205_rolling_board_filters_days_by_operational_state() -> None:
     assert "> Completed</label>" in ui
     assert "cancelled-day" in ui
     assert 'id="setup-board205-show-unfinished-days" type="checkbox" checked' in ui
-    assert 'id="setup-board205-show-completed-days" type="checkbox"' in ui
+    assert 'id="setup-board205-show-completed-days" type="checkbox" checked' in ui
     assert 'id="setup-board205-show-empty-days" type="checkbox"' in ui
     assert "> Unfinished</label>" in ui
     assert "if (showEmptyDays) showEmptyDays.checked = true;" in ui
