@@ -17,7 +17,7 @@ CONTROL = ["sudo", "python3", "/opt/msb-maintenance/msb_maintenance_controller.p
 PSQL = ["sudo", "docker", "exec", "-i", "msb-postgres", "psql",
         "-X", "-v", "ON_ERROR_STOP=1", "-U", "msbadmin", "-d", "msb"]
 EXPECTED_LIVE = "86a025a2528be9f7071355965f679320a1362181"
-APPROVED_CANDIDATE = "5e2fc0971253622bf0e02de770d54ef93d0a836a"
+APPROVED_CANDIDATE = "e0058d94abe337a8095923c08a0b9432c73e80bd"
 
 
 def call(args, data=None):
@@ -51,6 +51,7 @@ def main():
     parser.add_argument("--sha256", required=True)
     parser.add_argument("--candidate", required=True)
     parser.add_argument("--execute", action="store_true")
+    parser.add_argument("--accepted-release", default="")
     args = parser.parse_args()
     migration = Path(args.migration)
     data = migration.read_bytes()
@@ -58,6 +59,8 @@ def main():
         raise RuntimeError("STOP: Migration bytes differ from approved SHA-256")
     if args.candidate != APPROVED_CANDIDATE:
         raise RuntimeError("STOP: Candidate mismatch")
+    if args.execute and args.accepted_release != "MIGRATION-072-APPROVED":
+        raise RuntimeError("STOP: Explicit accepted release marker required for Production mutation")
     if not data.startswith(b"-- #205 / #122: durable annual-task schedule lifecycle evidence."):
         raise RuntimeError("STOP: Unexpected migration content")
 
