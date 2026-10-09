@@ -1442,8 +1442,8 @@ function renderNextExecution() {
       content.hidden = !content.hidden;
       button.setAttribute('aria-expanded', String(!content.hidden));
       button.textContent = content.hidden
-        ? button.textContent.replace('▼ Hide', '▶ Show')
-        : button.textContent.replace('▶ Show', '▼ Hide');
+        ? button.textContent.replace('▼', '▶')
+        : button.textContent.replace('▶', '▼');
     });
   }
   // Delegated listener is installed once on the stable Perform Work root.
