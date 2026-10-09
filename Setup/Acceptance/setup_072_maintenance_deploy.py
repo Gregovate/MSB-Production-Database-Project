@@ -104,14 +104,15 @@ def main():
             # Preserve business-table counts across the frozen migration.
             # Event audit rows are excluded because the migration adds audit infrastructure.
             def business_counts():
-                return sql("""SELECT n.nspname||'.'||c.relname||'='||
-                    (xpath('/row/count/text()', query_to_xml(
-                        format('SELECT count(*) AS count FROM %I.%I', n.nspname,c.relname),
-                        false,true,'')))[1]::text
+                # SQL emits per-table queries through psql gexec; no user data changes.
+                return sql("""SELECT format(
+                  'SELECT %L || count(*)::text FROM %I.%I;',
+                  n.nspname||'.'||c.relname||'=', n.nspname,c.relname)
                   FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
                   WHERE n.nspname IN ('ops','ref') AND c.relkind IN ('r','p')
                     AND NOT (n.nspname='ops' AND c.relname='setup_schedule_event')
-                  ORDER BY n.nspname,c.relname;""")
+                  ORDER BY n.nspname,c.relname
+                  \\gexec""")
             baseline = business_counts()
             (root / "business-counts-before.txt").write_text(baseline + "\n")
             stage = "migration-started"
