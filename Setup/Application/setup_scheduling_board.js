@@ -270,6 +270,19 @@ function board205PlacementWarnings(task, crewId, shift) {
     warnings.push(`SHORT CREW: planned ${period} crew ${planned} / task minimum ${minCrew} — short by ${minCrew - planned}.`);
   }
 
+  // Show projected linear overload before placement; retain the manager override.
+  if (shift === 'MORNING' || shift === 'AFTERNOON') {
+    const current = board205ShiftWorkload(crewId, shift);
+    const raw = task.expected_duration_minutes;
+    const minutes = raw == null || raw === '' ? NaN : Number(raw);
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      warnings.push('UNKNOWN DURATION: Cannot prove this crew shift fits available time.');
+    } else if (current.known + minutes > current.capacity) {
+      const hours = (n) => (n / 60).toFixed(2);
+      warnings.push(`OVERLOADED: Projected ${hours(current.known + minutes)} linear hours / ${hours(current.capacity)} available (+${hours(current.known + minutes - current.capacity)} hours over).`);
+    }
+    if (current.unknown) warnings.push(`${current.unknown} existing task(s) have unknown durations.`);
+  }
   return warnings;
 }
 
@@ -1921,6 +1934,9 @@ function board205Day(day) {
 
   return `
     <section class="setup-board205-day ${dayClass}${printEmptyDay ? ' print-empty-day' : ''}" data-day-id="${day.setup_work_day_id}">
+      <div role="status" style="border:3px solid ${overloadedShifts ? '#9d2424' : unknownTasks || notReadyTasks ? '#835900' : '#146044'};padding:10px;margin:6px 0;border-radius:8px;font-weight:800;font-size:1.05rem">
+        DAILY WORKLOAD · ${dayWorkloads.length} occupied crew shifts · ${overloadedShifts} OVERLOADED · ${unknownTasks} UNKNOWN ESTIMATES · ${notReadyTasks} NOT READY
+      </div>
       <div class="setup-board205-day-header">
         <div>
           <strong>Day ${board205Esc(day.setup_day_number)} · ${board205Esc(day.day_of_week)} · ${board205Esc(day.work_date)}</strong>
