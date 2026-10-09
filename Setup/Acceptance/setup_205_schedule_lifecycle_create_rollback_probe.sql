@@ -11,6 +11,7 @@ DECLARE
   v_event_id bigint;
   v_actor integer;
   v_session_id bigint;
+  v_candidate_task_id bigint;
 BEGIN
   -- Clone an existing, unworked assignment onto a distinct task/day pair.
   -- Avoid duplicate scheduling constraints and any real progress evidence.
@@ -35,7 +36,7 @@ BEGIN
   FROM ops.setup_work_day wd WHERE wd.setup_work_day_id = v_source.setup_work_day_id;
 
   -- Create a disposable assignment for a different unscheduled annual task.
-  SELECT st.setup_session_task_id INTO v_source.setup_session_task_id
+  SELECT st.setup_session_task_id INTO v_candidate_task_id
   FROM ops.setup_session_task st
   WHERE st.setup_session_id = v_session_id
     AND NOT EXISTS (
@@ -44,7 +45,7 @@ BEGIN
         AND x.setup_session_task_id = st.setup_session_task_id
     )
   ORDER BY st.setup_session_task_id DESC LIMIT 1;
-  IF v_source.setup_session_task_id IS NULL THEN
+  IF v_candidate_task_id IS NULL THEN
     RAISE EXCEPTION 'No candidate annual task for disposable creation probe';
   END IF;
 
@@ -52,7 +53,7 @@ BEGIN
     setup_work_day_id, setup_session_task_id, shift_code, crew_lane,
     setup_work_day_crew_id, sort_order
   ) VALUES (
-    v_source.setup_work_day_id, v_source.setup_session_task_id,
+    v_source.setup_work_day_id, v_candidate_task_id,
     v_source.shift_code, v_source.crew_lane,
     v_source.setup_work_day_crew_id, 99999
   )
