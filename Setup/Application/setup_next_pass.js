@@ -1382,8 +1382,7 @@ function renderNextExecution() {
     const dayCanCollapse = dayAssignments.length > 0 && dayAssignments.every((assignment) => {
       const task = nextPerformTask(assignment.setup_session_task_id);
       return Boolean(assignment.historical_locked && task?.effective_complete
-        && assignment.actual_duration_minutes != null
-        && Number(assignment.actual_duration_minutes) > 0);
+        && Number(assignment.actual_person_minutes || 0) > 0);
     });
     const shifts = ['MORNING', 'AFTERNOON', 'ALL_DAY'];
     return `
