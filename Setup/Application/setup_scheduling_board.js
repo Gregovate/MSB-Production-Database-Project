@@ -1971,6 +1971,7 @@ function board205Day(day) {
   }
   const collapseEligible = board205CanCollapseDay(day);
   const dayAssignmentCount = board205DayAssignments(day).length;
+  const reportedPersonHours = (board205DayAssignments(day).reduce((sum, item) => sum + Number(item.actual_person_minutes || 0), 0) / 60).toFixed(1);
   const crewRows = crews.map((crew) => {
     const legacy = board205AssignmentsFor(day.setup_work_day_id, 'ALL_DAY', crew.setup_work_day_crew_id);
     const printEmptyCrew = !meaningfulCrewIds.has(Number(crew.setup_work_day_crew_id));
@@ -2003,7 +2004,7 @@ function board205Day(day) {
   return `
     <section class="setup-board205-day ${dayClass}${printEmptyDay ? ' print-empty-day' : ''}" data-day-id="${day.setup_work_day_id}">
       <div class="setup-board205-day-collapse-control" style="padding:4px 10px">
-        ${collapseEligible ? `<button type="button" class="small secondary setup-board205-toggle-day" aria-expanded="false">▶ Show completed day · ${dayAssignmentCount} tasks</button>` : ''}
+        ${collapseEligible ? `<button type="button" class="small secondary setup-board205-toggle-day" aria-expanded="false">▶ SETUP DAY ${board205Esc(day.setup_day_number)} · ${board205Esc(day.work_date)} · ${dayAssignmentCount} completed tasks · ${reportedPersonHours} reported person-hours</button>` : ''}
       </div>
       <div class="setup-board205-day-content" ${collapseEligible ? 'hidden' : ''}>
       <div class="setup-board205-day-header">
