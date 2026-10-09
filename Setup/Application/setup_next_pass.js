@@ -1384,10 +1384,11 @@ function renderNextExecution() {
       return Boolean(assignment.historical_locked && task?.effective_complete
         && Number(assignment.actual_person_minutes || 0) > 0);
     });
+    const reportedPersonHours = (dayAssignments.reduce((sum, item) => sum + Number(item.actual_person_minutes || 0), 0) / 60).toFixed(1);
     const shifts = ['MORNING', 'AFTERNOON', 'ALL_DAY'];
     return `
       <section class="next-perform-day">
-        ${dayCanCollapse ? `<button type="button" class="small secondary next-perform-toggle-complete-day" aria-expanded="false">▶ Show completed day · ${dayAssignments.length} tasks</button>` : ''}
+        ${dayCanCollapse ? `<button type="button" class="small secondary next-perform-toggle-complete-day" aria-expanded="false">▶ SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.work_date)} · ${dayAssignments.length} completed tasks · ${reportedPersonHours} reported person-hours</button>` : ''}
         <div class="next-perform-day-content" ${dayCanCollapse ? 'hidden' : ''}>
         <div style="border-top:5px solid var(--accent, #466a86);padding:12px 0;margin-top:22px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
           <h3 style="margin:0;font-size:1.25rem">SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.day_of_week || '')} · ${escapeHtml(day.work_date)}</h3>
