@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 CONTROL = ["sudo", "python3", "/opt/msb-maintenance/msb_maintenance_controller.py",
            "--config", "/etc/msb-maintenance/config.json"]
 PSQL = ["sudo", "docker", "exec", "-i", "msb-postgres", "psql",
-        "-X", "-v", "ON_ERROR_STOP=1", "-U", "msbadmin", "-d", "msb"]
+        "-X", "-qAt", "-v", "ON_ERROR_STOP=1", "-U", "msbadmin", "-d", "msb"]
 EXPECTED_LIVE = "86a025a2528be9f7071355965f679320a1362181"
 APPROVED_CANDIDATE = "e0058d94abe337a8095923c08a0b9432c73e80bd"
 
@@ -101,6 +101,19 @@ def main():
                 raise RuntimeError("STOP: Validated rollback snapshot missing")
             (root / "snapshot.json").write_text(json.dumps(snapshot, indent=2))
             frozen(controller("status"))
+            # Preserve business-table counts across the frozen migration.
+            # Event audit rows are excluded because the migration adds audit infrastructure.
+            def business_counts():
+                return sql("""SELECT n.nspname||'.'||c.relname||'='||
+                    (xpath('/row/count/text()', query_to_xml(
+                        format('SELECT count(*) AS count FROM %I.%I', n.nspname,c.relname),
+                        false,true,'')))[1]::text
+                  FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+                  WHERE n.nspname IN ('ops','ref') AND c.relkind IN ('r','p')
+                    AND NOT (n.nspname='ops' AND c.relname='setup_schedule_event')
+                  ORDER BY n.nspname,c.relname;""")
+            baseline = business_counts()
+            (root / "business-counts-before.txt").write_text(baseline + "\n")
             stage = "migration-started"
             sql(data.decode("utf-8"))
             stage = "migration-committed"
@@ -120,6 +133,10 @@ def main():
                  OR has_table_privilege('fieldwiring_app','ops.setup_schedule_event','DELETE')
               THEN RAISE EXCEPTION 'Schedule event ACL broadened'; END IF;
             END $$;""")
+            after = business_counts()
+            (root / "business-counts-after.txt").write_text(after + "\n")
+            if baseline != after:
+                raise RuntimeError("STOP: Frozen business-table counts changed")
             stage = "validation-pass"
             online = controller("off")
             if online.get("state") != "ONLINE" or online.get("gates", {}).get("online_proof", {}).get("ok") is not True:
