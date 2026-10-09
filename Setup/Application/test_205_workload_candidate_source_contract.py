@@ -90,9 +90,9 @@ def test_completed_day_collapse_is_conservative_and_interactive():
     board = _read("setup_scheduling_board.js")
     perform = _read("setup_next_pass.js")
     assert "function board205CanCollapseDay(day)" in board
-    assert "item.actual_duration_minutes != null" in board
+    assert "Number(item.actual_person_minutes || 0) > 0" in board
     assert "setup-board205-toggle-day" in board
     assert "next-perform-toggle-complete-day" in perform
-    assert "assignment.actual_duration_minutes != null" in perform
+    assert "Number(assignment.actual_person_minutes || 0) > 0" in perform
     assert "NEEDS CAPTAIN" in board
     assert "PAST ASSIGNMENT — NO WORK REPORTED" in board
