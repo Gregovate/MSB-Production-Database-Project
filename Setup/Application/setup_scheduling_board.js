@@ -2182,7 +2182,24 @@ async function board205Load() {
     const payload = await api(`api/setup/scheduling-board?season_year=${encodeURIComponent(appState.seasonYear)}`);
     setupBoard205State.board = payload.board || { session: null, work_days: [], crews: [], captain_candidates: [], work_orders: [], tasks: [], assignments: [], dependencies: [] };
     board205ApplyHistoricalCatalogOverlay();
+    // One-shot Perform Work handoff: expose the requested day, then focus it.
+    const requestedDate = new URLSearchParams(window.location.search).get('work_date');
+    if (requestedDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(requestedDate)) {
+      const targetDay = (setupBoard205State.board.work_days || []).find((d) => d.work_date === requestedDate);
+      if (targetDay) {
+        const completed = document.getElementById('setup-board205-show-completed-days');
+        const empty = document.getElementById('setup-board205-show-empty-days');
+        if (completed) completed.checked = true;
+        if (empty) empty.checked = true;
+      }
+    }
     board205Render();
+    if (requestedDate) {
+      const dayNode = [...document.querySelectorAll('#setup-board205-days .setup-board205-day')]
+        .find((node) => (setupBoard205State.board.work_days || []).some((d) =>
+          String(d.setup_work_day_id) === node.dataset.dayId && d.work_date === requestedDate));
+      if (dayNode) dayNode.scrollIntoView({ block: 'start', behavior: 'instant' });
+    }
   } catch (error) {
     setAlert(error.message || error, 'error');
     const target = document.getElementById('setup-board205-days');
