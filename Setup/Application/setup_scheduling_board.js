@@ -781,6 +781,35 @@ function board205AmCapacity(crewId) {
   };
 }
 
+// #205: Shift capacity uses linear elapsed task duration, not person-hours.
+// Keep unknown estimates visible even when known work is already overloaded.
+function board205ShiftWorkload(crewId, shift) {
+  const items = board205CrewSequence(crewId).filter((item) => item.shift_code === shift);
+  const capacity = shift === 'MORNING' ? 180 : 120;
+  let known = 0, unknown = 0, notReady = 0;
+  for (const item of items) {
+    const task = board205Task(item.setup_session_task_id) || item;
+    const raw = task.expected_duration_minutes;
+    const minutes = raw == null || raw === '' ? NaN : Number(raw);
+    if (!Number.isFinite(minutes) || minutes <= 0) unknown++;
+    else known += minutes;
+    if (task.readiness_state === 'NOT_READY') notReady++;
+  }
+  return { known, unknown, notReady, capacity, count: items.length, overload: Math.max(0, known - capacity) };
+}
+function board205WorkloadBanner(crewId, shift) {
+  const w = board205ShiftWorkload(crewId, shift);
+  if (!w.count) return '';
+  const red = w.overload > 0, amber = w.unknown > 0 || w.notReady > 0;
+  const color = red ? '#9d2424' : amber ? '#835900' : '#146044';
+  const background = red ? '#fff0ef' : amber ? '#fff6dd' : '#eaf8f0';
+  const hours = (n) => (n / 60).toFixed(2).replace(/0$/, '').replace(/\\.$/, '');
+  const label = red ? 'OVERLOADED' : amber ? 'CAPACITY UNCERTAIN' : 'WITHIN CAPACITY';
+  return `<div role="status" style="position:sticky;top:0;z-index:5;border:3px solid ${color};border-radius:7px;background:${background};color:${color};padding:9px;margin:5px 0;font-weight:800">
+    <div style="font-size:1.05rem">${label} · ${hours(w.known)} / ${hours(w.capacity)} linear hours${red ? ` · +${hours(w.overload)}h OVER` : ''}</div>
+    <div style="font-size:.83rem">${w.count} tasks · ${w.unknown} unknown estimates · ${w.notReady} NOT READY</div>
+  </div>`;
+}
 function board205AmCapacityNote(crewId) {
   const capacity = board205AmCapacity(crewId);
   const hasMorningWork = board205CrewSequence(crewId).some((item) => item.shift_code === 'MORNING');
@@ -1855,6 +1884,10 @@ function board205Day(day) {
       .map((crew) => Number(crew.setup_work_day_crew_id))
   );
   const printEmptyDay = !dayNote && meaningfulCrewIds.size === 0;
+  const dayWorkloads = crews.flatMap((crew) => ['MORNING', 'AFTERNOON'].map((shift) => board205ShiftWorkload(crew.setup_work_day_crew_id, shift))).filter((w) => w.count);
+  const overloadedShifts = dayWorkloads.filter((w) => w.overload > 0).length;
+  const unknownTasks = dayWorkloads.reduce((n, w) => n + w.unknown, 0);
+  const notReadyTasks = dayWorkloads.reduce((n, w) => n + w.notReady, 0);
   const crewRows = crews.map((crew) => {
     const legacy = board205AssignmentsFor(day.setup_work_day_id, 'ALL_DAY', crew.setup_work_day_crew_id);
     const printEmptyCrew = !meaningfulCrewIds.has(Number(crew.setup_work_day_crew_id));
@@ -1875,7 +1908,9 @@ function board205Day(day) {
             <label>PM Crew w/Captain <input class="setup-board205-crew-pm" type="number" min="0" value="${board205Esc(crew.pm_planned_crew_count ?? '')}" placeholder="—"></label>
           </div>
         </div>
+        ${board205WorkloadBanner(crew.setup_work_day_crew_id, 'MORNING')}
         ${board205Cell(day, 'MORNING', crew)}
+        ${board205WorkloadBanner(crew.setup_work_day_crew_id, 'AFTERNOON')}
         ${board205Cell(day, 'AFTERNOON', crew)}
       </div>
       ${legacy.length ? `
