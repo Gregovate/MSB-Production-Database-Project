@@ -2177,6 +2177,26 @@ function board205Render() {
   }
 }
 
+// #205: Navigate to a real workday without rebuilding the scheduling route.
+function board205FocusWorkDate(workDate) {
+  const day = (setupBoard205State.board.work_days || []).find((row) => row.work_date === workDate);
+  if (!day) {
+    setAlert('The requested Setup workday is not present on this schedule.', 'error');
+    return;
+  }
+  const completed = document.getElementById('setup-board205-show-completed-days');
+  const empty = document.getElementById('setup-board205-show-empty-days');
+  if (completed) completed.checked = true;
+  if (empty) empty.checked = true;
+  board205RenderBoard();
+  const node = [...document.querySelectorAll('#setup-board205-days .setup-board205-day')]
+    .find((element) => Number(element.dataset.dayId) === Number(day.setup_work_day_id));
+  if (node) {
+    node.scrollIntoView({ block: 'start', behavior: 'auto' });
+    node.style.outline = '3px solid #1675a5';
+  }
+}
+
 async function board205Load() {
   try {
     const payload = await api(`api/setup/scheduling-board?season_year=${encodeURIComponent(appState.seasonYear)}`);
