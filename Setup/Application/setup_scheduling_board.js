@@ -1521,6 +1521,8 @@ function board205TaskCard(task) {
       data-session-task-id="${task.setup_session_task_id ?? ''}"
       data-reusable-task-id="${task.setup_task_id ?? ''}"
       draggable="${canSchedule ? 'true' : 'false'}">
+      ${board205NeedsContinuation(task) ? '<div class="setup-board205-warning" style="font-size:1rem;font-weight:900;border:2px solid #9d2424">NEEDS RESCHEDULING — PRIORITY CONTINUATION</div>' : ''}
+      ${board205ContinuationScheduled(task) ? '<div class="setup-board205-meta" style="font-weight:800">CONTINUATION ALREADY SCHEDULED — annual task unfinished</div>' : ''}
       <div class="setup-board205-task-title">
         <span>Task ${board205Esc(task.setup_task_id ?? 'annual-only')} · ${board205Esc(task.task_name)}</span>
         ${!catalogReview && seasonOnly ? '<span class="setup-board205-badge season-only">THIS SEASON ONLY</span>' : ''}
