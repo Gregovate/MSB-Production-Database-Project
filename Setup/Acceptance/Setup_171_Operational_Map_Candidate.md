@@ -10,8 +10,8 @@ No migrations or new Production grants are proposed.
 
 ## Engineering proof
 
-- Full Setup Application regression: 721 passed.
-- Three focused adapter/API tests cover invalid/storage coordinates, no
+- Full Setup Application regression: 722 passed.
+- Four focused adapter/API tests cover invalid/storage coordinates, no
   prior-event fallback, Unknown load, independent Display semantics, reader
   authorization, no-store and GET-only operation, and static asset allowlist.
 - JavaScript syntax and rendering fixture passed: exact-coordinate grouping,
@@ -91,3 +91,16 @@ After CLEAN EXIT, remove only this clean disposable worktree after verifying
 its branch/ownership and that committed history is retained remotely. Preserve
 unrelated worktrees. Return the primary desktop or laptop checkout to main and
 `git pull --ff-only origin main`, stopping on failure; never force reset/remove.
+
+## First browser finding — October 8
+
+Greg supplied a V0.3.51 screenshot with the reference map working, no Container
+pins, blank asset status and an empty unlocated list. The URL bar was not shown.
+A reproducible route defect was found: `/locate` without a trailing slash served
+the page but resolved the overlay script as `/assets/setup_locate_assets.js`,
+which returns 404. Corrected by a canonical 308 redirect to `/locate/`; a real
+Flask HTML/script URL-resolution test covers this path. Initial status now
+explicitly reports overlay initialization instead of an unexplained blank.
+This explains the symptom when the slashless route is used; it is not proof
+of Greg's exact browser URL or a successful data fetch. No CRS/coordinate change
+was made. Updated exact-candidate review is required after CLEAN EXIT.

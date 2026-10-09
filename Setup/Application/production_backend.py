@@ -14,7 +14,7 @@ import threading
 import time
 import uuid
 
-from flask import Flask, abort, g, jsonify, request, send_from_directory
+from flask import Flask, abort, g, jsonify, redirect, request, send_from_directory
 
 from backend import BASE_DIR
 from setup_api import setup_api
@@ -539,6 +539,8 @@ def pick_list_asset(name: str):
 @app.get("/locate/")
 def locate_preview():
     """Serve the current reviewed GIS reference snapshot inside the protected Setup app."""
+    if not request.path.endswith("/"):
+        return redirect(request.path + "/", code=308)
     return _no_store(send_from_directory(BASE_DIR, "locate_preview.html"))
 
 @app.get("/record-location")

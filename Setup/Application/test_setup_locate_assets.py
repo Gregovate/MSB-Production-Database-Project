@@ -51,3 +51,22 @@ def test_map_endpoint_authentication_validation_and_no_store(monkeypatch):
     assert client.post('/api/setup/locate/assets').status_code == 405
     assert client.get('/locate/assets/container-unknown.svg').status_code == 200
     assert client.get('/locate/assets/production_backend.py').status_code == 404
+
+
+def test_locate_canonical_slash_loads_actual_overlay_script():
+    import re
+    from urllib.parse import urljoin
+    from production_backend import app
+    client = app.test_client()
+    response = client.get('/locate')
+    assert response.status_code == 308
+    assert response.headers['Location'] == '/locate/'
+    page = client.get('/locate', follow_redirects=True)
+    source = page.get_data(as_text=True)
+    path = re.findall(r'<script src="([^"]+)"', source)[-1]
+    resolved = urljoin(response.headers['Location'], path)
+    script = client.get(resolved)
+    assert script.status_code == 200
+    assert 'javascript' in script.content_type
+    assert 'Physical loads unconfirmed' in script.get_data(as_text=True)
+    assert 'Asset overlay initializing' in source
