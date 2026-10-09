@@ -99,3 +99,12 @@ def test_display_artwork_above_container_preserves_gps():
     assert 'L.marker(a.position' in source
     assert 'iconAnchor: container ? [16,16] : [16,48]' in source
     assert 'zIndexOffset: container ? 0 : 1000' in source
+
+
+def test_search_is_served_before_asset_overlay():
+    from production_backend import app
+    client = app.test_client()
+    page = client.get('/locate/').get_data(as_text=True)
+    assert 'id="map-search"' in page
+    assert page.index('src="assets/setup_locate_search.js"') < page.index('src="assets/setup_locate_assets.js"')
+    assert client.get('/locate/assets/setup_locate_search.js').status_code == 200

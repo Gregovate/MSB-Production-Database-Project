@@ -583,7 +583,7 @@ def record_location_asset(name: str):
 
 @app.get("/locate/assets/<name>")
 def locate_asset(name: str):
-    allowed = {"setup_locate_assets.js", "container-loaded.svg", "container-partial.svg",
+    allowed = {"setup_locate_assets.js", "setup_locate_search.js", "container-loaded.svg", "container-partial.svg",
                "container-empty.svg", "container-unknown.svg"}
     if name not in allowed:
         abort(404)

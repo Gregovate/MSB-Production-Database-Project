@@ -47,6 +47,7 @@
         const el = document.createElement('details');
         el.innerHTML = `<summary>${container ? 'C' + String(a.container_id).padStart(3, '0') + ' — ' : ''}${esc(a.name)}</summary>${popup(a, container)}<p>No geographic position in current state.</p>`;
         unlocated.appendChild(el);
+        mapSearch.addAsset(a, container, null);
         continue;
       }
       const key = a.position.join(',');
@@ -60,6 +61,7 @@
       marker.bindTooltip(esc(title));
       marker.bindPopup(values.map(v => popup(v, container)).join('<hr>'), {maxHeight: 360});
       marker.addTo(group);
+      for (const v of values) mapSearch.addAsset(v, container, marker);
     }
   }
   async function load() {
@@ -68,6 +70,7 @@
     status.textContent = 'Loading recorded asset locations…';
     layers.containers.clearLayers(); layers.displays.clearLayers();
     unlocated.replaceChildren();
+    mapSearch.clearAssets();
     try {
       const response = await fetch(`../api/setup/locate/assets?season_year=${encodeURIComponent(year.value)}`, {cache: 'no-store', headers: {Accept: 'application/json'}});
       if (!response.ok) throw new Error(`Asset data unavailable (${response.status})`);

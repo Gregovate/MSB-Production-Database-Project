@@ -10,7 +10,7 @@ No migrations or new Production grants are proposed.
 
 ## Engineering proof
 
-- Full Setup Application regression: 725 passed.
+- Full Setup Application regression: 726 passed.
 - Four focused adapter/API tests cover invalid/storage coordinates, no
   prior-event fallback, recorded contents classification, independent Display semantics, reader
   authorization, no-store and GET-only operation, and static asset allowlist.
@@ -118,3 +118,15 @@ requesting nonexistent higher-resolution tiles. This provides 8× greater linear
 magnification than the former maximum, without claiming improved imagery or GPS
 accuracy. Recorded coordinates remain unchanged. Review close Container selection
 and map navigation on the next exact-candidate preview.
+
+## Map-wide search — operator-required first implementation
+
+Search includes all named reference waypoints and tracks, Container names and
+C-numbers/numeric IDs, and Display names. WITH_CONTAINER Displays resolve to
+the Container marker without introducing duplicate pins. Reference search works
+while asset data is loading or unavailable. Refresh removes previous asset
+search entries along with the markers. Missing positions say Location not
+recorded. Selecting a result enables its layer and checkbox, fits the complete
+track (all segments) or point, and opens details; typing does not change layers.
+Stage popups omit source timestamps. Review Aux-I with NET disabled, C001, an
+attached Display name, an independent Display and an unlocated asset.
