@@ -14,8 +14,8 @@ def _read(name: str) -> str:
 
 def test_changed_scheduling_scripts_have_fresh_browser_asset_pins():
     html = _read("production.html")
-    assert "setup_next_pass.js?v=2026-10-09.320.2" in html
-    assert "setup_scheduling_board.js?v=2026-10-09.320.2" in html
+    assert "setup_next_pass.js?v=2026-10-09.320.3" in html
+    assert "setup_scheduling_board.js?v=2026-10-09.320.3" in html
 
 
 def test_board_workload_banner_stays_inside_shift_cell():
@@ -54,3 +54,16 @@ def test_perform_work_navigation_uses_existing_router_and_day_focus():
     assert "board205FocusWorkDate(date)" in perform
     assert "function board205FocusWorkDate(" in board
     assert "window.location.assign(url.toString())" not in perform
+
+
+def test_perform_work_uses_stable_delegated_click_handler():
+    js = _read("setup_next_pass.js")
+    assert "target.dataset.manageScheduleInstalled" in js
+    assert "target.addEventListener('click', async (event)" in js
+    assert "event.target.closest('.next-perform-manage-day')" in js
+
+
+def test_locked_cards_are_explicit_and_unlocked_cards_are_keyboard_selectable():
+    js = _read("setup_scheduling_board.js")
+    assert "Historical actual — locked; selection and movement disabled" in js
+    assert "card.addEventListener('keydown'" in js
