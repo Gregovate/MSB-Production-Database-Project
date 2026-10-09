@@ -20,6 +20,11 @@ const mapSearch = (() => {
     });
   }
   function select(entry) {
+    if (!entry.markers.length && entry.expectedLocation === "Workshop") {
+      const workshop = references.find(ref => ref.name === "Workshop");
+      if (workshop) entry = {...entry, layer: workshop.layer, markers: workshop.markers,
+        association: "Expected at Workshop before picking; temporary reference"};
+    }
     if (!entry.markers.length) {
       status.textContent = `${entry.name}: ${entry.expectedLocation ? entry.expectedLocation + " — expected before picking; waypoint not recorded." : "Location not recorded."}`;
       return;

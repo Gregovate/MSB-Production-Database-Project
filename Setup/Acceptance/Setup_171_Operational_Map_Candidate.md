@@ -133,5 +133,12 @@ attached Display name, an independent Display and an unlocated asset.
 
 Unobserved Containers (no movement state/event) and their attached Displays
 show Workshop as the operator-defined expected location before picking. No
-Workshop coordinates are fabricated: the authoritative Workshop waypoint has
-not been supplied. Search selection explains that missing waypoint.
+Workshop coordinates are fabricated: the permanent Workshop waypoint has
+not yet been added to the source system. Search selection uses the temporary operator-provided Workshop reference.
+
+Temporary Workshop reference supplied October 8: first screenshot point, EPSG:8158
+X 213626.715, Y 186613.225 USft. Transformed with pyproj to WGS84 longitude
+-87.73315025812246, latitude 43.778472269285245. The second screenshot point
+is 6.815 ft away. Source coordinates and temporary provenance are preserved
+in the feature properties. This is expected storage context, not observed asset
+GPS. Replace with the maintained source waypoint when available.
