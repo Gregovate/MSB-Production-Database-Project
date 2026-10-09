@@ -3614,7 +3614,7 @@ function board205InstallView() {
               <div class="setup-board205-day-filters" aria-label="Day view">
                 <strong>Day view</strong>
                 <label><input id="setup-board205-show-unfinished-days" type="checkbox" checked> Unfinished</label>
-                <label><input id="setup-board205-show-completed-days" type="checkbox"> Completed</label>
+                <label><input id="setup-board205-show-completed-days" type="checkbox" checked> Completed</label>
                 <label><input id="setup-board205-show-empty-days" type="checkbox" checked> Empty</label>
               </div>
 
