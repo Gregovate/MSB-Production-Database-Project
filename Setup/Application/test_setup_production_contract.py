@@ -362,6 +362,6 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "setReusableAddTaskFormOpen(false)" in acceptance
     assert "setup_production.js?v=2026-10-01.2" in html
     assert "setup_next_pass.js?v=2026-10-09.320.3" in html
-    assert "setup_scheduling_board.js?v=2026-10-09.320.3" in html
+    assert "setup_scheduling_board.js?v=2026-10-09.320.4" in html
     assert "Updated 2026-10-08" in html
 
