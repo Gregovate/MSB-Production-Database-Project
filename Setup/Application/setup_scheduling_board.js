@@ -1903,6 +1903,22 @@ function board205Day(day) {
   const overloadedShifts = dayWorkloads.filter((w) => w.overload > 0).length;
   const unknownTasks = dayWorkloads.reduce((n, w) => n + w.unknown, 0);
   const notReadyTasks = dayWorkloads.reduce((n, w) => n + w.notReady, 0);
+  // Defined crew rows are not necessarily staffed crews. Show both explicitly.
+  const staffedCrewCount = crews.filter((crew) =>
+    crew.captain_person_id != null
+    && (Number(crew.am_planned_crew_count) >= 1 || Number(crew.pm_planned_crew_count) >= 1)
+  ).length;
+  const duplicateCaptainShifts = new Set();
+  for (const shift of ['MORNING', 'AFTERNOON']) {
+    const counts = new Map();
+    for (const crew of crews) {
+      const id = crew.captain_person_id;
+      const size = shift === 'MORNING' ? crew.am_planned_crew_count : crew.pm_planned_crew_count;
+      if (id == null || !(Number(size) >= 1)) continue;
+      counts.set(Number(id), (counts.get(Number(id)) || 0) + 1);
+    }
+    for (const [id, count] of counts) if (count > 1) duplicateCaptainShifts.add(shift + ':' + id);
+  }
   const crewRows = crews.map((crew) => {
     const legacy = board205AssignmentsFor(day.setup_work_day_id, 'ALL_DAY', crew.setup_work_day_crew_id);
     const printEmptyCrew = !meaningfulCrewIds.has(Number(crew.setup_work_day_crew_id));
@@ -1948,7 +1964,7 @@ function board205Day(day) {
         </div>
       </div>
       <div role="status" style="border:3px solid ${overloadedShifts ? '#9d2424' : unknownTasks || notReadyTasks ? '#835900' : '#146044'};padding:10px;margin:6px 0;border-radius:8px;font-weight:800;font-size:1.05rem">
-        DAILY WORKLOAD · ${dayWorkloads.length} occupied crew shifts · ${overloadedShifts} OVERLOADED · ${unknownTasks} UNKNOWN ESTIMATES · ${notReadyTasks} NOT READY
+        DAILY WORKLOAD · ${staffedCrewCount} STAFFED CREWS / ${crews.length} DEFINED · ${dayWorkloads.length} OCCUPIED SHIFTS · ${overloadedShifts} OVERLOADED · ${unknownTasks} UNKNOWN ESTIMATES · ${notReadyTasks} NOT READY${duplicateCaptainShifts.size ? ` · ⚠ ${duplicateCaptainShifts.size} DUPLICATE CAPTAIN/SHIFT` : ''}
       </div>
       <div class="setup-board205-table-wrap">
         <div class="setup-board205-grid">
