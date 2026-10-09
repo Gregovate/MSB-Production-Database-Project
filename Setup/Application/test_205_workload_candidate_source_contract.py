@@ -14,8 +14,8 @@ def _read(name: str) -> str:
 
 def test_changed_scheduling_scripts_have_fresh_browser_asset_pins():
     html = _read("production.html")
-    assert "setup_next_pass.js?v=2026-10-09.320.3" in html
-    assert "setup_scheduling_board.js?v=2026-10-09.320.4" in html
+    assert "setup_next_pass.js?v=2026-10-09.320.5" in html
+    assert "setup_scheduling_board.js?v=2026-10-09.320.5" in html
 
 
 def test_board_workload_banner_stays_inside_shift_cell():
@@ -84,3 +84,15 @@ def test_historical_badge_does_not_claim_active_shift_work():
     js = _read("setup_scheduling_board.js")
     assert "WORK REPORTED - INCOMPLETE" in js
     assert "WORK REPORTED - COMPLETE" in js
+
+
+def test_completed_day_collapse_is_conservative_and_interactive():
+    board = _read("setup_scheduling_board.js")
+    perform = _read("setup_next_pass.js")
+    assert "function board205CanCollapseDay(day)" in board
+    assert "item.actual_duration_minutes != null" in board
+    assert "setup-board205-toggle-day" in board
+    assert "next-perform-toggle-complete-day" in perform
+    assert "assignment.actual_duration_minutes != null" in perform
+    assert "NEEDS CAPTAIN" in board
+    assert "PAST ASSIGNMENT — NO WORK REPORTED" in board
