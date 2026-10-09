@@ -15,7 +15,7 @@ def _read(name: str) -> str:
 def test_changed_scheduling_scripts_have_fresh_browser_asset_pins():
     html = _read("production.html")
     assert "setup_next_pass.js?v=2026-10-09.320.3" in html
-    assert "setup_scheduling_board.js?v=2026-10-09.320.3" in html
+    assert "setup_scheduling_board.js?v=2026-10-09.320.4" in html
 
 
 def test_board_workload_banner_stays_inside_shift_cell():
@@ -77,3 +77,9 @@ def test_annual_continuation_is_distinct_from_historical_assignment():
     assert "NEEDS RESCHEDULING — PRIORITY CONTINUATION" in js
     assert "WORK REPORTED" in js
     assert "const priority = Number(board205NeedsContinuation(b))" in js
+
+
+def test_historical_badge_does_not_claim_active_shift_work():
+    js = _read("setup_scheduling_board.js")
+    assert "WORK REPORTED - INCOMPLETE" in js
+    assert "WORK REPORTED - COMPLETE" in js
