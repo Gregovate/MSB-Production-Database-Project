@@ -818,7 +818,7 @@ function board205WorkloadBanner(crewId, shift) {
   const background = red ? '#fff0ef' : amber ? '#fff6dd' : '#eaf8f0';
   const hours = (n) => (n / 60).toFixed(2).replace(/0$/, '').replace(/\.$/, '');
   const label = red ? 'OVERLOADED' : amber ? 'CAPACITY UNCERTAIN' : 'WITHIN CAPACITY';
-  return `<div role="status" style="position:sticky;top:0;z-index:5;border:3px solid ${color};border-radius:7px;background:${background};color:${color};padding:9px;margin:5px 0;font-weight:800">
+  return `<div role="status" style="pointer-events:none;position:relative;z-index:1;border:3px solid ${color};border-radius:7px;background:${background};color:${color};padding:9px;margin:5px 0;font-weight:800">
     <div style="font-size:1.05rem">${label} · ${hours(w.known)} / ${hours(w.capacity)} linear hours${red ? ` · +${hours(w.overload)}h OVER` : ''}</div>
     <div style="font-size:.83rem">${w.count} tasks · ${w.unknown} unknown estimates · ${w.notReady} NOT READY</div>
   </div>`;
@@ -1746,6 +1746,7 @@ function board205RenderQueue() {
       if (!task || !taskId || task.task_action_type === 'GATE') return;
       board205CollapseScheduledSearchResults();
       setupBoard205State.dragged = { kind: 'task', id: taskId };
+      if (!event.dataTransfer) return;
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', JSON.stringify(setupBoard205State.dragged));
       card.classList.add('dragging');
@@ -2004,13 +2005,17 @@ function board205RenderBoard() {
     const assignmentId = Number(card.dataset.assignmentId);
     const item = board205Assignment(assignmentId);
 
+    // Dragging is a separate gesture; keep Ctrl/Shift selection for clicks.
     card.addEventListener('click', (event) => {
       if (event.target.closest('button,input,select,textarea,a')) return;
       board205SelectAssignmentCard(card, event);
     });
 
     card.addEventListener('dragstart', (event) => {
-      if (!item || item.historical_locked) return;
+      if (!item || item.historical_locked) {
+        event.preventDefault();
+        return;
+      }
       if (!setupBoard205State.selectedAssignmentIds.has(assignmentId)) {
         setupBoard205State.selectedAssignmentIds.clear();
         setupBoard205State.selectedAssignmentIds.add(assignmentId);
@@ -2023,6 +2028,7 @@ function board205RenderBoard() {
       setupBoard205State.dragged = selectedIds.length > 1
         ? { kind: 'assignments', ids: selectedIds }
         : { kind: 'assignment', id: assignmentId };
+      if (!event.dataTransfer) return;
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', JSON.stringify(setupBoard205State.dragged));
       document.querySelectorAll('.setup-board205-assignment.selected').forEach((node) => {
