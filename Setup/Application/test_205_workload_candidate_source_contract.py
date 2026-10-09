@@ -65,7 +65,8 @@ def test_perform_work_uses_stable_delegated_click_handler():
 
 def test_locked_cards_are_explicit_and_unlocked_cards_are_keyboard_selectable():
     js = _read("setup_scheduling_board.js")
-    assert "Historical actual — locked; selection and movement disabled" in js
+    assert "Historical assignment — work reported; locked" in js
+    assert "Historical actual — locked" in js
     assert "card.addEventListener('keydown'" in js
 
 
