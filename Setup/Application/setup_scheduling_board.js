@@ -1585,7 +1585,7 @@ function board205QueueTasks() {
   const effort = document.getElementById('setup-board205-effort-filter')?.value || '';
   const readyOnly = board205ReadyOnlyEnabled();
   const statuses = board205FinderSelectedStatuses();
-  const inProgressOnly = Boolean(document.getElementById('setup-board205-in-progress-only')?.checked);
+  const inProgressOnly = false; // Redundant quick filter removed; annual continuations sort first.
 
   return [...(setupBoard205State.board.tasks || [])]
     .filter((task) => {
@@ -1900,6 +1900,19 @@ function board205CanRemoveWorkDay(day) {
 }
 
 
+// Historical collapse is conservative: only a fully completed day with every
+// assignment locked may collapse. Unknown/missing actual reporting stays visible.
+// Never infer actual hours from planned duration or planned labor.
+function board205CanCollapseDay(day) {
+  const items = board205DayAssignments(day);
+  if (!items.length || board205DayViewState(day) !== 'COMPLETED') return false;
+  return items.every((item) => {
+    const task = board205Task(item.setup_session_task_id);
+    return Boolean(item.historical_locked && task?.effective_complete
+      && !board205NeedsContinuation(task));
+  });
+}
+
 function board205Day(day) {
   const dayClass = [
     Number(day.iso_day_of_week) === 6 ? 'saturday' : '',
@@ -1946,6 +1959,8 @@ function board205Day(day) {
     }
     for (const [id, count] of counts) if (count > 1) duplicateCaptainShifts.add(shift + ':' + id);
   }
+  const collapseEligible = board205CanCollapseDay(day);
+  const dayAssignmentCount = board205DayAssignments(day).length;
   const crewRows = crews.map((crew) => {
     const legacy = board205AssignmentsFor(day.setup_work_day_id, 'ALL_DAY', crew.setup_work_day_crew_id);
     const printEmptyCrew = !meaningfulCrewIds.has(Number(crew.setup_work_day_crew_id));
@@ -1977,6 +1992,10 @@ function board205Day(day) {
 
   return `
     <section class="setup-board205-day ${dayClass}${printEmptyDay ? ' print-empty-day' : ''}" data-day-id="${day.setup_work_day_id}">
+      <div class="setup-board205-day-collapse-control" style="padding:4px 10px">
+        ${collapseEligible ? `<button type="button" class="small secondary setup-board205-toggle-day" aria-expanded="false">▶ Show completed day · ${dayAssignmentCount} tasks</button>` : ''}
+      </div>
+      <div class="setup-board205-day-content" ${collapseEligible ? 'hidden' : ''}>
       <div class="setup-board205-day-header">
         <div>
           <strong style="font-size:1.2rem">SETUP DAY ${board205Esc(day.setup_day_number)} · ${board205Esc(day.day_of_week)} · ${board205Esc(day.work_date)}</strong>
@@ -2001,6 +2020,7 @@ function board205Day(day) {
           ${crewRows}
         </div>
       </div>
+      </div>
     </section>`;
 }
 
@@ -2012,6 +2032,14 @@ function board205RenderBoard() {
     ? days.map(board205Day).join('')
     : '<div class="setup-board205-empty">No work days match the selected Day view filters.</div>';
 
+  target.querySelectorAll('.setup-board205-toggle-day').forEach((button) => {
+    button.addEventListener('click', () => {
+      const content = button.closest('.setup-board205-day').querySelector('.setup-board205-day-content');
+      content.hidden = !content.hidden;
+      button.setAttribute('aria-expanded', String(!content.hidden));
+      button.textContent = content.hidden ? button.textContent.replace('▼ Hide', '▶ Show') : button.textContent.replace('▶ Show', '▼ Hide');
+    });
+  });
   target.querySelectorAll('.setup-board205-cell').forEach((cell) => {
     cell.addEventListener('dragover', (event) => {
       if (!setupBoard205State.dragged) return;
@@ -3501,7 +3529,7 @@ function board205InstallView() {
             <label id="setup-board205-scene-label" hidden>Scene / scope<select id="setup-board205-scene-filter" disabled><option value="">All scope details</option></select></label>
             <label class="setup-board205-search">Task name<input id="setup-board205-task-search" type="search" placeholder="e.g. locate"></label>
             <label class="setup-board205-blocking-toggle"><input id="setup-board205-blocking-toggle" type="checkbox" checked> Blocking ON</label>
-            <label class="setup-board205-blocking-toggle"><input id="setup-board205-in-progress-only" type="checkbox"> In Progress</label>
+            
             <button id="setup-board205-filter-density" type="button" class="small secondary" aria-expanded="true">Compact filters</button>
             <div class="setup-board205-blocking-help">ON hides tasks whose hard predecessor is incomplete. A Work Order gate task itself stays visible; the task after it remains hard-blocked until the Work Order clears. Readiness stays a soft blocker; use Ready only when you want to temporarily hide NOT READY work.</div>
             <div class="setup-board205-secondary-filters">
