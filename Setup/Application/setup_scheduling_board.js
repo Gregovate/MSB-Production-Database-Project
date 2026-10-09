@@ -816,7 +816,7 @@ function board205WorkloadBanner(crewId, shift) {
   const red = w.overload > 0, amber = w.unknown > 0 || w.notReady > 0;
   const color = red ? '#9d2424' : amber ? '#835900' : '#146044';
   const background = red ? '#fff0ef' : amber ? '#fff6dd' : '#eaf8f0';
-  const hours = (n) => (n / 60).toFixed(2).replace(/0$/, '').replace(/\\.$/, '');
+  const hours = (n) => (n / 60).toFixed(2).replace(/0$/, '').replace(/\.$/, '');
   const label = red ? 'OVERLOADED' : amber ? 'CAPACITY UNCERTAIN' : 'WITHIN CAPACITY';
   return `<div role="status" style="position:sticky;top:0;z-index:5;border:3px solid ${color};border-radius:7px;background:${background};color:${color};padding:9px;margin:5px 0;font-weight:800">
     <div style="font-size:1.05rem">${label} · ${hours(w.known)} / ${hours(w.capacity)} linear hours${red ? ` · +${hours(w.overload)}h OVER` : ''}</div>
