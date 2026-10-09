@@ -283,7 +283,9 @@ def test_schedule_and_perform_work_share_status_palette_and_labels() -> None:
     perform = read_app("setup_next_pass.js")
     board = read_app("setup_scheduling_board.js")
     css = read_app("setup_scheduling_board.css")
-    assert "const status = nextSetupAssignmentStatus(task);" in board
+    assert "nextSetupAssignmentStatus(task);" in board
+    assert "WORK REPORTED - INCOMPLETE" in board
+    assert "WORK REPORTED - COMPLETE" in board
     for ui in (perform, board):
         assert "setup-work-status" in ui
         assert 'data-work-status="${' in ui
