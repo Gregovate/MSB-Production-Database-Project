@@ -1845,6 +1845,7 @@ function board205Cell(day, shift, crew) {
   return `
     <div class="setup-board205-cell"
       data-day-id="${day.setup_work_day_id}" data-shift="${shift}" data-crew-id="${crew.setup_work_day_crew_id}">
+      ${board205WorkloadBanner(crew.setup_work_day_crew_id, shift)}
       ${capacityNote}
       ${carryoverNote}
       ${items.length ? items.map(board205AssignmentCard).join('') : '<div class="setup-board205-cell-empty">Drop work here</div>'}
@@ -1921,9 +1922,7 @@ function board205Day(day) {
             <label>PM Crew w/Captain <input class="setup-board205-crew-pm" type="number" min="0" value="${board205Esc(crew.pm_planned_crew_count ?? '')}" placeholder="—"></label>
           </div>
         </div>
-        ${board205WorkloadBanner(crew.setup_work_day_crew_id, 'MORNING')}
         ${board205Cell(day, 'MORNING', crew)}
-        ${board205WorkloadBanner(crew.setup_work_day_crew_id, 'AFTERNOON')}
         ${board205Cell(day, 'AFTERNOON', crew)}
       </div>
       ${legacy.length ? `
