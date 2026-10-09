@@ -1302,6 +1302,33 @@ function nextPerformLaborKpis(assignments) {
   };
 }
 
+// #205: Linear elapsed-time capacity; never multiply by crew headcount.
+// Unknown durations remain unknown rather than being treated as zero work.
+function nextPerformShiftWorkload(items, shift) {
+  const capacity = shift === 'MORNING' ? 180 : shift === 'AFTERNOON' ? 120 : 300;
+  let known = 0, unknown = 0, notReady = 0;
+  for (const assignment of items) {
+    const task = nextPerformTask(assignment.setup_session_task_id);
+    const raw = task?.expected_duration_minutes;
+    const minutes = raw == null || raw === '' ? NaN : Number(raw);
+    if (!Number.isFinite(minutes) || minutes <= 0) unknown += 1;
+    else known += minutes;
+    if (task?.readiness_state === 'NOT_READY') notReady += 1;
+  }
+  return { capacity, known, unknown, notReady, count: items.length, overload: Math.max(0, known - capacity) };
+}
+function nextPerformWorkloadLabel(items, shift) {
+  const w = nextPerformShiftWorkload(items, shift);
+  const status = w.overload > 0 ? 'OVERLOADED' : w.unknown ? 'UNKNOWN CAPACITY' : 'WITHIN CAPACITY';
+  const color = w.overload > 0 ? '#9d2424' : w.unknown ? '#835900' : '#146044';
+  const background = w.overload > 0 ? '#fff0ef' : w.unknown ? '#fff6dd' : '#eaf8f0';
+  const hours = (minutes) => (minutes / 60).toFixed(2).replace(/0$/, '').replace(/\\.$/, '');
+  return `<div role="status" style="position:sticky;top:0;z-index:3;border:2px solid ${color};border-radius:7px;padding:9px 12px;margin:6px 0 9px;background:${background};color:${color};font-weight:700">
+    <div style="font-size:1.05rem">${status} — ${hours(w.known)} / ${hours(w.capacity)} linear hours${w.overload ? ` · +${hours(w.overload)}h OVER` : ''}</div>
+    <div style="font-size:.85rem">${w.count} tasks · ${w.unknown} missing duration estimates · ${w.notReady} NOT READY</div>
+  </div>`;
+}
+
 function renderNextExecution() {
   const target = el('next-perform-list');
   if (!target) return;
@@ -1354,6 +1381,19 @@ function renderNextExecution() {
     return `
       <section class="next-perform-day">
         <h3>Setup Day ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.day_of_week || '')} · ${escapeHtml(day.work_date)}</h3>
+        ${(() => {
+          const crewShifts = ['MORNING', 'AFTERNOON'].flatMap((shift) =>
+            [...new Set(dayAssignments.filter((a) => a.shift_code === shift).map((a) => Number(a.setup_work_day_crew_id)))]
+              .map((id) => nextPerformShiftWorkload(dayAssignments.filter((a) => a.shift_code === shift && Number(a.setup_work_day_crew_id) === id), shift))
+          );
+          const overloaded = crewShifts.filter((w) => w.overload > 0).length;
+          const unknown = crewShifts.reduce((n, w) => n + w.unknown, 0);
+          const notReady = crewShifts.reduce((n, w) => n + w.notReady, 0);
+          const color = overloaded ? '#9d2424' : unknown || notReady ? '#835900' : '#146044';
+          return `<div role="status" style="border:3px solid ${color};border-radius:8px;padding:12px;margin:8px 0;background:var(--surface, #f7f7f7);font-size:1.05rem;font-weight:700">
+            DAILY WORKLOAD · ${new Set(dayAssignments.map((a) => Number(a.setup_work_day_crew_id))).size} crews · ${dayAssignments.length} tasks · ${overloaded} OVERLOADED SHIFTS · ${unknown} UNKNOWN ESTIMATES · ${notReady} NOT READY
+          </div>`;
+        })()}
         ${shifts.map((shift) => {
           const shiftItems = dayAssignments.filter((assignment) => assignment.shift_code === shift);
           if (!shiftItems.length) return '';
@@ -1369,6 +1409,7 @@ function renderNextExecution() {
                 return `
                   <div class="next-perform-crew">
                     <h5>Crew ${escapeHtml(crew?.crew_code || crewItems[0]?.crew_lane || '—')} · ${escapeHtml(crew?.captain_display_name || 'Captain TBD')}</h5>
+                    ${nextPerformWorkloadLabel(crewItems, shift)}
                     ${crewItems.map(nextPerformAssignmentCard).join('')}
                   </div>`;
               }).join('')}
