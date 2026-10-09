@@ -1302,6 +1302,33 @@ function nextPerformLaborKpis(assignments) {
   };
 }
 
+// #205: Linear elapsed-time capacity; never multiply by crew headcount.
+// Unknown durations remain unknown rather than being treated as zero work.
+function nextPerformShiftWorkload(items, shift) {
+  const capacity = shift === 'MORNING' ? 180 : shift === 'AFTERNOON' ? 120 : 300;
+  let known = 0, unknown = 0, notReady = 0;
+  for (const assignment of items) {
+    const task = nextPerformTask(assignment.setup_session_task_id);
+    const raw = task?.expected_duration_minutes;
+    const minutes = raw == null || raw === '' ? NaN : Number(raw);
+    if (!Number.isFinite(minutes) || minutes <= 0) unknown += 1;
+    else known += minutes;
+    if (task?.readiness_state === 'NOT_READY') notReady += 1;
+  }
+  return { capacity, known, unknown, notReady, count: items.length, overload: Math.max(0, known - capacity) };
+}
+function nextPerformWorkloadLabel(items, shift) {
+  const w = nextPerformShiftWorkload(items, shift);
+  const status = w.overload > 0 ? 'OVERLOADED' : w.unknown || w.notReady ? 'REVIEW REQUIRED' : 'WITHIN CAPACITY';
+  const color = w.overload > 0 ? '#9d2424' : w.unknown || w.notReady ? '#835900' : '#146044';
+  const background = w.overload > 0 ? '#fff0ef' : w.unknown || w.notReady ? '#fff6dd' : '#eaf8f0';
+  const hours = (minutes) => (minutes / 60).toFixed(2).replace(/0$/, '').replace(/\.$/, '');
+  return `<div role="status" style="position:sticky;top:0;z-index:3;border:2px solid ${color};border-radius:7px;padding:9px 12px;margin:6px 0 9px;background:${background};color:${color};font-weight:700">
+    <div style="font-size:1.05rem">${status} — ${hours(w.known)} / ${hours(w.capacity)} linear hours${w.overload ? ` · +${hours(w.overload)}h OVER` : ''}</div>
+    <div style="font-size:.85rem">${w.count} tasks · ${w.unknown} missing duration estimates · ${w.notReady} NOT READY</div>
+  </div>`;
+}
+
 function renderNextExecution() {
   const target = el('next-perform-list');
   if (!target) return;
@@ -1350,10 +1377,36 @@ function renderNextExecution() {
     const dayAssignments = assignments.filter(
       (assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id)
     );
+    // Collapse only when every historical assignment has verified actual duration.
+    // Planned labor TBD is not evidence of an unreported actual.
+    const dayCanCollapse = dayAssignments.length > 0 && dayAssignments.every((assignment) => {
+      const task = nextPerformTask(assignment.setup_session_task_id);
+      return Boolean(assignment.historical_locked && task?.effective_complete
+        && Number(assignment.actual_person_minutes || 0) > 0);
+    });
+    const reportedPersonHours = (dayAssignments.reduce((sum, item) => sum + Number(item.actual_person_minutes || 0), 0) / 60).toFixed(1);
     const shifts = ['MORNING', 'AFTERNOON', 'ALL_DAY'];
     return `
       <section class="next-perform-day">
-        <h3>Setup Day ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.day_of_week || '')} · ${escapeHtml(day.work_date)}</h3>
+        ${dayCanCollapse ? `<button type="button" class="small secondary next-perform-toggle-complete-day" aria-expanded="false">▶ SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.work_date)} · ${dayAssignments.length} completed tasks · ${reportedPersonHours} reported person-hours</button>` : ''}
+        <div class="next-perform-day-content" ${dayCanCollapse ? 'hidden' : ''}>
+        <div style="border-top:5px solid var(--accent, #466a86);padding:12px 0;margin-top:22px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+          <h3 style="margin:0;font-size:1.25rem">SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.day_of_week || '')} · ${escapeHtml(day.work_date)}</h3>
+          ${appState.access?.can_manage_setup ? `<button type="button" class="small secondary next-perform-manage-day" data-work-date="${escapeHtml(day.work_date)}">Manage Schedule →</button>` : ''}
+        </div>
+        ${(() => {
+          const crewShifts = ['MORNING', 'AFTERNOON'].flatMap((shift) =>
+            [...new Set(dayAssignments.filter((a) => a.shift_code === shift).map((a) => Number(a.setup_work_day_crew_id)))]
+              .map((id) => nextPerformShiftWorkload(dayAssignments.filter((a) => a.shift_code === shift && Number(a.setup_work_day_crew_id) === id), shift))
+          );
+          const overloaded = crewShifts.filter((w) => w.overload > 0).length;
+          const unknown = crewShifts.reduce((n, w) => n + w.unknown, 0);
+          const notReady = crewShifts.reduce((n, w) => n + w.notReady, 0);
+          const color = overloaded ? '#9d2424' : unknown || notReady ? '#835900' : '#146044';
+          return `<div role="status" style="border:3px solid ${color};border-radius:8px;padding:12px;margin:8px 0;background:var(--surface, #f7f7f7);font-size:1.05rem;font-weight:700">
+            DAILY WORKLOAD · ${new Set(dayAssignments.map((a) => Number(a.setup_work_day_crew_id))).size} crews · ${dayAssignments.length} tasks · ${overloaded} OVERLOADED SHIFTS · ${unknown} UNKNOWN ESTIMATES · ${notReady} NOT READY
+          </div>`;
+        })()}
         ${shifts.map((shift) => {
           const shiftItems = dayAssignments.filter((assignment) => assignment.shift_code === shift);
           if (!shiftItems.length) return '';
@@ -1369,13 +1422,50 @@ function renderNextExecution() {
                 return `
                   <div class="next-perform-crew">
                     <h5>Crew ${escapeHtml(crew?.crew_code || crewItems[0]?.crew_lane || '—')} · ${escapeHtml(crew?.captain_display_name || 'Captain TBD')}</h5>
+                    ${nextPerformWorkloadLabel(crewItems, shift)}
                     ${crewItems.map(nextPerformAssignmentCard).join('')}
                   </div>`;
               }).join('')}
             </div>`;
         }).join('')}
+        </div>
       </section>`;
   }).join('') : '<div class="empty-state">No scheduled or in-progress assignments match this view. Turn on Show completed to include completed work, or choose All scheduled work to see every Captain.</div>';
+
+  // Navigate through the existing route to preserve browser history and view guards.
+  if (target.dataset.completedDayToggleInstalled !== '1') {
+    target.dataset.completedDayToggleInstalled = '1';
+    target.addEventListener('click', (event) => {
+      const button = event.target.closest('.next-perform-toggle-complete-day');
+      if (!button) return;
+      const content = button.closest('.next-perform-day').querySelector('.next-perform-day-content');
+      content.hidden = !content.hidden;
+      button.setAttribute('aria-expanded', String(!content.hidden));
+      button.textContent = content.hidden
+        ? button.textContent.replace('▼', '▶')
+        : button.textContent.replace('▶', '▼');
+    });
+  }
+  // Delegated listener is installed once on the stable Perform Work root.
+  // renderNextExecution replaces innerHTML repeatedly; child listeners are fragile.
+  if (target.dataset.manageScheduleInstalled !== '1') {
+    target.dataset.manageScheduleInstalled = '1';
+    target.addEventListener('click', async (event) => {
+      const button = event.target.closest('.next-perform-manage-day');
+      if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const date = button.dataset.workDate;
+      try {
+        const navigated = await navigateSetupView('schedule');
+        if (navigated && typeof board205FocusWorkDate === 'function') {
+          board205FocusWorkDate(date);
+        }
+      } catch (error) {
+        setAlert(error.message || error, 'error');
+      }
+    });
+  }
 
   target.querySelectorAll('.next-perform-assignment').forEach((details) => {
     details.querySelector('.next-report-work')?.addEventListener('click', async (event) => {

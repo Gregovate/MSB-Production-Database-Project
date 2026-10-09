@@ -735,7 +735,7 @@ def test_205_rolling_board_filters_days_by_operational_state() -> None:
     assert "> Completed</label>" in ui
     assert "cancelled-day" in ui
     assert 'id="setup-board205-show-unfinished-days" type="checkbox" checked' in ui
-    assert 'id="setup-board205-show-completed-days" type="checkbox"' in ui
+    assert 'id="setup-board205-show-completed-days" type="checkbox" checked' in ui
     assert 'id="setup-board205-show-empty-days" type="checkbox"' in ui
     assert "> Unfinished</label>" in ui
     assert "if (showEmptyDays) showEmptyDays.checked = true;" in ui
@@ -1011,7 +1011,7 @@ def test_205_production_host_registers_board_without_replacing_report_work() -> 
     assert '"setup_scheduling_board.css"' in host
     assert '"setup_scheduling_board.js"' in host
     assert "setup_scheduling_board.css?v=2026-10-05.1" in html
-    assert "setup_scheduling_board.js?v=2026-10-05.1" in html
+    assert "setup_scheduling_board.js?v=2026-10-09.320.5" in html
     assert 'id="setup-board205-show-empty-days" type="checkbox" checked' in ui
     assert "\\n<script src=\"setup_scheduling_board.js" not in html
     assert "\\n  <link rel=\"stylesheet\" href=\"setup_scheduling_board.css" not in html
@@ -1696,7 +1696,7 @@ def test_narrow_board_has_direct_panel_navigation_and_page_scroll():
 
 def test_launch_quick_progress_filter_is_outside_collapsed_filters():
     ui = read_app("setup_scheduling_board.js")
-    assert ui.index('id="setup-board205-in-progress-only"') < ui.index('<div class="setup-board205-secondary-filters">')
+    assert 'id="setup-board205-in-progress-only" type="checkbox"' not in ui
     assert "inProgressOnly: checked('setup-board205-in-progress-only')" in ui
     assert "setChecked('setup-board205-in-progress-only', state.inProgressOnly)" in ui
     assert "if (task.execution_status !== 'IN_PROGRESS') return false;" in ui
