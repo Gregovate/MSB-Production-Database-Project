@@ -67,3 +67,13 @@ def test_locked_cards_are_explicit_and_unlocked_cards_are_keyboard_selectable():
     js = _read("setup_scheduling_board.js")
     assert "Historical actual — locked; selection and movement disabled" in js
     assert "card.addEventListener('keydown'" in js
+
+
+def test_annual_continuation_is_distinct_from_historical_assignment():
+    js = _read("setup_scheduling_board.js")
+    assert "function board205NeedsContinuation(task)" in js
+    assert "Number(task.unworked_assignment_count || 0) === 0" in js
+    assert "function board205ContinuationScheduled(task)" in js
+    assert "NEEDS RESCHEDULING — PRIORITY CONTINUATION" in js
+    assert "WORK REPORTED" in js
+    assert "const priority = Number(board205NeedsContinuation(b))" in js
