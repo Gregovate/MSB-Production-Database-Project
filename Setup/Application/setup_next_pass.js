@@ -1642,7 +1642,7 @@ async function loadNextTaskExecution(details, focusReport = false) {
       const id = Number(rawId);
       if (!Number.isSafeInteger(id) || id <= 0) return escapeHtml(String(rawId ?? '—'));
       const code = `C${String(id).padStart(3, '0')}`;
-      return `<a href="locate/?container_id=${id}" target="_blank" rel="noopener" title="Show ${code} on Park Map">${code}</a>`;
+      return `<a href="/setup/locate/?container_id=${id}" target="_blank" rel="noopener" title="Show ${code} on Park Map">${code}</a>`;
     };
     const assets = [
       ...(context.displays || []).map((item) => `<li>Display ${item.display_id} — ${escapeHtml(item.display_name)}${item.container_id ? ` · Container ${containerMapLink(item.container_id)}` : ''} · ${nextLocationMarkup(item)}</li>`),
