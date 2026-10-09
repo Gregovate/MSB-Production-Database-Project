@@ -1377,9 +1377,19 @@ function renderNextExecution() {
     const dayAssignments = assignments.filter(
       (assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id)
     );
+    // Collapse only when every historical assignment has verified actual duration.
+    // Planned labor TBD is not evidence of an unreported actual.
+    const dayCanCollapse = dayAssignments.length > 0 && dayAssignments.every((assignment) => {
+      const task = nextPerformTask(assignment.setup_session_task_id);
+      return Boolean(assignment.historical_locked && task?.effective_complete
+        && assignment.actual_duration_minutes != null
+        && Number(assignment.actual_duration_minutes) > 0);
+    });
     const shifts = ['MORNING', 'AFTERNOON', 'ALL_DAY'];
     return `
       <section class="next-perform-day">
+        ${dayCanCollapse ? `<button type="button" class="small secondary next-perform-toggle-complete-day" aria-expanded="false">▶ Show completed day · ${dayAssignments.length} tasks</button>` : ''}
+        <div class="next-perform-day-content" ${dayCanCollapse ? 'hidden' : ''}>
         <div style="border-top:5px solid var(--accent, #466a86);padding:12px 0;margin-top:22px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
           <h3 style="margin:0;font-size:1.25rem">SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.day_of_week || '')} · ${escapeHtml(day.work_date)}</h3>
           ${appState.access?.can_manage_setup ? `<button type="button" class="small secondary next-perform-manage-day" data-work-date="${escapeHtml(day.work_date)}">Manage Schedule →</button>` : ''}
@@ -1418,10 +1428,24 @@ function renderNextExecution() {
               }).join('')}
             </div>`;
         }).join('')}
+        </div>
       </section>`;
   }).join('') : '<div class="empty-state">No scheduled or in-progress assignments match this view. Turn on Show completed to include completed work, or choose All scheduled work to see every Captain.</div>';
 
   // Navigate through the existing route to preserve browser history and view guards.
+  if (target.dataset.completedDayToggleInstalled !== '1') {
+    target.dataset.completedDayToggleInstalled = '1';
+    target.addEventListener('click', (event) => {
+      const button = event.target.closest('.next-perform-toggle-complete-day');
+      if (!button) return;
+      const content = button.closest('.next-perform-day').querySelector('.next-perform-day-content');
+      content.hidden = !content.hidden;
+      button.setAttribute('aria-expanded', String(!content.hidden));
+      button.textContent = content.hidden
+        ? button.textContent.replace('▼ Hide', '▶ Show')
+        : button.textContent.replace('▶ Show', '▼ Hide');
+    });
+  }
   // Delegated listener is installed once on the stable Perform Work root.
   // renderNextExecution replaces innerHTML repeatedly; child listeners are fragile.
   if (target.dataset.manageScheduleInstalled !== '1') {
