@@ -1425,10 +1425,12 @@ function renderNextExecution() {
   target.querySelectorAll('.next-perform-manage-day').forEach((button) => {
     button.addEventListener('click', () => {
       const date = button.dataset.workDate;
-      const url = new URL(window.location.href);
-      url.searchParams.set('view', 'schedule');
-      url.searchParams.set('work_date', date);
-      window.location.assign(url.toString());
+      // Use the existing SPA router. A full reload loses the requested day
+      // because initial route parsing does not carry work_date.
+      Promise.resolve(navigateSetupView('schedule')).then((navigated) => {
+        if (!navigated) return;
+        if (typeof board205FocusWorkDate === 'function') board205FocusWorkDate(date);
+      }).catch((error) => setAlert(error.message || error, 'error'));
     });
   });
 
