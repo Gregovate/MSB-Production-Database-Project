@@ -100,12 +100,16 @@ acceptance; any projection repair belongs to #88.
 Active WITH_CONTAINER Display associations appear inside Container popups.
 DETACHED and NO_ASSIGNED_CONTAINER Displays use their own state event, or remain
 unlocated. Expected/reference assignments, recorded position mode and physical
-contents are distinct: this baseline does not prove physical load categories,
-so every Container uses Unknown. Historical contents-review flags are shown as
+contents are distinct. Icons describe recorded associations: all WITH_CONTAINER
+is Loaded, mixed WITH_CONTAINER/DETACHED is Partial, and all DETACHED is Empty.
+No assigned active Displays or unsupported modes is Unknown. These categories
+do not assert a physical contents inspection; missing Display state still
+defaults to WITH_CONTAINER in the owning projection. Historical contents-review flags are shown as
 recorded evidence, without claiming they are resolved or still actionable.
 
 Exact coordinate matches share one marker/popup within a layer. Coordinates are
-never moved or snapped to Stage anchors. Observation timestamps, GPS feet,
+never moved or snapped to Stage anchors. Display artwork is anchored above
+Container artwork and given a higher stacking order at shared coordinates. Observation timestamps, GPS feet,
 quality/stale-fix evidence, destination notes and capture provenance remain
 visible. Refresh clears prior operational markers before requesting new data;
 a failed request exposes an unavailable state rather than leaving stale pins.

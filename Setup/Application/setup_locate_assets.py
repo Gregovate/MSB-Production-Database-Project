@@ -29,6 +29,16 @@ def locate_assets(picture):
     for state in picture["containers"]:
         event = events.get(state.get("last_movement_event_id"), {})
         assigned = [d for d in picture["displays"] if d.get("container_id") == state["container_id"]]
+        modes = [d["position_mode"] for d in assigned]
+        # Association status is distinct from a physical contents inspection.
+        if not modes or any(m not in ("WITH_CONTAINER", "DETACHED") for m in modes):
+            load_state = "UNKNOWN"
+        elif all(m == "WITH_CONTAINER" for m in modes):
+            load_state = "LOADED"
+        elif all(m == "DETACHED" for m in modes):
+            load_state = "EMPTY"
+        else:
+            load_state = "PARTIAL"
         containers.append({"container_id": state["container_id"],
                            "name": state.get("container_name"),
                            "position": geographic_position(event),
@@ -36,7 +46,8 @@ def locate_assets(picture):
                            "movement_status": state.get("movement_status"),
                            "current_location_note": state.get("current_location_note"),
                            "home_location_code": state.get("home_location_code"),
-                           "load_state": "UNKNOWN",
+                           "load_state": load_state,
+                           "physical_load_confirmed": False,
                            "review_event_ids": sorted({e["setup_movement_event_id"] for e in picture["effect_rows"]
                                if e.get("container_id") == state["container_id"]
                                and "contents_review_required=true" in (e.get("notes") or "")}),

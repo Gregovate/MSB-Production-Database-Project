@@ -18,7 +18,8 @@ def test_adapter_uses_state_event_and_does_not_infer_load_or_duplicate_attached_
                              dict(display_id=2, display_name='Independent', container_id=95, position_mode='DETACHED', last_movement_event_id=1)])
     result = locate_assets(picture)
     assert result['containers'][0]['position'] is None
-    assert result['containers'][0]['load_state'] == 'UNKNOWN'
+    assert result['containers'][0]['load_state'] == 'PARTIAL'
+    assert result['containers'][0]['physical_load_confirmed'] is False
     assert len(result['containers'][0]['contents']) == 2
     assert [d['name'] for d in result['displays']] == ['Independent']
     assert result['displays'][0]['position'] == [43, -87]
@@ -77,3 +78,24 @@ def test_locate_allows_close_inspection_without_requesting_nonexistent_tiles():
     source = Path(__file__).with_name('locate_preview.html').read_text()
     assert "zoomControl:true,maxZoom:24" in source
     assert 'maxZoom:24,maxNativeZoom:21' in source
+
+
+def test_recorded_contents_classification():
+    for modes, expected in [([], 'UNKNOWN'), (['WITH_CONTAINER'], 'LOADED'),
+                            (['DETACHED'] * 16, 'EMPTY'),
+                            (['WITH_CONTAINER', 'DETACHED'], 'PARTIAL'),
+                            (['WITH_CONTAINER', 'NO_ASSIGNED_CONTAINER'], 'UNKNOWN')]:
+        result = locate_assets(dict(generated_at=None, through_event_id=113,
+            effect_rows=[], containers=[dict(container_id=1)],
+            displays=[dict(display_id=i, display_name=str(i), container_id=1,
+                           position_mode=mode) for i, mode in enumerate(modes)]))
+        assert result['containers'][0]['load_state'] == expected
+        assert result['containers'][0]['physical_load_confirmed'] is False
+
+
+def test_display_artwork_above_container_preserves_gps():
+    from pathlib import Path
+    source = Path(__file__).with_name('setup_locate_assets.js').read_text()
+    assert 'L.marker(a.position' in source
+    assert 'iconAnchor: container ? [16,16] : [16,48]' in source
+    assert 'zIndexOffset: container ? 0 : 1000' in source

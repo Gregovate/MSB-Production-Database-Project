@@ -10,9 +10,9 @@ No migrations or new Production grants are proposed.
 
 ## Engineering proof
 
-- Full Setup Application regression: 723 passed.
+- Full Setup Application regression: 725 passed.
 - Four focused adapter/API tests cover invalid/storage coordinates, no
-  prior-event fallback, Unknown load, independent Display semantics, reader
+  prior-event fallback, recorded contents classification, independent Display semantics, reader
   authorization, no-store and GET-only operation, and static asset allowlist.
 - JavaScript syntax and rendering fixture passed: exact-coordinate grouping,
   escaped asset/Display names, accuracy in feet, Unknown SVG and unlocated list.
@@ -31,10 +31,15 @@ Only active Displays are included in contents/independent features. Asset names,
 current movement status, event metadata and recorded coordinates are exposed;
 operator email/history notes are not exposed as popup content.
 
-Every Container's physical `load_state` is UNKNOWN. Missing Display state
-defaults to WITH_CONTAINER in the owning projection, so associations/counts do
-not establish a verified load. Supplied Loaded/Partial/Empty artwork is retained
-for later accepted #88 state; no unsupported classification is fabricated.
+Icons now show recorded association state: all active assigned Displays
+WITH_CONTAINER is Loaded; a WITH_CONTAINER/DETACHED mix is Partial; all DETACHED
+is Empty. Missing assignments or unsupported modes is Unknown. Physical contents
+inspection remains unconfirmed, explicitly separate in the popup and API.
+Missing Display state defaults to WITH_CONTAINER in the owning projection; this
+classification describes those records rather than verifying actual contents.
+Display artwork sits above Container artwork at the same recorded coordinates.
+Greg's Dancing Forest example (16 DETACHED Displays, event 113) must show Empty
+with the T-Post above it; C001's all-WITH_CONTAINER list must show Loaded.
 
 Each state row's referenced event supplies coordinates. A later coordinate-free
 event produces an unlocated asset; the map does not recover old GPS itself.
@@ -79,7 +84,7 @@ Review real clone positions for C095, C199, C216 and another independently
 located Display when present. Compare each pin's raw coordinates, timestamp,
 accuracy, provenance, names and referenced event with Container Movement.
 Check missing observations and RETURNED storage stay unlocated; check Unknown
-load wording, contents-review flags and no duplicate WITH_CONTAINER pins.
+recorded contents and physical-inspection wording, contents-review flags and no duplicate WITH_CONTAINER pins.
 Toggle each asset layer independently; check aerial/GPX/HV/PRI/NET preserved,
 colocated popup entries accessible, and narrow tablet layout usable.
 Refresh assets and inspect errors/role denial without any movement writes.
