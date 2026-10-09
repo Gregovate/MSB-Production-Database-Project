@@ -2048,7 +2048,7 @@ function board205RenderBoard() {
       const content = button.closest('.setup-board205-day').querySelector('.setup-board205-day-content');
       content.hidden = !content.hidden;
       button.setAttribute('aria-expanded', String(!content.hidden));
-      button.textContent = content.hidden ? button.textContent.replace('▼ Hide', '▶ Show') : button.textContent.replace('▶ Show', '▼ Hide');
+      button.textContent = content.hidden ? button.textContent.replace('▼', '▶') : button.textContent.replace('▶', '▼');
     });
   });
   target.querySelectorAll('.setup-board205-cell').forEach((cell) => {
