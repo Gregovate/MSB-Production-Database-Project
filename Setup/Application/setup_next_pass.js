@@ -1319,10 +1319,10 @@ function nextPerformShiftWorkload(items, shift) {
 }
 function nextPerformWorkloadLabel(items, shift) {
   const w = nextPerformShiftWorkload(items, shift);
-  const status = w.overload > 0 ? 'OVERLOADED' : w.unknown ? 'UNKNOWN CAPACITY' : 'WITHIN CAPACITY';
-  const color = w.overload > 0 ? '#9d2424' : w.unknown ? '#835900' : '#146044';
-  const background = w.overload > 0 ? '#fff0ef' : w.unknown ? '#fff6dd' : '#eaf8f0';
-  const hours = (minutes) => (minutes / 60).toFixed(2).replace(/0$/, '').replace(/\\.$/, '');
+  const status = w.overload > 0 ? 'OVERLOADED' : w.unknown || w.notReady ? 'REVIEW REQUIRED' : 'WITHIN CAPACITY';
+  const color = w.overload > 0 ? '#9d2424' : w.unknown || w.notReady ? '#835900' : '#146044';
+  const background = w.overload > 0 ? '#fff0ef' : w.unknown || w.notReady ? '#fff6dd' : '#eaf8f0';
+  const hours = (minutes) => (minutes / 60).toFixed(2).replace(/0$/, '').replace(/\.$/, '');
   return `<div role="status" style="position:sticky;top:0;z-index:3;border:2px solid ${color};border-radius:7px;padding:9px 12px;margin:6px 0 9px;background:${background};color:${color};font-weight:700">
     <div style="font-size:1.05rem">${status} — ${hours(w.known)} / ${hours(w.capacity)} linear hours${w.overload ? ` · +${hours(w.overload)}h OVER` : ''}</div>
     <div style="font-size:.85rem">${w.count} tasks · ${w.unknown} missing duration estimates · ${w.notReady} NOT READY</div>
