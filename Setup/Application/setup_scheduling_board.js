@@ -1557,6 +1557,19 @@ function board205TaskCard(task) {
 }
 
 
+// #205: A reported historical assignment is not proof the annual task is done.
+// Continuations without an active, unworked assignment need manager attention.
+function board205NeedsContinuation(task) {
+  return task?.execution_status === 'IN_PROGRESS'
+    && !task.effective_complete
+    && Number(task.unworked_assignment_count || 0) === 0;
+}
+function board205ContinuationScheduled(task) {
+  return task?.execution_status === 'IN_PROGRESS'
+    && !task.effective_complete
+    && Number(task.unworked_assignment_count || 0) > 0;
+}
+
 function board205QueueTasks() {
   const search = (document.getElementById('setup-board205-task-search')?.value || '').trim().toLowerCase();
   const stageValue = document.getElementById('setup-board205-stage-filter')?.value || '';
@@ -1629,7 +1642,10 @@ function board205QueueTasks() {
       if (effort && String(task.effort_level || '').toUpperCase() !== effort) return false;
       return true;
     })
-    .sort((a, b) => board205FinderCompare(a, b, sortMode));
+    .sort((a, b) => {
+      const priority = Number(board205NeedsContinuation(b)) - Number(board205NeedsContinuation(a));
+      return priority || board205FinderCompare(a, b, sortMode);
+    });
 }
 
 function board205SchedulableTasksForReport() {
@@ -1795,7 +1811,9 @@ function board205AssignmentCard(item) {
   const crew = board205CrewRow(item.setup_work_day_crew_id);
   const canManage = Boolean(appState.access?.can_manage_setup);
   const locked = Boolean(item.historical_locked);
-  const status = nextSetupAssignmentStatus(task);
+  const status = locked
+    ? 'WORK REPORTED'
+    : nextSetupAssignmentStatus(task);
   const planned = board205AssignmentPlannedCrew(item);
   const minCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
   const plannedLabor = board205LaborHoursText(planned, task.expected_duration_minutes);
@@ -1808,7 +1826,9 @@ function board205AssignmentCard(item) {
       draggable="${canManage && !locked ? 'true' : 'false'}"
       tabindex="${canManage && !locked ? '0' : '-1'}"
       aria-label="${board205Esc(item.task_name)}${locked ? ' — historical actual locked, cannot move' : ' — click to select, Ctrl or Shift click for multi-select'}">
-      ${locked ? '<div class="setup-board205-meta" style="font-weight:700">Historical actual — locked; selection and movement disabled</div>' : ''}
+      ${locked ? '<div class="setup-board205-meta" style="font-weight:700">Historical assignment — work reported; locked</div>' : ''}
+      ${locked && board205NeedsContinuation(task) ? '<div class="setup-board205-warning" style="font-weight:800">ANNUAL TASK UNFINISHED — NEEDS RESCHEDULING</div>' : ''}
+      ${locked && board205ContinuationScheduled(task) ? '<div class="setup-board205-meta" style="font-weight:800">Annual task unfinished — continuation scheduled elsewhere</div>' : ''}
       <div class="setup-board205-task-title">
         <span>${board205Esc(item.task_name)}</span>
         <span class="setup-board205-badge setup-work-status" data-work-status="${board205Esc(status)}">${board205Esc(status.replaceAll('_', ' '))}</span>
@@ -2113,6 +2133,7 @@ function board205RenderKpis() {
   const scheduled = tasks.filter((task) => Number(task.unworked_assignment_count || 0) > 0).length;
   const complete = tasks.filter((task) => Boolean(task.effective_complete)).length;
   const inProgress = tasks.filter((task) => task.execution_status === 'IN_PROGRESS').length;
+  const needsContinuation = tasks.filter(board205NeedsContinuation).length;
   const pct = (count) => total ? Math.round((count / total) * 100) : 0;
   const currentAssignments = (setupBoard205State.board.assignments || []).filter((item) => !item.historical_locked);
   let plannedLaborHours = 0;
@@ -2137,6 +2158,7 @@ function board205RenderKpis() {
       ? `<span><strong>${board205Esc(plannedLaborShown)}</strong> planned labor hr${plannedLaborUnknown ? ` · ${plannedLaborUnknown} assignment${plannedLaborUnknown === 1 ? '' : 's'} TBD` : ''}</span>`
       : '',
     inProgress ? `<span><strong>${inProgress}</strong> in progress · ${pct(inProgress)}%</span>` : '',
+    needsContinuation ? `<span style="color:#9d2424;font-weight:800"><strong>${needsContinuation}</strong> NEED RESCHEDULING</span>` : '',
     `<span><strong>${complete}</strong> complete · ${pct(complete)}%</span>`
   ].filter(Boolean).join('<span class="setup-board205-kpi-sep">·</span>');
 }
