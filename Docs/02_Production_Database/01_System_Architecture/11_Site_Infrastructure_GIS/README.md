@@ -82,6 +82,34 @@ Important boundaries:
 
 This classification requirement is especially important because the full ExpertGPS/Garmin source contains many waypoint classes beyond the current launch reference subset. Preserving them will make later GIS/map layering substantially easier and avoid having to infer feature meaning from names after import.
 
+## Deferred Symbol Registry / Type Mapping — #171
+
+Operator-confirmed direction, 2026-10-08: ExpertGPS manages symbols by type
+name. In that program the type name is the key and cannot be renamed; changing
+it requires deleting and recreating the type. Preserve the exact source type
+name during future import/reconciliation rather than treating it as an editable
+presentation label. This is reported ExpertGPS behavior, not an implemented MSB
+database constraint.
+
+Consider a future reference table mapping feature type and, where applicable,
+authoritative operational status to an icon asset path and presentation label.
+Keep SVG artwork as separately maintained assets; do not require an icon
+assignment on every Container or Display. Preserve source type names separately
+if an internal identity or editable display label is introduced. Any type
+replacement must deliberately reconcile existing mappings and source references.
+
+For the first operational map overlay, a small replaceable configuration mapping
+is sufficient. Greg supplied `container-loaded.svg`, `container-partial.svg`,
+`container-empty.svg`, and `container-unknown.svg` (32 × 32 px), and selected the
+existing T-Post symbol for independently located Displays. Status symbols must
+consume accepted #88 evidence; assigned Display counts alone do not establish
+physical load state. Displays WITH_CONTAINER remain in their Container popup
+rather than producing overlapping Display pins.
+
+The symbol reference table is deferred design work under #171. It must not delay
+functional Container/Display overlays or imply authorization for a Production
+schema change. Existing public compatibility symbols remain functional.
+
 ## Design Intent
 
 PostgreSQL should provide durable identity, relationships, and useful location history for physical site infrastructure while preserving appropriate survey/GIS tools for collection and visualization.
