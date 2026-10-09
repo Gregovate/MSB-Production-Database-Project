@@ -40,6 +40,14 @@ Both original test evidence and ingestible exports should be preserved where ava
 - [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md)
 - [Work Orders](../06_Work_Orders/README.md)
 
+## October 9 engineering resume point
+
+[Current source reconciliation](../11_Site_Infrastructure_GIS/engineering/Network_Source_Reconciliation_2026-10-09.md)
+preserves the supplied draw.io and SQL hashes, legacy-edge gaps, endpoint conflicts,
+confirmed ownership/alias rules and the candidate map cross-reference boundary.
+PR #318 provides read-only network search; draft PR #319 owns CableIQ validation.
+Neither implements the physical inventory database or editable Wiring integration.
+
 ## Resume Development
 
 Inventory current Draw.io, CableIQ, and waypoint data before designing database tables. Establish permanent identities and historical requirements first; do not replace specialized engineering tools merely for architectural uniformity.

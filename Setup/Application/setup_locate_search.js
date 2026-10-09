@@ -26,10 +26,15 @@ const mapSearch = (() => {
   }
   function select(entry) {
     clearHighlight();
+    if (entry.onSelect) entry.onSelect();
     if (!entry.markers.length && entry.expectedLocation === "Workshop") {
       const workshop = references.find(ref => ref.name === "Workshop");
       if (workshop) entry = {...entry, layer: workshop.layer, markers: workshop.markers,
         association: "Expected at Workshop before picking; temporary reference"};
+    }
+    if (!entry.markers.length && entry.onSelect) {
+      status.textContent = `${entry.name}: ${entry.association}. No matched map route.`;
+      return;
     }
     if (!entry.markers.length) {
       status.textContent = `${entry.name}: ${entry.expectedLocation ? entry.expectedLocation + " — expected before picking; waypoint not recorded." : "Location not recorded."}`;
@@ -68,13 +73,15 @@ const mapSearch = (() => {
       button.style.display = 'block';
       button.style.width = '100%';
       button.style.textAlign = 'left';
-      button.textContent = `${entry.name} · ${entry.kind}${entry.markers.length ? '' : entry.expectedLocation ? ' · Workshop (not picked)' : ' · Location not recorded'}`;
+      button.textContent = `${entry.name} · ${entry.kind}${entry.resultNote ? ' · ' + entry.resultNote : ''}${entry.markers.length || entry.onSelect ? '' : entry.expectedLocation ? ' · Workshop (not picked)' : ' · Location not recorded'}`;
       button.addEventListener('click', () => select(entry));
       results.appendChild(button);
     }
   }
   input.addEventListener('input', update);
   return {
+    select,
+    addReference(entry) { references.push(entry); update(); },
     clearAssets() { clearHighlight(); assets = []; update(); },
     addAsset(asset, container, marker) {
       const code = container ? 'C' + String(asset.container_id).padStart(3, '0') : '';

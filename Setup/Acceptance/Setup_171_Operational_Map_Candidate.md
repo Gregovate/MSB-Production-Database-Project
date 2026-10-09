@@ -3,14 +3,19 @@
 Status: ENGINEERING CANDIDATE — current-clone/operator acceptance pending.
 
 Baseline main: `86a025a2528be9f7071355965f679320a1362181` (PR #317).
-Version: `V0.3.51-gis-asset-overlay`; visible Updated 2026-10-08.
+Version: `V0.3.52-gis-network-search`; visible Updated 2026-10-09.
 Exact application SHA: the implementation commit identified on PR #318; pin
 that SHA rather than resolving a moving branch at launch.
 No migrations or new Production grants are proposed.
 
 ## Engineering proof
 
-- Full Setup Application regression: 727 passed.
+- Current network candidate full Setup Application regression: 730 passed.
+- Source reconciliation conflict/legacy checks and multi-feature selection tests pass.
+- Actual network JavaScript fixture passed: AUX-I/INET each resolve five GPX
+  features, unmapped networks remain discoverable, details open and source failure
+  preserves base search. Inline map/script syntax and unchanged source geometry
+  checks pass. Browser/current-production clone acceptance remains pending.
 - Four focused adapter/API tests cover invalid/storage coordinates, no
   prior-event fallback, recorded contents classification, independent Display semantics, reader
   authorization, no-store and GET-only operation, and static asset allowlist.
@@ -147,3 +152,29 @@ Selecting a reference track highlights every segment in bright magenta at 7px
 width and brings it forward. Selecting another result restores prior styles;
 refresh also clears highlighting. Verify the long segmented Aux-I route stays
 identifiable across the view without altering source geometry.
+
+
+## Network grouping review — October 9
+
+Use the exact candidate recorded on PR #318, existing branch
+`docs/171-symbol-type-mapping`, reusable disposable browser wrapper on port 8898,
+ExpectedVersion `V0.3.52-gis-network-search`. No candidate migrations or grants.
+The prior preview CLEAN EXIT is recorded on PR #318; new browser review is pending.
+
+- Search `Aux I` or `AUX-I`, choose **AUX-I · Network (draw.io)**.
+  All five endpoint-matched Whoville GPX routes must turn magenta together;
+  their individual rendered segments must remain intact. Missing routes stay explicit.
+- Open cable details and use Show cable route to narrow selection. Switching
+  selection restores the previous route styles. Typing alone does not alter layers.
+- Search `INET`: choose the network group, not an individual historical GPX track.
+  Five matching routes are expected. Source descriptions do not control membership.
+- Search `AuxB`: network evidence remains searchable even without mapped routes.
+  No fabricated connecting line or expected reference position may appear.
+- Inspect `WV-00 to WV-03 Aux I` in AUX-I details: endpoint conflict, no map match.
+- Recheck C001, Display-name search, original waypoint selection, and asset refresh.
+- Record exact SHA, browser verdict and wrapper CLEAN EXIT/report after review.
+
+Source inventory and unresolved work:
+[GIS reconciliation authority](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/engineering/Network_Source_Reconciliation_2026-10-09.md).
+This slice does not deliver the editable Wiring database integration or import the
+latest corrected tester export. No Production mutation/deployment is claimed.

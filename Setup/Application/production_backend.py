@@ -39,7 +39,7 @@ from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.51-gis-asset-overlay"
+PRODUCTION_VERSION = "V0.3.52-gis-network-search"
 
 # #222 lightweight Production request instrumentation.
 #
@@ -583,7 +583,7 @@ def record_location_asset(name: str):
 
 @app.get("/locate/assets/<name>")
 def locate_asset(name: str):
-    allowed = {"setup_locate_assets.js", "setup_locate_search.js", "container-loaded.svg", "container-partial.svg",
+    allowed = {"setup_locate_assets.js", "setup_locate_search.js", "setup_locate_networks.js", "setup_locate_networks.json", "container-loaded.svg", "container-partial.svg",
                "container-empty.svg", "container-unknown.svg"}
     if name not in allowed:
         abort(404)

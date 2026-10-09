@@ -117,6 +117,19 @@ a failed request exposes an unavailable state rather than leaving stale pins.
 See [candidate review and limitations](../../../../Setup/Acceptance/Setup_171_Operational_Map_Candidate.md).
 This is engineering candidate documentation, not a Production deployment claim.
 
+## Network search candidate — October 9, 2026
+
+PR #318 now has a V0.3.52-gis-network-search candidate consuming a read-only
+draw.io/GPX cross-reference: network groups highlight all segments of every
+endpoint-matched route and expose unresolved cables and endpoint conflicts.
+11 routes match by source endpoint names; 67 remain unresolved. These are
+operator-review correspondences, not verified reconstructed routes or proof of
+continuous connectivity. Existing asset/waypoint search remains available.
+
+[Source inventory, matching rules, confirmed infrastructure facts and resume point](engineering/Network_Source_Reconciliation_2026-10-09.md)
+record the current SQL inventory and #319 boundary. Wiring database integration,
+editable infrastructure and corrected tester-export reconciliation remain open.
+
 ## Deferred Symbol Registry / Type Mapping — #171
 
 Operator-confirmed direction, 2026-10-08: ExpertGPS manages symbols by type
