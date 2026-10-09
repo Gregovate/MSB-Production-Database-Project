@@ -5,6 +5,11 @@ const mapSearch = (() => {
   const status = document.getElementById('map-search-status');
   const references = [];
   let assets = [];
+  let highlighted = [];
+  function clearHighlight() {
+    for (const item of highlighted) item.marker.setStyle(item.style);
+    highlighted = [];
+  }
   for (const [layer, group] of Object.entries(layers)) {
     const features = new Map();
     group.eachLayer(marker => {
@@ -20,6 +25,7 @@ const mapSearch = (() => {
     });
   }
   function select(entry) {
+    clearHighlight();
     if (!entry.markers.length && entry.expectedLocation === "Workshop") {
       const workshop = references.find(ref => ref.name === "Workshop");
       if (workshop) entry = {...entry, layer: workshop.layer, markers: workshop.markers,
@@ -37,6 +43,14 @@ const mapSearch = (() => {
     for (const marker of entry.markers) {
       if (marker.getBounds) bounds.extend(marker.getBounds());
       else bounds.extend(marker.getLatLng());
+    }
+    // Highlight all source segments together, preserving their original styles.
+    for (const marker of entry.markers) {
+      if (!marker.setStyle) continue;
+      highlighted.push({marker, style: {color: marker.options.color,
+        weight: marker.options.weight, opacity: marker.options.opacity}});
+      marker.setStyle({color: "#ff00d4", weight: 7, opacity: 1});
+      if (marker.bringToFront) marker.bringToFront();
     }
     map.fitBounds(bounds, {padding: [40,40], maxZoom: 21});
     entry.markers[0].openPopup();
@@ -61,7 +75,7 @@ const mapSearch = (() => {
   }
   input.addEventListener('input', update);
   return {
-    clearAssets() { assets = []; update(); },
+    clearAssets() { clearHighlight(); assets = []; update(); },
     addAsset(asset, container, marker) {
       const code = container ? 'C' + String(asset.container_id).padStart(3, '0') : '';
       const entry = {name: container ? `${code} — ${asset.name}` : asset.name,

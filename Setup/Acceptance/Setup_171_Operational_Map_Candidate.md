@@ -142,3 +142,8 @@ X 213626.715, Y 186613.225 USft. Transformed with pyproj to WGS84 longitude
 is 6.815 ft away. Source coordinates and temporary provenance are preserved
 in the feature properties. This is expected storage context, not observed asset
 GPS. Replace with the maintained source waypoint when available.
+
+Selecting a reference track highlights every segment in bright magenta at 7px
+width and brings it forward. Selecting another result restores prior styles;
+refresh also clears highlighting. Verify the long segmented Aux-I route stays
+identifiable across the view without altering source geometry.
