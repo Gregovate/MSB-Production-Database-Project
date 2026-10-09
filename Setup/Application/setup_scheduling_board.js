@@ -1933,12 +1933,9 @@ function board205Day(day) {
 
   return `
     <section class="setup-board205-day ${dayClass}${printEmptyDay ? ' print-empty-day' : ''}" data-day-id="${day.setup_work_day_id}">
-      <div role="status" style="border:3px solid ${overloadedShifts ? '#9d2424' : unknownTasks || notReadyTasks ? '#835900' : '#146044'};padding:10px;margin:6px 0;border-radius:8px;font-weight:800;font-size:1.05rem">
-        DAILY WORKLOAD · ${dayWorkloads.length} occupied crew shifts · ${overloadedShifts} OVERLOADED · ${unknownTasks} UNKNOWN ESTIMATES · ${notReadyTasks} NOT READY
-      </div>
       <div class="setup-board205-day-header">
         <div>
-          <strong>Day ${board205Esc(day.setup_day_number)} · ${board205Esc(day.day_of_week)} · ${board205Esc(day.work_date)}</strong>
+          <strong style="font-size:1.2rem">SETUP DAY ${board205Esc(day.setup_day_number)} · ${board205Esc(day.day_of_week)} · ${board205Esc(day.work_date)}</strong>
           ${Number(day.iso_day_of_week) === 6 ? '<div class="setup-board205-day-note">Saturday · typically stronger volunteer turnout</div>' : ''}
           ${Number(day.iso_day_of_week) === 7 ? '<div class="setup-board205-sunday-warning">Sunday · avoid scheduling unless deliberately needed</div>' : ''}
           ${dayNote ? `<div class="setup-board205-day-note">${board205Esc(dayNote)}</div>` : ''}
@@ -1948,6 +1945,9 @@ function board205Day(day) {
           ${canRemoveDay ? '<button type="button" class="small secondary setup-board205-remove-empty-day">Remove Empty Day</button>' : ''}
           ${canManage ? '<button type="button" class="small setup-board205-add-crew">+ Add Crew</button>' : ''}
         </div>
+      </div>
+      <div role="status" style="border:3px solid ${overloadedShifts ? '#9d2424' : unknownTasks || notReadyTasks ? '#835900' : '#146044'};padding:10px;margin:6px 0;border-radius:8px;font-weight:800;font-size:1.05rem">
+        DAILY WORKLOAD · ${dayWorkloads.length} occupied crew shifts · ${overloadedShifts} OVERLOADED · ${unknownTasks} UNKNOWN ESTIMATES · ${notReadyTasks} NOT READY
       </div>
       <div class="setup-board205-table-wrap">
         <div class="setup-board205-grid">
@@ -2344,6 +2344,25 @@ async function board205SaveCrew(crewId, crewNode) {
   );
   const amCount = nullableInteger(crewNode.querySelector('.setup-board205-crew-am')?.value);
   const pmCount = nullableInteger(crewNode.querySelector('.setup-board205-crew-pm')?.value);
+  // An active crew must include its Captain and have a unique Captain per shift.
+  if (captainPersonId != null && ((amCount != null && amCount < 1) || (pmCount != null && pmCount < 1))) {
+    window.alert('An active Captain must count as at least one person in each staffed shift.');
+    return;
+  }
+  if (captainPersonId != null) {
+    const own = board205CrewRow(crewId);
+    const conflict = (setupBoard205State.board.crews || []).find((other) =>
+      Number(other.setup_work_day_id) === Number(own?.setup_work_day_id)
+      && Number(other.setup_work_day_crew_id) !== Number(crewId)
+      && Number(other.captain_person_id) === Number(captainPersonId)
+      && ((amCount > 0 && Number(other.am_planned_crew_count) > 0)
+        || (pmCount > 0 && Number(other.pm_planned_crew_count) > 0))
+    );
+    if (conflict) {
+      window.alert('This Captain is already assigned to another crew in the same shift.');
+      return;
+    }
+  }
   const capacityWarnings = board205CrewCapacityWarnings(crewId, amCount, pmCount);
   if (
     capacityWarnings.length
