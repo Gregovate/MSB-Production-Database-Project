@@ -101,6 +101,23 @@ separate statuses. Retain who/when/evidence, exceptions and blocked dependencies
 Do not turn annual completion into a permanent reference fact or overwrite prior
 seasons when a reference mapping is corrected.
 
+### Editing ownership — operator clarification, October 10
+
+- Production crew owns and must be able to update season-specific operational
+  records: activity progress/completion, observed or reported seasonal state,
+  exceptions and supporting evidence. Use authorized Production crew roles;
+  routine seasonal updates must not require Manager intervention.
+- Managers currently maintain permanent reference facts: panel/circuit/feed
+  relationships, equipment identities, reusable action definitions, waypoint
+  identities/coordinates and other governed reference data through #230.
+- Crew can report reference discrepancies for Manager correction without
+  silently changing an authoritative feed relationship or waypoint position.
+- Direct waypoint maintenance by Production crew is a possible future delegated
+  permission, not current authorization. Keep this separable from seasonal
+  editing so it can be enabled deliberately without granting all reference edits.
+- Preserve actor/time attribution and prior values. Seasonal observations or task
+  completion do not automatically promote a reference mapping to verified status.
+
 ### Acceptance and source collection
 
 Collect existing lists, panel schedules/photos, pole labels and knowledgeable
