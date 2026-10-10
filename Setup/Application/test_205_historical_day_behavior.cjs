@@ -62,3 +62,23 @@ assert.match(lateSummary,/next-late-report/);
 assert.match(context.nextLateWorkSummary(tasks,{crews:[],work_days:[day]}),/CAPTAIN TBD/);
 assert.equal(context.nextLateWorkSummary([partial],{crews,work_days:[day]}),'');
 console.log('10 staffing and late-summary checks PASS');
+// Final review: minimum staffing, required estimates, and nonredundant badges.
+for(const name of ['board205MissingEstimates','board205RequireEstimates','board205ProgressPercent','board205ReschedulingLabel']) vm.runInContext(fn(board,name),context);
+assert.equal(context.board205MissingEstimates({}).join(','),'time,crew size,effort');
+const estimated={expected_duration_minutes:30,normal_crew_min:1,effort_level:'LIGHT'};
+assert.equal(context.board205MissingEstimates(estimated).length,0);
+assert.equal(context.board205MissingEstimates({...estimated,effort_level:''}).join(','),'effort');
+assert.match(context.nextDayStaffingSummary(tasks,crews),/1 people minimum/);
+assert.match(context.nextDayStaffingSummary([...tasks,{...tasks[0],setup_work_day_crew_id:2}],crews),/2 people minimum/);
+assert.match(context.nextDayStaffingSummary(tasks.map((t,i)=>({...t,normal_crew_min:i+3})),crews),/4 people minimum/);
+assert.equal(context.board205ReschedulingLabel({percent_complete:50}),'NEEDS RESCHEDULING — 50% COMPLETE');
+assert.equal(context.board205ReschedulingLabel({}),'NEEDS RESCHEDULING — WORK INCOMPLETE');
+let opened=0;Object.assign(context,{setAlert:()=>{},document:{getElementById:()=>null},board205OpenPlanningInfoDialog:()=>{opened++;}});
+assert.equal(context.board205RequireEstimates({setup_session_task_id:1}),false);
+assert.equal(opened,1);
+assert.equal(context.board205RequireEstimates(estimated),true);
+console.log('11 final-review checks PASS');
+
+assert.equal(context.board205RequireEstimates({progress_entries:1}),true);
+assert.equal(opened,1);
+console.log('2 historical-lock checks PASS');
