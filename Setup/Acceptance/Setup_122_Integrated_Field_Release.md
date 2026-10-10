@@ -136,3 +136,36 @@ Stage/Containers/Independent Displays/Drop Points. This enables network geometry
 individual network highlighting remains an explicit checklist selection.
 New candidate browser check is the Field Wiring Networks checkbox and visible
 network routes on entry. Production remains unchanged.
+
+## Accepted deployment handoff — October 10, noon CDT
+
+PR #318 merged as 1943ac86d1b4d7a8c5c801a6f323faa7de9cf75b; tree identical to
+accepted 6192a1fdf5acb234fd83731b6a8eb73072b7a35d. Greg accepts V0.3.62, reports
+CLEAN EXIT, and authorizes deployment. Production preflight supplied by Greg:
+Setup 1fdc3b0250c5f750648c217c9e36f3ac9ea59f9e / V0.3.50; shared
+6dd05c4aa5ef8f50fe172145c3ae281cc245a101 / Field Wiring V0.4.0 / Procedures
+V0.1.0; both clean, services healthy, controller ONLINE/unfenced, backup replication
+current. Last controller receipt concerns PR320/072, not 070.
+
+Live SQL: reconciliation function absent; movement body MD5
+2771409ad019ea5121290b235ce37db1. Accepted 070 is therefore not installed.
+Do not reapply 071 or 072. Do not use clone-only validation SQL on Production.
+
+Existing setup_maintenance_deploy.py now supports the bounded field-070 profile
+in setup_122_070_release.json. This adapts the existing controller runner rather
+than introducing another maintenance mechanism. It checks both live identities,
+merged-main inclusion, accepted tree/migration blob, existing function body and
+least privilege; runs isolated Setup/Field Wiring/Procedures regressions ONLINE;
+enters maintenance, validates snapshot, preserves every ref/ops row, installs only
+070, verifies exact bodies/security/privileges, promotes both checkouts while
+fenced, and returns via the controller with all three health identities checked.
+Failures retain the report/snapshot and maintenance state for governed recovery;
+no automatic OFF, inverse SQL or database restore. Existing cooperative lock is
+retained. No new database clone is required by this deploy runner.
+
+Transport follows Server Management Production_Database_Change_Deployment_Runbook:
+one bundled SCP plus foreground SSH; committed runner/manifest bytes, no CRLF
+conversion of Python source. Exact application target remains 6192a1fd; the later
+tooling commit is not the deployed application version. Source-only Setup runbook
+supplies detached-worktree identity/date/regression checks; shared source promotion
+uses the database-change runbook. Production execution/PASS still pending.
