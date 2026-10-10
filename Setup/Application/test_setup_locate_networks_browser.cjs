@@ -11,6 +11,21 @@ const elements = Object.fromEntries(ids.map(id => [id, element()]));
 const source = JSON.parse(read('setup_locate_networks.json'));
 const page = read('locate_preview.html');
 const data = JSON.parse(page.match(/const data=(.*?);data.features.push/s)[1]);
+// Execute the actual inline entry defaults for both navigation paths.
+const profileCode = page.match(/const mapView=.*?group\.addTo\(map\);/)[0];
+for (const [query, expected] of [
+  ['', ['stages','containers','displays','drops']],
+  ['?view=setup', ['stages','containers','displays','drops']],
+  ['?view=fieldwiring', ['stages','HV','PRI','refs']],
+  ['?view=unknown', ['stages','containers','displays','drops']],
+]) {
+  const visible = [];
+  vm.runInNewContext(profileCode, {URLSearchParams, window:{location:{search:query}}, map:{},
+    layers:Object.fromEntries(['stages','containers','displays','drops','HV','PRI','refs','NET','Other']
+      .map(name=>[name,{addTo(){visible.push(name);}}]))});
+  assert.deepEqual(visible.sort(), expected.sort(), `Initial layers for ${query || 'Setup default'}`);
+}
+assert(page.includes('el.checked=initialLayers.has(el.dataset.layer)'), 'Checkboxes reflect the entry defaults');
 const markers = data.features.filter(f => ['LineString','MultiLineString'].includes(f.geometry.type)).flatMap(feature => [0,1].map(i => ({
   _searchFeature: feature, options: {color: 'blue', weight: 3, opacity: .85, dashArray: null},
   getBounds() { return `${feature.properties.id}:${i}`; },
@@ -92,7 +107,7 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   assert.equal(activeIds().size, 0, 'Parent off restores all highlighted source tracks');
   assert([...controls.values()].every(c => !c.checked));
   assert(page.includes('<details id="network-picker"><summary>'), 'Network list has native keyboard-accessible disclosure');
-  assert(page.includes('V0.3.57-map-style-clear · Updated 2026-10-10'));
+  assert(page.includes('V0.3.58-gis-v1 · Updated 2026-10-10'));
   const styles = vm.runInNewContext('(' + page.match(/const trackStyles=(.*?);/)[1] + ')');
   assert.equal(styles.PRI.color, '#ff8b25');
   assert.equal(styles.HV.color, '#dd2424');

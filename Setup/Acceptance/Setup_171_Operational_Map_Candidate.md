@@ -3,10 +3,64 @@
 Status: ENGINEERING CANDIDATE — current-clone/operator acceptance pending.
 
 Baseline main: `38f6f9427007470cbc02b3e2d23a97450d4414ba` (PR #327).
-Version: `V0.3.57-map-style-clear`; visible Updated 2026-10-10.
+Version: `V0.3.58-gis-v1`; visible Updated 2026-10-10.
 Exact application SHA: the implementation commit identified on PR #318; pin
 that SHA rather than resolving a moving branch at launch.
 No migrations or new Production grants are proposed.
+
+## Current v1 release candidate — Field Wiring entry / V0.3.58
+
+User requests a functional first map release and an updated Field Wiring landing
+page. This candidate gives the existing Field Wiring page a prominent **Park Map
+/ GIS** card, preserves Display/Stage/Scene browse and Controller Inventory, and
+links to the single canonical map at `/setup/locate/?view=fieldwiring`. The map is titled **Park
+Map v1** and links back to `/fieldwiring/`. Field Wiring version is
+`V0.4.1-gis-entry`; Setup/map version is `V0.3.58-gis-v1`.
+
+v1 scope: current aerial/GPX reference, corrected power styles, search/clear,
+expandable multi-network selection with source evidence/unresolved records,
+Container/Display read-only observations, waypoint/device navigation and dated
+LOR/controller evidence. Reference editing, circuit/network assignment editors,
+seasonal power activity editing and printed task map insets remain deferred.
+No new schema, grants, reference assignments or Production source cutover.
+
+Entry-specific initial layers (one application, not separate maps):
+- Field Wiring (`?view=fieldwiring`): Stage, HV, PRI, Other reference points.
+- Setup (default, or `?view=setup`): Stage, Containers, Independent Displays,
+  Drop Points.
+All other layers start off; the aerial remains visible. Manual toggles and
+explicit search/network selection can reveal other layers. Asset refresh does
+not reset the selected visibility. Unknown profile values use Setup defaults.
+
+
+The existing Setup disposable preview now mounts the actual Field Wiring app
+at `/fieldwiring/` and Setup at both `/` and `/setup`. Both must use the launcher's
+same disposable DSN; mismatch/missing DSN fails closed. Shared operator identity
+injection remains inside acceptance infrastructure. There is no Production
+routing change and no copied map. Use the existing Setup port 8898 allocation
+for this combined navigation review; no new listener/port is introduced.
+
+Validation: 744 Setup tests, five UI-date tests, one real cross-application
+WSGI navigation/isolation test, and 202 Field Wiring tests passed. The preview
+runner repeats application/integration gates and checks both routes before
+readiness. Local tests do not establish current-clone or browser acceptance.
+
+Operator review starts at `http://127.0.0.1:8898/fieldwiring/` after BROWSER
+REVIEW READY. Verify Display lookup/Stage browse/Controller link remain usable;
+open Park Map, exercise network selections/search clear/power styling and real
+Container/Display observations, then follow the return link. Require CLEAN EXIT
+and record the exact candidate and disposition before Production release.
+
+Production release must coordinate both existing services: Setup publishes the
+map destination, then Field Wiring publishes its entry link. Field Wiring uses
+`/opt/fieldwiring` shared with Procedures; Setup uses `/opt/msb-setup`. Read live
+SHAs and prove forward ancestry; preserve Procedures and unrelated services.
+Do not use the Setup-only deploy runner to claim Field Wiring was deployed.
+Governing Server Management documents read October 10: FieldWiring Production
+Runtime, Setup Source-Only Application Deployment Runbook, Pre-Production Browser
+Review Runbook, and Application and Test Port Register. The browser-review runbook
+requires exact-candidate operator review before Production approval. Repository
+merge/history and separate service deployment/health evidence remain required.
 
 ## Current V0.3.57 search clearing and QGIS power styling
 
@@ -163,7 +217,7 @@ if ($LASTEXITCODE -ne 0) { throw 'STOP: cannot read candidate SHA' }
   -PreviewPort 8898 `
   -CandidateSha $Candidate171 `
   -TargetRef 'docs/171-symbol-type-mapping' `
-  -ExpectedVersion 'V0.3.57-map-style-clear' `
+  -ExpectedVersion 'V0.3.58-gis-v1' `
   -AllowConcurrentProductionWrites
 if ($LASTEXITCODE -ne 0) { throw 'STOP: retain report; inspect before retry' }
 ```

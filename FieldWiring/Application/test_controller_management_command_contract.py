@@ -73,7 +73,7 @@ def test_management_command_adapter_calls_only_governed_functions() -> None:
 def test_backend_exposes_guarded_management_routes() -> None:
     source = (BASE_DIR / "backend.py").read_text(encoding="utf-8")
 
-    assert 'APP_VERSION = "V0.4.0"' in source
+    assert 'APP_VERSION = "V0.4.1-gis-entry"' in source
     assert '@app.post("/api/controllers")' in source
     assert '@app.patch("/api/controllers/<int:controller_id>")' in source
     assert '@app.post("/api/controllers/<int:controller_id>/assignments")' in source
