@@ -9,6 +9,16 @@
 | Established | 2026-10-01 |
 | Ordering | Reverse chronological — newest deployment first |
 
+## 2026-10-10 — Integrated Setup / Field Wiring map release
+
+- Deployed source: `6192a1fdf5acb234fd83731b6a8eb73072b7a35d`; PR #318 merge `1943ac86d1b4d7a8c5c801a6f323faa7de9cf75b`.
+- Setup V0.3.62-field-networks; Field Wiring V0.4.1-gis-entry. Shared map, network selection/defaults, container workshop anchor, and integrated container reconciliation.
+- Migration `070_reconcile_setup_container_contents.sql` committed and database validation passed. Do not replay 071/072.
+- Server deployment PASS: `/home/msbadmin/setup-deployment-reports/PR318-070-20261010T172234Z`; tooling PR #330/main `123f24e0a91707984e8325af29d13d287102b3b6` is distinct from deployed application source.
+- Validated rollback snapshot: `/home/msbadmin/backups/setup-205/msb-pre-pr318-070-PR318-070-20261010T172234Z.dump`, 9,659,244 bytes; SHA256 `358acf2498b18810544ddf4b4c499564250875791b76e72f7a66b7948c097b0b`.
+- Earlier fingerprint SQL failure and interrupted maintenance entry retained in #122; pre-fence recovery returned ONLINE before the successful deployment. No migration was applied by those failed attempts.
+- Greg confirmed the Field Wiring map and direct Setup map work. Missing Setup header navigation is corrected separately in [Park Map entry follow-up](../Setup/Acceptance/Setup_122_Park_Map_Entry.md); its deployment/operator confirmation remains pending. Broader #122/#171 closeout remains open.
+
 ## Purpose
 
 Maintain one human-readable, date-ordered record of Production changes across the MSB Production Database Project.
