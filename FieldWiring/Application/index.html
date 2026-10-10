@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>MSB FieldWiring</title>
+  <title>MSB Field Wiring &amp; Park Map</title>
   <script src="static/analytics.js?v=2026-08-31.1"></script>
-  <link rel="stylesheet" href="fieldwiring.css">
+  <link rel="stylesheet" href="fieldwiring.css?v=2026-10-10.1">
 </head>
 <body>
 <header class="site-header">
   <div class="brand">
     <img id="screen-logo" src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
     <div class="brand-copy">
-      <h1>Field Wiring</h1>
-      <div class="subhead">Find the Stage, Scene, and wiring information you need.</div>
+      <h1>Field Wiring &amp; Park Map</h1>
+      <div class="subhead">Find Display wiring, controllers, and park infrastructure.</div>
     </div>
     <div class="header-actions">
       <a class="header-link" href="controllers">Controller Inventory</a>
@@ -23,6 +23,15 @@
 </header>
 
 <main>
+  <!-- One GIS application: the landing page links to Setup's shared map. -->
+  <section class="card gis-entry" aria-labelledby="gis-heading">
+    <div>
+      <h2 id="gis-heading">Park Map / GIS</h2>
+      <p>Find waypoints, power tracks, cable networks, Containers and Displays on the park aerial.</p>
+      <p class="hint">Select individual networks to highlight their routes. Inspect source details and recorded asset locations.</p>
+    </div>
+    <a class="gis-open" href="/setup/locate/?view=fieldwiring">Open Park Map</a>
+  </section>
   <div class="entry-grid">
     <section class="card">
       <h2>Find Display</h2>
@@ -56,6 +65,7 @@
       <div id="technical-grid" class="technical-grid"></div>
     </details>
   </section>
+  <footer class="hint">Field Wiring V0.4.1-gis-entry · Park Map v1 · Updated 2026-10-10</footer>
 </main>
 <script src="fieldwiring.js"></script>
 </body>

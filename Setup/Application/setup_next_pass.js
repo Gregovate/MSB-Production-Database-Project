@@ -1637,6 +1637,7 @@ async function printNextPerformTask(details) {
 }
 
 function nextLocationText(item) {
+  if (item.current_location_inferred && item.current_location_kind === 'UNRESOLVED_FIELD') return 'Current: unloaded — location unresolved';
   if (item.current_stage_key) return `Current: Stage ${item.current_stage_key}${item.current_stage_name ? ` — ${item.current_stage_name}` : ''}${item.current_location_note ? ` · ${item.current_location_note}` : ''}`;
   if (item.current_location_note?.trim()) return `Current: ${item.current_location_note.trim()}`;
   if (item.current_location_kind === 'GPS') {
@@ -1651,7 +1652,21 @@ function nextLocationText(item) {
     const coordinates = nextRecordedGpsText(item);
     return `Current: GPS ${coordinates || 'observation'}${quality}`;
   }
-  if (item.current_location_kind === 'UNRESOLVED_FIELD') return 'Current: Location recorded — unnamed';
+  if (item.current_location_kind === 'UNRESOLVED_FIELD') {
+    // A Pick or other movement can be recorded without a destination or GPS.
+    // Show that recorded action without implying that Home is the current place.
+    const labels = {
+      PICKED: 'Picked', LOADED: 'Loaded', IN_TRANSIT: 'In transit',
+      DELIVERED: 'Delivered', UNLOADED: 'Unloaded', TASK_UNLOAD: 'Unloaded',
+      STAGED: 'Staged', PLACED: 'Placed', RELOCATED: 'Moved',
+      CONTAINER_MOVE: 'Moved', DISPLAY_MOVE: 'Moved', RETURNED: 'Returned',
+      DISPLAY_REATTACH: 'Reattached to container'
+    };
+    const status = item.current_movement_status;
+    const movement = Object.prototype.hasOwnProperty.call(labels, status)
+      ? labels[status] : 'Movement recorded';
+    return `${movement} — current location not recorded`;
+  }
   return 'Current location not recorded';
 }
 
@@ -1674,9 +1689,13 @@ function nextLocationMarkup(item) {
   const recorded = coordinates
     ? ` <details class="setup-location-details"><summary>GPS</summary><span class="muted">Recorded GPS: ${escapeHtml(coordinates)}${accuracyText}</span></details>`
     : '';
-  const home = item.home_location_code
+  // Home is useful only when a usable recorded GPS location is unavailable.
+  const home = !coordinates && item.home_location_code
     ? `<span class="muted"> · Home: ${escapeHtml(item.home_location_code)}</span>` : '';
-  return `<strong>${escapeHtml(nextLocationText(item))}</strong>${recorded}${home}`;
+  const provenance = item.current_location_inferred
+    ? ' · inferred unload from prior Container observation'
+    : (item.current_named_context_inherited ? ' · earlier named context retained' : '');
+  return `<strong>${escapeHtml(nextLocationText(item))}</strong>${escapeHtml(provenance)}${recorded}${home}`;
 }
 
 function nextProgressAuditText(progress) {
@@ -1807,9 +1826,17 @@ async function loadNextTaskExecution(details, focusReport = false) {
     const procedurePayload = procedureResult.payload || {};
     const procedureError = procedureResult.error;
     const docs = procedurePayload.instructions?.current_documents || procedurePayload.instructions?.documents || [];
+    // Stable Container ID deep links resolve the latest #88 position when opened.
+    // The Locate reader owns map focus and handles missing coordinates honestly.
+    const containerMapLink = (rawId) => {
+      const id = Number(rawId);
+      if (!Number.isSafeInteger(id) || id <= 0) return escapeHtml(String(rawId ?? '—'));
+      const code = `C${String(id).padStart(3, '0')}`;
+      return `<a href="/setup/locate/?container_id=${id}" target="_blank" rel="noopener" title="Show ${code} on Park Map">${code}</a>`;
+    };
     const assets = [
-      ...(context.displays || []).map((item) => `<li>Display ${item.display_id} — ${escapeHtml(item.display_name)}${item.container_id ? ` · Container ${item.container_id}` : ''} · ${nextLocationMarkup(item)}</li>`),
-      ...(context.support_containers || []).map((item) => `<li>Support Container ${item.container_id} · ${nextLocationMarkup(item)}</li>`)
+      ...(context.displays || []).map((item) => `<li>Display ${item.display_id} — ${escapeHtml(item.display_name)}${item.container_id ? ` · Container ${containerMapLink(item.container_id)}` : ''} · ${nextLocationMarkup(item)}</li>`),
+      ...(context.support_containers || []).map((item) => `<li>Support Container ${containerMapLink(item.container_id)} · ${nextLocationMarkup(item)}</li>`)
     ];
     const assignmentProgress = progress.filter((p) => Number(p.setup_work_day_task_id) === assignmentId);
     const lastPercent = assignmentProgress.length

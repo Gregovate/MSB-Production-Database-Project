@@ -1,0 +1,84 @@
+"""Read-only map adapter for the accepted #88 snapshot. No history inference."""
+from math import isfinite
+import json
+from pathlib import Path
+
+# Bundled, derived map anchor; never inserted into movement GPS evidence.
+WORKSHOP_REFERENCE = json.loads(Path(__file__).with_name("setup_workshop_reference.json").read_text())
+WORKSHOP_POSITION = [WORKSHOP_REFERENCE["map_coordinates"]["latitude"],
+                     WORKSHOP_REFERENCE["map_coordinates"]["longitude"]]
+
+
+def geographic_position(event):
+    """Reject missing/invalid pairs; RETURNED is storage, never a park pin."""
+    if event.get("event_type") == "RETURNED":
+        return None
+    try:
+        lat, lon = float(event["gps_latitude"]), float(event["gps_longitude"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if not (isfinite(lat) and isfinite(lon) and -90 <= lat <= 90 and -180 <= lon <= 180):
+        return None
+    return [lat, lon]
+
+
+def locate_assets(picture):
+    events = {e["setup_movement_event_id"]: e for e in picture["effect_rows"]}
+    fields = ("setup_movement_event_id", "event_type", "occurred_at", "received_at",
+              "gps_latitude", "gps_longitude", "gps_accuracy_m", "gps_quality",
+              "gps_fix_age_ms", "capture_method", "offline_captured",
+              "destination_location_note", "stage_key", "stage_name")
+
+    def observation(event):
+        return {k: event.get(k) for k in fields}
+
+    containers = []
+    for state in picture["containers"]:
+        event = events.get(state.get("last_movement_event_id"), {})
+        assigned = [d for d in picture["displays"] if d.get("container_id") == state["container_id"]]
+        modes = [d["position_mode"] for d in assigned]
+        # Association status is distinct from a physical contents inspection.
+        if not modes or any(m not in ("WITH_CONTAINER", "DETACHED") for m in modes):
+            load_state = "UNKNOWN"
+        elif all(m == "WITH_CONTAINER" for m in modes):
+            load_state = "LOADED"
+        elif all(m == "DETACHED" for m in modes):
+            load_state = "EMPTY"
+        else:
+            load_state = "PARTIAL"
+        # Operational rule: a reported return Home means the container is empty.
+        # Keep assignments for reference; they no longer describe a loaded container.
+        returned_home = state.get("movement_status") == "RETURNED" or event.get("event_type") == "RETURNED"
+        if returned_home:
+            load_state = "EMPTY"
+        containers.append({"container_id": state["container_id"],
+                           "name": state.get("container_name"),
+                           "position": list(WORKSHOP_POSITION) if returned_home else geographic_position(event),
+                           "position_source": "storage-workshop-reference" if returned_home else "movement-event",
+                           "observation": observation(event),
+                           "movement_status": state.get("movement_status"),
+                           "current_location_note": state.get("current_location_note"),
+                           "home_location_code": state.get("home_location_code"),
+                           "expected_location": "Workshop" if not state.get("last_movement_event_id") and not state.get("movement_status") else None,
+                           "load_state": load_state,
+                           "reported_home": returned_home,
+                           "physical_load_confirmed": False,
+                           "review_event_ids": sorted({e["setup_movement_event_id"] for e in picture["effect_rows"]
+                               if e.get("container_id") == state["container_id"]
+                               and "contents_review_required=true" in (e.get("notes") or "")}),
+                           "contents": [{"display_name": d["display_name"],
+                                         "position_mode": d["position_mode"]} for d in assigned],
+                           "uncertainty": "Physical load unconfirmed; associations are recorded state, not a contents check."})
+    displays = []
+    for state in picture["displays"]:
+        if state["position_mode"] == "WITH_CONTAINER":
+            continue
+        event = events.get(state.get("last_movement_event_id"), {})
+        displays.append({"display_id": state["display_id"], "name": state["display_name"],
+                         "position_mode": state["position_mode"],
+                         "movement_status": state.get("movement_status"),
+                         "current_location_note": state.get("current_location_note"),
+                         "position": geographic_position(event), "observation": observation(event)})
+    return {"generated_at": picture["generated_at"], "through_event_id": picture["through_event_id"],
+            "containers": containers, "displays": displays,
+            "scope": "All reference Containers and active independent Displays. No prior-GPS fallback."}
