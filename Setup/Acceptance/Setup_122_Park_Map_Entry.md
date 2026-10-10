@@ -6,6 +6,6 @@ Greg confirmed the shared map works from Field Wiring and the temporary direct e
 
 Presentation/navigation correction only: existing map, API, permissions and database behavior are unchanged. Retain V0.3.62-field-networks and Updated 2026-10-10; refresh the changed JavaScript cache pin. No migration, maintenance entry, database dump, or shared Field Wiring promotion belongs to this correction.
 
-Validation: JavaScript syntax check and 33 focused Setup navigation/map/dirty-edit checks passed. Production button acceptance remains pending until installed and checked by Greg.
+Validation: JavaScript syntax check, 33 focused checks, and full Setup/Application regression (751 passed). Exact application candidate: `c1db3e767f56b0346e76b05fd615d6e21e8ccf57`. Production button acceptance remains pending until installed and checked by Greg.
 
 Deploy using the existing Setup source-only runbook and installer, bounded to this exact candidate with live Setup/shared source `6192a1fdf5acb234fd83731b6a8eb73072b7a35d`. Migration 070 already committed successfully; never replay it for this correction.

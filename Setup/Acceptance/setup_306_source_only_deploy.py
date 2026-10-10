@@ -1,4 +1,4 @@
-"""Existing source-only installer, reviewed for #324/#325; follows Server Management's Setup runbook.
+"""Existing source-only installer, reviewed for #122 Park Map navigation; follows Server Management's Setup runbook.
 
 No SQL mutations, environment changes, maintenance entry, or shared promotion.
 The previous application SHA is the rollback unit. Reports stay on the server.
@@ -12,11 +12,11 @@ import signal
 import sys
 import time
 
-TARGET = '1fdc3b0250c5f750648c217c9e36f3ac9ea59f9e'
-EXPECTED_OLD = '0b69a269b2a32d369ee4f25be6740e15d7c5a823'
-OLD_VERSION = 'V0.3.50-container-movement-report'
-VERSION = 'V0.3.50-container-movement-report'
-SHARED = '6dd05c4aa5ef8f50fe172145c3ae281cc245a101'
+TARGET = 'c1db3e767f56b0346e76b05fd615d6e21e8ccf57'
+EXPECTED_OLD = '6192a1fdf5acb234fd83731b6a8eb73072b7a35d'
+OLD_VERSION = 'V0.3.62-field-networks'
+VERSION = 'V0.3.62-field-networks'
+SHARED = '6192a1fdf5acb234fd83731b6a8eb73072b7a35d'
 REPO = '/opt/fieldwiring'
 LIVE = '/opt/msb-setup'
 PYTHON = '/opt/fieldwiring/.venv/bin/python'
@@ -27,6 +27,8 @@ FOCUSED = [
     'Setup/Application/test_setup_next_pass_contract.py',
     'Setup/Application/test_setup_175_live_perform_work_contract.py',
     'Setup/Application/test_205_workload_candidate_source_contract.py',
+    'Setup/Application/test_setup_locate_assets.py',
+    'Setup/Application/test_setup_dirty_edit_guard_contract.py',
 ]
 
 
@@ -39,7 +41,7 @@ def require(condition, message):
 class Installer:
     def __init__(self):
         stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
-        self.root = Path('/home/msbadmin/setup-deployment-reports') / ('PR325-' + stamp)
+        self.root = Path('/home/msbadmin/setup-deployment-reports') / ('Setup-Park-Map-' + stamp)
         self.root.mkdir(parents=True)
         self.log = (self.root / 'report.txt').open('w', buffering=1)
         self.candidate = '/tmp/' + self.root.name
@@ -170,7 +172,7 @@ def main():
                 except Exception as cleanup:
                     installer.log.write('CLEANUP FAILED ' + repr(cleanup) + '\n')
             installer.log.close()
-        print('PASS: Setup PR324/325 installed; protected browser check pending; report: ' + str(installer.root))
+        print('PASS: Setup Park Map button installed; protected browser check pending; report: ' + str(installer.root))
         return 0
 
 
