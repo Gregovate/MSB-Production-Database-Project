@@ -1360,6 +1360,41 @@ function nextPerformWorkloadLabel(items, shift) {
   </div>`;
 }
 
+// Count each crew once per shift; planned counts already include the Captain.
+// ALL_DAY remains explicit, and reported labor is never presented as attendance.
+function nextDayStaffingSummary(assignments, crews) {
+  return ['MORNING', 'AFTERNOON'].map((shift) => {
+    const field = shift === 'MORNING' ? 'am_planned_crew_count' : 'pm_planned_crew_count';
+    const tasks = assignments.filter((item) => item.shift_code === shift);
+    const ids = new Set(tasks.map((item) => Number(item.setup_work_day_crew_id)));
+    crews.filter((crew) => Number(crew[field]) > 0).forEach((crew) => ids.add(Number(crew.setup_work_day_crew_id)));
+    let people = 0, unknown = 0;
+    ids.forEach((id) => {
+      const crew = crews.find((item) => Number(item.setup_work_day_crew_id) === id);
+      if (crew?.[field] == null || crew[field] === '') unknown += 1;
+      else people += Number(crew[field]);
+    });
+    return `${shift === 'MORNING' ? 'AM' : 'PM'}: ${ids.size} crews / ${unknown ? `${people} known people + ${unknown} crew count TBD` : `${people} people`} / ${tasks.length} tasks`;
+  }).join(' · ') + (assignments.some((item) => item.shift_code === 'ALL_DAY')
+    ? ` · All Day: ${assignments.filter((item) => item.shift_code === 'ALL_DAY').length} tasks` : '');
+}
+
+// Use the existing Captain scope and authorized board response. No identity lookup
+// or hidden-day expansion is required to discover an outstanding report.
+function nextLateWorkSummary(assignments, board) {
+  const late = assignments.filter((item) => {
+    const day = (board.work_days || []).find((d) => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
+    return nextAssignmentLate(item, day?.work_date || item.work_date);
+  });
+  if (!late.length) return '';
+  return `<section aria-label="Late unreported work">${nextScheduleWarning(`${late.length} LATE / UNREPORTED TASKS`)}${late.map((item) => {
+    const crew = (board.crews || []).find((c) => Number(c.setup_work_day_crew_id) === Number(item.setup_work_day_crew_id));
+    const day = (board.work_days || []).find((d) => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
+    const captain = crew?.captain_display_name || 'CAPTAIN TBD';
+    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — LATE / UNREPORTED`)}<strong>${escapeHtml(item.task_name || 'Task')}</strong> · ${escapeHtml(day?.work_date || item.work_date || '')} · Crew ${escapeHtml(crew?.crew_code || item.crew_lane || 'TBD')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
+  }).join('')}</section>`;
+}
+
 function renderNextExecution() {
   const target = el('next-perform-list');
   if (!target) return;
@@ -1404,7 +1439,7 @@ function renderNextExecution() {
     assignments.some((assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id))
   );
 
-  target.innerHTML = days.length ? days.map((day) => {
+  target.innerHTML = nextLateWorkSummary(scopedAssignments, board) + (days.length ? days.map((day) => {
     const dayAssignments = assignments.filter(
       (assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id)
     );
@@ -1413,7 +1448,8 @@ function renderNextExecution() {
     const dayCanCollapse = day.work_date < nextSetupLocalDate()
       && wholeDay.length > 0 && wholeDay.every(nextAssignmentReported);
     const lateCount = wholeDay.filter((item) => nextAssignmentLate(item, day.work_date)).length;
-    const reportedPersonHours = (dayAssignments.reduce((sum, item) => sum + Number(item.actual_person_minutes || 0), 0) / 60).toFixed(1);
+    const scopedDayAssignments = scopedAssignments.filter((item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id));
+    const reportedPersonHours = (scopedDayAssignments.reduce((sum, item) => sum + Number(item.actual_person_minutes || 0), 0) / 60).toFixed(1);
     const shifts = ['MORNING', 'AFTERNOON', 'ALL_DAY'];
     return `
       <section class="next-perform-day">
@@ -1434,7 +1470,7 @@ function renderNextExecution() {
           const notReady = crewShifts.reduce((n, w) => n + w.notReady, 0);
           const color = overloaded ? '#9d2424' : unknown || notReady ? '#835900' : '#146044';
           return `<div role="status" style="border:3px solid ${color};border-radius:8px;padding:12px;margin:8px 0;background:var(--surface, #f7f7f7);font-size:1.05rem;font-weight:700">
-            DAILY WORKLOAD · ${new Set(dayAssignments.map((a) => Number(a.setup_work_day_crew_id))).size} crews · ${dayAssignments.length} tasks · ${overloaded} OVERLOADED SHIFTS · ${unknown} UNKNOWN ESTIMATES · ${notReady} NOT READY
+            ${escapeHtml(nextDayStaffingSummary(scopedAssignments.filter((a) => Number(a.setup_work_day_id) === Number(day.setup_work_day_id)), (board.crews || []).filter((c) => Number(c.setup_work_day_id) === Number(day.setup_work_day_id) && (setupNextState.performCaptainFilter === 'ALL' || Number(c.captain_person_id) === Number(String(setupNextState.performCaptainFilter).split(':')[1])))))}<br>${day.work_date < nextSetupLocalDate() ? `${scopedDayAssignments.filter(nextAssignmentReported).length} tasks reported · ${reportedPersonHours} actual person-hours reported so far` : ''}${overloaded ? ` · ${overloaded} overloaded shifts` : ''}${unknown ? ` · ${unknown} missing time estimates` : ''}${notReady ? ` · ${notReady} tasks not ready` : ''}
           </div>`;
         })()}
         ${shifts.map((shift) => {
@@ -1461,7 +1497,15 @@ function renderNextExecution() {
         }).join('')}
         </div>
       </section>`;
-  }).join('') : '<div class="empty-state">No scheduled or in-progress assignments match this view. Turn on Show completed to include completed work, or choose All scheduled work to see every Captain.</div>';
+  }).join('') : '<div class="empty-state">No scheduled or in-progress assignments match this view. Turn on Show completed to include completed work, or choose All scheduled work to see every Captain.</div>');
+
+  target.querySelectorAll('.next-late-report').forEach((button) => {
+    button.addEventListener('click', () => {
+      const details = [...target.querySelectorAll('details[data-assignment-id]')].find((item) => item.dataset.assignmentId === button.dataset.assignmentId);
+      details?.querySelector('.next-report-work')?.click();
+      details?.scrollIntoView({ block: 'center' });
+    });
+  });
 
   // Navigate through the existing route to preserve browser history and view guards.
   if (target.dataset.completedDayToggleInstalled !== '1') {
