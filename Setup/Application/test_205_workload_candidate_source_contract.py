@@ -14,8 +14,8 @@ def _read(name: str) -> str:
 
 def test_changed_scheduling_scripts_have_fresh_browser_asset_pins():
     html = _read("production.html")
-    assert "setup_next_pass.js?v=2026-10-09.320.5" in html
-    assert "setup_scheduling_board.js?v=2026-10-09.320.5" in html
+    assert "setup_next_pass.js?v=2026-10-09.324.4" in html
+    assert "setup_scheduling_board.js?v=2026-10-09.324.4" in html
 
 
 def test_board_workload_banner_stays_inside_shift_cell():
@@ -75,24 +75,54 @@ def test_annual_continuation_is_distinct_from_historical_assignment():
     assert "function board205NeedsContinuation(task)" in js
     assert "Number(task.unworked_assignment_count || 0) === 0" in js
     assert "function board205ContinuationScheduled(task)" in js
-    assert "NEEDS RESCHEDULING — PRIORITY CONTINUATION" in js
-    assert "WORK REPORTED" in js
+    assert "function board205ReschedulingLabel(task)" in js
+    assert "PRIORITY CONTINUATION" not in js
+    assert "nextAssignmentReportedLabel(item)" in js
     assert "const priority = Number(board205NeedsContinuation(b))" in js
 
 
-def test_historical_badge_does_not_claim_active_shift_work():
-    js = _read("setup_scheduling_board.js")
-    assert "WORK REPORTED - INCOMPLETE" in js
-    assert "WORK REPORTED - COMPLETE" in js
+def test_historical_badges_use_assignment_report_evidence():
+    perform = _read("setup_next_pass.js")
+    board = _read("setup_scheduling_board.js")
+    assert "nextAssignmentReportedLabel(item)" in board
+    assert "nextAssignmentReportedLabel(assignment)" in perform
+    assert "INCOMPLETE — Work Reported" in perform
+    assert "COMPLETE — Work Reported" in perform
+    assert "Number(assignment.work_report_count || 0) > 0" in perform
 
 
-def test_completed_day_collapse_is_conservative_and_interactive():
+def test_reported_days_collapse_without_annual_completion_gate():
     board = _read("setup_scheduling_board.js")
     perform = _read("setup_next_pass.js")
-    assert "function board205CanCollapseDay(day)" in board
-    assert "Number(item.actual_person_minutes || 0) > 0" in board
+    collapse = board.split("function board205CanCollapseDay(day)")[1].split("function board205Day(day)")[0]
+    assert "effective_complete" not in collapse
+    assert "actual_person_minutes" not in collapse
+    assert "assignments.every(nextAssignmentReported)" in board
+    assert "wholeDay.every(nextAssignmentReported)" in perform
     assert "setup-board205-toggle-day" in board
     assert "next-perform-toggle-complete-day" in perform
-    assert "Number(assignment.actual_person_minutes || 0) > 0" in perform
-    assert "NEEDS CAPTAIN" in board
-    assert "PAST ASSIGNMENT — NO WORK REPORTED" in board
+    assert "showCompleted || !nextAssignmentReported(assignment)" in perform
+
+
+def test_late_and_captain_warnings_are_visible_in_both_views():
+    perform = _read("setup_next_pass.js")
+    board = _read("setup_scheduling_board.js")
+    for source in (perform, board):
+        assert "LATE — NO WORK REPORTED" in source
+        assert "CAPTAIN TBD — NEEDS CAPTAIN" in source
+        assert "lateCount" in source
+    assert "timeZone: 'America/Chicago'" in perform
+    assert "toISOString().slice(0, 10)" not in board
+    assert "setup-board205-report-missed" in board
+    assert "setupNextState.performCaptainFilter = 'ALL'" in board
+
+
+def test_read_projection_preserves_assignment_and_legacy_report_identity():
+    repository = _read("setup_scheduling_board_repository.py")
+    for field in ("work_report_count", "reported_percent_complete"):
+        before_field = repository.split(" AS " + field)[0].rsplit("(SELECT", 1)[1]
+        assert "p.setup_work_day_task_id = wdt.setup_work_day_task_id" in before_field
+        assert "p.setup_work_day_task_id IS NULL" in before_field
+        assert "p.setup_work_day_id = wdt.setup_work_day_id" in before_field
+        assert "p.setup_session_task_id = wdt.setup_session_task_id" in before_field
+        assert "p.shift_code = wdt.shift_code" in before_field

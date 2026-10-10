@@ -286,7 +286,39 @@ function board205PlacementWarnings(task, crewId, shift) {
   return warnings;
 }
 
+// Operator estimates are required; never silently invent planning data.
+function board205MissingEstimates(task) {
+  const missing = [];
+  if (!(Number(task?.expected_duration_minutes) > 0)) missing.push('time');
+  if (!(Number(task?.normal_crew_min) >= 1)) missing.push('crew size');
+  if (!['LIGHT', 'MODERATE', 'HEAVY'].includes(String(task?.effort_level || '').toUpperCase())) missing.push('effort');
+  return missing;
+}
+
+function board205RequireEstimates(task) {
+  const missing = board205MissingEstimates(task);
+  if (!missing.length) return true;
+  // Existing reports lock annual planning in the database. Keep continuation
+  // schedulable without rewriting historical estimates or inventing defaults.
+  if (Number(task?.progress_entries || 0) > 0 || task?.actual_started_at || task?.actual_completed_at) {
+    setAlert(`Historical estimates are locked; missing ${missing.join(', ')} remains TBD for this continuation.`, 'error');
+    return true;
+  }
+  setAlert(`Enter estimated ${missing.join(', ')} before scheduling. A rough estimate is enough; save Planning Info, then schedule again.`, 'error');
+  document.getElementById('setup-board205-schedule-dialog')?.close();
+  board205OpenPlanningInfoDialog(task?.setup_session_task_id);
+  return false;
+}
+
+function board205ReschedulingLabel(task) {
+  const value = task?.percent_complete;
+  return value != null && value !== '' && Number.isFinite(Number(value))
+    ? `NEEDS RESCHEDULING — ${board205ProgressPercent(task)}% COMPLETE`
+    : 'NEEDS RESCHEDULING — WORK INCOMPLETE';
+}
+
 function board205ConfirmPlacement(task, crewId, shift) {
+  if (!board205RequireEstimates(task)) return false;
   const warnings = board205PlacementWarnings(task, crewId, shift);
   if (!warnings.length) return true;
   return window.confirm(`${warnings.join('\n\n')}\n\nSchedule this task anyway?`);
@@ -463,10 +495,7 @@ function board205ApplyWorkDayPickerExpanded() {
 }
 
 function board205TodayDateKey() {
-  const today = new Date();
-  return String(today.getFullYear())
-    + '-' + String(today.getMonth() + 1).padStart(2, '0')
-    + '-' + String(today.getDate()).padStart(2, '0');
+  return nextSetupLocalDate();
 }
 
 
@@ -554,17 +583,10 @@ function board205RenderWorkDayCalendar() {
 }
 
 function board205DayViewState(day) {
-  const status = String(day.day_status || '').toUpperCase();
-  if (status === 'COMPLETE' || status === 'CANCELLED') return 'COMPLETED';
-
   const assignments = board205DayAssignments(day);
   if (!assignments.length) return 'EMPTY';
-
-  const hasUnfinished = assignments.some((item) => {
-    const task = board205Task(item.setup_session_task_id);
-    return !task || !task.effective_complete;
-  });
-  return hasUnfinished ? 'UNFINISHED' : 'COMPLETED';
+  // Annual completion never resolves an unreported occurrence on another day.
+  return assignments.every(nextAssignmentReported) ? 'COMPLETED' : 'UNFINISHED';
 }
 
 function board205CompactWorkDate(value) {
@@ -1521,7 +1543,7 @@ function board205TaskCard(task) {
       data-session-task-id="${task.setup_session_task_id ?? ''}"
       data-reusable-task-id="${task.setup_task_id ?? ''}"
       draggable="${canSchedule ? 'true' : 'false'}">
-      ${board205NeedsContinuation(task) ? '<div class="setup-board205-warning" style="font-size:1rem;font-weight:900;border:2px solid #9d2424">NEEDS RESCHEDULING — PRIORITY CONTINUATION</div>' : ''}
+
       ${board205ContinuationScheduled(task) ? '<div class="setup-board205-meta" style="font-weight:800">CONTINUATION ALREADY SCHEDULED — annual task unfinished</div>' : ''}
       <div class="setup-board205-task-title">
         <span>Task ${board205Esc(task.setup_task_id ?? 'annual-only')} · ${board205Esc(task.task_name)}</span>
@@ -1534,7 +1556,7 @@ function board205TaskCard(task) {
               : readinessOnly
                 ? 'NOT READY'
                 : 'CURRENT CATALOG'
-            : board205StatusLabel(task.board_status)
+            : board205NeedsContinuation(task) ? board205ReschedulingLabel(task) : board205StatusLabel(task.board_status)
         )}</span>
         <span class="setup-board205-badge effort-${board205Esc(String(task.effort_level || 'unknown').toLowerCase())}">${board205Esc(board205Effort(task))}</span>
         ${board205WorkOrderBadge(task)}
@@ -1815,9 +1837,9 @@ function board205AssignmentCard(item) {
   const locked = Boolean(item.historical_locked);
   // Historical assignment status describes that day's work, not current annual progress.
   // Never show IN PROGRESS on a locked past assignment: it looks like active shift work.
-  const status = locked
-    ? (task.effective_complete ? 'WORK REPORTED - COMPLETE' : 'WORK REPORTED - INCOMPLETE')
-    : nextSetupAssignmentStatus(task);
+  const status = nextAssignmentReported(item)
+    ? nextAssignmentReportedLabel(item)
+    : nextAssignmentLate(item) ? 'LATE — NO WORK REPORTED' : nextSetupAssignmentStatus(task);
   const planned = board205AssignmentPlannedCrew(item);
   const minCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
   const plannedLabor = board205LaborHoursText(planned, task.expected_duration_minutes);
@@ -1827,8 +1849,7 @@ function board205AssignmentCard(item) {
   const needsCaptain = !locked && crew?.captain_person_id == null;
   const assignmentDay = (setupBoard205State.board.work_days || []).find(
     (day) => Number(day.setup_work_day_id) === Number(item.setup_work_day_id));
-  const missingActualReport = !locked && assignmentDay?.work_date
-    && assignmentDay.work_date < new Date().toISOString().slice(0, 10);
+  const missingActualReport = nextAssignmentLate(item, assignmentDay?.work_date);
 
   return `
     <article class="setup-board205-assignment ${task.requires_display_material ? 'setup-material-task' : ''} ${locked ? 'locked' : ''} ${understaffed ? 'short-crew' : ''}"
@@ -1855,7 +1876,8 @@ function board205AssignmentCard(item) {
       ${understaffed ? `<div class="setup-board205-warning setup-board205-short-crew-warning"><strong>SHORT CREW</strong> · Planned ${board205Esc(item.shift_code === 'MORNING' ? 'AM' : 'PM')} ${board205Esc(planned)} / minimum ${board205Esc(minCrew)} · short by ${board205Esc(shortBy)}.</div>` : ''}
       ${heavyWarning ? `<div class="setup-board205-warning">⚠ ${board205Esc(heavyWarning)}</div>` : ''}
       ${needsCaptain ? '<div class="setup-board205-warning" style="border:2px solid #9d2424;font-weight:900">NEEDS CAPTAIN — assign before dispatch</div>' : ''}
-      ${missingActualReport ? '<div class="setup-board205-warning" style="font-weight:800">PAST ASSIGNMENT — NO WORK REPORTED; review or move</div>' : ''}
+      ${missingActualReport ? nextScheduleWarning('LATE — NO WORK REPORTED · Report missed work or remove from schedule') : ''}
+      ${missingActualReport ? '<button type="button" class="small setup-board205-report-missed">Report Work</button>' : ''}
 
       ${locked ? '<div class="setup-board205-lock">Historical actual — locked</div>' : ''}
       ${canManage && !locked ? `
@@ -1909,18 +1931,11 @@ function board205CanRemoveWorkDay(day) {
 }
 
 
-// Historical collapse is conservative: only a fully completed day with every
-// assignment locked may collapse. Unknown/missing actual reporting stays visible.
-// Never infer actual hours from planned duration or planned labor.
+// A past day is historical once its assignments are reported, even at partial progress.
+// The annual continuation remains independently schedulable; zero-duration reports count.
 function board205CanCollapseDay(day) {
-  const items = board205DayAssignments(day);
-  if (!items.length || board205DayViewState(day) !== 'COMPLETED') return false;
-  return items.every((item) => {
-    const task = board205Task(item.setup_session_task_id);
-    return Boolean(item.historical_locked && task?.effective_complete
-      && !board205NeedsContinuation(task)
-      && Number(item.actual_person_minutes || 0) > 0);
-  });
+  return Boolean(day.work_date && day.work_date < nextSetupLocalDate()
+    && board205DayViewState(day) === 'COMPLETED');
 }
 
 function board205Day(day) {
@@ -1971,6 +1986,7 @@ function board205Day(day) {
   }
   const collapseEligible = board205CanCollapseDay(day);
   const dayAssignmentCount = board205DayAssignments(day).length;
+  const lateCount = board205DayAssignments(day).filter((item) => nextAssignmentLate(item, day.work_date)).length;
   const reportedPersonHours = (board205DayAssignments(day).reduce((sum, item) => sum + Number(item.actual_person_minutes || 0), 0) / 60).toFixed(1);
   const crewRows = crews.map((crew) => {
     const legacy = board205AssignmentsFor(day.setup_work_day_id, 'ALL_DAY', crew.setup_work_day_crew_id);
@@ -1984,6 +2000,7 @@ function board205Day(day) {
             </div>
             ${canManage ? `<div class="setup-board205-crew-actions"><button type="button" class="small setup-board205-save-crew">Save</button>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
           </div>
+          ${crew.captain_person_id == null ? nextScheduleWarning('CAPTAIN TBD — NEEDS CAPTAIN') : ''}
           <label class="setup-board205-crew-captain">Captain
             <select class="setup-board205-crew-captain-select">${board205CaptainOptions(crew.captain_person_id)}</select>
           </label>
@@ -2004,8 +2021,9 @@ function board205Day(day) {
   return `
     <section class="setup-board205-day ${dayClass}${printEmptyDay ? ' print-empty-day' : ''}" data-day-id="${day.setup_work_day_id}">
       <div class="setup-board205-day-collapse-control" style="padding:4px 10px">
-        ${collapseEligible ? `<button type="button" class="small secondary setup-board205-toggle-day" aria-expanded="false">▶ SETUP DAY ${board205Esc(day.setup_day_number)} · ${board205Esc(day.work_date)} · ${dayAssignmentCount} completed tasks · ${reportedPersonHours} reported person-hours</button>` : ''}
+        ${collapseEligible ? `<button type="button" class="small secondary setup-board205-toggle-day" aria-expanded="false">▶ SETUP DAY ${board205Esc(day.setup_day_number)} · ${board205Esc(day.work_date)} · ${dayAssignmentCount} reported assignments · ${reportedPersonHours} reported person-hours</button>` : ''}
       </div>
+      ${lateCount ? nextScheduleWarning(`${lateCount} LATE TASK${lateCount === 1 ? '' : 'S'} — NO WORK REPORTED`) : ''}
       <div class="setup-board205-day-content" ${collapseEligible ? 'hidden' : ''}>
       <div class="setup-board205-day-header">
         <div>
@@ -2021,7 +2039,7 @@ function board205Day(day) {
         </div>
       </div>
       <div role="status" style="border:3px solid ${overloadedShifts ? '#9d2424' : unknownTasks || notReadyTasks ? '#835900' : '#146044'};padding:10px;margin:6px 0;border-radius:8px;font-weight:800;font-size:1.05rem">
-        DAILY WORKLOAD · ${staffedCrewCount} STAFFED CREWS / ${crews.length} DEFINED · ${dayWorkloads.length} OCCUPIED SHIFTS · ${overloadedShifts} OVERLOADED · ${unknownTasks} UNKNOWN ESTIMATES · ${notReadyTasks} NOT READY${duplicateCaptainShifts.size ? ` · ⚠ ${duplicateCaptainShifts.size} DUPLICATE CAPTAIN/SHIFT` : ''}
+        ${board205Esc(nextDayStaffingSummary(board205DayAssignments(day), crews, setupBoard205State.board.tasks || []))}${overloadedShifts ? ` · ${overloadedShifts} overloaded shifts` : ''}${unknownTasks ? ` · ${unknownTasks} missing time estimates` : ''}${notReadyTasks ? ` · ${notReadyTasks} tasks not ready` : ''}${duplicateCaptainShifts.size ? ` · ⚠ ${duplicateCaptainShifts.size} DUPLICATE CAPTAIN/SHIFT` : ''}
       </div>
       <div class="setup-board205-table-wrap">
         <div class="setup-board205-grid">
@@ -2086,6 +2104,21 @@ function board205RenderBoard() {
   target.querySelectorAll('.setup-board205-assignment').forEach((card) => {
     const assignmentId = Number(card.dataset.assignmentId);
     const item = board205Assignment(assignmentId);
+    // Route to the existing report form for this exact assignment; no new write path.
+    card.querySelector('.setup-board205-report-missed')?.addEventListener('click', async () => {
+      try {
+        const navigated = await navigateSetupView('perform');
+        if (navigated === false) return;
+        setupNextState.performCaptainFilter = 'ALL';
+        setupNextState.performCaptainFilterTouched = true;
+        renderNextExecution();
+        const details = document.querySelector(`.next-perform-assignment[data-assignment-id="${assignmentId}"]`);
+        if (!details) throw new Error('Assignment is not available in Perform Work. Refresh and try again.');
+        details.open = true;
+        details.scrollIntoView({ block: 'center' });
+        await loadNextTaskExecution(details, true);
+      } catch (error) { setAlert(error.message || error, 'error'); }
+    });
 
     // Dragging is a separate gesture; keep Ctrl/Shift selection for clicks.
     card.addEventListener('click', (event) => {
@@ -2568,6 +2601,7 @@ function board205ConfirmAssignmentGroupPlacement(items, crewId, shift) {
     );
     if (!changedPlacement) continue;
     const task = board205Task(item.setup_session_task_id) || item;
+    if (!board205RequireEstimates(task)) return false;
     for (const warning of board205PlacementWarnings(task, crewId, shift)) {
       warnings.push(`${task.task_name || item.task_name}: ${warning}`);
     }
@@ -3119,6 +3153,11 @@ async function board205PersistPlanningInfo({ closeDialog = true, announce = true
   if (!sessionTaskId && !reusableTaskId) return false;
 
   const draft = board205PlanningDraft();
+  const missing = board205MissingEstimates(draft);
+  if (missing.length) {
+    setAlert(`Enter estimated ${missing.join(', ')}. A rough estimate is enough.`, 'error');
+    return false;
+  }
 
   try {
     setBusy(true);
@@ -3901,3 +3940,4 @@ board205InstallView();
 if (document.getElementById('schedule-view')?.classList.contains('active-view')) {
   void board205Load();
 }
+

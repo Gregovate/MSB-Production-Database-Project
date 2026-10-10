@@ -66,7 +66,7 @@ def test_perform_work_hides_completed_by_default_without_changing_global_captain
     assert 'id="next-perform-show-completed" type="checkbox" checked' not in ui
     assert "function nextPerformAssignmentStatus(assignment)" in ui
     assert "function nextPerformCaptainScopedAssignments(assignments)" in ui
-    assert "showCompleted || nextPerformAssignmentStatus(assignment) !== 'COMPLETE'" in ui
+    assert "showCompleted || !nextAssignmentReported(assignment)" in ui
     assert "const filter = setupNextState.performCaptainFilter || 'ALL';" in ui
     assert "if (filter === 'ALL') return true;" in ui
     assert "All scheduled work" in ui
@@ -251,7 +251,7 @@ def test_perform_work_asset_pins_are_refreshed() -> None:
     html = read_app("production.html")
 
     assert "setup_next_pass.css?v=2026-10-06.1" in html
-    assert "setup_next_pass.js?v=2026-10-09.320.5" in html
+    assert "setup_next_pass.js?v=2026-10-09.324.4" in html
     assert "setup_acceptance_fixes.css?v=2026-09-26.1" in html
     assert "setup_acceptance_fixes.js?v=2026-10-06.1" in html
     assert "setup_scheduling_board.css?v=2026-10-05.1" in html
@@ -284,8 +284,9 @@ def test_schedule_and_perform_work_share_status_palette_and_labels() -> None:
     board = read_app("setup_scheduling_board.js")
     css = read_app("setup_scheduling_board.css")
     assert "nextSetupAssignmentStatus(task);" in board
-    assert "WORK REPORTED - INCOMPLETE" in board
-    assert "WORK REPORTED - COMPLETE" in board
+    assert "nextAssignmentReportedLabel(item)" in board
+    assert "INCOMPLETE — Work Reported" in perform
+    assert "COMPLETE — Work Reported" in perform
     for ui in (perform, board):
         assert "setup-work-status" in ui
         assert 'data-work-status="${' in ui
