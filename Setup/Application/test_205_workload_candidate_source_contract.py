@@ -14,8 +14,8 @@ def _read(name: str) -> str:
 
 def test_changed_scheduling_scripts_have_fresh_browser_asset_pins():
     html = _read("production.html")
-    assert "setup_next_pass.js?v=2026-10-09.324.4" in html
-    assert "setup_scheduling_board.js?v=2026-10-09.324.4" in html
+    assert "setup_next_pass.js?v=2026-10-09.324.5" in html
+    assert "setup_scheduling_board.js?v=2026-10-09.324.5" in html
 
 
 def test_board_workload_banner_stays_inside_shift_cell():
