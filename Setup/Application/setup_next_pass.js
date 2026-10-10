@@ -1097,7 +1097,7 @@ function nextPerformCaptainScopedAssignments(assignments) {
 function nextFilterPerformAssignments(assignments) {
   const showCompleted = Boolean(el('next-perform-show-completed')?.checked);
   return nextPerformCaptainScopedAssignments(assignments).filter((assignment) => (
-    showCompleted || nextPerformAssignmentStatus(assignment) !== 'COMPLETE'
+    showCompleted || !nextAssignmentReported(assignment)
   ));
 }
 
@@ -1194,6 +1194,33 @@ async function openNextCorrectionIntake(details) {
 }
 
 // Shared assignment state: readiness and historical locking remain separate cues.
+// #205: resolve the occurrence from its own report, never annual progress.
+// A partial report finishes that day's assignment; continuation stays in backlog.
+function nextAssignmentReported(assignment) {
+  return Number(assignment.work_report_count || 0) > 0;
+}
+
+function nextSetupLocalDate(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(now);
+  const part = (name) => parts.find((item) => item.type === name).value;
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+function nextAssignmentLate(assignment, workDate = assignment.work_date) {
+  return Boolean(workDate && workDate < nextSetupLocalDate() && !nextAssignmentReported(assignment));
+}
+
+function nextAssignmentReportedLabel(assignment) {
+  return Number(assignment.reported_percent_complete) >= 100
+    ? 'COMPLETE — Work Reported' : 'INCOMPLETE — Work Reported';
+}
+
+function nextScheduleWarning(text) {
+  return `<div class="setup-205-action-warning" role="status" style="border:2px solid #a40000;border-left:8px solid #a40000;background:#fff0f0;color:#8b0000;padding:8px 10px;margin:6px 0;font-weight:900;font-size:1rem">${escapeHtml(text)}</div>`;
+}
+
 function nextSetupAssignmentStatus(task) {
   const executionStatus = String(task.execution_status || '').toUpperCase();
   const boardStatus = String(task.board_status || '').toUpperCase();
@@ -1211,12 +1238,10 @@ function nextPerformAssignmentCard(assignment) {
   const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
   const crew = nextPerformCrew(assignment);
   const captain = crew?.captain_display_name || 'Captain TBD';
-  // A reported historical shift is not actively IN PROGRESS just because the
-  // annual task still needs more work. Match Plan / Schedule's assignment badge.
-  // Keep nextPerformAssignmentStatus() for annual completion filtering and KPIs.
-  const status = assignment.historical_locked
-    ? (task.effective_complete ? 'WORK REPORTED - COMPLETE' : 'WORK REPORTED - INCOMPLETE')
-    : nextPerformAssignmentStatus(assignment);
+  const late = nextAssignmentLate(assignment);
+  const status = nextAssignmentReported(assignment)
+    ? nextAssignmentReportedLabel(assignment)
+    : late ? 'LATE — NO WORK REPORTED' : nextPerformAssignmentStatus(assignment);
   const plannedCrew = nextPerformPlannedCrew(assignment);
   const plannedLabor = nextLaborHoursText(plannedCrew, task.expected_duration_minutes);
   const effort = String(task.effort_level || 'unknown').toLowerCase();
@@ -1239,7 +1264,7 @@ function nextPerformAssignmentCard(assignment) {
         <span class="next-perform-assignment-pills">
           <span class="setup-board205-badge effort-${escapeHtml(effort)}">${escapeHtml(effortLabel)}</span>
           ${shortCrew ? `<span class="setup-board205-badge short-crew-badge" title="Planned crew ${escapeHtml(plannedCrew)} / minimum ${escapeHtml(minimumCrew)}">SHORT CREW</span>` : ''}
-          <span class="pill setup-work-status" data-work-status="${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span>
+          <span class="pill setup-work-status" ${late ? 'style="background:#a40000;color:#fff;border:2px solid #a40000;font-weight:900"' : ''} data-work-status="${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span>
         </span>
       </summary>
       <div class="next-perform-assignment-context">
@@ -1249,6 +1274,7 @@ function nextPerformAssignmentCard(assignment) {
         · Est. labor ${escapeHtml(plannedLabor)}
       </div>
       ${readinessWarning}
+      ${late ? nextScheduleWarning("LATE — NO WORK REPORTED · Report missed work or remove from schedule") : ''}
       <div class="next-perform-actions">
         <button type="button" class="small secondary next-print-task">Print Task</button>
         <button type="button" class="small next-report-work">Report Work</button>
@@ -1382,23 +1408,22 @@ function renderNextExecution() {
     const dayAssignments = assignments.filter(
       (assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id)
     );
-    // Collapse only when every historical assignment has verified actual duration.
-    // Planned labor TBD is not evidence of an unreported actual.
-    const dayCanCollapse = dayAssignments.length > 0 && dayAssignments.every((assignment) => {
-      const task = nextPerformTask(assignment.setup_session_task_id);
-      return Boolean(assignment.historical_locked && task?.effective_complete
-        && Number(assignment.actual_person_minutes || 0) > 0);
-    });
+    // Evaluate the entire day, not a Captain-filtered subset that could hide late work.
+    const wholeDay = allAssignments.filter((item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id));
+    const dayCanCollapse = day.work_date < nextSetupLocalDate()
+      && wholeDay.length > 0 && wholeDay.every(nextAssignmentReported);
+    const lateCount = wholeDay.filter((item) => nextAssignmentLate(item, day.work_date)).length;
     const reportedPersonHours = (dayAssignments.reduce((sum, item) => sum + Number(item.actual_person_minutes || 0), 0) / 60).toFixed(1);
     const shifts = ['MORNING', 'AFTERNOON', 'ALL_DAY'];
     return `
       <section class="next-perform-day">
-        ${dayCanCollapse ? `<button type="button" class="small secondary next-perform-toggle-complete-day" aria-expanded="false">▶ SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.work_date)} · ${dayAssignments.length} completed tasks · ${reportedPersonHours} reported person-hours</button>` : ''}
+        ${dayCanCollapse ? `<button type="button" class="small secondary next-perform-toggle-complete-day" aria-expanded="false">▶ SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.work_date)} · ${dayAssignments.length} reported assignments · ${reportedPersonHours} reported person-hours</button>` : ''}
         <div class="next-perform-day-content" ${dayCanCollapse ? 'hidden' : ''}>
         <div style="border-top:5px solid var(--accent, #466a86);padding:12px 0;margin-top:22px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
           <h3 style="margin:0;font-size:1.25rem">SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.day_of_week || '')} · ${escapeHtml(day.work_date)}</h3>
           ${appState.access?.can_manage_setup ? `<button type="button" class="small secondary next-perform-manage-day" data-work-date="${escapeHtml(day.work_date)}">Manage Schedule →</button>` : ''}
         </div>
+        ${lateCount ? nextScheduleWarning(`${lateCount} LATE TASK${lateCount === 1 ? '' : 'S'} — NO WORK REPORTED`) : ''}
         ${(() => {
           const crewShifts = ['MORNING', 'AFTERNOON'].flatMap((shift) =>
             [...new Set(dayAssignments.filter((a) => a.shift_code === shift).map((a) => Number(a.setup_work_day_crew_id)))]
@@ -1427,6 +1452,7 @@ function renderNextExecution() {
                 return `
                   <div class="next-perform-crew">
                     <h5>Crew ${escapeHtml(crew?.crew_code || crewItems[0]?.crew_lane || '—')} · ${escapeHtml(crew?.captain_display_name || 'Captain TBD')}</h5>
+                    ${crew?.captain_person_id == null ? nextScheduleWarning('CAPTAIN TBD — NEEDS CAPTAIN') : ''}
                     ${nextPerformWorkloadLabel(crewItems, shift)}
                     ${crewItems.map(nextPerformAssignmentCard).join('')}
                   </div>`;
@@ -1959,3 +1985,4 @@ async function initializeNextPass() {
 }
 
 initializeNextPass();
+
