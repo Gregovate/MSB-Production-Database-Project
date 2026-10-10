@@ -29,4 +29,20 @@ check(()=>assert.equal(context.nextAssignmentLate({work_report_count:0},'2026-10
 check(()=>assert.equal(context.nextAssignmentLate({work_report_count:0},'2026-10-09'),false));
 check(()=>assert.equal(context.nextAssignmentLate(partial,'2026-10-05'),false));
 check(()=>assert.match(context.nextScheduleWarning('CAPTAIN TBD — NEEDS CAPTAIN'),/background:#fff0f0.*font-weight:900/));
+// Exercise the rendered Perform Work card, not just helper return values.
+Object.assign(context, {
+  nextPerformTask:()=>({effective_complete:true,expected_duration_minutes:60}),
+  nextPerformCrew:()=>({captain_display_name:'Captain',captain_person_id:17}),
+  nextPerformPlannedCrew:()=>2,nextLaborHoursText:()=>2,
+  nextTaskScopeLabel:()=> 'Stage 15',formatMinutes:()=> '1 hr',
+  nextCanSubmitFieldFinding:()=>true,
+});
+for(const n of ['nextSetupAssignmentStatus','nextPerformAssignmentStatus','nextPerformAssignmentCard']) vm.runInContext(fn(perform,n),context);
+const reportedCard=context.nextPerformAssignmentCard({...partial,task_name:'Layout Displays and Nativity'});
+check(()=>assert.match(reportedCard,/INCOMPLETE — Work Reported/));
+check(()=>assert.doesNotMatch(reportedCard,/LATE — NO WORK REPORTED/));
+const lateCard=context.nextPerformAssignmentCard({work_report_count:0,work_date:'2026-10-05',task_name:'Unreported task'});
+check(()=>assert.match(lateCard,/background:#a40000;color:#fff/));
+check(()=>assert.match(lateCard,/LATE — NO WORK REPORTED/));
+check(()=>assert.match(lateCard,/next-report-work/));
 console.log(`${checks} behavioral checks PASS`);
