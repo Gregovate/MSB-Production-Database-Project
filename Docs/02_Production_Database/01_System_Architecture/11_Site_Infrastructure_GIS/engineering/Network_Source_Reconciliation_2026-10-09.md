@@ -7,6 +7,27 @@
 | Main baseline | `38f6f9427007470cbc02b3e2d23a97450d4414ba` |
 | Implementation path | Existing PR #318, after `a523b5082dba54ec2fd14567aeb520a5a9813f88` |
 
+## Source responsibilities — operator clarification, October 10
+
+These sources have distinct responsibilities, not one blanket ranking:
+
+| Source | Authority / role |
+|---|---|
+| GPX | Authority for waypoint locations; supplies geographic tracks and recorded installation evidence. |
+| LinkIQ | Consumes those waypoint identities for testing; identifies each cable's endpoints, network/spare designation, measured length and test history. It does not establish waypoint coordinates. |
+| draw.io | Presentation layer: a hand-entered schematic for understanding track/cable connections. Drawing positions and line shapes are schematic, not GPS geometry or location authority. |
+| Database | Eventual consolidation of these distinct facts with shared identities, original provenance and reviewed corrections. |
+
+Start with GPX waypoint locations and reconcile the waypoint references used by
+LinkIQ to them. Then check the draw.io presentation against the reconciled
+connections and report entry discrepancies to Greg. Do not derive geographic
+coordinates, route shapes or geographic distances from schematic layout.
+LinkIQ cable length can help assess a GPX track match; it does not authorize
+moving authoritative waypoint locations. Preserve original traces and dates.
+This clarification narrows earlier "tester-first" wording to cable/test facts;
+it never gives the tester authority over waypoint locations.
+#171 owns this GIS/reconciliation work within #122's commanding Setup workflow.
+
 ## October 10 finding: raw LinkIQ source and consolidation authority
 
 Greg confirmed on 2026-10-10 that the tester cable names identify individual
@@ -57,9 +78,10 @@ cables or collapse retests. Identical names alone are not a durable unique key.
 
 Required reconciliation sequence:
 
-1. Reconcile endpoint waypoint identities across tester names, draw.io and GPX,
-   retaining original spellings and explicit confirmed aliases. Report missing,
-   ambiguous and conflicting identities in either direction.
+1. Use GPX as waypoint-location authority. Reconcile LinkIQ's references to those
+   waypoint identities, then check draw.io's schematic references. Retain original
+   spellings and confirmed aliases; report missing, ambiguous and conflicting
+   references without deriving locations from the tester or schematic.
 2. Establish individual cable identity from tester evidence, including endpoints,
    network/spare designation and separate parallel cables. Attach multiple tests
    as history to a reconciled cable; preserve source-file hash and source-row keys.
@@ -108,7 +130,7 @@ physical cable identity. Schema integration/writer/editor remain unimplemented.
 ## Historical V0.3.54 candidate matching rule — correction pending
 
 V0.3.54 used draw.io as network identity/topology input; this is superseded by
-the tester-first authority above. GPX carries route geometry. GPX description text never assigns network membership.
+the source-specific responsibilities above. GPX carries route geometry. GPX description text never assigns network membership.
 The first V0.3.53 candidate matched only literal two-endpoint track names (11
 routes, 67 unresolved). Greg's 23:05 screenshots exposed incomplete AUX-I/INET
 highlighting and confusing raw-track versus network search results. That browser
@@ -187,8 +209,9 @@ GPX cameras are incomplete; preserve existing entries and defer camera managemen
 
 ## Resume point
 
-Use the directly readable October 9 LinkIQ file to reconcile waypoint and cable
-identities, produce the actionable draw.io discrepancy list, and then correct
+Start with GPX-authoritative waypoint locations and reconcile the October 9
+LinkIQ cable/test references to those waypoint identities. Produce the actionable
+draw.io schematic discrepancy list, and then correct
 PR #318's map matching/classification. The tester source is now available; full
 reconciliation and raw-binary decoding have not yet been implemented.
 PR #319 (`99a2534aa5bea51645de2de6d255b97d89981bb2`) owns existing CableIQ
