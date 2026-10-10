@@ -7,6 +7,84 @@
 | Main baseline | `38f6f9427007470cbc02b3e2d23a97450d4414ba` |
 | Implementation path | Existing PR #318, after `a523b5082dba54ec2fd14567aeb520a5a9813f88` |
 
+## October 10 finding: raw LinkIQ source and consolidation authority
+
+Greg confirmed on 2026-10-10 that the tester cable names identify individual
+cables, endpoint to endpoint, including network/spare designation. Draw.io is
+hand-entered from these records and should agree; discrepancies must be reported
+to Greg with exact object ID, entered values, tester values and proposed correction.
+Do not silently rewrite the drawing. The eventual consolidated source of truth is
+the PostgreSQL database, with source provenance and reviewed reconciliation.
+
+The supplied `26-10-09-Park-Data.flw` is directly readable SQLite, opened read-only.
+Size: 174,149,636 bytes. SHA256:
+`75a6b4673c9acf3aa7698fef0617df219a2742aeaebf022daebb7b8a8277b5ef`.
+The file reports TesterType=LinkIQ (the conversation previously called it CableIQ).
+Tables: Records, RecordData, Admin and 606A. Records contains 470 test rows,
+447 distinct literal CableId values, 466 Deleted=NO and four Deleted=YES.
+These are record/name counts, not a verified count of physical cables.
+
+Readable fields include CableId, CableIdLong, LengthF, LengthM, TimeSpan,
+TestStatus, Deleted, Hash, UUID and TesterType. ResultBrief and RecordData.BinRec
+hold binary data; detailed binary results and numeric test-status meanings have
+NOT been decoded. Timestamp semantics/timezone still require verification.
+A tester timestamp must not automatically become an installation date.
+CSV export is unnecessary to access the verified scalar fields. Preserve raw
+names and raw values; do not use the zero-padded CableIdLong sorting form as a
+human cable name.
+
+Verified source examples (literal CableId and LengthF):
+
+| Tester cable name | Feet |
+|---|---:|
+| WV 00 to WV 03 AUX-I | 110 |
+| WV 04 TO WV-00 | 266 |
+| WV-11 TO WV-13 REG | 91 |
+| WV-11 TO WV-13 AUX-I | 87 |
+
+The first record supports correcting draw.io object
+`Cable_WV-00_WV-03_AuxI` Waypoint_2 from WV-04 to WV-03; report it for Greg's
+source correction. The second is a separate tester record and has no explicit
+network suffix: do not invent one. The last two prove separately named REG and
+AUX-I cables between the same endpoints; shared endpoints are not duplicates.
+The draw.io `Cable_WV-11_WV-13_Reg` label/Network conflict still needs
+object-to-cable reconciliation before its intended identity is chosen.
+
+Potential stray record: `1000 ft test cat-6 on roll`, 995 feet. Flag it for
+operator disposition rather than dropping it. Preserve deleted source records
+and repeated test records as evidence; do not automatically import them as active
+cables or collapse retests. Identical names alone are not a durable unique key.
+
+Required reconciliation sequence:
+
+1. Reconcile endpoint waypoint identities across tester names, draw.io and GPX,
+   retaining original spellings and explicit confirmed aliases. Report missing,
+   ambiguous and conflicting identities in either direction.
+2. Establish individual cable identity from tester evidence, including endpoints,
+   network/spare designation and separate parallel cables. Attach multiple tests
+   as history to a reconciled cable; preserve source-file hash and source-row keys.
+3. Report draw.io discrepancies with exact source object IDs and both sets of
+   values so Greg can correct human entry errors.
+4. Link cables to their GPX installation traces and preserve recorded installation
+   dates and original geometry/provenance. Greg considers bad traces unlikely;
+   inspect naming/matching errors first, without assuming all geometry is perfect.
+5. Compare route length in feet with tester-measured cable length to help assess
+   waypoint/track alignment. Slack, vertical runs and service loops can differ
+   from mapped length; length alone cannot determine a route. Store reviewed
+   corrections separately from original recordings and retain EPSG:8158 authority.
+6. Consolidate reviewed waypoint/cable/route identities and append-only test
+   history in the existing database/Wiring integration, reusing existing IDs.
+   The map and schematic should consume reconciled information rather than
+   independently assigning network identity.
+
+V0.3.54 is still the earlier draw.io-derived implementation. Its network
+assignments are provisional and its automatic dashed "alternative routes"
+classification is not supported merely by shared cable-path evidence. Separate
+cables may share endpoints/routes. This documentation supersedes that assumption;
+the application correction and full three-source reconciliation remain pending.
+No raw tester binary has been committed, no source drawing/GPX edited, and no
+database import, schema change or Production mutation occurred for this finding.
+
 ## Actual source inventory
 
 `Park Network Schematic 2026(8).drawio` SHA256
@@ -27,10 +105,10 @@ controller_id, stage_id, display_id and Wiring consumption paths. lor_network
 and management_ip describe controller configuration; they cannot substitute for
 physical cable identity. Schema integration/writer/editor remain unimplemented.
 
-## Candidate matching rule
+## Historical V0.3.54 candidate matching rule — correction pending
 
-Draw.io is operator-established network identity/topology authority; GPX carries
-route geometry. GPX description text never assigns network membership.
+V0.3.54 used draw.io as network identity/topology input; this is superseded by
+the tester-first authority above. GPX carries route geometry. GPX description text never assigns network membership.
 The first V0.3.53 candidate matched only literal two-endpoint track names (11
 routes, 67 unresolved). Greg's 23:05 screenshots exposed incomplete AUX-I/INET
 highlighting and confusing raw-track versus network search results. That browser
@@ -59,8 +137,9 @@ review and must not become accepted current physical topology automatically.
 The new source snapshot contains **43 candidate GPX routes, 35 unresolved routes**;
 AUX-I has **13 candidate routes and two conflicting cable records**; INET has
 **19 candidate routes and 15 records without supported full-route correspondence**.
-GPX features sharing the same source cable-path evidence are alternatives and
-highlight dashed; neither is silently chosen as the current surveyed route.
+V0.3.54 highlights GPX features sharing the same source cable-path evidence dashed
+as alternatives. That classification is premature and must be corrected; sharing
+evidence does not prove that the traces are alternatives.
 This is a read-only source consumption snapshot, not a second editable inventory.
 Candyland reconstruction still requires geographic validation. A candidate there
 does not establish that older route geometry describes the reconstructed cable.
@@ -71,8 +150,8 @@ Waypoint_1 A5-04. A5 formatting differences (A5-2A/A5-02A, A5-003/A5-03,
 slash versus ampersand combined endpoints) also require explicit reconciliation.
 No global spelling correction is made. The AUX-I record
 `Cable_WV-00_WV-03_AuxI` cannot resolve the missing WV-00/WV-03 section because its
-label/key indicate WV-03 while Waypoint_2 says WV-04. Greg must resolve that source
-conflict. `Cable_WV-11_WV-13_Reg` also has a Reg label but Network = Aux I; its
+label/key indicate WV-03 while Waypoint_2 says WV-04. The October 10 tester evidence above identifies the endpoint correction to
+report to Greg. `Cable_WV-11_WV-13_Reg` also has a Reg label but Network = Aux I; its
 network assignment is held unresolved instead of being counted as a second
 confirmed Aux-I cable. Other nonconfirmed Aux spellings are not globally merged.
 
@@ -108,9 +187,10 @@ GPX cameras are incomplete; preserve existing entries and defer camera managemen
 
 ## Resume point
 
-Test network grouping and inspect conflicting/unmatched endpoint evidence in
-PR #318's new exact candidate. Obtain the final corrected tester export before
-claiming reconciliation against it; this turn supplied draw.io and SQL only.
+Use the directly readable October 9 LinkIQ file to reconcile waypoint and cable
+identities, produce the actionable draw.io discrepancy list, and then correct
+PR #318's map matching/classification. The tester source is now available; full
+reconciliation and raw-binary decoding have not yet been implemented.
 PR #319 (`99a2534aa5bea51645de2de6d255b97d89981bb2`) owns existing CableIQ
 validation and is not duplicated or replaced. Next integration must reconcile
 source identities and design minimal extensions linked to existing Wiring and
