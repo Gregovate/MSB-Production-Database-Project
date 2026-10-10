@@ -155,6 +155,29 @@ Deferred by Greg explicitly: not an implementation request for today.
   and identify unresolved conflicts. Avoid competing free-text and structured
   authorities or silently discarding information once fields are populated.
 
+### OUT-Combo network and circuit assignments — October 10 clarification
+
+An OUT-Combo waypoint must expose both its assigned networks (multiple allowed)
+and its supplying electrical circuit, identified by panel plus breaker/circuit.
+These are separate relationships, not competing values in one type/category field.
+
+- Waypoint-to-network assignment is many-to-many: a waypoint can carry several
+  networks, and each network can occur at several waypoints. Maintain linked
+  network identities through a multi-select/relationship editor, not comma-separated
+  names or one network column. Preserve assignment evidence and physical cable
+  relationships separately; assignment alone does not prove cable continuity.
+- A circuit can feed multiple waypoints. Assign existing waypoints to the shared
+  circuit record; do not duplicate a circuit per waypoint or make circuit assignment
+  unique across waypoints. The normal OUT-Combo view shows its supplying circuit;
+  unknown or conflicting feeds stay explicit under the existing feed-evidence rules.
+- Clicking an OUT-Combo shows all assigned networks plus its upstream panel and
+  breaker/circuit. Opening that circuit shows every assigned waypoint/load. Network
+  selection can identify assigned waypoint membership separately from matched GPX
+  cable-route evidence; lack of test evidence must not erase a maintained assignment.
+- Crew circuit identification/assignment permission remains as specified above.
+  These are deferred reference-editor/data-model requirements, not changes to the
+  current read-only map snapshot or authorization to invent source assignments.
+
 ### Acceptance and source collection
 
 Collect existing lists, panel schedules/photos, pole labels and knowledgeable
