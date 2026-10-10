@@ -24,9 +24,13 @@ This tool creates a review manifest only. It does not connect to PostgreSQL.
 Reuse existing controller, Stage and Display identities and Wiring entry points.
 The supplied October 9 dump has no dedicated physical cable/network/test tables;
 design the smallest linked extension after inspecting draw.io source keys.
-draw.io governs network identity/connectivity/test evidence; GPX supplies spatial
-route evidence and currently lacks a shared reconciliation key. CableIQ supplies
-qualification measurements. Preserve source attributes independently of editable
+GPX is authoritative for waypoint locations and geographic route evidence.
+LinkIQ references those waypoint identities and supplies individual cable endpoints,
+network/spare designation, measured length and test history. Draw.io is schematic
+presentation plus source evidence for switches/other devices and connections absent
+elsewhere; its layout is not geographic authority. Report drawing entry conflicts
+for operator correction. LOR/V7 supplies expected show network topology; physical
+controller programmed configuration remains Controller Inventory-owned. Preserve source attributes independently of editable
 MSB network names, verified lengths and configuration values.
 
 ## Semantics and limits
@@ -51,3 +55,20 @@ require current evidence following reconstruction of 12 cut cables.
 Operator confirms the CSV format is fixed and draw.io Speed is reported from
 CableIQ. Preserve its verification provenance separately from configured or
 negotiated operational link speed.
+
+## October 10 coordination and raw-file discovery
+
+The supplied 26-10-09-Park-Data.flw is readable SQLite (TesterType=LinkIQ):
+470 test records, 447 distinct literal CableId values, four deleted records.
+Verified scalar fields can be extracted directly without CSV. Binary test detail,
+numeric status mapping and timestamp semantics remain unverified. The existing
+CSV CLI does not yet support FLW: add a versioned read-only adapter in this PR,
+preserving raw records, provenance, retests and review-only matching semantics.
+Do not silently substitute raw-file support for the existing CSV adapter.
+
+Controlling issue #171, commanding Setup #122, editor integration #230.
+[Coordinated source/PR plan](https://github.com/Gregovate/MSB-Production-Database-Project/blob/ebefa1283352e25f5255c2062648ce1c2364ab48/Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/engineering/Network_Source_Reconciliation_2026-10-09.md#coordinated-implementation-plan-and-pr-audit--october-10-2026)
+records evidence, source hash, discrepancies and #318/#321/#308/#309 dependencies.
+Refresh/reconcile this branch against current main before implementation; this
+contract correction is documentation-only and does not assert branch integration,
+FLW adapter completion, database import or new test acceptance.
