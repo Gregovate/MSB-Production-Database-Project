@@ -407,6 +407,33 @@ PostGIS may be useful for this comparison, but acceptable tolerances must come f
 
 ## Workshop Storage Boundary
 
+### Home Container map anchor — operator requirement, 2026-10-10
+
+Containers recorded at their Home storage location must be shown at the storage
+Workshop's geographic location. The shared Workshop pin identifies the building;
+the existing canonical Home/rack location (for example RC05-A-01) identifies where
+to find the Container inside. Preserve those rack identities and display them in
+search/details. This Workshop is **not** the Santa's Workshop display Stage.
+
+This map position is derived from the Workshop reference and Home state, not a
+new device GPS observation. Return Home remains usable inside the steel building
+without obtaining GPS. Detached Displays remain at their own field locations;
+returning an empty Container must not move them to the Workshop.
+
+Greg states that he already supplied the Workshop coordinates and expected them
+to be recorded. As of this checkpoint, the inspected repository map/reference
+files, #171/#88/#122 comments and retrieved prior context have not yielded the
+original coordinate values. **Coordinate recovery and source/provenance recording
+remain open; no value has been guessed or substituted.** Recover the original
+supplied reference and record its coordinates, CRS and source here or in the
+versioned reference data before implementing the anchor. Do not claim this mapping
+is present in the V0.3.60 candidate.
+
+Containers with no movement evidence must remain distinguishable as expected at
+Workshop rather than confirmed Home. The map is a consumer of #88 state; #230 owns
+future maintained site/reference editing. Controlling release issue: #122.
+
+
 Workshop/rack storage is not primarily a GIS problem.
 
 Precise rack locations and broader storage locations already exist as discrete Production Database location identities. High-volume workshop workflows are expected to use labeled rack/storage locations and the Zebra DS3678-HD scanner.
