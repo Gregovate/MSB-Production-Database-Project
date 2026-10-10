@@ -40,6 +40,80 @@ under commanding [#122 Setup](https://github.com/Gregovate/MSB-Production-Databa
   preserved while this is completed. This decision authorizes documentation and
   design direction, not an unreviewed Production migration or source cutover.
 
+## Required panel, circuit and seasonal power records — #171 / #230 / #122
+
+Operator requirement, October 10, 2026: capture power information currently held
+in people's heads or scattered lists as maintained, searchable reference data.
+The map and seasonal work lists must consume the same records.
+
+### Maintained reference facts
+
+- Panel permanent identity, readable panel identification/label, geographic
+  waypoint/location, ownership and supporting photos/source documents.
+- Each panel's breaker/circuit identification, label and applicable ratings or
+  pole/ganged-device information when documented. A breaker number is scoped to
+  its panel; do not treat it as a park-wide identifier.
+- Explicit feed relationships from panel/circuit through downstream equipment
+  to the waypoints, outlets, light poles and other loads it supplies. Support
+  intermediate devices and multiple documented feeds; do not force one upstream
+  breaker when the evidence does not establish that.
+- LP fuse/disconnect identification and the documented seasonal action required
+  for that specific pole. Identify utility-owned poles by the utility's asset
+  identification as well as the MSB waypoint, where both exist.
+- Responsible owner/party (including Alliant), source evidence, verification
+  status, verifier/date and effective/change history for feed and device facts.
+  Unknown and conflicting relationships remain explicit. GPX proximity, track
+  appearance and network-test data cannot establish electrical feed identity.
+
+These belong in governed reference relationships edited through #230, using
+existing site/equipment identities after current-schema reconciliation. Exact
+DDL and additional table names are not prescribed by this requirement.
+
+### Map behavior
+
+Clicking a waypoint such as FE-00 must show its documented upstream panel
+identification and breaker/circuit designation, intermediate fuse/disconnect
+information, and other downstream waypoints affected by that circuit. Show the
+recorded service-isolation information with provenance and verification status.
+No actual FE-00 feed assignment has been supplied here and none is inferred.
+A map record or completed seasonal task is not proof of present de-energization;
+service verification remains a separate field procedure/event.
+
+### Seasonal activity lists
+
+Maintain reusable action definitions with the equipment/circuit affected,
+seasonal phase (show setup, operation where applicable, teardown/restoration),
+desired state, responsible party, prerequisites and linked instructions. Provide
+lists grouped/filterable by activity, panel, area, waypoint and responsible party:
+
+- turn off designated lights;
+- remove the specified LP fuses;
+- request Alliant to turn off its identified light poles;
+- turn on specified circuits at identified panels for the show;
+- restore documented normal operation after the season, including corresponding
+  fuse/light/circuit restoration tasks where applicable.
+
+#122 Setup owns seasonal work instances, assignment and completion evidence;
+reference records own enduring equipment/feed relationships and action templates.
+Keep planned/desired state, last reported state and actual verified field state
+separate. Utility request submitted and utility work confirmed complete are
+separate statuses. Retain who/when/evidence, exceptions and blocked dependencies.
+Do not turn annual completion into a permanent reference fact or overwrite prior
+seasons when a reference mapping is corrected.
+
+### Acceptance and source collection
+
+Collect existing lists, panel schedules/photos, pole labels and knowledgeable
+operator input, reconcile them against waypoint identities, and flag gaps for
+verification. Record contributions immediately with their source rather than
+leaving them in chat. Review before presenting a feed as verified.
+
+Acceptance requires waypoint-to-panel/circuit lookup and reverse circuit-to-load
+lookup, explicit unresolved feeds, LP fuse actions, an Alliant action list, and
+season-specific activation/restoration lists generated from the same maintained
+data. This is required unfinished #230 scope coordinated under #171 and #122;
+the current read-only map candidate does not yet implement these power records.
+
 ## Current State
 
 Substantial historical field/site information exists outside PostgreSQL, including GPX data going back to at least 2015, waypoints and tracks, receptacles, network tracks, power tracks, utility meters, distribution panels, circuit identifiers, and seasonal energization requirements.
