@@ -463,10 +463,7 @@ function board205ApplyWorkDayPickerExpanded() {
 }
 
 function board205TodayDateKey() {
-  const today = new Date();
-  return String(today.getFullYear())
-    + '-' + String(today.getMonth() + 1).padStart(2, '0')
-    + '-' + String(today.getDate()).padStart(2, '0');
+  return nextSetupLocalDate();
 }
 
 
@@ -554,17 +551,10 @@ function board205RenderWorkDayCalendar() {
 }
 
 function board205DayViewState(day) {
-  const status = String(day.day_status || '').toUpperCase();
-  if (status === 'COMPLETE' || status === 'CANCELLED') return 'COMPLETED';
-
   const assignments = board205DayAssignments(day);
   if (!assignments.length) return 'EMPTY';
-
-  const hasUnfinished = assignments.some((item) => {
-    const task = board205Task(item.setup_session_task_id);
-    return !task || !task.effective_complete;
-  });
-  return hasUnfinished ? 'UNFINISHED' : 'COMPLETED';
+  // Annual completion never resolves an unreported occurrence on another day.
+  return assignments.every(nextAssignmentReported) ? 'COMPLETED' : 'UNFINISHED';
 }
 
 function board205CompactWorkDate(value) {
@@ -1815,9 +1805,9 @@ function board205AssignmentCard(item) {
   const locked = Boolean(item.historical_locked);
   // Historical assignment status describes that day's work, not current annual progress.
   // Never show IN PROGRESS on a locked past assignment: it looks like active shift work.
-  const status = locked
-    ? (task.effective_complete ? 'WORK REPORTED - COMPLETE' : 'WORK REPORTED - INCOMPLETE')
-    : nextSetupAssignmentStatus(task);
+  const status = nextAssignmentReported(item)
+    ? nextAssignmentReportedLabel(item)
+    : nextAssignmentLate(item) ? 'LATE — NO WORK REPORTED' : nextSetupAssignmentStatus(task);
   const planned = board205AssignmentPlannedCrew(item);
   const minCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
   const plannedLabor = board205LaborHoursText(planned, task.expected_duration_minutes);
@@ -1827,8 +1817,7 @@ function board205AssignmentCard(item) {
   const needsCaptain = !locked && crew?.captain_person_id == null;
   const assignmentDay = (setupBoard205State.board.work_days || []).find(
     (day) => Number(day.setup_work_day_id) === Number(item.setup_work_day_id));
-  const missingActualReport = !locked && assignmentDay?.work_date
-    && assignmentDay.work_date < new Date().toISOString().slice(0, 10);
+  const missingActualReport = nextAssignmentLate(item, assignmentDay?.work_date);
 
   return `
     <article class="setup-board205-assignment ${task.requires_display_material ? 'setup-material-task' : ''} ${locked ? 'locked' : ''} ${understaffed ? 'short-crew' : ''}"
@@ -1855,7 +1844,8 @@ function board205AssignmentCard(item) {
       ${understaffed ? `<div class="setup-board205-warning setup-board205-short-crew-warning"><strong>SHORT CREW</strong> · Planned ${board205Esc(item.shift_code === 'MORNING' ? 'AM' : 'PM')} ${board205Esc(planned)} / minimum ${board205Esc(minCrew)} · short by ${board205Esc(shortBy)}.</div>` : ''}
       ${heavyWarning ? `<div class="setup-board205-warning">⚠ ${board205Esc(heavyWarning)}</div>` : ''}
       ${needsCaptain ? '<div class="setup-board205-warning" style="border:2px solid #9d2424;font-weight:900">NEEDS CAPTAIN — assign before dispatch</div>' : ''}
-      ${missingActualReport ? '<div class="setup-board205-warning" style="font-weight:800">PAST ASSIGNMENT — NO WORK REPORTED; review or move</div>' : ''}
+      ${missingActualReport ? nextScheduleWarning('LATE — NO WORK REPORTED · Report missed work or remove from schedule') : ''}
+      ${missingActualReport ? '<button type="button" class="small setup-board205-report-missed">Report Work</button>' : ''}
 
       ${locked ? '<div class="setup-board205-lock">Historical actual — locked</div>' : ''}
       ${canManage && !locked ? `
@@ -1909,18 +1899,11 @@ function board205CanRemoveWorkDay(day) {
 }
 
 
-// Historical collapse is conservative: only a fully completed day with every
-// assignment locked may collapse. Unknown/missing actual reporting stays visible.
-// Never infer actual hours from planned duration or planned labor.
+// A past day is historical once its assignments are reported, even at partial progress.
+// The annual continuation remains independently schedulable; zero-duration reports count.
 function board205CanCollapseDay(day) {
-  const items = board205DayAssignments(day);
-  if (!items.length || board205DayViewState(day) !== 'COMPLETED') return false;
-  return items.every((item) => {
-    const task = board205Task(item.setup_session_task_id);
-    return Boolean(item.historical_locked && task?.effective_complete
-      && !board205NeedsContinuation(task)
-      && Number(item.actual_person_minutes || 0) > 0);
-  });
+  return Boolean(day.work_date && day.work_date < nextSetupLocalDate()
+    && board205DayViewState(day) === 'COMPLETED');
 }
 
 function board205Day(day) {
@@ -1971,6 +1954,7 @@ function board205Day(day) {
   }
   const collapseEligible = board205CanCollapseDay(day);
   const dayAssignmentCount = board205DayAssignments(day).length;
+  const lateCount = board205DayAssignments(day).filter((item) => nextAssignmentLate(item, day.work_date)).length;
   const reportedPersonHours = (board205DayAssignments(day).reduce((sum, item) => sum + Number(item.actual_person_minutes || 0), 0) / 60).toFixed(1);
   const crewRows = crews.map((crew) => {
     const legacy = board205AssignmentsFor(day.setup_work_day_id, 'ALL_DAY', crew.setup_work_day_crew_id);
@@ -1984,6 +1968,7 @@ function board205Day(day) {
             </div>
             ${canManage ? `<div class="setup-board205-crew-actions"><button type="button" class="small setup-board205-save-crew">Save</button>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
           </div>
+          ${crew.captain_person_id == null ? nextScheduleWarning('CAPTAIN TBD — NEEDS CAPTAIN') : ''}
           <label class="setup-board205-crew-captain">Captain
             <select class="setup-board205-crew-captain-select">${board205CaptainOptions(crew.captain_person_id)}</select>
           </label>
@@ -2004,8 +1989,9 @@ function board205Day(day) {
   return `
     <section class="setup-board205-day ${dayClass}${printEmptyDay ? ' print-empty-day' : ''}" data-day-id="${day.setup_work_day_id}">
       <div class="setup-board205-day-collapse-control" style="padding:4px 10px">
-        ${collapseEligible ? `<button type="button" class="small secondary setup-board205-toggle-day" aria-expanded="false">▶ SETUP DAY ${board205Esc(day.setup_day_number)} · ${board205Esc(day.work_date)} · ${dayAssignmentCount} completed tasks · ${reportedPersonHours} reported person-hours</button>` : ''}
+        ${collapseEligible ? `<button type="button" class="small secondary setup-board205-toggle-day" aria-expanded="false">▶ SETUP DAY ${board205Esc(day.setup_day_number)} · ${board205Esc(day.work_date)} · ${dayAssignmentCount} reported assignments · ${reportedPersonHours} reported person-hours</button>` : ''}
       </div>
+      ${lateCount ? nextScheduleWarning(`${lateCount} LATE TASK${lateCount === 1 ? '' : 'S'} — NO WORK REPORTED`) : ''}
       <div class="setup-board205-day-content" ${collapseEligible ? 'hidden' : ''}>
       <div class="setup-board205-day-header">
         <div>
@@ -2086,6 +2072,21 @@ function board205RenderBoard() {
   target.querySelectorAll('.setup-board205-assignment').forEach((card) => {
     const assignmentId = Number(card.dataset.assignmentId);
     const item = board205Assignment(assignmentId);
+    // Route to the existing report form for this exact assignment; no new write path.
+    card.querySelector('.setup-board205-report-missed')?.addEventListener('click', async () => {
+      try {
+        const navigated = await navigateSetupView('perform');
+        if (navigated === false) return;
+        setupNextState.performCaptainFilter = 'ALL';
+        setupNextState.performCaptainFilterTouched = true;
+        renderNextExecution();
+        const details = document.querySelector(`.next-perform-assignment[data-assignment-id="${assignmentId}"]`);
+        if (!details) throw new Error('Assignment is not available in Perform Work. Refresh and try again.');
+        details.open = true;
+        details.scrollIntoView({ block: 'center' });
+        await loadNextTaskExecution(details, true);
+      } catch (error) { setAlert(error.message || error, 'error'); }
+    });
 
     // Dragging is a separate gesture; keep Ctrl/Shift selection for clicks.
     card.addEventListener('click', (event) => {
@@ -3901,3 +3902,4 @@ board205InstallView();
 if (document.getElementById('schedule-view')?.classList.contains('active-view')) {
   void board205Load();
 }
+
