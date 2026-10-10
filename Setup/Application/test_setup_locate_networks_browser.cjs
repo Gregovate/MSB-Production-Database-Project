@@ -107,7 +107,7 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   assert.equal(activeIds().size, 0, 'Parent off restores all highlighted source tracks');
   assert([...controls.values()].every(c => !c.checked));
   assert(page.includes('<details id="network-picker"><summary>'), 'Network list has native keyboard-accessible disclosure');
-  assert(page.includes('V0.3.58-gis-v1 · Updated 2026-10-10'));
+  assert(page.includes('V0.3.59-map-controls · Updated 2026-10-10'));
   const styles = vm.runInNewContext('(' + page.match(/const trackStyles=(.*?);/)[1] + ')');
   assert.equal(styles.PRI.color, '#ff8b25');
   assert.equal(styles.HV.color, '#dd2424');
@@ -128,3 +128,63 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   assert.match(elements['network-status'].textContent, /unavailable/);
   console.log('PASS: actual network search, multi-network checklist, shared tracks, clear/parent-off, unresolved evidence and failure behavior');
 })().catch(error => { console.error(error); process.exitCode = 1; });
+
+// Exercise the real panel controller without replacing any search/layer state.
+{
+  const page = fs.readFileSync(path.join(__dirname, 'locate_preview.html'), 'utf8');
+  const controls = {};
+  let focused;
+  for (const id of ['map-controls', 'map-controls-open', 'map-controls-close']) {
+    controls[id] = { hidden: id === 'map-controls-open', attributes: {}, handlers: {},
+      setAttribute(name, value) { this.attributes[name] = value; },
+      addEventListener(name, handler) { this.handlers[name] = handler; },
+      focus() { focused = id; } };
+  }
+  const source = page.match(/<script id="map-controls-script">([\s\S]*?)<\/script>/)[1];
+  vm.runInNewContext(source, { document: { getElementById: id => controls[id] } });
+  controls['map-controls-close'].handlers.click();
+  assert.equal(controls['map-controls'].hidden, true);
+  assert.equal(controls['map-controls-open'].hidden, false);
+  assert.equal(controls['map-controls-open'].attributes['aria-expanded'], 'false');
+  assert.equal(focused, 'map-controls-open');
+  controls['map-controls-open'].handlers.click();
+  assert.equal(controls['map-controls'].hidden, false);
+  assert.equal(controls['map-controls-open'].hidden, true);
+  assert.equal(controls['map-controls-open'].attributes['aria-expanded'], 'true');
+  assert.equal(focused, 'map-controls-close');
+  let prevented = false;
+  controls['map-controls'].handlers.keydown({ key: 'Escape', preventDefault() { prevented = true; } });
+  assert.equal(prevented, true);
+  assert.equal(controls['map-controls'].hidden, true);
+  console.log('PASS: map controls collapse, reopen, keyboard escape and focus');
+}
+
+// A missing pick must not become a confirmed workshop location or an inferred park delivery.
+{
+  const source = fs.readFileSync(path.join(__dirname, 'setup_locate_assets.js'), 'utf8');
+  const fn = source.slice(source.indexOf('  function volunteerSummary('), source.indexOf('  function popup('));
+  const context = {esc: value => String(value)};
+  vm.createContext(context);
+  vm.runInContext(fn, context);
+  const summary = context.volunteerSummary;
+  assert.match(summary({expected_location:'Workshop'}), /Workshop \(expected; not confirmed\)/);
+  assert.match(summary({expected_location:'Workshop'}), /No picking or movement recorded/);
+  assert.match(summary({movement_status:'PICKED'}), /assumed in the park or on the way/);
+  assert.match(summary({movement_status:'IN_TRANSIT'}), /In transit/);
+  assert.match(summary({observation:{event_type:'PLACED',stage_name:'Candyland',stage_key:'A5'}}), /A5 Candyland/);
+  assert.match(summary({movement_status:'RETURNED',current_location_note:'Workshop rack 2'}), /Returned to storage/);
+  assert.match(summary({position:[43,-87]}), /Recorded map location/);
+  assert.doesNotMatch(summary({position:[43,-87]}), /In the park/);
+  assert.match(summary({}), /Location not recorded/);
+  console.log('PASS: volunteer status preserves known, expected and unknown location distinctions');
+}
+
+// Return Home overrides historical contents associations in the volunteer summary.
+{
+ const source = fs.readFileSync(path.join(__dirname, 'setup_locate_assets.js'), 'utf8');
+ const context = {esc: String}; vm.createContext(context);
+ vm.runInContext(source.slice(source.indexOf('  function volunteerSummary('), source.indexOf('  function popup(')), context);
+ const result = context.volunteerSummary({reported_home:true,home_location_code:'RC05-A-01',current_location_note:'Old park destination',movement_status:'RETURNED'});
+ assert.match(result, /RC05-A-01/); assert.match(result, /Empty — reported back Home/);
+ assert.doesNotMatch(result, /Old park destination/);
+}

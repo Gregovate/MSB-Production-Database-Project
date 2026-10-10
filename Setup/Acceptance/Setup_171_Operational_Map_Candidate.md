@@ -3,7 +3,7 @@
 Status: ENGINEERING CANDIDATE — current-clone/operator acceptance pending.
 
 Baseline main: `38f6f9427007470cbc02b3e2d23a97450d4414ba` (PR #327).
-Version: `V0.3.58-gis-v1`; visible Updated 2026-10-10.
+Version: `V0.3.59-map-controls`; visible Updated 2026-10-10.
 Exact application SHA: the implementation commit identified on PR #318; pin
 that SHA rather than resolving a moving branch at launch.
 No migrations or new Production grants are proposed.
@@ -15,7 +15,7 @@ page. This candidate gives the existing Field Wiring page a prominent **Park Map
 / GIS** card, preserves Display/Stage/Scene browse and Controller Inventory, and
 links to the single canonical map at `/setup/locate/?view=fieldwiring`. The map is titled **Park
 Map v1** and links back to `/fieldwiring/`. Field Wiring version is
-`V0.4.1-gis-entry`; Setup/map version is `V0.3.58-gis-v1`.
+`V0.4.1-gis-entry`; Setup/map version is `V0.3.59-map-controls`.
 
 v1 scope: current aerial/GPX reference, corrected power styles, search/clear,
 expandable multi-network selection with source evidence/unresolved records,
@@ -217,7 +217,7 @@ if ($LASTEXITCODE -ne 0) { throw 'STOP: cannot read candidate SHA' }
   -PreviewPort 8898 `
   -CandidateSha $Candidate171 `
   -TargetRef 'docs/171-symbol-type-mapping' `
-  -ExpectedVersion 'V0.3.58-gis-v1' `
+  -ExpectedVersion 'V0.3.59-map-controls' `
   -AllowConcurrentProductionWrites
 if ($LASTEXITCODE -ne 0) { throw 'STOP: retain report; inspect before retry' }
 ```
@@ -374,3 +374,26 @@ feature geometry/properties compare identical to the preceding candidate.
 Screenshots inspected from operator attachments: image(20261010-040226).png and
 image(20261010-040512).png. Full screenshot imagery stays in the supplied evidence;
 this record preserves the diagnosed behavior and correction, not a new acceptance.
+
+### Compact controls and volunteer summaries — 2026-10-10
+
+Candidate V0.3.59-map-controls puts search first, groups layers in a compact grid,
+and moves season/source diagnostics into disclosure sections. Collapse hides the
+whole panel; Map controls reopens it without resetting search, layers, or map position.
+Escape collapses the panel and keyboard focus follows the visible control.
+
+Container/display summaries lead with Where and Setup status. An unobserved
+container shows Workshop **expected, not confirmed** and no picking/movement
+recorded. Explicit movement states use plain language; GPS alone does not establish
+park delivery. Assigned displays use readable container relationships. Technical
+provenance remains available under Record details. No new movement is recorded.
+
+Browser acceptance: collapse/reopen with a search and multiple networks selected;
+check narrow-screen layout; inspect C212 and a container with recorded movement.
+Confirm entry-point defaults and Field Wiring navigation still work. Production
+is unchanged pending exact-candidate disposable review and governed deployment.
+
+Operational clarification from the owner: Picked means assumed in the park or on
+the way. A container reported back Home is empty and uses its home location;
+historical display assignments do not imply it remains loaded. Home without GPS
+remains a named location, never an invented map coordinate.

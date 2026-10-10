@@ -39,6 +39,11 @@ def locate_assets(picture):
             load_state = "EMPTY"
         else:
             load_state = "PARTIAL"
+        # Operational rule: a reported return Home means the container is empty.
+        # Keep assignments for reference; they no longer describe a loaded container.
+        returned_home = state.get("movement_status") == "RETURNED" or event.get("event_type") == "RETURNED"
+        if returned_home:
+            load_state = "EMPTY"
         containers.append({"container_id": state["container_id"],
                            "name": state.get("container_name"),
                            "position": geographic_position(event),
@@ -48,6 +53,7 @@ def locate_assets(picture):
                            "home_location_code": state.get("home_location_code"),
                            "expected_location": "Workshop" if not state.get("last_movement_event_id") and not state.get("movement_status") else None,
                            "load_state": load_state,
+                           "reported_home": returned_home,
                            "physical_load_confirmed": False,
                            "review_event_ids": sorted({e["setup_movement_event_id"] for e in picture["effect_rows"]
                                if e.get("container_id") == state["container_id"]
@@ -62,6 +68,8 @@ def locate_assets(picture):
         event = events.get(state.get("last_movement_event_id"), {})
         displays.append({"display_id": state["display_id"], "name": state["display_name"],
                          "position_mode": state["position_mode"],
+                         "movement_status": state.get("movement_status"),
+                         "current_location_note": state.get("current_location_note"),
                          "position": geographic_position(event), "observation": observation(event)})
     return {"generated_at": picture["generated_at"], "through_event_id": picture["through_event_id"],
             "containers": containers, "displays": displays,

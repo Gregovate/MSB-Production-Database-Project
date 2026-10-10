@@ -70,7 +70,7 @@ def test_locate_canonical_slash_loads_actual_overlay_script():
     assert script.status_code == 200
     assert 'javascript' in script.content_type
     assert 'Physical loads unconfirmed' in script.get_data(as_text=True)
-    assert 'Asset overlay initializing' in source
+    assert 'Loading assets…' in source
 
 
 def test_locate_allows_close_inspection_without_requesting_nonexistent_tiles():
@@ -115,3 +115,15 @@ def test_unobserved_container_has_expected_workshop_without_fabricated_gps():
         effect_rows=[], containers=[dict(container_id=1)], displays=[]))
     assert result['containers'][0]['expected_location'] == 'Workshop'
     assert result['containers'][0]['position'] is None
+
+
+def test_reported_return_home_overrides_loaded_associations():
+    result = locate_assets(dict(generated_at=None, through_event_id=2,
+        effect_rows=[dict(setup_movement_event_id=2, event_type='RETURNED', gps_latitude=43, gps_longitude=-87)],
+        containers=[dict(container_id=1, last_movement_event_id=2, movement_status='RETURNED', home_location_code='RC05-A-01')],
+        displays=[dict(display_id=1, display_name='Arch', container_id=1, position_mode='WITH_CONTAINER')]))
+    container = result['containers'][0]
+    assert container['reported_home'] is True
+    assert container['load_state'] == 'EMPTY'
+    assert container['home_location_code'] == 'RC05-A-01'
+    assert container['position'] is None

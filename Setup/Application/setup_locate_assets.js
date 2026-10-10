@@ -27,17 +27,41 @@
     if (Number(o.gps_fix_age_ms) > 15000) text += '<br>Fix was stale at capture';
     return text;
   }
+  // Describe recorded facts in volunteer language; missing movement is not proof of location.
+  function volunteerSummary(a) {
+    const o = a.observation || {};
+    const movement = a.movement_status || o.event_type;
+    const labels = {PICKED: 'Picked — assumed in the park or on the way', LOADED: 'Loaded for transport',
+      IN_TRANSIT: 'In transit', DELIVERED: 'Delivered', UNLOADED: 'Unloaded',
+      STAGED: 'Staged for setup', PLACED: 'Placed', RELOCATED: 'Relocated',
+      RETURNED: 'Returned to storage', TASK_UNLOAD: 'Unloaded from container',
+      CONTAINER_MOVE: 'Container moved'};
+    let location = a.current_location_note || o.destination_location_note;
+    if (a.reported_home) location = a.home_location_code || a.current_location_note || 'Home (specific location not recorded)';
+    if (!location && o.stage_name) location = `${o.stage_key || ''} ${o.stage_name}`.trim();
+    if (!location && a.expected_location === 'Workshop') location = 'Workshop (expected; not confirmed)';
+    if (!location) location = a.position ? 'Recorded map location' : 'Location not recorded';
+    const progress = a.reported_home ? 'Empty — reported back Home' : labels[movement] || (movement ? 'Movement recorded — see details' : 'No picking or movement recorded');
+    return `<p><b>Where:</b> ${esc(location)}<br><b>Setup status:</b> ${esc(progress)}</p>`;
+  }
   function popup(a, container) {
-    let text = `<b>${container ? 'C' + String(a.container_id).padStart(3, '0') + ' — ' : ''}${esc(a.name)}</b><br>${evidence(a.observation)}`;
+    let text = `<b>${container ? 'C' + String(a.container_id).padStart(3, '0') + ' — ' : ''}${esc(a.name)}</b>${volunteerSummary(a)}`;
     if (container) {
-      text += `<br>Recorded movement: ${esc(a.movement_status)}<br>Recorded contents: ${esc(a.load_state)}<br>Physical contents inspection: unconfirmed<br>${esc(a.uncertainty)}`;
-      if (a.review_event_ids.length) text += `<br>Contents review recorded in events ${esc(a.review_event_ids.join(', '))}; resolution not established here.`;
-      text += '<br><b>Current recorded Display associations</b><ul>';
-      for (const d of a.contents) text += `<li>${esc(d.display_name)} · ${esc(d.position_mode)}</li>`;
+      text += '<b>Assigned displays</b><ul>';
+      for (const d of a.contents) {
+        const position = a.reported_home ? 'Assigned display; container returned empty' : d.position_mode === 'WITH_CONTAINER' ? 'With this container (recorded)' :
+          d.position_mode === 'DETACHED' ? 'Separate from this container' : 'Location relationship not recorded';
+        text += `<li>${esc(d.display_name)} — ${esc(position)}</li>`;
+      }
       text += '</ul>';
-      if (!a.contents.length) text += 'No active assigned Displays; this does not prove Empty.';
+      if (!a.contents.length) text += '<p>No displays assigned.</p>';
+    }
+    text += `<details><summary>Record details</summary>${evidence(a.observation)}`;
+    if (container) {
+      text += `<br>Recorded movement: ${esc(a.movement_status || 'none')}<br>Recorded contents: ${esc(a.load_state)}<br>${esc(a.uncertainty)}`;
+      if (a.review_event_ids.length) text += `<br>Contents review recorded in events ${esc(a.review_event_ids.join(', '))}; resolution not established here.`;
     } else text += `<br>Recorded position mode: ${esc(a.position_mode)}`;
-    return text;
+    return text + '</details>';
   }
   function render(items, container) {
     const group = layers[container ? 'containers' : 'displays'];
