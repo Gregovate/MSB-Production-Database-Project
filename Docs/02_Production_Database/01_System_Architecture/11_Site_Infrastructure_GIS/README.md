@@ -420,14 +420,24 @@ new device GPS observation. Return Home remains usable inside the steel building
 without obtaining GPS. Detached Displays remain at their own field locations;
 returning an empty Container must not move them to the Workshop.
 
-Greg states that he already supplied the Workshop coordinates and expected them
-to be recorded. As of this checkpoint, the inspected repository map/reference
-files, #171/#88/#122 comments and retrieved prior context have not yielded the
-original coordinate values. **Coordinate recovery and source/provenance recording
-remain open; no value has been guessed or substituted.** Recover the original
-supplied reference and record its coordinates, CRS and source here or in the
-versioned reference data before implementing the anchor. Do not claim this mapping
-is present in the V0.3.60 candidate.
+Greg supplied the Workshop reference again on 2026-10-10 at 10:28 CDT in
+`image(20261010-152837).png`. Exact displayed projected coordinates:
+
+| Axis | Value |
+|---|---:|
+| X / Easting | 213609.429 |
+| Y / Northing | 186587.658 |
+
+The screenshot shows feet. The existing project coordinate contract is
+NAD83(HARN) / WISCRS Sheboygan County (US survey feet), EPSG:8158; the screenshot
+does not independently display its CRS, so that interpretation comes from the
+established project contract. Preserve these exact source values. Transform to
+WGS84 for browser mapping using the established CRS; do not treat them as decimal
+latitude/longitude. Machine-readable source:
+[workshop_reference.json](workshop_reference.json).
+
+The coordinate recovery gap is now resolved by this replacement source evidence.
+Workshop-anchor rendering remains to be implemented; V0.3.60 does not yet use it.
 
 Containers with no movement evidence must remain distinguishable as expected at
 Workshop rather than confirmed Home. The map is a consumer of #88 state; #230 owns
