@@ -71,6 +71,7 @@ class Deploy:
     def mark(self, stage):
         self.stage = stage
         self.log.write('STAGE ' + stage + '\n')
+        print('STAGE ' + stage, flush=True)
         self.journal()
         if self.maintenance_started:
             self.controller('stage', ('PR318/070 ' if self.m.get('profile') == 'field-070' else 'PR293 ') + stage)

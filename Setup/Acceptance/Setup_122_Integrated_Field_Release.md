@@ -187,3 +187,16 @@ ordering. Prior simulated deployment tests did not exercise generated SQL; their
 PASS was insufficient to catch this defect. Do not rerun the old tooling bundle.
 The application candidate and migration remain unchanged. Retry requires corrected
 merged tooling and healthy ONLINE preflight; preserve the original STOP report.
+
+### Interrupted entry recovery transport
+
+Run 171035 passed corrected fingerprint preflight then KeyboardInterrupt interrupted
+controller ON. Run 171114 stopped ONLINE preflight because controller remained
+ENTERING. No migration/source promotion. Services active, DB unfenced, read continuity
+PREPARED; no active maintenance processes reported. Server Management PR72 now owns
+guarded recover-pre-fence, source 9770e5ea, merge 8f56004a. The release manifest
+carries an immutable compressed transport copy with SHA256/provenance; do not install
+over the live controller. Invoke temporary reviewed controller with exact entry
+2026-10-10T17:10:49.213680+00:00 and journal 171035 under existing deployment lock.
+Recovery must prove ONLINE/OFF before any deployment retry. Application target unchanged.
+Runner stages now print immediately so operator can see progress.
