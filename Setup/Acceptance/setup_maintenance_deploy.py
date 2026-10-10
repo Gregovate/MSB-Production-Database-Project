@@ -164,7 +164,7 @@ class Deploy:
         if self.m.get('profile') == 'field-070':
             # Function-only release preserves every business row, including audit fields.
             return self.sql(r"""BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
-              SELECT format('SELECT json_build_object(''table'',%L,''digest'',md5(coalesce(string_agg(to_jsonb(t)::text, ORDER BY to_jsonb(t)::text),))) FROM %I.%I t;',
+              SELECT format($query$SELECT json_build_object('table',%L,'digest',md5(coalesce(string_agg(to_jsonb(t)::text,'' ORDER BY to_jsonb(t)::text),''))) FROM %I.%I t;$query$,
                 n.nspname||'.'||c.relname,n.nspname,c.relname)
               FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
               WHERE n.nspname IN ('ref','ops') AND c.relkind IN ('r','p')
@@ -351,6 +351,9 @@ class Deploy:
         for suite in ['Setup/Application','FieldWiring/Application','Procedures/Application']:
             self.run(['sudo','-u','fieldwiring','-H','env','PYTHONDONTWRITEBYTECODE=1','bash','-c',
                       'cd '+self.worktree+' && '+PYTHON+' -m pytest -q -p no:cacheprovider '+suite],timeout=300)
+        # Exercise the exact generated SQL while ONLINE. This is syntax/read proof,
+        # not a preservation baseline across legitimate concurrent operator writes.
+        (self.root / 'online-fingerprint-probe.jsonl').write_text(self.capture() + '\n')
         self.mark('field preflight PASS')
 
     def cleanup(self):
