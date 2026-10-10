@@ -1362,19 +1362,25 @@ function nextPerformWorkloadLabel(items, shift) {
 
 // Count each crew once per shift; planned counts already include the Captain.
 // ALL_DAY remains explicit, and reported labor is never presented as attendance.
-function nextDayStaffingSummary(assignments, crews) {
+function nextDayStaffingSummary(assignments, crews, taskRows = []) {
   return ['MORNING', 'AFTERNOON'].map((shift) => {
     const field = shift === 'MORNING' ? 'am_planned_crew_count' : 'pm_planned_crew_count';
     const tasks = assignments.filter((item) => item.shift_code === shift);
     const ids = new Set(tasks.map((item) => Number(item.setup_work_day_crew_id)));
     crews.filter((crew) => Number(crew[field]) > 0).forEach((crew) => ids.add(Number(crew.setup_work_day_crew_id)));
-    let people = 0, unknown = 0;
+    let people = 0, unknown = 0, required = 0;
     ids.forEach((id) => {
       const crew = crews.find((item) => Number(item.setup_work_day_crew_id) === id);
+      // Tasks in one crew are sequential: use the largest minimum, not a sum.
+      const crewTasks = tasks.filter((item) => Number(item.setup_work_day_crew_id) === id);
+      required += crewTasks.length ? Math.max(1, ...crewTasks.map((item) => {
+        const task = taskRows.find((row) => Number(row.setup_session_task_id) === Number(item.setup_session_task_id));
+        return Math.max(1, Number(task?.normal_crew_min ?? item.normal_crew_min) || 1);
+      })) : 0;
       if (crew?.[field] == null || crew[field] === '') unknown += 1;
       else people += Number(crew[field]);
     });
-    return `${shift === 'MORNING' ? 'AM' : 'PM'}: ${ids.size} crews / ${unknown ? `${people} known people + ${unknown} crew count TBD` : `${people} people`} / ${tasks.length} tasks`;
+    return `${shift === 'MORNING' ? 'AM' : 'PM'}: ${ids.size} crews / ${unknown ? `${people} known people + ${unknown} crew count TBD` : `${people} people`} / ${tasks.length} tasks / ${required} people minimum`;
   }).join(' · ') + (assignments.some((item) => item.shift_code === 'ALL_DAY')
     ? ` · All Day: ${assignments.filter((item) => item.shift_code === 'ALL_DAY').length} tasks` : '');
 }
@@ -1470,7 +1476,7 @@ function renderNextExecution() {
           const notReady = crewShifts.reduce((n, w) => n + w.notReady, 0);
           const color = overloaded ? '#9d2424' : unknown || notReady ? '#835900' : '#146044';
           return `<div role="status" style="border:3px solid ${color};border-radius:8px;padding:12px;margin:8px 0;background:var(--surface, #f7f7f7);font-size:1.05rem;font-weight:700">
-            ${escapeHtml(nextDayStaffingSummary(scopedAssignments.filter((a) => Number(a.setup_work_day_id) === Number(day.setup_work_day_id)), (board.crews || []).filter((c) => Number(c.setup_work_day_id) === Number(day.setup_work_day_id) && (setupNextState.performCaptainFilter === 'ALL' || Number(c.captain_person_id) === Number(String(setupNextState.performCaptainFilter).split(':')[1])))))}<br>${day.work_date < nextSetupLocalDate() ? `${scopedDayAssignments.filter(nextAssignmentReported).length} tasks reported · ${reportedPersonHours} actual person-hours reported so far` : ''}${overloaded ? ` · ${overloaded} overloaded shifts` : ''}${unknown ? ` · ${unknown} missing time estimates` : ''}${notReady ? ` · ${notReady} tasks not ready` : ''}
+            ${escapeHtml(nextDayStaffingSummary(scopedAssignments.filter((a) => Number(a.setup_work_day_id) === Number(day.setup_work_day_id)), (board.crews || []).filter((c) => Number(c.setup_work_day_id) === Number(day.setup_work_day_id) && (setupNextState.performCaptainFilter === 'ALL' || Number(c.captain_person_id) === Number(String(setupNextState.performCaptainFilter).split(':')[1]))), board.tasks || []))}<br>${day.work_date < nextSetupLocalDate() ? `${scopedDayAssignments.filter(nextAssignmentReported).length} tasks reported · ${reportedPersonHours} actual person-hours reported so far` : ''}${overloaded ? ` · ${overloaded} overloaded shifts` : ''}${unknown ? ` · ${unknown} missing time estimates` : ''}${notReady ? ` · ${notReady} tasks not ready` : ''}
           </div>`;
         })()}
         ${shifts.map((shift) => {
