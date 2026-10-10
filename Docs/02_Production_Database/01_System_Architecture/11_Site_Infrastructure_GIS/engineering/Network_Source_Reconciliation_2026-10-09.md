@@ -15,7 +15,7 @@ These sources have distinct responsibilities, not one blanket ranking:
 |---|---|
 | GPX | Authority for waypoint locations; supplies geographic tracks and recorded installation evidence. |
 | LinkIQ | Consumes those waypoint identities for testing; identifies each cable's endpoints, network/spare designation, measured length and test history. It does not establish waypoint coordinates. |
-| draw.io | Presentation layer: a hand-entered schematic for understanding track/cable connections. Drawing positions and line shapes are schematic, not GPS geometry or location authority. |
+| draw.io | Schematic presentation plus source evidence for switches/other infrastructure and connections absent elsewhere. Drawing positions and line shapes are not GPS geometry or location authority. |
 | Database | Eventual consolidation of these distinct facts with shared identities, original provenance and reviewed corrections. |
 
 Start with GPX waypoint locations and reconcile the waypoint references used by
@@ -220,3 +220,111 @@ source identities and design minimal extensions linked to existing Wiring and
 reference tables under #171/#230, preserve append-only retests, and obtain normal
 disposable/operator acceptance before Production. No database writer, editable
 network records, test ingestion or complete topology is delivered by this slice.
+
+## Coordinated implementation plan and PR audit — October 10, 2026
+
+Status: engineering plan / unresolved integration gates, not implementation or
+Production acceptance. Refreshed main: `38f6f9427007470cbc02b3e2d23a97450d4414ba`.
+#171 controls this work within commanding #122. Links below are the shared resume
+point for concurrent threads; reuse existing PRs rather than duplicating work.
+
+### Additional source responsibilities
+
+Draw.io is schematic presentation, but also supplies switches and other device
+inventory/connections absent from other sources. Preserve these objects, source
+IDs, attributes and connections; absence from LinkIQ/GPX/LOR is not proof of a
+stray device. Associate devices with a GPX waypoint only where supported; retain
+unknown geographic location explicitly. Schematic coordinates never become GPS.
+
+LOR/V7 owns expected show network/UID/channel/universe topology.
+[Controller Inventory's current programmed configuration contract](../../08_Controller_Inventory/Controller_Current_Programmed_Configuration_Contract_2026-08-31.md)
+separately owns physical controller identity and recorded programmed settings.
+Reuse controller_id and existing Display assignments; Network/UID/IP are mutable
+and not globally unique physical keys. Compare expected LOR usage, recorded
+controller configuration and confirmed physical connections without conflating
+them. LinkIQ qualification is not configured or negotiated network speed.
+
+Greg reports all infrastructure icons are created and integration is running in
+another thread. Do not recreate artwork. No separate icon PR was identified in
+this repository's open-PR inventory during this audit. Existing PR #318 contains
+four Container SVGs and existing type/symbol mappings; that does not prove the
+other thread's complete icon set is integrated. Required handoff: exact repo,
+branch/PR/SHA, asset paths, type-to-icon mapping and acceptance state. Icon artwork
+does not assign physical identity, geographic location or confirmed load status.
+
+### Existing work and dependencies
+
+| Owner / PR | Verified repository state | Next action / integration boundary |
+|---|---|---|
+| [#171](https://github.com/Gregovate/MSB-Production-Database-Project/issues/171), [#318](https://github.com/Gregovate/MSB-Production-Database-Project/pull/318) | Open map/search candidate; contains current main; V0.3.54 app still has provisional draw.io inference | Consume reviewed cable/waypoint/device relationships, correct unsupported alternative classification, implement URL focus and shared rendering contract. No authoritative-network acceptance yet. |
+| [#319](https://github.com/Gregovate/MSB-Production-Database-Project/pull/319) | Draft CSV validator/source inventory; original head 99a2534; 134 main commits absent at audit | Preserve CSV adapter; extend this existing import work with read-only FLW adapter and reviewed manifests. Correct source authority; reconcile current main before implementation. No database loader exists. |
+| [#230](https://github.com/Gregovate/MSB-Production-Database-Project/issues/230) | Existing governed reference-management owner, with #171 infrastructure requirements | Reuse its maintenance boundaries for reviewed identities/edits; design only demonstrated schema gaps. No new parallel reference editor. |
+| [#175](https://github.com/Gregovate/MSB-Production-Database-Project/issues/175), [#308](https://github.com/Gregovate/MSB-Production-Database-Project/pull/308) | #175 closed for accepted core; draft #308 still open, conflicts with main; 154 main commits absent | Pending location wording/Home visibility work remains tracked under #122 DBG-2026-001. Reconcile renderer changes with #309; issue closure is not follow-up acceptance. |
+| [#88](https://github.com/Gregovate/MSB-Production-Database-Project/issues/88), [#309](https://github.com/Gregovate/MSB-Production-Database-Project/pull/309) | Draft guided stops, conflicts with main; 154 main commits absent; separate report slice already has deployment evidence | Own movement/contents truth. Keep unfinished guided stops, historical repair and migration070 out of GIS integration unless separately accepted. Preserve inferred-location provenance in shared renderer. |
+| [#321](https://github.com/Gregovate/MSB-Production-Database-Project/pull/321) | Draft links only; head 6bd76eb; 134 main commits absent; no recorded tests | Depends on #318 consuming container_id URL parameter. Static task-specific map inset remains missing and must stay explicit in this existing coversheet work. |
+| [#229](https://github.com/Gregovate/MSB-Production-Database-Project/pull/229) | Old open reconnaissance-doc PR, head cc5f65d; 2090 main commits absent | Compare its unique GIS README findings against current #318 before merge/closure. Do not blindly merge old README over current authority. |
+
+Behind counts are commit-ancestry counts, not counts of missing features. #308
+and #309 both modify nextLocationText/nextLocationMarkup in setup_next_pass.js;
+#321 modifies the task asset list in that same file. Preserve all intended
+behaviors during deliberate reconciliation, not whole-file replacement.
+#318 and #309 also touch movement API/report and shared release files.
+None of these overlaps proves the other chat is hung; remote repository evidence
+cannot reveal an in-progress chat's uncommitted work or runtime state.
+
+### Work order and acceptance gates
+
+1. **Source reconciliation (#171 / #319):** inventory GPX-authoritative waypoint
+   names/locations; extract FLW cable/test evidence read-only; preserve draw.io
+   device inventory and schematic connections. Produce exact matches, confirmed
+   aliases, unresolved references, candidate stray cables and draw.io corrections.
+   Preserve shared trench/HV route evidence: GPX need not have one NET track per
+   cable. Existing confirmed aliases/co-location facts in #171 remain applicable.
+2. **Physical route association (#171 / #318):** associate individual cables with
+   existing GPX routes (many cables may share a route), installation history and
+   length comparison. Record unresolved geometry; never bridge a missing section
+   by guess or derive geography from the schematic. Correct V0.3.54 assumptions.
+3. **LOR integration (#171 with existing Wiring/Controller authorities):** inspect
+   current approved LOR snapshot and controller records, resolve expected network
+   usage versus programmed settings, then link supported physical connections.
+   Report unmatched/conflicting cases. Name equality alone does not establish
+   controller attachment to a cable/switch.
+4. **Database consolidation (#171 / #230 / #319):** after existing-object inventory,
+   define minimal shared waypoint/cable/device/route/source/test relationships,
+   explicit reviewed matches, repeat-import idempotency and append-only retests.
+   Prove importer/edits on a disposable database before Production approval.
+   Reference edits retain versions/audit; #88 observations remain evidence.
+5. **Map and schematic consumption (#318 plus icon-thread handoff):** one identity
+   can open geographic, schematic and history views. Keep schematic layout
+   separate from GPX geometry. Reuse supplied icon assets and stable type mapping.
+   Deliver incrementally; do not claim a read-only overlay supplies the full editor.
+6. **Setup handoff (#308 / #309 / #321):** first reconcile current-location
+   presentation against accepted #88 state; #318 must select a Container from
+   /setup/locate/?container_id=<permanent ID> after asset loading, show missing
+   location explicitly, and respect protected access. Then #321 consumes it.
+   Validate C095, an unlocated Container and colocated assets. Printed coversheet
+   also needs the already-requested static task-specific map inset with nearby
+   references, Container numbers, legend and observation time; a hyperlink alone
+   does not fulfill paper/offline use. Use the common #171 renderer, not a second
+   set of geometry rules.
+7. **Integrated acceptance and closeout (#122):** reconcile each touched branch
+   with current main, run relevant regressions on the combined exact candidate,
+   use current-Production disposable clone/browser review on registered 8898
+   after previous CLEAN EXIT, and preserve test/report/SHA evidence. Production
+   requires the governing runbook and explicit authorization. Merge/ancestry and
+   deployed evidence are separate; preserve unrelated worktrees and live behavior.
+
+Parallel work is possible: icon packaging and source reconciliation can proceed
+independently. #321 URL integration needs map focus, not completion of every cable
+test decoder; it must not wait unnecessarily for all infrastructure editing.
+No raw binary decoding is required merely to reconcile the verified FLW scalar
+fields. Keep unknown status/time semantics explicit until independently decoded.
+
+### Concurrent-thread checkpoint
+
+Before the next code edit, each active thread should read this plan and post its
+exact branch/head, changed files, remaining gate and dependency to its existing
+PR. One thread owns each shared-file change at a time; reconcile heads before a
+second thread edits that file. This is coordination guidance, not a claim that a
+message here interrupts another running chat. The unresolved icon-thread identity
+must be supplied or recorded before integrating its unpublished work.
