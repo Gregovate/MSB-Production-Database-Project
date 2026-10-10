@@ -328,3 +328,45 @@ PR. One thread owns each shared-file change at a time; reconcile heads before a
 second thread edits that file. This is coordination guidance, not a claim that a
 message here interrupts another running chat. The unresolved icon-thread identity
 must be supplied or recorded before integrating its unpublished work.
+
+## Direct FLW ingestion and cross-reference investigation — October 10, 07:11 CDT
+
+Greg clarifies that the last CSV was exported from the SQLite-backed tester file.
+CSV export is not a required operator step or a prerequisite for continuing:
+use the FLW directly, retain original source evidence and report unresolved
+records. Earlier cross-thread comments requesting the CSV as a blocking input
+are superseded by this clarification. Existing CSV support can remain for
+historical inputs.
+
+Screenshot image(20261010-121002).png shows LinkWare PC with the supplied FLW,
+a blank Info column and 463 records in the selected view. The database has
+470 raw Records rows (466 nondeleted); the selected-view total is not yet
+reconciled with raw totals. Do not equate a UI view count with entire-file count
+or silently remove rows to force equality.
+
+Greg proposes using the blank Info field as the MSB/tester cross-reference.
+Fluke's LinkWare PC documentation says Info displays icons for optional plot
+data or comments; a note icon indicates a note entered in Record Properties.
+Thus the visible Info column is not established as an editable text-ID field.
+Reference:
+https://www.flukenetworks.com/datacom-cabling/copper-testing/LinkWare-Cable-Test-Management-Software
+
+Read-only source inspection: all 470 InfoVector values are integer 0; Notes,
+User, Service and OutletId are empty strings in all 470 rows. Records also has
+UUID values. A blank field name alone does not prove supported application or
+tester semantics; do not write an ID into InfoVector or alter binary records.
+
+Candidate design: retain a stable MSB physical cable ID distinct from cable name
+and individual test identity. A supported Record Properties note may carry a
+namespaced reference such as MSB-CABLE:<id>, pending verification. Keep the
+database-side source/test-to-cable mapping authoritative and preserve existing
+human notes if a tag is added. UUID durability across save/export/reimport must
+be checked before relying on it as the sole test key.
+
+Next bounded experiment: on a disposable FLW copy, use LinkWare Record Properties
+to enter a unique test note, save/reopen, and compare SQLite fields to locate its
+representation. Then independently verify whether that metadata can be entered
+on/transferred to the LinkIQ device and survives a new test/import. A LinkWare PC
+note is not proof of bidirectional device support. Do not require device writeback
+for read-only FLW ingestion; it is a separate integration improvement. No FLW
+writes, device changes or database import performed during this investigation.
