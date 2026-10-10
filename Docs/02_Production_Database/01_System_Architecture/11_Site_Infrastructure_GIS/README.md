@@ -107,14 +107,23 @@ seasons when a reference mapping is corrected.
   records: activity progress/completion, observed or reported seasonal state,
   exceptions and supporting evidence. Use authorized Production crew roles;
   routine seasonal updates must not require Manager intervention.
-- Managers currently maintain permanent reference facts: panel/circuit/feed
-  relationships, equipment identities, reusable action definitions, waypoint
-  identities/coordinates and other governed reference data through #230.
-- Crew can report reference discrepancies for Manager correction without
-  silently changing an authoritative feed relationship or waypoint position.
-- Direct waypoint maintenance by Production crew is a possible future delegated
-  permission, not current authorization. Keep this separable from seasonal
-  editing so it can be enabled deliberately without granting all reference edits.
+- Production crew must also be able to identify and record panel/circuit/breaker
+  information and assign existing waypoints to the circuits that feed them,
+  including correcting those assignments through the governed application.
+  These maintained circuit/feed relationships are reference facts, not merely
+  seasonal notes; their editing is explicitly permitted to authorized crew.
+  Routine circuit identification and waypoint-to-circuit assignment must not
+  require Manager intervention. Record source and verification status explicitly.
+- Managers currently maintain waypoint records themselves: create/rename/retire
+  waypoint identities and edit geographic coordinates/reference geometry.
+  Assigning an existing waypoint to a circuit does not change its identity or GPS
+  position and is a separate permission from waypoint maintenance.
+- Direct waypoint-record/coordinate maintenance by Production crew is a possible
+  future delegated permission, not current authorization. Crew may report
+  waypoint identity/position discrepancies for Manager correction now.
+- Do not interpret Manager waypoint maintenance as a blanket Manager-only rule
+  for circuit/feed editing. Other reference-edit permissions remain governed by
+  #230's field/action policy rather than inferred from this waypoint boundary.
 - Preserve actor/time attribution and prior values. Seasonal observations or task
   completion do not automatically promote a reference mapping to verified status.
 
