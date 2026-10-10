@@ -1,4 +1,4 @@
-"""Pinned #306 source-only installer; follows Server Management's Setup runbook.
+"""Existing source-only installer, reviewed for #324/#325; follows Server Management's Setup runbook.
 
 No SQL mutations, environment changes, maintenance entry, or shared promotion.
 The previous application SHA is the rollback unit. Reports stay on the server.
@@ -12,10 +12,10 @@ import signal
 import sys
 import time
 
-TARGET = '0caed843bb37e7f1f1400972d8f6eb0b03f202d4'
-EXPECTED_OLD = '00de4635b0ee49658f2e6b5782d758e91054ca02'
-OLD_VERSION = 'V0.3.39-tablet-launch-debug'
-VERSION = 'V0.3.40-live-pick-demand'
+TARGET = '1fdc3b0250c5f750648c217c9e36f3ac9ea59f9e'
+EXPECTED_OLD = '0b69a269b2a32d369ee4f25be6740e15d7c5a823'
+OLD_VERSION = 'V0.3.50-container-movement-report'
+VERSION = 'V0.3.50-container-movement-report'
 SHARED = '6dd05c4aa5ef8f50fe172145c3ae281cc245a101'
 REPO = '/opt/fieldwiring'
 LIVE = '/opt/msb-setup'
@@ -24,11 +24,11 @@ HEALTH = 'http://192.168.5.9:8794/api/health'
 FOCUSED = [
     'Setup/Application/test_setup_production_contract.py',
     'Setup/Application/test_setup_scheduling_board_contract.py',
-    'Setup/Application/test_setup_material_readiness_contract.py',
-    'Setup/Application/test_setup_88_pick_mode_contract.py',
     'Setup/Application/test_setup_next_pass_contract.py',
-    'Setup/Application/test_setup_live_pick_demand.py',
+    'Setup/Application/test_setup_175_live_perform_work_contract.py',
+    'Setup/Application/test_205_workload_candidate_source_contract.py',
 ]
+
 
 
 def require(condition, message):
@@ -39,7 +39,7 @@ def require(condition, message):
 class Installer:
     def __init__(self):
         stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
-        self.root = Path('/home/msbadmin/setup-deployment-reports') / ('PR306-' + stamp)
+        self.root = Path('/home/msbadmin/setup-deployment-reports') / ('PR325-' + stamp)
         self.root.mkdir(parents=True)
         self.log = (self.root / 'report.txt').open('w', buffering=1)
         self.candidate = '/tmp/' + self.root.name
@@ -73,7 +73,9 @@ class Installer:
     def fingerprint(self):
         # Read-only query matches the accepted source-only fingerprint boundary.
         tables = ['ref.setup_task', 'ref.setup_resource', 'ref.setup_task_resource',
-                  'ops.setup_session', 'ops.setup_session_task', 'ops.setup_work_day']
+                  'ops.setup_session', 'ops.setup_session_task', 'ops.setup_work_day',
+                  'ops.setup_work_day_crew', 'ops.setup_work_day_task',
+                  'ops.setup_task_progress', 'ops.setup_schedule_event']
         queries = [f"SELECT '{table}' name,jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text) v FROM {table} t"
                    for table in tables]
         sql = "BEGIN READ ONLY; SELECT md5(string_agg(v::text,'' ORDER BY name)) FROM (" + ' UNION ALL '.join(queries) + ") q; COMMIT;"
@@ -104,6 +106,10 @@ class Installer:
         require(not self.git('branch', '--show-current', root=LIVE), 'Live Setup is not detached: STOP')
         self.health(OLD_VERSION)
         self.before = self.fingerprint()
+        (self.root / 'preflight.json').write_text(json.dumps({
+            'old_setup': EXPECTED_OLD, 'target': TARGET, 'shared': SHARED,
+            'fingerprint': self.before, 'migration': None}, indent=2) + '\n')
+        print('STAGE: source-only preflight; report: ' + str(self.root), flush=True)
         self.git('fetch', 'origin', '+refs/heads/main:refs/remotes/origin/main')
         self.git('merge-base', '--is-ancestor', TARGET, 'origin/main')
         self.git('merge-base', '--is-ancestor', EXPECTED_OLD, TARGET)
@@ -115,7 +121,7 @@ class Installer:
         self.git('worktree', 'add', '--detach', self.candidate, TARGET)
         self.worktree_created = True
         self.run(['sudo', 'python3', self.candidate + '/Setup/Acceptance/check_setup_ui_update_date.py', '--repository', REPO, '--target', TARGET])
-        self.regression(self.candidate, ['Setup/Application'])
+        self.regression(self.candidate, FOCUSED)
         require(self.fingerprint() == self.before, 'Setup data changed during preflight: STOP')
         require(self.git('rev-parse', 'HEAD', root=LIVE) == EXPECTED_OLD and not self.git('status', '--porcelain', root=LIVE), 'Live drift during preflight: STOP')
         self.log.write('Authority: Gregovate/MSB-Server-Management — docs/server/Setup_Source_Only_Application_Deployment_Runbook.md\nProcedure: Controlled Production Mutation\nThis step: advance only /opt/msb-setup to ' + TARGET + '\n')
@@ -150,6 +156,7 @@ def main():
             installer.deploy()
         except Exception as exc:
             installer.log.write('STOP ' + repr(exc) + '\n')
+            (installer.root / 'stop.json').write_text(json.dumps({'error': str(exc), 'source_advanced': installer.advanced, 'old_setup': EXPECTED_OLD, 'target': TARGET}, indent=2) + '\n')
             try:
                 installer.rollback()
             except Exception as recovery:
@@ -163,7 +170,7 @@ def main():
                 except Exception as cleanup:
                     installer.log.write('CLEANUP FAILED ' + repr(cleanup) + '\n')
             installer.log.close()
-        print('PASS: Setup V0.3.40 installed; protected browser check pending; report: ' + str(installer.root))
+        print('PASS: Setup PR324/325 installed; protected browser check pending; report: ' + str(installer.root))
         return 0
 
 
