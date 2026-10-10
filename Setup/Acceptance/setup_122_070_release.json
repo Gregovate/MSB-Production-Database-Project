@@ -1,0 +1,12 @@
+{
+  "profile": "field-070",
+  "old_setup": "1fdc3b0250c5f750648c217c9e36f3ac9ea59f9e",
+  "shared": "6dd05c4aa5ef8f50fe172145c3ae281cc245a101",
+  "old_version": "V0.3.50-container-movement-report",
+  "version": "V0.3.62-field-networks",
+  "target": "6192a1fdf5acb234fd83731b6a8eb73072b7a35d",
+  "candidate": "6192a1fdf5acb234fd83731b6a8eb73072b7a35d",
+  "tree": "5e6921139d634acde36a39ff1a53407585df507c",
+  "migration": "Setup/Database/070_reconcile_setup_container_contents.sql",
+  "migration_blob": "94566728289993a787e927d371380d2085bf9e71"
+}

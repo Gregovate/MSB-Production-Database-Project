@@ -117,3 +117,46 @@ class SafetyTests(unittest.TestCase):
         self.assertIn('stage', d.calls)
 
 if __name__ == '__main__': unittest.main()
+
+class FieldReleaseTests(unittest.TestCase):
+    def make(self, fail=None):
+        temp=tempfile.TemporaryDirectory(); self.addCleanup(temp.cleanup)
+        d=FakeDeploy(Path(temp.name)/'report',fail)
+        d.m={**MANIFEST,'profile':'field-070'}
+        self.addCleanup(d.log.close)
+        d.field_database_check=lambda installed=False: d.calls.append('database-check')
+        d.field_health=lambda new=False: d.calls.append('shared-health')
+        original=d.git
+        def git(*args,root=mod.REPO):
+            if args[0]=='merge':
+                d.calls.append('shared-promotion')
+                if fail=='shared-promotion': raise mod.Stop('shared promotion failed')
+            if args[0]=='rev-parse' and root==mod.REPO and 'shared-promotion' in d.calls:
+                return d.m['target']
+            return original(*args,root=root)
+        d.git=git
+        return d
+    def test_both_promotions_before_off(self):
+        d=self.make();d.deploy()
+        self.assertLess(d.calls.index('validate'),d.calls.index('shared-promotion'))
+        self.assertLess(d.calls.index('shared-promotion'),d.calls.index('off'))
+        self.assertIn('shared-health',d.calls)
+    def test_shared_failure_keeps_maintenance(self):
+        d=self.make('shared-promotion')
+        with self.assertRaises(mod.Stop):d.deploy()
+        self.assertNotIn('off',d.calls)
+    def test_snapshot_failure_prevents_every_promotion(self):
+        d=self.make('snapshot')
+        with self.assertRaises(mod.Stop):d.deploy()
+        self.assertNotIn('git:checkout',d.calls)
+        self.assertNotIn('shared-promotion',d.calls)
+        self.assertNotIn('off',d.calls)
+    def test_exact_function_gate_and_no_production_probe_writes(self):
+        d=self.make();queries=[];d.sql=lambda q:queries.append(q)
+        mod.Deploy.field_database_check(d,False)
+        mod.Deploy.field_database_check(d,True)
+        self.assertIn('2771409ad019ea5121290b235ce37db1',queries[0])
+        self.assertIn('7ccf1b101ba307543333fd9ccc969218',queries[1])
+        self.assertIn('d17d4163a5516de6fe08c8dcd40ce6a9',queries[1])
+        self.assertNotIn('PERFORM', ''.join(queries))
+        self.assertIn('has_table_privilege',queries[1])
