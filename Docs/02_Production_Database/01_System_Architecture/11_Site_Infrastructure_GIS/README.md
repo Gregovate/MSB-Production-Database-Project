@@ -127,6 +127,34 @@ seasons when a reference mapping is corrected.
 - Preserve actor/time attribution and prior values. Seasonal observations or task
   completion do not automatically promote a reference mapping to verified status.
 
+### Future incomplete-record editing and panel detail — October 10 examples
+
+Deferred by Greg explicitly: not an implementation request for today.
+
+- A5-Church screenshot shows Type OUT-Combo, Comment "New 2025" and GPX source
+  time 2026-08-28T16:56:31Z. Provide a future way to update descriptive metadata
+  or record additional knowledge before all structured reference fields are
+  available/populated. Allow partial saves with explicit unknown values and
+  attributed notes/source evidence; do not require invented placeholders.
+- Preserve original imported description/comment/time as provenance separately
+  from maintained metadata and subsequent edits. GPX source time is not an
+  established installation date or the date a crew verified the equipment.
+- A5-00 screenshot shows a Panel with repeated Description/Comment "MSB Owned
+  Meter ID:" and no meter number. The editor needs structured equipment ownership
+  (distinct from editing responsibility), panel identification, meter identifier(s),
+  and circuit rows with breaker/circuit numbers, assigned waypoints/loads, and
+  desired On/Off state for both show season and off-season. Unknown meter/circuit
+  values must remain visibly unknown and must not prevent capturing known facts.
+- Model meter/panel relationships according to evidence; do not assume every
+  panel has its own meter or extract an empty "Meter ID:" label as an identifier.
+  Retain the current MSB ownership statement as source evidence for reconciliation.
+- Circuit rows must support crew editing/waypoint assignment under the ownership
+  rules above. Managers maintain waypoint identities/coordinates. Desired seasonal
+  state remains separate from reported/verified actual state and completed actions.
+- When notes are reconciled into structured fields, retain their source/history
+  and identify unresolved conflicts. Avoid competing free-text and structured
+  authorities or silently discarding information once fields are populated.
+
 ### Acceptance and source collection
 
 Collect existing lists, panel schedules/photos, pole labels and knowledgeable
