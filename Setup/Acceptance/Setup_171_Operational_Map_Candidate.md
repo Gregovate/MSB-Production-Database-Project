@@ -3,10 +3,30 @@
 Status: ENGINEERING CANDIDATE — current-clone/operator acceptance pending.
 
 Baseline main: `38f6f9427007470cbc02b3e2d23a97450d4414ba` (PR #327).
-Version: `V0.3.56-network-picker`; visible Updated 2026-10-10.
+Version: `V0.3.57-map-style-clear`; visible Updated 2026-10-10.
 Exact application SHA: the implementation commit identified on PR #318; pin
 that SHA rather than resolving a moving branch at launch.
 No migrations or new Production grants are proposed.
+
+## Current V0.3.57 search clearing and QGIS power styling
+
+Greg's October 10 screenshot shows V0.3.55: clearing the search left AUX-I
+evidence expanded. User-driven empty/whitespace input now clears highlights,
+popup, evidence, results/status and network checks. Background reference/asset
+registration with an empty search does not trigger that action. V0.3.56's
+expandable network checklist is retained.
+
+Operator-specified QGIS styling: PRI Primary orange (#ff8b25), 0.037 inches;
+HV 120V red (#dd2424), 0.025 inches. Leaflet nominal screen widths use 96 CSS
+pixels/inch: 3.552 and 2.4 pixels respectively. These are display widths, not
+ground distances or guaranteed physical inches on every device. Highlight
+clearing restores each source layer's own color and width. Geometry unchanged.
+
+Validation: 744 Application tests passed, including the shipped JavaScript
+fixture for clearing search evidence and restoring distinct power styles.
+Browser acceptance of V0.3.57 pending. Latest screenshot does not establish a
+V0.3.56 test or CLEAN EXIT for any currently running preview; require CLEAN EXIT
+before reusing port 8898. User's numbered item 3 had no accompanying text.
 
 ## Current V0.3.56 network checklist acceptance
 
@@ -143,7 +163,7 @@ if ($LASTEXITCODE -ne 0) { throw 'STOP: cannot read candidate SHA' }
   -PreviewPort 8898 `
   -CandidateSha $Candidate171 `
   -TargetRef 'docs/171-symbol-type-mapping' `
-  -ExpectedVersion 'V0.3.56-network-picker' `
+  -ExpectedVersion 'V0.3.57-map-style-clear' `
   -AllowConcurrentProductionWrites
 if ($LASTEXITCODE -ne 0) { throw 'STOP: retain report; inspect before retry' }
 ```

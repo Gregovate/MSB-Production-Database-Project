@@ -34,6 +34,14 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
     assert.equal(results.length, 1, 'Exact network must not compete with raw GPX labels');
     assert.match(results[0].textContent, /AUX-I.*13 candidate routes/);
   }
+  search('AUX-I')[0].click();
+  elements['map-search'].value = ''; elements['map-search'].input();
+  assert.equal(elements['network-details'].children.length, 0, 'Clearing search removes stale evidence');
+  assert.equal(elements['network-details'].parentElement.open, false);
+  assert.equal(elements['map-search-results'].children.length, 0);
+  assert.equal(elements['map-search-status'].textContent, '');
+  assert(markers.every(m => m.options.color === 'blue'), 'Clearing search restores track styles');
+  assert(elements['network-options'].children.every(label => !label.children[0].checked));
   const before = markers.map(m => m.options.color);
   search('INET'); assert.deepEqual(markers.map(m => m.options.color), before, 'Typing does not change the map');
   const inet = search('INET'); assert.equal(inet.length, 1, 'INET must not match Cabinets');
@@ -84,7 +92,22 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   assert.equal(activeIds().size, 0, 'Parent off restores all highlighted source tracks');
   assert([...controls.values()].every(c => !c.checked));
   assert(page.includes('<details id="network-picker"><summary>'), 'Network list has native keyboard-accessible disclosure');
-  assert(page.includes('V0.3.56-network-picker · Updated 2026-10-10'));
+  assert(page.includes('V0.3.57-map-style-clear · Updated 2026-10-10'));
+  const styles = vm.runInNewContext('(' + page.match(/const trackStyles=(.*?);/)[1] + ')');
+  assert.equal(styles.PRI.color, '#ff8b25');
+  assert.equal(styles.HV.color, '#dd2424');
+  assert.equal(styles.PRI.weight, 0.037 * 96);
+  assert.equal(styles.HV.weight, 0.025 * 96);
+  assert(page.includes('{...trackStyles[cls],opacity:.85}'), 'Rendered polylines use QGIS widths');
+  // The real selection code must restore the distinct QGIS base styles.
+  for (const marker of markers) Object.assign(marker.options, styles[marker._searchFeature.properties.class]);
+  search('INET')[0].click();
+  elements['map-search'].value = ''; elements['map-search'].input();
+  for (const marker of markers) {
+    const expected = styles[marker._searchFeature.properties.class];
+    assert.equal(marker.options.color, expected.color);
+    assert.equal(marker.options.weight, expected.weight);
+  }
   context.fetch = async () => ({ok:false,status:503});
   await vm.runInContext(read('setup_locate_networks.js'), context);
   assert.match(elements['network-status'].textContent, /unavailable/);

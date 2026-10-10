@@ -92,15 +92,21 @@ const mapSearch = (() => {
       results.appendChild(button);
     }
   }
-  input.addEventListener('input', update);
+  function clearSelection() {
+    clearHighlight();
+    if (map.closePopup) map.closePopup();
+    for (const listener of selectionListeners) listener({});
+    status.textContent = '';
+  }
+  // Only an operator clearing the input clears selection. Background asset/reference
+  // registration with an empty search must not erase network checklist highlights.
+  input.addEventListener('input', () => {
+    if (!input.value.trim()) clearSelection();
+    update();
+  });
   return {
     select,
-    clearSelection() {
-      clearHighlight();
-      if (map.closePopup) map.closePopup();
-      for (const listener of selectionListeners) listener({});
-      status.textContent = '';
-    },
+    clearSelection,
     focusContainer(id) {
       const entry = assets.find(a => a.kind === 'Container' && a.numericId === String(id));
       if (entry) select(entry);
