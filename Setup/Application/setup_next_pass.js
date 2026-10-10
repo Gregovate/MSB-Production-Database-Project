@@ -1380,8 +1380,8 @@ function nextDayStaffingSummary(assignments, crews, taskRows = []) {
       if (crew?.[field] == null || crew[field] === '') unknown += 1;
       else people += Number(crew[field]);
     });
-    return `${shift === 'MORNING' ? 'AM' : 'PM'}: ${ids.size} crews / ${unknown ? `${people} known people + ${unknown} crew count TBD` : `${people} people`} / ${tasks.length} tasks / ${required} people minimum`;
-  }).join(' · ') + (assignments.some((item) => item.shift_code === 'ALL_DAY')
+    return `${shift === 'MORNING' ? 'AM' : 'PM'}: ${ids.size} crews · ${tasks.length} tasks · ${unknown ? `${people} people planned + ${unknown} crew sizes TBD` : `${people} people planned`} / ${required} minimum needed`;
+  }).join('\n') + (assignments.some((item) => item.shift_code === 'ALL_DAY')
     ? ` · All Day: ${assignments.filter((item) => item.shift_code === 'ALL_DAY').length} tasks` : '');
 }
 
@@ -1475,8 +1475,8 @@ function renderNextExecution() {
           const unknown = crewShifts.reduce((n, w) => n + w.unknown, 0);
           const notReady = crewShifts.reduce((n, w) => n + w.notReady, 0);
           const color = overloaded ? '#9d2424' : unknown || notReady ? '#835900' : '#146044';
-          return `<div role="status" style="border:3px solid ${color};border-radius:8px;padding:12px;margin:8px 0;background:var(--surface, #f7f7f7);font-size:1.05rem;font-weight:700">
-            ${escapeHtml(nextDayStaffingSummary(scopedAssignments.filter((a) => Number(a.setup_work_day_id) === Number(day.setup_work_day_id)), (board.crews || []).filter((c) => Number(c.setup_work_day_id) === Number(day.setup_work_day_id) && (setupNextState.performCaptainFilter === 'ALL' || Number(c.captain_person_id) === Number(String(setupNextState.performCaptainFilter).split(':')[1]))), board.tasks || []))}<br>${day.work_date < nextSetupLocalDate() ? `${scopedDayAssignments.filter(nextAssignmentReported).length} tasks reported · ${reportedPersonHours} actual person-hours reported so far` : ''}${overloaded ? ` · ${overloaded} overloaded shifts` : ''}${unknown ? ` · ${unknown} missing time estimates` : ''}${notReady ? ` · ${notReady} tasks not ready` : ''}
+          return `<div role="status" style="border:3px solid ${color};border-radius:8px;padding:12px;margin:8px 0;background:var(--surface, #f7f7f7);font-size:1.05rem;font-weight:700;white-space:pre-line">
+            ${escapeHtml(nextDayStaffingSummary(scopedAssignments.filter((a) => Number(a.setup_work_day_id) === Number(day.setup_work_day_id)), (board.crews || []).filter((c) => Number(c.setup_work_day_id) === Number(day.setup_work_day_id) && (setupNextState.performCaptainFilter === 'ALL' || Number(c.captain_person_id) === Number(String(setupNextState.performCaptainFilter).split(':')[1]))), board.tasks || []))}<br>${day.work_date < nextSetupLocalDate() ? `${scopedDayAssignments.filter(nextAssignmentReported).length} tasks reported · ${reportedPersonHours} actual person-hours reported so far` : ''}${overloaded || unknown || notReady ? '<br>Warnings:' : ''}${overloaded ? ` ${overloaded} crew shifts overloaded` : ''}${unknown ? ` · ${unknown} missing time estimates` : ''}${notReady ? ` · ${notReady} tasks not ready` : ''}
           </div>`;
         })()}
         ${shifts.map((shift) => {
