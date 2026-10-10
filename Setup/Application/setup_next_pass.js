@@ -1211,7 +1211,12 @@ function nextPerformAssignmentCard(assignment) {
   const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
   const crew = nextPerformCrew(assignment);
   const captain = crew?.captain_display_name || 'Captain TBD';
-  const status = nextPerformAssignmentStatus(assignment);
+  // A reported historical shift is not actively IN PROGRESS just because the
+  // annual task still needs more work. Match Plan / Schedule's assignment badge.
+  // Keep nextPerformAssignmentStatus() for annual completion filtering and KPIs.
+  const status = assignment.historical_locked
+    ? (task.effective_complete ? 'WORK REPORTED - COMPLETE' : 'WORK REPORTED - INCOMPLETE')
+    : nextPerformAssignmentStatus(assignment);
   const plannedCrew = nextPerformPlannedCrew(assignment);
   const plannedLabor = nextLaborHoursText(plannedCrew, task.expected_duration_minutes);
   const effort = String(task.effort_level || 'unknown').toLowerCase();
