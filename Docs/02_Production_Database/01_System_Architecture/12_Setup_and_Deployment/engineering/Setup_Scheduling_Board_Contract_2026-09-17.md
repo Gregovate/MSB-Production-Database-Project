@@ -893,3 +893,11 @@ Disposable acceptance must prove at minimum:
 
 DBG-2026-001/002/003 are being reviewed together: passive COMPLETE SETUP countdowns, direct board/task panel navigation at <=1100 CSS pixels, and a visible In Progress execution-status filter. Existing annual/history/authorization and desktop scroll boundaries remain authoritative. [Candidate scope and acceptance checklist](../../../../../Setup/Acceptance/Setup_205_Tablet_Launch_Debug_Candidate.md) records the exact branch, local validation and pending disposable/tablet acceptance. Production acceptance above does not accept this candidate.
 
+
+## PR #324 day summaries and reporting accountability (candidate)
+
+Both schedule screens summarize AM and PM as crews / people / tasks. Count a crew once per shift even when it has multiple tasks; planned people include the Captain. Missing counts remain TBD, and legacy All Day task counts remain explicit. Task counts refer to the assigned shift; existing cross-lunch carryover/capacity warnings remain authoritative. Do not add AM and PM people into unique daily attendance.
+
+Perform Work places Captain-scoped LATE / UNREPORTED tasks before normal day sections, using the existing signed-in Captain default and authorization. Each entry directly names the assigned Captain, task, date, crew and shift, with Report Work navigation. Missing Captain identity is CAPTAIN TBD. This detailed accountability list is Perform Work only; existing Manage Schedule navigation supports replanning. Schedule retains prominent late counts and task warnings.
+
+Historical actual person-hours sum the existing reported person-minutes, independently of Show completed. They are labor, not unique volunteers. Actual crew counts can differ by report and must not be summed as headcount. Reported partial work resolves the historical occurrence while remaining annual work needs continuation. No people calendar or extra reporting fields are introduced.
