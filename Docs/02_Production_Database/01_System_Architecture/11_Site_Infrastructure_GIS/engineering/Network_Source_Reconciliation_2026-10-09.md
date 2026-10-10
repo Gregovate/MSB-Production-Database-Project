@@ -421,3 +421,24 @@ the stated note/fields. Notes can carry cross-reference text at the PC-file leve
 permanent field choice and device round-trip are still separate decisions/tests.
 Use the newer file's corrected metadata as source evidence while retaining the
 original snapshot, and exclude the test note from real cable identity assignment.
+
+
+## Implemented operational bridge — 2026-10-10, V0.3.55
+
+PR #318 now builds network discovery directly from the corrected LinkIQ SQLite
+file using `Database/EngineeringTools/reconcile_linkiq_map.py`. It preserves
+470 test records across parsed/review/deleted categories and keeps tester UUIDs
+as test identities. The importer does not write the FLW or the database.
+GPX is unchanged; 59 full-track spatial candidates include shared HV routes.
+WV-00/WV-03 Aux-I follows tester endpoints while exposing the draw.io WV-04
+error. Schematic infrastructure is searchable at GPX anchors or explicitly
+unlocated. LOR expected network/UID/universe counts and recorded controller
+programming are separate dated evidence from the supplied SQL dump, run 71.
+Containers and independent Displays retain the #88 live read-only overlay;
+Container URL focus supplies the missing target behavior for #175 / PR #321.
+
+This is a functional read-only bridge, not completion of #230 governed reference
+editing, durable correction/retest imports (#319), or #175 printed map insets.
+Those remain cross-linked under #171 and commanding #122. No new schema or
+Production deployment is included. See the current V0.3.55 acceptance section in
+`Setup/Acceptance/Setup_171_Operational_Map_Candidate.md` for checks and limits.

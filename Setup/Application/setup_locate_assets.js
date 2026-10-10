@@ -13,6 +13,8 @@
   const unlocated = document.getElementById('asset-unlocated');
   const refresh = document.getElementById('asset-refresh');
   let sequence = 0;
+  // Coversheets can address an existing container without recording movement.
+  const requestedContainer = new URLSearchParams(window.location.search).get('container_id');
   function evidence(o) {
     let text = `Observation: ${esc(o.occurred_at ? new Date(o.occurred_at).toLocaleString('en-US', {timeZone: 'America/Chicago'}) + ' (Chicago)' : 'not recorded')}`;
     if (o.gps_latitude != null && o.gps_longitude != null) text += `<br>Recorded GPS: ${esc(o.gps_latitude)}, ${esc(o.gps_longitude)}`;
@@ -77,6 +79,7 @@
       const data = await response.json();
       if (current !== sequence) return;
       render(data.containers, true); render(data.displays, false);
+      if (requestedContainer && /^\d+$/.test(requestedContainer)) mapSearch.focusContainer(Number(requestedContainer));
       status.textContent = `${data.containers.length} Containers · ${data.displays.length} independent Displays · ${unlocated.children.length} unlocated · through event ${data.through_event_id}. Icons show recorded associations: Loaded / Partial / Empty / Unknown. Physical loads unconfirmed.`;
     } catch (error) {
       if (current === sequence) status.textContent = `${error.message}. Refresh to retry.`;

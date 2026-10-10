@@ -38,12 +38,15 @@ def test_endpoint_matching_excludes_conflicts_and_description_networks(tmp_path)
 def test_source_snapshot_routes_and_authored_map_geometry_remain_consistent():
     source = json.loads((APP / 'setup_locate_networks.json').read_text())
     data = json.loads(re.search(r'const data=(.*?);data.features.push', (APP / 'locate_preview.html').read_text()).group(1))
-    routes = {f['properties']['id'] for f in data['features'] if f['properties'].get('class') == 'NET'}
+    routes = {f['properties']['id'] for f in data['features'] if f.get('geometry', {}).get('type') in ('LineString', 'MultiLineString')}
     matched = {r['route_id'] for r in source['mapped_routes']}
     unresolved = {r['route_id'] for r in source['unresolved_routes']}
     assert matched.isdisjoint(unresolved)
     assert matched | unresolved == routes
-    assert len(source['cables']) == 372
+    assert len(source['cables']) == 445
+    assert len(source['review_records']) == 25
+    assert len(source['devices']) == 84
+    assert source['source_kind'] == 'LinkIQ'
     assert len(source['legacy_edges']) == 73
     assert all(set(c['route_ids']) <= matched for c in source['cables'])
     from production_backend import app

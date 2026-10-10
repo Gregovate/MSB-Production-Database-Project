@@ -3,10 +3,51 @@
 Status: ENGINEERING CANDIDATE — current-clone/operator acceptance pending.
 
 Baseline main: `38f6f9427007470cbc02b3e2d23a97450d4414ba` (PR #327).
-Version: `V0.3.54-gis-network-routes`; visible Updated 2026-10-09.
+Version: `V0.3.55-linkiq-map`; visible Updated 2026-10-10.
 Exact application SHA: the implementation commit identified on PR #318; pin
 that SHA rather than resolving a moving branch at launch.
 No migrations or new Production grants are proposed.
+
+## Current V0.3.55 acceptance (supersedes historical V51–V54 network checks below)
+
+- LinkIQ raw SQLite is now the endpoint/network/test source. The corrected
+  roundtrip FLW is read-only: 470 records = 445 parsed test records + 18 names
+  requiring review + 7 source-deleted records. UUIDs identify tests, not cables.
+- All geographic track classes are screened, including shared HV geometry.
+  59 whole-source-track candidates; 122 tracks remain unresolved. AUX-I has 13
+  candidates, INET 30. These are review correspondences, not verified routing.
+- WV-00 → WV-03 AUX-I now finds t4/t131 using LinkIQ, while the draw.io WV-04
+  endpoint disagreement remains visible. Shared geometry is not automatically
+  classified as an alternative/historical cable. Source geometry is unchanged.
+- Network details show raw tester length, test metadata, note/Faceplate/Outlet,
+  endpoint navigation, schematic comparisons, GPX whole-track length and original
+  installation descriptions. Whole-track length may span several cables.
+- All 84 structured schematic infrastructure objects are searchable. Devices
+  navigate only to uniquely matched GPX waypoint IDs; diagram coordinates never
+  become GPS. Unlocated objects retain attributes and schematic connections.
+- Search **LOR** for expected network/UID/universe inventory from the supplied
+  October 9 SQL dump (latest PASSED snapshot run 71), separately from 178 recorded
+  Controller Inventory identities/programming. This is dated snapshot evidence,
+  not a live query or proof of physical attachment.
+- Containers/Displays continue using the live read-only movement snapshot.
+  `/locate/?container_id=199` focuses a located C199, or reports its unavailable
+  position. Missing IDs report absence. Existing #175 links can consume this.
+- Search **LinkIQ reconciliation review** for deleted/unparsed tester records and
+  schematic conflicts. All raw source files remain unmodified.
+
+Validation: 744 Setup Application tests plus three new LinkIQ/LOR importer tests pass;
+actual shipped JavaScript runs against the generated data in the Node harness.
+Operator/browser acceptance on the current disposable clone is still required.
+No Production changes, migrations or writeback. #230 reference editor/import
+persistence and #175 printed task map inset are still unfinished; this candidate
+makes the operational map and evidence navigable now. #319 should reuse the new
+`Database/EngineeringTools/reconcile_linkiq_map.py` adapter for its import work.
+
+Operator checks: search AUX-I and INET; inspect WV-00 → WV-03; inspect **LOR**,
+**LinkIQ reconciliation review**, and a **SW-INET** device; open a real Container
+link and verify recorded contents/independent Displays. Confirm source track
+installation descriptions remain visible. Exit the wrapper and require CLEAN
+EXIT before starting another disposable session on port 8898.
 
 ## Engineering proof
 
@@ -76,7 +117,7 @@ if ($LASTEXITCODE -ne 0) { throw 'STOP: cannot read candidate SHA' }
   -PreviewPort 8898 `
   -CandidateSha $Candidate171 `
   -TargetRef 'docs/171-symbol-type-mapping' `
-  -ExpectedVersion 'V0.3.51-gis-asset-overlay' `
+  -ExpectedVersion 'V0.3.55-linkiq-map' `
   -AllowConcurrentProductionWrites
 if ($LASTEXITCODE -ne 0) { throw 'STOP: retain report; inspect before retry' }
 ```

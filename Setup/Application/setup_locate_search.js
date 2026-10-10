@@ -44,7 +44,12 @@ const mapSearch = (() => {
       return;
     }
     // Selecting reveals only the required layer; other layer choices persist.
-    layers[entry.layer].addTo(map);
+    // A network may follow source tracks from multiple geographic layers.
+    for (const layer of new Set([entry.layer, ...entry.markers.map(m => m._networkLayer).filter(Boolean)])) {
+      layers[layer].addTo(map);
+      const control = document.querySelector(`[data-layer="${layer}"]`);
+      if (control) control.checked = true;
+    }
     const toggle = document.querySelector(`[data-layer="${entry.layer}"]`);
     if (toggle) toggle.checked = true;
     const bounds = L.latLngBounds([]);
@@ -90,6 +95,11 @@ const mapSearch = (() => {
   input.addEventListener('input', update);
   return {
     select,
+    focusContainer(id) {
+      const entry = assets.find(a => a.kind === 'Container' && a.numericId === String(id));
+      if (entry) select(entry);
+      else status.textContent = `Container ${id} is not in this season's asset snapshot.`;
+    },
     onSelection(listener) { selectionListeners.push(listener); },
     addReference(entry) { references.push(entry); update(); },
     clearAssets() { clearHighlight(); for (const listener of selectionListeners) listener({}); assets = []; update(); },
