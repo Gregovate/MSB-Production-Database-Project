@@ -7,6 +7,16 @@
 | Main baseline | `38f6f9427007470cbc02b3e2d23a97450d4414ba` |
 | Implementation path | Existing PR #318, after `a523b5082dba54ec2fd14567aeb520a5a9813f88` |
 
+## Required reference editor and schema ownership
+
+The [reference-data editing authority](../README.md#required-reference-data-editing-authority--171--230)
+is mandatory #171/#230 scope: governed ref tables hold maintained waypoint,
+geometry, track, cable, network and device reference data; the database-backed
+application is the editor. Preserve source/test/operational history separately.
+After initial reconciliation, routine FLW imports add test evidence without
+undoing approved corrections. No repeated manual cleanup or CSV export is required.
+#230 remains unfinished; current read-only map rendering does not fulfill editing.
+
 ## Source responsibilities — operator clarification, October 10
 
 These sources have distinct responsibilities, not one blanket ranking:

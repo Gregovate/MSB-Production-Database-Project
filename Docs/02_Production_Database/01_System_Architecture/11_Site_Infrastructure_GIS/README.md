@@ -2,6 +2,44 @@
 
 This subsystem documents permanent physical-site identities, location history, power/site infrastructure relationships, and PostgreSQL integration of MSB GIS/GPS data.
 
+## Required reference-data editing authority — #171 / #230
+
+Operator decision, 2026-10-10: the MSB database-backed application will be the
+normal editor and source of truth for maintained infrastructure reference data.
+This is required scope of unfinished [#230 Reference Data Manager](https://github.com/Gregovate/MSB-Production-Database-Project/issues/230),
+coordinated with [#171 GIS/infrastructure](https://github.com/Gregovate/MSB-Production-Database-Project/issues/171)
+under commanding [#122 Setup](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122).
+
+- Maintain permanent waypoints, names/aliases, reference geometry, tracks,
+  physical cables/endpoints, networks, switches/devices, reference classifications
+  and type/icon mappings in governed `ref` tables and relationships. Reuse existing
+  identities and objects; exact table names/DDL follow current-schema inventory.
+- #171 owns spatial/source reconciliation and coordinate rules. #230 owns the
+  governed reference-maintenance interface, including map-based reference edits.
+  Map, schematic and Wiring views consume the same maintained records.
+- Names, waypoint positions, track geometry and device/cable relationships must
+  be editable through authorized application actions with validation, actor/time
+  audit and retained prior versions. A read-only import/archive is insufficient.
+- Schematic layout is separate presentation state; moving a schematic symbol
+  must not move geographic coordinates. Reuse supplied icon assets rather than
+  recreate artwork; editable type/icon references do not change physical identity.
+- GPX is the authoritative location source during initial reconciliation and
+  transition. After accepted migration/editor cutover, database reference records
+  become maintenance authority; GPX/draw.io are source evidence or controlled
+  interchange/presentation outputs. Do not silently maintain competing masters.
+- Keep original GPX/FLW/draw.io provenance, test results and #88 seasonal movement
+  observations separate from editable reference facts. Declaring reference data
+  in `ref` does not put all test/event history there or make evidence overwriteable.
+  LOR remains authoritative for expected show wiring configuration.
+- Correct reference identity once. Routine workflow is download FLW -> process
+  new/updated test evidence -> done. Preserve approved corrections/aliases,
+  skip already-imported tests, append retests and surface only new/ambiguous
+  matches. Routine work requires neither CSV export nor tester writeback.
+- #230 remains unfinished for this integration until reference editing and
+  shared consumption are implemented and accepted. Existing map rendering is
+  preserved while this is completed. This decision authorizes documentation and
+  design direction, not an unreviewed Production migration or source cutover.
+
 ## Current State
 
 Substantial historical field/site information exists outside PostgreSQL, including GPX data going back to at least 2015, waypoints and tracks, receptacles, network tracks, power tracks, utility meters, distribution panels, circuit identifiers, and seasonal energization requirements.
@@ -52,7 +90,7 @@ On 2026-10-03 the operator supplied an ExpertGPS correction/export that:
 
 Those source EPSG:8158 coordinates are retained with the transformed WGS84 values used by the browser. Future field observations may improve ranking/operational understanding but must not silently overwrite these curated reference anchors.
 
-A maintainable reference editor/import process remains open #171 work.
+A maintainable reference editor/import process is required joint #171/#230 work under the rule above.
 
 ## Waypoint Type / Layer Classification Direction
 
@@ -130,8 +168,8 @@ draw.io/GPX cross-reference: network groups highlight all segments of every
 endpoint-matched route and expose unresolved cables and endpoint conflicts.
 43 route candidates use named waypoint anchors and draw.io cable chains; 35
 remain unresolved. Exact AUX-I/INET search returns a single network group; raw
-GPX routes remain separately discoverable. Dashed highlights identify alternative
-source routes. These are
+GPX routes remain separately discoverable. Dashed highlights currently classify shared-evidence routes as alternatives;
+that classification is unsupported and pending correction. These are
 operator-review correspondences, not verified reconstructed routes or proof of
 continuous connectivity. Existing asset/waypoint search remains available.
 

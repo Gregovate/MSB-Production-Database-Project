@@ -8,7 +8,13 @@ Network engineering information currently exists across Draw.io schematics, Cabl
 
 ## Design Intent
 
-Preserve specialized tools where they remain useful while moving durable identity, relationships, and history into PostgreSQL.
+The database-backed application is the required reference editor under unfinished
+#230, with #171 owning GIS/infrastructure reconciliation. Maintain physical cable,
+waypoint, network and device reference identities/relationships in governed ref
+tables; preserve tests and observations as separate evidence/history.
+Follow the [required editing-authority rule](../11_Site_Infrastructure_GIS/README.md#required-reference-data-editing-authority--171--230).
+External tools remain collection/interchange/presentation tools after accepted
+cutover, not competing editable masters.
 
 ## Current Responsibilities
 
