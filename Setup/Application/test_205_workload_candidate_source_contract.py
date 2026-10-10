@@ -14,7 +14,7 @@ def _read(name: str) -> str:
 
 def test_changed_scheduling_scripts_have_fresh_browser_asset_pins():
     html = _read("production.html")
-    assert "setup_next_pass.js?v=2026-10-09.320.5" in html
+    assert "setup_next_pass.js?v=2026-10-10.205.1" in html
     assert "setup_scheduling_board.js?v=2026-10-09.320.5" in html
 
 
@@ -96,3 +96,24 @@ def test_completed_day_collapse_is_conservative_and_interactive():
     assert "Number(assignment.actual_person_minutes || 0) > 0" in perform
     assert "NEEDS CAPTAIN" in board
     assert "PAST ASSIGNMENT — NO WORK REPORTED" in board
+
+
+
+def test_perform_work_historical_assignment_label_matches_plan_and_keeps_kpis():
+    """Reported work is a property of the assignment, not annual execution."""
+    perform = _read("setup_next_pass.js")
+    board = _read("setup_scheduling_board.js")
+    start = perform.index("function nextPerformAssignmentCard(")
+    end = perform.index("function nextPerformLaborKpis(", start)
+    card = perform[start:end]
+    assert "const status = assignment.historical_locked" in card
+    assert "task.effective_complete ? 'WORK REPORTED - COMPLETE' : 'WORK REPORTED - INCOMPLETE'" in card
+    assert ": nextPerformAssignmentStatus(assignment)" in card
+    assert 'data-work-status="${escapeHtml(status)}"' in card
+    assert "const status = locked" in board
+    assert "task.effective_complete ? 'WORK REPORTED - COMPLETE' : 'WORK REPORTED - INCOMPLETE'" in board
+
+    # Annual completion semantics for the completed filter and labor KPIs
+    # must not change to the historical display label.
+    assert "nextPerformAssignmentStatus(assignment) !== 'COMPLETE'" in perform
+    assert "nextPerformAssignmentStatus(assignment) === 'COMPLETE'" in perform
