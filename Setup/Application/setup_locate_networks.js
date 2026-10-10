@@ -2,7 +2,14 @@
 (async () => {
   const status = document.getElementById('network-status');
   const details = document.getElementById('network-details');
+  const options = document.getElementById('network-options');
+  const networkControls = new Map();
+  const networkToggle = document.querySelector('[data-layer="NET"]');
   mapSearch.onSelection(entry => {
+    // Search and checklist share one selection so checks never describe stale highlights.
+    const selected = new Set(entry.selectedNetworks || (entry.networkSearchAliases ? [entry.name] : []));
+    for (const [name, control] of networkControls) control.checked = selected.has(name);
+    if (selected.size) { networkToggle.checked = true; layers.NET.addTo(map); }
     if (entry.networkSearchAliases || entry.preserveNetworkDetails) return;
     details.replaceChildren();
     details.parentElement.open = false;
@@ -32,9 +39,9 @@
     }
     const routeNames = new Map(source.mapped_routes.map(r => [r.route_id, r.source_name]));
     const alternativeMarkers = new Set();
-    function show(network, cables, routeIds) {
+    function show(network, cables, routeIds, expand = true) {
       details.replaceChildren();
-      details.parentElement.open = true;
+      details.parentElement.open = expand;
       row(details, `${network} — ${cables.length} LinkIQ test records · ${routeIds.size} candidate GPX routes`);
       row(details, 'GPX geometry is preserved. Shared tracks can carry multiple cables. Route candidates need review; network names alone do not prove continuity.');
       row(details, `${source.source_name} · SHA256 ${source.source_sha256.slice(0, 16)}`);
@@ -81,10 +88,40 @@
         details.appendChild(item);
       }
     }
-    for (const [network, cables] of networks) {
+    options.replaceChildren();
+    function highlightChecked() {
+      const selected = [...networkControls].filter(([, control]) => control.checked).map(([name]) => name);
+      if (!selected.length) { mapSearch.clearSelection(); return; }
+      const cables = selected.flatMap(name => networks.get(name));
+      const routeIds = new Set(cables.flatMap(c => c.route_ids));
+      // Union source markers once; shared trenches must not lose their highlight
+      // when one of several checked networks is removed.
+      const markers = [...new Set([...routeIds].flatMap(id => routes.get(id) || []))];
+      mapSearch.select({name: selected.join(', '), selectedNetworks: selected,
+        layer: 'NET', markers, preserveNetworkDetails: true,
+        association: `${routeIds.size} candidate routes — review required`,
+        // Keep the checklist in place while choosing several networks.
+        onSelect: () => show(selected.join(', '), cables, routeIds, false)});
+    }
+    document.getElementById('network-clear').addEventListener('click', () => mapSearch.clearSelection());
+    networkToggle.addEventListener('change', () => {
+      // Turning NET off also restores highlights on shared HV source tracks.
+      if (!networkToggle.checked && [...networkControls.values()].some(control => control.checked))
+        mapSearch.clearSelection();
+    });
+    for (const [network, cables] of [...networks].sort(([a], [b]) => a.localeCompare(b, undefined, {numeric: true}))) {
       const routeIds = new Set(cables.flatMap(c => c.route_ids));
       const markers = [...routeIds].flatMap(id => routes.get(id) || []);
       const unresolved = cables.filter(c => !c.route_ids.length).length;
+      const label = document.createElement('label');
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = network;
+      checkbox.addEventListener('change', highlightChecked);
+      const caption = document.createElement('span');
+      caption.textContent = `${network} · ${routeIds.size} candidate routes · ${unresolved} unmatched test records`;
+      label.appendChild(checkbox); label.appendChild(caption); options.appendChild(label);
+      networkControls.set(network, checkbox);
       const terms = [network, ...cables.flatMap(c => [c.attributes.Network, c.attributes.Cable_ID,
         c.attributes.Waypoint_1, c.attributes.Waypoint_2])].join(' ');
       mapSearch.addReference({name: network, kind: 'Network (LinkIQ)', layer: 'NET',
@@ -139,6 +176,7 @@
       }});
     status.textContent = `Network source loaded: ${source.mapped_routes.length} candidate routes; ${source.unresolved_routes.length} unresolved routes; ${source.legacy_edges.length} legacy schematic edges; ${(source.review_records || []).length} tester records need review or are deleted.`;
   } catch (error) {
+    options.textContent = 'Network choices unavailable; refresh the page to retry.';
     status.textContent = `Network source unavailable: ${error.message}. GPX and asset search remain available.`;
   }
 })();

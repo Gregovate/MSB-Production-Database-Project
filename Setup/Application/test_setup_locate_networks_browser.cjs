@@ -6,7 +6,7 @@ function element() {
     appendChild(x) { this.children.push(x); }, replaceChildren() { this.children = []; },
     addEventListener(type, fn) { this[type] = fn; }};
 }
-const ids = ['map-search', 'map-search-results', 'map-search-status', 'network-status', 'network-details'];
+const ids = ['map-search', 'map-search-results', 'map-search-status', 'network-status', 'network-details', 'network-options', 'network-clear'];
 const elements = Object.fromEntries(ids.map(id => [id, element()]));
 const source = JSON.parse(read('setup_locate_networks.json'));
 const page = read('locate_preview.html');
@@ -16,11 +16,11 @@ const markers = data.features.filter(f => ['LineString','MultiLineString'].inclu
   getBounds() { return `${feature.properties.id}:${i}`; },
   setStyle(style) { Object.assign(this.options, style); }, openPopup() {}, bringToFront() {}
 })));
-const toggle = {checked: false};
+const toggle = {...element(), checked: false};
 let selectionBounds;
 const context = {document: {getElementById: id => elements[id], createElement: element, querySelector: () => toggle},
   fetch: async () => ({ok: true, json: async () => source}),
-  layers: {NET: {eachLayer(fn) { markers.forEach(fn); }, addTo() {}}},
+  layers: Object.fromEntries(['NET','HV','PRI','Other'].map(name => [name, {eachLayer(fn) { markers.filter(m => m._searchFeature.properties.class === name).forEach(fn); }, addTo() {}}])),
   map: {fitBounds(bounds) { selectionBounds = bounds.items; }, closePopup() {}},
   L: {latLngBounds: () => ({items: [], extend(item) { this.items.push(item); }})}};
 vm.createContext(context);
@@ -58,8 +58,35 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   assert.match(elements['map-search-status'].textContent, /not in this season/);
   context.search.clearAssets();
   markers.forEach(m => {assert.equal(m.options.color, 'blue'); assert.equal(m.options.dashArray, null);});
+  // The expandable checklist selects multiple networks without any search text.
+  const controls = new Map(elements['network-options'].children.map(label => [label.children[0].value, label.children[0]]));
+  assert.equal(controls.size, new Set(source.cables.map(c => c.network)).size);
+  function check(name, checked) { const control = controls.get(name); control.checked = checked; control.change(); }
+  const routeIds = name => new Set(source.cables.filter(c => c.network === name).flatMap(c => c.route_ids));
+  const activeIds = () => new Set(markers.filter(m => m.options.color === '#ff00d4').map(m => m._searchFeature.properties.id));
+  elements['map-search'].value = '';
+  check('AUX-I', true); check('INET', true);
+  assert.deepEqual(activeIds(), new Set([...routeIds('AUX-I'), ...routeIds('INET')]));
+  assert(controls.get('AUX-I').checked && controls.get('INET').checked);
+  check('AUX-I', false);
+  assert.deepEqual(activeIds(), routeIds('INET'), 'Removing one network preserves shared tracks used by another');
+  elements['network-clear'].click();
+  assert.equal(activeIds().size, 0);
+  assert([...controls.values()].every(c => !c.checked));
+  const unresolved = [...controls.keys()].find(name => !routeIds(name).size);
+  assert(unresolved, 'Snapshot includes networks without geographic matches');
+  check(unresolved, true);
+  assert.equal(activeIds().size, 0);
+  assert(elements['network-details'].children.length > 0, 'Unmatched networks still expose test evidence');
+  search('INET')[0].click();
+  assert(controls.get('INET').checked && !controls.get(unresolved).checked, 'Search synchronizes checklist');
+  toggle.checked = false; toggle.change();
+  assert.equal(activeIds().size, 0, 'Parent off restores all highlighted source tracks');
+  assert([...controls.values()].every(c => !c.checked));
+  assert(page.includes('<details id="network-picker"><summary>'), 'Network list has native keyboard-accessible disclosure');
+  assert(page.includes('V0.3.56-network-picker · Updated 2026-10-10'));
   context.fetch = async () => ({ok:false,status:503});
   await vm.runInContext(read('setup_locate_networks.js'), context);
   assert.match(elements['network-status'].textContent, /unavailable/);
-  console.log('PASS: actual network search, grouping, alternatives, stale-details cleanup and failure behavior');
+  console.log('PASS: actual network search, multi-network checklist, shared tracks, clear/parent-off, unresolved evidence and failure behavior');
 })().catch(error => { console.error(error); process.exitCode = 1; });

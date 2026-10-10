@@ -3,10 +3,36 @@
 Status: ENGINEERING CANDIDATE — current-clone/operator acceptance pending.
 
 Baseline main: `38f6f9427007470cbc02b3e2d23a97450d4414ba` (PR #327).
-Version: `V0.3.55-linkiq-map`; visible Updated 2026-10-10.
+Version: `V0.3.56-network-picker`; visible Updated 2026-10-10.
 Exact application SHA: the implementation commit identified on PR #318; pin
 that SHA rather than resolving a moving branch at launch.
 No migrations or new Production grants are proposed.
+
+## Current V0.3.56 network checklist acceptance
+
+Greg reviewed V0.3.55 on October 10: network links work and expose segments that
+may lack test evidence. CLEAN EXIT confirmed. This is targeted positive feedback,
+not completion of all #171 acceptance or Production authorization.
+
+Expand **NET — networks** using its disclosure arrow. Every network in the
+LinkIQ source has a checkbox, including networks with no matched routes. Select
+one or several to highlight their combined candidate routes. Counts retain
+unmatched test evidence. Shared tracks remain highlighted while any selected
+network uses them. **Clear highlights** restores source styles. Turning the
+parent NET checkbox off clears network highlights, including those on shared
+HV tracks, without disabling other geographic layers. Search remains available
+and synchronizes the checks; selecting another feature clears stale checks.
+Collapsing the list does not change the selected networks.
+
+No source data, geometry, matching rules or database changes in this revision.
+Map header date corrected to October 10. Existing Container/Display behavior
+and the V0.3.55 limitations below remain applicable.
+
+Validation: full Setup Application regression 744 passed; five UI-date tests
+passed. Actual shipped-script Node fixture covers combined selection, removing
+one network from shared geometry, zero-route evidence, search synchronization,
+clear and parent-off behavior across NET/HV/PRI/Other layers. Disposable browser
+review of V0.3.56 is pending.
 
 ## Current V0.3.55 acceptance (supersedes historical V51–V54 network checks below)
 
@@ -117,7 +143,7 @@ if ($LASTEXITCODE -ne 0) { throw 'STOP: cannot read candidate SHA' }
   -PreviewPort 8898 `
   -CandidateSha $Candidate171 `
   -TargetRef 'docs/171-symbol-type-mapping' `
-  -ExpectedVersion 'V0.3.55-linkiq-map' `
+  -ExpectedVersion 'V0.3.56-network-picker' `
   -AllowConcurrentProductionWrites
 if ($LASTEXITCODE -ne 0) { throw 'STOP: retain report; inspect before retry' }
 ```

@@ -68,7 +68,7 @@ const mapSearch = (() => {
       if (marker.bringToFront) marker.bringToFront();
     }
     map.fitBounds(bounds, {padding: [40,40], maxZoom: 21});
-    if (!entry.networkSearchAliases) entry.markers[0].openPopup();
+    if (!entry.networkSearchAliases && !entry.selectedNetworks) entry.markers[0].openPopup();
     status.textContent = `${entry.name}${entry.association ? ' · ' + entry.association : ''}`;
   }
   function update() {
@@ -95,6 +95,12 @@ const mapSearch = (() => {
   input.addEventListener('input', update);
   return {
     select,
+    clearSelection() {
+      clearHighlight();
+      if (map.closePopup) map.closePopup();
+      for (const listener of selectionListeners) listener({});
+      status.textContent = '';
+    },
     focusContainer(id) {
       const entry = assets.find(a => a.kind === 'Container' && a.numericId === String(id));
       if (entry) select(entry);
