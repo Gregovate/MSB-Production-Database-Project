@@ -169,3 +169,21 @@ conversion of Python source. Exact application target remains 6192a1fd; the late
 tooling commit is not the deployed application version. Source-only Setup runbook
 supplies detached-worktree identity/date/regression checks; shared source promotion
 uses the database-change runbook. Production execution/PASS still pending.
+
+### First deployment STOP and recovery — October 10 12:04–12:07 CDT
+
+Report PR318-070-20261010T170424Z stopped at freeze PASS: generated fingerprint
+SQL lost empty-string quotes and PostgreSQL rejected string_agg(..., ORDER BY ...).
+Journal proves migration_started=false/migration_confirmed=false; controller
+snapshot=null. No migration, snapshot or application promotion occurred. Controller
+return-to-service was guarded by the journal and both original source SHAs. Greg
+reported all three services active and original V0.3.50/V0.4.0/V0.1.0 health again.
+
+Correction uses SQL dollar quoting for the generator and runs the actual capture
+as an ONLINE preflight probe before maintenance. Only the post-freeze capture is
+the preservation baseline. New PostgreSQL/WASM test executes the real generator
+and generated SELECTs, including empty tables, quoted text, changed rows and row
+ordering. Prior simulated deployment tests did not exercise generated SQL; their
+PASS was insufficient to catch this defect. Do not rerun the old tooling bundle.
+The application candidate and migration remain unchanged. Retry requires corrected
+merged tooling and healthy ONLINE preflight; preserve the original STOP report.
