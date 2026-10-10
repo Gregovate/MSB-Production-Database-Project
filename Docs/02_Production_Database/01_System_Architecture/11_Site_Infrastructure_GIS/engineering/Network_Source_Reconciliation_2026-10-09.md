@@ -370,3 +370,44 @@ on/transferred to the LinkIQ device and survives a new test/import. A LinkWare P
 note is not proof of bidirectional device support. Do not require device writeback
 for read-only FLW ingestion; it is a separate integration improvement. No FLW
 writes, device changes or database import performed during this investigation.
+
+## LinkWare property save/readback result — October 10, 07:25 CDT
+
+Read-only comparison of original FLW (SHA256 75a6b4673c9acf3aa7698fef0617df219a2742aeaebf022daebb7b8a8277b5ef)
+and supplied 26-10-09-Park-Data-roundtrip-test.flw
+(SHA256 9afe232a7efdd4ea9e64682af22476d1eb4a97915b7c826d5d3d9b97c4c28f21):
+both 174,149,636 bytes; SQLite quick_check OK. All 470 Records UUIDs unique and
+unchanged; no added/removed rows. This verifies UUID stability for this edit/save,
+not universal cross-import/retest identity.
+
+| Exact CableId in saved file | SQLite field | Before | After |
+|---|---|---|---|
+| WV 03 TO WV 05 AUX-I | Notes | empty | MSB roundtrip test 2026-10-10 |
+| WV 03 TO WV 05 AUX-I | Faceplate | empty | WV-03 |
+| WV-03 TO WV-05 AUX-I | OutletId | empty | WV-03 |
+| WV-03 TO WV-05 REG | OutletId | empty | WV-03 |
+
+Thus the multiple WV-03 property edits landed in two different columns:
+Faceplate on one test, OutletId on two others. Preserve this distinction.
+Notes is confirmed directly readable after a supported LinkWare property edit.
+InfoVector remained 0 even on the edited record; do not infer note absence from it.
+
+The saved file also carries prior/source cleanup relative to the originally
+uploaded baseline: 46 CableId changes with 46 CableIdLong changes and three
+Deleted NO -> YES changes. Newly marked deleted: 1000 ft test cat-6 on roll,
+A5-00 TO BELLS REG TEMP, and A5-00 TO BELLS REG TEMQ. Result: 463 nondeleted,
+seven deleted, 470 total records. This explains the screenshot's 463 count for
+this saved file; the earlier raw snapshot had 466 nondeleted. Do not describe
+these extra changes as side effects of the note or assume the note was the only
+difference. This direct comparison supersedes unverified prior CSV edit counts.
+
+All other Records fields, including lengths, statuses, timestamps, Hash, UUID
+and ResultBrief, are unchanged. RecordData (470 rows, including binary results),
+606A (two rows) and Admin (one row) have identical row multisets. Schema not
+changed by this comparison; neither source file was modified.
+
+Outcome: LinkWare PC property edit -> saved FLW -> MSB SQLite readback PASS for
+the stated note/fields. Notes can carry cross-reference text at the PC-file level;
+permanent field choice and device round-trip are still separate decisions/tests.
+Use the newer file's corrected metadata as source evidence while retaining the
+original snapshot, and exclude the test note from real cable identity assignment.
