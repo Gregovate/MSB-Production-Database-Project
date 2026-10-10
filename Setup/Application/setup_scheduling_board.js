@@ -2007,7 +2007,7 @@ function board205Day(day) {
         </div>
       </div>
       <div role="status" style="border:3px solid ${overloadedShifts ? '#9d2424' : unknownTasks || notReadyTasks ? '#835900' : '#146044'};padding:10px;margin:6px 0;border-radius:8px;font-weight:800;font-size:1.05rem">
-        DAILY WORKLOAD · ${staffedCrewCount} STAFFED CREWS / ${crews.length} DEFINED · ${dayWorkloads.length} OCCUPIED SHIFTS · ${overloadedShifts} OVERLOADED · ${unknownTasks} UNKNOWN ESTIMATES · ${notReadyTasks} NOT READY${duplicateCaptainShifts.size ? ` · ⚠ ${duplicateCaptainShifts.size} DUPLICATE CAPTAIN/SHIFT` : ''}
+        ${board205Esc(nextDayStaffingSummary(board205DayAssignments(day), crews))}${overloadedShifts ? ` · ${overloadedShifts} overloaded shifts` : ''}${unknownTasks ? ` · ${unknownTasks} missing time estimates` : ''}${notReadyTasks ? ` · ${notReadyTasks} tasks not ready` : ''}${duplicateCaptainShifts.size ? ` · ⚠ ${duplicateCaptainShifts.size} DUPLICATE CAPTAIN/SHIFT` : ''}
       </div>
       <div class="setup-board205-table-wrap">
         <div class="setup-board205-grid">
