@@ -125,10 +125,13 @@ Use Greg's laptop feature worktree `C:\lor\ImportExport\VSCode-171-map-review`;
 its primary main is divergent and must not be reset as a preview preparation step.
 
 
-PR #318 now has a V0.3.53-gis-network-search candidate consuming a read-only
+PR #318 now has a V0.3.54-gis-network-routes candidate consuming a read-only
 draw.io/GPX cross-reference: network groups highlight all segments of every
 endpoint-matched route and expose unresolved cables and endpoint conflicts.
-11 routes match by source endpoint names; 67 remain unresolved. These are
+43 route candidates use named waypoint anchors and draw.io cable chains; 35
+remain unresolved. Exact AUX-I/INET search returns a single network group; raw
+GPX routes remain separately discoverable. Dashed highlights identify alternative
+source routes. These are
 operator-review correspondences, not verified reconstructed routes or proof of
 continuous connectivity. Existing asset/waypoint search remains available.
 

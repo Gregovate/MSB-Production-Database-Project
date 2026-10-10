@@ -4,7 +4,7 @@
 |---|---|
 | Status | ENGINEERING CANDIDATE; operator review required |
 | Owner | Site Infrastructure / GIS, with Network Infrastructure |
-| Main baseline | `86a025a2528be9f7071355965f679320a1362181` |
+| Main baseline | `38f6f9427007470cbc02b3e2d23a97450d4414ba` |
 | Implementation path | Existing PR #318, after `a523b5082dba54ec2fd14567aeb520a5a9813f88` |
 
 ## Actual source inventory
@@ -31,28 +31,60 @@ physical cable identity. Schema integration/writer/editor remain unimplemented.
 
 Draw.io is operator-established network identity/topology authority; GPX carries
 route geometry. GPX description text never assigns network membership.
-Case-insensitive literal two-endpoint track names may match the unordered
-Waypoint_1/Waypoint_2 pair. Apply only confirmed GG-10 → GG-11 and Aux I/Aux-I
-aliases; retain original source strings. Other aliases need review. Cable label
-versus structured endpoint disagreement blocks automatic matching.
+The first V0.3.53 candidate matched only literal two-endpoint track names (11
+routes, 67 unresolved). Greg's 23:05 screenshots exposed incomplete AUX-I/INET
+highlighting and confusing raw-track versus network search results. That browser
+review requires changes; it is not operator acceptance.
 
-This produces **11 endpoint-matched GPX routes and 67 unresolved routes**.
-Matches are candidate correspondences requiring operator review, not confirmed
-surveyed current routes. Candyland reconstruction is particularly unresolved;
-older geometry must not be represented as verified reconstructed cable routing.
-The cross-reference is a versioned read-only source consumption snapshot, not a
-second editable inventory or permanent PostgreSQL business identity store.
+V0.3.54 screens existing route geometry against named GPX waypoint positions.
+Waypoint names match source endpoint codes directly; literal panel forms such as
+PANEL 09 / PANEL-09 and PANEL RA-00 / RA-00 are retained in `waypoint_lookup`.
+Confirmed GG-10 → GG-11 and Aux I/Aux-I aliases remain. Original names/attributes
+are preserved. Ambiguous duplicate waypoint identities are excluded.
+
+A route segment requires named source endpoints within a 30-ft **screening**
+radius and exactly one monotonic draw.io cable-node path for the same network.
+Every path node must be within that radius of the original line. All segments of
+a multi-segment GPX feature must support the same network before the full feature
+can be highlighted. Missing links, conflicting source attributes and multiple
+possible node paths remain unresolved. Network identity comes only from draw.io.
+
+Screening uses a local WGS84 distance approximation at park latitude; it does not
+transform/persist replacement coordinates. The 30-ft bound is only a candidate
+search radius (CC-00 is about 23 ft from the old GPX endpoint). It is not survey
+accuracy or a locate/clearance threshold. Existing EPSG:8158 authority and original
+browser geometry remain unchanged. These source correspondences require operator
+review and must not become accepted current physical topology automatically.
+
+The new source snapshot contains **43 candidate GPX routes, 35 unresolved routes**;
+AUX-I has **13 candidate routes and two conflicting cable records**; INET has
+**19 candidate routes and 15 records without supported full-route correspondence**.
+GPX features sharing the same source cable-path evidence are alternatives and
+highlight dashed; neither is silently chosen as the current surveyed route.
+This is a read-only source consumption snapshot, not a second editable inventory.
+Candyland reconstruction still requires geographic validation. A candidate there
+does not establish that older route geometry describes the reconstructed cable.
 
 Concrete discrepancies include TC-01 TO PN-01 with Waypoint_2 RA-08,
 WV-00 to WV-03 Aux I with Waypoint_2 WV-04, and A5-02A to A5-02B AuxN with
 Waypoint_1 A5-04. A5 formatting differences (A5-2A/A5-02A, A5-003/A5-03,
 slash versus ampersand combined endpoints) also require explicit reconciliation.
-No global spelling correction is made.
+No global spelling correction is made. The AUX-I record
+`Cable_WV-00_WV-03_AuxI` cannot resolve the missing WV-00/WV-03 section because its
+label/key indicate WV-03 while Waypoint_2 says WV-04. Greg must resolve that source
+conflict. `Cable_WV-11_WV-13_Reg` also has a Reg label but Network = Aux I; its
+network assignment is held unresolved instead of being counted as a second
+confirmed Aux-I cable. Other nonconfirmed Aux spellings are not globally merged.
 
 ## Browser behavior
 
-Search includes draw.io network groups plus original reference and asset results.
-Selecting a network highlights every rendered segment of all endpoint-matched
+An exact network-name/confirmed-alias query returns the logical network group
+only. Thus Aux-I and Aux I each yield one AUX-I result; INET does not also return
+Flammables Cabinets. Broader route queries still show **GPX route (source name)**
+results. Selecting a raw route or asset clears stale network evidence. Refresh
+clears that selection. Network selection opens its evidence without an arbitrary
+first-route popup.
+Selecting a network highlights every rendered segment of all supported candidate
 GPX features, fits their combined bounds, and reveals source cable evidence.
 The details list includes unmapped and conflicting records and per-cable Show
 cable route buttons. Networks with zero mapped routes remain searchable and

@@ -3,7 +3,330 @@
   "source_name": "Park Network Schematic 2026(8).drawio",
   "source_sha256": "e59d67383e735b4bbd77b59f6ec1f6a73dedd1b983d6594a379159d18ace953c",
   "gpx_snapshot": "743ead74d34767a9",
-  "mapping_status": "CANDIDATE \u2014 endpoint correspondence, not surveyed route verification",
+  "mapping_status": "CANDIDATE \u2014 waypoint and cable-chain correspondence, not surveyed route verification",
+  "screen_radius_ft": 30.0,
+  "waypoint_lookup": {
+    "A5-00": {
+      "id": "w0",
+      "source_name": "A5-00"
+    },
+    "A5-02A": {
+      "id": "w11",
+      "source_name": "A5-02A"
+    },
+    "A5-02B": {
+      "id": "w12",
+      "source_name": "A5-02B"
+    },
+    "A5-03": {
+      "id": "w20",
+      "source_name": "A5-03"
+    },
+    "A5-04": {
+      "id": "w13",
+      "source_name": "A5-04"
+    },
+    "A5-06": {
+      "id": "w14",
+      "source_name": "A5-06"
+    },
+    "A5-08": {
+      "id": "w15",
+      "source_name": "A5-08"
+    },
+    "A5-10": {
+      "id": "w16",
+      "source_name": "A5-10"
+    },
+    "A5-11&13": {
+      "id": "w21",
+      "source_name": "A5-11&13"
+    },
+    "A5-12": {
+      "id": "w17",
+      "source_name": "A5-12"
+    },
+    "A5-15&17": {
+      "id": "w22",
+      "source_name": "A5-15&17"
+    },
+    "A5-CHURCH": {
+      "id": "w5",
+      "source_name": "A5-Church"
+    },
+    "CC-00": {
+      "id": "w228",
+      "source_name": "CC-00"
+    },
+    "CL-00": {
+      "id": "w114",
+      "source_name": "PANEL CL-00"
+    },
+    "CL-01": {
+      "id": "w31",
+      "source_name": "CL-01"
+    },
+    "CL-02": {
+      "id": "w33",
+      "source_name": "CL-02"
+    },
+    "CL-02A": {
+      "id": "w32",
+      "source_name": "CL-02A"
+    },
+    "CL-03": {
+      "id": "w34",
+      "source_name": "CL-03"
+    },
+    "CL-04": {
+      "id": "w35",
+      "source_name": "CL-04"
+    },
+    "CL-05": {
+      "id": "w36",
+      "source_name": "CL-05"
+    },
+    "CL-06": {
+      "id": "w37",
+      "source_name": "CL-06"
+    },
+    "CL-07": {
+      "id": "w38",
+      "source_name": "CL-07"
+    },
+    "CL-08": {
+      "id": "w39",
+      "source_name": "CL-08"
+    },
+    "CL-09": {
+      "id": "w40",
+      "source_name": "CL-09"
+    },
+    "CL-11": {
+      "id": "w43",
+      "source_name": "CL-11"
+    },
+    "DF-A": {
+      "id": "w76",
+      "source_name": "DF-A"
+    },
+    "FC-00": {
+      "id": "w108",
+      "source_name": "PANEL FC-00"
+    },
+    "FC-00A": {
+      "id": "w211",
+      "source_name": "FC-00A"
+    },
+    "FC-01": {
+      "id": "w44",
+      "source_name": "FC-01"
+    },
+    "FE-01": {
+      "id": "w45",
+      "source_name": "FE-01"
+    },
+    "FE-02": {
+      "id": "w223",
+      "source_name": "FE-02"
+    },
+    "FE-02A": {
+      "id": "w221",
+      "source_name": "FE-02A"
+    },
+    "FE-08": {
+      "id": "w51",
+      "source_name": "FE-08"
+    },
+    "FE-10": {
+      "id": "w54",
+      "source_name": "FE-10"
+    },
+    "FE-15": {
+      "id": "w57",
+      "source_name": "FE-15"
+    },
+    "GG-02": {
+      "id": "w62",
+      "source_name": "GG-02"
+    },
+    "GG-06": {
+      "id": "w64",
+      "source_name": "GG-06"
+    },
+    "GG-07": {
+      "id": "w65",
+      "source_name": "GG-07"
+    },
+    "GG-07A": {
+      "id": "w67",
+      "source_name": "GG-07A"
+    },
+    "GG-08": {
+      "id": "w66",
+      "source_name": "GG-08"
+    },
+    "GG-09": {
+      "id": "w68",
+      "source_name": "GG-09"
+    },
+    "GG-11": {
+      "id": "w69",
+      "source_name": "GG-11"
+    },
+    "LP-03": {
+      "id": "w84",
+      "source_name": "LP-03"
+    },
+    "LP-05": {
+      "id": "w224",
+      "source_name": "LP-05"
+    },
+    "LP-08": {
+      "id": "w88",
+      "source_name": "LP-08"
+    },
+    "LP-10": {
+      "id": "w90",
+      "source_name": "LP-10"
+    },
+    "LPFT-DS": {
+      "id": "w80",
+      "source_name": "LPFT-DS"
+    },
+    "LPFT-PS": {
+      "id": "w94",
+      "source_name": "LPFT-PS"
+    },
+    "PANEL-09": {
+      "id": "w101",
+      "source_name": "PANEL 09"
+    },
+    "PO": {
+      "id": "w226",
+      "source_name": "PO"
+    },
+    "RA-00": {
+      "id": "w111",
+      "source_name": "PANEL RA-00"
+    },
+    "RA-01A": {
+      "id": "w118",
+      "source_name": "RA-01A"
+    },
+    "RA-01B": {
+      "id": "w119",
+      "source_name": "RA-01B"
+    },
+    "RA-02": {
+      "id": "w177",
+      "source_name": "RA-02"
+    },
+    "RA-06": {
+      "id": "w120",
+      "source_name": "RA-06"
+    },
+    "RA-08": {
+      "id": "w121",
+      "source_name": "RA-08"
+    },
+    "ST-00": {
+      "id": "w112",
+      "source_name": "PANEL ST-00"
+    },
+    "ST-01": {
+      "id": "w135",
+      "source_name": "ST-01"
+    },
+    "ST-03": {
+      "id": "w137",
+      "source_name": "ST-03"
+    },
+    "ST-04": {
+      "id": "w138",
+      "source_name": "ST-04"
+    },
+    "SW": {
+      "id": "w70",
+      "source_name": "SW"
+    },
+    "TC-01": {
+      "id": "w140",
+      "source_name": "TC-01"
+    },
+    "TC-02": {
+      "id": "w141",
+      "source_name": "TC-02"
+    },
+    "TC-03": {
+      "id": "w142",
+      "source_name": "TC-03"
+    },
+    "WV-00": {
+      "id": "w102",
+      "source_name": "PANEL 10 WV-00"
+    },
+    "WV-02": {
+      "id": "w220",
+      "source_name": "WV-02"
+    },
+    "WV-03": {
+      "id": "w148",
+      "source_name": "WV-03"
+    },
+    "WV-04": {
+      "id": "w149",
+      "source_name": "WV-04"
+    },
+    "WV-05": {
+      "id": "w150",
+      "source_name": "WV-05"
+    },
+    "WV-07": {
+      "id": "w152",
+      "source_name": "WV-07"
+    },
+    "WV-08": {
+      "id": "w153",
+      "source_name": "WV-08"
+    },
+    "WV-09": {
+      "id": "w154",
+      "source_name": "WV-09"
+    },
+    "WV-10": {
+      "id": "w155",
+      "source_name": "WV-10"
+    },
+    "WV-11": {
+      "id": "w156",
+      "source_name": "WV-11"
+    },
+    "WV-13": {
+      "id": "w157",
+      "source_name": "WV-13"
+    },
+    "WW-00": {
+      "id": "w113",
+      "source_name": "PANEL WW-00"
+    },
+    "WW-09": {
+      "id": "w162",
+      "source_name": "WW-09"
+    },
+    "WW-10": {
+      "id": "w163",
+      "source_name": "WW-10"
+    },
+    "WW-11": {
+      "id": "w164",
+      "source_name": "WW-11"
+    },
+    "WW-13": {
+      "id": "w165",
+      "source_name": "WW-13"
+    }
+  },
   "network_aliases": {
     "Aux I": "AUX-I",
     "Aux-I": "AUX-I"
@@ -50,13 +373,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t121"
+      ],
       "network": "REG",
       "endpoints": [
         "RA-01A",
         "FE-02"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-166",
@@ -73,13 +398,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t121"
+      ],
       "network": "INET",
       "endpoints": [
         "RA-01A",
         "FE-02"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-167",
@@ -96,13 +423,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t121"
+      ],
       "network": "E1.31",
       "endpoints": [
         "RA-01A",
         "FE-02"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-168",
@@ -119,13 +448,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t121"
+      ],
       "network": "AUX-E",
       "endpoints": [
         "RA-01A",
         "FE-02"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-169",
@@ -142,13 +473,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t121"
+      ],
       "network": "AUX-F",
       "endpoints": [
         "RA-01A",
         "FE-02"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-170",
@@ -188,13 +521,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t121"
+      ],
       "network": "E1.31",
       "endpoints": [
         "RA-01B",
         "RA-01A"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-172",
@@ -211,13 +546,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t121"
+      ],
       "network": "INET",
       "endpoints": [
         "RA-01B",
         "RA-01A"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-173",
@@ -234,13 +571,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t121"
+      ],
       "network": "AUX-E",
       "endpoints": [
         "RA-01B",
         "RA-01A"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-174",
@@ -257,13 +596,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t121"
+      ],
       "network": "AUX-F",
       "endpoints": [
         "RA-01B",
         "RA-01A"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-175",
@@ -280,13 +621,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t121"
+      ],
       "network": "REG",
       "endpoints": [
         "RA-01B",
         "RA-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-177",
@@ -303,13 +646,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t121"
+      ],
       "network": "E1.31",
       "endpoints": [
         "RA-01B",
         "RA-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-178",
@@ -326,13 +671,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t121"
+      ],
       "network": "INET",
       "endpoints": [
         "RA-01B",
         "RA-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-179",
@@ -349,13 +696,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t121"
+      ],
       "network": "AUX-E",
       "endpoints": [
         "RA-01B",
         "RA-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-180",
@@ -372,13 +721,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t121"
+      ],
       "network": "AUX-F",
       "endpoints": [
         "RA-01B",
         "RA-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-182",
@@ -395,13 +746,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t115"
+      ],
       "network": "REG",
       "endpoints": [
         "TC-01",
         "RA-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-183",
@@ -418,13 +771,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t115"
+      ],
       "network": "E1.31",
       "endpoints": [
         "TC-01",
         "RA-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-184",
@@ -441,13 +796,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t115"
+      ],
       "network": "INET",
       "endpoints": [
         "TC-01",
         "RA-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-185",
@@ -464,13 +821,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t115"
+      ],
       "network": "AUX-E",
       "endpoints": [
         "TC-01",
         "RA-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-186",
@@ -487,13 +846,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t115"
+      ],
       "network": "AUX-F",
       "endpoints": [
         "TC-01",
         "RA-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-187",
@@ -625,13 +986,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t129"
+      ],
       "network": "REG",
       "endpoints": [
         "TC-01",
         "TC-02"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "qhZzY6C5dYRTtsNzqbKF-194",
@@ -648,13 +1011,15 @@
       },
       "source": null,
       "target": "My__w4ZvjwDqVi_cB0tN-168",
-      "route_ids": [],
+      "route_ids": [
+        "t130"
+      ],
       "network": "REG",
       "endpoints": [
         "TC-02",
         "TC-03"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "HcZ1PZOIesHXG2RSZFGO-163",
@@ -763,13 +1128,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t91"
+      ],
       "network": "AUX-G",
       "endpoints": [
         "FE-02",
         "FE-10"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "HcZ1PZOIesHXG2RSZFGO-169",
@@ -786,13 +1153,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t91"
+      ],
       "network": "SPARE",
       "endpoints": [
         "FE-02",
         "FE-10"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "HcZ1PZOIesHXG2RSZFGO-167",
@@ -809,13 +1178,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t91"
+      ],
       "network": "REG",
       "endpoints": [
         "FE-02",
         "FE-10"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "HcZ1PZOIesHXG2RSZFGO-170",
@@ -878,13 +1249,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t121"
+      ],
       "network": "REG",
       "endpoints": [
         "RA-01A",
         "RA-01B"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "HcZ1PZOIesHXG2RSZFGO-176",
@@ -1062,13 +1435,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t71"
+      ],
       "network": "E1.31",
       "endpoints": [
         "FE-02A",
         "FE-01"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "gMlBisTwLpFykkUoM81w-171",
@@ -1085,13 +1460,15 @@
       },
       "source": "yYp98esOLUypjb_VYM_9-198",
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t71"
+      ],
       "network": "INET",
       "endpoints": [
         "FE-02A",
         "FE-01"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "gMlBisTwLpFykkUoM81w-172",
@@ -1108,13 +1485,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t71"
+      ],
       "network": "SPARE1",
       "endpoints": [
         "FE-02A",
         "FE-01"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "gMlBisTwLpFykkUoM81w-174",
@@ -1131,13 +1510,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t71"
+      ],
       "network": "SPARE2",
       "endpoints": [
         "FE-02A",
         "FE-01"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "gMlBisTwLpFykkUoM81w-175",
@@ -1154,13 +1535,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t77"
+      ],
       "network": "REG",
       "endpoints": [
         "PANEL-09",
         "PO"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "gMlBisTwLpFykkUoM81w-176",
@@ -1177,13 +1560,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t77"
+      ],
       "network": "E1.31",
       "endpoints": [
         "PANEL-09",
         "PO"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "gMlBisTwLpFykkUoM81w-177",
@@ -1200,13 +1585,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t77"
+      ],
       "network": "INET",
       "endpoints": [
         "PANEL-09",
         "PO"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "gMlBisTwLpFykkUoM81w-178",
@@ -1223,13 +1610,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t77"
+      ],
       "network": "AUX-I",
       "endpoints": [
         "PANEL-09",
         "PO"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "gMlBisTwLpFykkUoM81w-179",
@@ -1246,13 +1635,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t77"
+      ],
       "network": "AUX J",
       "endpoints": [
         "PANEL-09",
         "PO"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "gMlBisTwLpFykkUoM81w-180",
@@ -1269,13 +1660,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t77"
+      ],
       "network": "AUX K",
       "endpoints": [
         "PANEL-09",
         "PO"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "gMlBisTwLpFykkUoM81w-181",
@@ -1292,13 +1685,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t77"
+      ],
       "network": "SPARE",
       "endpoints": [
         "PANEL-09",
         "PO"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "gMlBisTwLpFykkUoM81w-182",
@@ -1315,13 +1710,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t123"
+      ],
       "network": "REG",
       "endpoints": [
         "PO",
         "WV-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "gMlBisTwLpFykkUoM81w-183",
@@ -1338,13 +1735,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t123"
+      ],
       "network": "AUX J",
       "endpoints": [
         "PO",
         "WV-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "gMlBisTwLpFykkUoM81w-185",
@@ -1361,13 +1760,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t123"
+      ],
       "network": "E1.31",
       "endpoints": [
         "PO",
         "WV-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "gMlBisTwLpFykkUoM81w-186",
@@ -1384,13 +1785,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t123"
+      ],
       "network": "INET",
       "endpoints": [
         "PO",
         "WV-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-160",
@@ -1407,13 +1810,15 @@
       },
       "source": null,
       "target": "yYp98esOLUypjb_VYM_9-267",
-      "route_ids": [],
+      "route_ids": [
+        "t78"
+      ],
       "network": "SPARE-1",
       "endpoints": [
         "PANEL-09",
         "FC-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-162",
@@ -1438,7 +1843,7 @@
         "PANEL-09",
         "FC-00A"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-163",
@@ -1455,13 +1860,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t78"
+      ],
       "network": "SPARE-2",
       "endpoints": [
         "PANEL-09",
         "FC-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-164",
@@ -1486,7 +1893,7 @@
         "PANEL-09",
         "FC-00A"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-165",
@@ -1511,7 +1918,7 @@
         "PANEL-09",
         "FC-00A"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-166",
@@ -1536,7 +1943,7 @@
         "PANEL-09",
         "FC-00A"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-167",
@@ -1553,13 +1960,16 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t79",
+        "t80"
+      ],
       "network": "REG",
       "endpoints": [
         "CC-00",
         "PANEL-09"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-168",
@@ -1576,13 +1986,16 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t79",
+        "t80"
+      ],
       "network": "INET",
       "endpoints": [
         "CC-00",
         "PANEL-09"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-169",
@@ -1599,13 +2012,16 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t79",
+        "t80"
+      ],
       "network": "E1.31",
       "endpoints": [
         "CC-00",
         "PANEL-09"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-170",
@@ -1622,13 +2038,16 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t79",
+        "t80"
+      ],
       "network": "AUX-H",
       "endpoints": [
         "CC-00",
         "PANEL-09"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-171",
@@ -1645,13 +2064,16 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t79",
+        "t80"
+      ],
       "network": "AUX-I",
       "endpoints": [
         "CC-00",
         "PANEL-09"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-172",
@@ -1668,13 +2090,16 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t79",
+        "t80"
+      ],
       "network": "AUX-J",
       "endpoints": [
         "CC-00",
         "PANEL-09"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-173",
@@ -1691,13 +2116,16 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t79",
+        "t80"
+      ],
       "network": "AUX-K",
       "endpoints": [
         "CC-00",
         "PANEL-09"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-174",
@@ -1714,13 +2142,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t83"
+      ],
       "network": "REG",
       "endpoints": [
         "CC-00",
         "FE-02"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-175",
@@ -1737,13 +2167,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t83"
+      ],
       "network": "AUX-E",
       "endpoints": [
         "CC-00",
         "FE-02"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-176",
@@ -1760,13 +2192,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t83"
+      ],
       "network": "AUX-F",
       "endpoints": [
         "CC-00",
         "FE-02"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "DtNnG54Penqv8LHutyU9-177",
@@ -1783,13 +2217,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t83"
+      ],
       "network": "AUX-G",
       "endpoints": [
         "CC-00",
         "FE-02"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Ub5UUmAz4fvwhxh8EDVv-162",
@@ -1806,13 +2242,16 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t125",
+        "t172"
+      ],
       "network": "REG",
       "endpoints": [
         "DF-A",
         "GG-11"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Ub5UUmAz4fvwhxh8EDVv-163",
@@ -1829,13 +2268,16 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t125",
+        "t172"
+      ],
       "network": "AUX-D",
       "endpoints": [
         "DF-A",
         "GG-11"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Ub5UUmAz4fvwhxh8EDVv-164",
@@ -1852,13 +2294,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t172"
+      ],
       "network": "LINE-1",
       "endpoints": [
         "DF-A",
         "GG-11"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Ub5UUmAz4fvwhxh8EDVv-165",
@@ -1875,13 +2319,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t172"
+      ],
       "network": "LINE-2",
       "endpoints": [
         "DF-A",
         "GG-11"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Ub5UUmAz4fvwhxh8EDVv-166",
@@ -1898,13 +2344,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t172"
+      ],
       "network": "LINE-3",
       "endpoints": [
         "DF-A",
         "GG-11"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Ub5UUmAz4fvwhxh8EDVv-167",
@@ -1921,13 +2369,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t172"
+      ],
       "network": "LINE-3",
       "endpoints": [
         "SW",
         "DF-A"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Ub5UUmAz4fvwhxh8EDVv-168",
@@ -1944,13 +2394,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t172"
+      ],
       "network": "LINE-2",
       "endpoints": [
         "SW",
         "DF-A"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Ub5UUmAz4fvwhxh8EDVv-169",
@@ -1967,13 +2419,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t172"
+      ],
       "network": "LINE-1",
       "endpoints": [
         "SW",
         "DF-A"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Ub5UUmAz4fvwhxh8EDVv-170",
@@ -1990,13 +2444,16 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t125",
+        "t172"
+      ],
       "network": "AUX-D",
       "endpoints": [
         "SW",
         "DF-A"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Ub5UUmAz4fvwhxh8EDVv-171",
@@ -2013,13 +2470,16 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t125",
+        "t172"
+      ],
       "network": "REG",
       "endpoints": [
         "SW",
         "DF-A"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Ub5UUmAz4fvwhxh8EDVv-172",
@@ -2059,13 +2519,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t125"
+      ],
       "network": "REG",
       "endpoints": [
         "LP-08",
         "SW"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Ub5UUmAz4fvwhxh8EDVv-174",
@@ -2082,13 +2544,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t125"
+      ],
       "network": "AUX-D",
       "endpoints": [
         "LP-08",
         "SW"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Ub5UUmAz4fvwhxh8EDVv-175",
@@ -2151,13 +2615,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t87"
+      ],
       "network": "REG",
       "endpoints": [
         "ST-00",
         "ST-04"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-161",
@@ -2243,13 +2709,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t87"
+      ],
       "network": "AUX J",
       "endpoints": [
         "ST-00",
         "ST-04"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-165",
@@ -2266,13 +2734,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t87"
+      ],
       "network": "SPARE-1",
       "endpoints": [
         "ST-00",
         "ST-04"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-166",
@@ -2795,13 +3265,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t126"
+      ],
       "network": "REG",
       "endpoints": [
         "WW-10",
         "WW-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-190",
@@ -2818,13 +3290,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t126"
+      ],
       "network": "AUX J",
       "endpoints": [
         "WW-10",
         "WW-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-191",
@@ -2841,13 +3315,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t126"
+      ],
       "network": "AUX K",
       "endpoints": [
         "WW-10",
         "WW-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-192",
@@ -2864,13 +3340,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t126"
+      ],
       "network": "SPARE-1",
       "endpoints": [
         "WW-10",
         "WW-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-193",
@@ -2887,13 +3365,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t126"
+      ],
       "network": "INET",
       "endpoints": [
         "WW-10",
         "WW-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-194",
@@ -2910,13 +3390,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t126"
+      ],
       "network": "E1.31",
       "endpoints": [
         "WW-10",
         "WW-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-198",
@@ -3171,7 +3653,7 @@
         "GG-11",
         "GG-09"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-209",
@@ -3196,7 +3678,7 @@
         "GG-11",
         "GG-09"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-210",
@@ -3221,7 +3703,7 @@
         "GG-11",
         "GG-09"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-211",
@@ -3246,7 +3728,7 @@
         "GG-11",
         "GG-09"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-212",
@@ -3585,13 +4067,17 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t73",
+        "t74",
+        "t82"
+      ],
       "network": "SPARE-1",
       "endpoints": [
         "CC-00",
         "LP-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-240",
@@ -3838,13 +4324,15 @@
       },
       "source": "SC-hR7o1EZgJaLaghk3p-164",
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t177"
+      ],
       "network": "E1.31",
       "endpoints": [
         "FC-00A",
         "FC-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-253",
@@ -3861,13 +4349,15 @@
       },
       "source": "SC-hR7o1EZgJaLaghk3p-164",
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t177"
+      ],
       "network": "AUX-H",
       "endpoints": [
         "FC-00A",
         "FC-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-254",
@@ -3892,7 +4382,7 @@
         "PANEL-09",
         "FC-00A"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-255",
@@ -3917,7 +4407,7 @@
         "PANEL-09",
         "FC-00A"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "NsUUF_6cCiEUwZhndwfF-256",
@@ -4164,13 +4654,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t123"
+      ],
       "network": "AUX K",
       "endpoints": [
         "PO",
         "WV-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_ST-00_ST-01_AuxK",
@@ -4302,13 +4794,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t116"
+      ],
       "network": "AUX J",
       "endpoints": [
         "ST-01",
         "ST-03"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_ST-01_ST-03_SPARE",
@@ -4325,13 +4819,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t116"
+      ],
       "network": "SPARE",
       "endpoints": [
         "ST-01",
         "ST-03"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_ST-01_ST-03_Reg",
@@ -4348,13 +4844,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t116"
+      ],
       "network": "REG",
       "endpoints": [
         "ST-01",
         "ST-03"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "7qRnUm441u3O5lePHObY-175",
@@ -4370,13 +4868,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t81"
+      ],
       "network": "REG",
       "endpoints": [
         "CC-00",
         "A5-02A"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "7qRnUm441u3O5lePHObY-177",
@@ -4459,13 +4959,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t88"
+      ],
       "network": "AUX-I",
       "endpoints": [
         "WV-02",
         "WV-04"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_LPFT-PS_EP-Sign_AuxI",
@@ -4482,13 +4984,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t103"
+      ],
       "network": "AUX-I",
       "endpoints": [
         "LPFT-PS",
         "WV-02"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_LPFT-PS_LPFT-DS_Line1",
@@ -4505,13 +5009,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t104"
+      ],
       "network": "AUX-I",
       "endpoints": [
         "LPFT-PS",
         "LPFT-DS"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_LPFT-PS_LPFT-DS_Line2",
@@ -4528,13 +5034,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t104"
+      ],
       "network": "AUX-I",
       "endpoints": [
         "LPFT-PS",
         "LPFT-DS"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_LPFT-PS_PO_AuxI",
@@ -4551,13 +5059,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t122"
+      ],
       "network": "AUX-I",
       "endpoints": [
         "LPFT-PS",
         "PO"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-00_WV-03_AuxI",
@@ -4605,7 +5115,7 @@
         "WV-03",
         "WV-05"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-03_WV-05_Reg",
@@ -4630,7 +5140,7 @@
         "WV-03",
         "WV-05"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-05_WV-07_AuxI",
@@ -4655,7 +5165,7 @@
         "WV-05",
         "WV-07"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "7qRnUm441u3O5lePHObY-192",
@@ -4679,7 +5189,7 @@
         "WV-05",
         "WV-07"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-07_WV-09_AuxI",
@@ -4704,7 +5214,7 @@
         "WV-07",
         "WV-09"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-07_WV-09_Reg",
@@ -4729,7 +5239,7 @@
         "WV-07",
         "WV-09"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-09_WV-11_AuxI",
@@ -4754,7 +5264,7 @@
         "WV-09",
         "WV-11"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-09_WV-11_Reg",
@@ -4779,7 +5289,7 @@
         "WV-09",
         "WV-11"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-11_WV-13_AuxI",
@@ -4804,7 +5314,7 @@
         "WV-11",
         "WV-13"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-11_WV-13_Reg",
@@ -4821,15 +5331,13 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [
-        "t141"
-      ],
+      "route_ids": [],
       "network": "AUX-I",
       "endpoints": [
         "WV-11",
         "WV-13"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "NETWORK_CONFLICT"
     },
     {
       "source_id": "Cable_WV-10_WV-03_Reg",
@@ -4854,7 +5362,7 @@
         "WV-10",
         "WV-03"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-10_WV-03_AuxJ",
@@ -4879,7 +5387,7 @@
         "WV-10",
         "WV-03"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-10_WV-03_AuxK",
@@ -4904,7 +5412,7 @@
         "WV-10",
         "WV-03"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-10_WV-03_E1.31",
@@ -4929,7 +5437,7 @@
         "WV-10",
         "WV-03"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-10_WV-03_INET",
@@ -4954,7 +5462,7 @@
         "WV-10",
         "WV-03"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-10_WV-08_Reg",
@@ -4979,7 +5487,7 @@
         "WV-10",
         "WV-08"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "7qRnUm441u3O5lePHObY-211",
@@ -5004,7 +5512,7 @@
         "WV-10",
         "WV-08"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-10_WV-08_E1.31",
@@ -5029,7 +5537,7 @@
         "WV-10",
         "WV-08"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-10_WV-08_INET",
@@ -5054,7 +5562,7 @@
         "WV-10",
         "WV-08"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "7qRnUm441u3O5lePHObY-215",
@@ -5070,13 +5578,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t133"
+      ],
       "network": "AUX-I",
       "endpoints": [
         "WV-00",
         "WV-04"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-10_ST-01_Reg",
@@ -5101,7 +5611,7 @@
         "WV-10",
         "ST-01"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-10_ST-01_ AuxJ",
@@ -5126,7 +5636,7 @@
         "WV-10",
         "ST-01"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-10_ST-01_AuxK",
@@ -5151,7 +5661,7 @@
         "WV-10",
         "ST-01"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-10_ST-01_E1.31",
@@ -5176,7 +5686,7 @@
         "WV-10",
         "ST-01"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_WV-10_ST-01_INET",
@@ -5201,7 +5711,7 @@
         "WV-10",
         "ST-01"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_A5-04_A5-02B_Reg",
@@ -5385,7 +5895,7 @@
         "A5-04",
         "A5-06"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "NETWORK_CONFLICT"
     },
     {
       "source_id": "Cable_A5-06_A5-08_Reg",
@@ -5477,7 +5987,7 @@
         "A5-06",
         "A5-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "NETWORK_CONFLICT"
     },
     {
       "source_id": "Cable_A5-08_A5-10_Reg",
@@ -6046,13 +6556,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t86"
+      ],
       "network": "INET",
       "endpoints": [
         "A5-02A",
         "A5-04"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "uoa4MbB5OOMb-P8yzlmw-172",
@@ -6069,13 +6581,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t86"
+      ],
       "network": "E1.31",
       "endpoints": [
         "A5-02A",
         "A5-04"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_A5-02A_A5-02B_Spare3",
@@ -6115,13 +6629,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t86"
+      ],
       "network": "INET",
       "endpoints": [
         "A5-04",
         "A5-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_A5-04_A5-00_E1.31",
@@ -6138,13 +6654,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t86"
+      ],
       "network": "E1.31",
       "endpoints": [
         "A5-04",
         "A5-00"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "J9Lt0JKabgCePBZ7hUFV-168",
@@ -6299,13 +6817,17 @@
       },
       "source": null,
       "target": "gnNXzODgIp6ZY_qKPKoF-167",
-      "route_ids": [],
+      "route_ids": [
+        "t73",
+        "t74",
+        "t82"
+      ],
       "network": "E1.31",
       "endpoints": [
         "CC-00",
         "LP-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CC-00_LP-08_INET",
@@ -6322,13 +6844,17 @@
       },
       "source": null,
       "target": "gnNXzODgIp6ZY_qKPKoF-164",
-      "route_ids": [],
+      "route_ids": [
+        "t73",
+        "t74",
+        "t82"
+      ],
       "network": "INET",
       "endpoints": [
         "CC-00",
         "LP-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "J9Lt0JKabgCePBZ7hUFV-176",
@@ -6345,13 +6871,17 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t73",
+        "t74",
+        "t82"
+      ],
       "network": "REG",
       "endpoints": [
         "CC-00",
         "LP-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "J9Lt0JKabgCePBZ7hUFV-177",
@@ -6368,13 +6898,17 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t73",
+        "t74",
+        "t82"
+      ],
       "network": "AUXA",
       "endpoints": [
         "CC-00",
         "LP-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CC-00_LP-08_AuxB",
@@ -6391,13 +6925,17 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t73",
+        "t74",
+        "t82"
+      ],
       "network": "AUXB",
       "endpoints": [
         "CC-00",
         "LP-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CC-00_LP-08_AuxC",
@@ -6414,13 +6952,17 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t73",
+        "t74",
+        "t82"
+      ],
       "network": "AUXC",
       "endpoints": [
         "CC-00",
         "LP-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CC-00_LP-08_AuxD",
@@ -6437,13 +6979,17 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t73",
+        "t74",
+        "t82"
+      ],
       "network": "AUXD",
       "endpoints": [
         "CC-00",
         "LP-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CL-00_LP-08_E1.31",
@@ -6460,13 +7006,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t102"
+      ],
       "network": "E1.31",
       "endpoints": [
         "CL-00",
         "LP-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CL-00_LP-08_INET",
@@ -6483,13 +7031,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t102"
+      ],
       "network": "INET",
       "endpoints": [
         "CL-00",
         "LP-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CL-00_LP-08_Reg",
@@ -6506,13 +7056,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t102"
+      ],
       "network": "REG",
       "endpoints": [
         "CL-00",
         "LP-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CL-00_LP-08_AuxA",
@@ -6529,13 +7081,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t102"
+      ],
       "network": "AUXA",
       "endpoints": [
         "CL-00",
         "LP-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CL-00_LP-08_AuxB",
@@ -6552,13 +7106,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t102"
+      ],
       "network": "AUXB",
       "endpoints": [
         "CL-00",
         "LP-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CL-00_LP-08_AuxC",
@@ -6575,13 +7131,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t102"
+      ],
       "network": "AUXC",
       "endpoints": [
         "CL-00",
         "LP-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CL-00_LP-08_Spare1",
@@ -6598,13 +7156,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t102"
+      ],
       "network": "SPARE1",
       "endpoints": [
         "CL-00",
         "LP-08"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CL-00 to CL-05 Reg",
@@ -6621,13 +7181,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t120"
+      ],
       "network": "REG",
       "endpoints": [
         "CL-00",
         "CL-05"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CL-00_CL-05_RegRet",
@@ -6667,13 +7229,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t120"
+      ],
       "network": "AUXB",
       "endpoints": [
         "CL-00",
         "CL-05"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CL-00_CL-05_AuxC",
@@ -6690,13 +7254,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t120"
+      ],
       "network": "AUXC",
       "endpoints": [
         "CL-00",
         "CL-05"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CL-05_CL-07_Reg",
@@ -6713,13 +7279,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t120"
+      ],
       "network": "REG",
       "endpoints": [
         "CL-05",
         "CL-07"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "J9Lt0JKabgCePBZ7hUFV-194",
@@ -6759,13 +7327,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t120"
+      ],
       "network": "AUXB",
       "endpoints": [
         "CL-05",
         "CL-07"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CL-05_CL-07_AuxC",
@@ -6782,13 +7352,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t120"
+      ],
       "network": "AUXC",
       "endpoints": [
         "CL-05",
         "CL-07"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CL-07_CL-09_Reg",
@@ -6805,13 +7377,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t120"
+      ],
       "network": "REG",
       "endpoints": [
         "CL-07",
         "CL-09"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CL-07_CL-09_AuxC",
@@ -6828,13 +7402,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t120"
+      ],
       "network": "AUXC",
       "endpoints": [
         "CL-07",
         "CL-09"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "J9Lt0JKabgCePBZ7hUFV-201",
@@ -6851,13 +7427,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t120"
+      ],
       "network": "AUXB",
       "endpoints": [
         "CL-07",
         "CL-09"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "J9Lt0JKabgCePBZ7hUFV-202",
@@ -6897,13 +7475,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t120"
+      ],
       "network": "REG",
       "endpoints": [
         "CL-09",
         "CL-11"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CL-09_CL-11_AuxC",
@@ -6920,13 +7500,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t120"
+      ],
       "network": "AUXC",
       "endpoints": [
         "CL-09",
         "CL-11"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "J9Lt0JKabgCePBZ7hUFV-206",
@@ -6943,13 +7525,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t120"
+      ],
       "network": "AUXB",
       "endpoints": [
         "CL-09",
         "CL-11"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "J9Lt0JKabgCePBZ7hUFV-207",
@@ -7081,13 +7665,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t107"
+      ],
       "network": "REG",
       "endpoints": [
         "GG-08",
         "GG-06"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "J9Lt0JKabgCePBZ7hUFV-216",
@@ -7104,13 +7690,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t107"
+      ],
       "network": "REGRET",
       "endpoints": [
         "GG-08",
         "GG-06"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "J9Lt0JKabgCePBZ7hUFV-217",
@@ -7127,13 +7715,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t107"
+      ],
       "network": "SPARE1",
       "endpoints": [
         "GG-08",
         "GG-06"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "J9Lt0JKabgCePBZ7hUFV-218",
@@ -7150,13 +7740,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t107"
+      ],
       "network": "SPARE2",
       "endpoints": [
         "GG-08",
         "GG-06"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "J9Lt0JKabgCePBZ7hUFV-219",
@@ -7173,13 +7765,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t107"
+      ],
       "network": "AUX-B",
       "endpoints": [
         "GG-08",
         "GG-06"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "J9Lt0JKabgCePBZ7hUFV-220",
@@ -7503,7 +8097,7 @@
         "CL-00",
         "LP-05"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "Cable_CL-00_LP-05_INET",
@@ -7528,7 +8122,7 @@
         "CL-00",
         "LP-05"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "J9Lt0JKabgCePBZ7hUFV-236",
@@ -7545,13 +8139,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t124"
+      ],
       "network": "E1.31",
       "endpoints": [
         "CL-00",
         "CL-02A"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "J9Lt0JKabgCePBZ7hUFV-237",
@@ -7568,13 +8164,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t124"
+      ],
       "network": "INET",
       "endpoints": [
         "CL-00",
         "CL-02A"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "J9Lt0JKabgCePBZ7hUFV-238",
@@ -8266,7 +8864,7 @@
         "WV-10",
         "WV-08"
       ],
-      "status": "ENDPOINT_MATCH_REVIEW_REQUIRED"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "LvfFE_fGHrLsRj2VPUnT-164",
@@ -8283,13 +8881,15 @@
       },
       "source": null,
       "target": null,
-      "route_ids": [],
+      "route_ids": [
+        "t133"
+      ],
       "network": "AUX-I",
       "endpoints": [
         "WV-00",
         "WV-04"
       ],
-      "status": "NO_MATCHED_ROUTE"
+      "status": "ROUTE_CANDIDATE_REVIEW_REQUIRED"
     },
     {
       "source_id": "RwxSmR0qUB48zsQhC6Dz-165",
@@ -9376,6 +9976,1351 @@
   ],
   "mapped_routes": [
     {
+      "route_id": "t71",
+      "source_name": "NET  FC Under Road at Car Counters",
+      "cable_source_ids": [
+        "gMlBisTwLpFykkUoM81w-170",
+        "gMlBisTwLpFykkUoM81w-171",
+        "gMlBisTwLpFykkUoM81w-172",
+        "gMlBisTwLpFykkUoM81w-174"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "gMlBisTwLpFykkUoM81w-170"
+            ],
+            "waypoint_path": [
+              "FE-02A",
+              "FE-01"
+            ],
+            "start_waypoint_id": "w221",
+            "end_waypoint_id": "w45",
+            "start_distance_ft": 1.8,
+            "end_distance_ft": 2.0
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "gMlBisTwLpFykkUoM81w-171"
+            ],
+            "waypoint_path": [
+              "FE-02A",
+              "FE-01"
+            ],
+            "start_waypoint_id": "w221",
+            "end_waypoint_id": "w45",
+            "start_distance_ft": 1.8,
+            "end_distance_ft": 2.0
+          }
+        ],
+        "SPARE1": [
+          {
+            "cable_source_ids": [
+              "gMlBisTwLpFykkUoM81w-172"
+            ],
+            "waypoint_path": [
+              "FE-02A",
+              "FE-01"
+            ],
+            "start_waypoint_id": "w221",
+            "end_waypoint_id": "w45",
+            "start_distance_ft": 1.8,
+            "end_distance_ft": 2.0
+          }
+        ],
+        "SPARE2": [
+          {
+            "cable_source_ids": [
+              "gMlBisTwLpFykkUoM81w-174"
+            ],
+            "waypoint_path": [
+              "FE-02A",
+              "FE-01"
+            ],
+            "start_waypoint_id": "w221",
+            "end_waypoint_id": "w45",
+            "start_distance_ft": 1.8,
+            "end_distance_ft": 2.0
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t73",
+      "source_name": "NET 2015 AUX M - AUX N",
+      "cable_source_ids": [
+        "NsUUF_6cCiEUwZhndwfF-239",
+        "J9Lt0JKabgCePBZ7hUFV-174",
+        "Cable_CC-00_LP-08_INET",
+        "J9Lt0JKabgCePBZ7hUFV-176",
+        "J9Lt0JKabgCePBZ7hUFV-177",
+        "Cable_CC-00_LP-08_AuxB",
+        "Cable_CC-00_LP-08_AuxC",
+        "Cable_CC-00_LP-08_AuxD"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUXA": [
+          {
+            "cable_source_ids": [
+              "J9Lt0JKabgCePBZ7hUFV-177"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 24.2,
+            "end_distance_ft": 0.5
+          }
+        ],
+        "AUXB": [
+          {
+            "cable_source_ids": [
+              "Cable_CC-00_LP-08_AuxB"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 24.2,
+            "end_distance_ft": 0.5
+          }
+        ],
+        "AUXC": [
+          {
+            "cable_source_ids": [
+              "Cable_CC-00_LP-08_AuxC"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 24.2,
+            "end_distance_ft": 0.5
+          }
+        ],
+        "AUXD": [
+          {
+            "cable_source_ids": [
+              "Cable_CC-00_LP-08_AuxD"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 24.2,
+            "end_distance_ft": 0.5
+          }
+        ],
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "J9Lt0JKabgCePBZ7hUFV-174"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 24.2,
+            "end_distance_ft": 0.5
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "Cable_CC-00_LP-08_INET"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 24.2,
+            "end_distance_ft": 0.5
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "J9Lt0JKabgCePBZ7hUFV-176"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 24.2,
+            "end_distance_ft": 0.5
+          }
+        ],
+        "SPARE-1": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-239"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 24.2,
+            "end_distance_ft": 0.5
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t74",
+      "source_name": "NET 2015 REG-AUX 0",
+      "cable_source_ids": [
+        "NsUUF_6cCiEUwZhndwfF-239",
+        "J9Lt0JKabgCePBZ7hUFV-174",
+        "Cable_CC-00_LP-08_INET",
+        "J9Lt0JKabgCePBZ7hUFV-176",
+        "J9Lt0JKabgCePBZ7hUFV-177",
+        "Cable_CC-00_LP-08_AuxB",
+        "Cable_CC-00_LP-08_AuxC",
+        "Cable_CC-00_LP-08_AuxD"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUXA": [
+          {
+            "cable_source_ids": [
+              "J9Lt0JKabgCePBZ7hUFV-177"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 23.1,
+            "end_distance_ft": 0.8
+          }
+        ],
+        "AUXB": [
+          {
+            "cable_source_ids": [
+              "Cable_CC-00_LP-08_AuxB"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 23.1,
+            "end_distance_ft": 0.8
+          }
+        ],
+        "AUXC": [
+          {
+            "cable_source_ids": [
+              "Cable_CC-00_LP-08_AuxC"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 23.1,
+            "end_distance_ft": 0.8
+          }
+        ],
+        "AUXD": [
+          {
+            "cable_source_ids": [
+              "Cable_CC-00_LP-08_AuxD"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 23.1,
+            "end_distance_ft": 0.8
+          }
+        ],
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "J9Lt0JKabgCePBZ7hUFV-174"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 23.1,
+            "end_distance_ft": 0.8
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "Cable_CC-00_LP-08_INET"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 23.1,
+            "end_distance_ft": 0.8
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "J9Lt0JKabgCePBZ7hUFV-176"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 23.1,
+            "end_distance_ft": 0.8
+          }
+        ],
+        "SPARE-1": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-239"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 23.1,
+            "end_distance_ft": 0.8
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t77",
+      "source_name": "NET A4 to PO",
+      "cable_source_ids": [
+        "gMlBisTwLpFykkUoM81w-175",
+        "gMlBisTwLpFykkUoM81w-176",
+        "gMlBisTwLpFykkUoM81w-177",
+        "gMlBisTwLpFykkUoM81w-178",
+        "gMlBisTwLpFykkUoM81w-179",
+        "gMlBisTwLpFykkUoM81w-180",
+        "gMlBisTwLpFykkUoM81w-181"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX J": [
+          {
+            "cable_source_ids": [
+              "gMlBisTwLpFykkUoM81w-179"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "PO"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w226",
+            "start_distance_ft": 1.6,
+            "end_distance_ft": 0.6
+          }
+        ],
+        "AUX K": [
+          {
+            "cable_source_ids": [
+              "gMlBisTwLpFykkUoM81w-180"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "PO"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w226",
+            "start_distance_ft": 1.6,
+            "end_distance_ft": 0.6
+          }
+        ],
+        "AUX-I": [
+          {
+            "cable_source_ids": [
+              "gMlBisTwLpFykkUoM81w-178"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "PO"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w226",
+            "start_distance_ft": 1.6,
+            "end_distance_ft": 0.6
+          }
+        ],
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "gMlBisTwLpFykkUoM81w-176"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "PO"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w226",
+            "start_distance_ft": 1.6,
+            "end_distance_ft": 0.6
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "gMlBisTwLpFykkUoM81w-177"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "PO"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w226",
+            "start_distance_ft": 1.6,
+            "end_distance_ft": 0.6
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "gMlBisTwLpFykkUoM81w-175"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "PO"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w226",
+            "start_distance_ft": 1.6,
+            "end_distance_ft": 0.6
+          }
+        ],
+        "SPARE": [
+          {
+            "cable_source_ids": [
+              "gMlBisTwLpFykkUoM81w-181"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "PO"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w226",
+            "start_distance_ft": 1.6,
+            "end_distance_ft": 0.6
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t78",
+      "source_name": "NET A4 to VT",
+      "cable_source_ids": [
+        "DtNnG54Penqv8LHutyU9-160",
+        "DtNnG54Penqv8LHutyU9-163"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "SPARE-1": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-160"
+            ],
+            "waypoint_path": [
+              "FC-00",
+              "PANEL-09"
+            ],
+            "start_waypoint_id": "w108",
+            "end_waypoint_id": "w101",
+            "start_distance_ft": 2.3,
+            "end_distance_ft": 1.6
+          }
+        ],
+        "SPARE-2": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-163"
+            ],
+            "waypoint_path": [
+              "FC-00",
+              "PANEL-09"
+            ],
+            "start_waypoint_id": "w108",
+            "end_waypoint_id": "w101",
+            "start_distance_ft": 2.3,
+            "end_distance_ft": 1.6
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t79",
+      "source_name": "NET CC to A4",
+      "cable_source_ids": [
+        "DtNnG54Penqv8LHutyU9-167",
+        "DtNnG54Penqv8LHutyU9-168",
+        "DtNnG54Penqv8LHutyU9-169",
+        "DtNnG54Penqv8LHutyU9-170",
+        "DtNnG54Penqv8LHutyU9-171",
+        "DtNnG54Penqv8LHutyU9-172",
+        "DtNnG54Penqv8LHutyU9-173"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-H": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-170"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "CC-00"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w228",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 22.4
+          }
+        ],
+        "AUX-I": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-171"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "CC-00"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w228",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 22.4
+          }
+        ],
+        "AUX-J": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-172"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "CC-00"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w228",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 22.4
+          }
+        ],
+        "AUX-K": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-173"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "CC-00"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w228",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 22.4
+          }
+        ],
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-169"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "CC-00"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w228",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 22.4
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-168"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "CC-00"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w228",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 22.4
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-167"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "CC-00"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w228",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 22.4
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t80",
+      "source_name": "NET CC to A4 Reg, Aux-H, Aux-I, Aux-",
+      "cable_source_ids": [
+        "DtNnG54Penqv8LHutyU9-167",
+        "DtNnG54Penqv8LHutyU9-168",
+        "DtNnG54Penqv8LHutyU9-169",
+        "DtNnG54Penqv8LHutyU9-170",
+        "DtNnG54Penqv8LHutyU9-171",
+        "DtNnG54Penqv8LHutyU9-172",
+        "DtNnG54Penqv8LHutyU9-173"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-H": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-170"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "CC-00"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w228",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 22.7
+          }
+        ],
+        "AUX-I": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-171"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "CC-00"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w228",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 22.7
+          }
+        ],
+        "AUX-J": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-172"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "CC-00"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w228",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 22.7
+          }
+        ],
+        "AUX-K": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-173"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "CC-00"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w228",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 22.7
+          }
+        ],
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-169"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "CC-00"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w228",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 22.7
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-168"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "CC-00"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w228",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 22.7
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-167"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "CC-00"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w228",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 22.7
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t81",
+      "source_name": "NET CC to IT Reg, Aux-L, Aux-M, Aux-",
+      "cable_source_ids": [
+        "7qRnUm441u3O5lePHObY-175"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "REG": [
+          {
+            "cable_source_ids": [
+              "7qRnUm441u3O5lePHObY-175"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "A5-02A"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w11",
+            "start_distance_ft": 13.9,
+            "end_distance_ft": 12.5
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t82",
+      "source_name": "NET CC to LP8 Reg, Aux-A, B, C, D, I",
+      "cable_source_ids": [
+        "NsUUF_6cCiEUwZhndwfF-239",
+        "J9Lt0JKabgCePBZ7hUFV-174",
+        "Cable_CC-00_LP-08_INET",
+        "J9Lt0JKabgCePBZ7hUFV-176",
+        "J9Lt0JKabgCePBZ7hUFV-177",
+        "Cable_CC-00_LP-08_AuxB",
+        "Cable_CC-00_LP-08_AuxC",
+        "Cable_CC-00_LP-08_AuxD"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUXA": [
+          {
+            "cable_source_ids": [
+              "J9Lt0JKabgCePBZ7hUFV-177"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 18.7,
+            "end_distance_ft": 0.8
+          }
+        ],
+        "AUXB": [
+          {
+            "cable_source_ids": [
+              "Cable_CC-00_LP-08_AuxB"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 18.7,
+            "end_distance_ft": 0.8
+          }
+        ],
+        "AUXC": [
+          {
+            "cable_source_ids": [
+              "Cable_CC-00_LP-08_AuxC"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 18.7,
+            "end_distance_ft": 0.8
+          }
+        ],
+        "AUXD": [
+          {
+            "cable_source_ids": [
+              "Cable_CC-00_LP-08_AuxD"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 18.7,
+            "end_distance_ft": 0.8
+          }
+        ],
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "J9Lt0JKabgCePBZ7hUFV-174"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 18.7,
+            "end_distance_ft": 0.8
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "Cable_CC-00_LP-08_INET"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 18.7,
+            "end_distance_ft": 0.8
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "J9Lt0JKabgCePBZ7hUFV-176"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 18.7,
+            "end_distance_ft": 0.8
+          }
+        ],
+        "SPARE-1": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-239"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "LP-08"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w88",
+            "start_distance_ft": 18.7,
+            "end_distance_ft": 0.8
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t83",
+      "source_name": "NET CC-PL",
+      "cable_source_ids": [
+        "DtNnG54Penqv8LHutyU9-174",
+        "DtNnG54Penqv8LHutyU9-175",
+        "DtNnG54Penqv8LHutyU9-176",
+        "DtNnG54Penqv8LHutyU9-177"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-E": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-175"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "FE-02"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w223",
+            "start_distance_ft": 23.0,
+            "end_distance_ft": 1.8
+          }
+        ],
+        "AUX-F": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-176"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "FE-02"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w223",
+            "start_distance_ft": 23.0,
+            "end_distance_ft": 1.8
+          }
+        ],
+        "AUX-G": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-177"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "FE-02"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w223",
+            "start_distance_ft": 23.0,
+            "end_distance_ft": 1.8
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-174"
+            ],
+            "waypoint_path": [
+              "CC-00",
+              "FE-02"
+            ],
+            "start_waypoint_id": "w228",
+            "end_waypoint_id": "w223",
+            "start_distance_ft": 23.0,
+            "end_distance_ft": 1.8
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t86",
+      "source_name": "NET CH Icicle Tunnel to Bridge",
+      "cable_source_ids": [
+        "Cable_A5-02A_A5-04_INET",
+        "uoa4MbB5OOMb-P8yzlmw-172",
+        "Cable_A5-04_A5-00_INET",
+        "Cable_A5-04_A5-00_E1.31"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "uoa4MbB5OOMb-P8yzlmw-172",
+              "Cable_A5-04_A5-00_E1.31"
+            ],
+            "waypoint_path": [
+              "A5-02A",
+              "A5-04",
+              "A5-00"
+            ],
+            "start_waypoint_id": "w11",
+            "end_waypoint_id": "w0",
+            "start_distance_ft": 10.9,
+            "end_distance_ft": 3.8
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "Cable_A5-02A_A5-04_INET",
+              "Cable_A5-04_A5-00_INET"
+            ],
+            "waypoint_path": [
+              "A5-02A",
+              "A5-04",
+              "A5-00"
+            ],
+            "start_waypoint_id": "w11",
+            "end_waypoint_id": "w0",
+            "start_distance_ft": 10.9,
+            "end_distance_ft": 3.8
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t87",
+      "source_name": "NET EC to Stars",
+      "cable_source_ids": [
+        "NsUUF_6cCiEUwZhndwfF-160",
+        "NsUUF_6cCiEUwZhndwfF-164",
+        "NsUUF_6cCiEUwZhndwfF-165"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX J": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-164"
+            ],
+            "waypoint_path": [
+              "ST-00",
+              "ST-04"
+            ],
+            "start_waypoint_id": "w112",
+            "end_waypoint_id": "w138",
+            "start_distance_ft": 7.5,
+            "end_distance_ft": 8.7
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-160"
+            ],
+            "waypoint_path": [
+              "ST-00",
+              "ST-04"
+            ],
+            "start_waypoint_id": "w112",
+            "end_waypoint_id": "w138",
+            "start_distance_ft": 7.5,
+            "end_distance_ft": 8.7
+          }
+        ],
+        "SPARE-1": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-165"
+            ],
+            "waypoint_path": [
+              "ST-00",
+              "ST-04"
+            ],
+            "start_waypoint_id": "w112",
+            "end_waypoint_id": "w138",
+            "start_distance_ft": 7.5,
+            "end_distance_ft": 8.7
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t88",
+      "source_name": "NET EP Sign WV-04",
+      "cable_source_ids": [
+        "Cable_EP-Sign_WV-04_AuxI"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-I": [
+          {
+            "cable_source_ids": [
+              "Cable_EP-Sign_WV-04_AuxI"
+            ],
+            "waypoint_path": [
+              "WV-02",
+              "WV-04"
+            ],
+            "start_waypoint_id": "w220",
+            "end_waypoint_id": "w149",
+            "start_distance_ft": 1.8,
+            "end_distance_ft": 0.4
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t91",
+      "source_name": "NET FCPL-MT",
+      "cable_source_ids": [
+        "HcZ1PZOIesHXG2RSZFGO-168",
+        "HcZ1PZOIesHXG2RSZFGO-169",
+        "HcZ1PZOIesHXG2RSZFGO-167"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-G": [
+          {
+            "cable_source_ids": [
+              "HcZ1PZOIesHXG2RSZFGO-168"
+            ],
+            "waypoint_path": [
+              "FE-10",
+              "FE-02"
+            ],
+            "start_waypoint_id": "w54",
+            "end_waypoint_id": "w223",
+            "start_distance_ft": 2.1,
+            "end_distance_ft": 3.3
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "HcZ1PZOIesHXG2RSZFGO-167"
+            ],
+            "waypoint_path": [
+              "FE-10",
+              "FE-02"
+            ],
+            "start_waypoint_id": "w54",
+            "end_waypoint_id": "w223",
+            "start_distance_ft": 2.1,
+            "end_distance_ft": 3.3
+          }
+        ],
+        "SPARE": [
+          {
+            "cable_source_ids": [
+              "HcZ1PZOIesHXG2RSZFGO-169"
+            ],
+            "waypoint_path": [
+              "FE-10",
+              "FE-02"
+            ],
+            "start_waypoint_id": "w54",
+            "end_waypoint_id": "w223",
+            "start_distance_ft": 2.1,
+            "end_distance_ft": 3.3
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t102",
+      "source_name": "NET FT-SS Reg, Spare, Aux-A, Aux-B, ",
+      "cable_source_ids": [
+        "Cable_CL-00_LP-08_E1.31",
+        "Cable_CL-00_LP-08_INET",
+        "Cable_CL-00_LP-08_Reg",
+        "Cable_CL-00_LP-08_AuxA",
+        "Cable_CL-00_LP-08_AuxB",
+        "Cable_CL-00_LP-08_AuxC",
+        "Cable_CL-00_LP-08_Spare1"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUXA": [
+          {
+            "cable_source_ids": [
+              "Cable_CL-00_LP-08_AuxA"
+            ],
+            "waypoint_path": [
+              "LP-08",
+              "CL-00"
+            ],
+            "start_waypoint_id": "w88",
+            "end_waypoint_id": "w114",
+            "start_distance_ft": 2.9,
+            "end_distance_ft": 4.3
+          }
+        ],
+        "AUXB": [
+          {
+            "cable_source_ids": [
+              "Cable_CL-00_LP-08_AuxB"
+            ],
+            "waypoint_path": [
+              "LP-08",
+              "CL-00"
+            ],
+            "start_waypoint_id": "w88",
+            "end_waypoint_id": "w114",
+            "start_distance_ft": 2.9,
+            "end_distance_ft": 4.3
+          }
+        ],
+        "AUXC": [
+          {
+            "cable_source_ids": [
+              "Cable_CL-00_LP-08_AuxC"
+            ],
+            "waypoint_path": [
+              "LP-08",
+              "CL-00"
+            ],
+            "start_waypoint_id": "w88",
+            "end_waypoint_id": "w114",
+            "start_distance_ft": 2.9,
+            "end_distance_ft": 4.3
+          }
+        ],
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "Cable_CL-00_LP-08_E1.31"
+            ],
+            "waypoint_path": [
+              "LP-08",
+              "CL-00"
+            ],
+            "start_waypoint_id": "w88",
+            "end_waypoint_id": "w114",
+            "start_distance_ft": 2.9,
+            "end_distance_ft": 4.3
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "Cable_CL-00_LP-08_INET"
+            ],
+            "waypoint_path": [
+              "LP-08",
+              "CL-00"
+            ],
+            "start_waypoint_id": "w88",
+            "end_waypoint_id": "w114",
+            "start_distance_ft": 2.9,
+            "end_distance_ft": 4.3
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "Cable_CL-00_LP-08_Reg"
+            ],
+            "waypoint_path": [
+              "LP-08",
+              "CL-00"
+            ],
+            "start_waypoint_id": "w88",
+            "end_waypoint_id": "w114",
+            "start_distance_ft": 2.9,
+            "end_distance_ft": 4.3
+          }
+        ],
+        "SPARE1": [
+          {
+            "cable_source_ids": [
+              "Cable_CL-00_LP-08_Spare1"
+            ],
+            "waypoint_path": [
+              "LP-08",
+              "CL-00"
+            ],
+            "start_waypoint_id": "w88",
+            "end_waypoint_id": "w114",
+            "start_distance_ft": 2.9,
+            "end_distance_ft": 4.3
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t103",
+      "source_name": "NET FTLP-PS to EP Sign",
+      "cable_source_ids": [
+        "Cable_LPFT-PS_EP-Sign_AuxI"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-I": [
+          {
+            "cable_source_ids": [
+              "Cable_LPFT-PS_EP-Sign_AuxI"
+            ],
+            "waypoint_path": [
+              "WV-02",
+              "LPFT-PS"
+            ],
+            "start_waypoint_id": "w220",
+            "end_waypoint_id": "w94",
+            "start_distance_ft": 2.2,
+            "end_distance_ft": 6.2
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t104",
+      "source_name": "NET FTLP-PS to FTLP-DS",
+      "cable_source_ids": [
+        "Cable_LPFT-PS_LPFT-DS_Line1",
+        "Cable_LPFT-PS_LPFT-DS_Line2"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-I": [
+          {
+            "cable_source_ids": [
+              "Cable_LPFT-PS_LPFT-DS_Line1",
+              "Cable_LPFT-PS_LPFT-DS_Line2"
+            ],
+            "waypoint_path": [
+              "LPFT-DS",
+              "LPFT-PS"
+            ],
+            "start_waypoint_id": "w80",
+            "end_waypoint_id": "w94",
+            "start_distance_ft": 2.0,
+            "end_distance_ft": 7.3
+          }
+        ]
+      }
+    },
+    {
       "route_id": "t106",
       "source_name": "NET GG-11 to GG-09",
       "cable_source_ids": [
@@ -9384,7 +11329,870 @@
         "NsUUF_6cCiEUwZhndwfF-210",
         "NsUUF_6cCiEUwZhndwfF-211"
       ],
-      "basis": "Exact named endpoint pair; geographic correspondence requires operator review"
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-D": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-208"
+            ],
+            "waypoint_path": [
+              "GG-11",
+              "GG-09"
+            ],
+            "start_waypoint_id": "w69",
+            "end_waypoint_id": "w68",
+            "start_distance_ft": 6.5,
+            "end_distance_ft": 11.2
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-211"
+            ],
+            "waypoint_path": [
+              "GG-11",
+              "GG-09"
+            ],
+            "start_waypoint_id": "w69",
+            "end_waypoint_id": "w68",
+            "start_distance_ft": 6.5,
+            "end_distance_ft": 11.2
+          }
+        ],
+        "SPARE1": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-210"
+            ],
+            "waypoint_path": [
+              "GG-11",
+              "GG-09"
+            ],
+            "start_waypoint_id": "w69",
+            "end_waypoint_id": "w68",
+            "start_distance_ft": 6.5,
+            "end_distance_ft": 11.2
+          }
+        ],
+        "SPARE2": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-209"
+            ],
+            "waypoint_path": [
+              "GG-11",
+              "GG-09"
+            ],
+            "start_waypoint_id": "w69",
+            "end_waypoint_id": "w68",
+            "start_distance_ft": 6.5,
+            "end_distance_ft": 11.2
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t107",
+      "source_name": "NET GG08 to PB to GG06",
+      "cable_source_ids": [
+        "Cable_GG-08_GG-06_Reg",
+        "J9Lt0JKabgCePBZ7hUFV-216",
+        "J9Lt0JKabgCePBZ7hUFV-217",
+        "J9Lt0JKabgCePBZ7hUFV-218",
+        "J9Lt0JKabgCePBZ7hUFV-219"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-B": [
+          {
+            "cable_source_ids": [
+              "J9Lt0JKabgCePBZ7hUFV-219"
+            ],
+            "waypoint_path": [
+              "GG-08",
+              "GG-06"
+            ],
+            "start_waypoint_id": "w66",
+            "end_waypoint_id": "w64",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 2.9
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "Cable_GG-08_GG-06_Reg"
+            ],
+            "waypoint_path": [
+              "GG-08",
+              "GG-06"
+            ],
+            "start_waypoint_id": "w66",
+            "end_waypoint_id": "w64",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 2.9
+          }
+        ],
+        "REGRET": [
+          {
+            "cable_source_ids": [
+              "J9Lt0JKabgCePBZ7hUFV-216"
+            ],
+            "waypoint_path": [
+              "GG-08",
+              "GG-06"
+            ],
+            "start_waypoint_id": "w66",
+            "end_waypoint_id": "w64",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 2.9
+          }
+        ],
+        "SPARE1": [
+          {
+            "cable_source_ids": [
+              "J9Lt0JKabgCePBZ7hUFV-217"
+            ],
+            "waypoint_path": [
+              "GG-08",
+              "GG-06"
+            ],
+            "start_waypoint_id": "w66",
+            "end_waypoint_id": "w64",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 2.9
+          }
+        ],
+        "SPARE2": [
+          {
+            "cable_source_ids": [
+              "J9Lt0JKabgCePBZ7hUFV-218"
+            ],
+            "waypoint_path": [
+              "GG-08",
+              "GG-06"
+            ],
+            "start_waypoint_id": "w66",
+            "end_waypoint_id": "w64",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 2.9
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t115",
+      "source_name": "NET Panel RA to TC 01",
+      "cable_source_ids": [
+        "qhZzY6C5dYRTtsNzqbKF-182",
+        "qhZzY6C5dYRTtsNzqbKF-183",
+        "qhZzY6C5dYRTtsNzqbKF-184",
+        "qhZzY6C5dYRTtsNzqbKF-185",
+        "qhZzY6C5dYRTtsNzqbKF-186"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-E": [
+          {
+            "cable_source_ids": [
+              "qhZzY6C5dYRTtsNzqbKF-185"
+            ],
+            "waypoint_path": [
+              "RA-00",
+              "TC-01"
+            ],
+            "start_waypoint_id": "w111",
+            "end_waypoint_id": "w140",
+            "start_distance_ft": 1.3,
+            "end_distance_ft": 1.4
+          }
+        ],
+        "AUX-F": [
+          {
+            "cable_source_ids": [
+              "qhZzY6C5dYRTtsNzqbKF-186"
+            ],
+            "waypoint_path": [
+              "RA-00",
+              "TC-01"
+            ],
+            "start_waypoint_id": "w111",
+            "end_waypoint_id": "w140",
+            "start_distance_ft": 1.3,
+            "end_distance_ft": 1.4
+          }
+        ],
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "qhZzY6C5dYRTtsNzqbKF-183"
+            ],
+            "waypoint_path": [
+              "RA-00",
+              "TC-01"
+            ],
+            "start_waypoint_id": "w111",
+            "end_waypoint_id": "w140",
+            "start_distance_ft": 1.3,
+            "end_distance_ft": 1.4
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "qhZzY6C5dYRTtsNzqbKF-184"
+            ],
+            "waypoint_path": [
+              "RA-00",
+              "TC-01"
+            ],
+            "start_waypoint_id": "w111",
+            "end_waypoint_id": "w140",
+            "start_distance_ft": 1.3,
+            "end_distance_ft": 1.4
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "qhZzY6C5dYRTtsNzqbKF-182"
+            ],
+            "waypoint_path": [
+              "RA-00",
+              "TC-01"
+            ],
+            "start_waypoint_id": "w111",
+            "end_waypoint_id": "w140",
+            "start_distance_ft": 1.3,
+            "end_distance_ft": 1.4
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t116",
+      "source_name": "NET Panel ST to ST03",
+      "cable_source_ids": [
+        "Cable_ST-01_ST-03_AuxJ",
+        "Cable_ST-01_ST-03_SPARE",
+        "Cable_ST-01_ST-03_Reg"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX J": [
+          {
+            "cable_source_ids": [
+              "Cable_ST-01_ST-03_AuxJ"
+            ],
+            "waypoint_path": [
+              "ST-01",
+              "ST-03"
+            ],
+            "start_waypoint_id": "w135",
+            "end_waypoint_id": "w137",
+            "start_distance_ft": 3.0,
+            "end_distance_ft": 0.7
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "Cable_ST-01_ST-03_Reg"
+            ],
+            "waypoint_path": [
+              "ST-01",
+              "ST-03"
+            ],
+            "start_waypoint_id": "w135",
+            "end_waypoint_id": "w137",
+            "start_distance_ft": 3.0,
+            "end_distance_ft": 0.7
+          }
+        ],
+        "SPARE": [
+          {
+            "cable_source_ids": [
+              "Cable_ST-01_ST-03_SPARE"
+            ],
+            "waypoint_path": [
+              "ST-01",
+              "ST-03"
+            ],
+            "start_waypoint_id": "w135",
+            "end_waypoint_id": "w137",
+            "start_distance_ft": 3.0,
+            "end_distance_ft": 0.7
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t120",
+      "source_name": "NET PB Reg, Reg Return, Aux-B, Aux",
+      "cable_source_ids": [
+        "Cable_CL-00 to CL-05 Reg",
+        "Cable_CL-00_CL-05_AuxB",
+        "Cable_CL-00_CL-05_AuxC",
+        "Cable_CL-05_CL-07_Reg",
+        "Cable_CL-05_CL-07_AuxB",
+        "Cable_CL-05_CL-07_AuxC",
+        "Cable_CL-07_CL-09_Reg",
+        "Cable_CL-07_CL-09_AuxC",
+        "J9Lt0JKabgCePBZ7hUFV-201",
+        "J9Lt0JKabgCePBZ7hUFV-204",
+        "Cable_CL-09_CL-11_AuxC",
+        "J9Lt0JKabgCePBZ7hUFV-206"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUXB": [
+          {
+            "cable_source_ids": [
+              "Cable_CL-00_CL-05_AuxB",
+              "Cable_CL-05_CL-07_AuxB",
+              "J9Lt0JKabgCePBZ7hUFV-201",
+              "J9Lt0JKabgCePBZ7hUFV-206"
+            ],
+            "waypoint_path": [
+              "CL-00",
+              "CL-05",
+              "CL-07",
+              "CL-09",
+              "CL-11"
+            ],
+            "start_waypoint_id": "w114",
+            "end_waypoint_id": "w43",
+            "start_distance_ft": 3.4,
+            "end_distance_ft": 3.4
+          }
+        ],
+        "AUXC": [
+          {
+            "cable_source_ids": [
+              "Cable_CL-00_CL-05_AuxC",
+              "Cable_CL-05_CL-07_AuxC",
+              "Cable_CL-07_CL-09_AuxC",
+              "Cable_CL-09_CL-11_AuxC"
+            ],
+            "waypoint_path": [
+              "CL-00",
+              "CL-05",
+              "CL-07",
+              "CL-09",
+              "CL-11"
+            ],
+            "start_waypoint_id": "w114",
+            "end_waypoint_id": "w43",
+            "start_distance_ft": 3.4,
+            "end_distance_ft": 3.4
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "Cable_CL-00 to CL-05 Reg",
+              "Cable_CL-05_CL-07_Reg",
+              "Cable_CL-07_CL-09_Reg",
+              "J9Lt0JKabgCePBZ7hUFV-204"
+            ],
+            "waypoint_path": [
+              "CL-00",
+              "CL-05",
+              "CL-07",
+              "CL-09",
+              "CL-11"
+            ],
+            "start_waypoint_id": "w114",
+            "end_waypoint_id": "w43",
+            "start_distance_ft": 3.4,
+            "end_distance_ft": 3.4
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t121",
+      "source_name": "NET PL-RA",
+      "cable_source_ids": [
+        "qhZzY6C5dYRTtsNzqbKF-163",
+        "qhZzY6C5dYRTtsNzqbKF-166",
+        "qhZzY6C5dYRTtsNzqbKF-167",
+        "qhZzY6C5dYRTtsNzqbKF-168",
+        "qhZzY6C5dYRTtsNzqbKF-169",
+        "qhZzY6C5dYRTtsNzqbKF-171",
+        "qhZzY6C5dYRTtsNzqbKF-172",
+        "qhZzY6C5dYRTtsNzqbKF-173",
+        "qhZzY6C5dYRTtsNzqbKF-174",
+        "qhZzY6C5dYRTtsNzqbKF-175",
+        "qhZzY6C5dYRTtsNzqbKF-177",
+        "qhZzY6C5dYRTtsNzqbKF-178",
+        "qhZzY6C5dYRTtsNzqbKF-179",
+        "qhZzY6C5dYRTtsNzqbKF-180",
+        "HcZ1PZOIesHXG2RSZFGO-175"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-E": [
+          {
+            "cable_source_ids": [
+              "qhZzY6C5dYRTtsNzqbKF-179",
+              "qhZzY6C5dYRTtsNzqbKF-173",
+              "qhZzY6C5dYRTtsNzqbKF-168"
+            ],
+            "waypoint_path": [
+              "RA-00",
+              "RA-01B",
+              "RA-01A",
+              "FE-02"
+            ],
+            "start_waypoint_id": "w111",
+            "end_waypoint_id": "w223",
+            "start_distance_ft": 2.2,
+            "end_distance_ft": 2.2
+          }
+        ],
+        "AUX-F": [
+          {
+            "cable_source_ids": [
+              "qhZzY6C5dYRTtsNzqbKF-180",
+              "qhZzY6C5dYRTtsNzqbKF-174",
+              "qhZzY6C5dYRTtsNzqbKF-169"
+            ],
+            "waypoint_path": [
+              "RA-00",
+              "RA-01B",
+              "RA-01A",
+              "FE-02"
+            ],
+            "start_waypoint_id": "w111",
+            "end_waypoint_id": "w223",
+            "start_distance_ft": 2.2,
+            "end_distance_ft": 2.2
+          }
+        ],
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "qhZzY6C5dYRTtsNzqbKF-177",
+              "qhZzY6C5dYRTtsNzqbKF-171",
+              "qhZzY6C5dYRTtsNzqbKF-167"
+            ],
+            "waypoint_path": [
+              "RA-00",
+              "RA-01B",
+              "RA-01A",
+              "FE-02"
+            ],
+            "start_waypoint_id": "w111",
+            "end_waypoint_id": "w223",
+            "start_distance_ft": 2.2,
+            "end_distance_ft": 2.2
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "qhZzY6C5dYRTtsNzqbKF-178",
+              "qhZzY6C5dYRTtsNzqbKF-172",
+              "qhZzY6C5dYRTtsNzqbKF-166"
+            ],
+            "waypoint_path": [
+              "RA-00",
+              "RA-01B",
+              "RA-01A",
+              "FE-02"
+            ],
+            "start_waypoint_id": "w111",
+            "end_waypoint_id": "w223",
+            "start_distance_ft": 2.2,
+            "end_distance_ft": 2.2
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "qhZzY6C5dYRTtsNzqbKF-175",
+              "HcZ1PZOIesHXG2RSZFGO-175",
+              "qhZzY6C5dYRTtsNzqbKF-163"
+            ],
+            "waypoint_path": [
+              "RA-00",
+              "RA-01B",
+              "RA-01A",
+              "FE-02"
+            ],
+            "start_waypoint_id": "w111",
+            "end_waypoint_id": "w223",
+            "start_distance_ft": 2.2,
+            "end_distance_ft": 2.2
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t122",
+      "source_name": "NET PO to FT",
+      "cable_source_ids": [
+        "Cable_LPFT-PS_PO_AuxI"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-I": [
+          {
+            "cable_source_ids": [
+              "Cable_LPFT-PS_PO_AuxI"
+            ],
+            "waypoint_path": [
+              "PO",
+              "LPFT-PS"
+            ],
+            "start_waypoint_id": "w226",
+            "end_waypoint_id": "w94",
+            "start_distance_ft": 0.8,
+            "end_distance_ft": 6.5
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t123",
+      "source_name": "NET PO to WV-08",
+      "cable_source_ids": [
+        "gMlBisTwLpFykkUoM81w-182",
+        "gMlBisTwLpFykkUoM81w-183",
+        "gMlBisTwLpFykkUoM81w-185",
+        "gMlBisTwLpFykkUoM81w-186",
+        "LvfFE_fGHrLsRj2VPUnT-165"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX J": [
+          {
+            "cable_source_ids": [
+              "gMlBisTwLpFykkUoM81w-183"
+            ],
+            "waypoint_path": [
+              "PO",
+              "WV-08"
+            ],
+            "start_waypoint_id": "w226",
+            "end_waypoint_id": "w153",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 2.5
+          }
+        ],
+        "AUX K": [
+          {
+            "cable_source_ids": [
+              "LvfFE_fGHrLsRj2VPUnT-165"
+            ],
+            "waypoint_path": [
+              "PO",
+              "WV-08"
+            ],
+            "start_waypoint_id": "w226",
+            "end_waypoint_id": "w153",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 2.5
+          }
+        ],
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "gMlBisTwLpFykkUoM81w-185"
+            ],
+            "waypoint_path": [
+              "PO",
+              "WV-08"
+            ],
+            "start_waypoint_id": "w226",
+            "end_waypoint_id": "w153",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 2.5
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "gMlBisTwLpFykkUoM81w-186"
+            ],
+            "waypoint_path": [
+              "PO",
+              "WV-08"
+            ],
+            "start_waypoint_id": "w226",
+            "end_waypoint_id": "w153",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 2.5
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "gMlBisTwLpFykkUoM81w-182"
+            ],
+            "waypoint_path": [
+              "PO",
+              "WV-08"
+            ],
+            "start_waypoint_id": "w226",
+            "end_waypoint_id": "w153",
+            "start_distance_ft": 1.7,
+            "end_distance_ft": 2.5
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t124",
+      "source_name": "NET Reg, Aux-A, Spare",
+      "cable_source_ids": [
+        "J9Lt0JKabgCePBZ7hUFV-236",
+        "J9Lt0JKabgCePBZ7hUFV-237"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "J9Lt0JKabgCePBZ7hUFV-236"
+            ],
+            "waypoint_path": [
+              "CL-00",
+              "CL-02A"
+            ],
+            "start_waypoint_id": "w114",
+            "end_waypoint_id": "w32",
+            "start_distance_ft": 4.8,
+            "end_distance_ft": 2.8
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "J9Lt0JKabgCePBZ7hUFV-237"
+            ],
+            "waypoint_path": [
+              "CL-00",
+              "CL-02A"
+            ],
+            "start_waypoint_id": "w114",
+            "end_waypoint_id": "w32",
+            "start_distance_ft": 4.8,
+            "end_distance_ft": 2.8
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t125",
+      "source_name": "NET Reg, Aux-D, INET, E1.31",
+      "cable_source_ids": [
+        "Ub5UUmAz4fvwhxh8EDVv-162",
+        "Ub5UUmAz4fvwhxh8EDVv-163",
+        "Ub5UUmAz4fvwhxh8EDVv-170",
+        "Ub5UUmAz4fvwhxh8EDVv-171",
+        "Ub5UUmAz4fvwhxh8EDVv-173",
+        "Ub5UUmAz4fvwhxh8EDVv-174"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-D": [
+          {
+            "cable_source_ids": [
+              "Ub5UUmAz4fvwhxh8EDVv-174",
+              "Ub5UUmAz4fvwhxh8EDVv-170",
+              "Ub5UUmAz4fvwhxh8EDVv-163"
+            ],
+            "waypoint_path": [
+              "LP-08",
+              "SW",
+              "DF-A",
+              "GG-11"
+            ],
+            "start_waypoint_id": "w88",
+            "end_waypoint_id": "w69",
+            "start_distance_ft": 2.7,
+            "end_distance_ft": 2.3
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "Ub5UUmAz4fvwhxh8EDVv-173",
+              "Ub5UUmAz4fvwhxh8EDVv-171",
+              "Ub5UUmAz4fvwhxh8EDVv-162"
+            ],
+            "waypoint_path": [
+              "LP-08",
+              "SW",
+              "DF-A",
+              "GG-11"
+            ],
+            "start_waypoint_id": "w88",
+            "end_waypoint_id": "w69",
+            "start_distance_ft": 2.7,
+            "end_distance_ft": 2.3
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t126",
+      "source_name": "NET ST to Panel WW",
+      "cable_source_ids": [
+        "NsUUF_6cCiEUwZhndwfF-189",
+        "NsUUF_6cCiEUwZhndwfF-190",
+        "NsUUF_6cCiEUwZhndwfF-191",
+        "NsUUF_6cCiEUwZhndwfF-192",
+        "NsUUF_6cCiEUwZhndwfF-193",
+        "NsUUF_6cCiEUwZhndwfF-194"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX J": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-190"
+            ],
+            "waypoint_path": [
+              "WW-00",
+              "WW-10"
+            ],
+            "start_waypoint_id": "w113",
+            "end_waypoint_id": "w163",
+            "start_distance_ft": 2.5,
+            "end_distance_ft": 2.8
+          }
+        ],
+        "AUX K": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-191"
+            ],
+            "waypoint_path": [
+              "WW-00",
+              "WW-10"
+            ],
+            "start_waypoint_id": "w113",
+            "end_waypoint_id": "w163",
+            "start_distance_ft": 2.5,
+            "end_distance_ft": 2.8
+          }
+        ],
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-194"
+            ],
+            "waypoint_path": [
+              "WW-00",
+              "WW-10"
+            ],
+            "start_waypoint_id": "w113",
+            "end_waypoint_id": "w163",
+            "start_distance_ft": 2.5,
+            "end_distance_ft": 2.8
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-193"
+            ],
+            "waypoint_path": [
+              "WW-00",
+              "WW-10"
+            ],
+            "start_waypoint_id": "w113",
+            "end_waypoint_id": "w163",
+            "start_distance_ft": 2.5,
+            "end_distance_ft": 2.8
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-189"
+            ],
+            "waypoint_path": [
+              "WW-00",
+              "WW-10"
+            ],
+            "start_waypoint_id": "w113",
+            "end_waypoint_id": "w163",
+            "start_distance_ft": 2.5,
+            "end_distance_ft": 2.8
+          }
+        ],
+        "SPARE-1": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-192"
+            ],
+            "waypoint_path": [
+              "WW-00",
+              "WW-10"
+            ],
+            "start_waypoint_id": "w113",
+            "end_waypoint_id": "w163",
+            "start_distance_ft": 2.5,
+            "end_distance_ft": 2.8
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t129",
+      "source_name": "NET TC01 to TC02",
+      "cable_source_ids": [
+        "qhZzY6C5dYRTtsNzqbKF-193"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "REG": [
+          {
+            "cable_source_ids": [
+              "qhZzY6C5dYRTtsNzqbKF-193"
+            ],
+            "waypoint_path": [
+              "TC-01",
+              "TC-02"
+            ],
+            "start_waypoint_id": "w140",
+            "end_waypoint_id": "w141",
+            "start_distance_ft": 3.7,
+            "end_distance_ft": 3.1
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t130",
+      "source_name": "NET TC02  to TC03",
+      "cable_source_ids": [
+        "qhZzY6C5dYRTtsNzqbKF-194"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "REG": [
+          {
+            "cable_source_ids": [
+              "qhZzY6C5dYRTtsNzqbKF-194"
+            ],
+            "waypoint_path": [
+              "TC-02",
+              "TC-03"
+            ],
+            "start_waypoint_id": "w141",
+            "end_waypoint_id": "w142",
+            "start_distance_ft": 3.7,
+            "end_distance_ft": 2.9
+          }
+        ]
+      }
     },
     {
       "route_id": "t132",
@@ -9393,7 +12201,66 @@
         "Cable_WV-03_WV-05_AuxI",
         "Cable_WV-03_WV-05_Reg"
       ],
-      "basis": "Exact named endpoint pair; geographic correspondence requires operator review"
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-I": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-03_WV-05_AuxI"
+            ],
+            "waypoint_path": [
+              "WV-03",
+              "WV-05"
+            ],
+            "start_waypoint_id": "w148",
+            "end_waypoint_id": "w150",
+            "start_distance_ft": 3.5,
+            "end_distance_ft": 1.1
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-03_WV-05_Reg"
+            ],
+            "waypoint_path": [
+              "WV-03",
+              "WV-05"
+            ],
+            "start_waypoint_id": "w148",
+            "end_waypoint_id": "w150",
+            "start_distance_ft": 3.5,
+            "end_distance_ft": 1.1
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t133",
+      "source_name": "NET WV-04 to Whoville Panel 10",
+      "cable_source_ids": [
+        "7qRnUm441u3O5lePHObY-215",
+        "LvfFE_fGHrLsRj2VPUnT-164"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-I": [
+          {
+            "cable_source_ids": [
+              "7qRnUm441u3O5lePHObY-215",
+              "LvfFE_fGHrLsRj2VPUnT-164"
+            ],
+            "waypoint_path": [
+              "WV-00",
+              "WV-04"
+            ],
+            "start_waypoint_id": "w102",
+            "end_waypoint_id": "w149",
+            "start_distance_ft": 1.8,
+            "end_distance_ft": 1.3
+          }
+        ]
+      }
     },
     {
       "route_id": "t135",
@@ -9402,7 +12269,39 @@
         "Cable_WV-05_WV-07_AuxI",
         "7qRnUm441u3O5lePHObY-192"
       ],
-      "basis": "Exact named endpoint pair; geographic correspondence requires operator review"
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-I": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-05_WV-07_AuxI"
+            ],
+            "waypoint_path": [
+              "WV-05",
+              "WV-07"
+            ],
+            "start_waypoint_id": "w150",
+            "end_waypoint_id": "w152",
+            "start_distance_ft": 0.4,
+            "end_distance_ft": 0.3
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "7qRnUm441u3O5lePHObY-192"
+            ],
+            "waypoint_path": [
+              "WV-05",
+              "WV-07"
+            ],
+            "start_waypoint_id": "w150",
+            "end_waypoint_id": "w152",
+            "start_distance_ft": 0.4,
+            "end_distance_ft": 0.3
+          }
+        ]
+      }
     },
     {
       "route_id": "t136",
@@ -9411,7 +12310,39 @@
         "Cable_WV-07_WV-09_AuxI",
         "Cable_WV-07_WV-09_Reg"
       ],
-      "basis": "Exact named endpoint pair; geographic correspondence requires operator review"
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-I": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-07_WV-09_AuxI"
+            ],
+            "waypoint_path": [
+              "WV-07",
+              "WV-09"
+            ],
+            "start_waypoint_id": "w152",
+            "end_waypoint_id": "w154",
+            "start_distance_ft": 0.3,
+            "end_distance_ft": 0.6
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-07_WV-09_Reg"
+            ],
+            "waypoint_path": [
+              "WV-07",
+              "WV-09"
+            ],
+            "start_waypoint_id": "w152",
+            "end_waypoint_id": "w154",
+            "start_distance_ft": 0.3,
+            "end_distance_ft": 0.6
+          }
+        ]
+      }
     },
     {
       "route_id": "t137",
@@ -9423,7 +12354,84 @@
         "Cable_WV-10_WV-08_INET",
         "LvfFE_fGHrLsRj2VPUnT-163"
       ],
-      "basis": "Exact named endpoint pair; geographic correspondence requires operator review"
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX J": [
+          {
+            "cable_source_ids": [
+              "7qRnUm441u3O5lePHObY-211"
+            ],
+            "waypoint_path": [
+              "WV-08",
+              "WV-10"
+            ],
+            "start_waypoint_id": "w153",
+            "end_waypoint_id": "w155",
+            "start_distance_ft": 4.3,
+            "end_distance_ft": 2.9
+          }
+        ],
+        "AUX K": [
+          {
+            "cable_source_ids": [
+              "LvfFE_fGHrLsRj2VPUnT-163"
+            ],
+            "waypoint_path": [
+              "WV-08",
+              "WV-10"
+            ],
+            "start_waypoint_id": "w153",
+            "end_waypoint_id": "w155",
+            "start_distance_ft": 4.3,
+            "end_distance_ft": 2.9
+          }
+        ],
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-10_WV-08_E1.31"
+            ],
+            "waypoint_path": [
+              "WV-08",
+              "WV-10"
+            ],
+            "start_waypoint_id": "w153",
+            "end_waypoint_id": "w155",
+            "start_distance_ft": 4.3,
+            "end_distance_ft": 2.9
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-10_WV-08_INET"
+            ],
+            "waypoint_path": [
+              "WV-08",
+              "WV-10"
+            ],
+            "start_waypoint_id": "w153",
+            "end_waypoint_id": "w155",
+            "start_distance_ft": 4.3,
+            "end_distance_ft": 2.9
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-10_WV-08_Reg"
+            ],
+            "waypoint_path": [
+              "WV-08",
+              "WV-10"
+            ],
+            "start_waypoint_id": "w153",
+            "end_waypoint_id": "w155",
+            "start_distance_ft": 4.3,
+            "end_distance_ft": 2.9
+          }
+        ]
+      }
     },
     {
       "route_id": "t138",
@@ -9432,7 +12440,39 @@
         "Cable_WV-09_WV-11_AuxI",
         "Cable_WV-09_WV-11_Reg"
       ],
-      "basis": "Exact named endpoint pair; geographic correspondence requires operator review"
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-I": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-09_WV-11_AuxI"
+            ],
+            "waypoint_path": [
+              "WV-09",
+              "WV-11"
+            ],
+            "start_waypoint_id": "w154",
+            "end_waypoint_id": "w156",
+            "start_distance_ft": 0.6,
+            "end_distance_ft": 0.9
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-09_WV-11_Reg"
+            ],
+            "waypoint_path": [
+              "WV-09",
+              "WV-11"
+            ],
+            "start_waypoint_id": "w154",
+            "end_waypoint_id": "w156",
+            "start_distance_ft": 0.6,
+            "end_distance_ft": 0.9
+          }
+        ]
+      }
     },
     {
       "route_id": "t139",
@@ -9444,7 +12484,84 @@
         "Cable_WV-10_ST-01_E1.31",
         "Cable_WV-10_ST-01_INET"
       ],
-      "basis": "Exact named endpoint pair; geographic correspondence requires operator review"
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX J": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-10_ST-01_ AuxJ"
+            ],
+            "waypoint_path": [
+              "WV-10",
+              "ST-01"
+            ],
+            "start_waypoint_id": "w155",
+            "end_waypoint_id": "w135",
+            "start_distance_ft": 4.4,
+            "end_distance_ft": 1.1
+          }
+        ],
+        "AUX K": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-10_ST-01_AuxK"
+            ],
+            "waypoint_path": [
+              "WV-10",
+              "ST-01"
+            ],
+            "start_waypoint_id": "w155",
+            "end_waypoint_id": "w135",
+            "start_distance_ft": 4.4,
+            "end_distance_ft": 1.1
+          }
+        ],
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-10_ST-01_E1.31"
+            ],
+            "waypoint_path": [
+              "WV-10",
+              "ST-01"
+            ],
+            "start_waypoint_id": "w155",
+            "end_waypoint_id": "w135",
+            "start_distance_ft": 4.4,
+            "end_distance_ft": 1.1
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-10_ST-01_INET"
+            ],
+            "waypoint_path": [
+              "WV-10",
+              "ST-01"
+            ],
+            "start_waypoint_id": "w155",
+            "end_waypoint_id": "w135",
+            "start_distance_ft": 4.4,
+            "end_distance_ft": 1.1
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-10_ST-01_Reg"
+            ],
+            "waypoint_path": [
+              "WV-10",
+              "ST-01"
+            ],
+            "start_waypoint_id": "w155",
+            "end_waypoint_id": "w135",
+            "start_distance_ft": 4.4,
+            "end_distance_ft": 1.1
+          }
+        ]
+      }
     },
     {
       "route_id": "t140",
@@ -9456,16 +12573,254 @@
         "Cable_WV-10_WV-03_E1.31",
         "Cable_WV-10_WV-03_INET"
       ],
-      "basis": "Exact named endpoint pair; geographic correspondence requires operator review"
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX J": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-10_WV-03_AuxJ"
+            ],
+            "waypoint_path": [
+              "WV-10",
+              "WV-03"
+            ],
+            "start_waypoint_id": "w155",
+            "end_waypoint_id": "w148",
+            "start_distance_ft": 0.5,
+            "end_distance_ft": 0.4
+          }
+        ],
+        "AUX K": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-10_WV-03_AuxK"
+            ],
+            "waypoint_path": [
+              "WV-10",
+              "WV-03"
+            ],
+            "start_waypoint_id": "w155",
+            "end_waypoint_id": "w148",
+            "start_distance_ft": 0.5,
+            "end_distance_ft": 0.4
+          }
+        ],
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-10_WV-03_E1.31"
+            ],
+            "waypoint_path": [
+              "WV-10",
+              "WV-03"
+            ],
+            "start_waypoint_id": "w155",
+            "end_waypoint_id": "w148",
+            "start_distance_ft": 0.5,
+            "end_distance_ft": 0.4
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-10_WV-03_INET"
+            ],
+            "waypoint_path": [
+              "WV-10",
+              "WV-03"
+            ],
+            "start_waypoint_id": "w155",
+            "end_waypoint_id": "w148",
+            "start_distance_ft": 0.5,
+            "end_distance_ft": 0.4
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-10_WV-03_Reg"
+            ],
+            "waypoint_path": [
+              "WV-10",
+              "WV-03"
+            ],
+            "start_waypoint_id": "w155",
+            "end_waypoint_id": "w148",
+            "start_distance_ft": 0.5,
+            "end_distance_ft": 0.4
+          }
+        ]
+      }
     },
     {
       "route_id": "t141",
       "source_name": "NET WV-11 to WV-13",
       "cable_source_ids": [
-        "Cable_WV-11_WV-13_AuxI",
-        "Cable_WV-11_WV-13_Reg"
+        "Cable_WV-11_WV-13_AuxI"
       ],
-      "basis": "Exact named endpoint pair; geographic correspondence requires operator review"
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-I": [
+          {
+            "cable_source_ids": [
+              "Cable_WV-11_WV-13_AuxI"
+            ],
+            "waypoint_path": [
+              "WV-11",
+              "WV-13"
+            ],
+            "start_waypoint_id": "w156",
+            "end_waypoint_id": "w157",
+            "start_distance_ft": 1.1,
+            "end_distance_ft": 1.5
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t172",
+      "source_name": "NET Santa's Workshop to GG-11",
+      "cable_source_ids": [
+        "Ub5UUmAz4fvwhxh8EDVv-162",
+        "Ub5UUmAz4fvwhxh8EDVv-163",
+        "Ub5UUmAz4fvwhxh8EDVv-164",
+        "Ub5UUmAz4fvwhxh8EDVv-165",
+        "Ub5UUmAz4fvwhxh8EDVv-166",
+        "Ub5UUmAz4fvwhxh8EDVv-167",
+        "Ub5UUmAz4fvwhxh8EDVv-168",
+        "Ub5UUmAz4fvwhxh8EDVv-169",
+        "Ub5UUmAz4fvwhxh8EDVv-170",
+        "Ub5UUmAz4fvwhxh8EDVv-171"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-D": [
+          {
+            "cable_source_ids": [
+              "Ub5UUmAz4fvwhxh8EDVv-170",
+              "Ub5UUmAz4fvwhxh8EDVv-163"
+            ],
+            "waypoint_path": [
+              "SW",
+              "DF-A",
+              "GG-11"
+            ],
+            "start_waypoint_id": "w70",
+            "end_waypoint_id": "w69",
+            "start_distance_ft": 1.3,
+            "end_distance_ft": 0.4
+          }
+        ],
+        "LINE-1": [
+          {
+            "cable_source_ids": [
+              "Ub5UUmAz4fvwhxh8EDVv-169",
+              "Ub5UUmAz4fvwhxh8EDVv-164"
+            ],
+            "waypoint_path": [
+              "SW",
+              "DF-A",
+              "GG-11"
+            ],
+            "start_waypoint_id": "w70",
+            "end_waypoint_id": "w69",
+            "start_distance_ft": 1.3,
+            "end_distance_ft": 0.4
+          }
+        ],
+        "LINE-2": [
+          {
+            "cable_source_ids": [
+              "Ub5UUmAz4fvwhxh8EDVv-168",
+              "Ub5UUmAz4fvwhxh8EDVv-165"
+            ],
+            "waypoint_path": [
+              "SW",
+              "DF-A",
+              "GG-11"
+            ],
+            "start_waypoint_id": "w70",
+            "end_waypoint_id": "w69",
+            "start_distance_ft": 1.3,
+            "end_distance_ft": 0.4
+          }
+        ],
+        "LINE-3": [
+          {
+            "cable_source_ids": [
+              "Ub5UUmAz4fvwhxh8EDVv-167",
+              "Ub5UUmAz4fvwhxh8EDVv-166"
+            ],
+            "waypoint_path": [
+              "SW",
+              "DF-A",
+              "GG-11"
+            ],
+            "start_waypoint_id": "w70",
+            "end_waypoint_id": "w69",
+            "start_distance_ft": 1.3,
+            "end_distance_ft": 0.4
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "Ub5UUmAz4fvwhxh8EDVv-171",
+              "Ub5UUmAz4fvwhxh8EDVv-162"
+            ],
+            "waypoint_path": [
+              "SW",
+              "DF-A",
+              "GG-11"
+            ],
+            "start_waypoint_id": "w70",
+            "end_waypoint_id": "w69",
+            "start_distance_ft": 1.3,
+            "end_distance_ft": 0.4
+          }
+        ]
+      }
+    },
+    {
+      "route_id": "t177",
+      "source_name": "NET FC-00A to Panel 09",
+      "cable_source_ids": [
+        "NsUUF_6cCiEUwZhndwfF-252",
+        "NsUUF_6cCiEUwZhndwfF-253"
+      ],
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-H": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-253"
+            ],
+            "waypoint_path": [
+              "FC-00",
+              "FC-00A"
+            ],
+            "start_waypoint_id": "w108",
+            "end_waypoint_id": "w211",
+            "start_distance_ft": 5.5,
+            "end_distance_ft": 5.1
+          }
+        ],
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "NsUUF_6cCiEUwZhndwfF-252"
+            ],
+            "waypoint_path": [
+              "FC-00",
+              "FC-00A"
+            ],
+            "start_waypoint_id": "w108",
+            "end_waypoint_id": "w211",
+            "start_distance_ft": 5.5,
+            "end_distance_ft": 5.1
+          }
+        ]
+      }
     },
     {
       "route_id": "t178",
@@ -9478,7 +12833,71 @@
         "NsUUF_6cCiEUwZhndwfF-254",
         "NsUUF_6cCiEUwZhndwfF-255"
       ],
-      "basis": "Exact named endpoint pair; geographic correspondence requires operator review"
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "AUX-H": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-164"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "FC-00A"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w211",
+            "start_distance_ft": 8.3,
+            "end_distance_ft": 5.7
+          }
+        ],
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-162"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "FC-00A"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w211",
+            "start_distance_ft": 8.3,
+            "end_distance_ft": 5.7
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-166",
+              "NsUUF_6cCiEUwZhndwfF-255"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "FC-00A"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w211",
+            "start_distance_ft": 8.3,
+            "end_distance_ft": 5.7
+          }
+        ],
+        "REG": [
+          {
+            "cable_source_ids": [
+              "DtNnG54Penqv8LHutyU9-165",
+              "NsUUF_6cCiEUwZhndwfF-254"
+            ],
+            "waypoint_path": [
+              "PANEL-09",
+              "FC-00A"
+            ],
+            "start_waypoint_id": "w101",
+            "end_waypoint_id": "w211",
+            "start_distance_ft": 8.3,
+            "end_distance_ft": 5.7
+          }
+        ]
+      }
     },
     {
       "route_id": "t180",
@@ -9487,28 +12906,45 @@
         "Cable_CL-00_LP-05_E1.31",
         "Cable_CL-00_LP-05_INET"
       ],
-      "basis": "Exact named endpoint pair; geographic correspondence requires operator review"
+      "basis": "Named waypoint anchors plus draw.io cable chain; geographic review required",
+      "network_evidence": {
+        "E1.31": [
+          {
+            "cable_source_ids": [
+              "Cable_CL-00_LP-05_E1.31"
+            ],
+            "waypoint_path": [
+              "LP-05",
+              "CL-00"
+            ],
+            "start_waypoint_id": "w224",
+            "end_waypoint_id": "w114",
+            "start_distance_ft": 3.3,
+            "end_distance_ft": 6.3
+          }
+        ],
+        "INET": [
+          {
+            "cable_source_ids": [
+              "Cable_CL-00_LP-05_INET"
+            ],
+            "waypoint_path": [
+              "LP-05",
+              "CL-00"
+            ],
+            "start_waypoint_id": "w224",
+            "end_waypoint_id": "w114",
+            "start_distance_ft": 3.3,
+            "end_distance_ft": 6.3
+          }
+        ]
+      }
     }
   ],
   "unresolved_routes": [
     {
-      "route_id": "t71",
-      "source_name": "NET  FC Under Road at Car Counters",
-      "status": "UNRESOLVED"
-    },
-    {
       "route_id": "t72",
       "source_name": "NET  Whoville Panel-10 to WV-06",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t73",
-      "source_name": "NET 2015 AUX M - AUX N",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t74",
-      "source_name": "NET 2015 REG-AUX 0",
       "status": "UNRESOLVED"
     },
     {
@@ -9522,41 +12958,6 @@
       "status": "UNRESOLVED"
     },
     {
-      "route_id": "t77",
-      "source_name": "NET A4 to PO",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t78",
-      "source_name": "NET A4 to VT",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t79",
-      "source_name": "NET CC to A4",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t80",
-      "source_name": "NET CC to A4 Reg, Aux-H, Aux-I, Aux-",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t81",
-      "source_name": "NET CC to IT Reg, Aux-L, Aux-M, Aux-",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t82",
-      "source_name": "NET CC to LP8 Reg, Aux-A, B, C, D, I",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t83",
-      "source_name": "NET CC-PL",
-      "status": "UNRESOLVED"
-    },
-    {
       "route_id": "t84",
       "source_name": "NET CH Bridge to Area 5",
       "status": "UNRESOLVED"
@@ -9567,21 +12968,6 @@
       "status": "UNRESOLVED"
     },
     {
-      "route_id": "t86",
-      "source_name": "NET CH Icicle Tunnel to Bridge",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t87",
-      "source_name": "NET EC to Stars",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t88",
-      "source_name": "NET EP Sign WV-04",
-      "status": "UNRESOLVED"
-    },
-    {
       "route_id": "t89",
       "source_name": "NET FC TO FCLP03",
       "status": "UNRESOLVED"
@@ -9589,11 +12975,6 @@
     {
       "route_id": "t90",
       "source_name": "NET FC16 to P15",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t91",
-      "source_name": "NET FCPL-MT",
       "status": "UNRESOLVED"
     },
     {
@@ -9647,28 +13028,8 @@
       "status": "UNRESOLVED"
     },
     {
-      "route_id": "t102",
-      "source_name": "NET FT-SS Reg, Spare, Aux-A, Aux-B, ",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t103",
-      "source_name": "NET FTLP-PS to EP Sign",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t104",
-      "source_name": "NET FTLP-PS to FTLP-DS",
-      "status": "UNRESOLVED"
-    },
-    {
       "route_id": "t105",
       "source_name": "NET FTLP-PS to Panel Hwy 42",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t107",
-      "source_name": "NET GG08 to PB to GG06",
       "status": "UNRESOLVED"
     },
     {
@@ -9707,16 +13068,6 @@
       "status": "UNRESOLVED"
     },
     {
-      "route_id": "t115",
-      "source_name": "NET Panel RA to TC 01",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t116",
-      "source_name": "NET Panel ST to ST03",
-      "status": "UNRESOLVED"
-    },
-    {
       "route_id": "t117",
       "source_name": "NET Panel WW TO WW-15",
       "status": "UNRESOLVED"
@@ -9732,41 +13083,6 @@
       "status": "UNRESOLVED"
     },
     {
-      "route_id": "t120",
-      "source_name": "NET PB Reg, Reg Return, Aux-B, Aux",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t121",
-      "source_name": "NET PL-RA",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t122",
-      "source_name": "NET PO to FT",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t123",
-      "source_name": "NET PO to WV-08",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t124",
-      "source_name": "NET Reg, Aux-A, Spare",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t125",
-      "source_name": "NET Reg, Aux-D, INET, E1.31",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t126",
-      "source_name": "NET ST to Panel WW",
-      "status": "UNRESOLVED"
-    },
-    {
       "route_id": "t127",
       "source_name": "NET TC 01 to Peanuts",
       "status": "UNRESOLVED"
@@ -9777,23 +13093,8 @@
       "status": "UNRESOLVED"
     },
     {
-      "route_id": "t129",
-      "source_name": "NET TC01 to TC02",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t130",
-      "source_name": "NET TC02  to TC03",
-      "status": "UNRESOLVED"
-    },
-    {
       "route_id": "t131",
       "source_name": "NET WV-00 to WV-03",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t133",
-      "source_name": "NET WV-04 to Whoville Panel 10",
       "status": "UNRESOLVED"
     },
     {
@@ -9807,11 +13108,6 @@
       "status": "UNRESOLVED"
     },
     {
-      "route_id": "t172",
-      "source_name": "NET Santa's Workshop to GG-11",
-      "status": "UNRESOLVED"
-    },
-    {
       "route_id": "t173",
       "source_name": "NET CH Icicle Tunnel DS to Bridge",
       "status": "UNRESOLVED"
@@ -9819,11 +13115,6 @@
     {
       "route_id": "t175",
       "source_name": "NET Panel WW TO WW-15",
-      "status": "UNRESOLVED"
-    },
-    {
-      "route_id": "t177",
-      "source_name": "NET FC-00A to Panel 09",
       "status": "UNRESOLVED"
     }
   ]

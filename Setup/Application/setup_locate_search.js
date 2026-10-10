@@ -6,6 +6,7 @@ const mapSearch = (() => {
   const references = [];
   let assets = [];
   let highlighted = [];
+  const selectionListeners = [];
   function clearHighlight() {
     for (const item of highlighted) item.marker.setStyle(item.style);
     highlighted = [];
@@ -17,7 +18,7 @@ const mapSearch = (() => {
       if (!feature) return;
       const key = feature.properties.id;
       if (!features.has(key)) {
-        const entry = {name: feature.properties.name, kind: feature.properties.type,
+        const entry = {name: feature.properties.name, kind: layer === 'NET' ? 'GPX route (source name)' : feature.properties.type,
           layer, markers: [], terms: feature.properties.name};
         features.set(key, entry); references.push(entry);
       }
@@ -26,6 +27,8 @@ const mapSearch = (() => {
   }
   function select(entry) {
     clearHighlight();
+    if (map.closePopup) map.closePopup();
+    for (const listener of selectionListeners) listener(entry);
     if (entry.onSelect) entry.onSelect();
     if (!entry.markers.length && entry.expectedLocation === "Workshop") {
       const workshop = references.find(ref => ref.name === "Workshop");
@@ -53,19 +56,25 @@ const mapSearch = (() => {
     for (const marker of entry.markers) {
       if (!marker.setStyle) continue;
       highlighted.push({marker, style: {color: marker.options.color,
-        weight: marker.options.weight, opacity: marker.options.opacity}});
-      marker.setStyle({color: "#ff00d4", weight: 7, opacity: 1});
+        weight: marker.options.weight, opacity: marker.options.opacity,
+        dashArray: marker.options.dashArray || null}});
+      marker.setStyle({color: "#ff00d4", weight: 7, opacity: 1,
+        dashArray: entry.alternativeMarkers?.has(marker) ? "8 6" : null});
       if (marker.bringToFront) marker.bringToFront();
     }
     map.fitBounds(bounds, {padding: [40,40], maxZoom: 21});
-    entry.markers[0].openPopup();
+    if (!entry.networkSearchAliases) entry.markers[0].openPopup();
     status.textContent = `${entry.name}${entry.association ? ' · ' + entry.association : ''}`;
   }
   function update() {
     results.replaceChildren();
     const query = input.value.trim().toLowerCase();
     if (!query) { status.textContent = ''; return; }
-    const matches = [...references, ...assets].filter(entry =>
+    // Exact network names resolve to one logical group. Historical GPX labels
+    // remain discoverable by route name without competing with that network.
+    const exactNetworks = references.filter(entry => entry.networkSearchAliases?.some(
+      alias => alias.toLowerCase() === query));
+    const matches = exactNetworks.length ? exactNetworks : [...references, ...assets].filter(entry =>
       entry.terms.toLowerCase().includes(query) || entry.numericId === query);
     status.textContent = `${matches.length} results`;
     for (const entry of matches) {
@@ -81,8 +90,9 @@ const mapSearch = (() => {
   input.addEventListener('input', update);
   return {
     select,
+    onSelection(listener) { selectionListeners.push(listener); },
     addReference(entry) { references.push(entry); update(); },
-    clearAssets() { clearHighlight(); assets = []; update(); },
+    clearAssets() { clearHighlight(); for (const listener of selectionListeners) listener({}); assets = []; update(); },
     addAsset(asset, container, marker) {
       const code = container ? 'C' + String(asset.container_id).padStart(3, '0') : '';
       const entry = {name: container ? `${code} — ${asset.name}` : asset.name,

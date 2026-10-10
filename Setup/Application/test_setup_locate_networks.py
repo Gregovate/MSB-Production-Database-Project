@@ -85,3 +85,38 @@ context.search.select({name:'Unmapped', markers:[], association:'review required
 assert.match(elements['map-search-status'].textContent, /No matched map route/);
 '''
     subprocess.run(['node', '-e', fixture, str(APP / 'setup_locate_search.js')], check=True, capture_output=True, text=True)
+
+
+def test_geometry_requires_complete_source_chain_and_nearby_named_waypoints():
+    def feature(coords):
+        return {'geometry': {'type': 'LineString', 'coordinates': coords},
+                'properties': {'name': 'Historical wrong name', 'desc': 'Aux-I'}}
+    coords = [[-87.0, 43.78], [-86.9998, 43.78], [-86.9996, 43.78]]
+    points = {key: {'id': key, 'xy': module.local_xy(xy)} for key, xy in zip(['A','B','C'], coords)}
+    records = [{'source_id': 'ab', 'network': 'INET', 'endpoints': ['A','B'], 'status': 'NO_MATCHED_ROUTE'},
+               {'source_id': 'bc', 'network': 'INET', 'endpoints': ['B','C'], 'status': 'NO_MATCHED_ROUTE'}]
+    matched = module.geometry_matches(feature(coords), points, records)
+    assert matched['INET'][0]['waypoint_path'] == ['A','B','C']
+    assert matched['INET'][0]['cable_source_ids'] == ['ab','bc']
+    assert 'AUX-I' not in matched  # GPX narrative does not assign a network.
+    assert not module.geometry_matches(feature(coords), points, records[:1])
+    records[1]['status'] = 'ENDPOINT_CONFLICT'
+    assert not module.geometry_matches(feature(coords), points, records)
+    records[1]['status'] = 'NO_MATCHED_ROUTE'
+    points['B']['xy'] = module.local_xy([-86.9998, 43.781])
+    assert not module.geometry_matches(feature(coords), points, records)
+
+
+def test_multisegment_route_cannot_highlight_unsupported_segment():
+    coords = [[-87.0,43.78],[-86.9998,43.78],[-86.9996,43.78]]
+    points = {key: {'id': key, 'xy': module.local_xy(xy)} for key, xy in zip(['A','B','C'], coords)}
+    records = [{'source_id':'ab','network':'INET','endpoints':['A','B'],'status':'NO_MATCHED_ROUTE'}]
+    feature = {'geometry': {'type':'MultiLineString','coordinates':[coords[:2],coords[1:]]}}
+    assert not module.geometry_matches(feature, points, records)
+
+
+def test_actual_network_scripts_search_and_highlight_source_candidates():
+    import pytest
+    if not shutil.which('node'):
+        pytest.skip('Node unavailable; candidate CI executes this JavaScript fixture')
+    subprocess.run(['node', str(APP / 'test_setup_locate_networks_browser.cjs')], check=True, capture_output=True, text=True)

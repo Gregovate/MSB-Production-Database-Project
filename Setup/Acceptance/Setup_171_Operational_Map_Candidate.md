@@ -3,16 +3,16 @@
 Status: ENGINEERING CANDIDATE — current-clone/operator acceptance pending.
 
 Baseline main: `38f6f9427007470cbc02b3e2d23a97450d4414ba` (PR #327).
-Version: `V0.3.53-gis-network-search`; visible Updated 2026-10-09.
+Version: `V0.3.54-gis-network-routes`; visible Updated 2026-10-09.
 Exact application SHA: the implementation commit identified on PR #318; pin
 that SHA rather than resolving a moving branch at launch.
 No migrations or new Production grants are proposed.
 
 ## Engineering proof
 
-- Current network candidate full Setup Application regression: 741 passed.
+- Current network candidate full Setup Application regression: 744 passed.
 - Source reconciliation conflict/legacy checks and multi-feature selection tests pass.
-- Actual network JavaScript fixture passed: AUX-I/INET each resolve five GPX
+- Actual network JavaScript fixture passed: AUX-I/INET route selection and original GPX
   features, unmapped networks remain discoverable, details open and source failure
   preserves base search. Inline map/script syntax and unchanged source geometry
   checks pass. Browser/current-production clone acceptance remains pending.
@@ -158,17 +158,18 @@ identifiable across the view without altering source geometry.
 
 Use the exact candidate recorded on PR #318, existing branch
 `docs/171-symbol-type-mapping`, reusable disposable browser wrapper on port 8898,
-ExpectedVersion `V0.3.53-gis-network-search`. No candidate migrations or grants.
+ExpectedVersion `V0.3.54-gis-network-routes`. No candidate migrations or grants.
 The prior preview CLEAN EXIT is recorded on PR #318; new browser review is pending.
 
 - Search `Aux I` or `AUX-I`, choose **AUX-I · Network (draw.io)**.
-  All five endpoint-matched Whoville GPX routes must turn magenta together;
+  Exactly one network result must appear, with 13 candidate routes selected together;
   their individual rendered segments must remain intact. Missing routes stay explicit.
 - Open cable details and use Show cable route to narrow selection. Switching
   selection restores the previous route styles. Typing alone does not alter layers.
 - Search `INET`: choose the network group, not an individual historical GPX track.
-  Five matching routes are expected. Source descriptions do not control membership.
-- Search `AuxB`: network evidence remains searchable even without mapped routes.
+  Exactly one result and 19 candidate routes are expected; Cabinets must not appear.
+  Dashed magenta highlights denote alternative historical source routes.
+- Search `AUX-1`: network evidence remains searchable even without mapped routes.
   No fabricated connecting line or expected reference position may appear.
 - Inspect `WV-00 to WV-03 Aux I` in AUX-I details: endpoint conflict, no map match.
 - Recheck C001, Display-name search, original waypoint selection, and asset refresh.
@@ -203,3 +204,32 @@ history reconciliation, not a prerequisite for testing the feature worktree.
 
 Reconciled candidate checks: 741 Setup/Application tests and five UI-date gate tests
 passed; network/search JavaScript syntax passed. No new browser PASS is claimed.
+
+
+## Operator findings and correction — October 9, 23:05 CDT
+
+Greg's V0.3.53 screenshots report missing AUX-I sections, two apparent AUX-I
+network results and more extensive INET gaps. The first screenshot actually
+selected a raw GPX track while old AUX-I group details remained visible. The
+second also showed INET matching Flammables Cabinets. Disposition: CHANGES REQUIRED.
+CLEAN EXIT for that preview has not yet been supplied.
+
+V0.3.54 corrects search semantics, clears stale details, and expands source matching
+using named geographic anchors plus an explicit draw.io cable chain. All route
+assignments remain review candidates; no source geometry, source draw.io or
+Production records are changed. AUX-I's WV-00/WV-03 endpoint conflict remains
+visible, and INET still has 15 unmapped records. Do not claim complete topology.
+
+Before the new preview, finish the running V0.3.53 wrapper and require CLEAN EXIT.
+Then fast-forward the existing laptop map worktree and launch the newly pinned SHA
+with ExpectedVersion V0.3.54-gis-network-routes on the existing 8898 allocation.
+
+V0.3.54 engineering evidence: 744 Application tests and five UI-date tests passed;
+actual search/network script fixture passes exact-name isolation, 13/19 complete
+candidate selections, dashed alternatives, original-style restoration, stale-detail
+cleanup and source failure. Geometry tests reject missing/conflicting cable links,
+off-route intermediates and unsupported multi-segment features. Original GPX
+feature geometry/properties compare identical to the preceding candidate.
+Screenshots inspected from operator attachments: image(20261010-040226).png and
+image(20261010-040512).png. Full screenshot imagery stays in the supplied evidence;
+this record preserves the diagnosed behavior and correction, not a new acceptance.
