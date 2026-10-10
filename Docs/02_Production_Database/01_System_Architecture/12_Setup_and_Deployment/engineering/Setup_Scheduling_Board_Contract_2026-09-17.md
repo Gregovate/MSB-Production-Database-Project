@@ -901,3 +901,13 @@ Both schedule screens summarize AM and PM as crews / people / tasks. Count a cre
 Perform Work places Captain-scoped LATE / UNREPORTED tasks before normal day sections, using the existing signed-in Captain default and authorization. Each entry directly names the assigned Captain, task, date, crew and shift, with Report Work navigation. Missing Captain identity is CAPTAIN TBD. This detailed accountability list is Perform Work only; existing Manage Schedule navigation supports replanning. Schedule retains prominent late counts and task warnings.
 
 Historical actual person-hours sum the existing reported person-minutes, independently of Show completed. They are labor, not unique volunteers. Actual crew counts can differ by report and must not be summed as headcount. Reported partial work resolves the historical occurrence while remaining annual work needs continuation. No people calendar or extra reporting fields are introduced.
+
+### Final operator preview corrections
+
+Minimum required people are separate from entered planned staffing: each scheduled crew needs at least one person, or its largest sequential task minimum when available. Separate crew requirements add; sequential tasks do not multiply headcount. Captain TBD never implies no staffing demand.
+
+Scheduling requires an operator estimate of time, minimum crew size and effort. Missing estimates open the existing Planning Info editor before placement; save estimates and retry scheduling. Rough estimates are acceptable, fabricated defaults are not. Existing history locks remain enforced. Multi-move validates missing estimates before any assignment mutation.
+
+Keep the existing rescheduling badge colors and priority ordering. Badge text is NEEDS RESCHEDULING — <percentage>% COMPLETE, or NEEDS RESCHEDULING — WORK INCOMPLETE if unavailable. Remove the redundant PRIORITY CONTINUATION banner. KPIs remain deferred by operator direction.
+
+Historical exception: the existing database rejects edits to annual planning once actual work exists. Such continuation tasks remain schedulable with an explicit missing-estimate warning; enforcing new estimates there requires separately governed support and is not silently bypassed in this UI-only release.
