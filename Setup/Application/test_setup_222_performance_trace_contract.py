@@ -96,4 +96,4 @@ def test_setup_performance_trace_summarizes_fast_gets_and_keeps_exceptions() -> 
 
 def test_setup_performance_trace_version_is_distinct() -> None:
     text = source()
-    assert 'PRODUCTION_VERSION = "V0.3.59-map-controls"' in text
+    assert 'PRODUCTION_VERSION = "V0.3.60-launch-integration"' in text

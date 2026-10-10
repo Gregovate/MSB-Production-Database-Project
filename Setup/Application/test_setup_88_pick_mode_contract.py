@@ -227,7 +227,7 @@ def test_record_location_offline_queue_is_durable_and_mixed_unload_fails_conserv
     assert "offline_captured" in ui
     assert "syncQueue()" in ui
     assert "OBSERVATION QUEUED OFFLINE" in ui
-    assert "Container contents unavailable." in ui
+    assert "Contents context unavailable." in ui
     assert "unloaded_display_ids" in ui
     assert "/api/setup/movements/container-contents" not in sw
     assert "/api/setup/movements/state" not in sw
@@ -248,8 +248,8 @@ def test_mixed_container_ui_records_only_selected_display_groups_as_unloaded():
     repository = read("setup_movement_repository.py")
     sql = migration()
 
-    assert "What came off here?" in ui
-    assert "Anything not selected stays WITH_CONTAINER" in ui
+    assert "Which Display Names are STILL on this Container?" in ui
+    assert "Checked names stay with it." in ui
     assert "unloaded_display_ids" in ui
     assert "container_contents" in repository
     assert "coalesce(ds.position_mode, 'WITH_CONTAINER')" in repository
@@ -425,8 +425,8 @@ def test_release_identity_and_offline_shells_are_synchronized():
     location_sw = read("setup_record_location_sw.js")
     location_html = read("record_location.html")
 
-    assert 'PRODUCTION_VERSION = "V0.3.59-map-controls"' in backend
-    assert "const CLIENT_BUILD = 'V0.3.59-map-controls';" in guard
+    assert 'PRODUCTION_VERSION = "V0.3.60-launch-integration"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.60-launch-integration';" in guard
     assert "msb-setup-pick-mode-v18" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_html
@@ -434,11 +434,11 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "setup_pick_list.js?v=2026-10-05.1" in pick_html
     assert "setup_pick_mode.js?v=2026-10-06.1" in pick_sw
     assert "setup_pick_mode.js?v=2026-10-06.1" in pick_html
-    assert "msb-setup-record-location-v13" in location_sw
-    assert "setup_record_location.css?v=2026-10-03.3" in location_sw
-    assert "setup_record_location.css?v=2026-10-03.3" in location_html
-    assert "setup_record_location.js?v=2026-10-03.4" in location_sw
-    assert "setup_record_location.js?v=2026-10-03.4" in location_html
+    assert "msb-setup-record-location-v20" in location_sw
+    assert "setup_record_location.css?v=2026-10-10.60" in location_sw
+    assert "setup_record_location.css?v=2026-10-10.60" in location_html
+    assert "setup_record_location.js?v=2026-10-10.60" in location_sw
+    assert "setup_record_location.js?v=2026-10-10.60" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():
@@ -504,7 +504,7 @@ def test_record_location_requires_visible_location_review_before_record_action()
     ui = read("setup_record_location.js")
     css = read("setup_record_location.css")
 
-    assert "3 · Review and record" in html
+    assert "3 · Contents, review and record" in html
     assert 'id="movement-review-location"' in html
     assert 'id="movement-record-here" type="button" class="primary" disabled' in html
     assert 'id="movement-compact-status"' in html

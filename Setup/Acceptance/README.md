@@ -1,5 +1,8 @@
 # Setup Acceptance Tooling
 
+Current integrated #122 candidate: [field release checkpoint and review](Setup_122_Integrated_Field_Release.md). This supersedes separate preview handoffs for the included PR308/309/318/321 changes.
+
+
 ## #88 report-only Production release
 
 [Approved Container Movement source-only release and pinned install handoff](Setup_88_Container_Movement_Report_Deployment.md)
@@ -17,6 +20,30 @@ retain earlier transport/backup/stdin STOPs and their corrections. Execution use
 merged tooling main `cc93378f`; deployed application remains `6c44a082` / V0.3.50.
 Guided #309, migration 070 and historical movement repair remain separate. No
 operator pause or new workstation dependency was needed.
+
+## #88 contents reconciliation browser candidate
+
+[Implementation, reconnaissance, verification and exact-candidate review handoff](Setup_88_Contents_Reconciliation_Candidate.md).
+
+[Reusable #88 daily field picture](setup_88_daily_field_picture_readonly.sql) is
+read-only SQL for the existing query client: day activity, event/Display evidence,
+current recorded contents/location and historical review flags. Default report day
+is October 7, 2026 Chicago; run the whole script. It cannot establish unrecorded or
+unsynced work, physical contents, or resolved reviews. No Node dependency.
+V0.3.49 retains a Manager **Container Movement** report from Material Status: fresh printable
+movement/location trail, all unresolved reasons and receipt comparison after a
+prior event (123 for the October 6 snapshot). GPS-only Current display is fixed;
+GPS-only report headings now show the nearest Stage reference and distance in
+feet as an estimate, using each asset's own observation. Recorded destination/GPS
+and calculated nearest Stage are explicitly labelled and shown together. Exact current source and
+reference version are in the candidate handoff. Read-only source, not deployed.
+V0.3.49 makes Empty / Not Empty / Not Sure required at ordinary Container stops,
+adds quick All still here confirmation, and preserves compact observed-HERE
+Stage-group removal. Uncertain event notes retain the named scope/prior evidence.
+Delayed Manager review resolution, historical correction and takedown loading remain
+unfinished. The overall branch reuses movement/event tables with unchanged migration 070.
+Current-clone/browser acceptance and Production deployment remain pending.
+
 
 ## Authority
 
@@ -44,6 +71,17 @@ The corrected runner launches that location test file separately, retains every
 focused test, and proves the identical focused groups in the candidate worktree
 before live mutation. [The acceptance record](Setup_175_Current_Location_Candidate.md#2026-10-07-failed-install-and-tooling-recovery)
 retains the report, rollback evidence and corrected verification.
+
+The corrected install completed with server PASS at deployed `cb053802` / V0.3.42;
+the completed #305 installer is not a replay command. Greg's follow-up requests hiding
+Home on GPS rows. The current presentation candidate `6e4cc77` retains V0.3.42,
+updates the footer to October 7 and awaits browser review on registered port 8898.
+Use [the latest handoff](Setup_175_Current_Location_Candidate.md#2026-10-07-successful-install-and-hide-home-presentation-follow-up),
+then merge accepted changes to main before a new pinned source-only installation.
+It also shows the recorded movement status when a current location is missing,
+instead of `Location recorded — unnamed`. The [read-only status probe](setup_175_current_location_status_probe.sql)
+separates recorded Pick/history, Container state and effective detached/attached
+Display evidence for Greg's Elf Choir examples; physical whereabouts are not inferred.
 
 ## Required lifecycle
 

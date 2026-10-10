@@ -274,6 +274,31 @@ def api_setup_movement_record() -> tuple[Response, int] | Response:
             asset_id=asset_id,
         )
 
+    placement = payload.get("display_placement")
+    if placement is not None:
+        if asset_type != "DISPLAY" or movement_action != "DISPLAY_MOVE" or placement != "YES":
+            raise SetupCommandError("Only confirmed Display placement can detach a Display")
+        if not optional_positive_int(payload.get("destination_stage_id"), "destination_stage_id"):
+            raise SetupCommandError("Confirm the actual Stage for this Display placement")
+
+    reconciliation = payload.get("reconciliation")
+    if reconciliation is not None:
+        if not isinstance(reconciliation, dict) or reconciliation.get("decision") not in {"EMPTY", "NOT_EMPTY", "NOT_SURE"}:
+            raise SetupCommandError("Choose Empty, Not Empty, or Not Sure")
+        if asset_type != "CONTAINER" or movement_action not in {"CONTAINER_MOVE", "RETURNED"}:
+            raise SetupCommandError("Contents reconciliation requires a Container location or return")
+        if payload.get("unloaded_display_ids"):
+            raise SetupCommandError("Use remaining Display Names for reconciliation")
+        for key in ("expected_display_ids", "remaining_display_ids"):
+            if key in reconciliation:
+                reconciliation[key] = optional_positive_int_list(reconciliation[key], key)
+        if "prior_event_id" in reconciliation:
+            reconciliation["prior_event_id"] = optional_positive_int(reconciliation["prior_event_id"], "prior_event_id")
+        if reconciliation.get("prior_client_event_id"):
+            reconciliation["prior_client_event_id"] = str(required_uuid(reconciliation["prior_client_event_id"], "prior_client_event_id"))
+        if "identify_remaining" in reconciliation and not isinstance(reconciliation["identify_remaining"], bool):
+            raise SetupCommandError("identify_remaining must be true or false")
+
     result = repo().record_event(
         email=email,
         season_year=season_year,
@@ -316,6 +341,7 @@ def api_setup_movement_record() -> tuple[Response, int] | Response:
         ),
         gps_quality=normalize_gps_quality(payload.get("gps_quality")),
         gps_quality_note=optional_text(payload.get("gps_quality_note")),
+        reconciliation=reconciliation,
     )
     status = 200 if result.get("duplicate_event") else 201
     return jsonify(movement=result), status

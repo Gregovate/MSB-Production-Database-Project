@@ -107,7 +107,7 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   assert.equal(activeIds().size, 0, 'Parent off restores all highlighted source tracks');
   assert([...controls.values()].every(c => !c.checked));
   assert(page.includes('<details id="network-picker"><summary>'), 'Network list has native keyboard-accessible disclosure');
-  assert(page.includes('V0.3.59-map-controls · Updated 2026-10-10'));
+  assert(page.includes('V0.3.60-launch-integration · Updated 2026-10-10'));
   const styles = vm.runInNewContext('(' + page.match(/const trackStyles=(.*?);/)[1] + ')');
   assert.equal(styles.PRI.color, '#ff8b25');
   assert.equal(styles.HV.color, '#dd2424');
@@ -187,4 +187,22 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
  const result = context.volunteerSummary({reported_home:true,home_location_code:'RC05-A-01',current_location_note:'Old park destination',movement_status:'RETURNED'});
  assert.match(result, /RC05-A-01/); assert.match(result, /Empty — reported back Home/);
  assert.doesNotMatch(result, /Old park destination/);
+}
+
+// Execute Record Location's actual renderer as nearest rank changes, then GPS stops.
+{
+ const source = fs.readFileSync(path.join(__dirname, 'setup_record_location.js'), 'utf8');
+ const buttons = {children:[],appendChild(b){this.children.push(b)},set innerHTML(v){this.children=[]}};
+ const context = {watchId:1,latestPosition:{},gpsState:{},gpsToggle:{},gpsCandidates:{},gpsCandidateButtons:buttons,
+ currentGpsSnapshot:()=>({accuracy_m:3,fix_age_ms:0}),rankedReferences:()=>[{name:'A',distance_ft:10},{name:'B',distance_ft:20}],
+ renderRecordReadiness:()=>{},document:{createElement:()=>({addEventListener:()=>{}})}};
+ vm.createContext(context);
+ vm.runInContext(source.slice(source.indexOf('  function renderGps()'),source.indexOf('  function startGps()')),context);
+ context.renderGps(); assert.equal(buttons.children[0].className,'location-nearest-first');
+ assert.match(buttons.children[0].textContent,/Nearest: A/);
+ context.rankedReferences=()=>[{name:'B',distance_ft:5},{name:'A',distance_ft:25}];context.renderGps();
+ assert.match(buttons.children[0].textContent,/Nearest: B/);
+ assert.equal(buttons.children[1].className,'location-nearest-alternative');
+ context.currentGpsSnapshot=()=>null;context.renderGps();assert.equal(buttons.children.length,0);
+ context.watchId=null;context.renderGps();assert.equal(buttons.children.length,0);
 }
