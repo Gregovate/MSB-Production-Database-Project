@@ -30,17 +30,12 @@ const mapSearch = (() => {
     if (map.closePopup) map.closePopup();
     for (const listener of selectionListeners) listener(entry);
     if (entry.onSelect) entry.onSelect();
-    if (!entry.markers.length && entry.expectedLocation === "Workshop") {
-      const workshop = references.find(ref => ref.name === "Workshop");
-      if (workshop) entry = {...entry, layer: workshop.layer, markers: workshop.markers,
-        association: "Expected at Workshop before picking; temporary reference"};
-    }
     if (!entry.markers.length && entry.onSelect) {
       status.textContent = `${entry.name}: ${entry.association}. No matched map route.`;
       return;
     }
     if (!entry.markers.length) {
-      status.textContent = `${entry.name}: ${entry.expectedLocation ? entry.expectedLocation + " — expected before picking; waypoint not recorded." : "Location not recorded."}`;
+      status.textContent = `${entry.name}: ${entry.locationLabel || (entry.expectedLocation ? entry.expectedLocation + " — expected before picking; waypoint not recorded." : "Location not recorded.")}`;
       return;
     }
     // Selecting reveals only the required layer; other layer choices persist.
@@ -87,7 +82,7 @@ const mapSearch = (() => {
       button.style.display = 'block';
       button.style.width = '100%';
       button.style.textAlign = 'left';
-      button.textContent = `${entry.name} · ${entry.kind}${entry.resultNote ? ' · ' + entry.resultNote : ''}${entry.markers.length || entry.onSelect ? '' : entry.expectedLocation ? ' · Workshop (not picked)' : ' · Location not recorded'}`;
+      button.textContent = `${entry.name} · ${entry.kind}${entry.resultNote ? ' · ' + entry.resultNote : ''}${entry.locationLabel ? ' · ' + entry.locationLabel : entry.markers.length || entry.onSelect ? '' : entry.expectedLocation ? ' · Workshop (not picked)' : ' · Location not recorded'}`;
       button.addEventListener('click', () => select(entry));
       results.appendChild(button);
     }
@@ -121,9 +116,11 @@ const mapSearch = (() => {
         kind: container ? 'Container' : 'Display', layer: container ? 'containers' : 'displays',
         markers: marker ? [marker] : [], terms: `${code} ${asset.name}`,
         expectedLocation: asset.expected_location,
+        locationLabel: asset.reported_home ? "Home — Workshop" + ((asset.home_location_code || asset.current_location_note) ? " · " + (asset.home_location_code || asset.current_location_note) : "") : asset.current_location_note,
+        association: asset.reported_home ? "Home — Workshop · " + (asset.home_location_code || asset.current_location_note || "rack not recorded") : null,
         numericId: container ? String(asset.container_id) : null};
       assets.push(entry);
-      if (container) {
+      if (container && !asset.reported_home) {
         for (const display of asset.contents.filter(d => d.position_mode === 'WITH_CONTAINER')) {
           assets.push({name: display.display_name, terms: display.display_name, kind: 'Display',
             layer: 'containers', markers: entry.markers, expectedLocation: asset.expected_location, association: `With ${code}`});

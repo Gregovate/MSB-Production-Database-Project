@@ -437,7 +437,11 @@ latitude/longitude. Machine-readable source:
 [workshop_reference.json](workshop_reference.json).
 
 The coordinate recovery gap is now resolved by this replacement source evidence.
-Workshop-anchor rendering remains to be implemented; V0.3.60 does not yet use it.
+V0.3.61 uses this anchor for confirmed Home returns, with canonical rack labels.
+The transformed WGS84 anchor is 43.778402029, -87.733215490; it is reference-derived,
+not captured movement GPS. The runtime copy is Setup/Application/setup_workshop_reference.json;
+a regression check keeps it equal to this canonical record. Detached displays retain
+their own park event coordinates. Browser acceptance and Production deployment remain pending.
 
 Containers with no movement evidence must remain distinguishable as expected at
 Workshop rather than confirmed Home. The map is a consumer of #88 state; #230 owns

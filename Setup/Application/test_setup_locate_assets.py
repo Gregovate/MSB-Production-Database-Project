@@ -126,4 +126,35 @@ def test_reported_return_home_overrides_loaded_associations():
     assert container['reported_home'] is True
     assert container['load_state'] == 'EMPTY'
     assert container['home_location_code'] == 'RC05-A-01'
-    assert container['position'] is None
+    from setup_locate_assets import WORKSHOP_POSITION
+    assert container['position'] == WORKSHOP_POSITION
+
+
+def test_confirmed_round_trip_preserves_detached_park_locations():
+    """C046/C050 Production evidence: empty Home returns must not move displays."""
+    from setup_locate_assets import WORKSHOP_POSITION
+    import json
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    canonical = json.loads((root / 'Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/workshop_reference.json').read_text())
+    bundled = json.loads(Path(__file__).with_name('setup_workshop_reference.json').read_text())
+    assert canonical == bundled
+    assert 43.778 < WORKSHOP_POSITION[0] < 43.779
+    assert -87.734 < WORKSHOP_POSITION[1] < -87.733
+    picture = dict(generated_at=None, through_event_id=188, containers=[], displays=[], effect_rows=[])
+    for cid, drop, returned, lat, lon, rack in [(46,116,186,43.776757,-87.745766,'RA09-B-01'), (50,114,188,43.776652,-87.745525,'RA10-C-01')]:
+        picture['effect_rows'].extend([
+            dict(setup_movement_event_id=drop,event_type='CONTAINER_MOVE',gps_latitude=lat,gps_longitude=lon),
+            dict(setup_movement_event_id=returned,event_type='RETURNED')])
+        picture['containers'].append(dict(container_id=cid,last_movement_event_id=returned,movement_status='RETURNED',home_location_code=rack))
+        for i in range(16):
+            picture['displays'].append(dict(display_id=cid*100+i,display_name=f'Wrap {cid}-{i}',container_id=cid,position_mode='DETACHED',last_movement_event_id=drop))
+    result = locate_assets(picture)
+    for c in result['containers']:
+        assert c['position'] == WORKSHOP_POSITION
+        assert c['position_source'] == 'storage-workshop-reference'
+        assert c['observation']['gps_latitude'] is None
+        assert c['load_state'] == 'EMPTY'
+    assert len(result['displays']) == 32
+    assert all(d['position'] == [43.776757,-87.745766] for d in result['displays'][:16])
+    assert all(d['position'] == [43.776652,-87.745525] for d in result['displays'][16:])

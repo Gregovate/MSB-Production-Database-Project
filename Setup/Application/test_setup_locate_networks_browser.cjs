@@ -77,6 +77,11 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   assert.equal(elements['network-details'].parentElement.open, false);
   context.search.focusContainer(112);
   assert.match(elements['map-search-status'].textContent, /Workshop/);
+  context.search.addAsset({container_id:46,name:'Section A Wraps',contents:[{display_name:'Stale attachment',position_mode:'WITH_CONTAINER'}],reported_home:true,home_location_code:'RA09-B-01'}, true, null);
+  assert.match(search('46')[0].textContent, /Home — Workshop.*RA09-B-01/);
+  context.search.focusContainer(46);
+  assert.match(elements['map-search-status'].textContent, /Home — Workshop.*RA09-B-01/);
+  assert.equal(search('Stale attachment').length, 0, 'Home container must not carry stale attached display markers Home');
   context.search.focusContainer(9999);
   assert.match(elements['map-search-status'].textContent, /not in this season/);
   context.search.clearAssets();
@@ -107,7 +112,7 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   assert.equal(activeIds().size, 0, 'Parent off restores all highlighted source tracks');
   assert([...controls.values()].every(c => !c.checked));
   assert(page.includes('<details id="network-picker"><summary>'), 'Network list has native keyboard-accessible disclosure');
-  assert(page.includes('V0.3.60-launch-integration · Updated 2026-10-10'));
+  assert(page.includes('V0.3.61-home-map · Updated 2026-10-10'));
   const styles = vm.runInNewContext('(' + page.match(/const trackStyles=(.*?);/)[1] + ')');
   assert.equal(styles.PRI.color, '#ff8b25');
   assert.equal(styles.HV.color, '#dd2424');
@@ -206,3 +211,22 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
  context.currentGpsSnapshot=()=>null;context.renderGps();assert.equal(buttons.children.length,0);
  context.watchId=null;context.renderGps();assert.equal(buttons.children.length,0);
 }
+
+// A failed refresh must not erase the last successful snapshot/search registrations.
+(async () => {
+  const controls = Object.fromEntries(['asset-year','asset-status','asset-unlocated','asset-refresh'].map(id => [id,element()]));
+  let clears = 0, calls = 0;
+  const ctx = {document:{getElementById:id=>controls[id]}, URLSearchParams,
+    window:{location:{search:''}},
+    layers:{containers:{clearLayers(){clears++;}},displays:{clearLayers(){clears++;}}},
+    mapSearch:{clearAssets(){clears++;}},
+    fetch:async()=>{if (++calls > 1) throw new Error('Offline'); return {ok:true,json:async()=>({containers:[],displays:[],through_event_id:188})};}};
+  vm.runInNewContext(read('setup_locate_assets.js'), ctx);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(clears,3);
+  await controls['asset-refresh'].click();
+  assert.equal(clears,3,'Offline refresh retains existing layers and search');
+  assert.match(controls['asset-status'].textContent,/Previously loaded locations remain visible/);
+  assert.equal(controls['asset-refresh'].disabled,false);
+  console.log('PASS: failed refresh preserves existing asset snapshot');
+})().catch(error => {console.error(error);process.exitCode=1;});

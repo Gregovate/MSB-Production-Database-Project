@@ -37,7 +37,7 @@
       RETURNED: 'Returned to storage', TASK_UNLOAD: 'Unloaded from container',
       CONTAINER_MOVE: 'Container moved'};
     let location = a.current_location_note || o.destination_location_note;
-    if (a.reported_home) location = a.home_location_code || a.current_location_note || 'Home (specific location not recorded)';
+    if (a.reported_home) location = 'Home — Workshop' + ((a.home_location_code || a.current_location_note) ? ' · ' + (a.home_location_code || a.current_location_note) : '');
     if (!location && o.stage_name) location = `${o.stage_key || ''} ${o.stage_name}`.trim();
     if (!location && a.expected_location === 'Workshop') location = 'Workshop (expected; not confirmed)';
     if (!location) location = a.position ? 'Recorded map location' : 'Location not recorded';
@@ -57,6 +57,7 @@
       if (!a.contents.length) text += '<p>No displays assigned.</p>';
     }
     text += `<details><summary>Record details</summary>${evidence(a.observation)}`;
+    if (a.position_source === "storage-workshop-reference") text += "<br>Map position: Workshop reference location, not device GPS. Rack location is shown above.";
     if (container) {
       text += `<br>Recorded movement: ${esc(a.movement_status || 'none')}<br>Recorded contents: ${esc(a.load_state)}<br>${esc(a.uncertainty)}`;
       if (a.review_event_ids.length) text += `<br>Contents review recorded in events ${esc(a.review_event_ids.join(', '))}; resolution not established here.`;
@@ -94,19 +95,18 @@
     const current = ++sequence;
     refresh.disabled = true;
     status.textContent = 'Loading recorded asset locations…';
-    layers.containers.clearLayers(); layers.displays.clearLayers();
-    unlocated.replaceChildren();
-    mapSearch.clearAssets();
     try {
       const response = await fetch(`../api/setup/locate/assets?season_year=${encodeURIComponent(year.value)}`, {cache: 'no-store', headers: {Accept: 'application/json'}});
       if (!response.ok) throw new Error(`Asset data unavailable (${response.status})`);
       const data = await response.json();
       if (current !== sequence) return;
+      layers.containers.clearLayers(); layers.displays.clearLayers();
+      unlocated.replaceChildren(); mapSearch.clearAssets();
       render(data.containers, true); render(data.displays, false);
       if (requestedContainer && /^\d+$/.test(requestedContainer)) mapSearch.focusContainer(Number(requestedContainer));
       status.textContent = `${data.containers.length} Containers · ${data.displays.length} independent Displays · ${unlocated.children.length} unlocated · through event ${data.through_event_id}. Icons show recorded associations: Loaded / Partial / Empty / Unknown. Physical loads unconfirmed.`;
     } catch (error) {
-      if (current === sequence) status.textContent = `${error.message}. Refresh to retry.`;
+      if (current === sequence) status.textContent = `${error.message}. Previously loaded locations remain visible; they have not been refreshed. Refresh to retry.`;
     } finally { if (current === sequence) refresh.disabled = false; }
   }
   refresh.addEventListener('click', load);

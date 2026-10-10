@@ -1,5 +1,12 @@
 """Read-only map adapter for the accepted #88 snapshot. No history inference."""
 from math import isfinite
+import json
+from pathlib import Path
+
+# Bundled, derived map anchor; never inserted into movement GPS evidence.
+WORKSHOP_REFERENCE = json.loads(Path(__file__).with_name("setup_workshop_reference.json").read_text())
+WORKSHOP_POSITION = [WORKSHOP_REFERENCE["map_coordinates"]["latitude"],
+                     WORKSHOP_REFERENCE["map_coordinates"]["longitude"]]
 
 
 def geographic_position(event):
@@ -46,7 +53,8 @@ def locate_assets(picture):
             load_state = "EMPTY"
         containers.append({"container_id": state["container_id"],
                            "name": state.get("container_name"),
-                           "position": geographic_position(event),
+                           "position": list(WORKSHOP_POSITION) if returned_home else geographic_position(event),
+                           "position_source": "storage-workshop-reference" if returned_home else "movement-event",
                            "observation": observation(event),
                            "movement_status": state.get("movement_status"),
                            "current_location_note": state.get("current_location_note"),
