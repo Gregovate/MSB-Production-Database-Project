@@ -286,7 +286,39 @@ function board205PlacementWarnings(task, crewId, shift) {
   return warnings;
 }
 
+// Operator estimates are required; never silently invent planning data.
+function board205MissingEstimates(task) {
+  const missing = [];
+  if (!(Number(task?.expected_duration_minutes) > 0)) missing.push('time');
+  if (!(Number(task?.normal_crew_min) >= 1)) missing.push('crew size');
+  if (!['LIGHT', 'MODERATE', 'HEAVY'].includes(String(task?.effort_level || '').toUpperCase())) missing.push('effort');
+  return missing;
+}
+
+function board205RequireEstimates(task) {
+  const missing = board205MissingEstimates(task);
+  if (!missing.length) return true;
+  // Existing reports lock annual planning in the database. Keep continuation
+  // schedulable without rewriting historical estimates or inventing defaults.
+  if (Number(task?.progress_entries || 0) > 0 || task?.actual_started_at || task?.actual_completed_at) {
+    setAlert(`Historical estimates are locked; missing ${missing.join(', ')} remains TBD for this continuation.`, 'error');
+    return true;
+  }
+  setAlert(`Enter estimated ${missing.join(', ')} before scheduling. A rough estimate is enough; save Planning Info, then schedule again.`, 'error');
+  document.getElementById('setup-board205-schedule-dialog')?.close();
+  board205OpenPlanningInfoDialog(task?.setup_session_task_id);
+  return false;
+}
+
+function board205ReschedulingLabel(task) {
+  const value = task?.percent_complete;
+  return value != null && value !== '' && Number.isFinite(Number(value))
+    ? `NEEDS RESCHEDULING — ${board205ProgressPercent(task)}% COMPLETE`
+    : 'NEEDS RESCHEDULING — WORK INCOMPLETE';
+}
+
 function board205ConfirmPlacement(task, crewId, shift) {
+  if (!board205RequireEstimates(task)) return false;
   const warnings = board205PlacementWarnings(task, crewId, shift);
   if (!warnings.length) return true;
   return window.confirm(`${warnings.join('\n\n')}\n\nSchedule this task anyway?`);
@@ -1511,7 +1543,7 @@ function board205TaskCard(task) {
       data-session-task-id="${task.setup_session_task_id ?? ''}"
       data-reusable-task-id="${task.setup_task_id ?? ''}"
       draggable="${canSchedule ? 'true' : 'false'}">
-      ${board205NeedsContinuation(task) ? '<div class="setup-board205-warning" style="font-size:1rem;font-weight:900;border:2px solid #9d2424">NEEDS RESCHEDULING — PRIORITY CONTINUATION</div>' : ''}
+
       ${board205ContinuationScheduled(task) ? '<div class="setup-board205-meta" style="font-weight:800">CONTINUATION ALREADY SCHEDULED — annual task unfinished</div>' : ''}
       <div class="setup-board205-task-title">
         <span>Task ${board205Esc(task.setup_task_id ?? 'annual-only')} · ${board205Esc(task.task_name)}</span>
@@ -1524,7 +1556,7 @@ function board205TaskCard(task) {
               : readinessOnly
                 ? 'NOT READY'
                 : 'CURRENT CATALOG'
-            : board205StatusLabel(task.board_status)
+            : board205NeedsContinuation(task) ? board205ReschedulingLabel(task) : board205StatusLabel(task.board_status)
         )}</span>
         <span class="setup-board205-badge effort-${board205Esc(String(task.effort_level || 'unknown').toLowerCase())}">${board205Esc(board205Effort(task))}</span>
         ${board205WorkOrderBadge(task)}
@@ -2007,7 +2039,7 @@ function board205Day(day) {
         </div>
       </div>
       <div role="status" style="border:3px solid ${overloadedShifts ? '#9d2424' : unknownTasks || notReadyTasks ? '#835900' : '#146044'};padding:10px;margin:6px 0;border-radius:8px;font-weight:800;font-size:1.05rem">
-        ${board205Esc(nextDayStaffingSummary(board205DayAssignments(day), crews))}${overloadedShifts ? ` · ${overloadedShifts} overloaded shifts` : ''}${unknownTasks ? ` · ${unknownTasks} missing time estimates` : ''}${notReadyTasks ? ` · ${notReadyTasks} tasks not ready` : ''}${duplicateCaptainShifts.size ? ` · ⚠ ${duplicateCaptainShifts.size} DUPLICATE CAPTAIN/SHIFT` : ''}
+        ${board205Esc(nextDayStaffingSummary(board205DayAssignments(day), crews, setupBoard205State.board.tasks || []))}${overloadedShifts ? ` · ${overloadedShifts} overloaded shifts` : ''}${unknownTasks ? ` · ${unknownTasks} missing time estimates` : ''}${notReadyTasks ? ` · ${notReadyTasks} tasks not ready` : ''}${duplicateCaptainShifts.size ? ` · ⚠ ${duplicateCaptainShifts.size} DUPLICATE CAPTAIN/SHIFT` : ''}
       </div>
       <div class="setup-board205-table-wrap">
         <div class="setup-board205-grid">
@@ -2569,6 +2601,7 @@ function board205ConfirmAssignmentGroupPlacement(items, crewId, shift) {
     );
     if (!changedPlacement) continue;
     const task = board205Task(item.setup_session_task_id) || item;
+    if (!board205RequireEstimates(task)) return false;
     for (const warning of board205PlacementWarnings(task, crewId, shift)) {
       warnings.push(`${task.task_name || item.task_name}: ${warning}`);
     }
@@ -3120,6 +3153,11 @@ async function board205PersistPlanningInfo({ closeDialog = true, announce = true
   if (!sessionTaskId && !reusableTaskId) return false;
 
   const draft = board205PlanningDraft();
+  const missing = board205MissingEstimates(draft);
+  if (missing.length) {
+    setAlert(`Enter estimated ${missing.join(', ')}. A rough estimate is enough.`, 'error');
+    return false;
+  }
 
   try {
     setBusy(true);
