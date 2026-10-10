@@ -975,6 +975,10 @@ el('manager-material-status-link')?.addEventListener('click', () => {
     : '?season_year=' + encodeURIComponent(appState.seasonYear);
   window.location.href = 'material-status/' + query;
 });
+// Keep unsaved Setup work in its tab and use the shared map's Setup defaults.
+el('park-map-link')?.addEventListener('click', () => {
+  window.open('locate/', '_blank', 'noopener');
+});
 el('material-audit-link')?.addEventListener('click', () => { window.location.href = 'material-audit/'; });
 el('season-select').addEventListener('change', () => loadSeason(el('season-select').value));
 el('review-status-filter').addEventListener('change', renderReviewList);
