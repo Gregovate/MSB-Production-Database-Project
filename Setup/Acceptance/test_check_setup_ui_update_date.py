@@ -41,5 +41,14 @@ class DateGateTests(unittest.TestCase):
         self.commit('2026-10-05', 'new UI with current date')
         self.assertEqual(check(self.repo), '2026-10-05')
 
+    def test_utc_commit_after_midnight_uses_chicago_revision_date(self):
+        (self.ui/'setup.css').write_text('body {color:red}')
+        env = os.environ.copy()
+        env.update(GIT_AUTHOR_DATE='2026-10-05T01:30:00Z', GIT_COMMITTER_DATE='2026-10-05T01:30:00Z')
+        self.git('add', '.')
+        self.git('commit', '-qm', 'evening Chicago UI change', env=env)
+        self.assertEqual(check(self.repo), '2026-10-04')
+
 if __name__ == '__main__': unittest.main()
+
 

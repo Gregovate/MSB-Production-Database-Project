@@ -20,10 +20,18 @@ Current reported version and Production application target:
 
 ```text
 V0.3.50-container-movement-report
-6c44a082dd520b75881c50ad2ce78feb029ff87d
+1fdc3b0250c5f750648c217c9e36f3ac9ea59f9e
 ```
 
-Production server installation passed on 2026-10-08, report `Setup88Read-20261008T214153Z`; protected browser check remains pending. #88 adds the read-only Container Movement report and a separately approved two-column type-name SELECT grant. Guided Container reconciliation remains an unmerged draft. Accepted #206 Pick Delay and #205 scheduling behavior remain; persisted physical PICKED/movement execution remains owned by #88.
+## 2026-10-09 — #205 scheduling corrections — Production PASS
+
+- Installed Setup target: `1fdc3b0250c5f750648c217c9e36f3ac9ea59f9e` (PR #324/#325). Client **V0.3.50**, backend `V0.3.50-container-movement-report`, footer **Updated 2026-10-09**.
+- Greg approved both disposable previews with CLEAN EXIT and confirmed the protected Production screen PASS after installation.
+- Source-only runner PASS: `/home/msbadmin/setup-deployment-reports/PR325-20261010T033752Z`. Exact source, health, focused regression and unchanged pre/post data fingerprints passed per runner receipt. Numerical fingerprint is retained in `preflight.json` / `result.json`, not transcribed here.
+- Prior source/rollback SHA: `0b69a269b2a32d369ee4f25be6740e15d7c5a823`. Shared checkout remains `6dd05c4aa5ef8f50fe172145c3ae281cc245a101`. Tooling PR #326 merge: `291def5746ca0683cf9601cf7dc07753bd56ded4`; existing source-only runner retains its legacy 306 filename. Do not replay it.
+- No database migration or maintenance transition in this update; only Setup restarted under the Server Management source-only runbook. No rollback reported.
+- Changes: occurrence-based historical completion/collapse; prominent late work and Captain attribution; Captain TBD; AM/PM staffing/task summaries; required estimates for unstarted work; clearer rescheduling badges; Chicago day boundaries. Existing historical planning locks remain enforced.
+- #205 stays open: audited D9 Tom Shircel Crew B-to-A correction and removal of erroneous B, deferred Schedule Churn KPIs, and possible future staffing-model refinement are not completed by this release.
 
 ## Current Production Meaning
 

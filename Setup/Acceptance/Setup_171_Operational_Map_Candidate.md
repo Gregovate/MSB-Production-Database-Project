@@ -2,15 +2,15 @@
 
 Status: ENGINEERING CANDIDATE — current-clone/operator acceptance pending.
 
-Baseline main: `86a025a2528be9f7071355965f679320a1362181` (PR #317).
-Version: `V0.3.52-gis-network-search`; visible Updated 2026-10-09.
+Baseline main: `38f6f9427007470cbc02b3e2d23a97450d4414ba` (PR #327).
+Version: `V0.3.53-gis-network-search`; visible Updated 2026-10-09.
 Exact application SHA: the implementation commit identified on PR #318; pin
 that SHA rather than resolving a moving branch at launch.
 No migrations or new Production grants are proposed.
 
 ## Engineering proof
 
-- Current network candidate full Setup Application regression: 730 passed.
+- Current network candidate full Setup Application regression: 741 passed.
 - Source reconciliation conflict/legacy checks and multi-feature selection tests pass.
 - Actual network JavaScript fixture passed: AUX-I/INET each resolve five GPX
   features, unmapped networks remain discoverable, details open and source failure
@@ -158,7 +158,7 @@ identifiable across the view without altering source geometry.
 
 Use the exact candidate recorded on PR #318, existing branch
 `docs/171-symbol-type-mapping`, reusable disposable browser wrapper on port 8898,
-ExpectedVersion `V0.3.52-gis-network-search`. No candidate migrations or grants.
+ExpectedVersion `V0.3.53-gis-network-search`. No candidate migrations or grants.
 The prior preview CLEAN EXIT is recorded on PR #318; new browser review is pending.
 
 - Search `Aux I` or `AUX-I`, choose **AUX-I · Network (draw.io)**.
@@ -178,3 +178,28 @@ Source inventory and unresolved work:
 [GIS reconciliation authority](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/engineering/Network_Source_Reconciliation_2026-10-09.md).
 This slice does not deliver the editable Wiring database integration or import the
 latest corrected tester export. No Production mutation/deployment is claimed.
+
+
+## Current-main reconciliation — October 9, 22:55 CDT
+
+Reconciled the network candidate with main `38f6f9427007470cbc02b3e2d23a97450d4414ba`.
+Preserved accepted PR #324/#325 scheduling behavior, source assets/cache pins,
+Production closeout documentation and existing acceptance tooling. The sole merge
+conflict was obsolete scheduling asset pins in the navigation contract; the new
+accepted pins prevail. Reconciled build is V0.3.53-gis-network-search with matching
+client/server identity. Previous V0.3.52 testing does not substitute for new review.
+No additional migrations are required by this read-only map slice; the inherited
+migration 072 file is not authorization to apply it or any other migration.
+
+Greg's laptop primary `C:\lor\ImportExport\VSCode` has divergent local main
+(ahead 5, behind 134, local `11fed289`). Do not reset or switch that worktree.
+Use existing `C:\lor\ImportExport\VSCode-171-map-review`, branch
+`docs/171-symbol-type-mapping`, observed clean SHA `a523b508`. Update this feature
+worktree by fetch plus fast-forward-only merge, then launch exact candidate on
+8898. Other contents-review and office scheduling worktrees are out of scope.
+Preserve the map worktree pending acceptance/integration; server preview CLEAN EXIT
+is separate from Git cleanup. Primary-main repair remains a separate deliberate
+history reconciliation, not a prerequisite for testing the feature worktree.
+
+Reconciled candidate checks: 741 Setup/Application tests and five UI-date gate tests
+passed; network/search JavaScript syntax passed. No new browser PASS is claimed.

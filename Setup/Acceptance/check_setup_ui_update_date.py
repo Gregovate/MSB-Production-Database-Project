@@ -1,5 +1,7 @@
 """Reject stale Setup footer dates using the candidate's UI commit history."""
 import argparse
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 import re
 import subprocess
@@ -12,7 +14,9 @@ UI_PATHS = [path.strip() for path in UI_PATHS]
 def check(repository, target='HEAD'):
     def git(*args):
         return subprocess.check_output(['git', '-C', str(repository), *args], text=True).strip()
-    expected = git('log', '-1', '--format=%cs', target, '--', *UI_PATHS)
+    # The fixed revision date uses MSB local time, independent of commit/server offset.
+    stamp = git('log', '-1', '--format=%cI', target, '--', *UI_PATHS)
+    expected = datetime.fromisoformat(stamp).astimezone(ZoneInfo('America/Chicago')).date().isoformat() if stamp else ''
     source = git('show', target + ':Setup/Application/production.html')
     dates = re.findall(r'Updated\s+(\d{4}-\d{2}-\d{2})', source)
     if not expected or dates != [expected]:
@@ -25,4 +29,5 @@ if __name__ == '__main__':
     parser.add_argument('--target', default='HEAD')
     args = parser.parse_args()
     print('PASS: UI date ' + check(args.repository, args.target))
+
 

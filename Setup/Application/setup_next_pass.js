@@ -1097,7 +1097,7 @@ function nextPerformCaptainScopedAssignments(assignments) {
 function nextFilterPerformAssignments(assignments) {
   const showCompleted = Boolean(el('next-perform-show-completed')?.checked);
   return nextPerformCaptainScopedAssignments(assignments).filter((assignment) => (
-    showCompleted || nextPerformAssignmentStatus(assignment) !== 'COMPLETE'
+    showCompleted || !nextAssignmentReported(assignment)
   ));
 }
 
@@ -1194,6 +1194,33 @@ async function openNextCorrectionIntake(details) {
 }
 
 // Shared assignment state: readiness and historical locking remain separate cues.
+// #205: resolve the occurrence from its own report, never annual progress.
+// A partial report finishes that day's assignment; continuation stays in backlog.
+function nextAssignmentReported(assignment) {
+  return Number(assignment.work_report_count || 0) > 0;
+}
+
+function nextSetupLocalDate(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(now);
+  const part = (name) => parts.find((item) => item.type === name).value;
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+function nextAssignmentLate(assignment, workDate = assignment.work_date) {
+  return Boolean(workDate && workDate < nextSetupLocalDate() && !nextAssignmentReported(assignment));
+}
+
+function nextAssignmentReportedLabel(assignment) {
+  return Number(assignment.reported_percent_complete) >= 100
+    ? 'COMPLETE — Work Reported' : 'INCOMPLETE — Work Reported';
+}
+
+function nextScheduleWarning(text) {
+  return `<div class="setup-205-action-warning" role="status" style="border:2px solid #a40000;border-left:8px solid #a40000;background:#fff0f0;color:#8b0000;padding:8px 10px;margin:6px 0;font-weight:900;font-size:1rem">${escapeHtml(text)}</div>`;
+}
+
 function nextSetupAssignmentStatus(task) {
   const executionStatus = String(task.execution_status || '').toUpperCase();
   const boardStatus = String(task.board_status || '').toUpperCase();
@@ -1211,7 +1238,10 @@ function nextPerformAssignmentCard(assignment) {
   const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
   const crew = nextPerformCrew(assignment);
   const captain = crew?.captain_display_name || 'Captain TBD';
-  const status = nextPerformAssignmentStatus(assignment);
+  const late = nextAssignmentLate(assignment);
+  const status = nextAssignmentReported(assignment)
+    ? nextAssignmentReportedLabel(assignment)
+    : late ? 'LATE — NO WORK REPORTED' : nextPerformAssignmentStatus(assignment);
   const plannedCrew = nextPerformPlannedCrew(assignment);
   const plannedLabor = nextLaborHoursText(plannedCrew, task.expected_duration_minutes);
   const effort = String(task.effort_level || 'unknown').toLowerCase();
@@ -1234,7 +1264,7 @@ function nextPerformAssignmentCard(assignment) {
         <span class="next-perform-assignment-pills">
           <span class="setup-board205-badge effort-${escapeHtml(effort)}">${escapeHtml(effortLabel)}</span>
           ${shortCrew ? `<span class="setup-board205-badge short-crew-badge" title="Planned crew ${escapeHtml(plannedCrew)} / minimum ${escapeHtml(minimumCrew)}">SHORT CREW</span>` : ''}
-          <span class="pill setup-work-status" data-work-status="${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span>
+          <span class="pill setup-work-status" ${late ? 'style="background:#a40000;color:#fff;border:2px solid #a40000;font-weight:900"' : ''} data-work-status="${escapeHtml(status)}">${escapeHtml(status.replaceAll('_', ' '))}</span>
         </span>
       </summary>
       <div class="next-perform-assignment-context">
@@ -1244,6 +1274,7 @@ function nextPerformAssignmentCard(assignment) {
         · Est. labor ${escapeHtml(plannedLabor)}
       </div>
       ${readinessWarning}
+      ${late ? nextScheduleWarning("LATE — NO WORK REPORTED · Report missed work or remove from schedule") : ''}
       <div class="next-perform-actions">
         <button type="button" class="small secondary next-print-task">Print Task</button>
         <button type="button" class="small next-report-work">Report Work</button>
@@ -1302,6 +1333,74 @@ function nextPerformLaborKpis(assignments) {
   };
 }
 
+// #205: Linear elapsed-time capacity; never multiply by crew headcount.
+// Unknown durations remain unknown rather than being treated as zero work.
+function nextPerformShiftWorkload(items, shift) {
+  const capacity = shift === 'MORNING' ? 180 : shift === 'AFTERNOON' ? 120 : 300;
+  let known = 0, unknown = 0, notReady = 0;
+  for (const assignment of items) {
+    const task = nextPerformTask(assignment.setup_session_task_id);
+    const raw = task?.expected_duration_minutes;
+    const minutes = raw == null || raw === '' ? NaN : Number(raw);
+    if (!Number.isFinite(minutes) || minutes <= 0) unknown += 1;
+    else known += minutes;
+    if (task?.readiness_state === 'NOT_READY') notReady += 1;
+  }
+  return { capacity, known, unknown, notReady, count: items.length, overload: Math.max(0, known - capacity) };
+}
+function nextPerformWorkloadLabel(items, shift) {
+  const w = nextPerformShiftWorkload(items, shift);
+  const status = w.overload > 0 ? 'OVERLOADED' : w.unknown || w.notReady ? 'REVIEW REQUIRED' : 'WITHIN CAPACITY';
+  const color = w.overload > 0 ? '#9d2424' : w.unknown || w.notReady ? '#835900' : '#146044';
+  const background = w.overload > 0 ? '#fff0ef' : w.unknown || w.notReady ? '#fff6dd' : '#eaf8f0';
+  const hours = (minutes) => (minutes / 60).toFixed(2).replace(/0$/, '').replace(/\.$/, '');
+  return `<div role="status" style="position:sticky;top:0;z-index:3;border:2px solid ${color};border-radius:7px;padding:9px 12px;margin:6px 0 9px;background:${background};color:${color};font-weight:700">
+    <div style="font-size:1.05rem">${status} — ${hours(w.known)} / ${hours(w.capacity)} linear hours${w.overload ? ` · +${hours(w.overload)}h OVER` : ''}</div>
+    <div style="font-size:.85rem">${w.count} tasks · ${w.unknown} missing duration estimates · ${w.notReady} NOT READY</div>
+  </div>`;
+}
+
+// Count each crew once per shift; planned counts already include the Captain.
+// ALL_DAY remains explicit, and reported labor is never presented as attendance.
+function nextDayStaffingSummary(assignments, crews, taskRows = []) {
+  return ['MORNING', 'AFTERNOON'].map((shift) => {
+    const field = shift === 'MORNING' ? 'am_planned_crew_count' : 'pm_planned_crew_count';
+    const tasks = assignments.filter((item) => item.shift_code === shift);
+    const ids = new Set(tasks.map((item) => Number(item.setup_work_day_crew_id)));
+    crews.filter((crew) => Number(crew[field]) > 0).forEach((crew) => ids.add(Number(crew.setup_work_day_crew_id)));
+    let people = 0, unknown = 0, required = 0;
+    ids.forEach((id) => {
+      const crew = crews.find((item) => Number(item.setup_work_day_crew_id) === id);
+      // Tasks in one crew are sequential: use the largest minimum, not a sum.
+      const crewTasks = tasks.filter((item) => Number(item.setup_work_day_crew_id) === id);
+      required += crewTasks.length ? Math.max(1, ...crewTasks.map((item) => {
+        const task = taskRows.find((row) => Number(row.setup_session_task_id) === Number(item.setup_session_task_id));
+        return Math.max(1, Number(task?.normal_crew_min ?? item.normal_crew_min) || 1);
+      })) : 0;
+      if (crew?.[field] == null || crew[field] === '') unknown += 1;
+      else people += Number(crew[field]);
+    });
+    return `${shift === 'MORNING' ? 'AM' : 'PM'}: ${ids.size} crews · ${tasks.length} tasks · ${unknown ? `${people} people planned + ${unknown} crew sizes TBD` : `${people} people planned`} / ${required} minimum needed`;
+  }).join('\n') + (assignments.some((item) => item.shift_code === 'ALL_DAY')
+    ? ` · All Day: ${assignments.filter((item) => item.shift_code === 'ALL_DAY').length} tasks` : '');
+}
+
+// Use the existing Captain scope and authorized board response. No identity lookup
+// or hidden-day expansion is required to discover an outstanding report.
+function nextLateWorkSummary(assignments, board) {
+  const late = assignments.filter((item) => {
+    const day = (board.work_days || []).find((d) => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
+    return nextAssignmentLate(item, day?.work_date || item.work_date);
+  });
+  if (!late.length) return '';
+  return `<section aria-label="Late unreported work">${nextScheduleWarning(`${late.length} LATE / UNREPORTED TASKS`)}${late.map((item) => {
+    const crew = (board.crews || []).find((c) => Number(c.setup_work_day_crew_id) === Number(item.setup_work_day_crew_id));
+    const day = (board.work_days || []).find((d) => Number(d.setup_work_day_id) === Number(item.setup_work_day_id));
+    const captain = crew?.captain_display_name || 'CAPTAIN TBD';
+    return `<div style="border-left:5px solid #a40000;padding:10px;margin-bottom:8px">${nextScheduleWarning(`Captain: ${captain} — LATE / UNREPORTED`)}<strong>${escapeHtml(item.task_name || 'Task')}</strong> · ${escapeHtml(day?.work_date || item.work_date || '')} · Crew ${escapeHtml(crew?.crew_code || item.crew_lane || 'TBD')} · ${escapeHtml(item.shift_code === 'MORNING' ? 'AM' : item.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')}<br><button type="button" class="small next-late-report" data-assignment-id="${Number(item.setup_work_day_task_id)}">Report Work</button></div>`;
+  }).join('')}</section>`;
+}
+
 function renderNextExecution() {
   const target = el('next-perform-list');
   if (!target) return;
@@ -1346,14 +1445,40 @@ function renderNextExecution() {
     assignments.some((assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id))
   );
 
-  target.innerHTML = days.length ? days.map((day) => {
+  target.innerHTML = nextLateWorkSummary(scopedAssignments, board) + (days.length ? days.map((day) => {
     const dayAssignments = assignments.filter(
       (assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id)
     );
+    // Evaluate the entire day, not a Captain-filtered subset that could hide late work.
+    const wholeDay = allAssignments.filter((item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id));
+    const dayCanCollapse = day.work_date < nextSetupLocalDate()
+      && wholeDay.length > 0 && wholeDay.every(nextAssignmentReported);
+    const lateCount = wholeDay.filter((item) => nextAssignmentLate(item, day.work_date)).length;
+    const scopedDayAssignments = scopedAssignments.filter((item) => Number(item.setup_work_day_id) === Number(day.setup_work_day_id));
+    const reportedPersonHours = (scopedDayAssignments.reduce((sum, item) => sum + Number(item.actual_person_minutes || 0), 0) / 60).toFixed(1);
     const shifts = ['MORNING', 'AFTERNOON', 'ALL_DAY'];
     return `
       <section class="next-perform-day">
-        <h3>Setup Day ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.day_of_week || '')} · ${escapeHtml(day.work_date)}</h3>
+        ${dayCanCollapse ? `<button type="button" class="small secondary next-perform-toggle-complete-day" aria-expanded="false">▶ SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.work_date)} · ${dayAssignments.length} reported assignments · ${reportedPersonHours} reported person-hours</button>` : ''}
+        <div class="next-perform-day-content" ${dayCanCollapse ? 'hidden' : ''}>
+        <div style="border-top:5px solid var(--accent, #466a86);padding:12px 0;margin-top:22px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+          <h3 style="margin:0;font-size:1.25rem">SETUP DAY ${escapeHtml(day.setup_day_number ?? '—')} · ${escapeHtml(day.day_of_week || '')} · ${escapeHtml(day.work_date)}</h3>
+          ${appState.access?.can_manage_setup ? `<button type="button" class="small secondary next-perform-manage-day" data-work-date="${escapeHtml(day.work_date)}">Manage Schedule →</button>` : ''}
+        </div>
+        ${lateCount ? nextScheduleWarning(`${lateCount} LATE TASK${lateCount === 1 ? '' : 'S'} — NO WORK REPORTED`) : ''}
+        ${(() => {
+          const crewShifts = ['MORNING', 'AFTERNOON'].flatMap((shift) =>
+            [...new Set(dayAssignments.filter((a) => a.shift_code === shift).map((a) => Number(a.setup_work_day_crew_id)))]
+              .map((id) => nextPerformShiftWorkload(dayAssignments.filter((a) => a.shift_code === shift && Number(a.setup_work_day_crew_id) === id), shift))
+          );
+          const overloaded = crewShifts.filter((w) => w.overload > 0).length;
+          const unknown = crewShifts.reduce((n, w) => n + w.unknown, 0);
+          const notReady = crewShifts.reduce((n, w) => n + w.notReady, 0);
+          const color = overloaded ? '#9d2424' : unknown || notReady ? '#835900' : '#146044';
+          return `<div role="status" style="border:3px solid ${color};border-radius:8px;padding:12px;margin:8px 0;background:var(--surface, #f7f7f7);font-size:1.05rem;font-weight:700;white-space:pre-line">
+            ${escapeHtml(nextDayStaffingSummary(scopedAssignments.filter((a) => Number(a.setup_work_day_id) === Number(day.setup_work_day_id)), (board.crews || []).filter((c) => Number(c.setup_work_day_id) === Number(day.setup_work_day_id) && (setupNextState.performCaptainFilter === 'ALL' || Number(c.captain_person_id) === Number(String(setupNextState.performCaptainFilter).split(':')[1]))), board.tasks || []))}<br>${day.work_date < nextSetupLocalDate() ? `${scopedDayAssignments.filter(nextAssignmentReported).length} tasks reported · ${reportedPersonHours} actual person-hours reported so far` : ''}${overloaded || unknown || notReady ? '<br>Warnings:' : ''}${overloaded ? ` ${overloaded} crew shifts overloaded` : ''}${unknown ? ` · ${unknown} missing time estimates` : ''}${notReady ? ` · ${notReady} tasks not ready` : ''}
+          </div>`;
+        })()}
         ${shifts.map((shift) => {
           const shiftItems = dayAssignments.filter((assignment) => assignment.shift_code === shift);
           if (!shiftItems.length) return '';
@@ -1369,13 +1494,59 @@ function renderNextExecution() {
                 return `
                   <div class="next-perform-crew">
                     <h5>Crew ${escapeHtml(crew?.crew_code || crewItems[0]?.crew_lane || '—')} · ${escapeHtml(crew?.captain_display_name || 'Captain TBD')}</h5>
+                    ${crew?.captain_person_id == null ? nextScheduleWarning('CAPTAIN TBD — NEEDS CAPTAIN') : ''}
+                    ${nextPerformWorkloadLabel(crewItems, shift)}
                     ${crewItems.map(nextPerformAssignmentCard).join('')}
                   </div>`;
               }).join('')}
             </div>`;
         }).join('')}
+        </div>
       </section>`;
-  }).join('') : '<div class="empty-state">No scheduled or in-progress assignments match this view. Turn on Show completed to include completed work, or choose All scheduled work to see every Captain.</div>';
+  }).join('') : '<div class="empty-state">No scheduled or in-progress assignments match this view. Turn on Show completed to include completed work, or choose All scheduled work to see every Captain.</div>');
+
+  target.querySelectorAll('.next-late-report').forEach((button) => {
+    button.addEventListener('click', () => {
+      const details = [...target.querySelectorAll('details[data-assignment-id]')].find((item) => item.dataset.assignmentId === button.dataset.assignmentId);
+      details?.querySelector('.next-report-work')?.click();
+      details?.scrollIntoView({ block: 'center' });
+    });
+  });
+
+  // Navigate through the existing route to preserve browser history and view guards.
+  if (target.dataset.completedDayToggleInstalled !== '1') {
+    target.dataset.completedDayToggleInstalled = '1';
+    target.addEventListener('click', (event) => {
+      const button = event.target.closest('.next-perform-toggle-complete-day');
+      if (!button) return;
+      const content = button.closest('.next-perform-day').querySelector('.next-perform-day-content');
+      content.hidden = !content.hidden;
+      button.setAttribute('aria-expanded', String(!content.hidden));
+      button.textContent = content.hidden
+        ? button.textContent.replace('▼', '▶')
+        : button.textContent.replace('▶', '▼');
+    });
+  }
+  // Delegated listener is installed once on the stable Perform Work root.
+  // renderNextExecution replaces innerHTML repeatedly; child listeners are fragile.
+  if (target.dataset.manageScheduleInstalled !== '1') {
+    target.dataset.manageScheduleInstalled = '1';
+    target.addEventListener('click', async (event) => {
+      const button = event.target.closest('.next-perform-manage-day');
+      if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const date = button.dataset.workDate;
+      try {
+        const navigated = await navigateSetupView('schedule');
+        if (navigated && typeof board205FocusWorkDate === 'function') {
+          board205FocusWorkDate(date);
+        }
+      } catch (error) {
+        setAlert(error.message || error, 'error');
+      }
+    });
+  }
 
   target.querySelectorAll('.next-perform-assignment').forEach((details) => {
     details.querySelector('.next-report-work')?.addEventListener('click', async (event) => {
@@ -1864,3 +2035,4 @@ async function initializeNextPass() {
 }
 
 initializeNextPass();
+

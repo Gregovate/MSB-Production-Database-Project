@@ -119,7 +119,13 @@ This is engineering candidate documentation, not a Production deployment claim.
 
 ## Network search candidate — October 9, 2026
 
-PR #318 now has a V0.3.52-gis-network-search candidate consuming a read-only
+Current candidate is reconciled with main `38f6f9427007470cbc02b3e2d23a97450d4414ba`
+and preserves the accepted scheduling changes/Production closeout from PR #324/#325.
+Use Greg's laptop feature worktree `C:\lor\ImportExport\VSCode-171-map-review`;
+its primary main is divergent and must not be reset as a preview preparation step.
+
+
+PR #318 now has a V0.3.53-gis-network-search candidate consuming a read-only
 draw.io/GPX cross-reference: network groups highlight all segments of every
 endpoint-matched route and expose unresolved cables and endpoint conflicts.
 11 routes match by source endpoint names; 67 remain unresolved. These are
