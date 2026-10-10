@@ -17,6 +17,6 @@ if ($LASTEXITCODE -ne 0) { throw 'STOP: Setup Application regression failed.' }
 # readiness. Keep acceptance and browser review on one clone, with one capture.
 & "$PSScriptRoot/run_setup_disposable_browser_preview.ps1" -Server $Server `
     -CandidateSha $CandidateSha -TargetRef $targetRef -PreviewPort 8898 `
-    -PreviewEmail $PreviewEmail -ExpectedVersion 'V0.3.61-home-map' `
+    -PreviewEmail $PreviewEmail -ExpectedVersion 'V0.3.62-field-networks' `
     -MigrationPaths $migrations -ValidationPaths $validations -AllowConcurrentProductionWrites
 if ($LASTEXITCODE -ne 0) { throw 'STOP: browser preview failed; retain and inspect the report.' }

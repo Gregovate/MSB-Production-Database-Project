@@ -126,3 +126,13 @@ on unchanged bef48eae. These old exact-report query contracts do not match the
 integrated map inventory query. They remain unresolved and must not be reported
 as passing deployment gates. The integrated migration/browser wrapper is unchanged
 except its expected release version.
+
+## October 10, 11:48 CDT review and Field Wiring defaults
+
+Greg confirms Home container locations work in V0.3.61 and reports CLEAN EXIT.
+He requests Networks enabled by default on the Field Wiring entry. V0.3.62-field-networks
+adds NET to that entry's Stage/HV/PRI/Other-reference defaults. Setup defaults stay
+Stage/Containers/Independent Displays/Drop Points. This enables network geometry;
+individual network highlighting remains an explicit checklist selection.
+New candidate browser check is the Field Wiring Networks checkbox and visible
+network routes on entry. Production remains unchanged.

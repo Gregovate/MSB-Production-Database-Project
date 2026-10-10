@@ -41,13 +41,13 @@ page = client.get('/setup/locate/')
 assert page.status_code == 200
 assert 'MSB Park Map v1' in page.text
 assert 'href="/fieldwiring/"' in page.text
-assert 'V0.3.61-home-map' in page.text
+assert 'V0.3.62-field-networks' in page.text
 for url in ['/fieldwiring/fieldwiring.css','/fieldwiring/fieldwiring.js',
             '/setup/locate/assets/setup_locate_networks.json',
             '/setup/locate/assets/setup_locate_assets.js','/locate/']:
     assert client.get(url).status_code == 200, url
 assert client.get('/fieldwiring/api/health').json['version'] == 'V0.4.1-gis-entry'
-assert client.get('/setup/api/health').json['version'] == 'V0.3.61-home-map'
+assert client.get('/setup/api/health').json['version'] == 'V0.3.62-field-networks'
 assert client.post('/setup/locate/').status_code == 405
 '''
     subprocess.run([sys.executable, '-c', program], cwd=ROOT, check=True, capture_output=True, text=True)

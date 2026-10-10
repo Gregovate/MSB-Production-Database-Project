@@ -16,7 +16,7 @@ const profileCode = page.match(/const mapView=.*?group\.addTo\(map\);/)[0];
 for (const [query, expected] of [
   ['', ['stages','containers','displays','drops']],
   ['?view=setup', ['stages','containers','displays','drops']],
-  ['?view=fieldwiring', ['stages','HV','PRI','refs']],
+  ['?view=fieldwiring', ['stages','HV','PRI','refs','NET']],
   ['?view=unknown', ['stages','containers','displays','drops']],
 ]) {
   const visible = [];
@@ -112,7 +112,7 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   assert.equal(activeIds().size, 0, 'Parent off restores all highlighted source tracks');
   assert([...controls.values()].every(c => !c.checked));
   assert(page.includes('<details id="network-picker"><summary>'), 'Network list has native keyboard-accessible disclosure');
-  assert(page.includes('V0.3.61-home-map · Updated 2026-10-10'));
+  assert(page.includes('V0.3.62-field-networks · Updated 2026-10-10'));
   const styles = vm.runInNewContext('(' + page.match(/const trackStyles=(.*?);/)[1] + ')');
   assert.equal(styles.PRI.color, '#ff8b25');
   assert.equal(styles.HV.color, '#dd2424');
