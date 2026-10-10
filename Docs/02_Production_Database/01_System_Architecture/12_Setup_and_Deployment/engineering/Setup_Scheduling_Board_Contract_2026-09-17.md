@@ -532,7 +532,17 @@ past assignment + actual work + incomplete
     -> create a distinct current/future continuation assignment
 ```
 
-If started/incomplete work has no continuation scheduled yet, the prior day remains visible by default (or equivalently must remain strongly surfaced as unresolved). Once a future continuation exists, the old historical day may leave the default board and remain available through the history toggle.
+A report resolves that assignment for its work day, including a partial or zero-duration report. Remaining annual work returns through the existing Needs Rescheduling / Priority Continuation backlog. It does not keep the reported historical day unfinished while waiting for a future continuation.
+
+For historical-day visibility, completed means all assignments have reports, not that every annual task reached 100%. Such past days may collapse and appear through the Completed filter in both Plan / Schedule and Perform Work. A started timestamp, lock flag, or completion of the annual task elsewhere does not substitute for a report on this occurrence.
+
+Reported assignment badges use that occurrence's reported percentage: **INCOMPLETE — Work Reported** or **COMPLETE — Work Reported**. A past assignment without a report is **LATE — NO WORK REPORTED**. Show a prominent red warning on the assignment and a day-level late count; unresolved late days remain expanded. Provide the existing Report Work path and retain governed removal for unworked assignments. Never unlock or erase execution history to remove a warning.
+
+Captain TBD must be conspicuous in Perform Work's crew heading and in the first Plan / Schedule column under the crew heading, in addition to the assignment-card warning. Capacity indicators do not replace missing-Captain warnings.
+
+Operational date boundaries use America/Chicago with daylight-saving rules, independent of server UTC or browser timezone. The fixed Updated footer identifies a source revision; it is not the operational date.
+
+Operator clarification and implementation tracking: #205, PR #324 (2026-10-09). These requirements are not a claim that the correction is already deployed.
 
 ## Historical Assignment Identity and Stickiness
 
@@ -882,3 +892,4 @@ Disposable acceptance must prove at minimum:
 ## 2026-10-05 tablet launch-debug candidate (not Production accepted)
 
 DBG-2026-001/002/003 are being reviewed together: passive COMPLETE SETUP countdowns, direct board/task panel navigation at <=1100 CSS pixels, and a visible In Progress execution-status filter. Existing annual/history/authorization and desktop scroll boundaries remain authoritative. [Candidate scope and acceptance checklist](../../../../../Setup/Acceptance/Setup_205_Tablet_Launch_Debug_Candidate.md) records the exact branch, local validation and pending disposable/tablet acceptance. Production acceptance above does not accept this candidate.
+
