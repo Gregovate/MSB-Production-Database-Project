@@ -20,7 +20,7 @@ stopgaps below do not authorize continued maintenance of competing masters.
 | Waypoint identities and maintained reference data | **PostgreSQL is the authority.** Managers need a usable governed waypoint editor. Correct once in the database; map and downstream consumers use the same accepted revision. |
 | ExpertGPS waypoints/tracks | Export maintained database data to GPX for ExpertGPS waypoint/track adjustment. Reconcile changes back into PostgreSQL against stable IDs and the exported baseline, with explicit conflicts and retained provenance. ExpertGPS is a geometry-editing tool, not an independent competing master. |
 | Cable tests and evidence of cables between waypoints | **LinkIQ/LinkWare FLW is the authority for test data and evidence of how many cables connect waypoints.** The supplied FLW is SQLite. Import one-way and preserve original tests. Multiple appearances/retests of the same cable are not automatically additional physical cables; retain ambiguity explicitly. **Corrections cannot be pushed back to the tester.** |
-| Park draw.io schematic | Historically used to record test data; **not all entities have been converted to structured XML data objects**. Preserve unconverted entities and operator layout. Update reviewed bound objects from maintained DB data; never assume every graphical item is a database row or discard unconverted evidence. |
+| Park draw.io schematic | Contains **existing keys** used to build an understandable **park network schematic only**. Historically used to record test data; not every entity is converted to structured XML data. Preserve/reuse keys, unconverted entities and operator layout; update reviewed bound network objects from maintained DB data. Schematic coordinates are presentation, not geographic positions. |
 | Panels, circuits and power waypoints | Authorized **Production Crew** need to add/maintain circuits within existing panels and link existing power waypoints. Maintain which circuits must be turned on/off for show season and restoration. Managers maintain waypoint identity/position; crew circuit links do not require waypoint-edit permission. Crew meter-ID maintenance remains permitted by the recovered role clarification. |
 
 Track priorities already documented on #171 are **NET, PRI and HV**; preserve
@@ -63,8 +63,13 @@ source provenance and test history remain necessary, but disconnected import
 tables or two viewers are not the intended outcome. PostgreSQL is the maintained
 waypoint authority; LinkIQ remains the origin/authority for test evidence and
 cable-count evidence. Preserve repeated-test versus distinct-cable distinctions.
-The partially structured draw.io schematic supplies legacy reconciliation evidence
-and is a downstream presentation target, not a third competing maintenance master.
+The draw.io file contains existing keys used to build an understandable schematic
+of the **park network only** (operator clarification, October 11 at 16:24).
+Preserve and reuse those keys when binding maintained network records to schematic
+entities. Not every entity has been converted to structured XML data, so retain
+unconverted content and layout. Do not assume the keys' exact field names or
+uniqueness without inspecting their definitions. This is a network schematic,
+not a geographic editor, power-circuit editor or third competing maintenance master.
 GPX export is a projection of the integrated database's geographic records;
 it must not imply tester writeback.
 
