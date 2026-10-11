@@ -31,7 +31,7 @@ On each run, verify file existence and calculate the fresh SHA-256 before inspec
 
 On `LinkIQ Data Import for DB with corrected names(5).flw`: **684** LinkWare project representations, **476** distinct UUIDs, **208** duplicate project appearances; original FLW remains read-only. On latest ExpertGPS `(20261011-023933).gpx`: **233** distinct nonempty Label on Map values, **181** tracks. Local pytest tests cover these exact inputs as well as synthetic fail-closed fixtures.
 
-The normalized schema is proposed in `sql/171_site_infrastructure_schema_candidate.sql`. It contains maintained waypoint aliases, tracks, cable identities/network assignments, source observation provenance and test UUID history. It has **not** been installed or validated against a live current PostgreSQL schema. No Production privileges/grants are created.
+The normalized schema is proposed in `sql/171_site_infrastructure_schema_candidate.sql`. It contains maintained waypoint aliases, tracks, cable identities/network assignments, source observation provenance and test UUID history. Its candidate schema/synthetic SQL invariant gate passed against a current-Production disposable clone at `baefba3c1e849430536c45581a0bacb09db5bacb`, recorded in PR #319 comment 6108592361 and server report `/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Acceptance_20261011T113238.txt`. That does not establish real-source import/reimport acceptance. It has not been migrated to Production. No Production privileges/grants are created.
 
 ## Immediate implementation path
 
@@ -52,3 +52,73 @@ For the LinkIQ production importer, the database writer must run in one transact
 4. Validate draw.io generation opened, rendered, and printed at 19×13 Super B; verify no lost labels or network routes. Keep accessible print output independently of tablet map.
 5. Match reviewed physical cable identities and network taxonomy, accept unresolved candidates explicitly. Test a second FLW containing one new test and a changed label of an old UUID: one appended test, zero duplicated UUIDs, no regression of reviewed cable identities.
 6. Complete #122 shared disposable/browser acceptance, explicit Production authorization, Server Management maintenance/freeze/snapshot/deploy/online proof, exact release log, and #230 application acceptance. **No Production data or schema modified during preparation.**
+
+
+## October 11 continuation — required completion and role boundary
+
+Governing issue: **#122**. #171 owns reference/GIS/source synchronization; #230
+owns usable governed reference editing. The Park Map already worked October 10;
+the current online waypoint identities remain stale. Do not rebuild the viewer
+or describe the remaining work as merely rendering a map.
+
+| Action | Manager | Production crew volunteer |
+|---|---|---|
+| Create/update waypoint and infrastructure identities, geographic position and ownership | Allowed through governed commands | Not allowed |
+| Maintain circuits for existing infrastructure identities | Allowed | Allowed |
+| Link circuits to existing waypoints | Allowed | Allowed |
+| Maintain seasonal turn-on/turn-off instructions | Allowed | Allowed |
+| Update meter IDs attached to existing infrastructure | Allowed | **Allowed** |
+
+Meter IDs are explicitly crew-maintainable attributes. They are not immutable
+panel keys. Backend authorization must enforce this distinction independently of
+visible controls. Manager control of identities must not prevent crew circuit or
+meter maintenance. Preserve actor/time history and reject stale concurrent edits.
+No actual role grant is made by this contract.
+
+Remaining acceptance is end-to-end: file-picker GPX and LinkWare imports (pickers
+reported present but untested); PostgreSQL review/edit; map reads of accepted DB
+reference revisions; versioned offline data; ExpertGPS export for track editing
+and waypoint repositioning with conflict-aware reimport; bound draw.io refresh
+that preserves unconverted elements/layout; panels/circuits/feed links, MSB/City
+ownership, meter IDs and seasonal actions. Preserve original LinkIQ tests and
+reviewed cable identity links while recording corrected names separately.
+
+Do not equate the existing schema gate or 22-pass extraction regression with these
+acceptance outcomes. Reuse completed evidence; test changed behavior and missing
+integration only. Greg's working tree is
+`C:\lor\ImportExport\VSCode-319-linkiq-test`, local branch previously recorded as
+`review/319-linkiq-test`, remote `feature/171-cableiq-import-validation`, last
+operator-reported pull `42316d5e..83a544b0`.
+
+### Current attachment/source identity
+
+The October 11 attachments match the previously accepted GPX and FLW bytes:
+
+| Attachment | SHA-256 |
+|---|---|
+| `2026_msb_FRESH_START_CLEANED_2026-10-06(20261011-150141).gpx` | `3272269d493131f0b2e401013ac7f32dc55b598ebf3e7e53d6ab3fd9ec7e2cea` |
+| `LinkIQ Data Import for DB with corrected names(6).flw` | `e76d39179da99bb74ed8e2af7f4e555a71ff530cae58bdb0015e770677a3ef5e` |
+| `Park Network Schematic 2026(20261011-150238).drawio` | `65d7607485e526e4d058b4ce997a24f2fe53a731b4f52817dcd44233e420a0a8` |
+
+Use canonical Shared Drive GPX/FLW locations above. The repository GIS authority
+records the schematic at `Network\Park Network Schematic 2026.drawio` beneath
+`Shared drives\Display Folders\Park Drawings`; attachment suffixes are upload
+copies, not changes to those canonical filenames. Record these locations in #171.
+Do not commit the 253 MB raw FLW into Git.
+
+### Release/access checkpoint
+
+PR #352 published source correction head `2bc88ae627420c2138268e39a26b4942a3248580`
+has tested tree `c4d31e05054307fcc86c1e5b27b87fe0ba70d1f5`: 751 Setup Python
+regressions and network browser harness PASS in the engineering environment.
+It is not deployed. It still marks prior schematic/LOR snapshots as unreviewed.
+This environment has GitHub connector access but a read-only SSH reachability
+check to documented `192.168.5.9` returned `Network is unreachable`. It cannot
+operate Greg's workstation, run the private server acceptance launcher, or deploy
+the map. No Production dump/migration/restart was attempted.
+
+Greg reports an approved preview exception covering both `/setup` and `/reference`.
+Preserve it; reconcile its exact implementation with Server Management before
+launch. Do not invent a replacement preview or require a repeated dump simply
+for source-map inspection. Source-only map deployment and database migration have
+different runbook gates; neither has been executed by this continuation.

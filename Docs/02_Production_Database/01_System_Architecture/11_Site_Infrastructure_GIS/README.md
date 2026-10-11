@@ -17,6 +17,12 @@ and staged browser acceptance requirements are recorded in
 entire park. #230 owns the editor, #171 owns map/source/network/power
 interpretation, and #88 retains movement state.
 
+## Icon artwork maintenance — new normal operator workflow (#171)
+
+For updates to GIS/ExpertGPS **artwork**, use the repository-controlled [MSB Icon Library Manager](../../../../Database/EngineeringTools/README-Icon-Library-Manager.md) via its **one-time-installed Windows desktop shortcut**. Edit artwork under G: `MSB GIS\\Symbols\\Masters`, save approved Plain SVG output under sibling `Plain`, then use the manager's **Check and preview icons** and **Save approved PNG changes** controls. It discovers all icons dynamically; **maximum canvas 32 px wide and 32 px high**, with smaller/rectangular dimensions allowed. It rejects wrong units (mm, etc.), Inkscape metadata accidentally retained in Plain, missing resources, oversized or incorrect PNG exports, and conflicting destination filenames. It backs up changed PNGs and keeps hash receipts under shared `Symbols\\release-history`. The canonical derived output is `Symbols\\png` — no more routine ZIP handoffs through Downloads.
+
+**Source/master distinction remains intentional:** multiple Plain icons can come from one layered master (LP-Combo), so an operator selects the desired layers in Inkscape; the manager does **not** guess them. ExpertGPS local copies, GPX type/URLs, Synology/web assets, browser markers and draw.io schematic/library content are **separate release gates**, not synchronized automatically by the PNG update. The desktop GUI is implemented and disposable engine/integration tests have passed, but first-run Windows/G: acceptance is still pending.
+
 ## Required reference-data editing authority — #171 / #230
 
 Operator decision, 2026-10-10: the MSB database-backed application will be the
@@ -426,12 +432,33 @@ ExpertGPS, web/Synology publication, legacy GPX aliases and draw.io's embedded
 schematic artwork have not been migrated or accepted. **A controlled additive
 canonical PNG promotion utility is now available**:
 [Promote-ApprovedGISPNGs.ps1](../../../../Database/EngineeringTools/Promote-ApprovedGISPNGs.ps1).
-First run the exact-SHA ZIP / current-Plain / destination collision check in
-default READ-ONLY mode. After verifying zero conflicts, `-Apply` creates only
-missing 32 approved PNG derivative files in the Shared Drive `Symbols\\png`
-folder, then verifies hashes and writes a local receipt. Existing PNGs are
-never overwritten; old-name files are preserved. Live operator promotion has
-not yet occurred. Govern each independently. Detailed source
+**Newer October 11 source update:** the operator has added a left and right
+Wi-Fi antenna as separate Inkscape masters and Plain SVG derivatives
+(`antenna-l`, `antenna-r`), making the **intended current library 34 icons**.
+The previous laptop preflight passed for the then-current **32-icon** ZIP
+(32 missing/0 conflicts), but it is **stale for a complete release** after
+these source additions. The promotion utility now rejects current Plain
+filenames absent from its approved manifest, even when all older SVG hashes
+still match. **Do not run the existing 32-icon `-Apply` until the complete
+34-icon batch has been exported, reviewed, approved and pinned.** Existing
+correct files must be preserved; no replacements/deletions are authorized.
+The operator's 32-icon write status is not yet confirmed (receipt not supplied).
+**Fresh 34-icon staging ZIP uploaded and independently checked:**
+`MSB_ExpertGPS_Current_Plain_Staged(2).zip` contains all 34 PNGs,
+manifest and original readme. ZIP CRC, 34/34 PNG hashes and RGBA dimensions
+PASS. All previous 32 PNGs and their SVG manifest hashes are unchanged; only
+new `antenna-l.png` and `antenna-r.png` are added. **Operator scale
+correction completed in Inkscape:** the 121×121 px exports resulted from
+source documents measured in **mm** rather than **px**; the operator reports
+switching to px and resizing both antenna illustrations. The prior 34-icon ZIP
+still contains the oversized old antenna outputs and is superseded as a
+promotion candidate. New actual Plain SVG dimensions are **not yet verified**;
+rerun the exporter on current G: Plain into a new stage, inspect the two new
+antenna PNGs and confirm the other 32 unchanged. A fresh exact-SHA 34-icon
+release review/promotion pin is required before writing to canonical `png`.
+Live source SVG lineage and actual installed/published symbols remain separate
+gates. The existing promoter is pinned to the older 32-icon ZIP and must not
+be applied for the complete 34-item release. Govern each independently. Detailed source
 triage and post-correction acceptance rules are in the linked GIS symbol contract.
 No ExpertGPS, Synology, draw.io, or browser publishing has been verified. draw.io keeps `Network\MSB-icon-library.xml`, but
 the existing `Network\Park Network Schematic 2026.drawio` embeds its own SVG/PNG
