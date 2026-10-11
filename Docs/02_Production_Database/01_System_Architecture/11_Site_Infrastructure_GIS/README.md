@@ -403,9 +403,12 @@ SHA-256 matches the operator-supplied corrected `manhole.svg` exactly. An
 independent Inkscape raster rendering is **pixel-for-pixel identical** to the
 new manhole PNG; the original mistaken fire-hydrant artwork is corrected. All
 other 31 PNGs (including the operator-approved standalone bare LP) are unchanged.
-**Staged image integrity PASS; Star release inclusion still needs an operator
-decision.** Installed ExpertGPS, web/Synology publication, legacy GPX aliases
-and draw.io schematic artwork have not been migrated or accepted. Detailed source
+**Final artwork-selection decision (operator, October 11): include `star.png`**
+in the approved 32-icon release candidate, alongside the corrected manhole and
+standalone LP. Complete staged ZIP/manifest/source integrity is PASS. **Only
+staging/source scope is approved**; canonical `Symbols\\png` promotion, installed
+ExpertGPS, web/Synology publication, legacy GPX aliases and draw.io's embedded
+schematic artwork have not been migrated or accepted. Govern each independently. Detailed source
 triage and post-correction acceptance rules are in the linked GIS symbol contract.
 No ExpertGPS, Synology, draw.io, or browser publishing has been verified. draw.io keeps `Network\MSB-icon-library.xml`, but
 the existing `Network\Park Network Schematic 2026.drawio` embeds its own SVG/PNG
