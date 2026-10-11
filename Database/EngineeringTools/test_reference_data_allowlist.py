@@ -52,6 +52,10 @@ def test_shared_disposable_runner_uses_candidate_scoped_allowlist():
     assert "$referenceMigrationPaths -ccontains $Path" in wrapper
     assert "if (@($referenceSqlPaths).Count -gt 0)" in wrapper
     assert "historical Setup-only previews" in wrapper
+    # Historical Setup acceptance still owns these specific shared audit gates;
+    # the reference-data extension must never erase their existing contract.
+    assert "explicitly approved shared database repair" in wrapper
+    assert "explicitly approved shared database validation" in wrapper
 
 
 def test_disposable_runner_preserves_remote_ref_and_local_review_branch():
