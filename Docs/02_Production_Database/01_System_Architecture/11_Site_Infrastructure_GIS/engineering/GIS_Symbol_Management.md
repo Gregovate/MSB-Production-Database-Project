@@ -345,9 +345,27 @@ After this clarification, the operator reran `Export-ExpertGPSSymbols.ps1` and p
 - **Exactly one icon changed from 07:01:** `manhole.png`. The other **31 PNGs remain byte-for-byte identical**, and their manifest source SVG hashes also remain unchanged. Manhole's source SVG SHA-256 changed from `9b74037f9551db5c918d1b427d46cf5be42c6597c9644ca0dcc120e7cfcbcc45` to `6aac9641f3964787dc7db54e2bf6c023f335875abd30f6f5e891085a23f6978d`, **exactly matching the corrected attachment**. This verifies the source was replaced as intended, not just relabeled.
 - The **new manhole is genuinely distinct from the hydrant**: its artwork is a circular manhole/utility-cover marker rather than the previous white hydrant silhouette on a red tile. Its output remains **32×32 RGBA**, with **300 transparent pixels**. A fresh Inkscape rendering of the exact attached `manhole.svg` was independently compared to staged `manhole.png`: **zero differing RGBA pixels**. Current `fire-hydrant.png` is unchanged from the previously audited ZIP.
 - Existing `lp.png` remains unchanged from the first successful 32-icon batch and the operator already approved its current **bare standalone pole**. The older combo pole is correctly represented by separate `lp-combo` / `lp-network` / `lp-outlet` symbols; the prior LP semantic hold is closed.
-- `star.png` is **unchanged** from 07:01 but is newly introduced relative to the older 31-icon baseline. **Operator release-inclusion decision remains outstanding**, as do governed installed/public GPX alias and browser/draw.io compatibility validation.
+- `star.png` is **unchanged** from 07:01 and newly introduced relative to the older 31-icon baseline. **Operator later explicitly approved Star for inclusion in the 32-icon release on October 11**; source/artwork acceptance remains the same, while governed installed/public GPX alias and browser/draw.io compatibility validation is still pending.
 
-The current **32-icon PNG staged artwork batch** is now **source/manifest/image-integrity accepted for release planning**, **not automatically approved for deployment**. It has **not** been copied into canonical G: `Symbols\png`, installed in ExpertGPS, published to Synology or browser/webassets, or substituted into existing embedded draw.io schematic icons. Preserve old ExpertGPS filename aliases and source GPX symbols; do not silently rename. The reviewed 07:24 ZIP, rather than the outdated 07:01 package, is the candidate for any further release gate.
+The current **32-icon PNG staged artwork batch**, including `star.png`, is **source/manifest/image-integrity accepted and operator-approved in scope for release planning**, **not automatically approved for deployment**. It has **not** been copied into canonical G: `Symbols\png`, installed in ExpertGPS, published to Synology or browser/webassets, or substituted into existing embedded draw.io schematic icons. Preserve old ExpertGPS filename aliases and source GPX symbols; do not silently rename. The reviewed 07:24 ZIP, rather than the outdated 07:01 package, is the candidate for any further release gate.
+
+### Operator's Star inclusion decision — October 11
+
+The operator explicitly responded **“yes we can add the star”** to the question of whether the newly generated `star.png` belongs alongside the other 31 symbols. **Decision: include `star.svg` → `star.png` in the planned, controlled 32-icon MSB GIS release.** No additional SVG/PNG rendering or 31-icon rollback is needed: the already audited corrected **07:24 ZIP** contains the accepted 32 icon identities and `star.png` matches its audited manifest. The older 31-icon inventory and package remain historical baselines only.
+
+| Release-selection item | Decision |
+| --- | --- |
+| Staged release candidate | **07:24 corrected 32-icon package**, SHA-256 `85569dc7cafa1da169bd68244bb9757daadfb53c1d02e911256790d0c6a63e53` |
+| `manhole.png` | **Approved corrected** circular manhole, exact match to attached SVG and independent pixel render |
+| `lp.png` | **Approved** bare standalone light pole; combo/network/outlet symbols are distinct variants |
+| `star.png` | **Approved for inclusion**, 32×32 RGBA; new relative to original 31-file baseline |
+| Selected icon count | **32** |
+| Image file/hash and manifest integrity | **PASS** for complete selected batch |
+| Canonical `Symbols\png` copy | **Not yet performed or verified** |
+| Installed ExpertGPS and existing GPX custom type/filename alias compatibility | **Not yet performed or verified** |
+| Synology/web/browser SVG/PNG deployment and draw.io embedded artwork | **Not yet performed or verified** |
+
+**Next controlled phase:** establish a versioned, collision-safe promotion from the accepted staging ZIP to `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\png` without changing source `Masters`/`Plain`. Compare destination contents and preserve/backup any existing files before writing; confirm SHA-256 matches the staged release afterward. ExpertGPS `%LOCALAPPDATA%\TopoGrafix\Symbols\msb`, Synology `webassets/images/symbols/msb` and `msb-svg`, GPX type names/URLs, browser marker lookup and draw.io's embedded libraries/schematic are **separate governed propagation/compatibility gates**. This decision **authorizes Star's inclusion in the proposed icon set, not an unreviewed installation, rename/delete of legacy symbols, web publication or Production deployment**. Issue #171 remains open.
 
 ## Approved 31-file Plain SVG / ExpertGPS PNG name-and-size baseline
 
