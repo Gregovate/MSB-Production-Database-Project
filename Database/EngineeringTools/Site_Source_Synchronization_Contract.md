@@ -467,3 +467,37 @@ still fetches assets/setup_locate_networks.json; no site_waypoint/export_map_pro
 consumer was found in Setup or FieldWiring application code. DB-backed reference
 map/editing remain unfinished. Preserve this clone through the ongoing review;
 do not repeat the dump merely to move between database and browser gates.
+
+### Popup evidence and parallel icon-work boundary — 2026-10-11 17:54 CDT
+
+Greg supplied six screenshots from the open map review; all six were successfully
+read from attachments despite the chat's earlier missing-file errors.
+
+| Example | Visible source metadata |
+|---|---|
+| WV-03 | Type OUT-Combo; source time 2020-11-07T21:05:47Z |
+| PANEL GG-00 | Type Panel; description and comment both 932344017; source time 2023-01-17T20:30:31Z |
+| HV Panel CL to CL-03 | Type High Voltage; description 2021 New |
+| NET CH Icicle Tunnel to Bridge | Type Network; description Installed 2023 New 5 Cables 2 Reg Aux G |
+| PRI 27-01 to HWY 42 | Type Primary; no description shown |
+| XFORM 36-03 | Type Transformer; description and comment both 36 03; source time 2016-08-30T15:57:42Z |
+
+Preserve these source fields through database import and map consumption. Source
+timestamps are provenance, not current inspection or test dates. Do not infer
+that 932344017 is a meter ID without confirmation. Track description cable counts
+are historical notes, not authoritative current physical cable counts; reconcile
+LinkIQ evidence and reviewed cable identities separately. Track endpoint/name
+corrections remain outstanding; preserve geometry and shared waypoint capability.
+
+Greg reports another thread owns icon publication and map rendering corrections:
+legacy PNG URLs still used instead of msb-svg; forced 32x32 sizing distorts
+non-square icons; approved Plain SVG publication also pending. Do not duplicate
+that work or change waypoint identities/GPX to compensate. This workstream owns
+PostgreSQL data integration and reference-map consumption. Coordinate edits to
+locate_preview.html with that work before integration; preserve approved icon
+mapping and aspect ratio. No claim that icon fixes are deployed or accepted.
+
+Screenshot filenames, in order: image(20261011-224831).png,
+image(20261011-224918).png, image(20261011-225135).png,
+image(20261011-225254).png, image(20261011-225343).png,
+image(20261011-225424).png.
