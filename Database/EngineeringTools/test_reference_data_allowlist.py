@@ -52,6 +52,18 @@ def test_shared_disposable_runner_uses_candidate_scoped_allowlist():
     assert "$referenceMigrationPaths -ccontains $Path" in wrapper
     assert "if (@($referenceSqlPaths).Count -gt 0)" in wrapper
     assert "historical Setup-only previews" in wrapper
+
+
+def test_disposable_runner_preserves_remote_ref_and_local_review_branch():
+    wrapper = (ROOT / 'Setup' / 'Acceptance'
+               / 'run_setup_disposable_acceptance.ps1').read_text(encoding='utf-8')
+    assert "[string]$LocalReviewBranch = ''" in wrapper
+    assert '$LocalReviewBranch = $TargetRef' in wrapper
+    assert '$currentBranch -ne $LocalReviewBranch' in wrapper
+    assert '"refs/remotes/origin/$TargetRef"' in wrapper
+    assert '$remoteHead -ne $CandidateSha' in wrapper
+    assert '"$CandidateSha"' in wrapper
+    assert '"$TargetRef"' in wrapper
     assert "$referenceValidationPaths -ccontains $Path" in wrapper
     assert "171_site_infrastructure_schema_candidate.sql'" not in wrapper
     assert "171_site_infrastructure_disposable_validation.sql'" not in wrapper
