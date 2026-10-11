@@ -342,6 +342,11 @@ pointing to `https://webassets.sheboyganlights.org/images/symbols/`.
 The similarly named `MSB Icons` directory is **not** the currently accepted
 replacement. Preserve `msb` and its legacy PNG/BMP URL references until an
 explicit ExpertGPS/GPX folder migration is reviewed; see the linked symbol SOP.
+**PNG currentness gap:** previously delivered October 9/11 PNG ZIPs derive from an
+uploaded SVG snapshot, not a fresh export of today's Shared Drive Plain files.
+The [staged current-Plain exporter](../../../../Database/EngineeringTools/Export-ExpertGPSSymbols.ps1)
+must be run on a PC with access to those files before treating a PNG batch as
+current; installation/publication has not been verified.
 
 Operator-confirmed direction, 2026-10-08: ExpertGPS manages symbols by type
 name. In that program the type name is the key and cannot be renamed; changing
