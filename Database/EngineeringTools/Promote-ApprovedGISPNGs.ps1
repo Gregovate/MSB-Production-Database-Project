@@ -43,19 +43,19 @@ if ([string]::IsNullOrWhiteSpace($ZipPath)) {
     # Do not guess the operator's precise timestamped staging-folder name.
     # Find the single reviewed byte-exact ZIP among the standard Downloads stages.
     $downloads = Join-Path $env:USERPROFILE 'Downloads'
-    $matches = @()
+    $approvedCandidates = @()
     $stageDirs = @(Get-ChildItem -LiteralPath $downloads -Directory -Filter 'MSB-ExpertGPS-PNGs-*' -ErrorAction Stop)
     foreach ($dir in $stageDirs) {
         $candidate = Join-Path $dir.FullName 'MSB_ExpertGPS_Current_Plain_Staged.zip'
         if (Test-Path -LiteralPath $candidate -PathType Leaf) {
             $candidateHash = (Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash.ToLowerInvariant()
-            if ($candidateHash -ceq $expectedZipHash) { $matches += $candidate }
+            if ($candidateHash -ceq $expectedZipHash) { $approvedCandidates += $candidate }
         }
     }
-    if ($matches.Count -ne 1) {
-        throw "Found $($matches.Count) byte-exact approved ZIP candidates in Downloads. Pass -ZipPath explicitly if it was moved or duplicated."
+    if ($approvedCandidates.Count -ne 1) {
+        throw "Found $($approvedCandidates.Count) byte-exact approved ZIP candidates in Downloads. Pass -ZipPath explicitly if it was moved or duplicated."
     }
-    $ZipPath = $matches[0]
+    $ZipPath = $approvedCandidates[0]
 }
 if (-not (Test-Path -LiteralPath $ZipPath -PathType Leaf)) {
     throw "Candidate ZIP not found: $ZipPath. Pass -ZipPath with the actual corrected 07:24 ZIP."
