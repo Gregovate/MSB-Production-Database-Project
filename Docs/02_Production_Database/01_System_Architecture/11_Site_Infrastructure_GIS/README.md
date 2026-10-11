@@ -45,8 +45,11 @@ establishes bytes and structure, not the correctness of every relationship.
 Fresh GPX: 233 waypoints and 181 tracks; track-name prefixes NET 78, PRI 15,
 HV 70, other 18. Its hash differs from the earlier baseline
 3272269d493131f0b2e401013ac7f32dc55b598ebf3e7e53d6ab3fd9ec7e2cea.
-**Do not reuse the earlier GPX hash as approval for this new file.** Semantic
-differences have not yet been compared. FLW and drawing hashes match the earlier
+**Do not reuse the earlier GPX hash as approval for this new file.** Greg confirmed at 16:19 America/Chicago that this GPX was updated by his
+icon work this morning. This is operator-confirmed provenance for the new file,
+not evidence of a waypoint-correction regression. Semantic differences have not
+yet been compared; do not claim that every changed byte is icon-only or that
+coordinates/track geometry are unchanged without comparison. FLW and drawing hashes match the earlier
 recorded source baseline exactly. FLW was opened SQLite read-only; tables Records,
 606A, Admin and RecordData are present. Drawing parses as one diagram, 463 object
 elements and 743 mxCell elements; these raw structural counts do not classify
