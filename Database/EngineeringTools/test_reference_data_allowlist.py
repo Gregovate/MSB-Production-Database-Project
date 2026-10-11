@@ -62,8 +62,11 @@ def test_disposable_runner_preserves_remote_ref_and_local_review_branch():
     assert '$currentBranch -ne $LocalReviewBranch' in wrapper
     assert '"refs/remotes/origin/$TargetRef"' in wrapper
     assert '$remoteHead -ne $CandidateSha' in wrapper
-    assert '"$CandidateSha"' in wrapper
-    assert '"$TargetRef"' in wrapper
+    # Server receives both values through the acceptance manifest, not quoted
+    # as standalone shell arguments in the remote command.
+    assert '"candidate_sha`t$CandidateSha"' in wrapper
+    assert '"target_ref`t$TargetRef"' in wrapper
+    assert "'$remoteRunner' '$remoteManifest'" in wrapper
     assert "$referenceValidationPaths -ccontains $Path" in wrapper
     assert "171_site_infrastructure_schema_candidate.sql'" not in wrapper
     assert "171_site_infrastructure_disposable_validation.sql'" not in wrapper
