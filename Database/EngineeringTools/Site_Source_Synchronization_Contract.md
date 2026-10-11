@@ -427,3 +427,20 @@ COMMIT or ROLLBACK, closes the connection, and rejects nested transaction use.
 Focused verification: 63 passed / 1 skipped, including commit, failure rollback,
 retry, and nested-transaction rejection; Bash syntax and diff checks passed.
 Actual PostgreSQL import/replay and browser review remain pending the retry.
+
+### Reuse unchanged source transfers — 2026-10-11 17:29 CDT
+
+Greg reports the unchanged 253 MB FLW being uploaded again on every retry.
+Corrected browser wrapper: compute source SHA256 locally, perform one foreground
+SSH cache-presence probe, and put only missing sources in the existing SCP bundle.
+Server stores verified immutable source bytes in `$HOME/setup-source-cache`, keyed
+by SHA256 plus extension, and checks their hashes on each run before intake.
+Atomic publication prevents partially copied files being treated as cached.
+Preview cleanup removes its temporary bundle/clone, not this reusable source cache.
+A changed source gets a distinct key and retains the earlier evidence. Cache
+corruption fails closed. This adds no database dump and no background SSH process.
+The in-flight c2b206a2 run is not altered; its old cleanup may remove source files,
+so the first corrected run may need one cache-populating upload. No claim that
+already-deleted files can be reused. Validation: 25 tests passed including actual
+Bash cache reuse, new hash isolation, bad-upload rejection and existing runner
+contracts; Bash syntax and diff checks passed. Windows/server validation pending.

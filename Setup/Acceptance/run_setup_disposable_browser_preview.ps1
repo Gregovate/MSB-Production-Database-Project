@@ -266,10 +266,24 @@ try {
         $manifestLines += "validation`t$path"
     }
     if ($gisIntake) {
-        Copy-Item -LiteralPath $GisGpxPath -Destination (Join-Path $localBundle 'source.gpx')
-        Copy-Item -LiteralPath $GisFlwPath -Destination (Join-Path $localBundle 'source.flw')
-        $gpxHash = (Get-FileHash -LiteralPath (Join-Path $localBundle 'source.gpx') -Algorithm SHA256).Hash.ToLowerInvariant()
-        $flwHash = (Get-FileHash -LiteralPath (Join-Path $localBundle 'source.flw') -Algorithm SHA256).Hash.ToLowerInvariant()
+        # Hash the originals; only stage a local copy when the server lacks it.
+        $gpxHash = (Get-FileHash -LiteralPath $GisGpxPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        $flwHash = (Get-FileHash -LiteralPath $GisFlwPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($gpxHash -notmatch '^[a-f0-9]{64}$' -or $flwHash -notmatch '^[a-f0-9]{64}$') {
+            throw 'Invalid GIS source hash.'
+        }
+        # One foreground probe reports missing files through an exit bitmask.
+        # SSH owns the console directly; no password-sensitive output pipeline.
+        $cacheProbe = 'gis_cache="$HOME/setup-source-cache"; gis_missing=0; test -f "$gis_cache/{0}.gpx" || gis_missing=$((gis_missing+1)); test -f "$gis_cache/{1}.flw" || gis_missing=$((gis_missing+2)); exit "$gis_missing"' -f $gpxHash, $flwHash
+        & ssh -o ServerAliveInterval=15 -o ServerAliveCountMax=3 $Server $cacheProbe
+        $missingSources = $LASTEXITCODE
+        if ($missingSources -notin @(0, 1, 2, 3)) { throw 'GIS source-cache probe failed.' }
+        if (($missingSources -band 1) -ne 0) {
+            Copy-Item -LiteralPath $GisGpxPath -Destination (Join-Path $localBundle 'source.gpx')
+        } else { Write-Host "Reusing server GPX source $gpxHash" }
+        if (($missingSources -band 2) -ne 0) {
+            Copy-Item -LiteralPath $GisFlwPath -Destination (Join-Path $localBundle 'source.flw')
+        } else { Write-Host "Reusing server FLW source $flwHash" }
         $manifestLines += "gis_gpx_sha`t$gpxHash", "gis_flw_sha`t$flwHash", "gis_actor`t$GisActor"
     }
     $manifestText = ($manifestLines -join "`n") + "`n"

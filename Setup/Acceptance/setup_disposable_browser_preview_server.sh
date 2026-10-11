@@ -535,10 +535,35 @@ sudo -u fieldwiring -H env PYTHONPYCACHEPREFIX="$PYCACHE" bash -c "
 "
 echo "PASS: exact candidate Setup/Application regression"
 
+# Content-addressed, read-only source evidence survives preview cleanup.
+# Publish with an atomic hard link only after verifying the uploaded bytes.
+resolve_gis_source() {
+    local source_sha="$1" source_ext="$2" uploaded="$3"
+    local source_cache="$HOME/setup-source-cache"
+    local cached="$source_cache/$source_sha.$source_ext"
+    mkdir -p "$source_cache"
+    chmod 700 "$source_cache"
+    if [[ ! -f "$cached" ]]; then
+        [[ -f "$uploaded" ]] || { echo "FAIL: missing GIS source $source_sha.$source_ext" >&2; return 16; }
+        [[ "$(sha256sum "$uploaded" | cut -d' ' -f1)" == "$source_sha" ]] || { echo "FAIL: GIS upload hash differs" >&2; return 16; }
+        local staged
+        staged="$(mktemp "$source_cache/.incoming-XXXXXXXX")"
+        if ! cp -- "$uploaded" "$staged"; then rm -f "$staged"; return 16; fi
+        chmod 400 "$staged"
+        # Another runner may have published this same immutable source first.
+        ln "$staged" "$cached" 2>/dev/null || true
+        rm -f "$staged"
+    fi
+    [[ -f "$cached" && "$(sha256sum "$cached" | cut -d' ' -f1)" == "$source_sha" ]] || { echo "FAIL: cached GIS source hash differs" >&2; return 16; }
+    printf '%s\n' "$cached"
+}
+
 if [[ -n "$GIS_GPX_SHA$GIS_FLW_SHA$GIS_ACTOR" ]]; then
     [[ "$GIS_GPX_SHA" =~ ^[a-f0-9]{64}$ && "$GIS_FLW_SHA" =~ ^[a-f0-9]{64}$ && -n "$GIS_ACTOR" ]] || { echo "FAIL: incomplete GIS source manifest"; exit 16; }
     [[ " ${MIGRATIONS[*]} " == *" Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql "* && " ${VALIDATIONS[*]} " == *" Database/Acceptance/171_site_infrastructure_disposable_validation.sql "* ]] || { echo "FAIL: GIS schema and validation required"; exit 16; }
-    [[ "$(sha256sum "$SCRIPT_DIR/source.gpx" | cut -d' ' -f1)" == "$GIS_GPX_SHA" && "$(sha256sum "$SCRIPT_DIR/source.flw" | cut -d' ' -f1)" == "$GIS_FLW_SHA" ]] || { echo "FAIL: GIS upload hash differs"; exit 16; }
+    GIS_GPX_SOURCE="$(resolve_gis_source "$GIS_GPX_SHA" gpx "$SCRIPT_DIR/source.gpx")"
+    GIS_FLW_SOURCE="$(resolve_gis_source "$GIS_FLW_SHA" flw "$SCRIPT_DIR/source.flw")"
+    echo "Verified persistent GIS sources: $GIS_GPX_SHA / $GIS_FLW_SHA"
     sudo "$PYTHON" -c 'import psycopg2'
 fi
 
@@ -776,7 +801,7 @@ if [[ -n "$GIS_GPX_SHA" ]]; then
     sudo env PGHOST="$TEST_IP" PGPORT=5432 PGDATABASE="$TEST_DB" PGUSER="$DB_ACTOR" PGPASSWORD="$TEST_PASSWORD" \
         PYTHONPYCACHEPREFIX="$PYCACHE" "$PYTHON" \
         "$CANDIDATE_WORKTREE/Database/EngineeringTools/accept_site_sources.py" \
-        --gpx "$SCRIPT_DIR/source.gpx" --flw "$SCRIPT_DIR/source.flw" \
+        --gpx "$GIS_GPX_SOURCE" --flw "$GIS_FLW_SOURCE" \
         --gpx-sha "$GIS_GPX_SHA" --flw-sha "$GIS_FLW_SHA" --actor "$GIS_ACTOR" \
         --output "$REPORT_DIR/GIS_Source_Acceptance_${STAMP}"
 fi
