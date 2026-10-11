@@ -530,3 +530,16 @@ Missing/unreviewed circuit, network, ownership, speed or switching information
 must be visibly missing, not silently defaulted, invented, or inferred from
 historical descriptions. Waypoint maintenance remains PostgreSQL-authoritative;
 LinkIQ remains measurement/test authority. Source timestamps are not test dates.
+
+
+### Browser session closeout — 2026-10-11 18:11 CDT
+
+Greg reported `SETUP REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT` for the
+c2b206a2ef4475851807941e46d5824d3021b1e3 review above. The combined
+regression/import/browser session has ended through the normal runner cleanup
+path. Detailed teardown lines were not supplied here; record the reported clean
+exit without inventing individual resource checks. Actual source intake/replay
+and exports passed. Browser disposition: CHANGES REQUIRED — reference map still
+uses snapshot data; operational circuit/network/test/ownership/switching popups
+remain incomplete. No production deployment approval or production import is
+established. Later source-cache changes were not tested by this session.
