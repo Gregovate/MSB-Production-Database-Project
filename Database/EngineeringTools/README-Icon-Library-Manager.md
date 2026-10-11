@@ -24,6 +24,19 @@ The follow-up manager correction:
 
 The existing `MSB Icon Library Manager` Desktop shortcut continues to work after updating the normal Git checkout to a version containing these changes. **First Windows follow-up validation still required**: run **Check and preview icons** twice (second unchanged run should be much quicker and without per-icon console windows), then save the corrected Plain `car-r.svg` and verify the next preview marks only intended icon changes; inspect warnings using **Source review**. Do not run the historical manual 32-icon ZIP promoter.
 
+## Scan and save progress indication — October 11
+
+The operator requested a **persistent progress meter and working/activity indicator** because long icon scans otherwise appear frozen. The manager now displays a progress bar, completed-file count/percentage, and **the name of the icon currently being processed** for both **Check and preview icons** and **Save approved PNG changes**.
+
+- During discovery/validation, source rechecks, backup creation and package verification, work cannot be expressed as a reliable number of files completed; the bar runs in **indeterminate (activity) mode**, explicitly marked "Working…", without an invented ETA.
+- During icon rendering, cache reuse and canonical PNG copying, the bar becomes **determinate** with real completed/total icon counts and the current filename (for example `car-r.svg: rendered — 12 / 34 (35%)`). Every icon advances only **after its PNG and source hashes have been verified**.
+- On completion, the bar reads **Complete**; on error it reads **Stopped**, and the error dialog/log explains why. No operation claims 100% while a save is still running.
+- Background threads send progress events through a thread-safe queue polled by the Tk main window. Long Inkscape subprocesses remain off the UI thread, so the indicator continues to animate while working. The manager does not estimate time remaining.
+- Progress callbacks are optional on the Python engine, so the existing headless command and independent consumers retain their previous behavior. No changes to symbol identity, map data, ExpertGPS installed library, webassets or GPX.
+- Disposable tests verify every icon's completion event and that save progress reaches its full count only after verified receipt rows. **Windows GUI progress animation and actual G: runtime remain for operator acceptance**; static checks are not a Windows UI test.
+
+The existing desktop shortcut is unchanged. After updating the normal Git checkout, relaunch **MSB Icon Library Manager**, select **Check and preview icons**, and watch the new meter. The first scan can still take time while rendering; a second scan should be substantially faster because its previous unchanged previews are cached.
+
 ## Weekly workflow (no PowerShell, no Downloads)
 
 1. Edit an Inkscape file in `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Masters`; save the correct **Plain SVG** in sibling `Plain`. Layered masters (such as LP-Combo) can intentionally produce multiple Plain outputs: choose layer visibility inside Inkscape; **the manager does not guess or rewrite layer configurations**.
