@@ -100,7 +100,13 @@ AS $snapshot$
    'format_version', 1, 'data_mode', 'postgres', 'revision', rv.revision,
    'generated_at', clock_timestamp(),
    'sources', jsonb_build_object(
-      'gpx', (SELECT jsonb_build_object('sha256',source_sha256,'received_at',received_at)
+      'gpx', (SELECT jsonb_build_object('sha256',b.source_sha256,'received_at',b.received_at)
+                FROM (SELECT source_sha256,count(*) AS bound_waypoints
+                      FROM ref.site_waypoint_source_binding WHERE accepted_at IS NOT NULL
+                      GROUP BY source_sha256) sb
+                JOIN ops.site_source_batch b USING(source_sha256)
+                ORDER BY sb.bound_waypoints DESC,b.received_at DESC LIMIT 1),
+      'gpx_latest_staged', (SELECT jsonb_build_object('sha256',source_sha256,'received_at',received_at)
                 FROM ops.site_source_batch WHERE source_kind='EXPERTGPS_GPX'
                 ORDER BY received_at DESC,source_sha256 DESC LIMIT 1),
       'flw', (SELECT jsonb_build_object('sha256',source_sha256,'received_at',received_at)
