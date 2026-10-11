@@ -301,3 +301,57 @@ map reads, complete GPX export/reimport with source metadata, and eventual keyed
 color-coded draw.io updates. This commit does not deliver those interfaces or
 claim the overall engineering objective complete. Preserve existing candidates
 and move through the same #319/#230 workstream under #122.
+
+## FLW additive imports and unsafe writeback history — October 11 recovery
+
+**Operator correction, October 11 at 16:43 America/Chicago:** the supplied FLW
+contains **two imports**. Import is additive; preserve both collections of test
+evidence. Greg reports a prior assistant directly edited the FLW, LinkWare rebuilt
+it, and all displayed cable lengths changed. This was unsafe. The exact cause
+of the length changes has not been established; do not assert an NVP/calibration
+explanation or prescribe repair of unknown internal fields.
+
+The [original #122 handoff](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122#issuecomment-6100758741)
+requires preserving Rich's new tests and comparing the latest export to prior
+round-trip evidence. It does NOT authorize replacing a newer file with yesterday's
+cleaned snapshot. DBG-2026-011 in that same comment concerns deferred tablet GPS;
+it is not the identifier of the FLW-writeback failure.
+
+Distinguish the two historical operations:
+- The controlled Network Source Reconciliation document records a **supported
+  LinkWare property edit followed by read-only SQLite inspection**. It preserved
+  470 UUIDs and recorded lengths/results/binary data for that particular file.
+  This proved readback of Notes, Faceplate and OutletId, not arbitrary SQLite
+  write safety or tester writeback.
+- Retrieved prior-conversation summaries describe an externally modified
+  `26-10-10-Park-Data-MSB-Reconciliation-Candidate.flw`, changing CableId,
+  CableIdLong and Deleted, followed by LinkWare's outside-modification/rebuild
+  warning. Greg now directly confirms the subsequent displayed-length problem.
+  The old candidate and rebuild output were not independently re-compared in
+  this recovery; exact repair mechanics remain unknown.
+
+**Current mandatory implementation boundary:** FLW is read-only input. Do not
+edit SQLite Records/RecordData, hashes, results, lengths or metadata; do not create
+a corrected FLW copy, engineer around the rebuild mechanism, or push corrections
+to the tester. Maintain corrected names, aliases and reviewed relationships in
+PostgreSQL. GPX/draw.io output capability does not extend to FLW output.
+
+Latest trusted uploaded FLW SHA remains
+`e76d39179da99bb74ed8e2af7f4e555a71ff530cae58bdb0015e770677a3ef5e`:
+684 project appearances, 476 distinct test UUIDs and 208 repeated appearances.
+Those counts do not mean 684 physical cables and do not independently establish
+which rows belong to each of the two operator-reported import sessions.
+Retain every appearance, deduplicate only test UUID identity, append new tests
+and retests, and preserve original test values plus reviewed DB corrections.
+Missing records from a later export do not authorize deleting historical tests.
+
+The current candidate uses SQLite URI mode=ro/immutable=1 and query_only=ON;
+`ingest_linkiq` verifies source SHA before/after extraction and writes PostgreSQL
+only. Existing source-preservation regression checks verify unchanged FLW hash.
+The matching current hash does not independently validate the earlier failed
+candidate; no attempt to repair or overwrite the supplied FLW was performed.
+
+Earlier text proposing FLW metadata correction or device writeback is historical
+and superseded by this prohibition. Additive DB reconciliation, not FLW rewrite,
+is the required ongoing workflow.
+
