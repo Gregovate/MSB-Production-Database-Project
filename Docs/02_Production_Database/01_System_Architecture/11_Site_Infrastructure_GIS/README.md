@@ -54,6 +54,20 @@ Greg reaffirmed on October 11 at 16:22 America/Chicago that the work includes
 **getting the data into PostgreSQL, making it editable going forward, and the
 ability to export back to GPX**. Track-name reconciliation alone is not delivery.
 
+**Two-source integration, not two independent maintained datasets:** Greg
+clarified at 16:22 America/Chicago that we are merging data from two sources
+into one. Integrate **GPX waypoint/track reference data** and **LinkIQ FLW
+cable/test data** into one coherent PostgreSQL model, linking cable/test evidence
+to the maintained waypoint identities and reviewed route relationships. Separate
+source provenance and test history remain necessary, but disconnected import
+tables or two viewers are not the intended outcome. PostgreSQL is the maintained
+waypoint authority; LinkIQ remains the origin/authority for test evidence and
+cable-count evidence. Preserve repeated-test versus distinct-cable distinctions.
+The partially structured draw.io schematic supplies legacy reconciliation evidence
+and is a downstream presentation target, not a third competing maintenance master.
+GPX export is a projection of the integrated database's geographic records;
+it must not imply tester writeback.
+
 Acceptance must demonstrate the complete usable workflow:
 1. Import the supplied corrected waypoint/track reference data and LinkIQ test
    evidence into governed PostgreSQL records, preserving source provenance,
