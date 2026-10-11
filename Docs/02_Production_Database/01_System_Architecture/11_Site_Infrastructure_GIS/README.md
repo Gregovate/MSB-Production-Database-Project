@@ -389,7 +389,17 @@ the red/white fire-hydrant symbol (inherited artwork issue), and the intended
 standalone LP change/new Star inclusion need operator approval. Fire Hydrant
 and Manhole icons are also fully opaque despite RGBA encoding. Do not
 promote to `Symbols\\png`, ExpertGPS or web assets solely on QA integrity.
-See the linked GIS symbol engineering SOP for file hashes and review gates. Detailed source
+See the linked GIS symbol engineering SOP for file hashes and review gates.
+**Later operator correction and 07:24 follow-up:** the hydrant-looking
+`manhole.png` in the 07:01 package resulted from a **wrong Plain manhole SVG**;
+the operator supplied the correct `manhole.svg` for comparison. The current
+**bare-pole `lp.svg` is explicitly approved**, distinct from the separately
+layered LP Combo/network/outlet assets. The operator's newest 07:24 PowerShell
+listing confirms `MSB_ExpertGPS_Current_Plain_Staged.zip` exists (39,370 bytes)
+inside its staging folder; it has not yet been independently inspected.
+The manhole fix must be verified against the attachment in that newer ZIP,
+and `star` release inclusion is still to be decided. No file installation
+or public promotion is accepted based solely on the directory listing. Detailed source
 triage and post-correction acceptance rules are in the linked GIS symbol contract.
 No ExpertGPS, Synology, draw.io, or browser publishing has been verified. draw.io keeps `Network\MSB-icon-library.xml`, but
 the existing `Network\Park Network Schematic 2026.drawio` embeds its own SVG/PNG
