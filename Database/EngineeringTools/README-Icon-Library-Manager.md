@@ -70,7 +70,7 @@ The updated workflow is:
 
 **Icon rules:** each image canvas is at least **1 px** and at most **32 × 32 px**. Unequal widths/heights are valid (e.g., 32×18, 16×32). Accept only true pixel dimensions. Do not silently rescale source SVGs.
 
-**Scope boundary:** This manager does **not** publish to Synology/webassets, install to `%LOCALAPPDATA%\TopoGrafix\Symbols\msb`, edit ExpertGPS or GPX type names/URLs, modify GIS database, or change the draw.io library/embedded schematic. Those remain separately controlled releases. It also does not automatically export plain derivatives from editable multi-layer Masters: correct layer selection is a meaningful operator choice.
+**Scope boundary:** The optional third action can publish reviewed **Plain SVGs only** to the pre-existing Synology `msb-svg` share after explicit confirmation, backups and hashes; it does **not** automatically publish on scan or PNG save. The manager does **not** publish PNGs to the legacy `msb` share, install to `%LOCALAPPDATA%\TopoGrafix\Symbols\msb`, edit ExpertGPS/GPX type names or URLs, modify the GIS database or Park Map renderer, or change draw.io library/embedded artwork. Those remain separately controlled releases. It also does not automatically export plain derivatives from editable multi-layer Masters: correct layer selection is a meaningful operator choice.
 
 **Recovery:** On a failure, open the **release history / logs** folder in the app and inspect `ERROR.txt` or `Inkscape-export.log`. Modified destination PNGs have copies in the run's `backups-before-replacement` folder, and the receipt lists every completed action. Do not discard them before identifying any partial promotion failure.
 
