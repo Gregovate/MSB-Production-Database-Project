@@ -33,7 +33,7 @@ def inspect_served_html(html: str) -> dict:
         and len(points) == 233 and len(tracks) == 181
     )
     return {
-        "result": "CORRECTED_GPXP_PREVIEW" if verified else "STALE_OR_WRONG_MAP",
+        "result": "CORRECTED_GPX_PREVIEW" if verified else "STALE_OR_WRONG_MAP",
         "expected_real_workshop": "Workshop / Waypoint",
         "real_workshop_count": len(real),
         "real_workshop_coordinates": (real[0]["geometry"]["coordinates"]
@@ -64,7 +64,7 @@ def main():
         page = response.read().decode("utf-8-sig")
     outcome = inspect_served_html(page)
     print(json.dumps(outcome, indent=2))
-    if outcome["result"] != "CORRECTED_GPXP_PREVIEW":
+    if outcome["result"] != "CORRECTED_GPX_PREVIEW":
         raise SystemExit("WRONG OR STALE WORKSHOP MAP IS BEING SERVED: NOT ACCEPTED")
 
 
