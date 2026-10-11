@@ -74,153 +74,25 @@ if ($buildIdentity.Server -ne $buildIdentity.Client) {
     throw "STOP before server contact: Setup client/server version mismatch in exact candidate $CandidateSha. Client $($buildIdentity.Client); server $($buildIdentity.Server)."
 }
 
-# Reference-data tests share this runner with Setup, but only explicitly
-# reviewed candidate SQL paths are accepted. Read the allowlist from the exact
-# candidate SHA, not a potentially different local branch head.
+# #230 shared, exact-candidate reference-data disposable SQL allowlist.
 $referenceAllowlistPath = 'Database/Acceptance/reference_data_disposable_allowlist.json'
 $referenceAllowlistJson = (& git -C $repo show "${CandidateSha}:$referenceAllowlistPath" | Out-String)
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($referenceAllowlistJson)) {
-    throw "STOP: exact candidate is missing the shared reference-data disposable allowlist: $referenceAllowlistPath"
+    throw "STOP: reference-data disposable allowlist missing in exact candidate."
 }
-try {
-    $referenceAllowlist = $referenceAllowlistJson | ConvertFrom-Json -ErrorAction Stop
-}
-catch {
-    throw "STOP: reference-data disposable allowlist JSON is invalid: $($_.Exception.Message)"
-}
-if ($referenceAllowlist.schema_version -ne 1) {
-    throw 'STOP: unsupported reference-data disposable allowlist schema version.'
-}
-if ($null -eq $referenceAllowlist.approved_migration_paths -or
+try { $referenceAllowlist = $referenceAllowlistJson | ConvertFrom-Json -ErrorAction Stop }
+catch { throw "STOP: invalid candidate reference-data disposable allowlist." }
+if ($referenceAllowlist.schema_version -ne 1 -or
+    $null -eq $referenceAllowlist.approved_migration_paths -or
     $null -eq $referenceAllowlist.approved_validation_paths) {
-    throw 'STOP: reference-data disposable allowlist requires both path arrays.'
+    throw "STOP: unsupported reference-data disposable allowlist."
 }
-# Only exact SQL file entries are allowed. Do not accept directory wildcards,
-# arbitrary ref.* table names, or any form of path traversal.
 foreach ($entry in @($referenceAllowlist.approved_migration_paths) +
                    @($referenceAllowlist.approved_validation_paths)) {
     if ($entry -isnot [string] -or
-        $entry -notmatch '^Database/[A-Za-z0-9_./-]+\.sql    param(
-        [Parameter(Mandatory=$true)][string]$Path,
-        [Parameter(Mandatory=$true)][string]$Kind
-    )
-
-    if ([string]::IsNullOrWhiteSpace($Path)) {
-        throw "$Kind path cannot be blank."
-    }
-    if ([System.IO.Path]::IsPathRooted($Path) -or $Path.Contains('..') -or $Path.Contains("`t") -or $Path.Contains("`r") -or $Path.Contains("`n")) {
-        throw "Unsafe $Kind candidate-relative path: $Path"
-    }
-    if ($Kind -eq 'migration') {
-        $isSetupMigration = $Path.StartsWith('Setup/Database/')
-        $isApprovedSharedMigration = $Path -eq 'Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql'
-        $isApprovedReferenceMigration = $referenceMigrationPaths -ccontains $Path
-        if (-not ($isSetupMigration -or $isApprovedSharedMigration -or $isApprovedReferenceMigration)) {
-            throw "Migration must be Setup-owned or exactly listed in the candidate reference-data allowlist: $Path"
-        }
-    }
-    if ($Kind -eq 'validation') {
-        $isSetupValidation = $Path.StartsWith('Setup/Acceptance/')
-        $isApprovedSharedValidation = $Path -eq 'Database/Acceptance/database_shared_audit_actor_disposable_validation.sql'
-        $isApprovedReferenceValidation = $referenceValidationPaths -ccontains $Path
-        if (-not ($isSetupValidation -or $isApprovedSharedValidation -or $isApprovedReferenceValidation)) {
-            throw "Validation must be Setup-owned or exactly listed in the candidate reference-data allowlist: $Path"
-        }
-    }
-
-    & git -C $repo cat-file -e "${CandidateSha}:$Path" 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        throw "Exact candidate $CandidateSha is missing $Kind file: $Path"
-    }
-}
-
-foreach ($path in $MigrationPaths) {
-    Assert-SafeCandidatePath -Path $path -Kind 'migration'
-}
-foreach ($path in $ValidationPaths) {
-    Assert-SafeCandidatePath -Path $path -Kind 'validation'
-}
-
-$serverScript = Join-Path $repo 'Setup\Acceptance\setup_disposable_acceptance_server.sh'
-if (-not (Test-Path -LiteralPath $serverScript -PathType Leaf)) {
-    throw "Reusable Setup disposable-acceptance server runner is missing: $serverScript"
-}
-& git -C $repo cat-file -e "${CandidateSha}:Setup/Acceptance/setup_disposable_acceptance_server.sh" 2>$null
-if ($LASTEXITCODE -ne 0) {
-    throw 'Exact candidate does not contain the reusable Setup disposable-acceptance server runner.'
-}
-
-$stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-$bundleName = "msb-setup-disposable-acceptance-$stamp"
-$localBundle = Join-Path $env:TEMP $bundleName
-$remoteBundle = "/tmp/$bundleName"
-$localRunner = Join-Path $localBundle 'setup_disposable_acceptance_server.sh'
-$localManifest = Join-Path $localBundle 'acceptance_manifest.tsv'
-$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-
-try {
-    New-Item -ItemType Directory -Path $localBundle -Force | Out-Null
-
-    $runnerText = [System.IO.File]::ReadAllText($serverScript)
-    $runnerText = $runnerText.Replace("`r`n", "`n").Replace("`r", "`n")
-    [System.IO.File]::WriteAllText($localRunner, $runnerText, $utf8NoBom)
-
-    $manifestLines = @(
-        "candidate_sha`t$CandidateSha",
-        "target_ref`t$TargetRef",
-        "allow_concurrent_production_writes`t$($AllowConcurrentProductionWrites.IsPresent.ToString().ToLowerInvariant())"
-        "production_read_boundary`t$($ProductionReadBoundary.IsPresent.ToString().ToLowerInvariant())"
-    )
-    foreach ($path in $MigrationPaths) {
-        $manifestLines += "migration`t$path"
-    }
-    foreach ($path in $ValidationPaths) {
-        $manifestLines += "validation`t$path"
-    }
-    $manifestText = ($manifestLines -join "`n") + "`n"
-    [System.IO.File]::WriteAllText($localManifest, $manifestText, $utf8NoBom)
-
-    if ($runnerText.Contains("`r") -or $manifestText.Contains("`r")) {
-        throw 'Generated Linux acceptance bundle contains CR characters; refusing to upload.'
-    }
-
-    Write-Host '========== SETUP REUSABLE DISPOSABLE ACCEPTANCE =========='
-    Write-Host 'Authority: Gregovate/MSB-Server-Management — docs/server/PostgreSQL_Disposable_Acceptance_Standard.md'
-    Write-Host "Server:        $Server"
-    Write-Host "Candidate SHA: $CandidateSha"
-    Write-Host "Target ref:    $TargetRef"
-    Write-Host "Concurrent Production writes allowed: $($AllowConcurrentProductionWrites.IsPresent.ToString().ToLowerInvariant())"
-    Write-Host "Migrations:    $($MigrationPaths.Count)"
-    Write-Host "Validations:   $($ValidationPaths.Count)"
-    Write-Host
-    Write-Host 'Production database contract: pg_dump + SELECT only.'
-    Write-Host 'All candidate writes: disposable current-Production clone only.'
-    Write-Host
-
-    & scp -r $localBundle "${Server}:/tmp/"
-    if ($LASTEXITCODE -ne 0) {
-        throw "SCP acceptance bundle upload failed with exit code $LASTEXITCODE"
-    }
-
-    $remoteRunner = "$remoteBundle/setup_disposable_acceptance_server.sh"
-    $remoteManifest = "$remoteBundle/acceptance_manifest.tsv"
-    $remoteCommand = "chmod 700 '$remoteRunner' && bash -n '$remoteRunner' && timeout --foreground --signal=TERM 7200s bash '$remoteRunner' '$remoteManifest'"
-
-    & ssh -tt -o ServerAliveInterval=15 -o ServerAliveCountMax=3 $Server $remoteCommand
-    $remoteExit = $LASTEXITCODE
-    if ($remoteExit -ne 0) {
-        throw "Reusable Setup disposable acceptance failed with exit code $remoteExit. Review the retained remote report for the failed gate."
-    }
-
-    Write-Host
-    Write-Host 'SETUP REUSABLE DISPOSABLE ACCEPTANCE: CLEAN EXIT'
-}
-finally {
-    Remove-Item -LiteralPath $localBundle -Recurse -Force -ErrorAction SilentlyContinue
-}
- -or
-        $entry.Contains('..')) {
-        throw "STOP: unsafe reference-data SQL allowlist entry: $entry"
+        $entry -notmatch '^Database/[A-Za-z0-9_./-]+[.]sql$' -or
+        $entry.Contains('..') -or $entry.Contains('*')) {
+        throw "STOP: unsafe candidate reference-data SQL path: $entry"
     }
 }
 $referenceMigrationPaths = @($referenceAllowlist.approved_migration_paths)
@@ -241,19 +113,17 @@ function Assert-SafeCandidatePath {
     if ($Kind -eq 'migration') {
         $isSetupMigration = $Path.StartsWith('Setup/Database/')
         $isApprovedSharedMigration = $Path -eq 'Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql'
-        # #171/#319 explicit disposable-only candidate path; not a Production migration.
-        $isApprovedSiteInfrastructureMigration = $Path -eq 'Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql'
-        if (-not ($isSetupMigration -or $isApprovedSharedMigration -or $isApprovedSiteInfrastructureMigration)) {
-            throw "Migration path must be under Setup/Database/ or explicitly approved shared database repair: $Path"
+        $isApprovedReferenceMigration = $referenceMigrationPaths -ccontains $Path
+        if (-not ($isSetupMigration -or $isApprovedSharedMigration -or $isApprovedReferenceMigration)) {
+            throw "Migration must be explicitly candidate-listed or Setup-owned: $Path"
         }
     }
     if ($Kind -eq 'validation') {
         $isSetupValidation = $Path.StartsWith('Setup/Acceptance/')
         $isApprovedSharedValidation = $Path -eq 'Database/Acceptance/database_shared_audit_actor_disposable_validation.sql'
-        # #171/#319 bounded SQL acceptance path; do not permit arbitrary Database SQL.
-        $isApprovedSiteInfrastructureValidation = $Path -eq 'Database/Acceptance/171_site_infrastructure_disposable_validation.sql'
-        if (-not ($isSetupValidation -or $isApprovedSharedValidation -or $isApprovedSiteInfrastructureValidation)) {
-            throw "Validation path must be under Setup/Acceptance/ or explicitly approved shared database validation: $Path"
+        $isApprovedReferenceValidation = $referenceValidationPaths -ccontains $Path
+        if (-not ($isSetupValidation -or $isApprovedSharedValidation -or $isApprovedReferenceValidation)) {
+            throw "Validation must be explicitly candidate-listed or Setup-owned: $Path"
         }
     }
 
