@@ -349,7 +349,13 @@ must be run on a PC with access to those files before treating a PNG batch as
 current; installation/publication has not been verified.
 October 11 source inventory adds `MSB GIS\Symbols\png` as the intended
 canonical local PNG derivative folder, separate from the Windows Downloads staging
-used by the current exporter. draw.io keeps `Network\MSB-icon-library.xml`, but
+used by the current exporter. The current G: `Plain` contains a mixed-case
+`msb-splitter-Combiner.svg`, so the exporter correctly refused it; reconcile the
+source variants before renaming. Historical ZIP reconnaissance found Inkscape
+editing metadata retained in some SVGs outside their `inkscape-masters` folders.
+Use [read-only source inventory](../../../../Database/EngineeringTools/inventory_gis_symbols.py)
+to list and classify sources from the actual laptop G: and ExpertGPS trees before
+export/release. draw.io keeps `Network\MSB-icon-library.xml`, but
 the existing `Network\Park Network Schematic 2026.drawio` embeds its own SVG/PNG
 snapshots: file/library edits cannot automatically update already-placed icons.
 The read-only source counts, hashes, and pending cross-application reconciliation
