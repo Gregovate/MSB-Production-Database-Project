@@ -355,7 +355,14 @@ source variants before renaming. Historical ZIP reconnaissance found Inkscape
 editing metadata retained in some SVGs outside their `inkscape-masters` folders.
 Use [read-only source inventory](../../../../Database/EngineeringTools/inventory_gis_symbols.py)
 to list and classify sources from the actual laptop G: and ExpertGPS trees before
-export/release. draw.io keeps `Network\MSB-icon-library.xml`, but
+export/release.
+**2026-10-11 first live inventory:** 454 files (32 chosen Masters, 31 Plain,
+109 scattered SVGs, 282 ExpertGPS PNGs); 54 review flags, mostly 41 raw-hash
+variation groups. Three Plain SVGs retain Inkscape metadata; canonical `png`
+contains no inventoried icon files; light-pole/repeater master names and one
+mixed-case Splitter filename need review before PNG export. Actual detailed
+triage and input report checksums are in the linked symbol engineering contract.
+No promotion, renaming or web publishing has occurred. draw.io keeps `Network\MSB-icon-library.xml`, but
 the existing `Network\Park Network Schematic 2026.drawio` embeds its own SVG/PNG
 snapshots: file/library edits cannot automatically update already-placed icons.
 The read-only source counts, hashes, and pending cross-application reconciliation
