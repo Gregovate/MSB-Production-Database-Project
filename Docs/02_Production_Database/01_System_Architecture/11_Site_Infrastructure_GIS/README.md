@@ -408,7 +408,15 @@ in the approved 32-icon release candidate, alongside the corrected manhole and
 standalone LP. Complete staged ZIP/manifest/source integrity is PASS. **Only
 staging/source scope is approved**; canonical `Symbols\\png` promotion, installed
 ExpertGPS, web/Synology publication, legacy GPX aliases and draw.io's embedded
-schematic artwork have not been migrated or accepted. Govern each independently. Detailed source
+schematic artwork have not been migrated or accepted. **A controlled additive
+canonical PNG promotion utility is now available**:
+[Promote-ApprovedGISPNGs.ps1](../../../../Database/EngineeringTools/Promote-ApprovedGISPNGs.ps1).
+First run the exact-SHA ZIP / current-Plain / destination collision check in
+default READ-ONLY mode. After verifying zero conflicts, `-Apply` creates only
+missing 32 approved PNG derivative files in the Shared Drive `Symbols\\png`
+folder, then verifies hashes and writes a local receipt. Existing PNGs are
+never overwritten; old-name files are preserved. Live operator promotion has
+not yet occurred. Govern each independently. Detailed source
 triage and post-correction acceptance rules are in the linked GIS symbol contract.
 No ExpertGPS, Synology, draw.io, or browser publishing has been verified. draw.io keeps `Network\MSB-icon-library.xml`, but
 the existing `Network\Park Network Schematic 2026.drawio` embeds its own SVG/PNG
