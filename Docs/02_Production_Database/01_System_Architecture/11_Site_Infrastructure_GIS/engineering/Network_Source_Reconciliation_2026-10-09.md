@@ -381,6 +381,14 @@ note is not proof of bidirectional device support. Do not require device writeba
 for read-only FLW ingestion; it is a separate integration improvement. No FLW
 writes, device changes or database import performed during this investigation.
 
+> **Historical scope / superseded writeback exploration:** this section proves
+> supported LinkWare edits can be read back. It does not permit direct SQLite
+> FLW writes. A subsequent external-edit candidate triggered a LinkWare rebuild;
+> Greg reports changed cable lengths. External FLW editing and tester writeback
+> are prohibited. Preserve both additive imports and maintain corrections only
+> in PostgreSQL. See the current
+> [FLW failure history and read-only boundary](../../../../../Database/EngineeringTools/Site_Source_Synchronization_Contract.md#flw-additive-imports-and-unsafe-writeback-history--october-11-recovery).
+
 ## LinkWare property save/readback result — October 10, 07:25 CDT
 
 Read-only comparison of original FLW (SHA256 75a6b4673c9acf3aa7698fef0617df219a2742aeaebf022daebb7b8a8277b5ef)
