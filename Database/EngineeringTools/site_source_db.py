@@ -2,7 +2,7 @@
 
 Designed for a *disposable acceptance* database first. No Production runner is
 included; #122 and Server Management retain Production deployment authority.
-Requires psycopg v3 on the executing host.
+Uses the existing governed psycopg2 runtime through site_db_connection.
 """
 from __future__ import annotations
 
@@ -453,11 +453,8 @@ def main() -> int:
     args=parser.parse_args()
     if not args.output:
         parser.error('--output is required to write local receipt/projection')
-    try:
-        import psycopg
-    except ImportError as exc:
-        raise SystemExit('Install psycopg v3 on the accepted disposable runner; no fallback to another DB driver') from exc
-    with psycopg.connect(args.dsn) as conn:
+    from site_db_connection import connect
+    with connect(args.dsn) as conn:
         if args.mode=='stage-gpx':
             if not args.actor or not args.source: parser.error('Source and actor required')
             result=stage_expertgps(conn,args.source,args.actor)

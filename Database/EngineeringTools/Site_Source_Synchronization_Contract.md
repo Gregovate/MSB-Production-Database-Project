@@ -409,3 +409,21 @@ runner changes from 7d4d2a8 are reverted. The browser wrapper consumes the exist
 #230 exact-candidate reference SQL allowlist and supports LocalReviewBranch.
 The acceptance README's stale instruction to create a fresh browser clone is
 corrected. Server Management remains runtime authority. No live execution claimed.
+
+### Runtime preflight failure and correction — 2026-10-11 17:26 CDT
+
+Operator run of 855fa678 passed the reported 202-test regression block, then
+failed before pg_dump: `ModuleNotFoundError: No module named psycopg`.
+Report: `/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20261011T222501.txt`.
+Production Setup fingerprint remained `b68f5d22d666fd552983d0a200f07d62`;
+live Setup SHA remained `2bc88ae627420c2138268e39a26b4942a3248580`.
+No browser started and this preflight failure is not resumable. No dump was taken.
+
+Cause: candidate importer assumed psycopg v3 despite existing Setup/FieldWiring
+repositories using psycopg2 in the governed shared runtime. Corrected importer
+and preflight to use psycopg2, without installing packages or changing server
+runtime. `site_db_connection.py` explicitly brackets each import in BEGIN /
+COMMIT or ROLLBACK, closes the connection, and rejects nested transaction use.
+Focused verification: 63 passed / 1 skipped, including commit, failure rollback,
+retry, and nested-transaction rejection; Bash syntax and diff checks passed.
+Actual PostgreSQL import/replay and browser review remain pending the retry.

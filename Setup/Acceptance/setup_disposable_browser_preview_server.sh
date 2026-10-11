@@ -539,7 +539,7 @@ if [[ -n "$GIS_GPX_SHA$GIS_FLW_SHA$GIS_ACTOR" ]]; then
     [[ "$GIS_GPX_SHA" =~ ^[a-f0-9]{64}$ && "$GIS_FLW_SHA" =~ ^[a-f0-9]{64}$ && -n "$GIS_ACTOR" ]] || { echo "FAIL: incomplete GIS source manifest"; exit 16; }
     [[ " ${MIGRATIONS[*]} " == *" Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql "* && " ${VALIDATIONS[*]} " == *" Database/Acceptance/171_site_infrastructure_disposable_validation.sql "* ]] || { echo "FAIL: GIS schema and validation required"; exit 16; }
     [[ "$(sha256sum "$SCRIPT_DIR/source.gpx" | cut -d' ' -f1)" == "$GIS_GPX_SHA" && "$(sha256sum "$SCRIPT_DIR/source.flw" | cut -d' ' -f1)" == "$GIS_FLW_SHA" ]] || { echo "FAIL: GIS upload hash differs"; exit 16; }
-    sudo "$PYTHON" -c 'import psycopg'
+    sudo "$PYTHON" -c 'import psycopg2'
 fi
 
 echo

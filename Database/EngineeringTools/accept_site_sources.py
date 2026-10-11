@@ -15,7 +15,7 @@ def require(condition, message):
 
 
 def main():
-    import psycopg
+    from site_db_connection import connect
     p = argparse.ArgumentParser(__doc__)
     for name in ('gpx', 'flw', 'output'):
         p.add_argument('--' + name, type=Path, required=True)
@@ -26,7 +26,7 @@ def main():
     require(sha256(args.flw) == args.flw_sha, 'FLW hash mismatch')
     baseline = extract_gpx(args.gpx)
     args.output.mkdir(parents=True, exist_ok=False)
-    with psycopg.connect('', autocommit=True) as conn:
+    with connect('') as conn:
         require(conn.info.dbname == 'msb_setup_browser_preview',
                 'Real-source gate requires the governed disposable database')
         accepted = bootstrap_expertgps(conn, args.gpx, args.actor, args.gpx_sha)
