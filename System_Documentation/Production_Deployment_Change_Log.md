@@ -9,6 +9,17 @@
 | Established | 2026-10-01 |
 | Ordering | Reverse chronological — newest deployment first |
 
+## 2026-10-11 — Corrected Park Map waypoint and LinkIQ source — PASS
+
+- Governing #122; GIS #171; permanent editor #230 remains unfinished.
+- Exact deployed application: `2bc88ae627420c2138268e39a26b4942a3248580`, Setup `V0.3.62-field-networks`, visible update October 11.
+- Accepted corrected waypoint names/positions and LinkIQ snapshot; obsolete temporary Workshop marker removed, real GPX Workshop and #88 Home anchor preserved. Prior schematic/LOR uncertainty remains visible.
+- Feature PR #352 merge: `b4be04b95fff846223805187bd33092ba375e33e`. Installer PR #354 merge: `5108b24f3d03e22dd5ddef6f1abb506c63be191a`. Tooling/closeout SHAs are not the deployed application.
+- Engineering regression: 751 Setup tests and network browser checks PASS. Greg accepted corrected waypoints in governed preview and reported CLEAN EXIT before merge.
+- Operator-reported source-only deployment PASS: `/home/msbadmin/setup-deployment-reports/Setup-PR352-Map-Source-20261011T155458Z`. Greg then confirmed protected Production: **Waypoints corrected**.
+- Rollback application: `c1db3e767f56b0346e76b05fd615d6e21e8ccf57`; no database migration/archive or maintenance transition for this source-only release. Runner retains preflight/result/fingerprint evidence; numeric fingerprints have not been transcribed.
+- Next #171 priority: reconcile GPX track references with corrected waypoint identities and LinkIQ evidence. Operator suspects ExpertGPS track waypoint references remain wrong; specific defects are not yet established. Preserve trace geometry and unresolved matches pending review. PostgreSQL import/editor, offline revisions and interchange remain separate unfinished work.
+
 ## 2026-10-10 — Integrated Setup / Field Wiring map release
 
 - Deployed source: `6192a1fdf5acb234fd83731b6a8eb73072b7a35d`; PR #318 merge `1943ac86d1b4d7a8c5c801a6f323faa7de9cf75b`.
