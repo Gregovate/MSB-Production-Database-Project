@@ -178,6 +178,31 @@ This is **not a verified post-correction inventory**. Possibilities include a du
 
 For an unambiguous subsequent handoff, run the already-merged **read-only** `inventory_gis_symbols.py` with a **new, explicit, timestamped `--output` directory** on the laptop, observe the printed `Reports:` path, and upload a ZIP of that exact directory without selecting previous reports by filename. Record the absolute report directory and run time in the #171 evidence. Compare source-file hashes and actionable findings against the old baseline rather than relying on aggregate flag counts. No PNG generation, promotion or publication may be accepted from the duplicate report alone.
 
+### Actual fresh post-correction inventory — verified October 11, 06:19 local
+
+The operator supplied the **newly generated** `MSB-GIS-Symbol-Inventory-20261011-061917.zip` from the laptop. Unlike the previously re-uploaded identical CSVs, **each new contained report has a different SHA-256 from the old baseline**, and the per-file comparisons show actual source changes. ZIP SHA-256 `cad6835397ec9d459cf86bf57ebeed06e7320e4dc3d1b985fd47cb09a22b721e`.
+
+| ZIP member | Fresh SHA-256 |
+| --- | --- |
+| `summary.txt` | `4017c012e506b6117bbd970cea72c94fc55ac372daea178d80afa5a2c419fb1a` |
+| `svg_and_raster_inventory.csv` | `794877e144d06d85638a419b7ef98d4f03b792de0d0b9f99e435447b7e6e1b31` |
+| `review_required.csv` | `25feb8f495e4928fba5531312b41ccec6489dca6c54929fe996fc1363fe42c34` |
+
+**Source state before → after:** 454 → 454 total files; 54 → 47 review flags; 32 → 31 `Masters` SVGs; 31 → 32 `Plain` SVGs; scattered historical SVGs remain 109; installed ExpertGPS PNGs remain 282; zero files inventoried under `Symbols\png`. Inkscape-editor-metadata SVGs decrease 107 → 103, and Plain-like SVGs increase 63 → 67; two invalid XML documents persist only in historical `2023 Upgrade`.
+
+**Three prior release-readiness blockers definitively cleared by fresh file metadata:**
+- `Plain\car-r.svg`, `Plain\lp.svg` and `Plain\manhole.svg` no longer retain Inkscape/Sodipodi editing metadata. This is consistent with corrected Plain exports, though not full visual parity proof.
+- `Plain\msb-splitter-Combiner.svg` has become `Plain\msb-splitter-combiner.svg`; **identical SHA-256**, so this is a name-only correction. The exporter’s noncanonical filename gate is no longer flagged.
+- `Masters\lor-reprater-inkscape.svg` has become `Masters\lor-repeater-inkscape.svg`; **identical SHA-256**, name-only correction. Name-pair missing-master/missing-Plain flags for this logical identity are gone.
+
+**Additional verified changes:** `Masters\stage-32x32-inkscape.svg` is no longer among scanned current Masters; `Plain\star.svg` was added, with approved-looking XML (no Inkscape metadata), 32 × 32 canvas and SVG title `Star`. Existing `Masters\star-inksccape.svg` was modified and now has title `Star`. Five pre-existing editable master paths (`car-r`, `lp-combo`, `lp`, `stage`, `star`) and three pre-existing Plain paths (`car-r`, `lp`, `manhole`) have new *content hashes*. `Plain\stage.svg` has a new modification timestamp but unchanged content hash. In total the compact comparison includes **13 source-change rows**: two content-identical path renames, one no-longer-present master path, one new Plain source, eight content-changed same-path files, and one unchanged-content timestamp update. The separately generated conversation-side delta CSV is `MSB_171_20261011_Inventory_Delta.csv`, SHA-256 `a0041d88b1161ef005f790f69defe468ff9b2a2f03042cf3d072fa3cdd36a90a`.
+
+**Remaining 47 scanner flags:** 42 raw XML/hash variation groups (not 42 verified visual defects), two malformed XML files in historic `2023 Upgrade`, and three name-only pairing hints: `lp-network.svg` and `lp-outlet.svg` are **operator-confirmed intentional layered derivatives** from `lp-combo-inkscape.svg`, while `lp-power-inscape.svg` is a historical extra master without a same-name Plain output. None is the original fatal noncanonical-name/editor-metadata issue. The scanner is not lineage-aware, so these flags are not evidence the LP assets are incorrectly generated.
+
+**Critical separate currency/appearance gate:** `Masters\lp-combo-inkscape.svg` changed on October 11, but `Plain\lp-combo.svg`, `Plain\lp-network.svg` and `Plain\lp-outlet.svg` still bear prior April source timestamps and unchanged hashes. This could be a metadata/title-only master update, or it could mean the configured layer-specific derivatives have not been regenerated after a visible master edit; **the report cannot distinguish these**. The edited `car-r` and `stage` masters were also saved seconds *after* their Plain exports, which by itself does not establish stale artwork. Before **publication**, visually inspect current artwork and its intended layer visibility for LP-Combo, plus any other changed masters. Never overwrite good Plain files on timestamp alone.
+
+**Staging eligibility:** the new `Plain` folder has **32** SVGs (the older documented release snapshot had 31). It is now **structurally eligible for a read-only-source PNG staging export** using `Export-ExpertGPSSymbols.ps1` (no noncanonical Plain filenames flagged; zero Plain SVG parse errors in inventory). That exporter only writes its own new Downloads staging directory; it does not install into `Symbols\png`, TopoGrafix, Synology, browser or draw.io. Confirm whether `star.svg` is intended for the next published release before promoting all 32 staged PNGs. PNG build/runtime, visual parity and ExpertGPS/GPS/web compatibility are **not yet accepted or performed**. #171 remains open.
+
 ### Next acceptance step
 
 **Verify the operator-reported completed corrections** with a fresh read-only inventory and staged review of current Masters/Plain contents. Compare with the earlier priority list (including LP-Combo layered derivatives, outlet/power alias choice, LOR spelling, editor metadata, Splitter case, and Stage variants), rather than assuming old report flags are still present or that absence of flags proves visual equivalence. Preserve historical sources and compatibility aliases. After verified source approval, generate PNG derivatives to staging, review eventual `Symbols\png` promotion, and separately validate ExpertGPS, public SVG/PNG URLs, and embedded draw.io artwork. The previous inventory did not include all PCs, archives, web assets or every drawing icon.
@@ -242,6 +267,14 @@ Get-ChildItem -LiteralPath $plain -Filter '*.svg' -File | ForEach-Object {
 The October 9 conversion created one RGBA PNG per supplied Plain SVG, with the same pixel canvas dimensions (31/31), using Inkscape without fixed-size overrides. No automatic upload to TopoGrafix/Synology, live marker migration or Garmin BMP regeneration was performed by that conversion.
 
 For older Garmin use, a **24 × 24 BMP with magenta transparency key** was discussed as a possible compatibility derivative; it was **not** regenerated in this batch. Keep existing BMPs, and test with the actual Garmin/ExpertGPS path before adding any new BMP pipeline.
+
+### Inkscape Windows CLI staging failure and diagnostics — October 11
+
+After the fresh 06:19 current-Plain inventory cleared casing and SVG metadata issues, operator ran the existing `Export-ExpertGPSSymbols.ps1` on laptop `C:\lor\ImportExport\VSCode`. It failed on the **first** file, `car-l.svg` at script line 79 with only the generic exception `Inkscape PNG export failed: car-l.svg`. Because the old script did not surface the renderer exit code/stderr, **the root cause is not yet established**. Do not infer `car-l.svg` is corrupt. The old `msb-plain-icons-corrected.zip` copy of `car-l.svg` was separately tested with Linux Inkscape 1.4 and produced a valid **32 × 18 RGBA PNG**; this is a historical source snapshot, **not** proof the current live G: file renders on Windows.
+
+**Likely environment error / controlled repair:** the exporter previously launched `C:\Program Files\Inkscape\bin\inkscape.exe`, which on Windows is the GUI application. Inkscape provides `inkscape.com` as a Windows **console wrapper** to surface process exit status and CLI output; this is distinct from changing the SVG source. The revised script defaults to `C:\Program Files\Inkscape\bin\inkscape.com`, allows `-InkscapeExecutable` for installations elsewhere, and logs source/output paths, command-line exit status, stdout/stderr and exceptions to `MSB_Inkscape_Export_Diagnostics.txt` within a **new Downloads staging directory**. It still fails closed on nonzero code, missing output, invalid signature, non-RGBA and source-hash changes. PNG IHDR dimension extraction was parenthesized for clarity. A failed attempt leaves its staging folder intact for forensics; **do not reuse the same OutputDirectory**. No file was installed or published by the failed run.
+
+**Windows acceptance pending:** refresh operator laptop main, confirm `inkscape.com` exists and returns a version string, execute a newly staged PNG export, then inspect log, generated PNG count/dimensions/appearance and manifest. If it still fails, provide exit/status and diagnostic text verbatim from staging without editing the source. The prior failure cannot be declared fixed until a successful real Windows G:-drive run. Source SVGs remain untouched.
 
 ## Approved 31-file Plain SVG / ExpertGPS PNG name-and-size baseline
 
