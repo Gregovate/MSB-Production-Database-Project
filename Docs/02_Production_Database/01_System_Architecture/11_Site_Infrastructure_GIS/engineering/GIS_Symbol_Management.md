@@ -306,6 +306,25 @@ The independent report `MSB_171_ExpertGPS_PNG_Staging_Audit_20261011.csv` (conve
 
 **Decision gate:** integrity accepted for staged source review; **do not mark the complete set approved for canonical `Symbols\png`, ExpertGPS or web publication** until operator adjudicates `manhole` versus `fire-hydrant` appearance, confirms standalone `lp` meaning and approves or excludes `star` for the next release. Then record exact-file release manifest and preserve old ExpertGPS/GPX/public URL aliases and draw.io embedded artifacts. Keep Issue #171 open.
 
+### Operator clarification and 07:24 follow-up PNG export — October 11
+
+**Supersedes the tentative semantic interpretation of the 07:01 staging audit, but does not rewrite its historical findings.**
+
+- **Manhole:** the operator supplied a distinct corrected `manhole.svg` artwork and explicitly confirmed that the `Plain\manhole.svg` used for the *07:01* export was **wrong**. The earlier hydrant-like depiction was an **incorrect Plain source**, not an intentionally shared manhole/hydrant symbol or an exporter error. The correct source is the newly attached SVG; do not invent a replacement. The source copy and resulting `manhole.png` in the next staged ZIP must be checked against that attachment before declaring correction verified or authorizing publication.
+- **Standalone light pole:** the operator confirms the current-day `Plain\lp.svg` and the associated new bare-pole `lp.png` are **correct**. The older pole-plus-network/outlet artwork belongs to the *combo* light-pole concept with independent `lp-combo`, `lp-network` and `lp-outlet` derivative presentations. **Remove any pending approval hold on the intentional standalone LP appearance; preserve the separate combo variants.**
+- **Star:** whether newly added `star.png` belongs in the upcoming release is **still an independent unresolved inclusion decision**.
+
+After this clarification, the operator reran `Export-ExpertGPSSymbols.ps1` and posted a PowerShell listing of the newest 07:24 local staging directory showing:
+
+| Staged item | Operator-observed size / time |
+| --- | --- |
+| `msb` directory | last modified 2026-10-11 07:24:02 local |
+| `MSB_ExpertGPS_Current_Plain_Staged.zip` | **39,370 bytes**, modified 07:24:02 |
+| `MSB_ExpertGPS_PNG_Inventory.csv` | 5,836 bytes, modified 07:24:02 |
+| `MSB_Inkscape_Export_Diagnostics.txt` | 8,951 bytes, modified 07:24:02 |
+
+**The latest exporter DOES produce a ZIP:** the ZIP is inside the staging directory, not necessarily beside the Git repository or in the Downloads root. The posted listing demonstrates its existence and output timestamps, but is not an independent integrity/artwork inspection of this second batch. Do not conflate the second 07:24 package with the audited 07:01 ZIP; the second ZIP has **not yet been uploaded and compared**. Next request that exact ZIP, check the `manhole.png` pixel content against the operator-supplied corrected `manhole.svg`, verify the 32-item manifest/PNG SHA-256 list and compare unchanged icons against the prior audited batch. If only the intended manhole art changed, gate independent release/alias checks after Star disposition. **No canonical `Symbols\png` promotion, TopoGrafix installation, Synology web publication or draw.io schematic update is inferred.**
+
 ## Approved 31-file Plain SVG / ExpertGPS PNG name-and-size baseline
 
 From the corrected input archive `msb-plain-icons-corrected.zip`, converted into `MSB_ExpertGPS_PNGs_from_SVG_2026-10-09.zip`. The archives were generated in the conversation; these **archive filenames alone do not establish that ZIP files are stored in GitHub or the Shared Drive**. The controlled/current artwork copies reside at the directories above.
