@@ -25,6 +25,8 @@ from sync_gis_icons import (
     apply_canonical, sha_file, source_freshness_warnings,
 )
 from publish_gis_svgs import WEB_SVG, PUBLIC_SVG_BASE, web_svg_preflight, publish_web_svgs
+from distribute_gis_pngs import (WEB_PNG, PUBLIC_PNG_BASE, local_expertgps_folder,
+                                 png_distribution_preflight, distribute_pngs)
 
 BACKGROUND = "#f5f8fb"
 
@@ -33,15 +35,17 @@ class Manager:
     def __init__(self, root):
         self.root = root
         self.root.title("MSB Icon Library Manager — #171")
-        self.root.geometry("890x610")
-        self.root.minsize(760, 540)
+        self.root.geometry("930x700")
+        self.root.minsize(800, 610)
         self.root.configure(bg=BACKGROUND)
         self.plain = PARK / "Plain"
         self.dest = PARK / "png"
         self.web_svg_dest = WEB_SVG
+        self.web_png_dest = WEB_PNG
         self.releases = PARK / "release-history"
         self.readme = (Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) /
                        "TopoGrafix" / "Symbols" / "msb" / "readme.txt")
+        self.local_png_dest = self.readme.parent
         self.snapshot = None
         self.staged = None
         self.records = None
@@ -108,6 +112,17 @@ class Manager:
         ttk.Label(root, text="Important: for layered Inkscape masters, save the correct visible layers as Plain SVG first. "
                         "This tool will never guess layer combinations or rename GPX types.",
                   padding=(20, 10), wraplength=830).pack(fill="x")
+        png_controls = ttk.Frame(root, padding=(20, 0, 20, 8))
+        png_controls.pack(fill="x")
+        ttk.Label(png_controls, text="PNG distribution (after saving canonical PNGs):").pack(side="left")
+        self.web_png_btn = ttk.Button(png_controls, text="4. Publish PNGs to web",
+                                      command=lambda: self.check_png_distribution("web"),
+                                      state="disabled")
+        self.web_png_btn.pack(side="left", padx=(8, 5))
+        self.local_png_btn = ttk.Button(png_controls, text="5. Install PNGs for this ExpertGPS user",
+                                        command=lambda: self.check_png_distribution("expertgps"),
+                                        state="disabled")
+        self.local_png_btn.pack(side="left", padx=(0, 8))
         footer = ttk.Frame(root, padding=(20, 0, 20, 15))
         footer.pack(fill="x")
         self.web_publish_btn = ttk.Button(footer, text="3. Review/publish Plain SVGs to web",
@@ -136,6 +151,10 @@ class Manager:
                                  else "normal")
         self.web_publish_btn.configure(state="disabled" if value or self.snapshot is None
                                        or self.staged is None else "normal")
+        distribute_state = ("disabled" if value or self.snapshot is None or
+                            self.staged is None or self.records is None else "normal")
+        self.web_png_btn.configure(state=distribute_state)
+        self.local_png_btn.configure(state=distribute_state)
 
     def publish_progress(self, phase, completed, total, detail):
         """Safe from worker thread: only place data on a queue, never touch Tk."""
@@ -147,7 +166,8 @@ class Manager:
                   "package": "Packaging and verifying", "ready": "Preview complete",
                   "preflight": "Checking files", "backup": "Backing up originals",
                   "apply": "Saving approved PNGs", "publish": "Publishing SVGs to web",
-                  "finalize": "Checking destination"}
+                  "distribute": "Distributing approved PNGs",
+                  "finalize": "Checking destination"
         if total is None:
             if self.progress_mode != "indeterminate":
                 self.progress_bar.configure(mode="indeterminate")
@@ -209,6 +229,8 @@ class Manager:
     def check(self):
         self.snapshot = self.staged = self.records = self.plan = None
         self.web_publish_btn.configure(state="disabled")
+        self.web_png_btn.configure(state="disabled")
+        self.local_png_btn.configure(state="disabled")
         self.master_warnings = []
         self.warnings_btn.configure(text="Source review (0)", state="disabled")
         self.tree.delete(*self.tree.get_children())
@@ -351,6 +373,114 @@ class Manager:
             self.async_operation(work, done)
         ttk.Button(footer, text="Publish reviewed SVG changes",
                    command=start_publish).pack(side="right", padx=(0, 12))
+
+    def open_web_png(self):
+        selection = self.tree.selection()
+        if not selection or self.records is None:
+            messagebox.showinfo("Choose an icon", "Select an icon in the preview first.")
+            return
+        name = selection[0]
+        row = next((r for r in self.records if r["PNG"] == name), None)
+        if row is not None:
+            webbrowser.open(PUBLIC_PNG_BASE + name + "?v=" + row["PNG_SHA256"][:12])
+
+    def check_png_distribution(self, kind):
+        """Read-only comparison before web or local distribution confirmation."""
+        if self.in_progress or self.snapshot is None or self.records is None:
+            return
+        if kind == "web":
+            destination = self.web_png_dest
+            title = "Public web msb PNG library"
+        else:
+            destination = self.local_png_dest
+            title = "This Windows user's ExpertGPS msb library"
+        self.status.set(f"Checking canonical PNGs and {title}…")
+
+        def work():
+            self.publish_progress("preflight", 0, None, "Comparing canonical PNGs and destination")
+            return png_distribution_preflight(kind, destination, self.plain, self.dest,
+                                              self.snapshot, self.records,
+                                              local_readme=self.readme)
+        def done(plan, error):
+            self.set_busy(False)
+            if error:
+                self.status.set(f"{title}: preflight blocked; no files copied.")
+                messagebox.showerror("PNG distribution requires attention", error +
+                      "\nNo files copied. First save approved canonical PNG changes if prompted.")
+                return
+            self.status.set(f"{title}: {len(plan['add'])} new, {len(plan['replace'])} changed, "
+                            f"{len(plan['identical'])} identical.")
+            if not (plan["add"] or plan["replace"]):
+                messagebox.showinfo("PNG destination matches canonical",
+                    f"All {len(plan['identical'])} PNG files at {destination} match canonical hashes."
+                    "\nPublic URL/ExpertGPS behavior still requires independent verification.")
+                return
+            self.review_png_distribution(kind, destination, plan)
+        self.async_operation(work, done)
+
+    def review_png_distribution(self, kind, destination, plan):
+        title = ("LIVE published web PNGs" if kind == "web"
+                 else "THIS COMPUTER'S ExpertGPS icons")
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Review " + title)
+        dialog.geometry("850x525")
+        dialog.minsize(690, 395)
+        dialog.transient(self.root)
+        ttk.Label(dialog, text="Review " + title, padding=(15, 12, 15, 3),
+                  font=("Segoe UI", 13, "bold")).pack(anchor="w")
+        note = ("Existing legacy PNG/BMP filenames and GPX URL aliases remain untouched. "
+                "After copying, check a published URL in a browser."
+                if kind == "web" else
+                "Installs to the CURRENT Windows user's TopoGrafix/Symbols/msb, "
+                "preserves readme.txt and existing legacy symbols. "
+                "Restart ExpertGPS if it was open and verify an icon and GPX custom URL.")
+        ttk.Label(dialog, text=(f"Destination: {destination}\n"
+                  f"NEW {len(plan['add'])} | UPDATE (backup) {len(plan['replace'])} | "
+                  f"Unchanged {len(plan['identical'])}\n{note}"),
+                  wraplength=810, padding=(15, 0, 15, 8)).pack(fill="x")
+        preview = scrolledtext.ScrolledText(dialog, font=("Consolas", 10), wrap="word")
+        preview.pack(fill="both", expand=True, padx=15, pady=5)
+        for group, label in (("add", "NEW"), ("replace", "UPDATE (backup)"),
+                             ("identical", "Unchanged")):
+            for record in plan[group]:
+                preview.insert("end", f"{label}: {record['PNG']}\n")
+        preview.configure(state="disabled")
+        actions = ttk.Frame(dialog, padding=(15, 6, 15, 12))
+        actions.pack(fill="x")
+        ttk.Button(actions, text="Cancel", command=dialog.destroy).pack(side="right")
+        def confirmed():
+            if not messagebox.askyesno("Confirm " + title,
+                f"Distribute current verified canonical PNGs to:\n{destination}\n\n"
+                f"New: {len(plan['add'])}; backed-up updates: {len(plan['replace'])}.\n"
+                "This changes files used by GPS or public consumers. Proceed?",
+                parent=dialog):
+                return
+            dialog.destroy()
+            self.status.set("Updating " + title + " with exact hash checks…")
+            def work():
+                return distribute_pngs(
+                    kind, destination, self.plain, self.dest, self.snapshot,
+                    self.records, self.staged, local_readme=self.readme,
+                    progress=self.publish_progress)
+            def done(receipt, error):
+                self.set_busy(False)
+                if error:
+                    self.status.set(title + ": STOPPED; inspect backups and partial receipt.")
+                    messagebox.showerror("PNG distribution stopped", error +
+                       "\nCheck release history: " + str(self.staged) +
+                       "\nSome files may already have been updated. Do not discard backups.")
+                    return
+                self.status.set(f"{title}: {len(receipt)} PNGs verified by destination SHA-256.")
+                messagebox.showinfo("Verified PNG distribution",
+                    f"Verified {len(receipt)} PNGs at:\n{destination}\n\n"
+                    f"Receipts and backups: {self.staged}\n\n" +
+                    ("Check a public PNG URL in a browser. Existing map GPX references remain unchanged."
+                     if kind == "web" else
+                     "Restart ExpertGPS and test the icons and GPX-generated URLs. "
+                     "Local installation is not web publication."))
+            self.async_operation(work, done)
+        ttk.Button(actions, text="Distribute reviewed PNGs",
+                   command=confirmed).pack(side="right", padx=(0, 12))
 
     def show_warnings(self):
         if not self.master_warnings:
