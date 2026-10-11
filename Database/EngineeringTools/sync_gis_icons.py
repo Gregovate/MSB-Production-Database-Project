@@ -127,6 +127,40 @@ def canonical_sources(folder: Path) -> dict[str, tuple[Path, str, int, int]]:
     return result
 
 
+def source_freshness_warnings(plain: Path, masters: Path, sources: dict) -> list[str]:
+    """Flag likely stale Plain exports; deliberately do not guess hidden-layer states.
+
+    Explicit LP-Combo fan-out is operator confirmed. Other names are matched via
+    historical master suffixes. Metadata changes can affect timestamps without
+    artwork changes, so these are *review warnings*, not automatic overwrites.
+    """
+    if not masters.is_dir():
+        return [f"Editable Inkscape Masters folder unavailable: {masters}"]
+    def key_for(name):
+        stem = Path(name).stem.lower().replace("_", "-")
+        for ending in ("-inkscape", "-inskape", "-inscape", "-inksccape"):
+            if stem.endswith(ending):
+                return stem[:-len(ending)]
+        return stem
+    grouped = {}
+    for candidate in masters.iterdir():
+        if candidate.is_file() and candidate.suffix.lower() == ".svg":
+            grouped.setdefault(key_for(candidate.name), []).append(candidate)
+    warnings = []
+    for name, (source, _hash, _w, _h) in sources.items():
+        key = Path(name).stem
+        if key in ("lp-combo", "lp-network", "lp-outlet"):
+            key = "lp-combo"
+        candidates = grouped.get(key, [])
+        if not candidates:
+            warnings.append(f"{name}: matching editable Inkscape master not identified (may be a layered derivative)")
+            continue
+        for candidate in candidates:
+            if candidate.stat().st_mtime - source.stat().st_mtime > 60:
+                warnings.append(f"{name}: editable master {candidate.name} is newer than Plain by over one minute; confirm layers and re-export if needed")
+    return warnings
+
+
 def check_source_snapshot(folder: Path, approved: dict):
     actual = canonical_sources(folder)
     if set(actual) != set(approved):
