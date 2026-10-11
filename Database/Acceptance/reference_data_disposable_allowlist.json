@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "purpose": "Exact candidate-relative paths allowed by the existing shared disposable acceptance wrapper for governed reference-data/GIS migrations and assertions. NOT a Production-deployment authorization or CRUD grant.",
+  "approved_migration_paths": [
+    "Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql"
+  ],
+  "approved_validation_paths": [
+    "Database/Acceptance/171_site_infrastructure_disposable_validation.sql"
+  ]
+}
