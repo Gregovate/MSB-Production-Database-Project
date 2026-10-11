@@ -411,10 +411,16 @@ the operator supplied the correct `manhole.svg` for comparison. The current
 **bare-pole `lp.svg` is explicitly approved**, distinct from the separately
 layered LP Combo/network/outlet assets. The operator's newest 07:24 PowerShell
 listing confirms `MSB_ExpertGPS_Current_Plain_Staged.zip` exists (39,370 bytes)
-inside its staging folder; it has not yet been independently inspected.
-The manhole fix must be verified against the attachment in that newer ZIP,
-and `star` release inclusion is still to be decided. No file installation
-or public promotion is accepted based solely on the directory listing. Detailed source
+inside its staging folder. **That 07:24 ZIP has since been uploaded and
+independently verified:** all 32 PNG SHA-256s/dimensions/manifest rows pass,
+**only `manhole.png` changed** relative to the 07:01 batch, and its source
+SHA-256 matches the operator-supplied corrected `manhole.svg` exactly. An
+independent Inkscape raster rendering is **pixel-for-pixel identical** to the
+new manhole PNG; the original mistaken fire-hydrant artwork is corrected. All
+other 31 PNGs (including the operator-approved standalone bare LP) are unchanged.
+**Staged image integrity PASS; Star release inclusion still needs an operator
+decision.** Installed ExpertGPS, web/Synology publication, legacy GPX aliases
+and draw.io schematic artwork have not been migrated or accepted. Detailed source
 triage and post-correction acceptance rules are in the linked GIS symbol contract.
 No ExpertGPS, Synology, draw.io, or browser publishing has been verified. draw.io keeps `Network\MSB-icon-library.xml`, but
 the existing `Network\Park Network Schematic 2026.drawio` embeds its own SVG/PNG

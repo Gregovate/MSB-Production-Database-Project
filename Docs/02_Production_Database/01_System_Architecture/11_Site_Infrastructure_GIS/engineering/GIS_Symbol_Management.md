@@ -325,6 +325,30 @@ After this clarification, the operator reran `Export-ExpertGPSSymbols.ps1` and p
 
 **The latest exporter DOES produce a ZIP:** the ZIP is inside the staging directory, not necessarily beside the Git repository or in the Downloads root. The posted listing demonstrates its existence and output timestamps, but is not an independent integrity/artwork inspection of this second batch. Do not conflate the second 07:24 package with the audited 07:01 ZIP; the second ZIP has **not yet been uploaded and compared**. Next request that exact ZIP, check the `manhole.png` pixel content against the operator-supplied corrected `manhole.svg`, verify the 32-item manifest/PNG SHA-256 list and compare unchanged icons against the prior audited batch. If only the intended manhole art changed, gate independent release/alias checks after Star disposition. **No canonical `Symbols\png` promotion, TopoGrafix installation, Synology web publication or draw.io schematic update is inferred.**
 
+### Independent acceptance of corrected manhole re-export ZIP — 07:24 batch, October 11
+
+**Staged derivative QA PASS; the prior source-artwork hold on `manhole` is RESOLVED.** Operator uploaded `MSB_ExpertGPS_Current_Plain_Staged(1).zip` from the subsequent 07:24 export. This is a **different and later package** than the audited 07:01 staging archive, and was independently compared file-by-file against that earlier ZIP and the operator's attached correct `manhole.svg`.
+
+| Verified input / output | SHA-256 |
+| --- | --- |
+| Newly uploaded 07:24 staging ZIP | `85569dc7cafa1da169bd68244bb9757daadfb53c1d02e911256790d0c6a63e53` |
+| Correct operator-supplied `manhole.svg` | `6aac9641f3964787dc7db54e2bf6c023f335875abd30f6f5e891085a23f6978d` |
+| Correct `msb/manhole.png` in new ZIP | `bf835b6e2ee67a6812b4c01501d450933161815cb3e4e506bd7d514e60df9e39` |
+| New internal PNG inventory manifest | `aff048898f3e4df7128cda79822dbd3fa77df68a5a1412a91227433eec7e6573` |
+| Unchanged original ExpertGPS `msb/readme.txt` | `69115edd6b8dcf97db836179e014c9221e0f8eba62033703e35b1411a18e9b59` |
+| Independent 32-row audit report (conversation artifact) | `7428e6eaaa42f61030297089c3acfe75b01572cb21f309fc6cc6f15f67aab5f6` |
+
+**Completed checks:**
+
+- ZIP CRC integrity passes, with the exact expected **34 files**: 32 unique `msb/*.png`, one `msb/readme.txt` and one `MSB_ExpertGPS_PNG_Inventory.csv`, with no extra image files.
+- All 32 PNGs decode as **RGBA**; dimensions match each manifest record, and all 32 individual image SHA-256 hashes match that manifest.
+- **Exactly one icon changed from 07:01:** `manhole.png`. The other **31 PNGs remain byte-for-byte identical**, and their manifest source SVG hashes also remain unchanged. Manhole's source SVG SHA-256 changed from `9b74037f9551db5c918d1b427d46cf5be42c6597c9644ca0dcc120e7cfcbcc45` to `6aac9641f3964787dc7db54e2bf6c023f335875abd30f6f5e891085a23f6978d`, **exactly matching the corrected attachment**. This verifies the source was replaced as intended, not just relabeled.
+- The **new manhole is genuinely distinct from the hydrant**: its artwork is a circular manhole/utility-cover marker rather than the previous white hydrant silhouette on a red tile. Its output remains **32×32 RGBA**, with **300 transparent pixels**. A fresh Inkscape rendering of the exact attached `manhole.svg` was independently compared to staged `manhole.png`: **zero differing RGBA pixels**. Current `fire-hydrant.png` is unchanged from the previously audited ZIP.
+- Existing `lp.png` remains unchanged from the first successful 32-icon batch and the operator already approved its current **bare standalone pole**. The older combo pole is correctly represented by separate `lp-combo` / `lp-network` / `lp-outlet` symbols; the prior LP semantic hold is closed.
+- `star.png` is **unchanged** from 07:01 but is newly introduced relative to the older 31-icon baseline. **Operator release-inclusion decision remains outstanding**, as do governed installed/public GPX alias and browser/draw.io compatibility validation.
+
+The current **32-icon PNG staged artwork batch** is now **source/manifest/image-integrity accepted for release planning**, **not automatically approved for deployment**. It has **not** been copied into canonical G: `Symbols\png`, installed in ExpertGPS, published to Synology or browser/webassets, or substituted into existing embedded draw.io schematic icons. Preserve old ExpertGPS filename aliases and source GPX symbols; do not silently rename. The reviewed 07:24 ZIP, rather than the outdated 07:01 package, is the candidate for any further release gate.
+
 ## Approved 31-file Plain SVG / ExpertGPS PNG name-and-size baseline
 
 From the corrected input archive `msb-plain-icons-corrected.zip`, converted into `MSB_ExpertGPS_PNGs_from_SVG_2026-10-09.zip`. The archives were generated in the conversation; these **archive filenames alone do not establish that ZIP files are stored in GitHub or the Shared Drive**. The controlled/current artwork copies reside at the directories above.
