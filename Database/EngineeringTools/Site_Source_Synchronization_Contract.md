@@ -543,3 +543,94 @@ and exports passed. Browser disposition: CHANGES REQUIRED — reference map stil
 uses snapshot data; operational circuit/network/test/ownership/switching popups
 remain incomplete. No production deployment approval or production import is
 established. Later source-cache changes were not tested by this session.
+
+
+### Restart checkpoint — 2026-10-11 18:24 CDT
+
+**Stop point:** Greg requested a checkpoint. Work is authorized to continue;
+there is no outstanding user decision blocking implementation. Previous replies
+stopped at status updates instead of implementing the next slice. No background
+implementation should be assumed.
+
+**Governing work:** #122 commanding; #171 GIS; #230 maintained reference editing;
+draft PR #319 / feature/171-cableiq-import-validation. #88 movement unchanged.
+Separate icon thread owns SVG publication, legacy PNG replacement, and aspect
+ratio rendering. Coordinate shared map-file edits; do not duplicate icon work.
+
+**Actually proved:** operator ran c2b206a2ef4475851807941e46d5824d3021b1e3.
+Actual GPX bootstrap/replay, FLW import/replay and source-conservation assertions,
+map/GPX exports passed in disposable PostgreSQL. GIS_SOURCE_ACCEPTANCE_PASS:
+ /home/msbadmin/setup-acceptance-reports/GIS_Source_Acceptance_20261011T222827
+Setup V0.3.62-field-networks and Field Wiring V0.4.1-gis-entry health,
+authorization and navigation passed. Operator inspected map, rejected current
+popup metadata as inadequate, then reported CLEAN EXIT at 18:11 CDT.
+Disposition: CHANGES REQUIRED. No production import, deployment or approval.
+The disposable session ended; do not assume its database remains.
+
+**Later candidate work:** df269c63a46ed98a24d87c86e10d1512931e0923 added
+hash-keyed server source cache; 25 focused tests passed, server execution not yet
+proved. Subsequent commits record evidence and requirements. Refresh current
+PR head and main before editing; tested c2b206a2 is not current branch head.
+
+**Sources / authority:**
+- GPX: 233 waypoints, 181 tracks. Latest uploaded SHA256
+  a4e48a8938a6e3e889065df74d6140b95e8097d76cd53c0d4dbbce1fb591e0af.
+  Waypoint names/icons updated; NET/PRI/HV track names still need reconciliation.
+  Track geometry unchanged per operator; multiple tracks may share waypoints.
+- FLW: 476 unique test UUIDs / 684 appearances, two additive imports per operator.
+  SHA256 e76d39179da99bb74ed8e2af7f4e555a71ff530cae58bdb0015e770677a3ef5e.
+  Preserve all source/project appearances. Corrected display endpoint names are
+  separate from original tester names. 307 tests resolved to two distinct GPX
+  labels in source-only analysis; NOT an accepted physical cable count.
+- draw.io SHA256
+  65d7607485e526e4d058b4ce997a24f2fe53a731b4f52817dcd44233e420a0a8.
+  Downstream park-network schematic; structured keys incomplete. Eventually
+  refresh bound entities with GPS identities and LinkIQ pass/fail/speed colors.
+- PostgreSQL is maintained waypoint/reference authority; LinkIQ is test evidence
+  authority. Tests, appearances, intake proposals, receipts and decisions in ops;
+  maintained waypoints/cables in ref. NEVER modify FLW or write back to tester.
+  Prior external SQLite editing/rebuild changed lengths per operator; cause
+  unproved. Preserve originals and reconcile in PostgreSQL.
+
+**Implementation still missing:** existing displayed map still consumes baked
+reference geography/static network JSON. Actual imported data has not been
+connected to the application map or a usable authorized maintenance interface.
+Reviewed cable creation/reconciliation, maintained circuit/panel/network links,
+track endpoint/name reconciliation, conflict-aware ExpertGPS reimport, completed
+draw.io projection and offline acceptance remain incomplete. Export checks do
+not prove ExpertGPS application save/reopen roundtrip. CLI import success does
+not prove role-authorized operator editing.
+
+**Next implementation:** connect the EXISTING map to governed PostgreSQL
+reference reads, preserving #88 overlays and icon-thread work. Surface useful
+operational information: outlet supplying panel/circuit(s), actual networks,
+individual cable LinkIQ results/speed/length/date; panel circuit destinations,
+MSB/City ownership, seasonal on/off instructions distinct from observed state.
+Keep useful year; move raw source provenance to secondary detail. Unknown values
+must be explicit, not inferred from labels, track colors or historical notes.
+PANEL GG-00 number 932344017 is not confirmed as meter ID. Do not infer achieved
+speed from test standard. Add maintained editing through existing #230 scope,
+with real authorization/audit boundaries, not another independent data store.
+
+**Execution constraints:** ONE production dump/clone for regression, intake and
+browser review; normal cleanup after clean operator review exit. Existing
+reconnect/failure handling remains. No repeat uploads of unchanged sources after
+cache is populated. Existing governed shared runtime uses psycopg2; missing
+psycopg v3 caused earlier preflight failure and was fixed without installation.
+Server Management owns runbooks and port allocation (Setup review 8898).
+Runbook clarification PR: Gregovate/MSB-Server-Management#73; verify current
+status. Production mutation is a separate explicit #122/runbook approval gate.
+
+**Operator environment:** review checkout
+C:\\lor\\ImportExport\\VSCode-319-linkiq-test, local review/319-linkiq-test;
+remote feature/171-cableiq-import-validation. Do not reset primary checkout.
+Recorded current-source G: paths are in this document's source table. No active
+server access is established in this assistant environment. Local scratch clone
+contains published edits but its local HEAD may lag remote history; reconcile
+without discarding edits. Retrieve this checkpoint from GitHub if scratch is lost.
+
+**Resume instruction:** Continue #171/#230 under #122 from the 2026-10-11
+18:24 CDT checkpoint in Site_Source_Synchronization_Contract.md on PR #319.
+Read current main/PR/issues and rules; implement the PostgreSQL-backed existing
+map and maintained operational relationships. Do not repeat already-proven
+source extraction or ask Greg to restate requirements. Record new work durably.
