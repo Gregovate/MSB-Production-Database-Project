@@ -48,6 +48,34 @@ Keep reference action definitions separate from seasonal execution/completion
 evidence under #122. Existing map/search, #230 editing and mandatory offline
 reference acceptance remain the required end-to-end outcome.
 
+### Required delivery: import, maintained editing, GPX export
+
+Greg reaffirmed on October 11 at 16:22 America/Chicago that the work includes
+**getting the data into PostgreSQL, making it editable going forward, and the
+ability to export back to GPX**. Track-name reconciliation alone is not delivery.
+
+Acceptance must demonstrate the complete usable workflow:
+1. Import the supplied corrected waypoint/track reference data and LinkIQ test
+   evidence into governed PostgreSQL records, preserving source provenance,
+   stable identity, unresolved relationships and immutable original tests.
+   Reconcile structured draw.io evidence without dropping unconverted entities.
+2. Edit maintained reference data through the authorized application: Managers
+   maintain waypoints; Production Crew maintain panel/circuit relationships and
+   seasonal on/off designations under the established field permissions.
+   Accepted changes must be reflected in the existing map/search.
+3. Export the current accepted PostgreSQL waypoint/track data as a usable GPX
+   file for ExpertGPS, preserving required labels, types/icons, geometry and
+   source extensions. Open and verify the exported file in ExpertGPS.
+4. Reconcile subsequent ExpertGPS waypoint/track adjustments back into
+   PostgreSQL with stable identities, baseline version checks and explicit
+   conflicts. Repeated imports must not duplicate identities or overwrite
+   accepted database edits silently.
+
+Record actual import, edit and export evidence separately. A schema-only test,
+read-only extraction, corrected static map or engineering JSON projection does
+not establish this end-to-end acceptance. Production execution remains subject
+to #122 and the governing runbook; these requirements do not claim deployment.
+
 ### Fresh attachment evidence — read-only inspection
 
 These are upload filenames, not new canonical Shared Drive names. Greg reports
