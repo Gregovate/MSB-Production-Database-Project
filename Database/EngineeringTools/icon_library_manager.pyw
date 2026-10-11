@@ -130,6 +130,7 @@ class Manager:
         self.web_publish_btn.pack(side="left", padx=(0, 12))
         ttk.Button(footer, text="Open release history / logs", command=lambda: self.open_dir(self.releases)).pack(side="left")
         ttk.Button(footer, text="Open selected SVG URL", command=self.open_web_svg).pack(side="left", padx=(12, 0))
+        ttk.Button(footer, text="Open selected PNG URL", command=self.open_web_png).pack(side="left", padx=(12, 0))
         ttk.Button(footer, text="Close", command=self.root.destroy).pack(side="right")
 
     def open_dir(self, path):
@@ -433,7 +434,8 @@ class Manager:
                 if kind == "web" else
                 "Installs to the CURRENT Windows user's TopoGrafix/Symbols/msb, "
                 "preserves readme.txt and existing legacy symbols. "
-                "Restart ExpertGPS if it was open and verify an icon and GPX custom URL.")
+                "CLOSE ExpertGPS before copying files, then reopen it and "
+                "verify an icon plus a generated GPX custom-symbol URL.")
         ttk.Label(dialog, text=(f"Destination: {destination}\n"
                   f"NEW {len(plan['add'])} | UPDATE (backup) {len(plan['replace'])} | "
                   f"Unchanged {len(plan['identical'])}\n{note}"),
@@ -452,7 +454,9 @@ class Manager:
             if not messagebox.askyesno("Confirm " + title,
                 f"Distribute current verified canonical PNGs to:\n{destination}\n\n"
                 f"New: {len(plan['add'])}; backed-up updates: {len(plan['replace'])}.\n"
-                "This changes files used by GPS or public consumers. Proceed?",
+                ("This changes the currently installed ExpertGPS icons. "
+                 "CLOSE EXPERTGPS FIRST. Proceed?" if kind == "expertgps"
+                 else "This changes public web PNGs used by GPX and browser consumers. Proceed?"),
                 parent=dialog):
                 return
             dialog.destroy()
