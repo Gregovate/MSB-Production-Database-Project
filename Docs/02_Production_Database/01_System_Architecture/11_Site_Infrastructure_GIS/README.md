@@ -426,11 +426,15 @@ The operator's 32-icon write status is not yet confirmed (receipt not supplied).
 `MSB_ExpertGPS_Current_Plain_Staged(2).zip` contains all 34 PNGs,
 manifest and original readme. ZIP CRC, 34/34 PNG hashes and RGBA dimensions
 PASS. All previous 32 PNGs and their SVG manifest hashes are unchanged; only
-new `antenna-l.png` and `antenna-r.png` are added. **Operator scale decision
-pending:** the new antennas are intentionally distinct facing directions but
-both export at **121×121 px**, versus normally 32×32 icon canvases. Confirm
-whether 121px is the wanted waypoint/map marker size before pinning the new
-34-file release and promoting to the canonical Shared Drive PNG folder.
+new `antenna-l.png` and `antenna-r.png` are added. **Operator scale
+correction completed in Inkscape:** the 121×121 px exports resulted from
+source documents measured in **mm** rather than **px**; the operator reports
+switching to px and resizing both antenna illustrations. The prior 34-icon ZIP
+still contains the oversized old antenna outputs and is superseded as a
+promotion candidate. New actual Plain SVG dimensions are **not yet verified**;
+rerun the exporter on current G: Plain into a new stage, inspect the two new
+antenna PNGs and confirm the other 32 unchanged. A fresh exact-SHA 34-icon
+release review/promotion pin is required before writing to canonical `png`.
 Live source SVG lineage and actual installed/published symbols remain separate
 gates. The existing promoter is pinned to the older 32-icon ZIP and must not
 be applied for the complete 34-item release. Govern each independently. Detailed source
