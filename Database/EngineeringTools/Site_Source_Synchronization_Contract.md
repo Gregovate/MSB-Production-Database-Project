@@ -634,3 +634,151 @@ without discarding edits. Retrieve this checkpoint from GitHub if scratch is los
 Read current main/PR/issues and rules; implement the PostgreSQL-backed existing
 map and maintained operational relationships. Do not repeat already-proven
 source extraction or ask Greg to restate requirements. Record new work durably.
+
+
+### #171/#230 existing-map PostgreSQL + operational editor implementation — 2026-10-11 continuation
+
+**Authorization:** Greg explicitly authorized implementation from the 18:24 CDT
+checkpoint under #122 on draft PR #319. Branch remains
+\`feature/171-cableiq-import-validation\`. Current-main reconnaissance was
+\`2beead54e849a90596a208596c9dedaaac5290d8\`; this contained the separate
+icon-publishing #360 and must not be overwritten. Source/intake checkpoint
+evidence (c2b206a2 GIS_SOURCE_ACCEPTANCE_PASS, browser CLEAN EXIT/CHANGES
+REQUIRED) has **not** been retested or represented as acceptance of new code.
+No Production schema/DB, source GPX/FLW, movement events or Synology artwork
+were modified in this continuation.
+
+**New candidate data contract** (additive **second** SQL candidate after the
+earlier site-infrastructure migration):
+
+- \`Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql\`
+  adds versioned reference revision, positive independently provisioned
+  Manager/Production crew editor grant, panel-level owner + crew-editable meter,
+  panel-scoped circuit number and independent circuit ownership, many-to-many
+  existing-waypoint circuit destinations, actual reviewed network memberships,
+  seasonal planned on/off instructions **separate from observed power state**,
+  and append-only attributed before/after edit log. Defaults are
+  \`UNKNOWN\`/unreviewed, not inferred City or MSB ownership.
+- \`ref.site_reference_snapshot()\` yields maintained EPSG:8158 waypoint and
+  historical track geometry transformed to browser WGS84, only reviewed shared
+  route associations, explicit reviewed physical cables and their *separately*
+  identified LinkIQ UUID/results/length/test standard/date, panel circuits,
+  circuit destinations, memberships, switching instructions, source hashes and
+  unresolved LinkIQ count. A LinkIQ test standard is NOT a measured link speed;
+  projection reports \`measured_link_speed_mbps: null\` until actual independent
+  decoding/verification is implemented. Physical cable counts are never
+  inferred from GPX track descriptions or overlapping routes.
+- Accepted GPX binding SHA is reported separately from latest staged GPX SHA.
+  Later staged GPX is not silently promoted; browser visibly warns of source
+  drift. FLW SHA is labeled latest **evidence**, not accepted topology.
+- \`ref.site_reference_command()\` is a narrow named-command
+  \`SECURITY DEFINER\` operation. It requires explicit positive editor scope,
+  nonblank evidence, an optimistic global expected revision, and records
+  before/after + actor/email + time. The protected Setup HTTP API additionally
+  requires the existing Cloudflare/Directus read gate; Manager coordinate/name/
+  type/owner edits also require \`can_manage_setup\`. Crew circuit/link/network/
+  meter/switching operations do **not** grant waypoint-position editing.
+  Existing \`fieldwiring_app\` is granted EXECUTE only; no broad new table DML.
+  Editor grants are **not automatically seeded from unrelated Setup roles**.
+  Provision them only through reviewed acceptance/administration.
+
+**Existing map integration** (not a competing viewer):
+
+- \`Setup/Application/setup_site_reference_api.py\`: GET
+  \`/api/setup/locate/references\`, POST
+  \`/api/setup/locate/references/command\` (same-origin setup-command header,
+  explicit JSON, expected revision). Uses existing psycopg2, closes the
+  permissions-read transaction before switching to one guarded write
+  transaction, commits or rolls back atomically. No new server DB library.
+- \`Setup/Application/production_backend.py\` registers that blueprint and
+  allowlists \`setup_site_reference.js\` on the existing \`/locate/assets/\`
+  endpoint. The **same** \`Setup/Application/locate_preview.html\` inserts one
+  script between existing map search and historical network discovery.
+- \`Setup/Application/setup_site_reference.js\` loads maintained references at
+  page load, rebuilds source waypoint/track/reviewed-route layers, maintains
+  the existing aerial, GPS, layer toggles, map searching and approved icon
+  objects, and shows operational detail on the selected waypoint/panel/network:
+  supplying breaker number and outlets, separate panel/circuit owner, meter,
+  intended season switching, explicit actual network membership, reviewed
+  physical cables with per-UUID LinkIQ test data, and source year. Raw GPX
+  description/comment/full timestamp live in a secondary provenance section.
+  Missing network/circuit/speed/ownership values are prominently
+  \`Not recorded / unreviewed\`, not guessed.
+- \`setup_locate_search.js\` reindexes permanent map entries after DB reload,
+  retains dynamic #88 asset/search records, and replaces only curated network
+  references. \`setup_locate_networks.js\` no longer replaces the network picker
+  with dated \`setup_locate_networks.json\` after successful live loading.
+  If the GIS DB API is absent/unavailable, existing snapshot geometry/network
+  remains available **with a visible STATIC SOURCE SNAPSHOT ONLY warning and
+  no editor**; this is NOT an offline guarantee or an acceptance of stale
+  reference as current truth. The original static HTML is retained temporarily
+  to keep current icon mapping and pre-cutover compatibility until the separate
+  approved icon/source publication is reconciled. Removal of baked HTML and
+  generated network JSON remains part of final cutover.
+- Only GPX/reference map layers are rebuilt; #88 Container/Display runtime
+  observations, home anchor and movements are not edited. No duplicate
+  Workshop injection. The icon thread continues owning SVG/PNG publication,
+  type mapping and non-square marker sizing, so this PR does not implement
+  those changes.
+
+**Candidate verification added:**
+
+- \`Database/Acceptance/171_site_reference_operations_disposable_validation.sql\`:
+  transaction rollback assertions for no editor grant by default, distinct
+  Manager/crew rights, explicit meter identifier, circuit with multiple
+  outlets, separate panel/circuit ownership, reviewed actual network membership,
+  seasonal on/off data, audit revisions, stale-edit rejection, and preservation
+  of the actual reviewed LinkIQ test UUID/result/length with UNKNOWN speed.
+- \`Database/Acceptance/reference_data_disposable_allowlist.json\` adds the
+  additive migration/validation paths **in exact order** to the existing single
+  governed disposable acceptance workflow. No stand-alone dump/clone. The
+  #230 table/action allowlist lists new proposed operational scopes but remains
+  globally \`DESIGN_ONLY_NOT_ENFORCED\` for its other collections.
+- \`Setup/Application/test_setup_site_reference_api.py\` tests GET/POST auth,
+  request guard, default-deny, Manager-vs-crew distinction, evidence/expected
+  revision and transaction boundary without a live DB.
+- \`Database/EngineeringTools/test_reference_data_allowlist.py\` now asserts
+  exact schema paths, SQL boundary and existing-map integration.
+  \`.github/workflows/site-reference-tests.yml\` defines isolated PostGIS
+  synthetic SQL, Python HTTP tests and Node syntax checks. Creating a workflow
+  is **not evidence that GitHub has executed it**.
+- Three changed JavaScript modules were independently parsed with V8
+  (\`setup_site_reference.js\`, \`setup_locate_search.js\`,
+  \`setup_locate_networks.js\`) and passed **syntax-only** checks on the latest
+  inspected code. The new SQL, Flask tests, Node DOM/browser operation and
+  live PostgreSQL admission have not yet been executed on the governed
+  server; no fabricated PASS or claim of completed operator acceptance.
+
+**Acceptance gate and known incomplete work:**
+
+1. Refresh existing operator review checkout only when clean and fast-forward
+   from this remote branch; never reset primary checkout. Apply both candidate
+   migrations then both rollback-only SQL validations using the existing
+   \`run_setup_disposable_browser_preview.ps1\` with GPX/FLW intake and
+   regression enabled in **ONE** governed disposable clone. Source-cache reuse
+   by hash avoids repeated unchanged 253 MB FLW transfers. Respect Server
+   Management #73 and preview port 8898. Test positive editor grants only
+   inside disposable. No Production writes.
+2. Browser test the **existing** \`/setup/locate/\` map: select known waypoint,
+   check 233/181 source feature conservation; create fixture panel/circuit
+   relationship, link two existing fixture outlets, verify both directions,
+   update crew meter, planned seasonal switching and assigned network, and
+   verify missing data is explicitly missing. Manager revise a fixture point,
+   reload and search new label: it must update without regenerating HTML.
+   Deny crew coordinate edits; stale tabs must get conflict 409. Compare
+   revised GPX export against source and perform ExpertGPS application
+   save/reopen for genuine roundtrip acceptance. No actual panel wiring
+   should be invented in test fixtures.
+3. Remaining mandatory #171/#230 work **NOT COMPLETE**: authorized new
+   waypoint/alias/track-lifecycle and physical-cable review UI, explicit
+   LinkIQ test-to-cable decision UI and speed extraction where the original
+   payload proves it, conflict-aware GPX reimport/edit integration and track
+   roundtrip, draw.io projection acceptance, first-class production grant
+   provisioning, source/HTML/icon cutover without baked static geography,
+   and the versioned/offline tile/Leaflet/symbol/reference package with
+   rugged-tablet airplane-mode proof. No label, circuit or switch state
+   invented from names, historical track notes or LinkIQ standard.
+4. No Production migration/deployment/merge approval yet. Preserve the
+   candidate PR as draft until governed disposable SQL/application tests and
+   operator acceptance PASS under #122.
+
