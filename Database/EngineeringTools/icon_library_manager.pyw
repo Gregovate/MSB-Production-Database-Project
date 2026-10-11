@@ -168,7 +168,7 @@ class Manager:
                   "preflight": "Checking files", "backup": "Backing up originals",
                   "apply": "Saving approved PNGs", "publish": "Publishing SVGs to web",
                   "distribute": "Distributing approved PNGs",
-                  "finalize": "Checking destination"
+                  "finalize": "Checking destination"}
         if total is None:
             if self.progress_mode != "indeterminate":
                 self.progress_bar.configure(mode="indeterminate")
