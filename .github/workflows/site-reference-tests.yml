@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           container="${{ job.services.postgis.id }}"
-          docker exec "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE SCHEMA IF NOT EXISTS ref; CREATE SCHEMA IF NOT EXISTS ops;"
+          docker exec "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE SCHEMA IF NOT EXISTS ref; CREATE SCHEMA IF NOT EXISTS ops; CREATE ROLE fieldwiring_app LOGIN;"
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/Acceptance/171_site_reference_operations_disposable_validation.sql
