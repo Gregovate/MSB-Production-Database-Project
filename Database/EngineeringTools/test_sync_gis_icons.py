@@ -91,7 +91,8 @@ class ProcessTests(unittest.TestCase):
         self.assertTrue(archive.is_file())
         self.assertEqual(events[0][0], 'validate')
         self.assertIsNone(events[0][2])
-        completed = [e for e in events if e[0] == 'render' and e[1] > 0]
+        completed = [e for e in events if e[0] == 'render' and
+                     e[3].endswith(('cached', 'rendered'))]
         self.assertEqual([e[1] for e in completed], [1, 2, 3])
         self.assertTrue(all(e[2] == 3 for e in completed))
         self.assertTrue(all('.svg' in e[3] for e in completed))
