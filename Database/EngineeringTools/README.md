@@ -75,7 +75,11 @@ Wi-Fi antenna left/right master and Plain SVG variants (`antenna-l`,
 current Plain SVG filename is unlisted in its pinned manifest; it rechecks the
 full live file set immediately before copying. **Do not promote the 32-file ZIP**
 until the new 34-file candidate is exported, independently inspected and its
-exact ZIP SHA approved in a separately reviewed update. If 32 were already
+exact ZIP SHA approved in a separately reviewed update.
+A disposable, G:-independent PowerShell 5.1 regression harness is available:
+`Test-PromoteGISPNGs-SourceSet.ps1`. It AST-loads only the source-set guard
+and tests exact matches, new antenna filenames, renames and removed SVGs
+without running a real promotion. **Laptop execution remains pending.** If 32 were already
 promoted before this source change, preserve the receipt and leave them intact;
 a future 34-icon promotion should add missing antenna PNGs without replacing
 matching existing derivatives.
