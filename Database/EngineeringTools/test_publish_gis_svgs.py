@@ -1,0 +1,96 @@
+"""Disposable #171 live-web SVG synchronization tests; all paths are temp dirs.
+
+Never reaches the real G: Drive or private Synology share.
+"""
+from pathlib import Path
+import tempfile
+import unittest
+
+from publish_gis_svgs import publish_web_svgs, web_svg_preflight
+from sync_gis_icons import IconError, canonical_sources, sha_file
+
+
+def svg(w=32, h=32, fill="red"):
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}px" height="{h}px" '
+            f'viewBox="0 0 {w} {h}"><rect width="{w}" height="{h}" fill="{fill}"/></svg>').encode()
+
+
+class WebSVGTests(unittest.TestCase):
+    def setUp(self):
+        self.t = tempfile.TemporaryDirectory()
+        self.root = Path(self.t.name)
+        self.plain = self.root / "Plain"
+        self.plain.mkdir()
+        self.public = self.root / "msb-svg"
+        self.public.mkdir()
+        self.stage = self.root / "run"
+        self.stage.mkdir()
+        (self.plain / "car-r.svg").write_bytes(svg(32, 18))
+        (self.plain / "antenna-l.svg").write_bytes(svg(32, 32))
+        self.sources = canonical_sources(self.plain)
+
+    def tearDown(self):
+        self.t.cleanup()
+
+    def test_additive_publish_preserves_existing_unrelated_file(self):
+        (self.public / "legacy.svg").write_bytes(b"legacy marker")
+        plan = web_svg_preflight(self.public, self.sources)
+        self.assertEqual(len(plan["add"]), 2)
+        self.assertEqual(len(plan["identical"]), 0)
+        events = []
+        receipt = publish_web_svgs(self.plain, self.public, self.stage, self.sources,
+                                   progress=lambda *parts: events.append(parts))
+        self.assertEqual(len(receipt), 2)
+        self.assertTrue((self.public / "legacy.svg").is_file())
+        self.assertEqual(sha_file(self.public / "car-r.svg"), self.sources["car-r.svg"][1])
+        self.assertEqual([x[1] for x in events if x[0] == "publish" and
+                          x[3].endswith("remote hash verified")], [1, 2])
+        self.assertTrue((self.stage / "MSB_GIS_Web_SVG_Publication_Receipt.csv").exists())
+
+    def test_replace_with_backup_and_unchanged_other_icon(self):
+        old_bytes = svg(32, 18, "yellow")
+        (self.public / "car-r.svg").write_bytes(old_bytes)
+        (self.public / "antenna-l.svg").write_bytes((self.plain / "antenna-l.svg").read_bytes())
+        plan = web_svg_preflight(self.public, self.sources)
+        self.assertEqual(plan["replace"], ["car-r.svg"])
+        self.assertEqual(plan["identical"], ["antenna-l.svg"])
+        receipt = publish_web_svgs(self.plain, self.public, self.stage, self.sources)
+        self.assertEqual({r["SVG"]: r["Action"] for r in receipt},
+                         {"car-r.svg": "replaced-with-backup", "antenna-l.svg": "identical"})
+        self.assertEqual((self.stage / "web-svg-backups-before-replacement" / "car-r.svg").read_bytes(),
+                         old_bytes)
+        self.assertEqual((self.public / "car-r.svg").read_bytes(), (self.plain / "car-r.svg").read_bytes())
+
+    def test_case_collision_fails_before_server_mutation(self):
+        (self.public / "CAR-R.svg").write_bytes(b"historic")
+        with self.assertRaises(IconError):
+            publish_web_svgs(self.plain, self.public, self.stage, self.sources)
+        self.assertEqual([p.name for p in self.public.iterdir()], ["CAR-R.svg"])
+
+    def test_added_or_mutated_source_refused(self):
+        (self.plain / "new-icon.svg").write_bytes(svg(24, 30))
+        with self.assertRaises(IconError):
+            publish_web_svgs(self.plain, self.public, self.stage, self.sources)
+        self.assertFalse(list(self.public.iterdir()))
+        (self.plain / "new-icon.svg").unlink()
+        (self.plain / "car-r.svg").write_bytes(svg(32, 18, "blue"))
+        with self.assertRaises(IconError):
+            publish_web_svgs(self.plain, self.public, self.stage, self.sources)
+        self.assertFalse(list(self.public.iterdir()))
+
+    def test_missing_server_share_never_created(self):
+        missing = self.root / "unavailable-msb-svg"
+        with self.assertRaises(IconError):
+            web_svg_preflight(missing, self.sources)
+        self.assertFalse(missing.exists())
+
+    def test_reject_mm_source_before_web_copy(self):
+        (self.plain / "antenna-l.svg").write_bytes(
+            b'<svg xmlns="http://www.w3.org/2000/svg" width="32mm" height="32mm"/>')
+        with self.assertRaises(IconError):
+            canonical_sources(self.plain)
+        self.assertFalse(list(self.public.iterdir()))
+
+
+if __name__ == "__main__":
+    unittest.main()
