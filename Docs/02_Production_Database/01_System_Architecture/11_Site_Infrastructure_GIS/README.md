@@ -2,6 +2,12 @@
 
 This subsystem documents permanent physical-site identities, location history, power/site infrastructure relationships, and PostgreSQL integration of MSB GIS/GPS data.
 
+## Icon artwork maintenance — new normal operator workflow (#171)
+
+For updates to GIS/ExpertGPS **artwork**, use the repository-controlled [MSB Icon Library Manager](../../../../Database/EngineeringTools/README-Icon-Library-Manager.md) via its **one-time-installed Windows desktop shortcut**. Edit artwork under G: `MSB GIS\\Symbols\\Masters`, save approved Plain SVG output under sibling `Plain`, then use the manager's **Check and preview icons** and **Save approved PNG changes** controls. It discovers all icons dynamically; **maximum canvas 32 px wide and 32 px high**, with smaller/rectangular dimensions allowed. It rejects wrong units (mm, etc.), Inkscape metadata accidentally retained in Plain, missing resources, oversized or incorrect PNG exports, and conflicting destination filenames. It backs up changed PNGs and keeps hash receipts under shared `Symbols\\release-history`. The canonical derived output is `Symbols\\png` — no more routine ZIP handoffs through Downloads.
+
+**Source/master distinction remains intentional:** multiple Plain icons can come from one layered master (LP-Combo), so an operator selects the desired layers in Inkscape; the manager does **not** guess them. ExpertGPS local copies, GPX type/URLs, Synology/web assets, browser markers and draw.io schematic/library content are **separate release gates**, not synchronized automatically by the PNG update. The desktop GUI is implemented and disposable engine/integration tests have passed, but first-run Windows/G: acceptance is still pending.
+
 ## Required reference-data editing authority — #171 / #230
 
 Operator decision, 2026-10-10: the MSB database-backed application will be the

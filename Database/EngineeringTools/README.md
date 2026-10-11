@@ -2,6 +2,18 @@
 
 Controlled repository engineering utilities. Operator-run tools below require the documented preflight and governed acceptance gates; none are Production UI entry points.
 
+## Normal icon editing and PNG management — Issue #171 (new operator GUI)
+
+**Use the [MSB Icon Library Manager](README-Icon-Library-Manager.md), not the old timestamped Downloads ZIP workflow.** On a Windows workstation, double-click `Install-MSB-Icon-Library-Shortcut.cmd` **once** from this directory. Then open **MSB Icon Library Manager** from the Desktop whenever you add or edit icons. The launcher and GUI live in this GitHub repository; actual artwork is read directly from the canonical Shared Drive `Symbols\\Masters` / `Plain` folders.
+
+The GUI discovers all current Plain SVGs automatically (no fixed icon count), validates pixel dimensions **1–32 px independently for width and height**, rejects mm/canvas mistakes, Inkscape editor metadata and external references in Plain files, stages/render-checks RGBA PNGs, visually previews each icon, and shows new/changed/unchanged status. On explicit confirmation only, it synchronizes new/changed PNGs into canonical G: `Symbols\\png`, with verified backups, source hashes and receipts stored in G: `Symbols\\release-history`. **No Downloads transfer or operator-run PowerShell commands are needed for recurring icon updates.**
+
+The versioned Python engine is [`sync_gis_icons.py`](sync_gis_icons.py), the Windows UI is [`icon_library_manager.pyw`](icon_library_manager.pyw), the desktop launcher is [`Launch-MSB-Icon-Library.cmd`](Launch-MSB-Icon-Library.cmd), and the disposable checks are [`test_sync_gis_icons.py`](test_sync_gis_icons.py). The manager does **not** silently choose layers for a multi-layer master (e.g. LP-Combo); the operator still saves the desired Plain SVG variant in Inkscape. It also **warns when a matching editable master is newer than the saved Plain SVG**, including the LP-Combo layered derivatives, and requires an additional explicit confirmation before a PNG change when such source-freshness questions remain. It does **not** install ExpertGPS symbols, update GPX/draw.io, or publish Synology/web assets. The actual Windows GUI and shared-G: runtime still require operator acceptance before declaring deployment complete.
+
+### Legacy tools kept for diagnostics/history
+
+The following source inventory and staged ZIP utilities remain available for forensics or specialized controlled exports, but **are not the everyday icon maintenance entry point**.
+
 ## GIS / ExpertGPS symbol source inventory — Issue #171
 
 [inventory_gis_symbols.py](inventory_gis_symbols.py) is a **read-only, standard-library Python** inventory of scattered SVGs, the chosen G: `Masters` and `Plain`, G: `Symbols\\png` derivatives, local ExpertGPS symbols, and optionally historical ZIPs/draw.io libraries. It reports retained Inkscape/Sodipodi metadata, source hashes, names, duplicate revisions, and noncanonical filename findings into a new Downloads folder. Inkscape metadata present means editor-specific information remains; absent metadata is **not proof** of a Plain SVG export. Use inventory/review **before** running the PNG exporter or changing current icons. Regression tests: `python -m unittest discover -s Database/EngineeringTools -p test_inventory_gis_symbols.py`.
