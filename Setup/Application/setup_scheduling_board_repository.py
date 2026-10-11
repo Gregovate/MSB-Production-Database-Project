@@ -505,6 +505,18 @@ class SetupSchedulingBoardRepository:
                                AND p.shift_code = wdt.shift_code
                            )
                     ), 0)::integer AS actual_person_minutes,
+                    (SELECT count(*) FROM ops.setup_task_progress p
+                     WHERE p.setup_work_day_task_id = wdt.setup_work_day_task_id
+                        OR (p.setup_work_day_task_id IS NULL
+                            AND p.setup_work_day_id = wdt.setup_work_day_id
+                            AND p.setup_session_task_id = wdt.setup_session_task_id
+                            AND p.shift_code = wdt.shift_code))::integer AS work_report_count,
+                    (SELECT max(p.percent_complete) FROM ops.setup_task_progress p
+                     WHERE p.setup_work_day_task_id = wdt.setup_work_day_task_id
+                        OR (p.setup_work_day_task_id IS NULL
+                            AND p.setup_work_day_id = wdt.setup_work_day_id
+                            AND p.setup_session_task_id = wdt.setup_session_task_id
+                            AND p.shift_code = wdt.shift_code)) AS reported_percent_complete,
                     wdt.started_at,
                     wdt.completed_at,
                     wdt.notes,
@@ -1298,3 +1310,4 @@ class SetupSchedulingBoardRepository:
             result = self._one(cur, "Annual Setup dependency command returned no result")
             conn.commit()
             return result
+

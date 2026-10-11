@@ -103,9 +103,19 @@ def projection(monkeypatch):
         INSERT INTO ref.setup_task_container_support VALUES (1, 178, 'KIT', NULL);
         INSERT INTO ref.stage VALUES (15, '15', 'Church-ParkingLot');
         INSERT INTO ops.setup_container_state VALUES (1, 178, NULL, NULL, 'PLACED', 44);
-        INSERT INTO ops.setup_movement_event VALUES
+        INSERT INTO ops.setup_movement_event
+            (setup_movement_event_id,setup_session_id,occurred_at,gps_latitude,gps_longitude,gps_accuracy_m,
+             gps_fix_age_ms,gps_quality,capture_method) VALUES
             (41, 1, '2026-10-05T11:58:00-05:00', 43.778657, -87.749155, 1.58, 0, 'UNASSESSED', 'GPS'),
             (44, 1, '2026-10-05T14:50:00-05:00', 43.778556, -87.749142, 3.00, 0, 'UNASSESSED', 'TOUCH_SELECT');
+    """)
+
+    conn.executescript("""
+        ALTER TABLE ops.setup_movement_event ADD COLUMN container_id INTEGER;
+        ALTER TABLE ops.setup_movement_event ADD COLUMN destination_location_note TEXT;
+        ALTER TABLE ops.setup_movement_event ADD COLUMN event_type TEXT;
+        ALTER TABLE ops.setup_movement_event ADD COLUMN notes TEXT;
+        ALTER TABLE ops.setup_movement_event ADD COLUMN destination_stage_id INTEGER;
     """)
 
     @contextmanager
@@ -231,14 +241,25 @@ def _installed_production_location_case(case):
             (90,840),(90,848),(90,853),(90,860),(90,861);
         INSERT INTO ops.setup_container_state VALUES (1,177,NULL,NULL,'CONTAINER_MOVE',43);
         UPDATE ops.setup_container_state SET movement_status='CONTAINER_MOVE';
-        INSERT INTO ops.setup_movement_event VALUES
+        INSERT INTO ops.setup_movement_event
+            (setup_movement_event_id,setup_session_id,occurred_at,gps_latitude,gps_longitude,gps_accuracy_m,
+             gps_fix_age_ms,gps_quality,capture_method) VALUES
             (43,1,'2026-10-05T14:50:15-05:00',43.778465,-87.749201,3.00,0,'UNASSESSED','TOUCH_SELECT');
         INSERT INTO ops.setup_display_state
             SELECT 1,display_id,'DETACHED',NULL,NULL,'TASK_UNLOAD',
                 CASE WHEN container_id=177 THEN 43 ELSE 44 END
             FROM ref.display;
     """)
-    if case == "attached":
+    if case in ("continuity", "location_after_pick"):
+        conn.execute("UPDATE ops.setup_display_state SET position_mode='WITH_CONTAINER'")
+        conn.execute("UPDATE ops.setup_movement_event SET container_id=178,event_type='CONTAINER_MOVE' WHERE setup_movement_event_id=44")
+        conn.execute("UPDATE ops.setup_movement_event SET container_id=177,event_type='CONTAINER_MOVE' WHERE setup_movement_event_id=43")
+        conn.executescript("""
+            INSERT INTO ops.setup_movement_event (setup_movement_event_id,setup_session_id,occurred_at,container_id,destination_location_note,event_type)
+            VALUES (10,1,'2026-10-05T12:00:00-05:00',178,'15-Church-ParkingLot','CONTAINER_MOVE'),
+                   (11,1,'2026-10-05T12:00:00-05:00',177,'15-Church-ParkingLot','CONTAINER_MOVE');
+        """)
+    elif case == "attached":
         conn.execute("UPDATE ops.setup_display_state SET position_mode='WITH_CONTAINER', last_movement_event_id=41")
     elif case == "later_parent":
         conn.execute("UPDATE ops.setup_container_state SET current_stage_id=15, current_location_note='later parent location', last_movement_event_id=41")
@@ -247,6 +268,13 @@ def _installed_production_location_case(case):
     elif case == "explicit":
         conn.execute("UPDATE ref.setup_task SET active_flag=1 WHERE setup_task_id=2")
         conn.execute("INSERT INTO ref.setup_task_display (setup_task_id,display_id,relationship_type) SELECT CASE WHEN display_id=834 THEN 2 ELSE 1 END,display_id,'REQUIRED' FROM ref.display")
+
+    if case == "location_after_pick":
+        conn.executescript("""
+            INSERT INTO ops.setup_movement_event (setup_movement_event_id,setup_session_id,occurred_at,container_id,event_type)
+            VALUES (50,1,'2026-10-05T16:00:00-05:00',178,'PICKED'),(51,1,'2026-10-05T16:00:00-05:00',177,'PICKED');
+            UPDATE ops.setup_container_state SET movement_status='PICKED',last_movement_event_id=CASE WHEN container_id=177 THEN 51 ELSE 50 END;
+        """)
 
     # Import the real host, which installs material -> ownership -> assignment
     # exactly as the disposable browser/Production process does.
@@ -277,8 +305,14 @@ def _installed_production_location_case(case):
             assert item["current_gps_latitude"] is None
             assert item["current_nearest_reference"] is None
         else:
-            assert item["current_location_kind"] == "GPS"
-            assert item["current_movement_event_id"] == (43 if item["container_id"] == 177 else 44)
+            assert item["current_location_kind"] == ("NAMED" if case in ("continuity", "location_after_pick") else "GPS")
+            if case in ("continuity", "location_after_pick"):
+                assert item["current_location_note"] == "15-Church-ParkingLot"
+                assert item["current_named_context_inherited"]
+            assert item["current_movement_event_id"] == ((51 if item["container_id"] == 177 else 50) if case == "location_after_pick" else (43 if item["container_id"] == 177 else 44))
+            if case == "location_after_pick":
+                assert item["current_movement_status"] == "PICKED"
+                assert item["current_location_event_id"] == (43 if item["container_id"] == 177 else 44)
             assert item["current_gps_accuracy_m"] == 3
             assert item["current_gps_latitude"] == (43.778465 if item["container_id"] == 177 else 43.778556)
             reference = item["current_nearest_reference"]
@@ -286,10 +320,10 @@ def _installed_production_location_case(case):
             assert round(reference["distance_ft"]) == (46 if item["container_id"] == 177 else 76)
             assert reference["reference_set_version"] == "2026-stage-reference-20261003.1"
     support = context["support_containers"][0]
-    assert support["current_location_kind"] == ("NONE" if case == "other_season" else "NAMED" if case == "later_parent" else "GPS")
+    assert support["current_location_kind"] == ("NONE" if case == "other_season" else "NAMED" if case in ("later_parent", "continuity", "location_after_pick") else "GPS")
 
 
-@pytest.mark.parametrize("case", ["detached", "attached", "later_parent", "missing", "explicit", "other_season"])
+@pytest.mark.parametrize("case", ["detached", "attached", "later_parent", "missing", "explicit", "other_season", "continuity", "location_after_pick"])
 def test_installed_production_api_preserves_effective_movement_evidence(case):
     # Isolate method installers from the unit tests that exercise the base class.
     result = subprocess.run(
@@ -390,13 +424,26 @@ def test_actual_browser_helpers_separate_current_from_home(projection):
         assert.equal(nextLocationText({...gps, current_nearest_reference:null}), 'Current: GPS 43.778556, -87.749142');
         assert.equal(nextRecordedGpsText({current_gps_latitude:0,current_gps_longitude:0}), '0.000000, 0.000000');
         assert.equal(nextRecordedGpsText({current_gps_latitude:null,current_gps_longitude:0}), '');
-        assert.equal(nextLocationText({current_location_kind:'UNRESOLVED_FIELD', home_location_code:'Z-BLDG-B-EAST'}), 'Current: Location recorded — unnamed');
+        assert.equal(nextLocationText({current_location_kind:'UNRESOLVED_FIELD', home_location_code:'Z-BLDG-B-EAST'}), 'Movement recorded — current location not recorded');
+        // State must explain a movement that has no GPS/named destination.
+        for (const [status, label] of Object.entries({PICKED:'Picked',LOADED:'Loaded',IN_TRANSIT:'In transit',
+          DELIVERED:'Delivered',UNLOADED:'Unloaded',TASK_UNLOAD:'Unloaded',STAGED:'Staged',PLACED:'Placed',
+          RELOCATED:'Moved',CONTAINER_MOVE:'Moved',DISPLAY_MOVE:'Moved',RETURNED:'Returned',DISPLAY_REATTACH:'Reattached to container'})) {
+          const row = {current_location_kind:'UNRESOLVED_FIELD',current_movement_status:status,home_location_code:'RA03-A-01'};
+          assert.equal(nextLocationText(row), label + ' — current location not recorded');
+          assert.ok(nextLocationMarkup(row).includes('Home: RA03-A-01'));
+          assert.ok(!nextLocationMarkup(row).includes('Location recorded — unnamed'));
+        }
+        for (const status of [null, 'UNKNOWN', 'constructor']) {
+          assert.equal(nextLocationText({current_location_kind:'UNRESOLVED_FIELD',current_movement_status:status}), 'Movement recorded — current location not recorded');
+        }
         assert.equal(nextLocationText({home_location_code:'RC05-A-01'}), 'Current location not recorded');
         assert.equal(nextLocationText({current_stage_key:'15',current_stage_name:'Church-ParkingLot',current_location_note:'beside tower'}), 'Current: Stage 15 — Church-ParkingLot · beside tower');
         assert.equal(nextLocationText({current_location_kind:'NAMED',current_location_note:'RC05-A-01',current_movement_status:'RETURNED'}), 'Current: RC05-A-01');
         const markup = nextLocationMarkup(gps);
         assert.ok(markup.startsWith('<strong>' + nearest + '</strong>'));
-        assert.ok(markup.includes(' · Home: Z-BLDG-B-EAST'));
+        assert.ok(!markup.includes('Home:'));
+        assert.ok(!markup.includes('Z-BLDG-B-EAST'));
         assert.ok(markup.includes('<details class="setup-location-details"><summary>GPS</summary>'));
         assert.ok(!markup.includes(' open'));
         assert.ok(markup.includes('Recorded GPS: 43.778556, -87.749142<br>Accuracy: ±10 ft'));
@@ -404,6 +451,18 @@ def test_actual_browser_helpers_separate_current_from_home(projection):
         assert.ok(!nextLocationMarkup({...gps,current_gps_accuracy_m:null}).includes('Accuracy:'));
         assert.ok(!nextLocationMarkup({...gps,current_gps_accuracy_m:-1}).includes('Accuracy:'));
         assert.ok(!nextLocationMarkup({home_location_code:'RC05-A-01'}).includes('<details'));
+        assert.ok(nextLocationMarkup({home_location_code:'RC05-A-01'}).includes('Home: RC05-A-01'));
+        // Valid zero coordinates and named locations with GPS also hide Home.
+        assert.ok(!nextLocationMarkup({...gps,current_gps_latitude:0,current_gps_longitude:0}).includes('Home:'));
+        assert.ok(!nextLocationMarkup({...gps,current_location_note:'beside tower'}).includes('Home:'));
+        assert.ok(!nextLocationMarkup({...gps,current_nearest_reference:null}).includes('Home:'));
+        // Missing/invalid coordinates or accuracy alone keep the Home fallback.
+        for (const [lat, lon] of [[null,-87], [43,null], ['',-87], ['NaN',-87], [91,-87], [43,181]]) {
+          const fallback = nextLocationMarkup({...gps,current_gps_latitude:lat,current_gps_longitude:lon});
+          assert.ok(fallback.includes('Home: Z-BLDG-B-EAST'));
+          assert.ok(!fallback.includes('<details'));
+        }
+        assert.ok(nextLocationMarkup({home_location_code:'RC05-A-01',current_gps_accuracy_m:3}).includes('Home: RC05-A-01'));
         assert.ok(source.includes("sheet.querySelectorAll('details.setup-location-details')"));
         assert.ok(nextLocationMarkup({...gps,current_nearest_reference:{name:'<img>',distance_ft:1}}).includes('&lt;img&gt;'));
         assert.ok(!nextLocationMarkup({current_location_note:'<script>',home_location_code:'<img>'}).includes('<script>'));
@@ -415,7 +474,14 @@ def test_actual_browser_helpers_separate_current_from_home(projection):
         assert.ok(grouped.includes(nearest));
         assert.ok(grouped.includes('Recorded GPS: 43.778556, -87.749142'));
         assert.ok(grouped.includes('Current: separate placement'));
-        assert.ok(grouped.includes('Home: Z-BLDG-B-EAST'));
+        assert.ok(!grouped.includes('Home:'));
+        const mixed = acceptanceMaterialMarkup({displays: [gps, {...gps,display_id:840,current_gps_latitude:null}]});
+        assert.equal((mixed.match(/Home: Z-BLDG-B-EAST/g) || []).length, 1);
+        const picked = acceptanceMaterialMarkup({displays: [{...gps,current_location_kind:'UNRESOLVED_FIELD',
+          current_movement_status:'PICKED',current_nearest_reference:null,current_gps_latitude:null,current_gps_longitude:null,
+          home_location_code:'RA03-A-01'}]});
+        assert.ok(picked.includes('Picked — current location not recorded'));
+        assert.ok(picked.includes('Home: RA03-A-01'));
         console.log('Current/Home renderer behavior PASS');
     """
     result = subprocess.run([node, "-e", script, str(APP_DIR / "setup_next_pass.js"), json.dumps(gps),

@@ -1,10 +1,11 @@
+# Existing source-only wrapper reviewed for PR324/325; legacy filename retained.
 param([string]$Server = 'msbadmin@192.168.5.9')
 $ErrorActionPreference = 'Stop'
 $repo = (git rev-parse --show-toplevel).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Run from the MSB repository.' }
 if ((git -C $repo branch --show-current).Trim() -ne 'main') { throw 'Run from merged main.' }
 if (git -C $repo status --porcelain) { throw 'STOP: local worktree is not clean.' }
-$target = '0caed843bb37e7f1f1400972d8f6eb0b03f202d4'
+$target = '1fdc3b0250c5f750648c217c9e36f3ac9ea59f9e'
 & git -C $repo merge-base --is-ancestor $target HEAD
 if ($LASTEXITCODE -ne 0) { throw 'STOP: main does not contain approved candidate.' }
 $runner = Join-Path $repo 'Setup\Acceptance\setup_306_source_only_deploy.py'
@@ -14,13 +15,13 @@ if ($LASTEXITCODE -ne 0) { throw 'STOP: committed installer is unavailable.' }
 $localHash = (git -C $repo hash-object --path=Setup/Acceptance/setup_306_source_only_deploy.py $runner).Trim()
 if ($LASTEXITCODE -ne 0 -or $trackedHash -ne $localHash) { throw 'STOP: installer differs from committed source.' }
 $local = [System.IO.File]::ReadAllText($runner, [System.Text.Encoding]::UTF8).Replace("`r", '').TrimEnd()
-$bundleName = 'msb-setup-306-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
+$bundleName = 'msb-setup-325-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
 $bundle = Join-Path ([System.IO.Path]::GetTempPath()) $bundleName
 $remote = "/tmp/$bundleName"
 try {
     New-Item -ItemType Directory -Path $bundle | Out-Null
     [System.IO.File]::WriteAllText((Join-Path $bundle 'setup_306_source_only_deploy.py'), $local + "`n", (New-Object System.Text.UTF8Encoding($false)))
-    Write-Host 'Authority: Server Management — Setup_Source_Only_Application_Deployment_Runbook.md'
+    Write-Host 'Authority: Server Management - Setup_Source_Only_Application_Deployment_Runbook.md'
     Write-Host 'Approved source-only update: no maintenance or database mutation; restart only msb-setup.service.'
     Write-Host 'Pause Setup edits during this short deployment so read-only preservation checks can compare unchanged data.'
     & scp -r $bundle "$($Server):/tmp/"

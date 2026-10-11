@@ -9,6 +9,16 @@
 | Established | 2026-10-01 |
 | Ordering | Reverse chronological — newest deployment first |
 
+## 2026-10-10 — Integrated Setup / Field Wiring map release
+
+- Deployed source: `6192a1fdf5acb234fd83731b6a8eb73072b7a35d`; PR #318 merge `1943ac86d1b4d7a8c5c801a6f323faa7de9cf75b`.
+- Setup V0.3.62-field-networks; Field Wiring V0.4.1-gis-entry. Shared map, network selection/defaults, container workshop anchor, and integrated container reconciliation.
+- Migration `070_reconcile_setup_container_contents.sql` committed and database validation passed. Do not replay 071/072.
+- Server deployment PASS: `/home/msbadmin/setup-deployment-reports/PR318-070-20261010T172234Z`; tooling PR #330/main `123f24e0a91707984e8325af29d13d287102b3b6` is distinct from deployed application source.
+- Validated rollback snapshot: `/home/msbadmin/backups/setup-205/msb-pre-pr318-070-PR318-070-20261010T172234Z.dump`, 9,659,244 bytes; SHA256 `358acf2498b18810544ddf4b4c499564250875791b76e72f7a66b7948c097b0b`.
+- Earlier fingerprint SQL failure and interrupted maintenance entry retained in #122; pre-fence recovery returned ONLINE before the successful deployment. No migration was applied by those failed attempts.
+- Greg confirmed the Field Wiring map and direct Setup map work. Missing Setup header navigation is corrected separately in [Park Map entry follow-up](../Setup/Acceptance/Setup_122_Park_Map_Entry.md); its deployment/operator confirmation remains pending. Broader #122/#171 closeout remains open.
+
 ## Purpose
 
 Maintain one human-readable, date-ordered record of Production changes across the MSB Production Database Project.
@@ -37,6 +47,16 @@ Each deployment entry must record, when applicable:
 - important post-deployment field validation.
 
 Documentation-only repository changes that do not alter Production do not require a deployment entry.
+
+## 2026-10-09 — #205 scheduling corrections — Production PASS
+
+- Installed Setup target: `1fdc3b0250c5f750648c217c9e36f3ac9ea59f9e` (PR #324/#325). Client **V0.3.50**, backend `V0.3.50-container-movement-report`, footer **Updated 2026-10-09**.
+- Greg approved both disposable previews with CLEAN EXIT and confirmed the protected Production screen PASS after installation.
+- Source-only runner PASS: `/home/msbadmin/setup-deployment-reports/PR325-20261010T033752Z`. Exact source, health, focused regression and unchanged pre/post data fingerprints passed per runner receipt. Numerical fingerprint is retained in `preflight.json` / `result.json`, not transcribed here.
+- Prior source/rollback SHA: `0b69a269b2a32d369ee4f25be6740e15d7c5a823`. Shared checkout remains `6dd05c4aa5ef8f50fe172145c3ae281cc245a101`. Tooling PR #326 merge: `291def5746ca0683cf9601cf7dc07753bd56ded4`; existing source-only runner retains its legacy 306 filename. Do not replay it.
+- No database migration or maintenance transition in this update; only Setup restarted under the Server Management source-only runbook. No rollback reported.
+- Changes: occurrence-based historical completion/collapse; prominent late work and Captain attribution; Captain TBD; AM/PM staffing/task summaries; required estimates for unstarted work; clearer rescheduling badges; Chicago day boundaries. Existing historical planning locks remain enforced.
+- #205 stays open: audited D9 Tom Shircel Crew B-to-A correction and removal of erroneous B, deferred Schedule Churn KPIs, and possible future staffing-model refinement are not completed by this release.
 
 ## 2026-10-08 — #88 Container Movement report installed — server PASS
 
@@ -76,7 +96,7 @@ Documentation-only repository changes that do not alter Production do not requir
 - Owning work: [#175](https://github.com/Gregovate/MSB-Production-Database-Project/issues/175), #122 / DBG-2026-001. Application and installer PR [#305](https://github.com/Gregovate/MSB-Production-Database-Project/pull/305) merged to main at `5cbd4cfe156b62c484fe128b43b8119938c6fbef` before deployment.
 - Attempted exact application target: `cb0538022ed066ff90675e832daa1cd95488114a`, `V0.3.42-current-location`. No migration. The target briefly reached live source, but focused regression failed because the test process mixed installed Production repository methods with the base SQLite fixture (`ref.lor_scene` missing in that fixture).
 - Source rollback PASS: live restored to `0caed843bb37e7f1f1400972d8f6eb0b03f202d4`, postgres/ok/`V0.3.40-live-pick-demand`. Only Setup source/service changed; database fingerprint `07f14ba04cee4f17a2611c7b34c33b1e` matched the original. Disposable regression worktree removal completed.
-- Operator-supplied retained report: `/home/msbadmin/setup-deployment-reports/PR305-20261007T103430Z/report.txt`. Subsequent read-only live SHA/health check confirms rollback. **V0.3.42 is not installed or accepted in Production.**
+- Operator-supplied retained report: `/home/msbadmin/setup-deployment-reports/PR305-20261007T103430Z/report.txt`. Subsequent read-only live SHA/health check confirms rollback. At the end of this first attempt, V0.3.42 was not installed or accepted in Production; the later successful install is recorded above.
 - [Controlled acceptance/recovery record](../Setup/Acceptance/Setup_175_Current_Location_Candidate.md#2026-10-07-failed-install-and-tooling-recovery) records the corrected test-process grouping and pre-mutation focused checks. A later successful attempt requires its own result and protected-route acceptance; do not treat tooling preparation as installation.
 
 ## 2026-10-04 — Setup footer and maintenance dashboard presentation — PASS

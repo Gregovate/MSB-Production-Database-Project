@@ -4,6 +4,19 @@ Status: **PRODUCTION-OPERATIONAL — CONTROLLER INVENTORY INTEGRATION ACTIVE**
 
 This folder contains the browser-based FieldWiring application and the read-side Controller Inventory browser experience.
 
+## GIS v1 candidate — #171 / PR #318 (2026-10-10)
+
+The candidate landing page adds Park Map / GIS navigation to `/setup/locate/?view=fieldwiring`,
+with a return link from the map. It preserves existing Display/Stage/Scene
+selection and Controller Inventory. Field Wiring candidate version is
+`V0.4.1-gis-entry`; this is not a claim of deployed Production state.
+
+Setup owns the single map host and existing movement read API. Field Wiring does
+not copy GPX/network snapshots or gain new database write permissions. Governed
+reference editing remains future #230 work. See
+`Setup/Acceptance/Setup_171_Operational_Map_Candidate.md` for scope, combined
+current-clone browser review and coordinated deployment requirements.
+
 ## Current State
 
 FieldWiring is production-operational at:

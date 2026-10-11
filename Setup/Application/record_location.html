@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Setup — Record Location</title>
-  <link rel="stylesheet" href="assets/setup_record_location.css?v=2026-10-03.3">
+  <link rel="stylesheet" href="assets/setup_record_location.css?v=2026-10-10.62">
 </head>
 <body>
 <header class="page-header">
@@ -114,7 +114,7 @@
   </section>
 
   <section id="movement-pending" class="panel pending-panel" hidden>
-    <div class="eyebrow">3 · Review and record</div>
+    <div class="eyebrow">3 · Contents, review and record</div>
     <h2 id="movement-pending-title"></h2>
     <div id="movement-pending-state" class="muted"></div>
     <div id="movement-home-location" class="home-location-review" hidden></div>
@@ -122,10 +122,13 @@
       Location needed — start GPS, confirm a named reference, or enter a location note.
     </div>
     <div id="movement-unload-groups" class="unload-groups"></div>
-    <div class="record-actions">
+    <div class="record-dock">
+      <div id="movement-selection-summary" class="selection-summary" aria-live="polite"></div>
+      <div class="record-actions">
       <button id="movement-record-here" type="button" class="primary" disabled>Choose a location first</button>
-      <button id="movement-return-home" type="button" hidden>Returned to Home Location</button>
+      <button id="movement-return-home" type="button" hidden>Return Empty to Home Location</button>
       <button id="movement-clear-pending" type="button">Clear Asset</button>
+      </div>
     </div>
   </section>
 
@@ -136,7 +139,16 @@
     <button id="training-enter" type="button">Enter Training Mode</button>
   </details>
 </main>
+<dialog id="movement-review-dialog" class="movement-review-dialog" aria-labelledby="movement-review-title">
+  <h2 id="movement-review-title">Review movement</h2>
+  <div id="movement-review-body" class="movement-review-body"></div>
+  <div class="review-actions">
+    <button id="movement-review-cancel" type="button" autofocus>Back to selection</button>
+    <button id="movement-review-confirm" type="button" class="primary">Confirm and record</button>
+  </div>
+</dialog>
+<footer class="muted">V0.3.62-field-networks · Updated 2026-10-10</footer>
 
-<script src="assets/setup_record_location.js?v=2026-10-03.4"></script>
+<script src="assets/setup_record_location.js?v=2026-10-10.62"></script>
 </body>
 </html>

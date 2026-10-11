@@ -2,6 +2,195 @@
 
 This subsystem documents permanent physical-site identities, location history, power/site infrastructure relationships, and PostgreSQL integration of MSB GIS/GPS data.
 
+## Required reference-data editing authority — #171 / #230
+
+Operator decision, 2026-10-10: the MSB database-backed application will be the
+normal editor and source of truth for maintained infrastructure reference data.
+This is required scope of unfinished [#230 Reference Data Manager](https://github.com/Gregovate/MSB-Production-Database-Project/issues/230),
+coordinated with [#171 GIS/infrastructure](https://github.com/Gregovate/MSB-Production-Database-Project/issues/171)
+under commanding [#122 Setup](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122).
+
+- Maintain permanent waypoints, names/aliases, reference geometry, tracks,
+  physical cables/endpoints, networks, switches/devices, reference classifications
+  and type/icon mappings in governed `ref` tables and relationships. Reuse existing
+  identities and objects; exact table names/DDL follow current-schema inventory.
+- #171 owns spatial/source reconciliation and coordinate rules. #230 owns the
+  governed reference-maintenance interface, including map-based reference edits.
+  Map, schematic and Wiring views consume the same maintained records.
+- Names, waypoint positions, track geometry and device/cable relationships must
+  be editable through authorized application actions with validation, actor/time
+  audit and retained prior versions. A read-only import/archive is insufficient.
+- Schematic layout is separate presentation state; moving a schematic symbol
+  must not move geographic coordinates. Reuse supplied icon assets rather than
+  recreate artwork; editable type/icon references do not change physical identity.
+- GPX is the authoritative location source during initial reconciliation and
+  transition. After accepted migration/editor cutover, database reference records
+  become maintenance authority; GPX/draw.io are source evidence or controlled
+  interchange/presentation outputs. Do not silently maintain competing masters.
+- Keep original GPX/FLW/draw.io provenance, test results and #88 seasonal movement
+  observations separate from editable reference facts. Declaring reference data
+  in `ref` does not put all test/event history there or make evidence overwriteable.
+  LOR remains authoritative for expected show wiring configuration.
+- Correct reference identity once. Routine workflow is download FLW -> process
+  new/updated test evidence -> done. Preserve approved corrections/aliases,
+  skip already-imported tests, append retests and surface only new/ambiguous
+  matches. Routine work requires neither CSV export nor tester writeback.
+- #230 remains unfinished for this integration until reference editing and
+  shared consumption are implemented and accepted. Existing map rendering is
+  preserved while this is completed. This decision authorizes documentation and
+  design direction, not an unreviewed Production migration or source cutover.
+
+## Required panel, circuit and seasonal power records — #171 / #230 / #122
+
+Operator requirement, October 10, 2026: capture power information currently held
+in people's heads or scattered lists as maintained, searchable reference data.
+The map and seasonal work lists must consume the same records.
+
+### Maintained reference facts
+
+- Panel permanent identity, readable panel identification/label, geographic
+  waypoint/location, ownership and supporting photos/source documents.
+- Each panel's breaker/circuit identification, label and applicable ratings or
+  pole/ganged-device information when documented. A breaker number is scoped to
+  its panel; do not treat it as a park-wide identifier.
+- Explicit feed relationships from panel/circuit through downstream equipment
+  to the waypoints, outlets, light poles and other loads it supplies. Support
+  intermediate devices and multiple documented feeds; do not force one upstream
+  breaker when the evidence does not establish that.
+- LP fuse/disconnect identification and the documented seasonal action required
+  for that specific pole. Identify utility-owned poles by the utility's asset
+  identification as well as the MSB waypoint, where both exist.
+- Responsible owner/party (including Alliant), source evidence, verification
+  status, verifier/date and effective/change history for feed and device facts.
+  Unknown and conflicting relationships remain explicit. GPX proximity, track
+  appearance and network-test data cannot establish electrical feed identity.
+
+These belong in governed reference relationships edited through #230, using
+existing site/equipment identities after current-schema reconciliation. Exact
+DDL and additional table names are not prescribed by this requirement.
+
+### Map behavior
+
+Clicking a waypoint such as FE-00 must show its documented upstream panel
+identification and breaker/circuit designation, intermediate fuse/disconnect
+information, and other downstream waypoints affected by that circuit. Show the
+recorded service-isolation information with provenance and verification status.
+No actual FE-00 feed assignment has been supplied here and none is inferred.
+A map record or completed seasonal task is not proof of present de-energization;
+service verification remains a separate field procedure/event.
+
+### Seasonal activity lists
+
+Maintain reusable action definitions with the equipment/circuit affected,
+seasonal phase (show setup, operation where applicable, teardown/restoration),
+desired state, responsible party, prerequisites and linked instructions. Provide
+lists grouped/filterable by activity, panel, area, waypoint and responsible party:
+
+- turn off designated lights;
+- remove the specified LP fuses;
+- request Alliant to turn off its identified light poles;
+- turn on specified circuits at identified panels for the show;
+- restore documented normal operation after the season, including corresponding
+  fuse/light/circuit restoration tasks where applicable.
+
+#122 Setup owns seasonal work instances, assignment and completion evidence;
+reference records own enduring equipment/feed relationships and action templates.
+Keep planned/desired state, last reported state and actual verified field state
+separate. Utility request submitted and utility work confirmed complete are
+separate statuses. Retain who/when/evidence, exceptions and blocked dependencies.
+Do not turn annual completion into a permanent reference fact or overwrite prior
+seasons when a reference mapping is corrected.
+
+### Editing ownership — operator clarification, October 10
+
+- Production crew owns and must be able to update season-specific operational
+  records: activity progress/completion, observed or reported seasonal state,
+  exceptions and supporting evidence. Use authorized Production crew roles;
+  routine seasonal updates must not require Manager intervention.
+- Production crew must also be able to identify and record panel/circuit/breaker
+  information and assign existing waypoints to the circuits that feed them,
+  including correcting those assignments through the governed application.
+  These maintained circuit/feed relationships are reference facts, not merely
+  seasonal notes; their editing is explicitly permitted to authorized crew.
+  Routine circuit identification and waypoint-to-circuit assignment must not
+  require Manager intervention. Record source and verification status explicitly.
+- Managers currently maintain waypoint records themselves: create/rename/retire
+  waypoint identities and edit geographic coordinates/reference geometry.
+  Assigning an existing waypoint to a circuit does not change its identity or GPS
+  position and is a separate permission from waypoint maintenance.
+- Direct waypoint-record/coordinate maintenance by Production crew is a possible
+  future delegated permission, not current authorization. Crew may report
+  waypoint identity/position discrepancies for Manager correction now.
+- Do not interpret Manager waypoint maintenance as a blanket Manager-only rule
+  for circuit/feed editing. Other reference-edit permissions remain governed by
+  #230's field/action policy rather than inferred from this waypoint boundary.
+- Preserve actor/time attribution and prior values. Seasonal observations or task
+  completion do not automatically promote a reference mapping to verified status.
+
+### Future incomplete-record editing and panel detail — October 10 examples
+
+Deferred by Greg explicitly: not an implementation request for today.
+
+- A5-Church screenshot shows Type OUT-Combo, Comment "New 2025" and GPX source
+  time 2026-08-28T16:56:31Z. Provide a future way to update descriptive metadata
+  or record additional knowledge before all structured reference fields are
+  available/populated. Allow partial saves with explicit unknown values and
+  attributed notes/source evidence; do not require invented placeholders.
+- Preserve original imported description/comment/time as provenance separately
+  from maintained metadata and subsequent edits. GPX source time is not an
+  established installation date or the date a crew verified the equipment.
+- A5-00 screenshot shows a Panel with repeated Description/Comment "MSB Owned
+  Meter ID:" and no meter number. The editor needs structured equipment ownership
+  (distinct from editing responsibility), panel identification, meter identifier(s),
+  and circuit rows with breaker/circuit numbers, assigned waypoints/loads, and
+  desired On/Off state for both show season and off-season. Unknown meter/circuit
+  values must remain visibly unknown and must not prevent capturing known facts.
+- Model meter/panel relationships according to evidence; do not assume every
+  panel has its own meter or extract an empty "Meter ID:" label as an identifier.
+  Retain the current MSB ownership statement as source evidence for reconciliation.
+- Circuit rows must support crew editing/waypoint assignment under the ownership
+  rules above. Managers maintain waypoint identities/coordinates. Desired seasonal
+  state remains separate from reported/verified actual state and completed actions.
+- When notes are reconciled into structured fields, retain their source/history
+  and identify unresolved conflicts. Avoid competing free-text and structured
+  authorities or silently discarding information once fields are populated.
+
+### OUT-Combo network and circuit assignments — October 10 clarification
+
+An OUT-Combo waypoint must expose both its assigned networks (multiple allowed)
+and its supplying electrical circuit, identified by panel plus breaker/circuit.
+These are separate relationships, not competing values in one type/category field.
+
+- Waypoint-to-network assignment is many-to-many: a waypoint can carry several
+  networks, and each network can occur at several waypoints. Maintain linked
+  network identities through a multi-select/relationship editor, not comma-separated
+  names or one network column. Preserve assignment evidence and physical cable
+  relationships separately; assignment alone does not prove cable continuity.
+- A circuit can feed multiple waypoints. Assign existing waypoints to the shared
+  circuit record; do not duplicate a circuit per waypoint or make circuit assignment
+  unique across waypoints. The normal OUT-Combo view shows its supplying circuit;
+  unknown or conflicting feeds stay explicit under the existing feed-evidence rules.
+- Clicking an OUT-Combo shows all assigned networks plus its upstream panel and
+  breaker/circuit. Opening that circuit shows every assigned waypoint/load. Network
+  selection can identify assigned waypoint membership separately from matched GPX
+  cable-route evidence; lack of test evidence must not erase a maintained assignment.
+- Crew circuit identification/assignment permission remains as specified above.
+  These are deferred reference-editor/data-model requirements, not changes to the
+  current read-only map snapshot or authorization to invent source assignments.
+
+### Acceptance and source collection
+
+Collect existing lists, panel schedules/photos, pole labels and knowledgeable
+operator input, reconcile them against waypoint identities, and flag gaps for
+verification. Record contributions immediately with their source rather than
+leaving them in chat. Review before presenting a feed as verified.
+
+Acceptance requires waypoint-to-panel/circuit lookup and reverse circuit-to-load
+lookup, explicit unresolved feeds, LP fuse actions, an Alliant action list, and
+season-specific activation/restoration lists generated from the same maintained
+data. This is required unfinished #230 scope coordinated under #171 and #122;
+the current read-only map candidate does not yet implement these power records.
+
 ## Current State
 
 Substantial historical field/site information exists outside PostgreSQL, including GPX data going back to at least 2015, waypoints and tracks, receptacles, network tracks, power tracks, utility meters, distribution panels, circuit identifiers, and seasonal energization requirements.
@@ -52,7 +241,7 @@ On 2026-10-03 the operator supplied an ExpertGPS correction/export that:
 
 Those source EPSG:8158 coordinates are retained with the transformed WGS84 values used by the browser. Future field observations may improve ranking/operational understanding but must not silently overwrite these curated reference anchors.
 
-A maintainable reference editor/import process remains open #171 work.
+A maintainable reference editor/import process is required joint #171/#230 work under the rule above.
 
 ## Waypoint Type / Layer Classification Direction
 
@@ -81,6 +270,91 @@ Important boundaries:
 - the temporary launch reference JSON may remain a simplified consumption layer, but the long-term #171 maintenance/import path should carry type/category through from the authoritative GIS source.
 
 This classification requirement is especially important because the full ExpertGPS/Garmin source contains many waypoint classes beyond the current launch reference subset. Preserving them will make later GIS/map layering substantially easier and avoid having to infer feature meaning from names after import.
+
+## Operational Asset Overlay Candidate — #171
+
+The V0.3.51 candidate extends the existing Locate map with independent Container
+and independent Display layers. GET `/api/setup/locate/assets?season_year=2026`
+requires existing Setup read access and returns a no-store snapshot. It reuses
+#88 `movement_picture` with optional unobserved Container inventory inside the
+same read-only REPEATABLE READ transaction. The report default is unchanged.
+
+Coordinates come only from each state row's `last_movement_event_id`; the map
+adapter does not independently search prior history. Missing/invalid coordinates
+and RETURNED/storage state remain unlocated. This exposes the gap between the
+requested last-valid-GPS continuity and current #88 projections rather than
+silently changing the projection. Review C095 against the current clone before
+acceptance; any projection repair belongs to #88.
+
+Active WITH_CONTAINER Display associations appear inside Container popups.
+DETACHED and NO_ASSIGNED_CONTAINER Displays use their own state event, or remain
+unlocated. Expected/reference assignments, recorded position mode and physical
+contents are distinct. Icons describe recorded associations: all WITH_CONTAINER
+is Loaded, mixed WITH_CONTAINER/DETACHED is Partial, and all DETACHED is Empty.
+No assigned active Displays or unsupported modes is Unknown. These categories
+do not assert a physical contents inspection; missing Display state still
+defaults to WITH_CONTAINER in the owning projection. Historical contents-review flags are shown as
+recorded evidence, without claiming they are resolved or still actionable.
+
+Exact coordinate matches share one marker/popup within a layer. Coordinates are
+never moved or snapped to Stage anchors. Display artwork is anchored above
+Container artwork and given a higher stacking order at shared coordinates. Observation timestamps, GPS feet,
+quality/stale-fix evidence, destination notes and capture provenance remain
+visible. Refresh clears prior operational markers before requesting new data;
+a failed request exposes an unavailable state rather than leaving stale pins.
+
+See [candidate review and limitations](../../../../Setup/Acceptance/Setup_171_Operational_Map_Candidate.md).
+This is engineering candidate documentation, not a Production deployment claim.
+
+## Network search candidate — October 9, 2026
+
+Current candidate is reconciled with main `38f6f9427007470cbc02b3e2d23a97450d4414ba`
+and preserves the accepted scheduling changes/Production closeout from PR #324/#325.
+Use Greg's laptop feature worktree `C:\lor\ImportExport\VSCode-171-map-review`;
+its primary main is divergent and must not be reset as a preview preparation step.
+
+
+PR #318 now has a V0.3.54-gis-network-routes candidate consuming a read-only
+draw.io/GPX cross-reference: network groups highlight all segments of every
+endpoint-matched route and expose unresolved cables and endpoint conflicts.
+43 route candidates use named waypoint anchors and draw.io cable chains; 35
+remain unresolved. Exact AUX-I/INET search returns a single network group; raw
+GPX routes remain separately discoverable. Dashed highlights currently classify shared-evidence routes as alternatives;
+that classification is unsupported and pending correction. These are
+operator-review correspondences, not verified reconstructed routes or proof of
+continuous connectivity. Existing asset/waypoint search remains available.
+
+[Source inventory, matching rules, confirmed infrastructure facts and resume point](engineering/Network_Source_Reconciliation_2026-10-09.md)
+record the current SQL inventory and #319 boundary. Wiring database integration,
+editable infrastructure and corrected tester-export reconciliation remain open.
+
+## Deferred Symbol Registry / Type Mapping — #171
+
+Operator-confirmed direction, 2026-10-08: ExpertGPS manages symbols by type
+name. In that program the type name is the key and cannot be renamed; changing
+it requires deleting and recreating the type. Preserve the exact source type
+name during future import/reconciliation rather than treating it as an editable
+presentation label. This is reported ExpertGPS behavior, not an implemented MSB
+database constraint.
+
+Consider a future reference table mapping feature type and, where applicable,
+authoritative operational status to an icon asset path and presentation label.
+Keep SVG artwork as separately maintained assets; do not require an icon
+assignment on every Container or Display. Preserve source type names separately
+if an internal identity or editable display label is introduced. Any type
+replacement must deliberately reconcile existing mappings and source references.
+
+For the first operational map overlay, a small replaceable configuration mapping
+is sufficient. Greg supplied `container-loaded.svg`, `container-partial.svg`,
+`container-empty.svg`, and `container-unknown.svg` (32 × 32 px), and selected the
+existing T-Post symbol for independently located Displays. Status symbols must
+consume accepted #88 evidence; assigned Display counts alone do not establish
+physical load state. Displays WITH_CONTAINER remain in their Container popup
+rather than producing overlapping Display pins.
+
+The symbol reference table is deferred design work under #171. It must not delay
+functional Container/Display overlays or imply authorization for a Production
+schema change. Existing public compatibility symbols remain functional.
 
 ## Design Intent
 
@@ -132,6 +406,47 @@ A derived workflow result comparing an operational observation with the expected
 PostGIS may be useful for this comparison, but acceptable tolerances must come from the actual field process and location type—not from an arbitrary universal distance.
 
 ## Workshop Storage Boundary
+
+### Home Container map anchor — operator requirement, 2026-10-10
+
+Containers recorded at their Home storage location must be shown at the storage
+Workshop's geographic location. The shared Workshop pin identifies the building;
+the existing canonical Home/rack location (for example RC05-A-01) identifies where
+to find the Container inside. Preserve those rack identities and display them in
+search/details. This Workshop is **not** the Santa's Workshop display Stage.
+
+This map position is derived from the Workshop reference and Home state, not a
+new device GPS observation. Return Home remains usable inside the steel building
+without obtaining GPS. Detached Displays remain at their own field locations;
+returning an empty Container must not move them to the Workshop.
+
+Greg supplied the Workshop reference again on 2026-10-10 at 10:28 CDT in
+`image(20261010-152837).png`. Exact displayed projected coordinates:
+
+| Axis | Value |
+|---|---:|
+| X / Easting | 213609.429 |
+| Y / Northing | 186587.658 |
+
+The screenshot shows feet. The existing project coordinate contract is
+NAD83(HARN) / WISCRS Sheboygan County (US survey feet), EPSG:8158; the screenshot
+does not independently display its CRS, so that interpretation comes from the
+established project contract. Preserve these exact source values. Transform to
+WGS84 for browser mapping using the established CRS; do not treat them as decimal
+latitude/longitude. Machine-readable source:
+[workshop_reference.json](workshop_reference.json).
+
+The coordinate recovery gap is now resolved by this replacement source evidence.
+V0.3.61 uses this anchor for confirmed Home returns, with canonical rack labels.
+The transformed WGS84 anchor is 43.778402029, -87.733215490; it is reference-derived,
+not captured movement GPS. The runtime copy is Setup/Application/setup_workshop_reference.json;
+a regression check keeps it equal to this canonical record. Detached displays retain
+their own park event coordinates. Browser acceptance and Production deployment remain pending.
+
+Containers with no movement evidence must remain distinguishable as expected at
+Workshop rather than confirmed Home. The map is a consumer of #88 state; #230 owns
+future maintained site/reference editing. Controlling release issue: #122.
+
 
 Workshop/rack storage is not primarily a GIS problem.
 

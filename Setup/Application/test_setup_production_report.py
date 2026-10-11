@@ -193,10 +193,6 @@ def test_material_status_actual_projection_keeps_gps_only_container_and_detached
     next_repo,conn=projection
     conn.executescript("""
       ALTER TABLE ops.setup_container_state ADD COLUMN last_movement_at TEXT;
-      ALTER TABLE ops.setup_movement_event ADD COLUMN event_type TEXT;
-      ALTER TABLE ops.setup_movement_event ADD COLUMN container_id INTEGER;
-      ALTER TABLE ops.setup_movement_event ADD COLUMN destination_stage_id INTEGER;
-      ALTER TABLE ops.setup_movement_event ADD COLUMN destination_location_note TEXT;
       ALTER TABLE ops.setup_display_state ADD COLUMN last_movement_at TEXT;
       INSERT INTO ops.setup_display_state(setup_session_id,display_id,position_mode,last_movement_event_id)
         VALUES(1,834,'DETACHED',41);

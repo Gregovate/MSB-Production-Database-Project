@@ -35,6 +35,17 @@ A reusable Setup task is a meaningful operational control point, not a transcrip
 
 Keep detailed how-to steps in the Procedure unless the step needs independent planning/completion, a hard predecessor, meaningful handoff, independent progress/history, or materially different resource/material demand.
 
+## #88 continuity and reconciliation candidate — 2026-10-07
+
+The [contents reconciliation candidate](../../../../../Setup/Acceptance/Setup_88_Contents_Reconciliation_Candidate.md)
+adds `current_location_event_id`, `current_location_inferred` and
+`current_named_context_inherited` to the read contract. Latest movement status
+and last actual location observation are separate facts. A GPS-only Container
+observation can retain earlier named context without rewriting raw history.
+The installed resolver/assignment queries all preserve that distinction.
+Reconciled TASK_UNLOAD evidence is explicitly inferred; without a prior usable
+observation it remains unloaded/location unresolved. Acceptance is pending.
+
 ## Effective Current Location — #175 / DBG-2026-001
 
 Home storage (`ref.container.location_code`) is permanent reference information.

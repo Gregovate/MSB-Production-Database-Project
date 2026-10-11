@@ -521,9 +521,11 @@ done
 echo
 echo "--- Exact candidate regression ---"
 sudo -u fieldwiring -H env PYTHONPYCACHEPREFIX="$PYCACHE" bash -c "
+    set -e
     cd '$CANDIDATE_WORKTREE'
     '$PYTHON' -m py_compile Setup/Application/production_backend.py Setup/Acceptance/setup_session_browser_preview_entry.py
-    '$PYTHON' -m pytest -q -p no:cacheprovider Setup/Application
+    '$PYTHON' -m pytest -q -p no:cacheprovider Setup/Application Setup/Acceptance/test_setup_gis_preview.py
+    '$PYTHON' -m pytest -q -p no:cacheprovider FieldWiring/Application
 "
 echo "PASS: exact candidate Setup/Application regression"
 
@@ -808,6 +810,11 @@ if [[ -n "$EXPECTED_VERSION" ]]; then
 fi
 curl -fsS "http://127.0.0.1:$PREVIEW_PORT/api/setup/access" >/dev/null
 echo "Preview authorization: PASS"
+# Review both real application entry points on the same isolated listener.
+curl -fsS "http://127.0.0.1:$PREVIEW_PORT/fieldwiring/" >/dev/null
+curl -fsS "http://127.0.0.1:$PREVIEW_PORT/fieldwiring/api/health"
+curl -fsS "http://127.0.0.1:$PREVIEW_PORT/setup/locate/" >/dev/null
+echo "Field Wiring / GIS navigation routes: PASS"
 
 write_resume_state
 echo "Reconnect state: $STATE_FILE"
@@ -816,6 +823,7 @@ cat <<CHECKLIST
 
 SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY
 Browser URL through SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/
+Field Wiring / GIS entry: http://127.0.0.1:$PREVIEW_PORT/fieldwiring/
 Candidate SHA: $TARGET_SHA
 Candidate ref: $TARGET_REF
 Preview identity: $PREVIEW_EMAIL

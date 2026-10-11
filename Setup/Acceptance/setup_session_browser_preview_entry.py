@@ -57,7 +57,14 @@ class PreviewIdentityMiddleware:
         return self.wrapped(environ, start_response)
 
 
-app.wsgi_app = PreviewIdentityMiddleware(app.wsgi_app)
+# Both applications stay on the one disposable Setup preview listener so the
+# real /fieldwiring/ -> /setup/locate/ -> /fieldwiring/ links can be reviewed.
+from pathlib import Path  # noqa: E402
+from setup_gis_preview import mount_fieldwiring_preview  # noqa: E402
+
+app.wsgi_app = PreviewIdentityMiddleware(
+    mount_fieldwiring_preview(app.wsgi_app, Path(APP_DIR).resolve().parents[1])
+)
 
 
 if __name__ == "__main__":
