@@ -371,6 +371,14 @@
       heading(p,route.label);
       line(p, 'Reviewed shared route; not a one-cable assumption');
       line(p, lookupLabel(route.endpoint_a) + ' → ' + lookupLabel(route.endpoint_b));
+      line(p, 'Physical cables on reviewed segment: ' + (route.cable_ids?.length || 0));
+      for (const cableId of route.cable_ids || []) {
+        const cable = byId(snapshot.cables, cableId);
+        if (!cable) {line(p, 'Cable #' + cableId + ' pending physical review');continue;}
+        line(p, 'Cable #' + cableId + ': ' + (byId(snapshot.networks,cable.network_id,'site_network_id')?.network_code || cable.spare || 'unknown network'));
+        for (const test of cable.tests) line(p, 'LinkIQ ' + test.uuid + ' · raw result ' + textValue(test.test_status_code)
+          + ' · length ' + textValue(test.length_ft) + ' ft · speed NOT established');
+      }
       marker.bindPopup(p);
     }
     mapSearch.reindexMapReferences();
