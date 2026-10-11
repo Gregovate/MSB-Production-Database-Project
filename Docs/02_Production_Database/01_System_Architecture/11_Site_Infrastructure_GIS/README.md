@@ -379,7 +379,17 @@ are mainly expected raw-hash variation plus a few historical/LP-Combo layer
 naming hints. Structurally, PNG staging can now be attempted; actual raster
 export, per-layer visual freshness, `star.svg` release inclusion, web/ExpertGPS
 compatibility and downstream deployment remain separate pending gates.
-See the chronological evidence and new file SHA-256 in the linked SOP. Detailed source
+See the chronological evidence and new file SHA-256 in the linked SOP.
+**Uploaded 07:01 staged PNG ZIP independently audited:** 32/32 manifest PNG
+SHA256s and 32/32 source SVG hashes match the fresh G: inventory; RGBA
+canvases and original readme pass. Pixel comparison against prior 31-icon
+archive: 30 unchanged, bare-pole `lp.png` visibly changed, and `star.png`
+added. **Publication HOLD for icon semantics:** `manhole.png` visually repeats
+the red/white fire-hydrant symbol (inherited artwork issue), and the intended
+standalone LP change/new Star inclusion need operator approval. Fire Hydrant
+and Manhole icons are also fully opaque despite RGBA encoding. Do not
+promote to `Symbols\\png`, ExpertGPS or web assets solely on QA integrity.
+See the linked GIS symbol engineering SOP for file hashes and review gates. Detailed source
 triage and post-correction acceptance rules are in the linked GIS symbol contract.
 No ExpertGPS, Synology, draw.io, or browser publishing has been verified. draw.io keeps `Network\MSB-icon-library.xml`, but
 the existing `Network\Park Network Schematic 2026.drawio` embeds its own SVG/PNG
