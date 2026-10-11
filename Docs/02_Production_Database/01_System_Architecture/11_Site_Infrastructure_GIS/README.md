@@ -26,6 +26,24 @@ stopgaps below do not authorize continued maintenance of competing masters.
 Track priorities already documented on #171 are **NET, PRI and HV**; preserve
 other tracks. Multiple cables may share a reviewed geographic route; do not
 duplicate traces for every cable or infer cable/electrical identity from overlap.
+**Operator clarification, October 11 at 16:21 America/Chicago:** the track
+names have **not** been updated to the corrected waypoint names. The tracks
+themselves (their geometry) have **not changed**, per Greg. This is an explicit
+remaining reconciliation task from the missing engineering conversation, not a
+request to redraw, move or regenerate surveyed traces. Preserve original track
+names as provenance; reconcile maintained names and endpoint references against
+the corrected authoritative waypoint identities with review of ambiguous matches.
+Prioritize NET/PRI/HV as already directed in #171.
+
+**Multiple tracks may share the same waypoint.** A waypoint is not exclusively
+owned by one track; do not impose uniqueness of waypoint usage across tracks.
+Keep distinct track identities and geometries even when they share one or both
+endpoints. Shared waypoints alone do not prove tracks are duplicates or share the
+same physical route. This is separate from multiple physical cables sharing one
+reviewed route. A naming correction must not silently alter geometry or merge
+tracks. The unchanged-geometry statement is operator-confirmed; independent
+old/new geometry comparison has not been performed in this recovery.
+
 Keep reference action definitions separate from seasonal execution/completion
 evidence under #122. Existing map/search, #230 editing and mandatory offline
 reference acceptance remain the required end-to-end outcome.
