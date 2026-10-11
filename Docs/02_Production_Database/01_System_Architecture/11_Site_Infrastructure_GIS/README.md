@@ -366,7 +366,11 @@ contains no inventoried icon files. **Operator correction:** `lp-network` and
 plus legacy alias/reference handling. **Operator reports all remaining priority
 corrections complete (2026-10-11); fresh file-level verification remains pending.**
 The prior inventory is a before-correction baseline; do not treat its specific
-repeater/Splitter/metadata flags as confirmed current defects. Detailed source
+repeater/Splitter/metadata flags as confirmed current defects.
+Three subsequently supplied `(1)` inventory uploads were compared against the
+baseline and found **byte-identical for all three reports**. They cannot be used
+to verify post-correction artwork. Rerun with a fresh explicitly named output
+directory and hand off that whole report folder before PNG export. Detailed source
 triage and post-correction acceptance rules are in the linked GIS symbol contract.
 No ExpertGPS, Synology, draw.io, or browser publishing has been verified. draw.io keeps `Network\MSB-icon-library.xml`, but
 the existing `Network\Park Network Schematic 2026.drawio` embeds its own SVG/PNG
