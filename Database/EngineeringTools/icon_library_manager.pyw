@@ -453,7 +453,7 @@ class Manager:
         def confirmed():
             if not messagebox.askyesno("Confirm " + title,
                 f"Distribute current verified canonical PNGs to:\n{destination}\n\n"
-                f"New: {len(plan['add'])}; backed-up updates: {len(plan['replace'])}.\n"
+                f"New: {len(plan['add'])}; backed-up updates: {len(plan['replace'])}.\n" +
                 ("This changes the currently installed ExpertGPS icons. "
                  "CLOSE EXPERTGPS FIRST. Proceed?" if kind == "expertgps"
                  else "This changes public web PNGs used by GPX and browser consumers. Proceed?"),
