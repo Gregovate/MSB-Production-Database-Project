@@ -20,7 +20,7 @@ from types import SimpleNamespace
 from sync_gis_icons import (
     PARK, IconError, canonical_sources, check_source_snapshot, choose_inkscape,
     destination_preflight, make_stage, prepare_run, readme_bytes,
-    apply_canonical, sha_file,
+    apply_canonical, sha_file, source_freshness_warnings,
 )
 
 BACKGROUND = "#f5f8fb"
@@ -43,6 +43,7 @@ class Manager:
         self.records = None
         self.plan = None
         self.preview_images = []
+        self.master_warnings = []
         self.in_progress = False
 
         heading = ttk.Frame(root, padding=(20, 17))
@@ -126,6 +127,7 @@ class Manager:
 
     def check(self):
         self.snapshot = self.staged = self.records = self.plan = None
+        self.master_warnings = []
         self.tree.delete(*self.tree.get_children())
         self.status.set("Checking every SVG and rendering previews from the current Shared Drive Plain folder…")
         def work():
@@ -136,7 +138,8 @@ class Manager:
             try:
                 sources, records, archive = prepare_run(self.plain, stage, choose_inkscape(None), readme)
                 plan = destination_preflight(self.dest, records)
-                return sources, records, stage, plan
+                warnings = source_freshness_warnings(self.plain, PARK / "Masters", sources)
+                return sources, records, stage, plan, warnings
             except Exception as exc:
                 (stage / "ERROR.txt").write_text(str(exc) + "\n", encoding="utf-8")
                 raise IconError(f"{exc}\nDetails are in: {stage}") from exc
@@ -146,7 +149,7 @@ class Manager:
                 self.status.set("Validation stopped — no canonical PNG files changed.")
                 messagebox.showerror("Icon validation needs attention", error)
                 return
-            self.snapshot, self.records, self.staged, self.plan = data
+            self.snapshot, self.records, self.staged, self.plan, self.master_warnings = data
             groups = {}
             for group, items in self.plan.items():
                 for row in items: groups[row["PNG"]] = group
@@ -154,10 +157,17 @@ class Manager:
                 action = {"add":"NEW", "replace":"UPDATE (backup)", "identical":"Unchanged"}[groups[row["PNG"]]]
                 self.tree.insert("", "end", iid=row["PNG"], values=(row["PNG"],
                                  f'{row["Width_PX"]}×{row["Height_PX"]}', action))
-            self.status.set(f"Validated {len(self.records)} icons. "
+            self.status.set(f"Validated {len(self.records)} icons ({len(self.master_warnings)} master/Plain review warnings). "
                             f"New {len(self.plan['add'])}; changes with backup {len(self.plan['replace'])}; "
                             f"unchanged {len(self.plan['identical'])}. See the list below.")
             self.set_busy(False)
+            if self.master_warnings:
+                preview = "\n".join(self.master_warnings[:12])
+                if len(self.master_warnings) > 12:
+                    preview += f"\n... plus {len(self.master_warnings) - 12} additional review warnings"
+                messagebox.showwarning("Review Inkscape master/Plain freshness", preview +
+                    "\n\nThese may be metadata-only edits or layered variants. Confirm the exported Plain SVGs are current before approving PNG changes.")
+                (self.staged / "Master_Plain_Review_Warnings.txt").write_text("\n".join(self.master_warnings) + "\n", encoding="utf-8")
         self.async_operation(work, done)
 
     def show_preview(self, _event=None):
@@ -185,6 +195,10 @@ class Manager:
             return
         changes = len(self.plan["add"]) + len(self.plan["replace"])
         if not changes:
+            return
+        if self.master_warnings and not messagebox.askyesno("Master/Plain freshness warnings",
+                f"{len(self.master_warnings)} possible source freshness warning(s) remain.\n"
+                "Review their details under release history before approving. Continue only if the Plain SVG artwork is correct?"):
             return
         if not messagebox.askyesno("Confirm canonical PNG update",
                                    f"Update {changes} approved PNG file(s) in:\n{self.dest}\n\n"
