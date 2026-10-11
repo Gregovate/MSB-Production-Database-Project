@@ -39,6 +39,44 @@ function Read-ZipBytes($entry) {
     }
 }
 
+# Guard against newly added or renamed Plain SVGs not present in a previously
+# approved ZIP. Hash-checking only the 32 listed sources does NOT catch new art.
+function Assert-LivePlainSetEqualsManifest($ManifestRows) {
+    $actual = @(Get-ChildItem -LiteralPath $PlainSvgDirectory -File -Filter '*.svg' -ErrorAction Stop)
+    $expected = @{}
+    foreach ($r in $ManifestRows) {
+        $key = $r.SVG.ToLowerInvariant()
+        if ($expected.ContainsKey($key)) {
+            throw "Duplicate SVG source name in approved manifest: $($r.SVG)"
+        }
+        $expected[$key] = $r.SVG
+    }
+    $seenActual = @{}
+    $unexpected = @()
+    foreach ($item in $actual) {
+        $key = $item.Name.ToLowerInvariant()
+        if ($seenActual.ContainsKey($key)) {
+            $unexpected += ('Duplicate source filename: ' + $item.Name)
+        }
+        $seenActual[$key] = $true
+        if (-not $expected.ContainsKey($key) -or $expected[$key] -cne $item.Name) {
+            $unexpected += $item.Name
+        }
+    }
+    $missing = @()
+    foreach ($r in $ManifestRows) {
+        if (-not $seenActual.ContainsKey($r.SVG.ToLowerInvariant())) {
+            $missing += $r.SVG
+        }
+    }
+    if ($unexpected.Count -gt 0 -or $missing.Count -gt 0 -or $actual.Count -ne $ManifestRows.Count) {
+        throw ("The live Plain SVG set has changed since this ZIP was approved: " +
+               "approved $($ManifestRows.Count), current $($actual.Count); " +
+               "new/renamed: $($unexpected -join ', '); missing: $($missing -join ', '). " +
+               "STOP: export and review a new complete staged release before promotion.")
+    }
+}
+
 if ([string]::IsNullOrWhiteSpace($ZipPath)) {
     # Do not guess the operator's precise timestamped staging-folder name.
     # Find the single reviewed byte-exact ZIP among the standard Downloads stages.
@@ -108,6 +146,8 @@ try {
             throw "Manifest column missing: $column"
         }
     }
+
+    Assert-LivePlainSetEqualsManifest $rows
 
     $payloads = @{}
     $seenNames = @{}
@@ -194,6 +234,16 @@ try {
         Write-Host 'DRY RUN PASS. No files written. Use -Apply only after reviewing this result.'
     }
     else {
+        # Recheck the full SVG set and all source hashes immediately before
+        # changing anything: no incomplete 32-PNG promotion after new icon adds.
+        Assert-LivePlainSetEqualsManifest $rows
+        foreach ($row in $rows) {
+            $livePath = Join-Path $PlainSvgDirectory $row.SVG
+            $liveHash = (Get-FileHash -LiteralPath $livePath -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($liveHash -cne $row.SVG_SHA256) {
+                throw "Source changed after preflight: $($row.SVG); no files copied."
+            }
+        }
         if (-not (Test-Path -LiteralPath $DestinationDirectory)) {
             $null = New-Item -ItemType Directory -Path $DestinationDirectory -ErrorAction Stop
         }
