@@ -43,6 +43,12 @@
       details.replaceChildren();
       details.parentElement.open = expand;
       row(details, `${network} — ${cables.length} LinkIQ test records · ${routeIds.size} candidate GPX routes`);
+      if (source.schematic_status === 'PRIOR_DRAWIO_SNAPSHOT_UNREVIEWED') {
+        row(details, 'CAUTION: diagram devices and edges are from the previous schematic snapshot; not yet reconciled with corrected LinkIQ.');
+      }
+      if (source.lor_status === 'PRIOR_LOR_SNAPSHOT_UNREVIEWED') {
+        row(details, 'CAUTION: expected LOR/controller inventory is a previous snapshot; do not treat it as current programming.');
+      }
       row(details, 'GPX geometry is preserved. Shared tracks can carry multiple cables. Route candidates need review; network names alone do not prove continuity.');
       row(details, `${source.source_name} · SHA256 ${source.source_sha256.slice(0, 16)}`);
       for (const cable of cables) {
@@ -174,7 +180,9 @@
             row(details, `draw.io ${cable.source_id} · ${cable.attributes.Cable_ID} · ${cable.attributes.Waypoint_1} → ${cable.attributes.Waypoint_2} · ${cable.status}`);
         }
       }});
-    status.textContent = `Network source loaded: ${source.mapped_routes.length} candidate routes; ${source.unresolved_routes.length} unresolved routes; ${source.legacy_edges.length} legacy schematic edges; ${(source.review_records || []).length} tester records need review or are deleted.`;
+    status.textContent = `Network source loaded: ${source.mapped_routes.length} candidate routes; ${source.unresolved_routes.length} unresolved routes; ${source.legacy_edges.length} legacy schematic edges; ${(source.review_records || []).length} tester records need review or are deleted.`
+      + (source.schematic_status === 'PRIOR_DRAWIO_SNAPSHOT_UNREVIEWED' ? ' WARNING: diagram snapshot not yet reconciled.' : '')
+      + (source.lor_status === 'PRIOR_LOR_SNAPSHOT_UNREVIEWED' ? ' WARNING: LOR snapshot not yet verified current.' : '');
   } catch (error) {
     options.textContent = 'Network choices unavailable; refresh the page to retry.';
     status.textContent = `Network source unavailable: ${error.message}. GPX and asset search remain available.`;

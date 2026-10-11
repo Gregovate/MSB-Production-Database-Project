@@ -43,9 +43,15 @@ def test_source_snapshot_routes_and_authored_map_geometry_remain_consistent():
     unresolved = {r['route_id'] for r in source['unresolved_routes']}
     assert matched.isdisjoint(unresolved)
     assert matched | unresolved == routes
-    assert len(source['cables']) == 445
-    assert len(source['review_records']) == 25
+    assert len(source['cables']) == 455
+    assert len(source['review_records']) == 21
     assert len(source['devices']) == 84
+    assert len(source['mapped_routes']) == 32
+    assert len(source['unresolved_routes']) == 149
+    assert source['test_uuid_count'] == 476
+    assert sum(r['project_appearances'] for r in source['cables'] + source['review_records']) == 684
+    assert source['source_name'] == 'LinkIQ Data Import for DB with corrected names.flw'
+    assert source['schematic_status'] == 'PRIOR_DRAWIO_SNAPSHOT_UNREVIEWED'
     assert source['source_kind'] == 'LinkIQ'
     assert len(source['legacy_edges']) == 73
     assert all(set(c['route_ids']) <= matched for c in source['cables'])
