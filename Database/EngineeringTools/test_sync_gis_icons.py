@@ -12,7 +12,7 @@ import zlib
 from unittest.mock import patch
 
 from sync_gis_icons import (IconError, MAX_PX, canonical_sources, destination_preflight,
-                            png_canvas, run, sha, sha_file, svg_canvas)
+                            png_canvas, run, sha, sha_file, svg_canvas, source_freshness_warnings)
 
 
 def png(w, h):
@@ -126,6 +126,19 @@ class ProcessTests(unittest.TestCase):
         self.assertEqual(summary['plan'], {'add':0,'replace':1,'identical':2})
         after={(p.name,sha_file(p)) for p in self.dest.iterdir()}
         self.assertEqual(len(old & after),2)
+
+    def test_stale_master_and_layered_family_get_review_warning(self):
+        masters = self.root / "Masters"
+        masters.mkdir()
+        m = masters / "lp-combo-inkscape.svg"
+        m.write_bytes(svg(32,32))
+        source = canonical_sources(self.plain)
+        import time
+        os.utime(m, (time.time()+300, time.time()+300))
+        (self.plain / "lp-network.svg").write_bytes(svg(32, 32))
+        source = canonical_sources(self.plain)
+        warnings = source_freshness_warnings(self.plain, masters, source)
+        self.assertTrue(any("lp-network.svg" in x and "lp-combo-inkscape.svg" in x for x in warnings))
 
     def test_source_set_detects_added_unstaged_icon(self):
         old = canonical_sources(self.plain)
