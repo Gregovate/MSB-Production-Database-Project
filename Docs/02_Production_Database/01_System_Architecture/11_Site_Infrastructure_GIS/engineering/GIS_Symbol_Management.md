@@ -394,6 +394,28 @@ Following acceptance of the corrected **32-icon** 07:24 staging release candidat
 
 **Status:** new operator source-addition reported, not yet independently verified; planned 34-icon release not yet exported or approved. Existing 32-icon package and its merge decisions remain historically valid. No new PNG library, web or Production change is inferred by this note.
 
+### Independent review of newly uploaded 34-PNG antenna L/R staging ZIP — October 11
+
+The operator uploaded `MSB_ExpertGPS_Current_Plain_Staged(2).zip`, an actual third Windows export with the newly added `antenna-l` and `antenna-r` symbols. The uploaded ZIP is **53,765 bytes**, SHA-256 `da27a035d2265a4c664338160e052efefabc8490569e487ed12faec9d99d76ed`, and passes Python ZIP CRC verification. It contains **36 file entries**: 34 unique `msb/*.png` entries, the original `msb/readme.txt`, and one root `MSB_ExpertGPS_PNG_Inventory.csv`.
+
+| Reviewed item | SHA-256 or observation |
+| --- | --- |
+| New 34-icon ZIP | `da27a035d2265a4c664338160e052efefabc8490569e487ed12faec9d99d76ed` |
+| New 34-row manifest | `3d472ec92fb491d3e53d5dee8cbfec3c48ea70beb9d25fe9602126743b6c3c1d` |
+| Original readme.txt | `69115edd6b8dcf97db836179e014c9221e0f8eba62033703e35b1411a18e9b59` (same bytes as prior reference) |
+| `antenna-l.svg` source hash (as reported by manifest, not independently fetched live) | `b4ae485ddb81a3d33135e98a8f9706aac547045680ae6c0c8043b15fad662299` |
+| `antenna-l.png` output | `cb12679ffafda0eba6e80963ed247b0c18846e84783ce2543b661531825a6d5d` |
+| `antenna-r.svg` source hash (manifest) | `46d50a6390d8930eecb687ad85e29fbe223c13ef293ae779e58a7a24bd9e21fa` |
+| `antenna-r.png` output | `206ded5ea270d2d1d84fdf393bf9209151f886e3b5777b2882da7618138afdd1` |
+
+**Manifest and image integrity PASS:** 34 unique manifest rows, **34/34** actual PNG bytes have the recorded PNG SHA-256; 34/34 decode as RGBA; dimensions equal their manifest numbers; no ZIP CRC errors. The unchanged original ExpertGPS readme SHA-256 matches the preceding verified release exactly. The **previous 32 icons are unchanged byte-for-byte and unchanged by source hash** versus the independently verified corrected 07:24, 32-icon ZIP (SHA256 `85569dc7cafa1da169bd68244bb9757daadfb53c1d02e911256790d0c6a63e53`). The two new assets are the only additions; no artwork regression in Manhole, standalone LP or Star.
+
+**Visual check / explicit size decision still needed:** The two antenna symbols are distinctly opposite-facing turquoise directional dish/antenna illustrations. Both output PNGs have a **121 × 121 px** canvas (bounding alpha boxes `(7,3)-(114,114)`); their alpha channels include transparent surroundings. That is significantly larger than the existing icon canvases (typically 32 × 32 px), though it is not a file-format or manifest error. **Do not presume the 121 px size is a defect or approve a scale change without asking the operator.** Request whether 121×121 is intentional for the mapped icons, or whether the operator wishes to adjust editable/master canvases and re-export approved Plain SVGs before a released 34-icon ZIP. Do not resize automatically or silently force all canvases to 32×32; preserve intended shapes and existing pixel scales.
+
+An independent per-icon report `MSB_171_34_Icon_Staging_QA_20261011.csv` (conversation artifact) has SHA-256 `1580671a7fb800400a7503bd62c2428726214106dac2d465a0f7d19ef20ae769` and reports hashes, dimensions, visible alpha, and unchanged/new status for all 34 items. A visual contact-sheet comparison `MSB_171_Antenna_34_PNG_Review.png` was also prepared from the actual ZIP. **Not independently verified from live Windows Shared Drive:** the newly reported antenna SVG bytes/canvases, their Inkscape master lineage, or whether the previously approved 32 icons were already added to `Symbols\png` by the operator. This review does **not** prove currently installed ExpertGPS, Synology, browser or draw.io marker behavior.
+
+**Release gate:** the existing `Promote-ApprovedGISPNGs.ps1` is still deliberately pinned to the earlier 32-icon ZIP/count, and its source-set guard now rejects incomplete input. **Do not run `-Apply` with the 32-icon candidate**. After operator acceptance of antenna scale/appearance and independent validation of the actual current 34-file `Plain` set, prepare a separately reviewed 34-icon pinned promotion script, then perform read-only destination preflight and governed additive promotion of missing files. Preserve any already promoted 32 PNGs and their receipt; never overwrite legacy filenames/GPX references. Keep #171 open.
+
 ## Approved 31-file Plain SVG / ExpertGPS PNG name-and-size baseline
 
 From the corrected input archive `msb-plain-icons-corrected.zip`, converted into `MSB_ExpertGPS_PNGs_from_SVG_2026-10-09.zip`. The archives were generated in the conversation; these **archive filenames alone do not establish that ZIP files are stored in GitHub or the Shared Drive**. The controlled/current artwork copies reside at the directories above.
