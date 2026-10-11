@@ -4,6 +4,7 @@ param(
     [string]$CandidateSha,
     [Parameter(Mandatory=$true)]
     [string]$TargetRef,
+    [string]$LocalReviewBranch = '',
     [string[]]$MigrationPaths = @(),
     [string[]]$ValidationPaths = @(),
     [switch]$AllowConcurrentProductionWrites,
@@ -17,9 +18,31 @@ if (-not $repo) {
     throw 'Run this wrapper from the MSB-Production-Database-Project checkout.'
 }
 
+# Keep the operator's local review branch separate from the remote candidate
+# branch the governed server fetches. Do not alter existing callers: absent
+# LocalReviewBranch, the original current-branch-equals-TargetRef rule applies.
+if ([string]::IsNullOrWhiteSpace($LocalReviewBranch)) {
+    $LocalReviewBranch = $TargetRef
+}
+if ($LocalReviewBranch -notmatch '^[A-Za-z0-9._/-]+$' -or
+    $TargetRef -notmatch '^[A-Za-z0-9._/-]+$' -or
+    $LocalReviewBranch.Contains('..') -or $TargetRef.Contains('..')) {
+    throw 'STOP before server contact: invalid local or remote Git ref.'
+}
 $currentBranch = (git -C $repo branch --show-current).Trim()
-if ($LASTEXITCODE -ne 0 -or $currentBranch -ne $TargetRef) {
-    throw "STOP before server contact: current branch '$currentBranch' does not equal TargetRef '$TargetRef'."
+if ($LASTEXITCODE -ne 0 -or $currentBranch -ne $LocalReviewBranch) {
+    throw "STOP before server contact: current branch '$currentBranch' does not equal LocalReviewBranch '$LocalReviewBranch'."
+}
+
+# Candidate must be the exact fetched remote branch head; a local review
+# branch may not silently substitute a different SHA.
+& git -C $repo show-ref --verify --quiet "refs/remotes/origin/$TargetRef"
+if ($LASTEXITCODE -ne 0) {
+    throw "STOP before server contact: no fetched origin/$TargetRef remote-tracking ref."
+}
+$remoteHead = (& git -C $repo rev-parse "refs/remotes/origin/$TargetRef").Trim()
+if ($LASTEXITCODE -ne 0 -or $remoteHead -ne $CandidateSha) {
+    throw "STOP before server contact: origin/$TargetRef is '$remoteHead', not exact CandidateSha '$CandidateSha'."
 }
 
 $toolingHead = (git -C $repo rev-parse HEAD).Trim()
