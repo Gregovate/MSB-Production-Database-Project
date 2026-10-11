@@ -17,7 +17,7 @@ param(
     [string]$PlainSvgDirectory = 'G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Plain',
     [string]$ReadmePath = (Join-Path $env:LOCALAPPDATA 'TopoGrafix\Symbols\msb\readme.txt'),
     [string]$OutputDirectory = (Join-Path $env:USERPROFILE ('Downloads\MSB-ExpertGPS-PNGs-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))),
-    [string]$InkscapeExecutable = 'C:\Program Files\Inkscape\bin\inkscape.exe'
+    [string]$InkscapeExecutable = 'C:\Program Files\Inkscape\bin\inkscape.com'
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -29,7 +29,7 @@ if (-not (Test-Path -LiteralPath $ReadmePath -PathType Leaf)) {
     throw "ExpertGPS readme.txt missing: $ReadmePath (provide -ReadmePath if needed)"
 }
 if (-not (Test-Path -LiteralPath $InkscapeExecutable -PathType Leaf)) {
-    throw "Inkscape not found: $InkscapeExecutable (provide -InkscapeExecutable)"
+    throw "Inkscape CLI not found: $InkscapeExecutable (Windows Inkscape installs normally provide bin\inkscape.com; override -InkscapeExecutable if installed elsewhere)"
 }
 if (Test-Path -LiteralPath $OutputDirectory) {
     throw "Staging output already exists; specify a new, empty -OutputDirectory: $OutputDirectory"
@@ -68,15 +68,60 @@ if ((Get-FileHash -LiteralPath $ReadmePath -Algorithm SHA256).Hash -cne
     throw 'Staged readme.txt does not match the input bytes.'
 }
 
+$diagnosticLog = Join-Path $staging 'MSB_Inkscape_Export_Diagnostics.txt'
+$null = Set-Content -LiteralPath $diagnosticLog -Value @(
+    'MSB #171 staged Inkscape PNG export diagnostics',
+    ('Inkscape command-line executable: ' + $InkscapeExecutable),
+    ('Plain SVG source: ' + $plain),
+    ('Staging output: ' + $staging),
+    'NOTE: does not install to ExpertGPS or publish to any web library.',
+    ''
+) -Encoding UTF8
+
 $rows = @()
 foreach ($sourceFile in $sourceFiles) {
     $svgSha = (Get-FileHash -LiteralPath $sourceFile.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
     $pngName = [System.IO.Path]::ChangeExtension($sourceFile.Name, '.png')
     $pngPath = Join-Path $msb $pngName
 
-    & $InkscapeExecutable $sourceFile.FullName '--export-type=png' ('--export-filename=' + $pngPath)
-    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $pngPath -PathType Leaf)) {
-        throw "Inkscape PNG export failed: $($sourceFile.Name)"
+    # Capture the real renderer error. inkscape.com is the Windows console wrapper;
+    # inkscape.exe is a GUI launcher and may not propagate diagnostics/exit status.
+    # Temporarily allow native stderr to be captured without turning it into an
+    # unhelpful PowerShell terminating error under ErrorActionPreference = Stop.
+    $renderOutput = @()
+    $renderExitCode = $null
+    $renderException = ''
+    $originalErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $renderOutput = @(& $InkscapeExecutable $sourceFile.FullName '--export-type=png' ('--export-filename=' + $pngPath) 2>&1)
+        $renderExitCode = $LASTEXITCODE
+    }
+    catch {
+        $renderException = $_.Exception.Message
+    }
+    finally {
+        $ErrorActionPreference = $originalErrorActionPreference
+    }
+
+    $pngExists = Test-Path -LiteralPath $pngPath -PathType Leaf
+    $rendererMessage = if ($renderOutput.Count -gt 0) {
+        ($renderOutput | Out-String).Trim()
+    } else {
+        '(none captured)'
+    }
+    $renderDetails = @(
+        ('SVG: ' + $sourceFile.FullName),
+        ('PNG: ' + $pngPath),
+        ('Exit code: ' + $renderExitCode),
+        ('PNG created: ' + $pngExists),
+        ('Invocation exception: ' + $renderException),
+        ('Renderer output: ' + $rendererMessage),
+        ''
+    )
+    Add-Content -LiteralPath $diagnosticLog -Value $renderDetails -Encoding UTF8
+    if ($renderException -or $renderExitCode -ne 0 -or -not $pngExists) {
+        throw "Inkscape PNG export failed: $($sourceFile.Name); exit code=$renderExitCode; PNG created=$pngExists; exception=$renderException; renderer output=$rendererMessage; diagnostics: $diagnosticLog"
     }
 
     # Parse PNG IHDR directly so the check works on Windows PowerShell 5.1
@@ -89,8 +134,8 @@ foreach ($sourceFile in $sourceFiles) {
     if ($bytes[25] -ne 6) {
         throw "PNG is not truecolor+alpha (RGBA): $pngName; color type=$($bytes[25])"
     }
-    $width = [int]([uint32]$bytes[16] -shl 24 -bor [uint32]$bytes[17] -shl 16 -bor [uint32]$bytes[18] -shl 8 -bor [uint32]$bytes[19])
-    $height = [int]([uint32]$bytes[20] -shl 24 -bor [uint32]$bytes[21] -shl 16 -bor [uint32]$bytes[22] -shl 8 -bor [uint32]$bytes[23])
+    $width = [int]((([uint32]$bytes[16] -shl 24) -bor ([uint32]$bytes[17] -shl 16) -bor ([uint32]$bytes[18] -shl 8) -bor [uint32]$bytes[19]))
+    $height = [int]((([uint32]$bytes[20] -shl 24) -bor ([uint32]$bytes[21] -shl 16) -bor ([uint32]$bytes[22] -shl 8) -bor [uint32]$bytes[23]))
     if ($width -le 0 -or $height -le 0) {
         throw "Invalid PNG canvas dimensions: $pngName"
     }
