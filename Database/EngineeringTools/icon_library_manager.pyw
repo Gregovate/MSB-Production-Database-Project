@@ -12,6 +12,7 @@ import os
 import subprocess
 import sys
 import threading
+import webbrowser
 import queue
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
@@ -23,6 +24,7 @@ from sync_gis_icons import (
     destination_preflight, make_stage, prepare_run, readme_bytes,
     apply_canonical, sha_file, source_freshness_warnings,
 )
+from publish_gis_svgs import WEB_SVG, PUBLIC_SVG_BASE, web_svg_preflight, publish_web_svgs
 
 BACKGROUND = "#f5f8fb"
 
@@ -36,6 +38,7 @@ class Manager:
         self.root.configure(bg=BACKGROUND)
         self.plain = PARK / "Plain"
         self.dest = PARK / "png"
+        self.web_svg_dest = WEB_SVG
         self.releases = PARK / "release-history"
         self.readme = (Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) /
                        "TopoGrafix" / "Symbols" / "msb" / "readme.txt")
@@ -107,7 +110,11 @@ class Manager:
                   padding=(20, 10), wraplength=830).pack(fill="x")
         footer = ttk.Frame(root, padding=(20, 0, 20, 15))
         footer.pack(fill="x")
+        self.web_publish_btn = ttk.Button(footer, text="3. Review/publish Plain SVGs to web",
+                                          command=self.check_web_publish, state="disabled")
+        self.web_publish_btn.pack(side="left", padx=(0, 12))
         ttk.Button(footer, text="Open release history / logs", command=lambda: self.open_dir(self.releases)).pack(side="left")
+        ttk.Button(footer, text="Open selected SVG URL", command=self.open_web_svg).pack(side="left", padx=(12, 0))
         ttk.Button(footer, text="Close", command=self.root.destroy).pack(side="right")
 
     def open_dir(self, path):
@@ -127,6 +134,8 @@ class Manager:
         self.apply_btn.configure(state="disabled" if value or self.records is None or
                                  self.plan is None or not (self.plan["add"] or self.plan["replace"])
                                  else "normal")
+        self.web_publish_btn.configure(state="disabled" if value or self.snapshot is None
+                                       or self.staged is None else "normal")
 
     def publish_progress(self, phase, completed, total, detail):
         """Safe from worker thread: only place data on a queue, never touch Tk."""
@@ -137,7 +146,8 @@ class Manager:
         phases = {"validate": "Checking sources", "render": "Rendering icons",
                   "package": "Packaging and verifying", "ready": "Preview complete",
                   "preflight": "Checking files", "backup": "Backing up originals",
-                  "apply": "Saving approved PNGs", "finalize": "Checking destination"}
+                  "apply": "Saving approved PNGs", "publish": "Publishing SVGs to web",
+                  "finalize": "Checking destination"}
         if total is None:
             if self.progress_mode != "indeterminate":
                 self.progress_bar.configure(mode="indeterminate")
@@ -198,6 +208,7 @@ class Manager:
 
     def check(self):
         self.snapshot = self.staged = self.records = self.plan = None
+        self.web_publish_btn.configure(state="disabled")
         self.master_warnings = []
         self.warnings_btn.configure(text="Source review (0)", state="disabled")
         self.tree.delete(*self.tree.get_children())
@@ -243,6 +254,103 @@ class Manager:
                     "\n".join(self.master_warnings) + "\n", encoding="utf-8")
             # Warnings remain visible in the main window; no modal popup interrupts scan.
         self.async_operation(work, done)
+
+    def open_web_svg(self):
+        """Open the current selected SVG URL with a cache-busting source SHA query."""
+        selection = self.tree.selection()
+        if not selection or self.snapshot is None:
+            messagebox.showinfo("Choose an icon", "Select an icon in the preview first.")
+            return
+        source_name = Path(selection[0]).stem + ".svg"
+        record = self.snapshot.get(source_name)
+        if record is None:
+            messagebox.showerror("Unknown icon", f"No approved Plain SVG found: {source_name}")
+            return
+        webbrowser.open(PUBLIC_SVG_BASE + source_name + "?v=" + record[1][:12])
+
+    def check_web_publish(self):
+        """Separate explicit publication path; previews never publish implicitly."""
+        if self.in_progress or self.snapshot is None or self.staged is None:
+            return
+        self.status.set("Comparing current Plain SVGs with published Synology msb-svg…")
+        def work():
+            self.publish_progress("preflight", 0, None, "Comparing existing server SVG bytes")
+            check_source_snapshot(self.plain, self.snapshot)
+            return web_svg_preflight(self.web_svg_dest, self.snapshot)
+        def done(plan, error):
+            self.set_busy(False)
+            if error:
+                self.status.set("SVG web publication preflight stopped; nothing published.")
+                messagebox.showerror("Published SVG folder needs review",
+                                     error + "\nNo web files changed. Check server share access and current Plain.")
+                return
+            changed = len(plan["add"]) + len(plan["replace"])
+            self.status.set(f"Web SVG review: {len(plan['add'])} new, "
+                            f"{len(plan['replace'])} changed, {len(plan['identical'])} identical.")
+            if changed == 0:
+                messagebox.showinfo("Web SVG library matches current Plain",
+                                    f"All {len(plan['identical'])} existing server SVGs match approved Plain SHA-256."
+                                    "\nThe existing Park Map may still use legacy PNG URLs.")
+                return
+            self.review_web_plan(plan)
+        self.async_operation(work, done)
+
+    def review_web_plan(self, plan):
+        """Human-readable, scrollable list before an explicit public asset write."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Review LIVE web SVG publication — existing msb-svg")
+        dialog.geometry("850x535")
+        dialog.minsize(680, 400)
+        dialog.transient(self.root)
+        ttk.Label(dialog, text="Review publication to the LIVE web file server",
+                  padding=(15, 12, 15, 5), font=("Segoe UI", 13, "bold")).pack(anchor="w")
+        ttk.Label(dialog, wraplength=800, padding=(15, 0, 15, 8),
+                  text=(f"Destination: {self.web_svg_dest}\n"
+                        f"NEW: {len(plan['add'])}   UPDATE (backup): {len(plan['replace'])}   "
+                        f"Unchanged: {len(plan['identical'])}\n"
+                        "This copies currently validated Plain SVG bytes only. No GPX/PNG files "
+                        "are renamed or deleted. The Park Map's legacy PNG URL mapping is NOT updated."
+                        "\nDo not publish if artwork looks wrong in the preview.")).pack(fill="x")
+        text_area = scrolledtext.ScrolledText(dialog, wrap="word", font=("Consolas", 10))
+        text_area.pack(fill="both", expand=True, padx=15, pady=8)
+        details = []
+        for category, label in (("add", "NEW"), ("replace", "UPDATE (backup)"), ("identical", "Unchanged")):
+            details.extend(f"{label}: {name}" for name in plan[category])
+        text_area.insert("1.0", "\n".join(details))
+        text_area.configure(state="disabled")
+        footer = ttk.Frame(dialog, padding=(15, 0, 15, 12))
+        footer.pack(fill="x")
+        ttk.Button(footer, text="Cancel", command=dialog.destroy).pack(side="right")
+        def start_publish():
+            if not messagebox.askyesno("Confirm LIVE SVG publication",
+                f"Publish current Plain SVGs to:\n{self.web_svg_dest}\n\n"
+                f"{len(plan['add'])} new + {len(plan['replace'])} backed-up updates.\n"
+                "This changes web-server files used by public consumers. Proceed?",
+                parent=dialog):
+                return
+            dialog.destroy()
+            self.status.set("Publishing reviewed Plain SVGs and verifying server hashes…")
+            def work():
+                return publish_web_svgs(self.plain, self.web_svg_dest,
+                                        self.staged, self.snapshot,
+                                        progress=self.publish_progress)
+            def done(receipt, error):
+                self.set_busy(False)
+                if error:
+                    self.status.set("SVG publication STOPPED — inspect partial receipt and backups.")
+                    messagebox.showerror("Web SVG publication stopped",
+                                         error + "\nReview: " + str(self.staged) +
+                                         "\nSome files may already have been published; do not discard receipts.")
+                    return
+                self.status.set(f"Web SVG publication PASS: {len(receipt)} files verified on server share.")
+                messagebox.showinfo("Web SVG files synchronized",
+                                    f"{len(receipt)} source SVGs match the file server by SHA-256.\n"
+                                    f"Receipt/backups: {self.staged}\n\n"
+                                    "Verify public SVG URLs in a browser. The Park Map's legacy "
+                                    "PNG marker mapping remains a separate task.")
+            self.async_operation(work, done)
+        ttk.Button(footer, text="Publish reviewed SVG changes",
+                   command=start_publish).pack(side="right", padx=(0, 12))
 
     def show_warnings(self):
         if not self.master_warnings:
