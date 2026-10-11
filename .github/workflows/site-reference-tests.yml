@@ -1,0 +1,53 @@
+# #171/#230 draft PR acceptance. Isolated ephemeral PostGIS; NEVER connects to Production.
+name: Site reference map and editor candidate
+on:
+  pull_request:
+    paths:
+      - 'Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql'
+      - 'Database/Acceptance/171_site_reference_operations_disposable_validation.sql'
+      - 'Database/Acceptance/reference_data_disposable_allowlist.json'
+      - 'Setup/Application/setup_site_reference*'
+      - 'Setup/Application/setup_locate*'
+      - 'Setup/Application/locate_preview.html'
+      - 'Setup/Application/production_backend.py'
+      - '.github/workflows/site-reference-tests.yml'
+  workflow_dispatch:
+
+jobs:
+  candidate-checks:
+    runs-on: ubuntu-latest
+    services:
+      postgis:
+        image: postgis/postgis:16-3.5
+        env:
+          POSTGRES_PASSWORD: ephemeral-only
+          POSTGRES_USER: postgres
+          POSTGRES_DB: site_acceptance
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d site_acceptance"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Parse Python and JavaScript sources
+        run: |
+          python -m py_compile Setup/Application/setup_site_reference_api.py Setup/Application/test_setup_site_reference_api.py
+          node --check Setup/Application/setup_site_reference.js
+          node --check Setup/Application/setup_locate_search.js
+          node --check Setup/Application/setup_locate_networks.js
+      - name: Test protected Setup reader and editor HTTP API
+        run: |
+          python -m pip install 'Flask>=3,<4' 'psycopg2-binary>=2.9,<3' 'pytest>=8,<10'
+          python -m pytest -q Setup/Application/test_setup_site_reference_api.py
+      - name: Run PostGIS migrations and rollback-only operational assertions
+        run: |
+          set -euo pipefail
+          container="${{ job.services.postgis.id }}"
+          docker exec "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE SCHEMA IF NOT EXISTS ref; CREATE SCHEMA IF NOT EXISTS ops;"
+          docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql
+          docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql
+          docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 < Database/Acceptance/171_site_reference_operations_disposable_validation.sql
