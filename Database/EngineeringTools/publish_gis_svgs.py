@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import shutil
 import uuid
+import re
 import xml.etree.ElementTree as ET
 
 from sync_gis_icons import IconError, canonical_sources, check_source_snapshot, sha, sha_file
@@ -43,7 +44,7 @@ def assert_public_svg_safe(name: str, raw: bytes):
                 raise IconError(f"{name}: JavaScript URI not permitted")
         if tag == "style" and node.text:
             css = node.text.lower()
-            if "@import" in css or "url(" in css:
+            if "@import" in css or re.search(r"url\(\s*['\"]?(?!#|data:)", css):
                 raise IconError(f"{name}: external CSS imports/resources not permitted")
     return True
 
