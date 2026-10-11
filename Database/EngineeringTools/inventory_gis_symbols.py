@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from xml.etree import ElementTree as ET
 import zipfile
 
@@ -129,7 +129,7 @@ def inventory(args):
     for path in candidate_paths(args.park, local, args.extra_root, warnings):
         try:
             stat = path.stat()
-            when = datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds")
+            when = datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(timespec="seconds")
             rows.append(record(str(path), path.read_bytes(), scope_for(str(path), args.park, local), when))
         except OSError as exc:
             warnings.append(f"Could not read {path}: {exc}")
