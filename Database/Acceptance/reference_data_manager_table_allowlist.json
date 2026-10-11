@@ -150,7 +150,7 @@
         "crew_set_meter"
       ],
       "protected_columns": [
-        "site_panel_id"
+        "site_waypoint_id"
       ],
       "notes": "UNKNOWN/CITY/MSB owner explicitly maintained by Manager; Production crew may update evidenced meter ID."
     },
@@ -164,7 +164,8 @@
         "manager_set_circuit_owner"
       ],
       "protected_columns": [
-        "site_power_circuit_id"
+        "site_power_circuit_id",
+        "panel_waypoint_id"
       ],
       "notes": "Unique breaker/circuit number per existing panel; panel owner and circuit owner intentionally separate."
     },
@@ -177,7 +178,8 @@
         "crew_link_destination"
       ],
       "protected_columns": [
-        "site_circuit_destination_id"
+        "site_power_circuit_id",
+        "site_waypoint_id"
       ],
       "notes": "Connect reviewed circuit to existing waypoints only; do not infer from coordinates."
     },
@@ -190,7 +192,8 @@
         "crew_assign_network"
       ],
       "protected_columns": [
-        "site_waypoint_network_id"
+        "site_waypoint_id",
+        "site_network_id"
       ],
       "notes": "Many-to-many membership in maintained actual networks, independent of GPX route labels."
     },
@@ -203,7 +206,8 @@
         "crew_set_switching"
       ],
       "protected_columns": [
-        "site_seasonal_switch_instruction_id"
+        "site_power_circuit_id",
+        "season_year"
       ],
       "notes": "Planned ON/OFF instructions by season, NOT an observed power state."
     }
