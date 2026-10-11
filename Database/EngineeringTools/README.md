@@ -1,6 +1,6 @@
 # Database engineering tools
 
-Repository-only engineering utilities. These are not operator entry points.
+Controlled repository engineering utilities. Operator-run tools below require the documented preflight and governed acceptance gates; none are Production UI entry points.
 
 ## GIS / ExpertGPS symbol source inventory — Issue #171
 
