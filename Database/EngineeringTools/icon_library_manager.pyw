@@ -146,7 +146,8 @@ class Manager:
         phases = {"validate": "Checking sources", "render": "Rendering icons",
                   "package": "Packaging and verifying", "ready": "Preview complete",
                   "preflight": "Checking files", "backup": "Backing up originals",
-                  "apply": "Saving approved PNGs", "finalize": "Checking destination"}
+                  "apply": "Saving approved PNGs", "publish": "Publishing SVGs to web",
+                  "finalize": "Checking destination"}
         if total is None:
             if self.progress_mode != "indeterminate":
                 self.progress_bar.configure(mode="indeterminate")
