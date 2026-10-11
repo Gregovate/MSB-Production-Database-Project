@@ -14,6 +14,9 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 MANIFEST="${1:?manifest path is required}"
 [[ -s "$MANIFEST" ]] || { echo "FAIL: acceptance manifest is missing: $MANIFEST"; exit 2; }
 
+GIS_GPX_SHA=""
+GIS_FLW_SHA=""
+GIS_ACTOR=""
 TARGET_SHA=""
 TARGET_REF=""
 MIGRATIONS=()
@@ -30,6 +33,9 @@ while IFS=$'\t' read -r kind value extra; do
         target_ref) TARGET_REF="$value" ;;
         allow_concurrent_production_writes) ALLOW_CONCURRENT_PRODUCTION_WRITES="$value" ;;
         production_read_boundary) PRODUCTION_READ_BOUNDARY="$value" ;;
+        gis_gpx_sha) GIS_GPX_SHA="$value" ;;
+        gis_flw_sha) GIS_FLW_SHA="$value" ;;
+        gis_actor) GIS_ACTOR="$value" ;;
         migration) MIGRATIONS+=("$value") ;;
         validation) VALIDATIONS+=("$value") ;;
         *) echo "FAIL: unsupported manifest key: $kind"; exit 3 ;;
@@ -194,6 +200,13 @@ echo
 echo "--- Exact candidate regression ---"
 sudo -u fieldwiring -H env PYTHONPYCACHEPREFIX="$PYCACHE" bash -c "cd '$CANDIDATE_WORKTREE' && '$PYTHON' -m pytest -q -p no:cacheprovider Setup/Application"
 echo "PASS: exact candidate Setup/Application regression"
+
+if [[ -n "$GIS_GPX_SHA$GIS_FLW_SHA$GIS_ACTOR" ]]; then
+    [[ "$GIS_GPX_SHA" =~ ^[a-f0-9]{64}$ && "$GIS_FLW_SHA" =~ ^[a-f0-9]{64}$ && -n "$GIS_ACTOR" ]] || { echo "FAIL: incomplete GIS source manifest"; exit 16; }
+    [[ " ${MIGRATIONS[*]} " == *" Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql "* && " ${VALIDATIONS[*]} " == *" Database/Acceptance/171_site_infrastructure_disposable_validation.sql "* ]] || { echo "FAIL: GIS schema and validation required"; exit 16; }
+    [[ "$(sha256sum "$SCRIPT_DIR/source.gpx" | cut -d' ' -f1)" == "$GIS_GPX_SHA" && "$(sha256sum "$SCRIPT_DIR/source.flw" | cut -d' ' -f1)" == "$GIS_FLW_SHA" ]] || { echo "FAIL: GIS upload hash differs"; exit 16; }
+    sudo "$PYTHON" -c 'import psycopg'
+fi
 
 echo
 echo "--- Capture current Production into disposable clone ---"
@@ -384,6 +397,18 @@ for rel in "${VALIDATIONS[@]}"; do
     echo "Validating: $rel"
     psql_test < "$CANDIDATE_WORKTREE/$rel"
 done
+
+if [[ -n "$GIS_GPX_SHA" ]]; then
+    echo "--- Actual GPX + read-only FLW import, replay, and exports ---"
+    TEST_IP="$(sudo docker inspect "$TEST_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
+    [[ -n "$TEST_IP" ]] || { echo "FAIL: no disposable container address"; exit 17; }
+    sudo env PGHOST="$TEST_IP" PGPORT=5432 PGDATABASE="$TEST_DB" PGUSER="$DB_ACTOR" PGPASSWORD="$TEST_PASSWORD" \
+        PYTHONPYCACHEPREFIX="$PYCACHE" "$PYTHON" \
+        "$CANDIDATE_WORKTREE/Database/EngineeringTools/accept_site_sources.py" \
+        --gpx "$SCRIPT_DIR/source.gpx" --flw "$SCRIPT_DIR/source.flw" \
+        --gpx-sha "$GIS_GPX_SHA" --flw-sha "$GIS_FLW_SHA" --actor "$GIS_ACTOR" \
+        --output "$REPORT_DIR/GIS_Source_Acceptance_${STAMP}"
+fi
 
 echo
 echo "SETUP_REUSABLE_DISPOSABLE_ACCEPTANCE_PASS"

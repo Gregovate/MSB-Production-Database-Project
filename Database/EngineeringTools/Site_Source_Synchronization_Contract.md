@@ -355,3 +355,43 @@ Earlier text proposing FLW metadata correction or device writeback is historical
 and superseded by this prohibition. Additive DB reconciliation, not FLW rewrite,
 is the required ongoing workflow.
 
+
+### Immediate real-source database acceptance — 2026-10-11
+
+Operator deadline is today, not tomorrow. GIS is not accepted as working merely
+because extractor/unit tests pass. The existing governed disposable runner now
+accepts `-GisGpxPath`, `-GisFlwPath`, and a nonblank `-GisActor` alongside the
+#171 schema migration and validation paths. It copies sources into its existing
+upload bundle, records SHA256, verifies uploaded bytes before the production
+read, and runs `accept_site_sources.py` against the disposable container only.
+No additional dump workflow or production write is introduced.
+
+The gate loads GPX before FLW, verifies GPX replay, imports FLW twice, verifies
+zero duplicate tests/appearances and unchanged original results/cable bindings,
+checks source appearance/proposal counts, and exports PostgreSQL map GeoJSON and
+GPX. Reports and exports remain in the existing server acceptance report folder;
+the disposable database is removed by the established cleanup. This is an
+integration gate, not a deployment or a manager editing UI. Failures must be
+resolved before claiming actual GIS operation. PowerShell and live PostgreSQL
+execution remain unverified in this environment.
+
+Explicit operator clarification: cable tests belong in `ops`. Implemented tables
+are `ops.linkiq_test`, `ops.linkiq_test_appearance`, `ops.linkiq_intake_review`,
+`ops.linkiq_import_receipt`, and `ops.linkiq_identity_decision`. Maintained GIS
+waypoints and physical cable identities belong in `ref`. Endpoint proposals use
+loaded database waypoint IDs and accepted aliases; GPX ordinals are never used
+as database identities. Corrected FLW display names drive proposals, while the
+original tester names and all appearances remain immutable evidence.
+
+Read-only inspection of supplied FLW confirms 684 appearances / 476 UUIDs:
+MSB-Park-Network 470, Park Network 194, Command Trailer 20. These are project
+buckets, not a claim of three import sessions; operator reports two additive
+imports. Corrected names `CC-00 TO A5-02A REG` (original `CC-00 to IT-00 REG`),
+`FC-00A TO PANEL 09 REG` (original `FC-00A TO PANEL 9 REG`), and
+`A5-14/16 TO A5-12 REG` (original `A5-14&16 TO A5-12 REG`) resolve against the
+supplied GPX labels. `FE-10 TO FE-10 SPARE-1` resolves to one identical endpoint
+and must remain under review. No FLW bytes were edited.
+
+Validation: 44 engineering tests passed / 1 skipped; 21 existing acceptance
+runner contract tests passed; Bash syntax, Python compilation and diff checks
+passed. No PostgreSQL integration success or production deployment is claimed.
