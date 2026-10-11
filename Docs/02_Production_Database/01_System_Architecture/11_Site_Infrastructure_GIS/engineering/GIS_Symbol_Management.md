@@ -88,6 +88,31 @@ Only **after comparing the staged inventory against current Plain files and revi
 
 **Current disposition:** export script prepared in repository; **no runtime test on the operator's Windows G: folder, no current PNG rebuild there, and no PC/Synology deployment has been performed**. Operator must execute the source-directory export or provide a fresh ZIP of the exact current Plain SVG directory for an off-PC export.
 
+## Historical scattered SVGs and current exporter block — inspected October 11
+
+Greg reports several previous icon-organization attempts, and identifies the **existing** `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Masters` folder as his chosen permanent **editable Inkscape master** location. The current local files there and under `Plain` have not yet been inspected directly. Do **not** assume historical `-inkscape.svg` naming, directory placement, or a prior SVG ZIP is correct source authority.
+
+Read-only uploaded historical library inventory:
+
+- `icon_library (2).zip`, SHA-256 `1239b9ada1b18100804136a4a4bbf9a9d2d77e7674fb25d2f0396b409b4dc26d`: **41 SVGs** (20 in `icon_library/inkscape-masters/`, 21 in its outer `icon_library/`), **21 PNGs**, **22 BMPs**, one XCF and a Windows `desktop.ini`. All 20 `inkscape-masters` SVGs contain detectable Inkscape/Sodipodi editing metadata; 20/21 outer SVGs lack those markers, but **`LP.svg` in the outer folder still contains Inkscape metadata**. Thus filename/folder are not reliable format classifiers. Three historic suffix typos appear: `LP_Power-inscape.svg`, `IP-camera-inskape.svg`, `Stage-inksccape.svg`. Preserve these as historical originals pending review. A master named `LP_Power-inscape.svg` is present, but there is no directly corresponding `LP_Power.svg` in the root of the uploaded archive; do not invent a missing pair or conflate that icon with a different power outlet.
+- Comparing these outer old SVGs to the **earlier** 31-file corrected Plain SVG ZIP by case/underscore/hyphen-insensitive candidate filename: **14 name matches**, of which 12 are byte-identical; `Stage.svg` and `T-Post.svg` differ in bytes. The newer T-Post canvas is 16 × 32 versus 32 × 32 in the older ZIP. This indicates revisions, not automatically a defect or visual mismatch. These are historical upload comparisons, **not** today’s G: comparison.
+- `LOR Library.xml`, SHA-256 `559845661eebd2e7678d4d2452a821c6c65e31ffe5b1d52d934e9f6181074b33`, valid draw.io `mxlibrary`: **23 entries** (five embedded PNG image entries, 18 entries with draw.io graph XML). LOR controller/component schematic symbols are **not necessarily waypoint/GIS icon masters**. The XML library is itself an embedded presentation source; inventory/report it separately and do not replace it simply because a similarly named GIS Plain SVG exists.
+- Greg ran `Export-ExpertGPSSymbols.ps1` on laptop `C:\lor\ImportExport\VSCode` after updating to main `c46b7d1e`; it stopped at line 52 on **`msb-splitter-Combiner.svg`** in the current G: `Plain` folder. This is a direct observed filename inconsistency with approved `msb-splitter-combiner.svg`. **Do not blindly rename it or bypass the exporter’s guard:** first reconcile copies, ExpertGPS type links, GPX URLs and web/draw.io references. The script did not complete a current PNG export.
+
+### Read-only laptop inventory and reliable SVG classification
+
+Use the repository-standard-library Python utility [inventory_gis_symbols.py](../../../../../Database/EngineeringTools/inventory_gis_symbols.py). Run on the laptop from the **updated** primary repository (`C:\lor\ImportExport\VSCode`; exact startup path may vary by workstation):
+
+```powershell
+python .\Database\EngineeringTools\inventory_gis_symbols.py
+```
+
+The utility checks SVGs recursively under `Park Drawings`, output PNGs under canonical `Symbols\png`, and installed raster/SVG copies under the current user’s `%LOCALAPPDATA%\TopoGrafix\Symbols`. It accepts repeatable `--extra-root` directories for additional known scattered sources, `--archive` historical ZIPs and `--library` draw.io symbol libraries. It writes **only** to a new timestamped Downloads report directory (CSV inventory, CSV review findings and summary text). It does **not** copy, delete, rename, convert, publish or edit sources.
+
+Classification logic: parse SVG XML and count Inkscape/Sodipodi namespaced elements/attributes. `INKSCAPE_METADATA_PRESENT` means editor-specific metadata **is retained**. `PLAIN_LIKE_NO_EDITOR_METADATA` means those markers are absent, but does **not** prove a file was actually exported using Inkscape “Plain SVG”, nor does it prove the vector shapes cannot be edited. `INVALID_SVG` needs inspection. Report all source hashes, viewBox, title, user-selected dimensions, path roles, noncanonical filenames, name-possible master/Plain gaps and multiple revisions for operator adjudication. File-content hashes do not guarantee visual equivalence.
+
+The master promotion decision comes **after** this report: compare candidate original/editable SVGs and plain derivatives visually and by provenance, select a reviewed master per logical icon, stage missing masters rather than overwrite, export approved Plain copies, generate reviewed PNG derivatives into `Symbols\png`, and only then publish/test independent ExpertGPS, web-browser and draw.io copies.
+
 ## draw.io symbol library and schematic independence — operator confirmation, October 11
 
 The operator's current paths are:
