@@ -367,6 +367,23 @@ The operator explicitly responded **“yes we can add the star”** to the quest
 
 **Next controlled phase:** establish a versioned, collision-safe promotion from the accepted staging ZIP to `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\png` without changing source `Masters`/`Plain`. Compare destination contents and preserve/backup any existing files before writing; confirm SHA-256 matches the staged release afterward. ExpertGPS `%LOCALAPPDATA%\TopoGrafix\Symbols\msb`, Synology `webassets/images/symbols/msb` and `msb-svg`, GPX type names/URLs, browser marker lookup and draw.io's embedded libraries/schematic are **separate governed propagation/compatibility gates**. This decision **authorizes Star's inclusion in the proposed icon set, not an unreviewed installation, rename/delete of legacy symbols, web publication or Production deployment**. Issue #171 remains open.
 
+### Controlled promotion to canonical Shared Drive PNG derivatives — approved batch, October 11
+
+**Target / authority:** `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\png` is the canonical local/shared **derived PNG library**, separate from editable `Masters`, approved `Plain` and the local ExpertGPS or public web libraries. The operator agreed to populate it with the accepted **corrected 07:24 batch containing all 32 icons**, including newly approved Star.
+
+The verified ZIP release SHA-256 is `85569dc7cafa1da169bd68244bb9757daadfb53c1d02e911256790d0c6a63e53`. Its 32-row CSV manifest maps each PNG hash back to the exact current `Plain` SVG hash and canvas. Do **not** use the earlier 07:01 batch, which contained the incorrect manhole artwork.
+
+Use [`Promote-ApprovedGISPNGs.ps1`](../../../../../Database/EngineeringTools/Promote-ApprovedGISPNGs.ps1) from the operator's updated laptop Git checkout. This is a fail-closed, **non-destructive** local-file operation. It searches Downloads staging folders for the exact approved ZIP hash; an explicit `-ZipPath` can be supplied if the archive moved. The tool validates:
+
+1. Exact release ZIP SHA-256, 34 approved archive members (32 PNG, readme, inventory CSV) and no duplicate/case-clashing member names.
+2. Copied unchanged ExpertGPS `readme.txt` SHA-256 and expected parent URL; 32 manifest rows, canonical lowercase PNG names, each PNG's SHA-256/RGBA signature/canvas and each corresponding **live G: Plain SVG SHA-256**.
+3. Destination filenames and bytes. **Identical existing PNGs are retained**. Any existing different PNG with the same name, or a case-only filename collision, aborts **before writing**. Unrelated/legacy filenames are never removed.
+4. With explicitly requested `-Apply` only: creates missing approved PNGs using exclusive create-new file mode, checks each final destination hash, writes a receipt CSV alongside the Downloads ZIP. It **never overwrites an existing PNG**, so no historical content needs to be displaced or silently archived. Any destination conflicts require separately reviewed backups and name/alias reconciliation before a later run.
+
+First run **without `-Apply`** (read-only preflight); review count of missing, matching and conflicting files, especially whether canonical `png` currently exists and what it contains. Then apply separately, record the receipt and verify exactly 32 current approved derivatives. A staging ZIP is not the canonical folder itself; the promotion fills the authoritative G: derived-asset location.
+
+**Acceptance not yet claimed:** as of this change, no tool execution on the operator's actual Windows G: drive has been reported, and no canonical `png` file copy is independently verified. This operation does **not** install or alter ExpertGPS `%LOCALAPPDATA%\TopoGrafix\Symbols\msb`, Synology `webassets/images/symbols/msb` / `msb-svg`, GPX/custom-marker type values, browser GIS markers, or draw.io's embedded library/schematic snapshots. Those are independent preservation/publication gates under #171; never automatically propagate local edits into live web assets.
+
 ## Approved 31-file Plain SVG / ExpertGPS PNG name-and-size baseline
 
 From the corrected input archive `msb-plain-icons-corrected.zip`, converted into `MSB_ExpertGPS_PNGs_from_SVG_2026-10-09.zip`. The archives were generated in the conversation; these **archive filenames alone do not establish that ZIP files are stored in GitHub or the Shared Drive**. The controlled/current artwork copies reside at the directories above.
