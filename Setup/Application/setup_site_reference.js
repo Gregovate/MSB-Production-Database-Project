@@ -145,8 +145,30 @@
     line(display, 'Supplying circuit(s): ' + (circuits.length ? circuits.map(c =>
       lookupLabel(c.panel_waypoint_id) + ' / ' + c.circuit_code).join('; ') : 'Not recorded / unreviewed'));
     line(display, 'Actual network(s): ' + (net.length ? net.join(', ') : 'Not recorded / unreviewed'));
-    if (p) line(display, 'Panel owner: ' + p.owner_code + ' · Meter ID: ' + textValue(p.meter_identifier));
-    line(display, 'Reviewed cable identities: ' + inspectedCables(point.id).length);
+    if (p || /panel/i.test(point.type || '')) {
+      line(display, 'Panel owner: ' + (p?.owner_code || 'UNKNOWN') + ' · Meter ID: ' + textValue(p?.meter_identifier));
+      const own = (current.circuits || []).filter(c => Number(c.panel_waypoint_id) === Number(point.id));
+      line(display, 'Breaker / circuit numbers: ' + (own.length ? own.map(c => c.circuit_code +
+        ' (' + c.owner_code + ')').join(', ') : 'Not recorded / unreviewed'));
+      for (const c of own) {
+        const destinations = current.destinations.filter(d => Number(d.site_power_circuit_id) === Number(c.site_power_circuit_id));
+        line(display, c.circuit_code + ' supplies ' + (destinations.length ?
+          destinations.map(d => lookupLabel(d.site_waypoint_id)).join(', ') : 'unknown destinations'));
+        for (const i of current.instructions.filter(i => Number(i.site_power_circuit_id) === Number(c.site_power_circuit_id))) {
+          line(display, i.season_year + ' planned ON: ' + textValue(i.turn_on_instruction)
+            + '; planned OFF: ' + textValue(i.turn_off_instruction) + ' (not observed state)');
+        }
+      }
+    }
+    const linked = inspectedCables(point.id);
+    line(display, 'Reviewed cable identities: ' + linked.length);
+    for (const c of linked) {
+      const latest = c.tests?.[0];
+      line(display, 'Cable #' + c.id + ' · ' + (byId(current.networks, c.network_id, 'site_network_id')?.network_code ||
+        c.spare || 'network unreviewed') + ' · LinkIQ raw result ' +
+        textValue(latest?.test_status_code) + ' · ' + textValue(latest?.tested_at_local) +
+        ' · measured speed not established');
+    }
     const btn = document.createElement('button');
     btn.type = 'button'; btn.textContent = 'View circuits, tests / edit';
     btn.addEventListener('click', () => showWaypoint(point.id));
@@ -235,6 +257,20 @@
           owner.value = panel?.owner_code || 'UNKNOWN';
           return () => ({waypoint_id:id,owner_code:owner.value});
         });
+        for (const c of ownCircuits) {
+          action(edits, 'Manager: owner for circuit ' + c.circuit_code, 'manager_set_circuit_owner', form => {
+            const owner = choice(form,'Circuit owner','owner_code',
+              [['UNKNOWN','Unconfirmed'],['MSB','MSB'],['CITY','City']]);
+            owner.value = c.owner_code;
+            return () => ({circuit_id:c.site_power_circuit_id,owner_code:owner.value});
+          });
+        }
+        action(edits, 'Manager: create maintained network designation', 'manager_add_network', form => {
+          const code = field(form, 'Network designation (verified)', 'network_code');
+          const kind = choice(form, 'Network kind', 'network_kind',
+            [['LOR','LOR'],['IP','IP / Ethernet'],['OTHER','Other']]);
+          return () => ({network_code:code.value,network_kind:kind.value});
+        });
       }
       if (current.permissions.operations) {
         if (/panel/i.test(w.type || '')) {
@@ -257,13 +293,6 @@
               return () => ({circuit_id:c.site_power_circuit_id,season_year:Number(year.value),
                 turn_on_instruction:on.value,turn_off_instruction:off.value});
             });
-            if (current.permissions.identity)
-              action(edits, 'Manager: owner for circuit ' + c.circuit_code, 'manager_set_circuit_owner', form => {
-                const owner = choice(form,'Circuit owner','owner_code',
-                  [['UNKNOWN','Unconfirmed'],['MSB','MSB'],['CITY','City']]);
-                owner.value = c.owner_code;
-                return () => ({circuit_id:c.site_power_circuit_id,owner_code:owner.value});
-              });
           }
         } else if (current.circuits.length) {
           action(edits, 'Production crew: link waypoint to circuit', 'crew_link_destination', form => {
