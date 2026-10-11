@@ -95,6 +95,40 @@ read-only extraction, corrected static map or engineering JSON projection does
 not establish this end-to-end acceptance. Production execution remains subject
 to #122 and the governing runbook; these requirements do not claim deployment.
 
+### Delivery priority and database-driven network schematic
+
+Operator clarification, October 11 at 16:27 America/Chicago:
+
+1. **Highest priority: integrate the GPX and LinkIQ data into PostgreSQL.**
+   Preserve waypoint identities, geographic references, cable relationships,
+   original tests and unresolved evidence in one coherent maintained model.
+2. **Expose that reference data for ongoing authorized maintenance.**
+   Correct maintained data once in PostgreSQL. Do not require editing matching
+   pieces independently in GPX, draw.io, tester exports and application snapshots.
+3. **Drive the park network draw.io schematic from PostgreSQL**, using imported
+   LinkIQ test evidence and GPS waypoint references, including cable test pass/fail
+   and speed information. Preserve and reuse existing schematic keys and layout.
+   The drawing is already color coded; inspect and preserve the actual color
+   meanings rather than inventing new pass/fail/speed mappings.
+4. **Eventually give every relevant schematic entity structured data capability**
+   so database-driven updates cover the full network drawing. Track which
+   entities are bound versus unconverted; preserve the latter until converted.
+   Completing every drawing entity must not block the higher-priority database
+   ingestion and reference-maintenance interface.
+
+Map geographic identities to schematic entities through verified keys; do not
+replace diagram layout coordinates with GPS coordinates. Keep the original
+LinkIQ result and speed/qualification fields with their meanings and units.
+A tested/qualified speed is not proof of currently negotiated network speed.
+If multiple tests exist, the rule choosing the displayed result must be explicit
+and reviewable; this clarification does not invent that rule.
+
+GPX export/controlled ExpertGPS adjustment remains required as documented above.
+The schematic is an output of the integrated maintained data, not another place
+where routine source corrections must be entered by hand. Import, editor, GPX
+export and schematic update acceptance are separate demonstrable outcomes;
+none is declared implemented by this requirement record.
+
 ### Fresh attachment evidence — read-only inspection
 
 These are upload filenames, not new canonical Shared Drive names. Greg reports
