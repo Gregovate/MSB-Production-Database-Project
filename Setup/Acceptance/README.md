@@ -90,15 +90,35 @@ For database-affecting Setup work, use the same sequence every time:
 ```text
 exact candidate + clean local checkout
     -> full Setup/Application regression
-    -> disposable current-Production clone acceptance
-    -> exact-candidate browser review against a fresh disposable clone
-    -> operator acceptance
+    -> ONE current-Production dump and disposable clone
+    -> migrations + database assertions + feature import checks on that clone
+    -> exact-candidate browser review against THAT SAME clone
+    -> operator finishes browser review and exits cleanly
+    -> preview/clone cleanup, retained evidence
     -> separate Production deployment runbook
 ```
 
 Production mutation is not part of either reusable acceptance launcher. Production is limited to `pg_dump` and read-only evidence/fingerprint queries until the candidate has been explicitly accepted.
 
-If the candidate changes after either gate, start again from the new exact SHA. Do not carry forward a prior disposable clone or browser preview.
+For database-changing work requiring browser review, use
+`run_setup_disposable_browser_preview.ps1` for the combined regression, database
+and browser lifecycle. Do not run the standalone database acceptance first and
+then take a second dump for browser review of the same candidate. Normal cleanup
+runs after the operator completes browser review and presses ENTER in the review
+terminal. Closing a browser tab alone is not the runner's completion signal.
+Transport loss uses the existing reconnect path; do not launch another clone
+merely because the browser tunnel disconnected. Failure cleanup and retained
+reports remain governed by the existing runbook.
+
+If the candidate changes, prior acceptance is invalidated; rerun affected gates
+against the exact new SHA. This does not authorize duplicate dumps merely to
+move from regression/database checks into browser review.
+
+For #171/#230 real-source acceptance, pass `-GisGpxPath`, `-GisFlwPath`, and
+`-GisActor` to that same browser launcher, with the centrally allowlisted #171
+migration and validation SQL. The importer runs before browser launch on that
+same clone. Its exported artifacts and receipts are evidence; importing them
+does not by itself establish that every application screen consumes the new data.
 
 ## Mandatory exact client/server build identity gate
 

@@ -16,6 +16,9 @@ MODE="${2:-start}"
 
 [[ -s "$MANIFEST" ]] || { echo "FAIL: preview manifest is missing: $MANIFEST"; exit 2; }
 
+GIS_GPX_SHA=""
+GIS_FLW_SHA=""
+GIS_ACTOR=""
 TARGET_SHA=""
 TARGET_REF=""
 PREVIEW_PORT=""
@@ -36,6 +39,9 @@ while IFS=$'\t' read -r kind value extra; do
         preview_email) PREVIEW_EMAIL="$value" ;;
         expected_version) EXPECTED_VERSION="$value" ;;
         allow_concurrent_production_writes) ALLOW_CONCURRENT_PRODUCTION_WRITES="$value" ;;
+        gis_gpx_sha) GIS_GPX_SHA="$value" ;;
+        gis_flw_sha) GIS_FLW_SHA="$value" ;;
+        gis_actor) GIS_ACTOR="$value" ;;
         migration) MIGRATIONS+=("$value") ;;
         validation) VALIDATIONS+=("$value") ;;
         *) echo "FAIL: unsupported manifest key: $kind"; exit 3 ;;
@@ -529,6 +535,13 @@ sudo -u fieldwiring -H env PYTHONPYCACHEPREFIX="$PYCACHE" bash -c "
 "
 echo "PASS: exact candidate Setup/Application regression"
 
+if [[ -n "$GIS_GPX_SHA$GIS_FLW_SHA$GIS_ACTOR" ]]; then
+    [[ "$GIS_GPX_SHA" =~ ^[a-f0-9]{64}$ && "$GIS_FLW_SHA" =~ ^[a-f0-9]{64}$ && -n "$GIS_ACTOR" ]] || { echo "FAIL: incomplete GIS source manifest"; exit 16; }
+    [[ " ${MIGRATIONS[*]} " == *" Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql "* && " ${VALIDATIONS[*]} " == *" Database/Acceptance/171_site_infrastructure_disposable_validation.sql "* ]] || { echo "FAIL: GIS schema and validation required"; exit 16; }
+    [[ "$(sha256sum "$SCRIPT_DIR/source.gpx" | cut -d' ' -f1)" == "$GIS_GPX_SHA" && "$(sha256sum "$SCRIPT_DIR/source.flw" | cut -d' ' -f1)" == "$GIS_FLW_SHA" ]] || { echo "FAIL: GIS upload hash differs"; exit 16; }
+    sudo "$PYTHON" -c 'import psycopg'
+fi
+
 echo
 echo "--- Capture current Production into disposable clone ---"
 sudo docker exec "$PROD_CONTAINER" pg_dump -U "$DB_ACTOR" -d "$PROD_DB" -Fc > "$DUMP_FILE"
@@ -756,6 +769,18 @@ if [[ -z "$TEST_IP" ]]; then
     echo "FAIL: could not resolve disposable PostgreSQL container IP"
     exit 21
 fi
+if [[ -n "$GIS_GPX_SHA" ]]; then
+    echo "--- Actual GPX + read-only FLW import, replay, and exports ---"
+    TEST_IP="$(sudo docker inspect "$TEST_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
+    [[ -n "$TEST_IP" ]] || { echo "FAIL: no disposable container address"; exit 17; }
+    sudo env PGHOST="$TEST_IP" PGPORT=5432 PGDATABASE="$TEST_DB" PGUSER="$DB_ACTOR" PGPASSWORD="$TEST_PASSWORD" \
+        PYTHONPYCACHEPREFIX="$PYCACHE" "$PYTHON" \
+        "$CANDIDATE_WORKTREE/Database/EngineeringTools/accept_site_sources.py" \
+        --gpx "$SCRIPT_DIR/source.gpx" --flw "$SCRIPT_DIR/source.flw" \
+        --gpx-sha "$GIS_GPX_SHA" --flw-sha "$GIS_FLW_SHA" --actor "$GIS_ACTOR" \
+        --output "$REPORT_DIR/GIS_Source_Acceptance_${STAMP}"
+fi
+
 DSN="host=$TEST_IP port=5432 dbname=$TEST_DB user=fieldwiring_app password=$APP_PASSWORD"
 APP_DIR="$CANDIDATE_WORKTREE/Setup/Application"
 

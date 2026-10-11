@@ -8,10 +8,7 @@ param(
     [string[]]$MigrationPaths = @(),
     [string[]]$ValidationPaths = @(),
     [switch]$AllowConcurrentProductionWrites,
-    [switch]$ProductionReadBoundary,
-    [string]$GisGpxPath = '',
-    [string]$GisFlwPath = '',
-    [string]$GisActor = ''
+    [switch]$ProductionReadBoundary
 )
 
 $ErrorActionPreference = 'Stop'
@@ -185,20 +182,6 @@ if ($LASTEXITCODE -ne 0) {
     throw 'Exact candidate does not contain the reusable Setup disposable-acceptance server runner.'
 }
 
-$gisIntake = -not [string]::IsNullOrWhiteSpace($GisGpxPath) -or -not [string]::IsNullOrWhiteSpace($GisFlwPath)
-if ($gisIntake) {
-    if ([string]::IsNullOrWhiteSpace($GisActor) -or $GisActor -match '[\r\n\t]') {
-        throw 'Real-source GIS acceptance requires a named GisActor without control characters.'
-    }
-    foreach ($source in @($GisGpxPath, $GisFlwPath)) {
-        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Missing GIS source: $source" }
-    }
-    if ($MigrationPaths -cnotcontains 'Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql' -or
-        $ValidationPaths -cnotcontains 'Database/Acceptance/171_site_infrastructure_disposable_validation.sql') {
-        throw 'GIS intake requires the #171 schema and validation in this same run.'
-    }
-}
-
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $bundleName = "msb-setup-disposable-acceptance-$stamp"
 $localBundle = Join-Path $env:TEMP $bundleName
@@ -225,13 +208,6 @@ try {
     }
     foreach ($path in $ValidationPaths) {
         $manifestLines += "validation`t$path"
-    }
-    if ($gisIntake) {
-        Copy-Item -LiteralPath $GisGpxPath -Destination (Join-Path $localBundle 'source.gpx')
-        Copy-Item -LiteralPath $GisFlwPath -Destination (Join-Path $localBundle 'source.flw')
-        $gpxHash = (Get-FileHash -LiteralPath (Join-Path $localBundle 'source.gpx') -Algorithm SHA256).Hash.ToLowerInvariant()
-        $flwHash = (Get-FileHash -LiteralPath (Join-Path $localBundle 'source.flw') -Algorithm SHA256).Hash.ToLowerInvariant()
-        $manifestLines += "gis_gpx_sha`t$gpxHash", "gis_flw_sha`t$flwHash", "gis_actor`t$GisActor"
     }
     $manifestText = ($manifestLines -join "`n") + "`n"
     [System.IO.File]::WriteAllText($localManifest, $manifestText, $utf8NoBom)

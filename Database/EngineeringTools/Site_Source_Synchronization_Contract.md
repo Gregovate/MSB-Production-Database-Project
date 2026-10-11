@@ -359,7 +359,7 @@ is the required ongoing workflow.
 ### Immediate real-source database acceptance — 2026-10-11
 
 Operator deadline is today, not tomorrow. GIS is not accepted as working merely
-because extractor/unit tests pass. The existing governed disposable runner now
+because extractor/unit tests pass. The existing governed disposable browser runner now
 accepts `-GisGpxPath`, `-GisFlwPath`, and a nonblank `-GisActor` alongside the
 #171 schema migration and validation paths. It copies sources into its existing
 upload bundle, records SHA256, verifies uploaded bytes before the production
@@ -370,7 +370,8 @@ The gate loads GPX before FLW, verifies GPX replay, imports FLW twice, verifies
 zero duplicate tests/appearances and unchanged original results/cable bindings,
 checks source appearance/proposal counts, and exports PostgreSQL map GeoJSON and
 GPX. Reports and exports remain in the existing server acceptance report folder;
-the disposable database is removed by the established cleanup. This is an
+the disposable database remains available through browser review and is removed
+by established cleanup after the operator ends the review. This is an
 integration gate, not a deployment or a manager editing UI. Failures must be
 resolved before claiming actual GIS operation. PowerShell and live PostgreSQL
 execution remain unverified in this environment.
@@ -395,3 +396,16 @@ and must remain under review. No FLW bytes were edited.
 Validation: 44 engineering tests passed / 1 skipped; 21 existing acceptance
 runner contract tests passed; Bash syntax, Python compilation and diff checks
 passed. No PostgreSQL integration success or production deployment is claimed.
+
+### Single-clone correction — operator instruction, 2026-10-11
+
+The initial 7d4d2a8 placement of the real-source gate in the standalone acceptance
+runner would require another clone for browser review. Superseded: the source
+parameters and gate now live in the existing browser runner, which already runs
+regression, migrations and SQL validation before launching the browser. Use ONE
+dump/clone for this full lifecycle, with normal cleanup only after the operator
+ends browser review. Preserve existing failure/reconnect handling. The standalone
+runner changes from 7d4d2a8 are reverted. The browser wrapper consumes the existing
+#230 exact-candidate reference SQL allowlist and supports LocalReviewBranch.
+The acceptance README's stale instruction to create a fresh browser clone is
+corrected. Server Management remains runtime authority. No live execution claimed.

@@ -27,7 +27,7 @@ def main():
     baseline = extract_gpx(args.gpx)
     args.output.mkdir(parents=True, exist_ok=False)
     with psycopg.connect('', autocommit=True) as conn:
-        require(conn.info.dbname == 'msb_setup_disposable_acceptance',
+        require(conn.info.dbname == 'msb_setup_browser_preview',
                 'Real-source gate requires the governed disposable database')
         accepted = bootstrap_expertgps(conn, args.gpx, args.actor, args.gpx_sha)
         replay = bootstrap_expertgps(conn, args.gpx, args.actor, args.gpx_sha)
