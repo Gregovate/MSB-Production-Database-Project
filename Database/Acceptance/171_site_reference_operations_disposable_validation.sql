@@ -14,6 +14,19 @@ DECLARE
 BEGIN
     SELECT revision INTO v_rev FROM ref.site_reference_revision WHERE singleton;
     IF v_rev IS NULL THEN RAISE EXCEPTION 'Reference revision singleton missing'; END IF;
+    -- App role receives only named EXECUTE; no generic ref.* DML.
+    IF to_regrole('fieldwiring_app') IS NOT NULL THEN
+        IF has_table_privilege('fieldwiring_app','ref.site_waypoint','UPDATE')
+           OR has_table_privilege('fieldwiring_app','ref.site_power_circuit','INSERT')
+           OR has_table_privilege('fieldwiring_app','ref.site_circuit_destination','DELETE')
+           OR has_table_privilege('fieldwiring_app','ops.site_reference_edit_log','DELETE')
+           OR NOT has_function_privilege('fieldwiring_app',
+                'ref.site_reference_snapshot()','EXECUTE')
+           OR NOT has_function_privilege('fieldwiring_app',
+                'ref.site_reference_command(text,text,bigint,jsonb)','EXECUTE') THEN
+            RAISE EXCEPTION 'App role has incorrect site-reference privileges';
+        END IF;
+    END IF;
     IF (ref.site_reference_permissions('crew@example.test')->>'operations')::boolean
         OR (ref.site_reference_permissions('manager@example.test')->>'identity')::boolean THEN
         RAISE EXCEPTION 'GIS reference editor must default deny';
