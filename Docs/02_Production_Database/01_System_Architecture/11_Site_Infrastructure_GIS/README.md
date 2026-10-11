@@ -411,12 +411,17 @@ ExpertGPS, web/Synology publication, legacy GPX aliases and draw.io's embedded
 schematic artwork have not been migrated or accepted. **A controlled additive
 canonical PNG promotion utility is now available**:
 [Promote-ApprovedGISPNGs.ps1](../../../../Database/EngineeringTools/Promote-ApprovedGISPNGs.ps1).
-First run the exact-SHA ZIP / current-Plain / destination collision check in
-default READ-ONLY mode. After verifying zero conflicts, `-Apply` creates only
-missing 32 approved PNG derivative files in the Shared Drive `Symbols\\png`
-folder, then verifies hashes and writes a local receipt. Existing PNGs are
-never overwritten; old-name files are preserved. Live operator promotion has
-not yet occurred. Govern each independently. Detailed source
+**Newer October 11 source update:** the operator has added a left and right
+Wi-Fi antenna as separate Inkscape masters and Plain SVG derivatives
+(`antenna-l`, `antenna-r`), making the **intended current library 34 icons**.
+The previous laptop preflight passed for the then-current **32-icon** ZIP
+(32 missing/0 conflicts), but it is **stale for a complete release** after
+these source additions. The promotion utility now rejects current Plain
+filenames absent from its approved manifest, even when all older SVG hashes
+still match. **Do not run the existing 32-icon `-Apply` until the complete
+34-icon batch has been exported, reviewed, approved and pinned.** Existing
+correct files must be preserved; no replacements/deletions are authorized.
+The operator's 32-icon write status is not yet confirmed (receipt not supplied). Govern each independently. Detailed source
 triage and post-correction acceptance rules are in the linked GIS symbol contract.
 No ExpertGPS, Synology, draw.io, or browser publishing has been verified. draw.io keeps `Network\MSB-icon-library.xml`, but
 the existing `Network\Park Network Schematic 2026.drawio` embeds its own SVG/PNG
