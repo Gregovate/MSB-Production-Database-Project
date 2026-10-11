@@ -1,6 +1,8 @@
 # #171/#230 draft PR acceptance. Isolated ephemeral PostGIS; NEVER connects to Production.
 name: Site reference map and editor candidate
 on:
+  push:
+    branches: [feature/171-cableiq-import-validation]
   pull_request:
     paths:
       - 'Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql'
