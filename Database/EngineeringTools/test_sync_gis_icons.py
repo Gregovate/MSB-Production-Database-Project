@@ -12,7 +12,8 @@ import zlib
 from unittest.mock import patch
 
 from sync_gis_icons import (IconError, MAX_PX, canonical_sources, destination_preflight,
-                            png_canvas, run, sha, sha_file, svg_canvas, source_freshness_warnings)
+                            png_canvas, run, sha, sha_file, svg_canvas, source_freshness_warnings,
+                            prepare_run, apply_canonical, make_stage, readme_bytes)
 
 
 def png(w, h):
@@ -77,6 +78,41 @@ class ProcessTests(unittest.TestCase):
     def mocked_run(self):
         with patch('sync_gis_icons.choose_inkscape', return_value='fake-inkscape'), patch('sync_gis_icons.subprocess.run', self.fake_render):
             return run(self.args)
+
+    def test_preview_progress_monotonic_and_has_filename(self):
+        events = []
+        stage = make_stage(self.root)
+        def report(phase, current, total, detail):
+            events.append((phase, current, total, detail))
+        with patch('sync_gis_icons.subprocess.run', self.fake_render):
+            sources, rows, archive = prepare_run(self.plain, stage, 'fake-inkscape',
+                                                 readme_bytes(self.readme), progress=report)
+        self.assertEqual(len(rows), 3)
+        self.assertTrue(archive.is_file())
+        self.assertEqual(events[0][0], 'validate')
+        self.assertIsNone(events[0][2])
+        completed = [e for e in events if e[0] == 'render' and e[1] > 0]
+        self.assertEqual([e[1] for e in completed], [1, 2, 3])
+        self.assertTrue(all(e[2] == 3 for e in completed))
+        self.assertTrue(all('.svg' in e[3] for e in completed))
+        self.assertIn('package', [e[0] for e in events])
+        self.assertEqual(events[-1][:3], ('ready', 3, 3))
+
+    def test_apply_progress_only_completes_after_verified_receipts(self):
+        stage = make_stage(self.root)
+        with patch('sync_gis_icons.subprocess.run', self.fake_render):
+            sources, rows, _archive = prepare_run(self.plain, stage, 'fake-inkscape',
+                                                   readme_bytes(self.readme))
+        events = []
+        receipt = apply_canonical(self.dest, stage, rows, sources, self.plain,
+                                  progress=lambda *values: events.append(values))
+        self.assertEqual(len(receipt), 3)
+        self.assertEqual(events[0][0], 'preflight')
+        self.assertEqual([e[1] for e in events if e[0]=='apply' and
+                          e[3].endswith('hash verified')], [1, 2, 3])
+        self.assertEqual(events[-1][:3], ('apply', 3, 3))
+        self.assertTrue((stage/'MSB_GIS_Promotion_Receipt.csv').exists())
+        self.assertTrue(all(sha_file(self.dest/r['PNG']) == r['PNG_SHA256'] for r in rows))
 
     def test_dry_run_then_additive_apply(self):
         summary = self.mocked_run()

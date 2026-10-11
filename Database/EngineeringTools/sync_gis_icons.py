@@ -265,15 +265,22 @@ def write_preview_cache(stage: Path, records: list[dict]):
             temporary.unlink()
 
 
-def prepare_run(plain: Path, stage: Path, inkscape: str, readme: bytes):
+def prepare_run(plain: Path, stage: Path, inkscape: str, readme: bytes, progress=None):
+    """Report phase/completed/total/filename to an optional UI callback."""
+    if progress:
+        progress("validate", 0, None, "Validating current Plain SVG sources")
     sources = canonical_sources(plain)  # ALL source validation before any rendering.
+    if progress:
+        progress("render", 0, len(sources), f"Rendering {len(sources)} icons")
     records = []
     cache = load_preview_cache(stage)
     hits, rendered = 0, 0
     log = stage / "Inkscape-export.log"
     log.write_text(f"MSB #171 Inkscape export; source={plain}; executable={inkscape}\n", encoding="utf-8")
-    for item in sources.values():
+    for completed, item in enumerate(sources.values(), 1):
         p, expected_hash, width, height = item
+        if progress:
+            progress("render", completed - 1, len(sources), f"Processing {p.name}")
         out = stage / "msb" / (p.stem + ".png")
         reused = find_cached_png(cache, out.name, expected_hash, width, height)
         if reused is not None:
@@ -298,8 +305,13 @@ def prepare_run(plain: Path, stage: Path, inkscape: str, readme: bytes):
         records.append(staged_record(p.name, item, data))
         if sha_file(p) != expected_hash:
             raise IconError(f"{p.name}: source modified during rendering; abort")
+        if progress:
+            detail = "cached" if reused is not None else "rendered"
+            progress("render", completed, len(sources), f"{p.name}: {detail}")
     with log.open("a", encoding="utf-8") as fp:
         fp.write(f"\nSUMMARY: {hits} hash-verified unchanged icons reused; {rendered} newly rendered.\n")
+    if progress:
+        progress("package", 0, None, "Verifying sources and staging ZIP")
     check_source_snapshot(plain, sources)
     with (stage / "MSB_GIS_PNG_Manifest.csv").open("w", newline="", encoding="utf-8-sig") as fp:
         writer = csv.DictWriter(fp, fieldnames=COLUMNS)
@@ -320,16 +332,22 @@ def prepare_run(plain: Path, stage: Path, inkscape: str, readme: bytes):
         # Index is only an accelerator. Staging remains validated if it is locked.
         with log.open("a", encoding="utf-8") as fp:
             fp.write(f"CACHE INDEX UPDATE FAILED (stage remains valid): {error}\n")
+    if progress:
+        progress("ready", len(records), len(records), "All preview PNGs verified")
     return sources, records, zip_path
 
 
-def apply_canonical(destination: Path, stage: Path, records: list[dict], sources: dict, plain: Path):
+def apply_canonical(destination: Path, stage: Path, records: list[dict], sources: dict, plain: Path, progress=None):
     """Back up all changed assets before writes; exclusive create and verified replacement."""
     # Preflight complete source set AND all destination identities immediately before writes.
+    if progress:
+        progress("preflight", 0, None, "Rechecking sources and canonical PNG folder")
     check_source_snapshot(plain, sources)
     plan = destination_preflight(destination, records)
     backups = stage / "backups-before-replacement"
     if plan["replace"]:
+        if progress:
+            progress("backup", 0, None, f"Backing up {len(plan['replace'])} existing PNGs")
         backups.mkdir()
         for row in plan["replace"]:
             existing = destination / row["PNG"]
@@ -340,7 +358,11 @@ def apply_canonical(destination: Path, stage: Path, records: list[dict], sources
     if not destination.exists():
         destination.mkdir(parents=True, exist_ok=False)
     receipt = []
-    for row in records:
+    if progress:
+        progress("apply", 0, len(records), "Saving and verifying approved PNGs")
+    for completed, row in enumerate(records, 1):
+        if progress:
+            progress("apply", completed - 1, len(records), f"Processing {row['PNG']}")
         target = destination / row["PNG"]
         payload = (stage / "msb" / row["PNG"]).read_bytes()
         if sha(payload) != row["PNG_SHA256"]:
@@ -384,6 +406,8 @@ def apply_canonical(destination: Path, stage: Path, records: list[dict], sources
             writer = csv.DictWriter(fp, fieldnames=("PNG", "Action", "SHA256", "Destination"))
             writer.writeheader()
             writer.writerows(receipt)
+        if progress:
+            progress("apply", completed, len(records), f"{row['PNG']}: {action}, hash verified")
     return receipt
 
 
