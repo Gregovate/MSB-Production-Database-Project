@@ -139,6 +139,73 @@
         "binding_id"
       ],
       "notes": "Bind database cable identities to existing draw.io object IDs; never edit geographic location by moving a drawing symbol."
+    },
+    {
+      "table": "ref.site_panel",
+      "owner": "#171 / #230",
+      "stage": "CANDIDATE_PR_319_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "manager_set_panel_owner",
+        "crew_set_meter"
+      ],
+      "protected_columns": [
+        "site_panel_id"
+      ],
+      "notes": "UNKNOWN/CITY/MSB owner explicitly maintained by Manager; Production crew may update evidenced meter ID."
+    },
+    {
+      "table": "ref.site_power_circuit",
+      "owner": "#171 / #230",
+      "stage": "CANDIDATE_PR_319_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "crew_upsert_circuit",
+        "manager_set_circuit_owner"
+      ],
+      "protected_columns": [
+        "site_power_circuit_id"
+      ],
+      "notes": "Unique breaker/circuit number per existing panel; panel owner and circuit owner intentionally separate."
+    },
+    {
+      "table": "ref.site_circuit_destination",
+      "owner": "#171 / #230",
+      "stage": "CANDIDATE_PR_319_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "crew_link_destination"
+      ],
+      "protected_columns": [
+        "site_circuit_destination_id"
+      ],
+      "notes": "Connect reviewed circuit to existing waypoints only; do not infer from coordinates."
+    },
+    {
+      "table": "ref.site_waypoint_network",
+      "owner": "#171 / #230",
+      "stage": "CANDIDATE_PR_319_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "crew_assign_network"
+      ],
+      "protected_columns": [
+        "site_waypoint_network_id"
+      ],
+      "notes": "Many-to-many membership in maintained actual networks, independent of GPX route labels."
+    },
+    {
+      "table": "ref.site_seasonal_switch_instruction",
+      "owner": "#171 / #230",
+      "stage": "CANDIDATE_PR_319_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "crew_set_switching"
+      ],
+      "protected_columns": [
+        "site_seasonal_switch_instruction_id"
+      ],
+      "notes": "Planned ON/OFF instructions by season, NOT an observed power state."
     }
   ],
   "internal_only": [
@@ -146,7 +213,10 @@
     "ops.site_source_batch",
     "ops.site_source_observation",
     "ops.linkiq_test",
-    "ops.linkiq_test_appearance"
+    "ops.linkiq_test_appearance",
+    "ref.site_reference_revision",
+    "ref.site_editor_grant",
+    "ops.site_reference_edit_log"
   ],
   "excluded_owners": [
     {
@@ -184,5 +254,13 @@
     "Validate each field, action and operator role server-side; protected keys and LOR-owned columns remain immutable.",
     "Authorized Production crew may manage circuit-to-existing-waypoint relationships when those are separately implemented; waypoint identity and coordinates remain Manager-maintained.",
     "Preserve attributed audit and prior values; no approved source facts overwritten by an unreviewed import."
-  ]
+  ],
+  "gis_candidate_editor": {
+    "status": "CANDIDATE_ONLY_NOT_DEPLOYED_NOT_ROLE_GRANTED",
+    "migration": "Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql",
+    "read": "ref.site_reference_snapshot()",
+    "permissions": "ref.site_reference_permissions(email)",
+    "commands": "ref.site_reference_command(email, command, expected_revision, jsonb)",
+    "scope": "Positive, independently provisioned grants; Manager identity requires Setup manager; crew operations do not grant coordinate edits. Source evidence remains immutable."
+  }
 }
