@@ -1,0 +1,136 @@
+# MSB GIS Symbol Creation, Publication, and Compatibility
+
+| Document control | Value |
+| --- | --- |
+| Status | CURRENT engineering/source-maintenance contract (runtime adoption remains separately gated) |
+| Owner | Site Infrastructure / GIS, Issue [#171](https://github.com/Gregovate/MSB-Production-Database-Project/issues/171) |
+| Recorded | 2026-10-11, capturing operator-confirmed October 9–11 decisions |
+| Related ownership | #230 reference editor/type registry; #88 Container movement/load evidence; #175 Task Cover Sheet consumer |
+| Subject | SVG masters, Plain SVG export, ExpertGPS PNG derivative, legacy symbol compatibility, web publication |
+
+## Authoritative directories and copy ownership
+
+These are **operator-confirmed existing locations**, not proposed folders:
+
+| Location | Purpose / source status |
+| --- | --- |
+| `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Masters` | **Editable Inkscape master artwork**. Edit here; do not edit the published web copies. |
+| `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Plain` | **Approved exported Plain SVG artwork**, derived from the editable masters; canonical source for GIS/browser artwork and PNG generation. |
+| `\\192.168.5.4\webassets\images\symbols\msb-svg\` | Published **new Plain SVG** files (the operator confirmed the folder contains them). |
+| `\\192.168.5.4\webassets\images\symbols\msb\` | Existing **legacy-named PNG and BMP** compatibility files. Preserve them; new PNG names may coexist during a controlled changeover. |
+| TopoGrafix / ExpertGPS custom-symbol folder (exact local path not yet recorded) | ExpertGPS PNG copy. Operator will install generated PNGs here. Verify exact directory with the workstation rather than inventing a path. |
+| `G:\Shared drives\Display Folders\Park Drawings\GPS Data\Custom Waypoint Symbols\Master Icons` | Older/legacy artwork reference reported previously; **not** the new canonical editing location. Retain as provenance until reviewed. |
+
+Web URL bases corresponding to the confirmed Synology shares:
+
+- New SVG: `https://webassets.sheboyganlights.org/images/symbols/msb-svg/`
+- Existing PNG/BMP: `https://webassets.sheboyganlights.org/images/symbols/msb/`
+
+The operator opened `https://webassets.sheboyganlights.org/images/symbols/msb-svg/container-loaded.svg` and saw the green Container icon. **This verifies that one SVG URL**, not automatic publication validation for every item. Published web assets are derivatives; artwork maintenance starts from `Masters` then `Plain`.
+
+## Repeatable maintenance and publication workflow
+
+1. **Edit** the relevant master in Inkscape under `Masters`; retain the editable original.
+2. **Export/Save a Copy as Plain SVG** into `Plain` with the approved lowercase, hyphen-separated filename. Preserve each icon's deliberately chosen document dimensions, `viewBox` and aspect ratio; no forced universal 32 × 32 resize.
+3. **Validate** the resulting SVG file parses and visually renders; inspect intended dimensions and transparency. Compare renamed/missing/added files against the 31-file baseline below. Use a new reviewed baseline when artwork changes.
+4. **Publish SVGs** from `Plain` to the existing `msb-svg` share using unchanged filenames, then check browser URLs, rendering, and case-sensitive path spelling. No GPX/device identity is renamed by this artwork operation.
+5. **Generate ExpertGPS PNGs** from the approved Plain SVGs into a **separate staging/export folder**, preserving each individual canvas size and transparent background. Do not modify SVGs to satisfy a raster export.
+6. **Review the PNG set** (count, filename, width/height, RGBA/alpha, and representative appearance) before installing copies in the TopoGrafix folder and publishing new PNG files in `msb`. Existing legacy PNG/BMP names must remain available until current GPX/ExpertGPS custom-marker and web references are reconciled/tested.
+7. **Verify GPX/ExpertGPS compatibility** by opening representative waypoints after any filename or symbol-type mapping change and verifying the published map still renders older markers. Do not silently rewrite GPX `type`, symbol references, URLs, marker metadata or Garmin-compatible names.
+8. **Document and review changes** to filenames, dimensions, marker associations, browser URL contract and any aliases in this engineering authority, link from #171, and confirm downstream app/browser acceptance separately. No Production deployment or reference-table migration is implied by publishing artwork.
+
+One validated export approach uses the installed Inkscape CLI and intentionally omits width/height overrides. Execute on the workstation after confirming the actual Inkscape executable path; `<staging-folder>` must be a new/reviewed destination, never the legacy PNG library:
+
+```powershell
+$plain = 'G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Plain'
+$pngStage = '<staging-folder>'
+$inkscape = 'C:\Program Files\Inkscape\bin\inkscape.exe'
+New-Item -ItemType Directory -Force -Path $pngStage | Out-Null
+Get-ChildItem -LiteralPath $plain -Filter '*.svg' -File | ForEach-Object {
+    $output = Join-Path $pngStage ($_.BaseName + '.png')
+    & $inkscape $_.FullName '--export-type=png' "--export-filename=$output"
+    if ($LASTEXITCODE -ne 0) { throw "PNG export failed: $($_.Name)" }
+}
+```
+
+The October 9 conversion created one RGBA PNG per supplied Plain SVG, with the same pixel canvas dimensions (31/31), using Inkscape without fixed-size overrides. No automatic upload to TopoGrafix/Synology, live marker migration or Garmin BMP regeneration was performed by that conversion.
+
+For older Garmin use, a **24 × 24 BMP with magenta transparency key** was discussed as a possible compatibility derivative; it was **not** regenerated in this batch. Keep existing BMPs, and test with the actual Garmin/ExpertGPS path before adding any new BMP pipeline.
+
+## Approved 31-file Plain SVG / ExpertGPS PNG name-and-size baseline
+
+From the corrected input archive `msb-plain-icons-corrected.zip`, converted into `MSB_ExpertGPS_PNGs_from_SVG_2026-10-09.zip`. The archives were generated in the conversation; these **archive filenames alone do not establish that ZIP files are stored in GitHub or the Shared Drive**. The controlled/current artwork copies reside at the directories above.
+
+| Plain SVG filename | Intended canvas (pixels) | PNG filename |
+| --- | ---: | --- |
+| `car-l.svg` | 32 × 18 | `car-l.png` |
+| `car-r.svg` | 32 × 18 | `car-r.png` |
+| `cf50d-l.svg` | 32 × 32 | `cf50d-l.png` |
+| `cf50d-r.svg` | 32 × 32 | `cf50d-r.png` |
+| `container-empty.svg` | 32 × 32 | `container-empty.png` |
+| `container-loaded.svg` | 32 × 32 | `container-loaded.png` |
+| `container-partial.svg` | 32 × 32 | `container-partial.png` |
+| `container-unknown.svg` | 32 × 32 | `container-unknown.png` |
+| `fire-hydrant.svg` | 32 × 32 | `fire-hydrant.png` |
+| `ip-camera.svg` | 32 × 32 | `ip-camera.png` |
+| `kit-box.svg` | 32 × 32 | `kit-box.png` |
+| `lor-controller.svg` | 32 × 32 | `lor-controller.png` |
+| `lor-repeater.svg` | 24 × 24 | `lor-repeater.png` |
+| `lp-combo.svg` | 32 × 32 | `lp-combo.png` |
+| `lp-network.svg` | 32 × 32 | `lp-network.png` |
+| `lp-outlet.svg` | 32 × 32 | `lp-outlet.png` |
+| `lp.svg` | 32 × 32 | `lp.png` |
+| `manhole.svg` | 32 × 32 | `manhole.png` |
+| `msb-splitter-combiner.svg` | 24 × 24 | `msb-splitter-combiner.png` |
+| `msb-splitter.svg` | 24 × 24 | `msb-splitter.png` |
+| `outlet-combo.svg` | 32 × 32 | `outlet-combo.png` |
+| `outlet-network.svg` | 32 × 32 | `outlet-network.png` |
+| `outlet-power.svg` | 32 × 32 | `outlet-power.png` |
+| `panel.svg` | 32 × 32 | `panel.png` |
+| `pin-white.svg` | 32 × 32 | `pin-white.png` |
+| `stage.svg` | 32 × 32 | `stage.png` |
+| `switch-5-port-e131.svg` | 32 × 16 | `switch-5-port-e131.png` |
+| `switch-5-port-inet.svg` | 32 × 16 | `switch-5-port-inet.png` |
+| `switch-5-port-poe.svg` | 32 × 16 | `switch-5-port-poe.png` |
+| `t-post.svg` | 16 × 32 | `t-post.png` |
+| `transformer.svg` | 32 × 32 | `transformer.png` |
+
+Archive provenance for engineering comparison (SHA-256, calculated from uploaded conversation archives):
+
+- Corrected SVG archive: `eba2ab74bbc7430b024fbde8e22bc220c7e856821aff4714667a0092ef9fe34c`; 31 SVG files, SVG XML parsed.
+- Converted PNG archive: `ba0d0865e0dba88a12ae69cf868ccef79a1f364ade05eb5e6b7b454bc91b89e1`; 31 PNGs, PNG dimensions match the associated SVG documents.
+
+## Corrected artwork filenames and compatibility
+
+Corrections from the original supplied symbol ZIP to the canonical Plain SVG baseline:
+
+| Originally supplied | Canonical Plain SVG |
+| --- | --- |
+| `pin.-white.svg` | `pin-white.svg` |
+| `lor-repater.svg` | `lor-repeater.svg` |
+| `msb-plitter.svg` | `msb-splitter.svg` |
+| `msb-plitter-Combiner.svg` | `msb-splitter-combiner.svg` |
+
+Do **not** presume these old names are the exact filenames in the long-standing public `msb` folder: inventory that folder before mapping old URL references. Older `Panel.png`, `Stage.png`, `Outlet_Combo.png`, etc. are known examples of capitalization/underscore compatibility names and must not be deleted merely because current exports are lowercase.
+
+ExpertGPS waypoint type names are not arbitrary mutable labels: the operator reports that changing a type key requires deleting/recreating the ExpertGPS type. Keep source `type`, `sym`, GPX extensions/custom-marker links and map display identity distinct from an internal icon filename. An explicit reviewed old-name alias, duplicate published filename or type-reference migration may be needed; never assume that renaming a PNG also repairs GPX links.
+
+## MSB browser/DB symbol contract and boundaries
+
+- Use Plain SVG as the preferred MSB GIS/browser source. A future **maintained type/icon reference registry** under #171/#230 may map logical feature type and authoritative Container load state to presentation asset paths; reuse existing physical identities. No new schema or cutover has been approved by this document.
+- **Container state icons:** `container-loaded.svg`, `container-partial.svg`, `container-empty.svg` and `container-unknown.svg`. Use accepted #88 movement/contents evidence, not expected `ref.display.container_id` membership, historical assignment or proximity. Unknown stays unknown when physical contents cannot be established. A Container marker's current position is likewise taken from accepted #88 state.
+- **Displays:** `WITH_CONTAINER` Displays normally appear in the parent Container's details rather than each receiving a duplicate map pin; independently observed Displays may have their own marker (T-Post was the existing interim symbol). Unlocated assets must not be placed at invented coordinates.
+- **Symbol geometry:** application implementations must preserve purposeful rectangular icon shapes (32 × 16 switches, 16 × 32 T-Post, 32 × 18 cars, 24 × 24 repeater/splitter) without stretching every marker to 32 × 32. Confirm icon sizes/anchors in browser visual acceptance; this document is not proof current renderer has been updated for every icon.
+- **GPX round trip:** preserve original GPX name/type/extensions/marker metadata, including custom URLs; accepted ExpertGPS **Label on Map** is the current waypoint display identity when it differs from Garmin legacy name (see the maintained #171 identity reconciliation). Icon replacement must not alter geometry, source identity, coordinate provenance or track topology.
+- **Network/power independence:** waypoint function/type can represent combined power/network equipment and does not grant an exclusive classification; type/icon mappings remain presentation, not inferred cable/panel/circuit relationships. Do not modify #319 network/link-test data or #88 movement writes as a side effect.
+- **Security/publication:** SVG/PNG public web directories contain presentational artwork. GIS infrastructure references, private operational overlays and access-controlled views remain in the authenticated application; publishing an icon does not authorize publishing sensitive tracks or operational JSON.
+
+## Current handoff / unfinished tasks
+
+- Operator reports `Masters`, `Plain` and `msb-svg` established with corrected files; the legacy `msb` share still contains old-named PNG/BMP. PNG batch was generated for delivery, but actual installation of the new PNG names into TopoGrafix and the web PNG library has **not** been confirmed in this thread.
+- Only the green `container-loaded.svg` URL was operator-verified individually. Before a release, validate all published SVG URLs, sizes/visuals and case-sensitive filenames against the authoritative Plain folder.
+- A complete reusable symbol registry and GPX/ExpertGPS old/new URL alias inventory are **pending**; don't mark them deployed based on this document.
+- Reconcile active #171 map candidates and #230 editor direction before updating browser symbol lookup or databases. Do not overwrite concurrent #171/#319 work.
+- For any production code, schema or server mutation, follow project rules and governing Server Management runbooks; this document is documentation-only.
+
+See [Site Infrastructure / GIS README](../README.md), [#171](https://github.com/Gregovate/MSB-Production-Database-Project/issues/171), and [#230](https://github.com/Gregovate/MSB-Production-Database-Project/issues/230).
