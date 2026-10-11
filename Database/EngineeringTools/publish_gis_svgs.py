@@ -13,11 +13,39 @@ import os
 from pathlib import Path
 import shutil
 import uuid
+import xml.etree.ElementTree as ET
 
 from sync_gis_icons import IconError, canonical_sources, check_source_snapshot, sha, sha_file
 
 WEB_SVG = Path(r"\\192.168.5.4\webassets\images\symbols\msb-svg")
 PUBLIC_SVG_BASE = "https://webassets.sheboyganlights.org/images/symbols/msb-svg/"
+
+
+def assert_public_svg_safe(name: str, raw: bytes):
+    """Reject active content in public-origin SVGs; keep normal Inkscape path/style markup.
+
+    Source SVG pixel/canvas validation is owned by canonical_sources().
+    """
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError as error:
+        raise IconError(f"{name}: malformed SVG before publication: {error}") from error
+    prohibited = {"script", "foreignObject", "iframe", "object", "embed"}
+    for node in root.iter():
+        tag = node.tag.split("}")[-1]
+        if tag in prohibited:
+            raise IconError(f"{name}: active SVG element <{tag}> not permitted in published icons")
+        for key, value in node.attrib.items():
+            attr = key.split("}")[-1].lower()
+            if attr.startswith("on") and "}" not in key:
+                raise IconError(f"{name}: JavaScript event handler {key} not permitted")
+            if "javascript:" in value.lower():
+                raise IconError(f"{name}: JavaScript URI not permitted")
+        if tag == "style" and node.text:
+            css = node.text.lower()
+            if "@import" in css or "url(" in css:
+                raise IconError(f"{name}: external CSS imports/resources not permitted")
+    return True
 
 
 def web_svg_preflight(destination: Path, sources: dict) -> dict[str, list]:
@@ -29,7 +57,11 @@ def web_svg_preflight(destination: Path, sources: dict) -> dict[str, list]:
         if p.is_file():
             existing.setdefault(p.name.lower(), []).append(p)
     plan = {"add": [], "replace": [], "identical": []}
-    for name, (_file, expected_hash, _width, _height) in sources.items():
+    for name, (source, expected_hash, _width, _height) in sources.items():
+        current_bytes = source.read_bytes()
+        if sha(current_bytes) != expected_hash:
+            raise IconError(f"Plain SVG changed during publication preflight: {name}")
+        assert_public_svg_safe(name, current_bytes)
         found = existing.get(name.lower(), [])
         if not found:
             plan["add"].append(name)
