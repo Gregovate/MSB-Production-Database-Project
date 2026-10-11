@@ -164,6 +164,60 @@ CREATE TABLE IF NOT EXISTS ref.site_schematic_binding (
     UNIQUE(drawing_name, site_cable_id, drawio_object_id)
 );
 
+-- A source trace is retained independently from the reviewed route it supports.
+-- One displayed waypoint-to-waypoint segment can carry many physical cables.
+-- No uniqueness by coordinates/endpoints: distinct parallel routes are real.
+CREATE TABLE IF NOT EXISTS ref.site_route_segment (
+    site_route_segment_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    endpoint_a_waypoint_id bigint NOT NULL REFERENCES ref.site_waypoint(site_waypoint_id),
+    endpoint_b_waypoint_id bigint NOT NULL REFERENCES ref.site_waypoint(site_waypoint_id),
+    route_label text NOT NULL CHECK (length(btrim(route_label)) > 0),
+    reference_line geometry(LineString, 8158) NOT NULL,
+    review_status text NOT NULL DEFAULT 'REVIEW_REQUIRED'
+        CHECK (review_status IN ('REVIEW_REQUIRED', 'REVIEWED', 'RETIRED')),
+    reviewed_by text,
+    reviewed_at timestamptz,
+    CHECK (endpoint_a_waypoint_id <> endpoint_b_waypoint_id),
+    CHECK (ST_IsValid(reference_line) AND NOT ST_IsEmpty(reference_line)),
+    CHECK (review_status <> 'REVIEWED' OR
+           (nullif(btrim(reviewed_by), '') IS NOT NULL AND reviewed_at IS NOT NULL))
+);
+
+-- This is an explicit reviewed association, never inferred from overlap alone.
+-- A long historical GPX track may support several segments and vice versa.
+CREATE TABLE IF NOT EXISTS ref.site_route_source_track (
+    site_route_segment_id bigint NOT NULL REFERENCES ref.site_route_segment(site_route_segment_id),
+    site_track_id bigint NOT NULL REFERENCES ref.site_track(site_track_id),
+    source_class text NOT NULL CHECK (source_class IN ('NET', 'PRI', 'HV')),
+    evidence_notes text NOT NULL CHECK (length(btrim(evidence_notes)) > 0),
+    reviewed_by text NOT NULL CHECK (length(btrim(reviewed_by)) > 0),
+    reviewed_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    PRIMARY KEY (site_route_segment_id, site_track_id)
+);
+
+-- Separate physical cables can traverse the same ordered route segments.
+-- PRI/HV electrical circuit relationships must not be invented as LinkIQ tests.
+CREATE TABLE IF NOT EXISTS ref.site_cable_route_segment (
+    site_cable_id bigint NOT NULL REFERENCES ref.site_cable(site_cable_id),
+    segment_order integer NOT NULL CHECK (segment_order > 0),
+    site_route_segment_id bigint NOT NULL REFERENCES ref.site_route_segment(site_route_segment_id),
+    traversal_direction smallint NOT NULL CHECK (traversal_direction IN (-1, 1)),
+    reviewed_by text NOT NULL CHECK (length(btrim(reviewed_by)) > 0),
+    reviewed_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    PRIMARY KEY (site_cable_id, segment_order)
+);
+
+-- Bind imported trace identity to a source observation, not its mutable label.
+CREATE TABLE IF NOT EXISTS ref.site_track_source_binding (
+    site_track_id bigint NOT NULL REFERENCES ref.site_track(site_track_id),
+    source_sha256 text NOT NULL REFERENCES ops.site_source_batch(source_sha256),
+    source_ordinal integer NOT NULL CHECK (source_ordinal > 0),
+    accepted_by text NOT NULL CHECK (length(btrim(accepted_by)) > 0),
+    accepted_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    PRIMARY KEY (source_sha256, source_ordinal),
+    UNIQUE (site_track_id, source_sha256)
+);
+
 -- Future governed edit functions and permission grants belong to #230 and
 -- MUST be accepted before exposing these tables to operators.
 COMMIT;

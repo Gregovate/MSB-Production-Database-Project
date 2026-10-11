@@ -58,7 +58,8 @@ For the LinkIQ production importer, the database writer must run in one transact
 
 Governing issue: **#122**. #171 owns reference/GIS/source synchronization; #230
 owns usable governed reference editing. The Park Map already worked October 10;
-the current online waypoint identities remain stale. Do not rebuild the viewer
+the online waypoint identities were corrected and accepted October 11 through
+PR #352 (deployed `2bc88ae627420c2138268e39a26b4942a3248580`). Do not rebuild the viewer
 or describe the remaining work as merely rendering a map.
 
 | Action | Manager | Production crew volunteer |
@@ -155,3 +156,51 @@ GPX track labels visibly retain historical names such as `FE-09`, `A5R`, and
 `Panel FE`; this confirms text drift but not the intended physical correction.
 The next review must distinguish label aliases, endpoint assignments, surveyed
 trace edits, and shared routes. Do not bulk-replace strings or move coordinates.
+
+## Shared-route and initial GPX acceptance implementation — October 11
+
+This implements the existing engineering finding in
+`Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/engineering/Network_Source_Reconciliation_2026-10-09.md`;
+it is not a new topology rule. Prioritize source tracks beginning NET, PRI and
+HV. Preserve other GPX tracks and their geometry unchanged.
+
+- Candidate `ref.site_route_segment` holds one reviewed waypoint-to-waypoint
+  geometry; `site_cable_route_segment` associates any number of distinct physical
+  cables with it, in traversal order. Identical endpoints do not merge parallel
+  paths or physical cables. `site_route_source_track` retains explicit reviewed
+  NET/PRI/HV trace evidence, reviewer and explanation. A shared HV corridor does
+  not change a network cable's electrical classification.
+- `site_source_db.py bootstrap-gpx` accepts a hash-pinned initial source into
+  empty reference tables, preserving map labels separately from Garmin names.
+  Source observations retain every original waypoint and track; source-bound
+  IDs survive same-file replay without overwriting later edits. A different
+  baseline against populated tables requires explicit reconciliation. This is
+  not yet the conflict-review interface for subsequent ExpertGPS edits.
+- Actual GPX inspection found two single-point tracks: ordinal 6,
+  `HV A5R-18 to A5R-20`, and ordinal 177, `PRI to XFORM 17-30`.
+  All 181 track identities are retained. These two have empty maintained line
+  geometry and their original point retained in source observations. The import
+  receipt reports `incomplete_track_ordinals`; no line or endpoint is invented.
+- `site_source_db.py export-map` generates one consistent GeoJSON snapshot,
+  with one feature per reviewed route and attached cable/source IDs, plus
+  current waypoints and preserved source-track features. Only explicitly
+  associated NET/PRI/HV traces are hidden by default; other traces remain visible.
+  The content hash changes with data edits and can identify an offline dataset.
+  This engineering exporter is **not yet wired to the live map/API**.
+
+Validation uses the existing allowlisted candidate schema and
+`Database/Acceptance/171_site_infrastructure_disposable_validation.sql` through
+`Setup/Acceptance/run_setup_disposable_acceptance.ps1`. Additional assertions
+cover two cables/one displayed route, distinct parallel paths, required review
+attribution, source-track identity uniqueness and incomplete trace geometry.
+The previous PostgreSQL PASS does not cover these new assertions. Python tests
+exercise source hash refusal, replay protection, reference bootstrap, incomplete
+tracks and stable/changing map revisions; they do not simulate PostgreSQL/PostGIS
+execution. No new Production migration, grants or testing workflow is introduced.
+
+Still open under #230/#122: live reference editor and field-level authorization,
+file-picker integration, full source reimport conflict review, circuit/panel and
+meter-ID maintenance, live map refresh and delivery of offline/export files.
+Managers maintain waypoint/infrastructure identities; Production Crew can maintain
+circuit information and meter IDs. This candidate does not claim those UI or
+authorization requirements are complete.

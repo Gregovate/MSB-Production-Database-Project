@@ -11,6 +11,8 @@ DECLARE
                       || md5(clock_timestamp()::text || gen_random_uuid()::text);
     v_evidence_sha text := md5('linkiq-test-uuid:' || gen_random_uuid()::text)
                         || md5(gen_random_uuid()::text);
+    v_gpx_sha text := md5('gpx:' || gen_random_uuid()::text)
+                   || md5(gen_random_uuid()::text);
     v_test uuid := gen_random_uuid();
     v_a bigint;
     v_b bigint;
@@ -21,6 +23,8 @@ DECLARE
     v_count integer;
     v_inserted integer;
     v_link bigint;
+    v_route bigint;
+    v_track bigint;
 BEGIN
     -- Confirm schema types are real PostGIS rather than a text-only copy.
     SELECT string_agg(v.name, ', ') INTO v_missing
@@ -28,6 +32,8 @@ BEGIN
           ('ref.site_waypoint'), ('ref.site_waypoint_source_binding'),
           ('ref.site_waypoint_alias'), ('ref.site_track'),
           ('ref.site_network'), ('ref.site_cable'),
+          ('ref.site_route_segment'), ('ref.site_route_source_track'),
+          ('ref.site_cable_route_segment'), ('ref.site_track_source_binding'),
           ('ref.site_schematic_binding'),
           ('ops.site_source_batch'), ('ops.site_source_observation'),
           ('ops.linkiq_test'), ('ops.linkiq_test_appearance')
@@ -83,6 +89,53 @@ BEGIN
         RAISE EXCEPTION 'Parallel cables were incorrectly collapsed';
     END IF;
 
+    INSERT INTO ref.site_route_segment
+        (endpoint_a_waypoint_id,endpoint_b_waypoint_id,route_label,reference_line,
+         review_status,reviewed_by,reviewed_at)
+    VALUES (v_a,v_b,'Shared disposable route',
+        ST_GeomFromText('LINESTRING(100000 100000,100100 100100)',8158),
+        'REVIEWED','319-disposable',clock_timestamp())
+    RETURNING site_route_segment_id INTO v_route;
+    INSERT INTO ref.site_cable_route_segment
+        (site_cable_id,segment_order,site_route_segment_id,traversal_direction,reviewed_by)
+    VALUES (v_cable,1,v_route,1,'319-disposable'),
+           (v_parallel,1,v_route,-1,'319-disposable');
+    SELECT count(DISTINCT site_route_segment_id),count(DISTINCT site_cable_id)
+      INTO v_count,v_inserted FROM ref.site_cable_route_segment
+      WHERE site_route_segment_id=v_route;
+    IF v_count <> 1 OR v_inserted <> 2 THEN
+        RAISE EXCEPTION 'Two physical cables must share one displayed route';
+    END IF;
+    INSERT INTO ref.site_track (track_label,reference_line)
+    VALUES ('HV historical shared trace',
+        ST_GeomFromText('MULTILINESTRING((100000 100000,100100 100100))',8158))
+    RETURNING site_track_id INTO v_track;
+    -- A one-point GPX trace is evidence, not a drawable line. Bootstrap keeps
+    -- the full point in source_document and explicitly represents no linework.
+    IF NOT ST_IsEmpty(ST_SetSRID(ST_GeomFromGeoJSON(
+        '{"type":"MultiLineString","coordinates":[]}'),4326)) THEN
+        RAISE EXCEPTION 'Incomplete track must not produce line geometry';
+    END IF;
+    INSERT INTO ref.site_route_source_track
+        (site_route_segment_id,site_track_id,source_class,evidence_notes,reviewed_by)
+    VALUES (v_route,v_track,'HV','Explicit reviewed shared corridor fixture','319-disposable');
+    -- A separately reviewed parallel path is not merged solely by its endpoints.
+    INSERT INTO ref.site_route_segment
+        (endpoint_a_waypoint_id,endpoint_b_waypoint_id,route_label,reference_line)
+    VALUES (v_a,v_b,'Separate parallel path',
+        ST_GeomFromText('LINESTRING(100000 100000,100050 100080,100100 100100)',8158));
+    SELECT count(*) INTO v_count FROM ref.site_route_segment
+      WHERE endpoint_a_waypoint_id=v_a AND endpoint_b_waypoint_id=v_b;
+    IF v_count <> 2 THEN RAISE EXCEPTION 'Distinct parallel routes collapsed'; END IF;
+    BEGIN
+        INSERT INTO ref.site_route_segment
+            (endpoint_a_waypoint_id,endpoint_b_waypoint_id,route_label,reference_line,review_status)
+        VALUES (v_a,v_b,'Unattributed approval',
+            ST_GeomFromText('LINESTRING(100000 100000,100100 100100)',8158),'REVIEWED');
+        RAISE EXCEPTION 'Route review attribution was not enforced';
+    EXCEPTION WHEN check_violation THEN NULL;
+    END;
+
     -- Spare designation represents valid installed physical cable with NO LOR assignment.
     INSERT INTO ref.site_cable (endpoint_a_waypoint_id, endpoint_b_waypoint_id,
                                 spare_designation, lifecycle_status)
@@ -92,6 +145,20 @@ BEGIN
     INSERT INTO ops.site_source_batch
       (source_sha256, source_kind, original_filename, actor)
     VALUES (v_source_sha,'LINKIQ_FLW','DISPOSABLE-TEST.flw','319-disposable');
+
+    INSERT INTO ops.site_source_batch
+        (source_sha256,source_kind,original_filename,actor)
+    VALUES (v_gpx_sha,'EXPERTGPS_GPX','DISPOSABLE-TEST.gpx','319-disposable');
+    INSERT INTO ref.site_track_source_binding
+        (site_track_id,source_sha256,source_ordinal,accepted_by)
+    VALUES (v_track,v_gpx_sha,1,'319-disposable');
+    BEGIN
+        INSERT INTO ref.site_track_source_binding
+            (site_track_id,source_sha256,source_ordinal,accepted_by)
+        VALUES (v_track,v_gpx_sha,1,'319-disposable');
+        RAISE EXCEPTION 'Duplicate source track identity accepted';
+    EXCEPTION WHEN unique_violation THEN NULL;
+    END;
 
     INSERT INTO ops.linkiq_test
       (test_uuid, first_seen_source_sha256, tester_original_name,
@@ -162,4 +229,4 @@ END
 $acceptance$;
 
 ROLLBACK;
-\echo 'PASS: #171/#319 disposable schema, identity, parallel cable, spare and UUID-replay assertions'
+\echo 'PASS: #171/#319 disposable schema, shared routes, parallel cables, review attribution, spare and UUID replay'
