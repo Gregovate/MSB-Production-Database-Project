@@ -34,6 +34,7 @@ from setup_scheduling_board_api import setup_scheduling_board_api
 from setup_work_order_intake_api import setup_work_order_intake_api
 from setup_material_readiness_api import setup_material_readiness_api
 from setup_movement_api import setup_movement_api
+from setup_site_reference_api import site_reference_api
 from setup_material_resolution import install_setup_material_resolution
 from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
@@ -199,6 +200,7 @@ app.register_blueprint(setup_scheduling_board_api)
 app.register_blueprint(setup_work_order_intake_api)
 app.register_blueprint(setup_material_readiness_api)
 app.register_blueprint(setup_movement_api)
+app.register_blueprint(site_reference_api)
 
 
 def _setup_perf_is_traced_request() -> bool:
@@ -583,7 +585,7 @@ def record_location_asset(name: str):
 
 @app.get("/locate/assets/<name>")
 def locate_asset(name: str):
-    allowed = {"setup_locate_assets.js", "setup_locate_search.js", "setup_locate_networks.js", "setup_locate_networks.json", "container-loaded.svg", "container-partial.svg",
+    allowed = {"setup_locate_assets.js", "setup_locate_search.js", "setup_locate_networks.js", "setup_locate_networks.json", "setup_site_reference.js", "container-loaded.svg", "container-partial.svg",
                "container-empty.svg", "container-unknown.svg"}
     if name not in allowed:
         abort(404)
