@@ -279,6 +279,8 @@ def prepare_run(plain: Path, stage: Path, inkscape: str, readme: bytes, progress
     log.write_text(f"MSB #171 Inkscape export; source={plain}; executable={inkscape}\n", encoding="utf-8")
     for completed, item in enumerate(sources.values(), 1):
         p, expected_hash, width, height = item
+        if progress:
+            progress("render", completed - 1, len(sources), f"Processing {p.name}")
         out = stage / "msb" / (p.stem + ".png")
         reused = find_cached_png(cache, out.name, expected_hash, width, height)
         if reused is not None:
@@ -359,6 +361,8 @@ def apply_canonical(destination: Path, stage: Path, records: list[dict], sources
     if progress:
         progress("apply", 0, len(records), "Saving and verifying approved PNGs")
     for completed, row in enumerate(records, 1):
+        if progress:
+            progress("apply", completed - 1, len(records), f"Processing {row['PNG']}")
         target = destination / row["PNG"]
         payload = (stage / "msb" / row["PNG"]).read_bytes()
         if sha(payload) != row["PNG_SHA256"]:
