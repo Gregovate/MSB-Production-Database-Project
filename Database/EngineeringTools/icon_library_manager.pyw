@@ -12,8 +12,9 @@ import os
 import subprocess
 import sys
 import threading
+import queue
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, scrolledtext
 from types import SimpleNamespace
 
 # .pyw and the engineering pipeline deliberately live in the same repo folder.
@@ -45,6 +46,8 @@ class Manager:
         self.preview_images = []
         self.master_warnings = []
         self.in_progress = False
+        self.events = queue.Queue()
+        self.progress_mode = "determinate"
 
         heading = ttk.Frame(root, padding=(20, 17))
         heading.pack(fill="x")
@@ -60,11 +63,22 @@ class Manager:
         self.scan_btn.pack(side="left", padx=(0, 8))
         self.apply_btn = ttk.Button(controls, text="2. Save approved PNG changes", command=self.confirm_apply, state="disabled")
         self.apply_btn.pack(side="left")
+        self.warnings_btn = ttk.Button(controls, text="Source review (0)",
+                                       command=self.show_warnings, state="disabled")
+        self.warnings_btn.pack(side="left", padx=(8, 0))
         ttk.Button(controls, text="Open Plain SVG folder", command=lambda: self.open_dir(self.plain)).pack(side="right")
         ttk.Button(controls, text="Open Masters", command=lambda: self.open_dir(PARK / "Masters")).pack(side="right", padx=8)
 
         self.status = tk.StringVar(value="Ready. Use 'Check and preview icons' to validate every Plain SVG and render its PNG.")
         ttk.Label(root, textvariable=self.status, padding=(20, 6), font=("Segoe UI", 10)).pack(fill="x")
+        progress_frame = ttk.Frame(root, padding=(20, 0, 20, 8))
+        progress_frame.pack(fill="x")
+        self.progress_bar = ttk.Progressbar(progress_frame, mode="determinate", maximum=100, value=0)
+        self.progress_bar.pack(side="left", fill="x", expand=True)
+        self.progress_count = tk.StringVar(value="Ready")
+        ttk.Label(progress_frame, textvariable=self.progress_count, width=19, anchor="e").pack(side="right", padx=(10, 0))
+        self.progress_detail = tk.StringVar(value="No operation running")
+        ttk.Label(root, textvariable=self.progress_detail, padding=(20, 0, 20, 6)).pack(fill="x")
         body = ttk.PanedWindow(root, orient="horizontal")
         body.pack(fill="both", expand=True, padx=20, pady=8)
         left = ttk.Frame(body)
@@ -114,20 +128,78 @@ class Manager:
                                  self.plan is None or not (self.plan["add"] or self.plan["replace"])
                                  else "normal")
 
+    def publish_progress(self, phase, completed, total, detail):
+        """Safe from worker thread: only place data on a queue, never touch Tk."""
+        self.events.put(("progress", phase, completed, total, detail))
+
+    def show_progress(self, phase, completed, total, detail):
+        """Only main Tk thread updates widgets; no fake time estimates."""
+        phases = {"validate": "Checking sources", "render": "Rendering icons",
+                  "package": "Packaging and verifying", "ready": "Preview complete",
+                  "preflight": "Checking files", "backup": "Backing up originals",
+                  "apply": "Saving approved PNGs", "finalize": "Checking destination"}
+        if total is None:
+            if self.progress_mode != "indeterminate":
+                self.progress_bar.configure(mode="indeterminate")
+                self.progress_bar.start(12)
+                self.progress_mode = "indeterminate"
+            self.progress_count.set("Working…")
+        else:
+            if self.progress_mode != "determinate":
+                self.progress_bar.stop()
+                self.progress_bar.configure(mode="determinate")
+                self.progress_mode = "determinate"
+            total = max(1, total)
+            self.progress_bar.configure(maximum=total, value=min(completed, total))
+            self.progress_count.set(f"{completed} / {total} ({completed * 100 // total}%)")
+        self.progress_detail.set(f"{phases.get(phase, phase)} — {detail}")
+
+    def finish_progress(self, error):
+        if self.progress_mode == "indeterminate":
+            self.progress_bar.stop()
+            self.progress_bar.configure(mode="determinate")
+            self.progress_mode = "determinate"
+        if error:
+            self.progress_count.set("Stopped")
+            self.progress_detail.set("Operation stopped; see error details")
+        else:
+            self.progress_bar.configure(maximum=100, value=100)
+            self.progress_count.set("Complete")
+            self.progress_detail.set("Operation completed and verified")
+
+    def poll_worker_events(self):
+        """Poll from Tk's event loop; avoids calling root.after from worker threads."""
+        while True:
+            try:
+                event = self.events.get_nowait()
+            except queue.Empty:
+                break
+            if event[0] == "progress":
+                self.show_progress(*event[1:])
+            else:
+                _type, data, error, callback = event
+                self.finish_progress(error)
+                callback(data, error)
+        if self.in_progress:
+            self.root.after(75, self.poll_worker_events)
+
     def async_operation(self, work, done):
         self.set_busy(True)
+        self.events = queue.Queue()
+        self.show_progress("preflight", 0, None, "Starting operation")
         def worker():
             try:
                 result = work()
-                self.root.after(0, lambda: done(result, None))
+                self.events.put(("done", result, None, done))
             except Exception as exc:
-                detail = str(exc)
-                self.root.after(0, lambda: done(None, detail))
+                self.events.put(("done", None, str(exc), done))
         threading.Thread(target=worker, daemon=True).start()
+        self.root.after(75, self.poll_worker_events)
 
     def check(self):
         self.snapshot = self.staged = self.records = self.plan = None
         self.master_warnings = []
+        self.warnings_btn.configure(text="Source review (0)", state="disabled")
         self.tree.delete(*self.tree.get_children())
         self.status.set("Checking every SVG and rendering previews from the current Shared Drive Plain folder…")
         def work():
@@ -136,7 +208,9 @@ class Manager:
             readme = readme_bytes(self.readme)
             stage = make_stage(self.releases)
             try:
-                sources, records, archive = prepare_run(self.plain, stage, choose_inkscape(None), readme)
+                sources, records, archive = prepare_run(
+                    self.plain, stage, choose_inkscape(None), readme, progress=self.publish_progress)
+                self.publish_progress("finalize", 0, None, "Comparing canonical PNGs")
                 plan = destination_preflight(self.dest, records)
                 warnings = source_freshness_warnings(self.plain, PARK / "Masters", sources)
                 return sources, records, stage, plan, warnings
@@ -157,18 +231,40 @@ class Manager:
                 action = {"add":"NEW", "replace":"UPDATE (backup)", "identical":"Unchanged"}[groups[row["PNG"]]]
                 self.tree.insert("", "end", iid=row["PNG"], values=(row["PNG"],
                                  f'{row["Width_PX"]}×{row["Height_PX"]}', action))
-            self.status.set(f"Validated {len(self.records)} icons ({len(self.master_warnings)} master/Plain review warnings). "
-                            f"New {len(self.plan['add'])}; changes with backup {len(self.plan['replace'])}; "
-                            f"unchanged {len(self.plan['identical'])}. See the list below.")
+            self.status.set(f"Validated {len(self.records)} icons. New {len(self.plan['add'])}; "
+                            f"update with backup {len(self.plan['replace'])}; "
+                            f"unchanged {len(self.plan['identical'])}. "
+                            f"{len(self.master_warnings)} source timing warnings; click Source review to inspect.")
             self.set_busy(False)
             if self.master_warnings:
-                preview = "\n".join(self.master_warnings[:12])
-                if len(self.master_warnings) > 12:
-                    preview += f"\n... plus {len(self.master_warnings) - 12} additional review warnings"
-                messagebox.showwarning("Review Inkscape master/Plain freshness", preview +
-                    "\n\nThese may be metadata-only edits or layered variants. Confirm the exported Plain SVGs are current before approving PNG changes.")
-                (self.staged / "Master_Plain_Review_Warnings.txt").write_text("\n".join(self.master_warnings) + "\n", encoding="utf-8")
+                self.warnings_btn.configure(text=f"Source review ({len(self.master_warnings)})",
+                                            state="normal")
+                (self.staged / "Master_Plain_Review_Warnings.txt").write_text(
+                    "\n".join(self.master_warnings) + "\n", encoding="utf-8")
+            # Warnings remain visible in the main window; no modal popup interrupts scan.
         self.async_operation(work, done)
+
+    def show_warnings(self):
+        if not self.master_warnings:
+            return
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Review master → Plain SVG export timestamps")
+        dialog.geometry("820x450")
+        dialog.minsize(600, 340)
+        dialog.transient(self.root)
+        ttk.Label(dialog, text=f"{len(self.master_warnings)} possible stale Plain SVGs",
+                  padding=(15, 12, 15, 3), font=("Segoe UI", 13, "bold")).pack(anchor="w")
+        ttk.Label(dialog, wraplength=780, padding=(15, 0, 15, 12),
+                  text=("These are timestamp warnings, not confirmed artwork errors. "
+                        "When you save a corrected editable master, you must also save "
+                        "the corresponding Plain SVG. Layered masters may legitimately "
+                        "have several Plain variants. Review affected icons in the preview "
+                        "before confirming PNG changes.")).pack(fill="x")
+        body = scrolledtext.ScrolledText(dialog, wrap="word", font=("Segoe UI", 10))
+        body.pack(fill="both", expand=True, padx=15, pady=5)
+        body.insert("1.0", "\n\n".join(self.master_warnings))
+        body.configure(state="disabled")
+        ttk.Button(dialog, text="Close", command=dialog.destroy).pack(anchor="e", padx=16, pady=12)
 
     def show_preview(self, _event=None):
         selection = self.tree.selection()
@@ -207,7 +303,8 @@ class Manager:
             return
         self.status.set("Checking unchanged source snapshot and current destination, then updating canonical PNGs…")
         def work():
-            receipt = apply_canonical(self.dest, self.staged, self.records, self.snapshot, self.plain)
+            receipt = apply_canonical(self.dest, self.staged, self.records, self.snapshot,
+                                      self.plain, progress=self.publish_progress)
             return receipt
         def done(receipt, error):
             self.set_busy(False)

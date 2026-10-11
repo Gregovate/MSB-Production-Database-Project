@@ -14,7 +14,8 @@ from decimal import Decimal
 import math
 import hashlib
 
-from site_source_sync import extract_flw, extract_gpx
+from site_source_sync import extract_flw, extract_gpx, sha256
+from linkiq_intake import waypoint_lookup, propose_test
 
 
 def _jsonb(value: Any) -> str:
@@ -28,9 +29,37 @@ def ingest_linkiq(conn, source: Path, actor: str) -> dict:
     stored once as immutable evidence, while corrected LinkWare labels live in
     per-file appearance rows, never overwrite ref.site_cable.
     """
+    if not actor or not actor.strip():
+        raise ValueError('An import actor is required')
+    before_sha = sha256(source)
     extracted = extract_flw(source, include_raw_json=True)
+    if extracted['sha256'] != before_sha or sha256(source) != before_sha:
+        raise ValueError('FLW changed during extraction; retry with a stable export')
+    counts = dict(new_tests=0, known_tests=0, new_appearances=0,
+                  retained_reviewed=0, review_required=0)
+    proposals = []
     with conn.transaction():
         with conn.cursor() as cursor:
+            # Serialize intake receipts and comparisons with other intake runs.
+            cursor.execute("SELECT pg_advisory_xact_lock(hashtext('MSB:#171:linkiq-intake'))")
+            # Keep proposals internally consistent while reference editors run.
+            cursor.execute('''LOCK TABLE ref.site_waypoint,ref.site_waypoint_alias,
+                ref.site_cable,ref.site_network IN SHARE MODE''')
+            cursor.execute('SELECT site_waypoint_id, canonical_label FROM ref.site_waypoint')
+            waypoints = cursor.fetchall()
+            cursor.execute('''SELECT site_waypoint_id, alias_text FROM ref.site_waypoint_alias
+                              WHERE accepted_by IS NOT NULL AND accepted_at IS NOT NULL''')
+            lookup = waypoint_lookup(waypoints, cursor.fetchall())
+            cursor.execute('''SELECT c.site_cable_id,c.endpoint_a_waypoint_id,
+                c.endpoint_b_waypoint_id,COALESCE(c.spare_designation,n.network_code),
+                (c.reviewed_by IS NOT NULL AND c.reviewed_at IS NOT NULL)
+                FROM ref.site_cable c LEFT JOIN ref.site_network n USING(site_network_id)
+                WHERE c.lifecycle_status NOT IN ('DESTROYED','RETIRED','REPLACED','ABANDONED')''')
+            cables = [dict(zip(('id','a','b','designation','reviewed'), row))
+                      for row in cursor.fetchall()]
+            cursor.execute('SELECT EXISTS(SELECT 1 FROM ops.site_source_batch WHERE source_sha256=%s)',
+                           (extracted['sha256'],))
+            replay = cursor.fetchone()[0]
             cursor.execute('''
                 INSERT INTO ops.site_source_batch
                     (source_sha256, source_kind, original_filename, actor, source_metadata)
@@ -41,6 +70,20 @@ def ingest_linkiq(conn, source: Path, actor: str) -> dict:
                           'unique_test_uuids':extracted['unique_test_count']})))
             for test in extracted['tests']:
                 first = test['source_appearances'][0]
+                cursor.execute('''SELECT evidence_sha256,physical_site_cable_id,
+                    identity_review_status,test_status_code,test_standard,length_ft
+                    FROM ops.linkiq_test WHERE test_uuid=%s::uuid FOR UPDATE''', (test['test_uuid'],))
+                row = cursor.fetchone()
+                existing = dict(zip(('evidence_sha256','physical_site_cable_id',
+                    'identity_review_status','test_status_code','test_standard','length_ft'), row)) if row else None
+                counts['known_tests' if existing else 'new_tests'] += 1
+                cursor.execute('''SELECT DISTINCT display_cable_name FROM ops.linkiq_test_appearance
+                    WHERE test_uuid=%s::uuid AND source_sha256<>%s''',
+                    (test['test_uuid'], extracted['sha256']))
+                previous_labels = [r[0] for r in cursor.fetchall()]
+                proposal = propose_test(test, lookup, cables, existing, previous_labels)
+                proposals.append(proposal)
+                counts['retained_reviewed' if proposal['status']=='RETAINED_REVIEWED' else 'review_required'] += 1
                 cursor.execute('''
                     INSERT INTO ops.linkiq_test
                         (test_uuid, first_seen_source_sha256, tester_original_name,
@@ -66,11 +109,73 @@ def ingest_linkiq(conn, source: Path, actor: str) -> dict:
                           appearance['deleted'], appearance['original_test_id'],
                           appearance['length_ft'], appearance['test_status_code'],
                           appearance['payload_sha256']))
-    return {'sha256':extracted['sha256'],
+                    counts['new_appearances'] += cursor.rowcount
+                    # Retain the full per-file payload/metadata even if a known
+                    # UUID's source changes. The first-seen test is never replaced.
+                    cursor.execute('''INSERT INTO ops.site_source_observation
+                        (source_sha256,source_row,item_kind,source_document)
+                        VALUES (%s,%s,'LINKIQ_APPEARANCE',%s::jsonb)
+                        ON CONFLICT (source_sha256,source_row,item_kind) DO NOTHING''',
+                        (extracted['sha256'], str(appearance['source_row']), _jsonb(appearance)))
+                cursor.execute('''INSERT INTO ops.linkiq_intake_review
+                    (source_sha256,test_uuid,proposal,actor)
+                    VALUES (%s,%s::uuid,%s::jsonb,%s)
+                    ON CONFLICT(source_sha256,test_uuid) DO NOTHING''',
+                    (extracted['sha256'], test['test_uuid'], _jsonb(proposal), actor))
+            # Each successful invocation has its own immutable receipt, even replay.
+            cursor.execute('''INSERT INTO ops.linkiq_import_receipt
+                (source_sha256,actor,summary) VALUES (%s,%s,%s::jsonb)
+                RETURNING import_receipt_id''',
+                (extracted['sha256'], actor, _jsonb(dict(counts, replay=replay))))
+            receipt_id = cursor.fetchone()[0]
+    return {'sha256':extracted['sha256'], 'import_receipt_id':receipt_id,
+            'replay':replay, 'counts':counts, 'reconciliation':proposals,
             'source_rows':extracted['source_row_count'],
             'unique_uuid_tests':extracted['unique_test_count'],
             'project_appearance_duplicates':extracted['duplicate_project_appearances'],
             'measurement_conflicts':extracted['variant_measurement_conflicts']}
+
+
+def review_linkiq_identity(conn, source_sha: str, test_uuid: str, cable_id: int,
+                           actor: str, notes: str, expected_cable_id=None) -> dict:
+    """Engineering review command; callers must enforce #230 authorization.
+
+    Link only an existing reviewed physical cable. Require the prior binding as
+    an optimistic guard, record an immutable decision, and never alter test data.
+    This command does not create cables or grant an application role.
+    """
+    if not actor or not actor.strip() or not notes or not notes.strip():
+        raise ValueError('Review actor and evidence notes are required')
+    with conn.transaction():
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT pg_advisory_xact_lock(hashtext('MSB:#171:linkiq-intake'))")
+            cursor.execute('''SELECT t.physical_site_cable_id
+                FROM ops.linkiq_test t JOIN ops.linkiq_intake_review r USING(test_uuid)
+                WHERE r.source_sha256=%s AND t.test_uuid=%s::uuid FOR UPDATE OF t''',
+                (source_sha, test_uuid))
+            row = cursor.fetchone()
+            if row is None:
+                raise ValueError('Source/test reconciliation record not found')
+            if row[0] != expected_cable_id:
+                raise ValueError('Cable binding changed; refresh before review')
+            cursor.execute('''SELECT site_cable_id FROM ref.site_cable
+                WHERE site_cable_id=%s AND reviewed_by IS NOT NULL
+                  AND reviewed_at IS NOT NULL
+                  AND endpoint_a_waypoint_id IS NOT NULL
+                  AND endpoint_b_waypoint_id IS NOT NULL
+                  AND lifecycle_status NOT IN ('DESTROYED','RETIRED','REPLACED','ABANDONED')
+                FOR SHARE''', (cable_id,))
+            if cursor.fetchone() is None:
+                raise ValueError('Select an existing reviewed cable with defined endpoints')
+            cursor.execute('''INSERT INTO ops.linkiq_identity_decision
+                (source_sha256,test_uuid,previous_cable_id,site_cable_id,actor,evidence_notes)
+                VALUES (%s,%s::uuid,%s,%s,%s,%s) RETURNING decision_id''',
+                (source_sha,test_uuid,expected_cable_id,cable_id,actor,notes))
+            decision_id = cursor.fetchone()[0]
+            cursor.execute('''UPDATE ops.linkiq_test SET physical_site_cable_id=%s,
+                identity_review_status='REVIEWED',reviewed_by=%s,reviewed_at=clock_timestamp()
+                WHERE test_uuid=%s::uuid''', (cable_id,actor,test_uuid))
+    return {'decision_id':decision_id,'test_uuid':test_uuid,'site_cable_id':cable_id}
 
 
 def stage_expertgps(conn, source: Path, actor: str) -> dict:
@@ -334,12 +439,16 @@ def export_schematic_projection(conn, drawing_name: str, source_sha: str) -> dic
 
 def main() -> int:
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=('stage-gpx','bootstrap-gpx','import-flw','export-map','export-gpx-projection','export-schematic-projection'))
+    parser.add_argument('mode', choices=('stage-gpx','bootstrap-gpx','import-flw','export-map','export-gpx-projection','export-schematic-projection','review-linkiq'))
     parser.add_argument('--dsn', required=True, help='Governed disposable database DSN')
     parser.add_argument('--source', type=Path)
     parser.add_argument('--actor')
     parser.add_argument('--baseline-sha')
     parser.add_argument('--drawing-name')
+    parser.add_argument('--test-uuid')
+    parser.add_argument('--cable-id', type=int)
+    parser.add_argument('--expected-cable-id', type=int)
+    parser.add_argument('--review-notes')
     parser.add_argument('--output', type=Path)
     args=parser.parse_args()
     if not args.output:
@@ -359,6 +468,11 @@ def main() -> int:
         elif args.mode=='import-flw':
             if not args.actor or not args.source: parser.error('Source and actor required')
             result=ingest_linkiq(conn,args.source,args.actor)
+        elif args.mode=='review-linkiq':
+            if not args.baseline_sha or not args.test_uuid or not args.cable_id:
+                parser.error('--baseline-sha, --test-uuid and --cable-id required')
+            result=review_linkiq_identity(conn,args.baseline_sha,args.test_uuid,
+                args.cable_id,args.actor,args.review_notes,args.expected_cable_id)
         elif args.mode=='export-map':
             result=export_map_projection(conn)
         elif args.mode=='export-gpx-projection':

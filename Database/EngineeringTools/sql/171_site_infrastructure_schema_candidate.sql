@@ -154,6 +154,38 @@ CREATE TABLE IF NOT EXISTS ops.linkiq_test_appearance (
 );
 CREATE INDEX IF NOT EXISTS linkiq_appearance_test_idx ON ops.linkiq_test_appearance(test_uuid);
 
+-- Immutable source-specific reconciliation proposals and per-run import receipts.
+-- An intake proposal is not permission to create or reassign a physical cable.
+CREATE TABLE IF NOT EXISTS ops.linkiq_intake_review (
+    source_sha256 text NOT NULL REFERENCES ops.site_source_batch(source_sha256),
+    test_uuid uuid NOT NULL REFERENCES ops.linkiq_test(test_uuid),
+    proposal jsonb NOT NULL,
+    actor text NOT NULL CHECK (length(btrim(actor)) > 0),
+    recorded_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    PRIMARY KEY (source_sha256,test_uuid)
+);
+CREATE TABLE IF NOT EXISTS ops.linkiq_import_receipt (
+    import_receipt_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    source_sha256 text NOT NULL REFERENCES ops.site_source_batch(source_sha256),
+    actor text NOT NULL CHECK (length(btrim(actor)) > 0),
+    summary jsonb NOT NULL,
+    recorded_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+
+-- Decisions append separately from immutable source proposals and test evidence.
+CREATE TABLE IF NOT EXISTS ops.linkiq_identity_decision (
+    decision_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    source_sha256 text NOT NULL,
+    test_uuid uuid NOT NULL,
+    previous_cable_id bigint REFERENCES ref.site_cable(site_cable_id),
+    site_cable_id bigint NOT NULL REFERENCES ref.site_cable(site_cable_id),
+    actor text NOT NULL CHECK (length(btrim(actor)) > 0),
+    evidence_notes text NOT NULL CHECK (length(btrim(evidence_notes)) > 0),
+    recorded_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    FOREIGN KEY (source_sha256,test_uuid)
+        REFERENCES ops.linkiq_intake_review(source_sha256,test_uuid)
+);
+
 -- Schematic geometry remains independent from physical cable topology.
 CREATE TABLE IF NOT EXISTS ref.site_schematic_binding (
     binding_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

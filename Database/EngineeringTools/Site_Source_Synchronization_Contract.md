@@ -112,7 +112,8 @@ Do not commit the 253 MB raw FLW into Git.
 PR #352 published source correction head `2bc88ae627420c2138268e39a26b4942a3248580`
 has tested tree `c4d31e05054307fcc86c1e5b27b87fe0ba70d1f5`: 751 Setup Python
 regressions and network browser harness PASS in the engineering environment.
-It is not deployed. It still marks prior schematic/LOR snapshots as unreviewed.
+This historical release checkpoint was superseded by operator Production acceptance
+recorded in #171 comment 6110878342. Prior schematic/LOR snapshots remain unreviewed.
 This environment has GitHub connector access but a read-only SSH reachability
 check to documented `192.168.5.9` returned `Network is unreachable`. It cannot
 operate Greg's workstation, run the private server acceptance launcher, or deploy
@@ -204,3 +205,99 @@ meter-ID maintenance, live map refresh and delivery of offline/export files.
 Managers maintain waypoint/infrastructure identities; Production Crew can maintain
 circuit information and meter IDs. This candidate does not claim those UI or
 authorization requirements are complete.
+
+## Recurring LinkIQ intake implementation — October 11 recovery continuation
+
+The existing #319 branch was reconciled with main
+`04de9cfa94e2ff4f641130fdbbacfff9c1c56aca` and the documentation commits from
+#358 (through `3a5b24382c6dec63fb85e00d63b2cdba382c8eeb`). The GIS README records
+Greg's reaffirmed two-source integration, PostgreSQL authority, Manager/crew
+editing boundary, GPX roundtrip, unchanged track geometry with stale track names,
+shared waypoint relationships, keyed network-only draw.io output and October 12
+ongoing testing requirement. This candidate builds on those decisions.
+
+### Implemented engineering boundary
+
+`site_source_db.py import-flw` now reads a stable FLW export, compares its hash
+before/after extraction, and transactionally records:
+
+- new versus previously known test UUID counts and new source-appearance counts;
+- every full source appearance, including original payload and LinkWare metadata,
+  in `ops.site_source_observation`, without replacing first-seen test evidence;
+- source-specific reconciliation proposals in `ops.linkiq_intake_review`;
+- a separate successful-run receipt in `ops.linkiq_import_receipt`, including
+  replay/count information; the returned JSON contains current proposals;
+- original reviewed physical-cable links, unchanged by intake.
+
+`linkiq_intake.py` resolves endpoints only through maintained canonical labels
+and accepted aliases. It does not import prototype hard-coded spelling rewrites
+as authority. Aliases of one waypoint collapse by identity; multiple identities
+remain ambiguous. Reviewed cable candidates require both endpoints and matching
+network/spare designation, with all parallel candidates retained. A new test UUID
+never creates a cable or automatically becomes a retest association. Source
+payload/measurement variants, changed existing evidence, changed display names,
+deleted source records, ambiguous endpoints and competing cables surface as
+review reasons. Source proposals are immutable per file/test; replays produce
+new run receipts without overwriting original proposals or accepted links.
+
+The engineering `review-linkiq` command accepts a source SHA, test UUID, existing
+reviewed cable ID, actor, evidence notes and expected previous cable ID. It rejects
+stale bindings or unreviewed/incomplete/retired targets; appends an attributed
+`ops.linkiq_identity_decision`; updates only test-to-cable review fields, never
+original measurements. It permits explicit human reconciliation beyond automatic
+candidates and requires supporting notes. This is NOT a public endpoint or role
+grant: #230 must supply server-side authorization before operator exposure.
+
+### Actual source findings and verification
+
+Latest attached GPX SHA:
+`a4e48a8938a6e3e889065df74d6140b95e8097d76cd53c0d4dbbce1fb591e0af`.
+Greg confirms the revision includes icon work. There are 233 waypoints and 181
+tracks. Use this source for the next reviewed bootstrap, not the old hash.
+FLW remains SHA
+`e76d39179da99bb74ed8e2af7f4e555a71ff530cae58bdb0015e770677a3ef5e`;
+drawing remains SHA
+`65d7607485e526e4d058b4ce997a24f2fe53a731b4f52817dcd44233e420a0a8`.
+
+Read-only execution against the actual attached GPX/FLW: 476 distinct tests,
+684 appearances. With canonical waypoint labels only (no invented accepted
+aliases or reviewed cable inventory), 307 tests resolve to two distinct waypoint
+IDs; 148 have unresolved/ambiguous endpoints, 19 require name review, and 2 have
+the same resolved endpoint. Seven source-deleted tests and one raw-payload variant
+are additional overlapping review flags. These are test/proposal counts, NOT
+accepted cable counts, and no database was populated by this read-only analysis.
+
+The raw-payload variant is UUID `c79663cd-e179-4829-95b0-bfb65902e76a`, label
+`WW-00 TO WW-04 REG`, across MSB-Park-Network and Park Network projects. Different
+payload hashes do not by themselves prove measurement disagreement. Retain both
+payloads and review; do not silently select one as a correction.
+
+Validation: 44 focused Python tests PASS, one pre-existing environment-path skip;
+existing map network browser checks PASS; `git diff --check` PASS. Tests cover
+new/replay receipts, raw-appearance retention, reviewed-link preservation, numeric
+length comparison, duplicate aliases, parallel cables, source drift, payload and
+label changes, deleted records, explicit review attribution and stale-link refusal.
+DB call-boundary fixtures are NOT PostgreSQL execution. New disposable SQL
+assertions cover intake tables, proposal replay, per-run receipts and decision
+notes. They have not been executed against PostgreSQL in this environment.
+
+### Remaining acceptance and next implementation
+
+No PostgreSQL binaries/driver are available in this engineering environment;
+package installation failed under runtime permissions. Use the EXISTING governed
+shared disposable acceptance wrapper and updated allowlisted candidate schema/
+validation paths. Do not substitute SQLite for PostgreSQL acceptance, improvise a
+server preview or touch Production. The prior schema PASS does not cover these
+new tables/statements.
+
+The next gate must execute actual initial GPX bootstrap plus FLW ingestion,
+identical replay, a later export with a new test/retest/changed label, and explicit
+identity review on the governed disposable DB. No claim that these engine changes
+are ready for October 12 operator use until that gate and operator access are proven.
+
+Still required: usable authorized #230 import/reconciliation and reference editor,
+reviewed physical-cable creation, panel/circuit/on-off maintenance, actual maintained
+map reads, complete GPX export/reimport with source metadata, and eventual keyed
+color-coded draw.io updates. This commit does not deliver those interfaces or
+claim the overall engineering objective complete. Preserve existing candidates
+and move through the same #319/#230 workstream under #122.

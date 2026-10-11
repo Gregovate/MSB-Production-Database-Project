@@ -210,7 +210,13 @@ class RecordingCursor:
     def __init__(self): self.executions=[]
     def __enter__(self): return self
     def __exit__(self,*args): pass
-    def execute(self, sql, args): self.executions.append((sql,args))
+    def execute(self, sql, args=None):
+        self.executions.append((sql,args)); self.sql=sql; self.rowcount=1
+    def fetchall(self): return []
+    def fetchone(self):
+        if 'SELECT EXISTS' in self.sql: return (False,)
+        if 'RETURNING import_receipt_id' in self.sql: return (1,)
+        return None
 
 class RecordingConnection:
     def __init__(self): self.cursor_object=RecordingCursor(); self.transactions=0
@@ -251,7 +257,9 @@ CREATE TABLE RecordData (Hash INT, BinRec BLOB);''')
     assert result['unique_uuid_tests']==1
     assert result['project_appearance_duplicates']==1
     statements=[s for s,_ in conn.cursor_object.executions]
-    assert len(statements)==4 # source + immutable UUID + 2 appearances
-    assert all('ON CONFLICT' in s for s in statements)
+    assert sum('INSERT INTO ops.linkiq_test\n' in s for s in statements)==1
+    assert sum('INSERT INTO ops.linkiq_test_appearance' in s for s in statements)==2
+    assert result['counts']['new_tests']==1
+    assert result['counts']['new_appearances']==2
     assert not any('UPDATE ops.linkiq_test' in s or 'UPDATE ref.site_cable' in s for s in statements)
     assert sha256(db)==original_sha

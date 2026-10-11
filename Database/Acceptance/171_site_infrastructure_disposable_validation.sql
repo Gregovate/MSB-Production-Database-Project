@@ -36,7 +36,9 @@ BEGIN
           ('ref.site_cable_route_segment'), ('ref.site_track_source_binding'),
           ('ref.site_schematic_binding'),
           ('ops.site_source_batch'), ('ops.site_source_observation'),
-          ('ops.linkiq_test'), ('ops.linkiq_test_appearance')
+          ('ops.linkiq_test'), ('ops.linkiq_test_appearance'),
+          ('ops.linkiq_intake_review'), ('ops.linkiq_import_receipt'),
+          ('ops.linkiq_identity_decision')
       ) AS v(name)
      WHERE to_regclass(v.name) IS NULL;
     IF v_missing IS NOT NULL THEN
@@ -217,6 +219,33 @@ BEGIN
        <> 'A5-02A TO A5-01 REG' THEN
         RAISE EXCEPTION 'Repeat source import overwritten corrected LinkWare name';
     END IF;
+
+    -- Recurring intake preserves a source proposal on repeat import and records
+    -- explicit identity decisions separately; none of these erase test evidence.
+    INSERT INTO ops.linkiq_intake_review(source_sha256,test_uuid,proposal,actor)
+      VALUES(v_source_sha,v_test,'{"status":"REVIEW_REQUIRED"}'::jsonb,'disposable-test');
+    INSERT INTO ops.linkiq_intake_review(source_sha256,test_uuid,proposal,actor)
+      VALUES(v_source_sha,v_test,'{"status":"WRONG_REPLAY"}'::jsonb,'disposable-test')
+      ON CONFLICT(source_sha256,test_uuid) DO NOTHING;
+    IF (SELECT proposal->>'status' FROM ops.linkiq_intake_review
+        WHERE source_sha256=v_source_sha AND test_uuid=v_test) <> 'REVIEW_REQUIRED' THEN
+        RAISE EXCEPTION 'Replay replaced original intake proposal';
+    END IF;
+    INSERT INTO ops.linkiq_import_receipt(source_sha256,actor,summary)
+      VALUES(v_source_sha,'disposable-test','{"new_tests":1}'::jsonb),
+            (v_source_sha,'disposable-test','{"new_tests":0,"replay":true}'::jsonb);
+    SELECT count(*) INTO v_count FROM ops.linkiq_import_receipt WHERE source_sha256=v_source_sha;
+    IF v_count <> 2 THEN RAISE EXCEPTION 'Per-run receipt history missing'; END IF;
+    INSERT INTO ops.linkiq_identity_decision
+      (source_sha256,test_uuid,previous_cable_id,site_cable_id,actor,evidence_notes)
+      VALUES(v_source_sha,v_test,NULL,v_cable,'disposable-test','Fixture reviewed');
+    BEGIN
+        INSERT INTO ops.linkiq_identity_decision
+          (source_sha256,test_uuid,site_cable_id,actor,evidence_notes)
+          VALUES(v_source_sha,v_test,v_cable,'disposable-test',' ');
+        RAISE EXCEPTION 'Blank reconciliation evidence was accepted';
+    EXCEPTION WHEN check_violation THEN NULL;
+    END;
 
     -- New reference tables should not permit direct broad FieldWiring DML.
     IF to_regrole('fieldwiring_app') IS NOT NULL AND

@@ -23,6 +23,219 @@ For updates to GIS/ExpertGPS **artwork**, use the repository-controlled [MSB Ico
 
 **Source/master distinction remains intentional:** multiple Plain icons can come from one layered master (LP-Combo), so an operator selects the desired layers in Inkscape; the manager does **not** guess them. ExpertGPS local copies, GPX type/URLs, Synology/web assets, browser markers and draw.io schematic/library content are **separate release gates**, not synchronized automatically by the PNG update. The desktop GUI is implemented and disposable engine/integration tests have passed, but first-run Windows/G: acceptance is still pending.
 
+## GIS data authority and editing — operator reaffirmation, October 11, 2026
+
+**Requirement authority: Greg, 2026-10-11 16:17 America/Chicago. Implementation
+and Production cutover are not established by this documentation.** This section
+clarifies the required workflow from today forward; historical GPX-first
+stopgaps below do not authorize continued maintenance of competing masters.
+
+| Subject | Authority and required flow |
+|---|---|
+| Waypoint identities and maintained reference data | **PostgreSQL is the authority.** Managers need a usable governed waypoint editor. Correct once in the database; map and downstream consumers use the same accepted revision. |
+| ExpertGPS waypoints/tracks | Export maintained database data to GPX for ExpertGPS waypoint/track adjustment. Reconcile changes back into PostgreSQL against stable IDs and the exported baseline, with explicit conflicts and retained provenance. ExpertGPS is a geometry-editing tool, not an independent competing master. |
+| Cable tests and evidence of cables between waypoints | **LinkIQ/LinkWare FLW is the authority for test data and evidence of how many cables connect waypoints.** The supplied FLW is SQLite. Import one-way and preserve original tests. Multiple appearances/retests of the same cable are not automatically additional physical cables; retain ambiguity explicitly. **Corrections cannot be pushed back to the tester.** |
+| Park draw.io schematic | Contains **existing keys** used to build an understandable **park network schematic only**. Historically used to record test data; not every entity is converted to structured XML data. Preserve/reuse keys, unconverted entities and operator layout; update reviewed bound network objects from maintained DB data. Schematic coordinates are presentation, not geographic positions. |
+| Panels, circuits and power waypoints | Authorized **Production Crew** need to add/maintain circuits within existing panels and link existing power waypoints. Maintain which circuits must be turned on/off for show season and restoration. Managers maintain waypoint identity/position; crew circuit links do not require waypoint-edit permission. Crew meter-ID maintenance remains permitted by the recovered role clarification. |
+
+Track priorities already documented on #171 are **NET, PRI and HV**; preserve
+other tracks. Multiple cables may share a reviewed geographic route; do not
+duplicate traces for every cable or infer cable/electrical identity from overlap.
+**Operator clarification, October 11 at 16:21 America/Chicago:** the track
+names have **not** been updated to the corrected waypoint names. The tracks
+themselves (their geometry) have **not changed**, per Greg. This is an explicit
+remaining reconciliation task from the missing engineering conversation, not a
+request to redraw, move or regenerate surveyed traces. Preserve original track
+names as provenance; reconcile maintained names and endpoint references against
+the corrected authoritative waypoint identities with review of ambiguous matches.
+Prioritize NET/PRI/HV as already directed in #171.
+
+**Multiple tracks may share the same waypoint.** A waypoint is not exclusively
+owned by one track; do not impose uniqueness of waypoint usage across tracks.
+Keep distinct track identities and geometries even when they share one or both
+endpoints. Shared waypoints alone do not prove tracks are duplicates or share the
+same physical route. This is separate from multiple physical cables sharing one
+reviewed route. A naming correction must not silently alter geometry or merge
+tracks. The unchanged-geometry statement is operator-confirmed; independent
+old/new geometry comparison has not been performed in this recovery.
+
+Keep reference action definitions separate from seasonal execution/completion
+evidence under #122. Existing map/search, #230 editing and mandatory offline
+reference acceptance remain the required end-to-end outcome.
+
+### Required delivery: import, maintained editing, GPX export
+
+Greg reaffirmed on October 11 at 16:22 America/Chicago that the work includes
+**getting the data into PostgreSQL, making it editable going forward, and the
+ability to export back to GPX**. Track-name reconciliation alone is not delivery.
+
+**Two-source integration, not two independent maintained datasets:** Greg
+clarified at 16:22 America/Chicago that we are merging data from two sources
+into one. Integrate **GPX waypoint/track reference data** and **LinkIQ FLW
+cable/test data** into one coherent PostgreSQL model, linking cable/test evidence
+to the maintained waypoint identities and reviewed route relationships. Separate
+source provenance and test history remain necessary, but disconnected import
+tables or two viewers are not the intended outcome. PostgreSQL is the maintained
+waypoint authority; LinkIQ remains the origin/authority for test evidence and
+cable-count evidence. Preserve repeated-test versus distinct-cable distinctions.
+The draw.io file contains existing keys used to build an understandable schematic
+of the **park network only** (operator clarification, October 11 at 16:24).
+Preserve and reuse those keys when binding maintained network records to schematic
+entities. Not every entity has been converted to structured XML data, so retain
+unconverted content and layout. Do not assume the keys' exact field names or
+uniqueness without inspecting their definitions. This is a network schematic,
+not a geographic editor, power-circuit editor or third competing maintenance master.
+GPX export is a projection of the integrated database's geographic records;
+it must not imply tester writeback.
+
+Acceptance must demonstrate the complete usable workflow:
+1. Import the supplied corrected waypoint/track reference data and LinkIQ test
+   evidence into governed PostgreSQL records, preserving source provenance,
+   stable identity, unresolved relationships and immutable original tests.
+   Reconcile structured draw.io evidence without dropping unconverted entities.
+2. Edit maintained reference data through the authorized application: Managers
+   maintain waypoints; Production Crew maintain panel/circuit relationships and
+   seasonal on/off designations under the established field permissions.
+   Accepted changes must be reflected in the existing map/search.
+3. Export the current accepted PostgreSQL waypoint/track data as a usable GPX
+   file for ExpertGPS, preserving required labels, types/icons, geometry and
+   source extensions. Open and verify the exported file in ExpertGPS.
+4. Reconcile subsequent ExpertGPS waypoint/track adjustments back into
+   PostgreSQL with stable identities, baseline version checks and explicit
+   conflicts. Repeated imports must not duplicate identities or overwrite
+   accepted database edits silently.
+
+Record actual import, edit and export evidence separately. A schema-only test,
+read-only extraction, corrected static map or engineering JSON projection does
+not establish this end-to-end acceptance. Production execution remains subject
+to #122 and the governing runbook; these requirements do not claim deployment.
+
+### Delivery priority and database-driven network schematic
+
+Operator clarification, October 11 at 16:27 America/Chicago:
+
+1. **Highest priority: integrate the GPX and LinkIQ data into PostgreSQL.**
+   Preserve waypoint identities, geographic references, cable relationships,
+   original tests and unresolved evidence in one coherent maintained model.
+2. **Expose that reference data for ongoing authorized maintenance.**
+   Correct maintained data once in PostgreSQL. Do not require editing matching
+   pieces independently in GPX, draw.io, tester exports and application snapshots.
+3. **Drive the park network draw.io schematic from PostgreSQL**, using imported
+   LinkIQ test evidence and GPS waypoint references, including cable test pass/fail
+   and speed information. Preserve and reuse existing schematic keys and layout.
+   The drawing is already color coded; inspect and preserve the actual color
+   meanings rather than inventing new pass/fail/speed mappings.
+4. **Eventually give every relevant schematic entity structured data capability**
+   so database-driven updates cover the full network drawing. Track which
+   entities are bound versus unconverted; preserve the latter until converted.
+   Completing every drawing entity must not block the higher-priority database
+   ingestion and reference-maintenance interface.
+
+Map geographic identities to schematic entities through verified keys; do not
+replace diagram layout coordinates with GPS coordinates. Keep the original
+LinkIQ result and speed/qualification fields with their meanings and units.
+A tested/qualified speed is not proof of currently negotiated network speed.
+If multiple tests exist, the rule choosing the displayed result must be explicit
+and reviewable; this clarification does not invent that rule.
+
+GPX export/controlled ExpertGPS adjustment remains required as documented above.
+The schematic is an output of the integrated maintained data, not another place
+where routine source corrections must be entered by hand. Import, editor, GPX
+export and schematic update acceptance are separate demonstrable outcomes;
+none is declared implemented by this requirement record.
+
+### Ongoing LinkIQ intake — required for October 12 testing
+
+Greg confirmed October 11 at 16:28 America/Chicago that cable testing continues
+**tomorrow, October 12, 2026**. A repeatable input/import-and-reconciliation routine
+is therefore part of the immediate ingestion work, not a one-time migration
+follow-up. This date records the operational need; readiness is not yet proven.
+
+Required routine:
+- Select the updated LinkWare FLW export, read SQLite without modifying it, and
+  record its source fingerprint/import receipt. No tester writeback or manual
+  editing of the same corrections in other systems.
+- Import previously unseen test UUIDs, retain every source project appearance,
+  and reconcile them to existing maintained waypoint and physical-cable records.
+  Reimporting the same export must not duplicate tests or physical cables.
+- Preserve retests as separate test history for the same reviewed cable when
+  evidence establishes the association. A new test UUID is not automatically
+  a new physical cable. Preserve pass/fail, speed qualification, measurements,
+  original source labels and test timestamps.
+- Compare changed labels or payloads for already-known UUIDs with retained
+  evidence. Record source revisions/conflicts explicitly rather than overwrite
+  original test history or silently reassign an approved cable/waypoint link.
+- Automatically retain unambiguous existing reviewed mappings; present new,
+  unmatched or conflicting records for reconciliation. Do not rematch accepted
+  identities solely from changed text or proximity.
+- Show a usable import summary: new tests, already-known tests, changed evidence,
+  matched records, unresolved records and errors. Persist actor/time, source
+  revision, reconciliation decisions and restart/retry disposition.
+- Accepted evidence becomes available to maintained reference views and the
+  downstream map/schematic projection. Define which test is displayed when
+  several exist; retain access to all historical tests.
+
+Acceptance must use an initial source, repeat it, then import a later source
+containing a new test, a retest and a changed label/conflict. Prove no duplicate
+UUIDs/cables, no loss of reviewed identity links, preserved test history and a
+visible unresolved-review path. Implementation and tomorrow's operational
+readiness remain open until demonstrated under #122/#171/#230.
+
+### Fresh attachment evidence — read-only inspection
+
+These are upload filenames, not new canonical Shared Drive names. Greg reports
+the GPX waypoints were corrected last night and FLW cleaned up. File inspection
+establishes bytes and structure, not the correctness of every relationship.
+
+| Uploaded source | Bytes | SHA-256 |
+|---|---:|---|
+| 2026_msb_FRESH_START_CLEANED_2026-10-06(20261011-211351).gpx | 408440 | a4e48a8938a6e3e889065df74d6140b95e8097d76cd53c0d4dbbce1fb591e0af |
+| LinkIQ Data Import for DB with corrected names(7).flw | 253149212 | e76d39179da99bb74ed8e2af7f4e555a71ff530cae58bdb0015e770677a3ef5e |
+| Park Network Schematic 2026(20261011-211438).drawio | 1658546 | 65d7607485e526e4d058b4ce997a24f2fe53a731b4f52817dcd44233e420a0a8 |
+
+Fresh GPX: 233 waypoints and 181 tracks; track-name prefixes NET 78, PRI 15,
+HV 70, other 18. Its hash differs from the earlier baseline
+3272269d493131f0b2e401013ac7f32dc55b598ebf3e7e53d6ab3fd9ec7e2cea.
+**Do not reuse the earlier GPX hash as approval for this new file.** Greg confirmed at 16:19 America/Chicago that this GPX was updated by his
+icon work this morning. This is operator-confirmed provenance for the new file,
+not evidence of a waypoint-correction regression. Semantic differences have not
+yet been compared; do not claim that every changed byte is icon-only or that
+coordinates/track geometry are unchanged without comparison. FLW and drawing hashes match the earlier
+recorded source baseline exactly. FLW was opened SQLite read-only; tables Records,
+606A, Admin and RecordData are present. Drawing parses as one diagram, 463 object
+elements and 743 mxCell elements; these raw structural counts do not classify
+which entities are converted or prove complete database bindings.
+
+### Recovery and repository status
+
+[Recovery index on #171](https://github.com/Gregovate/MSB-Production-Database-Project/issues/171#issuecomment-6113744285)
+records partial recovery of the inaccessible morning GIS DATA EDITING conversation,
+with cross-references in #122 and #230. The Icon Library Manager belongs to a
+separate thread. Neither the later shared-route checkpoint nor this short
+reaffirmation captures the complete missing engineering conversation.
+
+The operator recalls #319 as merged for waypoint correction. GitHub checked during
+this recovery reports #319 draft/open at
+384ee47ea8cc90c74d5cf12f58213bc891808296; #352 is the separately merged source-map
+correction, with operator Production acceptance recorded in #171. Preserve this
+numbering discrepancy without asking the operator to repeat the accepted map fix.
+Current main baseline for this documentation is
+04de9cfa94e2ff4f641130fdbbacfff9c1c56aca.
+
+The existing draft #319 carries detailed controlled
+[editor/offline acceptance requirements](https://github.com/Gregovate/MSB-Production-Database-Project/blob/384ee47ea8cc90c74d5cf12f58213bc891808296/Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/engineering/Park_Map_Current_State_Offline_Editor_Gap_2026-10-11.md)
+and the
+[source synchronization contract](https://github.com/Gregovate/MSB-Production-Database-Project/blob/384ee47ea8cc90c74d5cf12f58213bc891808296/Database/EngineeringTools/Site_Source_Synchronization_Contract.md).
+Read those before continuation; reconcile actual editor/API/import implementation
+and the changed GPX before any mutation. Do not equate a source-only map correction
+with removal of embedded snapshots or completed database-backed editing.
+
+Every new decision, confirmed discovery, source revision, acceptance result and
+resume point must be recorded during work in its responsible controlled document
+and linked owning issue. Issue comments alone do not replace controlled engineering
+files. No source overwrite, database migration, runtime deployment or claim of
+editor completion is authorized or performed by this documentation update.
+
 ## Required reference-data editing authority — #171 / #230
 
 Operator decision, 2026-10-10: the MSB database-backed application will be the
@@ -705,7 +918,7 @@ Do not start by adding generic latitude/longitude columns throughout the Product
 - integrate placement tracks and buried network/power reference data for targeted Setup layout/ground-penetration decisions under Issue #171;
 - define meaningful proximity/risk uncertainty for `locate required` / `review required` decisions rather than applying locates everywhere;
 - define mobile GPS accuracy and proximity-validation requirements;
-- determine whether park network coverage requires offline map/location behavior;
+- implement and accept mandatory offline map/reference access for incomplete park coverage;
 - preserve the existing NAD83 HARN WISCRS Sheboygan County Feet contract during integration;
 - use direct contextual Work Orders for concrete correction needs and #172 for broader/unclear observations rather than inventing a GIS-specific queue.
 
