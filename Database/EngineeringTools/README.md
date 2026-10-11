@@ -29,3 +29,42 @@ Request the generated ZIP and diagnostic/manifest before proceeding.
 Consult the [GIS symbol maintenance contract](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/engineering/GIS_Symbol_Management.md)
 before replacing old-named PNG/BMP compatibility files. The previously supplied
 October 9 icon ZIP must not be mistaken for a fresh export from current Plain.
+
+## Canonical GIS PNG promotion — Issue #171
+
+[Promote-ApprovedGISPNGs.ps1](Promote-ApprovedGISPNGs.ps1) handles **only** the
+operator-approved corrected **07:24, 32-icon** ExpertGPS staging ZIP (pinned
+SHA-256: `85569dc7cafa1da169bd68244bb9757daadfb53c1d02e911256790d0c6a63e53`).
+The source must still match all 32 SHA-256 values in the current Shared Drive
+`MSB GIS\Symbols\Plain` folder. It verifies the ZIP layout, manifest PNG hashes,
+PNG dimensions/RGBA, original readme bytes and source SVG hashes before copying.
+
+On the laptop at `C:\lor\ImportExport\VSCode`, update clean `main` first:
+
+```powershell
+.\Database\EngineeringTools\Promote-ApprovedGISPNGs.ps1
+```
+
+That is a **read-only dry run**. It identifies exactly how many PNGs would be
+added to `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\png`,
+how many are already byte-identical and any filename/case/hash collisions.
+The utility searches timestamped Downloads export folders for the **single**
+byte-exact approved ZIP, rather than guessing a folder timestamp; if moved,
+use `-ZipPath 'C:\path\to\MSB_ExpertGPS_Current_Plain_Staged.zip'`.
+
+If the preflight reports **zero conflicts** and the operator confirms the
+canonical G: destination, the reviewed write action is:
+
+```powershell
+.\Database\EngineeringTools\Promote-ApprovedGISPNGs.ps1 -Apply
+```
+
+`-Apply` creates **missing approved files only**, uses create-new semantics,
+verifies the destination SHA-256, and writes a receipt CSV beside the staging
+ZIP. Existing correct PNGs are left untouched, **no existing file is
+overwritten**, and unexpected/old-named files remain in place. Conflicting
+same-name/case files abort for separate backup/reconciliation **before any
+copy**; do not manually delete or overwrite to make a conflict disappear.
+The utility never installs ExpertGPS icons or publishes Synology/web/draw.io
+assets or changes GPX. Live Windows/G: copy acceptance remains pending.
+
