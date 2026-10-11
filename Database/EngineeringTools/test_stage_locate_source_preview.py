@@ -35,6 +35,10 @@ def setup_fixture(tmp_path):
                 " PRIOR_LOR_SNAPSHOT_UNREVIEWED" if
                 asset == "setup_locate_networks.js" else "// fixture")
         (app / asset).write_text(text, encoding="utf-8")
+    (app / "setup_workshop_reference.json").write_text(json.dumps({
+        "map_coordinates": {"longitude": -87.73321549,
+                            "latitude": 43.778402029}
+    }))
 
     source_dir = tmp_path / "source"
     source_dir.mkdir()
@@ -55,7 +59,9 @@ def setup_fixture(tmp_path):
     features = [{
         "type": "Feature",
         "geometry": {"type": "Point",
-                     "coordinates": [-87.7 + i * 0.00001, 43.77]},
+                     "coordinates": ([-87.73321549, 43.77840207]
+                                     if i == 3 else
+                                     [-87.7 + i * 0.00001, 43.77])},
         "properties": {"id": f"w{i}",
                        "name": ("PANEL A5-00" if i == 0 else
                                 "A5-07/09" if i == 1 else
@@ -76,7 +82,7 @@ def setup_fixture(tmp_path):
             "GPX candidate SHA " + gpxsha[:16] + "</p><p>" +
             OLD_BANNER + "</p><script>const data=" +
             json.dumps({"type": "FeatureCollection", "features": features}) +
-            ';data.features.push({"type":"Feature","geometry":{"type":"Point","coordinates":[-87.7,43.77]},"properties":{"id":"temporary-workshop","name":"Workshop","type":"Workshop"}});const map=0;'
+            ';data.features.push({"type":"Feature","geometry":{"type":"Point","coordinates":[-87.73315025812246,43.778472269285245]},"properties":{"id":"temporary-workshop","name":"Workshop","type":"Workshop","desc":"Temporary operator-provided reference, October 8, 2026. EPSG:8158 X 213626.715, Y 186613.225 USft (first screenshot point). Expected location before picking; not an asset GPS observation."}});const map=0;'
             "</script></html>")
     (review / "park-map-corrected-candidate.html").write_text(html, encoding="utf-8")
     (review / "park-map-correction-report.json").write_text(
@@ -123,6 +129,9 @@ def test_stage_same_existing_map_and_network_without_mutating_inputs(tmp_path):
     assert "Workshop" in page.read_text()
     assert result["legacy_temporary_workshop_removed"] is True
     assert result["workshop_source"] == "GPX Label on Map / Workshop / Waypoint"
+    assert result["workshop_home_anchor_separation_ft"] < 0.2
+    assert result["workshop_gpx_coordinate"] == [-87.73321549, 43.77840207]
+    assert "GPX Workshop / Waypoint retained" in page.read_text()
     assert (root / "setup" / "locate" / "assets" /
             "setup_locate_networks.json").is_file()
     assert len((root / "setup" / "locate" / "assets" /
@@ -175,5 +184,17 @@ def test_refuses_unrecognized_extra_map_injection(tmp_path):
         '"id":"temporary-workshop"', '"id":"someone-else"', 1)
     page.write_text(html, encoding="utf-8")
     with pytest.raises(ValueError, match="Unexpected extra map feature"):
+        build_review(config=config, review_folder=review,
+                     repo=repo, output_root=tmp_path / "output")
+
+
+def test_fails_if_home_anchor_no_longer_agrees_with_gpx(tmp_path):
+    config, review, repo, _ = setup_fixture(tmp_path)
+    home = repo / "Setup" / "Application" / "setup_workshop_reference.json"
+    home.write_text(json.dumps({
+        "map_coordinates": {"longitude": -87.73315025812246,
+                            "latitude": 43.778472269285245}
+    }), encoding="utf-8")
+    with pytest.raises(ValueError, match="GPX Workshop location disagrees"):
         build_review(config=config, review_folder=review,
                      repo=repo, output_root=tmp_path / "output")
