@@ -135,11 +135,44 @@ def build_review(*, config: Path, review_folder: Path,
     for name in ("PANEL A5-00", "A5-07/09", "42-02S"):
         if name not in labels:
             raise ValueError(f"Corrected map label not present: {name}")
+    # The operator has a real ExpertGPS Workshop waypoint. Do not append
+    # the one-off October 8 temporary Workshop observation as a second pin.
+    workshop = [f for f in geo["features"]
+                if f["geometry"]["type"] == "Point"
+                and f["properties"].get("name") == "Workshop"
+                and f["properties"].get("type") == "Waypoint"]
+    if len(workshop) != 1:
+        raise ValueError("Expected one authoritative GPX Workshop / Waypoint")
+    tower = [f for f in geo["features"]
+             if f["geometry"]["type"] == "Point"
+             and f["properties"].get("name") == "LB WiFi Antenna"]
+    if len(tower) != 1 or tower[0]["properties"].get("type") != "Tower":
+        raise ValueError("Expected GPX LB WiFi Antenna / Tower; do not replace icon/type")
+    if tower[0]["properties"].get("time") != "2026-10-10T18:40:42.586Z":
+        raise ValueError("LB WiFi Antenna GPX source timestamp mismatch")
+
+    # Explicitly remove only the known legacy injected map point, leaving
+    # the authored real GPX Workshop at its real source coordinates. This
+    # removes the source-time false double pin without changing the source
+    # GPX, persistent waypoints or network route IDs.
+    injection = re.compile(
+        r";data\.features\.push\((\{.*?\})\);const map=", flags=re.DOTALL
+    )
+    injections = list(injection.finditer(html))
+    if len(injections) != 1:
+        raise ValueError("Expected exactly one historical injected Workshop marker")
+    legacy = json.loads(injections[0].group(1))
+    if legacy.get("properties", {}).get("id") != "temporary-workshop":
+        raise ValueError("Unexpected extra map feature injection; review before removal")
+    html = (html[:injections[0].start()] + ";const map="
+            + html[injections[0].end():])
     if OLD_BANNER not in html or html.count(OLD_BANNER) != 1:
         raise ValueError("Expected one original GPX-only warning")
     if "GPX candidate SHA " + gpshash[:16] not in html:
         raise ValueError("Map About panel lacks approved corrected GPX hash")
     html = html.replace(OLD_BANNER, NEW_BANNER)
+    if "temporary-workshop" in html:
+        raise ValueError("Legacy temporary Workshop reference remains in candidate HTML")
 
     app = repo / "Setup" / "Application"
     for asset in ASSETS:
@@ -166,6 +199,13 @@ def build_review(*, config: Path, review_folder: Path,
         "map_file_sha256": digest(files["map"]),
         "network_file_sha256": digest(files["network"]),
         "map_counts": counts, "linkiq_counts": ncounts,
+        "workshop_source": "GPX Label on Map / Workshop / Waypoint",
+        "legacy_temporary_workshop_removed": True,
+        "operator_findings": [
+            "Waypoint names visually accepted in existing Park Map preview",
+            "LB WiFi Antenna remains Tower; icon repairs are a different workstream",
+            "AUX-I still has missing route segments; other two reported gaps now resolve",
+        ],
         "uncertainties": [
             "Routes are GPX/LinkIQ correspondence candidates; not verified buried cabling",
             "Schematic devices, edges and LOR inventory are retained from older unreviewed snapshots",
