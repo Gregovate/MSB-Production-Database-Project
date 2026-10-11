@@ -330,6 +330,38 @@ editable infrastructure and corrected tester-export reconciliation remain open.
 
 ## Deferred Symbol Registry / Type Mapping — #171
 
+The operator-confirmed symbol artwork authority, corrected 31-icon inventory,
+Inkscape/Plain SVG maintenance workflow, ExpertGPS PNG generation, legacy
+PNG/BMP compatibility and separate web publication locations are recorded in
+[GIS Symbol Creation, Publication, and Compatibility](engineering/GIS_Symbol_Management.md).
+This is current source-maintenance guidance, **not** acceptance of a new icon
+registry, Production schema, web deployment, or browser marker behavior.
+ExpertGPS's current per-user custom-symbol location is
+`%LOCALAPPDATA%\TopoGrafix\Symbols\msb\`, with the original `readme.txt`
+pointing to `https://webassets.sheboyganlights.org/images/symbols/`.
+The similarly named `MSB Icons` directory is **not** the currently accepted
+replacement. Preserve `msb` and its legacy PNG/BMP URL references until an
+explicit ExpertGPS/GPX folder migration is reviewed; see the linked symbol SOP.
+**PNG currentness gap:** previously delivered October 9/11 PNG ZIPs derive from an
+uploaded SVG snapshot, not a fresh export of today's Shared Drive Plain files.
+The [staged current-Plain exporter](../../../../Database/EngineeringTools/Export-ExpertGPSSymbols.ps1)
+must be run on a PC with access to those files before treating a PNG batch as
+current; installation/publication has not been verified.
+October 11 source inventory adds `MSB GIS\Symbols\png` as the intended
+canonical local PNG derivative folder, separate from the Windows Downloads staging
+used by the current exporter. The current G: `Plain` contains a mixed-case
+`msb-splitter-Combiner.svg`, so the exporter correctly refused it; reconcile the
+source variants before renaming. Historical ZIP reconnaissance found Inkscape
+editing metadata retained in some SVGs outside their `inkscape-masters` folders.
+Use [read-only source inventory](../../../../Database/EngineeringTools/inventory_gis_symbols.py)
+to list and classify sources from the actual laptop G: and ExpertGPS trees before
+export/release. draw.io keeps `Network\MSB-icon-library.xml`, but
+the existing `Network\Park Network Schematic 2026.drawio` embeds its own SVG/PNG
+snapshots: file/library edits cannot automatically update already-placed icons.
+The read-only source counts, hashes, and pending cross-application reconciliation
+are in the linked GIS symbol maintenance contract. Do not replace any embedded
+artwork, legacy ExpertGPS symbols or live web assets during inventory.
+
 Operator-confirmed direction, 2026-10-08: ExpertGPS manages symbols by type
 name. In that program the type name is the key and cannot be renamed; changing
 it requires deleting and recreating the type. Preserve the exact source type
