@@ -59,7 +59,12 @@ def setup_fixture(tmp_path):
         "properties": {"id": f"w{i}",
                        "name": ("PANEL A5-00" if i == 0 else
                                 "A5-07/09" if i == 1 else
-                                "42-02S" if i == 2 else f"WP-{i}")}
+                                "42-02S" if i == 2 else
+                                "Workshop" if i == 3 else
+                                "LB WiFi Antenna" if i == 4 else f"WP-{i}"),
+                       "type": ("Waypoint" if i == 3 else
+                                "Tower" if i == 4 else "OUT-Combo"),
+                       "time": ("2026-10-10T18:40:42.586Z" if i == 4 else "")}
     } for i in range(233)]
     features += [{
         "type": "Feature",
@@ -71,7 +76,7 @@ def setup_fixture(tmp_path):
             "GPX candidate SHA " + gpxsha[:16] + "</p><p>" +
             OLD_BANNER + "</p><script>const data=" +
             json.dumps({"type": "FeatureCollection", "features": features}) +
-            ';data.features.push({"type":"Feature","properties":{"id":"temporary-workshop"}});'
+            ';data.features.push({"type":"Feature","geometry":{"type":"Point","coordinates":[-87.7,43.77]},"properties":{"id":"temporary-workshop","name":"Workshop","type":"Workshop"}});const map=0;'
             "</script></html>")
     (review / "park-map-corrected-candidate.html").write_text(html, encoding="utf-8")
     (review / "park-map-correction-report.json").write_text(
@@ -111,6 +116,13 @@ def test_stage_same_existing_map_and_network_without_mutating_inputs(tmp_path):
     assert page.is_file()
     assert "SOURCE-CORRECTION LOCAL REVIEW" in page.read_text()
     assert OLD_BANNER not in page.read_text()
+    # The real source-authored Workshop remains; only the placeholder is gone.
+    assert "temporary-workshop" not in page.read_text()
+    assert "LB WiFi Antenna" in page.read_text()
+    assert "2026-10-10T18:40:42.586Z" in page.read_text()
+    assert "Workshop" in page.read_text()
+    assert result["legacy_temporary_workshop_removed"] is True
+    assert result["workshop_source"] == "GPX Label on Map / Workshop / Waypoint"
     assert (root / "setup" / "locate" / "assets" /
             "setup_locate_networks.json").is_file()
     assert len((root / "setup" / "locate" / "assets" /
@@ -142,3 +154,26 @@ def test_rejects_stale_or_missing_network_evidence(tmp_path):
         build_review(config=config, review_folder=review,
                      repo=repo, output_root=tmp_path / "output")
     assert not (tmp_path / "output").exists()
+
+
+def test_refuses_to_remove_placeholder_without_real_gpx_workshop(tmp_path):
+    config, review, repo, _ = setup_fixture(tmp_path)
+    page = review / "park-map-corrected-candidate.html"
+    html = page.read_text(encoding="utf-8")
+    # Changing only the real waypoint name destroys source authority.
+    html = html.replace('"name": "Workshop"', '"name": "Worksh0p"', 1)
+    page.write_text(html, encoding="utf-8")
+    with pytest.raises(ValueError, match="authoritative GPX Workshop"):
+        build_review(config=config, review_folder=review,
+                     repo=repo, output_root=tmp_path / "output")
+
+
+def test_refuses_unrecognized_extra_map_injection(tmp_path):
+    config, review, repo, _ = setup_fixture(tmp_path)
+    page = review / "park-map-corrected-candidate.html"
+    html = page.read_text(encoding="utf-8").replace(
+        '"id":"temporary-workshop"', '"id":"someone-else"', 1)
+    page.write_text(html, encoding="utf-8")
+    with pytest.raises(ValueError, match="Unexpected extra map feature"):
+        build_review(config=config, review_folder=review,
+                     repo=repo, output_root=tmp_path / "output")
