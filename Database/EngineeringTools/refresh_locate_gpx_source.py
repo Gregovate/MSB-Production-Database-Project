@@ -68,8 +68,11 @@ def source_features(gpx_path: Path):
     for trk in extracted["tracks"]:
         segments = [[[float(p["lon"]), float(p["lat"])] for p in seg]
                     for seg in trk["segments"]]
-        if not segments or any(len(seg) < 2 for seg in segments):
-            raise ValueError("Track without usable line geometry: " + trk["name"])
+        # Existing ExpertGPS source includes single-point historical tracks.
+        # The shipped map already retains them as one-vertex LineStrings.
+        # They are not waypoint edits or grounds to reject the GPX.
+        if not segments or any(not seg for seg in segments):
+            raise ValueError("Track has an empty segment: " + trk["name"])
         lines.append({
             "name": trk["name"],
             "type": trk["type"],
@@ -100,6 +103,7 @@ def rebuild(html: str, gpx_path: Path, *, max_distance_ft=1.5):
         icon_by_type.setdefault(props.get("type"), props.get("marker_url"))
 
     claimed = set()
+    matched_positions = []
     name_edits = []
     new_labels = []
     conflicts = []
@@ -111,12 +115,19 @@ def rebuild(html: str, gpx_path: Path, *, max_distance_ft=1.5):
             key=lambda x: (x[0], x[1]))
         close = [v for v in distances if v[0] <= max_distance_ft]
         if len(close) > 1:
-            # Coincident equipment identities are distinct. Exact old names may
-            # disambiguate; otherwise stop rather than merge two waypoints.
-            exact = [v for v in close
-                     if prior_points[v[1]]["properties"]["name"].casefold()
-                     in (item["map_label"].casefold(), item["garmin_name"].casefold())]
-            close = exact if len(exact) == 1 else close
+            # Coordinates take precedence over every name. The GPX has
+            # legitimate distinct points within 1.5 feet of each other.
+            # A single essentially identical position wins over merely nearby
+            # candidates; source labels are secondary only for true ties.
+            same_position = [v for v in close if v[0] <= 0.05]
+            if len(same_position) == 1:
+                close = same_position
+            else:
+                tied = same_position if len(same_position) > 1 else close
+                name_hint = [v for v in tied
+                    if prior_points[v[1]]["properties"]["name"].casefold()
+                    in (item["map_label"].casefold(), item["garmin_name"].casefold())]
+                close = name_hint if len(name_hint) == 1 else tied
         if len(close) > 1:
             conflicts.append({"map_label": item["map_label"],
                               "reason": "Ambiguous co-located source features",
@@ -128,6 +139,15 @@ def rebuild(html: str, gpx_path: Path, *, max_distance_ft=1.5):
             claimed.add(index)
             feature = json.loads(json.dumps(prior_points[index]))
             old_name = feature["properties"]["name"]
+            matched_positions.append({
+                "feature_id": feature["properties"]["id"],
+                "old_name": old_name,
+                "gpx_label": item["map_label"],
+                "map_lon_lat": prior_points[index]["geometry"]["coordinates"],
+                "gpx_lon_lat": item["coords"],
+                "distance_ft": round(distance, 5),
+                "basis": "unique_coordinate_match",
+            })
             if old_name != item["map_label"]:
                 name_edits.append({"feature_id": feature["properties"]["id"],
                                    "old": old_name, "corrected": item["map_label"]})
@@ -163,9 +183,10 @@ def rebuild(html: str, gpx_path: Path, *, max_distance_ft=1.5):
                             if new_geometry["type"] == "LineString"
                             else new_geometry["coordinates"])
         if len(original_segments) != len(revised_segments) or any(
-            distance_ft(a[0], b[0]) > max_distance_ft or
-            distance_ft(a[-1], b[-1]) > max_distance_ft
-            for a, b in zip(original_segments, revised_segments)
+            len(a) != len(b) or any(
+                distance_ft(original_position, revised_position) > max_distance_ft
+                for original_position, revised_position in zip(a, b)
+            ) for a, b in zip(original_segments, revised_segments)
         ):
             conflicts.append({"track_id": f"t{i}", "reason": "Track geometry/ordering changed",
                               "old_name": old["properties"]["name"],
@@ -181,8 +202,10 @@ def rebuild(html: str, gpx_path: Path, *, max_distance_ft=1.5):
               "gpx_tracks": len(tracks),
               "corrected_names": len(name_edits),
               "new_waypoints": len(new_labels),
+              "coordinate_matches": len(matched_positions),
               "conflicts": len(conflicts)}
     receipt = {"gpx_sha256": source_hash, "counts": counts,
+               "coordinate_matches": matched_positions,
                "name_changes": name_edits, "new_labels": new_labels,
                "conflicts": conflicts, "network_status": "STALE_PENDING_CORRECTED_FLW"}
     if conflicts:
