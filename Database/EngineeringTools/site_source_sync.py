@@ -90,10 +90,19 @@ def extract_flw(path: Path, *, include_raw_json: bool = False) -> dict:
     """
     conn = _open_flw(path)
     try:
-        rows = conn.execute('''
+        # Older synthetic and historical FLW schemas may omit the optional
+        # operator notes/Faceplate/Outlet fields present in the actual LinkIQ
+        # file. Do not drop available evidence just because a fixture omits it.
+        columns = {col[1] for col in conn.execute('PRAGMA table_info(Records)')}
+        optional = ', '.join(
+            'r.' + name + ' AS ' + name if name in columns
+            else 'NULL AS ' + name
+            for name in ('Notes', 'Faceplate', 'OutletId')
+        )
+        rows = conn.execute(f'''
             SELECT r.rowid AS source_row, r.UUID, r.Project, r.CableId, r.Deleted,
                    r.TimeSpan, r.TestStatus, r.Standard, r.LengthF, r.LengthM,
-                   r.TesterType, r.Operator, r.Hash, d.BinRec
+                   r.TesterType, r.Operator, r.Hash, d.BinRec, {optional}
               FROM Records AS r
               LEFT JOIN RecordData AS d ON d.Hash = r.Hash
              ORDER BY r.rowid
@@ -124,6 +133,9 @@ def extract_flw(path: Path, *, include_raw_json: bool = False) -> dict:
                 'operator': r['Operator'], 'source_hash': r['Hash'],
                 'payload_sha256': hashlib.sha256(r['BinRec']).hexdigest(),
                 'nvp': blob.get('settings', {}).get('nvp'),
+                'notes': r['Notes'] or '',
+                'faceplate': r['Faceplate'] or '',
+                'outlet_id': r['OutletId'] or '',
             }
             if include_raw_json:
                 item['raw_payload'] = blob
