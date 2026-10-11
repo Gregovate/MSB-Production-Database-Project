@@ -9,7 +9,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$ZipPath = (Join-Path $env:USERPROFILE 'Downloads\MSB-ExpertGPS-PNGs-20261011-072402\MSB_ExpertGPS_Current_Plain_Staged.zip'),
+    [string]$ZipPath = '',
     [string]$PlainSvgDirectory = 'G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Plain',
     [string]$DestinationDirectory = 'G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\png',
     [switch]$Apply
@@ -39,8 +39,26 @@ function Read-ZipBytes($entry) {
     }
 }
 
+if ([string]::IsNullOrWhiteSpace($ZipPath)) {
+    # Do not guess the operator's precise timestamped staging-folder name.
+    # Find the single reviewed byte-exact ZIP among the standard Downloads stages.
+    $downloads = Join-Path $env:USERPROFILE 'Downloads'
+    $matches = @()
+    $stageDirs = @(Get-ChildItem -LiteralPath $downloads -Directory -Filter 'MSB-ExpertGPS-PNGs-*' -ErrorAction Stop)
+    foreach ($dir in $stageDirs) {
+        $candidate = Join-Path $dir.FullName 'MSB_ExpertGPS_Current_Plain_Staged.zip'
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            $candidateHash = (Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($candidateHash -cne $expectedZipHash) { $matches += $candidate }
+        }
+    }
+    if ($matches.Count -ne 1) {
+        throw "Found $($matches.Count) byte-exact approved ZIP candidates in Downloads. Pass -ZipPath explicitly if it was moved or duplicated."
+    }
+    $ZipPath = $matches[0]
+}
 if (-not (Test-Path -LiteralPath $ZipPath -PathType Leaf)) {
-    throw "Candidate ZIP not found: $ZipPath. Pass -ZipPath with the actual 07:24 ZIP."
+    throw "Candidate ZIP not found: $ZipPath. Pass -ZipPath with the actual corrected 07:24 ZIP."
 }
 if (-not (Test-Path -LiteralPath $PlainSvgDirectory -PathType Container)) {
     throw "Canonical Plain source unavailable: $PlainSvgDirectory"
