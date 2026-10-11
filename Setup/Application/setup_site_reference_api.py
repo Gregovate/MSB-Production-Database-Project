@@ -93,6 +93,8 @@ def write_references() -> Response:
             authorized = bool(perms.get("operations"))
         if not authorized:
             raise SetupCommandError("Site reference editor scope not granted")
+        # Permissions SELECT opened a transaction; close before changing mode.
+        connection.rollback()
         connection.set_session(readonly=False, autocommit=False)
         try:
             with connection.cursor() as cursor:
