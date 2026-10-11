@@ -444,3 +444,26 @@ so the first corrected run may need one cache-populating upload. No claim that
 already-deleted files can be reused. Validation: 25 tests passed including actual
 Bash cache reuse, new hash isolation, bad-upload rejection and existing runner
 contracts; Bash syntax and diff checks passed. Windows/server validation pending.
+
+
+### Operator-proven disposable intake and browser readiness — 2026-10-11 17:35 CDT
+
+Exact executed candidate: `c2b206a2ef4475851807941e46d5824d3021b1e3`.
+Operator supplied `GIS_SOURCE_ACCEPTANCE_PASS` at
+`/home/msbadmin/setup-acceptance-reports/GIS_Source_Acceptance_20261011T222827`.
+This establishes successful actual GPX bootstrap/replay, FLW import/replay evidence
+checks, source conservation checks and map/GPX exports enforced by that candidate's
+accept_site_sources.py. Detailed counts remain in acceptance.json; not pasted in
+this operator output and not independently retrieved here.
+
+Preview health PASS: Setup V0.3.62-field-networks, data_mode postgres;
+authorization PASS; Field Wiring V0.4.1-gis-entry health and GIS navigation PASS.
+Browser ready on 8898, operator gliebig@sheboyganlights.org; reconnect state
+`/tmp/msb-setup-browser-preview-state-8898.env`. Greg reports the map appears to
+work. Review remains OPEN; no clean exit or production approval recorded.
+The later df269c63 source-cache change has NOT been exercised by this run.
+Postgres health does not prove reference map cutover: current network frontend
+still fetches assets/setup_locate_networks.json; no site_waypoint/export_map_projection
+consumer was found in Setup or FieldWiring application code. DB-backed reference
+map/editing remain unfinished. Preserve this clone through the ongoing review;
+do not repeat the dump merely to move between database and browser gates.
