@@ -14,7 +14,7 @@
 1. Edit an Inkscape file in `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Masters`; save the correct **Plain SVG** in sibling `Plain`. Layered masters (such as LP-Combo) can intentionally produce multiple Plain outputs: choose layer visibility inside Inkscape; **the manager does not guess or rewrite layer configurations**.
 2. Open **MSB Icon Library Manager** from the Desktop, choose **1. Check and preview icons**.
 3. It discovers **every current** lower-case/hyphenated Plain SVG (no fixed count), rejects invalid SVG, mm/inches/canvas sizes above **32 px on either axis**, Inkscape editing metadata still present in Plain files, external linked assets, failed Inkscape conversion, wrong PNG dimensions/format, and changes made to a source during generation.
-4. The preview shows **NEW**, **UPDATE (backup)** or **Unchanged** for every icon, and lets you inspect PNG artwork. It **does not** write to the canonical PNG folder yet.
+4. The preview shows **NEW**, **UPDATE (backup)** or **Unchanged** for every icon, and lets you inspect PNG artwork. It also reports any editable master modified later than its associated Plain SVG, including recognized LP-Combo derived variants. Such warnings require review and an additional confirmation rather than assuming every newer master is visibly different. It **does not** write to the canonical PNG folder yet.
 5. Choose **2. Save approved PNG changes** and confirm. The manager checks source hashes again, retains identical files, creates missing PNGs, backs up changed files and replaces them, verifies SHA256 after each write, and writes a per-run CSV receipt. If it encounters a case conflict or other error, it stops with diagnostics and **does not claim complete success**.
 
 **Canonical sources and outputs:**
@@ -32,4 +32,4 @@
 
 **Recovery:** On a failure, open the **release history / logs** folder in the app and inspect `ERROR.txt` or `Inkscape-export.log`. Modified destination PNGs have copies in the run's `backups-before-replacement` folder, and the receipt lists every completed action. Do not discard them before identifying any partial promotion failure.
 
-**Validation:** `python -m unittest -v Database/EngineeringTools/test_sync_gis_icons.py` exercises 11 disposable tests (no G: writes). A real disposable Inkscape integration test of a 24×32 SVG was also executed outside Windows. Windows one-click launch and Google Shared Drive sync **require operator acceptance** before declaring fully deployed.
+**Validation:** `python -m unittest -v Database/EngineeringTools/test_sync_gis_icons.py` exercises 12 disposable tests (no G: writes). A real disposable Inkscape integration test of a 24×32 SVG was also executed outside Windows. Windows one-click launch and Google Shared Drive sync **require operator acceptance** before declaring fully deployed.
