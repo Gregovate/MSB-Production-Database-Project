@@ -73,6 +73,8 @@ The **one Desktop Icon Library Manager** now provides all independent governed o
 
 **Web-specific acceptance:** after step 4 succeeds on the Synology file share, verify actual public URLs `https://webassets.sheboyganlights.org/images/symbols/msb/<canonical-name>.png` in a browser. SMB SHA-256 equality does not itself prove HTTPS delivery or browser cache freshness. Old GPX links may reference historical filenames; the manager preserves those files but cannot certify all aliases until reconciled. Likewise, the current reference Park Map still uses legacy GPX-derived `msb/*.png` URLs and fixes all marker canvases at 32×32; merely publishing the new PNGs does not automatically select newer aliases or preserve narrower marker geometry. Those are separate #171 mapping/rendering acceptance gates.
 
+**Automated safeguards:** repository [GIS Icon Library regression workflow](../../.github/workflows/gis-icon-library-tests.yml) performs Python compile and isolated sync/SVG/PNG distribution tests on PR and main updates; all tests operate in disposable directories, not G:, the Synology public shares or local TopoGrafix. GitHub CI acceptance does **not** substitute for real Windows file-access and HTTP browser review.
+
 **Deploy state:** these actions are implemented as repository code only until validated on the actual Windows laptop and live Synology. No copy to the user's local TopoGrafix folder or public server has been performed by the GitHub merge itself. All live writes remain behind explicit review and confirmation.
 
 ## Weekly workflow (no PowerShell, no Downloads)
