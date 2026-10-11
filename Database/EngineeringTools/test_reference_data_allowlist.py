@@ -50,6 +50,8 @@ def test_shared_disposable_runner_uses_candidate_scoped_allowlist():
     assert 'reference_data_disposable_allowlist.json' in wrapper
     assert '"${CandidateSha}:$referenceAllowlistPath"' in wrapper
     assert "$referenceMigrationPaths -ccontains $Path" in wrapper
+    assert "if (@($referenceSqlPaths).Count -gt 0)" in wrapper
+    assert "historical Setup-only previews" in wrapper
     assert "$referenceValidationPaths -ccontains $Path" in wrapper
     assert "171_site_infrastructure_schema_candidate.sql'" not in wrapper
     assert "171_site_infrastructure_disposable_validation.sql'" not in wrapper
