@@ -370,7 +370,16 @@ repeater/Splitter/metadata flags as confirmed current defects.
 Three subsequently supplied `(1)` inventory uploads were compared against the
 baseline and found **byte-identical for all three reports**. They cannot be used
 to verify post-correction artwork. Rerun with a fresh explicitly named output
-directory and hand off that whole report folder before PNG export. Detailed source
+directory and hand off that whole report folder before PNG export.
+**Fresh 06:19 report subsequently verified:** the new, separate inventory ZIP shows
+454 total files, **32 current Plain SVGs**, 31 Masters and **47 residual review
+flags**. Splitter casing, LOR master spelling and the three Plain SVGs retaining
+Inkscape metadata were corrected (source hashes/paths verified). The 47 flags
+are mainly expected raw-hash variation plus a few historical/LP-Combo layer
+naming hints. Structurally, PNG staging can now be attempted; actual raster
+export, per-layer visual freshness, `star.svg` release inclusion, web/ExpertGPS
+compatibility and downstream deployment remain separate pending gates.
+See the chronological evidence and new file SHA-256 in the linked SOP. Detailed source
 triage and post-correction acceptance rules are in the linked GIS symbol contract.
 No ExpertGPS, Synology, draw.io, or browser publishing has been verified. draw.io keeps `Network\MSB-icon-library.xml`, but
 the existing `Network\Park Network Schematic 2026.drawio` embeds its own SVG/PNG
