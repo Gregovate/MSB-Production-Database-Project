@@ -39,6 +39,14 @@ The first Windows scan revealed three UX problems: a separate Inkscape console o
 
 **Follow-up acceptance:** user updates normal laptop checkout and relaunches the existing Desktop shortcut (not a new installer), saves the correct `Plain\car-r.svg` if not yet done, scans twice and confirms second identical scan launches no Inkscape renders/no console flashes and uses hash-verified cache, confirms only genuinely changed icons show `UPDATE` and source warnings are accessible through the Source review control, then performs a governed destination save/receipt. Windows real-G: timing and full promotion still require operator confirmation.
 
+### Operator requirement: always-visible progress during GUI scans and writes — October 11
+
+The operator explicitly requested a **progress meter or activity indicator on every long-running icon manager operation**, not just static messages. Under issue #171, the GUI now displays an always-present indicator for both **Check and preview icons** and **Save approved PNG changes**.
+
+**Progress semantics:** a determinate bar shows actual completed/current total files, percent, and filename only after the icon has passed rendering/cache/hash or destination receipt verification; preflight, backups, source/destination scans, and final ZIP validation use an indeterminate moving bar and clear phase name. The UI reports **Complete** only on successful completion and **Stopped** on exceptions. No ETA is fabricated. Background operations communicate progress through a thread-safe queue, and Tk controls are updated solely on the Tk event thread so the application remains responsive. Source validation, `32×32` maximum dimensions (smaller rectangles valid), immutable master/Plain input roles, approved G: canonical PNG destination, safe backup and receipt rules remain unchanged.
+
+The existing **MSB Icon Library Manager** Desktop shortcut is the permanent entry point; an updated Git checkout is sufficient to load the enhanced UI. The new optional engine callbacks do not force changes on headless callers. Unit tests cover count, names, successful completion, and backed-up destination receipts; Windows UI/Shared Drive performance acceptance is pending operator follow-up. See the controlled [Icon Library Manager runbook](../../../../../Database/EngineeringTools/README-Icon-Library-Manager.md). This is independent of #171 GIS map/GPX track work and does not deploy ExpertGPS, webassets, or draw.io images.
+
 ## Authoritative directories and copy ownership
 
 These are **operator-confirmed existing locations**, not proposed folders:
