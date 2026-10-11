@@ -330,6 +330,13 @@ editable infrastructure and corrected tester-export reconciliation remain open.
 
 ## Deferred Symbol Registry / Type Mapping — #171
 
+The operator-confirmed symbol artwork authority, corrected 31-icon inventory,
+Inkscape/Plain SVG maintenance workflow, ExpertGPS PNG generation, legacy
+PNG/BMP compatibility and separate web publication locations are recorded in
+[GIS Symbol Creation, Publication, and Compatibility](engineering/GIS_Symbol_Management.md).
+This is current source-maintenance guidance, **not** acceptance of a new icon
+registry, Production schema, web deployment, or browser marker behavior.
+
 Operator-confirmed direction, 2026-10-08: ExpertGPS manages symbols by type
 name. In that program the type name is the key and cannot be renamed; changing
 it requires deleting and recreating the type. Preserve the exact source type
