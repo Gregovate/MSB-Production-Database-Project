@@ -74,29 +74,39 @@ if ($buildIdentity.Server -ne $buildIdentity.Client) {
     throw "STOP before server contact: Setup client/server version mismatch in exact candidate $CandidateSha. Client $($buildIdentity.Client); server $($buildIdentity.Server)."
 }
 
-# #230 shared, exact-candidate reference-data disposable SQL allowlist.
-$referenceAllowlistPath = 'Database/Acceptance/reference_data_disposable_allowlist.json'
-$referenceAllowlistJson = (& git -C $repo show "${CandidateSha}:$referenceAllowlistPath" | Out-String)
-if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($referenceAllowlistJson)) {
-    throw "STOP: reference-data disposable allowlist missing in exact candidate."
+# #230 reference-data SQL requires an exact candidate allowlist. Ordinary
+# historical Setup-only previews must continue to work without this new file.
+$referenceMigrationPaths = @()
+$referenceValidationPaths = @()
+$referenceSqlPaths = @($MigrationPaths) + @($ValidationPaths) | Where-Object {
+    $_ -is [string] -and $_.StartsWith('Database/') -and
+    $_ -ne 'Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql' -and
+    $_ -ne 'Database/Acceptance/database_shared_audit_actor_disposable_validation.sql'
 }
-try { $referenceAllowlist = $referenceAllowlistJson | ConvertFrom-Json -ErrorAction Stop }
-catch { throw "STOP: invalid candidate reference-data disposable allowlist." }
-if ($referenceAllowlist.schema_version -ne 1 -or
-    $null -eq $referenceAllowlist.approved_migration_paths -or
-    $null -eq $referenceAllowlist.approved_validation_paths) {
-    throw "STOP: unsupported reference-data disposable allowlist."
-}
-foreach ($entry in @($referenceAllowlist.approved_migration_paths) +
-                   @($referenceAllowlist.approved_validation_paths)) {
-    if ($entry -isnot [string] -or
-        $entry -notmatch '^Database/[A-Za-z0-9_./-]+[.]sql$' -or
-        $entry.Contains('..') -or $entry.Contains('*')) {
-        throw "STOP: unsafe candidate reference-data SQL path: $entry"
+if (@($referenceSqlPaths).Count -gt 0) {
+    $referenceAllowlistPath = 'Database/Acceptance/reference_data_disposable_allowlist.json'
+    $referenceAllowlistJson = (& git -C $repo show "${CandidateSha}:$referenceAllowlistPath" | Out-String)
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($referenceAllowlistJson)) {
+        throw "STOP: reference-data disposable allowlist missing in exact candidate."
     }
+    try { $referenceAllowlist = $referenceAllowlistJson | ConvertFrom-Json -ErrorAction Stop }
+    catch { throw "STOP: invalid candidate reference-data disposable allowlist." }
+    if ($referenceAllowlist.schema_version -ne 1 -or
+        $null -eq $referenceAllowlist.approved_migration_paths -or
+        $null -eq $referenceAllowlist.approved_validation_paths) {
+        throw "STOP: unsupported reference-data disposable allowlist."
+    }
+    foreach ($entry in @($referenceAllowlist.approved_migration_paths) +
+                       @($referenceAllowlist.approved_validation_paths)) {
+        if ($entry -isnot [string] -or
+            $entry -notmatch '^Database/[A-Za-z0-9_./-]+[.]sql$' -or
+            $entry.Contains('..') -or $entry.Contains('*')) {
+            throw "STOP: unsafe candidate reference-data SQL path: $entry"
+        }
+    }
+    $referenceMigrationPaths = @($referenceAllowlist.approved_migration_paths)
+    $referenceValidationPaths = @($referenceAllowlist.approved_validation_paths)
 }
-$referenceMigrationPaths = @($referenceAllowlist.approved_migration_paths)
-$referenceValidationPaths = @($referenceAllowlist.approved_validation_paths)
 
 function Assert-SafeCandidatePath {
     param(
