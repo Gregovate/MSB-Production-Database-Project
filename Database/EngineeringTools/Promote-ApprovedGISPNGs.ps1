@@ -49,7 +49,7 @@ if ([string]::IsNullOrWhiteSpace($ZipPath)) {
         $candidate = Join-Path $dir.FullName 'MSB_ExpertGPS_Current_Plain_Staged.zip'
         if (Test-Path -LiteralPath $candidate -PathType Leaf) {
             $candidateHash = (Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash.ToLowerInvariant()
-            if ($candidateHash -cne $expectedZipHash) { $matches += $candidate }
+            if ($candidateHash -ceq $expectedZipHash) { $matches += $candidate }
         }
     }
     if ($matches.Count -ne 1) {
