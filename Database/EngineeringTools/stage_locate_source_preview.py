@@ -143,6 +143,18 @@ def build_review(*, config: Path, review_folder: Path,
                 and f["properties"].get("type") == "Waypoint"]
     if len(workshop) != 1:
         raise ValueError("Expected one authoritative GPX Workshop / Waypoint")
+    # The Home Container anchor is a separate #88 storage-state projection.
+    # It must be preserved, and it already agrees with the corrected GPX point.
+    # Do not let removing the obsolete viewer-only marker disrupt it.
+    home_ref_file = repo / "Setup" / "Application" / "setup_workshop_reference.json"
+    if not home_ref_file.is_file():
+        raise ValueError("Missing #88 Workshop home location reference")
+    home_anchor = load_json(home_ref_file)["map_coordinates"]
+    lon, lat = workshop[0]["geometry"]["coordinates"]
+    separation_ft = ((lat - home_anchor["latitude"]) ** 2 * 364000**2
+                     + ((lon - home_anchor["longitude"]) * 364000 * 0.722)**2) ** 0.5
+    if separation_ft > 0.2:
+        raise ValueError("Correct GPX Workshop location disagrees with #88 Home anchor")
     tower = [f for f in geo["features"]
              if f["geometry"]["type"] == "Point"
              and f["properties"].get("name") == "LB WiFi Antenna"]
@@ -164,6 +176,15 @@ def build_review(*, config: Path, review_folder: Path,
     legacy = json.loads(injections[0].group(1))
     if legacy.get("properties", {}).get("id") != "temporary-workshop":
         raise ValueError("Unexpected extra map feature injection; review before removal")
+    if (legacy.get("properties", {}).get("name") != "Workshop"
+            or legacy.get("properties", {}).get("type") != "Workshop"
+            or "Temporary operator-provided reference, October 8, 2026"
+               not in legacy.get("properties", {}).get("desc", "")):
+        raise ValueError("Obsolete marker details are unrecognized; do not remove")
+    legacy_lon, legacy_lat = legacy["geometry"]["coordinates"]
+    if not (-87.73316 < legacy_lon < -87.73314
+            and 43.77846 < legacy_lat < 43.77849):
+        raise ValueError("Unexpected temporary Workshop coordinates; stop")
     html = (html[:injections[0].start()] + ";const map="
             + html[injections[0].end():])
     if OLD_BANNER not in html or html.count(OLD_BANNER) != 1:
@@ -171,6 +192,7 @@ def build_review(*, config: Path, review_folder: Path,
     if "GPX candidate SHA " + gpshash[:16] not in html:
         raise ValueError("Map About panel lacks approved corrected GPX hash")
     html = html.replace(OLD_BANNER, NEW_BANNER)
+    html = "<!-- MSB SOURCE PREVIEW: GPX Workshop / Waypoint retained; October 8 Workshop / Workshop excluded -->\n" + html
     if "temporary-workshop" in html:
         raise ValueError("Legacy temporary Workshop reference remains in candidate HTML")
 
@@ -201,6 +223,10 @@ def build_review(*, config: Path, review_folder: Path,
         "map_counts": counts, "linkiq_counts": ncounts,
         "workshop_source": "GPX Label on Map / Workshop / Waypoint",
         "legacy_temporary_workshop_removed": True,
+        "workshop_gpx_coordinate": workshop[0]["geometry"]["coordinates"],
+        "container_home_anchor_coordinate": [
+            home_anchor["longitude"], home_anchor["latitude"]],
+        "workshop_home_anchor_separation_ft": round(separation_ft, 4),
         "operator_findings": [
             "Waypoint names visually accepted in existing Park Map preview",
             "LB WiFi Antenna remains Tower; icon repairs are a different workstream",
