@@ -18,7 +18,7 @@ These are **operator-confirmed existing locations**, not proposed folders:
 | `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Plain` | **Approved exported Plain SVG artwork**, derived from the editable masters; canonical source for GIS/browser artwork and PNG generation. |
 | `\\192.168.5.4\webassets\images\symbols\msb-svg\` | Published **new Plain SVG** files (the operator confirmed the folder contains them). |
 | `\\192.168.5.4\webassets\images\symbols\msb\` | Existing **legacy-named PNG and BMP** compatibility files. Preserve them; new PNG names may coexist during a controlled changeover. |
-| TopoGrafix / ExpertGPS custom-symbol folder (exact local path not yet recorded) | ExpertGPS PNG copy. Operator will install generated PNGs here. Verify exact directory with the workstation rather than inventing a path. |
+| `%LOCALAPPDATA%\TopoGrafix\Symbols\msb\` | **Confirmed current ExpertGPS PNG + `readme.txt` location** on each Windows PC/user. `%LOCALAPPDATA%` resolves under that user's profile; one observed example is `C:\Users\greg\AppData\Local\TopoGrafix\Symbols\msb\`. Do not hardcode the username. |
 | `G:\Shared drives\Display Folders\Park Drawings\GPS Data\Custom Waypoint Symbols\Master Icons` | Older/legacy artwork reference reported previously; **not** the new canonical editing location. Retain as provenance until reviewed. |
 
 Web URL bases corresponding to the confirmed Synology shares:
@@ -27,6 +27,45 @@ Web URL bases corresponding to the confirmed Synology shares:
 - Existing PNG/BMP: `https://webassets.sheboyganlights.org/images/symbols/msb/`
 
 The operator opened `https://webassets.sheboyganlights.org/images/symbols/msb-svg/container-loaded.svg` and saw the green Container icon. **This verifies that one SVG URL**, not automatic publication validation for every item. Published web assets are derivatives; artwork maintenance starts from `Masters` then `Plain`.
+
+## ExpertGPS folder identity, portable installation and custom-symbol URL — October 11 confirmation
+
+The operator's current ExpertGPS symbol folders include **`msb`**, **`MSB Icons`**, `Orienteering`, `paddle`, `pushpin`, and `shapes` (October 11 screenshot). The existing MSB symbols are under `msb`, even though `MSB Icons` would be a cleaner human-facing name. The folders accumulated during approximately five years of ExpertGPS use; their layout must be treated as an existing compatibility constraint rather than reorganized casually. **Keep `msb` active**; do not move the symbol files to `MSB Icons` until GPX references, ExpertGPS type assignments, old URL aliases, and published links have been inventoried and verified.
+
+Use the Windows-user-independent location on each computer:
+
+```text
+%LOCALAPPDATA%\TopoGrafix\Symbols\msb\
+```
+
+One observed local path is `C:\Users\greg\AppData\Local\TopoGrafix\Symbols\msb\`; the `greg` user string must not be hardcoded in instructions or automation.
+
+The operator supplied the **current** `readme.txt` with SHA-256 `69115edd6b8dcf97db836179e014c9221e0f8eba62033703e35b1411a18e9b59`. Its first line is exactly:
+
+```text
+https://webassets.sheboyganlights.org/images/symbols/
+```
+
+The subsequent ExpertGPS explanation in that file says its generated custom-marker URL uses this **parent URL** and the current **symbol folder name**. Therefore a PNG in `Symbols\msb\` is intended to resolve as:
+
+```text
+https://webassets.sheboyganlights.org/images/symbols/msb/container-loaded.png
+```
+
+**Do not add `msb/` to the first readme line**. The symbol folder is already added by ExpertGPS; including it in the parent URL could produce a doubled directory. This is supported by the supplied readme instructions, **not independently verified against a fresh ExpertGPS export**.
+
+### Safe per-PC install and corresponding Synology publication
+
+1. Close ExpertGPS. Resolve the existing `%LOCALAPPDATA%\TopoGrafix\Symbols\msb\` for the current Windows user. Back up that entire folder, including existing PNGs, BMPs and `readme.txt`.
+2. Extract `MSB_ExpertGPS_msb_Install_2026-10-11.zip` into a staging directory. Its `msb/` directory contains 31 RGBA PNGs with the intentionally different SVG source dimensions and an **unaltered copy** of the operator-supplied `readme.txt`. Its outer files include a SHA-256/dimension inventory and installation instructions.
+3. **Merge** the contents of the staged `msb/` directory into the existing local `msb` folder. Review same-name replacement before overwriting; **never delete or replace the entire legacy folder** or its other symbols. Do not modify sibling `MSB Icons`, `Orienteering`, `paddle`, `pushpin` or `shapes` directories.
+4. Merge the same new PNGs into the *existing* web path `\\192.168.5.4\webassets\images\symbols\msb\`, preserving other legacy-named PNG/BMP assets and URLs. Continue to publish Plain SVGs separately to `msb-svg`.
+5. Check the uploaded PNG URLs, existing older symbol URLs, and current ExpertGPS waypoints. Verify a fresh exported GPX/KML marker URL, including folder name, spelling and letter case, on a real ExpertGPS installation before claiming migration compatibility.
+6. Do **not** move to `MSB Icons` as cosmetic cleanup until an explicit alias/type/URL migration is planned, accepted, and backward tested. Such a move could change ExpertGPS type or folder-relative references and published GPX URLs.
+
+Conversation-stage install ZIP: `MSB_ExpertGPS_msb_Install_2026-10-11.zip`, SHA-256 `1608aee54573aa081d2b6d25aed8768e5d8b6bdef1f9158c5400338cac534e5e`. Package validation passed: 31 PNGs, all RGBA and dimensions matching corrected Plain SVGs; complete ZIP integrity; `readme.txt` bytes match the supplied file. The package was handed off in chat; **its filename is not evidence that the ZIP itself was committed to GitHub or copied to the user's PC or Synology**. The operator must confirm actual installation and web publishing.
+
+Old ExpertGPS type keys and GPX custom-marker URLs may reference case-sensitive legacy names even though new generated artwork is lowercase. New PNG creation alone does not remap those keys. Preserve legacy assets until a reviewed source/type/URL compatibility mapping and ExpertGPS round-trip test are complete.
 
 ## Repeatable maintenance and publication workflow
 
@@ -127,7 +166,7 @@ ExpertGPS waypoint type names are not arbitrary mutable labels: the operator rep
 
 ## Current handoff / unfinished tasks
 
-- Operator reports `Masters`, `Plain` and `msb-svg` established with corrected files; the legacy `msb` share still contains old-named PNG/BMP. PNG batch was generated for delivery, but actual installation of the new PNG names into TopoGrafix and the web PNG library has **not** been confirmed in this thread.
+- Operator reports `Masters`, `Plain` and `msb-svg` established with corrected files; the legacy `msb` share still contains old-named PNG/BMP. October 11 install ZIP includes the original ExpertGPS `readme.txt` and 31 PNGs; **actual per-PC installation and Synology PNG publication remain unconfirmed**. Preserve `msb` and do not move to `MSB Icons` without a backward-compatibility review.
 - Only the green `container-loaded.svg` URL was operator-verified individually. Before a release, validate all published SVG URLs, sizes/visuals and case-sensitive filenames against the authoritative Plain folder.
 - A complete reusable symbol registry and GPX/ExpertGPS old/new URL alias inventory are **pending**; don't mark them deployed based on this document.
 - Reconcile active #171 map candidates and #230 editor direction before updating browser symbol lookup or databases. Do not overwrite concurrent #171/#319 work.
