@@ -74,3 +74,70 @@ def test_disposable_runner_preserves_remote_ref_and_local_review_branch():
     assert "$referenceValidationPaths -ccontains $Path" in wrapper
     assert "171_site_infrastructure_schema_candidate.sql'" not in wrapper
     assert "171_site_infrastructure_disposable_validation.sql'" not in wrapper
+
+
+def test_site_reference_sql_and_editor_paths_are_exact_and_ordered():
+    """New #171/#230 SQL uses the same reviewed disposable wrapper, not a new clone."""
+    policy = json.loads((ACCEPTANCE / "reference_data_disposable_allowlist.json").read_text(
+        encoding="utf-8"))
+    assert policy["approved_migration_paths"] == [
+        "Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql",
+        "Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql",
+    ]
+    assert policy["approved_validation_paths"] == [
+        "Database/Acceptance/171_site_infrastructure_disposable_validation.sql",
+        "Database/Acceptance/171_site_reference_operations_disposable_validation.sql",
+    ]
+    editor = json.loads((ACCEPTANCE / "reference_data_manager_table_allowlist.json").read_text(
+        encoding="utf-8"))
+    assert editor["status"] == "DESIGN_ONLY_NOT_ENFORCED"
+    assert editor["gis_candidate_editor"]["status"] == "CANDIDATE_ONLY_NOT_DEPLOYED_NOT_ROLE_GRANTED"
+    assert {"ref.site_editor_grant", "ref.site_reference_revision",
+            "ops.site_reference_edit_log"} <= set(editor["internal_only"])
+    tables = {c["table"] for c in editor["collections"]}
+    assert {"ref.site_panel", "ref.site_power_circuit", "ref.site_circuit_destination",
+            "ref.site_waypoint_network", "ref.site_seasonal_switch_instruction"} <= tables
+
+
+def test_site_reference_writes_are_explicit_and_audited():
+    sql = (ROOT / "Database" / "EngineeringTools" / "sql"
+           / "171_site_reference_operations_candidate.sql").read_text(encoding="utf-8")
+    assert "CREATE TABLE IF NOT EXISTS ref.site_editor_grant" in sql
+    assert "can_manage_identity boolean NOT NULL DEFAULT false" in sql
+    assert "can_maintain_operations boolean NOT NULL DEFAULT false" in sql
+    assert "active boolean NOT NULL DEFAULT false" in sql
+    assert "ref.site_reference_command(" in sql
+    assert "ref.site_reference_revision" in sql and "FOR UPDATE" in sql
+    assert "ops.site_reference_edit_log" in sql
+    assert "REVOKE ALL ON FUNCTION ref.site_reference_command" in sql
+    assert "measured_link_speed_mbps',NULL" in sql
+    assert "turn_on_instruction" in sql and "turn_off_instruction" in sql
+    assert "UNREVIEWED" in sql or "UNKNOWN" in sql
+    assert "ALTER TABLE ref.display" not in sql
+    assert "GRANT UPDATE ON ALL TABLES" not in sql
+
+
+def test_existing_map_uses_protected_live_references_before_static_fallback():
+    app = ROOT / "Setup" / "Application"
+    html = (app / "locate_preview.html").read_text(encoding="utf-8")
+    backend = (app / "production_backend.py").read_text(encoding="utf-8")
+    networks = (app / "setup_locate_networks.js").read_text(encoding="utf-8")
+    search = (app / "setup_locate_search.js").read_text(encoding="utf-8")
+    client = (app / "setup_site_reference.js").read_text(encoding="utf-8")
+    api = (app / "setup_site_reference_api.py").read_text(encoding="utf-8")
+    assert html.count('src="assets/setup_site_reference.js"') == 1
+    assert html.index('src="assets/setup_locate_search.js"') < html.index(
+        'src="assets/setup_site_reference.js"') < html.index(
+        'src="assets/setup_locate_networks.js')
+    assert "app.register_blueprint(site_reference_api)" in backend
+    assert '"setup_site_reference.js"' in backend
+    assert "window.siteReferenceReady && await window.siteReferenceReady" in networks
+    assert "reindexMapReferences()" in search and "replaceSiteReferences(entries)" in search
+    assert "mapSearch.reindexMapReferences()" in client
+    assert "STATIC SOURCE SNAPSHOT ONLY" in client
+    assert "LIVE PostgreSQL GIS" in client
+    assert "siteReferenceReady = refresh()" in client
+    assert "credentials: 'same-origin'" in client
+    assert "require_reader()" in api and "require_setup_command()" in api
+    assert "Site reference editor scope not granted" in api
+    assert "connection.rollback()" in api and "connection.set_session(readonly=False" in api
