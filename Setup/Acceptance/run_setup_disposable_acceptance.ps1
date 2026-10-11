@@ -148,7 +148,7 @@ function Assert-SafeCandidatePath {
         $isApprovedSharedMigration = $Path -eq 'Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql'
         $isApprovedReferenceMigration = $referenceMigrationPaths -ccontains $Path
         if (-not ($isSetupMigration -or $isApprovedSharedMigration -or $isApprovedReferenceMigration)) {
-            throw "Migration must be explicitly candidate-listed or Setup-owned: $Path"
+            throw "Migration path must be under Setup/Database/, an explicitly approved shared database repair, or the exact reference-data SQL allowlist: $Path"
         }
     }
     if ($Kind -eq 'validation') {
@@ -156,7 +156,7 @@ function Assert-SafeCandidatePath {
         $isApprovedSharedValidation = $Path -eq 'Database/Acceptance/database_shared_audit_actor_disposable_validation.sql'
         $isApprovedReferenceValidation = $referenceValidationPaths -ccontains $Path
         if (-not ($isSetupValidation -or $isApprovedSharedValidation -or $isApprovedReferenceValidation)) {
-            throw "Validation must be explicitly candidate-listed or Setup-owned: $Path"
+            throw "Validation path must be under Setup/Acceptance/, an explicitly approved shared database validation, or the exact reference-data SQL allowlist: $Path"
         }
     }
 
