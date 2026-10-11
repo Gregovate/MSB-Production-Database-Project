@@ -68,3 +68,15 @@ copy**; do not manually delete or overwrite to make a conflict disappear.
 The utility never installs ExpertGPS icons or publishes Synology/web/draw.io
 assets or changes GPX. Live Windows/G: copy acceptance remains pending.
 
+**October 11 source addition / invalidate stale release:** operator has added
+Wi-Fi antenna left/right master and Plain SVG variants (`antenna-l`,
+`antenna-r`). The 32-file reviewed ZIP is an earlier snapshot, not a complete
+34-icon set. The promotion script now **refuses** dry-run or `-Apply` if any
+current Plain SVG filename is unlisted in its pinned manifest; it rechecks the
+full live file set immediately before copying. **Do not promote the 32-file ZIP**
+until the new 34-file candidate is exported, independently inspected and its
+exact ZIP SHA approved in a separately reviewed update. If 32 were already
+promoted before this source change, preserve the receipt and leave them intact;
+a future 34-icon promotion should add missing antenna PNGs without replacing
+matching existing derivatives.
+
