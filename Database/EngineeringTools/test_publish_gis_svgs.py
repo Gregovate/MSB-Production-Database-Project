@@ -84,6 +84,26 @@ class WebSVGTests(unittest.TestCase):
             web_svg_preflight(missing, self.sources)
         self.assertFalse(missing.exists())
 
+    def test_reject_scripted_svg_without_publishing(self):
+        self.assertFalse(list(self.public.iterdir()))
+        scripted = (b'<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">'
+                    b'<script>alert(1)</script></svg>')
+        (self.plain / "antenna-l.svg").write_bytes(scripted)
+        sources = canonical_sources(self.plain)
+        with self.assertRaises(IconError):
+            publish_web_svgs(self.plain, self.public, self.stage, sources)
+        self.assertFalse(list(self.public.iterdir()))
+
+    def test_allow_embedded_gradient_reference_in_svg_css(self):
+        gradient = (b'<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">'
+                    b'<defs><linearGradient id="shine"><stop offset="0"/></linearGradient></defs>'
+                    b'<style>.shape { fill:url(#shine) }</style>'
+                    b'<rect class="shape" width="32" height="32"/></svg>')
+        (self.plain / "antenna-l.svg").write_bytes(gradient)
+        sources = canonical_sources(self.plain)
+        plan = web_svg_preflight(self.public, sources)
+        self.assertEqual(len(plan["add"]), 2)
+
     def test_reject_mm_source_before_web_copy(self):
         (self.plain / "antenna-l.svg").write_bytes(
             b'<svg xmlns="http://www.w3.org/2000/svg" width="32mm" height="32mm"/>')
