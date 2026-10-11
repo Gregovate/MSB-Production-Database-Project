@@ -44,8 +44,12 @@ def assert_public_svg_safe(name: str, raw: bytes):
                 raise IconError(f"{name}: JavaScript URI not permitted")
         if tag == "style" and node.text:
             css = node.text.lower()
-            if "@import" in css or re.search(r"url\(\s*['\"]?(?!#|data:)", css):
+            if "@import" in css:
                 raise IconError(f"{name}: external CSS imports/resources not permitted")
+            for match in re.finditer(r"url\(([^)]*)\)", css):
+                asset = match.group(1).strip().strip("\\\"'")
+                if not asset.startswith(("#", "data:")):
+                    raise IconError(f"{name}: external CSS resource {asset!r} not permitted")
     return True
 
 
