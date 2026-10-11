@@ -103,6 +103,14 @@ CREATE TABLE RecordData (Hash INT, BinRec BLOB);''')
         (uuid1, 1, 'LPFC-03 TO FC-00 REG', 'MSB-Park-Network', 'NO', 1, 1, '1000BASE-T', 120, 36.5, 'LinkIQ', 'Rich'),
         (uuid1, 2, 'FCLP3 to FC-00 Reg', 'Park Network', 'NO', 1, 1, '1000BASE-T', 120, 36.5, 'LinkIQ', 'Rich')])
     conn.executemany('INSERT INTO RecordData VALUES (?,?)', [(1,data),(2,data)])
+    # LinkWare operator fields are real evidence and must not disappear from
+    # the refreshed browser map. Synthetic older schemas without the columns
+    # are handled separately by the fail-closed extractor tests.
+    conn.executescript("""ALTER TABLE Records ADD COLUMN Notes TEXT;
+ALTER TABLE Records ADD COLUMN Faceplate TEXT;
+ALTER TABLE Records ADD COLUMN OutletId TEXT;
+UPDATE Records SET Notes='Operator verified', Faceplate='FC-00',
+                   OutletId='2' WHERE Project='MSB-Park-Network';""")
     conn.commit();conn.close()
     baseline = sha256(p)
     result = extract_flw(p)
@@ -113,6 +121,9 @@ CREATE TABLE RecordData (Hash INT, BinRec BLOB);''')
     assert test['preferred_display_cable_name'] == 'LPFC-03 TO FC-00 REG'
     assert all(v['original_test_id'] == 'FCLP3 to FC-00 Reg' for v in test['source_appearances'])
     assert test['cable_identity_status'] == 'UNMATCHED'
+    assert test['source_appearances'][0]['notes'] == 'Operator verified'
+    assert test['source_appearances'][0]['faceplate'] == 'FC-00'
+    assert test['source_appearances'][0]['outlet_id'] == '2'
     assert sha256(p) == baseline
 
 
