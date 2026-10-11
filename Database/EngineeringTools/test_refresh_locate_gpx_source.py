@@ -47,7 +47,7 @@ def _map():
         type='LineString',
         coordinates=[[-87.749133,43.777952],[-87.749302,43.778226]]),
         properties=dict(id='t0',name='NET old',type='Network',**{'class':'NET'})))
-    return ('<html><script>const data='
+    return ('<html><div id="network-status"></div><script>const data='
             + json.dumps({'type':'FeatureCollection','features':features})
             + ';data.features.push({"type":"Feature","properties":{"id":"temporary-workshop"}});'
             + '</script></html>')
@@ -69,6 +69,8 @@ def test_refreshes_corrected_labels_adds_point_and_preserves_map_ui(tmp_path):
     assert by_id['w0']['properties']['marker_url'] == 'panel.png'
     assert by_id['t0']['properties']['name'] == 'NET corrected'
     assert 'temporary-workshop' in fresh
+    assert 'id="source-refresh-warning"' in fresh
+    assert 'LinkIQ network evidence is still the older snapshot' in fresh
     assert old != fresh
 
 
