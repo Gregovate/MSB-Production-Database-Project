@@ -501,3 +501,32 @@ Screenshot filenames, in order: image(20261011-224831).png,
 image(20261011-224918).png, image(20261011-225135).png,
 image(20261011-225254).png, image(20261011-225343).png,
 image(20261011-225424).png.
+
+### Correction: operational popup requirements — 2026-10-11 17:56 CDT
+
+Greg rejects the current popup metadata as inadequate. The six screenshots are
+evidence of the gap, NOT acceptance of the fields or presentation. Preservation
+of raw source metadata is a provenance obligation, not the user-facing design.
+
+Required useful content:
+- Outlet/power waypoint: supplying panel and circuit number(s), actual maintained
+  network assignments, linked physical cables and available LinkIQ speed/result
+  evidence, with test date and unresolved mappings explicit.
+- Panel: circuit-by-circuit supplied waypoints/loads, what gets turned on/off for
+  MSB operations, and MSB versus City ownership. Record instructions separately
+  from observed on/off state; do not infer either from GPX names or track colors.
+- Network route/cable: actual network designations and individual linked cable
+  test results/speed evidence; do not represent multiple cables by one assumed
+  result or treat a requested test standard as achieved/passed speed.
+- Relevant installation/source year is useful. Preserve exact timestamps,
+  original descriptions/comments and importer provenance in secondary detail,
+  rather than making them the principal operational content.
+
+Ownership must have an explicit maintained value and an unknown/unconfirmed
+state, rather than guessed MSB/City ownership. Clarify panel-level and circuit-level
+ownership distinctions when evidence requires them. Switching designation and
+seasonal actions belong to the existing Production Crew panel/circuit scope.
+Missing/unreviewed circuit, network, ownership, speed or switching information
+must be visibly missing, not silently defaulted, invented, or inferred from
+historical descriptions. Waypoint maintenance remains PostgreSQL-authoritative;
+LinkIQ remains measurement/test authority. Source timestamps are not test dates.
