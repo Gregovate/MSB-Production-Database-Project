@@ -134,7 +134,10 @@ AS $snapshot$
    'routes', coalesce((SELECT jsonb_agg(jsonb_build_object(
        'id',r.site_route_segment_id,'label',r.route_label,
        'endpoint_a',r.endpoint_a_waypoint_id,'endpoint_b',r.endpoint_b_waypoint_id,
-       'geometry',ST_AsGeoJSON(ST_Transform(r.reference_line,4326))::jsonb
+       'geometry',ST_AsGeoJSON(ST_Transform(r.reference_line,4326))::jsonb,
+       'cable_ids',coalesce((SELECT jsonb_agg(x.site_cable_id ORDER BY x.site_cable_id)
+          FROM (SELECT DISTINCT c.site_cable_id FROM ref.site_cable_route_segment c
+                WHERE c.site_route_segment_id=r.site_route_segment_id) x),'[]'::jsonb)
        ) ORDER BY r.site_route_segment_id)
        FROM ref.site_route_segment r WHERE r.review_status='REVIEWED'),'[]'::jsonb),
    'panels', coalesce((SELECT jsonb_agg(to_jsonb(p) ORDER BY p.site_waypoint_id)
