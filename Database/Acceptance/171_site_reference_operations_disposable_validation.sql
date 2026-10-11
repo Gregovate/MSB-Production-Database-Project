@@ -7,7 +7,8 @@ DO $accept$
 DECLARE
     v_uuid text := gen_random_uuid()::text;
     v_panel bigint; v_outlet_a bigint; v_outlet_b bigint;
-    v_network bigint; v_circuit bigint;
+    v_network bigint; v_circuit bigint; v_cable bigint; v_test uuid := gen_random_uuid();
+    v_sha text := md5(gen_random_uuid()::text) || md5(gen_random_uuid()::text);
     v_rev bigint; v_out jsonb; v_snapshot jsonb;
     v_denied boolean := false;
 BEGIN
@@ -115,6 +116,21 @@ BEGIN
     EXCEPTION WHEN SQLSTATE '40001' THEN NULL;
     END;
 
+    -- The same endpoints may support a distinct reviewed physical cable.
+    -- LinkIQ UUID/result and test standard are evidence, not guessed speed.
+    INSERT INTO ops.site_source_batch(source_sha256,source_kind,original_filename,actor)
+    VALUES(v_sha,'LINKIQ_FLW','disposable-only.flw','319-disposable');
+    INSERT INTO ref.site_cable(endpoint_a_waypoint_id,endpoint_b_waypoint_id,
+                               site_network_id,lifecycle_status,reviewed_by,reviewed_at)
+    VALUES(v_panel,v_outlet_a,v_network,'CURRENT','319-disposable',clock_timestamp())
+    RETURNING site_cable_id INTO v_cable;
+    INSERT INTO ops.linkiq_test(test_uuid,first_seen_source_sha256,tester_original_name,
+           test_time_local,test_status_code,test_standard,length_ft,evidence_sha256,
+           original_result,physical_site_cable_id,identity_review_status,reviewed_by,reviewed_at)
+    VALUES(v_test,v_sha,'DISPOSABLE-Raw Tester Name','2026-10-11T17:00:00',
+           1,'1000BASE-T',132.4,v_sha,'{"test":"fixture"}'::jsonb,
+           v_cable,'REVIEWED','319-disposable',clock_timestamp());
+
     v_snapshot := ref.site_reference_snapshot();
     IF (v_snapshot->>'revision')::bigint <> v_rev
        OR v_snapshot->>'data_mode'<>'postgres' THEN
@@ -152,10 +168,14 @@ BEGIN
     END IF;
 
     -- A LinkIQ test standard is never an achieved speed measurement.
-    IF EXISTS(SELECT 1 FROM jsonb_array_elements(v_snapshot->'cables') c,
-                LATERAL jsonb_array_elements(c->'tests') t
-              WHERE t->>'measured_link_speed_mbps' IS NOT NULL) THEN
-        RAISE EXCEPTION 'Unverified test standard was converted into speed';
+    IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v_snapshot->'cables') c,
+                 LATERAL jsonb_array_elements(c->'tests') t
+                 WHERE (c->>'id')::bigint=v_cable
+                   AND t->>'uuid'=v_test::text
+                   AND t->>'test_standard'='1000BASE-T'
+                   AND (t->>'length_ft')::numeric=132.4
+                   AND t->>'measured_link_speed_mbps' IS NULL) THEN
+        RAISE EXCEPTION 'LinkIQ test evidence/speed-unknown contract violated';
     END IF;
 END;
 $accept$;
