@@ -74,3 +74,45 @@ Park Wi‑Fi is **not available throughout Evergreen Park**. Reading known waypo
 7. Browser/editor acceptance should **not trigger a second Production dump merely to preview a UI**. Reuse a governed persistent disposable snapshot/environment where explicitly supported; previous candidate acceptance clone/dump was cleaned up. Keep #122 runbook and Production authorization separate.
 
 **Not completed:** #230 editor/API, real full-source DB ingestion and promotion, panel/breaker/waypoint/network maintained relationships, offline package/cache, actual tablet offline proof, operator visual browser acceptance, and Production deployment. **Do not treat a clean SQL migration test as fulfillment of these requirements.**
+
+## 2026-10-11 operator review of corrected *existing* Park Map preview
+
+Greg opened the corrected local version of the existing `/setup/locate/` map and
+reported that the **waypoint names are now updated** and the overall presentation
+is **much better**. This is positive operator evidence for the GPX name/position
+correction, **not an acceptance of Production deployment**, offline coverage,
+physical cable topology or the permanent reference editor.
+
+Remaining acceptance findings and explicit ownership:
+
+- **Remove the temporary Workshop marker.** The latest approved ExpertGPS GPX
+  already contains `Workshop`, **Type: Waypoint**. The October 8
+  `temporary-workshop` injection in the old generated map is superseded; the
+  permanent GPX point is authoritative. Do not conflate it with #88 Workshop
+  storage/movement evidence or allow both points to show as duplicates. The
+  #319 local preview assembler now checks for the canonical GPX point before
+  deleting only the identified placeholder in the staged output.
+- **Missing waypoint icons:** Greg is correcting artwork/type symbols in the
+  separate existing GIS icon workstream. Do not alter that image library or
+  introduce guessed/duplicate icon mappings in the #319 source-data fix.
+- **LB WiFi Antenna:** source label `LB WiFi Antenna`, **Type: Tower**,
+  ExpertGPS source time `2026-10-10T18:40:42.586Z`. Preserve its source name,
+  type and timestamp in the map data even if its missing icon is resolved
+  separately.
+- **AUX-I incomplete:** some AUX-I route segments still do not resolve in
+  the corrected network view. Greg reports the **other two previously missing
+  segments are now resolving**, but did not supply their identities in this
+  feedback. Do not assert that AUX-I topology is complete or guess missing
+  endpoints. This remains a #171 spatial/LinkIQ/schema reconciliation review
+  item with explicit unmatched evidence. `32` candidate matched tracks and
+  `149` unresolved tracks describe the new GPX+FLW screening result, not
+  verified cables or proof of a complete route.
+- **Release boundary:** refresh the current Setup map's source HTML and network
+  JSON as a separately scoped source-only correction after normal candidate
+  visual/regression acceptance and explicit authorization. Defer manager/crew
+  editing to the next #230 milestone, without delaying the immediate correction.
+  No new PostgreSQL dump is needed merely to review the source-only map.
+
+Status: **operator visual feedback received / corrections still pending**.
+Local source-only previews are not Production and are not offline-ready.
+
