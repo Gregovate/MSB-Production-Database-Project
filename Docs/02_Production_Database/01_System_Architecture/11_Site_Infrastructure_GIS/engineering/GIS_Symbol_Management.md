@@ -63,9 +63,29 @@ https://webassets.sheboyganlights.org/images/symbols/msb/container-loaded.png
 5. Check the uploaded PNG URLs, existing older symbol URLs, and current ExpertGPS waypoints. Verify a fresh exported GPX/KML marker URL, including folder name, spelling and letter case, on a real ExpertGPS installation before claiming migration compatibility.
 6. Do **not** move to `MSB Icons` as cosmetic cleanup until an explicit alias/type/URL migration is planned, accepted, and backward tested. Such a move could change ExpertGPS type or folder-relative references and published GPX URLs.
 
-Conversation-stage install ZIP: `MSB_ExpertGPS_msb_Install_2026-10-11.zip`, SHA-256 `1608aee54573aa081d2b6d25aed8768e5d8b6bdef1f9158c5400338cac534e5e`. Package validation passed: 31 PNGs, all RGBA and dimensions matching corrected Plain SVGs; complete ZIP integrity; `readme.txt` bytes match the supplied file. The package was handed off in chat; **its filename is not evidence that the ZIP itself was committed to GitHub or copied to the user's PC or Synology**. The operator must confirm actual installation and web publishing.
+Historical snapshot (not certified current): conversation-stage install ZIP `MSB_ExpertGPS_msb_Install_2026-10-11.zip`, SHA-256 `1608aee54573aa081d2b6d25aed8768e5d8b6bdef1f9158c5400338cac534e5e`. Package validation passed: 31 PNGs, all RGBA and dimensions matching corrected Plain SVGs; complete ZIP integrity; `readme.txt` bytes match the supplied file. The package was handed off in chat; **its filename is not evidence that the ZIP itself was committed to GitHub or copied to the user's PC or Synology**. It was generated from an uploaded snapshot, **not from a fresh scan of the current Shared Drive Plain files**. Regenerate using the exporter above before installing. The operator must confirm actual installation and web publishing.
 
 Old ExpertGPS type keys and GPX custom-marker URLs may reference case-sensitive legacy names even though new generated artwork is lowercase. New PNG creation alone does not remap those keys. Preserve legacy assets until a reviewed source/type/URL compatibility mapping and ExpertGPS round-trip test are complete.
+
+## Current-Plain-to-ExpertGPS release gate — correction, October 11
+
+**Do not install the previous October 9/11 PNG ZIP as a verified current release.** Those 31 PNGs were generated from a **conversation-uploaded SVG ZIP snapshot**, not by re-reading the operator's maintained `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Plain` folder after the artwork/folder changes. Matching the earlier ZIP does not prove those icons remain identical to the current source-of-truth files. The previously packaged `readme.txt` was valid, but correct URL metadata alone does not fix stale raster artwork.
+
+The missing step is a **fresh, on-PC export from the actual current Plain SVG folder**, followed by reviewed local ExpertGPS and Synology PNG installation. No assistant connected to GitHub or a chat-uploaded ZIP has direct access to the operator's Google Shared Drive or local `%LOCALAPPDATA%` tree.
+
+The repository now provides [Export-ExpertGPSSymbols.ps1](../../../../../Database/EngineeringTools/Export-ExpertGPSSymbols.ps1). Its purpose is to complete the missing reproducible source-to-raster stage, **not** to overwrite existing icons or deploy to the web server:
+
+```powershell
+# Run on the Windows PC where G: and Inkscape are available,
+# from the project repository checkout:
+& .\Database\EngineeringTools\Export-ExpertGPSSymbols.ps1
+```
+
+The script reads the current `Symbols\Plain` path, validates lower-case hyphenated filenames and the existing local ExpertGPS `readme.txt` parent URL, invokes Inkscape without overriding each SVG's deliberately chosen canvas size, checks RGBA PNGs, records per-file source and output SHA-256 plus width/height in a CSV, and stages an install ZIP in a uniquely named Downloads directory. It **does not** mutate Plain SVGs, the installed `Symbols\msb` folder, Synology, GPX or database records. If either source directory, the readme, or Inkscape has moved again, pass its actual location explicitly (`-PlainSvgDirectory`, `-ReadmePath` or `-InkscapeExecutable`) rather than silently using stale copies.
+
+Only **after comparing the staged inventory against current Plain files and reviewing the symbols** should the PNGs be merged into the backed-up local `%LOCALAPPDATA%\TopoGrafix\Symbols\msb\` folder, and then published to the matching web `msb` path under the governing server procedure. Preserve all old-named icons/BMPs and the original root-URL readme; never rename the folder to `MSB Icons` in this release. Verify ExpertGPS icon rendering and a fresh GPX export URL before marking it installed. The October 9 inventory remains useful as a historical comparison, not an automatic current-release manifest.
+
+**Current disposition:** export script prepared in repository; **no runtime test on the operator's Windows G: folder, no current PNG rebuild there, and no PC/Synology deployment has been performed**. Operator must execute the source-directory export or provide a fresh ZIP of the exact current Plain SVG directory for an off-PC export.
 
 ## Repeatable maintenance and publication workflow
 
