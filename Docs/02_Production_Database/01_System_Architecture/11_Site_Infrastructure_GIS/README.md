@@ -336,6 +336,12 @@ PNG/BMP compatibility and separate web publication locations are recorded in
 [GIS Symbol Creation, Publication, and Compatibility](engineering/GIS_Symbol_Management.md).
 This is current source-maintenance guidance, **not** acceptance of a new icon
 registry, Production schema, web deployment, or browser marker behavior.
+ExpertGPS's current per-user custom-symbol location is
+`%LOCALAPPDATA%\TopoGrafix\Symbols\msb\`, with the original `readme.txt`
+pointing to `https://webassets.sheboyganlights.org/images/symbols/`.
+The similarly named `MSB Icons` directory is **not** the currently accepted
+replacement. Preserve `msb` and its legacy PNG/BMP URL references until an
+explicit ExpertGPS/GPX folder migration is reviewed; see the linked symbol SOP.
 
 Operator-confirmed direction, 2026-10-08: ExpertGPS manages symbols by type
 name. In that program the type name is the key and cannot be renamed; changing
