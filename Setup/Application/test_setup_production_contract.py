@@ -363,5 +363,5 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert "setup_production.js?v=2026-10-10.map-entry" in html
     assert "setup_next_pass.js?v=2026-10-10.62" in html
     assert "setup_scheduling_board.js?v=2026-10-09.324.5" in html
-    assert "Updated 2026-10-10" in html
+    assert "Updated 2026-10-11" in html
 
