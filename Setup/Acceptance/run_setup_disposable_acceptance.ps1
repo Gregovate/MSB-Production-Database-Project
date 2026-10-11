@@ -89,14 +89,18 @@ function Assert-SafeCandidatePath {
     if ($Kind -eq 'migration') {
         $isSetupMigration = $Path.StartsWith('Setup/Database/')
         $isApprovedSharedMigration = $Path -eq 'Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql'
-        if (-not ($isSetupMigration -or $isApprovedSharedMigration)) {
+        # #171/#319 explicit disposable-only candidate path; not a Production migration.
+        $isApprovedSiteInfrastructureMigration = $Path -eq 'Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql'
+        if (-not ($isSetupMigration -or $isApprovedSharedMigration -or $isApprovedSiteInfrastructureMigration)) {
             throw "Migration path must be under Setup/Database/ or explicitly approved shared database repair: $Path"
         }
     }
     if ($Kind -eq 'validation') {
         $isSetupValidation = $Path.StartsWith('Setup/Acceptance/')
         $isApprovedSharedValidation = $Path -eq 'Database/Acceptance/database_shared_audit_actor_disposable_validation.sql'
-        if (-not ($isSetupValidation -or $isApprovedSharedValidation)) {
+        # #171/#319 bounded SQL acceptance path; do not permit arbitrary Database SQL.
+        $isApprovedSiteInfrastructureValidation = $Path -eq 'Database/Acceptance/171_site_infrastructure_disposable_validation.sql'
+        if (-not ($isSetupValidation -or $isApprovedSharedValidation -or $isApprovedSiteInfrastructureValidation)) {
             throw "Validation path must be under Setup/Acceptance/ or explicitly approved shared database validation: $Path"
         }
     }
