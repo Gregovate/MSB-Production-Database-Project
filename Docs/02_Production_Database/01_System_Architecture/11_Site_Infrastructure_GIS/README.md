@@ -2,6 +2,21 @@
 
 This subsystem documents permanent physical-site identities, location history, power/site infrastructure relationships, and PostgreSQL integration of MSB GIS/GPS data.
 
+## 2026-10-11: Current Park Map implementation, offline requirement, and editor gap
+
+The existing `/setup/locate/` page is already the operator's aerial map, waypoint
+finder, track/network viewer, and read-only movement overlay. **Extend this
+same screen** into the governed reference-data editor; do not build a parallel
+viewer or treat disposable schema acceptance as a completed integration.
+
+The confirmed implementation inventory, static-snapshot/API distinction,
+older network source snapshot, missing offline aerial/assets, edit permissions
+and staged browser acceptance requirements are recorded in
+[Park Map Current State / Offline Editor Gap](engineering/Park_Map_Current_State_Offline_Editor_Gap_2026-10-11.md).
+**Offline read access is required** because park Wi-Fi does not cover the
+entire park. #230 owns the editor, #171 owns map/source/network/power
+interpretation, and #88 retains movement state.
+
 ## Required reference-data editing authority — #171 / #230
 
 Operator decision, 2026-10-10: the MSB database-backed application will be the
