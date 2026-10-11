@@ -347,6 +347,14 @@ uploaded SVG snapshot, not a fresh export of today's Shared Drive Plain files.
 The [staged current-Plain exporter](../../../../Database/EngineeringTools/Export-ExpertGPSSymbols.ps1)
 must be run on a PC with access to those files before treating a PNG batch as
 current; installation/publication has not been verified.
+October 11 source inventory adds `MSB GIS\Symbols\png` as the intended
+canonical local PNG derivative folder, separate from the Windows Downloads staging
+used by the current exporter. draw.io keeps `Network\MSB-icon-library.xml`, but
+the existing `Network\Park Network Schematic 2026.drawio` embeds its own SVG/PNG
+snapshots: file/library edits cannot automatically update already-placed icons.
+The read-only source counts, hashes, and pending cross-application reconciliation
+are in the linked GIS symbol maintenance contract. Do not replace any embedded
+artwork, legacy ExpertGPS symbols or live web assets during inventory.
 
 Operator-confirmed direction, 2026-10-08: ExpertGPS manages symbols by type
 name. In that program the type name is the key and cannot be renamed; changing

@@ -16,6 +16,7 @@ These are **operator-confirmed existing locations**, not proposed folders:
 | --- | --- |
 | `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Masters` | **Editable Inkscape master artwork**. Edit here; do not edit the published web copies. |
 | `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Plain` | **Approved exported Plain SVG artwork**, derived from the editable masters; canonical source for GIS/browser artwork and PNG generation. |
+| `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\png` | **New operator-required canonical PNG derivative folder.** Content/synchronization not yet inventoried; the #334 exporter stages to Downloads rather than writing here. |
 | `\\192.168.5.4\webassets\images\symbols\msb-svg\` | Published **new Plain SVG** files (the operator confirmed the folder contains them). |
 | `\\192.168.5.4\webassets\images\symbols\msb\` | Existing **legacy-named PNG and BMP** compatibility files. Preserve them; new PNG names may coexist during a controlled changeover. |
 | `%LOCALAPPDATA%\TopoGrafix\Symbols\msb\` | **Confirmed current ExpertGPS PNG + `readme.txt` location** on each Windows PC/user. `%LOCALAPPDATA%` resolves under that user's profile; one observed example is `C:\Users\greg\AppData\Local\TopoGrafix\Symbols\msb\`. Do not hardcode the username. |
@@ -86,6 +87,36 @@ The script reads the current `Symbols\Plain` path, validates lower-case hyphenat
 Only **after comparing the staged inventory against current Plain files and reviewing the symbols** should the PNGs be merged into the backed-up local `%LOCALAPPDATA%\TopoGrafix\Symbols\msb\` folder, and then published to the matching web `msb` path under the governing server procedure. Preserve all old-named icons/BMPs and the original root-URL readme; never rename the folder to `MSB Icons` in this release. Verify ExpertGPS icon rendering and a fresh GPX export URL before marking it installed. The October 9 inventory remains useful as a historical comparison, not an automatic current-release manifest.
 
 **Current disposition:** export script prepared in repository; **no runtime test on the operator's Windows G: folder, no current PNG rebuild there, and no PC/Synology deployment has been performed**. Operator must execute the source-directory export or provide a fresh ZIP of the exact current Plain SVG directory for an off-PC export.
+
+## draw.io symbol library and schematic independence — operator confirmation, October 11
+
+The operator's current paths are:
+
+- Custom draw.io library: `G:\Shared drives\Display Folders\Park Drawings\Network\MSB-icon-library.xml`. This XML **can be stored elsewhere**; the path is where the operator currently keeps it, not a required draw.io runtime path.
+- Active schematic: `G:\Shared drives\Display Folders\Park Drawings\Network\Park Network Schematic 2026.drawio`.
+
+draw.io library XML can contain **embedded SVG data**, and schematic objects can contain their own independent embedded icon payloads. Updating a source Plain SVG, regenerating the library XML, or replacing a PNG does **not** automatically update already-placed icons in the schematic. This creates a separate synchronization and controlled diagram-migration boundary. Preserve all diagram object IDs, geometry, topology, cable metadata and drawing layout; do not bulk-replace artwork without an identity-by-identity review and actual draw.io open/visual acceptance.
+
+Read-only inspection of **operator-uploaded copies** on October 11, not the live G: versions:
+
+| Uploaded artifact | SHA-256 | Evidence |
+| --- | --- | --- |
+| `MSB-icon-library.xml` | `a767246bd36f72f2642c9f819ba096e07d804e8bfe3d8646957d016713908d59` | Valid mxlibrary JSON with **20** icons: 18 direct base64 SVG entries and 2 XML-wrapped symbols; legacy titles include `LOR Repater`. |
+| `Park Network Schematic 2026(20261011-093142).drawio` | `65d7607485e526e4d058b4ce997a24f2fe53a731b4f52817dcd44233e420a0a8` | One page, 743 mxCell elements, **199 embedded image references** (196 SVG, 3 PNG), **32 unique image payloads**; no external HTTP image URLs in `image=` cell styles. |
+| Prior corrected `msb-plain-icons-corrected.zip` | `eba2ab74bbc7430b024fbde8e22bc220c7e856821aff4714667a0092ef9fe34c` | 31 Plain SVGs in the prior uploaded snapshot. **Not** a live-G:-folder inventory or authoritative current revision. |
+
+Some library titles correspond to the earlier Plain names, but embedded SVG bytes and canvas sizes differ. **Raw byte inequality alone does not establish a visual change**: exports can reserialize and transform SVGs. A geometry/style-aware visual comparison and operator disposition are needed. Also, the 20 library entries and 32 unique schematic payloads are *not* a demonstrated one-to-one match; do not assume the schematic uses only those 20 entries.
+
+### Reconciliation and release sequence — pending
+
+1. **Read-only inventory** of scattered local/shared SVG files, including current `Masters`, `Plain`, `png`, legacy artwork folders, ExpertGPS symbols, the draw.io library and its installed/embedded schematic images. Record full paths, file hashes, dimensions where applicable, last-write dates and aliases. Scan additional roots explicitly; do not silently claim all local drives were covered.
+2. Identify missing/duplicate/renamed or divergent Inkscape masters and approved Plain derivatives. Require operator review before selecting an authoritative revision or moving anything into `Masters`. Never overwrite an existing master based only on filename or timestamp.
+3. After approved Plain SVG inventory, compare intended output and existing `Symbols\png` derivatives by source/output manifest. The current exporter stages into Downloads, not the canonical `png` directory; add an explicitly approved promotion step only after source and output validation.
+4. Check ExpertGPS type/legacy-URL dependencies and review web SVG/PNG delivery independently. The Browser map must not be silently changed by local ExpertGPS editing; generated web assets remain controlled published derivatives. Preserve legacy files and version/publish deliberately.
+5. Rebuild/reconcile the draw.io XML library **as a separate derivative** from approved Plain SVGs, preserving reviewed titles and internal library identity. The existing schematic stores embedded artwork: any icon refresh in that document must be a separately reviewed change, with an unchanged object-ID/geometry/cable-attribute comparison and draw.io visual acceptance.
+6. Keep a release manifest of selected master + Plain SVG + PNG + published SVG/PNG + draw.io library/schematic artifact hashes and known alias references. Only approved versions promote; local edits alone never automatically rewrite web/browser or source schematics.
+
+Issue #171 owns this icon/inventory reconciliation; #319 owns network cable data. No file or source migration, Production mutation or web deployment was performed by this inspection.
 
 ## Repeatable maintenance and publication workflow
 
