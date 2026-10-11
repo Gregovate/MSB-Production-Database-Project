@@ -206,6 +206,14 @@ def rebuild(html: str, gpx_path: Path, *, max_distance_ft=1.5):
     if refreshed.count(marker) != 1:
         raise ValueError("Cannot attach source-staleness warning to current map UI")
     refreshed = refreshed.replace(marker, warning + marker, 1)
+    # Do not leave the October 10 source fingerprint as though it described
+    # this corrected GPX. The candidate About panel must show its real source.
+    refreshed, source_replacements = re.subn(
+        r'GPX snapshot [0-9a-f]{16}', 'GPX candidate SHA ' + source_hash[:16],
+        refreshed
+    )
+    if source_replacements != 1:
+        raise ValueError("Cannot update the map's old GPX snapshot fingerprint")
     return refreshed, receipt
 
 
