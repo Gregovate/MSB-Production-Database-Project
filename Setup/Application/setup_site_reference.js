@@ -233,8 +233,9 @@
       + ' · last reviewed: ' + textValue(w.verified_at));
     line(provenance, 'Description: ' + textValue(w.source_description));
     line(provenance, 'Comment: ' + textValue(w.source_comment));
-    line(provenance, 'GPX SHA256: ' + (current.sources?.gpx?.sha256 || 'not recorded'));
-    line(provenance, 'FLW SHA256: ' + (current.sources?.flw?.sha256 || 'not recorded'));
+    line(provenance, 'Accepted GPX SHA256: ' + (current.sources?.gpx?.sha256 || 'not accepted'));
+    line(provenance, 'Latest staged GPX SHA256: ' + (current.sources?.gpx_latest_staged?.sha256 || 'not staged'));
+    line(provenance, 'LinkIQ evidence SHA256: ' + (current.sources?.flw?.sha256 || 'not recorded'));
     line(provenance, 'Unreconciled LinkIQ test UUIDs: ' + current.unresolved_linkiq_tests);
     line(body, 'Online DB revision ' + current.revision
       + ' · operational instructions are NOT proof of electrical state.');
@@ -461,10 +462,14 @@
     if (snapshot.format_version !== 1 || snapshot.data_mode !== 'postgres')
       throw new Error('Unknown maintained reference format');
     current = snapshot;
-    status.style.color = '#145a38';
+    const accepted = snapshot.sources?.gpx?.sha256 || '';
+    const staged = snapshot.sources?.gpx_latest_staged?.sha256 || '';
+    const drift = !!staged && staged !== accepted;
+    status.style.color = drift ? '#923b15' : '#145a38';
     status.textContent = 'LIVE PostgreSQL GIS · revision ' + snapshot.revision
-      + ' · GPX ' + (snapshot.sources?.gpx?.sha256 || 'not loaded').slice(0,12)
-      + ' · FLW ' + (snapshot.sources?.flw?.sha256 || 'not loaded').slice(0,12);
+      + ' · accepted GPX ' + (accepted || 'NOT ACCEPTED').slice(0,12)
+      + ' · latest FLW evidence ' + (snapshot.sources?.flw?.sha256 || 'not loaded').slice(0,12)
+      + (drift ? ' · NEW GPX STAGED / NOT ACCEPTED — reconcile before export' : '');
     renderDb(snapshot);
     renderNetworks(snapshot);
     return snapshot;
