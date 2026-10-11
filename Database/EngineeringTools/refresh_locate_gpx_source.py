@@ -196,6 +196,16 @@ def rebuild(html: str, gpx_path: Path, *, max_distance_ft=1.5):
         int(f["properties"]["id"][1:])))
     geo["features"] = updated_points + prior_tracks
     refreshed = html[:begin] + json.dumps(geo, separators=(",", ":"), ensure_ascii=False) + html[end:]
+    # Never present this GPX-only refresh as a complete corrected network map.
+    # Put the warning into the actual candidate UI, not solely in a JSON report.
+    warning = ('<p class="banner" id="source-refresh-warning">'
+               'CANDIDATE ONLY: waypoint/track GPX refreshed; LinkIQ network '
+               'evidence is still the older snapshot. Do not deploy as current.'
+               '</p>')
+    marker = '<div id="network-status"'
+    if refreshed.count(marker) != 1:
+        raise ValueError("Cannot attach source-staleness warning to current map UI")
+    refreshed = refreshed.replace(marker, warning + marker, 1)
     return refreshed, receipt
 
 
