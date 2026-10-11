@@ -421,7 +421,19 @@ filenames absent from its approved manifest, even when all older SVG hashes
 still match. **Do not run the existing 32-icon `-Apply` until the complete
 34-icon batch has been exported, reviewed, approved and pinned.** Existing
 correct files must be preserved; no replacements/deletions are authorized.
-The operator's 32-icon write status is not yet confirmed (receipt not supplied). Govern each independently. Detailed source
+The operator's 32-icon write status is not yet confirmed (receipt not supplied).
+**Fresh 34-icon staging ZIP uploaded and independently checked:**
+`MSB_ExpertGPS_Current_Plain_Staged(2).zip` contains all 34 PNGs,
+manifest and original readme. ZIP CRC, 34/34 PNG hashes and RGBA dimensions
+PASS. All previous 32 PNGs and their SVG manifest hashes are unchanged; only
+new `antenna-l.png` and `antenna-r.png` are added. **Operator scale decision
+pending:** the new antennas are intentionally distinct facing directions but
+both export at **121×121 px**, versus normally 32×32 icon canvases. Confirm
+whether 121px is the wanted waypoint/map marker size before pinning the new
+34-file release and promoting to the canonical Shared Drive PNG folder.
+Live source SVG lineage and actual installed/published symbols remain separate
+gates. The existing promoter is pinned to the older 32-icon ZIP and must not
+be applied for the complete 34-item release. Govern each independently. Detailed source
 triage and post-correction acceptance rules are in the linked GIS symbol contract.
 No ExpertGPS, Synology, draw.io, or browser publishing has been verified. draw.io keeps `Network\MSB-icon-library.xml`, but
 the existing `Network\Park Network Schematic 2026.drawio` embeds its own SVG/PNG
