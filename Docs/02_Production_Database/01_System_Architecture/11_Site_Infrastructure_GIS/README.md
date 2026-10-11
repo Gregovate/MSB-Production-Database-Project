@@ -8,6 +8,80 @@ For updates to GIS/ExpertGPS **artwork**, use the repository-controlled [MSB Ico
 
 **Source/master distinction remains intentional:** multiple Plain icons can come from one layered master (LP-Combo), so an operator selects the desired layers in Inkscape; the manager does **not** guess them. ExpertGPS local copies, GPX type/URLs, Synology/web assets, browser markers and draw.io schematic/library content are **separate release gates**, not synchronized automatically by the PNG update. The desktop GUI is implemented and disposable engine/integration tests have passed, but first-run Windows/G: acceptance is still pending.
 
+## GIS data authority and editing — operator reaffirmation, October 11, 2026
+
+**Requirement authority: Greg, 2026-10-11 16:17 America/Chicago. Implementation
+and Production cutover are not established by this documentation.** This section
+clarifies the required workflow from today forward; historical GPX-first
+stopgaps below do not authorize continued maintenance of competing masters.
+
+| Subject | Authority and required flow |
+|---|---|
+| Waypoint identities and maintained reference data | **PostgreSQL is the authority.** Managers need a usable governed waypoint editor. Correct once in the database; map and downstream consumers use the same accepted revision. |
+| ExpertGPS waypoints/tracks | Export maintained database data to GPX for ExpertGPS waypoint/track adjustment. Reconcile changes back into PostgreSQL against stable IDs and the exported baseline, with explicit conflicts and retained provenance. ExpertGPS is a geometry-editing tool, not an independent competing master. |
+| Cable tests and evidence of cables between waypoints | **LinkIQ/LinkWare FLW is the authority for test data and evidence of how many cables connect waypoints.** The supplied FLW is SQLite. Import one-way and preserve original tests. Multiple appearances/retests of the same cable are not automatically additional physical cables; retain ambiguity explicitly. **Corrections cannot be pushed back to the tester.** |
+| Park draw.io schematic | Historically used to record test data; **not all entities have been converted to structured XML data objects**. Preserve unconverted entities and operator layout. Update reviewed bound objects from maintained DB data; never assume every graphical item is a database row or discard unconverted evidence. |
+| Panels, circuits and power waypoints | Authorized **Production Crew** need to add/maintain circuits within existing panels and link existing power waypoints. Maintain which circuits must be turned on/off for show season and restoration. Managers maintain waypoint identity/position; crew circuit links do not require waypoint-edit permission. Crew meter-ID maintenance remains permitted by the recovered role clarification. |
+
+Track priorities already documented on #171 are **NET, PRI and HV**; preserve
+other tracks. Multiple cables may share a reviewed geographic route; do not
+duplicate traces for every cable or infer cable/electrical identity from overlap.
+Keep reference action definitions separate from seasonal execution/completion
+evidence under #122. Existing map/search, #230 editing and mandatory offline
+reference acceptance remain the required end-to-end outcome.
+
+### Fresh attachment evidence — read-only inspection
+
+These are upload filenames, not new canonical Shared Drive names. Greg reports
+the GPX waypoints were corrected last night and FLW cleaned up. File inspection
+establishes bytes and structure, not the correctness of every relationship.
+
+| Uploaded source | Bytes | SHA-256 |
+|---|---:|---|
+| 2026_msb_FRESH_START_CLEANED_2026-10-06(20261011-211351).gpx | 408440 | a4e48a8938a6e3e889065df74d6140b95e8097d76cd53c0d4dbbce1fb591e0af |
+| LinkIQ Data Import for DB with corrected names(7).flw | 253149212 | e76d39179da99bb74ed8e2af7f4e555a71ff530cae58bdb0015e770677a3ef5e |
+| Park Network Schematic 2026(20261011-211438).drawio | 1658546 | 65d7607485e526e4d058b4ce997a24f2fe53a731b4f52817dcd44233e420a0a8 |
+
+Fresh GPX: 233 waypoints and 181 tracks; track-name prefixes NET 78, PRI 15,
+HV 70, other 18. Its hash differs from the earlier baseline
+3272269d493131f0b2e401013ac7f32dc55b598ebf3e7e53d6ab3fd9ec7e2cea.
+**Do not reuse the earlier GPX hash as approval for this new file.** Semantic
+differences have not yet been compared. FLW and drawing hashes match the earlier
+recorded source baseline exactly. FLW was opened SQLite read-only; tables Records,
+606A, Admin and RecordData are present. Drawing parses as one diagram, 463 object
+elements and 743 mxCell elements; these raw structural counts do not classify
+which entities are converted or prove complete database bindings.
+
+### Recovery and repository status
+
+[Recovery index on #171](https://github.com/Gregovate/MSB-Production-Database-Project/issues/171#issuecomment-6113744285)
+records partial recovery of the inaccessible morning GIS DATA EDITING conversation,
+with cross-references in #122 and #230. The Icon Library Manager belongs to a
+separate thread. Neither the later shared-route checkpoint nor this short
+reaffirmation captures the complete missing engineering conversation.
+
+The operator recalls #319 as merged for waypoint correction. GitHub checked during
+this recovery reports #319 draft/open at
+384ee47ea8cc90c74d5cf12f58213bc891808296; #352 is the separately merged source-map
+correction, with operator Production acceptance recorded in #171. Preserve this
+numbering discrepancy without asking the operator to repeat the accepted map fix.
+Current main baseline for this documentation is
+04de9cfa94e2ff4f641130fdbbacfff9c1c56aca.
+
+The existing draft #319 carries detailed controlled
+[editor/offline acceptance requirements](https://github.com/Gregovate/MSB-Production-Database-Project/blob/384ee47ea8cc90c74d5cf12f58213bc891808296/Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/engineering/Park_Map_Current_State_Offline_Editor_Gap_2026-10-11.md)
+and the
+[source synchronization contract](https://github.com/Gregovate/MSB-Production-Database-Project/blob/384ee47ea8cc90c74d5cf12f58213bc891808296/Database/EngineeringTools/Site_Source_Synchronization_Contract.md).
+Read those before continuation; reconcile actual editor/API/import implementation
+and the changed GPX before any mutation. Do not equate a source-only map correction
+with removal of embedded snapshots or completed database-backed editing.
+
+Every new decision, confirmed discovery, source revision, acceptance result and
+resume point must be recorded during work in its responsible controlled document
+and linked owning issue. Issue comments alone do not replace controlled engineering
+files. No source overwrite, database migration, runtime deployment or claim of
+editor completion is authorized or performed by this documentation update.
+
 ## Required reference-data editing authority — #171 / #230
 
 Operator decision, 2026-10-10: the MSB database-backed application will be the
@@ -690,7 +764,7 @@ Do not start by adding generic latitude/longitude columns throughout the Product
 - integrate placement tracks and buried network/power reference data for targeted Setup layout/ground-penetration decisions under Issue #171;
 - define meaningful proximity/risk uncertainty for `locate required` / `review required` decisions rather than applying locates everywhere;
 - define mobile GPS accuracy and proximity-validation requirements;
-- determine whether park network coverage requires offline map/location behavior;
+- implement and accept mandatory offline map/reference access for incomplete park coverage;
 - preserve the existing NAD83 HARN WISCRS Sheboygan County Feet contract during integration;
 - use direct contextual Work Orders for concrete correction needs and #172 for broader/unclear observations rather than inventing a GIS-specific queue.
 
