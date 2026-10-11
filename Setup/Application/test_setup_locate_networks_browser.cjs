@@ -47,7 +47,8 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   for (const query of ['AUX-I','Aux I','aux-i']) {
     const results = search(query);
     assert.equal(results.length, 1, 'Exact network must not compete with raw GPX labels');
-    assert.match(results[0].textContent, /AUX-I.*13 candidate routes/);
+    const expected = new Set(source.cables.filter(c => c.network === 'AUX-I').flatMap(c => c.route_ids)).size;
+    assert.match(results[0].textContent, new RegExp(`AUX-I.*${expected} candidate routes`));
   }
   search('AUX-I')[0].click();
   elements['map-search'].value = ''; elements['map-search'].input();
@@ -60,16 +61,17 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   const before = markers.map(m => m.options.color);
   search('INET'); assert.deepEqual(markers.map(m => m.options.color), before, 'Typing does not change the map');
   const inet = search('INET'); assert.equal(inet.length, 1, 'INET must not match Cabinets');
-  inet[0].click(); assert.equal(selectionBounds.length, 60, 'Highlight all segments of all 30 INET candidates');
-  search('AUX-I')[0].click(); assert.equal(selectionBounds.length, 26, 'Highlight all 13 AUX-I candidates');
+  inet[0].click();
+  assert.equal(selectionBounds.length, 2 * new Set(source.cables.filter(c => c.network === 'INET').flatMap(c => c.route_ids)).size, 'Highlight source-backed INET candidates');
+  search('AUX-I')[0].click();
+  const expectedAuxIds = new Set(source.cables.filter(c => c.network === 'AUX-I').flatMap(c => c.route_ids));
+  assert.equal(selectionBounds.length, 2 * expectedAuxIds.size, 'Highlight source-backed AUX-I candidates');
   const highlighted = markers.filter(m => m.options.color === '#ff00d4');
-  assert(highlighted.some(m => m._searchFeature.properties.id === 't77'));
-  assert(highlighted.some(m => m._searchFeature.properties.id === 't79'));
-  assert(highlighted.some(m => m._searchFeature.properties.id === 't80'));
-  assert(highlighted.some(m => m._searchFeature.properties.id === 't131'), 'LinkIQ resolves WV-00/WV-03 despite schematic error');
+  assert.deepEqual([...new Set(highlighted.map(m => m._searchFeature.properties.id))].sort(), [...expectedAuxIds].sort(), 'AUX-I highlights only its reviewed-candidate source IDs');
+  assert(expectedAuxIds.has('t136'), 'Corrected LinkIQ maps WV-07 to WV-09 candidate');
   assert(highlighted.every(m => !m.options.dashArray), 'Shared geometry does not prove historical alternatives');
   const detailText = elements['network-details'].children.flatMap(x => [x.textContent, ...(x.children || []).map(y=>y.textContent)]).join(' ');
-  assert.match(detailText, /ENDPOINT_CONFLICT/); assert.match(detailText, /Tester length/);
+  assert.match(detailText, /CAUTION: diagram devices and edges/); assert.match(detailText, /Tester length/);
   assert.equal(elements['network-details'].parentElement.open, true);
   const raw = search('NET CC to A4'); assert(raw.length >= 1);
   assert.match(raw[0].textContent, /GPX route \(source name\)/);
@@ -112,7 +114,8 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   assert.equal(activeIds().size, 0, 'Parent off restores all highlighted source tracks');
   assert([...controls.values()].every(c => !c.checked));
   assert(page.includes('<details id="network-picker"><summary>'), 'Network list has native keyboard-accessible disclosure');
-  assert(page.includes('V0.3.62-field-networks · Updated 2026-10-10'));
+  assert(page.includes('V0.3.62-field-networks · Source refreshed 2026-10-11'));
+  assert(!page.includes('temporary-workshop'), 'Obsolete October 8 marker must not be rendered');
   const styles = vm.runInNewContext('(' + page.match(/const trackStyles=(.*?);/)[1] + ')');
   assert.equal(styles.PRI.color, '#ff8b25');
   assert.equal(styles.HV.color, '#dd2424');

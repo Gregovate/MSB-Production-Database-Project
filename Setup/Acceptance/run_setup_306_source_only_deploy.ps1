@@ -1,11 +1,11 @@
-# Existing source-only wrapper reviewed for PR324/325; legacy filename retained.
+# Existing source-only wrapper reviewed for PR352; legacy filename retained.
 param([string]$Server = 'msbadmin@192.168.5.9')
 $ErrorActionPreference = 'Stop'
 $repo = (git rev-parse --show-toplevel).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Run from the MSB repository.' }
 if ((git -C $repo branch --show-current).Trim() -ne 'main') { throw 'Run from merged main.' }
 if (git -C $repo status --porcelain) { throw 'STOP: local worktree is not clean.' }
-$target = '1fdc3b0250c5f750648c217c9e36f3ac9ea59f9e'
+$target = '2bc88ae627420c2138268e39a26b4942a3248580'
 & git -C $repo merge-base --is-ancestor $target HEAD
 if ($LASTEXITCODE -ne 0) { throw 'STOP: main does not contain approved candidate.' }
 $runner = Join-Path $repo 'Setup\Acceptance\setup_306_source_only_deploy.py'
@@ -15,7 +15,7 @@ if ($LASTEXITCODE -ne 0) { throw 'STOP: committed installer is unavailable.' }
 $localHash = (git -C $repo hash-object --path=Setup/Acceptance/setup_306_source_only_deploy.py $runner).Trim()
 if ($LASTEXITCODE -ne 0 -or $trackedHash -ne $localHash) { throw 'STOP: installer differs from committed source.' }
 $local = [System.IO.File]::ReadAllText($runner, [System.Text.Encoding]::UTF8).Replace("`r", '').TrimEnd()
-$bundleName = 'msb-setup-325-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
+$bundleName = 'msb-setup-352-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
 $bundle = Join-Path ([System.IO.Path]::GetTempPath()) $bundleName
 $remote = "/tmp/$bundleName"
 try {
