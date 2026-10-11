@@ -20,9 +20,12 @@ the console wrapper that reports Inkscape's native exit status and diagnostics;
 `MSB_Inkscape_Export_Diagnostics.txt` is written even when the first SVG fails;
 inspect it before changing the SVG or repeating the run. Every attempt needs a
 fresh output directory because a failed run retains its partial staging.
-**Windows runtime validation is still required;** a prior archived `car-l.svg`
-rendered successfully on Linux Inkscape 1.4, which does not prove the current G:
-file renders on Windows.
+**Windows 32-icon staging run PASS (operator, October 11, 07:01):** the corrected
+exporter completed against current G: `Symbols\\Plain` and printed 32 RGBA PNGs,
+a manifest and staged ZIP under `Downloads\\MSB-ExpertGPS-PNGs-20261011-070134`.
+This confirms the real Windows execution gate, **not** byte/visual manifest review,
+legacy alias checks, `Symbols\\png` promotion, ExpertGPS install, or web release.
+Request the generated ZIP and diagnostic/manifest before proceeding.
 Consult the [GIS symbol maintenance contract](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/engineering/GIS_Symbol_Management.md)
 before replacing old-named PNG/BMP compatibility files. The previously supplied
 October 9 icon ZIP must not be mistaken for a fresh export from current Plain.

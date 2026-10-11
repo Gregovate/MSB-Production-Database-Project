@@ -274,7 +274,21 @@ After the fresh 06:19 current-Plain inventory cleared casing and SVG metadata is
 
 **Likely environment error / controlled repair:** the exporter previously launched `C:\Program Files\Inkscape\bin\inkscape.exe`, which on Windows is the GUI application. Inkscape provides `inkscape.com` as a Windows **console wrapper** to surface process exit status and CLI output; this is distinct from changing the SVG source. The revised script defaults to `C:\Program Files\Inkscape\bin\inkscape.com`, allows `-InkscapeExecutable` for installations elsewhere, and logs source/output paths, command-line exit status, stdout/stderr and exceptions to `MSB_Inkscape_Export_Diagnostics.txt` within a **new Downloads staging directory**. It still fails closed on nonzero code, missing output, invalid signature, non-RGBA and source-hash changes. PNG IHDR dimension extraction was parenthesized for clarity. A failed attempt leaves its staging folder intact for forensics; **do not reuse the same OutputDirectory**. No file was installed or published by the failed run.
 
-**Windows acceptance pending:** refresh operator laptop main, confirm `inkscape.com` exists and returns a version string, execute a newly staged PNG export, then inspect log, generated PNG count/dimensions/appearance and manifest. If it still fails, provide exit/status and diagnostic text verbatim from staging without editing the source. The prior failure cannot be declared fixed until a successful real Windows G:-drive run. Source SVGs remain untouched.
+**Windows runtime staging acceptance — OPERATOR PASS, October 11:** the operator retried the merged exporter on the laptop against the current Shared Drive Plain SVG folder and it **completed all 32 SVG→RGBA PNG conversions** without throwing. The actual ZIP/manifest still need to be independently inspected, including image appearance/geometry and intended addition of `star.svg`. This validates the Windows exporter operation on the actual local files; it does **not** validate installation, publication, cross-application compatibility, or visual/source-layer parity. Source SVGs were read rather than modified by the script.
+
+### Successful current-Plain PNG staging run — operator evidence, October 11 at 07:01 local
+
+Command on laptop `C:\lor\ImportExport\VSCode`: `.\Database\EngineeringTools\Export-ExpertGPSSymbols.ps1` (merged repaired version from PR #342). Operator supplied exact successful output:
+
+- `Exported 32 current Plain SVGs to RGBA PNGs.`
+- Source: `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Plain`
+- Staging: `C:\Users\greg\Downloads\MSB-ExpertGPS-PNGs-20261011-070134`
+- ZIP: `C:\Users\greg\Downloads\MSB-ExpertGPS-PNGs-20261011-070134\MSB_ExpertGPS_Current_Plain_Staged.zip`
+- Explicit end-of-run safeguards: `NOT installed to local ExpertGPS. NOT published to Synology.`
+
+**Outcome: Windows exporter staged-batch execution PASS, downstream acceptance NOT YET REVIEWED.** This success establishes the revised `inkscape.com` approach completes for the operator's current 32 Plain SVGs and built-in output/source checks returned successfully. It is not yet proof that all PNGs are visually faithful, all expected canvas sizes are correct, that the manifest and ZIP contain exactly the intended identities/bytes, or that the new `star.svg` should be in a published 32-icon set.
+
+**Next evidence:** obtain the exact staged ZIP and optionally `MSB_ExpertGPS_PNG_Inventory.csv` plus `MSB_Inkscape_Export_Diagnostics.txt` from the staging directory. Verify SHA-256 for each staged PNG against the manifest, 32 PNG names and sizes including rectangular canvases, copied unchanged `readme.txt` parent URL, transparent alpha and visible rendering; compare the layered LP-Combo exports with the approved master visibility configurations. Record release selection and alias mapping before copying into canonical `Symbols\png`, installed ExpertGPS `msb`, Synology/web symbols or draw.io. The next promotion should not remove legacy PNG/BMP aliases or rewrite GPX types.
 
 ## Approved 31-file Plain SVG / ExpertGPS PNG name-and-size baseline
 
