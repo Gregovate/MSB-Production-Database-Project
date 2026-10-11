@@ -170,6 +170,14 @@ A fresh PNG export from the corrected `Symbols\Plain` may proceed **only after**
 
 This operator correction **does not mean** PNG files were created, copied into the local ExpertGPS `msb` folder, published to Synology, or incorporated into draw.io's embedded artwork. No Production/browser release acceptance is inferred.
 
+### Post-correction report upload — exact baseline duplication, October 11
+
+After stating that all remaining priority artwork corrections were completed, the operator uploaded three files named `summary(1).txt`, `svg_and_raster_inventory(1).csv` and `review_required(1).csv`. A direct local byte-for-byte comparison against the preceding `summary.txt`, `svg_and_raster_inventory.csv` and `review_required.csv` demonstrated that **all three pairs are identical**: hashes exactly match the first 454-file report above (respectively `2f5568864965fac2ea5e2abdfe69d33b70ff54fa458d069d5883fba651e12701`, `12d63e6f74bfb6a8d0b5a95d1aeee873e7be38d455f2b6028966852ed26ebd13`, and `096f05d1f036db8a42f16cd7d421266bfbc07d5b8afeeec5f37f9ed952006994`).
+
+This is **not a verified post-correction inventory**. Possibilities include a duplicate upload of the original Downloads files or a later run with no changes observable under the inventory's scan roots. Do not claim the operator's corrections failed, or treat old flags as current defects. Neither conclusion follows from identical copies.
+
+For an unambiguous subsequent handoff, run the already-merged **read-only** `inventory_gis_symbols.py` with a **new, explicit, timestamped `--output` directory** on the laptop, observe the printed `Reports:` path, and upload a ZIP of that exact directory without selecting previous reports by filename. Record the absolute report directory and run time in the #171 evidence. Compare source-file hashes and actionable findings against the old baseline rather than relying on aggregate flag counts. No PNG generation, promotion or publication may be accepted from the duplicate report alone.
+
 ### Next acceptance step
 
 **Verify the operator-reported completed corrections** with a fresh read-only inventory and staged review of current Masters/Plain contents. Compare with the earlier priority list (including LP-Combo layered derivatives, outlet/power alias choice, LOR spelling, editor metadata, Splitter case, and Stage variants), rather than assuming old report flags are still present or that absence of flags proves visual equivalence. Preserve historical sources and compatibility aliases. After verified source approval, generate PNG derivatives to staging, review eventual `Symbols\png` promotion, and separately validate ExpertGPS, public SVG/PNG URLs, and embedded draw.io artwork. The previous inventory did not include all PCs, archives, web assets or every drawing icon.
