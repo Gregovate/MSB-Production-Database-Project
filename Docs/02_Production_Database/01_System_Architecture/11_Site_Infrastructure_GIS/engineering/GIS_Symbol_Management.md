@@ -113,6 +113,51 @@ Classification logic: parse SVG XML and count Inkscape/Sodipodi namespaced eleme
 
 The master promotion decision comes **after** this report: compare candidate original/editable SVGs and plain derivatives visually and by provenance, select a reviewed master per logical icon, stage missing masters rather than overwrite, export approved Plain copies, generate reviewed PNG derivatives into `Symbols\png`, and only then publish/test independent ExpertGPS, web-browser and draw.io copies.
 
+## First live laptop SVG inventory — 2026-10-11 05:08 local
+
+**Read-only inventory completed; source reconciliation and publishing remain pending.** Greg ran `python .\Database\EngineeringTools\inventory_gis_symbols.py` on laptop `C:\lor\ImportExport\VSCode`. It created `C:\Users\greg\Downloads\MSB-GIS-Symbol-Inventory-20261011-050843` and reported **454 files and 54 review flags**. Files were not copied, renamed, converted, deleted or published.
+
+Uploaded evidence files and SHA-256 digests (reports are conversation artifacts, not yet installed in this repo):
+
+| Report | SHA-256 |
+| --- | --- |
+| `summary.txt` | `2f5568864965fac2ea5e2abdfe69d33b70ff54fa458d069d5883fba651e12701` |
+| `svg_and_raster_inventory.csv` | `12d63e6f74bfb6a8d0b5a95d1aeee873e7be38d455f2b6028966852ed26ebd13` |
+| `review_required.csv` | `096f05d1f036db8a42f16cd7d421266bfbc07d5b8afeeec5f37f9ed952006994` |
+
+### Inventory categories
+
+| Category | Files | Interpretation |
+| --- | ---: | --- |
+| Chosen `Symbols\Masters` | 32 SVG | **All 32 retain Inkscape/Sodipodi editing metadata** |
+| Chosen `Symbols\Plain` | 31 SVG | 28 lack editing metadata (Plain-like); **3 retain it** |
+| Scattered under Park Drawings | 109 SVG | 72 editing-metadata, 35 Plain-like, **2 malformed XML** |
+| Current-user ExpertGPS | 282 PNG | `paddle` 124; `shapes` 103; `msb` 26; `MSB Icons` 17; `pushpin` 8; `Orienteering` 4 |
+| New canonical `Symbols\png` | **0 inventoried PNG/SVG/BMP** | Not synchronized; the scan does not speak to other extension types |
+
+The **54 review flags** break down to 41 multiple-SVG-raw-byte-revisions, 4 Masters without name-matched Plain, 3 Plain without name-matched Masters, 3 Plain retaining editor metadata, 2 invalid historical XML, and 1 mixed-case Plain filename. **41 hash differences are not 41 proven image defects**: native editable and exported Plain SVGs often have different XML bytes. The 28 normal name-matched Master/Plain pairs have matching dimensions but different file hashes; geometry/visual equality has **not** been verified. Filename/date/hash alone must not select authoritative artwork.
+
+### Priority source and identity review
+
+| Current files | Evidence and required disposition |
+| --- | --- |
+| `Plain\car-r.svg`, `Plain\lp.svg`, `Plain\manhole.svg` | Retain native editing metadata; compare with selected Masters, then make reviewed staged Plain exports |
+| `Plain\msb-splitter-Combiner.svg` | Noncanonical uppercase `C` triggered `Export-ExpertGPSSymbols.ps1` safety gate; investigate old ExpertGPS/web/draw.io URLs before approving canonical `msb-splitter-combiner.svg` |
+| `Masters\lor-reprater-inkscape.svg` vs `Plain\lor-repeater.svg` | Likely one icon with misspelled master name: both titles `LOR Repeater` and 24 × 24 dimensions. Verify content before adopting alias/migration |
+| `Plain\lp-network.svg` | No same-name master; the existing `Network\icon_library\LP_Network.svg` has **identical SVG bytes** to this Plain file but is not proven editable source |
+| `Plain\lp-outlet.svg` | No same-name master; existing `Network\icon_library\LP_Outlet.svg` is byte-identical Plain; compare with `Masters\lp-power-inscape.svg` (title `LP_Power`) rather than assuming they are the same design |
+| `Masters\lp-power-inscape.svg` | No same-name Plain derivative; source identity remains unresolved relative to `lp-outlet` |
+| `Masters\stage-32x32-inkscape.svg`, `Masters\star-inksccape.svg` | Extra master candidates without name-matched Plain; `star` has title `Stage`. Retain until possible older Stage variants are reviewed |
+| `2023 Upgrade\2023 Updates.svg` and `2023 Updates23-10-17.svg` | XML parser reports unbound namespace prefixes; outside current chosen canonical directories |
+
+The current installed ExpertGPS `msb` folder includes **26 older-named PNGs**, not a verified installed copy of the 31 approved lower-case icons. `MSB Icons` is a different 17-PNG collection. Do not delete either folder or rename references until older GPX/URL compatibility has been inventoried.
+
+### Next acceptance step
+
+Review actual SVG bytes and visually compare the chosen 32 Masters / 31 Plain files; resolve ambiguous light-pole artwork, LOR typo, three editor-containing Plain files, mixed-case Splitter and Stage alternatives. Preserve all originals. Only after approval, regenerate corrected Plain SVGs, PNG derivatives into staging and approved `Symbols\png`, then independently review ExpertGPS, public SVG/PNG URLs and draw.io library/schematic artwork. The scan did not access all PCs, all historical archives, actual website assets or every embedded drawing icon.
+
+**No PNG export, ExpertGPS/Synology installation, browser asset promotion, draw.io update, schema or Production change is authorized by this inventory.**
+
 ## draw.io symbol library and schematic independence — operator confirmation, October 11
 
 The operator's current paths are:
