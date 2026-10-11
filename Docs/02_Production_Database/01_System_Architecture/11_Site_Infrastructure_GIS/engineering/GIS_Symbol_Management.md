@@ -8,6 +8,27 @@
 | Related ownership | #230 reference editor/type registry; #88 Container movement/load evidence; #175 Task Cover Sheet consumer |
 | Subject | SVG masters, Plain SVG export, ExpertGPS PNG derivative, legacy symbol compatibility, web publication |
 
+## Routine operator workflow — controlled Icon Library Manager (October 11)
+
+The operator explicitly requested replacing the hours-long ad hoc sequence of PowerShell commands, manual ZIPs in Downloads, per-icon corrections and assistant handoffs with **one repeatable interface**. The canonical Shared Drive artwork, not an old Downloads ZIP or an arbitrary Git checkout, must drive every recurring PNG update. **Hard icon canvas rule: width ≤32 px and height ≤32 px independently**; smaller rectangular widths/heights are expected and valid, with no forced 32×32 resizing. Unitless SVG widths/heights mean CSS pixels; explicit `px` is accepted, but `mm`, `cm`, inches, percentages and larger canvases are rejected with the exact source filename and reason.
+
+### Implemented application and source roles
+
+- **Controlled executable/code authority:** [GIS Icon Library Manager](../../../../../Database/EngineeringTools/README-Icon-Library-Manager.md), with `Install-MSB-Icon-Library-Shortcut.cmd` (one-time Windows Desktop shortcut), `Launch-MSB-Icon-Library.cmd`, `icon_library_manager.pyw` and tested Python engine `sync_gis_icons.py` all maintained in this repository. The operator uses the Desktop shortcut thereafter, **not a remembered PowerShell invocation**. An existing Windows Python with Tkinter and Inkscape `inkscape.com` are prerequisites.
+- **Editable artwork:** operator maintains source Inkscape documents under canonical G: `Symbols\Masters`. The visible-layer settings for one-master/multiple-output cases (especially LP-Combo) are intentional source configuration; no algorithm is authorized to guess or hide those layers automatically.
+- **Approved exported artwork:** current G: `Symbols\Plain` is the only SVG input for PNG generation. User saves desired Plain SVG versions in Inkscape first. The manager does not modify Masters/Plain or assume timestamps alone prove matching source layers.
+- **Canonical PNG derivative:** G: `Symbols\png`. Every icon in the **current** Plain directory is discovered and processed; **no hard-coded count, old ZIP SHA or antenna filename exception**.
+- **Persistent audit and backups:** G: `Symbols\release-history\MSB-GIS-Icon-Sync-*` contains per-run SVG and PNG SHA-256 manifest, Inkscape output log, versioned ZIP, diagnostic error on failure, and receipts and backups when changing existing destination PNGs. This **replaces** manually exchanging and accumulating new ZIPs in Downloads.
+
+### Operation and safeguards
+
+1. **Check and preview icons**: validate the entire current Plain directory before attempting export; enforce names/case, XML validity, pixel units and independent 1–32 px limits, no Inkscape/Sodipodi metadata or external-linked assets in Plain copies. Invoke Inkscape console exporter for every current icon. Reject export failures, zero/missing output, invalid PNG signature/format or wrong dimensions; verify source SHA-256 did not change during export.
+2. Compare staged PNGs to current canonical `png` by exact case-sensitive filenames and SHA-256. Show **NEW**, **UPDATE (backup)**, **Unchanged** with a PNG preview in the GUI; abort on ambiguous case collisions. Unknown unrelated/legacy files remain untouched.
+3. **Save approved PNG changes** requires explicit operator confirmation: recheck full Plain source hashes and destination state, back up existing differing PNGs into the run release folder, create new files exclusively, then replace changed files after validated backups, verify each destination hash and write a per-file receipt as the run progresses. On a write interruption do **not** claim a completed release; retain backups and partial receipt.
+4. No automatic promotion to **installed ExpertGPS**, no rewritten GPX `type`/`sym`, no Synology/web `msb` / `msb-svg` publish, no browser map marker or draw.io XML/schematic mutation. These stay as independent governed compatibility and release operations under #171/#230.
+
+**Validation status:** 11 disposable Python tests PASS for rectangular canvas size, mm/121px rejection, external SVG links/editor metadata, dynamic filename set, source mutation, staging and byte-validation, missing/identical/changed destination PNGs, backups, and case collision. A separate real Linux Inkscape run produced and published a disposable 24×32 PNG successfully, and receipts were verified. **Windows Tkinter GUI / Inkscape console and G: operator acceptance have not yet been executed**: this is an implemented, repository-controlled candidate, not proof of workstation deployment or web publication. The former hard-pinned `Export-ExpertGPSSymbols.ps1` / `Promote-ApprovedGISPNGs.ps1` remain for history/forensics but **are not the recommended ongoing operator interface**.
+
 ## Authoritative directories and copy ownership
 
 These are **operator-confirmed existing locations**, not proposed folders:
