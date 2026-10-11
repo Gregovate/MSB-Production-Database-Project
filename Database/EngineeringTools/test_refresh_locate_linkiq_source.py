@@ -65,6 +65,8 @@ def example_data():
             "preferred_project": "MSB-Park-Network",
             "source_appearances": apps,
         })
+    tests[0]["source_appearances"][0].update(
+        notes="Repair verified", faceplate="FC-00", outlet_id="Outlet 2")
     source = {
         "sha256": "e"*64,
         "source_row_count": 684,
@@ -97,6 +99,9 @@ def test_regenerates_unique_uuid_evidence_with_old_schematic_marked_unreviewed(m
     assert result["devices"] == prior["devices"]
     assert result["cables"][0]["attributes"]["Cable_ID"] == "PANEL A5-00 TO A5-07/09 REG"
     assert result["cables"][0]["drawio_matches"] == []
+    assert result["cables"][0]["test"]["Notes"] == "Repair verified"
+    assert result["cables"][0]["test"]["Faceplate"] == "FC-00"
+    assert result["cables"][0]["test"]["OutletId"] == "Outlet 2"
     assert len(receipt["review_records"]) == 1
     assert receipt["review_records"][0]["reason"] == "NAME_REQUIRES_REVIEW"
 
