@@ -129,6 +129,43 @@ where routine source corrections must be entered by hand. Import, editor, GPX
 export and schematic update acceptance are separate demonstrable outcomes;
 none is declared implemented by this requirement record.
 
+### Ongoing LinkIQ intake — required for October 12 testing
+
+Greg confirmed October 11 at 16:28 America/Chicago that cable testing continues
+**tomorrow, October 12, 2026**. A repeatable input/import-and-reconciliation routine
+is therefore part of the immediate ingestion work, not a one-time migration
+follow-up. This date records the operational need; readiness is not yet proven.
+
+Required routine:
+- Select the updated LinkWare FLW export, read SQLite without modifying it, and
+  record its source fingerprint/import receipt. No tester writeback or manual
+  editing of the same corrections in other systems.
+- Import previously unseen test UUIDs, retain every source project appearance,
+  and reconcile them to existing maintained waypoint and physical-cable records.
+  Reimporting the same export must not duplicate tests or physical cables.
+- Preserve retests as separate test history for the same reviewed cable when
+  evidence establishes the association. A new test UUID is not automatically
+  a new physical cable. Preserve pass/fail, speed qualification, measurements,
+  original source labels and test timestamps.
+- Compare changed labels or payloads for already-known UUIDs with retained
+  evidence. Record source revisions/conflicts explicitly rather than overwrite
+  original test history or silently reassign an approved cable/waypoint link.
+- Automatically retain unambiguous existing reviewed mappings; present new,
+  unmatched or conflicting records for reconciliation. Do not rematch accepted
+  identities solely from changed text or proximity.
+- Show a usable import summary: new tests, already-known tests, changed evidence,
+  matched records, unresolved records and errors. Persist actor/time, source
+  revision, reconciliation decisions and restart/retry disposition.
+- Accepted evidence becomes available to maintained reference views and the
+  downstream map/schematic projection. Define which test is displayed when
+  several exist; retain access to all historical tests.
+
+Acceptance must use an initial source, repeat it, then import a later source
+containing a new test, a retest and a changed label/conflict. Prove no duplicate
+UUIDs/cables, no loss of reviewed identity links, preserved test history and a
+visible unresolved-review path. Implementation and tomorrow's operational
+readiness remain open until demonstrated under #122/#171/#230.
+
 ### Fresh attachment evidence — read-only inspection
 
 These are upload filenames, not new canonical Shared Drive names. Greg reports
