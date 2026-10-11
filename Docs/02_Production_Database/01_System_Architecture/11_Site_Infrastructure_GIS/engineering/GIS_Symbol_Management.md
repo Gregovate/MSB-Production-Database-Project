@@ -172,7 +172,7 @@ This operator correction **does not mean** PNG files were created, copied into t
 
 ### Next acceptance step
 
-Review actual SVG bytes and visually compare the chosen 32 Masters / 31 Plain files; record the confirmed LP-Combo layer-to-export lineage and review the redundant `lp-outlet`/`lp-power` naming against existing references, plus LOR typo, three editor-containing Plain files, mixed-case Splitter and Stage alternatives. Preserve all originals. Only after approval, regenerate corrected Plain SVGs, PNG derivatives into staging and approved `Symbols\png`, then independently review ExpertGPS, public SVG/PNG URLs and draw.io library/schematic artwork. The scan did not access all PCs, all historical archives, actual website assets or every embedded drawing icon.
+**Verify the operator-reported completed corrections** with a fresh read-only inventory and staged review of current Masters/Plain contents. Compare with the earlier priority list (including LP-Combo layered derivatives, outlet/power alias choice, LOR spelling, editor metadata, Splitter case, and Stage variants), rather than assuming old report flags are still present or that absence of flags proves visual equivalence. Preserve historical sources and compatibility aliases. After verified source approval, generate PNG derivatives to staging, review eventual `Symbols\png` promotion, and separately validate ExpertGPS, public SVG/PNG URLs, and embedded draw.io artwork. The previous inventory did not include all PCs, archives, web assets or every drawing icon.
 
 **No PNG export, ExpertGPS/Synology installation, browser asset promotion, draw.io update, schema or Production change is authorized by this inventory.**
 
