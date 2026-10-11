@@ -69,7 +69,9 @@ def rebuild_network_source(flw_path: Path, corrected_html: str, prior_source: di
             "TestStatus": preferred["test_status_code"],
             "Standard": preferred["test_standard"],
             "Deleted": preferred["deleted"],
-            "Notes": "", "Faceplate": "", "OutletId": "",
+            "Notes": preferred.get("notes") or "",
+            "Faceplate": preferred.get("faceplate") or "",
+            "OutletId": preferred.get("outlet_id") or "",
         }
         if deleted or identified is None:
             review.append({
