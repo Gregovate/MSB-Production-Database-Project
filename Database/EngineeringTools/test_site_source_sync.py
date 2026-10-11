@@ -192,3 +192,55 @@ def test_db_schematic_export_does_not_assign_speed_from_test_standard():
     assert fields['Cable_ID']=='WW-10 TO WW-15 REG'
     assert fields['Feet']=='140'
     assert 'Speed' not in fields
+
+from site_source_db import stage_expertgps, ingest_linkiq
+
+class RecordingCursor:
+    def __init__(self): self.executions=[]
+    def __enter__(self): return self
+    def __exit__(self,*args): pass
+    def execute(self, sql, args): self.executions.append((sql,args))
+
+class RecordingConnection:
+    def __init__(self): self.cursor_object=RecordingCursor(); self.transactions=0
+    def cursor(self): return self.cursor_object
+    def transaction(self):
+        class Tx:
+            def __init__(self, connection): self.connection=connection
+            def __enter__(self): self.connection.transactions+=1;return self
+            def __exit__(self,*args): pass
+        return Tx(self)
+
+
+def test_gpx_writer_stages_without_mutating_reference(sample_gpx):
+    conn=RecordingConnection()
+    result=stage_expertgps(conn,sample_gpx,'msb-reviewer')
+    assert result['waypoints']==1 and result['tracks']==1
+    assert conn.transactions==1
+    statements=[s for s,_ in conn.cursor_object.executions]
+    assert len(statements)==3
+    assert all('ON CONFLICT' in s for s in statements)
+    assert not any('UPDATE ref.site_waypoint' in s for s in statements)
+
+
+def test_linkiq_writer_keeps_one_test_and_two_project_appearances(tmp_path):
+    db=tmp_path/'import.flw';c=sqlite3.connect(db)
+    c.executescript('''CREATE TABLE Records (UUID TEXT, Hash INT, CableId TEXT, Project TEXT, Deleted TEXT, TimeSpan REAL, TestStatus INT, Standard TEXT, LengthF REAL, LengthM REAL, TesterType TEXT, Operator TEXT);
+CREATE TABLE RecordData (Hash INT, BinRec BLOB);''')
+    uid='68b4579b-2116-4140-8f24-e7a0d170b8be'
+    payload=json.dumps({'metadata':{'uuid':uid,'testId':'FCLP3 to FC-00 Reg'},'settings':{'nvp':0.68}}).encode()
+    c.executemany('INSERT INTO Records VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',[
+        (uid,1,'LPFC-03 TO FC-00 REG','MSB-Park-Network','NO',1,1,'1000BASE-T',120,36.5,'LinkIQ','Rich'),
+        (uid,2,'FCLP3 to FC-00 Reg','Park Network','NO',1,1,'1000BASE-T',120,36.5,'LinkIQ','Rich')])
+    c.executemany('INSERT INTO RecordData VALUES (?,?)',[(1,payload),(2,payload)])
+    c.commit();c.close(); original_sha=sha256(db)
+    conn=RecordingConnection()
+    result=ingest_linkiq(conn,db,'msb-reviewer')
+    assert conn.transactions==1
+    assert result['unique_uuid_tests']==1
+    assert result['project_appearance_duplicates']==1
+    statements=[s for s,_ in conn.cursor_object.executions]
+    assert len(statements)==4 # source + immutable UUID + 2 appearances
+    assert all('ON CONFLICT' in s for s in statements)
+    assert not any('UPDATE ops.linkiq_test' in s or 'UPDATE ref.site_cable' in s for s in statements)
+    assert sha256(db)==original_sha
