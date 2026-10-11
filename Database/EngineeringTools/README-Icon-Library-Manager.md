@@ -9,6 +9,21 @@
 3. **Double-click `Install-MSB-Icon-Library-Shortcut.cmd` ONCE.** This creates the desktop shortcut **MSB Icon Library Manager**. It does not copy assets, create PNGs or run any release.
 4. Use that desktop shortcut for every subsequent icon update. If you move the repository checkout, repeat the shortcut installer. The launcher uses the checked-out `.venv` Python or a discovered Windows Python installation with Tkinter. Inkscape must be installed with Windows `inkscape.com` available.
 
+## First Windows operator review — performance and source-freshness correction (October 11)
+
+The first real laptop preview successfully exposed an error: **`car-r.svg` was visually the same as `car-l.svg`**. Operator corrected the editable `car-r-inkscape.svg` master, but the PNG preview did not change because the tool intentionally renders **`Symbols\Plain\car-r.svg`, not editable `Masters`**. Saving a master does not update its Plain derivative. **In Inkscape, also Save a Copy as *Plain SVG* to `Symbols\Plain\car-r.svg`**, replacing the incorrect previous Plain file (choose correct layer visibility before saving). Rerun the preview: corrected `car-r.png` should be **UPDATE (backup)** if it differs from the canonical PNG, or **NEW** if the folder was not yet populated. This manual source-to-Plain decision is necessary for layered variants; the manager must not guess it silently.
+
+Other reported usability failures during first Windows run: Inkscape spawned a visible Windows command window once **per rendered icon**, full library rendering was slow, and a large modal listed eight `master newer than Plain` timestamps (antenna-r, car-r, LP Combo/network/outlet, MSB splitter/combiner, splitter, panel). **Freshness timestamps alone are not artwork-content differences**; LP Combo is intentionally one editable master driving multiple different layer-selected Plain exports.
+
+The follow-up manager correction:
+
+- Launch Inkscape with Windows `CREATE_NO_WINDOW` while retaining its stdout/stderr and exit status in `Inkscape-export.log`, so no console window flashes once per icon.
+- Cache **only validated stage PNGs** under canonical `Symbols\release-history`, with an atomic `MSB_GIS_Preview_Cache.json` index. For each icon, always reread and XML-validate the current Plain SVG; reuse its staged PNG only if **current exact Plain SVG SHA-256**, PNG SHA-256, and width/height match. Otherwise **re-render that icon only**. Corrupted or missing cache falls back to Inkscape; staging ZIP, readme, source hashes and canonical PNG destination checks remain unchanged. The index is an optimization, not approval or a source of authority.
+- Replace the auto-opening wall of timestamp warnings with a persistent **Source review (N)** control and on-demand scrollable detailed list. Warning count stays visible in the main window. The second approval confirmation still flags unresolved warnings if user actually saves changed PNGs.
+- A corrected **master only** does not invalidate cache (correct: Plain artwork remains unchanged); saving corrected **Plain** SVG changes its source hash and triggers fresh rendering. No silent Master→Plain propagation or LP Combo layer guessing.
+
+The existing `MSB Icon Library Manager` Desktop shortcut continues to work after updating the normal Git checkout to a version containing these changes. **First Windows follow-up validation still required**: run **Check and preview icons** twice (second unchanged run should be much quicker and without per-icon console windows), then save the corrected Plain `car-r.svg` and verify the next preview marks only intended icon changes; inspect warnings using **Source review**. Do not run the historical manual 32-icon ZIP promoter.
+
 ## Weekly workflow (no PowerShell, no Downloads)
 
 1. Edit an Inkscape file in `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Masters`; save the correct **Plain SVG** in sibling `Plain`. Layered masters (such as LP-Combo) can intentionally produce multiple Plain outputs: choose layer visibility inside Inkscape; **the manager does not guess or rewrite layer configurations**.
@@ -32,4 +47,4 @@
 
 **Recovery:** On a failure, open the **release history / logs** folder in the app and inspect `ERROR.txt` or `Inkscape-export.log`. Modified destination PNGs have copies in the run's `backups-before-replacement` folder, and the receipt lists every completed action. Do not discard them before identifying any partial promotion failure.
 
-**Validation:** `python -m unittest -v Database/EngineeringTools/test_sync_gis_icons.py` exercises 12 disposable tests (no G: writes). A real disposable Inkscape integration test of a 24×32 SVG was also executed outside Windows. Windows one-click launch and Google Shared Drive sync **require operator acceptance** before declaring fully deployed.
+**Validation:** `python -m unittest -v Database/EngineeringTools/test_sync_gis_icons.py` is the disposable suite; the original 12 checks passed in the earlier PR, and two additional cache-regression tests now cover unchanged PNG reuse and corrupted-cache fallback (**new tests require execution before runtime acceptance**). A real disposable Inkscape integration test of a 24×32 SVG was previously executed outside Windows. The operator has now confirmed Windows first launch and preview functionality, including discovery of an incorrect `car-r`; quiet/fast repeat scan and actual Google Shared Drive PNG synchronization **still require operator acceptance**.

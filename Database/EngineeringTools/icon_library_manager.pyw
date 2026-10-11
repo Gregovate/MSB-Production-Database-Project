@@ -13,7 +13,7 @@ import subprocess
 import sys
 import threading
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, scrolledtext
 from types import SimpleNamespace
 
 # .pyw and the engineering pipeline deliberately live in the same repo folder.
@@ -60,6 +60,9 @@ class Manager:
         self.scan_btn.pack(side="left", padx=(0, 8))
         self.apply_btn = ttk.Button(controls, text="2. Save approved PNG changes", command=self.confirm_apply, state="disabled")
         self.apply_btn.pack(side="left")
+        self.warnings_btn = ttk.Button(controls, text="Source review (0)",
+                                       command=self.show_warnings, state="disabled")
+        self.warnings_btn.pack(side="left", padx=(8, 0))
         ttk.Button(controls, text="Open Plain SVG folder", command=lambda: self.open_dir(self.plain)).pack(side="right")
         ttk.Button(controls, text="Open Masters", command=lambda: self.open_dir(PARK / "Masters")).pack(side="right", padx=8)
 
@@ -128,6 +131,7 @@ class Manager:
     def check(self):
         self.snapshot = self.staged = self.records = self.plan = None
         self.master_warnings = []
+        self.warnings_btn.configure(text="Source review (0)", state="disabled")
         self.tree.delete(*self.tree.get_children())
         self.status.set("Checking every SVG and rendering previews from the current Shared Drive Plain folder…")
         def work():
@@ -157,18 +161,40 @@ class Manager:
                 action = {"add":"NEW", "replace":"UPDATE (backup)", "identical":"Unchanged"}[groups[row["PNG"]]]
                 self.tree.insert("", "end", iid=row["PNG"], values=(row["PNG"],
                                  f'{row["Width_PX"]}×{row["Height_PX"]}', action))
-            self.status.set(f"Validated {len(self.records)} icons ({len(self.master_warnings)} master/Plain review warnings). "
-                            f"New {len(self.plan['add'])}; changes with backup {len(self.plan['replace'])}; "
-                            f"unchanged {len(self.plan['identical'])}. See the list below.")
+            self.status.set(f"Validated {len(self.records)} icons. New {len(self.plan['add'])}; "
+                            f"update with backup {len(self.plan['replace'])}; "
+                            f"unchanged {len(self.plan['identical'])}. "
+                            f"{len(self.master_warnings)} source timing warnings; click Source review to inspect.")
             self.set_busy(False)
             if self.master_warnings:
-                preview = "\n".join(self.master_warnings[:12])
-                if len(self.master_warnings) > 12:
-                    preview += f"\n... plus {len(self.master_warnings) - 12} additional review warnings"
-                messagebox.showwarning("Review Inkscape master/Plain freshness", preview +
-                    "\n\nThese may be metadata-only edits or layered variants. Confirm the exported Plain SVGs are current before approving PNG changes.")
-                (self.staged / "Master_Plain_Review_Warnings.txt").write_text("\n".join(self.master_warnings) + "\n", encoding="utf-8")
+                self.warnings_btn.configure(text=f"Source review ({len(self.master_warnings)})",
+                                            state="normal")
+                (self.staged / "Master_Plain_Review_Warnings.txt").write_text(
+                    "\n".join(self.master_warnings) + "\n", encoding="utf-8")
+            # Warnings remain visible in the main window; no modal popup interrupts scan.
         self.async_operation(work, done)
+
+    def show_warnings(self):
+        if not self.master_warnings:
+            return
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Review master → Plain SVG export timestamps")
+        dialog.geometry("820x450")
+        dialog.minsize(600, 340)
+        dialog.transient(self.root)
+        ttk.Label(dialog, text=f"{len(self.master_warnings)} possible stale Plain SVGs",
+                  padding=(15, 12, 15, 3), font=("Segoe UI", 13, "bold")).pack(anchor="w")
+        ttk.Label(dialog, wraplength=780, padding=(15, 0, 15, 12),
+                  text=("These are timestamp warnings, not confirmed artwork errors. "
+                        "When you save a corrected editable master, you must also save "
+                        "the corresponding Plain SVG. Layered masters may legitimately "
+                        "have several Plain variants. Review affected icons in the preview "
+                        "before confirming PNG changes.")).pack(fill="x")
+        body = scrolledtext.ScrolledText(dialog, wrap="word", font=("Segoe UI", 10))
+        body.pack(fill="both", expand=True, padx=15, pady=5)
+        body.insert("1.0", "\n\n".join(self.master_warnings))
+        body.configure(state="disabled")
+        ttk.Button(dialog, text="Close", command=dialog.destroy).pack(anchor="e", padx=16, pady=12)
 
     def show_preview(self, _event=None):
         selection = self.tree.selection()

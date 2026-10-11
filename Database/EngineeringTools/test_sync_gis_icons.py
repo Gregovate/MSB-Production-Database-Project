@@ -127,6 +127,47 @@ class ProcessTests(unittest.TestCase):
         after={(p.name,sha_file(p)) for p in self.dest.iterdir()}
         self.assertEqual(len(old & after),2)
 
+    def test_hash_checked_cache_skips_unchanged_icons(self):
+        rendered = []
+        def count_render(args, **kwargs):
+            rendered.append(Path(args[1]).name)
+            return self.fake_render(args, **kwargs)
+        with patch('sync_gis_icons.choose_inkscape', return_value='fake-inkscape'), \
+             patch('sync_gis_icons.subprocess.run', count_render):
+            first = run(self.args)
+            self.assertEqual(first['source_svg_count'], 3)
+            self.assertEqual(len(rendered), 3)
+
+            # Repeat check / preview: hashes unchanged, no Inkscape launches.
+            second = run(self.args)
+            self.assertEqual(second['source_svg_count'], 3)
+            self.assertEqual(len(rendered), 3)
+            self.assertIn('CACHE HIT', (Path(second['staging_zip']).parent /
+                                         'Inkscape-export.log').read_text())
+
+            # Master-only edits do not affect Plain; saving corrected Plain does.
+            (self.plain/'antenna-r.svg').write_bytes(svg(20, 28))
+            third = run(self.args)
+            self.assertEqual(third['source_svg_count'], 3)
+            self.assertEqual(rendered[-1], 'antenna-r.svg')
+            self.assertEqual(len(rendered), 4)
+            self.assertEqual(third['plan'], {'add':3,'replace':0,'identical':0})
+
+    def test_corrupted_cache_is_not_trusted(self):
+        rendered = []
+        def count_render(args, **kwargs):
+            rendered.append(Path(args[1]).name)
+            return self.fake_render(args, **kwargs)
+        with patch('sync_gis_icons.choose_inkscape', return_value='fake-inkscape'), \
+             patch('sync_gis_icons.subprocess.run', count_render):
+            first = run(self.args)
+            old_stage = Path(first['staging_zip']).parent
+            (old_stage/'msb'/'lp.png').write_bytes(b'corrupt PNG')
+            second = run(self.args)
+            self.assertEqual(second['source_svg_count'], 3)
+            self.assertEqual(rendered.count('lp.svg'), 2)
+            self.assertEqual(len(rendered), 4)
+
     def test_stale_master_and_layered_family_get_review_warning(self):
         masters = self.root / "Masters"
         masters.mkdir()
