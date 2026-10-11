@@ -8,6 +8,9 @@ if not defined PYTHONW if exist "%LOCALAPPDATA%\Programs\Python\Python313\python
 if not defined PYTHONW if exist "%LOCALAPPDATA%\Programs\Python\Python312\pythonw.exe" set "PYTHONW=%LOCALAPPDATA%\Programs\Python\Python312\pythonw.exe"
 if not defined PYTHONW if exist "%LOCALAPPDATA%\Programs\Python\Python311\pythonw.exe" set "PYTHONW=%LOCALAPPDATA%\Programs\Python\Python311\pythonw.exe"
 if not defined PYTHONW (
+  for %%I in (pythonw.exe) do if not defined PYTHONW set "PYTHONW=%%~$PATH:I"
+)
+if not defined PYTHONW (
   echo Python is not configured for the Icon Library Manager.
   echo Use a Python installation with Tkinter, then configure this launch shortcut.
   pause
