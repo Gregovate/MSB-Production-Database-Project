@@ -122,3 +122,36 @@ Preserve it; reconcile its exact implementation with Server Management before
 launch. Do not invent a replacement preview or require a repeated dump simply
 for source-map inspection. Source-only map deployment and database migration have
 different runbook gates; neither has been executed by this continuation.
+
+
+## Route matching identity repair — October 11 continuation
+
+Read-only inspection of the supplied sources confirmed 233 waypoint labels,
+181 tracks, and 372 structured cable objects / 60 node objects in the drawing.
+Thirteen panel waypoints expose more than one lookup spelling. The geometry
+matcher previously ranked each spelling as a separate waypoint, so one physical
+point could fail its own ambiguity check. The candidate now collapses aliases by
+existing waypoint ID only, normalizes cable lookup endpoints through that mapping,
+and retains ambiguity between genuinely distinct nearby/coincident waypoint IDs.
+Conflicting coordinates for the same ID fail closed. Input records are not changed.
+
+Against the exact previously approved GPX/FLW bytes and released map geometry,
+this yields **60 candidate routes rather than 32**, retaining all prior candidates;
+121 routes remain unresolved. Among the additional candidates are t131
+`NET WV-00 to WV-03`, t177 `NET FC-00A to Panel 09`, t178
+`NET Panel-09 to FC-00A`, and Area 4 links t77/t78/t80.
+Some additional candidate geometries are HV or unclassified tracks. This does
+not prove they carry tested network cables; preserve their classification and
+uncertainty, never rename/reclassify or certify them from matching proximity.
+No source GPX/FLW/draw.io or Production snapshot was changed by this analysis.
+
+Validation: four new identity/ambiguity/no-mutation tests; focused route/map tests
+13 PASS; combined source/import policy/extraction suites 31 PASS, one existing
+Linux-fixture-path skip. Actual attached source regeneration was independently
+executed read-only, conserving all 476 test UUIDs and 684 appearances. These are
+engineering results, not Windows/runbook/browser/Production acceptance.
+
+GPX track labels visibly retain historical names such as `FE-09`, `A5R`, and
+`Panel FE`; this confirms text drift but not the intended physical correction.
+The next review must distinguish label aliases, endpoint assignments, surveyed
+trace edits, and shared routes. Do not bulk-replace strings or move coordinates.
