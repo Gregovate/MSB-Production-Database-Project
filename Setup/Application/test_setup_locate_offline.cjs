@@ -57,6 +57,11 @@ const read = name => fs.readFileSync(path.join(__dirname, name), 'utf8');
     'https://webassets.sheboyganlights.org/images/symbols/msb-svg/ip-camera.svg');
   assert.equal(window.msbReferenceSymbols.urlFor('LP-Power'),
     'https://webassets.sheboyganlights.org/images/symbols/msb-svg/lp-outlet.svg');
+  assert.equal(window.msbReferenceSymbols.urlFor('Flag'),
+    'https://webassets.sheboyganlights.org/images/symbols/msb-svg/pole-yellow.svg',
+    'GPX Flag/Display Anchor markers use the approved yellow pole icon');
+  assert(feats.some(f => f.geometry.type === 'Point' && f.properties.type === 'Flag'),
+    'Flag waypoint fixtures remain in accepted source');
   assert.equal(window.msbReferenceSymbols.urlFor('Tower'),null,
     'Unreviewed artwork must not be guessed');
   const marker = window.msbReferenceSymbols.marker([43.778,-87.743],'Camera');
