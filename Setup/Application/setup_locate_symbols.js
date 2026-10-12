@@ -23,6 +23,7 @@
     'T-Post': 't-post.svg',
     'Transformer': 'transformer.svg',
     'Stage': 'stage.svg',
+    'Flag': 'pole-yellow.svg',
     'Controller': 'lor-controller.svg'
   });
   const sizes = new Map();
