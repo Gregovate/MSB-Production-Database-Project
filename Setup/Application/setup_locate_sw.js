@@ -88,9 +88,9 @@ async function cacheOrNetwork(request, fallback) {
 async function prepare(maxZoom, snapshot, port) {
   const tileUrls = tiles(maxZoom);
   const allUrls = [...SHELL, ...SYMBOLS, ...tileUrls];
-  const cacheName = PREFIX + VERSION + '-' + Date.now();
+  const cacheName = PREFIX + VERSION + '-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
   const stage = await caches.open(cacheName);
-  let count = 0, next = 0, failed = null;
+  let count = 0, next = 0, failed = null, promoted = false;
   const tell = message => { try { port.postMessage(message); } catch (_) {} };
   try {
     const workers = Array.from({length: 6}, async () => {
@@ -151,12 +151,15 @@ async function prepare(maxZoom, snapshot, port) {
     const meta = await caches.open(META);
     await meta.put(STATE,new Response(JSON.stringify(data),
       {headers:{'Content-Type':'application/json'}}));
+    promoted = true;
     tell({event:'complete',data});
-    // Delete older completed packages only AFTER the new pointer is durable.
-    for (const key of await caches.keys())
-      if (key.startsWith(PREFIX) && key !== cacheName) await caches.delete(key);
+    // Cleanup is best-effort; never delete a newly promoted active package.
+    try {
+      for (const key of await caches.keys())
+        if (key.startsWith(PREFIX) && key !== cacheName) await caches.delete(key);
+    } catch (_) { /* Active package remains valid and recorded. */ }
   } catch (error) {
-    await caches.delete(cacheName);
+    if (!promoted) await caches.delete(cacheName);
     tell({event:'error',message:String(error.message || error)});
   }
 }
