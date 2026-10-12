@@ -60,6 +60,62 @@ def test_gpx_refuses_conflicting_source(sample_gpx, tmp_path):
     assert not (tmp_path / 'new.gpx').exists()
 
 
+def test_reviewed_lp08_cl00_track_name_roundtrips_without_moving_survey_points(sample_gpx, tmp_path):
+    """Track 103 in the actual map is source evidence, not a cable count."""
+    source = tmp_path / 'two-tracks.gpx'
+    old = 'NET FT-SS Reg, Spare, Aux-A, Aux-B, '
+    source.write_text(sample_gpx.read_text(encoding='utf-8').replace(
+        '</gpx>', '''<trk><name>NET FT-SS Reg, Spare, Aux-A, Aux-B, </name>
+        <type>Network</type><desc>TBD 7 Cables</desc><trkseg>
+        <trkpt lat="43.77693051" lon="-87.74624455"/>
+        <trkpt lat="43.77678431" lon="-87.74701645"/>
+        </trkseg></trk></gpx>'''), encoding='utf-8')
+    before = extract_gpx(source)
+    source_hash = sha256(source)
+    out = tmp_path / 'maintained.gpx'
+    receipt = gpx_roundtrip(source, {
+        'base_source_sha256': source_hash,
+        'approved_edits': [],
+        'approved_track_edits': [{
+            'source_ordinal': 2, 'previous_track_name': old,
+            'track_name': 'NET LP-08 to CL-00',
+        }],
+    }, out)
+    after = extract_gpx(out)
+    assert receipt['updated_tracks'] == 1
+    assert receipt['updated'] == 0
+    assert before['tracks'][1]['name'] == old
+    assert after['tracks'][1]['name'] == 'NET LP-08 to CL-00'
+    assert after['tracks'][0] == before['tracks'][0]
+    assert after['tracks'][1]['segments'] == before['tracks'][1]['segments']
+    assert after['tracks'][1]['description'] == 'TBD 7 Cables'
+    assert after['tracks'][1]['type'] == 'Network'
+    assert source_hash == sha256(source)
+    assert 'TBD 7 Cables' in out.read_text(encoding='utf-8')
+    assert 'NET FT-SS Reg, Spare, Aux-A, Aux-B, ' in source.read_text(encoding='utf-8')
+
+
+@pytest.mark.parametrize('ordinal,prior', [
+    (1, 'NET FT-SS Reg, Spare, Aux-A, Aux-B, '),
+    (2, 'NET FT-SS Reg, Spare, Aux-A, Aux-B, '),
+])
+def test_wrong_track_binding_fails_without_writing_any_output(sample_gpx, tmp_path, ordinal, prior):
+    # The one-track fixture is NET Example, so both old-name/ordinal
+    # mismatches must be rejected without writing any GPX.
+    result = tmp_path / f'bad-track-{ordinal}.gpx'
+    with pytest.raises(ValueError, match='source ordinal|name changed'):
+        gpx_roundtrip(sample_gpx, {
+            'base_source_sha256': sha256(sample_gpx),
+            'approved_edits': [],
+            'approved_track_edits': [{
+                'source_ordinal': ordinal,
+                'previous_track_name': prior,
+                'track_name': 'NET LP-08 to CL-00',
+            }],
+        }, result)
+    assert not result.exists()
+
+
 def test_gpx_duplicate_labels_fail(tmp_path, sample_gpx):
     content = sample_gpx.read_text()
     # Use two identically-labelled points; never collapse co-located equipment.
@@ -176,14 +232,20 @@ def test_three_way_conflicting_rename_fails_closed():
 from site_source_db import export_waypoint_projection, export_schematic_projection
 
 class FakeCursor:
-    def __init__(self, rows): self.rows=rows; self.statements=[]
+    def __init__(self, rows, track_rows=None):
+        self.rows=rows
+        self.track_rows=track_rows or []
+        self.statements=[]
+        self.reads=0
     def __enter__(self): return self
     def __exit__(self,*args): pass
     def execute(self, statement,params): self.statements.append((statement,params))
-    def fetchall(self): return self.rows
+    def fetchall(self):
+        self.reads+=1
+        return self.rows if self.reads==1 else self.track_rows
 
 class FakeConnection:
-    def __init__(self, rows): self.cur=FakeCursor(rows)
+    def __init__(self, rows, track_rows=None): self.cur=FakeCursor(rows, track_rows)
     def cursor(self): return self.cur
 
 def test_db_gpx_projection_does_not_reserialize_unchanged_coordinates():
@@ -195,6 +257,29 @@ def test_db_gpx_projection_does_not_reserialize_unchanged_coordinates():
     assert len(result['approved_edits'])==1
     assert result['approved_edits'][0]['map_label']=='WW-15-REVIEWED'
     assert 'latitude' not in result['approved_edits'][0]
+
+def test_db_track_name_projection_uses_original_ordinal_and_preserves_source_text():
+    baseline='9'*64
+    old='NET FT-SS Reg, Spare, Aux-A, Aux-B, '
+    db=FakeConnection([], track_rows=[(102, 'NET same label', 'NET same label'),
+                                      (103, old, 'NET LP-08 to CL-00')])
+    result=export_waypoint_projection(db,baseline)
+    assert result['approved_edits'] == []
+    assert result['approved_track_edits'] == [{
+        'source_ordinal': 103,
+        'previous_track_name': old,
+        'track_name': 'NET LP-08 to CL-00',
+    }]
+    assert len(db.cur.statements)==2
+    assert db.cur.statements[1][1]==(baseline,)
+    assert 'ops.site_source_observation' in db.cur.statements[1][0]
+
+
+def test_db_track_export_refuses_missing_original_observation():
+    db=FakeConnection([],track_rows=[(103,None,'NET LP-08 to CL-00')])
+    with pytest.raises(ValueError, match='lacks its original GPX source observation'):
+        export_waypoint_projection(db,'9'*64)
+
 
 def test_db_schematic_export_does_not_assign_speed_from_test_standard():
     conn=FakeConnection([('Cable_WV-10','WW-10','WW-15','REG',None,140,'1000BASE-T')])
