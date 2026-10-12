@@ -5,6 +5,8 @@ on:
     paths:
       - "Database/EngineeringTools/**gis**"
       - "Database/EngineeringTools/icon_library_manager.pyw"
+      - "Database/EngineeringTools/gis_workstation_profile.py"
+      - "Database/EngineeringTools/test_gis_workstation_profile.py"
       - "Database/EngineeringTools/Install-MSB-Icon-Library-Shortcut.cmd"
       - "Database/EngineeringTools/assets/**"
       - ".github/workflows/gis-icon-library-tests.yml"
@@ -37,9 +39,12 @@ jobs:
             Database/EngineeringTools/sync_gis_icons.py \
             Database/EngineeringTools/publish_gis_svgs.py \
             Database/EngineeringTools/distribute_gis_pngs.py \
-            Database/EngineeringTools/icon_library_manager.pyw
+            Database/EngineeringTools/icon_library_manager.pyw \
+            Database/EngineeringTools/gis_workstation_profile.py \
+            Database/EngineeringTools/test_gis_workstation_profile.py
       - name: Run isolated safety tests (no real G:/webassets/TopoGrafix)
         run: |
           python -m unittest discover -s Database/EngineeringTools -p 'test_sync_gis_icons.py' -v
           python -m unittest discover -s Database/EngineeringTools -p 'test_publish_gis_svgs.py' -v
           python -m unittest discover -s Database/EngineeringTools -p 'test_distribute_gis_pngs.py' -v
+          python -m unittest discover -s Database/EngineeringTools -p 'test_gis_workstation_profile.py' -v
