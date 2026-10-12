@@ -21,7 +21,7 @@ Keep approved symbol artwork and each Windows ExpertGPS user's local PNG library
 
 - Have the Desktop **MSB Icon Library Manager** shortcut installed and updated; see [Install or Update](Install_or_Update_MSB_Icon_Library_Manager.md).
 - The approved files are on the Google Shared Drive under `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols`.
-- **ExpertGPS is not required for Step 1 or Step 2.** The optional staged ZIP uses its approved canonical URL metadata and does not read or write the current user's TopoGrafix folder. **Step 5** is the only action that requires the user's existing ExpertGPS `msb/readme.txt`.
+- **ExpertGPS is not required for Step 1 or Step 2.** The optional staged ZIP uses its approved canonical URL metadata and does not read or write the current user's TopoGrafix folder. **Step 5** installs reviewed PNGs for this Windows user. If `msb` or its readme is missing, the manager offers to create it during the confirmed installation. No manual creation is required.
 - Icon editing requires permission to the source folders. Updating the canonical PNG folder requires appropriate Shared Drive write permission. Local installation affects the **current Windows user only**.
 
 ## Review or Update Artwork
@@ -36,11 +36,11 @@ Keep approved symbol artwork and each Windows ExpertGPS user's local PNG library
 
 1. **Close ExpertGPS** before installing files.
 2. In the validated manager session, select **5. Install PNGs for this ExpertGPS user**.
-3. Review the intended **NEW**, **UPDATE (backup)** and **Unchanged** comparison for your existing `%LOCALAPPDATA%\TopoGrafix\Symbols\msb` folder. Approve only the reviewed changes.
+3. Review the **NEW**, **UPDATE (backup)** and **Unchanged** list. If the current user has no `msb` folder, the manager explicitly offers to create it, add the approved `readme.txt` and install **all** current canonical PNGs after your confirmation. If the folder already exists, it preserves unrelated symbols and a valid readme; it can add a missing readme. **Do not approve unexpected destinations or replacements.**
 4. Wait for the result. Confirm that the destination files match the canonical hashes, then reopen ExpertGPS and visually inspect both a new icon and an existing historical waypoint.
 5. When GPX symbol compatibility is material, make a **test GPX export** and check its symbol URL/filename on an authorized computer; file hash equality alone does not verify GPX/ExpertGPS behavior.
 
-The existing `msb\readme.txt` first line must remain `https://webassets.sheboyganlights.org/images/symbols/`. It is a custom-symbol **URL parent** used by ExpertGPS, **not** a file uploader. Never add another `msb/` to that line, rename the `msb` folder to `MSB Icons`, or replace old PNG/BMP filenames without reviewed backward-compatibility work.
+The approved `msb\readme.txt` first line must remain `https://webassets.sheboyganlights.org/images/symbols/`. It is a custom-symbol **URL parent** used by ExpertGPS, **not** a file uploader. Never add another `msb/` to that line, rename the `msb` folder to `MSB Icons`, or replace old PNG/BMP filenames without reviewed backward-compatibility work.
 
 ## Expected Result
 
@@ -48,7 +48,9 @@ The approved Plain SVGs remain unchanged unless you intentionally edited and re-
 
 ## If Something Is Wrong
 
-- **Missing local `msb` folder or `readme.txt`:** installation stops. Do not create guessed URLs or replace it with another user's readme; ask the administrator to recover/provision the intended local folder.
+- **Missing local `msb` folder or `readme.txt`:** this is a supported first-use condition on a PC with ExpertGPS's `TopoGrafix\Symbols` directory. Step 5 offers to create the missing folder/readme from the controlled source **after you review and approve**. Do not create it manually or borrow another Windows user's configuration.
+- **Missing `TopoGrafix\Symbols` parent folder:** stop and open/install ExpertGPS for the current Windows user before retrying; the Icon Manager must not guess an ExpertGPS installation.
+- **Existing readme has the wrong URL:** stop for administrator review; the manager does not overwrite a mismatching readme.
 - **Unapproved source filename, incorrect canvas, missing image, or unexpected replacement:** stop, correct/review the approved source in Inkscape, then preview again.
 - **Web PNG action 4 reports `ip-camera.png` case collision:** that is a separately known web compatibility block, *not* a failure of local ExpertGPS update or web SVG publishing. Do not rename `IP-camera.png`.
 - **A file is current but ExpertGPS still shows an incorrect symbol:** record the source type, local filename and exported URL for #171 review. Do not change GPX identities just to make an icon appear.
