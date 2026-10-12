@@ -120,6 +120,17 @@
     });
   }
   function currentMessage(data) {
+    // Offline packages intentionally cover a bounded zoom range. When disconnected,
+    // Leaflet must scale the highest cached native tiles instead of asking for
+    // uncached z21 imagery and painting a blank map at higher zoom.
+    const aerial = window.MSBParkAerialLayer;
+    if (aerial) {
+      const nativeZoom = !navigator.onLine && data ? data.maxZoom : 21;
+      if (aerial.options.maxNativeZoom !== nativeZoom) {
+        aerial.options.maxNativeZoom = nativeZoom;
+        aerial.redraw();
+      }
+    }
     status.textContent = (navigator.onLine ? 'Connected · ' : 'OFFLINE / READ-ONLY · ')
       + describe(data) + (!navigator.onLine ?
       ' Live assets and editing unavailable. Reference routes do not certify digging clearance.' : '');
