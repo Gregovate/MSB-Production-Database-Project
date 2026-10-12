@@ -14,6 +14,8 @@ This subsystem documents permanent physical-site identities, location history, p
 
 **New cross-PC GIS handoff:** ExpertGPS also stores scanned-map calibration and coordinate control points in current-user registry settings (`Common\Maps`), independently of the map image. The same 2019 orthophoto can therefore display at different positions across laptop/Show/Office PCs. The vendor supports exporting portable `.map` calibration files, but an MSB cross-PC transfer has **not** been validated. See the [controlled GIS Symbol Management contract](engineering/GIS_Symbol_Management.md); no unreviewed registry import or map recalibration is authorized by this finding.
 
+**MANDATORY workstation synchronization (new #171 acceptance gate):** All Windows PCs/accounts that edit MSB GPX or scanned maps must have the **same approved, versioned ExpertGPS Type/Map Marker settings, current-user symbol assets, and scanned-map calibration** before any two-way edits. Different PC local `SymbolToType` settings must never silently reinterpret GPX waypoint Types. A governed compare/install/recovery workflow and multi-PC acceptance are **NOT implemented** yet; refer to the [CURRENT GIS engineering contract](engineering/GIS_Symbol_Management.md) for the controlling requirements. #319's owning workstream must reconcile this source/configuration contract before enabling GPX↔PostGIS round-trips. Read-only map consumption remains distinct from reference editing.
+
 **Current engineering direction:** #171 GIS/source and #230 maintained-reference work under #122 use **one governed PostgreSQL/PostGIS reference authority**. The dedicated #230 reference editor owns protected reference maintenance; the existing Setup and Field Wiring maps retain their separate use and consume accepted references. Existing #88 seasonal movements are not permanent surveyed waypoints. The ongoing #319 branch contains unaccepted editor/offline changes; its owning team must reconcile source-map work and keep these controlling documents current **before** final acceptance/merge. Historical requirements below are preserved for context; use the latest controlled engineering documents when they differ.
 
 ## Required reference-data editing authority — #171 / #230
@@ -25,8 +27,10 @@ coordinated with [#171 GIS/infrastructure](https://github.com/Gregovate/MSB-Prod
 under commanding [#122 Setup](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122).
 
 - Maintain permanent waypoints, names/aliases, reference geometry, tracks,
-  physical cables/endpoints, networks, switches/devices, reference classifications
-  and type/icon mappings in governed `ref` tables and relationships. Reuse existing
+  physical cables/endpoints, networks, switches/devices and reference classifications
+  in governed `ref` tables and relationships. Consume approved ExpertGPS source
+  Type/Map Marker provenance through an accepted synchronization contract; do not
+  introduce an independently maintained competing Type/icon mapping. Reuse existing
   identities and objects; exact table names/DDL follow current-schema inventory.
 - #171 owns spatial/source reconciliation and coordinate rules. #230 owns the
   governed reference-maintenance interface, including map-based reference edits.
