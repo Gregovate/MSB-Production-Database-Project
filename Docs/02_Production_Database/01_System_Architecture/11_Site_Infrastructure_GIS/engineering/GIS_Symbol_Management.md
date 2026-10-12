@@ -74,7 +74,7 @@ No action 1/2/5 silently invokes actions 3/4. The Desktop tool is a **repository
 
 **Windows shortcut separate:** The checked-in `assets/MSB-Icon-Library-Manager.ico` is the Desktop shortcut icon; `Launch-MSB-Icon-Library.cmd` itself contains no embedded Windows icon. After updating Git, rerun `Install-MSB-Icon-Library-Shortcut.cmd` once to refresh its `IconLocation`. Copying `msb_icon_library_manager.png` to the `EngineeringTools` root or choosing the CMD as an icon source is not part of the installation. Operator screenshot shows the custom icon in the running Tk application title bar, **not yet proof of the refreshed Desktop shortcut**.
 
-**Acceptance:** isolated complete-cache/no-Inkscape PASS with `choose_inkscape` explicitly forbidden; partial-cache/miss requiring an available CLI; stale SVG hash refusing cache and failing specifically for missing renderer; no writes to any live destination on failed scan; preserve existing Step 5 first-run tests and real Command Center trial. Production, web, GPX, PostGIS and G: source artwork remain untouched.
+**Acceptance:** isolated complete-cache/no-Inkscape PASS with `choose_inkscape` explicitly forbidden; partial-cache/miss requiring an available CLI; stale SVG hash refusing cache and failing specifically for missing renderer; no writes to any live destination on failed scan; preserve existing Step 5 first-run tests and real Command Center trial. **PR #367 isolated CI run #38278598703 PASS: 23 core + 11 web SVG + 16 PNG distribution = 50 tests, plus Python syntax.** No actual Windows scaling or Step-1 G: cache acceptance is claimed before operator review. Production, web, GPX, PostGIS and G: source artwork remain untouched.
 
 ### Authorization is a hard filesystem boundary
 
