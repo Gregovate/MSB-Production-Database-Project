@@ -15,7 +15,7 @@ import threading
 import webbrowser
 import queue
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
+from tkinter import ttk, messagebox, scrolledtext, filedialog, simpledialog
 from types import SimpleNamespace
 
 # .pyw and the engineering pipeline deliberately live in the same repo folder.
@@ -27,6 +27,7 @@ from sync_gis_icons import (
 from publish_gis_svgs import WEB_SVG, PUBLIC_SVG_BASE, web_svg_preflight, publish_web_svgs
 from distribute_gis_pngs import (WEB_PNG, PUBLIC_PNG_BASE, local_expertgps_folder,
                                  png_distribution_preflight, distribute_pngs)
+from gis_workstation_profile import compare_current_user
 
 BACKGROUND = "#f5f8fb"
 
@@ -155,6 +156,19 @@ class Manager:
             command=lambda: self.check_png_distribution("expertgps"), state="disabled")
         self.local_png_btn.pack(side="left")
 
+        # #171 first phase: compare only. No HKCU write, GPX modification, or
+        # installation callback exists for this separate workstation operation.
+        profile_controls = ttk.Frame(root, padding=(20, 0, 20, 7))
+        profile_controls.pack(fill="x")
+        self.profile_check_btn = ttk.Button(
+            profile_controls, text="6. Compare GIS workstation release (READ ONLY)",
+            command=self.check_workstation)
+        self.profile_check_btn.pack(side="left")
+        self.profile_release_status = tk.StringVar(
+            value="GIS workstation configuration: Not verified — no administrator-pinned release selected")
+        ttk.Label(root, textvariable=self.profile_release_status,
+                  padding=(20, 0, 20, 7), wraplength=870).pack(fill="x")
+
         footer = ttk.Frame(root, padding=(20, 0, 20, 15))
         footer.pack(fill="x")
         ttk.Button(footer, text="Open release history / logs", command=lambda: self.open_dir(
@@ -164,6 +178,56 @@ class Manager:
         ttk.Button(footer, text="Open selected PNG URL", command=self.open_web_png).pack(
             side="left", padx=(12, 0))
         ttk.Button(footer, text="Close", command=self.root.destroy).pack(side="right")
+
+    def check_workstation(self):
+        """Compare a hash-pinned admin release; never propose/apply local writes."""
+        manifest = filedialog.askopenfilename(
+            parent=self.root, title="Select administrator-approved GIS release manifest",
+            initialdir=str(self.releases), filetypes=[("JSON release", "*.json")])
+        if not manifest:
+            return
+        approved_sha = simpledialog.askstring(
+            "Verify GIS release approval",
+            "Paste the exact 64-character SHA-256 from the GIS administrator's"
+            " separate approval receipt. The selected manifest cannot approve itself.",
+            parent=self.root)
+        if not approved_sha:
+            return
+        approved_sha = approved_sha.strip().lower()
+        self.profile_release_status.set("GIS workstation configuration: Checking read-only…")
+
+        def done(result, error):
+            self.set_busy(False)
+            if error:
+                self.profile_release_status.set("GIS workstation configuration: Not verified")
+                messagebox.showerror(
+                    "GIS release comparison not verified",
+                    error + "\n\nNo ExpertGPS/registry/GPX/calibration files changed.",
+                    parent=self.root)
+                return
+            self.profile_release_status.set(
+                "GIS workstation configuration: " + result["status"] +
+                " — two-way GPX/PostGIS editing NOT authorized by this check")
+            dialog = tk.Toplevel(self.root)
+            dialog.title("GIS workstation release — read-only differences")
+            dialog.geometry("850x540")
+            ttk.Label(dialog, text=("Approved release: " + result["release_id"] +
+                      "     Status: " + result["status"]), padding=12).pack(fill="x")
+            ttk.Label(dialog, text=("Comparison only: NO installed configuration"
+                      " or two-way GPX/PostGIS acceptance is implied."),
+                      padding=(12, 0, 12, 8)).pack(fill="x")
+            viewer = scrolledtext.ScrolledText(dialog, wrap="word", font=("Consolas", 10))
+            viewer.pack(fill="both", expand=True, padx=12, pady=8)
+            for change in result["differences"]:
+                viewer.insert("end", change["field"] + "\n  Local: " +
+                              str(change["local"]) + "\n  Approved: " +
+                              str(change["approved"]) + "\n\n")
+            if not result["differences"]:
+                viewer.insert("end", "Named Type/style, reverse mapping, asset and"
+                              " scanned-map values match this verified release.\n")
+            viewer.configure(state="disabled")
+            ttk.Button(dialog, text="Close", command=dialog.destroy).pack(pady=(0, 10))
+        self.async_operation(lambda: compare_current_user(manifest, approved_sha), done)
 
     def open_dir(self, path):
         try:
@@ -179,6 +243,7 @@ class Manager:
     def set_busy(self, value):
         self.in_progress = value
         self.scan_btn.configure(state="disabled" if value else "normal")
+        self.profile_check_btn.configure(state="disabled" if value else "normal")
         self.apply_btn.configure(state="disabled" if value or self.records is None or
                                  self.plan is None or not (self.plan["add"] or self.plan["replace"])
                                  else "normal")
