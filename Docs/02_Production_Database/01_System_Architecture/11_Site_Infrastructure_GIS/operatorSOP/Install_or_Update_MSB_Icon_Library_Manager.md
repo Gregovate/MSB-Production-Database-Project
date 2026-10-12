@@ -33,7 +33,7 @@ Install the **MSB Icon Library Manager** on a Windows computer that has access t
    - Desktop: `C:\Users\Greg\Github\MSB-Production-Database-Project`
    Use the one actually on this computer; do not assume a different person's path.
 2. Open the folder `Database\EngineeringTools`.
-3. Double-click **Install-MSB-Icon-Library-Shortcut.cmd**. It creates **MSB Icon Library Manager** on your Windows Desktop.
+3. Double-click **Install-MSB-Icon-Library-Shortcut.cmd**. It creates **MSB Icon Library Manager** on your Windows Desktop with its **dedicated MSB icon** (the same icon appears on the application window). No separate icon pack, Google Drive icon file, ExpertGPS installation or web-publishing permission is needed.
 4. Confirm the installer reports that the Desktop shortcut was created. Open that shortcut. The window title should say **MSB Icon Library Manager — #171**.
 5. Select **1. Check and preview icons**. Successful operation validates the current approved `Plain` source and shows icon previews. A warning in **Source review** means examine the source; it does not grant permission to replace artwork automatically.
 
@@ -58,13 +58,13 @@ The shortcut runs `Launch-MSB-Icon-Library.cmd` in the checkout. **If the checko
    # The manager currently has no visible build/version identity.
    git rev-parse HEAD
    ```
-6. Start the existing **MSB Icon Library Manager** Desktop shortcut again. No shortcut reinstall is needed when the checkout path is unchanged.
+6. If your original Desktop shortcut was created **before the dedicated app icon was added**, run **Install-MSB-Icon-Library-Shortcut.cmd** once more from this same checkout to refresh its visible icon. For later ordinary program updates, reopening the existing Desktop shortcut is sufficient while its checkout path and icon remain unchanged. Open the manager and run **1. Check and preview icons**.
 
 **The app currently does not show a version or build SHA in its window.** The `git rev-parse HEAD` output is the source identity until that UI issue is resolved. Do not interpret the printed SHA as proof that public SVGs or PNGs were published.
 
 ## Expected Result
 
-The shortcut launches the current checked-out program, and **1. Check and preview icons** completes against the Shared Drive. No web files change during installation, updating, or preview.
+The branded shortcut launches the current checked-out program, and **1. Check and preview icons** validates current approved Shared Drive artwork **even on a PC without ExpertGPS installed or an ExpertGPS `readme.txt`**. Only **5. Install PNGs for this ExpertGPS user** needs a pre-existing, valid current-user ExpertGPS symbol folder and readme. No web files or local ExpertGPS files change during installation, updating, or preview.
 
 ## If Something Is Wrong
 
@@ -72,6 +72,8 @@ The shortcut launches the current checked-out program, and **1. Check and previe
 - **Python/Tkinter or Inkscape unavailable:** have the workstation administrator install the missing prerequisite; do not try to publish.
 - **Git status not clean or pull fails:** stop, preserve the worktree and error message, and ask the project maintainer. Do not use `git reset --hard` or a manual ZIP copy as a workaround.
 - **Shared Drive unavailable:** restore permitted access to the correct Google Shared Drive before validating; do not use an arbitrary Downloads ZIP as the source.
+- **Missing application icon during shortcut installation:** stop and update the approved checkout; the installer intentionally refuses to create an unbranded shortcut when its checked-in ICO is absent.
+- **Step 1 says `Existing ExpertGPS readme.txt unavailable`:** you are running an older checked-out program. Stop, confirm the correct `main` checkout and update; do **not** install ExpertGPS or create a guessed readme merely to make Step 1 work.
 - **No web publishing rights:** that is expected for non-administrators. Do not use other people's Synology credentials or bypass folder permissions.
 
 ## Related Documents
