@@ -272,6 +272,74 @@
             [['LOR','LOR'],['IP','IP / Ethernet'],['OTHER','Other']]);
           return () => ({network_code:code.value,network_kind:kind.value});
         });
+        // A physical cable is a separately reviewed asset, NOT each LinkIQ UUID
+        // and NOT every GPX line. Parallel cables get distinct generated IDs.
+        if (current.waypoints.length > 1) action(
+          edits, 'Manager: create a reviewed physical cable from this waypoint',
+          'manager_create_cable', form => {
+            line(form, 'Confirm the physical endpoints from field evidence. No cable is inferred from proximity or test labels.');
+            const destination = choice(form, 'Other existing endpoint', 'endpoint_b_waypoint_id',
+              current.waypoints.filter(p => Number(p.id) !== Number(id))
+                .map(p => [p.id, p.label]));
+            const network = choice(form, 'Reviewed network (or SPARE designation below)',
+              'network_id', [['','Unassigned / use SPARE'], ...current.networks.map(n =>
+                [n.site_network_id,n.network_code])]);
+            const spare = field(form, 'Explicit SPARE designation (otherwise blank)', 'spare_designation');
+            const lifecycle = choice(form, 'Reviewed lifecycle', 'lifecycle_status',
+              [['CURRENT','Current'],['FAILED','Failed'],['REPAIRED','Repaired']]);
+            return () => ({
+              endpoint_a_waypoint_id:id, endpoint_b_waypoint_id:Number(destination.value),
+              network_id:network.value ? Number(network.value) : null,
+              spare_designation:spare.value.trim() || null, lifecycle_status:lifecycle.value
+            });
+          }
+        );
+        // The user must choose BOTH an immutable UUID and a previously reviewed
+        // physical cable. Reimport/retest never creates the latter automatically.
+        const eligible = current.cables.filter(c =>
+          Number(c.endpoint_a) === Number(id) || Number(c.endpoint_b) === Number(id));
+        const pending = (current.linkiq_review || []).filter(t =>
+          t.source_sha256 && t.identity_review_status !== 'REVIEWED');
+        if (eligible.length && pending.length) action(
+          edits, 'Manager: review a LinkIQ UUID against an existing physical cable',
+          'manager_link_test', form => {
+            line(form, 'Compare the original tester name, latest corrected LinkWare label, endpoints and saved test evidence. Selection is NOT automatic acceptance.');
+            const test = choice(form, 'Unresolved LinkIQ test UUID', 'test_uuid',
+              pending.map(t => [t.test_uuid,
+                (t.preferred_display_name || 'No reviewed display label') +
+                ' · tester: ' + (t.tester_original_name || 'unknown') +
+                ' · ' + t.test_uuid]));
+            const cable = choice(form, 'Reviewed physical cable', 'site_cable_id',
+              eligible.map(c => [c.id,
+                '#' + c.id + ' ' + lookupLabel(c.endpoint_a) +
+                ' → ' + lookupLabel(c.endpoint_b) +
+                ' · ' + (byId(current.networks,c.network_id,'site_network_id')?.network_code ||
+                  c.spare || 'designation unknown')]));
+            const evidencePreview = line(form, '');
+            const updateEvidence = () => {
+              const t = pending.find(entry => entry.test_uuid === test.value);
+              evidencePreview.textContent = t ?
+                'Test ' + t.test_uuid + ' · ' + textValue(t.tested_at_local) +
+                ' · length ' + textValue(t.length_ft) + ' ft · raw result ' +
+                textValue(t.test_status_code) + ' · standard ' +
+                textValue(t.test_standard) + ' (NOT measured speed)' +
+                ' · prior cable binding ' +
+                textValue(t.physical_site_cable_id) : 'Select one preserved UUID';
+            };
+            test.addEventListener('change', updateEvidence);
+            updateEvidence();
+            return () => {
+              const selected = pending.find(entry => entry.test_uuid === test.value);
+              if (!selected) throw new Error('Select a source-proven LinkIQ UUID');
+              return {
+                test_uuid:selected.test_uuid,
+                source_sha256:selected.source_sha256,
+                expected_cable_id:selected.physical_site_cable_id,
+                site_cable_id:Number(cable.value)
+              };
+            };
+          }
+        );
       }
       if (current.permissions.operations) {
         if (/panel/i.test(w.type || '')) {
