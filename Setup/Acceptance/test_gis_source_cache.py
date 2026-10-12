@@ -85,19 +85,19 @@ def _run_retention(tmp_path, *, other_state=False, other_bundle=False, missing_c
     if other_bundle:
         bundle = preview_root / 'msb-setup-disposable-browser-preview-other'
         bundle.mkdir()
-        (bundle / 'preview_manifest.tsv').write_text('preview_port\\t8899\\n')
+        (bundle / 'preview_manifest.tsv').write_text('preview_port\t8899\n')
     source = SERVER.read_text()
-    function = source.split('prune_gis_source_cache() {', 1)[1].split('\\n}\\n', 1)[0]
+    function = source.split('prune_gis_source_cache() {', 1)[1].split('\n}\n', 1)[0]
     function = function.replace('"$HOME/setup-source-cache"', shlex.quote(str(cache)))
     function = function.replace('local preview_root="/tmp"',
                                 'local preview_root=' + shlex.quote(str(preview_root)))
-    script = 'set -euo pipefail\\n'
-    script += 'GIS_CACHE_LOCKED=' + ('0' if no_lock else '1') + '\\n'
-    script += 'GIS_GPX_SHA=' + known['gpx']['sha'] + '\\n'
-    script += 'GIS_FLW_SHA=' + known['flw']['sha'] + '\\n'
-    script += 'STATE_FILE=' + shlex.quote(str(state)) + '\\n'
-    script += 'SCRIPT_DIR=' + shlex.quote(str(preview_root / 'current-bundle')) + '\\n'
-    script += 'prune_gis_source_cache() {' + function + '\\n}\\n'
+    script = 'set -euo pipefail\n'
+    script += 'GIS_CACHE_LOCKED=' + ('0' if no_lock else '1') + '\n'
+    script += 'GIS_GPX_SHA=' + known['gpx']['sha'] + '\n'
+    script += 'GIS_FLW_SHA=' + known['flw']['sha'] + '\n'
+    script += 'STATE_FILE=' + shlex.quote(str(state)) + '\n'
+    script += 'SCRIPT_DIR=' + shlex.quote(str(preview_root / 'current-bundle')) + '\n'
+    script += 'prune_gis_source_cache() {' + function + '\n}\n'
     script += 'prune_gis_source_cache'
     result = subprocess.run(['bash', '-c', script], text=True, capture_output=True)
     return result, known, unrelated
