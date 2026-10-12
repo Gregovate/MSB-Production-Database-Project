@@ -122,7 +122,7 @@ class ProcessTests(unittest.TestCase):
         # Second field PC may have no Inkscape executable, but every cached
         # PNG is still bound to the current source SHA, PNG SHA and canvas.
         with patch('sync_gis_icons.choose_inkscape',
-                   side_effect=AssertionError('No CLI lookup on full cache')), \\
+                   side_effect=AssertionError('No CLI lookup on full cache')), \
              patch('sync_gis_icons.subprocess.run',
                    side_effect=AssertionError('Do not render a cache hit')):
             second = run(self.args)
@@ -139,7 +139,7 @@ class ProcessTests(unittest.TestCase):
         def count_render(args, **kw):
             rendered.append(Path(args[1]).name)
             return self.fake_render(args, **kw)
-        with patch('sync_gis_icons.choose_inkscape', return_value='fake-inkscape') as lookup, \\
+        with patch('sync_gis_icons.choose_inkscape', return_value='fake-inkscape') as lookup, \
              patch('sync_gis_icons.subprocess.run', side_effect=count_render):
             updated = run(self.args)
         lookup.assert_called_once_with('fake-inkscape')
@@ -152,7 +152,7 @@ class ProcessTests(unittest.TestCase):
         self.mocked_run()
         (self.plain / 'antenna-r.svg').write_bytes(svg(20, 28))
         with patch('sync_gis_icons.choose_inkscape',
-                   side_effect=IconError('Inkscape CLI unavailable')), \\
+                   side_effect=IconError('Inkscape CLI unavailable')), \
              patch('sync_gis_icons.subprocess.run',
                    side_effect=AssertionError('No renderer executable available')):
             with self.assertRaisesRegex(IconError,
