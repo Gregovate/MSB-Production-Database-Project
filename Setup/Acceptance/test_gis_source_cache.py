@@ -37,9 +37,11 @@ def test_source_survives_bundle_removal_and_is_reused(tmp_path):
 
 
 def test_changed_source_has_distinct_cache_identity(tmp_path):
-    upload = tmp_path / 'source.flw'
     paths = []
-    for data in (b'old tests', b'old plus new tests'):
+    # Each preview uses its own disposable bundle. Hash-pinned uploaded bytes
+    # become read-only when hardlinked; a later export arrives under a NEW path.
+    for version, data in enumerate((b'old tests', b'old plus new tests')):
+        upload = tmp_path / f'source_version_{version}.flw'
         upload.write_bytes(data)
         result = resolve(tmp_path, data, upload)
         assert result.returncode == 0, result.stderr
