@@ -515,7 +515,7 @@
         line(popup, 'Network/circuit assignment requires separate reviewed records');
         const review = document.createElement('button');
         review.type = 'button';
-        review.textContent = 'Inspect / correct track name';
+        review.textContent = 'Inspect track';
         review.addEventListener('click', () => showTrack(t.id));
         popup.appendChild(review);
         marker.bindPopup(popup);
