@@ -179,7 +179,8 @@ class ProcessTests(unittest.TestCase):
         stage = make_stage(self.root)
         def report(phase, current, total, detail):
             events.append((phase, current, total, detail))
-        with patch('sync_gis_icons.subprocess.run', self.fake_render):
+        with patch('sync_gis_icons.choose_inkscape', return_value='fake-inkscape'), \
+             patch('sync_gis_icons.subprocess.run', self.fake_render):
             sources, rows, archive = prepare_run(self.plain, stage, 'fake-inkscape',
                                                  readme_bytes(self.readme), progress=report)
         self.assertEqual(len(rows), 3)
@@ -196,7 +197,8 @@ class ProcessTests(unittest.TestCase):
 
     def test_apply_progress_only_completes_after_verified_receipts(self):
         stage = make_stage(self.root)
-        with patch('sync_gis_icons.subprocess.run', self.fake_render):
+        with patch('sync_gis_icons.choose_inkscape', return_value='fake-inkscape'), \
+             patch('sync_gis_icons.subprocess.run', self.fake_render):
             sources, rows, _archive = prepare_run(self.plain, stage, 'fake-inkscape',
                                                    readme_bytes(self.readme))
         events = []
