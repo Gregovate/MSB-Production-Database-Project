@@ -25,6 +25,10 @@ def test_source_survives_bundle_removal_and_is_reused(tmp_path):
     assert first.returncode == 0, first.stderr
     cached = Path(first.stdout.strip())
     inode = cached.stat().st_ino
+    # The upload and cache sit on the same test filesystem; no second large
+    # copy should be allocated for the cache's immutable SHA path.
+    assert upload.stat().st_ino == inode
+    assert cached.stat().st_nlink == 2
     upload.unlink()
     second = resolve(tmp_path, b'immutable test evidence', upload)
     assert second.returncode == 0, second.stderr
