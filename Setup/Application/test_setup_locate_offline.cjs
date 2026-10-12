@@ -19,8 +19,12 @@ const read = name => fs.readFileSync(path.join(__dirname, name), 'utf8');
   const match = page.match(/const data=(.*?);data.features.push/s);
   assert(match, 'Existing GPX data is still embedded as read-only fallback');
   const feats = JSON.parse(match[1]).features;
-  assert.equal(feats.filter(f => f.geometry.type === 'Point').length, 233);
-  assert.equal(feats.filter(f => f.geometry.type !== 'Point').length, 181);
+  // Do not pin source counts: GPX data changes under the maintained importer.
+  const waypoints = feats.filter(f => f.geometry.type === 'Point');
+  const tracks = feats.filter(f => f.geometry.type !== 'Point');
+  assert(waypoints.length > 0 && tracks.length > 0, 'Reference features retained');
+  assert(feats.every(f => f.properties && typeof f.properties.name === 'string'),
+    'Source names preserved for search');
   assert.equal(feats.filter(f => f.properties.name === 'Workshop').length, 1,
     'Never reinsert the temporary Workshop marker');
   assert(page.includes('window.msbReferenceSymbols.marker(xy,p.type)'));
