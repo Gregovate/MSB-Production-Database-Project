@@ -21,6 +21,14 @@ MSB operator testing found that ExpertGPS can replace MSB custom map-marker asso
 
 If an MSB GPX was already opened with symbols missing, **do not save, export, overwrite, or resynchronize it**. Preserve the original and backups. Restore/verify the local MSB symbol folder first, then use **only an isolated copy of a known-good GPX** for further tests. Ask the GIS administrator before resuming authoritative GPX editing.
 
+## Cross-PC GIS configuration — synchronization NOT YET available
+
+**Important:** The Icon Library Manager currently installs artwork and `msb/readme.txt` for *this Windows user*. That does **not** synchronize ExpertGPS's user-specific waypoint Types, Map Marker associations, GPS-symbol-to-Type table, or scanned-map calibration. Identical GPX and scanned-map images can therefore behave differently on the laptop, Show PC or Office PC.
+
+**Until a reviewed MSB GIS workstation-configuration release and verification process is implemented, do not use a newly provisioned or unverified PC to edit/export authoritative MSB GPX or participate in two-way database imports.** Escalate mismatched Type names, unexpected `GPS Symbol` fallbacks, map-calibration differences or profile version uncertainty to #171. Keep existing authorized laptop maintenance separate; no unreviewed settings import or GPX rewrite is a remedy.
+
+The controlled [GIS engineering contract](../engineering/GIS_Symbol_Management.md) owns the mandatory shared profile, conflict checks, acceptance across all PCs and eventual distribution/rollback design. There is **not yet** a supported One-click "Synchronize all GIS settings" operation; do not interpret PNG installation success as overall GIS configuration acceptance.
+
 ## Purpose
 
 Keep approved symbol artwork and each Windows ExpertGPS user's local PNG library consistent. **This procedure never publishes to the public web server.** For web publishing, only the authorized administrator uses the separate procedure.
