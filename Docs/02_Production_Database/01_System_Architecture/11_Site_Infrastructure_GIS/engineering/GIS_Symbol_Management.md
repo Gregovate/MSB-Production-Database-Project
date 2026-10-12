@@ -124,6 +124,22 @@ Those **three values are identical** to the Show PC's `Waypoint Types\Flag` entr
 
 **Next controlled gate:** inspect the **raw current GPX or an existing disposable copy read-only outside ExpertGPS**, isolating the waypoint `ST POLE DS1` and its exported `<type>`, `<sym>`, `<extensions>` metadata and compare them to these registry fields. Do not mutate the authoritative GPX, blindly merge registry branches, copy guessed mappings into PostGIS, or hardcode `Flag → pole-yellow.svg`. A safe Type/style installation/migration procedure can be designed only after the import precedence and other registry dependencies are understood. Preserve the original backups from both Windows accounts.
 
+**Office PC third-profile comparison — user-provided read-only backups (October 12, 2026):** The operator supplied the Office PC's `Common-Office.reg` and `ExpertGPS-Office.reg` exports. They were inspected **without importing registry settings or modifying files**. The per-Type registry sections are under the same `HKCU\Software\TopoGrafix\Common\Waypoint Types\<Type>` path. Only the following nonsensitive aggregate counts and relevant waypoint-style values are recorded; **raw .reg exports and unrelated registration/profile configuration are not repository artifacts**.
+
+| Current-user registry observation | Maintained laptop | Command Center / Show PC | Office PC |
+| --- | ---: | ---: | ---: |
+| Named `Waypoint Types` subkeys | **57** | **37** | **28** |
+| Types with nonempty `Bitmap Symbol URL` | **32** | **11** | **15** |
+| `Display Anchor` Type present | **Yes** | No | No |
+| `Common\Settings\SymbolToType`: `Flag, Blue` maps to | **Display Anchor** | **Flag** | **Outlet Power** |
+| `Waypoint Types\Flag` | `Symbol Type=2`, `Bitmap Symbol URL=msb/pole-yellow.png` | **same style as laptop Flag** | `Symbol Type=1`, empty bitmap URL |
+
+The Office PC contains **14 historical MSB PNG references** with old mixed-case/underscore filenames, plus one non-MSB Google Maps shape URL. Examples include `Panel → msb/Panel.png`, `Stage → msb/Stage.png`, `Light Pole → msb/LP.png`, `Display → msb/T-Post.png`, and `Drop Point → maps.google.com/.../square.png`. By comparison, the laptop uses `panel.png`, `stage.png`, `lp.png` under the MSB symbol URL. These **are different, intentionally retained historic case-sensitive references**, not permission to rename or silently rewrite source GPX, registry values, or the legacy public PNG folder.
+
+**Cross-PC comparison of exact `Symbol Type`, `GPS Symbol`, and `Bitmap Symbol URL`:** Office and laptop have **26** Type names in common, **16** of which have at least one differing style field. Office and Show PC share **18** Type names, **9** with differing fields. The Show PC's **37** Type names all occur on the laptop, but **7** have at least one different style field. The number of installed local PNGs cannot be used to infer registry Type configuration or remotely served legacy URL viability.
+
+**Implication:** Three independent Windows profiles demonstrably hold three different waypoint Type/style catalogs. A broad registry import could overwrite other legitimate Type definitions and machine preferences, while a simple PNG installation cannot reconcile the catalogs. The maintained laptop is a **candidate**, not yet an approved organization-wide type/style master. The correct future workflow must explicitly review source Type/style configuration, transfer only governed references with backup/rollback, retain legacy filename and user mappings, and prove GPX-import interpretation from **actual, read-only source XML** before designing #319's PostGIS/API resolution. Do not mistake matching local `Bitmap Symbol URL` for confirmation that a new Type round-trips through ExpertGPS or is included in the current GPX.
+
 **Preservation and investigation contract:**
 1. Treat the **laptop's currently maintained Type/style configuration** as the candidate source for the Command Center PC, but do **not** automatically promote it as organization-wide authority until its complete association set and version are reviewed.
 2. With ExpertGPS closed, export **both** `HKCU\Software\TopoGrafix\ExpertGPS` and `HKCU\Software\TopoGrafix\Common` **separately on the laptop and destination** to protected **local** evidence. Use only the account in which ExpertGPS normally runs; an elevated command using another account would back up the wrong HKCU. Retain both before any import.
