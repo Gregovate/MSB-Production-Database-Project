@@ -123,15 +123,79 @@ class DistributionTests(unittest.TestCase):
             self.publish()
         self.assertEqual([p.name for p in self.web.iterdir()], ["Car-R.png"])
 
-    def test_readme_missing_or_wrong_blocks_local(self):
+    def test_first_use_provisions_missing_msb_and_full_current_png_set(self):
+        # Command Center PC: ExpertGPS owns Symbols but the msb folder is absent.
         self.readme.unlink()
-        with self.assertRaises(IconError):
-            self.publish("expertgps")
-        self.assertFalse((self.local / "car-r.png").exists())
+        self.local.rmdir()
+        self.assertFalse(self.local.exists())
+        plan = self.preflight("expertgps")
+        self.assertTrue(plan["create_local_folder"])
+        self.assertTrue(plan["create_readme"])
+        self.assertEqual(len(plan["add"]), 2)
+        self.assertFalse(self.local.exists(), "Preflight must not create the folder")
+        receipt = self.publish("expertgps")
+        self.assertEqual(len(receipt), 2)
+        self.assertEqual(self.readme.read_bytes(),
+                         b"https://webassets.sheboyganlights.org/images/symbols/\n")
+        self.assertEqual({p.name for p in self.local.iterdir()},
+                         {"readme.txt", "car-r.png", "antenna-l.png"})
+        self.assertTrue(all(sha_file(self.local / r["PNG"]) == r["PNG_SHA256"]
+                            for r in self.records))
+        self.assertFalse(list(self.web.iterdir()), "Local install must not publish")
+        self.assertFalse(list(self.root.glob(".msb-icon-setup-*.tmp")))
+        self.assertTrue((self.stage / "MSB_GIS_expertgps_PNG_Distribution_Receipt.csv").exists())
+
+        # Second installation is a no-op: do not rewrite metadata or PNGs.
+        unchanged = self.readme.read_bytes()
+        plan = self.preflight("expertgps")
+        self.assertFalse(plan["create_local_folder"])
+        self.assertFalse(plan["create_readme"])
+        self.assertEqual(len(plan["identical"]), 2)
+        self.publish("expertgps")
+        self.assertEqual(self.readme.read_bytes(), unchanged)
+
+    def test_missing_readme_in_existing_msb_is_safely_created(self):
+        self.readme.unlink()
+        (self.local / "Panel.png").write_bytes(b"historic icon preserved")
+        before = list(self.local.iterdir())
+        plan = self.preflight("expertgps")
+        self.assertTrue(plan["create_readme"])
+        self.assertFalse(plan["create_local_folder"])
+        self.assertEqual(list(self.local.iterdir()), before)
+        self.publish("expertgps")
+        self.assertEqual(self.readme.read_bytes(),
+                         b"https://webassets.sheboyganlights.org/images/symbols/\n")
+        self.assertEqual((self.local / "Panel.png").read_bytes(),
+                         b"historic icon preserved")
+
+    def test_existing_wrong_readme_blocks_local_without_copy(self):
         self.readme.write_bytes(b"https://wrong.example/icons/\n")
+        with self.assertRaisesRegex(IconError, "first line wrong"):
+            self.preflight("expertgps")
         with self.assertRaises(IconError):
             self.publish("expertgps")
+        self.assertEqual(self.readme.read_bytes(), b"https://wrong.example/icons/\n")
         self.assertFalse((self.local / "car-r.png").exists())
+
+    def test_failed_first_use_cleans_staging_and_creates_no_msb(self):
+        self.readme.unlink()
+        self.local.rmdir()
+        with patch("distribute_gis_pngs.shutil.copyfileobj",
+                   side_effect=OSError("synthetic copy interruption")):
+            with self.assertRaisesRegex(OSError, "synthetic copy interruption"):
+                self.publish("expertgps")
+        self.assertFalse(self.local.exists())
+        self.assertFalse(list(self.root.glob(".msb-icon-setup-*.tmp")))
+        self.assertFalse((self.stage / "MSB_GIS_expertgps_PNG_Distribution_Receipt.csv").exists())
+
+    def test_first_use_is_not_allowed_outside_current_user_folder(self):
+        self.readme.unlink()
+        self.local.rmdir()
+        with patch("distribute_gis_pngs.local_expertgps_folder",
+                   return_value=self.root / "other-account"):
+            with self.assertRaisesRegex(IconError, "current Windows user"):
+                self.preflight("expertgps")
+        self.assertFalse(self.local.exists())
 
     def test_canonical_folder_must_be_saved_and_match_manifest(self):
         (self.canonical / "car-r.png").unlink()
