@@ -298,17 +298,18 @@
         // physical cable. Reimport/retest never creates the latter automatically.
         const eligible = current.cables.filter(c =>
           Number(c.endpoint_a) === Number(id) || Number(c.endpoint_b) === Number(id));
-        const pending = (current.linkiq_review || []).filter(t =>
-          t.source_sha256 && t.identity_review_status !== 'REVIEWED');
-        if (eligible.length && pending.length) action(
-          edits, 'Manager: review a LinkIQ UUID against an existing physical cable',
+        const reviewable = (current.linkiq_review || []).filter(t => t.source_sha256);
+        if (eligible.length && reviewable.length) action(
+          edits, 'Manager: review or correct a LinkIQ UUID/cable relationship',
           'manager_link_test', form => {
             line(form, 'Compare the original tester name, latest corrected LinkWare label, endpoints and saved test evidence. Selection is NOT automatic acceptance.');
             const test = choice(form, 'Unresolved LinkIQ test UUID', 'test_uuid',
-              pending.map(t => [t.test_uuid,
+              reviewable.map(t => [t.test_uuid,
                 (t.preferred_display_name || 'No reviewed display label') +
                 ' · tester: ' + (t.tester_original_name || 'unknown') +
-                ' · ' + t.test_uuid]));
+                ' · ' + t.test_uuid +
+                (t.identity_review_status === 'REVIEWED' ?
+                  ' · reviewed #' + textValue(t.physical_site_cable_id) : ' · needs review')]));
             const cable = choice(form, 'Reviewed physical cable', 'site_cable_id',
               eligible.map(c => [c.id,
                 '#' + c.id + ' ' + lookupLabel(c.endpoint_a) +
@@ -317,7 +318,7 @@
                   c.spare || 'designation unknown')]));
             const evidencePreview = line(form, '');
             const updateEvidence = () => {
-              const t = pending.find(entry => entry.test_uuid === test.value);
+              const t = reviewable.find(entry => entry.test_uuid === test.value);
               evidencePreview.textContent = t ?
                 'Test ' + t.test_uuid + ' · ' + textValue(t.tested_at_local) +
                 ' · length ' + textValue(t.length_ft) + ' ft · raw result ' +
@@ -330,7 +331,7 @@
             test.addEventListener('change', updateEvidence);
             updateEvidence();
             return () => {
-              const selected = pending.find(entry => entry.test_uuid === test.value);
+              const selected = reviewable.find(entry => entry.test_uuid === test.value);
               if (!selected) throw new Error('Select a source-proven LinkIQ UUID');
               return {
                 test_uuid:selected.test_uuid,
