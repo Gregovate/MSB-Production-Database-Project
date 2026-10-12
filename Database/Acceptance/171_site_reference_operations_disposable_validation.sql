@@ -7,7 +7,8 @@ DO $accept$
 DECLARE
     v_uuid text := gen_random_uuid()::text;
     v_panel bigint; v_outlet_a bigint; v_outlet_b bigint;
-    v_network bigint; v_circuit bigint; v_cable bigint; v_test uuid := gen_random_uuid();
+    v_network bigint; v_circuit bigint; v_cable bigint; v_second_cable bigint;
+    v_test uuid := gen_random_uuid();
     v_sha text := md5(gen_random_uuid()::text) || md5(gen_random_uuid()::text);
     v_rev bigint; v_out jsonb; v_snapshot jsonb;
     v_denied boolean := false;
@@ -139,10 +140,60 @@ BEGIN
     RETURNING site_cable_id INTO v_cable;
     INSERT INTO ops.linkiq_test(test_uuid,first_seen_source_sha256,tester_original_name,
            test_time_local,test_status_code,test_standard,length_ft,evidence_sha256,
-           original_result,physical_site_cable_id,identity_review_status,reviewed_by,reviewed_at)
+           original_result,identity_review_status)
     VALUES(v_test,v_sha,'DISPOSABLE-Raw Tester Name','2026-10-11T17:00:00',
-           1,'1000BASE-T',132.4,v_sha,'{"test":"fixture"}'::jsonb,
-           v_cable,'REVIEWED','319-disposable',clock_timestamp());
+           1,'1000BASE-T',132.4,v_sha,'{"test":"fixture"}'::jsonb,'UNMATCHED');
+    INSERT INTO ops.linkiq_test_appearance(source_sha256,source_row,test_uuid,
+        linkware_project,display_cable_name,original_test_name,record_payload_sha256)
+    VALUES(v_sha,1,v_test,'MSB-Park-Network','DISPOSABLE corrected name',
+           'DISPOSABLE-Raw Tester Name',v_sha);
+    INSERT INTO ops.linkiq_intake_review(source_sha256,test_uuid,proposal,actor)
+    VALUES(v_sha,v_test,'{"status":"REVIEW_REQUIRED"}'::jsonb,'319-disposable');
+
+    -- Reviewed identity is created by a separately attributed manager decision.
+    -- Multiple cables between the SAME endpoints/network are not collapsed.
+    v_out:=ref.site_reference_command('manager@example.test','manager_create_cable',v_rev,
+       jsonb_build_object('endpoint_a_waypoint_id',v_panel,
+          'endpoint_b_waypoint_id',v_outlet_a,'network_id',v_network,
+          'lifecycle_status','CURRENT',
+          'evidence_notes','Independent fixture cable physically verified'));
+    v_rev:=(v_out->>'revision')::bigint;
+    v_second_cable:=(v_out->>'target_id')::bigint;
+    IF v_second_cable=v_cable THEN
+       RAISE EXCEPTION 'Distinct reviewed parallel cables were collapsed';
+    END IF;
+    v_out:=ref.site_reference_command('manager@example.test','manager_link_test',v_rev,
+       jsonb_build_object('source_sha256',v_sha,'test_uuid',v_test,
+          'site_cable_id',v_cable,'expected_cable_id',NULL,
+          'evidence_notes','Test UUID reviewed by source identity, not label'));
+    v_rev:=(v_out->>'revision')::bigint;
+    IF (SELECT physical_site_cable_id FROM ops.linkiq_test WHERE test_uuid=v_test)
+        IS DISTINCT FROM v_cable THEN
+        RAISE EXCEPTION 'Reviewed physical cable binding failed';
+    END IF;
+    BEGIN
+       PERFORM ref.site_reference_command('manager@example.test','manager_link_test',v_rev,
+          jsonb_build_object('source_sha256',v_sha,'test_uuid',v_test,
+            'site_cable_id',v_second_cable,'expected_cable_id',NULL,
+            'evidence_notes','Expected binding is intentionally stale'));
+       RAISE EXCEPTION 'Expected prior binding was ignored';
+    EXCEPTION WHEN SQLSTATE '40001' THEN NULL;
+    END;
+    -- A later explicit correction preserves the SAME UUID and an additional
+    -- append-only decision; it never creates a new test or edits raw payload.
+    v_out:=ref.site_reference_command('manager@example.test','manager_link_test',v_rev,
+       jsonb_build_object('source_sha256',v_sha,'test_uuid',v_test,
+          'site_cable_id',v_second_cable,'expected_cable_id',v_cable,
+          'evidence_notes','Reviewed corrected cable after independent observation'));
+    v_rev:=(v_out->>'revision')::bigint;
+    IF (SELECT count(*) FROM ops.linkiq_test WHERE test_uuid=v_test)<>1 OR
+       (SELECT count(*) FROM ops.linkiq_identity_decision WHERE test_uuid=v_test)<>2 OR
+       (SELECT physical_site_cable_id FROM ops.linkiq_test WHERE test_uuid=v_test)
+           IS DISTINCT FROM v_second_cable OR
+       (SELECT tester_original_name FROM ops.linkiq_test WHERE test_uuid=v_test)
+           <>'DISPOSABLE-Raw Tester Name' THEN
+       RAISE EXCEPTION 'Reviewed correction destroyed source/test history';
+    END IF;
 
     v_snapshot := ref.site_reference_snapshot();
     IF (v_snapshot->>'revision')::bigint <> v_rev
@@ -183,7 +234,7 @@ BEGIN
     -- A LinkIQ test standard is never an achieved speed measurement.
     IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v_snapshot->'cables') c,
                  LATERAL jsonb_array_elements(c->'tests') t
-                 WHERE (c->>'id')::bigint=v_cable
+                 WHERE (c->>'id')::bigint=v_second_cable
                    AND t->>'uuid'=v_test::text
                    AND t->>'test_standard'='1000BASE-T'
                    AND (t->>'length_ft')::numeric=132.4
