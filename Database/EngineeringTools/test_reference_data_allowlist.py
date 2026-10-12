@@ -167,3 +167,17 @@ def test_track_popup_is_inspection_not_edit_entrypoint():
     assert "Inspect / correct track name" not in js
     assert "marker.on('popupopen', () => showTrack(t.id));" in js
     assert "if (current.permissions?.identity)" in js  # Existing phase-1 Manager sidebar gate.
+
+
+def test_record_location_dropdown_uses_maintained_gis_and_offline_cache():
+    """#171/#88: no legacy fixed Stage JSON can drive the drop selector."""
+    source = (ROOT / 'Setup' / 'Application' / 'setup_record_location.js').read_text(
+        encoding='utf-8')
+    assert "fetch('../api/setup/locate/references'" in source
+    assert "normalizeSiteReference(snapshot)" in source
+    assert "snapshot.sources?.gpx?.sha256" in source
+    assert "'site-waypoint:' + point.id" in source
+    assert "cached?.data?.accepted_gpx_sha256" in source
+    assert "fetch('location-references.json'" not in source
+    assert "CURRENT GIS DROP LOCATIONS UNAVAILABLE" in source
+    assert "populateReferenceSelect();" in source
