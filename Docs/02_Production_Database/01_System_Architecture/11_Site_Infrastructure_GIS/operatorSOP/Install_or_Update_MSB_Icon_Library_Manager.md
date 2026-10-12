@@ -19,6 +19,10 @@ Install the **MSB Icon Library Manager** on a Windows computer that has access t
 
 **Important:** This application does **not** self-update. Future software changes arrive through an authorized `git pull --ff-only` of the checkout that the shortcut points to.
 
+## Critical Prerequisite for ExpertGPS Data
+
+**Do not open an MSB GPX or project in ExpertGPS on a new Windows account before running the Icon Library Manager's local installation Step 5 and verifying the `msb` PNG/readme library.** MSB field testing observed missing custom symbols causing waypoint map markers to become **GPS Symbol**, even without intentionally saving the file. The exact persistence is not established; treat the GPX and current user's ExpertGPS Type settings as at risk. Install and validate on a disposable copy before authoritative editing. See the [local ExpertGPS symbol procedure](Review_MSB_Icons_and_Update_Local_ExpertGPS.md).
+
 ## Before You Start
 
 - Your computer must have an authorized checkout of `Gregovate/MSB-Production-Database-Project`, including `Database\EngineeringTools`. If there is no authorized checkout, ask the MSB project administrator to provision one. Do not copy somebody else's GitHub credentials.
