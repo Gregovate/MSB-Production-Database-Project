@@ -547,13 +547,24 @@ COMMIT;
             RAISE EXCEPTION 'Selected physical cable is not reviewed/active'
                 USING ERRCODE='22023';
         END IF;
-        SELECT to_jsonb(t),t.physical_site_cable_id
+        -- Audit only the binding/reviewer transition. Original LinkIQ raw
+        -- payload lives immutably in ops; do not copy BinRec into each log row.
+        SELECT jsonb_build_object('test_uuid',t.test_uuid,
+                    'physical_site_cable_id',t.physical_site_cable_id,
+                    'identity_review_status',t.identity_review_status,
+                    'reviewed_by',t.reviewed_by,'reviewed_at',t.reviewed_at),
+               t.physical_site_cable_id
           INTO v_before,v_expected_cable
           FROM ops.linkiq_test t WHERE t.test_uuid=v_test_uuid FOR UPDATE;
         IF NOT FOUND THEN RAISE EXCEPTION 'LinkIQ UUID not found' USING ERRCODE='P0002'; END IF;
         IF v_expected_cable IS DISTINCT FROM (p_data->>'expected_cable_id')::bigint THEN
             RAISE EXCEPTION 'Reviewed test binding changed; refresh before deciding'
                 USING ERRCODE='40001';
+        END IF;
+        IF v_expected_cable IS NOT DISTINCT FROM v_cable AND
+           v_before->>'identity_review_status'='REVIEWED' THEN
+            RAISE EXCEPTION 'Test already reviewed to this cable; no new decision needed'
+                USING ERRCODE='22023';
         END IF;
         IF NOT EXISTS(SELECT 1 FROM ops.linkiq_intake_review r
            WHERE r.source_sha256=v_source_sha AND r.test_uuid=v_test_uuid) THEN
@@ -568,8 +579,11 @@ COMMIT;
             reviewed_at=clock_timestamp()
         WHERE t.test_uuid=v_test_uuid;
         v_target:=v_cable;
-        SELECT to_jsonb(t) INTO v_after FROM ops.linkiq_test t
-        WHERE t.test_uuid=v_test_uuid;
+        SELECT jsonb_build_object('test_uuid',t.test_uuid,
+                    'physical_site_cable_id',t.physical_site_cable_id,
+                    'identity_review_status',t.identity_review_status,
+                    'reviewed_by',t.reviewed_by,'reviewed_at',t.reviewed_at)
+          INTO v_after FROM ops.linkiq_test t WHERE t.test_uuid=v_test_uuid;
 
     ELSIF p_command='crew_set_switching' THEN
         v_target:=(p_data->>'circuit_id')::bigint;
