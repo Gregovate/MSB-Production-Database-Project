@@ -134,7 +134,10 @@ def test_existing_map_uses_protected_live_references_before_static_fallback():
     assert "window.siteReferenceReady && await window.siteReferenceReady" in networks
     assert "reindexMapReferences()" in search and "replaceSiteReferences(entries)" in search
     assert "mapSearch.reindexMapReferences()" in client
-    assert "STATIC SOURCE SNAPSHOT ONLY" in client
+    # Offline work renamed the legacy-only banner to distinguish static GPX
+    # from explicitly prepared, dated offline PostgreSQL references.
+    assert "STATIC GPX SOURCE ONLY" in client
+    assert "OFFLINE SAVED PostgreSQL GIS" in client
     assert "LIVE PostgreSQL GIS" in client
     assert "siteReferenceReady = refresh()" in client
     assert "credentials: 'same-origin'" in client
