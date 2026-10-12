@@ -287,7 +287,7 @@ cleanup() {
         prune_gis_source_cache || echo "WARN: GIS source cache retention was not completed; no Production or source changes"
     fi
 
-    echo "--- Production after-check ---
+    echo "--- Production after-check ---"
     if [[ -n "$PROD_BEFORE" ]]; then
         PROD_AFTER="$(prod_fingerprint 2>/dev/null)"
         echo "Production Setup fingerprint before: $PROD_BEFORE"
