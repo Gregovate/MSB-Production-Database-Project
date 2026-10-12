@@ -136,13 +136,21 @@ AS $snapshot$
        'description',t.description,'lifecycle',t.lifecycle_status,
        'geometry',CASE WHEN ST_IsEmpty(t.reference_line) THEN NULL
                 ELSE ST_AsGeoJSON(COALESCE(t.source_wgs84,ST_Transform(t.reference_line,4326)))::jsonb END,
-       'source_ordinal',sb.source_ordinal)
+       'source_ordinal',sb.source_ordinal,
+       'source_sha256',sb.source_sha256,
+       'source_label',obs.source_document->>'name',
+       'verified_by',t.verified_by,'verified_at',t.verified_at)
        ORDER BY t.site_track_id)
        FROM ref.site_track t LEFT JOIN LATERAL (
-         SELECT source_ordinal FROM ref.site_track_source_binding st
+         SELECT source_ordinal,source_sha256
+         FROM ref.site_track_source_binding st
          WHERE st.site_track_id=t.site_track_id
-         ORDER BY accepted_at DESC LIMIT 1
-       ) sb ON true), '[]'::jsonb),
+         ORDER BY accepted_at DESC,source_sha256 DESC LIMIT 1
+       ) sb ON true
+       LEFT JOIN ops.site_source_observation obs
+          ON obs.source_sha256=sb.source_sha256
+         AND obs.source_row=sb.source_ordinal::text
+         AND obs.item_kind='TRACK'), '[]'::jsonb),
    'routes', coalesce((SELECT jsonb_agg(jsonb_build_object(
        'id',r.site_route_segment_id,'label',r.route_label,
        'endpoint_a',r.endpoint_a_waypoint_id,'endpoint_b',r.endpoint_b_waypoint_id,
@@ -269,7 +277,7 @@ BEGIN
     IF p_command IN ('manager_update_waypoint','manager_set_panel_owner',
                      'manager_set_circuit_owner','manager_add_network',
                      'manager_create_cable','manager_link_test','manager_add_alias',
-                     'manager_retire_cable') THEN
+                     'manager_retire_cable','manager_update_track_label') THEN
         IF NOT (v_permissions->>'identity')::boolean THEN
             RAISE EXCEPTION 'Manager GIS identity grant required' USING ERRCODE='42501';
         END IF;
@@ -313,6 +321,51 @@ BEGIN
                   ST_SetSRID(ST_MakePoint(v_lon,v_lat),4326) ELSE w.source_wgs84 END,
            updated_at=clock_timestamp(),verified_by=p_email,verified_at=clock_timestamp()
          WHERE w.site_waypoint_id=v_target RETURNING to_jsonb(w) INTO v_after;
+
+    ELSIF p_command='manager_update_track_label' THEN
+        -- Stable site_track_id and caller-supplied expected name prevent a
+        -- guessed source-name match or stale-tab overwrite. NO geometry change.
+        v_target := (p_data->>'track_id')::bigint;
+        v_code := nullif(btrim(p_data->>'track_label'),'');
+        IF v_target IS NULL OR v_code IS NULL
+           OR NOT (p_data ? 'expected_track_label')
+           OR jsonb_typeof(p_data->'expected_track_label') <> 'string' THEN
+            RAISE EXCEPTION 'Track ID, expected prior name and reviewed new name required'
+                USING ERRCODE='22023';
+        END IF;
+        SELECT jsonb_build_object('track_id',t.site_track_id,
+                   'track_label',t.track_label,
+                   'verified_by',t.verified_by,'verified_at',t.verified_at,
+                   'changed_at',t.changed_at)
+          INTO v_before
+          FROM ref.site_track t WHERE t.site_track_id=v_target FOR UPDATE;
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Existing GPX track identity not found' USING ERRCODE='P0002';
+        END IF;
+        IF NOT EXISTS (
+            SELECT 1 FROM ref.site_track_source_binding b
+            WHERE b.site_track_id=v_target AND b.accepted_at IS NOT NULL
+        ) THEN
+            RAISE EXCEPTION 'Track must have an accepted GPX source binding'
+                USING ERRCODE='22023';
+        END IF;
+        IF v_before->>'track_label' IS DISTINCT FROM p_data->>'expected_track_label' THEN
+            RAISE EXCEPTION 'Track name changed; refresh and re-review before saving'
+                USING ERRCODE='40001';
+        END IF;
+        IF v_before->>'track_label' = v_code THEN
+            RAISE EXCEPTION 'Track label already current; no new review recorded'
+                USING ERRCODE='22023';
+        END IF;
+        UPDATE ref.site_track t SET track_label=v_code,verified_by=p_email,
+            verified_at=clock_timestamp(),changed_at=clock_timestamp()
+        WHERE t.site_track_id=v_target;
+        SELECT jsonb_build_object('track_id',t.site_track_id,
+                   'track_label',t.track_label,
+                   'verified_by',t.verified_by,'verified_at',t.verified_at,
+                   'changed_at',t.changed_at)
+          INTO v_after
+          FROM ref.site_track t WHERE t.site_track_id=v_target;
 
     ELSIF p_command='manager_add_alias' THEN
         v_target := (p_data->>'waypoint_id')::bigint;
