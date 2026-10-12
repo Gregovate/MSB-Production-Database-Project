@@ -50,6 +50,28 @@ Keep approved symbol artwork and each Windows ExpertGPS user's local PNG library
 
 The approved `msb\readme.txt` first line must remain `https://webassets.sheboyganlights.org/images/symbols/`. It is a custom-symbol **URL parent** used by ExpertGPS, **not** a file uploader. Never add another `msb/` to that line, rename the `msb` folder to `MSB Icons`, or replace old PNG/BMP filenames without reviewed backward-compatibility work.
 
+## Different Waypoint Type / Map Marker Choices on Another PC
+
+**Installing the approved 37 PNG files and `msb/readme.txt` does not copy your ExpertGPS waypoint Type definitions or their selected Map Markers.** If `Display Anchor` exists on your laptop but not on the Command Center PC, **STOP before editing an authoritative GPX**. Do not manually rename `Flag` or select a guessed substitute.
+
+ExpertGPS's [official transfer instructions](https://www.expertgps.com/transfer-settings.asp) identify two current-user Windows Registry branches:
+
+- `HKEY_CURRENT_USER\Software\TopoGrafix\ExpertGPS`
+- `HKEY_CURRENT_USER\Software\TopoGrafix\Common`
+
+Before attempting a transfer, **close ExpertGPS on both computers**. On the laptop, from a normal PowerShell window running as the **same Windows user as ExpertGPS**, back up both branches **locally**:
+
+```powershell
+$backup = Join-Path $env:USERPROFILE 'Documents\MSB-ExpertGPS-Settings'
+New-Item -ItemType Directory -Path $backup -Force | Out-Null
+reg export "HKCU\Software\TopoGrafix\ExpertGPS" "$backup\ExpertGPS-Laptop.reg" /y
+reg export "HKCU\Software\TopoGrafix\Common" "$backup\Common-Laptop.reg" /y
+```
+
+Also preserve **both branches of the Command Center account** under separately named `-CommandCenter.reg` files **before** any registry import. These files may include registration information and personal or machine-specific settings. **Keep them private; do not attach their raw contents to GitHub, ChatGPT, or shared GIS source folders.** The vendor's procedure transfers broad application settings; the precise Type/Map Marker values have **not yet been identified**. Do **not** double-click/import either registry file or delete/edit any existing registry entries until a reviewed migration/rollback procedure is prepared.
+
+Once the two PCs' settings have been compared and a safe transfer approved, confirm the intended Type and Map Marker on a **disposable GPX copy** first. Do not open or save the working shared GPX during diagnosis. The [controlling engineering contract](../engineering/GIS_Symbol_Management.md) owns the research checkpoint and recovery conditions.
+
 ## Expected Result
 
 The approved Plain SVGs remain unchanged unless you intentionally edited and re-exported them. Canonical PNG derivatives and this Windows user's ExpertGPS PNGs match their reviewed sources. No public Synology files are written.
