@@ -70,7 +70,7 @@ def _required_map_value(values, field):
         raise ProfileError(f"Scanned map lacks expected {field!r}; not verified")
 
 
-def read_current_user(reg=None, local_symbols=None):
+def read_current_user(reg=None, local_symbols=None, map_names=None):
     """Read only the current Windows user's relevant ExpertGPS configuration.
 
     'reg' injection is solely for disposable fixtures. On non-Windows hosts no
@@ -120,6 +120,10 @@ def read_current_user(reg=None, local_symbols=None):
     try:
         with _open(reg, MAPS_KEY) as root:
             for name in _subkeys(reg, root):
+                # The release defines which MSB maps are in scope. Other
+                # personal scanned maps must never be inspected or compared.
+                if map_names is not None and name not in map_names:
+                    continue
                 with _open(reg, MAPS_KEY + "\\" + name) as key:
                     vals = _read_values(reg, key, MAP_FIELDS + ("Map Path",))
                 map_path = vals.pop("Map Path", "")
@@ -319,5 +323,5 @@ def compare_release(manifest, profile, verified_base=None):
 def compare_current_user(manifest_path, approved_sha256):
     """One read-only entry point used by the existing Icon Library Manager."""
     manifest = load_release(manifest_path, approved_sha256)
-    local = read_current_user()
+    local = read_current_user(map_names=set(manifest["maps"]))
     return compare_release(manifest, local)
