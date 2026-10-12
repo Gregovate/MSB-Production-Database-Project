@@ -27,6 +27,7 @@ site_reference_api = Blueprint("site_reference_api", __name__)
 MANAGER_COMMANDS = frozenset({
     "manager_update_waypoint", "manager_set_panel_owner",
     "manager_set_circuit_owner", "manager_add_network",
+    "manager_create_cable", "manager_link_test",
 })
 CREW_COMMANDS = frozenset({
     "crew_set_meter", "crew_upsert_circuit", "crew_link_destination",
