@@ -20,7 +20,7 @@ from types import SimpleNamespace
 
 # .pyw and the engineering pipeline deliberately live in the same repo folder.
 from sync_gis_icons import (
-    PARK, IconError, canonical_sources, check_source_snapshot, choose_inkscape,
+    PARK, IconError, canonical_sources, check_source_snapshot,
     destination_preflight, make_stage, prepare_run, preview_readme_bytes,
     apply_canonical, sha_file, source_freshness_warnings,
 )
@@ -254,7 +254,7 @@ class Manager:
             stage = make_stage(self.releases)
             try:
                 sources, records, archive = prepare_run(
-                    self.plain, stage, choose_inkscape(None), readme, progress=self.publish_progress)
+                    self.plain, stage, None, readme, progress=self.publish_progress)
                 self.publish_progress("finalize", 0, None, "Comparing canonical PNGs")
                 plan = destination_preflight(self.dest, records)
                 warnings = source_freshness_warnings(self.plain, PARK / "Masters", sources)
