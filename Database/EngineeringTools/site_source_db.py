@@ -303,11 +303,11 @@ def bootstrap_expertgps(conn, source: Path, actor: str, expected_sha: str) -> di
 
 
 def export_waypoint_projection(conn, baseline_source_sha: str) -> dict:
-    """Return current DB values for reviewed source bindings, ready for GPX export.
+    """Export accepted waypoint edits AND reviewed GPX track-name corrections.
 
-    For an approved GPX baseline, only write when last observed identity remains
-    unambiguous. A real source file that changed since baseline is rejected by
-    gpx_roundtrip before editing. The binding identity isn't a Garmin alias.
+    The stable source bindings identify track observations by SHA256 and source
+    ordinal, never by a potentially wrong or duplicated source track label.
+    A changed source GPX is rejected by gpx_roundtrip before any file output.
     """
     with conn.cursor() as cursor:
         cursor.execute('''
@@ -334,7 +334,32 @@ def export_waypoint_projection(conn, baseline_source_sha: str) -> dict:
             entry['longitude']=current_lon
         if len(entry)>3:
             edits.append(entry)
-    return {'base_source_sha256':baseline_source_sha, 'approved_edits':edits}
+    # Original track names remain immutable source observations. Each reviewed
+    # ref.site_track rename is exported against its accepted GPX ordinal, not
+    # against the stale label or a guessed map feature/database primary key.
+    with conn.cursor() as cursor:
+        cursor.execute('''
+            SELECT b.source_ordinal, obs.source_document->>'name', t.track_label
+              FROM ref.site_track_source_binding b
+              JOIN ref.site_track t USING (site_track_id)
+              LEFT JOIN ops.site_source_observation obs
+                ON obs.source_sha256=b.source_sha256
+               AND obs.source_row=b.source_ordinal::text
+               AND obs.item_kind='TRACK'
+             WHERE b.source_sha256=%s AND b.accepted_at IS NOT NULL
+             ORDER BY b.source_ordinal
+        ''', (baseline_source_sha,))
+        bound_tracks = cursor.fetchall()
+    track_edits = []
+    for ordinal, source_name, approved_name in bound_tracks:
+        if source_name is None:
+            raise ValueError(f'Accepted track {ordinal} lacks its original GPX source observation')
+        if approved_name != source_name:
+            track_edits.append({'source_ordinal': ordinal,
+                                'previous_track_name': source_name,
+                                'track_name': approved_name})
+    return {'base_source_sha256':baseline_source_sha, 'approved_edits':edits,
+            'approved_track_edits':track_edits}
 
 
 def export_map_projection(conn) -> dict:
