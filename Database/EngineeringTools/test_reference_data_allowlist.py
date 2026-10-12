@@ -158,3 +158,12 @@ def test_setup_map_is_reference_consumer_not_reference_editor():
     assert "SELECT ref.site_reference_snapshot()" in (
         ROOT / "Setup" / "Application" / "setup_site_reference_api.py").read_text(
         encoding="utf-8")
+
+
+def test_track_popup_is_inspection_not_edit_entrypoint():
+    """Keep GIS popup inspection distinct from the provisional Manager sidebar."""
+    js = (ROOT / "Setup" / "Application" / "setup_site_reference.js").read_text(encoding="utf-8")
+    assert "review.textContent = 'Inspect track'" in js
+    assert "Inspect / correct track name" not in js
+    assert "marker.on('popupopen', () => showTrack(t.id));" in js
+    assert "if (current.permissions?.identity)" in js  # Existing phase-1 Manager sidebar gate.
