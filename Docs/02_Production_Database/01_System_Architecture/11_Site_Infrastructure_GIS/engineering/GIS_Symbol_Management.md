@@ -4,9 +4,71 @@
 | --- | --- |
 | Status | CURRENT engineering/source-maintenance contract (runtime adoption remains separately gated) |
 | Owner | Site Infrastructure / GIS, Issue [#171](https://github.com/Gregovate/MSB-Production-Database-Project/issues/171) |
-| Recorded | 2026-10-11, capturing operator-confirmed October 9–11 decisions |
+| Recorded | 2026-10-12, current controlled contract with retained October 9–11 investigation history |
 | Related ownership | #230 reference editor/type registry; #88 Container movement/load evidence; #175 Task Cover Sheet consumer |
 | Subject | SVG masters, Plain SVG export, ExpertGPS PNG derivative, legacy symbol compatibility, web publication |
+
+## CURRENT ENGINEERING AUTHORITY — Icon Library, GIS consumers and publication (October 12, 2026)
+
+| Document control | Value |
+| --- | --- |
+| Authority | **CURRENT controlled subsystem engineering contract** for artwork, derived symbols, desktop manager and publication |
+| Responsible subsystem | Site Infrastructure / GIS — Issue #171, under #122; #230 owns governed reference editing |
+| Owner | MSB Site Infrastructure / GIS administrator |
+| Reviewed | 2026-10-12 |
+| Implementation authority | Repo source: `Database/EngineeringTools/{icon_library_manager.pyw,sync_gis_icons.py,publish_gis_svgs.py,distribute_gis_pngs.py}`; consumer code under Setup/FieldWiring as separately controlled |
+| Adjacent authority | [Site Source Synchronization Contract](../../../../../Database/EngineeringTools/Site_Source_Synchronization_Contract.md) for GIS/GPX/FLW/PostGIS evidence and [Site Infrastructure / GIS README](../README.md) for engineering handoff |
+
+### Design control — the document governs implementation
+
+The **accepted engineering rules and operator requirements in this controlled document take priority over draft PR descriptions, chat summaries and dated experiment notes**. A PR is an implementation/review vehicle, not the source of a new unapproved architecture. Before code changes: reconcile latest approved engineering direction and source evidence, update the responsible engineering contract when a decision/requirement changes, then implement and validate to that contract. Record field findings against the existing owning Issue #171 and promote accepted results here. An accepted release or UI observation does not silently supersede this authority. Cross-thread contributors must coordinate shared `locate_preview.html` or #319 work instead of merging competing map rewrites.
+
+The supported design is **one approved artwork source with independently controlled publication and consumers**, not separate independently edited icon libraries. SVG/PNG symbols are presentation assets, **not** waypoint identities, surveyed geometry, cable/panel relationships or new database reference records. Preserve GPX provenance, ExpertGPS `Label on Map` identities and historical URLs; approved #230 reference editing uses the maintained PostgreSQL/PostGIS model. Source snapshots and the editor must not rewrite source GPX/FLW as side effects of icon maintenance.
+
+### Source, derivative and destination contract
+
+| Component | Controlled location | Current behavior and ownership |
+| --- | --- | --- |
+| Editable original artwork | `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Masters` | Inkscape masters and intentional layers. The manager **never** infers desired layer visibility or edits masters. |
+| **Approved browser artwork source** | `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Plain` | Validated pixel-based, lowercase hyphenated Plain SVG outputs; source for public SVG and PNG derivative. Each axis is an integer **1–32px**; rectangular shape is intentional. This is **not** the website publication destination. |
+| Canonical ExpertGPS PNG derivative | `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\png` | Rendered from **current approved Plain**, 8-bit RGBA native pixel canvas, hash-verified; no master/XML ZIP is an alternative authority. |
+| Permanent release evidence | `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\release-history\MSB-GIS-Icon-Sync-*` | Versioned input/source manifest, output hashes, previews, copy receipts, failure details and replaced-original backups. Preserve history through failed/partial copies. |
+| Website **SVG** publication | `\\192.168.5.4\webassets\images\symbols\msb-svg` — public URL `https://webassets.sheboyganlights.org/images/symbols/msb-svg/` | **Administrator-only** reviewed publication from Plain, separately confirmed; current 37-entry SMB synchronization PASS (October 12); independent HTTPS/browser delivery acceptance remains open. |
+| Website legacy **PNG/BMP** | `\\192.168.5.4\webassets\images\symbols\msb` — public URL `https://webassets.sheboyganlights.org/images/symbols/msb/` | Separate **administrator-only** compatibility distribution; currently BLOCKED for canonical `ip-camera.png` versus existing `IP-camera.png`. Leave historical aliases intact. Not required for new Park Map SVG rendering. |
+| Current-user ExpertGPS icons | `%LOCALAPPDATA%\TopoGrafix\Symbols\msb` | Separate user-local reviewed PNG installation. Existing `readme.txt` first line `https://webassets.sheboyganlights.org/images/symbols/` is a URL-parent contract, **not** a copy/upload task. Existing `msb` identity is preserved. |
+| Garmin / draw.io / GPX types | Their own existing source/device/model authorities | A locally updated ExpertGPS folder does not install Garmin symbols. draw.io stores embedded artwork requiring separate acceptance. Icon publication must not rename GPX types/URLs or mutate schematic object IDs. |
+
+Do not install from the earlier temporary 31-/32-/34-icon Downloads ZIPs or pin a permanent icon count in code. The observed **37-file** result is the **current October 12 release checkpoint**, not a hard-coded future source-set limit.
+
+### Icon Library Manager — five independent actions
+
+1. **Check and preview icons**: read and validate all current Plain SVGs, render/verify native PNGs using Inkscape, compare canonical PNG hashes and display source-timing warnings without automatically replacing approved artwork. Cache reuse requires matching source/output hashes and verified dimensions.
+2. **Save approved PNG changes**: optional, for approved NEW/UPDATE canonical PNGs only; separate explicit consent, backup-before-replace and per-file hashes/receipt. Does **not** publish.
+3. **Review/publish Plain SVGs to web**: administrator-only destination comparison (NEW/UPDATE/Unchanged and safe historical-case identical), separate explicit LIVE server approval, retained backups and SHA-256 receipts. A hash-identical differently-cased existing published SVG can be retained at its **actual exact-case URL**, never claimed as a lowercase URL. Differing-byte or ambiguous case clashes fail closed. No PNG, GPX or map deployment.
+4. **Publish PNGs to web**: separate administrator-only compatibility task from canonical PNGs, **not part of the accepted October 12 SVG release**. Source/hash preflight currently correctly stops at the `IP-camera.png` case mismatch; do not rename historical files to bypass it.
+5. **Install PNGs for this ExpertGPS user**: current user's existing TopoGrafix folder, with original valid `readme.txt` unchanged, separate review, backups/receipts and current user-only target enforcement. ExpertGPS must be closed during installation and reopened for the actual visual/GPX round-trip test.
+
+No action 1/2/5 silently invokes actions 3/4. The Desktop tool is a **repository-checked-in program**, not a self-updating installed executable: one-time `Install-MSB-Icon-Library-Shortcut.cmd` creates a Desktop link to `Launch-MSB-Icon-Library.cmd` within the authorized Git checkout. Future software updates require updating the correct clean `main` checkout with `git pull --ff-only`. The launcher selects `.venv\Scripts\pythonw.exe` or a known installed Windows Python with Tkinter; Inkscape `inkscape.com` is required. A moved checkout requires reinstalling the shortcut. The GUI still lacks a visible release SHA/version; its Git HEAD is currently the external version check, and the blank publish/cancel button-label defect remains unresolved.
+
+### Authorization is a hard filesystem boundary
+
+**Public `webassets` publication is exclusively authorized to the Synology administrator who has SMB write permissions.** The desktop manager has no application login, does not determine GIS/Setup roles, and **must not contain embedded administrator passwords or elevation helpers**. Showing a publication button to another user does not confer write access. Other authorized people may inspect approved source, update canonical PNGs if their Google Drive access allows it, and maintain their own ExpertGPS folder; they may **not** publish to either public website directory. No change may relax Synology ACLs merely to allow a volunteer to run the same desktop application. A future delegation decision would require its own explicit reviewed security design.
+
+### Web, map and offline acceptance gates
+
+- **Accepted field evidence (October 12):** administrator-only Synology `msb-svg` publication verified **37** SVG source entries by remote SMB SHA-256: **12 NEW, 3 backed-up replacements, 21 exact-case unchanged, 1 unchanged hash-identical historical-case**. Receipt/backups under `MSB-GIS-Icon-Sync-20261012-071719-e79214`. Seven source-timestamp review notices are not data/hash validation failures. The current Windows user's **37 ExpertGPS PNGs matched canonical hashes**. See the [acceptance evidence below](#accepted-publication-evidence-and-remaining-svg-map-integration--october-12-2026) for exact release details.
+- **Not yet accepted:** independent HTTPS/body/visual checks of all map-required published SVGs; especially `stage.svg`, `t-post.svg`, non-square shapes, case-sensitive URLs; full ExpertGPS app and GPX save/reopen; separate PNG web compatibility; Garmin; publisher visible version/buttons.
+- **Map consumer design:** the existing Setup Park Map, existing Field Wiring Map and proposed dedicated #230 reference editor are **distinct interfaces sharing maintained PostgreSQL/PostGIS reference authority**. Setup/Field Wiring maps consume reviewed reference locations read-only; #230 is the governed reference-maintenance UI. Retain #88 seasonal Container/Display movement as an independent overlay and retain the existing Field Wiring Controller workflow. A GPX `marker_url` is historical source evidence, not authority to rewrite waypoint identity. Prefer published approved Plain SVGs sized at each file's **native `width×height`**, not forcibly 32×32; use an explicit approved type/asset mapping and meaningful, tested missing-symbol fallbacks. Draft #319's first 15-type map mapping covers 195 of 233 static GPX points; **eight existing `Waypoint`/Anchor symbols (including real `Workshop`) became neutral circles**. That is **an unfinished presentation regression**, not an acceptable removal of waypoints. Also, a missing SVG must not silently become an apparently valid survey marker. Source geometry and database counts are different from image loading.
+- **Offline field design:** same existing Park Map must work after *deliberate* per-device download of bounded 2019 orthophoto tiles, local Leaflet and symbol files, GPX names/routes and approved cached reference snapshot. Offline viewing/search/tracks may show an explicitly dated reference revision; **no offline maintenance edits**, no unsourced current Container/Display positions, and no unchecked data promotion. Require actual rugged Android airplane-mode restart and imagery/symbol/accuracy-in-feet review. The PR #361 package now integrated into draft #319 is a tested **candidate**, **not** a Production or field-accepted deployment.
+- **PR gate:** #171 icon/media and #230 reference editors are coordinated under #122; no parallel branch may overwrite accepted source-map/PostGIS work. Before merging future code, update this engineering authority for any design change, align the operator SOP when the task changes, run targeted regressions, then collect operator/browser/device acceptance. PR comments contain implementation evidence, **not competing engineering requirements**. No duplicate current-Production dump is needed merely to check a public icon URL.
+
+### Current operator procedures (separate from engineering design)
+
+- [Install or update the manager](../operatorSOP/Install_or_Update_MSB_Icon_Library_Manager.md)
+- [Review icons and update local ExpertGPS](../operatorSOP/Review_MSB_Icons_and_Update_Local_ExpertGPS.md)
+- [Publish approved Plain SVGs — Synology administrator only](../operatorSOP/Publish_Approved_MSB_SVGs_to_Web.md)
+
+**Earlier October 9–11 sections below are retained as historical investigation, migration evidence and earlier test states.** When historical statements describe a missing app action, unsynchronized web SVGs, an old icon count or a zip-based process, they are **superseded by the CURRENT contract and October 12 verified state above**. Do not use historical handoffs as an active operator procedure.
 
 ## Accepted publication evidence and remaining SVG map integration — October 12, 2026
 
