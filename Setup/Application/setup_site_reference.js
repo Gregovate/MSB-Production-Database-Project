@@ -1,4 +1,5 @@
-/* #171/#230: maintained PostGIS source for the EXISTING /setup/locate/ map.
+/* #171/#230: read-only maintained PostGIS consumer for EXISTING Setup /setup/locate/ map.
+ * Reference maintenance belongs in the separate #230 application, never this map.
  * Reference redraw does not touch #88 Container/Display/Drop observation layers.
  * Incomplete/absent DB = visibly dated snapshot, never a silent "live" claim.
  */
@@ -172,7 +173,7 @@
         ' · measured speed not established');
     }
     const btn = document.createElement('button');
-    btn.type = 'button'; btn.textContent = 'View circuits, tests / edit';
+    btn.type = 'button'; btn.textContent = 'View circuits and tests';
     btn.addEventListener('click', () => showWaypoint(point.id));
     append(display, btn);
     return display;
@@ -245,7 +246,9 @@
     line(provenance, 'Unreconciled LinkIQ test UUIDs: ' + current.unresolved_linkiq_tests);
     line(body, 'Reference DB revision ' + current.revision
       + ' · operational instructions are NOT proof of electrical state.');
-    if (current.permissions.identity || current.permissions.operations) {
+    if (false && (current.permissions.identity || current.permissions.operations)) {
+      // This map is a consumer. Never expose protected reference mutation here.
+      // Keep the legacy forms uncalled until moved to #230's dedicated editor.
       const edits = append(body, document.createElement('div'));
       heading(edits, 'Authorized maintenance · server checked');
       if (current.permissions.identity) {
