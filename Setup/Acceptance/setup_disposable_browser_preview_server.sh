@@ -19,6 +19,9 @@ MODE="${2:-start}"
 GIS_GPX_SHA=""
 GIS_FLW_SHA=""
 GIS_ACTOR=""
+GIS_CACHE_LOCKED=0
+GIS_CACHE_LOCK_FD=""
+GIS_CACHE_ACCEPTED=0
 TARGET_SHA=""
 TARGET_REF=""
 PREVIEW_PORT=""
@@ -276,7 +279,15 @@ cleanup() {
     rm -f "$STATE_FILE" >/dev/null 2>&1 || true
     rm -rf "$SCRIPT_DIR" >/dev/null 2>&1 || true
 
-    echo "--- Production after-check ---"
+    # The original GPX/FLW always remain on the operator's Shared Drive.
+    # Content-addressed server copies are staging only, not retained evidence.
+    # Retire superseded versions ONLY after a clean finished browser review,
+    # after its upload bundle is gone, while holding the exclusive cache lock.
+    if [[ "$status" -eq 0 && "$GIS_CACHE_ACCEPTED" -eq 1 ]]; then
+        prune_gis_source_cache || echo "WARN: GIS source cache retention was not completed; no Production or source changes"
+    fi
+
+    echo "--- Production after-check ---
     if [[ -n "$PROD_BEFORE" ]]; then
         PROD_AFTER="$(prod_fingerprint 2>/dev/null)"
         echo "Production Setup fingerprint before: $PROD_BEFORE"
@@ -535,8 +546,82 @@ sudo -u fieldwiring -H env PYTHONPYCACHEPREFIX="$PYCACHE" bash -c "
 "
 echo "PASS: exact candidate Setup/Application regression"
 
-# Content-addressed, read-only source evidence survives preview cleanup.
-# Publish with an atomic hard link only after verifying the uploaded bytes.
+# A cache file is a disposable verified transport copy, NOT a second source
+# master. Keep only the active accepted SHA for each source type after a clean
+# review. Do not delete a cache another preview could be using.
+prune_gis_source_cache() {
+    local source_cache="$HOME/setup-source-cache"
+    local source_ext expected current current_actual candidate candidate_sha links size
+    local total_bytes=0 removed=0 state bundle
+    if [[ "$GIS_CACHE_LOCKED" != "1" ]]; then
+        echo "CACHE RETENTION SKIP: no exclusive GIS source-cache lock"
+        return 0
+    fi
+    # Validate BOTH retained files before considering removal of anything.
+    for source_ext in gpx flw; do
+        if [[ "$source_ext" == gpx ]]; then expected="$GIS_GPX_SHA"
+        else expected="$GIS_FLW_SHA"; fi
+        [[ "$expected" =~ ^[a-f0-9]{64}$ ]] || {
+            echo "CACHE RETENTION SKIP: unverified $source_ext source identity"
+            return 0
+        }
+        current="$source_cache/$expected.$source_ext"
+        [[ -f "$current" && ! -L "$current" ]] || {
+            echo "CACHE RETENTION SKIP: current $source_ext source absent"
+            return 0
+        }
+        current_actual="$(sha256sum "$current" | cut -d' ' -f1)"
+        [[ "$current_actual" == "$expected" ]] || {
+            echo "CACHE RETENTION SKIP: current $source_ext SHA mismatch"
+            return 0
+        }
+    done
+
+    # Existing/future preview versions might not know this cache lock.
+    # Conservatively retain everything if ANOTHER review is prepared or live.
+    for state in /tmp/msb-setup-browser-preview-state-*.env; do
+        [[ -f "$state" ]] || continue
+        if [[ "$state" != "$STATE_FILE" ]]; then
+            echo "CACHE RETENTION SKIP: another browser preview state exists"
+            return 0
+        fi
+    done
+    for bundle in /tmp/msb-setup-disposable-browser-preview-*; do
+        [[ -d "$bundle" && -s "$bundle/preview_manifest.tsv" ]] || continue
+        if [[ "$bundle" != "$SCRIPT_DIR" ]]; then
+            echo "CACHE RETENTION SKIP: another source review bundle exists"
+            return 0
+        fi
+    done
+
+    for source_ext in gpx flw; do
+        if [[ "$source_ext" == gpx ]]; then expected="$GIS_GPX_SHA"
+        else expected="$GIS_FLW_SHA"; fi
+        for candidate in "$source_cache"/*."$source_ext"; do
+            [[ -e "$candidate" ]] || continue
+            [[ -f "$candidate" && ! -L "$candidate" ]] || continue
+            candidate_sha="$(basename -- "$candidate" ".$source_ext")"
+            [[ "$candidate_sha" =~ ^[a-f0-9]{64}$ ]] || continue
+            [[ "$candidate_sha" == "$expected" ]] && continue
+            # Never delete a file still hardlinked to an in-flight bundle.
+            links="$(stat -c '%h' -- "$candidate")" || return 1
+            [[ "$links" == "1" ]] || continue
+            size="$(stat -c '%s' -- "$candidate")" || return 1
+            if rm -f -- "$candidate"; then
+                removed=$((removed+1))
+                total_bytes=$((total_bytes+size))
+            else
+                echo "WARN: could not remove superseded $source_ext cache file" >&2
+                return 1
+            fi
+        done
+    done
+    echo "CACHE RETENTION PASS: kept current GPX + FLW; removed $removed superseded verified-name cached files ($total_bytes bytes)"
+}
+
+# Content-addressed transport copies are retained only while useful.
+# The exclusive lock is held through the current browser review; a newer
+# preview cannot replace/prune a file used by this accepted run.
 resolve_gis_source() {
     local source_sha="$1" source_ext="$2" uploaded="$3"
     local source_cache="$HOME/setup-source-cache"
@@ -561,6 +646,15 @@ resolve_gis_source() {
 if [[ -n "$GIS_GPX_SHA$GIS_FLW_SHA$GIS_ACTOR" ]]; then
     [[ "$GIS_GPX_SHA" =~ ^[a-f0-9]{64}$ && "$GIS_FLW_SHA" =~ ^[a-f0-9]{64}$ && -n "$GIS_ACTOR" ]] || { echo "FAIL: incomplete GIS source manifest"; exit 16; }
     [[ " ${MIGRATIONS[*]} " == *" Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql "* && " ${VALIDATIONS[*]} " == *" Database/Acceptance/171_site_infrastructure_disposable_validation.sql "* ]] || { echo "FAIL: GIS schema and validation required"; exit 16; }
+    mkdir -p "$HOME/setup-source-cache"
+    chmod 700 "$HOME/setup-source-cache"
+    exec {GIS_CACHE_LOCK_FD}>"$HOME/setup-source-cache/.preview-source.lock"
+    if ! flock -n "$GIS_CACHE_LOCK_FD"; then
+        echo "FAIL: another GIS browser review holds the source cache; reuse/finish that review before retrying"
+        exit 16
+    fi
+    GIS_CACHE_LOCKED=1
+    echo "Exclusive GIS source cache lock: acquired"
     GIS_GPX_SOURCE="$(resolve_gis_source "$GIS_GPX_SHA" gpx "$SCRIPT_DIR/source.gpx")"
     GIS_FLW_SOURCE="$(resolve_gis_source "$GIS_FLW_SHA" flw "$SCRIPT_DIR/source.flw")"
     echo "Verified persistent GIS sources: $GIS_GPX_SHA / $GIS_FLW_SHA"
@@ -849,6 +943,7 @@ if [[ -n "$GIS_GPX_SHA" ]]; then
         --gpx "$GIS_GPX_SOURCE" --flw "$GIS_FLW_SOURCE" \
         --gpx-sha "$GIS_GPX_SHA" --flw-sha "$GIS_FLW_SHA" --actor "$GIS_ACTOR" \
         --output "$REPORT_DIR/GIS_Source_Acceptance_${STAMP}"
+    GIS_CACHE_ACCEPTED=1
 fi
 
 DSN="host=$TEST_IP port=5432 dbname=$TEST_DB user=fieldwiring_app password=$APP_PASSWORD"
