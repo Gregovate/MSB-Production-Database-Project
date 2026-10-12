@@ -175,7 +175,37 @@ AS $snapshot$
        ORDER BY c.site_cable_id) FROM ref.site_cable c
        WHERE c.reviewed_by IS NOT NULL AND c.reviewed_at IS NOT NULL),'[]'::jsonb),
    'unresolved_linkiq_tests', (SELECT count(*) FROM ops.linkiq_test
-       WHERE identity_review_status<>'REVIEWED')
+       WHERE identity_review_status<>'REVIEWED'),
+   -- The review queue contains durable UUID/source evidence, not inferred cable
+   -- identities. Never expose the opaque BinRec payload to the operator map.
+   'linkiq_review', coalesce((
+       SELECT jsonb_agg(jsonb_build_object(
+           'test_uuid',t.test_uuid,'tester_original_name',t.tester_original_name,
+           'preferred_display_name',latest.display_cable_name,
+           'source_sha256',latest.source_sha256,
+           'intake_status',latest.intake_status,
+           'identity_review_status',t.identity_review_status,
+           'physical_site_cable_id',t.physical_site_cable_id,
+           'tested_at_local',t.test_time_local,'test_status_code',t.test_status_code,
+           'test_standard',t.test_standard,'length_ft',t.length_ft,
+           'measured_link_speed_mbps',NULL
+       ) ORDER BY t.test_time_local DESC NULLS LAST,t.test_uuid)
+       FROM ops.linkiq_test t
+       LEFT JOIN LATERAL (
+           SELECT r.source_sha256,r.proposal->>'status' AS intake_status,
+                  a.display_cable_name
+           FROM ops.linkiq_intake_review r
+           JOIN ops.site_source_batch b ON b.source_sha256=r.source_sha256
+           LEFT JOIN LATERAL (
+               SELECT x.display_cable_name FROM ops.linkiq_test_appearance x
+               WHERE x.test_uuid=t.test_uuid AND x.source_sha256=r.source_sha256
+               ORDER BY x.source_row ASC LIMIT 1
+           ) a ON true
+           WHERE r.test_uuid=t.test_uuid
+           ORDER BY b.received_at DESC,r.recorded_at DESC,r.source_sha256 DESC LIMIT 1
+       ) latest ON true
+       WHERE t.identity_review_status<>'REVIEWED'
+   ),'[]'::jsonb)
  ) FROM ref.site_reference_revision rv WHERE rv.singleton=true
 $snapshot$;
 
@@ -206,6 +236,10 @@ DECLARE
     v_panel bigint;
     v_circuit bigint;
     v_network bigint;
+    v_cable bigint;
+    v_expected_cable bigint;
+    v_test_uuid uuid;
+    v_source_sha text;
     v_before jsonb;
     v_after jsonb;
     v_evidence text := nullif(btrim(p_data->>'evidence_notes'),'');
@@ -222,7 +256,8 @@ BEGIN
     END IF;
     v_permissions := ref.site_reference_permissions(p_email);
     IF p_command IN ('manager_update_waypoint','manager_set_panel_owner',
-                     'manager_set_circuit_owner','manager_add_network') THEN
+                     'manager_set_circuit_owner','manager_add_network',
+                     'manager_create_cable','manager_link_test') THEN
         IF NOT (v_permissions->>'identity')::boolean THEN
             RAISE EXCEPTION 'Manager GIS identity grant required' USING ERRCODE='42501';
         END IF;
@@ -390,6 +425,146 @@ BEGIN
               reviewed_at=clock_timestamp();
         SELECT to_jsonb(m) INTO v_after FROM ref.site_waypoint_network m
           WHERE m.site_waypoint_id=v_waypoint AND m.site_network_id=v_network;
+
+    ELSIF p_command='manager_create_cable' THEN
+        -- Create one physical cable only after operator selects two EXISTING
+        -- waypoint identities and a reviewed network or explicit SPARE label.
+        -- Parallel cables with identical endpoints remain distinct identities.
+        v_waypoint := (p_data->>'endpoint_a_waypoint_id')::bigint;
+        v_panel := (p_data->>'endpoint_b_waypoint_id')::bigint;
+        v_network := nullif(p_data->>'network_id','')::bigint;
+        v_code := nullif(btrim(p_data->>'spare_designation'),'');
+        IF v_waypoint IS NULL OR v_panel IS NULL OR v_waypoint=v_panel OR
+           NOT EXISTS(SELECT 1 FROM ref.site_waypoint WHERE site_waypoint_id=v_waypoint) OR
+           NOT EXISTS(SELECT 1 FROM ref.site_waypoint WHERE site_waypoint_id=v_panel) THEN
+           RAISE EXCEPTION 'Two distinct, existing physical endpoint waypoints are required'
+               USING ERRCODE='22023';
+        END IF;
+        IF (v_network IS NULL) = (v_code IS NULL) THEN
+            RAISE EXCEPTION 'Choose exactly one reviewed network or explicit SPARE designation'
+                USING ERRCODE='22023';
+        END IF;
+        IF v_network IS NOT NULL AND NOT EXISTS(
+               SELECT 1 FROM ref.site_network WHERE site_network_id=v_network) THEN
+            RAISE EXCEPTION 'Selected network does not exist' USING ERRCODE='22023';
+        END IF;
+        IF coalesce(p_data->>'lifecycle_status','CURRENT')
+           NOT IN ('CURRENT','FAILED','REPAIRED') THEN
+            RAISE EXCEPTION 'Cable review needs explicit current/failed/repaired lifecycle'
+                USING ERRCODE='22023';
+        END IF;
+        INSERT INTO ref.site_cable(
+            endpoint_a_waypoint_id,endpoint_b_waypoint_id,site_network_id,
+            spare_designation,lifecycle_status,reviewed_by,reviewed_at,notes)
+        VALUES(v_waypoint,v_panel,v_network,v_code,
+               coalesce(p_data->>'lifecycle_status','CURRENT'),p_email,
+               clock_timestamp(),v_evidence)
+        RETURNING site_cable_id INTO v_target;
+        SELECT to_jsonb(c) INTO v_after FROM ref.site_cable c
+        WHERE c.site_cable_id=v_target;
+
+    ELSIF p_command='manager_link_test' THEN
+        -- Review a single stable test UUID against an existing *reviewed*
+        -- physical cable, retaining source-specific evidence and decision
+        -- history. Neither a changed label nor a retest creates a new cable.
+        IF NOT (p_data ? 'expected_cable_id') THEN
+            RAISE EXCEPTION 'Explicit previous cable binding required (null permitted)'
+                USING ERRCODE='22023';
+        END IF;
+        v_source_sha:=lower(btrim(p_data->>'source_sha256'));
+        IF v_source_sha IS NULL OR v_source_sha !~ '^[0-9a-f]{64}
+        v_target:=(p_data->>'circuit_id')::bigint;
+        IF NOT EXISTS(SELECT 1 FROM ref.site_power_circuit WHERE site_power_circuit_id=v_target)
+           OR (p_data->>'season_year')::int NOT BETWEEN 2020 AND 2100 THEN
+           RAISE EXCEPTION 'Existing circuit and valid season required' USING ERRCODE='22023';
+        END IF;
+        SELECT to_jsonb(i) INTO v_before FROM ref.site_seasonal_switch_instruction i
+          WHERE i.site_power_circuit_id=v_target AND i.season_year=(p_data->>'season_year')::int;
+        INSERT INTO ref.site_seasonal_switch_instruction
+          (site_power_circuit_id,season_year,turn_on_instruction,turn_off_instruction,
+           evidence_notes,reviewed_by)
+        VALUES(v_target,(p_data->>'season_year')::int,
+               nullif(btrim(p_data->>'turn_on_instruction'),''),
+               nullif(btrim(p_data->>'turn_off_instruction'),''),v_evidence,p_email)
+        ON CONFLICT(site_power_circuit_id,season_year) DO UPDATE
+          SET turn_on_instruction=EXCLUDED.turn_on_instruction,
+              turn_off_instruction=EXCLUDED.turn_off_instruction,
+              evidence_notes=EXCLUDED.evidence_notes,reviewed_by=EXCLUDED.reviewed_by,
+              reviewed_at=clock_timestamp();
+        SELECT to_jsonb(i) INTO v_after FROM ref.site_seasonal_switch_instruction i
+          WHERE i.site_power_circuit_id=v_target AND i.season_year=(p_data->>'season_year')::int;
+    END IF;
+
+    UPDATE ref.site_reference_revision SET revision=revision+1,
+       changed_at=clock_timestamp() WHERE singleton=true RETURNING revision INTO v_current;
+    INSERT INTO ops.site_reference_edit_log(
+      revision,operator_email,named_command,target_id,evidence_notes,before_data,after_data)
+    VALUES(v_current,p_email,p_command,v_target,v_evidence,v_before,v_after);
+    v_result := jsonb_build_object('revision',v_current,'target_id',v_target,
+                                  'command',p_command,'changed',true);
+    RETURN v_result;
+END
+$command$;
+
+-- PostgreSQL grants follow the existing FieldWiring application account, if present
+-- on the clone. No generic DML or unreviewed editor grants.
+REVOKE ALL ON FUNCTION ref.site_reference_snapshot() FROM PUBLIC;
+REVOKE ALL ON FUNCTION ref.site_reference_permissions(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION ref.site_reference_command(text,text,bigint,jsonb) FROM PUBLIC;
+DO $grant$
+BEGIN
+ IF to_regrole('fieldwiring_app') IS NOT NULL THEN
+   GRANT USAGE ON SCHEMA ref TO fieldwiring_app;
+   GRANT EXECUTE ON FUNCTION ref.site_reference_snapshot() TO fieldwiring_app;
+   GRANT EXECUTE ON FUNCTION ref.site_reference_permissions(text) TO fieldwiring_app;
+   GRANT EXECUTE ON FUNCTION ref.site_reference_command(text,text,bigint,jsonb)
+     TO fieldwiring_app;
+ END IF;
+END $grant$;
+COMMIT;
+ THEN
+            RAISE EXCEPTION 'Source SHA256 required for identity decision'
+                USING ERRCODE='22023';
+        END IF;
+        v_test_uuid:=(p_data->>'test_uuid')::uuid;
+        v_cable:=(p_data->>'site_cable_id')::bigint;
+        v_expected_cable:=(p_data->>'expected_cable_id')::bigint;
+        IF v_cable IS NULL THEN
+            RAISE EXCEPTION 'A reviewed physical cable ID is required'
+                USING ERRCODE='22023';
+        END IF;
+        PERFORM 1 FROM ref.site_cable c WHERE c.site_cable_id=v_cable
+          AND c.reviewed_by IS NOT NULL AND c.reviewed_at IS NOT NULL
+          AND c.endpoint_a_waypoint_id IS NOT NULL AND c.endpoint_b_waypoint_id IS NOT NULL
+          AND c.lifecycle_status NOT IN ('DESTROYED','RETIRED','REPLACED','ABANDONED')
+          FOR SHARE;
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Selected physical cable is not reviewed/active'
+                USING ERRCODE='22023';
+        END IF;
+        SELECT to_jsonb(t),t.physical_site_cable_id
+          INTO v_before,v_expected_cable
+          FROM ops.linkiq_test t WHERE t.test_uuid=v_test_uuid FOR UPDATE;
+        IF NOT FOUND THEN RAISE EXCEPTION 'LinkIQ UUID not found' USING ERRCODE='P0002'; END IF;
+        IF v_expected_cable IS DISTINCT FROM (p_data->>'expected_cable_id')::bigint THEN
+            RAISE EXCEPTION 'Reviewed test binding changed; refresh before deciding'
+                USING ERRCODE='40001';
+        END IF;
+        IF NOT EXISTS(SELECT 1 FROM ops.linkiq_intake_review r
+           WHERE r.source_sha256=v_source_sha AND r.test_uuid=v_test_uuid) THEN
+            RAISE EXCEPTION 'No retained source proposal for this test UUID/SHA'
+                USING ERRCODE='22023';
+        END IF;
+        INSERT INTO ops.linkiq_identity_decision(
+            source_sha256,test_uuid,previous_cable_id,site_cable_id,actor,evidence_notes)
+        VALUES(v_source_sha,v_test_uuid,v_expected_cable,v_cable,p_email,v_evidence);
+        UPDATE ops.linkiq_test t SET physical_site_cable_id=v_cable,
+            identity_review_status='REVIEWED',reviewed_by=p_email,
+            reviewed_at=clock_timestamp()
+        WHERE t.test_uuid=v_test_uuid;
+        v_target:=v_cable;
+        SELECT to_jsonb(t) INTO v_after FROM ops.linkiq_test t
+        WHERE t.test_uuid=v_test_uuid;
 
     ELSIF p_command='crew_set_switching' THEN
         v_target:=(p_data->>'circuit_id')::bigint;
