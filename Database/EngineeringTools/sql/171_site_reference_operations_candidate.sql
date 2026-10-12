@@ -125,6 +125,12 @@ AS $snapshot$
           WHERE sb.site_waypoint_id=w.site_waypoint_id
           ORDER BY accepted_at DESC NULLS LAST,source_sha256 DESC LIMIT 1
        ) b ON true), '[]'::jsonb),
+   'aliases', coalesce((SELECT jsonb_agg(jsonb_build_object(
+       'id',a.alias_id,'waypoint_id',a.site_waypoint_id,'label',a.alias_text,
+       'source',a.alias_source,'accepted_at',a.accepted_at,'accepted_by',a.accepted_by)
+       ORDER BY a.site_waypoint_id,a.alias_id)
+       FROM ref.site_waypoint_alias a
+       WHERE a.accepted_by IS NOT NULL AND a.accepted_at IS NOT NULL),'[]'::jsonb),
    'tracks', coalesce((SELECT jsonb_agg(jsonb_build_object(
        'id',t.site_track_id,'label',t.track_label,'type',t.source_type,
        'description',t.description,'lifecycle',t.lifecycle_status,
@@ -262,12 +268,15 @@ BEGIN
     v_permissions := ref.site_reference_permissions(p_email);
     IF p_command IN ('manager_update_waypoint','manager_set_panel_owner',
                      'manager_set_circuit_owner','manager_add_network',
-                     'manager_create_cable','manager_link_test') THEN
+                     'manager_create_cable','manager_link_test','manager_add_alias',
+                     'manager_retire_cable') THEN
         IF NOT (v_permissions->>'identity')::boolean THEN
             RAISE EXCEPTION 'Manager GIS identity grant required' USING ERRCODE='42501';
         END IF;
     ELSIF p_command IN ('crew_set_meter','crew_upsert_circuit','crew_link_destination',
-                        'crew_assign_network','crew_set_switching') THEN
+                        'crew_assign_network','crew_set_switching',
+                        'crew_unlink_destination','crew_remove_network',
+                        'crew_clear_switching') THEN
         IF NOT (v_permissions->>'operations')::boolean THEN
             RAISE EXCEPTION 'Production crew infrastructure grant required' USING ERRCODE='42501';
         END IF;
@@ -304,6 +313,29 @@ BEGIN
                   ST_SetSRID(ST_MakePoint(v_lon,v_lat),4326) ELSE w.source_wgs84 END,
            updated_at=clock_timestamp(),verified_by=p_email,verified_at=clock_timestamp()
          WHERE w.site_waypoint_id=v_target RETURNING to_jsonb(w) INTO v_after;
+
+    ELSIF p_command='manager_add_alias' THEN
+        v_target := (p_data->>'waypoint_id')::bigint;
+        v_code := nullif(btrim(p_data->>'alias_text'),'');
+        IF v_target IS NULL OR v_code IS NULL OR
+           NOT EXISTS(SELECT 1 FROM ref.site_waypoint w WHERE w.site_waypoint_id=v_target) THEN
+            RAISE EXCEPTION 'Existing waypoint and explicit alias required'
+                USING ERRCODE='22023';
+        END IF;
+        IF EXISTS(SELECT 1 FROM ref.site_waypoint w
+                  WHERE lower(btrim(w.canonical_label))=lower(v_code))
+           OR EXISTS(SELECT 1 FROM ref.site_waypoint_alias a
+                  WHERE lower(btrim(a.alias_text))=lower(v_code)) THEN
+            RAISE EXCEPTION 'Alias already names a waypoint; review identity conflict'
+                USING ERRCODE='23505';
+        END IF;
+        INSERT INTO ref.site_waypoint_alias(site_waypoint_id,alias_text,alias_source,
+              alias_notes,accepted_by,accepted_at)
+        VALUES(v_target,v_code,coalesce(nullif(btrim(p_data->>'alias_source'),''),
+               'FIELD_REVIEW'),v_evidence,p_email,clock_timestamp())
+        RETURNING alias_id INTO v_waypoint;
+        SELECT to_jsonb(a) INTO v_after FROM ref.site_waypoint_alias a
+        WHERE a.alias_id=v_waypoint;
 
     ELSIF p_command='manager_set_panel_owner' THEN
         v_target := (p_data->>'waypoint_id')::bigint;
@@ -401,6 +433,41 @@ BEGIN
         SELECT to_jsonb(d) INTO v_after FROM ref.site_circuit_destination d
           WHERE d.site_power_circuit_id=v_circuit AND d.site_waypoint_id=v_waypoint;
 
+    ELSIF p_command='crew_unlink_destination' THEN
+        v_circuit := (p_data->>'circuit_id')::bigint;
+        v_waypoint := (p_data->>'waypoint_id')::bigint;
+        SELECT to_jsonb(d) INTO v_before FROM ref.site_circuit_destination d
+          WHERE d.site_power_circuit_id=v_circuit AND d.site_waypoint_id=v_waypoint
+          FOR UPDATE;
+        IF NOT FOUND THEN RAISE EXCEPTION 'Reviewed circuit destination link not found'
+             USING ERRCODE='P0002'; END IF;
+        DELETE FROM ref.site_circuit_destination d
+          WHERE d.site_power_circuit_id=v_circuit AND d.site_waypoint_id=v_waypoint;
+        v_target := v_circuit;
+
+    ELSIF p_command='crew_remove_network' THEN
+        v_waypoint := (p_data->>'waypoint_id')::bigint;
+        v_network := (p_data->>'network_id')::bigint;
+        SELECT to_jsonb(m) INTO v_before FROM ref.site_waypoint_network m
+          WHERE m.site_waypoint_id=v_waypoint AND m.site_network_id=v_network
+          FOR UPDATE;
+        IF NOT FOUND THEN RAISE EXCEPTION 'Reviewed waypoint network membership not found'
+            USING ERRCODE='P0002'; END IF;
+        DELETE FROM ref.site_waypoint_network m
+          WHERE m.site_waypoint_id=v_waypoint AND m.site_network_id=v_network;
+        v_target := v_waypoint;
+
+    ELSIF p_command='crew_clear_switching' THEN
+        v_circuit := (p_data->>'circuit_id')::bigint;
+        SELECT to_jsonb(i) INTO v_before FROM ref.site_seasonal_switch_instruction i
+          WHERE i.site_power_circuit_id=v_circuit
+            AND i.season_year=(p_data->>'season_year')::int FOR UPDATE;
+        IF NOT FOUND THEN RAISE EXCEPTION 'Reviewed seasonal switching instruction not found'
+             USING ERRCODE='P0002'; END IF;
+        DELETE FROM ref.site_seasonal_switch_instruction i
+          WHERE i.site_power_circuit_id=v_circuit AND i.season_year=(p_data->>'season_year')::int;
+        v_target := v_circuit;
+
     ELSIF p_command='manager_add_network' THEN
         v_code:=nullif(btrim(p_data->>'network_code'),'');
         IF v_code IS NULL OR p_data->>'network_kind' NOT IN ('LOR','IP','OTHER') THEN
@@ -467,6 +534,27 @@ BEGIN
         RETURNING site_cable_id INTO v_target;
         SELECT to_jsonb(c) INTO v_after FROM ref.site_cable c
         WHERE c.site_cable_id=v_target;
+
+    ELSIF p_command='manager_retire_cable' THEN
+        v_target := (p_data->>'site_cable_id')::bigint;
+        v_code := nullif(btrim(p_data->>'lifecycle_status'),'');
+        IF v_code NOT IN ('REPLACED','DESTROYED','ABANDONED','RETIRED') THEN
+            RAISE EXCEPTION 'Retirement needs explicit reviewed lifecycle'
+                USING ERRCODE='22023';
+        END IF;
+        SELECT to_jsonb(c) INTO v_before FROM ref.site_cable c
+          WHERE c.site_cable_id=v_target AND c.reviewed_at IS NOT NULL FOR UPDATE;
+        IF NOT FOUND THEN RAISE EXCEPTION 'Reviewed physical cable not found'
+              USING ERRCODE='P0002'; END IF;
+        IF v_before->>'lifecycle_status'=v_code THEN
+            RAISE EXCEPTION 'Cable is already in that lifecycle; no change to record'
+                USING ERRCODE='22023';
+        END IF;
+        UPDATE ref.site_cable c SET lifecycle_status=v_code,
+            retired_at=coalesce(nullif(p_data->>'retired_at','')::date, current_date),
+            notes=concat_ws(E'
+',nullif(c.notes,''),v_evidence)
+        WHERE c.site_cable_id=v_target RETURNING to_jsonb(c) INTO v_after;
 
     ELSIF p_command='manager_link_test' THEN
         -- Stable UUID identity is never equated to a physical cable ID.
