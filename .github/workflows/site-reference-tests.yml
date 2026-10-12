@@ -59,6 +59,7 @@ jobs:
       # identity and #88 icon assertions stop in CI, not after a big FLW upload.
       - name: Full Setup and Field Wiring application regression
         run: |
+          node Setup/Application/test_setup_locate_networks_browser.cjs
           python -m pytest -q -p no:cacheprovider Setup/Application Setup/Acceptance/test_setup_gis_preview.py
           python -m pytest -q -p no:cacheprovider FieldWiring/Application
       - name: Run PostGIS migrations and rollback-only operational assertions

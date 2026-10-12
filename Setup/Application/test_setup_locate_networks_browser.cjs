@@ -33,7 +33,7 @@ const markers = data.features.filter(f => ['LineString','MultiLineString'].inclu
 })));
 const toggle = {...element(), checked: false};
 let selectionBounds;
-const context = {document: {getElementById: id => elements[id], createElement: element, querySelector: () => toggle},
+const context = {window:{siteReferenceReady:null}, document: {getElementById: id => elements[id], createElement: element, querySelector: () => toggle},
   fetch: async () => ({ok: true, json: async () => source}),
   layers: Object.fromEntries(['NET','HV','PRI','Other'].map(name => [name, {eachLayer(fn) { markers.filter(m => m._searchFeature.properties.class === name).forEach(fn); }, addTo() {}}])),
   map: {fitBounds(bounds) { selectionBounds = bounds.items; }, closePopup() {}},
@@ -114,7 +114,7 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   assert.equal(activeIds().size, 0, 'Parent off restores all highlighted source tracks');
   assert([...controls.values()].every(c => !c.checked));
   assert(page.includes('<details id="network-picker"><summary>'), 'Network list has native keyboard-accessible disclosure');
-  assert(page.includes('V0.3.62-field-networks · Source refreshed 2026-10-11'));
+  assert(page.includes('V0.3.63-site-reference · Source refreshed 2026-10-11'));
   assert(!page.includes('temporary-workshop'), 'Obsolete October 8 marker must not be rendered');
   const styles = vm.runInNewContext('(' + page.match(/const trackStyles=(.*?);/)[1] + ')');
   assert.equal(styles.PRI.color, '#ff8b25');
@@ -215,7 +215,8 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
  context.watchId=null;context.renderGps();assert.equal(buttons.children.length,0);
 }
 
-// A failed refresh must not erase the last successful snapshot/search registrations.
+// A failed live movement refresh must CLEAR potentially stale asset markers;
+// offline map may only show saved reference geography, never false live positions.
 (async () => {
   const controls = Object.fromEntries(['asset-year','asset-status','asset-unlocated','asset-refresh'].map(id => [id,element()]));
   let clears = 0, calls = 0;
@@ -228,8 +229,9 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(clears,3);
   await controls['asset-refresh'].click();
-  assert.equal(clears,3,'Offline refresh retains existing layers and search');
-  assert.match(controls['asset-status'].textContent,/Previously loaded locations remain visible/);
+  assert.equal(clears,6,'Offline refresh clears both asset marker layers and search');
+  assert.match(controls['asset-status'].textContent,/CURRENT Container \/ Display locations unavailable/);
+  assert.match(controls['asset-status'].textContent,/No last-known locations are being represented as live/);
   assert.equal(controls['asset-refresh'].disabled,false);
-  console.log('PASS: failed refresh preserves existing asset snapshot');
+  console.log('PASS: failed movement refresh clears obsolete locations, retaining reference-only offline map');
 })().catch(error => {console.error(error);process.exitCode=1;});
