@@ -551,6 +551,7 @@ echo "PASS: exact candidate Setup/Application regression"
 # review. Do not delete a cache another preview could be using.
 prune_gis_source_cache() {
     local source_cache="$HOME/setup-source-cache"
+    local preview_root="/tmp"
     local source_ext expected current current_actual candidate candidate_sha links size
     local total_bytes=0 removed=0 state bundle
     if [[ "$GIS_CACHE_LOCKED" != "1" ]]; then
@@ -579,14 +580,14 @@ prune_gis_source_cache() {
 
     # Existing/future preview versions might not know this cache lock.
     # Conservatively retain everything if ANOTHER review is prepared or live.
-    for state in /tmp/msb-setup-browser-preview-state-*.env; do
+    for state in "$preview_root"/msb-setup-browser-preview-state-*.env; do
         [[ -f "$state" ]] || continue
         if [[ "$state" != "$STATE_FILE" ]]; then
             echo "CACHE RETENTION SKIP: another browser preview state exists"
             return 0
         fi
     done
-    for bundle in /tmp/msb-setup-disposable-browser-preview-*; do
+    for bundle in "$preview_root"/msb-setup-disposable-browser-preview-*; do
         [[ -d "$bundle" && -s "$bundle/preview_manifest.tsv" ]] || continue
         if [[ "$bundle" != "$SCRIPT_DIR" ]]; then
             echo "CACHE RETENTION SKIP: another source review bundle exists"
