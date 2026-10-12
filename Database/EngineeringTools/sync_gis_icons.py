@@ -281,7 +281,7 @@ def prepare_run(plain: Path, stage: Path, inkscape: str | None, readme: bytes, p
     Inkscape is an authoring/rendering dependency only for a cache miss. A
     field PC with the existing G: verified cache can inspect/install the
     current approved PNGs without needing Inkscape installed.
-    
+    """
     if progress:
         progress("validate", 0, None, "Validating current Plain SVG sources")
     sources = canonical_sources(plain)  # ALL source validation before any rendering.
