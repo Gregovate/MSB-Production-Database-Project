@@ -199,12 +199,17 @@ AS $snapshot$
            LEFT JOIN LATERAL (
                SELECT x.display_cable_name FROM ops.linkiq_test_appearance x
                WHERE x.test_uuid=t.test_uuid AND x.source_sha256=r.source_sha256
-               ORDER BY x.source_row ASC LIMIT 1
+               ORDER BY CASE x.linkware_project
+                  WHEN 'MSB-Park-Network' THEN 0
+                  WHEN 'Command Trailer' THEN 1
+                  WHEN 'Park Network' THEN 2 ELSE 10 END,
+                  x.source_row ASC LIMIT 1
            ) a ON true
            WHERE r.test_uuid=t.test_uuid
            ORDER BY b.received_at DESC,r.recorded_at DESC,r.source_sha256 DESC LIMIT 1
        ) latest ON true
-       WHERE t.identity_review_status<>'REVIEWED'
+       -- Reviewed entries remain visible for an explicitly evidenced CORRECTION.
+       -- Every correction uses expected prior cable ID and appends a decision.
    ),'[]'::jsonb)
  ) FROM ref.site_reference_revision rv WHERE rv.singleton=true
 $snapshot$;
