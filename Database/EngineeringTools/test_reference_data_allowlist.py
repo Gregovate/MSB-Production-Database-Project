@@ -144,3 +144,17 @@ def test_existing_map_uses_protected_live_references_before_static_fallback():
     assert "require_reader()" in api and "require_setup_command()" in api
     assert "Site reference editor scope not granted" in api
     assert "connection.rollback()" in api and "connection.set_session(readonly=False" in api
+
+
+def test_setup_map_is_reference_consumer_not_reference_editor():
+    """#171/#230: Setup map must never expose engineering mutation forms."""
+    viewer = (ROOT / "Setup" / "Application" / "setup_site_reference.js").read_text(
+        encoding="utf-8")
+    assert "btn.textContent = 'View circuits and tests'" in viewer
+    assert "if (false && (current.permissions.identity || current.permissions.operations))" in viewer
+    assert "renderDb(snapshot);" in viewer
+    assert "renderNetworks(snapshot);" in viewer
+    # #230 needs its own editor. Read-only Setup still consumes current PostGIS.
+    assert "SELECT ref.site_reference_snapshot()" in (
+        ROOT / "Setup" / "Application" / "setup_site_reference_api.py").read_text(
+        encoding="utf-8")
