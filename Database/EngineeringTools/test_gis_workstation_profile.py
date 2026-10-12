@@ -1,5 +1,5 @@
 """Disposable #171 workstation release comparison tests; no HKCU/G:/Production access."""
-import hashlib
+import copy
 import json
 import tempfile
 import unittest
@@ -90,6 +90,9 @@ def release_fixture(root):
     (bundle / "msb").mkdir(parents=True)
     (bundle / "msb" / "pole-yellow.png").write_bytes(icon)
     source = FakeRegistry()
+    map_image = root / "ortho-test.tif"
+    map_image.write_bytes(b"disposable 2019 orthophoto identity test")
+    source.keys[MAPS_KEY + r"\Ortho 2019"]["Map Path"] = (str(map_image), source.REG_SZ)
     profile = read_current_user(source, root / "local")
     (root / "local").mkdir()
     (root / "local" / "pole-yellow.png").write_bytes(icon)
@@ -135,7 +138,7 @@ class WorkstationReadOnlyTests(unittest.TestCase):
         self.assertFalse(r["workstation_accepted_for_two_way"])
 
     def test_mismatched_type_and_reverse_are_not_conflated_with_gps_sym(self):
-        changed = read_current_user(FakeRegistry(), self.root / "local")
+        changed = copy.deepcopy(self.profile)
         changed["types"].pop("Display Anchor")
         changed["types"]["Flag"] = {
             "Symbol Type": "2", "GPS Symbol": "Flag, Blue",
@@ -156,12 +159,20 @@ class WorkstationReadOnlyTests(unittest.TestCase):
         self.assertTrue(any(x["field"].startswith("/files/msb") for x in r["differences"]))
 
     def test_calibration_mismatch_without_machine_path_sync(self):
-        changed = read_current_user(FakeRegistry(), self.root / "local")
+        changed = copy.deepcopy(self.profile)
         changed["maps"]["Ortho 2019"]["points"]["Point01"]["Latitude"] = "44.1"
         r = compare_release(load_release(self.path, self.pin), changed)
         self.assertEqual(r["status"], "Not verified")
         self.assertTrue(any("Latitude" in x["field"] for x in r["differences"]))
         self.assertNotIn("Z:\\", json.dumps(r))
+
+    def test_missing_map_image_prevents_current_status(self):
+        changed = copy.deepcopy(self.profile)
+        changed["maps"]["Ortho 2019"]["image_sha256"] = None
+        changed["maps"]["Ortho 2019"]["image_file_verified"] = False
+        r = compare_release(load_release(self.path, self.pin), changed)
+        self.assertEqual(r["status"], "Not verified")
+        self.assertEqual(r["unverifiable_maps"], ["Ortho 2019"])
 
     def test_digest_tampering_and_unsupported_schema_refused(self):
         with self.assertRaisesRegex(ProfileError, "SHA-256 disagrees"):
@@ -190,7 +201,7 @@ class WorkstationReadOnlyTests(unittest.TestCase):
             load_release(self.path, "")
 
     def test_differences_without_verified_base_must_not_guess_update_vs_local(self):
-        new_profile = read_current_user(FakeRegistry(), self.root / "local")
+        new_profile = copy.deepcopy(self.profile)
         new_profile["symbol_to_type"]["Flag, Blue"] = "Outlet Power"
         r = compare_release(load_release(self.path, self.pin), new_profile)
         self.assertEqual(r["status"], "Not verified")
@@ -198,7 +209,7 @@ class WorkstationReadOnlyTests(unittest.TestCase):
 
     def test_verified_base_three_way_classification(self):
         release = load_release(self.path, self.pin)
-        new_profile = read_current_user(FakeRegistry(), self.root / "local")
+        new_profile = copy.deepcopy(self.profile)
         # Both local and approved changed the same value since verified base.
         old_base = {
             "types": self.profile["types"],
