@@ -121,25 +121,39 @@ class Manager:
         ttk.Label(root, text="Important: for layered Inkscape masters, save the correct visible layers as Plain SVG first. "
                         "This tool will never guess layer combinations or rename GPX types.",
                   padding=(20, 10), wraplength=830).pack(fill="x")
-        png_controls = ttk.Frame(root, padding=(20, 0, 20, 8))
-        png_controls.pack(fill="x")
-        ttk.Label(png_controls, text="PNG distribution (after saving canonical PNGs):").pack(side="left")
-        self.web_png_btn = ttk.Button(png_controls, text="4. Publish PNGs to web",
-                                      command=lambda: self.check_png_distribution("web"),
-                                      state="disabled")
-        self.web_png_btn.pack(side="left", padx=(8, 5))
-        self.local_png_btn = ttk.Button(png_controls, text="5. Install PNGs for this ExpertGPS user",
-                                        command=lambda: self.check_png_distribution("expertgps"),
-                                        state="disabled")
-        self.local_png_btn.pack(side="left", padx=(0, 8))
+        # Keep independent operations in their own rows. On Windows with
+        # display scaling, a long Step 5 label used to be squeezed offscreen
+        # by the Step 4 button and an unrelated section heading.
+        publication_controls = ttk.Frame(root, padding=(20, 0, 20, 6))
+        publication_controls.pack(fill="x")
+        ttk.Label(publication_controls, text="Web publishing (Synology administrator only):").pack(
+            side="left", padx=(0, 10))
+        self.web_publish_btn = ttk.Button(
+            publication_controls, text="3. Review/publish Plain SVGs to web",
+            command=self.check_web_publish, state="disabled")
+        self.web_publish_btn.pack(side="left", padx=(0, 10))
+        self.web_png_btn = ttk.Button(
+            publication_controls, text="4. Publish PNGs to web",
+            command=lambda: self.check_png_distribution("web"), state="disabled")
+        self.web_png_btn.pack(side="left")
+
+        local_controls = ttk.Frame(root, padding=(20, 0, 20, 9))
+        local_controls.pack(fill="x")
+        ttk.Label(local_controls, text="Current Windows user / local ExpertGPS:").pack(
+            side="left", padx=(0, 10))
+        self.local_png_btn = ttk.Button(
+            local_controls, text="5. Install PNGs for this ExpertGPS user",
+            command=lambda: self.check_png_distribution("expertgps"), state="disabled")
+        self.local_png_btn.pack(side="left")
+
         footer = ttk.Frame(root, padding=(20, 0, 20, 15))
         footer.pack(fill="x")
-        self.web_publish_btn = ttk.Button(footer, text="3. Review/publish Plain SVGs to web",
-                                          command=self.check_web_publish, state="disabled")
-        self.web_publish_btn.pack(side="left", padx=(0, 12))
-        ttk.Button(footer, text="Open release history / logs", command=lambda: self.open_dir(self.releases)).pack(side="left")
-        ttk.Button(footer, text="Open selected SVG URL", command=self.open_web_svg).pack(side="left", padx=(12, 0))
-        ttk.Button(footer, text="Open selected PNG URL", command=self.open_web_png).pack(side="left", padx=(12, 0))
+        ttk.Button(footer, text="Open release history / logs", command=lambda: self.open_dir(
+            self.releases)).pack(side="left")
+        ttk.Button(footer, text="Open selected SVG URL", command=self.open_web_svg).pack(
+            side="left", padx=(12, 0))
+        ttk.Button(footer, text="Open selected PNG URL", command=self.open_web_png).pack(
+            side="left", padx=(12, 0))
         ttk.Button(footer, text="Close", command=self.root.destroy).pack(side="right")
 
     def open_dir(self, path):
