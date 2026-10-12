@@ -312,34 +312,73 @@
     }
   }
 
-  async function loadReferenceSet() {
-    let source = 'network';
-    try {
-      const response = await fetch('location-references.json', {cache: 'no-store'});
-      if (!response.ok) throw new Error('Reference HTTP ' + response.status);
-      referenceSet = await response.json();
-      localStorage.setItem(REFERENCE_CACHE_KEY, JSON.stringify({
-        saved_at: new Date().toISOString(),
-        data: referenceSet
-      }));
-    } catch (_error) {
-      source = 'offline cache';
-      const cached = localStorage.getItem(REFERENCE_CACHE_KEY);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        referenceSet = parsed.data || null;
-      }
+  // #171/#88: The operational drop picker consumes approved maintained
+  // PostgreSQL waypoint identities. Do not derive it from the old October 3
+  // fixed Stage JSON. Preserve the existing Setup event/partial-unload workflow.
+  function normalizeSiteReference(snapshot) {
+    if (!snapshot || snapshot.data_mode !== 'postgres'
+        || snapshot.format_version !== 1 || !Array.isArray(snapshot.waypoints)
+        || !snapshot.sources?.gpx?.sha256) {
+      throw new Error('No accepted maintained GPX reference available');
     }
+    const points = snapshot.waypoints.filter(point => {
+      const coords = point.geometry?.coordinates;
+      return Number.isInteger(Number(point.id))
+        && String(point.label || '').trim()
+        && point.geometry?.type === 'Point'
+        && Array.isArray(coords) && coords.length >= 2
+        && Number.isFinite(Number(coords[0])) && Number.isFinite(Number(coords[1]));
+    }).map(point => ({
+      reference_id: 'site-waypoint:' + point.id,
+      name: String(point.label).trim(),
+      latitude: Number(point.geometry.coordinates[1]),
+      longitude: Number(point.geometry.coordinates[0]),
+      waypoint_type: point.type || ''
+    }));
+    if (!points.length) throw new Error('Maintained GIS has no eligible waypoint positions');
+    // No hardcoded Stage list: the reviewed GPX/DB supplies the actual labels.
+    return {
+      version: 'postgres:' + snapshot.revision + ':' + snapshot.sources.gpx.sha256,
+      source: 'Maintained PostgreSQL GIS / accepted GPX',
+      points,
+      accepted_gpx_sha256: snapshot.sources.gpx.sha256
+    };
+  }
 
+  async function loadReferenceSet() {
+    let source = 'live PostgreSQL';
+    let failure = null;
+    try {
+      const response = await fetch('../api/setup/locate/references', {
+        cache: 'no-store', credentials: 'same-origin'
+      });
+      if (!response.ok) throw new Error('GIS reference HTTP ' + response.status);
+      const snapshot = await response.json();
+      referenceSet = normalizeSiteReference(snapshot);
+      localStorage.setItem(REFERENCE_CACHE_KEY, JSON.stringify({
+        saved_at: new Date().toISOString(), data: referenceSet
+      }));
+    } catch (error) {
+      failure = error;
+      source = 'offline accepted-GPX cache';
+      referenceSet = null;
+      try {
+        const cached = JSON.parse(localStorage.getItem(REFERENCE_CACHE_KEY) || 'null');
+        if (cached?.data?.accepted_gpx_sha256 && Array.isArray(cached.data.points)
+            && cached.data.points.length) referenceSet = cached.data;
+      } catch (_ignore) { /* Invalid cache is not authoritative. */ }
+    }
     populateReferenceSelect();
     if (!referenceSet) {
-      referenceStatus.textContent = 'No named reference set is available. Raw GPS and a manual location note can still be recorded.';
+      referenceStatus.textContent = 'CURRENT GIS DROP LOCATIONS UNAVAILABLE: '
+        + (failure?.message || 'No accepted reference cache')
+        + '. Do not substitute a stale waypoint. Existing manual note/GPS evidence remains available.';
       return;
     }
     referenceStatus.textContent = 'Reference set ' + referenceSet.version
-      + ' · source ' + referenceSet.source
-      + ' · loaded from ' + source
-      + '. Reference points may be refreshed without changing historical raw GPS.';
+      + ' · ' + referenceSet.points.length + ' waypoints · ' + source
+      + (source.startsWith('offline') ? ' · CACHED / freshness not verified' : '')
+      + '. Saved GPS and named movement evidence remain separate.';
   }
 
   function referencePoints() {
