@@ -2,7 +2,7 @@
 name: Site reference map and editor candidate
 on:
   push:
-    branches: [feature/171-cableiq-import-validation, feature/171-reviewed-track-names-20261011]
+    branches: [feature/171-cableiq-import-validation, feature/171-reviewed-track-names-20261011, feature/171-disposable-gis-editor-review-grant]
   pull_request:
     paths:
       - 'Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql'
@@ -53,6 +53,8 @@ jobs:
           python -m pip install 'Flask>=3,<4' 'psycopg2-binary>=2.9,<3' 'pytest>=8,<10'
           python -m pytest -q Setup/Application/test_setup_site_reference_api.py
           python -m pytest -q Database/EngineeringTools/test_site_source_sync.py Database/EngineeringTools/test_site_source_db.py Database/EngineeringTools/test_reference_data_allowlist.py
+          bash -n Setup/Acceptance/setup_disposable_browser_preview_server.sh
+          python -m pytest -q Setup/Acceptance/test_gis_browser_editor_grant.py Setup/Acceptance/test_gis_source_cache.py Setup/Application/test_setup_reusable_acceptance_tooling_contract.py
       - name: Run PostGIS migrations and rollback-only operational assertions
         run: |
           set -euo pipefail
