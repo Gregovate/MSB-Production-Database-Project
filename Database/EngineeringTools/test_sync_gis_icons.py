@@ -115,12 +115,72 @@ class ProcessTests(unittest.TestCase):
         self.assertIn('IconLocation', (here / 'Install-MSB-Icon-Library-Shortcut.cmd').read_text())
         self.assertIn('iconbitmap', (here / 'icon_library_manager.pyw').read_text())
 
+    def test_local_expertgps_button_gets_independent_full_width_row(self):
+        # Display scaling used to crowd the long Step 5 label alongside web
+        # publication controls, making installation hard to identify.
+        gui = (Path(__file__).parent / 'icon_library_manager.pyw').read_text()
+        self.assertIn('local_controls = ttk.Frame(root,', gui)
+        self.assertIn('publication_controls = ttk.Frame(root,', gui)
+        self.assertIn('self.local_png_btn.pack(side="left")', gui)
+        self.assertIn('self.web_publish_btn.pack(side="left"', gui)
+        self.assertIn('self.web_png_btn.pack(side="left")', gui)
+        self.assertLess(gui.index('local_controls = ttk.Frame(root,'),
+                        gui.index('footer = ttk.Frame(root,'))
+
+    def test_verified_shared_cache_does_not_require_inkscape(self):
+        # First authoring PC validated the G: release-history cache.
+        first = self.mocked_run()
+        self.assertEqual(first['source_svg_count'], 3)
+        self.readme.unlink()  # No local ExpertGPS dependency on this PC either.
+        # Second field PC may have no Inkscape executable, but every cached
+        # PNG is still bound to the current source SHA, PNG SHA and canvas.
+        with patch('sync_gis_icons.choose_inkscape',
+                   side_effect=AssertionError('No CLI lookup on full cache')), \
+             patch('sync_gis_icons.subprocess.run',
+                   side_effect=AssertionError('Do not render a cache hit')):
+            second = run(self.args)
+        self.assertEqual(second['source_svg_count'], 3)
+        self.assertFalse(self.dest.exists())
+        log = (Path(second['staging_zip']).parent / 'Inkscape-export.log').read_text()
+        self.assertIn('3 hash-verified unchanged icons reused; 0 newly rendered', log)
+
+    def test_missing_cache_requires_renderer_for_only_missing_icon(self):
+        first = self.mocked_run()
+        first_stage = Path(first['staging_zip']).parent
+        (first_stage / 'msb' / 'antenna-l.png').unlink()
+        rendered = []
+        def count_render(args, **kw):
+            rendered.append(Path(args[1]).name)
+            return self.fake_render(args, **kw)
+        with patch('sync_gis_icons.choose_inkscape', return_value='fake-inkscape') as lookup, \
+             patch('sync_gis_icons.subprocess.run', side_effect=count_render):
+            updated = run(self.args)
+        lookup.assert_called_once_with('fake-inkscape')
+        self.assertEqual(rendered, ['antenna-l.svg'])
+        self.assertEqual(updated['source_svg_count'], 3)
+        log = (Path(updated['staging_zip']).parent / 'Inkscape-export.log').read_text()
+        self.assertIn('2 hash-verified unchanged icons reused; 1 newly rendered', log)
+
+    def test_stale_svg_cache_and_missing_cli_fails_closed(self):
+        self.mocked_run()
+        (self.plain / 'antenna-r.svg').write_bytes(svg(20, 28))
+        with patch('sync_gis_icons.choose_inkscape',
+                   side_effect=IconError('Inkscape CLI unavailable')), \
+             patch('sync_gis_icons.subprocess.run',
+                   side_effect=AssertionError('No renderer executable available')):
+            with self.assertRaisesRegex(IconError,
+                                        'antenna-r.svg: no current SHA-256-verified preview cache'):
+                run(self.args)
+        self.assertFalse(self.dest.exists())
+        self.assertTrue(list(self.root.glob('MSB-GIS-Icon-Sync-*/ERROR.txt')))
+
     def test_preview_progress_monotonic_and_has_filename(self):
         events = []
         stage = make_stage(self.root)
         def report(phase, current, total, detail):
             events.append((phase, current, total, detail))
-        with patch('sync_gis_icons.subprocess.run', self.fake_render):
+        with patch('sync_gis_icons.choose_inkscape', return_value='fake-inkscape'), \
+             patch('sync_gis_icons.subprocess.run', self.fake_render):
             sources, rows, archive = prepare_run(self.plain, stage, 'fake-inkscape',
                                                  readme_bytes(self.readme), progress=report)
         self.assertEqual(len(rows), 3)
@@ -137,7 +197,8 @@ class ProcessTests(unittest.TestCase):
 
     def test_apply_progress_only_completes_after_verified_receipts(self):
         stage = make_stage(self.root)
-        with patch('sync_gis_icons.subprocess.run', self.fake_render):
+        with patch('sync_gis_icons.choose_inkscape', return_value='fake-inkscape'), \
+             patch('sync_gis_icons.subprocess.run', self.fake_render):
             sources, rows, _archive = prepare_run(self.plain, stage, 'fake-inkscape',
                                                    readme_bytes(self.readme))
         events = []
