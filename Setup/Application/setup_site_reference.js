@@ -237,7 +237,7 @@
     line(provenance, 'Latest staged GPX SHA256: ' + (current.sources?.gpx_latest_staged?.sha256 || 'not staged'));
     line(provenance, 'LinkIQ evidence SHA256: ' + (current.sources?.flw?.sha256 || 'not recorded'));
     line(provenance, 'Unreconciled LinkIQ test UUIDs: ' + current.unresolved_linkiq_tests);
-    line(body, 'Online DB revision ' + current.revision
+    line(body, 'Reference DB revision ' + current.revision
       + ' · operational instructions are NOT proof of electrical state.');
     if (current.permissions.identity || current.permissions.operations) {
       const edits = append(body, document.createElement('div'));
@@ -332,8 +332,10 @@
       const layerName = w.type === 'Stage' ? 'stages' :
                         w.type === 'Drop Point' ? 'drops' : 'refs';
       const icon = existingWaypointStyles.get(w.source_label) || existingWaypointStyles.get(w.label);
-      const marker = icon ? L.marker(xy, {icon}) :
-        L.circleMarker(xy, {radius:5,color:'#444',weight:1,fillOpacity:.8});
+      const marker = window.msbReferenceSymbols.has(w.type)
+        ? window.msbReferenceSymbols.marker(xy, w.type)
+        : icon ? L.marker(xy, {icon})
+        : L.circleMarker(xy, {radius:5,color:'#444',weight:1,fillOpacity:.8});
       markerFeature({type:'Feature',geometry:w.geometry,
         properties:{id:'wp:'+w.id,name:w.label,type:w.type}},layerName,marker);
       marker.bindPopup(waypointPopup(w));
@@ -387,7 +389,7 @@
       snapshot.waypoints.length + ' maintained waypoints · ' + snapshot.tracks.length
       + ' GPX traces · ' + snapshot.routes.length + ' reviewed shared routes';
   }
-  function renderNetworks(snapshot) {
+  function renderNetworks(snapshot, offline = false) {
     const options = document.getElementById('network-options');
     const details = document.getElementById('network-details');
     const statusLine = document.getElementById('network-status');
@@ -450,7 +452,7 @@
           options.querySelectorAll('input').forEach(c=>c.checked=c.value===String(n.site_network_id));show();}});
     }
     mapSearch.replaceSiteReferences(entries);
-    statusLine.textContent = 'LIVE PostgreSQL network assignments · ' + snapshot.networks.length
+    statusLine.textContent = (offline ? 'OFFLINE SAVED PostgreSQL network assignments · ' : 'LIVE PostgreSQL network assignments · ') + snapshot.networks.length
       + ' designations · ' + snapshot.unresolved_linkiq_tests + ' unresolved LinkIQ test UUIDs';
     if (!snapshot.networks.length)
       options.textContent='No reviewed network designations yet. GPX NET names are historical geometry, not membership.';
@@ -474,10 +476,23 @@
     renderNetworks(snapshot);
     return snapshot;
   }
-  window.siteReferenceReady = refresh().catch(error => {
+  window.siteReferenceReady = refresh().catch(async error => {
+    // Only an operator-prepared package may supply dated DB references offline.
+    // Never infer a live permission grant from a saved server response.
+    const saved = await window.MSBLocateOffline?.readReferences();
+    if (saved) {
+      current = saved;
+      status.style.color = '#923b15';
+      status.textContent = 'OFFLINE SAVED PostgreSQL GIS · revision ' + saved.revision
+        + ' · downloaded ' + new Date(saved._offlinePreparedAt).toLocaleString()
+        + ' · NOT CURRENT · editing disabled · (' + error.message + ')';
+      renderDb(saved);
+      renderNetworks(saved, true);
+      return saved;
+    }
     status.style.color='#923b15';
-    status.textContent = 'STATIC SOURCE SNAPSHOT ONLY — maintained PostgreSQL references unavailable ('
-      + error.message + '). Do not treat circuits, networks or tests as current. Editing disabled.';
+    status.textContent = 'STATIC GPX SOURCE ONLY — maintained PostgreSQL references unavailable ('
+      + error.message + '). Circuits/networks/tests not current; editing disabled.';
     return null;
   });
 })();
