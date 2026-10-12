@@ -108,10 +108,10 @@ class ProcessTests(unittest.TestCase):
         source = here / 'assets' / 'MSB-Icon-Library-Manager.svg'
         self.assertTrue(source.is_file())
         blob = artwork.read_bytes()
-        self.assertEqual(blob[:4], b'\\x00\\x00\\x01\\x00')
+        self.assertEqual(blob[:4], b'\x00\x00\x01\x00')
         self.assertEqual(struct.unpack_from('<H', blob, 4)[0], 1)
         self.assertEqual(struct.unpack_from('<I', blob, 18)[0], 22)
-        self.assertEqual(blob[22:30], b'\\x89PNG\\r\\n\\x1a\\n')
+        self.assertEqual(blob[22:30], b'\x89PNG\r\n\x1a\n')
         self.assertIn('IconLocation', (here / 'Install-MSB-Icon-Library-Shortcut.cmd').read_text())
         self.assertIn('iconbitmap', (here / 'icon_library_manager.pyw').read_text())
 
