@@ -2,6 +2,18 @@
 
 This subsystem documents permanent physical-site identities, location history, power/site infrastructure relationships, and PostgreSQL integration of MSB GIS/GPS data.
 
+## Park Map Plain SVG and offline field-view candidate — October 11
+
+A source-only candidate under #171, based on existing PR #319, updates the
+**existing** `/setup/locate/` reference renderer to use reviewed canonical
+Plain SVG markers with native non-square dimensions, a local Leaflet build,
+and an explicit bounded 2019 aerial/reference offline package.
+[Implementation boundaries and required Android field acceptance](engineering/Park_Map_Current_State_Offline_Editor_Gap_2026-10-11.md#october-11-implementation-candidate--correct-plain-svg-map-and-offline-field-package).
+Not deployed or tablet-accepted; current web SVG publishing remains solely
+administrator-controlled. Garmin and historical web PNG URLs are separate,
+lower-priority compatibility concerns. No movement, GPX identity, or PostgreSQL
+migration changes are part of this source-only candidate.
+
 ## 2026-10-11: Current Park Map implementation, offline requirement, and editor gap
 
 The existing `/setup/locate/` page is already the operator's aerial map, waypoint

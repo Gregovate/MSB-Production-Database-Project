@@ -2,12 +2,74 @@
 
 | Document control | State |
 |---|---|
-| Status | **RECONNAISSANCE / ACCEPTANCE REQUIREMENTS — not implemented** |
+| Status | **BASELINE RECONNAISSANCE + SOURCE-ONLY SVG/OFFLINE CANDIDATE — browser/tablet acceptance pending** |
 | Verified repository baseline | `main` `4ef6087600ef8dbcfb64293241dae2ab2c15b4de` (2026-10-11) |
 | Work vehicle | Existing draft PR #319 (`feature/171-cableiq-import-validation`), reconciled with latest `main`; no Production deployment |
 | Governing issues | #171 GIS/map and source topology; #230 Reference Data Manager/editor; #122 acceptance; #88 movement events; #113 tablet infrastructure |
 | Operator evidence | 2026-10-11 screenshot of actual `https://my.sheboyganlights.org/setup/locate/` showing current aerial, park symbols, waypoint search, GPX/HV/NET layer controls, season assets, and cable evidence |
 | Purpose | **Evolve this existing map**, not replace it with another offline HTML map or recreate an existing waypoint finder |
+
+## October 11 implementation candidate — correct Plain SVG map and offline field package
+
+This is a **candidate branch based on PR #319**, not a Production installation. It
+modifies the **same** `/setup/locate/` screen and current PostGIS projection,
+rather than adding another map. The baseline table below describes the prior
+implementation and must not be read as the new candidate's runtime acceptance.
+
+**Approved symbols:** `setup_locate_symbols.js` maps explicitly recognized
+ExpertGPS waypoint *types* (not guessed waypoint name text) to approved
+lowercase `msb-svg/*.svg` filenames. The browser loads each image's actual
+`naturalWidth/naturalHeight` and uses that exact 1–32 px aspect ratio; a
+missing/unreviewed image produces a visible neutral point, not an incorrectly
+stretched legacy PNG. `marker_url`, label, type, original GPX reference and
+position remain unchanged in the source and DB. Types without a reviewed icon
+mapping (e.g. original Anchor/Waypoint, certain car and tower labels) continue
+as circles until an explicitly approved mapping exists. Containers retain their
+four separate load-state SVGs; independent Display markers use the reviewed
+`t-post.svg` rather than public `T-Post.png`. No source artwork is created,
+published or overwritten here. **Administrator publication of current Plain SVG
+files to `msb-svg` is still a separate field acceptance gate.**
+
+**Offline read-only operation:** local licensed Leaflet 1.9.4 JS/CSS replaces
+the `unpkg.com` runtime dependency. The **Offline park map** control explicitly
+downloads a versioned package into the same browser/device CacheStorage and
+shows completion/progress, installed time, tile count and reference revision.
+One Park Map-scoped service worker caches the same map HTML (including its
+embedded GPX waypoint/track names/geometry/search index), local scripts,
+source-network JSON, reviewed SVG icon URLs and fixed 2019 imagery URLs.
+Package activation happens only after successful full cache writes; failed
+updates leave any previous completed package intact. The user chooses imagery
+through zoom 19, 20 or 21, with approximate bounded tile counts **484 / 1,699 /
+6,426**, respectively. Coverage uses two deliberate rectangles for Evergreen
+Park and the approach toward the real GPX Workshop, excluding the unrelated
+southwest outlier GPX observation. The imagery is **not** a verified locate or
+survey. Extra/uncached geography has no offline tile guarantee.
+
+When online authenticated PostgreSQL references are available, the explicit
+download also saves a **read-only, dated** maintained reference snapshot
+(waypoints, tracks, panels, circuits, cable review and memberships) without
+permissions or an edit queue. When unavailable, the package contains just the
+static GPX/dated network source with that limitation prominently shown. Offline
+map/reload/search/GPS can still be used; **#88 Container/Display live asset
+positions are not cached**. If asset refresh fails, the map clears its last-known
+asset overlays rather than portraying stale movement as current. The Site
+Reference editor is deliberately disabled for offline snapshots; every
+Production mutation remains an online, server-authorized command.
+
+The offline package saves public webassets tile/image responses in CacheStorage.
+Cross-origin images may be opaque to script, so a successful copy count alone
+does **not** prove tile-image validity, field coverage, browser quota retention or
+Cloudflare/Access offline restart. **Real rugged Android field acceptance is
+mandatory**: prepare while connected, verify required Plain symbols and zoom
+coverage, switch to airplane mode, completely close/reopen the installed
+browser/PWA, reload `/setup/locate/`, search `PANEL A5-00` / `Workshop`,
+inspect HV/NET routes and saved circuits, pan through Park and Workshop at
+the chosen zoom, verify the offline/dated label, confirm no #88 asset claims
+or offline writes, reconnect/refresh and repeat. Do not mark the work accepted
+before that run. Source regression is
+`node Setup/Application/test_setup_locate_offline.cjs` via the Site Reference
+workflow. No database migration or additional Production dump is required
+for this source-only offline renderer candidate.
 
 ## Verified existing behavior — source/code inventory
 
