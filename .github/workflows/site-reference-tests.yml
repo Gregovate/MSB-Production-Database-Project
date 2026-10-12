@@ -41,6 +41,13 @@ jobs:
           node --check Setup/Application/setup_site_reference.js
           node --check Setup/Application/setup_locate_search.js
           node --check Setup/Application/setup_locate_networks.js
+          node --check Setup/Application/setup_locate_symbols.js
+          node --check Setup/Application/setup_locate_offline.js
+          node --check Setup/Application/setup_locate_sw.js
+          node --check Setup/Application/locate_leaflet_1_9_4.min.js
+      - name: Test actual Park Map SVG and offline package contracts
+        run: |
+          node Setup/Application/test_setup_locate_offline.cjs
       - name: Test protected Setup reader and editor HTTP API
         run: |
           python -m pip install 'Flask>=3,<4' 'psycopg2-binary>=2.9,<3' 'pytest>=8,<10'
