@@ -33,6 +33,7 @@
   const names = new Map();
   let current = null;
   let selection = null;
+  let selectedTrack = null;
   let lastEditMessage = '';
 
   const byId = (values, id, field = 'id') =>
@@ -123,7 +124,8 @@
         if (!response.ok) throw new Error(result.error || 'Command rejected');
         lastEditMessage = 'Saved as revision ' + result.revision + '; audit entry recorded.';
         await refresh();
-        if (selection !== null) showWaypoint(selection);
+        if (selectedTrack !== null) showTrack(selectedTrack);
+        else if (selection !== null) showWaypoint(selection);
       } catch (error) {
         lastEditMessage = 'NOT saved: ' + error.message + '. Refresh before retrying.';
         line(form, lastEditMessage);
@@ -180,6 +182,7 @@
     const w = byId(current.waypoints, id);
     if (!w) return;
     selection = Number(id);
+    selectedTrack = null;
     inspection.open = true;
     body.replaceChildren();
     heading(body, w.label + ' · ' + w.type);
@@ -426,6 +429,38 @@
       }
     }
   }
+  function showTrack(id) {
+    // Tracks and permanent waypoints share the existing #230 inspection panel.
+    // Historical GPX names are retained independently in ops source evidence.
+    if (!current) return;
+    const track = byId(current.tracks, id);
+    if (!track) return;
+    selectedTrack = Number(id);
+    selection = null;
+    inspection.open = true;
+    body.replaceChildren();
+    heading(body, track.label || 'Unnamed GPX track');
+    if (lastEditMessage) line(body, lastEditMessage);
+    line(body, 'GPX track · Type: ' + textValue(track.type)
+      + ' · Lifecycle: ' + textValue(track.lifecycle));
+    line(body, 'Source track ordinal: ' + textValue(track.source_ordinal)
+      + ' · SHA256 ' + textValue(track.source_sha256));
+    line(body, 'Original imported track name: ' + textValue(track.source_label));
+    line(body, 'Last reviewed: ' + textValue(track.verified_at)
+      + ' · by ' + textValue(track.verified_by));
+    line(body, 'Original description (historical, NOT verified cable count): '
+      + textValue(track.description));
+    line(body, 'Name changes do NOT change track geometry, endpoint connections,'
+      + ' cable inventory or source GPX. Those remain separately reviewed facts.');
+    if (current.permissions?.identity) {
+      action(body, 'Manager: correct this GPX track label', 'manager_update_track_label', form => {
+        const label = field(form, 'Reviewed route name', 'track_label', track.label);
+        return () => ({track_id:Number(track.id),
+          expected_track_label:track.label,track_label:label.value});
+      });
+    }
+  }
+
   function markerFeature(feature, layerName, marker) {
     marker._searchFeature = feature;
     marker._networkLayer = layerName;
@@ -472,9 +507,16 @@
         const popup = document.createElement('div');
         heading(popup,t.label);
         line(popup, 'GPX source track · ' + t.type + ' · lifecycle ' + t.lifecycle);
-        line(popup, 'Historical note: ' + textValue(t.description));
+        line(popup, 'Original GPX name: ' + textValue(t.source_label));
+        line(popup, 'Historical note (unverified cable count): ' + textValue(t.description));
         line(popup, 'Network/circuit assignment requires separate reviewed records');
+        const review = document.createElement('button');
+        review.type = 'button';
+        review.textContent = 'Inspect / correct track name';
+        review.addEventListener('click', () => showTrack(t.id));
+        popup.appendChild(review);
         marker.bindPopup(popup);
+        marker.on('popupopen', () => showTrack(t.id));
       }
     }
     for (const route of snapshot.routes) {
