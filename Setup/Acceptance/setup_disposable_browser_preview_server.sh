@@ -632,13 +632,23 @@ resolve_gis_source() {
     if [[ ! -f "$cached" ]]; then
         [[ -f "$uploaded" ]] || { echo "FAIL: missing GIS source $source_sha.$source_ext" >&2; return 16; }
         [[ "$(sha256sum "$uploaded" | cut -d' ' -f1)" == "$source_sha" ]] || { echo "FAIL: GIS upload hash differs" >&2; return 16; }
-        local staged
-        staged="$(mktemp "$source_cache/.incoming-XXXXXXXX")"
-        if ! cp -- "$uploaded" "$staged"; then rm -f "$staged"; return 16; fi
+        local staged_dir staged
+        staged_dir="$(mktemp -d "$source_cache/.incoming-XXXXXXXX")" || return 16
+        staged="$staged_dir/payload"
+        # Uploaded bundle and server cache normally use the same filesystem.
+        # Hardlink the already-verified bytes rather than copying another
+        # growing FLW onto disk; fall back to cp only across mount boundaries.
+        if ! ln -- "$uploaded" "$staged" 2>/dev/null; then
+            if ! cp -- "$uploaded" "$staged"; then
+                rm -rf -- "$staged_dir"
+                return 16
+            fi
+        fi
         chmod 400 "$staged"
-        # Another runner may have published this same immutable source first.
+        # Never overwrite a canonical hash path; keep immutable identity.
         ln "$staged" "$cached" 2>/dev/null || true
-        rm -f "$staged"
+        rm -f -- "$staged"
+        rmdir -- "$staged_dir"
     fi
     [[ -f "$cached" && "$(sha256sum "$cached" | cut -d' ' -f1)" == "$source_sha" ]] || { echo "FAIL: cached GIS source hash differs" >&2; return 16; }
     printf '%s\n' "$cached"
