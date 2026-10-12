@@ -67,6 +67,52 @@ class WebSVGTests(unittest.TestCase):
             publish_web_svgs(self.plain, self.public, self.stage, self.sources)
         self.assertEqual([p.name for p in self.public.iterdir()], ["CAR-R.svg"])
 
+    def test_verified_historical_case_alias_allows_other_icons_without_renaming(self):
+        # October 11 real web issue: msb-splitter-Combiner.svg is exactly the
+        # current approved lowercase source by SHA, but its lowercase HTTPS URL
+        # does NOT resolve. Keep the historical name, never attempt a case rename.
+        (self.plain / "msb-splitter-combiner.svg").write_bytes(svg(24, 16))
+        self.sources = canonical_sources(self.plain)
+        old_name = "msb-splitter-Combiner.svg"
+        (self.public / old_name).write_bytes(
+            (self.plain / "msb-splitter-combiner.svg").read_bytes())
+        plan = web_svg_preflight(self.public, self.sources)
+        self.assertEqual(plan["legacy_case_identical"],
+                         {"msb-splitter-combiner.svg": old_name})
+        self.assertEqual(len(plan["add"]), 2)
+        receipt = publish_web_svgs(self.plain, self.public, self.stage, self.sources)
+        alias = next(row for row in receipt
+                     if row["SVG"] == "msb-splitter-combiner.svg")
+        self.assertEqual(alias["Action"], "legacy-case-identical")
+        self.assertTrue(alias["Public_URL"].endswith("/" + old_name))
+        self.assertTrue((self.public / old_name).exists())
+        self.assertFalse((self.public / "msb-splitter-combiner.svg").exists())
+        self.assertTrue((self.public / "car-r.svg").exists())
+        self.assertTrue((self.public / "antenna-l.svg").exists())
+
+    def test_historical_case_alias_different_bytes_still_blocks_every_write(self):
+        (self.plain / "msb-splitter-combiner.svg").write_bytes(svg(24, 16))
+        self.sources = canonical_sources(self.plain)
+        existing = self.public / "msb-splitter-Combiner.svg"
+        existing.write_bytes(svg(24, 16, "blue"))
+        with self.assertRaisesRegex(IconError, "contains different bytes"):
+            publish_web_svgs(self.plain, self.public, self.stage, self.sources)
+        self.assertEqual([p.name for p in self.public.iterdir()],
+                         ["msb-splitter-Combiner.svg"])
+
+    def test_historical_case_alias_modified_after_preview_stops_before_writing(self):
+        (self.plain / "msb-splitter-combiner.svg").write_bytes(svg(24, 16))
+        self.sources = canonical_sources(self.plain)
+        existing = self.public / "msb-splitter-Combiner.svg"
+        existing.write_bytes((self.plain / "msb-splitter-combiner.svg").read_bytes())
+        plan = web_svg_preflight(self.public, self.sources)
+        self.assertEqual(len(plan["legacy_case_identical"]), 1)
+        existing.write_bytes(svg(24, 16, "yellow"))
+        with self.assertRaises(IconError):
+            publish_web_svgs(self.plain, self.public, self.stage, self.sources)
+        self.assertFalse((self.public / "car-r.svg").exists())
+        self.assertFalse((self.public / "antenna-l.svg").exists())
+
     def test_added_or_mutated_source_refused(self):
         (self.plain / "new-icon.svg").write_bytes(svg(24, 30))
         with self.assertRaises(IconError):
