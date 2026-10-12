@@ -180,6 +180,16 @@ def staged_record(srcname: str, original: tuple, png_data: bytes) -> dict:
     return dict(zip(COLUMNS, (p.name, source_sha, out_name, width, height, sha(png_data))))
 
 
+def preview_readme_bytes() -> bytes:
+    """Portable staged-ZIP metadata; never depends on a PC's ExpertGPS install.
+
+    This is not a local ExpertGPS installer. Distribution to an existing
+    current-user TopoGrafix folder must still separately verify its actual
+    readme.txt byte-for-byte before any write.
+    """
+    return (README_URL + "\n").encode("utf-8")
+
+
 def readme_bytes(readme_path: Path) -> bytes:
     if not readme_path.is_file():
         raise IconError(f"Existing ExpertGPS readme.txt unavailable: {readme_path}")
@@ -418,7 +428,8 @@ def run(args):
     base.mkdir(parents=True, exist_ok=True)
     stage = make_stage(base)
     try:
-        readme = readme_bytes(Path(args.readme))
+        # Preview/canonical G: PNG work is portable to PCs without ExpertGPS.
+        readme = preview_readme_bytes()
         inkscape = choose_inkscape(args.inkscape)
         sources, records, zip_path = prepare_run(plain, stage, inkscape, readme)
         # All sources & PNGs are now complete before checking destination.
@@ -449,7 +460,7 @@ def cli(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--plain", default=str(PARK / "Plain"))
     parser.add_argument("--canonical-png", default=str(PARK / "png"))
-    parser.add_argument("--readme", default=str(Path(os.getenv("LOCALAPPDATA", str(Path.home()))) / "TopoGrafix" / "Symbols" / "msb" / "readme.txt"))
+    parser.add_argument("--readme", default=None, help="Deprecated compatibility option; preview ZIP uses canonical README_URL, not local ExpertGPS")
     parser.add_argument("--inkscape", default=None, help="Windows uses inkscape.com by default")
     parser.add_argument("--report-parent", default=str(PARK / "release-history"))
     parser.add_argument("--apply", action="store_true", help="update canonical PNGs after validated export; backs up changed originals")

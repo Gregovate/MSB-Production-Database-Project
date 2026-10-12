@@ -21,7 +21,7 @@ from types import SimpleNamespace
 # .pyw and the engineering pipeline deliberately live in the same repo folder.
 from sync_gis_icons import (
     PARK, IconError, canonical_sources, check_source_snapshot, choose_inkscape,
-    destination_preflight, make_stage, prepare_run, readme_bytes,
+    destination_preflight, make_stage, prepare_run, preview_readme_bytes,
     apply_canonical, sha_file, source_freshness_warnings,
 )
 from publish_gis_svgs import WEB_SVG, PUBLIC_SVG_BASE, web_svg_preflight, publish_web_svgs
@@ -35,6 +35,15 @@ class Manager:
     def __init__(self, root):
         self.root = root
         self.root.title("MSB Icon Library Manager — #171")
+        # The bundled application icon is separate from GIS waypoint artwork.
+        # Neither the window nor shortcut needs an installed ExpertGPS folder.
+        if os.name == "nt":
+            try:
+                self.root.iconbitmap(default=str(Path(__file__).resolve().parent /
+                                   "assets" / "MSB-Icon-Library-Manager.ico"))
+            except (OSError, tk.TclError):
+                # Cosmetic asset failures must not block icon validation.
+                pass
         self.root.geometry("930x700")
         self.root.minsize(800, 610)
         self.root.configure(bg=BACKGROUND)
@@ -239,7 +248,9 @@ class Manager:
         def work():
             # Validate source before creating a release-history folder.
             canonical_sources(self.plain)
-            readme = readme_bytes(self.readme)
+            # Staged ZIP metadata uses the approved URL contract, not the
+            # current Windows user's optional ExpertGPS installation.
+            readme = preview_readme_bytes()
             stage = make_stage(self.releases)
             try:
                 sources, records, archive = prepare_run(

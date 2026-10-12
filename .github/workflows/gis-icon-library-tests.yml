@@ -5,12 +5,16 @@ on:
     paths:
       - "Database/EngineeringTools/**gis**"
       - "Database/EngineeringTools/icon_library_manager.pyw"
+      - "Database/EngineeringTools/Install-MSB-Icon-Library-Shortcut.cmd"
+      - "Database/EngineeringTools/assets/**"
       - ".github/workflows/gis-icon-library-tests.yml"
   push:
     branches: [main]
     paths:
       - "Database/EngineeringTools/**gis**"
       - "Database/EngineeringTools/icon_library_manager.pyw"
+      - "Database/EngineeringTools/Install-MSB-Icon-Library-Shortcut.cmd"
+      - "Database/EngineeringTools/assets/**"
       - ".github/workflows/gis-icon-library-tests.yml"
   workflow_dispatch:
 

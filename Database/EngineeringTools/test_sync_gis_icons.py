@@ -9,11 +9,12 @@ import subprocess
 import tempfile
 import unittest
 import zlib
+import zipfile
 from unittest.mock import patch
 
 from sync_gis_icons import (IconError, MAX_PX, canonical_sources, destination_preflight,
                             png_canvas, run, sha, sha_file, svg_canvas, source_freshness_warnings,
-                            prepare_run, apply_canonical, make_stage, readme_bytes)
+                            prepare_run, apply_canonical, make_stage, readme_bytes, preview_readme_bytes, README_URL)
 
 
 def png(w, h):
@@ -78,6 +79,41 @@ class ProcessTests(unittest.TestCase):
     def mocked_run(self):
         with patch('sync_gis_icons.choose_inkscape', return_value='fake-inkscape'), patch('sync_gis_icons.subprocess.run', self.fake_render):
             return run(self.args)
+
+    def test_preview_without_this_users_expertgps_readme(self):
+        # Command Center workstation may never have used ExpertGPS.
+        # Step 1 and its staging ZIP cannot demand any local TopoGrafix file.
+        self.readme.unlink()
+        summary = self.mocked_run()
+        self.assertEqual(summary['source_svg_count'], 3)
+        with zipfile.ZipFile(summary['staging_zip']) as bundle:
+            self.assertEqual(bundle.read('msb/readme.txt'), preview_readme_bytes())
+            self.assertEqual(bundle.read('msb/readme.txt'), (README_URL + '\n').encode())
+        self.assertFalse(self.readme.exists(), 'Preview must not install ExpertGPS')
+        self.assertFalse(self.dest.exists(), 'Preview must not write canonical G: PNGs')
+
+    def test_preview_ignores_wrong_user_expertgps_readme(self):
+        # An unrelated/misconfigured profile must not corrupt the portable
+        # bundle or block G: source validation. Step 5 still rejects it.
+        self.readme.write_text('https://wrong.example/icons/\n', encoding='utf-8')
+        before = self.readme.read_bytes()
+        summary = self.mocked_run()
+        with zipfile.ZipFile(summary['staging_zip']) as bundle:
+            self.assertEqual(bundle.read('msb/readme.txt'), preview_readme_bytes())
+        self.assertEqual(self.readme.read_bytes(), before)
+
+    def test_branded_shortcut_and_window_use_checked_in_icon(self):
+        here = Path(__file__).parent
+        artwork = here / 'assets' / 'MSB-Icon-Library-Manager.ico'
+        source = here / 'assets' / 'MSB-Icon-Library-Manager.svg'
+        self.assertTrue(source.is_file())
+        blob = artwork.read_bytes()
+        self.assertEqual(blob[:4], b'\x00\x00\x01\x00')
+        self.assertEqual(struct.unpack_from('<H', blob, 4)[0], 1)
+        self.assertEqual(struct.unpack_from('<I', blob, 18)[0], 22)
+        self.assertEqual(blob[22:30], b'\x89PNG\r\n\x1a\n')
+        self.assertIn('IconLocation', (here / 'Install-MSB-Icon-Library-Shortcut.cmd').read_text())
+        self.assertIn('iconbitmap', (here / 'icon_library_manager.pyw').read_text())
 
     def test_preview_progress_monotonic_and_has_filename(self):
         events = []

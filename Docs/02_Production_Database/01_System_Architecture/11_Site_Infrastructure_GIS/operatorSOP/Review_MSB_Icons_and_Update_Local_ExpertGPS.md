@@ -21,6 +21,7 @@ Keep approved symbol artwork and each Windows ExpertGPS user's local PNG library
 
 - Have the Desktop **MSB Icon Library Manager** shortcut installed and updated; see [Install or Update](Install_or_Update_MSB_Icon_Library_Manager.md).
 - The approved files are on the Google Shared Drive under `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols`.
+- **ExpertGPS is not required for Step 1 or Step 2.** The optional staged ZIP uses its approved canonical URL metadata and does not read or write the current user's TopoGrafix folder. **Step 5** is the only action that requires the user's existing ExpertGPS `msb/readme.txt`.
 - Icon editing requires permission to the source folders. Updating the canonical PNG folder requires appropriate Shared Drive write permission. Local installation affects the **current Windows user only**.
 
 ## Review or Update Artwork
