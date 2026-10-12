@@ -2,7 +2,7 @@
 name: Site reference map and editor candidate
 on:
   push:
-    branches: [feature/171-cableiq-import-validation, feature/171-reviewed-track-names-20261011, feature/171-disposable-gis-editor-review-grant]
+    branches: [feature/171-cableiq-import-validation, feature/171-reviewed-track-names-20261011, feature/171-disposable-gis-editor-review-grant, feature/171-gis-source-cache-retention]
   pull_request:
     paths:
       - 'Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql'
