@@ -19,8 +19,12 @@ const read = name => fs.readFileSync(path.join(__dirname, name), 'utf8');
   const match = page.match(/const data=(.*?);data.features.push/s);
   assert(match, 'Existing GPX data is still embedded as read-only fallback');
   const feats = JSON.parse(match[1]).features;
-  assert.equal(feats.filter(f => f.geometry.type === 'Point').length, 233);
-  assert.equal(feats.filter(f => f.geometry.type !== 'Point').length, 181);
+  // Do not pin source counts: GPX data changes under the maintained importer.
+  const waypoints = feats.filter(f => f.geometry.type === 'Point');
+  const tracks = feats.filter(f => f.geometry.type !== 'Point');
+  assert(waypoints.length > 0 && tracks.length > 0, 'Reference features retained');
+  assert(feats.every(f => f.properties && typeof f.properties.name === 'string'),
+    'Source names preserved for search');
   assert.equal(feats.filter(f => f.properties.name === 'Workshop').length, 1,
     'Never reinsert the temporary Workshop marker');
   assert(page.includes('window.msbReferenceSymbols.marker(xy,p.type)'));
@@ -96,6 +100,61 @@ const read = name => fs.readFileSync(path.join(__dirname, name), 'utf8');
   assert(read('setup_locate_offline.js').includes('navigator.serviceWorker.register'));
   assert(read('setup_locate_offline.js').includes('aerial.options.maxNativeZoom'));
   assert(read('locate_leaflet_LICENSE.txt').includes('BSD 2-Clause License'));
+
+  // Exercise actual SW CacheStorage promotion and failure rollback using a
+  // disposable in-memory browser stand-in. No public server is contacted.
+  class MemoryCache {
+    constructor() { this.files = new Map(); }
+    key(request) { return typeof request === 'string' ? request : request.url; }
+    async put(request, response) { this.files.set(this.key(request), response.clone()); }
+    async match(request) { return this.files.get(this.key(request))?.clone(); }
+    async delete(request) { return this.files.delete(this.key(request)); }
+  }
+  const allCaches = new Map();
+  const memory = {
+    async open(name) {
+      if (!allCaches.has(name)) allCaches.set(name,new MemoryCache());
+      return allCaches.get(name);
+    },
+    async keys() { return [...allCaches.keys()]; },
+    async has(name) {return allCaches.has(name);},
+    async delete(name) {return allCaches.delete(name);}
+  };
+  const events = [];
+  let breakSync = false;
+  const fetchStub = async req => {
+    if (breakSync && req.url.includes('assets/setup_locate_networks.json'))
+      return new Response('simulated offline update failure',{status:503});
+    const html = req.url.endsWith('/locate/');
+    return new Response(html ? '<title>MSB Park Map v1</title>' : 'candidate bytes',
+      {status:200,headers:{'Content-Type':html ? 'text/html' : 'application/octet-stream'}});
+  };
+  const worker = vm.createContext({URL,Request,Response,Set,Math,Date,
+    caches:memory,fetch:fetchStub,
+    self:{registration:{scope:swScope},location:{origin:'https://my.sheboyganlights.org'},
+      addEventListener(){}},
+    testPort:{postMessage(msg) {events.push(msg);}}});
+  vm.runInContext(read('setup_locate_sw.js'),worker);
+  await vm.runInContext('prepare(19, null, testPort)',worker);
+  assert.equal(events.at(-1).event,'complete',
+    'Fully verified package promotes a new active pointer');
+  const installed = await vm.runInContext('state()',worker);
+  assert.equal(installed.tiles,484);
+  assert.equal(installed.referenceRevision,null);
+  const firstName = installed.cacheName;
+  assert((await memory.open(firstName)).files.size >= 484,
+    'Aerial and shell entries are present in completed package');
+  breakSync = true;
+  await vm.runInContext('prepare(19, null, testPort)',worker);
+  assert.equal(events.at(-1).event,'error',
+    'Failed source fetch aborts rather than marking package complete');
+  const unchanged = await vm.runInContext('state()',worker);
+  assert.equal(unchanged.cacheName,firstName,
+    'A failed replacement never destroys prior downloaded map');
+  assert.equal(allCaches.size,2,'Incomplete cache is deleted, active cache retained');
+  assert(!(await memory.open(firstName)).files.has(
+    'https://my.sheboyganlights.org/setup/api/setup/locate/assets'),
+    'No live movement API is persisted in package');
 
   process.stdout.write('PASS: GPX conservation, natural SVG canvas, offline tile bounds, script routes and offline permissions\n');
 })().catch(error => { console.error(error); process.exitCode=1; });
