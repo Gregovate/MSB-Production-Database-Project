@@ -17,7 +17,7 @@
 | Owner | MSB Site Infrastructure / GIS administrator |
 | Reviewed | 2026-10-12 |
 | Implementation authority | Repo source: `Database/EngineeringTools/{icon_library_manager.pyw,sync_gis_icons.py,publish_gis_svgs.py,distribute_gis_pngs.py}`; consumer code under Setup/FieldWiring as separately controlled |
-| Adjacent authority | [Site Source Synchronization Contract](../../../../../Database/EngineeringTools/Site_Source_Synchronization_Contract.md) for GIS/GPX/FLW/PostGIS evidence and [Site Infrastructure / GIS README](../README.md) for engineering handoff |
+| Adjacent authority | [draft #319 Site Source Synchronization Contract](https://github.com/Gregovate/MSB-Production-Database-Project/blob/feature/171-cableiq-import-validation/Database/EngineeringTools/Site_Source_Synchronization_Contract.md) for GIS/GPX/FLW/PostGIS evidence and [Site Infrastructure / GIS README](../README.md) for engineering handoff |
 
 ### Design control — the document governs implementation
 
