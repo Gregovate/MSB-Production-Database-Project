@@ -696,8 +696,8 @@ earlier site-infrastructure migration):
   script between existing map search and historical network discovery.
 - \`Setup/Application/setup_site_reference.js\` loads maintained references at
   page load, rebuilds source waypoint/track/reviewed-route layers, maintains
-  the existing aerial, GPS, layer toggles, map searching and approved icon
-  objects, and shows operational detail on the selected waypoint/panel/network:
+  the existing aerial, GPS, layer toggles, map searching and existing (NOT
+  visually accepted) marker/icon objects, and shows operational detail on the selected waypoint/panel/network:
   supplying breaker number and outlets, separate panel/circuit owner, meter,
   intended season switching, explicit actual network membership, reviewed
   physical cables with per-UUID LinkIQ test data, and source year. Raw GPX
@@ -782,3 +782,32 @@ earlier site-infrastructure migration):
    candidate PR as draft until governed disposable SQL/application tests and
    operator acceptance PASS under #122.
 
+
+
+### Icon integration remains OPEN — operator correction after #319 implementation checkpoint
+
+Greg confirms the parallel icon thread has **not solved the Park Map icon problem**.
+Do not imply that publication tooling/PNG distribution being merged, a successful
+hash check for one SVG, or reuse of marker objects by #319 means map icons are
+correct or accepted. The **intended Park Map format is approved Plain SVG**;
+ExpertGPS uses its own locally installed PNGs; historical web PNGs are a
+compatibility layer, not the target map implementation. Existing merged
+\`locate_preview.html\` still consumes legacy GPX-derived
+\`webassets/images/symbols/msb/*.png\` references and forces 32×32 sizing.
+Thus #319's current practice of reusing those existing icon objects preserves
+known behavior but **does not repair incorrect URL/type mapping, icon geometry,
+image publication/case sensitivity or rectangular SVG sizing**.
+
+Ownership and order:
+- #171's parallel icon workstream must establish the actual cause, approved
+  Plain SVG lookup/publication contract, correct sizing/anchors and accepted
+  rendering in the existing map. Do not preempt its changes or duplicate a
+  simultaneous edit to \`locate_preview.html\`.
+- #319 can continue PostgreSQL, reviewed topology, protected commands, audit,
+  and disposable API tests independently. Integration must later reconcile
+  the shared map source with the accepted icon changes (not silently overwrite
+  them), and run final combined map/search/layer regression.
+- **Visual map acceptance is BLOCKED** until the operator verifies the Plain
+  SVG icons on the same DB-backed existing map. Neither branch merge nor
+  Production cutover may use icon test/tooling success as a substitute for
+  the actual map rendering check. #122 deployment authority remains separate.
