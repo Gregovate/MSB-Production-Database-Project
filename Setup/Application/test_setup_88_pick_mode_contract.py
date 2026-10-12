@@ -188,7 +188,12 @@ def test_reference_locations_are_refreshable_versioned_and_not_hardcoded_in_js()
     data = json.loads(read("setup_location_references.json"))
 
     assert "REFERENCE_POINTS" not in ui
-    assert "location-references.json" in ui
+    # #171 current GIS/PostGIS is the live picker source; the old October 3
+    # file remains historical reference/report evidence, never the dropdown.
+    assert "fetch('../api/setup/locate/references'" in ui
+    assert "fetch('location-references.json'" not in ui
+    assert "normalizeSiteReference(snapshot)" in ui
+    assert "accepted_gpx_sha256" in ui
     assert "REFERENCE_CACHE_KEY" in ui
     assert "referenceSet.version" in ui
     assert "location_reference_set=" in ui
