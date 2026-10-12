@@ -163,9 +163,14 @@ def _digest_field(value, label):
 def _validate_named_map(mapping, label):
     if not isinstance(mapping, dict):
         raise ProfileError(f"Release {label} must be an object")
+    seen = set()
     for name in mapping:
         if not isinstance(name, str) or not name or "\x00" in name:
             raise ProfileError(f"Unsafe name in {label}")
+        folded = name.casefold()
+        if folded in seen:
+            raise ProfileError(f"Case-ambiguous entries in {label}: {name}")
+        seen.add(folded)
 
 
 def _release_relative(name):
@@ -228,7 +233,10 @@ def load_release(manifest_path, approved_manifest_sha256):
         _release_relative(name)
         _digest_field(expected, name)
         item = path.parent.joinpath(*name.split("/"))
-        if item.is_symlink() or not item.is_file():
+        # Resolve every ancestor, not just the leaf: a symlinked msb/
+        # directory must not escape the hash-verified package root.
+        if (item.is_symlink() or not item.resolve().is_relative_to(path.parent.resolve()) or
+                not item.is_file()):
             raise ProfileError(f"Missing/linked release artifact: {name}")
         if sha256_file(item) != expected:
             raise ProfileError(f"Release artifact hash mismatch: {name}")
@@ -263,9 +271,10 @@ def compare_release(manifest, profile, verified_base=None):
             filename = rel[len("msb/"):]
             file_path = symbols.joinpath(*filename.split("/"))
             # No path escaping via nested symlinks.
-            actual["files"][name] = (sha256_file(file_path)
-                                     if file_path.is_file() and not file_path.is_symlink()
-                                     else None)
+            safe = (file_path.is_file() and not symbols.is_symlink() and
+                    not file_path.is_symlink() and
+                    file_path.resolve().is_relative_to(symbols.resolve()))
+            actual["files"][name] = sha256_file(file_path) if safe else None
     expected = {"types": manifest["types"], "symbol_to_type": manifest["symbol_to_type"],
                 "maps": {}, "files": {name: sha for name, sha in manifest["files"].items()
                                     if name.startswith("msb/")}}
@@ -284,9 +293,14 @@ def compare_release(manifest, profile, verified_base=None):
             differences.append({"field": field,
                                 "local": "<absent>" if local is missing else local,
                                 "approved": "<absent>" if approved is missing else approved})
-    if not differences:
+    unverifiable = []
+    for name, data in manifest["maps"].items():
+        # A registry coordinate match is not proof of map image identity.
+        if not data["image_sha256"] or name not in profile["maps"] or not profile["maps"][name]["image_file_verified"]:
+            unverifiable.append(name)
+    if not differences and not unverifiable:
         status = "Current"
-    elif verified_base is None:
+    elif verified_base is None or unverifiable:
         status = "Not verified"
     else:
         # Three-way conflict classification needs the independently verified
@@ -298,7 +312,7 @@ def compare_release(manifest, profile, verified_base=None):
         status = ("Conflict" if overlapping else
                   "Local unpublished changes" if local_changed else "Update available")
     return {"release_id": manifest["release_id"], "status": status,
-            "differences": differences,
+            "differences": differences, "unverifiable_maps": unverifiable,
             "workstation_accepted_for_two_way": False}
 
 
