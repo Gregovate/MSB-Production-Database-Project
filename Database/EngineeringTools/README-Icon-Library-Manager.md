@@ -37,6 +37,10 @@ The manager has **no application login**. Only the Synology administrator has wr
 - [PNG/ExpertGPS distributor](distribute_gis_pngs.py)
 - [Engineering tool index](README.md)
 
+## #171 workstation-profile comparison — isolated candidate
+
+The existing GUI now has a separate **6. Compare GIS workstation release (READ ONLY)** action on the isolated #171 branch. Its new `gis_workstation_profile.py` reads only the running Windows user's narrow ExpertGPS Type, reverse-symbol, scanned-map calibration and local icon information; it requires a manifest plus a separately approved SHA-256, and shows a field-level diff. **No actual approved workstation release has been issued.** No installation, registry mutation, GPX import/export, calibration transfer, proposed change submission or two-way authorization is implemented by this code. The read-only candidate and synthetic fixture tests must pass CI and real-PC review before it can be accepted; see the [controlling engineering contract](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/engineering/GIS_Symbol_Management.md). The five established icon actions remain independent.
+
 ## Resume / Open Acceptance
 
 Read the **current engineering contract** first. The app still lacks a visible source/version SHA, and the web publication review has exhibited blank action-button labels. The web PNG `IP-camera.png` case conflict is unresolved. The draft #319 map must confirm all approved SVG types and missing-symbol fallback (including eight prior Anchor/Waypoint markers) and pass genuine Android offline acceptance. No icon success implies Production map release.
