@@ -111,9 +111,18 @@ Other observed Type → PNG associations: `Car → car-r.png`, `Controller → l
 
 **The Show PC also has a reverse/association table:** `HKCU\Software\TopoGrafix\Common\Settings\SymbolToType` contains `"Flag, Blue"="Flag"`. The operator's earlier **laptop** read-only query showed **`"Flag, Blue"="Display Anchor"`**. This is a directly observed cross-PC conflict and a plausible cause of the same GPS symbol being assigned a different local waypoint Type when a GPX is opened. **It does not yet prove how GPX import chooses a Type or whether the missing-symbol event persisted that change.** Do not overwrite either user profile or canonical GPX on the basis of this hypothesis.
 
-**Next narrowly scoped evidence from laptop:** `reg query "HKCU\Software\TopoGrafix\Common\Waypoint Types\Display Anchor" /s` with ExpertGPS closed. Inspect **only** its `Symbol Type`, `GPS Symbol`, and `Bitmap Symbol URL` values and compare them with the Show PC's `Flag` entry and `SymbolToType` mapping. This can establish the required type/style migration data; it cannot establish the GPX serialization format without separate disposable GPX inspection. Do **not** request or publish a complete unredacted registry export.
+**Laptop subkey now CONFIRMED by the operator's read-only registry query (October 12):**
 
-**Next read-only investigation:** With ExpertGPS closed on the laptop, query **`reg query "HKCU\Software\TopoGrafix\Common\Waypoint Types\Display Anchor" /s`** and identify key/value names and types without sharing unredacted licensing or sensitive values. On the Show PC, the same key should be confirmed absent via read-only query. A focused review of the returned subkey structure is required **before** proposing a narrowly scoped, reversible Type/style transfer; retain the previously successful full-branch backups on *both* PCs and do not import any `.reg` yet.
+```reg
+[HKEY_CURRENT_USER\Software\TopoGrafix\Common\Waypoint Types\Display Anchor]
+"Symbol Type"="2"
+"GPS Symbol"="Flag, Blue"
+"Bitmap Symbol URL"="https://webassets.sheboyganlights.org/images/symbols/msb/pole-yellow.png"
+```
+
+Those **three values are identical** to the Show PC's `Waypoint Types\Flag` entry. The difference is the **waypoint Type name** and the separate `Common\Settings\SymbolToType` reverse assignment (**laptop `Flag, Blue → Display Anchor`; Show PC `Flag, Blue → Flag`**). This establishes that a full identical local PNG collection alone cannot align the two PC-specific Type names, and narrows the portability defect to the user-specific ExpertGPS Type/style registry configuration. It **does not establish** whether ExpertGPS reads GPX `<type>` directly, reinterprets Garmin `<sym>` with `SymbolToType`, uses extensions, or has additional state. The original GPX remains actively edited and must not be opened, reverted, or compared to stale October 11 hashes as a diagnostic.
+
+**Next controlled gate:** inspect the **raw current GPX or an existing disposable copy read-only outside ExpertGPS**, isolating the waypoint `ST POLE DS1` and its exported `<type>`, `<sym>`, `<extensions>` metadata and compare them to these registry fields. Do not mutate the authoritative GPX, blindly merge registry branches, copy guessed mappings into PostGIS, or hardcode `Flag → pole-yellow.svg`. A safe Type/style installation/migration procedure can be designed only after the import precedence and other registry dependencies are understood. Preserve the original backups from both Windows accounts.
 
 **Preservation and investigation contract:**
 1. Treat the **laptop's currently maintained Type/style configuration** as the candidate source for the Command Center PC, but do **not** automatically promote it as organization-wide authority until its complete association set and version are reviewed.
