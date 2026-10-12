@@ -583,9 +583,23 @@ def record_location_asset(name: str):
 
 
 
+@app.get("/locate/service-worker.js")
+def locate_offline_service_worker():
+    """Dedicated offline-only scope for Park Map; no live API caching."""
+    response = _no_store(send_from_directory(
+        BASE_DIR, "setup_locate_sw.js", mimetype="application/javascript",
+    ))
+    response.headers["Service-Worker-Allowed"] = "/locate/"
+    return response
+
+
 @app.get("/locate/assets/<name>")
 def locate_asset(name: str):
-    allowed = {"setup_locate_assets.js", "setup_locate_search.js", "setup_locate_networks.js", "setup_locate_networks.json", "setup_site_reference.js", "container-loaded.svg", "container-partial.svg",
+    allowed = {"locate_leaflet_1_9_4.min.js", "locate_leaflet_1_9_4.css",
+               "setup_locate_symbols.js", "setup_locate_offline.js",
+               "setup_locate_assets.js", "setup_locate_search.js",
+               "setup_locate_networks.js", "setup_locate_networks.json",
+               "setup_site_reference.js", "container-loaded.svg", "container-partial.svg",
                "container-empty.svg", "container-unknown.svg"}
     if name not in allowed:
         abort(404)
