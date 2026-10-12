@@ -130,6 +130,18 @@ class WorkstationReadOnlyTests(unittest.TestCase):
                             for name in reg.opened))
         self.assertEqual(reg.writes, [])
 
+    def test_unrelated_personal_maps_are_not_opened(self):
+        reg = FakeRegistry()
+        reg.keys[MAPS_KEY + r"\Unrelated private map"] = {
+            "Map Path": (r"C:\Personal\Private.png", reg.REG_SZ),
+            "Latitude": ("unrelated", reg.REG_SZ),
+        }
+        profile = read_current_user(reg, self.root / "local",
+                                    map_names={"Ortho 2019"})
+        self.assertEqual(set(profile["maps"]), {"Ortho 2019"})
+        self.assertFalse(any("Unrelated private map" in name for name in reg.opened))
+        self.assertNotIn("Private.png", str(profile))
+
     def test_pinned_release_hash_and_unchanged_current_profile(self):
         release = load_release(self.path, self.pin)
         r = compare_release(release, self.profile)
