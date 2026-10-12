@@ -589,7 +589,8 @@ def locate_offline_service_worker():
     response = _no_store(send_from_directory(
         BASE_DIR, "setup_locate_sw.js", mimetype="application/javascript",
     ))
-    response.headers["Service-Worker-Allowed"] = "/locate/"
+    # Browser scope is /setup/locate/ under the external proxy prefix.
+    # Default script-directory scope is correct; do not advertise /locate/.
     return response
 
 
