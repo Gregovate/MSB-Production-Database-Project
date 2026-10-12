@@ -45,8 +45,8 @@ class Manager:
             except (OSError, tk.TclError):
                 # Cosmetic asset failures must not block icon validation.
                 pass
-        self.root.geometry("930x700")
-        self.root.minsize(800, 610)
+        self.root.geometry("930x785")
+        self.root.minsize(800, 710)
         self.root.configure(bg=BACKGROUND)
         self.plain = PARK / "Plain"
         self.dest = PARK / "png"
@@ -218,6 +218,9 @@ class Manager:
                       padding=(12, 0, 12, 8)).pack(fill="x")
             viewer = scrolledtext.ScrolledText(dialog, wrap="word", font=("Consolas", 10))
             viewer.pack(fill="both", expand=True, padx=12, pady=8)
+            if result.get("unverifiable_maps"):
+                viewer.insert("end", "NOT VERIFIED: scanned map image missing or unhashed: " +
+                              ", ".join(result["unverifiable_maps"]) + "\n\n")
             for change in result["differences"]:
                 viewer.insert("end", change["field"] + "\n  Local: " +
                               str(change["local"]) + "\n  Approved: " +
