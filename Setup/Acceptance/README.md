@@ -120,6 +120,29 @@ migration and validation SQL. The importer runs before browser launch on that
 same clone. Its exported artifacts and receipts are evidence; importing them
 does not by itself establish that every application screen consumes the new data.
 
+For the integrated #171/#230 candidate **V0.3.63-site-reference**, pass BOTH
+exact allowlisted GIS migrations and both rollback-only SQL validations through
+that ONE reusable browser runner. After the disposable schema and validation
+pass, the runner confirms the selected preview identity is an existing Setup
+Manager; it creates a separately audited, **temporary GIS editor permission
+grant in the disposable clone only**. It never creates or changes any Production
+ref.site_editor_grant. The HTTP preflight then verifies a real PostGIS reference
+snapshot, imported GPX waypoints/tracks, and permitted Manager + crew controls
+before reporting BROWSER REVIEW READY. Without the temporary grant, the
+default-deny candidate only supports read-only map review and cannot establish
+Manager editing acceptance.
+
+During browser review test the existing /setup/locate/ track-name correction
+from historical NET FT-SS Reg/Spare/Aux to reviewed NET LP-08 to CL-00, reload
+and search; original GPX name, geometry and source description remain retained.
+Test circuit/network relationships and audit/optimistic conflict behavior only
+in the disposable clone. The second, reviewed LinkIQ physical-cable-to-GPX
+route-consistency exception workflow is NOT implemented or accepted yet.
+Do not infer a number of cables from track description. ExpertGPS export
+after editing, Android airplane-mode map, and public SVG visual acceptance
+are separate required gates, not implied by preview readiness.
+
+
 ## Mandatory exact client/server build identity gate
 
 Every reusable Setup acceptance launcher must fail **before server contact** when the exact candidate contains different client and server build identities.
