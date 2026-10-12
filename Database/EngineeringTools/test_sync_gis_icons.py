@@ -115,10 +115,23 @@ class ProcessTests(unittest.TestCase):
         self.assertIn('IconLocation', (here / 'Install-MSB-Icon-Library-Shortcut.cmd').read_text())
         self.assertIn('iconbitmap', (here / 'icon_library_manager.pyw').read_text())
 
+    def test_local_expertgps_button_gets_independent_full_width_row(self):
+        # Display scaling used to crowd the long Step 5 label alongside web
+        # publication controls, making installation hard to identify.
+        gui = (Path(__file__).parent / 'icon_library_manager.pyw').read_text()
+        self.assertIn('local_controls = ttk.Frame(root,', gui)
+        self.assertIn('publication_controls = ttk.Frame(root,', gui)
+        self.assertIn('self.local_png_btn.pack(side="left")', gui)
+        self.assertIn('self.web_publish_btn.pack(side="left"', gui)
+        self.assertIn('self.web_png_btn.pack(side="left")', gui)
+        self.assertLess(gui.index('local_controls = ttk.Frame(root,'),
+                        gui.index('footer = ttk.Frame(root,'))
+
     def test_verified_shared_cache_does_not_require_inkscape(self):
         # First authoring PC validated the G: release-history cache.
         first = self.mocked_run()
         self.assertEqual(first['source_svg_count'], 3)
+        self.readme.unlink()  # No local ExpertGPS dependency on this PC either.
         # Second field PC may have no Inkscape executable, but every cached
         # PNG is still bound to the current source SHA, PNG SHA and canvas.
         with patch('sync_gis_icons.choose_inkscape',
