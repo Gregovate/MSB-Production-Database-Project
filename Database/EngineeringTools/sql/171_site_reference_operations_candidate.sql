@@ -469,73 +469,21 @@ BEGIN
         WHERE c.site_cable_id=v_target;
 
     ELSIF p_command='manager_link_test' THEN
-        -- Review a single stable test UUID against an existing *reviewed*
-        -- physical cable, retaining source-specific evidence and decision
-        -- history. Neither a changed label nor a retest creates a new cable.
+        -- Stable UUID identity is never equated to a physical cable ID.
+        -- A later correction retains the source and all previous decisions.
         IF NOT (p_data ? 'expected_cable_id') THEN
             RAISE EXCEPTION 'Explicit previous cable binding required (null permitted)'
                 USING ERRCODE='22023';
         END IF;
         v_source_sha:=lower(btrim(p_data->>'source_sha256'));
-        IF v_source_sha IS NULL OR v_source_sha !~ '^[0-9a-f]{64}
-        v_target:=(p_data->>'circuit_id')::bigint;
-        IF NOT EXISTS(SELECT 1 FROM ref.site_power_circuit WHERE site_power_circuit_id=v_target)
-           OR (p_data->>'season_year')::int NOT BETWEEN 2020 AND 2100 THEN
-           RAISE EXCEPTION 'Existing circuit and valid season required' USING ERRCODE='22023';
-        END IF;
-        SELECT to_jsonb(i) INTO v_before FROM ref.site_seasonal_switch_instruction i
-          WHERE i.site_power_circuit_id=v_target AND i.season_year=(p_data->>'season_year')::int;
-        INSERT INTO ref.site_seasonal_switch_instruction
-          (site_power_circuit_id,season_year,turn_on_instruction,turn_off_instruction,
-           evidence_notes,reviewed_by)
-        VALUES(v_target,(p_data->>'season_year')::int,
-               nullif(btrim(p_data->>'turn_on_instruction'),''),
-               nullif(btrim(p_data->>'turn_off_instruction'),''),v_evidence,p_email)
-        ON CONFLICT(site_power_circuit_id,season_year) DO UPDATE
-          SET turn_on_instruction=EXCLUDED.turn_on_instruction,
-              turn_off_instruction=EXCLUDED.turn_off_instruction,
-              evidence_notes=EXCLUDED.evidence_notes,reviewed_by=EXCLUDED.reviewed_by,
-              reviewed_at=clock_timestamp();
-        SELECT to_jsonb(i) INTO v_after FROM ref.site_seasonal_switch_instruction i
-          WHERE i.site_power_circuit_id=v_target AND i.season_year=(p_data->>'season_year')::int;
-    END IF;
-
-    UPDATE ref.site_reference_revision SET revision=revision+1,
-       changed_at=clock_timestamp() WHERE singleton=true RETURNING revision INTO v_current;
-    INSERT INTO ops.site_reference_edit_log(
-      revision,operator_email,named_command,target_id,evidence_notes,before_data,after_data)
-    VALUES(v_current,p_email,p_command,v_target,v_evidence,v_before,v_after);
-    v_result := jsonb_build_object('revision',v_current,'target_id',v_target,
-                                  'command',p_command,'changed',true);
-    RETURN v_result;
-END
-$command$;
-
--- PostgreSQL grants follow the existing FieldWiring application account, if present
--- on the clone. No generic DML or unreviewed editor grants.
-REVOKE ALL ON FUNCTION ref.site_reference_snapshot() FROM PUBLIC;
-REVOKE ALL ON FUNCTION ref.site_reference_permissions(text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION ref.site_reference_command(text,text,bigint,jsonb) FROM PUBLIC;
-DO $grant$
-BEGIN
- IF to_regrole('fieldwiring_app') IS NOT NULL THEN
-   GRANT USAGE ON SCHEMA ref TO fieldwiring_app;
-   GRANT EXECUTE ON FUNCTION ref.site_reference_snapshot() TO fieldwiring_app;
-   GRANT EXECUTE ON FUNCTION ref.site_reference_permissions(text) TO fieldwiring_app;
-   GRANT EXECUTE ON FUNCTION ref.site_reference_command(text,text,bigint,jsonb)
-     TO fieldwiring_app;
- END IF;
-END $grant$;
-COMMIT;
- THEN
+        IF v_source_sha IS NULL OR v_source_sha !~ '^[0-9a-f]{64}$' THEN
             RAISE EXCEPTION 'Source SHA256 required for identity decision'
                 USING ERRCODE='22023';
         END IF;
         v_test_uuid:=(p_data->>'test_uuid')::uuid;
         v_cable:=(p_data->>'site_cable_id')::bigint;
-        v_expected_cable:=(p_data->>'expected_cable_id')::bigint;
         IF v_cable IS NULL THEN
-            RAISE EXCEPTION 'A reviewed physical cable ID is required'
+            RAISE EXCEPTION 'An existing reviewed physical cable ID is required'
                 USING ERRCODE='22023';
         END IF;
         PERFORM 1 FROM ref.site_cable c WHERE c.site_cable_id=v_cable
@@ -547,8 +495,7 @@ COMMIT;
             RAISE EXCEPTION 'Selected physical cable is not reviewed/active'
                 USING ERRCODE='22023';
         END IF;
-        -- Audit only the binding/reviewer transition. Original LinkIQ raw
-        -- payload lives immutably in ops; do not copy BinRec into each log row.
+        -- Do not clone immutable BinRec original_result into each audit event.
         SELECT jsonb_build_object('test_uuid',t.test_uuid,
                     'physical_site_cable_id',t.physical_site_cable_id,
                     'identity_review_status',t.identity_review_status,
