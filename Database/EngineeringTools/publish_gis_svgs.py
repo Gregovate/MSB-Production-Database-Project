@@ -61,7 +61,7 @@ def web_svg_preflight(destination: Path, sources: dict) -> dict[str, list]:
     for p in destination.iterdir():
         if p.is_file():
             existing.setdefault(p.name.lower(), []).append(p)
-    plan = {"add": [], "replace": [], "identical": []}
+    plan = {"add": [], "replace": [], "identical": [], "legacy_case_identical": {}}
     for name, (source, expected_hash, _width, _height) in sources.items():
         current_bytes = source.read_bytes()
         if sha(current_bytes) != expected_hash:
@@ -70,8 +70,18 @@ def web_svg_preflight(destination: Path, sources: dict) -> dict[str, list]:
         found = existing.get(name.lower(), [])
         if not found:
             plan["add"].append(name)
-        elif len(found) != 1 or found[0].name != name or not found[0].is_file():
-            raise IconError(f"Published SVG filename-case collision: {name}; no publication allowed")
+        elif len(found) != 1 or not found[0].is_file():
+            raise IconError(f"Ambiguous published SVG case collision: {name}; no publication allowed")
+        elif found[0].name != name:
+            # Windows SMB cannot always host two case-only names, while HTTPS is
+            # case-sensitive. Preserve the historical URL ONLY when its bytes
+            # already exactly match the approved current Plain SVG. A changed
+            # source still stops rather than overwriting the old alias.
+            if sha_file(found[0]) != expected_hash:
+                raise IconError(
+                    f"Published SVG legacy filename {found[0].name} conflicts with "
+                    f"approved {name} and contains different bytes; no publication allowed")
+            plan["legacy_case_identical"][name] = found[0].name
         elif sha_file(found[0]) == expected_hash:
             plan["identical"].append(name)
         else:
@@ -113,7 +123,15 @@ def publish_web_svgs(plain: Path, destination: Path, stage: Path, sources: dict,
         if sha(source_bytes) != expected_hash:
             raise IconError(f"Plain source changed before SVG publication: {name}")
         target = destination / name
-        if name in plan["identical"]:
+        if name in plan["legacy_case_identical"]:
+            # Never rename or replace the old exact-case URL as a side effect
+            # of publishing unrelated approved SVGs.
+            target = destination / plan["legacy_case_identical"][name]
+            if sha_file(target) != expected_hash:
+                raise IconError(
+                    f"Legacy SVG alias changed since preflight: {target.name}; stop")
+            action = "legacy-case-identical"
+        elif name in plan["identical"]:
             if sha_file(target) != expected_hash:
                 raise IconError(f"Published SVG changed since preflight: {name}")
             action = "identical"
@@ -148,7 +166,7 @@ def publish_web_svgs(plain: Path, destination: Path, stage: Path, sources: dict,
         if remote_hash != expected_hash:
             raise IconError(f"Published SVG post-write hash differs: {name}; stop and preserve receipts")
         receipt.append({"SVG": name, "Action": action, "SHA256": remote_hash,
-                        "Destination": str(target), "Public_URL": PUBLIC_SVG_BASE + name})
+                        "Destination": str(target), "Public_URL": PUBLIC_SVG_BASE + target.name})
         with receipt_path.open("w", newline="", encoding="utf-8-sig") as fp:
             writer = csv.DictWriter(fp, fieldnames=("SVG", "Action", "SHA256", "Destination", "Public_URL"))
             writer.writeheader()
