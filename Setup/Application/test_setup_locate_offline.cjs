@@ -66,6 +66,17 @@ const read = name => fs.readFileSync(path.join(__dirname, name), 'utf8');
   assert.deepEqual(Array.from(marker.options.icon.options.iconSize),[18,32],
     'Native rectangular canvas is preserved');
   assert.deepEqual(Array.from(marker.options.icon.options.iconAnchor),[9,16]);
+  // Independent Displays use reviewed, natural-size T-Post artwork above
+  // Container coordinates; adjusting icon anchor MUST NOT change GPS data.
+  const display = L.marker([43.778,-87.743], {
+    icon:L.divIcon({iconSize:[12,12],iconAnchor:[6,22]}),zIndexOffset:1000
+  });
+  assert.equal(window.msbReferenceSymbols.setSymbol(display, 'T-Post', {yOffset:16}),true);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(Array.from(display.xy),[43.778,-87.743]);
+  assert.deepEqual(Array.from(display.options.icon.options.iconSize),[18,32]);
+  assert.deepEqual(Array.from(display.options.icon.options.iconAnchor),[9,32]);
+  assert.equal(display.options.zIndexOffset,1000);
   assert(issued.every(url => url.startsWith('https://webassets.sheboyganlights.org/images/symbols/msb-svg/')));
   const unknown = window.msbReferenceSymbols.marker([43.77,-87.74],'Unmapped-Type');
   assert.equal(unknown.kind,'circle');

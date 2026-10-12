@@ -97,7 +97,14 @@ def test_display_artwork_above_container_preserves_gps():
     from pathlib import Path
     source = Path(__file__).with_name('setup_locate_assets.js').read_text()
     assert 'L.marker(a.position' in source
-    assert 'iconAnchor: container ? [16,16] : [16,48]' in source
+    # #88 Container coordinates are unchanged; independent Displays use
+    # a native-size Plain SVG offset vertically, not the legacy square PNG.
+    assert 'iconSize: [32,32], iconAnchor: [16,16]' in source
+    assert "window.msbReferenceSymbols.setSymbol(marker, 'T-Post', {yOffset:16});" in source
+    assert "iconAnchor:[6,22]" in source
+    symbols = Path(__file__).with_name('setup_locate_symbols.js').read_text()
+    assert 'iconSize: [width, height]' in symbols
+    assert 'iconAnchor: [width / 2, height / 2 + offset]' in symbols
     assert 'zIndexOffset: container ? 0 : 1000' in source
 
 
