@@ -370,6 +370,7 @@ def test_reusable_browser_preview_only_resumes_transport_loss_not_start_prefligh
 def test_gis_database_acceptance_and_browser_share_one_clone_lifecycle() -> None:
     server = read_acceptance("setup_disposable_browser_preview_server.sh")
     assert server.count('pg_dump -U "$DB_ACTOR"') == 1
+    assert server.index('GIS_FLW_SOURCE="$(resolve_gis_source') < server.index('"--- Exact candidate regression ---"')
     assert server.index('"--- Exact candidate regression ---"') < server.index('pg_dump -U "$DB_ACTOR"')
     assert server.index('"--- Run candidate validation SQL') < server.index('accept_site_sources.py')
     assert server.index('accept_site_sources.py') < server.index('"--- Start exact candidate')

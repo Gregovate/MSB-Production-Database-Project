@@ -536,15 +536,7 @@ for rel in "${MIGRATIONS[@]}" "${VALIDATIONS[@]}"; do
 done
 
 echo
-echo "--- Exact candidate regression ---"
-sudo -u fieldwiring -H env PYTHONPYCACHEPREFIX="$PYCACHE" bash -c "
-    set -e
-    cd '$CANDIDATE_WORKTREE'
-    '$PYTHON' -m py_compile Setup/Application/production_backend.py Setup/Acceptance/setup_session_browser_preview_entry.py
-    '$PYTHON' -m pytest -q -p no:cacheprovider Setup/Application Setup/Acceptance/test_setup_gis_preview.py
-    '$PYTHON' -m pytest -q -p no:cacheprovider FieldWiring/Application
-"
-echo "PASS: exact candidate Setup/Application regression"
+
 
 # A cache file is a disposable verified transport copy, NOT a second source
 # master. Keep only the active accepted SHA for each source type after a clean
@@ -671,6 +663,20 @@ if [[ -n "$GIS_GPX_SHA$GIS_FLW_SHA$GIS_ACTOR" ]]; then
     echo "Verified persistent GIS sources: $GIS_GPX_SHA / $GIS_FLW_SHA"
     sudo "$PYTHON" -c 'import psycopg2'
 fi
+
+# SHA-verify and cache sources BEFORE regression. An early test failure then
+# cleans the upload bundle but retains verified source bytes for the next test;
+# the single read-only Production dump is still strictly AFTER regression.
+echo
+echo "--- Exact candidate regression ---"
+sudo -u fieldwiring -H env PYTHONPYCACHEPREFIX="$PYCACHE" bash -c "
+    set -e
+    cd '$CANDIDATE_WORKTREE'
+    '$PYTHON' -m py_compile Setup/Application/production_backend.py Setup/Acceptance/setup_session_browser_preview_entry.py
+    '$PYTHON' -m pytest -q -p no:cacheprovider Setup/Application Setup/Acceptance/test_setup_gis_preview.py
+    '$PYTHON' -m pytest -q -p no:cacheprovider FieldWiring/Application
+"
+echo "PASS: exact candidate Setup/Application regression"
 
 echo
 echo "--- Capture current Production into disposable clone ---"
