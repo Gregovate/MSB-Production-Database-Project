@@ -811,3 +811,81 @@ Ownership and order:
   SVG icons on the same DB-backed existing map. Neither branch merge nor
   Production cutover may use icon test/tooling success as a substitute for
   the actual map rendering check. #122 deployment authority remains separate.
+
+
+### Physical-cable/editor and offline integration milestone — 2026-10-11 later continuation
+
+**Exact recovered integrated candidate:** two-parent merge
+\`4354f5bf6ae06ef2be18cf788ddf450f4a10b6a8\` merges the already
+divergent PostgreSQL editor history
+\`07261a6f5bebe3a4264776a32f0547acbd6f04ce\` and the separate
+existing-map Plain SVG/offline history
+\`7281e418fe47f26e4c4113a55c151e1703f81f31\`.
+Both commit histories are ancestors of this merge (GitHub compare each
+parent to merge reports ahead/behind=0 behind). Do not reset either parent.
+A concurrent Contents API update on the shared PR branch had temporarily
+left the parallel offline history unreachable; this merge recovered it
+**without deleting or rewriting its commits**. Future concurrent work MUST
+use separate branches or Git Data commits with expected-head lease;
+Contents API updates against a moving shared branch are unsafe.
+
+**Actually implemented on draft PR #319, still not Production deployed:**
+
+- Maintained \`ref.site_cable\` records can now be created as **distinct
+  reviewed physical cable IDs** with two existing waypoint endpoint IDs,
+  one separately confirmed network or explicit SPARE designation, documented
+  evidence, reviewer and lifecycle. Parallel physical cables with identical
+  endpoints/designation are allowed, never collapsed by a LinkIQ UUID.
+- Manager-only \`manager_link_test\` binds a stable
+  \`ops.linkiq_test.test_uuid\` to an existing reviewed cable only after
+  selecting the retained source-specific \`ops.linkiq_intake_review\`
+  \`source_sha256\`, **explicit previous cable binding**, and review
+  evidence. It appends \`ops.linkiq_identity_decision\` and a concise
+  \`ops.site_reference_edit_log\` revision with actor, before/after
+  association; it does not clone the immutable raw LinkIQ BinRec into audit
+  and never overwrites original test names/lengths/status/history. A
+  mistaken earlier decision may be revised with an expected prior binding,
+  preserving both decisions; unchanged reapproval is rejected.
+- The existing Park Map's manager controls expose reviewed cable
+  creation/revision and LinkIQ UUIDs with the corrected LinkWare display
+  label **separate** from original tester name, preserved test
+  timestamp/length/raw result, source hash, existing binding, and
+  *review-required* state. This is human review, **not** auto-selection
+  from guessed endpoints, proximity or test standard.
+- Other maintained operations: manager-reviewed historical waypoint alias
+  additions (reject collisions with any existing canonical label/alias),
+  reviewed physical-cable retirement with evidence, and Production crew
+  commands to remove a previously assigned circuit outlet, network
+  membership or seasonal switching plan. All removals record before-data,
+  actor/evidence/revision. Crew still cannot move/rename waypoint identities.
+- The parallel source candidate contributes bounded offline preparation and
+  service-worker/reference loading, local Leaflet assets and Plain-SVG
+  rendering adapter on the SAME map. The merge preserves its edits and
+  forces offline saved-reference permissions to \`identity:false\`,
+  \`operations:false\`; cached data never confers editor access. The
+  icon's real-world rendering and tablet airplane-mode workflow remain
+  unaccepted, separately owned. \`/setup/locate/\` Production is unchanged.
+
+**Real isolated GitHub Actions PASS (not just a static assertion):**
+\`https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38187654454\`
+for exact merge \`4354f5bf\`. Job includes checked-in node/offline source
+contract assertions, **6 protected Flask API tests PASS**, and Docker
+\`postgis/postgis:16-3.5\` execution of both SQL schema candidates plus
+rollback-only operations validation (reported \`PASS: #171/#230 reference
+default-deny, audited commands, live map, m:n circuits, network, switching,
+meter and speed-unknown\`). Candidate SQL assertions now exercise
+manager-created distinct parallel cable identities, retained LinkIQ UUID
+assignment, explicit correction with prior binding, two append-only decisions,
+unchanged original tester name, collision-safe aliasing, reversible crew
+relationships and retirement preservation. PostgreSQL container is ephemeral,
+NOT current Production schema or live Server Management clone.
+
+**Still-open acceptance / no false completion:**
+governed current-Production disposable schema/real-GPX/real-FLW/browser
+single-clone gate, source-cache server test, actual operator authorization
+provisioning, real map live PostgreSQL and server navigation, offline rugged
+tablet + aerial/icons field acceptance, ExpertGPS application roundtrip and
+conflict-aware reimport, prior missing icon correction, full physical
+network/route/schematic reconciliation and final #230 storage reference UI.
+No SQL migration, FLW rewrite, Production import, web SVG publication, or
+deployment was performed in this continuation.
