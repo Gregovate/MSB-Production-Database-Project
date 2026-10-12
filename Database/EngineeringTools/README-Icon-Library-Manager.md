@@ -51,6 +51,35 @@ The updated workflow is:
 
 **Failure and authorization boundaries:** If `msb-svg` is missing, unreachable or the operator is not authorized to modify it, publication preflight stops without creating directories. There are no live web writes until the separately confirmed third action. The code does **not** modify the legacy `msb` PNG/BMP directory, ExpertGPS, GPX, map application source, browser CSS, database, or draw.io embedded symbols. All source and destination file hashes must match before success is displayed. **Real Windows/Synology and HTTP acceptance is pending**; the initial regression suite uses disposable local stand-in directories only.
 
+### October 11 field-test correction — identical mixed-case published SVG alias
+
+The authorized administrator's first real Windows/Synology check found an old
+published filename `msb-splitter-Combiner.svg` versus canonical approved
+`msb-splitter-combiner.svg`. The actual SHA-256 of both files is
+`DD2369417633A3623BD77BCD74BCD8BCB2105DA616A1DD60B811CC184472E7A0`.
+The historical-cased public URL returns HTTP 200, while the lowercase URL
+returns HTTP 404. There is **no artwork change to publish for this file**.
+Windows/SMB cannot safely create an independent case-only counterpart, and
+renaming the old file risks breaking historical consumers.
+
+The SVG publisher now distinguishes **historical-case / bytes identical**
+from a real conflict. It can proceed with publishing *other* reviewed SVGs,
+while leaving this exact existing alias untouched. The review shows the
+canonical -> historical published name, and receipts record the **actual
+published exact-case URL**, not a fictitious lowercase URL. A case-only match
+with **different bytes, duplicate ambiguous filenames, or a source hash
+change still stops before any publication**. It does not create a redirect,
+rename files, change GPX, or make the lowercase URL resolve; a map consumer
+must use its approved published exact-case artwork or an independently
+authorized future alias mapping. The new Plain SVG Park Map uses a separate
+reviewed type registry and does **not** depend on the splitter-combiner icon.
+
+All web publication actions still require the sole authorized Synology
+administrator's Windows SMB credentials and an explicit per-action preview
+and confirmation. Application buttons do not grant rights or contain an
+administrator login. CI uses disposable directories; real Windows preview,
+public SVG URL and offline Park Map tablet acceptance remain separate.
+
 ## Complete canonical PNG distribution: website AND per-user ExpertGPS — October 11
 
 The operator correctly identified two **independent missing steps** after producing reviewed SVG/PNG files: (a) canonical `Symbols\png` outputs were **not** copied to the existing Synology public PNG folder and (b) canonical PNGs were **not** installed in the current Windows account's TopoGrafix/ExpertGPS symbol folder. The original `readme.txt` is **not a publisher/installer**.
