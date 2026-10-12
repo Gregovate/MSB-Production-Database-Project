@@ -309,11 +309,14 @@ class Manager:
                 return
             changed = len(plan["add"]) + len(plan["replace"])
             self.status.set(f"Web SVG review: {len(plan['add'])} new, "
-                            f"{len(plan['replace'])} changed, {len(plan['identical'])} identical.")
+                            f"{len(plan['replace'])} changed, {len(plan['identical'])} identical, "
+                            f"{len(plan['legacy_case_identical'])} byte-identical historical-case names.")
             if changed == 0:
                 messagebox.showinfo("Web SVG library matches current Plain",
-                                    f"All {len(plan['identical'])} existing server SVGs match approved Plain SHA-256."
-                                    "\nThe existing Park Map may still use legacy PNG URLs.")
+                                    f"Exact-case matches: {len(plan['identical'])}. "
+                                    f"Historical-case matches: {len(plan['legacy_case_identical'])}. "
+                                    "All match approved Plain bytes.\nHistorical-case URLs remain case-sensitive "
+                                    "and were not renamed; lowercase URLs may return 404.")
                 return
             self.review_web_plan(plan)
         self.async_operation(work, done)
@@ -330,15 +333,21 @@ class Manager:
         ttk.Label(dialog, wraplength=800, padding=(15, 0, 15, 8),
                   text=(f"Destination: {self.web_svg_dest}\n"
                         f"NEW: {len(plan['add'])}   UPDATE (backup): {len(plan['replace'])}   "
-                        f"Unchanged: {len(plan['identical'])}\n"
+                        f"Unchanged: {len(plan['identical'])}   "
+                        f"Historical-case (byte-identical): {len(plan['legacy_case_identical'])}\n"
                         "This copies currently validated Plain SVG bytes only. No GPX/PNG files "
-                        "are renamed or deleted. The Park Map's legacy PNG URL mapping is NOT updated."
+                        "are renamed or deleted. Historical-case matches are NOT rewritten, "
+                        "and their lowercase URL may still return HTTP 404. "
+                        "The Park Map uses the separately approved lowercase SVG names."
                         "\nDo not publish if artwork looks wrong in the preview.")).pack(fill="x")
         text_area = scrolledtext.ScrolledText(dialog, wrap="word", font=("Consolas", 10))
         text_area.pack(fill="both", expand=True, padx=15, pady=8)
         details = []
         for category, label in (("add", "NEW"), ("replace", "UPDATE (backup)"), ("identical", "Unchanged")):
             details.extend(f"{label}: {name}" for name in plan[category])
+        details.extend(
+            f"HISTORICAL CASE (bytes identical; no rename): {name} -> {actual}"
+            for name, actual in plan["legacy_case_identical"].items())
         text_area.insert("1.0", "\n".join(details))
         text_area.configure(state="disabled")
         footer = ttk.Frame(dialog, padding=(15, 0, 15, 12))
@@ -365,12 +374,15 @@ class Manager:
                                          error + "\nReview: " + str(self.staged) +
                                          "\nSome files may already have been published; do not discard receipts.")
                     return
-                self.status.set(f"Web SVG publication PASS: {len(receipt)} files verified on server share.")
+                aliases = [row for row in receipt if row["Action"] == "legacy-case-identical"]
+                self.status.set(f"Web SVG publication PASS: {len(receipt)} entries SHA-256 verified; "
+                                f"{len(aliases)} retained historical-case aliases.")
                 messagebox.showinfo("Web SVG files synchronized",
-                                    f"{len(receipt)} source SVGs match the file server by SHA-256.\n"
+                                    f"{len(receipt)} source SVG entries hash-verified.\n"
+                                    f"{len(aliases)} historical-case aliases unchanged; their canonical "
+                                    "lowercase URLs are NOT guaranteed to resolve.\n"
                                     f"Receipt/backups: {self.staged}\n\n"
-                                    "Verify public SVG URLs in a browser. The Park Map's legacy "
-                                    "PNG marker mapping remains a separate task.")
+                                    "Verify mapped Plain SVG URLs in the Park Map browser.")
             self.async_operation(work, done)
         ttk.Button(footer, text="Publish reviewed SVG changes",
                    command=start_publish).pack(side="right", padx=(0, 12))
