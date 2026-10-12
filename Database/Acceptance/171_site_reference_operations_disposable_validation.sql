@@ -8,6 +8,8 @@ DECLARE
     v_uuid text := gen_random_uuid()::text;
     v_panel bigint; v_outlet_a bigint; v_outlet_b bigint;
     v_network bigint; v_circuit bigint; v_cable bigint; v_second_cable bigint;
+    v_track bigint; v_track_geom text;
+    v_track_sha text := md5('gpx-track:'||gen_random_uuid()::text) || md5(gen_random_uuid()::text);
     v_test uuid := gen_random_uuid();
     v_sha text := md5(gen_random_uuid()::text) || md5(gen_random_uuid()::text);
     v_rev bigint; v_out jsonb; v_snapshot jsonb;
@@ -270,7 +272,83 @@ BEGIN
         RAISE EXCEPTION 'Cable retirement erased test binding decision history';
     END IF;
 
+    -- #171: a wrong GPX track LABEL is revised only after a human checks the
+    -- stable bound track and source history. Source trace geometry and cable
+    -- evidence remain unchanged. Provenance retains the historical name/note.
+    INSERT INTO ops.site_source_batch(source_sha256,source_kind,original_filename,actor)
+    VALUES(v_track_sha,'EXPERTGPS_GPX','disposable-reviewed-track.gpx','319-disposable');
+    INSERT INTO ref.site_track(track_label,source_type,reference_line,description)
+    VALUES ('NET FT-SS Reg, Spare, Aux-A, Aux-B, ','Network',
+        ST_GeomFromText('MULTILINESTRING((100000 100000,100040 100010,100100 100100))',8158),
+        'TBD 7 Cables')
+    RETURNING site_track_id INTO v_track;
+    INSERT INTO ops.site_source_observation(
+        source_sha256,source_row,item_kind,source_document)
+    VALUES (v_track_sha,'103','TRACK',
+        jsonb_build_object('ordinal',103,'name','NET FT-SS Reg, Spare, Aux-A, Aux-B, ',
+                           'type','Network','description','TBD 7 Cables'));
+    INSERT INTO ref.site_track_source_binding(
+        site_track_id,source_sha256,source_ordinal,accepted_by)
+    VALUES (v_track,v_track_sha,103,'319-disposable');
+    SELECT encode(ST_AsEWKB(reference_line),'hex') INTO v_track_geom
+      FROM ref.site_track WHERE site_track_id=v_track;
+    BEGIN
+        PERFORM ref.site_reference_command('crew@example.test','manager_update_track_label',v_rev,
+            jsonb_build_object('track_id',v_track,
+                'expected_track_label','NET FT-SS Reg, Spare, Aux-A, B',
+                'track_label','NET LP-08 to CL-00',
+                'evidence_notes','Crew must not rename geographic source'));
+        RAISE EXCEPTION 'Crew could change a reference track label';
+    EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
+    END;
+    v_out := ref.site_reference_command('manager@example.test','manager_update_track_label',
+        v_rev,jsonb_build_object('track_id',v_track,
+            'expected_track_label','NET FT-SS Reg, Spare, Aux-A, Aux-B, ',
+            'track_label','NET LP-08 to CL-00',
+            'evidence_notes','Operator confirmed surveyed LP-08 to CL-00 link'));
+    v_rev := (v_out->>'revision')::bigint;
+    IF (SELECT track_label FROM ref.site_track WHERE site_track_id=v_track)
+         <> 'NET LP-08 to CL-00'
+       OR (SELECT description FROM ref.site_track WHERE site_track_id=v_track)
+         <> 'TBD 7 Cables'
+       OR (SELECT source_type FROM ref.site_track WHERE site_track_id=v_track)
+         <> 'Network'
+       OR (SELECT encode(ST_AsEWKB(reference_line),'hex') FROM ref.site_track
+           WHERE site_track_id=v_track)<>v_track_geom
+       OR (SELECT source_document->>'name'
+           FROM ops.site_source_observation
+           WHERE source_sha256=v_track_sha AND source_row='103' AND item_kind='TRACK')
+          <> 'NET FT-SS Reg, Spare, Aux-A, Aux-B, ' THEN
+        RAISE EXCEPTION 'Track review changed source/geometry/description';
+    END IF;
+    BEGIN
+        PERFORM ref.site_reference_command('manager@example.test','manager_update_track_label',
+            v_rev,jsonb_build_object('track_id',v_track,
+                'expected_track_label','NET FT-SS Reg, Spare, Aux-A, Aux-B, ',
+                'track_label','NET WRONG REAPPLY',
+                'evidence_notes','Stale track label must be rejected'));
+        RAISE EXCEPTION 'Stale prior track name was accepted';
+    EXCEPTION WHEN SQLSTATE '40001' THEN NULL;
+    END;
+    IF NOT EXISTS(SELECT 1 FROM ops.site_reference_edit_log
+        WHERE named_command='manager_update_track_label'
+          AND target_id=v_track
+          AND before_data->>'track_label'='NET FT-SS Reg, Spare, Aux-A, Aux-B, '
+          AND after_data->>'track_label'='NET LP-08 to CL-00') THEN
+        RAISE EXCEPTION 'Reviewed track label change missing audit before/after';
+    END IF;
+
     v_snapshot := ref.site_reference_snapshot();
+    IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_snapshot->'tracks') tr
+        WHERE (tr->>'id')::bigint=v_track
+          AND tr->>'label'='NET LP-08 to CL-00'
+          AND tr->>'type'='Network'
+          AND tr->>'description'='TBD 7 Cables'
+          AND tr->>'source_label'='NET FT-SS Reg, Spare, Aux-A, Aux-B, '
+          AND (tr->>'source_ordinal')::int=103
+          AND tr->>'source_sha256'=v_track_sha) THEN
+        RAISE EXCEPTION 'Live map lacks reviewed track label/source evidence';
+    END IF;
     IF (v_snapshot->>'revision')::bigint <> v_rev
        OR v_snapshot->>'data_mode'<>'postgres' THEN
        RAISE EXCEPTION 'Map projection missed latest maintained revision';
