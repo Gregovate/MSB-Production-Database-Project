@@ -195,6 +195,81 @@ BEGIN
        RAISE EXCEPTION 'Reviewed correction destroyed source/test history';
     END IF;
 
+    -- A reviewed alternate label is attributable and cannot ambiguously map
+    -- to two different permanent physical waypoint IDs.
+    v_out:=ref.site_reference_command('manager@example.test','manager_add_alias',v_rev,
+        jsonb_build_object('waypoint_id',v_outlet_a,'alias_text','OLD-OUT-A-'||v_uuid,
+          'alias_source','FIELD_TEST','evidence_notes','Same location confirmed'));
+    v_rev:=(v_out->>'revision')::bigint;
+    BEGIN
+        PERFORM ref.site_reference_command('manager@example.test','manager_add_alias',v_rev,
+          jsonb_build_object('waypoint_id',v_outlet_b,'alias_text','OLD-OUT-A-'||v_uuid,
+          'evidence_notes','Ambiguous fixture alias'));
+        RAISE EXCEPTION 'Alias collision was accepted';
+    EXCEPTION WHEN SQLSTATE '23505' THEN NULL;
+    END;
+    BEGIN
+        PERFORM ref.site_reference_command('crew@example.test','manager_add_alias',v_rev,
+          jsonb_build_object('waypoint_id',v_outlet_a,'alias_text','BAD-ALIAS',
+          'evidence_notes','Crew should not edit identity'));
+        RAISE EXCEPTION 'Crew was allowed to edit waypoint alias';
+    EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
+    END;
+
+    -- Existing relationships are maintainable in both directions, not
+    -- append-only forever. Command audit conserves deleted prior values.
+    v_out:=ref.site_reference_command('crew@example.test','crew_unlink_destination',v_rev,
+      jsonb_build_object('circuit_id',v_circuit,'waypoint_id',v_outlet_b,
+                         'evidence_notes','Disposable correction of outlet link'));
+    v_rev:=(v_out->>'revision')::bigint;
+    IF EXISTS(SELECT 1 FROM ref.site_circuit_destination
+        WHERE site_power_circuit_id=v_circuit AND site_waypoint_id=v_outlet_b) THEN
+        RAISE EXCEPTION 'Unlink failed';
+    END IF;
+    v_out:=ref.site_reference_command('crew@example.test','crew_link_destination',v_rev,
+      jsonb_build_object('circuit_id',v_circuit,'waypoint_id',v_outlet_b,
+                         'evidence_notes','Fixture restored reviewed outlet'));
+    v_rev:=(v_out->>'revision')::bigint;
+    v_out:=ref.site_reference_command('crew@example.test','crew_remove_network',v_rev,
+      jsonb_build_object('waypoint_id',v_outlet_a,'network_id',v_network,
+                         'evidence_notes','Disposable network correction'));
+    v_rev:=(v_out->>'revision')::bigint;
+    v_out:=ref.site_reference_command('crew@example.test','crew_assign_network',v_rev,
+      jsonb_build_object('waypoint_id',v_outlet_a,'network_id',v_network,
+                         'evidence_notes','Fixture restored reviewed network'));
+    v_rev:=(v_out->>'revision')::bigint;
+    v_out:=ref.site_reference_command('crew@example.test','crew_clear_switching',v_rev,
+      jsonb_build_object('circuit_id',v_circuit,'season_year',2026,
+                         'evidence_notes','Remove superseded fixture instructions'));
+    v_rev:=(v_out->>'revision')::bigint;
+    v_out:=ref.site_reference_command('crew@example.test','crew_set_switching',v_rev,
+      jsonb_build_object('circuit_id',v_circuit,'season_year',2026,
+         'turn_on_instruction','MSB tech confirms before energizing',
+         'turn_off_instruction','MSB tech signs off before shutdown',
+         'evidence_notes','Fixture restored explicitly reviewed plan'));
+    v_rev:=(v_out->>'revision')::bigint;
+    IF (SELECT count(*) FROM ops.site_reference_edit_log
+         WHERE named_command IN ('crew_unlink_destination','crew_remove_network',
+                                 'crew_clear_switching')
+           AND before_data IS NOT NULL AND after_data IS NULL)<3 THEN
+        RAISE EXCEPTION 'Reversible relationship commands lost prior-value audit';
+    END IF;
+
+    -- Retired physical cables remain in history; tests are not erased or
+    -- silently reassigned. Reviewed tests can link only to active cables.
+    v_out:=ref.site_reference_command('manager@example.test','manager_retire_cable',v_rev,
+        jsonb_build_object('site_cable_id',v_cable,'lifecycle_status','RETIRED',
+             'evidence_notes','Fixture legacy cable replaced'));
+    v_rev:=(v_out->>'revision')::bigint;
+    IF (SELECT lifecycle_status FROM ref.site_cable
+        WHERE site_cable_id=v_cable)<>'RETIRED' THEN
+        RAISE EXCEPTION 'Reviewed cable retirement not preserved';
+    END IF;
+    IF (SELECT count(*) FROM ops.linkiq_identity_decision
+        WHERE test_uuid=v_test)<>2 THEN
+        RAISE EXCEPTION 'Cable retirement erased test binding decision history';
+    END IF;
+
     v_snapshot := ref.site_reference_snapshot();
     IF (v_snapshot->>'revision')::bigint <> v_rev
        OR v_snapshot->>'data_mode'<>'postgres' THEN
@@ -203,6 +278,11 @@ BEGIN
     IF (SELECT count(*) FROM jsonb_array_elements(v_snapshot->'destinations') AS d
         WHERE (d->>'site_power_circuit_id')::bigint=v_circuit)<>2 THEN
         RAISE EXCEPTION 'Map projection lost reviewed destinations';
+    END IF;
+    IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v_snapshot->'aliases') a
+         WHERE (a->>'waypoint_id')::bigint=v_outlet_a
+           AND a->>'label'='OLD-OUT-A-'||v_uuid) THEN
+        RAISE EXCEPTION 'Review alias missing from live map projection';
     END IF;
     IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(v_snapshot->'memberships') m
          WHERE (m->>'site_waypoint_id')::bigint=v_outlet_a
