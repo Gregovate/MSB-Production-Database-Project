@@ -36,10 +36,10 @@ const read = name => fs.readFileSync(path.join(__dirname, name), 'utf8');
   // #171/#88: Exercise the actual drop-picker PostGIS normalization logic.
   // No live database or production movement is needed for this regression.
   const recordLocation = read('setup_record_location.js');
-  const matchNormalize = recordLocation.match(/  function normalizeSiteReference\\(snapshot\\) \\{[\\s\\S]*?\\n  \\}\\n\\n  async function loadReferenceSet/);
+  const matchNormalize = recordLocation.match(/  function normalizeSiteReference\(snapshot\) \{[\s\S]*?\n  \}\n\n  async function loadReferenceSet/);
   assert(matchNormalize, 'Record Location must expose maintained GIS normalization');
-  const normalizationBody = matchNormalize[0].replace(/\\n\\n  async function loadReferenceSet$/, '');
-  const normalize = vm.runInNewContext(normalizationBody + '\\nnormalizeSiteReference', {});
+  const normalizationBody = matchNormalize[0].replace(/\n\n  async function loadReferenceSet$/, '');
+  const normalize = vm.runInNewContext(normalizationBody + '\nnormalizeSiteReference', {});
   const fixture = normalize({format_version:1,data_mode:'postgres',revision:8,
     sources:{gpx:{sha256:'a'.repeat(64)}},waypoints:[
       {id:42,label:'Command Center',type:'Waypoint',
