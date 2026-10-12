@@ -92,12 +92,13 @@
       "stage": "PROPOSED_NOT_MIGRATED",
       "planned_actions": [
         "browse",
-        "manager_review_route_and_lifecycle"
+        "manager_review_route_and_lifecycle",
+        "manager_update_track_label"
       ],
       "protected_columns": [
         "site_track_id"
       ],
-      "notes": "Geography distinct from schematic; preserve originals and destroyed/retired traces."
+      "notes": "Manager may correct reviewed track names against stable accepted GPX track-source binding with expected original name and audit. Surveyed geometry/type and original source observation remain unchanged; map labels are not cable counts."
     },
     {
       "table": "ref.site_network",
@@ -265,6 +266,7 @@
     "read": "ref.site_reference_snapshot()",
     "permissions": "ref.site_reference_permissions(email)",
     "commands": "ref.site_reference_command(email, command, expected_revision, jsonb)",
-    "scope": "Positive, independently provisioned grants; Manager identity requires Setup manager; crew operations do not grant coordinate edits. Source evidence remains immutable."
+    "scope": "Positive, independently provisioned grants; Manager identity requires Setup manager; crew operations do not grant coordinate edits. Source evidence remains immutable.",
+    "track_name_edit": "manager_update_track_label verifies stable ref.site_track ID, accepted source binding, expected prior label, attribution and revision; exports to ExpertGPS by original GPX source ordinal, no FLW writeback."
   }
 }
