@@ -900,3 +900,22 @@ Read-only geographic cross-check: first vertex [-87.74624455, 43.77693051] is ap
 Candidate reviewed workflow: manager_update_track_label changes the maintained ref.site_track name with expected old name, accepted source binding, audit and optimistic revision. The same map/search reads the maintained name; GPX projection and gpx_roundtrip export a SHA-pinned, source-ordinal-checked change without overwriting the baseline or altering track geometry/description. The Manager editor is a generic reviewed function, not a special-case HTML rename. Export files still require ExpertGPS application acceptance and governed Production deployment.
 
 **No Production or shared GPX mutation has been made; the reviewed correction is documented on #171 and not yet saved to a live accepted PostgreSQL track.**
+
+### LinkIQ versus reviewed GPX route cross-check — operator decision
+
+PostgreSQL remains the one place to edit maintained waypoint, network,
+physical-cable and surveyed-track associations. GPX and FLW remain distinct,
+preserved evidence inputs. On each LinkIQ intake, compare resolved test
+endpoint candidates with the *reviewed physical cable*, then compare the
+reviewed cable's ordered route segments and accepted GPX track associations.
+Record agreement, uncertain/unassociated evidence, or a discrepancy for
+attributed review. Never auto-rename geometry, rewrite FLW, or update a
+reviewed cable because strings differ. One route can carry multiple cables,
+and retests/project copies are not new physical cables; partial routes may
+lack end-to-end coverage. Test length need not equal surveyed route distance.
+
+Existing linkiq_intake.py flags some source-vs-reviewed-cable disagreements.
+The second cable-vs-reviewed-GPX-route validation and visible map exception
+workflow remain unimplemented. Acceptance needs mismatched endpoint, broken
+route, missing association, parallel cables, and later changed test evidence.
+
