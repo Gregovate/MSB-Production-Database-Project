@@ -166,12 +166,12 @@ def extract_flw(path: Path, *, include_raw_json: bool = False) -> dict:
 
 
 def gpx_roundtrip(source_path: Path, projection: dict, output_path: Path) -> dict:
-    """Export approved DB waypoint edits to ExpertGPS GPX, fail-closed on drift.
+    """Export reviewed waypoint AND track-label changes, fail-closed on drift.
 
-    `projection` contains base_source_sha256 plus edits indexed by original
-    ExpertGPS map label and original lat/lon. The source must be exactly the
-    previously imported GPX. Garmin name and unknown extensions stay untouched.
-    This is a GPX file exporter; user acceptance in ExpertGPS remains required.
+    Waypoints use ExpertGPS map-label/lat/lon baseline identity; tracks use the
+    accepted GPX source ordinal and exact original name, NOT a guessed label
+    match. Surveyed track points, types, descriptions and GPX extensions stay
+    untouched. Never overwrite the baseline. ExpertGPS review remains required.
     """
     if source_path.resolve() == output_path.resolve():
         raise ValueError('Refusing to overwrite original GPX')
@@ -201,17 +201,43 @@ def gpx_roundtrip(source_path: Path, projection: dict, output_path: Path) -> dic
         if 'longitude' in entry:
             node.set('lon', str(entry['longitude']))
         updated += 1
+    # Position is stable within the SHA-pinned source. Never locate a track
+    # solely by its wrong/historical label: duplicates and renames are allowed.
+    source_tracks = root.findall(GPX + 'trk')
+    edits_by_ordinal = {}
+    for entry in projection.get('approved_track_edits', []):
+        ordinal = entry.get('source_ordinal')
+        old_name = entry.get('previous_track_name')
+        new_name = entry.get('track_name')
+        if (isinstance(ordinal, bool) or not isinstance(ordinal, int)
+                or not 1 <= ordinal <= len(source_tracks)
+                or ordinal in edits_by_ordinal):
+            raise ValueError('Track source ordinal missing, duplicate or outside accepted GPX')
+        if (not isinstance(old_name, str) or not isinstance(new_name, str)
+                or not new_name.strip() or old_name == new_name.strip()):
+            raise ValueError('Track edit requires a changed, nonblank reviewed label')
+        name_node = source_tracks[ordinal - 1].find(GPX + 'name')
+        if name_node is None or (name_node.text or '') != old_name:
+            raise ValueError('GPX source track name changed: conflict review required')
+        edits_by_ordinal[ordinal] = new_name.strip()
+        name_node.text = new_name.strip()
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     tree = ET.ElementTree(root)
     tree.write(output_path, encoding='utf-8', xml_declaration=True)
-    # Validate the result and retain source file and all track segments.
+    # Verify all non-edited tracks, track geometry/types/descriptions and
+    # waypoint identities are conserved. Source extensions stay in the XML.
     after = extract_gpx(output_path)
     before = extract_gpx(source_path)
-    if len(after['waypoints']) != len(before['waypoints']) or after['tracks'] != before['tracks']:
+    expected_tracks = [dict(track) for track in before['tracks']]
+    for ordinal, name in edits_by_ordinal.items():
+        expected_tracks[ordinal - 1]['name'] = name
+    if (len(after['waypoints']) != len(before['waypoints'])
+            or after['tracks'] != expected_tracks):
         output_path.unlink(missing_ok=True)
         raise ValueError('GPX waypoint/track conservation validation failed')
-    return {'updated': updated, 'source_sha256': current_hash,
-            'output_sha256': after['sha256']}
+    return {'updated': updated, 'updated_tracks': len(edits_by_ordinal),
+            'source_sha256': current_hash, 'output_sha256': after['sha256']}
 
 
 def drawio_from_database(template: Path, bindings: dict, output_path: Path) -> dict:
