@@ -120,6 +120,31 @@ migration and validation SQL. The importer runs before browser launch on that
 same clone. Its exported artifacts and receipts are evidence; importing them
 does not by itself establish that every application screen consumes the new data.
 
+**Source transfer / bounded cache (October 11):** The browser wrapper
+computes the exact SHA-256 of the selected GPX and FLW, probes
+\`$HOME/setup-source-cache/<sha>.gpx/.flw\` on the server, and transfers a
+file only when that exact source hash is absent. The October 11 first
+cache-populating run may upload the ~253 MB FLW once because earlier accepted
+disposable runs predated this cache. A subsequent run with unchanged FLW SHA
+must print \`Reusing server FLW source <sha>\` and omit \`source.flw\` from
+SCP. A genuinely new FLW version still requires one transfer: it must
+**never overwrite bytes under an old hash**.
+
+The server's incoming \`/tmp/msb-setup-disposable-browser-preview-*\` upload
+bundle and temporary PostgreSQL dump are removed by normal governed browser
+cleanup. The newer bounded-retention cleanup also holds an exclusive
+per-operator cache lock, verifies both active source hashes, and removes
+superseded hash-named GPX/FLW cache versions **only after a clean completed
+browser review**. It does not remove a source on transport loss, on failed
+acceptance, when another preview may be active, or if current hashes are
+unverified. Original Shared Drive files, immutable PostgreSQL source
+observations, LinkIQ test evidence, and acceptance reports are never cleaned
+by this operation. Cache deletion is recorded as a count and bytes in the
+existing preview report; skipped cleanup is visible. The current in-flight
+preview is pinned to its own exact candidate SHA and will not adopt newer
+runner changes retroactively.
+
+
 For the integrated #171/#230 candidate **V0.3.63-site-reference**, pass BOTH
 exact allowlisted GIS migrations and both rollback-only SQL validations through
 that ONE reusable browser runner. After the disposable schema and validation
