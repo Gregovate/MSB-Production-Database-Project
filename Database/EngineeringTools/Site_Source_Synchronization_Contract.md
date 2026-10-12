@@ -889,3 +889,14 @@ conflict-aware reimport, prior missing icon correction, full physical
 network/route/schematic reconciliation and final #230 storage reference UI.
 No SQL migration, FLW rewrite, Production import, web SVG publication, or
 deployment was performed in this continuation.
+
+
+### Reviewed track-label finding — October 11, 19:31 CDT
+
+Operator identifies the GPX network track formerly labeled "NET FT-SS Reg, Spare, Aux-A, Aux-B, " as the **LP-08 to CL-00** link. The approved maintained label is **NET LP-08 to CL-00**. Existing embedded-map feature is t102, 12 vertices; generated t102 is not a PostgreSQL primary key. Confirm the accepted GPX SHA and source-track ordinal binding before any database edit.
+
+Read-only geographic cross-check: first vertex [-87.74624455, 43.77693051] is approximately 2.90 ft from LP-08 (w88). Last vertex [-87.74701645, 43.77678431] is approximately 4.29 ft from PANEL CL-00 (w114). Preserve exact route geometry, GPX type Network, and original label including its trailing blank. Original description "TBD 7 Cables" is unverified historical source text, not accepted physical cable count or confirmed network assignments.
+
+Candidate reviewed workflow: manager_update_track_label changes the maintained ref.site_track name with expected old name, accepted source binding, audit and optimistic revision. The same map/search reads the maintained name; GPX projection and gpx_roundtrip export a SHA-pinned, source-ordinal-checked change without overwriting the baseline or altering track geometry/description. The Manager editor is a generic reviewed function, not a special-case HTML rename. Export files still require ExpertGPS application acceptance and governed Production deployment.
+
+**No Production or shared GPX mutation has been made; the reviewed correction is documented on #171 and not yet saved to a live accepted PostgreSQL track.**
