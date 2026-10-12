@@ -29,6 +29,19 @@ If an MSB GPX was already opened with symbols missing, **do not save, export, ov
 
 The controlled [GIS engineering contract](../engineering/GIS_Symbol_Management.md) owns the mandatory shared profile, conflict checks, acceptance across all PCs and eventual distribution/rollback design. There is **not yet** a supported One-click "Synchronize all GIS settings" operation; do not interpret PNG installation success as overall GIS configuration acceptance.
 
+## Candidate read-only GIS workstation release comparison — NOT a synchronization install
+
+The #171 **source-only candidate** adds **6. Compare GIS workstation release (READ ONLY)** to the existing Icon Library Manager. **This is not yet an accepted workstation update procedure**, because no administrator-approved GIS configuration release has been issued and laptop/Show/Office acceptance remains open.
+
+For a **disposable test** using an administrator-issued release and a *separately supplied approved SHA-256*:
+
+1. Start the candidate manager as the same Windows user who runs ExpertGPS. Do not open or edit the authoritative MSB GPX.
+2. Select **6. Compare GIS workstation release (READ ONLY)**. Choose the explicitly approved JSON manifest, then paste the exact 64-character hash from the GIS administrator's separate approval receipt.
+3. Read the displayed **Current** or **Not verified** status and the exact per-field differences. A missing file, inconsistent file hash, absent registry setting or unverifiable scanned map **stops acceptance**. Do not manually rename a Type or replace it with a GPS Symbol.
+4. Close the comparison window. It neither changes the registry nor installs calibration or PNG files. Even **Current** means comparison only, **not** permission to perform two-way GPX/PostGIS edits.
+
+Until the first shared release, trust/ACL, rollback and multi-PC checks are accepted, continue using the existing safe icon-only actions and preserve the original registry backups/GPX. Do not import someone else's full registry export to make Step 6 say Current.
+
 ## Purpose
 
 Keep approved symbol artwork and each Windows ExpertGPS user's local PNG library consistent. **This procedure never publishes to the public web server.** For web publishing, only the authorized administrator uses the separate procedure.
