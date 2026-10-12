@@ -108,12 +108,12 @@
     form.appendChild(save);
     form.addEventListener('submit', async ev => {
       ev.preventDefault();
-      const fields = build();
-      fields.evidence_notes = evidence.value.trim();
-      if (!fields.evidence_notes) return;
       save.disabled = true;
       try {
-        const response = await fetch('..' + '/api/setup/locate/references/command', {
+        const fields = build();
+        fields.evidence_notes = evidence.value.trim();
+        if (!fields.evidence_notes) throw new Error('Review evidence is required');
+        const response = await fetch('../api/setup/locate/references/command', {
           method: 'POST', credentials: 'same-origin',
           headers: {'Content-Type':'application/json', 'X-MSB-Setup-Command':'1'},
           cache: 'no-store',
@@ -324,7 +324,8 @@
                 textValue(t.test_status_code) + ' · standard ' +
                 textValue(t.test_standard) + ' (NOT measured speed)' +
                 ' · prior cable binding ' +
-                textValue(t.physical_site_cable_id) : 'Select one preserved UUID';
+                textValue(t.physical_site_cable_id) + ' · intake review: ' +
+                textValue(t.intake_status) : 'Select one preserved UUID';
             };
             test.addEventListener('change', updateEvidence);
             updateEvidence();
