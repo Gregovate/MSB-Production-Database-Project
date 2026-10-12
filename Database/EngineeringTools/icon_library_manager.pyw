@@ -434,7 +434,8 @@ class Manager:
                 return
             self.status.set(f"{title}: {len(plan['add'])} new, {len(plan['replace'])} changed, "
                             f"{len(plan['identical'])} identical.")
-            if not (plan["add"] or plan["replace"]):
+            if not (plan["add"] or plan["replace"] or
+                    (kind == "expertgps" and plan.get("create_readme"))):
                 messagebox.showinfo("PNG destination matches canonical",
                     f"All {len(plan['identical'])} PNG files at {destination} match canonical hashes."
                     "\nPublic URL/ExpertGPS behavior still requires independent verification.")
@@ -455,10 +456,16 @@ class Manager:
         note = ("Existing legacy PNG/BMP filenames and GPX URL aliases remain untouched. "
                 "After copying, check a published URL in a browser."
                 if kind == "web" else
-                "Installs to the CURRENT Windows user's TopoGrafix/Symbols/msb, "
-                "preserves readme.txt and existing legacy symbols. "
-                "CLOSE ExpertGPS before copying files, then reopen it and "
-                "verify an icon plus a generated GPX custom-symbol URL.")
+                ("FIRST INSTALL: create the current Windows user's missing msb folder, "
+                 "all approved canonical PNGs and the reviewed readme.txt URL. "
+                 if plan.get("create_local_folder") else
+                 "Use THIS Windows user's existing msb folder. Preserve legacy "
+                 "symbols and any valid existing readme.txt. " )
+                + ("CREATE approved readme.txt because none exists. "
+                   if plan.get("create_readme") and
+                      not plan.get("create_local_folder") else "")
+                + "CLOSE ExpertGPS before copying; reopen it and test icons and "
+                  "GPX-generated symbol URLs.")
         ttk.Label(dialog, text=(f"Destination: {destination}\n"
                   f"NEW {len(plan['add'])} | UPDATE (backup) {len(plan['replace'])} | "
                   f"Unchanged {len(plan['identical'])}\n{note}"),
@@ -474,10 +481,18 @@ class Manager:
         actions.pack(fill="x")
         ttk.Button(actions, text="Cancel", command=dialog.destroy).pack(side="right")
         def confirmed():
+            first_install = (kind == "expertgps" and plan.get("create_local_folder"))
+            provision_note = (
+                "FIRST-TIME INSTALL: Create the missing msb folder and approved "
+                "readme.txt, then install ALL reviewed canonical PNGs.\n"
+                if first_install else
+                "Create the approved readme.txt in the existing msb folder.\n"
+                if kind == "expertgps" and plan.get("create_readme") else "")
             if not messagebox.askyesno("Confirm " + title,
                 f"Distribute current verified canonical PNGs to:\n{destination}\n\n"
-                f"New: {len(plan['add'])}; backed-up updates: {len(plan['replace'])}.\n" +
-                ("This changes the currently installed ExpertGPS icons. "
+                f"New: {len(plan['add'])}; backed-up updates: {len(plan['replace'])}.\n"
+                + provision_note +
+                ("This changes ONLY the current user's local ExpertGPS symbols. "
                  "CLOSE EXPERTGPS FIRST. Proceed?" if kind == "expertgps"
                  else "This changes public web PNGs used by GPX and browser consumers. Proceed?"),
                 parent=dialog):

@@ -19,7 +19,7 @@ import shutil
 import uuid
 
 from sync_gis_icons import (IconError, check_source_snapshot, destination_preflight,
-                            png_canvas, readme_bytes, sha_file)
+                            png_canvas, readme_bytes, preview_readme_bytes, sha_file)
 
 WEB_PNG = Path(r"\\192.168.5.4\webassets\images\symbols\msb")
 PUBLIC_PNG_BASE = "https://webassets.sheboyganlights.org/images/symbols/msb/"
@@ -72,25 +72,104 @@ def checked_canonical_pngs(plain, canonical_png, sources, records):
 
 def png_distribution_preflight(kind, destination, plain, canonical_png, sources, records,
                                local_readme=None):
-    """Read-only exact filenames/hash diff for one destination; preserve aliases."""
+    """Read-only reviewed difference. First-run user msb provisioning is opt-in.
+
+    The obsolete local_readme argument is retained for existing callers; the
+    verified source URL comes from the controlled preview_readme_bytes() helper,
+    never another Windows account's readme or a guessed external URL.
+    """
     if kind not in ("web", "expertgps"):
         raise IconError(f"Unknown PNG distribution kind: {kind}")
     checked_canonical_pngs(plain, canonical_png, sources, records)
-    if not destination.is_dir():
-        raise IconError(f"{kind} destination folder is unavailable (not created): {destination}")
-    if kind == "expertgps":
-        if local_readme is None:
-            raise IconError("Local ExpertGPS readme.txt source missing")
-        expected = readme_bytes(local_readme)
-        target_readme = destination / "readme.txt"
-        if not target_readme.is_file():
-            raise IconError(f"ExpertGPS readme.txt missing: {target_readme}; preserve or restore the original")
-        existing = readme_bytes(target_readme)
-        if existing != expected:
-            raise IconError("Local ExpertGPS readme.txt differs from the reviewed readme; no copies allowed")
-    # destination_preflight preserves unrelated historical filenames/BMPs.
-    return destination_preflight(destination, records)
+    if kind == "web":
+        if not destination.is_dir():
+            raise IconError(f"web destination folder is unavailable (not created): {destination}")
+        return destination_preflight(destination, records)
 
+    # Never allow a caller to install in a different user's profile.
+    if destination != local_expertgps_folder():
+        raise IconError("ExpertGPS target must be the current Windows user's LOCALAPPDATA msb folder")
+    if not destination.parent.is_dir():
+        raise IconError(f"ExpertGPS Symbols parent folder unavailable: {destination.parent}; "
+                        "open/install ExpertGPS for this Windows user first")
+    if destination.is_symlink() or getattr(destination, "is_junction", lambda: False)():
+        raise IconError("ExpertGPS msb destination must not be a symbolic link or junction")
+    if not destination.is_dir() and destination.exists():
+        raise IconError(f"ExpertGPS msb destination is not a directory: {destination}")
+
+    # A missing msb folder is normal on an otherwise installed ExpertGPS PC.
+    # destination_preflight() only reads the directory and will plan all PNGs
+    # as NEW when it does not exist. No local files are created here.
+    plan = destination_preflight(destination, records)
+    plan["create_local_folder"] = not destination.is_dir()
+    readme = destination / "readme.txt"
+    if readme.is_file():
+        readme_bytes(readme)  # Reject incorrect URL, preserve valid full bytes.
+        plan["create_readme"] = False
+    elif readme.exists():
+        raise IconError(f"ExpertGPS readme.txt is not a regular file: {readme}")
+    else:
+        plan["create_readme"] = True
+    return plan
+
+
+def _write_local_readme(folder: Path):
+    """Create only approved canonical metadata; never overwrite existing bytes."""
+    target = folder / "readme.txt"
+    with target.open("xb") as out:
+        out.write(preview_readme_bytes())
+        out.flush()
+        os.fsync(out.fileno())
+    readme_bytes(target)
+    return target
+
+
+def _first_install_expertgps(destination, canonical_png, plain, sources, records,
+                             stage, progress=None):
+    """Stage all symbols and metadata, then expose first-use msb in one rename.
+
+    Failure before rename removes only our disposable folder; unrelated
+    TopoGrafix symbols and legacy aliases are never modified.
+    """
+    temp = destination.parent / (".msb-icon-setup-" + uuid.uuid4().hex + ".tmp")
+    temp.mkdir(exist_ok=False)
+    receipt_path = stage / "MSB_GIS_expertgps_PNG_Distribution_Receipt.csv"
+    rows = []
+    try:
+        _write_local_readme(temp)
+        if progress:
+            progress("distribute", 0, len(records), "Preparing first-use ExpertGPS msb icons")
+        for index, row in enumerate(records, 1):
+            name = row["PNG"]
+            source = canonical_png / name
+            if sha_file(source) != row["PNG_SHA256"]:
+                raise IconError(f"Canonical PNG changed during first-use ExpertGPS install: {name}")
+            target = temp / name
+            with target.open("xb") as out, source.open("rb") as src:
+                shutil.copyfileobj(src, out)
+                out.flush()
+                os.fsync(out.fileno())
+            if sha_file(target) != row["PNG_SHA256"]:
+                raise IconError(f"First-use ExpertGPS PNG hash mismatch: {name}")
+            rows.append(dict(PNG=name, Action="created", SHA256=row["PNG_SHA256"],
+                             Destination=str(destination / name), Public_URL=""))
+            if progress:
+                progress("distribute", index, len(records), f"{name}: staged; hash verified")
+        checked_canonical_pngs(plain, canonical_png, sources, records)
+        readme_bytes(temp / "readme.txt")
+        if destination.exists() or destination.is_symlink():
+            raise IconError("ExpertGPS msb folder was created by another process; no install performed")
+        temp.rename(destination)
+    finally:
+        if temp.exists():
+            shutil.rmtree(temp)
+    # A receipt is written only after the whole new folder becomes visible.
+    with receipt_path.open("w", newline="", encoding="utf-8-sig") as fp:
+        writer = csv.DictWriter(fp, fieldnames=("PNG", "Action", "SHA256",
+                                                "Destination", "Public_URL"))
+        writer.writeheader()
+        writer.writerows(rows)
+    return rows
 
 def distribute_pngs(kind, destination, plain, canonical_png, sources, records, stage,
                     local_readme=None, progress=None):
@@ -103,8 +182,15 @@ def distribute_pngs(kind, destination, plain, canonical_png, sources, records, s
         progress("preflight", 0, None, f"Rechecking {kind} destination and all source PNG hashes")
     plan = png_distribution_preflight(kind, destination, plain, canonical_png, sources, records,
                                       local_readme=local_readme)
-    if kind == "expertgps" and destination != local_expertgps_folder():
-        raise IconError("ExpertGPS target must be the current Windows user's LOCALAPPDATA msb folder")
+    if kind == "expertgps" and plan.get("create_local_folder"):
+        return _first_install_expertgps(destination, canonical_png, plain, sources,
+                                        records, stage, progress=progress)
+    if kind == "expertgps" and plan.get("create_readme"):
+        # An existing msb directory may lack only metadata. Provision it
+        # exclusively after explicit GUI confirmation, never during preview.
+        if not destination.is_dir():
+            raise IconError("ExpertGPS msb folder disappeared during installation")
+        _write_local_readme(destination)
 
     backup = stage / f"{kind}-png-backups-before-replacement"
     previous_hashes = {}
