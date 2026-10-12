@@ -2,7 +2,7 @@
 name: Site reference map and editor candidate
 on:
   push:
-    branches: [feature/171-cableiq-import-validation]
+    branches: [feature/171-cableiq-import-validation, feature/171-reviewed-track-names-20261011]
   pull_request:
     paths:
       - 'Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql'
@@ -52,6 +52,7 @@ jobs:
         run: |
           python -m pip install 'Flask>=3,<4' 'psycopg2-binary>=2.9,<3' 'pytest>=8,<10'
           python -m pytest -q Setup/Application/test_setup_site_reference_api.py
+          python -m pytest -q Database/EngineeringTools/test_site_source_sync.py Database/EngineeringTools/test_site_source_db.py Database/EngineeringTools/test_reference_data_allowlist.py
       - name: Run PostGIS migrations and rollback-only operational assertions
         run: |
           set -euo pipefail
