@@ -8,7 +8,7 @@
 
 - [Network Source Reconciliation — October 9](engineering/Network_Source_Reconciliation_2026-10-09.md): core #171 GIS/physical-network architecture, reviewed waypoint/cable/topology/route identities, source authority, prior field evidence and failure scenarios, and application/workflow boundaries. Later dated decisions in this engineering document govern earlier historical notes.
 - [Site Source Synchronization Contract](../../../../../Database/EngineeringTools/Site_Source_Synchronization_Contract.md): executable engineering contract and acceptance gates for **two-way conflict-aware ExpertGPS/GPX**, **one-way read-only LinkIQ/FLW**, and **PostgreSQL-driven draw.io** output.
-- [Project Rules](../../../../Project_Rules/README.md) (if the relative target is unavailable, use `System_Documentation/Project_Rules/README.md`): repository workflow, issue closeout, and mandatory runbook-first Production safety.
+- [Project Rules](../../../../System_Documentation/Project_Rules/README.md): repository workflow, issue closeout, and mandatory runbook-first Production safety.
 - Related authority/work: [#171](https://github.com/Gregovate/MSB-Production-Database-Project/issues/171) GIS and routes, [#230](https://github.com/Gregovate/MSB-Production-Database-Project/issues/230) governed reference management, [#122](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122) commanding Setup scope, [PR #319](https://github.com/Gregovate/MSB-Production-Database-Project/pull/319) current engineering integration and review evidence.
 
 ### Current handoff and blockers
