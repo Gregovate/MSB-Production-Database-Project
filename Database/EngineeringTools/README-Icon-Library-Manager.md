@@ -13,6 +13,8 @@ The desktop manager is the **existing Git-controlled tool**, run from an authori
 
 **Accepted October 12 release:** the administrator published and SHA-256 verified **37 Plain SVG entries on the Synology SMB `msb-svg` share**, while the current Windows user's **37 ExpertGPS PNGs matched canonical hashes**. Public HTTPS appearance/Stage symbol validation, draft #319 Park Map/offline field acceptance, ExpertGPS GPX round-trip and web PNG case compatibility remain separate open gates. Exact release evidence and history are in the engineering authority.
 
+**Critical current handoff:** A Windows profile without the local MSB custom-symbol folder is **not ready to open MSB GPX data in ExpertGPS**. MSB field testing showed that missing symbols can change map-marker associations to `GPS Symbol` even without an intentional GPX Save. Install and verify Step 5 first. Preserve authoritative GPX and use only disposable copies for post-install recovery checks. The [GIS engineering authority](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/engineering/GIS_Symbol_Management.md) defines the precise risk and acceptance gate; [local ExpertGPS SOP](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/operatorSOP/Review_MSB_Icons_and_Update_Local_ExpertGPS.md) has the operator steps.
+
 ## What Do You Need To Do?
 
 Use the [GIS icon operator procedure portal](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/operatorSOP/README.md):
