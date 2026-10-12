@@ -2,6 +2,29 @@
 
 **Purpose:** stop generating temporary ZIPs in Downloads or remembering PowerShell commands for each new icon. The manager is a versioned GitHub tool, reads the authoritative Google Shared Drive files directly, and keeps one controlled audit/release history in the Shared Drive.
 
+## Actual Windows/Synology release status — October 12, 2026
+
+**Web Plain SVG publication PASS — verified in the operator's administrator session.** On the normal Windows laptop checkout `C:\lor\ImportExport\VSCode`, fast-forwarded to `main` `f64f78757311b1c4156ed77faeaf6b05722d0b87` (merged PR #362), the manager's **1. Check and preview icons** validated all **37** approved current Plain SVG inputs and found **37 matching canonical PNG derivatives** (0 new / 0 changed). Seven editable-Master-versus-Plain timestamp warnings remained visible in **Source review (7)**; these are review reminders, not failed source hashes.
+
+The operator then ran **3. Review/publish Plain SVGs to web** and expressly confirmed the LIVE Synology publication. The complete `\\192.168.5.4\webassets\images\symbols\msb-svg` preflight and publication receipt reported:
+
+| Destination result | Count | Details |
+| --- | ---: | --- |
+| NEW | **12** | Includes previously missing `stage.svg`, `t-post.svg`, `transformer.svg`, `star.svg`, the two antenna variants, and switch/pole variants |
+| UPDATE (backup) | **3** | `car-r.svg`, `lp.svg`, `manhole.svg` |
+| Unchanged exact-case | **21** | Destination hashes already matched |
+| Historical-case, unchanged verified bytes | **1** | Existing `msb-splitter-Combiner.svg` remains under its original capitalization |
+| **Total source SVG entries SHA-256 verified on SMB** | **37** | Manager displayed **Web SVG publication PASS** |
+
+The versioned receipts and replacements' backups are in the operator-confirmed Shared Drive release folder:
+`G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\release-history\MSB-GIS-Icon-Sync-20261012-071719-e79214`.
+
+**Acceptance boundaries:** This is an observed **Windows/Synology SMB publication/hash PASS**, **not** an independently accepted public HTTPS rendering test, offline tablet installation, or Production Park Map deployment. Verify exact published URLs such as `https://webassets.sheboyganlights.org/images/symbols/msb-svg/stage.svg` in the browser. The historical-cased splitter's lowercase URL was separately observed to return HTTP 404; the manager deliberately did not rename it or claim that alias is live. The live website PNG `msb` action remains blocked on the unrelated `IP-camera.png` versus `ip-camera.png` case collision, and is not required for the Plain SVG Park Map. The user's local ExpertGPS `msb` folder passed a **37-file canonical PNG hash comparison**, but actual ExpertGPS UI/GPX round-trip acceptance and Garmin device installation are separate.
+
+**Access rule:** Only the authorized Synology administrator has write permission to the webassets share. The desktop manager has no application login and may be used for preview or local ExpertGPS updating without granting web-publish permissions; the SMB ACL, not a GUI button, enforces the publication boundary. Do not embed or distribute elevated credentials.
+
+**Unfinished UI and map gates:** The manager does not yet display a version/build SHA, and the LIVE SVG review's confirmation/cancel buttons appeared as blank rectangles in an operator screenshot; do not guess an unlabeled live-action button. The separate #171/#230 commanding PR #319 includes proposed Plain SVG/natural-size map rendering and a bounded offline package; it still requires browser/operator acceptance and correction of fallback marker coverage (eight source Waypoint/Anchor symbols became neutral circles). Do not treat successful web icon publication as proof that the map, source registry, or tablet offline experience is accepted. No new database clone is necessary merely to verify a public SVG URL.
+
 ## Install once on a Windows workstation
 
 1. Update your normal local Git checkout when repository code changes (the laptop primary checkout is `C:\lor\ImportExport\VSCode`). Do not use a disposable review worktree or overwrite unrelated changes.
@@ -47,9 +70,9 @@ The updated workflow is:
 2. Choose **3. Review/publish Plain SVGs to web**. This requires the earlier valid preview and checks the entire **current Plain source snapshot** against the existing server share `\\192.168.5.4\webassets\images\symbols\msb-svg`. It displays a **scrollable exact list** of NEW, UPDATE (backup), and Unchanged names; does not rename or delete unknown or legacy files.
 3. After reviewing that list, press **Publish reviewed SVG changes** and separately approve the explicit **LIVE web file server** confirmation. The engine rechecks every source and case-sensitive destination collision immediately beforehand; preserves changed server SVGs in the same G: run's `web-svg-backups-before-replacement` directory, creates new SVGs exclusively, verifies remote SHA-256 bytes and continuously updates `MSB_GIS_Web_SVG_Publication_Receipt.csv`. Errors stop the process; a partial receipt and backups must be reviewed rather than interpreting interruption as full success.
 4. Select an icon in the preview and use **Open selected SVG URL** to open `https://webassets.sheboyganlights.org/images/symbols/msb-svg/<filename>.svg` with a source-hash cache-busting query. **The browser URL must still be visually and operationally checked**: a successful UNC copy does not by itself verify HTTP delivery, CDN behavior or the correct artwork.
-5. **Do not claim the existing Park Map now uses these SVGs.** The current `Setup/Application/locate_preview.html` reference map reads **legacy `…/images/symbols/msb/*.png` URLs from GPX-derived `marker_url` values** and forces `iconSize:[32,32]`, potentially stretching intentional rectangular markers. The Setup asset overlay also has a legacy `msb/T-Post.png` reference. Updating `msb-svg` by itself does not migrate these consumers. #171 requires separate marker alias and natural-size rendering review, preserving original GPX identities/legacy URLs and avoiding uninformed changes.
+5. **Do not confuse web image publication with Park Map deployment.** The deployed/static map history used GPX-derived legacy `msb/*.png` marker URLs and fixed 32×32 sizing. The separate #171/#230 **draft PR #319 map candidate** now selects approved Plain SVG artwork at its natural dimensions and plans offline packaging, but has **not** passed operator browser/tablet or Production deployment acceptance. Its incomplete type/fallback mapping must not change GPX waypoint identities, source `marker_url` values or historical URLs. Successful `msb-svg` publication does not itself install this map candidate.
 
-**Failure and authorization boundaries:** If `msb-svg` is missing, unreachable or the operator is not authorized to modify it, publication preflight stops without creating directories. There are no live web writes until the separately confirmed third action. The code does **not** modify the legacy `msb` PNG/BMP directory, ExpertGPS, GPX, map application source, browser CSS, database, or draw.io embedded symbols. All source and destination file hashes must match before success is displayed. **Real Windows/Synology and HTTP acceptance is pending**; the initial regression suite uses disposable local stand-in directories only.
+**Failure and authorization boundaries:** If `msb-svg` is missing, unreachable or the operator is not authorized to modify it, publication preflight stops without creating directories. There are no live web writes until the separately confirmed third action. The code does **not** modify the legacy `msb` PNG/BMP directory, ExpertGPS, GPX, map application source, browser CSS, database, or draw.io embedded symbols. All source and destination file hashes must match before success is displayed. **Real Windows/Synology SMB publication/hash acceptance PASSED October 12 (37 entries)**; independent public HTTPS artwork and offline/browser map acceptance remain pending. The isolated automated regressions use disposable local stand-in directories only.
 
 ### October 11 field-test correction — identical mixed-case published SVG alias
 
