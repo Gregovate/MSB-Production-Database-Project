@@ -13,6 +13,14 @@
 | Last Reviewed | 2026-10-12 |
 | Keywords | ExpertGPS, local symbols, SVG, PNG, Plain, Inkscape, TopoGrafix, update |
 
+## CRITICAL — Install the MSB Symbols BEFORE Opening an MSB GPX
+
+**Do not open an MSB GPX file in ExpertGPS until this Windows user's `msb` symbol folder, complete PNGs and `readme.txt` have been installed and verified.**
+
+MSB operator testing found that ExpertGPS can replace MSB custom map-marker associations with **GPS Symbol** when those files are missing, **even when the GPX is not intentionally saved**. Closing without saving is **not proven safe**. The behavior may also affect ExpertGPS's own waypoint-type settings. The exact persistence mechanism is still under investigation.
+
+If an MSB GPX was already opened with symbols missing, **do not save, export, overwrite, or resynchronize it**. Preserve the original and backups. Restore/verify the local MSB symbol folder first, then use **only an isolated copy of a known-good GPX** for further tests. Ask the GIS administrator before resuming authoritative GPX editing.
+
 ## Purpose
 
 Keep approved symbol artwork and each Windows ExpertGPS user's local PNG library consistent. **This procedure never publishes to the public web server.** For web publishing, only the authorized administrator uses the separate procedure.
@@ -32,13 +40,13 @@ Keep approved symbol artwork and each Windows ExpertGPS user's local PNG library
 4. Inspect the preview and any **Source review (N)** timestamp warnings. A timestamp warning does not prove the artwork is wrong and is not permission to silently overwrite Plain SVG files.
 5. If any canonical PNGs show **NEW** or **UPDATE (backup)**, and you are authorized to maintain the Shared Drive PNGs, select **2. Save approved PNG changes** and review the confirmation. Wait for **Complete** and inspect the release receipt. If all are **Unchanged**, no PNG save is needed.
 
-## Update Your Own ExpertGPS Symbols
+## Install/Update Local Symbols BEFORE ExpertGPS Opens MSB Data
 
-1. **Close ExpertGPS** before installing files.
+1. **Close ExpertGPS and do not open any MSB GPX**, including from the shared G: source, until setup is complete. A fresh Windows profile with ExpertGPS installed may not yet have the `msb` custom-symbol folder.
 2. In the validated manager session, select **5. Install PNGs for this ExpertGPS user**.
 3. Review the **NEW**, **UPDATE (backup)** and **Unchanged** list. If the current user has no `msb` folder, the manager explicitly offers to create it, add the approved `readme.txt` and install **all** current canonical PNGs after your confirmation. If the folder already exists, it preserves unrelated symbols and a valid readme; it can add a missing readme. **Do not approve unexpected destinations or replacements.**
-4. Wait for the result. Confirm that the destination files match the canonical hashes, then reopen ExpertGPS and visually inspect both a new icon and an existing historical waypoint.
-5. When GPX symbol compatibility is material, make a **test GPX export** and check its symbol URL/filename on an authorized computer; file hash equality alone does not verify GPX/ExpertGPS behavior.
+4. Wait for verification. Before starting ExpertGPS, confirm this Windows user's `%LOCALAPPDATA%\\TopoGrafix\\Symbols\\msb` contains the complete reviewed canonical PNG set and `readme.txt` with first line `https://webassets.sheboyganlights.org/images/symbols/`. **After** installation, restart ExpertGPS to load the custom symbols. Check its custom MSB symbol choices before opening an MSB GPX.
+5. **Only on a disposable copy of a known-good GPX**, check whether the MSB waypoint Types and Map Markers still select the intended symbols. If any selection is `GPS Symbol` unexpectedly, **STOP**. Do not export, save, or open the authoritative GPX. A future controlled round-trip comparison must verify `type`, `sym`, marker URL/extensions and coordinate conservation before normal GPX editing can resume.
 
 The approved `msb\readme.txt` first line must remain `https://webassets.sheboyganlights.org/images/symbols/`. It is a custom-symbol **URL parent** used by ExpertGPS, **not** a file uploader. Never add another `msb/` to that line, rename the `msb` folder to `MSB Icons`, or replace old PNG/BMP filenames without reviewed backward-compatibility work.
 

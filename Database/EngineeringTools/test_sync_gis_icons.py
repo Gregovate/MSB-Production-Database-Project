@@ -115,6 +115,12 @@ class ProcessTests(unittest.TestCase):
         self.assertIn('IconLocation', (here / 'Install-MSB-Icon-Library-Shortcut.cmd').read_text())
         self.assertIn('iconbitmap', (here / 'icon_library_manager.pyw').read_text())
 
+    def test_expertgps_missing_symbols_hazard_is_shown_before_use(self):
+        gui = (Path(__file__).parent / 'icon_library_manager.pyw').read_text()
+        self.assertIn('CRITICAL: Install local MSB symbols BEFORE opening', gui)
+        self.assertIn('MSB markers with GPS Symbol even without Save', gui)
+        self.assertIn('using only a disposable GPX copy', gui)
+
     def test_local_expertgps_button_gets_independent_full_width_row(self):
         # Display scaling used to crowd the long Step 5 label alongside web
         # publication controls, making installation hard to identify.

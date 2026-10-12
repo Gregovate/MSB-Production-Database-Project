@@ -137,6 +137,15 @@ class Manager:
             command=lambda: self.check_png_distribution("web"), state="disabled")
         self.web_png_btn.pack(side="left")
 
+        # #171: Missing local symbols can change ExpertGPS Type/Map Marker
+        # associations even when the GPX was not intentionally saved.
+        ttk.Label(root,
+                  text=("CRITICAL: Install local MSB symbols BEFORE opening "
+                        "an MSB GPX in ExpertGPS. Missing icons can replace "
+                        "MSB markers with GPS Symbol even without Save."),
+                  foreground="#a12323", font=("Segoe UI", 9, "bold"),
+                  wraplength=850, padding=(20, 2, 20, 3)).pack(fill="x")
+
         local_controls = ttk.Frame(root, padding=(20, 0, 20, 9))
         local_controls.pack(fill="x")
         ttk.Label(local_controls, text="Current Windows user / local ExpertGPS:").pack(
@@ -478,8 +487,9 @@ class Manager:
                 + ("CREATE approved readme.txt because none exists. "
                    if plan.get("create_readme") and
                       not plan.get("create_local_folder") else "")
-                + "CLOSE ExpertGPS before copying; reopen it and test icons and "
-                  "GPX-generated symbol URLs.")
+                + "INSTALL before opening any MSB GPX. CLOSE ExpertGPS "
+                  "before copying; restart it afterward. Check MSB Type and "
+                  "Map Marker selections using only a disposable GPX copy.")
         ttk.Label(dialog, text=(f"Destination: {destination}\n"
                   f"NEW {len(plan['add'])} | UPDATE (backup) {len(plan['replace'])} | "
                   f"Unchanged {len(plan['identical'])}\n{note}"),
