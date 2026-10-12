@@ -189,6 +189,9 @@
     const supplies = matchingCircuits(id);
     line(body, 'Verified panel owner: ' + (panel?.owner_code || 'UNKNOWN — unreviewed'));
     if (panel || /panel/i.test(w.type || '')) line(body, 'Meter ID: ' + textValue(panel?.meter_identifier));
+    const aliases = (current.aliases || []).filter(a => Number(a.waypoint_id) === Number(id));
+    line(body, 'Reviewed names / aliases: ' + (aliases.length ?
+      aliases.map(a => a.label).join('; ') : 'No alternate names reviewed'));
     heading(body, 'Power and switching');
     if (ownCircuits.length) for (const c of ownCircuits) {
       const dests = current.destinations.filter(d => Number(d.site_power_circuit_id) === Number(c.site_power_circuit_id));
@@ -272,6 +275,20 @@
             [['LOR','LOR'],['IP','IP / Ethernet'],['OTHER','Other']]);
           return () => ({network_code:code.value,network_kind:kind.value});
         });
+        action(edits, 'Manager: accept an alternate historical waypoint label', 'manager_add_alias', form => {
+          line(form, 'An alias is for the SAME physical waypoint. Do not merge similarly named but different locations.');
+          const alias = field(form, 'Verified historical alias (for LinkIQ/GPX name reconciliation)', 'alias_text');
+          const source = field(form, 'Alias evidence source', 'alias_source', 'FIELD_REVIEW');
+          return () => ({waypoint_id:id, alias_text:alias.value, alias_source:source.value});
+        });
+        for (const cable of cables.filter(c => !['REPLACED','DESTROYED','ABANDONED','RETIRED'].includes(c.lifecycle))) {
+          action(edits, 'Manager: retire / replace cable #' + cable.id, 'manager_retire_cable', form => {
+            const status = choice(form, 'Reviewed cable lifecycle', 'lifecycle_status',
+              [['REPLACED','Replaced'],['DESTROYED','Destroyed'],['ABANDONED','Abandoned'],['RETIRED','Retired']]);
+            const date = field(form, 'Verified date (blank = command date)', 'retired_at', '', 'date');
+            return () => ({site_cable_id:cable.id,lifecycle_status:status.value,retired_at:date.value});
+          });
+        }
         // A physical cable is a separately reviewed asset, NOT each LinkIQ UUID
         // and NOT every GPX line. Parallel cables get distinct generated IDs.
         if (current.waypoints.length > 1) action(
@@ -372,6 +389,34 @@
                 lookupLabel(c.panel_waypoint_id) + ' / ' + c.circuit_code]));
             return () => ({waypoint_id:id,circuit_id:Number(circuit.value)});
           });
+        }
+        for (const circuit of supplies) {
+          action(edits, 'Production crew: unlink ' + w.label + ' from ' +
+            lookupLabel(circuit.panel_waypoint_id) + ' / ' + circuit.circuit_code,
+            'crew_unlink_destination', form => {
+              line(form, 'Remove only this reviewed circuit-to-waypoint relationship. Equipment and source history remain.');
+              return () => ({waypoint_id:id,circuit_id:circuit.site_power_circuit_id});
+            });
+        }
+        for (const membership of current.memberships.filter(m => Number(m.site_waypoint_id) === Number(id))) {
+          const net = byId(current.networks,membership.site_network_id,'site_network_id');
+          action(edits, 'Production crew: remove network ' + (net?.network_code || membership.site_network_id),
+            'crew_remove_network', form => {
+              line(form, 'Remove this maintained assignment; do not change GPX geometry or historical LinkIQ tests.');
+              return () => ({waypoint_id:id,network_id:membership.site_network_id});
+            });
+        }
+        for (const circuit of ownCircuits) {
+          for (const instruction of current.instructions.filter(i =>
+            Number(i.site_power_circuit_id) === Number(circuit.site_power_circuit_id))) {
+            action(edits, 'Production crew: remove ' + instruction.season_year +
+              ' switching plan for ' + circuit.circuit_code,
+              'crew_clear_switching', form => {
+                line(form, 'Removes the PLANNED instructions, not any observed energized state.');
+                return () => ({circuit_id:circuit.site_power_circuit_id,
+                  season_year:instruction.season_year});
+              });
+          }
         }
         if (current.networks.length) action(edits, 'Production crew: assign maintained network', 'crew_assign_network', form => {
           const net = choice(form, 'Known network', 'network_id',
