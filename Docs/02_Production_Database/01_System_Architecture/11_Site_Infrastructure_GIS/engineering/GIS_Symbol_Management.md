@@ -96,6 +96,23 @@ No action 1/2/5 silently invokes actions 3/4. The Desktop tool is a **repository
 
 **New direct laptop registry evidence (October 12, after backup):** With `Display Anchor` configured in ExpertGPS on the laptop, the operator ran read-only `reg query` of both HKCU branches. The `ExpertGPS` branch returned the value line **`Type    REG_SZ    Display Anchor`** (the containing subkey was not included in the pasted output). The `Common` branch returned **`Flag, Blue    REG_SZ    Display Anchor`** and, decisively, the full subkey **`HKEY_CURRENT_USER\Software\TopoGrafix\Common\Waypoint Types\Display Anchor`**. Earlier equivalent searches on the Command Center Windows user found **no Display Anchor** in either branch. Thus **a named per-user Waypoint Types registry subkey exists for the laptop's custom type**, and the destination lacks that same searchable association. The significance of the `Flag, Blue` value is **not yet established**; do not confuse it with the custom MSB Map Marker and do not infer that the complete per-Type display style can be restored by copying that value alone. The exact `Display Anchor` subkey values/dependencies have **not** been inspected.
 
+**Direct Show PC registry-export evidence (October 12; no settings imported or changed):** The operator provided two exports from the `Light-O-Rama` Windows account. Although their filenames contained `Laptop`, their provenance is **Show PC**. They are Windows Registry UTF-16 exports, inspected **locally** without publishing the raw data or exposing unrelated keys/registration details. The `ExpertGPS` export has 108 registry sections; `Common` has 84 sections. Under `HKCU\Software\TopoGrafix\Common\Waypoint Types`, the Show PC has **37 named waypoint Type subkeys**, **no `Display Anchor` subkey**, **11 nonempty custom `Bitmap Symbol URL` values** pointing to `https://webassets.sheboyganlights.org/images/symbols/msb/*.png`, and **26 empty bitmap URLs**. These observed URLs are source/profile configuration; they do **not** prove the current public PNG URL renders.
+
+**The actual per-Type map marker fields are now identified in the Show PC export** (this was **not** known from vendor documentation alone). For example:
+
+```reg
+[HKEY_CURRENT_USER\Software\TopoGrafix\Common\Waypoint Types\Flag]
+"Symbol Type"="2"
+"GPS Symbol"="Flag, Blue"
+"Bitmap Symbol URL"="https://webassets.sheboyganlights.org/images/symbols/msb/pole-yellow.png"
+```
+
+Other observed Type → PNG associations: `Car → car-r.png`, `Controller → lor-controller.png`, `Drop Point → kit-box.png`, `Hydrant → fire-hydrant.png`, `Light Pole → lp.png`, `LP-Combo → lp-combo.png`, `Panel → panel.png`, `Stage → stage.png`, `Tower → antenna-r.png`, and `Waypoint → pin-white.png`. **`GPS Symbol` and `Bitmap Symbol URL` are separate stored fields**, matching the operator's ExpertGPS dialog.
+
+**The Show PC also has a reverse/association table:** `HKCU\Software\TopoGrafix\Common\Settings\SymbolToType` contains `"Flag, Blue"="Flag"`. The operator's earlier **laptop** read-only query showed **`"Flag, Blue"="Display Anchor"`**. This is a directly observed cross-PC conflict and a plausible cause of the same GPS symbol being assigned a different local waypoint Type when a GPX is opened. **It does not yet prove how GPX import chooses a Type or whether the missing-symbol event persisted that change.** Do not overwrite either user profile or canonical GPX on the basis of this hypothesis.
+
+**Next narrowly scoped evidence from laptop:** `reg query "HKCU\Software\TopoGrafix\Common\Waypoint Types\Display Anchor" /s` with ExpertGPS closed. Inspect **only** its `Symbol Type`, `GPS Symbol`, and `Bitmap Symbol URL` values and compare them with the Show PC's `Flag` entry and `SymbolToType` mapping. This can establish the required type/style migration data; it cannot establish the GPX serialization format without separate disposable GPX inspection. Do **not** request or publish a complete unredacted registry export.
+
 **Next read-only investigation:** With ExpertGPS closed on the laptop, query **`reg query "HKCU\Software\TopoGrafix\Common\Waypoint Types\Display Anchor" /s`** and identify key/value names and types without sharing unredacted licensing or sensitive values. On the Show PC, the same key should be confirmed absent via read-only query. A focused review of the returned subkey structure is required **before** proposing a narrowly scoped, reversible Type/style transfer; retain the previously successful full-branch backups on *both* PCs and do not import any `.reg` yet.
 
 **Preservation and investigation contract:**
