@@ -10,7 +10,7 @@ $Sql005 = Join-Path $RepoRoot 'People\Database\005_reconcile_directus_person_ide
 $ServerScript = Join-Path $ScriptDir 'people_identity_reconciliation_disposable_server.sh'
 
 $SourceRef = 'origin/agent/385-directus-person-self-reconcile'
-$CandidateSha = '5176eab1e66721a332ba9cb37944aeac5afce4e9'
+$CandidateSha = 'fc831af3986e83c01501057c48f305f8c23672e0'
 
 foreach ($path in @($Sql005, $ServerScript)) {
     if (-not (Test-Path -LiteralPath $path)) {
@@ -33,7 +33,7 @@ if ($LASTEXITCODE -ne 0) { throw "Accepted candidate SHA is not available locall
 & git -C $RepoRoot merge-base --is-ancestor $CandidateSha $SourceRef
 if ($LASTEXITCODE -ne 0) { throw "Remote Issue #385 ref no longer contains candidate SHA $CandidateSha" }
 
-$runtimeChanges = @(& git -C $RepoRoot diff --name-only "$CandidateSha..$SourceRef" -- People/Database People/Application/backend.py People/Application/test_people_manager_contract.py)
+$runtimeChanges = @(& git -C $RepoRoot diff --name-only "$CandidateSha..$SourceRef" -- People/Database People/Application/backend.py People/Application/test_people_manager_contract.py People/Application/test_people_shared_tablet_identity_contract.py)
 if ($LASTEXITCODE -ne 0) { throw 'Unable to verify exact identity-reconciliation candidate.' }
 if ($runtimeChanges.Count -gt 0) {
     throw ("Identity runtime changed after candidate SHA. Acceptance refused. " + ($runtimeChanges -join ', '))
