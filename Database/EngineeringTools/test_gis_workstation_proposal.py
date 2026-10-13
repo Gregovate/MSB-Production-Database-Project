@@ -76,6 +76,8 @@ class LaptopProposalTests(unittest.TestCase):
         self.assertEqual(data["symbol_to_type"]["Flag, Blue"], "Display Anchor")
         self.assertEqual(data["types"]["Display Anchor"]["GPS Symbol"], "Flag, Blue")
         self.assertEqual(data["files"]["msb/pole-yellow.png"], sha256(png(24, 32)))
+        self.assertEqual(data["approved_plain_source_sha256"]["pole-yellow.svg"],
+                         sha256(svg(24, 32)))
         self.assertNotIn("Private Vendor Setting", self.out.read_text())
         self.assertNotIn(str(self.root), self.out.read_text())
         self.assertNotIn("Map Path", self.out.read_text())
@@ -132,7 +134,13 @@ class LaptopProposalTests(unittest.TestCase):
 
     def test_symlinked_shared_parent_refused(self):
         self.shared.mkdir()
-        (self.shared / "Proposals").symlink_to(self.local, target_is_directory=True)
+        try:
+            (self.shared / "Proposals").symlink_to(
+                self.local, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            # Windows without Developer Mode may prohibit symlink creation.
+            # The same denial case still runs on the Linux CI host.
+            self.skipTest("Windows policy disallows disposable directory symlink")
         with self.assertRaisesRegex(ProfileError, "Linked Shared Drive"):
             self.build(save=True)
         self.assertFalse((self.local / self.host).exists())
