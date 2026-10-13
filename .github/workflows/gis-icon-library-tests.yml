@@ -11,6 +11,12 @@ on:
       - "Database/EngineeringTools/test_gis_workstation_proposal.py"
       - "Database/EngineeringTools/gis_workstation_observation.py"
       - "Database/EngineeringTools/test_gis_workstation_observation.py"
+      - "Database/EngineeringTools/gis_workstation_comparison_report.py"
+      - "Database/EngineeringTools/test_gis_workstation_comparison_report.py"
+      - "Database/EngineeringTools/gis_workstation_alignment.py"
+      - "Database/EngineeringTools/test_gis_workstation_alignment.py"
+      - "Database/EngineeringTools/gis_workstation_install.py"
+      - "Database/EngineeringTools/test_gis_workstation_install.py"
       - "Database/EngineeringTools/gis_workstation_release_candidate.py"
       - "Database/EngineeringTools/test_gis_workstation_release_candidate.py"
       - "Database/EngineeringTools/test_icon_library_layout.py"
@@ -54,7 +60,13 @@ jobs:
             Database/EngineeringTools/gis_workstation_release_candidate.py \
             Database/EngineeringTools/test_gis_workstation_release_candidate.py \
             Database/EngineeringTools/gis_workstation_observation.py \
-            Database/EngineeringTools/test_gis_workstation_observation.py
+            Database/EngineeringTools/test_gis_workstation_observation.py \
+            Database/EngineeringTools/gis_workstation_comparison_report.py \
+            Database/EngineeringTools/test_gis_workstation_comparison_report.py \
+            Database/EngineeringTools/gis_workstation_alignment.py \
+            Database/EngineeringTools/test_gis_workstation_alignment.py \
+            Database/EngineeringTools/gis_workstation_install.py \
+            Database/EngineeringTools/test_gis_workstation_install.py
       - name: Run isolated safety tests (no real G:/webassets/TopoGrafix)
         run: |
           python -m unittest discover -s Database/EngineeringTools -p 'test_sync_gis_icons.py' -v
@@ -64,6 +76,9 @@ jobs:
           python -m unittest discover -s Database/EngineeringTools -p 'test_gis_workstation_proposal.py' -v
           python -m unittest discover -s Database/EngineeringTools -p 'test_gis_workstation_release_candidate.py' -v
           python -m unittest discover -s Database/EngineeringTools -p 'test_gis_workstation_observation.py' -v
+          python -m unittest discover -s Database/EngineeringTools -p 'test_gis_workstation_comparison_report.py' -v
+          python -m unittest discover -s Database/EngineeringTools -p 'test_gis_workstation_alignment.py' -v
+          python -m unittest discover -s Database/EngineeringTools -p 'test_gis_workstation_install.py' -v
       - name: Test small-window Tk action visibility with a disposable display
         run: |
           xvfb-run -a python -m unittest discover -s Database/EngineeringTools -p 'test_icon_library_layout.py' -v
