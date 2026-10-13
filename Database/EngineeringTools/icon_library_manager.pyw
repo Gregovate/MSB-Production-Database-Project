@@ -63,6 +63,8 @@ class Manager:
         self.records = None
         self.plan = None
         self.preview_images = []
+        self.preview_original = None
+        self.preview_zoom = 0
         self.master_warnings = []
         self.in_progress = False
         self.events = queue.Queue()
@@ -109,9 +111,24 @@ class Manager:
         body = ttk.PanedWindow(root, orient="horizontal")
         body.pack(fill="both", expand=True, padx=16, pady=(3, 3))
         left = ttk.Frame(body)
-        right = ttk.Frame(body)
+        right_shell = ttk.Frame(body)
         body.add(left, weight=3)
-        body.add(right, weight=2)
+        body.add(right_shell, weight=2)
+        # #171: Preview is both viewport-fitted and independently scrollable.
+        # Large previews must not be cropped when the bottom-docked buttons
+        # reserve their space on a 15-inch Windows laptop.
+        self.preview_canvas = tk.Canvas(right_shell, highlightthickness=0, bd=0)
+        self.preview_scroll = ttk.Scrollbar(
+            right_shell, orient="vertical", command=self.preview_canvas.yview)
+        self.preview_canvas.configure(yscrollcommand=self.preview_scroll.set)
+        self.preview_scroll.pack(side="right", fill="y")
+        self.preview_canvas.pack(side="left", fill="both", expand=True)
+        right = ttk.Frame(self.preview_canvas)
+        self.preview_window = self.preview_canvas.create_window(
+            (0, 0), window=right, anchor="nw")
+        right.bind("<Configure>", lambda _event: self.preview_canvas.configure(
+            scrollregion=self.preview_canvas.bbox("all")))
+        self.preview_canvas.bind("<Configure>", self.resize_preview)
         columns = ("icon", "size", "change")
         self.tree = ttk.Treeview(left, columns=columns, show="headings", selectmode="browse")
         for name, width in (("icon", 190), ("size", 80), ("change", 140)):
@@ -128,6 +145,13 @@ class Manager:
         self.prev_image.pack(pady=4)
         self.preview_info = ttk.Label(right, text="", wraplength=270, justify="center")
         self.preview_info.pack(pady=5)
+        # Wheel scrolling is local to the preview: do not steal wheel events
+        # from the icon tree or other application dialogs.
+        for target in (self.preview_canvas, right, self.prev_head,
+                       self.prev_image, self.preview_info):
+            target.bind("<MouseWheel>", self.scroll_preview)
+            target.bind("<Button-4>", self.scroll_preview)
+            target.bind("<Button-5>", self.scroll_preview)
         ttk.Separator(action_dock).pack(fill="x")
         ttk.Label(action_dock, text=("Layered masters: save reviewed visible layers as Plain SVG first. "
                         "The manager never changes GPX Types."),
@@ -646,6 +670,45 @@ class Manager:
         body.configure(state="disabled")
         ttk.Button(dialog, text="Close", command=dialog.destroy).pack(anchor="e", padx=16, pady=12)
 
+    def scroll_preview(self, event):
+        """Scroll only the preview content; never touch the icon tree."""
+        if getattr(event, "num", None) == 4:
+            step = -2
+        elif getattr(event, "num", None) == 5:
+            step = 2
+        else:
+            delta = getattr(event, "delta", 0)
+            if not delta:
+                return
+            step = -2 if delta > 0 else 2
+        self.preview_canvas.yview_scroll(step, "units")
+
+    def resize_preview(self, event=None):
+        """Fit displayed enlargement inside current viewport, retaining PNG shape.
+
+        Zoom is integer/nearest-neighbor only. The original image is unmodified.
+        At very short window heights native-size icons remain scrollable.
+        """
+        if event is not None and getattr(event, "widget", None) == self.preview_canvas:
+            self.preview_canvas.itemconfigure(
+                self.preview_window, width=event.width)
+        if self.preview_original is None:
+            return
+        original = self.preview_original
+        available_height = max(
+            1, self.preview_canvas.winfo_height()
+            - self.prev_head.winfo_reqheight()
+            - self.preview_info.winfo_reqheight() - 24)
+        available_width = max(1, self.preview_canvas.winfo_width() - 24)
+        zoom = max(1, min(6, 180 // max(original.width(), original.height()),
+                          available_width // original.width(),
+                          available_height // original.height()))
+        if zoom != self.preview_zoom:
+            enlarged = original.zoom(zoom, zoom)
+            self.preview_images = [original, enlarged]
+            self.prev_image.configure(image=enlarged)
+            self.preview_zoom = zoom
+
     def show_preview(self, _event=None):
         selection = self.tree.selection()
         if not selection or self.staged is None:
@@ -654,16 +717,22 @@ class Manager:
         p = self.staged / "msb" / name
         self.prev_head.configure(text=name)
         try:
-            photo = tk.PhotoImage(file=str(p))
-            ratio = max(1, min(6, 180 // max(photo.width(), photo.height())))
-            larger = photo.zoom(ratio, ratio)
-            self.preview_images = [photo, larger]
-            self.prev_image.configure(image=larger)
+            original = tk.PhotoImage(file=str(p))
+            self.preview_original = original
+            self.preview_zoom = 0
             old = self.dest / name
             self.preview_info.configure(text=("Previous PNG exists. A backup will be saved before replacement."
                                              if old.is_file() and name in {r['PNG'] for r in self.plan['replace']}
                                              else "Source: current Shared Drive Plain SVG."))
+            self.resize_preview()
+            self.preview_canvas.yview_moveto(0)
+            # A changed note can change the frame's requested height after
+            # Tk finishes geometry calculation; recompute once if necessary.
+            self.root.after_idle(self.resize_preview)
         except Exception as exc:
+            self.preview_original = None
+            self.preview_images = []
+            self.prev_image.configure(image="")
             self.preview_info.configure(text=f"Preview unavailable: {exc}")
 
     def confirm_apply(self):
