@@ -104,6 +104,27 @@ class OfficeInstallTests(OfficeAlignmentPlanTests):
             self.assertEqual(self.office.keys[key], value)
         self.assertFalse((self.shared / "Releases").exists())
 
+    def test_legacy_png_filename_case_is_reviewed_and_reversible(self):
+        old = self.office_local / "pole-yellow.png"
+        legacy = self.office_local / "Pole-Yellow.png"
+        old.rename(legacy)
+        plan = self.plan()
+        self.assertTrue(any(row["file"] == "pole-yellow.png" and
+                            row["case_alias"] and
+                            row["existing_filename"] == "Pole-Yellow.png"
+                            for row in plan["png_actions"]))
+        receipt = self.install()
+        self.assertTrue((self.office_local / "pole-yellow.png").is_file())
+        self.assertFalse(legacy.exists())
+        backup = Path(receipt["private_rollback_backup"])
+        self.assertTrue((backup / "original-msb" / "Pole-Yellow.png").is_file())
+        restore_office_private_backup(
+            backup, reg=self.office, local_symbols=self.office_local,
+            hostname="MSB-OFFICE-PC", private_backup_base=self.backups,
+            closed_checker=lambda: True, approval_confirmed=True)
+        self.assertTrue(legacy.is_file())
+        self.assertEqual(legacy.read_bytes(), b"old office")
+
     def test_explicit_local_recovery_restores_original_office_fields(self):
         receipt = self.install()
         self.assertTrue(Path(receipt["shared_receipt"]).is_file())
