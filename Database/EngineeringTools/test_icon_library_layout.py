@@ -46,7 +46,8 @@ class SmallScreenLayoutTests(unittest.TestCase):
                         "4. Publish PNGs to web",
                         "5. Install PNGs for this ExpertGPS user",
                         "6. Compare GIS workstation release (READ ONLY)",
-                        "Review / submit this PC configuration",
+                        "Submit laptop cropped-map proposal",
+                        "Inspect this PC / compare with laptop (READ ONLY)",
                         "Close",
                     ]
                     for label in expected:
@@ -76,7 +77,7 @@ class SmallScreenLayoutTests(unittest.TestCase):
             manager = Manager(root)
             root.update_idletasks()
             title = root.title()
-            self.assertIn("V0.2.0-profile-proposals", title)
+            self.assertIn("V0.3.0-office-recon", title)
             self.assertIn(manager.build_identity, title)
             labels = [
                 str(w.cget("text")) for w in walk(root)
@@ -118,7 +119,8 @@ class SmallScreenLayoutTests(unittest.TestCase):
             with patch.dict(
                     Manager.review_current_profile.__globals__,
                     {"prepare_laptop_proposal": fake_collect}), \
-                 patch.object(manager, "async_operation", side_effect=fake_async):
+                 patch.object(manager, "async_operation", side_effect=fake_async), \
+                 patch("gis_workstation_proposal.workstation_hostname", return_value="YOGA-GREG"):
                 manager.review_current_profile()
                 root.update_idletasks()
                 dialogs = [w for w in root.winfo_children()
@@ -195,6 +197,64 @@ class SmallScreenLayoutTests(unittest.TestCase):
                 self.assertTrue(acknowledged.called)
                 self.assertIn("UNAPPROVED proposal saved", manager.status.get())
                 self.assertIn("Not verified", manager.profile_release_status.get())
+        finally:
+            root.destroy()
+
+    def test_office_recon_chooses_existing_full_map_and_never_mutates(self):
+        root = tk.Tk()
+        try:
+            manager = Manager(root)
+            sample = {
+                "hostname": "MSB-OFFICE", "type_count": 28,
+                "reverse_count": 13, "selected_map": "Full Office Aerial",
+                "map_image_verified": True,
+                "png_matched": 0, "png_missing": 37,
+                "png_different": 0, "png_total": 37,
+                "fingerprint": "a" * 64,
+                "profile": {"types": {}, "maps": {}, "local_png_status": {}},
+            }
+            seen = []
+            def scan(plain, dest, *, map_name):
+                seen.append(map_name)
+                return sample
+            def immediate(work, done):
+                try:
+                    done(work(), None)
+                except Exception as exc:
+                    done(None, str(exc))
+            with patch.dict(
+                    Manager.inspect_this_pc.__globals__,
+                    {"list_scanned_map_names": lambda: ["Full Office Aerial"],
+                     "read_observation": scan}), \
+                 patch.object(manager, "async_operation", side_effect=immediate):
+                manager.inspect_this_pc()
+                root.update_idletasks()
+                chooser = [w for w in root.winfo_children()
+                           if isinstance(w, tk.Toplevel)][0]
+                choices = [w for w in walk(chooser)
+                           if isinstance(w, tk.Listbox)][0]
+                self.assertEqual(choices.get(0), "Full Office Aerial")
+                controls = [
+                    w for w in walk(chooser)
+                    if isinstance(w, ttk.Button)
+                    and w.cget("text") == "Inspect selected map (READ ONLY)"]
+                self.assertEqual(len(controls), 1)
+                controls[0].invoke()
+                self.assertEqual(seen, ["Full Office Aerial"])
+                reviews = [
+                    w for w in root.winfo_children()
+                    if isinstance(w, tk.Toplevel) and w.winfo_exists()]
+                self.assertEqual(len(reviews), 1)
+                review = reviews[0]
+                self.assertIn("not synchronized", review.title())
+                buttons = [str(w.cget("text")) for w in walk(review)
+                           if isinstance(w, ttk.Button)]
+                self.assertIn("Compare with YOGA-GREG laptop", buttons)
+                self.assertIn("Save THIS PC observation to shared G:", buttons)
+                self.assertIn("Not verified", manager.profile_release_status.get())
+                # No save/comparison is performed merely by opening review.
+                [w for w in walk(review) if isinstance(w, ttk.Button)
+                 and w.cget("text") == "Close"][0].invoke()
         finally:
             root.destroy()
 
