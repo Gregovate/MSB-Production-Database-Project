@@ -8,7 +8,7 @@ from unittest.mock import patch
 from gis_workstation_alignment import make_office_repair_plan
 from gis_workstation_install import (
     apply_office_repair, restore_office_private_backup,
-    snapshot_managed_registry, assert_expertgps_closed)
+    snapshot_managed_registry, assert_expertgps_closed, _source_native_values)
 from gis_workstation_profile import ProfileError, TYPES_KEY, REVERSE_KEY, MAPS_KEY, sha256
 from test_gis_workstation_alignment import OfficeAlignmentPlanTests, FakeRegistry, png
 
@@ -78,6 +78,30 @@ class OfficeInstallTests(OfficeAlignmentPlanTests):
             private_backup_base=self.backups,
             closed_checker=checker if checker is not None else (lambda: True),
             approval_confirmed=confirmed, source_pin=self.pin)
+
+    def test_typed_source_dword_is_not_rewritten_as_string(self):
+        verified = {"data": {
+            "types": {"Display Anchor": {"Symbol Type": "2"}},
+            "symbol_to_type": {"Flag, Blue": "Display Anchor"},
+            "native_registry_kinds": {
+                "types": {"Display Anchor": {"Symbol Type": 4}},
+                "symbol_to_type": {"Flag, Blue": 1},
+            },
+        }}
+        source = _source_native_values(verified)
+        field = source["types"]["Display Anchor"]["Symbol Type"]
+        self.assertEqual(field["kind"], 4)
+        self.assertEqual(field["value"], 2)
+        self.assertIsInstance(field["value"], int)
+
+    def test_untyped_source_stops_before_registry_changes(self):
+        verified = {"data": {
+            "types": {"Display Anchor": {"Symbol Type": "2"}},
+            "symbol_to_type": {"Flag, Blue": "Display Anchor"},
+        }}
+        with self.assertRaisesRegex(ProfileError, "native registry"):
+            _source_native_values(verified)
+        self.assertEqual(self.office.writes, [])
 
     def test_success_targeted_parity_and_private_rollback_exists(self):
         receipt = self.install()
