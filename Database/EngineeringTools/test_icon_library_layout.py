@@ -48,6 +48,7 @@ class SmallScreenLayoutTests(unittest.TestCase):
                         "6. Compare GIS workstation release (READ ONLY)",
                         "Submit laptop cropped-map proposal",
                         "Inspect this PC / compare with laptop (READ ONLY)",
+                        "Review Office GPX settings repair (READ ONLY)",
                         "Close",
                     ]
                     for label in expected:
@@ -77,7 +78,7 @@ class SmallScreenLayoutTests(unittest.TestCase):
             manager = Manager(root)
             root.update_idletasks()
             title = root.title()
-            self.assertIn("V0.3.0-office-recon", title)
+            self.assertIn("V0.4.0-office-gpx-repair", title)
             self.assertIn(manager.build_identity, title)
             labels = [
                 str(w.cget("text")) for w in walk(root)
@@ -336,6 +337,53 @@ class SmallScreenLayoutTests(unittest.TestCase):
                 self.assertIn("comparison differences saved",
                               manager.status.get())
                 self.assertIn("Not verified", manager.profile_release_status.get())
+        finally:
+            root.destroy()
+
+    def test_office_repair_ui_is_explicitly_gated_before_any_registry_write(self):
+        root = tk.Tk()
+        try:
+            manager = Manager(root)
+            preview = {
+                "office_pc_hostname": "MSB-OFFICE-PC",
+                "master_pc_hostname": "YOGA-GREG",
+                "laptop_type_count": 59, "laptop_reverse_count": 40,
+                "office_types_before": 28, "office_reverse_before": 27,
+                "type_actions": [
+                    {"action": "remove_obsolete_Office_Type",
+                     "type": "Display", "current": {}, "laptop": None}],
+                "reverse_actions": [
+                    {"action": "set", "gps_symbol": "Flag, Blue",
+                     "office": "Outlet Power", "laptop": "Display Anchor"}],
+                "png_actions": [{"action": "install_missing",
+                                  "file": "pole-yellow.png"}],
+                "required_gates": ["Local rollback exists", "GPX preserved"],
+            }
+            writes = []
+            def fake_apply(*args, **kwargs):
+                writes.append(kwargs)
+                raise AssertionError("No Office mutation during cancel")
+            with patch.dict(
+                    Manager.show_office_repair_plan.__globals__,
+                    {"apply_office_repair": fake_apply}), \
+                 patch("tkinter.messagebox.askyesno", return_value=False):
+                manager.show_office_repair_plan(
+                    "pinned-G-proposal.json", preview, "a" * 64)
+                dialog = [w for w in root.winfo_children()
+                          if isinstance(w, tk.Toplevel)][0]
+                viewer = [w for w in walk(dialog)
+                          if isinstance(w, tk.Text)][0]
+                self.assertIn("Office GPX settings repair", dialog.title())
+                self.assertIn("Display", viewer.get("1.0", "end"))
+                self.assertIn("Flag, Blue", viewer.get("1.0", "end"))
+                buttons = {str(w.cget("text")): w for w in walk(dialog)
+                           if isinstance(w, ttk.Button)}
+                self.assertIn("Back up and repair Office GPX settings", buttons)
+                self.assertIn("Restore previous Office backup…", buttons)
+                buttons["Back up and repair Office GPX settings"].invoke()
+                self.assertEqual(writes, [])
+                buttons["Close without changes"].invoke()
+                self.assertFalse(dialog.winfo_exists())
         finally:
             root.destroy()
 
