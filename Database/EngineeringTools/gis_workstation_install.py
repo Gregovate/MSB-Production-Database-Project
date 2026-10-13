@@ -294,6 +294,7 @@ def apply_office_repair(laptop_proposal, canonical_png, *,
                Path(os.environ["LOCALAPPDATA"]) / "TopoGrafix" /
                "Symbols" / "msb")
     desired = verified["data"]
+    source_values = _source_native_values(verified)
     case_aliases = _validate_symbol_folder(
         symbols, canonical_png, [name[4:] for name in desired["files"]])
     snapshot_managed_registry(reg)  # reject unexpected Type trees/native kinds
@@ -307,7 +308,7 @@ def apply_office_repair(laptop_proposal, canonical_png, *,
     mutation_started = False
     try:
         mutation_started = True
-        _replace_managed_registry(reg, _source_native_values(verified))
+        _replace_managed_registry(reg, source_values)
         symbols.mkdir(parents=True, exist_ok=True)
         for relative, digest in sorted(desired["files"].items()):
             filename = relative[4:]
