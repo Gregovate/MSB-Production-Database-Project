@@ -17,7 +17,8 @@ import socket
 from urllib.parse import unquote, urlsplit
 from uuid import uuid4
 
-from gis_workstation_profile import ProfileError, read_current_user, sha256, sha256_file
+from gis_workstation_profile import (ProfileError, read_current_user, sha256,
+    sha256_file, TYPES_KEY, REVERSE_KEY, _open)
 from sync_gis_icons import PARK, canonical_sources, png_canvas
 
 PROPOSAL_SCHEMA = "msb.gis.workstation.proposal.v1"
@@ -62,6 +63,39 @@ def _safe_shared_parents(destination, shared_root):
         raise ProfileError("MSB GIS Shared Drive parent is unavailable")
     if not root.resolve().is_relative_to(root.parent.resolve()):
         raise ProfileError("Shared GIS output path escapes approved root")
+
+
+def _read_native_registry_kinds(reg, types, reverse):
+    """Read exact approved-source field kinds without exporting raw HKCU.
+
+    These kind IDs are essential: a REG_DWORD Symbol Type must never be
+    silently rewritten as REG_SZ merely because a JSON proposal is textual.
+    """
+    if reg is None:
+        if os.name != "nt":
+            raise ProfileError("ExpertGPS source Type kind evidence requires Windows")
+        import winreg
+        reg = winreg
+    native_types = {}
+    for name, fields in types.items():
+        item = {}
+        with _open(reg, TYPES_KEY + "\\" + name) as key:
+            for field, expected in fields.items():
+                value, kind = reg.QueryValueEx(key, field)
+                if kind not in (reg.REG_SZ, reg.REG_DWORD):
+                    raise ProfileError("Unsupported native Type value kind: " + name)
+                if str(value) != expected:
+                    raise ProfileError("ExpertGPS Type changed during source inspection")
+                item[field] = kind
+        native_types[name] = item
+    native_reverse = {}
+    with _open(reg, REVERSE_KEY) as key:
+        for name, expected in reverse.items():
+            value, kind = reg.QueryValueEx(key, name)
+            if kind != reg.REG_SZ or value != expected:
+                raise ProfileError("Unexpected native SymbolToType setting: " + name)
+            native_reverse[name] = kind
+    return {"types": native_types, "symbol_to_type": native_reverse}
 
 
 def prepare_laptop_proposal(plain: Path, canonical_png: Path, shared_root: Path,
@@ -135,6 +169,8 @@ def prepare_laptop_proposal(plain: Path, canonical_png: Path, shared_root: Path,
                            "url": url})
 
     captured = now or datetime.now(timezone.utc)
+    native_kinds = _read_native_registry_kinds(
+        reg, profile["types"], profile["symbol_to_type"])
     proposed = {
         "schema": PROPOSAL_SCHEMA,
         "approval_status": "UNAPPROVED",
@@ -143,6 +179,7 @@ def prepare_laptop_proposal(plain: Path, canonical_png: Path, shared_root: Path,
         "captured_utc": captured.astimezone(timezone.utc).isoformat(),
         "types": profile["types"],
         "symbol_to_type": profile["symbol_to_type"],
+        "native_registry_kinds": native_kinds,
         "maps": {map_name: {
             "calibration": map_entry["calibration"],
             "points": map_entry["points"],
@@ -165,7 +202,8 @@ def prepare_laptop_proposal(plain: Path, canonical_png: Path, shared_root: Path,
     review_payload = {
         key: proposed[key] for key in (
             "types", "symbol_to_type", "maps", "files",
-            "approved_plain_source_sha256", "review_items")
+            "approved_plain_source_sha256", "review_items",
+            "native_registry_kinds")
     }
     review_sha256 = sha256(json.dumps(
         review_payload, sort_keys=True, ensure_ascii=False,
