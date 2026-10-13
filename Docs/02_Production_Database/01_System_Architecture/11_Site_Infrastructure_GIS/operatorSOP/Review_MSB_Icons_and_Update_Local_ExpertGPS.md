@@ -44,6 +44,8 @@ Until the first shared release, trust/ACL, rollback and multi-PC checks are acce
 
 **Laptop layout acceptance note (candidate only):** The source-only manager candidate should open at a practical 15-inch laptop size, with Steps 1–6, the red ExpertGPS warning, GIS **Not verified** status and Close accessible without maximizing. If any control remains offscreen, stop and report the window/display scaling to #171; do not change ExpertGPS settings or import a registry backup as a workaround.
 
+**Candidate UI acceptance (October 13):** In Step 1, select `antenna-l.png`, `antenna-r.png`, `car-l.png`, `cf50d-l.png` and `container-unknown.png`. Confirm the *whole enlarged preview* fits, or can be reached by scrolling the preview pane, and source notes remain reachable without maximizing the 15-inch laptop window. If an enlarged preview is clipped and cannot scroll, stop the candidate GUI review and report it to #171. **Do not change native PNG canvas sizes or save artwork to fix window clipping.** This is a candidate check, not accepted workstation configuration syncing.
+
 ## Purpose
 
 Keep approved symbol artwork and each Windows ExpertGPS user's local PNG library consistent. **This procedure never publishes to the public web server.** For web publishing, only the authorized administrator uses the separate procedure.
