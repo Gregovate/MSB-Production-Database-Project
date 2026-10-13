@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""#171 Office scanned-map source — read native calibration; NEVER mutate maps.
+"""#171 Office scanned-map inventory: capture selected native calibration READ ONLY.
 
-Operator's working MSB-OFFICE-PC EvergreenParkCropped map is the source for
-a future, separately reviewed laptop/Show copy. Existing Office map is sacred.
-A saved file is UNAPPROVED evidence, not a deployable map release.
+Preserve ALL Office registrations, including deliberately incorrect test maps.
+Only EvergreenParkCropped is the reviewed working source for later transfer.
+No saved evidence is an installable release.
 """
 from __future__ import annotations
 
@@ -45,13 +45,9 @@ def _native_values(reg, key):
     return result
 
 
-def inspect_office_map(*, reg=None, hostname=None,
+def inspect_office_map(*, map_name=SOURCE_MAP, reg=None, hostname=None,
                        shared_image_root=SHARED_IMAGE_ROOT):
-    """Read Office active-map registry values & precise Point01/02, all native.
-
-    Restrict collection to this map only, never open other registered maps.
-    Image must be an existing resource on approved MSB Shared Drive.
-    """
+    """Read precisely the selected existing Office map; never edit any registration."""
     host = workstation_hostname(hostname)
     if host != SOURCE_HOST:
         raise ProfileError("Office working map source only on MSB-OFFICE-PC")
@@ -61,8 +57,16 @@ def inspect_office_map(*, reg=None, hostname=None,
             raise ProfileError("Office map capture requires the real Windows user")
         import winreg
         reg = winreg
-    name = SOURCE_MAP
-    with _open(reg, MAPS_KEY + "\\" + name) as key:
+    # An explicit selection may only name a direct existing map registration.
+    if (not isinstance(map_name, str) or not map_name or
+            map_name in (".", "..") or "\\\\" in map_name or "/" in map_name or
+            any(ord(ch) < 32 for ch in map_name)):
+        raise ProfileError("Invalid selected Office scanned-map name")
+    with _open(reg, MAPS_KEY) as maps_key:
+        if map_name not in list(_subkeys(reg, maps_key)):
+            raise ProfileError("Selected scanned map is not registered on this Office PC")
+    name = map_name
+    with _open(reg, MAPS_KEY + "\\\\" + name) as key:
         keys = list(_subkeys(reg, key))
         unknown = [x for x in keys if x not in ("Point01", "Point02", "Point03")]
         if unknown:
@@ -111,7 +115,10 @@ def inspect_office_map(*, reg=None, hostname=None,
         "native_header": header,
         "native_control_points": pts,
         "sidecars": sidecars,
-        "target_roles": ["YOGA-GREG laptop", "Show PC (hostname to be discovered)"],
+        "target_roles": (["YOGA-GREG laptop", "Show PC (hostname to be discovered)"]
+                         if name == SOURCE_MAP else []),
+        "map_role": ("WORKING OFFICE SOURCE" if name == SOURCE_MAP
+                     else "OTHER OFFICE REGISTRATION - REVIEW / POSSIBLE NEGATIVE TEST"),
         "preserve_office_working_map": True,
     }
     fingerprint = sha256(json.dumps(
@@ -127,13 +134,15 @@ def inspect_office_map(*, reg=None, hostname=None,
             "sidecars_count": len(sidecars)}
 
 
-def save_office_map_source(review, *, reg=None, hostname=None,
+def save_office_map_source(review, *, map_name=None, reg=None, hostname=None,
                            shared_root=SHARED_ROOT,
                            shared_image_root=SHARED_IMAGE_ROOT,
                            now=None, token=None):
     """Recheck everything observed, then exclusively create shared evidence."""
+    selected = map_name if map_name is not None else review.get("map_name")
     actual = inspect_office_map(
-        reg=reg, hostname=hostname, shared_image_root=shared_image_root)
+        map_name=selected, reg=reg, hostname=hostname,
+        shared_image_root=shared_image_root)
     if actual["fingerprint"] != review.get("fingerprint"):
         raise ProfileError("Office map changed since preview; NO shared record saved")
     root = Path(shared_root)
@@ -166,5 +175,5 @@ def save_office_map_source(review, *, reg=None, hostname=None,
     if digest != sha256(raw):
         raise ProfileError("Shared map evidence SHA-256 verification FAILED")
     return {"destination": str(dest), "sha256": digest,
-            "map_name": SOURCE_MAP, "origin_host": host,
+            "map_name": actual["map_name"], "origin_host": host,
             "status": "UNAPPROVED map source saved; no map changed"}
