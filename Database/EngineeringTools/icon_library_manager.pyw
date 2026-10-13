@@ -30,12 +30,41 @@ from distribute_gis_pngs import (WEB_PNG, PUBLIC_PNG_BASE, local_expertgps_folde
 from gis_workstation_profile import compare_current_user
 
 BACKGROUND = "#f5f8fb"
+# Source-only candidate identity, separate from approved GIS profile releases
+# or the Production Setup application version. Never guess a successful SHA.
+APP_VERSION = "V0.1.0-profile-compare"
+APP_PHASE = "PR #378 CANDIDATE"
+
+
+def source_build_identity():
+    """Read the exact Git checkout SHA; works from a detached Windows worktree.
+
+    Uses the repository containing this checked-in script, never the PowerShell
+    current directory or the independently approved GIS profile release ID.
+    """
+    repo = Path(__file__).resolve().parents[2]
+    try:
+        kwargs = {"capture_output": True, "text": True, "check": True,
+                  "timeout": 5}
+        if os.name == "nt":
+            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+        result = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "--verify", "HEAD"],
+            **kwargs)
+        sha = result.stdout.strip().lower()
+        if len(sha) == 40 and all(ch in "0123456789abcdef" for ch in sha):
+            return sha[:8]
+    except (OSError, ValueError, subprocess.SubprocessError):
+        pass
+    return "unverified"
 
 
 class Manager:
     def __init__(self, root):
         self.root = root
-        self.root.title("MSB Icon Library Manager — #171")
+        self.build_identity = source_build_identity()
+        self.root.title(
+            f"MSB Icon Library Manager — {APP_VERSION} [{self.build_identity}]")
         # The bundled application icon is separate from GIS waypoint artwork.
         # Neither the window nor shortcut needs an installed ExpertGPS folder.
         if os.name == "nt":
@@ -72,7 +101,12 @@ class Manager:
 
         heading = ttk.Frame(root, padding=(16, 9, 16, 5))
         heading.pack(fill="x")
-        ttk.Label(heading, text="MSB Icon Library Manager", font=("Segoe UI", 16, "bold")).pack(anchor="w")
+        title_line = ttk.Frame(heading)
+        title_line.pack(fill="x")
+        ttk.Label(title_line, text="MSB Icon Library Manager",
+                  font=("Segoe UI", 16, "bold")).pack(side="left")
+        ttk.Label(title_line, text=f"{APP_VERSION} • {APP_PHASE} • {self.build_identity}",
+                  font=("Segoe UI", 9), foreground="#33495b").pack(side="right")
         ttk.Label(heading, text="Controlled source: Shared Drive / MSB GIS / Symbols   •   Maximum 32 × 32 px per icon",
                   font=("Segoe UI", 10)).pack(anchor="w", pady=(5, 0))
         ttk.Label(heading, text="Editable Masters → reviewed Plain SVG → verified canonical PNG. No Downloads copies required.",
