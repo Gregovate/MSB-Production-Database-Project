@@ -74,6 +74,10 @@ class LaptopProposalTests(unittest.TestCase):
         self.assertEqual(data["schema"], PROPOSAL_SCHEMA)
         self.assertEqual(data["approval_status"], "UNAPPROVED")
         self.assertEqual(data["source_pc_hostname"], self.host)
+        self.assertEqual(data["native_registry_kinds"]["types"]
+                         ["Display Anchor"]["Symbol Type"], self.reg.REG_SZ)
+        self.assertEqual(data["native_registry_kinds"]["symbol_to_type"]
+                         ["Flag, Blue"], self.reg.REG_SZ)
         self.assertEqual(data["symbol_to_type"]["Flag, Blue"], "Display Anchor")
         self.assertEqual(data["types"]["Display Anchor"]["GPS Symbol"], "Flag, Blue")
         self.assertEqual(data["files"]["msb/pole-yellow.png"], sha256(png(24, 32)))
@@ -88,6 +92,16 @@ class LaptopProposalTests(unittest.TestCase):
         # No proposal file may be fed to the approved-release Step 6 loader.
         with self.assertRaisesRegex(ProfileError, "Unsupported"):
             load_release(self.out, sha256(self.out.read_bytes()))
+
+    def test_source_captures_real_dword_kind_without_reg_write(self):
+        self.reg.keys[TYPES_KEY + r"\\Display Anchor"]["Symbol Type"] = (
+            2, self.reg.REG_DWORD)
+        result = self.build(save=True)
+        evidence = json.loads(Path(result["destination"]).read_text("utf-8"))
+        self.assertEqual(evidence["types"]["Display Anchor"]["Symbol Type"], "2")
+        self.assertEqual(evidence["native_registry_kinds"]["types"]
+                         ["Display Anchor"]["Symbol Type"], self.reg.REG_DWORD)
+        self.assertEqual(self.reg.writes, [])
 
     def test_bad_png_does_not_create_shared_folders(self):
         (self.local / "pole-yellow.png").write_bytes(b"changed")
