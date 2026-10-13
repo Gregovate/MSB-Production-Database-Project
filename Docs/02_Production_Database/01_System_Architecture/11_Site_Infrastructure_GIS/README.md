@@ -1,5 +1,13 @@
 # Site Infrastructure / GIS
 
+## Current engineering handoff — October 13, 2026
+
+**PR #319 is not accepted or deployed.** The active blocker is repeatable, governed import of the continuing `MSB-Park-Infrastructure.gpx` master and one-way FLW test evidence into *already populated* PostgreSQL/PostGIS, with explicit review, stable identities, preserved track/cable history, and offline reference distribution. The October 13 supplied GPX source (reported SHA `1594ce1f96c1df8f6751e0d436a99acc824a95274768c2f1b1160376175943fd`, 236 waypoints, 195 tracks) has **not** been accepted into Production. One-time disposable GPX bootstrap and prior synthetic CI do not demonstrate recurring reconciliation. Setup Command Center picker and revised offline references still need real-source operator acceptance.
+
+**Start/resume in the authoritative [Site Source Synchronization Contract](../../../../../Database/EngineeringTools/Site_Source_Synchronization_Contract.md#current-engineering-checkpoint--october-13-2026-gpxflw-recurring-intake-pr-319)**, then review [Network Source Reconciliation](engineering/Network_Source_Reconciliation_2026-10-09.md), active [PR #319](https://github.com/Gregovate/MSB-Production-Database-Project/pull/319), [#171](https://github.com/Gregovate/MSB-Production-Database-Project/issues/171), [#230](https://github.com/Gregovate/MSB-Production-Database-Project/issues/230), and commanding [#122](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122). Parallel [#378](https://github.com/Gregovate/MSB-Production-Database-Project/issues/378) owns workstation icon/Type/calibration coordination, **not** #319's PostGIS intake implementation. Do not edit the parallel workstream's files without deliberate reconciliation.
+
+**Next deliverable:** reviewed second-source GPX/FLW update and an operator-facing intake workflow (not recurring PowerShell), then one protected disposable browser/offline acceptance. Keep Setup Park Map and existing Field Wiring workflows separate and preserve #88 movement semantics. No Production schema/data changes have been authorized by this handoff.
+
 ## Subsystem documentation index and engineering handoff (October 12, 2026)
 
 **Document authority:** Detailed engineering design and invariants belong in controlled `engineering/` documents; operator workflow belongs in operator documentation. This README is a **navigation, status, and conversation-recovery handoff**, not a duplicate design authority. PRs/issues point to these documents and retain implementation/evidence history.
