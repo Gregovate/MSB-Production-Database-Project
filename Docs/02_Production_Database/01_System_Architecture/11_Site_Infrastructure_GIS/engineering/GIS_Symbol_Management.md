@@ -247,6 +247,14 @@ This is **phase 1 only** of the approved immutable GIS configuration-release des
 
 **Disposable validation:** Database/EngineeringTools/test_gis_workstation_profile.py uses a synthetic current-user registry and temp PNG/scanned-map fixtures, verifies Style/Type/reverse distinctions, tamper-denial, missing map/icon, safety paths and change-status uncertainty. The existing GIS Icon Library CI must run this alongside its previous suites. After an administrator approves the first real version, an operator must execute Step 6 on laptop, Show, Office and a clean Windows profile, compare two surveyed calibration points, deliberately test a disposable changed local mapping and corrupt release file, verify there were no local writes, and retain field evidence. Do not apply a full-registry import to obtain a passing comparison.
 
+### #171 compact laptop-window defect — source candidate, not yet operator accepted
+
+**October 12 field evidence:** On a 15-inch laptop the initial draft #378 icon manager (`930x785`, minimum `800x710`) required a window nearly the full vertical display for the added read-only workstation Step 6 and the footer to appear. The original Tk construction allocated the expanding icon tree/preview before the lower action rows and footer, so they could be clipped with constrained height/Windows scaling. A screenshot of a near-full-screen window is **not** acceptance of a compact desktop experience.
+
+**Source-only correction in the existing PR #378:** change the initial window to `930x615` and minimum `800x500`; reserve the Close/release-history footer and a distinct bottom action dock **before** packing the flexible icon preview. Steps 3/4 (admin-only web), Step 5 (current-user ExpertGPS), and Step 6 (read-only GIS profile) remain independent and visible; the icon list/preview yields height instead. Keep the GPX-open safety warning and exact Step-6 **Not verified** wording visible. No change to publishing, registry semantics, G: files or GPX data.
+
+**Acceptance:** automated static layout assertions and a disposable virtual-display Tk smoke test at normal/enlarged scaling; then rerun the same candidate on the user's real 15-inch laptop **at normal window size, not maximized**, checking actions 1–6, Close and the GIS status are visible without changing Windows display scaling. Pending that field test, this is a candidate, not a completed Windows UX acceptance.
+
 ### Current operator procedures (separate from engineering design)
 
 - [Install or update the manager](../operatorSOP/Install_or_Update_MSB_Icon_Library_Manager.md)
