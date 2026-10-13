@@ -1,5 +1,11 @@
 # MSB #171 / #319 / #230 — Site-source synchronization implementation contract
 
+## #171 source-parity dependency for ongoing #319 reconciliation — October 13
+
+The #171 engineering operator has prioritized verification of the same scanned-map raster/calibration on authorized workstations, exact YOGA-GREG ExpertGPS Type/marker/GPS-symbol/reverse-map/PNG synchronization to Office and Show, and disposable GPX icon/extension-preserving round trips BEFORE declaring continuing master GPX sources safe for recurring #319 intake. The Office same-image map correction was operator-accepted, but the reverse Office working-map distribution and icon sync are still unaccepted. Recent network repair surveys and new Garmin tracks make the source continuously changing. Do not treat one-time imported snapshots as authoritative current revisions.
+
+The existing #319 engine can develop and test in parallel using source snapshots, but the recurring real-world source acceptance must be gated on confirmed #171 workstation parity and controlled GPX read/write integrity. Preserve original GPX and LinkIQ immutable evidence, review revisions/conflicts against existing PostGIS identities, and label current published Park Map source revision/age. FLW remains strictly one-way intake. Avoid creating a separate desktop database engine or changing Production based on an unverified workstation GPX export.
+
 ## CURRENT ENGINEERING CHECKPOINT — October 13, 2026, GPX/FLW recurring intake (PR #319)
 
 **Status: INCOMPLETE / operator acceptance CHANGES REQUIRED; no Production GPX migration or accepted recurring import.** This is the current resume point for #171/#230 under #122. Detailed design above remains authoritative. Do not infer completion from a successful one-time empty-disposable bootstrap, uploaded GPX, passing synthetic CI, or read-only map. The existing #319 code is an engineering candidate; keep the active main/parallel branches reconciled.
