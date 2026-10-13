@@ -274,7 +274,8 @@ def test_directus_person_identity_reconciliation_is_exact_email_fail_closed() ->
     assert "CREATE OR REPLACE FUNCTION ref.reconcile_directus_person_identity" in SQL_005
     assert "lower(u.email) = v_email" in SQL_005
     assert "lower(coalesce(u.provider, '')) = 'google'" in SQL_005
-    assert "lower(coalesce(u.external_identifier, '')) = lower(u.email)" in SQL_005
+    assert "lower(coalesce(u.external_identifier, ''))," in SQL_005
+    assert "IF v_external_identifier <> v_email THEN" in SQL_005
     assert "WHERE lower(p.email) = v_email" in SQL_005
     assert "No MSB Person exists with the authenticated Sheboygan Lights email" in SQL_005
     assert "The MSB Person matching the authenticated email is inactive" in SQL_005
