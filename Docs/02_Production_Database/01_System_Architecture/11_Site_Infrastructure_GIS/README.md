@@ -740,6 +740,8 @@ Then review:
 
 Do not design the GIS database schema from assumptions.
 
+**Confirmed split configuration source (October 13):** The Office Desktop's operational `EvergreenParkCropped` scanned-map calibration is the map source to copy onto the laptop and Show PC after image/control-point verification; do not modify the Office copy. Conversely, YOGA-GREG's ExpertGPS Waypoint Types, GPS Symbols, reverse mapping and canonical PNGs remain the GPX-facing source for Office and Show. Draft Icon Manager `V0.4.3-office-map-source` adds an in-app read-only **Capture OFFICE map source to G:** action from the Office `EvergreenParkCropped` review, displaying and retaining native calibration/Point01/02/image and optional worldfile evidence under `Workstation-Configuration/Map-Sources/MSB-OFFICE-PC`. **No map transfer or source acceptance is complete until field evidence is captured and target-specific backup/install/rollback are implemented.** See the governed [GIS Symbol Management](engineering/GIS_Symbol_Management.md).
+
 ## Related Systems
 
 - [Setup and Deployment](../12_Setup_and_Deployment/README.md)
