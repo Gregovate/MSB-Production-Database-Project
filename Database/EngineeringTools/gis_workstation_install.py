@@ -141,8 +141,9 @@ def _validate_symbol_folder(symbols, canonical, names):
     if readme.exists():
         if readme.is_symlink() or not readme.is_file():
             raise ProfileError("Unsafe ExpertGPS readme")
-        if readme.read_text(encoding="utf-8-sig").splitlines()[0].strip() != \
-                README_PARENT:
+        readme_lines = readme.read_text(
+            encoding="utf-8-sig").splitlines()
+        if not readme_lines or readme_lines[0].strip() != README_PARENT:
             raise ProfileError("Existing ExpertGPS readme URL parent unexpected")
     for name in names:
         if (canonical / name).is_symlink():
@@ -260,7 +261,7 @@ def apply_office_repair(laptop_proposal, canonical_png, *,
     name = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + \
         uuid4().hex[:12]
     backup = base / name
-    saved = _save_private_backup(reg, symbols, host=host, root=backup)
+    _save_private_backup(reg, symbols, host=host, root=backup)
     assert_expertgps_closed(closed_checker)
     # The backup is now fully written and independently fingerprinted.
     mutation_started = False
