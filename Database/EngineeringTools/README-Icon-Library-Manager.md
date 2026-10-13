@@ -43,6 +43,8 @@ The existing GUI now has a separate **6. Compare GIS workstation release (READ O
 
 **15-inch laptop layout follow-up (draft #378):** Step 6 was visible only in a nearly full-height initial window during field review. The candidate now uses a shorter initial window and bottom-docked action/footer controls, allowing the icon preview to shrink before obscuring critical buttons. Virtual-display smoke testing and a repeat **non-maximized laptop** screenshot are acceptance gates, not evidence of a deployed or approved configuration release.
 
+**Icon-preview clipping regression (October 13, draft #378):** In the compact laptop window, approved PNGs validated but enlarged previews were cropped and had no independent scrolling. The source candidate now uses viewport-fitted integer zoom and a preview-specific scrollbar/wheel support; approved native 32×32/32×18 assets are unchanged. Disposable GUI tests and actual laptop non-maximized operator review are required before claiming this resolved. See the controlled GIS engineering contract for evidence and acceptance criteria.
+
 ## Resume / Open Acceptance
 
 Read the **current engineering contract** first. The app still lacks a visible source/version SHA, and the web publication review has exhibited blank action-button labels. The web PNG `IP-camera.png` case conflict is unresolved. The draft #319 map must confirm all approved SVG types and missing-symbol fallback (including eight prior Anchor/Waypoint markers) and pass genuine Android offline acceptance. No icon success implies Production map release.
