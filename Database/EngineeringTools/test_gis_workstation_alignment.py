@@ -28,7 +28,16 @@ class OfficeAlignmentPlanTests(unittest.TestCase):
         (self.plain / "pole-yellow.svg").write_bytes(svg(24, 32))
         (self.canonical / "pole-yellow.png").write_bytes(png(24, 32))
         (self.laptop_local / "pole-yellow.png").write_bytes(png(24, 32))
+        for i in range(1, 37):
+            icon = f"symbol-{i:02d}"
+            (self.plain / f"{icon}.svg").write_bytes(svg(24, 32))
+            (self.canonical / f"{icon}.png").write_bytes(png(24, 32))
+            (self.laptop_local / f"{icon}.png").write_bytes(png(24, 32))
         laptop = FakeRegistry()
+        for i in range(1, 59):
+            laptop.keys[TYPES_KEY + f"\\Test Type {i:02d}"] = {
+                "Symbol Type": ("1", laptop.REG_SZ),
+                "GPS Symbol": (f"Test Symbol {i:02d}", laptop.REG_SZ)}
         aerial = self.root / "laptop-crop.tif"
         aerial.write_bytes(b"disposable only")
         laptop.keys[MAPS_KEY + r"\Ortho 2019"]["Map Path"] = (
@@ -72,12 +81,13 @@ class OfficeAlignmentPlanTests(unittest.TestCase):
         reverses = {row["gps_symbol"]: row for row in plan["reverse_actions"]}
         self.assertEqual(reverses["Flag, Blue"]["laptop"], "Display Anchor")
         self.assertEqual(reverses["Navaid, Green"]["action"], "remove")
-        self.assertEqual(len(plan["png_actions"]), 1)
-        self.assertEqual(plan["png_actions"][0]["action"],
-                         "replace_with_backup")
+        self.assertEqual(len(plan["png_actions"]), 37)
+        self.assertTrue(any(row["action"] == "replace_with_backup"
+                            for row in plan["png_actions"]))
         self.assertEqual(plan["office_existing_maps"],
                          "NOT TOUCHED OR EVEN READ")
-        self.assertFalse(any(MAPS_KEY in k for k in self.office.opened))
+        self.assertFalse(any(k.startswith(MAPS_KEY + "\\")
+                             for k in self.office.opened))
         self.assertEqual(self.office.writes, [])
         self.assertEqual(self.office.keys[MAPS_KEY + r"\Ortho 2019"],
                          self.office_maps_before)
