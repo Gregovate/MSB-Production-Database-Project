@@ -28,11 +28,12 @@ from publish_gis_svgs import WEB_SVG, PUBLIC_SVG_BASE, web_svg_preflight, publis
 from distribute_gis_pngs import (WEB_PNG, PUBLIC_PNG_BASE, local_expertgps_folder,
                                  png_distribution_preflight, distribute_pngs)
 from gis_workstation_profile import compare_current_user
+from gis_workstation_proposal import prepare_laptop_proposal, SHARED_ROOT
 
 BACKGROUND = "#f5f8fb"
 # Source-only candidate identity, separate from approved GIS profile releases
 # or the Production Setup application version. Never guess a successful SHA.
-APP_VERSION = "V0.1.0-profile-compare"
+APP_VERSION = "V0.2.0-profile-proposals"
 APP_PHASE = "PR #378 CANDIDATE"
 
 
@@ -231,7 +232,11 @@ class Manager:
         self.profile_check_btn = ttk.Button(
             profile_controls, text="6. Compare GIS workstation release (READ ONLY)",
             command=self.check_workstation)
-        self.profile_check_btn.pack(side="left")
+        self.profile_check_btn.pack(side="left", padx=(0, 8))
+        self.profile_proposal_btn = ttk.Button(
+            profile_controls, text="Review / submit this PC configuration",
+            command=self.review_current_profile)
+        self.profile_proposal_btn.pack(side="left")
         self.profile_release_status = tk.StringVar(
             value="GIS workstation configuration: Not verified — no administrator-pinned release selected")
         ttk.Label(action_dock, textvariable=self.profile_release_status,
@@ -244,6 +249,127 @@ class Manager:
         ttk.Button(footer, text="Open selected PNG URL", command=self.open_web_png).pack(
             side="left", padx=(12, 0))
         ttk.Button(footer, text="Close", command=self.root.destroy).pack(side="right")
+
+    def review_current_profile(self):
+        """Step 6 companion: preview this PC, then explicitly save UNAPPROVED G: proposal.
+
+        This is NOT an installer or an approval of a shared GIS release. The
+        worker revalidates current HKCU/Plain/PNG/map identity at commit time.
+        """
+        if self.in_progress:
+            return
+        self.status.set("Reviewing this PC's GIS configuration (read-only)…")
+
+        def run_preflight():
+            return prepare_laptop_proposal(
+                self.plain, self.dest, SHARED_ROOT,
+                "2019 Ortho Cropped for GPS Export", save=False)
+
+        def preflight_done(data, error):
+            self.set_busy(False)
+            if error:
+                self.status.set("GIS configuration review blocked — nothing saved.")
+                messagebox.showerror(
+                    "GIS configuration review stopped",
+                    error + "\nNo GIS settings, GPX, or shared proposals changed.",
+                    parent=self.root)
+                return
+            self.status.set(
+                f"Reviewed {data['type_count']} Types, {data['png_count']} PNGs; "
+                f"{data['review_count']} marker references need review. Not saved.")
+            self.show_proposal_review(data)
+
+        self.async_operation(run_preflight, preflight_done)
+
+    def show_proposal_review(self, data):
+        """Review exact existing aliases before enabling any optional G: write."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Review this PC's GIS settings — UNAPPROVED proposal")
+        dialog.geometry("820x490")
+        dialog.minsize(620, 370)
+        dialog.transient(self.root)
+        ttk.Label(
+            dialog, text=(f"Source PC: {data['hostname']}   "
+                          f"Types: {data['type_count']}   PNGs: {data['png_count']}   "
+                          f"Maps: {data['map_count']}"),
+            padding=(12, 10, 12, 5),
+            font=("Segoe UI", 11, "bold")).pack(fill="x")
+        ttk.Label(
+            dialog, text=("This is a proposed configuration only — NOT an approved release "
+                          "and NOT an ExpertGPS installation. Historical mappings stay unchanged."),
+            padding=(12, 0, 12, 6), wraplength=770).pack(fill="x")
+        ttk.Label(
+            dialog, text=("Shared G: proposal folder: " + data["destination"]),
+            padding=(12, 0, 12, 6), wraplength=770).pack(fill="x")
+        actions = ttk.Frame(dialog, padding=(12, 5, 12, 12))
+        actions.pack(side="bottom", fill="x")
+        viewer = scrolledtext.ScrolledText(
+            dialog, wrap="word", font=("Consolas", 10))
+        viewer.pack(fill="both", expand=True, padx=12, pady=5)
+        if data["review_items"]:
+            viewer.insert(
+                "end", f"{len(data['review_items'])} existing marker references "
+                "need administrator review:\n\n")
+            for item in data["review_items"]:
+                viewer.insert(
+                    "end", f"{item['type']} — {item['reason']}\n"
+                    f"  Existing URL: {item['url']}\n\n")
+        else:
+            viewer.insert("end", "All named local Type marker URLs are canonical.\n")
+        viewer.insert(
+            "end", "\nNo automatic substitutions, renaming, registry imports, "
+            "or GPX changes will be made.\n")
+        viewer.configure(state="disabled")
+        ttk.Button(actions, text="Cancel", command=dialog.destroy).pack(side="right")
+        save_button = ttk.Button(actions, text="Save UNAPPROVED proposal to shared G:")
+        save_button.pack(side="right", padx=(0, 10))
+
+        def submit():
+            if self.in_progress:
+                return
+            if not messagebox.askyesno(
+                    "Confirm shared UNAPPROVED proposal",
+                    f"Create ONE new host-named GIS configuration proposal in:\n"
+                    f"{data['destination']}\n\n"
+                    f"Preserve all {data['review_count']} existing marker review items. "
+                    "This does NOT approve the configuration, install ExpertGPS, "
+                    "or modify the working GPX.\n\nSave now?",
+                    parent=dialog):
+                return
+            save_button.configure(state="disabled")
+            self.status.set("Rechecking current GIS settings before saving proposal…")
+            def save():
+                return prepare_laptop_proposal(
+                    self.plain, self.dest, SHARED_ROOT,
+                    "2019 Ortho Cropped for GPS Export", save=True,
+                    expected_source_sha256=data["review_source_sha256"])
+
+            def saved(receipt, error):
+                self.set_busy(False)
+                if error:
+                    if dialog.winfo_exists():
+                        dialog.destroy()
+                    self.status.set("GIS proposal NOT saved — review/check again.")
+                    messagebox.showerror(
+                        "GIS proposal save stopped",
+                        error + "\nNo approval or installation was performed.",
+                        parent=self.root)
+                    return
+                if dialog.winfo_exists():
+                    dialog.destroy()
+                self.status.set(
+                    f"UNAPPROVED proposal saved for {receipt['hostname']}; "
+                    "no settings installed.")
+                messagebox.showinfo(
+                    "Shared GIS proposal saved — NOT approved",
+                    f"New proposal:\n{receipt['destination']}\n\n"
+                    f"SHA-256 evidence (NOT an approval pin):\n"
+                    f"{receipt['proposal_sha256_not_approval']}\n\n"
+                    "The GIS administrator must review and approve a separate "
+                    "immutable release before any Show PC installation.",
+                    parent=self.root)
+            self.async_operation(save, saved)
+        save_button.configure(command=submit)
 
     def cancel_workstation_compare(self):
         """A canceled Step 6 must not retain a preceding PNG preflight STOP."""
@@ -323,6 +449,7 @@ class Manager:
         self.in_progress = value
         self.scan_btn.configure(state="disabled" if value else "normal")
         self.profile_check_btn.configure(state="disabled" if value else "normal")
+        self.profile_proposal_btn.configure(state="disabled" if value else "normal")
         self.apply_btn.configure(state="disabled" if value or self.records is None or
                                  self.plan is None or not (self.plan["add"] or self.plan["replace"])
                                  else "normal")
