@@ -45,8 +45,10 @@ class Manager:
             except (OSError, tk.TclError):
                 # Cosmetic asset failures must not block icon validation.
                 pass
-        self.root.geometry("930x785")
-        self.root.minsize(800, 710)
+        # Compact 15-inch laptop layout. The action/footer dock stays visible
+        # when Windows display scaling leaves little vertical room.
+        self.root.geometry("930x615")
+        self.root.minsize(800, 500)
         self.root.configure(bg=BACKGROUND)
         self.plain = PARK / "Plain"
         self.dest = PARK / "png"
@@ -66,15 +68,15 @@ class Manager:
         self.events = queue.Queue()
         self.progress_mode = "determinate"
 
-        heading = ttk.Frame(root, padding=(20, 17))
+        heading = ttk.Frame(root, padding=(16, 9, 16, 5))
         heading.pack(fill="x")
-        ttk.Label(heading, text="MSB Icon Library Manager", font=("Segoe UI", 19, "bold")).pack(anchor="w")
+        ttk.Label(heading, text="MSB Icon Library Manager", font=("Segoe UI", 16, "bold")).pack(anchor="w")
         ttk.Label(heading, text="Controlled source: Shared Drive / MSB GIS / Symbols   •   Maximum 32 × 32 px per icon",
                   font=("Segoe UI", 10)).pack(anchor="w", pady=(5, 0))
         ttk.Label(heading, text="Editable Masters → reviewed Plain SVG → verified canonical PNG. No Downloads copies required.",
                   font=("Segoe UI", 10)).pack(anchor="w")
 
-        controls = ttk.Frame(root, padding=(20, 0, 20, 10))
+        controls = ttk.Frame(root, padding=(16, 0, 16, 5))
         controls.pack(fill="x")
         self.scan_btn = ttk.Button(controls, text="1. Check and preview icons", command=self.check)
         self.scan_btn.pack(side="left", padx=(0, 8))
@@ -87,17 +89,25 @@ class Manager:
         ttk.Button(controls, text="Open Masters", command=lambda: self.open_dir(PARK / "Masters")).pack(side="right", padx=8)
 
         self.status = tk.StringVar(value="Ready. Use 'Check and preview icons' to validate every Plain SVG and render its PNG.")
-        ttk.Label(root, textvariable=self.status, padding=(20, 6), font=("Segoe UI", 10)).pack(fill="x")
-        progress_frame = ttk.Frame(root, padding=(20, 0, 20, 8))
+        ttk.Label(root, textvariable=self.status, padding=(16, 3), font=("Segoe UI", 10)).pack(fill="x")
+        progress_frame = ttk.Frame(root, padding=(16, 0, 16, 4))
         progress_frame.pack(fill="x")
         self.progress_bar = ttk.Progressbar(progress_frame, mode="determinate", maximum=100, value=0)
         self.progress_bar.pack(side="left", fill="x", expand=True)
         self.progress_count = tk.StringVar(value="Ready")
         ttk.Label(progress_frame, textvariable=self.progress_count, width=19, anchor="e").pack(side="right", padx=(10, 0))
         self.progress_detail = tk.StringVar(value="No operation running")
-        ttk.Label(root, textvariable=self.progress_detail, padding=(20, 0, 20, 6)).pack(fill="x")
+        ttk.Label(root, textvariable=self.progress_detail, padding=(16, 0, 16, 3)).pack(fill="x")
+
+        # Reserve the bottom dock BEFORE packing the expanding icon preview.
+        # Tk pack allocates in order; previously the huge preview consumed the
+        # available space and clipped Steps 3-6 and the Close button on laptops.
+        footer = ttk.Frame(root, padding=(16, 3, 16, 8))
+        footer.pack(side="bottom", fill="x")
+        action_dock = ttk.Frame(root, padding=(16, 0, 16, 3))
+        action_dock.pack(side="bottom", fill="x")
         body = ttk.PanedWindow(root, orient="horizontal")
-        body.pack(fill="both", expand=True, padx=20, pady=8)
+        body.pack(fill="both", expand=True, padx=16, pady=(3, 3))
         left = ttk.Frame(body)
         right = ttk.Frame(body)
         body.add(left, weight=3)
@@ -115,17 +125,17 @@ class Manager:
         self.prev_head = ttk.Label(right, text="Select an icon to preview", font=("Segoe UI", 11, "bold"))
         self.prev_head.pack(anchor="center", pady=(10, 4))
         self.prev_image = ttk.Label(right)
-        self.prev_image.pack(pady=14)
+        self.prev_image.pack(pady=4)
         self.preview_info = ttk.Label(right, text="", wraplength=270, justify="center")
         self.preview_info.pack(pady=5)
-        ttk.Separator(root).pack(fill="x", padx=20)
-        ttk.Label(root, text="Important: for layered Inkscape masters, save the correct visible layers as Plain SVG first. "
-                        "This tool will never guess layer combinations or rename GPX types.",
-                  padding=(20, 10), wraplength=830).pack(fill="x")
+        ttk.Separator(action_dock).pack(fill="x")
+        ttk.Label(action_dock, text=("Layered masters: save reviewed visible layers as Plain SVG first. "
+                        "The manager never changes GPX Types."),
+                  padding=(0, 3), wraplength=830).pack(fill="x")
         # Keep independent operations in their own rows. On Windows with
         # display scaling, a long Step 5 label used to be squeezed offscreen
         # by the Step 4 button and an unrelated section heading.
-        publication_controls = ttk.Frame(root, padding=(20, 0, 20, 6))
+        publication_controls = ttk.Frame(action_dock, padding=(0, 0, 0, 3))
         publication_controls.pack(fill="x")
         ttk.Label(publication_controls, text="Web publishing (Synology administrator only):").pack(
             side="left", padx=(0, 10))
@@ -140,14 +150,14 @@ class Manager:
 
         # #171: Missing local symbols can change ExpertGPS Type/Map Marker
         # associations even when the GPX was not intentionally saved.
-        ttk.Label(root,
+        ttk.Label(action_dock,
                   text=("CRITICAL: Install local MSB symbols BEFORE opening "
                         "an MSB GPX in ExpertGPS. Missing icons can replace "
                         "MSB markers with GPS Symbol even without Save."),
                   foreground="#a12323", font=("Segoe UI", 9, "bold"),
-                  wraplength=850, padding=(20, 2, 20, 3)).pack(fill="x")
+                  wraplength=830, padding=(0, 2, 0, 2)).pack(fill="x")
 
-        local_controls = ttk.Frame(root, padding=(20, 0, 20, 9))
+        local_controls = ttk.Frame(action_dock, padding=(0, 0, 0, 3))
         local_controls.pack(fill="x")
         ttk.Label(local_controls, text="Current Windows user / local ExpertGPS:").pack(
             side="left", padx=(0, 10))
@@ -158,7 +168,7 @@ class Manager:
 
         # #171 first phase: compare only. No HKCU write, GPX modification, or
         # installation callback exists for this separate workstation operation.
-        profile_controls = ttk.Frame(root, padding=(20, 0, 20, 7))
+        profile_controls = ttk.Frame(action_dock, padding=(0, 0, 0, 2))
         profile_controls.pack(fill="x")
         self.profile_check_btn = ttk.Button(
             profile_controls, text="6. Compare GIS workstation release (READ ONLY)",
@@ -166,11 +176,9 @@ class Manager:
         self.profile_check_btn.pack(side="left")
         self.profile_release_status = tk.StringVar(
             value="GIS workstation configuration: Not verified — no administrator-pinned release selected")
-        ttk.Label(root, textvariable=self.profile_release_status,
-                  padding=(20, 0, 20, 7), wraplength=870).pack(fill="x")
+        ttk.Label(action_dock, textvariable=self.profile_release_status,
+                  padding=(0, 0, 0, 2), wraplength=830).pack(fill="x")
 
-        footer = ttk.Frame(root, padding=(20, 0, 20, 15))
-        footer.pack(fill="x")
         ttk.Button(footer, text="Open release history / logs", command=lambda: self.open_dir(
             self.releases)).pack(side="left")
         ttk.Button(footer, text="Open selected SVG URL", command=self.open_web_svg).pack(
