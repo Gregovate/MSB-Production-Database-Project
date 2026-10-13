@@ -66,7 +66,8 @@ def _safe_shared_parents(destination, shared_root):
 
 def prepare_laptop_proposal(plain: Path, canonical_png: Path, shared_root: Path,
                             map_name: str, *, hostname=None, reg=None,
-                            local_symbols=None, save=False, now=None, token=None):
+                            local_symbols=None, save=False, now=None, token=None,
+                            expected_source_sha256=None):
     """Inspect current-user settings and either preflight or save a NEW shared proposal.
 
     save=False (default) is entirely read-only. save=True creates one new
@@ -159,6 +160,20 @@ def prepare_laptop_proposal(plain: Path, canonical_png: Path, shared_root: Path,
             "No GPX/PostGIS two-way editing is authorized by this proposal",
         ],
     }
+    # Prevent a click-through GUI approval of different data if the operator
+    # changes ExpertGPS settings or approved Plain/PNG files after reviewing.
+    review_payload = {
+        key: proposed[key] for key in (
+            "types", "symbol_to_type", "maps", "files",
+            "approved_plain_source_sha256", "review_items")
+    }
+    review_sha256 = sha256(json.dumps(
+        review_payload, sort_keys=True, ensure_ascii=False,
+        separators=(",", ":")).encode("utf-8"))
+    if expected_source_sha256 is not None and expected_source_sha256 != review_sha256:
+        raise ProfileError(
+            "Current GIS settings/assets changed since review; recheck this PC "
+            "before saving a proposal. No shared file written.")
     payload = (json.dumps(proposed, indent=2, sort_keys=True, ensure_ascii=False)
                + "\n").encode("utf-8")
     if save:
@@ -179,6 +194,7 @@ def prepare_laptop_proposal(plain: Path, canonical_png: Path, shared_root: Path,
         "png_count": len(files),
         "map_count": len(proposed["maps"]),
         "review_count": len(review),
+        "review_source_sha256": review_sha256,
         # Preflight must display discrepancies before any G: write is requested.
         "review_items": review,
     }
