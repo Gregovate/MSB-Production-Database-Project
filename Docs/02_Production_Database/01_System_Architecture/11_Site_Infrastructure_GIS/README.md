@@ -22,6 +22,8 @@ This subsystem documents permanent physical-site identities, location history, p
 
 **Laptop layout candidate (#171):** The Step-6 draft exposed a 15-inch display limitation: bottom actions and Close required an oversized window. PR #378 now reserves those controls before the expanding icon preview; Windows confirmation at normal window size is still pending. No operator settings or release package were changed.
 
+**Icon-preview follow-up (#171, draft #378):** The compact laptop candidate clipped certain enlarged PNG previews after successful 37-icon source validation. The latest source-only correction gives the preview its own scrolling area and fits zoom to available space; real laptop operator acceptance remains pending. See the [controlled engineering contract](engineering/GIS_Symbol_Management.md).
+
 **Current engineering direction:** #171 GIS/source and #230 maintained-reference work under #122 use **one governed PostgreSQL/PostGIS reference authority**. The dedicated #230 reference editor owns protected reference maintenance; the existing Setup and Field Wiring maps retain their separate use and consume accepted references. Existing #88 seasonal movements are not permanent surveyed waypoints. The ongoing #319 branch contains unaccepted editor/offline changes; its owning team must reconcile source-map work and keep these controlling documents current **before** final acceptance/merge. Historical requirements below are preserved for context; use the latest controlled engineering documents when they differ.
 
 ## Required reference-data editing authority — #171 / #230
