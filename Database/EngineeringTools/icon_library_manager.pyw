@@ -39,11 +39,13 @@ from gis_workstation_alignment import (make_office_repair_plan,
     PINNED_YOGA_PROPOSAL_SHA256)
 from gis_workstation_install import (apply_office_repair, restore_office_private_backup,
     OFFICE_TARGET_HOST)
+from gis_workstation_map_source import (inspect_office_map, save_office_map_source,
+    SOURCE_HOST as OFFICE_MAP_SOURCE_HOST, SOURCE_MAP as OFFICE_WORKING_MAP)
 
 BACKGROUND = "#f5f8fb"
 # Source-only candidate identity, separate from approved GIS profile releases
 # or the Production Setup application version. Never guess a successful SHA.
-APP_VERSION = "V0.4.2-native-types-gated"
+APP_VERSION = "V0.4.3-office-map-source"
 APP_PHASE = "PR #378 CANDIDATE"
 
 
@@ -770,6 +772,12 @@ class Manager:
         btn_compare.pack(side="left")
         btn_save = ttk.Button(actions, text="Save THIS PC observation to shared G:")
         btn_save.pack(side="left", padx=(8, 0))
+        if (observation["hostname"] == OFFICE_MAP_SOURCE_HOST and
+                observation["selected_map"] == OFFICE_WORKING_MAP):
+            btn_map = ttk.Button(
+                actions, text="Capture OFFICE map source to G:",
+                command=self.review_office_map_source)
+            btn_map.pack(side="left", padx=(8, 0))
 
         def compare():
             if self.in_progress or not dialog.winfo_exists():
@@ -922,6 +930,122 @@ class Manager:
 
         btn_compare.configure(command=compare)
         btn_save.configure(command=save)
+
+    def review_office_map_source(self):
+        """Never modify Office active scanned map; capture exact native values."""
+        if self.in_progress:
+            return
+        self.status.set(
+            "Reading MSB Office working scanned-map calibration (READ ONLY)…")
+
+        def work():
+            return inspect_office_map()
+
+        def done(result, error):
+            self.set_busy(False)
+            if error:
+                self.status.set("Office scanned-map source not verified — no save.")
+                messagebox.showerror(
+                    "Office map-source capture blocked",
+                    str(error) + "\nNo registry/maps/GPX/shared records changed.",
+                    parent=self.root)
+                return
+            self.show_office_map_source(result)
+
+        self.async_operation(work, done)
+
+    def show_office_map_source(self, review):
+        """Expose exact source settings/points BEFORE confirming G: evidence."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("OFFICE working map → laptop/Show — UNAPPROVED SOURCE")
+        dialog.geometry("900x590")
+        dialog.minsize(660, 410)
+        dialog.transient(self.root)
+        ttk.Label(
+            dialog, text="OFFICE SCANNED MAP — PRESERVE ON OFFICE / COPY TO TARGETS",
+            font=("Segoe UI", 12, "bold"),
+            padding=(12, 8, 12, 4)).pack(fill="x")
+        ttk.Label(
+            dialog, text=(f"Source: {review['origin_host']}  "
+                          f"Working map: {review['map_name']}  "
+                          f"Control points: {review['point_count']}"),
+            padding=(12, 0, 12, 5)).pack(fill="x")
+        ttk.Label(
+            dialog, text=(f"Projection: {review['projection']}  "
+                          f"Image: {review['width']} × {review['height']}  "
+                          f"Image SHA-256: {review['image_sha256']}"),
+            padding=(12, 0, 12, 8), wraplength=850).pack(fill="x")
+        ttk.Label(
+            dialog, text=("This saves ONLY UNAPPROVED MAP SOURCE evidence to G:. "
+                          "It does not edit the Office map, laptop map, Show PC, "
+                          "current GPX or any calibration."),
+            padding=(12, 0, 12, 6), wraplength=850).pack(fill="x")
+        buttons = ttk.Frame(dialog, padding=(12, 4, 12, 12))
+        buttons.pack(fill="x", side="bottom")
+        viewer = scrolledtext.ScrolledText(
+            dialog, wrap="word", font=("Consolas", 10))
+        viewer.pack(fill="both", expand=True, padx=12, pady=6)
+        entry = review["source"]
+        viewer.insert("end", "NATIVE EXPERTGPS MAP HEADER SETTINGS\n")
+        for field, spec in sorted(entry["native_header"].items()):
+            viewer.insert("end", f"{field}: {spec['value']} "
+                          f"[registry kind {spec['kind']}]\n")
+        for point, values in sorted(review["points"].items()):
+            viewer.insert("end", f"\n{point} EXACT CONTROL VALUES\n")
+            for field, spec in sorted(values.items()):
+                viewer.insert("end", f"  {field}: {spec['value']} "
+                              f"[kind {spec['kind']}]\n")
+        viewer.insert("end", "\nShared raster identity: " +
+                      entry["shared_raster_path"] + "\n")
+        for extension, asset in entry["sidecars"].items():
+            viewer.insert("end", f"{extension} SHA: {asset['sha256']}\n")
+        viewer.insert("end", "\nOFFICE CALIBRATION REMAINS UNCHANGED.\n")
+        viewer.configure(state="disabled")
+        ttk.Button(buttons, text="Cancel", command=dialog.destroy).pack(
+            side="right")
+        save_btn = ttk.Button(
+            buttons, text="Save UNAPPROVED Office map source to G:")
+        save_btn.pack(side="right", padx=(0, 10))
+
+        def save():
+            if self.in_progress or not dialog.winfo_exists():
+                return
+            if not messagebox.askyesno(
+                    "Confirm Office map source evidence",
+                    f"Record the verified map {review['map_name']} and exact "
+                    "existing calibration under the MSB GIS shared Map-Sources "
+                    "folder?\n\nThis will NOT change any PC's map or GPX. "
+                    "The image and control points will be rechecked. Save?",
+                    parent=dialog):
+                return
+            save_btn.configure(state="disabled")
+
+            def work():
+                return save_office_map_source(review)
+
+            def saved(receipt, error):
+                self.set_busy(False)
+                if error:
+                    if dialog.winfo_exists():
+                        save_btn.configure(state="normal")
+                    messagebox.showerror(
+                        "Map source NOT saved",
+                        str(error) + "\nNo workstation calibration was changed.",
+                        parent=dialog if dialog.winfo_exists() else self.root)
+                    return
+                self.status.set(
+                    "Office map source captured to G:; NO maps changed.")
+                messagebox.showinfo(
+                    "Office map source saved — NOT installed",
+                    "New shared map source:\n" + receipt["destination"] +
+                    "\n\nSHA-256 evidence:\n" + receipt["sha256"] +
+                    "\n\nOffice, laptop and Show calibration UNCHANGED. "
+                    "Target map transfer requires a separate reviewed step.",
+                    parent=dialog if dialog.winfo_exists() else self.root)
+                if dialog.winfo_exists():
+                    dialog.destroy()
+            self.async_operation(work, saved)
+        save_btn.configure(command=save)
 
     def review_saved_proposal(self):
         """Open the selected *shared G:* proposal, never self-approve it."""
