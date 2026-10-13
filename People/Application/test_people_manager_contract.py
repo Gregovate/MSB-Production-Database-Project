@@ -6,7 +6,8 @@ SQL_001 = (ROOT / "Database" / "001_create_people_manager_contract.sql").read_te
 SQL_002 = (ROOT / "Database" / "002_harden_people_search_phone_filter.sql").read_text(encoding="utf-8")
 SQL_003 = (ROOT / "Database" / "003_create_people_metadata_contract.sql").read_text(encoding="utf-8")
 SQL_004 = (ROOT / "Database" / "004_stop_automatic_msb_email_generation.sql").read_text(encoding="utf-8")
-SQL = SQL_001 + "\n" + SQL_002 + "\n" + SQL_003 + "\n" + SQL_004
+SQL_005 = (ROOT / "Database" / "005_reconcile_directus_person_identity.sql").read_text(encoding="utf-8")
+SQL = SQL_001 + "\n" + SQL_002 + "\n" + SQL_003 + "\n" + SQL_004 + "\n" + SQL_005
 BACKEND = (BASE_DIR / "backend.py").read_text(encoding="utf-8")
 HTML = (BASE_DIR / "index.html").read_text(encoding="utf-8")
 CSS = (BASE_DIR / "people.css").read_text(encoding="utf-8")
@@ -267,3 +268,78 @@ def test_analytics_contract_blocks_people_pii() -> None:
         "pg_login_name",
     ):
         assert f"'{forbidden}'" in ANALYTICS
+
+
+def test_directus_person_identity_reconciliation_is_exact_email_fail_closed() -> None:
+    assert "CREATE OR REPLACE FUNCTION ref.reconcile_directus_person_identity" in SQL_005
+    assert "lower(u.email) = v_email" in SQL_005
+    assert "lower(coalesce(u.provider, '')) = 'google'" in SQL_005
+    assert "lower(coalesce(u.external_identifier, ''))," in SQL_005
+    assert "IF v_external_identifier <> v_email THEN" in SQL_005
+    assert "WHERE lower(p.email) = v_email" in SQL_005
+    assert "No MSB Person exists with the authenticated Sheboygan Lights email" in SQL_005
+    assert "The MSB Person matching the authenticated email is inactive" in SQL_005
+    assert "already linked to a different Directus identity" in SQL_005
+    assert "Directus identity is already linked to a different MSB Person" in SQL_005
+    assert "INSERT INTO ref.person" not in SQL_005
+    assert "UPDATE public.directus_users" not in SQL_005
+    assert "UPDATE public.directus_roles" not in SQL_005
+
+
+def test_directus_person_identity_reconciliation_preserves_audit_and_is_idempotent() -> None:
+    assert "CREATE OR REPLACE FUNCTION ref.resolve_actor()" in SQL_005
+    assert "p.directus_user_id IS NULL" in SQL_005
+    assert "app.identity_reconcile_email" in SQL_005
+    assert "v_reconcile_email IS NOT NULL" in SQL_005
+    assert "PERFORM pg_catalog.set_config(" in SQL_005
+    assert "UPDATE ref.person AS p" in SQL_005
+    assert "SET directus_user_id = v_directus_user_id" in SQL_005
+    assert "IF v_person_directus_user_id = v_directus_user_id THEN" in SQL_005
+    assert "link_reconciled boolean" in SQL_005
+
+
+def test_all_protected_actor_boundaries_use_shared_identity_reconciler() -> None:
+    for function_name in (
+        "setup_management_actor",
+        "setup_movement_actor",
+        "setup_execution_actor",
+        "setup_inventory_actor",
+        "people_management_actor",
+        "controller_management_actor",
+    ):
+        section = SQL_005.split(f"CREATE OR REPLACE FUNCTION ref.{function_name}", 1)[1]
+        section = section.split("CREATE OR REPLACE FUNCTION", 1)[0]
+        assert "ref.reconcile_directus_person_identity(v_email)" in section
+
+    label_section = SQL_005.split(
+        "CREATE OR REPLACE FUNCTION ref.request_controller_label", 1
+    )[1]
+    assert "ref.reconcile_directus_person_identity(v_email)" in label_section
+
+
+def test_identity_reconciliation_report_surfaces_safe_and_conflict_states() -> None:
+    assert "CREATE OR REPLACE FUNCTION ref.directus_person_identity_reconciliation_report()" in SQL_005
+    for disposition in (
+        "MULTIPLE_ACTIVE_DIRECTUS",
+        "PERSON_WITHOUT_DIRECTUS",
+        "DIRECTUS_WITHOUT_PERSON",
+        "DIRECTUS_INACTIVE",
+        "PROVIDER_CONFLICT",
+        "EXTERNAL_IDENTIFIER_CONFLICT",
+        "PERSON_INACTIVE",
+        "LINKED_OK",
+        "SAFE_EXACT_EMAIL_UNLINKED",
+        "PERSON_LINK_CONFLICT",
+        "DIRECTUS_UUID_CONFLICT",
+    ):
+        assert disposition in SQL_005
+
+
+def test_people_release_version_is_v022() -> None:
+    assert 'APP_VERSION = "V0.2.2"' in BACKEND
+
+
+def test_people_health_exposes_identity_reconciliation_contract() -> None:
+    assert "ref.reconcile_directus_person_identity(text)" in BACKEND
+    assert "ref.directus_person_identity_reconciliation_report()" in BACKEND
+    assert "identity_reconciliation_contract=bool(identity_reconcile_fn and identity_report_fn)" in BACKEND

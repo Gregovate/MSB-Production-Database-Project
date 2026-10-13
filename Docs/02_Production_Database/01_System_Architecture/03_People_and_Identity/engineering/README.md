@@ -6,6 +6,7 @@ This is the engineering starting point for Production Database work involving pe
 
 - [`../README.md`](../README.md) — subsystem overview
 - [`Directus_User_Onboarding_Identity_Contract_2026-09-09.md`](Directus_User_Onboarding_Identity_Contract_2026-09-09.md) — current Production Directus onboarding behavior and People identity lifecycle
+- [`Directus_Person_Identity_Reconciliation_Contract_2026-10-13.md`](Directus_Person_Identity_Reconciliation_Contract_2026-10-13.md) — Issue #385 durable exact-email self-reconciliation contract for recurring Directus↔Person link failures
 - [`People_Manager_Metadata_Implementation_2026-09-09.md`](People_Manager_Metadata_Implementation_2026-09-09.md) — capability/qualification/Setup-role implementation
 - [`Internal_Web_Backbone_Handoff.md`](Internal_Web_Backbone_Handoff.md) — source-owned Production intranet integration handoff
 - [`../../../../../People/README.md`](../../../../../People/README.md) — current People Manager implementation/runtime summary
