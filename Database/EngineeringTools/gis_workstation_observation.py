@@ -180,18 +180,38 @@ def compare_with_laptop(observation, laptop_proposal, *, shared_root=SHARED_ROOT
     laptop_maps = set(laptop["maps"])
     office_maps = set(current["maps"])
     if laptop_maps != office_maps:
-        rows.append(("Different map variants (expected)",
+        rows.append(("Different map registrations (review separately)",
                      "Office: " + ", ".join(sorted(office_maps)),
                      "Laptop: " + ", ".join(sorted(laptop_maps)),
-                     "No map replacement or calibration sync inferred"))
-    else:
-        for map_name in sorted(laptop_maps):
-            e = current["maps"][map_name]
-            l = laptop["maps"][map_name]
-            for field in ("calibration", "points", "image_sha256"):
-                if e[field] != l[field]:
-                    rows.append(("Map evidence differs", map_name, field,
-                                 "Must review before any calibration transfer"))
+                     "Do not assume identical or interchangeable calibration"))
+    # A renamed image can be EXACTLY the same bytes but intentionally have
+    # wrong projection/control points on one PC. Do not certify it as an
+    # expected independent map variant solely because the names differ.
+    for office_name, office_entry in current["maps"].items():
+        for laptop_name, laptop_entry in laptop["maps"].items():
+            identical_image = (
+                office_entry["image_sha256"] is not None and
+                office_entry["image_sha256"] == laptop_entry["image_sha256"])
+            label = office_name if office_name == laptop_name else (
+                office_name + " ↔ " + laptop_name)
+            if identical_image:
+                for field in ("calibration", "points"):
+                    if office_entry[field] != laptop_entry[field]:
+                        rows.append((
+                            "SAME IMAGE, DIFFERENT GEOREFERENCE — REVIEW", label,
+                            field,
+                            "Equal image SHA, differing projection/dimensions or "
+                            "control points. Do not apply or auto-correct."))
+            elif office_name == laptop_name:
+                rows.append((
+                    "Matching map name but DIFFERENT IMAGE — REVIEW",
+                    label, "image_sha256",
+                    "Map names alone cannot prove image/coordinate equivalence"))
+    for office_name, office_entry in current["maps"].items():
+        if not office_entry.get("image_file_verified"):
+            rows.append((
+                "Selected Office map image NOT VERIFIED", office_name, "",
+                "Missing image hash cannot establish calibration identity"))
     return {"rows": rows, "office_type_count": len(current["types"]),
             "laptop_type_count": len(laptop["types"]),
             "office_map": observation["selected_map"],
