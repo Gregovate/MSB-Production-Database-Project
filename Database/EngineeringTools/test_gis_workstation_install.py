@@ -77,7 +77,7 @@ class OfficeInstallTests(OfficeAlignmentPlanTests):
             shared_root=self.shared, hostname="MSB-OFFICE-PC",
             private_backup_base=self.backups,
             closed_checker=checker if checker is not None else (lambda: True),
-            approval_confirmed=confirmed)
+            approval_confirmed=confirmed, source_pin=self.pin)
 
     def test_success_targeted_parity_and_private_rollback_exists(self):
         receipt = self.install()
