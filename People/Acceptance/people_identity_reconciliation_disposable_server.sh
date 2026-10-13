@@ -2,6 +2,11 @@
 set -euo pipefail
 umask 077
 
+REPO_ROOT="/opt/fieldwiring"
+PRODUCTION_PYTHON="/opt/fieldwiring/.venv/bin/python"
+SOURCE_REF="agent/385-directus-person-self-reconcile"
+ACCEPTED_RUNTIME_SHA="fc831af3986e83c01501057c48f305f8c23672e0"
+CANDIDATE_WORKTREE="/tmp/msb-identity-reconcile-static-${$}"
 PROD_CONTAINER="msb-postgres"
 PROD_DB="msb"
 DB_ACTOR="msbadmin"
@@ -49,6 +54,10 @@ cleanup() {
         fi
     fi
     sudo docker rm -f "$TEST_CONTAINER" >/dev/null 2>&1 || true
+    if sudo git -C "$REPO_ROOT" worktree list --porcelain 2>/dev/null | grep -Fq "worktree $CANDIDATE_WORKTREE"; then
+        sudo git -C "$REPO_ROOT" worktree remove --force "$CANDIDATE_WORKTREE" >/dev/null 2>&1 || true
+    fi
+    sudo git -C "$REPO_ROOT" worktree prune >/dev/null 2>&1 || true
     rm -f "$DUMP_FILE" >/dev/null 2>&1 || true
     echo "Report retained at: $REPORT"
     echo "Exit status: $status"
@@ -65,6 +74,22 @@ sudo docker inspect "$PROD_CONTAINER" >/dev/null
     exit 3
 }
 sudo docker network inspect "$NETWORK" >/dev/null
+
+echo "--- Exact-candidate contract regression in governed Production Python runtime ---"
+sudo git -C "$REPO_ROOT" fetch origin "$SOURCE_REF:refs/remotes/origin/$SOURCE_REF"
+sudo git -C "$REPO_ROOT" cat-file -e "$ACCEPTED_RUNTIME_SHA^{commit}"
+sudo git -C "$REPO_ROOT" worktree add --detach "$CANDIDATE_WORKTREE" "$ACCEPTED_RUNTIME_SHA"
+
+for required in \
+    "$CANDIDATE_WORKTREE/People/Application/test_people_manager_contract.py" \
+    "$CANDIDATE_WORKTREE/People/Application/test_people_shared_tablet_identity_contract.py" \
+    "$CANDIDATE_WORKTREE/People/Database/005_reconcile_directus_person_identity.sql"; do
+    [[ -s "$required" ]] || { echo "FAIL: exact candidate is missing $required"; exit 5; }
+done
+
+sudo -u fieldwiring -H bash -c \
+    "cd '$CANDIDATE_WORKTREE' && '$PRODUCTION_PYTHON' -m pytest -q -p no:cacheprovider People/Application/test_people_manager_contract.py People/Application/test_people_shared_tablet_identity_contract.py"
+echo "PASS: exact-candidate contract regression"
 
 PROD_BEFORE="$(prod_fingerprint)"
 echo "Production ref.person fingerprint: $PROD_BEFORE"
