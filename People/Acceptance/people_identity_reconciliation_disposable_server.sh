@@ -182,12 +182,17 @@ WHERE u.status='active'
   AND s.can_manage_setup
   AND pm.can_manage_people
   AND cm.can_manage_controllers
-ORDER BY CASE WHEN lower(u.email)='gliebig@sheboyganlights.org' THEN 0 ELSE 1 END, u.email
+ORDER BY CASE WHEN p.person_id <> 17 THEN 0 ELSE 1 END, u.email
 LIMIT 1;
 ")"
 [[ -n "$ACTOR_ROW" ]] || { echo "FAIL: no fully-authorized mapped Google actor found in clone"; exit 5; }
 IFS='|' read -r ACTOR_EMAIL ACTOR_UUID ACTOR_PERSON_ID ACTOR_ROLE_ID PRIOR_UPDATER <<< "$ACTOR_ROW"
 echo "Acceptance actor: $ACTOR_EMAIL -> Person $ACTOR_PERSON_ID / $ACTOR_UUID"
+if [[ "$ACTOR_PERSON_ID" == "17" ]]; then
+    echo "WARN: clone has no non-msbadmin fully-authorized actor; audit bootstrap remains functionally tested but is not actor-distinguishing"
+else
+    echo "PASS: acceptance actor differs from msbadmin Person 17, so reconciliation audit attribution is actor-distinguishing"
+fi
 
 unlink_actor() {
     psql_q -c "UPDATE ref.person SET directus_user_id=NULL WHERE person_id=$ACTOR_PERSON_ID;" >/dev/null
