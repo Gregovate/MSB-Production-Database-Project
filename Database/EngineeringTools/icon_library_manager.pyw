@@ -34,7 +34,8 @@ from gis_workstation_observation import (list_scanned_map_names, read_observatio
     compare_with_laptop, save_observation)
 from gis_workstation_comparison_report import (format_comparison_report,
     save_comparison_report)
-from gis_workstation_alignment import (make_office_repair_plan, plan_digest,
+from gis_workstation_alignment import (make_office_repair_plan,
+    make_target_alignment_plan, plan_digest,
     PINNED_YOGA_PROPOSAL_SHA256)
 from gis_workstation_install import (apply_office_repair, restore_office_private_backup,
     OFFICE_TARGET_HOST)
@@ -42,7 +43,7 @@ from gis_workstation_install import (apply_office_repair, restore_office_private
 BACKGROUND = "#f5f8fb"
 # Source-only candidate identity, separate from approved GIS profile releases
 # or the Production Setup application version. Never guess a successful SHA.
-APP_VERSION = "V0.4.0-office-gpx-repair"
+APP_VERSION = "V0.4.1-two-target-review"
 APP_PHASE = "PR #378 CANDIDATE"
 
 
@@ -254,7 +255,7 @@ class Manager:
         self.profile_candidate_btn.pack(side="left", padx=(0, 8))
         self.profile_align_btn = ttk.Button(
             profile_advanced,
-            text="Review Office GPX settings repair (READ ONLY)",
+            text="Review laptop alignment — this PC (READ ONLY)",
             command=self.review_office_repair)
         self.profile_align_btn.pack(side="left")
         self.profile_release_status = tk.StringVar(
@@ -406,21 +407,79 @@ class Manager:
         source = SHARED_ROOT / "Proposals" / "YOGA-GREG" / (
             "MSB-GIS-Workstation-Proposal-YOGA-GREG-"
             "20261013T132823Z-6191db1f5562.json")
-        self.status.set("Preparing pinned YOGA-GREG → Office repair plan (READ ONLY)…")
+        from gis_workstation_proposal import workstation_hostname
+        target = workstation_hostname()
+        self.status.set(
+            f"Preparing YOGA-GREG → {target} alignment plan (READ ONLY)…")
         def work():
-            plan = make_office_repair_plan(source, self.dest)
+            if target == OFFICE_TARGET_HOST:
+                plan = make_office_repair_plan(source, self.dest)
+            else:
+                plan = make_target_alignment_plan(
+                    source, self.dest, hostname=target)
             return plan, plan_digest(plan)
         def done(result, error):
             self.set_busy(False)
             if error:
-                self.status.set("Office repair preview BLOCKED — nothing changed.")
+                self.status.set("Workstation alignment preview BLOCKED — nothing changed.")
                 messagebox.showerror(
-                    "Office GPX settings repair not verified",
+                    "ExpertGPS alignment review not verified",
                     str(error) + "\nNo registry, map, PNG, or GPX changed.",
                     parent=self.root)
                 return
-            self.show_office_repair_plan(source, *result)
+            if target == OFFICE_TARGET_HOST:
+                self.show_office_repair_plan(source, *result)
+            else:
+                self.show_target_alignment_review(*result)
         self.async_operation(work, done)
+
+    def show_target_alignment_review(self, plan, digest):
+        """Non-Office PCs see the same laptop parity plan, with NO install path."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("GPX settings comparison — READ ONLY — NOT INSTALLABLE")
+        dialog.geometry("890x575")
+        dialog.minsize(670, 395)
+        dialog.transient(self.root)
+        ttk.Label(
+            dialog, text="THIS PC VS YOGA-GREG — READ ONLY / NO INSTALL",
+            font=("Segoe UI", 12, "bold"),
+            padding=(12, 10, 12, 5)).pack(fill="x")
+        ttk.Label(
+            dialog, text=(f"Target: {plan['target_pc_hostname']}  "
+                          f"Source: YOGA-GREG  "
+                          f"Types: {plan['office_types_before']} → "
+                          f"{plan['laptop_type_count']}  "
+                          f"GPS reverse: {plan['office_reverse_before']} → "
+                          f"{plan['laptop_reverse_count']}"),
+            padding=(12, 0, 12, 6)).pack(fill="x")
+        ttk.Label(
+            dialog, text=("This is a proposed Type/icon alignment, NOT an approved "
+                          "installation. Existing map calibration and master GPX "
+                          "are excluded. The Office pilot must pass first."),
+            wraplength=830, padding=(12, 0, 12, 7)).pack(fill="x")
+        view = scrolledtext.ScrolledText(
+            dialog, wrap="word", font=("Consolas", 10))
+        view.pack(fill="both", expand=True, padx=12, pady=6)
+        view.insert("end", f"Source proposal SHA: {PINNED_YOGA_PROPOSAL_SHA256}\n")
+        view.insert("end", f"Plan fingerprint (evidence only): {digest}\n\n")
+        for action in plan["type_actions"]:
+            view.insert("end", f"{action['action']}: {action['type']}\n")
+            for name, row in action.get("changes", {}).items():
+                view.insert(
+                    "end", f"  {name}: current={row['office']} "
+                    f"→ laptop={row['laptop']}\n")
+        view.insert("end", "\nGPS SYMBOL REVERSE ASSIGNMENTS\n")
+        for action in plan["reverse_actions"]:
+            view.insert(
+                "end", f"{action['action']} {action['gps_symbol']}: "
+                f"{action['office']} → {action['laptop']}\n")
+        view.insert("end", "\nLOCAL CANONICAL PNG DIFFERENCES\n")
+        for action in plan["png_actions"]:
+            view.insert("end", f"{action['action']}: {action['file']}\n")
+        view.insert("end", "\nNO INSTALLATION IS AUTHORIZED FOR THIS HOST.\n")
+        view.configure(state="disabled")
+        ttk.Button(dialog, text="Close", command=dialog.destroy).pack(
+            side="bottom", pady=(0, 10))
 
     def show_office_repair_plan(self, source, plan, digest):
         """Mandatory inspectable plan; confirmation binds exact source/target."""
