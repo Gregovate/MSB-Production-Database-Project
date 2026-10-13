@@ -466,11 +466,17 @@ class Manager:
         dialog.geometry("880x570")
         dialog.minsize(680, 400)
         dialog.transient(self.root)
+        # Put the window's purpose in the BODY, not just a faint OS title bar:
+        # field operators must identify the right inspection without hunting.
+        ttk.Label(
+            dialog, text="THIS PC — GIS RECONNAISSANCE (READ ONLY; NOT SYNCHRONIZED)",
+            padding=(12, 9, 12, 3),
+            font=("Segoe UI", 12, "bold")).pack(fill="x")
         ttk.Label(
             dialog, text=(f"PC: {observation['hostname']}  "
                           f"ExpertGPS Types: {observation['type_count']}  "
                           f"GPS reverse entries: {observation['reverse_count']}"),
-            padding=(12, 10, 12, 6),
+            padding=(12, 0, 12, 6),
             font=("Segoe UI", 11, "bold")).pack(fill="x")
         ttk.Label(
             dialog, text=("Selected map: " + observation["selected_map"] +
