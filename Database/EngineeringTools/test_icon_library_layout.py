@@ -10,6 +10,7 @@ import tkinter as tk
 from tkinter import ttk
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 import unittest
 
 HERE = Path(__file__).resolve().parent
@@ -65,6 +66,30 @@ class SmallScreenLayoutTests(unittest.TestCase):
                 finally:
                     root.destroy()
 
+
+    def test_cancel_step6_clears_stale_png_stop_without_registry_changes(self):
+        # A preceding Step 4 filename-case collision must not look like a
+        # Step 6 failure after the operator cancels the manifest picker.
+        root = tk.Tk()
+        try:
+            manager = Manager(root)
+            manager.status.set("Public web PNG library: preflight blocked")
+            manager.progress_count.set("Stopped")
+            previous = manager.profile_release_status.get()
+            with patch("tkinter.filedialog.askopenfilename", return_value=""):
+                manager.check_workstation()
+            self.assertIn("canceled", manager.status.get())
+            self.assertEqual(manager.progress_count.get(), "Canceled")
+            self.assertEqual(manager.profile_release_status.get(), previous)
+            # Canceling the second, administrator-SHA prompt is also inert.
+            manager.status.set("Public web PNG library: preflight blocked")
+            with patch("tkinter.filedialog.askopenfilename", return_value="fixture.json"), \
+                 patch("tkinter.simpledialog.askstring", return_value=None):
+                manager.check_workstation()
+            self.assertIn("canceled", manager.status.get())
+            self.assertEqual(manager.profile_release_status.get(), previous)
+        finally:
+            root.destroy()
 
     def test_preview_png_fits_or_scrolls_in_compact_window(self):
         # Regression for real laptop screenshots: cropped antenna, car and
