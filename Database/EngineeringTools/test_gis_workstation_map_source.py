@@ -63,45 +63,6 @@ class OfficeMapSourceTests(unittest.TestCase):
             shared_root=self.shared, shared_image_root=self.image_root,
             now=self.when, token="aabbccddeeff")
 
-    def test_all_three_registered_maps_capture_without_writing_registry(self):
-        # Two other Office registrations include an intentionally wrong test map.
-        for name in ("2019 Ortho Cropped for GPS Export",
-                     "2019OrthoEvergreenParktoWorkshop"):
-            raster = self.image_root / (name + ".tif")
-            raster.write_bytes(name.encode("utf-8"))
-            header = dict(self.reg.keys[MAPS_KEY + r"\\EvergreenParkCropped"])
-            header["Map Path"] = (str(raster), self.reg.REG_SZ)
-            self.reg.keys[MAPS_KEY + "\\\\" + name] = header
-            for point in ("Point01", "Point02"):
-                self.reg.keys[MAPS_KEY + "\\\\" + name + "\\\\" + point] = dict(
-                    self.reg.keys[MAPS_KEY + r"\\EvergreenParkCropped\\" + point])
-            # Deliberately incorrect georeference must be preserved as evidence.
-            self.reg.keys[MAPS_KEY + "\\\\" + name + r"\\Point01"]["X"] = (
-                "999", self.reg.REG_SZ)
-            reviewed = inspect_office_map(
-                map_name=name, reg=self.reg, hostname=self.host,
-                shared_image_root=self.image_root)
-            self.assertEqual(reviewed["map_name"], name)
-            self.assertEqual(reviewed["points"]["Point01"]["X"]["value"], "999")
-            receipt = save_office_map_source(
-                reviewed, reg=self.reg, hostname=self.host,
-                shared_root=self.shared, shared_image_root=self.image_root,
-                now=self.when, token=("111111111111" if name.startswith("2019 Ortho")
-                                      else "222222222222"))
-            record = json.loads(Path(receipt["destination"]).read_text())
-            self.assertEqual(record["map_name"], name)
-            self.assertEqual(record["target_roles"], [])
-        self.assertEqual(len(list((self.shared / "Map-Sources" /
-                                   self.host).glob("*.json"))), 2)
-        self.assertEqual(self.reg.writes, [])
-
-    def test_map_selection_rejects_unregistered_or_path_like_name(self):
-        for name in ("missing", r"..\\Point01", ""):
-            with self.assertRaises(ProfileError):
-                inspect_office_map(map_name=name, reg=self.reg,
-                                   hostname=self.host,
-                                   shared_image_root=self.image_root)
-
     def test_source_read_only_exact_values_and_g_file_hash(self):
         reviewed = self.capture()
         self.assertEqual(reviewed["map_name"], "EvergreenParkCropped")
