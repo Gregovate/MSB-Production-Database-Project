@@ -83,7 +83,9 @@ class SmallScreenLayoutTests(unittest.TestCase):
                 root.update_idletasks()
                 for name, width, height in (
                     ("antenna-l.png", 32, 32),
+                    ("antenna-r.png", 32, 32),
                     ("car-l.png", 32, 18),
+                    ("cf50d-l.png", 32, 32),
                     ("container-unknown.png", 32, 32),
                 ):
                     source = tk.PhotoImage(width=width, height=height)
