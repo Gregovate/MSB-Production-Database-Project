@@ -10,7 +10,7 @@ $Sql005 = Join-Path $RepoRoot 'People\Database\005_reconcile_directus_person_ide
 $ServerScript = Join-Path $ScriptDir 'people_identity_reconciliation_disposable_server.sh'
 
 $SourceRef = 'origin/agent/385-directus-person-self-reconcile'
-$CandidateSha = 'f6f581dce0e65b6b9be0cff62478719550e3fefe'
+$CandidateSha = '2c9a2937079f817dafd5119584aaffc77b51357d'
 
 foreach ($path in @($Sql005, $ServerScript)) {
     if (-not (Test-Path -LiteralPath $path)) {
