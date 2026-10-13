@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from gis_workstation_alignment import make_office_repair_plan, load_pinned_laptop_source
+from gis_workstation_alignment import make_office_repair_plan, load_pinned_laptop_source, make_target_alignment_plan
 from gis_workstation_profile import ProfileError, sha256_file, MAPS_KEY, TYPES_KEY, REVERSE_KEY
 from gis_workstation_proposal import prepare_laptop_proposal
 from test_gis_workstation_profile import FakeRegistry
@@ -105,6 +105,16 @@ class OfficeAlignmentPlanTests(unittest.TestCase):
             with self.subTest(hostname=hostname):
                 with self.assertRaisesRegex(ProfileError, "restricted"):
                     self.plan(hostname)
+        self.assertEqual(self.office.writes, [])
+
+    def test_other_workstation_comparison_is_readonly(self):
+        report = make_target_alignment_plan(
+            self.path, self.canonical, local_symbols=self.office_local,
+            reg=self.office, shared_root=self.shared,
+            hostname="SHOW-TEST", approved_pin=self.pin)
+        self.assertEqual(report["target_pc_hostname"], "SHOW-TEST")
+        self.assertIn("INSTALLATION NOT AUTHORIZED", report["status"])
+        self.assertEqual(report["laptop_type_count"], 59)
         self.assertEqual(self.office.writes, [])
 
     def test_canonical_png_has_changed_blocks_office_plan(self):
