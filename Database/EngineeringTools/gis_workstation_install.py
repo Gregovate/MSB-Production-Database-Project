@@ -373,7 +373,13 @@ def restore_office_private_backup(backup_path, *, reg=None,
     symbols = (Path(local_symbols) if local_symbols is not None else
                Path(os.environ["LOCALAPPDATA"]) / "TopoGrafix" /
                "Symbols" / "msb")
-    _restore_private_backup(reg, symbols, backup)
+    recovered = _restore_private_backup(reg, symbols, backup)
+    if snapshot_managed_registry(reg) != recovered["registry"]:
+        raise ProfileError(
+            "Original Office targeted registry values failed readback verification")
+    for name, expected in recovered["symbol_sha256"].items():
+        if sha256_file(symbols / name) != expected:
+            raise ProfileError("Original Office MSB symbol failed recovery SHA-256")
     return {"status": "ORIGINAL OFFICE TYPES/REVERSE/PNGS RESTORED",
             "host": host, "source_backup": str(backup),
             "maps": "NOT READ OR MODIFIED",
