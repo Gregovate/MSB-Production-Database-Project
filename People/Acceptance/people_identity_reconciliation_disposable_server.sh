@@ -5,7 +5,7 @@ umask 077
 REPO_ROOT="/opt/fieldwiring"
 PRODUCTION_PYTHON="/opt/fieldwiring/.venv/bin/python"
 SOURCE_REF="agent/385-directus-person-self-reconcile"
-ACCEPTED_RUNTIME_SHA="f6f581dce0e65b6b9be0cff62478719550e3fefe"
+ACCEPTED_RUNTIME_SHA="2c9a2937079f817dafd5119584aaffc77b51357d"
 CANDIDATE_WORKTREE="/tmp/msb-identity-reconcile-static-${$}"
 PROD_CONTAINER="msb-postgres"
 PROD_DB="msb"
@@ -137,15 +137,24 @@ sudo docker run -d --name "$TEST_CONTAINER" --network "$NETWORK" \
     "$IMAGE" >/dev/null
 
 ready=0
+pid1=""
 for _ in $(seq 1 120); do
-    if sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
-        pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
+    [[ "$(sudo docker inspect "$TEST_CONTAINER" --format '{{.State.Running}}' 2>/dev/null || true)" == "true" ]] || break
+    pid1="$(sudo docker exec "$TEST_CONTAINER" sh -c 'cat /proc/1/comm' 2>/dev/null | tr -d '\r\n' || true)"
+    if [[ "$pid1" == "postgres" ]] \
+       && sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
+            pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
         ready=1
         break
     fi
     sleep 1
 done
-[[ "$ready" == "1" ]] || { echo "FAIL: disposable PostgreSQL did not become ready"; exit 4; }
+if [[ "$ready" != "1" ]]; then
+    echo "FAIL: disposable PostgreSQL did not reach final post-init ready state"
+    echo "Observed PID 1 command: ${pid1:-unknown}"
+    sudo docker logs "$TEST_CONTAINER" || true
+    exit 4
+fi
 
 sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
     createdb -U "$DB_ACTOR" -T template0 "$PROD_DB"
@@ -186,17 +195,25 @@ SQL
 echo "PASS: reconciliation helpers remain internal"
 
 echo
-echo "--- Shared tablet accounts remain non-human / Browser-only ---"
-set +e
-TABLET_OUTPUT="$(psql_q -c "SELECT * FROM ref.reconcile_directus_person_identity('tablet-99@sheboyganlights.org');" 2>&1)"
-TABLET_RC=$?
-set -e
-if [[ "$TABLET_RC" -eq 0 || "$TABLET_OUTPUT" != *"Shared tablet accounts are Browser-only device identities"* ]]; then
-    echo "FAIL: shared tablet account was not rejected by identity reconciliation"
-    echo "$TABLET_OUTPUT"
-    exit 5
-fi
-echo "PASS: tablet-xx account cannot reconcile to a human Person"
+echo "--- Shared device/service accounts remain non-human ---"
+expect_nonhuman_rejected() {
+    local email="$1"
+    local output
+    local rc
+    set +e
+    output="$(psql_q -c "SELECT * FROM ref.reconcile_directus_person_identity('$email');" 2>&1)"
+    rc=$?
+    set -e
+    if [[ "$rc" -eq 0 || "$output" != *"Shared device/service accounts are non-human identities"* ]]; then
+        echo "FAIL: non-human account was not rejected: $email"
+        echo "$output"
+        exit 5
+    fi
+    echo "PASS: non-human account cannot reconcile to a Person: $email"
+}
+expect_nonhuman_rejected "tablet-99@sheboyganlights.org"
+expect_nonhuman_rejected "printservice@sheboyganlights.org"
+expect_nonhuman_rejected "production-1@sheboyganlights.org"
 
 echo
 echo "--- Select one existing fully-authorized mapped Google actor in clone ---"
