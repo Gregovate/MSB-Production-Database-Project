@@ -288,6 +288,8 @@ def test_directus_person_identity_reconciliation_is_exact_email_fail_closed() ->
 def test_directus_person_identity_reconciliation_preserves_audit_and_is_idempotent() -> None:
     assert "CREATE OR REPLACE FUNCTION ref.resolve_actor()" in SQL_005
     assert "p.directus_user_id IS NULL" in SQL_005
+    assert "app.identity_reconcile_email" in SQL_005
+    assert "v_reconcile_email IS NOT NULL" in SQL_005
     assert "PERFORM pg_catalog.set_config(" in SQL_005
     assert "UPDATE ref.person AS p" in SQL_005
     assert "SET directus_user_id = v_directus_user_id" in SQL_005
@@ -317,6 +319,7 @@ def test_all_protected_actor_boundaries_use_shared_identity_reconciler() -> None
 def test_identity_reconciliation_report_surfaces_safe_and_conflict_states() -> None:
     assert "CREATE OR REPLACE FUNCTION ref.directus_person_identity_reconciliation_report()" in SQL_005
     for disposition in (
+        "MULTIPLE_ACTIVE_DIRECTUS",
         "PERSON_WITHOUT_DIRECTUS",
         "DIRECTUS_WITHOUT_PERSON",
         "DIRECTUS_INACTIVE",
