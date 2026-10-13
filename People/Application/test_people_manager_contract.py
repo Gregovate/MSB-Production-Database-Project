@@ -336,3 +336,9 @@ def test_identity_reconciliation_report_surfaces_safe_and_conflict_states() -> N
 
 def test_people_release_version_is_v022() -> None:
     assert 'APP_VERSION = "V0.2.2"' in BACKEND
+
+
+def test_people_health_exposes_identity_reconciliation_contract() -> None:
+    assert "ref.reconcile_directus_person_identity(text)" in BACKEND
+    assert "ref.directus_person_identity_reconciliation_report()" in BACKEND
+    assert "identity_reconciliation_contract=bool(identity_reconcile_fn and identity_report_fn)" in BACKEND
