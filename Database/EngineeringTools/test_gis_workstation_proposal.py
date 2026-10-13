@@ -59,6 +59,7 @@ class LaptopProposalTests(unittest.TestCase):
         self.assertEqual(result["png_count"], 1)
         self.assertEqual(result["map_count"], 1)
         self.assertEqual(result["hostname"], self.host)
+        self.assertEqual(result["review_items"], [])
         self.assertFalse(self.shared.exists(), "Preflight must not create shared folders")
         self.assertFalse(self.out.exists())
         self.assertEqual(self.reg.writes, [])
@@ -104,6 +105,10 @@ class LaptopProposalTests(unittest.TestCase):
         self.reg.keys[TYPES_KEY + r"\Display Anchor"]["Bitmap Symbol URL"] = (
             "https://webassets.sheboyganlights.org/images/symbols/msb/Pole-Yellow.png",
             self.reg.REG_SZ)
+        preflight = self.build()
+        self.assertEqual(len(preflight["review_items"]), 1)
+        self.assertEqual(preflight["review_items"][0]["type"], "Display Anchor")
+        self.assertFalse(self.shared.exists(), "Review-only mode must not write")
         self.build(save=True)
         report = json.loads(self.out.read_text("utf-8"))
         self.assertEqual(len(report["review_items"]), 1)
