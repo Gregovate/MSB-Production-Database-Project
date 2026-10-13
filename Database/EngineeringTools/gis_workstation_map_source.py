@@ -57,16 +57,17 @@ def inspect_office_map(*, map_name=SOURCE_MAP, reg=None, hostname=None,
             raise ProfileError("Office map capture requires the real Windows user")
         import winreg
         reg = winreg
-    # An explicit selection may only name a direct existing map registration.
+    # Match one literal subkey name, never a registry path or parent traversal.
+    separator = chr(92)
     if (not isinstance(map_name, str) or not map_name or
-            map_name in (".", "..") or "\\\\" in map_name or "/" in map_name or
-            any(ord(ch) < 32 for ch in map_name)):
+            map_name in (".", "..") or separator in map_name or
+            "/" in map_name or any(ord(ch) < 32 for ch in map_name)):
         raise ProfileError("Invalid selected Office scanned-map name")
     with _open(reg, MAPS_KEY) as maps_key:
         if map_name not in list(_subkeys(reg, maps_key)):
             raise ProfileError("Selected scanned map is not registered on this Office PC")
     name = map_name
-    with _open(reg, MAPS_KEY + "\\\\" + name) as key:
+    with _open(reg, MAPS_KEY + separator + name) as key:
         keys = list(_subkeys(reg, key))
         unknown = [x for x in keys if x not in ("Point01", "Point02", "Point03")]
         if unknown:
