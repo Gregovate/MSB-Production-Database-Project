@@ -7,6 +7,7 @@ Run under xvfb-run on Linux or on a test desktop with an active GUI.
 from pathlib import Path
 import runpy
 import tkinter as tk
+from tkinter import ttk
 import unittest
 
 HERE = Path(__file__).resolve().parent
@@ -33,7 +34,7 @@ class SmallScreenLayoutTests(unittest.TestCase):
                     root.update_idletasks()
                     buttons = {
                         str(w.cget("text")): w for w in walk(root)
-                        if isinstance(w, (tk.Button, __import__("tkinter").ttk.Button))
+                        if isinstance(w, (tk.Button, ttk.Button))
                     }
                     expected = [
                         "1. Check and preview icons",
