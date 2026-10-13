@@ -131,13 +131,23 @@ def _validate_symbol_folder(symbols, canonical, names):
         raise ProfileError("Current user's TopoGrafix Symbols parent unavailable")
     if folder.exists() and not folder.is_dir():
         raise ProfileError("Local MSB symbol path is not a directory")
+    case_aliases = {}
     if folder.exists():
-        existing = {p.name.casefold(): p.name for p in folder.iterdir()
-                    if p.is_file()}
+        existing = {}
+        for p in folder.iterdir():
+            if p.is_symlink():
+                raise ProfileError("Linked old ExpertGPS symbol file refused")
+            if p.is_file():
+                folded = p.name.casefold()
+                if folded in existing:
+                    raise ProfileError("Case-ambiguous Office MSB symbol filenames")
+                existing[folded] = p.name
         for name in names:
-            if name.casefold() in existing and existing[name.casefold()] != name:
-                raise ProfileError(
-                    "Windows case-collision with existing legacy icon: " + name)
+            actual_case = existing.get(name.casefold())
+            if actual_case and actual_case != name:
+                # The old exact-case file is safely preserved by the COMPLETE
+                # private folder backup before any canonical case repair.
+                case_aliases[name] = actual_case
     readme = folder / "readme.txt"
     if readme.exists():
         if readme.is_symlink() or not readme.is_file():
@@ -149,6 +159,7 @@ def _validate_symbol_folder(symbols, canonical, names):
     for name in names:
         if (canonical / name).is_symlink():
             raise ProfileError("Linked approved PNG source: " + name)
+    return case_aliases
 
 
 def _private_backup_root(hostname, *, base=None):
@@ -254,8 +265,8 @@ def apply_office_repair(laptop_proposal, canonical_png, *,
                Path(os.environ["LOCALAPPDATA"]) / "TopoGrafix" /
                "Symbols" / "msb")
     desired = verified["data"]
-    _validate_symbol_folder(symbols, canonical_png,
-                            [name[4:] for name in desired["files"]])
+    case_aliases = _validate_symbol_folder(
+        symbols, canonical_png, [name[4:] for name in desired["files"]])
     snapshot_managed_registry(reg)  # reject unexpected Type trees/native kinds
     base = _private_backup_root(host, base=private_backup_base)
     name = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + \
@@ -274,6 +285,14 @@ def apply_office_repair(laptop_proposal, canonical_png, *,
             source = Path(canonical_png) / filename
             if sha256_file(source) != digest:
                 raise ProfileError("Canonical PNG changed during repair")
+            if filename in case_aliases:
+                # Windows cannot retain both Panel.png and panel.png in the
+                # same directory. Preserve original under private backup, then
+                # create approved canonical filename case; never alter web URLs.
+                legacy = symbols / case_aliases[filename]
+                if legacy.is_symlink() or not legacy.is_file():
+                    raise ProfileError("Legacy symbol changed since backup: " + filename)
+                legacy.unlink()
             shutil.copy2(source, symbols / filename)
             if sha256_file(symbols / filename) != digest:
                 raise ProfileError("Office icon installation verification failed")
@@ -288,6 +307,13 @@ def apply_office_repair(laptop_proposal, canonical_png, *,
         for relative, digest in desired["files"].items():
             if sha256_file(symbols / relative[4:]) != digest:
                 raise ProfileError("Post-install canonical PNG verification FAILED")
+        installed_names = {entry.name.casefold(): entry.name
+                           for entry in symbols.iterdir() if entry.is_file()}
+        for relative in desired["files"]:
+            expected_name = relative[4:]
+            if installed_names.get(expected_name.casefold()) != expected_name:
+                raise ProfileError(
+                    "Post-install PNG case verification FAILED: " + expected_name)
         # A public/shared receipt contains NO raw HKCU, account keys or
         # private backup path. A matching machine-private receipt identifies
         # where rollback material can be found on this PC.
