@@ -211,12 +211,21 @@ class Manager:
             side="left", padx=(12, 0))
         ttk.Button(footer, text="Close", command=self.root.destroy).pack(side="right")
 
+    def cancel_workstation_compare(self):
+        """A canceled Step 6 must not retain a preceding PNG preflight STOP."""
+        self.status.set("GIS release comparison canceled — no settings changed.")
+        self.progress_count.set("Canceled")
+        self.progress_detail.set("No GIS workstation comparison performed")
+        # The independent profile status remains Not verified; cancellation
+        # cannot certify or invalidate the current user's ExpertGPS settings.
+
     def check_workstation(self):
         """Compare a hash-pinned admin release; never propose/apply local writes."""
         manifest = filedialog.askopenfilename(
             parent=self.root, title="Select administrator-approved GIS release manifest",
             initialdir=str(self.releases), filetypes=[("JSON release", "*.json")])
         if not manifest:
+            self.cancel_workstation_compare()
             return
         approved_sha = simpledialog.askstring(
             "Verify GIS release approval",
@@ -224,6 +233,7 @@ class Manager:
             " separate approval receipt. The selected manifest cannot approve itself.",
             parent=self.root)
         if not approved_sha:
+            self.cancel_workstation_compare()
             return
         approved_sha = approved_sha.strip().lower()
         self.profile_release_status.set("GIS workstation configuration: Checking read-only…")
@@ -552,8 +562,17 @@ class Manager:
             self.set_busy(False)
             if error:
                 self.status.set(f"{title}: preflight blocked; no files copied.")
-                messagebox.showerror("PNG distribution requires attention", error +
-                      "\nNo files copied. First save approved canonical PNG changes if prompted.")
+                # A historical case collision is NOT solved by re-saving
+                # current canonical PNG files (37 were already verified).
+                if "filename-case collision" in error.casefold():
+                    guidance = ("\nNo files copied. Historical filename-case conflict "
+                                "needs administrator review; do not rename legacy "
+                                "files or re-save unchanged canonical PNGs.")
+                else:
+                    guidance = ("\nNo files copied. Review the source/destination "
+                                "details before trying again.")
+                messagebox.showerror("PNG distribution requires attention",
+                                     error + guidance)
                 return
             self.status.set(f"{title}: {len(plan['add'])} new, {len(plan['replace'])} changed, "
                             f"{len(plan['identical'])} identical.")
