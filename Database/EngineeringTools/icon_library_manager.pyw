@@ -30,11 +30,13 @@ from distribute_gis_pngs import (WEB_PNG, PUBLIC_PNG_BASE, local_expertgps_folde
 from gis_workstation_profile import compare_current_user
 from gis_workstation_proposal import prepare_laptop_proposal, SHARED_ROOT
 from gis_workstation_release_candidate import (inspect_saved_proposal, prepare_release_candidate)
+from gis_workstation_observation import (list_scanned_map_names, read_observation,
+    compare_with_laptop, save_observation)
 
 BACKGROUND = "#f5f8fb"
 # Source-only candidate identity, separate from approved GIS profile releases
 # or the Production Setup application version. Never guess a successful SHA.
-APP_VERSION = "V0.3.0-release-candidate"
+APP_VERSION = "V0.3.0-office-recon"
 APP_PHASE = "PR #378 CANDIDATE"
 
 
@@ -235,12 +237,12 @@ class Manager:
             command=self.check_workstation)
         self.profile_check_btn.pack(side="left", padx=(0, 8))
         self.profile_proposal_btn = ttk.Button(
-            profile_controls, text="Review / submit this PC configuration",
+            profile_controls, text="Submit laptop cropped-map proposal",
             command=self.review_current_profile)
         self.profile_proposal_btn.pack(side="left")
         self.profile_candidate_btn = ttk.Button(
-            action_dock, text="Review saved G: proposal / prepare release candidate",
-            command=self.review_saved_proposal)
+            action_dock, text="Inspect this PC / compare with laptop (READ ONLY)",
+            command=self.inspect_this_pc)
         self.profile_candidate_btn.pack(anchor="w", pady=(2, 0))
         self.profile_release_status = tk.StringVar(
             value="GIS workstation configuration: Not verified — no administrator-pinned release selected")
@@ -256,12 +258,20 @@ class Manager:
         ttk.Button(footer, text="Close", command=self.root.destroy).pack(side="right")
 
     def review_current_profile(self):
-        """Step 6 companion: preview this PC, then explicitly save UNAPPROVED G: proposal.
+        """Laptop-only source proposal, not Office/Show PC reconnaissance.
 
         This is NOT an installer or an approval of a shared GIS release. The
         worker revalidates current HKCU/Plain/PNG/map identity at commit time.
         """
         if self.in_progress:
+            return
+        from gis_workstation_proposal import workstation_hostname
+        if workstation_hostname() != "YOGA-GREG":
+            messagebox.showwarning(
+                "Laptop-source proposal only",
+                "For this Office/other PC, use Inspect this PC / compare with laptop. "
+                "The laptop-source submit action requires YOGA-GREG.",
+                parent=self.root)
             return
         self.status.set("Reviewing this PC's GIS configuration (read-only)…")
 
@@ -375,6 +385,201 @@ class Manager:
                     parent=self.root)
             self.async_operation(save, saved)
         save_button.configure(command=submit)
+
+    def inspect_this_pc(self):
+        """Generic Office/other workstation reconnaissance before any sync."""
+        if self.in_progress:
+            return
+        try:
+            names = list_scanned_map_names()
+        except Exception as exc:
+            messagebox.showerror(
+                "Cannot list scanned maps", str(exc), parent=self.root)
+            return
+        if not names:
+            messagebox.showwarning(
+                "No scanned maps detected",
+                "No ExpertGPS current-user scanned-map keys were found. "
+                "The PC must be inspected before choosing calibration; "
+                "do not import laptop registry settings.",
+                parent=self.root)
+            return
+        chooser = tk.Toplevel(self.root)
+        chooser.title("Office/other PC — choose existing scanned map")
+        chooser.geometry("570x380")
+        chooser.transient(self.root)
+        ttk.Label(
+            chooser, text="Choose this PC's existing aerial map for READ-ONLY reconnaissance",
+            padding=12, wraplength=510).pack(fill="x")
+        ttk.Label(
+            chooser, text=("Only the selected map's registry/calibration and image "
+                          "hash are examined. Other personal maps are not opened."),
+            padding=(12, 0, 12, 8), wraplength=510).pack(fill="x")
+        choices = tk.Listbox(chooser, exportselection=False, height=9)
+        choices.pack(fill="both", expand=True, padx=12, pady=5)
+        for name in names:
+            choices.insert("end", name)
+        if len(names) == 1:
+            choices.selection_set(0)
+        footer = ttk.Frame(chooser, padding=12)
+        footer.pack(fill="x", side="bottom")
+        ttk.Button(footer, text="Cancel", command=chooser.destroy).pack(side="right")
+
+        def inspect_selected():
+            chosen = choices.curselection()
+            if len(chosen) != 1:
+                messagebox.showwarning(
+                    "Select one map",
+                    "Choose the Office PC's actual full aerial map, not the "
+                    "laptop cropped map unless that is truly installed.",
+                    parent=chooser)
+                return
+            map_name = names[chosen[0]]
+            chooser.destroy()
+            self.status.set("Inspecting this PC's ExpertGPS profile (READ ONLY)…")
+            def work():
+                return read_observation(
+                    self.plain, self.dest, map_name=map_name)
+            def done(result, error):
+                self.set_busy(False)
+                if error:
+                    self.status.set("Office/other PC reconnaissance stopped — no writes.")
+                    messagebox.showerror(
+                        "Workstation observation not verified", str(error),
+                        parent=self.root)
+                    return
+                self.status.set(
+                    f"Inspected {result['hostname']}: {result['type_count']} Types; "
+                    f"local PNG match {result['png_matched']}/{result['png_total']}. "
+                    "No settings changed.")
+                self.show_pc_observation(result)
+            self.async_operation(work, done)
+
+        ttk.Button(
+            footer, text="Inspect selected map (READ ONLY)",
+            command=inspect_selected).pack(side="right", padx=(0, 8))
+
+    def show_pc_observation(self, observation):
+        """Review per-PC snapshot and optionally compare to laptop or save to G:."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("This PC — GIS reconnaissance / not synchronized")
+        dialog.geometry("880x570")
+        dialog.minsize(680, 400)
+        dialog.transient(self.root)
+        ttk.Label(
+            dialog, text=(f"PC: {observation['hostname']}  "
+                          f"ExpertGPS Types: {observation['type_count']}  "
+                          f"GPS reverse entries: {observation['reverse_count']}"),
+            padding=(12, 10, 12, 6),
+            font=("Segoe UI", 11, "bold")).pack(fill="x")
+        ttk.Label(
+            dialog, text=("Selected map: " + observation["selected_map"] +
+                          (" — image SHA verified" if observation["map_image_verified"]
+                           else " — IMAGE MISSING OR UNVERIFIED")),
+            padding=(12, 0, 12, 6), wraplength=830).pack(fill="x")
+        ttk.Label(
+            dialog, text=(f"Canonical PNGs on THIS PC: "
+                          f"{observation['png_matched']} matched; "
+                          f"{observation['png_missing']} missing; "
+                          f"{observation['png_different']} different. "
+                          "Differences are observations, NOT authorization to overwrite."),
+            padding=(12, 0, 12, 6), wraplength=830).pack(fill="x")
+        actions = ttk.Frame(dialog, padding=(12, 5, 12, 12))
+        actions.pack(side="bottom", fill="x")
+        viewer = scrolledtext.ScrolledText(
+            dialog, wrap="word", font=("Consolas", 10))
+        viewer.pack(fill="both", expand=True, padx=12, pady=5)
+        viewer.insert("end", "READ-ONLY OFFICE / WORKSTATION EVIDENCE\n\n")
+        viewer.insert("end", "No registry, GPX, map, or symbol installations.\n")
+        viewer.insert("end", "Review fingerprint: " + observation["fingerprint"] + "\n\n")
+        for name, fields in sorted(observation["profile"]["types"].items()):
+            viewer.insert("end", f"{name}\n"
+                          f"  GPS Symbol: {fields.get('GPS Symbol', '(absent)')}\n"
+                          f"  Map Marker: {fields.get('Bitmap Symbol URL', '(absent)')}\n\n")
+        viewer.configure(state="disabled")
+        ttk.Button(actions, text="Close", command=dialog.destroy).pack(side="right")
+        btn_compare = ttk.Button(actions, text="Compare with YOGA-GREG laptop")
+        btn_compare.pack(side="left")
+        btn_save = ttk.Button(actions, text="Save THIS PC observation to shared G:")
+        btn_save.pack(side="left", padx=(8, 0))
+
+        def compare():
+            path = filedialog.askopenfilename(
+                parent=dialog, title="Select YOGA-GREG laptop proposal on G:",
+                initialdir=str(SHARED_ROOT / "Proposals" / "YOGA-GREG"),
+                filetypes=[("MSB laptop proposal JSON", "*.json")])
+            if not path:
+                return
+            def work():
+                return compare_with_laptop(observation, path, shared_root=SHARED_ROOT)
+            def done(result, error):
+                self.set_busy(False)
+                if error:
+                    messagebox.showerror(
+                        "Laptop/Office comparison stopped", str(error),
+                        parent=dialog if dialog.winfo_exists() else self.root)
+                    return
+                diff = tk.Toplevel(dialog)
+                diff.title("Office PC versus YOGA-GREG — differences ONLY")
+                diff.geometry("950x590")
+                ttk.Label(diff, text=(f"This PC: {result['office_type_count']} Types | "
+                    f"Laptop: {result['laptop_type_count']} Types | "
+                    f"{len(result['rows'])} field/status differences"),
+                    padding=12).pack(fill="x")
+                ttk.Label(diff, text=("Different full/cropped aerial map names are "
+                    "EXPECTED VARIANTS, not grounds for replacing the Office map."),
+                    padding=(12, 0, 12, 8), wraplength=900).pack(fill="x")
+                txt = scrolledtext.ScrolledText(
+                    diff, wrap="word", font=("Consolas", 10))
+                txt.pack(fill="both", expand=True, padx=12, pady=5)
+                for category, name, field, detail in result["rows"]:
+                    txt.insert("end", f"{category}: {name}\n")
+                    if field:
+                        txt.insert("end", f"  {field}\n")
+                    if detail:
+                        txt.insert("end", "  " + detail + "\n")
+                    txt.insert("end", "\n")
+                if not result["rows"]:
+                    txt.insert("end", "No differences in compared fields.\n")
+                txt.configure(state="disabled")
+                ttk.Button(diff, text="Close", command=diff.destroy).pack(pady=8)
+            self.async_operation(work, done)
+
+        def save():
+            if not messagebox.askyesno(
+                    "Confirm shared PC observation",
+                    f"Save a NEW UNAPPROVED, host-named observation for "
+                    f"{observation['hostname']} under G:\\Shared drives\\...\n"
+                    "The source fingerprint will be rechecked. "
+                    "No approved GIS release or ExpertGPS installation is created. "
+                    "Save the observation?",
+                    parent=dialog):
+                return
+            btn_save.configure(state="disabled")
+            def work():
+                return save_observation(
+                    observation, plain=self.plain, canonical_png=self.dest,
+                    shared_root=SHARED_ROOT)
+            def done(receipt, error):
+                self.set_busy(False)
+                if error:
+                    messagebox.showerror(
+                        "Observation save refused", str(error),
+                        parent=dialog if dialog.winfo_exists() else self.root)
+                    return
+                self.status.set(
+                    f"{receipt['hostname']} observation saved on G:; "
+                    "NO settings installed.")
+                messagebox.showinfo(
+                    "This PC observation saved — NOT approved",
+                    "Shared file:\n" + receipt["destination"] +
+                    "\n\nSHA-256:\n" + receipt["sha256"] +
+                    "\n\nNo profile synchronization or map change occurred.",
+                    parent=dialog if dialog.winfo_exists() else self.root)
+            self.async_operation(work, done)
+
+        btn_compare.configure(command=compare)
+        btn_save.configure(command=save)
 
     def review_saved_proposal(self):
         """Open the selected *shared G:* proposal, never self-approve it."""
