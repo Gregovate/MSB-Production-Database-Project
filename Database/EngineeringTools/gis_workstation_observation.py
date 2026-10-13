@@ -149,7 +149,11 @@ def compare_with_laptop(observation, laptop_proposal, *, shared_root=SHARED_ROOT
     rather than evidence that either PC is incorrectly configured.
     """
     current = observation["profile"]
-    laptop = inspect_saved_proposal(laptop_proposal, shared_root)["data"]
+    verified = inspect_saved_proposal(laptop_proposal, shared_root)
+    if verified["hostname"] != "YOGA-GREG":
+        raise ProfileError(
+            "Select the YOGA-GREG laptop proposal, not another PC's observation")
+    laptop = verified["data"]
     rows = []
     for typ in sorted(set(current["types"]) | set(laptop["types"])):
         a, b = current["types"].get(typ), laptop["types"].get(typ)
