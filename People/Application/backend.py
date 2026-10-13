@@ -204,7 +204,9 @@ def health() -> Response:
                 to_regprocedure('ref.people_search(text,text,boolean)') IS NOT NULL,
                 to_regprocedure('ref.people_person_capabilities(text,integer,boolean)') IS NOT NULL,
                 to_regprocedure('ref.people_person_qualifications(text,integer,boolean)') IS NOT NULL,
-                to_regprocedure('ref.people_person_setup_roles(text,integer)') IS NOT NULL
+                to_regprocedure('ref.people_person_setup_roles(text,integer)') IS NOT NULL,
+                to_regprocedure('ref.reconcile_directus_person_identity(text)') IS NOT NULL,
+                to_regprocedure('ref.directus_person_identity_reconciliation_report()') IS NOT NULL
             """
         )
         (
@@ -216,6 +218,8 @@ def health() -> Response:
             capability_fn,
             qualification_fn,
             setup_role_fn,
+            identity_reconcile_fn,
+            identity_report_fn,
         ) = cur.fetchone()
     return jsonify(
         status="ok",
@@ -225,6 +229,7 @@ def health() -> Response:
         qualification_contract=bool(qualification_table and qualification_fn),
         setup_role_contract=bool(setup_role_table and setup_role_fn),
         search_contract=bool(search_fn),
+        identity_reconciliation_contract=bool(identity_reconcile_fn and identity_report_fn),
         delete_exposed=False,
         merge_exposed=False,
         google_provisioning_exposed=False,
