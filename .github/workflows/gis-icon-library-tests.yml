@@ -9,6 +9,10 @@ on:
       - "Database/EngineeringTools/test_gis_workstation_profile.py"
       - "Database/EngineeringTools/gis_workstation_proposal.py"
       - "Database/EngineeringTools/test_gis_workstation_proposal.py"
+      - "Database/EngineeringTools/gis_workstation_observation.py"
+      - "Database/EngineeringTools/test_gis_workstation_observation.py"
+      - "Database/EngineeringTools/gis_workstation_release_candidate.py"
+      - "Database/EngineeringTools/test_gis_workstation_release_candidate.py"
       - "Database/EngineeringTools/test_icon_library_layout.py"
       - "Database/EngineeringTools/Install-MSB-Icon-Library-Shortcut.cmd"
       - "Database/EngineeringTools/assets/**"
@@ -46,7 +50,11 @@ jobs:
             Database/EngineeringTools/gis_workstation_profile.py \
             Database/EngineeringTools/test_gis_workstation_profile.py \
             Database/EngineeringTools/gis_workstation_proposal.py \
-            Database/EngineeringTools/test_gis_workstation_proposal.py
+            Database/EngineeringTools/test_gis_workstation_proposal.py \
+            Database/EngineeringTools/gis_workstation_release_candidate.py \
+            Database/EngineeringTools/test_gis_workstation_release_candidate.py \
+            Database/EngineeringTools/gis_workstation_observation.py \
+            Database/EngineeringTools/test_gis_workstation_observation.py
       - name: Run isolated safety tests (no real G:/webassets/TopoGrafix)
         run: |
           python -m unittest discover -s Database/EngineeringTools -p 'test_sync_gis_icons.py' -v
@@ -54,6 +62,8 @@ jobs:
           python -m unittest discover -s Database/EngineeringTools -p 'test_distribute_gis_pngs.py' -v
           python -m unittest discover -s Database/EngineeringTools -p 'test_gis_workstation_profile.py' -v
           python -m unittest discover -s Database/EngineeringTools -p 'test_gis_workstation_proposal.py' -v
+          python -m unittest discover -s Database/EngineeringTools -p 'test_gis_workstation_release_candidate.py' -v
+          python -m unittest discover -s Database/EngineeringTools -p 'test_gis_workstation_observation.py' -v
       - name: Test small-window Tk action visibility with a disposable display
         run: |
           xvfb-run -a python -m unittest discover -s Database/EngineeringTools -p 'test_icon_library_layout.py' -v
