@@ -109,6 +109,21 @@ class OfficeObservationTests(unittest.TestCase):
         self.assertIn("GPS Symbol reverse differs", text)
         self.assertFalse((self.shared / "Observations").exists())
 
+    def test_same_map_image_but_deliberately_wrong_office_calibration_flagged(self):
+        # A test-only Office registration may use the SAME aerial bytes as
+        # laptop while intentionally storing a different CRS/control point.
+        # Must never be classified solely as an expected separate variant.
+        self.full.write_bytes(self.crop.read_bytes())
+        observed = self.observe()
+        result = compare_with_laptop(
+            observed, self.laptop_path, shared_root=self.shared)
+        evidence = json.dumps(result)
+        self.assertIn("SAME IMAGE, DIFFERENT GEOREFERENCE", evidence)
+        self.assertIn("Full Office Aerial", evidence)
+        self.assertIn("Ortho 2019", evidence)
+        self.assertFalse((self.shared / "Observations").exists())
+        self.assertEqual(self.office.writes, [])
+
     def test_host_observation_can_be_saved_without_local_pngs(self):
         result = self.observe()
         saved = save_observation(
