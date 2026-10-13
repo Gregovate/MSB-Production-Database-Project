@@ -32,11 +32,13 @@ from gis_workstation_proposal import prepare_laptop_proposal, SHARED_ROOT
 from gis_workstation_release_candidate import (inspect_saved_proposal, prepare_release_candidate)
 from gis_workstation_observation import (list_scanned_map_names, read_observation,
     compare_with_laptop, save_observation)
+from gis_workstation_comparison_report import (format_comparison_report,
+    save_comparison_report)
 
 BACKGROUND = "#f5f8fb"
 # Source-only candidate identity, separate from approved GIS profile releases
 # or the Production Setup application version. Never guess a successful SHA.
-APP_VERSION = "V0.3.0-office-recon"
+APP_VERSION = "V0.3.1-office-compare-export"
 APP_PHASE = "PR #378 CANDIDATE"
 
 
@@ -532,27 +534,90 @@ class Manager:
                 diff = tk.Toplevel(dialog)
                 diff.title("Office PC versus YOGA-GREG — differences ONLY")
                 diff.geometry("950x590")
+                diff.minsize(720, 440)
+                ttk.Label(
+                    diff, text="THIS PC VS YOGA-GREG — READ-ONLY DIFFERENCE REPORT",
+                    font=("Segoe UI", 12, "bold"),
+                    padding=(12, 8, 12, 4)).pack(fill="x")
                 ttk.Label(diff, text=(f"This PC: {result['office_type_count']} Types | "
                     f"Laptop: {result['laptop_type_count']} Types | "
                     f"{len(result['rows'])} field/status differences"),
-                    padding=12).pack(fill="x")
-                ttk.Label(diff, text=("Different full/cropped aerial map names are "
-                    "EXPECTED VARIANTS, not grounds for replacing the Office map."),
+                    padding=(12, 0, 12, 7)).pack(fill="x")
+                ttk.Label(diff, text=("Different named aerial maps require separate "
+                    "calibration review; NEVER automatically replace Office imagery."),
                     padding=(12, 0, 12, 8), wraplength=900).pack(fill="x")
+                actions = ttk.Frame(diff, padding=(12, 5, 12, 12))
+                actions.pack(side="bottom", fill="x")
+                report_text = format_comparison_report(result, observation)
                 txt = scrolledtext.ScrolledText(
                     diff, wrap="word", font=("Consolas", 10))
                 txt.pack(fill="both", expand=True, padx=12, pady=5)
-                for category, name, field, detail in result["rows"]:
-                    txt.insert("end", f"{category}: {name}\n")
-                    if field:
-                        txt.insert("end", f"  {field}\n")
-                    if detail:
-                        txt.insert("end", "  " + detail + "\n")
-                    txt.insert("end", "\n")
-                if not result["rows"]:
-                    txt.insert("end", "No differences in compared fields.\n")
+                txt.insert("end", report_text)
                 txt.configure(state="disabled")
-                ttk.Button(diff, text="Close", command=diff.destroy).pack(pady=8)
+                ttk.Button(
+                    actions, text="Close", command=diff.destroy
+                ).pack(side="right")
+                copy_button = ttk.Button(actions, text="Copy entire report")
+                copy_button.pack(side="left")
+                save_button = ttk.Button(
+                    actions, text="Save report to shared G:")
+                save_button.pack(side="left", padx=(8, 0))
+
+                def copy_report():
+                    if not diff.winfo_exists():
+                        return
+                    try:
+                        diff.clipboard_clear()
+                        diff.clipboard_append(report_text)
+                        diff.update()
+                        self.status.set(
+                            f"Copied all {len(result['rows'])} comparison differences.")
+                    except tk.TclError as exc:
+                        messagebox.showerror(
+                            "Could not copy report", str(exc), parent=diff)
+                copy_button.configure(command=copy_report)
+
+                def save_report():
+                    if self.in_progress or not diff.winfo_exists():
+                        return
+                    if not messagebox.askyesno(
+                            "Save Office/laptop comparison to shared G:",
+                            f"Save the current {len(result['rows'])}-difference "
+                            f"read-only report for {observation['hostname']} under:\n"
+                            f"{SHARED_ROOT / 'Comparisons' / observation['hostname']}\n\n"
+                            "The report records observed differences ONLY. It "
+                            "does not approve a GIS release, install PNGs or "
+                            "modify ExpertGPS, GPX or scanned maps.\n\nSave?",
+                            parent=diff):
+                        return
+                    save_button.configure(state="disabled")
+                    def work():
+                        return save_comparison_report(
+                            result, observation, shared_root=SHARED_ROOT)
+                    def saved(receipt, error):
+                        self.set_busy(False)
+                        if error:
+                            if diff.winfo_exists():
+                                save_button.configure(state="normal")
+                            messagebox.showerror(
+                                "Comparison report not saved",
+                                str(error) + "\nNo settings were changed.",
+                                parent=diff if diff.winfo_exists() else self.root)
+                            return
+                        self.status.set(
+                            f"{receipt['differences']} comparison differences "
+                            "saved to shared G:; no settings installed.")
+                        messagebox.showinfo(
+                            "Comparison report saved (UNAPPROVED)",
+                            "Text report:\n" + receipt["text_file"] +
+                            "\n\nSHA-256:\n" + receipt["text_sha256"] +
+                            "\n\nStructured JSON report:\n" +
+                            receipt["json_file"] +
+                            "\n\nThis is diagnostic evidence, not an "
+                            "approved release or workstation install.",
+                            parent=diff if diff.winfo_exists() else self.root)
+                    self.async_operation(work, saved)
+                save_button.configure(command=save_report)
             self.async_operation(work, done)
 
         def save():
