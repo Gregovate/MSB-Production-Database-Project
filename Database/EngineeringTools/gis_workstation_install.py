@@ -21,6 +21,7 @@ from gis_workstation_alignment import (
 from gis_workstation_profile import (
     ProfileError, TYPES_KEY, REVERSE_KEY, _open, _subkeys,
     read_current_user, sha256, sha256_file)
+from gis_workstation_alignment import plan_digest
 from gis_workstation_proposal import SHARED_ROOT, workstation_hostname
 
 README_PARENT = "https://webassets.sheboyganlights.org/images/symbols/"
@@ -246,8 +247,7 @@ def apply_office_repair(laptop_proposal, canonical_png, *,
     plan = make_office_repair_plan(
         laptop_proposal, canonical_png, local_symbols=local_symbols, reg=reg,
         shared_root=shared_root, hostname=host)
-    digest = sha256(json.dumps(
-        plan, sort_keys=True, ensure_ascii=False).encode("utf-8"))
+    digest = plan_digest(plan)
     if expected_plan_sha256 != digest:
         raise ProfileError("Office settings changed since preview; redo plan")
     symbols = (Path(local_symbols) if local_symbols is not None else
@@ -288,6 +288,41 @@ def apply_office_repair(laptop_proposal, canonical_png, *,
         for relative, digest in desired["files"].items():
             if sha256_file(symbols / relative[4:]) != digest:
                 raise ProfileError("Post-install canonical PNG verification FAILED")
+        # A public/shared receipt contains NO raw HKCU, account keys or
+        # private backup path. A matching machine-private receipt identifies
+        # where rollback material can be found on this PC.
+        public_receipt = {
+            "schema": "msb.gis.expertgps.office.repair-receipt.v1",
+            "host": host, "source_host": "YOGA-GREG",
+            "source_sha256": PINNED_YOGA_PROPOSAL_SHA256,
+            "type_count": len(desired["types"]),
+            "symbol_to_type_count": len(desired["symbol_to_type"]),
+            "canonical_png_count": len(desired["files"]),
+            "maps": "NOT READ OR MODIFIED",
+            "authoritative_gpx": "NOT OPENED OR MODIFIED",
+            "verified_utc": datetime.now(timezone.utc).isoformat(),
+            "backup_id": name,
+            "gpxtest_status": "NOT YET ACCEPTED",
+        }
+        report_root = Path(shared_root)
+        dest_dir = report_root / "Receipts" / host
+        for part in (report_root, report_root / "Receipts", dest_dir):
+            if part.is_symlink():
+                raise ProfileError("Linked shared repair receipt folder refused")
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        report = dest_dir / ("Office-GPX-Repair-" + name + ".json")
+        payload = (json.dumps(public_receipt, sort_keys=True, indent=2)
+                   + "\n").encode("utf-8")
+        with report.open("xb") as out:
+            out.write(payload)
+        if sha256_file(report) != sha256(payload):
+            raise ProfileError("Shared Office repair receipt verification FAILED")
+        receipt = dict(public_receipt)
+        receipt["private_rollback_backup"] = str(backup)
+        receipt["shared_receipt"] = str(report)
+        with (backup / "repair-receipt.json").open("xb") as out:
+            out.write((json.dumps(receipt, sort_keys=True, indent=2)
+                       + "\n").encode("utf-8"))
     except Exception as failure:
         if mutation_started:
             try:
@@ -302,18 +337,44 @@ def apply_office_repair(laptop_proposal, canonical_png, *,
             f"Office repair stopped; original targeted settings restored from "
             f"private backup {backup}. Error: {failure}"
         ) from failure
-    receipt = {
-        "status": "OFFICE GPX CONFIG MATCHES PINNED LAPTOP FIELDS/37 PNGS",
-        "hostname": host, "master": "YOGA-GREG",
-        "master_proposal_sha256": PINNED_YOGA_PROPOSAL_SHA256,
-        "private_rollback_backup": str(backup),
-        "types": len(desired["types"]), "reverse": len(desired["symbol_to_type"]),
-        "canonical_pngs": len(desired["files"]),
-        "maps": "NOT READ OR MODIFIED",
-        "authoritative_gpx": "NOT OPENED OR MODIFIED",
-        "remaining_acceptance": "Disposable GPX roundtrip before official use",
-    }
-    with (backup / "repair-receipt.json").open("xb") as out:
-        out.write((json.dumps(receipt, sort_keys=True, indent=2)
-                   + "\n").encode("utf-8"))
     return receipt
+
+
+def restore_office_private_backup(backup_path, *, reg=None,
+                                   local_symbols=None, hostname=None,
+                                   private_backup_base=None,
+                                   closed_checker=None,
+                                   approval_confirmed=False):
+    """User-confirmed recovery of EXACT Office private backup only.
+
+    Does not touch unrelated application state or scanned maps. For a crash,
+    the backup must still contain its original native-kind registry snapshot.
+    """
+    if not approval_confirmed:
+        raise ProfileError("Explicit restore confirmation required")
+    host = workstation_hostname(hostname)
+    if host != OFFICE_TARGET_HOST:
+        raise ProfileError("Recovery restricted to MSB-OFFICE-PC")
+    assert_expertgps_closed(closed_checker)
+    if reg is None:
+        if os.name != "nt":
+            raise ProfileError("Windows registry required for recovery")
+        import winreg
+        reg = winreg
+    trusted_root = _private_backup_root(
+        host, base=private_backup_base).resolve()
+    backup = Path(backup_path)
+    if (backup.is_symlink() or backup.resolve().parent != trusted_root or
+            not backup.is_dir()):
+        raise ProfileError("Backup is not directly beneath this PC's private recovery root")
+    payload = json.loads((backup / "backup.json").read_text("utf-8"))
+    if payload.get("hostname") != host or payload.get("schema") != BACKUP_SCHEMA:
+        raise ProfileError("Private backup hostname/schema does not match Office")
+    symbols = (Path(local_symbols) if local_symbols is not None else
+               Path(os.environ["LOCALAPPDATA"]) / "TopoGrafix" /
+               "Symbols" / "msb")
+    _restore_private_backup(reg, symbols, backup)
+    return {"status": "ORIGINAL OFFICE TYPES/REVERSE/PNGS RESTORED",
+            "host": host, "source_backup": str(backup),
+            "maps": "NOT READ OR MODIFIED",
+            "gpx": "NOT READ OR MODIFIED"}
