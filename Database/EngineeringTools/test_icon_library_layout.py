@@ -248,6 +248,14 @@ class SmallScreenLayoutTests(unittest.TestCase):
                 self.assertEqual(len(reviews), 1)
                 review = reviews[0]
                 self.assertIn("not synchronized", review.title())
+                visible_headings = [
+                    str(w.cget("text")) for w in walk(review)
+                    if isinstance(w, ttk.Label)
+                ]
+                self.assertTrue(any(
+                    "GIS RECONNAISSANCE" in label and
+                    "NOT SYNCHRONIZED" in label
+                    for label in visible_headings))
                 buttons = [str(w.cget("text")) for w in walk(review)
                            if isinstance(w, ttk.Button)]
                 self.assertIn("Compare with YOGA-GREG laptop", buttons)
