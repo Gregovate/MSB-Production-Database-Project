@@ -78,7 +78,7 @@ class SmallScreenLayoutTests(unittest.TestCase):
             manager = Manager(root)
             root.update_idletasks()
             title = root.title()
-            self.assertIn("V0.4.2-native-types-gated", title)
+            self.assertIn("V0.4.3-office-map-source", title)
             self.assertIn(manager.build_identity, title)
             labels = [
                 str(w.cget("text")) for w in walk(root)
@@ -411,6 +411,67 @@ class SmallScreenLayoutTests(unittest.TestCase):
             buttons = [str(w.cget("text")) for w in walk(dialog)
                        if isinstance(w, ttk.Button)]
             self.assertEqual(buttons, ["Close"])
+        finally:
+            root.destroy()
+
+    def test_office_map_source_review_cancel_and_confirmation_paths(self):
+        # Fake Office current-user/map sources. No live HKCU or G:/asset reads.
+        root = tk.Tk()
+        try:
+            manager = Manager(root)
+            sample = {
+                "origin_host": "MSB-OFFICE-PC", "map_name": "EvergreenParkCropped",
+                "projection": "NAD83 HARN WISCRS Sheboygan County Feet",
+                "width": 32000, "height": 14000,
+                "image_sha256": "1" * 64, "point_count": 2,
+                "fingerprint": "a" * 64,
+                "source": {
+                    "native_header": {
+                        "Width": {"kind": 4, "value": 32000},
+                        "Map Path": {"kind": 1, "value": "G:/Park/map.tif"},
+                    },
+                    "sidecars": {}, "shared_raster_path": "G:/Park/map.tif",
+                },
+                "points": {
+                    "Point01": {"Latitude": {"kind": 1, "value": "43.7"}},
+                    "Point02": {"Longitude": {"kind": 1, "value": "-87.7"}},
+                }
+            }
+            calls = []
+            receipt = {"destination": "G:/MSB GIS/Map-Sources/test.json",
+                       "sha256": "2" * 64}
+            def save(review):
+                calls.append(review)
+                return receipt
+            def immediate(work, done):
+                done(work(), None)
+            with patch.dict(
+                    Manager.review_office_map_source.__globals__,
+                    {"inspect_office_map": lambda: sample,
+                     "save_office_map_source": save}), \
+                 patch.object(manager, "async_operation", side_effect=immediate):
+                manager.review_office_map_source()
+                dialog = [w for w in root.winfo_children()
+                          if isinstance(w, tk.Toplevel)][0]
+                head = [str(w.cget("text")) for w in walk(dialog)
+                        if isinstance(w, ttk.Label)]
+                self.assertTrue(any("PRESERVE ON OFFICE" in x for x in head))
+                viewer = [w for w in walk(dialog)
+                          if isinstance(w, tk.Text)][0]
+                self.assertIn("Point01", viewer.get("1.0", "end"))
+                self.assertIn("REGISTRY", viewer.get("1.0", "end"))
+                buttons = {str(w.cget("text")): w for w in walk(dialog)
+                           if isinstance(w, ttk.Button)}
+                self.assertIn("Save UNAPPROVED Office map source to G:", buttons)
+                with patch("tkinter.messagebox.askyesno", return_value=False):
+                    buttons["Save UNAPPROVED Office map source to G:"].invoke()
+                self.assertEqual(calls, [])
+                with patch("tkinter.messagebox.askyesno", return_value=True), \
+                     patch("tkinter.messagebox.showinfo") as successful:
+                    buttons["Save UNAPPROVED Office map source to G:"].invoke()
+                self.assertEqual(calls, [sample])
+                self.assertTrue(successful.called)
+                self.assertIn("NO maps changed", manager.status.get())
         finally:
             root.destroy()
 
