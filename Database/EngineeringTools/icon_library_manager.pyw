@@ -39,13 +39,14 @@ from gis_workstation_alignment import (make_office_repair_plan,
     PINNED_YOGA_PROPOSAL_SHA256)
 from gis_workstation_install import (apply_office_repair, restore_office_private_backup,
     OFFICE_TARGET_HOST)
+from gis_workstation_map_repair import preview as preview_map_repair, apply as apply_map_repair, MAP as OFFICE_CORRECT_MAP
 from gis_workstation_map_source import (inspect_office_map, save_office_map_source,
     SOURCE_HOST as OFFICE_MAP_SOURCE_HOST, SOURCE_MAP as OFFICE_WORKING_MAP)
 
 BACKGROUND = "#f5f8fb"
 # Source-only candidate identity, separate from approved GIS profile releases
 # or the Production Setup application version. Never guess a successful SHA.
-APP_VERSION = "V0.4.4-office-all-map-capture"
+APP_VERSION = "V0.4.5-office-test-map-repair"
 APP_PHASE = "PR #378 CANDIDATE"
 
 
@@ -260,6 +261,11 @@ class Manager:
             text="Review laptop alignment — this PC (READ ONLY)",
             command=self.review_office_repair)
         self.profile_align_btn.pack(side="left")
+        # Targeted, separately confirmed correction of the Office TEST map only.
+        self.map_repair_btn = ttk.Button(
+            profile_advanced, text="Review Office cropped-map repair (READ ONLY)",
+            command=self.review_map_repair)
+        self.map_repair_btn.pack(side="left", padx=(8, 0))
         self.profile_release_status = tk.StringVar(
             value="GIS workstation configuration: Not verified — no administrator-pinned release selected")
         ttk.Label(action_dock, textvariable=self.profile_release_status,
@@ -1045,6 +1051,67 @@ class Manager:
                     dialog.destroy()
             self.async_operation(work, saved)
         save_btn.configure(command=save)
+
+    def review_map_repair(self):
+        """Offer a separately confirmed, private-backed fix to one Office map."""
+        if self.in_progress:
+            return
+        self.status.set("Checking Office cropped-map repair baseline (READ ONLY)…")
+        def work():
+            return preview_map_repair()
+        def done(review, error):
+            self.set_busy(False)
+            if error:
+                messagebox.showerror(
+                    "Office calibration repair refused", str(error),
+                    parent=self.root)
+                return
+            dialog = tk.Toplevel(self.root)
+            dialog.title("OFFICE TEST MAP ONLY — CALIBRATION REPAIR")
+            dialog.geometry("790x510")
+            ttk.Label(dialog, text="ONLY: " + OFFICE_CORRECT_MAP,
+                      font=("Segoe UI", 12, "bold"), padding=10).pack(fill="x")
+            ttk.Label(dialog, text=(
+                "Does not modify EvergreenParkCropped or the Workshop map. "
+                "Requires ExpertGPS closed. Saves a private calibration backup, "
+                "reads back all 3 maps and rolls back on failure."),
+                wraplength=740, padding=10).pack(fill="x")
+            viewer = scrolledtext.ScrolledText(dialog, height=14, wrap="word")
+            viewer.pack(fill="both", expand=True, padx=10)
+            for key, value in review["target"].items():
+                viewer.insert("end", f"{key}: {value}\n")
+            viewer.insert("end", "\nSource image and pixel/worldfile controls will NOT change.")
+            viewer.configure(state="disabled")
+            buttons = ttk.Frame(dialog, padding=10)
+            buttons.pack(fill="x", side="bottom")
+            ttk.Button(buttons, text="Cancel", command=dialog.destroy).pack(side="right")
+            def confirm():
+                if not messagebox.askyesno("Approve Office test-map correction",
+                        "Correct ONLY the existing Office test-map calibration?\n"
+                        "Private backup and exact readback are mandatory.",
+                        parent=dialog):
+                    return
+                typed = simpledialog.askstring("Type confirmation",
+                        "Type REPAIR OFFICE TEST MAP", parent=dialog)
+                if typed != "REPAIR OFFICE TEST MAP":
+                    return
+                dialog.destroy()
+                def worker():
+                    return apply_map_repair(review)
+                def finished(receipt, failure):
+                    self.set_busy(False)
+                    if failure:
+                        messagebox.showerror("Office map repair FAILED",
+                            str(failure) + "\nKeep ExpertGPS closed.", parent=self.root)
+                        return
+                    messagebox.showinfo("Office test map repaired and verified",
+                        "Verified exact calibration; other two maps unchanged.\n"
+                        "Private recovery file: " + receipt["backup"],
+                        parent=self.root)
+                self.async_operation(worker, finished)
+            ttk.Button(buttons, text="Back up and repair OFFICE TEST MAP",
+                       command=confirm).pack(side="left")
+        self.async_operation(work, done)
 
     def review_saved_proposal(self):
         """Open the selected *shared G:* proposal, never self-approve it."""
