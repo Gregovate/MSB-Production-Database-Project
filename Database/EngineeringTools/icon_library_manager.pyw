@@ -246,15 +246,17 @@ class Manager:
             profile_controls, text="Submit laptop cropped-map proposal",
             command=self.review_current_profile)
         self.profile_proposal_btn.pack(side="left")
+        profile_advanced = ttk.Frame(action_dock, padding=(0, 1, 0, 1))
+        profile_advanced.pack(fill="x")
         self.profile_candidate_btn = ttk.Button(
-            action_dock, text="Inspect this PC / compare with laptop (READ ONLY)",
+            profile_advanced, text="Inspect this PC / compare with laptop (READ ONLY)",
             command=self.inspect_this_pc)
-        self.profile_candidate_btn.pack(anchor="w", pady=(2, 0))
+        self.profile_candidate_btn.pack(side="left", padx=(0, 8))
         self.profile_align_btn = ttk.Button(
-            action_dock,
+            profile_advanced,
             text="Review Office GPX settings repair (READ ONLY)",
             command=self.review_office_repair)
-        self.profile_align_btn.pack(anchor="w", pady=(2, 0))
+        self.profile_align_btn.pack(side="left")
         self.profile_release_status = tk.StringVar(
             value="GIS workstation configuration: Not verified — no administrator-pinned release selected")
         ttk.Label(action_dock, textvariable=self.profile_release_status,
