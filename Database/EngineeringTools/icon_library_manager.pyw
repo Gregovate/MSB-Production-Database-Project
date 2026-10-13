@@ -34,11 +34,15 @@ from gis_workstation_observation import (list_scanned_map_names, read_observatio
     compare_with_laptop, save_observation)
 from gis_workstation_comparison_report import (format_comparison_report,
     save_comparison_report)
+from gis_workstation_alignment import (make_office_repair_plan, plan_digest,
+    PINNED_YOGA_PROPOSAL_SHA256)
+from gis_workstation_install import (apply_office_repair, restore_office_private_backup,
+    OFFICE_TARGET_HOST)
 
 BACKGROUND = "#f5f8fb"
 # Source-only candidate identity, separate from approved GIS profile releases
 # or the Production Setup application version. Never guess a successful SHA.
-APP_VERSION = "V0.3.1-office-compare-export"
+APP_VERSION = "V0.4.0-office-gpx-repair"
 APP_PHASE = "PR #378 CANDIDATE"
 
 
@@ -246,6 +250,11 @@ class Manager:
             action_dock, text="Inspect this PC / compare with laptop (READ ONLY)",
             command=self.inspect_this_pc)
         self.profile_candidate_btn.pack(anchor="w", pady=(2, 0))
+        self.profile_align_btn = ttk.Button(
+            action_dock,
+            text="Review Office GPX settings repair (READ ONLY)",
+            command=self.review_office_repair)
+        self.profile_align_btn.pack(anchor="w", pady=(2, 0))
         self.profile_release_status = tk.StringVar(
             value="GIS workstation configuration: Not verified — no administrator-pinned release selected")
         ttk.Label(action_dock, textvariable=self.profile_release_status,
@@ -387,6 +396,187 @@ class Manager:
                     parent=self.root)
             self.async_operation(save, saved)
         save_button.configure(command=submit)
+
+    def review_office_repair(self):
+        """Office GPX Type+reverse+PNG parity, not Office map or live GPX repair."""
+        if self.in_progress:
+            return
+        source = SHARED_ROOT / "Proposals" / "YOGA-GREG" / (
+            "MSB-GIS-Workstation-Proposal-YOGA-GREG-"
+            "20261013T132823Z-6191db1f5562.json")
+        self.status.set("Preparing pinned YOGA-GREG → Office repair plan (READ ONLY)…")
+        def work():
+            plan = make_office_repair_plan(source, self.dest)
+            return plan, plan_digest(plan)
+        def done(result, error):
+            self.set_busy(False)
+            if error:
+                self.status.set("Office repair preview BLOCKED — nothing changed.")
+                messagebox.showerror(
+                    "Office GPX settings repair not verified",
+                    str(error) + "\nNo registry, map, PNG, or GPX changed.",
+                    parent=self.root)
+                return
+            self.show_office_repair_plan(source, *result)
+        self.async_operation(work, done)
+
+    def show_office_repair_plan(self, source, plan, digest):
+        """Mandatory inspectable plan; confirmation binds exact source/target."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("MSB OFFICE PC — PREVIEW TARGETED GPX SETTINGS REPAIR")
+        dialog.geometry("920x585")
+        dialog.minsize(670, 390)
+        dialog.transient(self.root)
+        ttk.Label(dialog, text="OFFICE PC WRONG — ALIGN GPX SETTINGS TO YOGA-GREG",
+                  font=("Segoe UI", 12, "bold"), padding=(12, 10, 12, 5)
+                  ).pack(fill="x")
+        ttk.Label(
+            dialog, text=(f"Target: {plan['office_pc_hostname']}  "
+                          f"Source: YOGA-GREG   "
+                          f"Types: {plan['office_types_before']} → "
+                          f"{plan['laptop_type_count']}   "
+                          f"Reverse: {plan['office_reverse_before']} → "
+                          f"{plan['laptop_reverse_count']}"),
+            padding=(12, 0, 12, 6)).pack(fill="x")
+        ttk.Label(
+            dialog, text=(f"Planned edits: {len(plan['type_actions'])} Type actions; "
+                          f"{len(plan['reverse_actions'])} GPS reverse changes; "
+                          f"{len(plan['png_actions'])} PNG files. "
+                          "ALL Office aerial registrations and MASTER GPX excluded."),
+            wraplength=875, padding=(12, 0, 12, 6)).pack(fill="x")
+        controls = ttk.Frame(dialog, padding=(12, 5, 12, 12))
+        controls.pack(fill="x", side="bottom")
+        viewer = scrolledtext.ScrolledText(
+            dialog, wrap="word", font=("Consolas", 10))
+        viewer.pack(fill="both", expand=True, padx=12, pady=5)
+        viewer.insert("end", "PINNED LAPTOP SHA-256:\n" +
+                      PINNED_YOGA_PROPOSAL_SHA256 + "\n\n")
+        viewer.insert("end", "OFFICE TYPE ACTIONS\n")
+        for action in plan["type_actions"]:
+            viewer.insert("end", f"{action['action']}: {action['type']}\n")
+            for field, data in action.get("changes", {}).items():
+                viewer.insert("end", f"  {field}: Office={data['office']} "
+                              f"→ Laptop={data['laptop']}\n")
+        viewer.insert("end", "\nGPS SYMBOL → TYPE REVERSE TABLE\n")
+        for action in plan["reverse_actions"]:
+            viewer.insert("end", f"{action['action']} {action['gps_symbol']}: "
+                          f"{action['office']} → {action['laptop']}\n")
+        viewer.insert("end", "\nCANONICAL PNGS TO INSTALL/REPLACE\n")
+        for action in plan["png_actions"]:
+            viewer.insert("end", f"{action['action']}: {action['file']}\n")
+        viewer.insert("end", "\nMANDATORY BACKUP/ACCEPTANCE GATES\n")
+        for item in plan["required_gates"]:
+            viewer.insert("end", " • " + item + "\n")
+        viewer.configure(state="disabled")
+        ttk.Button(controls, text="Close without changes",
+                   command=dialog.destroy).pack(side="right")
+        install_button = ttk.Button(
+            controls, text="Back up and repair Office GPX settings")
+        install_button.pack(side="right", padx=(0, 10))
+        ttk.Button(
+            controls, text="Restore previous Office backup…",
+            command=self.restore_office_backup).pack(side="left")
+
+        def install():
+            if self.in_progress or not dialog.winfo_exists():
+                return
+            if not messagebox.askyesno(
+                    "Confirm targeted Office ExpertGPS repair",
+                    "Repair THIS Office PC's Type definitions, GPS Symbol reverse "
+                    "table, and 37 PNG files to the exact pinned YOGA-GREG "
+                    "master configuration?\n\n"
+                    "The application will first create a LOCAL private backup "
+                    "of the complete affected Type/reverse keys and entire "
+                    "existing MSB symbol folder. It will auto-restore if "
+                    "verification fails. The Office aerial maps and the "
+                    "authoritative GPX are OUT OF SCOPE.\n\n"
+                    "ExpertGPS MUST BE CLOSED. Continue?",
+                    parent=dialog):
+                return
+            confirmation = simpledialog.askstring(
+                "Confirm exact Office repair target",
+                "Type REPAIR MSB-OFFICE-PC to approve these reviewed changes:",
+                parent=dialog)
+            if confirmation != "REPAIR MSB-OFFICE-PC":
+                return
+            install_button.configure(state="disabled")
+            self.status.set("Office GPX config backup, repair and verification running…")
+            def work():
+                return apply_office_repair(
+                    source, self.dest, expected_plan_sha256=digest,
+                    approval_confirmed=True)
+            def done(receipt, error):
+                self.set_busy(False)
+                if error:
+                    self.status.set("Office GPX repair STOPPED — read recovery message.")
+                    if dialog.winfo_exists():
+                        dialog.destroy()
+                    messagebox.showerror(
+                        "Office GPX settings repair stopped",
+                        str(error) + "\nDO NOT OPEN THE MASTER GPX.",
+                        parent=self.root)
+                    return
+                if dialog.winfo_exists():
+                    dialog.destroy()
+                self.status.set(
+                    "Office GPX Type/Reverse/37 PNG parity VERIFIED; "
+                    "disposable GPX acceptance pending.")
+                messagebox.showinfo(
+                    "Office GPX settings matched YOGA-GREG — GPX TEST PENDING",
+                    "Targeted settings and canonical PNGs verified.\n"
+                    "The Office aerial maps and master GPX were NOT modified.\n\n"
+                    "Local private recovery backup:\n" +
+                    receipt["private_rollback_backup"] +
+                    "\n\nShared audit receipt:\n" + receipt["shared_receipt"] +
+                    "\n\nNext: disposable-copy ExpertGPS GPX roundtrip. "
+                    "Do not use the master GPX yet.",
+                    parent=self.root)
+            self.async_operation(work, done)
+        install_button.configure(command=install)
+
+    def restore_office_backup(self):
+        """Explicit private-backup recovery entry point after interruption."""
+        if self.in_progress:
+            return
+        local = os.environ.get("LOCALAPPDATA")
+        if not local:
+            messagebox.showerror("Recovery unavailable", "LOCALAPPDATA missing",
+                                 parent=self.root)
+            return
+        root = Path(local) / "MSB-GIS" / "ExpertGPS-Profile-Backups" / "MSB-OFFICE-PC"
+        path = filedialog.askopenfilename(
+            parent=self.root, title="Select Office private BACKUP.JSON to restore",
+            initialdir=str(root), filetypes=[("Private Office backup JSON", "backup.json")])
+        if not path:
+            return
+        if not messagebox.askyesno(
+                "Confirm restore original Office profile",
+                "Restore original Office Type/reverse values and complete MSB "
+                "symbol folder from selected LOCAL private backup?\n"
+                "Office aerial/GPX remains untouched. ExpertGPS must be closed.",
+                parent=self.root):
+            return
+        if simpledialog.askstring(
+                "Verify restore intention", "Type RESTORE MSB-OFFICE-PC:",
+                parent=self.root) != "RESTORE MSB-OFFICE-PC":
+            return
+        def work():
+            return restore_office_private_backup(
+                Path(path).parent, approval_confirmed=True)
+        def done(receipt, error):
+            self.set_busy(False)
+            if error:
+                messagebox.showerror(
+                    "Office recovery stopped", str(error), parent=self.root)
+                return
+            self.status.set("Office original targeted profile RESTORED.")
+            messagebox.showinfo(
+                "Office targeted profile restored",
+                "Restored original registry Types, reverse mappings and "
+                "MSB symbol folder from:\n" + receipt["source_backup"] +
+                "\n\nNo scanned map or GPX changed.",
+                parent=self.root)
+        self.async_operation(work, done)
 
     def inspect_this_pc(self):
         """Generic Office/other workstation reconnaissance before any sync."""
@@ -855,6 +1045,7 @@ class Manager:
         self.profile_check_btn.configure(state="disabled" if value else "normal")
         self.profile_proposal_btn.configure(state="disabled" if value else "normal")
         self.profile_candidate_btn.configure(state="disabled" if value else "normal")
+        self.profile_align_btn.configure(state="disabled" if value else "normal")
         self.apply_btn.configure(state="disabled" if value or self.records is None or
                                  self.plan is None or not (self.plan["add"] or self.plan["replace"])
                                  else "normal")
