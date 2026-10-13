@@ -115,6 +115,16 @@ def make_office_repair_plan(laptop_proposal, canonical_png, *, local_symbols=Non
                                     "action": ("remove" if new is None else "set"),
                                     "office": old, "laptop": new})
     icon_actions = []
+    # NTFS is usually case-insensitive: an old Panel.png can resolve when
+    # opening canonical panel.png, but the on-disk case still matters.
+    existing_names = {}
+    if target_symbols.is_dir():
+        for entry in target_symbols.iterdir():
+            if entry.is_file():
+                folded = entry.name.casefold()
+                if folded in existing_names:
+                    raise ProfileError("Case-ambiguous existing MSB symbol files")
+                existing_names[folded] = entry.name
     for relative, expected in sorted(desired["files"].items()):
         if not relative.startswith("msb/") or "/" in relative[4:] or "\\" in relative:
             raise ProfileError("Unsafe laptop PNG name")
@@ -125,11 +135,19 @@ def make_office_repair_plan(laptop_proposal, canonical_png, *, local_symbols=Non
         target = target_symbols / name
         if target.is_symlink() or target_symbols.is_symlink():
             raise ProfileError("Linked Office local symbols target refused")
-        present_sha = sha256_file(target) if target.is_file() else None
-        if present_sha != expected:
+        installed_case = existing_names.get(name.casefold())
+        current_file = target_symbols / installed_case if installed_case else target
+        if current_file.is_symlink():
+            raise ProfileError("Linked Office icon refused: " + name)
+        present_sha = sha256_file(current_file) if current_file.is_file() else None
+        case_alias = installed_case is not None and installed_case != name
+        if present_sha != expected or case_alias:
             icon_actions.append({
                 "file": name,
-                "action": "replace_with_backup" if present_sha else "install_missing",
+                "action": ("replace_legacy_case_with_backup" if case_alias else
+                           "replace_with_backup" if present_sha else "install_missing"),
+                "existing_filename": installed_case,
+                "case_alias": case_alias,
                 "office_sha256": present_sha, "laptop_sha256": expected})
     return {
         "status": "READ-ONLY PLAN — OFFICE NOT YET REPAIRED",
