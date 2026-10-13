@@ -144,6 +144,60 @@ class SmallScreenLayoutTests(unittest.TestCase):
         finally:
             root.destroy()
 
+    def test_confirmed_gui_proposal_requires_rechecked_review_fingerprint(self):
+        # No real G:, registry or PNG operations. Confirmed GUI callback must
+        # invoke the engine with the exact approved-in-review snapshot digest.
+        root = tk.Tk()
+        try:
+            manager = Manager(root)
+            preview = {
+                "status": "Read-only preflight", "hostname": "YOGA-GREG",
+                "type_count": 59, "png_count": 37, "map_count": 1,
+                "destination": r"G:\\MSB GIS\\Proposals\\YOGA-GREG",
+                "review_count": 1,
+                "review_items": [{"type": "Anchor",
+                                  "reason": "Historical/unknown filename",
+                                  "url": "https://example.test/msb/Anchor.png"}],
+                "review_source_sha256": "b" * 64,
+            }
+            save_receipt = {
+                "hostname": "YOGA-GREG",
+                "destination": preview["destination"] + r"\\saved.json",
+                "proposal_sha256_not_approval": "c" * 64,
+            }
+            called = []
+            def fake_engine(*args, **kwargs):
+                called.append(kwargs)
+                return save_receipt if kwargs.get("save") else preview
+            def fake_async(work, done):
+                done(work(), None)
+            with patch.dict(
+                    Manager.review_current_profile.__globals__,
+                    {"prepare_laptop_proposal": fake_engine}), \
+                 patch.object(manager, "async_operation", side_effect=fake_async), \
+                 patch("tkinter.messagebox.askyesno", return_value=True), \
+                 patch("tkinter.messagebox.showinfo") as acknowledged:
+                manager.review_current_profile()
+                dialog = [w for w in root.winfo_children()
+                          if isinstance(w, tk.Toplevel)][0]
+                buttons = [w for w in walk(dialog)
+                           if isinstance(w, ttk.Button) and
+                           w.cget("text").startswith("Save UNAPPROVED")]
+                self.assertEqual(len(buttons), 1)
+                buttons[0].invoke()
+                self.assertEqual(len(called), 2)
+                self.assertFalse(called[0]["save"])
+                self.assertTrue(called[1]["save"])
+                self.assertEqual(
+                    called[1]["expected_source_sha256"],
+                    preview["review_source_sha256"])
+                self.assertFalse(dialog.winfo_exists())
+                self.assertTrue(acknowledged.called)
+                self.assertIn("UNAPPROVED proposal saved", manager.status.get())
+                self.assertIn("Not verified", manager.profile_release_status.get())
+        finally:
+            root.destroy()
+
     def test_cancel_step6_clears_stale_png_stop_without_registry_changes(self):
         # A preceding Step 4 filename-case collision must not look like a
         # Step 6 failure after the operator cancels the manifest picker.
