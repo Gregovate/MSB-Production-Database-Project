@@ -504,6 +504,8 @@ class Manager:
         btn_save.pack(side="left", padx=(8, 0))
 
         def compare():
+            if self.in_progress or not dialog.winfo_exists():
+                return
             path = filedialog.askopenfilename(
                 parent=dialog, title="Select YOGA-GREG laptop proposal on G:",
                 initialdir=str(SHARED_ROOT / "Proposals" / "YOGA-GREG"),
@@ -518,6 +520,8 @@ class Manager:
                     messagebox.showerror(
                         "Laptop/Office comparison stopped", str(error),
                         parent=dialog if dialog.winfo_exists() else self.root)
+                    return
+                if not dialog.winfo_exists():
                     return
                 diff = tk.Toplevel(dialog)
                 diff.title("Office PC versus YOGA-GREG — differences ONLY")
@@ -546,16 +550,20 @@ class Manager:
             self.async_operation(work, done)
 
         def save():
+            if self.in_progress or not dialog.winfo_exists():
+                return
             if not messagebox.askyesno(
                     "Confirm shared PC observation",
                     f"Save a NEW UNAPPROVED, host-named observation for "
-                    f"{observation['hostname']} under G:\\Shared drives\\...\n"
+                    f"{observation['hostname']} under:\n"
+                    f"{SHARED_ROOT / 'Observations' / observation['hostname']}\n\n"
                     "The source fingerprint will be rechecked. "
                     "No approved GIS release or ExpertGPS installation is created. "
                     "Save the observation?",
                     parent=dialog):
                 return
             btn_save.configure(state="disabled")
+            btn_compare.configure(state="disabled")
             def work():
                 return save_observation(
                     observation, plain=self.plain, canonical_png=self.dest,
@@ -563,6 +571,9 @@ class Manager:
             def done(receipt, error):
                 self.set_busy(False)
                 if error:
+                    if dialog.winfo_exists():
+                        btn_save.configure(state="normal")
+                        btn_compare.configure(state="normal")
                     messagebox.showerror(
                         "Observation save refused", str(error),
                         parent=dialog if dialog.winfo_exists() else self.root)
