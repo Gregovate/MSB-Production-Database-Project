@@ -11,7 +11,7 @@ $RepoRoot = (Resolve-Path (Join-Path $ScriptDir '..\..')).Path
 $ServerScript = Join-Path $ScriptDir 'people_identity_reconciliation_production_deploy_server.sh'
 
 $ExpectedBranch = 'main'
-$RuntimeSha = 'f6f581dce0e65b6b9be0cff62478719550e3fefe'
+$RuntimeSha = '2c9a2937079f817dafd5119584aaffc77b51357d'
 
 if (-not (Test-Path -LiteralPath $ServerScript)) {
     throw "Required #385 Production runner is missing: $ServerScript"
