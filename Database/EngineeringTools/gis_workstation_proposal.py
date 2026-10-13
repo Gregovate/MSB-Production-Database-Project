@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 import re
 import socket
-from urllib.parse import unquote
+from urllib.parse import unquote, urlsplit
 from uuid import uuid4
 
 from gis_workstation_profile import ProfileError, read_current_user, sha256, sha256_file
@@ -179,6 +179,8 @@ def prepare_laptop_proposal(plain: Path, canonical_png: Path, shared_root: Path,
         "png_count": len(files),
         "map_count": len(proposed["maps"]),
         "review_count": len(review),
+        # Preflight must display discrepancies before any G: write is requested.
+        "review_items": review,
     }
 
 
@@ -195,7 +197,16 @@ def main(argv=None):
         PARK / "Plain", PARK / "png", SHARED_ROOT, args.map_name,
         save=args.save_proposal)
     for key, value in result.items():
-        print(f"{key}: {value}")
+        if key != "review_items":
+            print(f"{key}: {value}")
+    if result["review_items"]:
+        print("\nTYPE/MAP MARKER REFERENCES REQUIRING REVIEW:")
+        for item in result["review_items"]:
+            # Readable filename/host only; omit URL query and fragment.
+            url = urlsplit(item["url"])
+            filename = unquote(url.path.rsplit("/", 1)[-1]) or "(none)"
+            print(f"  {item['type']}: {item['reason']} "
+                  f"[{url.netloc}/{filename}]")
     if not args.save_proposal:
         print("READ-ONLY preflight. To save an UNAPPROVED shared proposal, "
               "run again with --save-proposal after review.")
