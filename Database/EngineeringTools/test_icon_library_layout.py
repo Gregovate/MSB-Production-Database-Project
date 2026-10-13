@@ -459,7 +459,7 @@ class SmallScreenLayoutTests(unittest.TestCase):
                 viewer = [w for w in walk(dialog)
                           if isinstance(w, tk.Text)][0]
                 self.assertIn("Point01", viewer.get("1.0", "end"))
-                self.assertIn("REGISTRY", viewer.get("1.0", "end"))
+                self.assertIn("registry kind", viewer.get("1.0", "end"))
                 buttons = {str(w.cget("text")): w for w in walk(dialog)
                            if isinstance(w, ttk.Button)}
                 self.assertIn("Save UNAPPROVED Office map source to G:", buttons)
