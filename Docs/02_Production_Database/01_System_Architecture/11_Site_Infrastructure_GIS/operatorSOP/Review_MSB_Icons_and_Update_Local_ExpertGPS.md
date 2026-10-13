@@ -21,6 +21,14 @@ MSB operator testing found that ExpertGPS can replace MSB custom map-marker asso
 
 If an MSB GPX was already opened with symbols missing, **do not save, export, overwrite, or resynchronize it**. Preserve the original and backups. Restore/verify the local MSB symbol folder first, then use **only an isolated copy of a known-good GPX** for further tests. Ask the GIS administrator before resuming authoritative GPX editing.
 
+## Candidate Office PC reconnaissance (first; BEFORE any Show PC sync)
+
+**Source-only draft #378; pending Office Desktop acceptance.** On the **MSB Office Desktop (not the Show PC)**, use the existing Icon Library Manager candidate's **Inspect this PC / compare with laptop (READ ONLY)**. Choose the *existing Office full aerial* by name in the application's map selector. The program reads Type names, their separate Map Marker URLs and GPS Symbols, SymbolToType reverse associations, the chosen map's calibration/image hash and how the local approved PNGs compare to canonical; missing symbols are reported, **not installed**, and the full aerial is never replaced automatically.
+
+In the read-only review, use **Compare with YOGA-GREG laptop** and select the saved laptop proposal from `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Workstation-Configuration\Proposals\YOGA-GREG`. The difference window shows detailed Type, reverse-symbol and PNG differences; distinct Office full versus laptop cropped maps are marked as separate intended variants. Optionally choose **Save THIS PC observation to shared G:**, then confirm, to create a hostname-identified **UNAPPROVED** evidence file under `Workstation-Configuration\Observations\<THIS PC HOSTNAME>`. A successfully saved observation is not approval, installation, a release to use as Step 6 trust pin, or permission to edit authoritative GPX.
+
+Do not click **Submit laptop cropped-map proposal** on the Office Desktop; it is deliberately laptop-only. No routine PowerShell scripts are required. This is **Office reconnaissance and comparison only**; defer targeted Show PC ExpertGPS installation, portable map acceptance, Garmin device operation and #319 source reconciliation until the separate gates are ready.
+
 ## Cross-PC GIS configuration — synchronization NOT YET available
 
 **Important:** The Icon Library Manager currently installs artwork and `msb/readme.txt` for *this Windows user*. That does **not** synchronize ExpertGPS's user-specific waypoint Types, Map Marker associations, GPS-symbol-to-Type table, or scanned-map calibration. Identical GPX and scanned-map images can therefore behave differently on the laptop, Show PC or Office PC.
