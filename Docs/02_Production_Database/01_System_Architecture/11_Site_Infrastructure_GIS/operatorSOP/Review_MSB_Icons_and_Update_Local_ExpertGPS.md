@@ -39,6 +39,12 @@ In the read-only review, use **Compare with YOGA-GREG laptop** and select the sa
 
 Do not click **Submit laptop cropped-map proposal** on the Office Desktop; it is deliberately laptop-only. No routine PowerShell scripts are required. This is **Office reconnaissance and comparison only**; defer targeted Show PC ExpertGPS installation, portable map acceptance, Garmin device operation and #319 source reconciliation until the separate gates are ready.
 
+## Candidate Office working-map source capture — no scanned-map changes
+
+**Draft PR #378 candidate; actual Office field acceptance pending.** On MSB-OFFICE-PC, open the existing Icon Library Manager and select **Inspect this PC / compare with laptop (READ ONLY)**, choose the actual working Office scanned map **`EvergreenParkCropped`**, and click **Inspect selected map (READ ONLY)**. The inspection dialog includes **Capture OFFICE map source to G:**. Its next review shows exact map settings with native registry kinds, the two control-point records, projection, image dimensions and SHA-256 of the shared G: raster and any found sidecars. **Cancel** leaves all data unchanged. **Save UNAPPROVED Office map source to G:** followed by confirmation creates a new hostname-identified JSON under `MSB GIS/Workstation-Configuration/Map-Sources/MSB-OFFICE-PC` after rereading and verifying the source. The resulting receipt is evidence only, **not permission to change any scanned map**.
+
+The Office working map must remain untouched. After an approved map release and separate two-target preview/backup process exists, the laptop and Show PC can receive the verified Office map settings, but do not overwrite a different image/crop's georeference with the Office control points. The laptop remains authoritative for GPX Type/icon settings. Never use the official GPX as a calibration test.
+
 ## Cross-PC GIS configuration — synchronization NOT YET available
 
 **Important:** The Icon Library Manager currently installs artwork and `msb/readme.txt` for *this Windows user*. That does **not** synchronize ExpertGPS's user-specific waypoint Types, Map Marker associations, GPS-symbol-to-Type table, or scanned-map calibration. Identical GPX and scanned-map images can therefore behave differently on the laptop, Show PC or Office PC.
