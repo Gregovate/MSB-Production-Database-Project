@@ -47,7 +47,7 @@ Write-Host 'Running local contract regression...'
 
 Push-Location $RepoRoot
 try {
-    python -m pytest -q -p no:cacheprovider People/Application/test_people_manager_contract.py
+    python -m pytest -q -p no:cacheprovider People/Application/test_people_manager_contract.py People/Application/test_people_shared_tablet_identity_contract.py
     if ($LASTEXITCODE -ne 0) { throw "People identity contract tests failed with exit code $LASTEXITCODE" }
 }
 finally {
