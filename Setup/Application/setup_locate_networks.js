@@ -1,5 +1,8 @@
 /* Source-backed network discovery. GPX descriptions never assign network identity. */
 (async () => {
+  // Maintained PostgreSQL references own this picker on a live DB cutover.
+  // The dated source JSON remains fallback-only if maintained references fail.
+  if (window.siteReferenceReady && await window.siteReferenceReady) return;
   const status = document.getElementById('network-status');
   const details = document.getElementById('network-details');
   const options = document.getElementById('network-options');
