@@ -48,7 +48,7 @@ class SmallScreenLayoutTests(unittest.TestCase):
                         "6. Compare GIS workstation release (READ ONLY)",
                         "Submit laptop cropped-map proposal",
                         "Inspect this PC / compare with laptop (READ ONLY)",
-                        "Review Office GPX settings repair (READ ONLY)",
+                        "Review laptop alignment — this PC (READ ONLY)",
                         "Close",
                     ]
                     for label in expected:
@@ -78,7 +78,7 @@ class SmallScreenLayoutTests(unittest.TestCase):
             manager = Manager(root)
             root.update_idletasks()
             title = root.title()
-            self.assertIn("V0.4.0-office-gpx-repair", title)
+            self.assertIn("V0.4.1-two-target-review", title)
             self.assertIn(manager.build_identity, title)
             labels = [
                 str(w.cget("text")) for w in walk(root)
@@ -384,6 +384,30 @@ class SmallScreenLayoutTests(unittest.TestCase):
                 self.assertEqual(writes, [])
                 buttons["Close without changes"].invoke()
                 self.assertFalse(dialog.winfo_exists())
+        finally:
+            root.destroy()
+
+    def test_other_pc_alignment_preview_has_no_install_button(self):
+        root = tk.Tk()
+        try:
+            manager = Manager(root)
+            report = {
+                "target_pc_hostname": "SHOW-TEST-PC",
+                "office_types_before": 37, "laptop_type_count": 59,
+                "office_reverse_before": 19, "laptop_reverse_count": 54,
+                "type_actions": [], "reverse_actions": [],
+                "png_actions": [], "required_gates": [],
+            }
+            manager.show_target_alignment_review(report, "a" * 64)
+            dialog = [w for w in root.winfo_children()
+                      if isinstance(w, tk.Toplevel)][0]
+            self.assertIn("NOT INSTALLABLE", dialog.title())
+            labels = [str(w.cget("text")) for w in walk(dialog)
+                      if isinstance(w, ttk.Label)]
+            self.assertTrue(any("NO INSTALL" in x for x in labels))
+            buttons = [str(w.cget("text")) for w in walk(dialog)
+                       if isinstance(w, ttk.Button)]
+            self.assertEqual(buttons, ["Close"])
         finally:
             root.destroy()
 
