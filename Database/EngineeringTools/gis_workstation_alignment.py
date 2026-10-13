@@ -176,6 +176,8 @@ def make_target_alignment_plan(laptop_proposal, canonical_png, *, local_symbols=
         "laptop_type_count": len(desired_types),
         "laptop_reverse_count": len(desired["symbol_to_type"]),
         "canonical_png_count": len(desired["files"]),
+        "native_source_kinds_available": (
+            isinstance(desired.get("native_registry_kinds"), dict)),
         "office_types_before": len(current_types),
         "office_reverse_before": len(current_reverse),
         "office_existing_maps": "NOT TOUCHED OR EVEN READ",
@@ -184,6 +186,7 @@ def make_target_alignment_plan(laptop_proposal, canonical_png, *, local_symbols=
             "Administrator explicitly approves the complete change/removal plan",
             "ExpertGPS is confirmed closed on this Windows user",
             "Recoverable targeted registry and full local symbol-folder backup",
+            "Verified REG_SZ/REG_DWORD kinds recorded for every laptop Type",
             "All Type registry native field kinds verified before any modification",
             "Only pinned laptop Type/reverse mapping and approved PNGs changed",
             "Office EvergreenParkCropped and all other map registrations untouched",
