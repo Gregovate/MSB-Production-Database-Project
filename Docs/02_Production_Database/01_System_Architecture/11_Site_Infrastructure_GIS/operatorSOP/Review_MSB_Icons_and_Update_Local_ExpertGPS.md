@@ -46,6 +46,14 @@ Until the first shared release, trust/ACL, rollback and multi-PC checks are acce
 
 **Candidate UI acceptance (October 13):** In Step 1, select `antenna-l.png`, `antenna-r.png`, `car-l.png`, `cf50d-l.png` and `container-unknown.png`. Confirm the *whole enlarged preview* fits, or can be reached by scrolling the preview pane, and source notes remain reachable without maximizing the 15-inch laptop window. If an enlarged preview is clipped and cannot scroll, stop the candidate GUI review and report it to #171. **Do not change native PNG canvas sizes or save artwork to fix window clipping.** This is a candidate check, not accepted workstation configuration syncing.
 
+## Candidate: Review / submit this PC's GIS configuration — no PowerShell required
+
+**Draft #378 behavior, pending user acceptance:** In the existing Icon Library Manager (not a new app), choose **Review / submit this PC configuration** next to Step 6. The program first checks this Windows account's waypoint Type, Map Marker URL and GPS Symbol associations, cropped scanned-map evidence and local approved PNG hashes **without changing them**. A review window shows the PC name, counts, shared G: destination and all historic/noncanonical marker references. Read these before proceeding.
+
+Choose **Cancel** to leave everything unchanged. If the listing is accurate and you want to submit the existing settings for the GIS administrator's review, click **Save UNAPPROVED proposal to shared G:** and confirm. The program rechecks the approved sources and Type associations; if anything changed since the preview, it refuses the save and requires a fresh review. A successful message gives the host-identified Shared Drive file and its evidence SHA-256. **This is not a release approval, a GPX import, or a Show PC installation.** Do not paste the proposal SHA into the approved-release comparison as an approval pin. Later accepted release install/rollback remains a separately reviewed workflow.
+
+Normal operation must not require running `gis_workstation_proposal.py` or any PowerShell command. Those scripts are for engineering/fixture tests only. Until draft #378 is tested and approved, use the current app only for the already validated icon actions; do not edit or import HKCU manually.
+
 ## Purpose
 
 Keep approved symbol artwork and each Windows ExpertGPS user's local PNG library consistent. **This procedure never publishes to the public web server.** For web publishing, only the authorized administrator uses the separate procedure.
