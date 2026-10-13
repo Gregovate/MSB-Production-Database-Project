@@ -45,7 +45,7 @@ from gis_workstation_map_source import (inspect_office_map, save_office_map_sour
 BACKGROUND = "#f5f8fb"
 # Source-only candidate identity, separate from approved GIS profile releases
 # or the Production Setup application version. Never guess a successful SHA.
-APP_VERSION = "V0.4.3-office-map-source"
+APP_VERSION = "V0.4.4-office-all-map-capture"
 APP_PHASE = "PR #378 CANDIDATE"
 
 
@@ -772,11 +772,10 @@ class Manager:
         btn_compare.pack(side="left")
         btn_save = ttk.Button(actions, text="Save THIS PC observation to shared G:")
         btn_save.pack(side="left", padx=(8, 0))
-        if (observation["hostname"] == OFFICE_MAP_SOURCE_HOST and
-                observation["selected_map"] == OFFICE_WORKING_MAP):
+        if observation["hostname"] == OFFICE_MAP_SOURCE_HOST:
             btn_map = ttk.Button(
                 actions, text="Capture OFFICE map source to G:",
-                command=self.review_office_map_source)
+                command=lambda name=observation["selected_map"]: self.review_office_map_source(name))
             btn_map.pack(side="left", padx=(8, 0))
 
         def compare():
@@ -931,15 +930,15 @@ class Manager:
         btn_compare.configure(command=compare)
         btn_save.configure(command=save)
 
-    def review_office_map_source(self):
+    def review_office_map_source(self, map_name):
         """Never modify Office active scanned map; capture exact native values."""
         if self.in_progress:
             return
         self.status.set(
-            "Reading MSB Office working scanned-map calibration (READ ONLY)…")
+            f"Reading MSB Office scanned map {map_name} (READ ONLY)…")
 
         def work():
-            return inspect_office_map()
+            return inspect_office_map(map_name=map_name)
 
         def done(result, error):
             self.set_busy(False)
@@ -957,17 +956,17 @@ class Manager:
     def show_office_map_source(self, review):
         """Expose exact source settings/points BEFORE confirming G: evidence."""
         dialog = tk.Toplevel(self.root)
-        dialog.title("OFFICE working map → laptop/Show — UNAPPROVED SOURCE")
+        dialog.title("OFFICE scanned-map capture — UNAPPROVED EVIDENCE")
         dialog.geometry("900x590")
         dialog.minsize(660, 410)
         dialog.transient(self.root)
         ttk.Label(
-            dialog, text="OFFICE SCANNED MAP — PRESERVE ON OFFICE / COPY TO TARGETS",
+            dialog, text="OFFICE SCANNED MAP — READ ONLY / PRESERVE ALL REGISTRATIONS",
             font=("Segoe UI", 12, "bold"),
             padding=(12, 8, 12, 4)).pack(fill="x")
         ttk.Label(
             dialog, text=(f"Source: {review['origin_host']}  "
-                          f"Working map: {review['map_name']}  "
+                          f"Selected map: {review['map_name']}  "
                           f"Control points: {review['point_count']}"),
             padding=(12, 0, 12, 5)).pack(fill="x")
         ttk.Label(
