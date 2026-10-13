@@ -293,6 +293,7 @@ def apply_office_repair(laptop_proposal, canonical_png, *,
         # where rollback material can be found on this PC.
         public_receipt = {
             "schema": "msb.gis.expertgps.office.repair-receipt.v1",
+            "status": "OFFICE GPX CONFIG MATCHES PINNED LAPTOP FIELDS/37 PNGS",
             "host": host, "source_host": "YOGA-GREG",
             "source_sha256": PINNED_YOGA_PROPOSAL_SHA256,
             "type_count": len(desired["types"]),
