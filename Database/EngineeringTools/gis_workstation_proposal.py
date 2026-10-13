@@ -1,44 +1,85 @@
 #!/usr/bin/env python3
-"""#171: create an UNAPPROVED, sanitized laptop GIS configuration proposal.
+"""#171: collect an UNAPPROVED GIS configuration proposal on the shared G: drive.
 
-This helper belongs to the existing Icon Library Manager's engineering tools.
-It never imports/changes HKCU, GPX, source SVG/PNG, scanned maps or PostGIS.
-The output is evidence for administrator review, NOT a release or trust pin.
+Uses current Windows user's narrowly scoped ExpertGPS values in KEY_READ mode.
+The sole optional write is a new host-named proposal in shared MSB GIS.
+No approved release, registry import, GPX edit, local proposal or DB update.
 """
 from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
+import re
+import socket
+from urllib.parse import unquote
+from uuid import uuid4
 
 from gis_workstation_profile import ProfileError, read_current_user, sha256, sha256_file
 from sync_gis_icons import PARK, canonical_sources, png_canvas
 
 PROPOSAL_SCHEMA = "msb.gis.workstation.proposal.v1"
 PUBLIC_MSB_PNG = "https://webassets.sheboyganlights.org/images/symbols/msb/"
+SHARED_ROOT = PARK.parent / "Workstation-Configuration"
+HOST_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$")
 
 
-def prepare_laptop_proposal(plain: Path, canonical_png: Path, output: Path,
-                            map_name: str, *, reg=None, local_symbols=None):
-    """Collect only approved configuration fields and file hashes, with no mutations.
+def workstation_hostname(hostname=None):
+    """Hostname is an audit label, NOT an authentication or approval credential."""
+    name = hostname if hostname is not None else socket.gethostname()
+    if not isinstance(name, str) or not HOST_PATTERN.fullmatch(name):
+        raise ProfileError("Windows PC hostname unsuitable for safe shared folder naming")
+    return name.upper()
 
-    Registry is read using KEY_READ. Only output is a new local JSON proposal;
-    it is deliberately incompatible with load_release() until independently
-    reviewed, approved and packaged using a separate release process.
+
+def proposal_destination(shared_root, hostname, now=None, token=None):
+    """Predict a new host-specific destination without creating any directories."""
+    root = Path(shared_root)
+    when = now or datetime.now(timezone.utc)
+    if when.tzinfo is None:
+        raise ProfileError("Proposal timestamp must have timezone")
+    stamp = when.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    nonce = token if token is not None else uuid4().hex[:12]
+    if not re.fullmatch(r"[0-9a-f]{12}", nonce):
+        raise ProfileError("Invalid proposal nonce")
+    name = workstation_hostname(hostname)
+    return root / "Proposals" / name / (
+        f"MSB-GIS-Workstation-Proposal-{name}-{stamp}-{nonce}.json")
+
+
+def _safe_shared_parents(destination, shared_root):
+    """Prevent symlink escape or writing anywhere except host's Proposals folder."""
+    root = Path(shared_root)
+    expected = root / "Proposals" / destination.parent.name
+    if destination.parent != expected:
+        raise ProfileError("Proposal must use the expected host-specific Shared Drive folder")
+    for part in (root, root / "Proposals", destination.parent):
+        if part.is_symlink():
+            raise ProfileError("Linked Shared Drive output folder not allowed")
+    if not root.parent.is_dir() or root.parent.is_symlink():
+        raise ProfileError("MSB GIS Shared Drive parent is unavailable")
+    if not root.resolve().is_relative_to(root.parent.resolve()):
+        raise ProfileError("Shared GIS output path escapes approved root")
+
+
+def prepare_laptop_proposal(plain: Path, canonical_png: Path, shared_root: Path,
+                            map_name: str, *, hostname=None, reg=None,
+                            local_symbols=None, save=False, now=None, token=None):
+    """Inspect current-user settings and either preflight or save a NEW shared proposal.
+
+    save=False (default) is entirely read-only. save=True creates one new
+    proposal file, under the host's dedicated shared folder, after validations.
+    It neither declares release approval nor installs any settings.
     """
-    plain, canonical_png, output = Path(plain), Path(canonical_png), Path(output)
-    if (not map_name or "/" in map_name or "\\" in map_name or
-            "\x00" in map_name):
-        raise ProfileError("Specify one existing approved laptop map identity")
-    if output.exists() or output.is_symlink():
-        raise ProfileError("Refusing to overwrite an existing proposal")
-    if not output.parent.is_dir() or output.parent.is_symlink():
-        raise ProfileError("Proposal parent must be an existing local folder")
-    # Fail closed on accidental G:/Shared Drive publication of unapproved data.
-    if output.drive.lower() == "g:":
-        raise ProfileError("Unapproved proposal cannot be written to shared G: drive")
+    plain, canonical_png, shared_root = (
+        Path(plain), Path(canonical_png), Path(shared_root))
+    pc = workstation_hostname(hostname)
+    if not map_name or "/" in map_name or "\\" in map_name or "\x00" in map_name:
+        raise ProfileError("Specify one existing laptop scanned-map identity")
+    destination = proposal_destination(shared_root, pc, now=now, token=token)
+    _safe_shared_parents(destination, shared_root)
 
     profile = read_current_user(reg=reg, local_symbols=local_symbols,
                                 map_names={map_name})
@@ -49,13 +90,10 @@ def prepare_laptop_proposal(plain: Path, canonical_png: Path, output: Path,
     map_entry = profile["maps"][map_name]
     if not map_entry["image_file_verified"] or not map_entry["image_sha256"]:
         raise ProfileError("Cannot verify laptop cropped scanned-map image")
-    if not all(name in map_entry["points"] for name in ("Point01", "Point02")):
+    if not all(point in map_entry["points"] for point in ("Point01", "Point02")):
         raise ProfileError("Required reviewed map calibration Point01/Point02 absent")
 
-    # The canonical approved Plain SVG set determines expected PNG filenames.
     sources = canonical_sources(plain)
-    if not sources:
-        raise ProfileError("Approved Plain SVG source set empty")
     files = {}
     local = Path(profile["local_symbols"])
     mismatches = []
@@ -63,12 +101,11 @@ def prepare_laptop_proposal(plain: Path, canonical_png: Path, output: Path,
         name = Path(svg_name).stem + ".png"
         png = canonical_png / name
         installed = local / name
-        if png.is_symlink() or not png.is_file() or not installed.is_file() or installed.is_symlink():
+        if (png.is_symlink() or not png.is_file() or not installed.is_file()
+                or installed.is_symlink()):
             mismatches.append(name + ": canonical/installed PNG missing or linked")
             continue
-        # Approved 32px image canvas: never infer resizing or copy old aliases.
-        size = png_canvas(png.read_bytes(), name)
-        if size != (width, height):
+        if png_canvas(png.read_bytes(), name) != (width, height):
             mismatches.append(name + ": PNG dimensions differ from approved Plain")
             continue
         digest = sha256_file(png)
@@ -78,15 +115,15 @@ def prepare_laptop_proposal(plain: Path, canonical_png: Path, output: Path,
         files["msb/" + name] = digest
     if mismatches:
         raise ProfileError("Proposal blocked: " + "; ".join(mismatches[:8]))
-    # Case-sensitive original Type URLs and GPS reverse associations are retained.
-    # Unknown aliases/non-MSB URLs remain review items, not silent replacements.
+
+    # Capture exact URL spellings; never normalize historical case or guess icons.
     review = []
     for name, fields in sorted(profile["types"].items()):
         url = fields.get("Bitmap Symbol URL", "")
         if not url:
             continue
         if not url.startswith(PUBLIC_MSB_PNG):
-            review.append({"type": name, "reason": "External/noncanonical map marker URL",
+            review.append({"type": name, "reason": "External/noncanonical marker URL",
                            "url": url})
             continue
         filename = unquote(url[len(PUBLIC_MSB_PNG):])
@@ -94,11 +131,13 @@ def prepare_laptop_proposal(plain: Path, canonical_png: Path, output: Path,
             review.append({"type": name, "reason": "Historical/unknown MSB filename",
                            "url": url})
 
+    captured = now or datetime.now(timezone.utc)
     proposed = {
         "schema": PROPOSAL_SCHEMA,
         "approval_status": "UNAPPROVED",
-        "source_role": "laptop (initial evidence, not permanent master)",
-        "captured_utc": datetime.now(timezone.utc).isoformat(),
+        "source_pc_hostname": pc,
+        "source_role": "initial laptop candidate — not permanent master",
+        "captured_utc": captured.astimezone(timezone.utc).isoformat(),
         "types": profile["types"],
         "symbol_to_type": profile["symbol_to_type"],
         "maps": {map_name: {
@@ -109,36 +148,56 @@ def prepare_laptop_proposal(plain: Path, canonical_png: Path, output: Path,
         "files": files,
         "review_items": review,
         "open_gates": [
-            "MSB GIS administrator must explicitly review and approve release identity/content",
-            "Immutable package must include checked, approved PNG and portable map artifacts",
-            "Office full aerial is a separate reviewed calibration/required-role map variant",
-            "Show PC and clean Windows profile must pass acceptance",
+            "MSB GIS administrator must explicitly review and approve release content",
+            "Immutable machine-independent release package/independent approval SHA required",
+            "Only verified approved PNG/calibration assets may be installed on Show PC",
+            "Targeted Show PC HKCU backups, rollback and ExpertGPS-closed checks are required",
+            "Office full aerial is separate from laptop/Show cropped aerial variant",
             "No GPX/PostGIS two-way editing is authorized by this proposal",
         ],
     }
     payload = (json.dumps(proposed, indent=2, sort_keys=True, ensure_ascii=False)
                + "\n").encode("utf-8")
-    # Exclusive file creation; no replacement or release-history publication.
-    with output.open("xb") as stream:
-        stream.write(payload)
-    return {"file": str(output), "proposal_sha256_not_approval": sha256(payload),
-            "type_count": len(proposed["types"]), "png_count": len(files),
-            "map_count": 1, "review_count": len(review)}
+    if save:
+        # Only the shared MSB GIS host folder is created, after source preflight.
+        # Never replace an older proposal or alter a published Release.
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        _safe_shared_parents(destination, shared_root)
+        with destination.open("xb") as stream:
+            stream.write(payload)
+        if sha256_file(destination) != sha256(payload):
+            raise ProfileError("Shared proposal write verification failed; inspect file")
+    return {
+        "status": "UNAPPROVED proposal saved" if save else "Read-only preflight",
+        "hostname": pc,
+        "destination": str(destination) if save else str(destination.parent),
+        "proposal_sha256_not_approval": sha256(payload) if save else "not issued",
+        "type_count": len(proposed["types"]),
+        "png_count": len(files),
+        "map_count": len(proposed["maps"]),
+        "review_count": len(review),
+    }
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Create unapproved laptop GIS profile proposal")
-    parser.add_argument("--output", required=True,
-                        help="NEW LOCAL JSON path only; never Shared Drive, GPX or release publication")
+    parser = argparse.ArgumentParser(
+        description="Read/optionally save UNAPPROVED laptop proposal under Shared MSB GIS")
+    parser.add_argument("--save-proposal", action="store_true",
+                        help="Write one new host-specific proposal to MSB GIS Shared Drive")
     parser.add_argument("--map-name", default="2019 Ortho Cropped for GPS Export")
-    parser.add_argument("--plain", default=str(PARK / "Plain"))
-    parser.add_argument("--canonical-png", default=str(PARK / "png"))
     args = parser.parse_args(argv)
-    result = prepare_laptop_proposal(Path(args.plain), Path(args.canonical_png),
-                                      Path(args.output), args.map_name)
+    if os.name != "nt":
+        raise ProfileError("Real current-user proposal requires Windows")
+    result = prepare_laptop_proposal(
+        PARK / "Plain", PARK / "png", SHARED_ROOT, args.map_name,
+        save=args.save_proposal)
     for key, value in result.items():
         print(f"{key}: {value}")
-    print("UNAPPROVED proposal only. Do not paste its SHA into Step 6 as administrator approval.")
+    if not args.save_proposal:
+        print("READ-ONLY preflight. To save an UNAPPROVED shared proposal, "
+              "run again with --save-proposal after review.")
+    else:
+        print("Shared evidence only. No approved release or Step-6 trust pin created.")
 
 
 if __name__ == "__main__":
