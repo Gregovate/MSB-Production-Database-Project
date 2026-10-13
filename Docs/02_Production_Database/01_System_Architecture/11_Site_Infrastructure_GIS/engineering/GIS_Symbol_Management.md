@@ -231,6 +231,21 @@ The operator reported that the Icon Library Manager shows only the name/#171 des
 
 Keep this label in the existing heading row rather than adding height to the cramped 15-inch GUI. The new layout regression should verify the visible candidate identity and continued **Not verified** GIS release status; test it on the actual laptop after updating the isolated #171 review worktree. No writes to GPX, HKCU, icon sources, approved Shared Drive releases, Garmin or Production are part of this UX correction.
 
+### October 13 first real in-app shared G: proposal saved — YOGA-GREG, field acceptance PASS
+
+**Operator screenshot evidence:** On laptop GUI code candidate `V0.2.0-profile-proposals` at `0f47a9f7`, after the read-only review displayed **59 ExpertGPS waypoint Types, 37 matching approved PNGs, 1 verified cropped scanned map, and 12 existing historical/external marker-reference warnings**, the operator clicked **Save UNAPPROVED proposal to shared G:**, saw a second confirmation preserving the 12 warnings, confirmed Yes, and received the distinct **Shared GIS proposal saved — NOT approved** success dialog. This establishes the first real in-app **review → explicit confirmation → proposal-save success-receipt acceptance**. It does NOT independently establish the existence of the file beyond the application's reported post-write SHA verification.
+
+**Host-qualified proposal as displayed by the application:**
+
+```text
+G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Workstation-Configuration\Proposals\YOGA-GREG\MSB-GIS-Workstation-Proposal-YOGA-GREG-20261013T132823Z-6191db1f5562.json
+SHA-256 evidence: d40371b711b7bfba78d9aad30e7eaba1983e5fff51ee529c261942f0a540561d
+```
+
+**Important boundary:** The SHA above is a fingerprint of **UNAPPROVED evidence**, *not* the independent administrator-approved manifest pin for Step 6; do not use it as one. The app reported an immutable new host-named file and SHA evidence, but there is not yet any approved configuration release, package/ACL/installation receipt, or targeted Show PC HKCU/PNG/map backup-install-rollback workflow. None of the 12 legacy URL references were rewritten; none are independently confirmed defects solely by filename differences. The Office PC remains a distinct full-aerial case. Do not instruct normal operators to run proposal PowerShell scripts; the UI now owns these actions.
+
+**Remaining next task:** Inspect the saved sanitized JSON/review flags as needed, approve a separately versioned machine-independent release with separate trust receipt and physically packaged/hashes verified assets, then deliver explicitly reviewed, reversible Show PC installation. Keep #319 GPX/PostGIS untouched. Close the GUI prototype acceptance item, **not #171 or #378**.
+
 ### October 13 in-app GIS workstation proposal workflow — draft #378 source candidate
 
 **Operator correction and requirement:** A script-driven `--save-proposal` command is an engineering/fixture tool, **not** the supported Production workflow. The existing MSB Icon Library Manager must own the entire current-PC proposal process. Under its Step 6 workstation row, the candidate now exposes **Review / submit this PC configuration** alongside the separately hash-pinned approved-release **Compare GIS workstation release (READ ONLY)** action. The already established 1–5 artwork operations and safety gates remain independent; no new standalone application or second configuration master is created.
