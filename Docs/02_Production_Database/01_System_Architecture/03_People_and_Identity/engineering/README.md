@@ -27,8 +27,8 @@ https://my.sheboyganlights.org/people/
 Accepted Production runtime:
 
 ```text
-application SHA      54e1192309b96c9838676be51a0bfcdb3ac92e06
-version              V0.2.0
+application SHA      bb8dfa498c5b4bbecfc3693f68c4066c1e08242e
+version              V0.2.2
 service              msb-people.service
 runtime account      fieldwiring
 working directory    /opt/fieldwiring/People/Application
@@ -45,9 +45,11 @@ The backend listener is exposed only from Synology `192.168.5.4` through the sou
 
 `ref.person` remains the durable person identity. A person may exist without a Google Workspace account, Directus identity, PostgreSQL login, or active system access.
 
-The Production Directus **User Onboarding** flow matches an existing `ref.person` by `email`, provided `directus_user_id` is null or already equals the triggering Directus user ID. If no matching person is found, it creates a new person from the Directus user's first name, last name, email, and Directus ID.
+The historical Directus **User Onboarding** flow remains create-event-only and is separately documented. V0.2.2 no longer relies on that one-time event to repair every safe established identity.
 
-A manually added volunteer can therefore reserve the intended Sheboygan Lights email on the existing person before later first Google/Directus login when preserving the same `person_id` matters.
+Protected actor boundaries now use the shared exact-email reconciliation contract from Issue #385. Reconciliation is allowed only for an active Google-backed Directus user whose email and external identifier exactly match an active existing Person's real Sheboygan Lights email, with no UUID ownership conflict. It may create only the missing `ref.person.directus_user_id` relationship; it does not create a Person or change Directus authorization.
+
+Shared tablet/device/service identities are explicitly non-human and are rejected from Person reconciliation.
 
 ## Accepted People Manager Behavior
 
@@ -57,8 +59,8 @@ The accepted contact/identity behavior includes:
 - separate `people_app` least-privilege login/command contract;
 - Cloudflare-authenticated browser identity plus current Directus Manager/Administrator authorization;
 - database-governed search and person detail;
-- manual volunteer/contact create with standard `first initial + last name @sheboyganlights.org` reservation;
-- collision review favoring additional first-name characters rather than silent numbering;
+- manual volunteer/contact create without fabricating a Sheboygan Lights identity;
+- `ref.person.email` stores only a real Sheboygan Lights Workspace account when one exists;
 - duplicate review using normalized name, MSB email, personal email, and phone evidence;
 - contact edit and active/inactive lifecycle;
 - optimistic concurrency through exact `updated_at` round-trip serialization;
@@ -91,9 +93,27 @@ Capabilities, qualifications, Setup eligibility, and actual Captain assignments 
 
 Cloudflare Access authenticates the user. Current Directus role/policy state authorizes the People application.
 
-People Manager maintenance is limited to current **Manager / Administrator** or equivalent accepted `admin_access` authority. Human writes also require the authenticated Directus user to map to a durable `ref.person` actor.
+People Manager maintenance is limited to current **Manager / Administrator** or equivalent accepted `admin_access` authority. Human writes also require a durable Person actor. V0.2.2 can repair a missing exact safe Person↔Directus UUID link after authorization succeeds; reconciliation never grants Production Crew, Manager, Administrator, or any other role.
 
-## Acceptance State — 2026-09-09
+## Acceptance State
+
+### Identity reconciliation — 2026-10-13
+
+```text
+People version          V0.2.2
+accepted runtime        2c9a2937079f817dafd5119584aaffc77b51357d
+merged/deployed main    bb8dfa498c5b4bbecfc3693f68c4066c1e08242e
+migration 005 blob      88442b8f4150513fd6af581e2ea90004c6f27658
+Production deployment   PASS
+```
+
+Disposable current-Production acceptance proved exact safe self-reconciliation, audit attribution, idempotence, role preservation, fail-closed conflict handling, and non-human device/service exclusion. Governed Production deployment completed under the Server Management Issue #37 maintenance controller.
+
+Durable evidence:
+
+`People/Acceptance/People_Identity_Reconciliation_Production_Acceptance_2026-10-13.md`
+
+### Original People Manager — 2026-09-09
 
 ### Disposable acceptance
 
@@ -178,9 +198,10 @@ The accepted `/people/` nginx change was therefore completed from the normal int
 volunteer/contact
     -> ref.person created or existing person found
     -> personal contact data maintained
-    -> reserved @sheboyganlights.org identity stored when appropriate
+    -> ref.person.email stays NULL until a real Sheboygan Lights account exists
     -> Google Workspace account may be created later
-    -> first Directus login can link the same person_id by exact MSB email
+    -> Directus authorization remains authoritative
+    -> exact safe Person↔Directus UUID link self-reconciles on protected use when needed
 ```
 
 If a person stops participating, retain the durable identity and set `active_flag=false`; reactivate that same person if they return.

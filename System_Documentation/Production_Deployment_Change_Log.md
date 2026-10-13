@@ -9,6 +9,23 @@
 | Established | 2026-10-01 |
 | Ordering | Reverse chronological — newest deployment first |
 
+## 2026-10-13 — People V0.2.2 Directus-to-Person identity reconciliation — PASS
+
+- Owning issue #385; implementation PR #386.
+- Visible Production version: `V0.2.2`.
+- Accepted runtime candidate: `2c9a2937079f817dafd5119584aaffc77b51357d`.
+- Merged/deployed main SHA: `bb8dfa498c5b4bbecfc3693f68c4066c1e08242e`.
+- Migration: `People/Database/005_reconcile_directus_person_identity.sql`, blob `88442b8f4150513fd6af581e2ea90004c6f27658`.
+- Behavior: protected application actor paths now safely self-reconcile an existing active human Person to the matching active Google-backed Directus UUID by exact Sheboygan Lights email. Directus role/policy state remains unchanged and continues to authorize access.
+- Explicit non-human exclusions: `tablet-*@sheboyganlights.org`, `printservice@sheboyganlights.org`, and `production-1@sheboyganlights.org` cannot reconcile to a Person.
+- Current-Production disposable acceptance PASS: 26 exact-candidate tests; movement/management/execution/inventory/People/Controller actor paths self-reconciled; idempotence, role preservation, audit attribution, conflict/missing-state fail-closed behavior, and reconciliation report all passed.
+- Production `ref.person` fingerprint remained `9dca556251712a3824cda436b0300fc8` during disposable acceptance and was the frozen Production fingerprint at deployment.
+- Governed database-changing Production deployment PASS under Server Management Issue #37 maintenance control.
+- Frozen Directus identity fingerprint: `1333a30c3f2f35fa1864e979c200c177`.
+- Validated rollback snapshot: `/home/msbadmin/backups/postgres/msb-pre-people-identity-reconcile-20261013T183854.dump`.
+- Deployment report: `/tmp/MSB_People_Identity_Reconcile_Production_Deploy_20261013T183854.txt`.
+- Durable acceptance: [People Identity Reconciliation Production Acceptance](../People/Acceptance/People_Identity_Reconciliation_Production_Acceptance_2026-10-13.md).
+
 ## 2026-10-11 — Corrected Park Map waypoint and LinkIQ source — PASS
 
 - Governing #122; GIS #171; permanent editor #230 remains unfinished.

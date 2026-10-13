@@ -4,7 +4,7 @@
 |---|---|
 | Document Type | Engineering Identity / Authorization Contract |
 | System | People and Identity |
-| Status | IMPLEMENTATION CANDIDATE — Issue #385 |
+| Status | PRODUCTION ACCEPTED — V0.2.2 |
 | Owner | Production Database / People and Identity |
 | Related | #385; historical #130 |
 
@@ -121,6 +121,8 @@ EXTERNAL_IDENTIFIER_CONFLICT
 PERSON_LINK_CONFLICT
 DIRECTUS_UUID_CONFLICT
 MULTIPLE_ACTIVE_DIRECTUS
+SHARED_TABLET_ACCOUNT
+NONHUMAN_SERVICE_ACCOUNT
 ```
 
 This report is the required preflight for one-time cleanup and future troubleshooting.
@@ -155,9 +157,7 @@ status = active
 role = Production Crew
 ```
 
-The 2026-10-13 operational failure requires fresh Person/link verification, but it is consistent with the recurring stale-link class.
-
-The disposable Issue #385 acceptance runner prints a current Production read-only identity snapshot before mutating only the disposable clone.
+The 2026-10-13 current Production read-only snapshot confirmed Paul as an active existing Person with an active Google-backed Production Crew Directus user at the same email and a NULL Person UUID link. This is an exact safe reconciliation case under the accepted contract.
 
 ## Directus Onboarding Flow Boundary
 
@@ -169,24 +169,37 @@ Long-term Directus onboarding must also fail closed rather than auto-create a Pe
 
 That flow change is not achieved merely by the PostgreSQL reconciliation helper and must be separately accepted before claiming the no-match branch is eliminated.
 
-## Acceptance
+## Production Acceptance — 2026-10-13
 
-Before Production deployment:
+The complete acceptance sequence passed.
 
-1. run static People/Identity contract regression;
-2. clone current Production with pg_dump;
-3. apply migration 005 only to the disposable clone;
-4. prove all protected actor paths self-reconcile an exact safe NULL link;
-5. prove the reconciliation UPDATE is attributed to the target Person;
-6. prove already-correct state is idempotent;
-7. prove provider mismatch fails;
-8. prove external identifier mismatch fails;
-9. prove inactive Person fails;
-10. prove missing exact-email Person fails;
-11. prove conflicting Person UUID fails;
-12. prove UUID ownership conflict fails;
-13. prove Directus role is unchanged;
-14. prove internal reconciliation helpers are not executable by application roles; and
-15. prove Production ref.person fingerprint remains unchanged before/after disposable acceptance.
+```text
+visible version       V0.2.2
+accepted runtime      2c9a2937079f817dafd5119584aaffc77b51357d
+merged/deployed main  bb8dfa498c5b4bbecfc3693f68c4066c1e08242e
+migration 005 blob    88442b8f4150513fd6af581e2ea90004c6f27658
+```
 
-Production mutation remains a separate explicit gate.
+Current-Production disposable acceptance proved:
+
+1. static People/Identity contract regression — 26 passed;
+2. current Production clone restore and migration 005 — PASS;
+3. all protected actor paths self-reconcile an exact safe NULL link — PASS;
+4. reconciliation audit attribution to the target Person — PASS;
+5. already-correct state is idempotent — PASS;
+6. provider mismatch — fail closed;
+7. external identifier mismatch — fail closed;
+8. inactive Person — fail closed;
+9. missing exact-email Person — fail closed;
+10. conflicting Person UUID — fail closed;
+11. UUID ownership conflict — fail closed;
+12. Directus role unchanged — PASS;
+13. internal reconciliation helpers unavailable to application roles — PASS;
+14. non-human tablet/device/service identities rejected — PASS; and
+15. Production `ref.person` fingerprint unchanged — `9dca556251712a3824cda436b0300fc8`.
+
+Governed Production deployment then passed under the Server Management Issue #37 maintenance controller. The final checkout is `bb8dfa498c5b4bbecfc3693f68c4066c1e08242e`, the validated rollback snapshot is `/home/msbadmin/backups/postgres/msb-pre-people-identity-reconcile-20261013T183854.dump`, and the retained deployment report is `/tmp/MSB_People_Identity_Reconcile_Production_Deploy_20261013T183854.txt`.
+
+Durable acceptance evidence:
+
+`People/Acceptance/People_Identity_Reconciliation_Production_Acceptance_2026-10-13.md`
