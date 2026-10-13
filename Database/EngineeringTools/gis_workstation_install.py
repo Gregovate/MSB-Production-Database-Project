@@ -114,13 +114,31 @@ def _source_native_values(verified):
     proposal = verified["data"]
     if "native_registry_kinds" not in proposal:
         raise ProfileError("Native source registry kinds were not captured; stop before repair")
-    types = {
-        name: {field: {"kind": 1, "value": value}
-               for field, value in fields.items()}
-        for name, fields in proposal["types"].items()
-    }
-    reverse = {name: {"kind": 1, "value": value}
-               for name, value in proposal["symbol_to_type"].items()}
+    native = proposal["native_registry_kinds"]
+    if (not isinstance(native, dict) or
+            set(native.get("types", {})) != set(proposal["types"]) or
+            set(native.get("symbol_to_type", {})) != set(proposal["symbol_to_type"])):
+        raise ProfileError("Native kind evidence is incomplete")
+    types = {}
+    for name, fields in proposal["types"].items():
+        kinds = native["types"][name]
+        if set(kinds) != set(fields):
+            raise ProfileError("Type native kind evidence is incomplete: " + name)
+        types[name] = {}
+        for field, value in fields.items():
+            kind = kinds[field]
+            if type(kind) is not int or kind not in ALLOWED_KINDS:
+                raise ProfileError("Invalid source registry kind: " + name)
+            if kind == 4:
+                if not value.isdecimal() or int(value) > 0xFFFFFFFF:
+                    raise ProfileError("Invalid native DWORD: " + name)
+                value = int(value)
+            types[name][field] = {"kind": kind, "value": value}
+    reverse = {}
+    for name, value in proposal["symbol_to_type"].items():
+        if native["symbol_to_type"][name] != 1:
+            raise ProfileError("Invalid SymbolToType value kind")
+        reverse[name] = {"kind": 1, "value": value}
     return {"types": types, "reverse": reverse}
 
 
