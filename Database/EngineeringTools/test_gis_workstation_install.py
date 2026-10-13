@@ -7,7 +7,8 @@ from unittest.mock import patch
 
 from gis_workstation_alignment import make_office_repair_plan
 from gis_workstation_install import (
-    apply_office_repair, snapshot_managed_registry, assert_expertgps_closed)
+    apply_office_repair, restore_office_private_backup,
+    snapshot_managed_registry, assert_expertgps_closed)
 from gis_workstation_profile import ProfileError, TYPES_KEY, REVERSE_KEY, MAPS_KEY, sha256
 from test_gis_workstation_alignment import OfficeAlignmentPlanTests, FakeRegistry, png
 
@@ -102,6 +103,33 @@ class OfficeInstallTests(OfficeAlignmentPlanTests):
         for key, value in self.expected_maps.items():
             self.assertEqual(self.office.keys[key], value)
         self.assertFalse((self.shared / "Releases").exists())
+
+    def test_explicit_local_recovery_restores_original_office_fields(self):
+        receipt = self.install()
+        self.assertTrue(Path(receipt["shared_receipt"]).is_file())
+        shared = json.loads(Path(receipt["shared_receipt"]).read_text())
+        self.assertEqual(shared["gpxtest_status"], "NOT YET ACCEPTED")
+        self.assertNotIn("private_rollback_backup", shared)
+        self.assertEqual(shared["host"], "MSB-OFFICE-PC")
+        result = restore_office_private_backup(
+            receipt["private_rollback_backup"], reg=self.office,
+            local_symbols=self.office_local, hostname="MSB-OFFICE-PC",
+            private_backup_base=self.backups,
+            closed_checker=lambda: True, approval_confirmed=True)
+        self.assertIn("RESTORED", result["status"])
+        self.assertEqual(self.office.keys, self.office_reg_original)
+        self.assertEqual((self.office_local / "pole-yellow.png").read_bytes(),
+                         b"old office")
+        self.assertFalse((self.office_local / "readme.txt").exists())
+
+    def test_recovery_rejects_wrong_backup_root_before_mutation(self):
+        with self.assertRaisesRegex(ProfileError, "private recovery root"):
+            restore_office_private_backup(
+                self.root / "untrusted-network-path", reg=self.office,
+                local_symbols=self.office_local, hostname="MSB-OFFICE-PC",
+                private_backup_base=self.backups,
+                closed_checker=lambda: True, approval_confirmed=True)
+        self.assertEqual(self.office.writes, [])
 
     def test_declined_operator_confirmation_writes_nothing(self):
         with self.assertRaisesRegex(ProfileError, "confirmation"):
