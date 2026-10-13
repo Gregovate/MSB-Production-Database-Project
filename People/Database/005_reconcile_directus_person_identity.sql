@@ -62,8 +62,10 @@ LANGUAGE plpgsql
 AS $function$
 DECLARE
     v_directus_uuid text;
+    v_reconcile_email text;
 BEGIN
     v_directus_uuid := current_setting('app.directus_user_uuid', true);
+    v_reconcile_email := lower(nullif(btrim(current_setting('app.identity_reconcile_email', true)), ''));
 
     /* 1) Normal durable Directus UUID -> Person mapping. */
     IF v_directus_uuid IS NOT NULL AND btrim(v_directus_uuid) <> '' THEN
@@ -90,42 +92,45 @@ BEGIN
         END IF;
 
         /*
-          1b) Bootstrap only the audit identity for a safe exact-email match.
-          This does not write the link. ref.reconcile_directus_person_identity()
-          performs the governed durable update after all conflict checks pass.
+          1b) Reconciliation-only audit bootstrap. The special transaction-local
+          email setting is written only by ref.reconcile_directus_person_identity().
+          Ordinary governed writes cannot use exact email as an audit shortcut.
         */
-        SELECT
-            p.person_id,
-            coalesce(
-                nullif(btrim(p.preferred_name), ''),
-                nullif(btrim(pg_catalog.concat_ws(' ', p.first_name, p.last_name)), ''),
-                nullif(btrim(p.email), '')
-            )
-          INTO person_id, actor_name
-        FROM public.directus_users AS u
-        JOIN ref.person AS p
-          ON lower(p.email) = lower(u.email)
-        WHERE u.id::text = v_directus_uuid
-          AND u.status = 'active'
-          AND lower(coalesce(u.provider, '')) = 'google'
-          AND lower(coalesce(u.external_identifier, '')) = lower(u.email)
-          AND p.active_flag
-          AND p.directus_user_id IS NULL
-          AND NOT EXISTS (
-              SELECT 1
-              FROM ref.person AS owner
-              WHERE owner.directus_user_id = u.id
-          )
-        LIMIT 1;
+        IF v_reconcile_email IS NOT NULL THEN
+            SELECT
+                p.person_id,
+                coalesce(
+                    nullif(btrim(p.preferred_name), ''),
+                    nullif(btrim(pg_catalog.concat_ws(' ', p.first_name, p.last_name)), ''),
+                    nullif(btrim(p.email), '')
+                )
+              INTO person_id, actor_name
+            FROM public.directus_users AS u
+            JOIN ref.person AS p
+              ON lower(p.email) = lower(u.email)
+            WHERE u.id::text = v_directus_uuid
+              AND lower(u.email) = v_reconcile_email
+              AND u.status = 'active'
+              AND lower(coalesce(u.provider, '')) = 'google'
+              AND lower(coalesce(u.external_identifier, '')) = v_reconcile_email
+              AND p.active_flag
+              AND p.directus_user_id IS NULL
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM ref.person AS owner
+                  WHERE owner.directus_user_id = u.id
+              )
+            LIMIT 1;
 
-        IF person_id IS NOT NULL THEN
-            IF actor_name IS NULL THEN
-                RAISE EXCEPTION
-                    'Exact-email Directus actor % has no usable person display identity',
-                    person_id;
+            IF person_id IS NOT NULL THEN
+                IF actor_name IS NULL THEN
+                    RAISE EXCEPTION
+                        'Exact-email Directus actor % has no usable person display identity',
+                        person_id;
+                END IF;
+                RETURN NEXT;
+                RETURN;
             END IF;
-            RETURN NEXT;
-            RETURN;
         END IF;
     END IF;
 
@@ -318,6 +323,11 @@ BEGIN
         v_directus_user_id::text,
         true
     );
+    PERFORM pg_catalog.set_config(
+        'app.identity_reconcile_email',
+        v_email,
+        true
+    );
 
     UPDATE ref.person AS p
        SET directus_user_id = v_directus_user_id
@@ -341,6 +351,7 @@ $function$;
 REVOKE ALL ON FUNCTION ref.reconcile_directus_person_identity(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION ref.reconcile_directus_person_identity(text) FROM fieldwiring_app;
 REVOKE ALL ON FUNCTION ref.reconcile_directus_person_identity(text) FROM people_app;
+REVOKE ALL ON FUNCTION ref.reconcile_directus_person_identity(text) FROM directus_app;
 
 
 /* --------------------------------------------------------------------------
@@ -355,6 +366,8 @@ RETURNS TABLE (
     directus_status text,
     provider text,
     external_identifier text,
+    directus_role_name text,
+    active_directus_user_count integer,
     person_id integer,
     person_active boolean,
     person_directus_user_id uuid,
@@ -365,21 +378,39 @@ STABLE
 SECURITY DEFINER
 SET search_path = pg_catalog, ref
 AS $function$
-    WITH identities AS (
+    WITH directus_rows AS (
         SELECT
-            lower(coalesce(u.email, p.email)) AS email,
-            u.id AS directus_user_id,
-            u.status AS directus_status,
+            u.id,
+            lower(u.email) AS email,
+            u.status,
             u.provider,
             u.external_identifier,
+            r.name AS role_name,
+            count(*) FILTER (WHERE u.status = 'active')
+                OVER (PARTITION BY lower(u.email))::integer AS active_user_count
+        FROM public.directus_users AS u
+        LEFT JOIN public.directus_roles AS r
+          ON r.id = u.role
+        WHERE u.email IS NOT NULL
+          AND u.email ILIKE '%@sheboyganlights.org'
+    ),
+    identities AS (
+        SELECT
+            lower(coalesce(d.email, p.email)) AS email,
+            d.id AS directus_user_id,
+            d.status AS directus_status,
+            d.provider,
+            d.external_identifier,
+            d.role_name AS directus_role_name,
+            coalesce(d.active_user_count, 0) AS active_directus_user_count,
             p.person_id,
             p.active_flag AS person_active,
             p.directus_user_id AS person_directus_user_id
-        FROM public.directus_users AS u
+        FROM directus_rows AS d
         FULL OUTER JOIN ref.person AS p
-          ON lower(p.email) = lower(u.email)
+          ON lower(p.email) = d.email
         WHERE
-            (u.email IS NOT NULL AND u.email ILIKE '%@sheboyganlights.org')
+            d.email IS NOT NULL
             OR (p.email IS NOT NULL AND p.email ILIKE '%@sheboyganlights.org')
     )
     SELECT
@@ -388,10 +419,14 @@ AS $function$
         i.directus_status,
         i.provider,
         i.external_identifier,
+        i.directus_role_name,
+        i.active_directus_user_count,
         i.person_id,
         i.person_active,
         i.person_directus_user_id,
         CASE
+            WHEN i.active_directus_user_count > 1
+                THEN 'MULTIPLE_ACTIVE_DIRECTUS'
             WHEN i.directus_user_id IS NULL
                 THEN 'PERSON_WITHOUT_DIRECTUS'
             WHEN i.person_id IS NULL
@@ -420,12 +455,13 @@ AS $function$
             ELSE 'DIRECTUS_UUID_CONFLICT'
         END AS disposition
     FROM identities AS i
-    ORDER BY i.email;
+    ORDER BY i.email, i.directus_user_id;
 $function$;
 
 REVOKE ALL ON FUNCTION ref.directus_person_identity_reconciliation_report() FROM PUBLIC;
 REVOKE ALL ON FUNCTION ref.directus_person_identity_reconciliation_report() FROM fieldwiring_app;
 REVOKE ALL ON FUNCTION ref.directus_person_identity_reconciliation_report() FROM people_app;
+REVOKE ALL ON FUNCTION ref.directus_person_identity_reconciliation_report() FROM directus_app;
 
 
 /* --------------------------------------------------------------------------
