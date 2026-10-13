@@ -53,6 +53,13 @@ def load_pinned_laptop_source(path, shared_root=SHARED_ROOT, *,
     return verified
 
 
+def plan_digest(plan):
+    """Stable fingerprint of the exact reviewed no-write repair changes."""
+    import json
+    from gis_workstation_profile import sha256
+    return sha256(json.dumps(plan, sort_keys=True, ensure_ascii=False).encode("utf-8"))
+
+
 def make_office_repair_plan(laptop_proposal, canonical_png, *, local_symbols=None,
                             reg=None, shared_root=SHARED_ROOT, hostname=None,
                             approved_pin=PINNED_YOGA_PROPOSAL_SHA256):
