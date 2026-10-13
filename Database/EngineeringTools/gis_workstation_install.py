@@ -243,7 +243,8 @@ def apply_office_repair(laptop_proposal, canonical_png, *,
                         expected_plan_sha256, local_symbols=None,
                         reg=None, shared_root=SHARED_ROOT, hostname=None,
                         private_backup_base=None, closed_checker=None,
-                        approval_confirmed=False):
+                        approval_confirmed=False,
+                        source_pin=PINNED_YOGA_PROPOSAL_SHA256):
     """One-time explicit target repair. Never silently approve the proposal.
 
     No mutation unless the exact preflight plan fingerprint is supplied and
@@ -262,10 +263,10 @@ def apply_office_repair(laptop_proposal, canonical_png, *,
         import winreg
         reg = winreg
     verified = load_pinned_laptop_source(
-        laptop_proposal, shared_root=shared_root)
+        laptop_proposal, shared_root=shared_root, approved_pin=source_pin)
     plan = make_office_repair_plan(
         laptop_proposal, canonical_png, local_symbols=local_symbols, reg=reg,
-        shared_root=shared_root, hostname=host)
+        shared_root=shared_root, hostname=host, approved_pin=source_pin)
     digest = plan_digest(plan)
     if expected_plan_sha256 != digest:
         raise ProfileError("Office settings changed since preview; redo plan")
