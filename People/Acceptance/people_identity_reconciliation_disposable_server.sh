@@ -161,6 +161,19 @@ SQL
 echo "PASS: reconciliation helpers remain internal"
 
 echo
+echo "--- Shared tablet accounts remain non-human / Browser-only ---"
+set +e
+TABLET_OUTPUT="$(psql_q -c "SELECT * FROM ref.reconcile_directus_person_identity('tablet-99@sheboyganlights.org');" 2>&1)"
+TABLET_RC=$?
+set -e
+if [[ "$TABLET_RC" -eq 0 || "$TABLET_OUTPUT" != *"Shared tablet accounts are Browser-only device identities"* ]]; then
+    echo "FAIL: shared tablet account was not rejected by identity reconciliation"
+    echo "$TABLET_OUTPUT"
+    exit 5
+fi
+echo "PASS: tablet-xx account cannot reconcile to a human Person"
+
+echo
 echo "--- Select one existing fully-authorized mapped Google actor in clone ---"
 ACTOR_ROW="$(psql_q -F '|' -c "
 SELECT
