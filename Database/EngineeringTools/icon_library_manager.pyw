@@ -43,7 +43,7 @@ from gis_workstation_install import (apply_office_repair, restore_office_private
 BACKGROUND = "#f5f8fb"
 # Source-only candidate identity, separate from approved GIS profile releases
 # or the Production Setup application version. Never guess a successful SHA.
-APP_VERSION = "V0.4.1-two-target-review"
+APP_VERSION = "V0.4.2-native-types-gated"
 APP_PHASE = "PR #378 CANDIDATE"
 
 
@@ -534,6 +534,13 @@ class Manager:
         install_button = ttk.Button(
             controls, text="Back up and repair Office GPX settings")
         install_button.pack(side="right", padx=(0, 10))
+        if not plan.get("native_source_kinds_available"):
+            install_button.configure(state="disabled")
+            viewer.insert(
+                "end", "\nBLOCKED: pinned laptop source lacks native "
+                "REG_SZ/REG_DWORD kind evidence. Capture, review and pin a "
+                "new typed YOGA-GREG source proposal before any real Office "
+                "installation.\n")
         ttk.Button(
             controls, text="Restore previous Office backup…",
             command=self.restore_office_backup).pack(side="left")
