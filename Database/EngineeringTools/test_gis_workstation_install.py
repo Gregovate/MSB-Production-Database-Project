@@ -82,8 +82,8 @@ class OfficeInstallTests(OfficeAlignmentPlanTests):
     def test_success_targeted_parity_and_private_rollback_exists(self):
         receipt = self.install()
         self.assertIn("MATCHES PINNED LAPTOP", receipt["status"])
-        self.assertEqual(receipt["types"], 59)
-        self.assertEqual(receipt["canonical_pngs"], 37)
+        self.assertEqual(receipt["type_count"], 59)
+        self.assertEqual(receipt["canonical_png_count"], 37)
         self.assertEqual(len(self.office.keys[TYPES_KEY + r"\Display Anchor"]), 3)
         self.assertEqual(
             self.office.keys[REVERSE_KEY]["Flag, Blue"][0], "Display Anchor")
