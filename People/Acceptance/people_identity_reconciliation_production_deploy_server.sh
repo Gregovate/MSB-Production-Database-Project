@@ -10,9 +10,9 @@ PRODUCTION_PYTHON="/opt/fieldwiring/.venv/bin/python"
 PEOPLE_SERVICE="msb-people.service"
 PEOPLE_PORT="8796"
 TARGET_REF="main"
-ACCEPTED_RUNTIME_SHA="f6f581dce0e65b6b9be0cff62478719550e3fefe"
+ACCEPTED_RUNTIME_SHA="2c9a2937079f817dafd5119584aaffc77b51357d"
 MIGRATION_REL="People/Database/005_reconcile_directus_person_identity.sql"
-MIGRATION_BLOB="cee689bc615db74f7f34feb15228e4fd87991ec7"
+MIGRATION_BLOB="88442b8f4150513fd6af581e2ea90004c6f27658"
 TARGET_SHA="${1:?merged main target SHA is required}"
 EXPECTED_OLD_VERSION="V0.2.1"
 EXPECTED_NEW_VERSION="V0.2.2"
@@ -393,8 +393,10 @@ BEGIN
       INTO v_def;
 
     IF v_def NOT LIKE '%tablet-%@sheboyganlights.org%'
-       OR v_def NOT LIKE '%Shared tablet accounts are Browser-only device identities%' THEN
-        RAISE EXCEPTION 'Shared-tablet Browser-only exclusion is missing';
+       OR v_def NOT LIKE '%printservice@sheboyganlights.org%'
+       OR v_def NOT LIKE '%production-1@sheboyganlights.org%'
+       OR v_def NOT LIKE '%Shared device/service accounts are non-human identities%' THEN
+        RAISE EXCEPTION 'Non-human device/service account exclusion is missing';
     END IF;
 END
 $b$;
