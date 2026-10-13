@@ -9,7 +9,7 @@ $RepoRoot = (Resolve-Path (Join-Path $ScriptDir '..\..')).Path
 $Sql005 = Join-Path $RepoRoot 'People\Database\005_reconcile_directus_person_identity.sql'
 $ServerScript = Join-Path $ScriptDir 'people_identity_reconciliation_disposable_server.sh'
 
-$ExpectedBranch = 'agent/385-directus-person-self-reconcile'
+$SourceRef = 'origin/agent/385-directus-person-self-reconcile'
 $CandidateSha = '5176eab1e66721a332ba9cb37944aeac5afce4e9'
 
 foreach ($path in @($Sql005, $ServerScript)) {
@@ -18,9 +18,9 @@ foreach ($path in @($Sql005, $ServerScript)) {
     }
 }
 
-$currentBranch = (& git -C $RepoRoot branch --show-current).Trim()
-if ($LASTEXITCODE -ne 0 -or $currentBranch -ne $ExpectedBranch) {
-    throw "Run this acceptance wrapper from branch $ExpectedBranch. Current branch: $currentBranch"
+& git -C $RepoRoot fetch origin agent/385-directus-person-self-reconcile
+if ($LASTEXITCODE -ne 0) {
+    throw 'Unable to refresh the Issue #385 candidate ref.'
 }
 
 $dirty = (& git -C $RepoRoot status --porcelain)
@@ -30,10 +30,10 @@ if ($dirty) { throw 'Local worktree is not clean. Pull/commit/stash/revert befor
 & git -C $RepoRoot cat-file -e "$CandidateSha^{commit}"
 if ($LASTEXITCODE -ne 0) { throw "Accepted candidate SHA is not available locally: $CandidateSha" }
 
-& git -C $RepoRoot merge-base --is-ancestor $CandidateSha HEAD
-if ($LASTEXITCODE -ne 0) { throw "Current branch no longer contains candidate SHA $CandidateSha" }
+& git -C $RepoRoot merge-base --is-ancestor $CandidateSha $SourceRef
+if ($LASTEXITCODE -ne 0) { throw "Remote Issue #385 ref no longer contains candidate SHA $CandidateSha" }
 
-$runtimeChanges = @(& git -C $RepoRoot diff --name-only "$CandidateSha..HEAD" -- People/Database People/Application/backend.py People/Application/test_people_manager_contract.py)
+$runtimeChanges = @(& git -C $RepoRoot diff --name-only "$CandidateSha..$SourceRef" -- People/Database People/Application/backend.py People/Application/test_people_manager_contract.py)
 if ($LASTEXITCODE -ne 0) { throw 'Unable to verify exact identity-reconciliation candidate.' }
 if ($runtimeChanges.Count -gt 0) {
     throw ("Identity runtime changed after candidate SHA. Acceptance refused. " + ($runtimeChanges -join ', '))
@@ -41,7 +41,7 @@ if ($runtimeChanges.Count -gt 0) {
 
 Write-Host '========== DIRECTUS <-> PERSON IDENTITY ACCEPTANCE =========='
 Write-Host "Candidate SHA: $CandidateSha"
-Write-Host "Branch:        $ExpectedBranch"
+Write-Host "Source ref:    $SourceRef"
 Write-Host
 Write-Host 'Running local contract regression...'
 
