@@ -28,7 +28,7 @@ HOST_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$")
 
 def workstation_hostname(hostname=None):
     """Hostname is an audit label, NOT an authentication or approval credential."""
-    name = hostname if hostname is not None else socket.gethostname()
+    name = hostname if hostname is not None else (os.environ.get("COMPUTERNAME") or socket.gethostname())
     if not isinstance(name, str) or not HOST_PATTERN.fullmatch(name):
         raise ProfileError("Windows PC hostname unsuitable for safe shared folder naming")
     return name.upper()
@@ -95,9 +95,11 @@ def prepare_laptop_proposal(plain: Path, canonical_png: Path, shared_root: Path,
 
     sources = canonical_sources(plain)
     files = {}
+    source_svgs = {}
     local = Path(profile["local_symbols"])
     mismatches = []
-    for svg_name, (_path, _svg_sha, width, height) in sorted(sources.items()):
+    for svg_name, (_path, svg_sha, width, height) in sorted(sources.items()):
+        source_svgs[svg_name] = svg_sha
         name = Path(svg_name).stem + ".png"
         png = canonical_png / name
         installed = local / name
@@ -146,6 +148,7 @@ def prepare_laptop_proposal(plain: Path, canonical_png: Path, shared_root: Path,
             "image_sha256": map_entry["image_sha256"],
         }},
         "files": files,
+        "approved_plain_source_sha256": source_svgs,
         "review_items": review,
         "open_gates": [
             "MSB GIS administrator must explicitly review and approve release content",
