@@ -162,6 +162,29 @@ sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
     pg_restore -U "$DB_ACTOR" -d "$PROD_DB" --no-owner --no-acl --exit-on-error < "$DUMP_FILE"
 echo "Restore completed"
 
+# pg_dump/pg_restore with --no-owner --no-acl intentionally does not recreate
+# cluster roles. Migration 005 contains explicit REVOKE checks against the
+# existing Production application principals, so create disposable-only NOLOGIN
+# placeholders before applying the candidate. This mirrors the established
+# People disposable-acceptance pattern and does not touch Production roles.
+sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
+    psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" <<'SQL'
+DO $roles$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='fieldwiring_app') THEN
+        CREATE ROLE fieldwiring_app NOLOGIN;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='people_app') THEN
+        CREATE ROLE people_app NOLOGIN;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='directus_app') THEN
+        CREATE ROLE directus_app NOLOGIN;
+    END IF;
+END
+$roles$;
+SQL
+echo "PASS: disposable application-role placeholders ready"
+
 psql_test() {
     sudo docker exec -i -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
         psql -X -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" "$@"
