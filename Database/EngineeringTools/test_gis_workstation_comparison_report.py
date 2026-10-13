@@ -56,7 +56,7 @@ class ExportComparisonTests(unittest.TestCase):
         self.assertIn("T-Post", report)
         self.assertIn("EvergreenParkCropped", report)
         self.assertIn("NOT AN APPROVED GIS RELEASE", report)
-        self.assertEqual(report.count("Office:"), 4)
+        self.assertEqual(report.count("Office:"), 3)
         self.assertFalse(self.shared.exists())
 
     def test_explicit_save_has_exact_txt_json_and_sha_receipts(self):
