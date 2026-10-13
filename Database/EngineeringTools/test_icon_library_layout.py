@@ -46,6 +46,7 @@ class SmallScreenLayoutTests(unittest.TestCase):
                         "4. Publish PNGs to web",
                         "5. Install PNGs for this ExpertGPS user",
                         "6. Compare GIS workstation release (READ ONLY)",
+                        "Review / submit this PC configuration",
                         "Close",
                     ]
                     for label in expected:
@@ -75,7 +76,7 @@ class SmallScreenLayoutTests(unittest.TestCase):
             manager = Manager(root)
             root.update_idletasks()
             title = root.title()
-            self.assertIn("V0.1.0-profile-compare", title)
+            self.assertIn("V0.2.0-profile-proposals", title)
             self.assertIn(manager.build_identity, title)
             labels = [
                 str(w.cget("text")) for w in walk(root)
@@ -85,6 +86,61 @@ class SmallScreenLayoutTests(unittest.TestCase):
                                 and manager.build_identity in line
                                 for line in labels))
             self.assertIn("Not verified", manager.profile_release_status.get())
+        finally:
+            root.destroy()
+
+    def test_pc_proposal_button_previews_before_save_and_cancel_is_inert(self):
+        # No real HKCU or G: access: inject a disposable preflight response.
+        root = tk.Tk()
+        try:
+            manager = Manager(root)
+            sample = {
+                "status": "Read-only preflight", "hostname": "YOGA-GREG",
+                "type_count": 59, "png_count": 37, "map_count": 1,
+                "destination": r"G:\\MSB GIS\\Proposals\\YOGA-GREG",
+                "review_count": 1,
+                "review_items": [
+                    {"type": "Anchor", "reason": "Historical/unknown MSB filename",
+                     "url": "https://example.test/msb/Anchor.png"}],
+                "review_source_sha256": "a" * 64,
+            }
+            calls = []
+            def fake_collect(*args, **kwargs):
+                calls.append(kwargs)
+                if kwargs.get("save"):
+                    raise AssertionError("GUI must not save before confirmation")
+                return sample
+            def fake_async(work, done):
+                try:
+                    done(work(), None)
+                except Exception as exc:
+                    done(None, str(exc))
+            with patch.dict(
+                    Manager.review_current_profile.__globals__,
+                    {"prepare_laptop_proposal": fake_collect}), \
+                 patch.object(manager, "async_operation", side_effect=fake_async):
+                manager.review_current_profile()
+                root.update_idletasks()
+                dialogs = [w for w in root.winfo_children()
+                           if isinstance(w, tk.Toplevel)]
+                self.assertEqual(len(dialogs), 1)
+                dialog = dialogs[0]
+                self.assertIn("UNAPPROVED", dialog.title())
+                viewer = [w for w in walk(dialog)
+                          if isinstance(w, tk.Text)][0]
+                self.assertIn("Anchor.png", viewer.get("1.0", "end"))
+                self.assertEqual(len(calls), 1)
+                self.assertFalse(calls[0]["save"])
+                options = {
+                    str(w.cget("text")): w for w in walk(dialog)
+                    if isinstance(w, ttk.Button)
+                }
+                self.assertIn("Save UNAPPROVED proposal to shared G:", options)
+                with patch("tkinter.messagebox.askyesno", return_value=False):
+                    options["Save UNAPPROVED proposal to shared G:"].invoke()
+                self.assertEqual(len(calls), 1)
+                options["Cancel"].invoke()
+                self.assertFalse(dialog.winfo_exists())
         finally:
             root.destroy()
 
