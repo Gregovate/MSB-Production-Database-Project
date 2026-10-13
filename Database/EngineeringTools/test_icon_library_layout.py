@@ -67,6 +67,27 @@ class SmallScreenLayoutTests(unittest.TestCase):
                     root.destroy()
 
 
+    def test_source_candidate_version_is_visible_and_not_release_approval(self):
+        # Laptop operator needs visible exact code candidate identity. The SHA
+        # refers to this checkout, not the approved workstation GIS release.
+        root = tk.Tk()
+        try:
+            manager = Manager(root)
+            root.update_idletasks()
+            title = root.title()
+            self.assertIn("V0.1.0-profile-compare", title)
+            self.assertIn(manager.build_identity, title)
+            labels = [
+                str(w.cget("text")) for w in walk(root)
+                if isinstance(w, ttk.Label)
+            ]
+            self.assertTrue(any("PR #378 CANDIDATE" in line
+                                and manager.build_identity in line
+                                for line in labels))
+            self.assertIn("Not verified", manager.profile_release_status.get())
+        finally:
+            root.destroy()
+
     def test_cancel_step6_clears_stale_png_stop_without_registry_changes(self):
         # A preceding Step 4 filename-case collision must not look like a
         # Step 6 failure after the operator cancels the manifest picker.
