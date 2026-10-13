@@ -78,7 +78,7 @@ class SmallScreenLayoutTests(unittest.TestCase):
             manager = Manager(root)
             root.update_idletasks()
             title = root.title()
-            self.assertIn("V0.4.1-two-target-review", title)
+            self.assertIn("V0.4.2-native-types-gated", title)
             self.assertIn(manager.build_identity, title)
             labels = [
                 str(w.cget("text")) for w in walk(root)
@@ -358,6 +358,7 @@ class SmallScreenLayoutTests(unittest.TestCase):
                 "png_actions": [{"action": "install_missing",
                                   "file": "pole-yellow.png"}],
                 "required_gates": ["Local rollback exists", "GPX preserved"],
+                "native_source_kinds_available": False,
             }
             writes = []
             def fake_apply(*args, **kwargs):
@@ -380,6 +381,8 @@ class SmallScreenLayoutTests(unittest.TestCase):
                            if isinstance(w, ttk.Button)}
                 self.assertIn("Back up and repair Office GPX settings", buttons)
                 self.assertIn("Restore previous Office backup…", buttons)
+                self.assertEqual(str(buttons["Back up and repair Office GPX settings"].cget("state")), "disabled")
+                self.assertIn("lacks native", viewer.get("1.0", "end"))
                 buttons["Back up and repair Office GPX settings"].invoke()
                 self.assertEqual(writes, [])
                 buttons["Close without changes"].invoke()
