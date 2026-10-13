@@ -63,14 +63,27 @@ def plan_digest(plan):
 def make_office_repair_plan(laptop_proposal, canonical_png, *, local_symbols=None,
                             reg=None, shared_root=SHARED_ROOT, hostname=None,
                             approved_pin=PINNED_YOGA_PROPOSAL_SHA256):
-    """Preview exact GPX Type/reverse/PNG changes; never touch Office maps.
-
-    The Office-only Type keys are deliberate removal candidates. They must be
-    shown for approval before any software is permitted to delete them.
-    """
+    """Office-only pilot plan used by the separately gated backup/installer."""
     host = workstation_hostname(hostname)
     if host != OFFICE_TARGET_HOST:
         raise ProfileError("Pilot Office repair is restricted to MSB-OFFICE-PC")
+    return make_target_alignment_plan(
+        laptop_proposal, canonical_png, local_symbols=local_symbols,
+        reg=reg, shared_root=shared_root, hostname=host,
+        approved_pin=approved_pin)
+
+
+def make_target_alignment_plan(laptop_proposal, canonical_png, *, local_symbols=None,
+                               reg=None, shared_root=SHARED_ROOT, hostname=None,
+                               approved_pin=PINNED_YOGA_PROPOSAL_SHA256):
+    """READ ONLY for any target PC, including future Show PC.
+
+    This is inspection, not permission to install on an unknown computer.
+    Never read/copy map registration values or touch official GPX.
+    """
+    host = workstation_hostname(hostname)
+    if host == LAPTOP_SOURCE_HOST:
+        raise ProfileError("Master laptop is not a target workstation")
     verified = load_pinned_laptop_source(
         laptop_proposal, shared_root=shared_root, approved_pin=approved_pin)
     desired = verified["data"]
@@ -150,7 +163,10 @@ def make_office_repair_plan(laptop_proposal, canonical_png, *, local_symbols=Non
                 "case_alias": case_alias,
                 "office_sha256": present_sha, "laptop_sha256": expected})
     return {
-        "status": "READ-ONLY PLAN — OFFICE NOT YET REPAIRED",
+        "status": ("READ-ONLY PLAN — OFFICE NOT YET REPAIRED" if host ==
+                   OFFICE_TARGET_HOST else
+                   "READ-ONLY TARGET COMPARISON — INSTALLATION NOT AUTHORIZED"),
+        "target_pc_hostname": host,
         "office_pc_hostname": host,
         "master_pc_hostname": LAPTOP_SOURCE_HOST,
         "pinned_laptop_proposal_sha256": approved_pin,
