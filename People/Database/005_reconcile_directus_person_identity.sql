@@ -15,8 +15,9 @@ Permanent rules:
   - No Person is auto-created.
   - No Directus role/policy is changed.
   - Conflicts fail closed.
-  - Shared tablet service accounts (tablet-*@sheboyganlights.org) are non-human,
-    Browser-only identities and are never reconciled to ref.person.
+  - Shared tablet/device/service accounts are non-human identities and are never
+    reconciled to ref.person. Current protected set includes tablet-*,
+    printservice@sheboyganlights.org, and production-1@sheboyganlights.org.
   - A safe NULL link is reconciled before protected application writes continue.
   - The reconciliation update is attributed to the same authenticated Person.
 ============================================================================ */
@@ -206,10 +207,14 @@ BEGIN
             MESSAGE = 'Authenticated email is required for identity reconciliation';
     END IF;
 
-    IF v_email LIKE 'tablet-%@sheboyganlights.org' THEN
+    IF v_email LIKE 'tablet-%@sheboyganlights.org'
+       OR v_email IN (
+            'printservice@sheboyganlights.org',
+            'production-1@sheboyganlights.org'
+       ) THEN
         RAISE EXCEPTION USING
             ERRCODE = '42501',
-            MESSAGE = 'Shared tablet accounts are Browser-only device identities and cannot act as an MSB person';
+            MESSAGE = 'Shared device/service accounts are non-human identities and cannot act as an MSB person';
     END IF;
 
     SELECT count(*)
@@ -435,6 +440,11 @@ AS $function$
         CASE
             WHEN i.email LIKE 'tablet-%@sheboyganlights.org'
                 THEN 'SHARED_TABLET_ACCOUNT'
+            WHEN i.email IN (
+                    'printservice@sheboyganlights.org',
+                    'production-1@sheboyganlights.org'
+                 )
+                THEN 'NONHUMAN_SERVICE_ACCOUNT'
             WHEN i.active_directus_user_count > 1
                 THEN 'MULTIPLE_ACTIVE_DIRECTUS'
             WHEN i.directus_user_id IS NULL
