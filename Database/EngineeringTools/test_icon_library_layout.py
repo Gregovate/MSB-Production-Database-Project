@@ -267,6 +267,78 @@ class SmallScreenLayoutTests(unittest.TestCase):
         finally:
             root.destroy()
 
+    def test_office_comparison_copy_and_explicit_shared_export(self):
+        # The entire 138-line-style diff is usable without selecting Tk text.
+        # Everything here is in-memory. No real Shared Drive or HKCU access.
+        root = tk.Tk()
+        try:
+            manager = Manager(root)
+            office = {
+                "hostname": "MSB-OFFICE-PC", "type_count": 28,
+                "reverse_count": 27, "selected_map": "EvergreenParkCropped",
+                "map_image_verified": True, "png_matched": 0,
+                "png_missing": 32, "png_different": 5, "png_total": 37,
+                "fingerprint": "a" * 64,
+                "profile": {"types": {}, "maps": {}, "local_png_status": {}},
+            }
+            compare = {
+                "rows": [("GPS Symbol reverse differs", "Flag, Blue", "",
+                          "Office: Outlet Power | Laptop: Display Anchor")],
+                "office_type_count": 28, "laptop_type_count": 59,
+                "laptop_maps": ["2019 Ortho Cropped for GPS Export"],
+                "laptop_proposal_sha256": "b" * 64,
+            }
+            saves = []
+            def fake_save(result, observation, *, shared_root):
+                saves.append((result, observation))
+                return {"text_file": r"G:\\MSB GIS\\comparison.txt",
+                        "text_sha256": "c" * 64,
+                        "json_file": r"G:\\MSB GIS\\comparison.json",
+                        "differences": 1}
+            def immediate(work, done):
+                done(work(), None)
+            with patch.dict(
+                    Manager.show_pc_observation.__globals__,
+                    {"compare_with_laptop": lambda *args, **kwargs: compare,
+                     "save_comparison_report": fake_save}), \
+                 patch.object(manager, "async_operation", side_effect=immediate), \
+                 patch("tkinter.filedialog.askopenfilename",
+                       return_value="fixture-laptop-proposal.json"):
+                manager.show_pc_observation(office)
+                review = [w for w in root.winfo_children()
+                          if isinstance(w, tk.Toplevel)][0]
+                compare_button = [w for w in walk(review)
+                                  if isinstance(w, ttk.Button) and
+                                  str(w.cget("text")).startswith("Compare with")][0]
+                compare_button.invoke()
+                reports = [w for w in review.winfo_children()
+                           if isinstance(w, tk.Toplevel)]
+                self.assertEqual(len(reports), 1)
+                diff = reports[0]
+                buttons = {str(w.cget("text")): w for w in walk(diff)
+                           if isinstance(w, ttk.Button)}
+                self.assertIn("Copy entire report", buttons)
+                self.assertIn("Save report to shared G:", buttons)
+                self.assertTrue(any(
+                    "READ-ONLY DIFFERENCE REPORT" in str(w.cget("text"))
+                    for w in walk(diff) if isinstance(w, ttk.Label)))
+                buttons["Copy entire report"].invoke()
+                self.assertIn("Flag, Blue", diff.clipboard_get())
+                self.assertIn("28", diff.clipboard_get())
+                with patch("tkinter.messagebox.askyesno", return_value=False):
+                    buttons["Save report to shared G:"].invoke()
+                self.assertEqual(saves, [])
+                with patch("tkinter.messagebox.askyesno", return_value=True), \
+                     patch("tkinter.messagebox.showinfo") as shown:
+                    buttons["Save report to shared G:"].invoke()
+                self.assertEqual(len(saves), 1)
+                self.assertTrue(shown.called)
+                self.assertIn("comparison differences saved",
+                              manager.status.get())
+                self.assertIn("Not verified", manager.profile_release_status.get())
+        finally:
+            root.destroy()
+
     def test_cancel_step6_clears_stale_png_stop_without_registry_changes(self):
         # A preceding Step 4 filename-case collision must not look like a
         # Step 6 failure after the operator cancels the manifest picker.
