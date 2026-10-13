@@ -42,6 +42,8 @@ For a **disposable test** using an administrator-issued release and a *separatel
 
 Until the first shared release, trust/ACL, rollback and multi-PC checks are accepted, continue using the existing safe icon-only actions and preserve the original registry backups/GPX. Do not import someone else's full registry export to make Step 6 say Current.
 
+**Laptop layout acceptance note (candidate only):** The source-only manager candidate should open at a practical 15-inch laptop size, with Steps 1–6, the red ExpertGPS warning, GIS **Not verified** status and Close accessible without maximizing. If any control remains offscreen, stop and report the window/display scaling to #171; do not change ExpertGPS settings or import a registry backup as a workaround.
+
 ## Purpose
 
 Keep approved symbol artwork and each Windows ExpertGPS user's local PNG library consistent. **This procedure never publishes to the public web server.** For web publishing, only the authorized administrator uses the separate procedure.
