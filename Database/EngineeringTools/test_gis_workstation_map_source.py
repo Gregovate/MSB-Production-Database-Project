@@ -63,6 +63,44 @@ class OfficeMapSourceTests(unittest.TestCase):
             shared_root=self.shared, shared_image_root=self.image_root,
             now=self.when, token="aabbccddeeff")
 
+    def test_three_map_capture_keeps_calibration_separate(self):
+        slash = chr(92)
+        base = MAPS_KEY + slash + "EvergreenParkCropped"
+        for idx, name in enumerate(("2019 Ortho Cropped for GPS Export",
+                                    "2019OrthoEvergreenParktoWorkshop")):
+            img = self.image_root / (name + ".tif")
+            img.write_bytes(name.encode("utf-8"))
+            key = MAPS_KEY + slash + name
+            self.reg.keys[key] = dict(self.reg.keys[base])
+            self.reg.keys[key]["Map Path"] = (str(img), self.reg.REG_SZ)
+            for point in ("Point01", "Point02"):
+                self.reg.keys[key + slash + point] = dict(
+                    self.reg.keys[base + slash + point])
+            self.reg.keys[key + slash + "Point01"]["X"] = (
+                "999", self.reg.REG_SZ)
+            review = inspect_office_map(
+                map_name=name, reg=self.reg, hostname=self.host,
+                shared_image_root=self.image_root)
+            self.assertEqual(review["points"]["Point01"]["X"]["value"], "999")
+            receipt = save_office_map_source(
+                review, reg=self.reg, hostname=self.host,
+                shared_root=self.shared, shared_image_root=self.image_root,
+                now=self.when, token=("111111111111" if idx == 0
+                                      else "222222222222"))
+            saved = json.loads(Path(receipt["destination"]).read_text())
+            self.assertEqual(saved["map_name"], name)
+            self.assertEqual(saved["target_roles"], [])
+        self.assertEqual(self.reg.writes, [])
+        self.assertEqual(len(list((self.shared / "Map-Sources" /
+                                   self.host).glob("*.json"))), 2)
+
+    def test_unknown_map_name_refused(self):
+        for name in ("not-registered", "", "../bad"):
+            with self.assertRaises(ProfileError):
+                inspect_office_map(
+                    map_name=name, reg=self.reg, hostname=self.host,
+                    shared_image_root=self.image_root)
+
     def test_source_read_only_exact_values_and_g_file_hash(self):
         reviewed = self.capture()
         self.assertEqual(reviewed["map_name"], "EvergreenParkCropped")
