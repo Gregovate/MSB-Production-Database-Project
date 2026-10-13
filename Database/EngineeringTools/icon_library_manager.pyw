@@ -29,11 +29,12 @@ from distribute_gis_pngs import (WEB_PNG, PUBLIC_PNG_BASE, local_expertgps_folde
                                  png_distribution_preflight, distribute_pngs)
 from gis_workstation_profile import compare_current_user
 from gis_workstation_proposal import prepare_laptop_proposal, SHARED_ROOT
+from gis_workstation_release_candidate import (inspect_saved_proposal, prepare_release_candidate)
 
 BACKGROUND = "#f5f8fb"
 # Source-only candidate identity, separate from approved GIS profile releases
 # or the Production Setup application version. Never guess a successful SHA.
-APP_VERSION = "V0.2.0-profile-proposals"
+APP_VERSION = "V0.3.0-release-candidate"
 APP_PHASE = "PR #378 CANDIDATE"
 
 
@@ -237,6 +238,10 @@ class Manager:
             profile_controls, text="Review / submit this PC configuration",
             command=self.review_current_profile)
         self.profile_proposal_btn.pack(side="left")
+        self.profile_candidate_btn = ttk.Button(
+            action_dock, text="Review saved G: proposal / prepare release candidate",
+            command=self.review_saved_proposal)
+        self.profile_candidate_btn.pack(anchor="w", pady=(2, 0))
         self.profile_release_status = tk.StringVar(
             value="GIS workstation configuration: Not verified — no administrator-pinned release selected")
         ttk.Label(action_dock, textvariable=self.profile_release_status,
@@ -371,6 +376,118 @@ class Manager:
             self.async_operation(save, saved)
         save_button.configure(command=submit)
 
+    def review_saved_proposal(self):
+        """Open the selected *shared G:* proposal, never self-approve it."""
+        if self.in_progress:
+            return
+        path = filedialog.askopenfilename(
+            parent=self.root, title="Select submitted UNAPPROVED GIS proposal",
+            initialdir=str(SHARED_ROOT / "Proposals"),
+            filetypes=[("MSB GIS JSON proposal", "*.json")])
+        if not path:
+            return
+        self.status.set("Inspecting saved shared GIS proposal (READ ONLY)…")
+
+        def inspect():
+            result = inspect_saved_proposal(path, SHARED_ROOT)
+            staging = prepare_release_candidate(
+                path, self.dest, shared_root=SHARED_ROOT,
+                reviewed_sha256=result["sha256"], save=False)
+            return result, staging
+
+        def done(data, error):
+            self.set_busy(False)
+            if error:
+                self.status.set("Shared proposal review blocked — nothing staged.")
+                messagebox.showerror(
+                    "Shared proposal not accepted for candidate review",
+                    str(error) + "\nNo shared release, registry or GPX changed.",
+                    parent=self.root)
+                return
+            self.show_saved_proposal_review(*data)
+
+        self.async_operation(inspect, done)
+
+    def show_saved_proposal_review(self, review, staging):
+        """Review existing historical references before staging UNAPPROVED assets."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Submitted GIS proposal — NOT a release approval")
+        dialog.geometry("850x520")
+        dialog.minsize(650, 370)
+        dialog.transient(self.root)
+        ttk.Label(
+            dialog, text=(f"Source: {review['hostname']}   "
+                          f"Types: {review['types']}   PNGs: {review['pngs']}   "
+                          f"Maps: {review['maps']}   Review flags: "
+                          f"{len(review['review_items'])}"),
+            font=("Segoe UI", 11, "bold"), padding=(12, 10, 12, 5)
+        ).pack(fill="x")
+        ttk.Label(
+            dialog, text=("Verified submitted proposal SHA-256: " + review["sha256"]),
+            wraplength=800, padding=(12, 0, 12, 6)).pack(fill="x")
+        ttk.Label(
+            dialog, text=("Candidate output: " + staging["destination"] +
+                          "\nNO approved manifest, map image, calibration installer "
+                          "or Show PC configuration will be created."),
+            wraplength=800, padding=(12, 0, 12, 6)).pack(fill="x")
+        actions = ttk.Frame(dialog, padding=(12, 5, 12, 12))
+        actions.pack(side="bottom", fill="x")
+        viewer = scrolledtext.ScrolledText(dialog, wrap="word", font=("Consolas", 10))
+        viewer.pack(fill="both", expand=True, padx=12, pady=5)
+        for item in review["review_items"]:
+            viewer.insert("end", f"{item['type']} — {item['reason']}\n"
+                          f"  {item['url']}\n\n")
+        viewer.insert("end", "\nUnresolved mandatory gates:\n")
+        for gate in staging["gates"]:
+            viewer.insert("end", " • " + gate + "\n")
+        viewer.configure(state="disabled")
+        ttk.Button(actions, text="Cancel", command=dialog.destroy).pack(side="right")
+        stage_btn = ttk.Button(actions, text="Stage UNAPPROVED release candidate")
+        stage_btn.pack(side="right", padx=(0, 10))
+
+        def stage():
+            if self.in_progress:
+                return
+            if not messagebox.askyesno(
+                    "Confirm UNAPPROVED candidate staging",
+                    f"Package the verified canonical PNGs for {review['hostname']} "
+                    f"under the shared Candidates folder?\n\n"
+                    "This does NOT approve the source profile, include the "
+                    "map image/calibration sidecars, or install ExpertGPS. "
+                    "The exact saved proposal and icon SHA-256 will be "
+                    "rechecked before writing.\n\nStage candidate?",
+                    parent=dialog):
+                return
+            stage_btn.configure(state="disabled")
+
+            def work():
+                return prepare_release_candidate(
+                    review["path"], self.dest, shared_root=SHARED_ROOT,
+                    reviewed_sha256=review["sha256"], save=True)
+
+            def staged(receipt, error):
+                self.set_busy(False)
+                if dialog.winfo_exists():
+                    dialog.destroy()
+                if error:
+                    self.status.set("Candidate staging stopped; inspect shared evidence.")
+                    messagebox.showerror(
+                        "Candidate staging not accepted",
+                        str(error) + "\nNo approved GIS release installed.",
+                        parent=self.root)
+                    return
+                self.status.set("UNAPPROVED candidate staged; Show PC still NOT ready.")
+                messagebox.showinfo(
+                    "Candidate staged — NOT approved",
+                    "New shared candidate:\n" + receipt["destination"] +
+                    "\n\nCandidate SHA-256 evidence only:\n" +
+                    receipt["candidate_sha256_not_approval"] +
+                    "\n\nMap imagery, administrator approval and the "
+                    "targeted Show PC installer remain open.",
+                    parent=self.root)
+            self.async_operation(work, staged)
+        stage_btn.configure(command=stage)
+
     def cancel_workstation_compare(self):
         """A canceled Step 6 must not retain a preceding PNG preflight STOP."""
         self.status.set("GIS release comparison canceled — no settings changed.")
@@ -450,6 +567,7 @@ class Manager:
         self.scan_btn.configure(state="disabled" if value else "normal")
         self.profile_check_btn.configure(state="disabled" if value else "normal")
         self.profile_proposal_btn.configure(state="disabled" if value else "normal")
+        self.profile_candidate_btn.configure(state="disabled" if value else "normal")
         self.apply_btn.configure(state="disabled" if value or self.records is None or
                                  self.plan is None or not (self.plan["add"] or self.plan["replace"])
                                  else "normal")
