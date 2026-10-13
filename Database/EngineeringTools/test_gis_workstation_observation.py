@@ -101,7 +101,7 @@ class OfficeObservationTests(unittest.TestCase):
         result = compare_with_laptop(
             self.observe(), self.laptop_path, shared_root=self.shared)
         text = json.dumps(result)
-        self.assertIn("Different map variants (expected)", text)
+        self.assertIn("Different map registrations (review separately)", text)
         self.assertIn("Full Office Aerial", text)
         self.assertIn("Ortho 2019", text)
         self.assertIn("Local PNG not verified", text)
