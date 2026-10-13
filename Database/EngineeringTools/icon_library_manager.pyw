@@ -536,11 +536,13 @@ class Manager:
         install_button.pack(side="right", padx=(0, 10))
         if not plan.get("native_source_kinds_available"):
             install_button.configure(state="disabled")
+            viewer.configure(state="normal")
             viewer.insert(
                 "end", "\nBLOCKED: pinned laptop source lacks native "
                 "REG_SZ/REG_DWORD kind evidence. Capture, review and pin a "
                 "new typed YOGA-GREG source proposal before any real Office "
                 "installation.\n")
+            viewer.configure(state="disabled")
         ttk.Button(
             controls, text="Restore previous Office backup…",
             command=self.restore_office_backup).pack(side="left")
