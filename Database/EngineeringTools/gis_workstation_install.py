@@ -112,6 +112,8 @@ def _replace_managed_registry(reg, desired):
 
 def _source_native_values(verified):
     proposal = verified["data"]
+    if "native_registry_kinds" not in proposal:
+        raise ProfileError("Native source registry kinds were not captured; stop before repair")
     types = {
         name: {field: {"kind": 1, "value": value}
                for field, value in fields.items()}
