@@ -48,7 +48,7 @@ class LaptopProposalTests(unittest.TestCase):
     def build(self, save=False, hostname=None):
         return prepare_laptop_proposal(
             self.plain, self.canonical, self.shared, "Ortho 2019",
-            hostname=hostname or self.host, reg=self.reg,
+            hostname=self.host if hostname is None else hostname, reg=self.reg,
             local_symbols=self.local, save=save,
             now=self.now, token=self.token)
 
