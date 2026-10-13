@@ -5,7 +5,7 @@ umask 077
 REPO_ROOT="/opt/fieldwiring"
 PRODUCTION_PYTHON="/opt/fieldwiring/.venv/bin/python"
 SOURCE_REF="agent/385-directus-person-self-reconcile"
-ACCEPTED_RUNTIME_SHA="fc831af3986e83c01501057c48f305f8c23672e0"
+ACCEPTED_RUNTIME_SHA="f6f581dce0e65b6b9be0cff62478719550e3fefe"
 CANDIDATE_WORKTREE="/tmp/msb-identity-reconcile-static-${$}"
 PROD_CONTAINER="msb-postgres"
 PROD_DB="msb"
