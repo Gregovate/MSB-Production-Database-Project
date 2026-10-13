@@ -228,6 +228,14 @@ def _restore_private_backup(reg, symbols, backup_root):
         shutil.rmtree(symbols)
     if record["had_symbols"]:
         shutil.copytree(originals, symbols)
+    if snapshot_managed_registry(reg) != record["registry"]:
+        raise ProfileError("Rollback registry readback differs from backup")
+    if record["had_symbols"]:
+        for name, digest in record["symbol_sha256"].items():
+            if sha256_file(symbols / name) != digest:
+                raise ProfileError("Rollback icon SHA-256 differs from backup")
+    elif symbols.exists():
+        raise ProfileError("Rollback did not restore absent symbol folder")
     return record
 
 
