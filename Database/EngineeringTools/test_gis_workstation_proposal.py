@@ -1,11 +1,13 @@
-"""Disposable #171 laptop proposal tests: no live G:, HKCU, GPX or Production."""
+"""#171 disposable shared GIS proposal acceptance, no real G:/HKCU/GPX/Production."""
+from datetime import datetime, timezone
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
 from gis_workstation_profile import ProfileError, load_release, sha256
-from gis_workstation_proposal import prepare_laptop_proposal, PROPOSAL_SCHEMA
+from gis_workstation_proposal import (PROPOSAL_SCHEMA, proposal_destination,
+    prepare_laptop_proposal, workstation_hostname)
 from test_gis_workstation_profile import FakeRegistry, MAPS_KEY, TYPES_KEY
 from test_sync_gis_icons import png, svg
 
@@ -18,6 +20,9 @@ class LaptopProposalTests(unittest.TestCase):
         self.plain = self.root / "Plain"
         self.canonical = self.root / "png"
         self.local = self.root / "local"
+        self.shared_parent = self.root / "MSB GIS"
+        self.shared_parent.mkdir()
+        self.shared = self.shared_parent / "Workstation-Configuration"
         for path in (self.plain, self.canonical, self.local):
             path.mkdir()
         (self.plain / "pole-yellow.svg").write_bytes(svg(24, 32))
@@ -35,60 +40,102 @@ class LaptopProposalTests(unittest.TestCase):
             "Latitude": ("43.7", self.reg.REG_SZ),
             "Longitude": ("-87.7", self.reg.REG_SZ),
         }
-        self.out = self.root / "candidate.json"
+        self.host = "LAPTOP-TEST"
+        self.now = datetime(2026, 10, 13, 7, 0, tzinfo=timezone.utc)
+        self.token = "123456abcdef"
+        self.out = proposal_destination(self.shared, self.host, self.now, self.token)
 
-    def build(self):
+    def build(self, save=False, hostname=None):
         return prepare_laptop_proposal(
-            self.plain, self.canonical, self.out, "Ortho 2019",
-            reg=self.reg, local_symbols=self.local)
+            self.plain, self.canonical, self.shared, "Ortho 2019",
+            hostname=hostname or self.host, reg=self.reg,
+            local_symbols=self.local, save=save,
+            now=self.now, token=self.token)
 
-    def test_unapproved_sanitized_proposal_and_readonly_inputs(self):
+    def test_check_only_is_readonly_including_shared_drive(self):
         result = self.build()
-        body = self.out.read_text("utf-8")
-        data = json.loads(body)
+        self.assertEqual(result["status"], "Read-only preflight")
         self.assertEqual(result["type_count"], 1)
         self.assertEqual(result["png_count"], 1)
+        self.assertEqual(result["map_count"], 1)
+        self.assertEqual(result["hostname"], self.host)
+        self.assertFalse(self.shared.exists(), "Preflight must not create shared folders")
+        self.assertFalse(self.out.exists())
+        self.assertEqual(self.reg.writes, [])
+
+    def test_shared_host_specific_unapproved_proposal(self):
+        result = self.build(save=True)
+        self.assertEqual(result["status"], "UNAPPROVED proposal saved")
+        self.assertEqual(Path(result["destination"]), self.out)
+        self.assertEqual(self.out.parent.name, self.host)
+        self.assertEqual(self.out.parent.parent.name, "Proposals")
+        data = json.loads(self.out.read_text("utf-8"))
         self.assertEqual(data["schema"], PROPOSAL_SCHEMA)
         self.assertEqual(data["approval_status"], "UNAPPROVED")
+        self.assertEqual(data["source_pc_hostname"], self.host)
         self.assertEqual(data["symbol_to_type"]["Flag, Blue"], "Display Anchor")
         self.assertEqual(data["types"]["Display Anchor"]["GPS Symbol"], "Flag, Blue")
         self.assertEqual(data["files"]["msb/pole-yellow.png"], sha256(png(24, 32)))
-        self.assertNotIn("Private Vendor Setting", body)
-        self.assertNotIn(str(self.root), body)
-        self.assertNotIn("Map Path", body)
+        self.assertNotIn("Private Vendor Setting", self.out.read_text())
+        self.assertNotIn(str(self.root), self.out.read_text())
+        self.assertNotIn("Map Path", self.out.read_text())
         self.assertEqual(self.reg.writes, [])
-        self.assertTrue(all(str(x).startswith("Software\\TopoGrafix\\Common")
+        self.assertTrue(all(str(x).startswith(r"Software\TopoGrafix\Common")
                             for x in self.reg.opened))
-        # A proposal cannot be trusted as an administrator-approved release.
+        # No proposal file may be fed to the approved-release Step 6 loader.
         with self.assertRaisesRegex(ProfileError, "Unsupported"):
             load_release(self.out, sha256(self.out.read_bytes()))
 
-    def test_bad_png_blocks_without_creating_proposal(self):
+    def test_bad_png_does_not_create_shared_folders(self):
         (self.local / "pole-yellow.png").write_bytes(b"changed")
         with self.assertRaisesRegex(ProfileError, "installed PNG differs"):
-            self.build()
-        self.assertFalse(self.out.exists())
+            self.build(save=True)
+        self.assertFalse(self.shared.exists())
 
-    def test_missing_calibration_blocks_without_writing(self):
+    def test_missing_calibration_does_not_create_shared_folders(self):
         self.reg.keys.pop(MAPS_KEY + r"\Ortho 2019\Point02")
         with self.assertRaisesRegex(ProfileError, "Point01/Point02"):
-            self.build()
-        self.assertFalse(self.out.exists())
+            self.build(save=True)
+        self.assertFalse(self.shared.exists())
 
-    def test_preserve_unrecognized_legacy_type_url_as_review_item(self):
+    def test_historical_case_url_preserved_as_explicit_review_item(self):
         self.reg.keys[TYPES_KEY + r"\Display Anchor"]["Bitmap Symbol URL"] = (
             "https://webassets.sheboyganlights.org/images/symbols/msb/Pole-Yellow.png",
             self.reg.REG_SZ)
-        self.build()
+        self.build(save=True)
         report = json.loads(self.out.read_text("utf-8"))
         self.assertEqual(len(report["review_items"]), 1)
         self.assertEqual(report["review_items"][0]["type"], "Display Anchor")
 
-    def test_no_overwriting_existing_proposals(self):
-        self.out.write_text("existing local evidence")
-        with self.assertRaisesRegex(ProfileError, "overwrite"):
-            self.build()
-        self.assertEqual(self.out.read_text(), "existing local evidence")
+    def test_no_overwrite_even_for_same_host_timestamp(self):
+        self.build(save=True)
+        original = self.out.read_bytes()
+        with self.assertRaises(FileExistsError):
+            self.build(save=True)
+        self.assertEqual(original, self.out.read_bytes())
+
+    def test_invalid_hostname_refused_before_all_writes(self):
+        for name in ("../../other", r"PC\OTHER", "", ".hidden", "PC WITH SPACE"):
+            with self.subTest(hostname=name):
+                with self.assertRaises(ProfileError):
+                    self.build(save=True, hostname=name)
+        self.assertFalse(self.shared.exists())
+
+    def test_two_hostnames_are_separate_without_shared_release_overwrite(self):
+        one = self.build(save=True)
+        two = self.build(save=True, hostname="SHOW-PC")
+        self.assertNotEqual(one["destination"], two["destination"])
+        self.assertTrue(Path(one["destination"]).exists())
+        self.assertTrue(Path(two["destination"]).exists())
+        self.assertFalse((self.shared / "Releases").exists())
+        self.assertFalse((self.shared / "Receipts").exists())
+
+    def test_symlinked_shared_parent_refused(self):
+        self.shared.mkdir()
+        (self.shared / "Proposals").symlink_to(self.local, target_is_directory=True)
+        with self.assertRaisesRegex(ProfileError, "Linked Shared Drive"):
+            self.build(save=True)
+        self.assertFalse((self.local / self.host).exists())
 
 
 if __name__ == "__main__":
