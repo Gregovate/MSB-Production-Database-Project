@@ -114,6 +114,29 @@ class LaptopProposalTests(unittest.TestCase):
         self.assertEqual(len(report["review_items"]), 1)
         self.assertEqual(report["review_items"][0]["type"], "Display Anchor")
 
+    def test_gui_review_fingerprint_blocks_stale_configuration(self):
+        before = self.build(save=False)
+        self.assertEqual(len(before["review_source_sha256"]), 64)
+        # Operator reviewed one Type, but changed the association afterward.
+        self.reg.keys[TYPES_KEY + r"\\Display Anchor"]["GPS Symbol"] = (
+            "Tall Tower", self.reg.REG_SZ)
+        with self.assertRaisesRegex(ProfileError, "changed since review"):
+            prepare_laptop_proposal(
+                self.plain, self.canonical, self.shared, "Ortho 2019",
+                hostname=self.host, reg=self.reg, local_symbols=self.local,
+                save=True, now=self.now, token=self.token,
+                expected_source_sha256=before["review_source_sha256"])
+        self.assertFalse(self.shared.exists(), "Stale review must never write")
+
+    def test_gui_review_fingerprint_allows_explicit_fresh_save(self):
+        before = self.build(save=False)
+        result = prepare_laptop_proposal(
+            self.plain, self.canonical, self.shared, "Ortho 2019",
+            hostname=self.host, reg=self.reg, local_symbols=self.local,
+            save=True, now=self.now, token=self.token,
+            expected_source_sha256=before["review_source_sha256"])
+        self.assertTrue(Path(result["destination"]).is_file())
+
     def test_no_overwrite_even_for_same_host_timestamp(self):
         self.build(save=True)
         original = self.out.read_bytes()
