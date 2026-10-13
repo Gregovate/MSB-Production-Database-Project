@@ -178,7 +178,8 @@ class SmallScreenLayoutTests(unittest.TestCase):
                     {"prepare_laptop_proposal": fake_engine}), \
                  patch.object(manager, "async_operation", side_effect=fake_async), \
                  patch("tkinter.messagebox.askyesno", return_value=True), \
-                 patch("tkinter.messagebox.showinfo") as acknowledged:
+                 patch("tkinter.messagebox.showinfo") as acknowledged, \
+                 patch("gis_workstation_proposal.workstation_hostname", return_value="YOGA-GREG"):
                 manager.review_current_profile()
                 dialog = [w for w in root.winfo_children()
                           if isinstance(w, tk.Toplevel)][0]
