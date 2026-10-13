@@ -9,5 +9,8 @@ SQL_005 = (
 
 def test_shared_tablet_accounts_are_not_human_identity_reconciliation_targets() -> None:
     assert "tablet-%@sheboyganlights.org" in SQL_005
-    assert "Shared tablet accounts are Browser-only device identities" in SQL_005
+    assert "Shared device/service accounts are non-human identities" in SQL_005
+    assert "printservice@sheboyganlights.org" in SQL_005
+    assert "production-1@sheboyganlights.org" in SQL_005
     assert "SHARED_TABLET_ACCOUNT" in SQL_005
+    assert "NONHUMAN_SERVICE_ACCOUNT" in SQL_005
