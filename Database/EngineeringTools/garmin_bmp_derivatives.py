@@ -87,8 +87,23 @@ def prepare(registry: Path, approved_png: Path, output: Path, *, apply: bool = F
         raise GarminSyncError(f"Approved PNG folder missing: {approved_png}")
     if output.exists() and not output.is_dir():
         raise GarminSyncError("Destination is not a directory")
+    # Artwork coverage and GPX Type mapping are independent. Every approved
+    # canonical PNG receives one BMP derivative. The reviewed registry assigns
+    # Garmin stems for mapped Types; unmapped artwork uses its canonical stem.
+    named = {row["source"] for row in mapping}
+    extras = []
+    for path in sorted(approved_png.iterdir(), key=lambda p: p.name.casefold()):
+        if path.is_file() and path.suffix.lower() == ".png" and path.name not in named:
+            if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*\\.png", path.name):
+                raise GarminSyncError(f"Noncanonical approved PNG filename: {path.name}")
+            extras.append({"type": "(artwork only)", "source": path.name, "symbol": path.stem})
+    expanded = mapping + extras
+    # Case-insensitive collision safety is essential for FAT/Windows Garmin mounts.
+    symbols = [row["symbol"].casefold() for row in expanded]
+    if len(symbols) != len(set(symbols)):
+        raise GarminSyncError("Approved mapping and canonical stems produce duplicate BMP names")
     pending, report = {}, []
-    for row in mapping:
+    for row in expanded:
         src = approved_png / row["source"]
         if not src.is_file() or src.is_symlink():
             raise GarminSyncError(f"Missing/invalid approved PNG: {src}")
