@@ -65,17 +65,14 @@ def bmp_from_png(png: bytes, filename: str) -> tuple[bytes, tuple[int, int]]:
         rgba = image.convert("RGBA")
         # The Garmin's BMP format has no alpha: solid pixels are preserved,
         # transparent pixels become the documented magenta transparency key.
-        # Partial transparency cannot be represented faithfully; reject it.
-        alphas = rgba.getchannel("A")
-        extrema = alphas.getextrema()
-        if extrema not in ((255, 255), (0, 255), (0, 0)):
-            raise GarminSyncError(f"{filename}: unsupported alpha")
-        if any(alpha not in (0, 255) for alpha in list(alphas.get_flattened_data())):
-            raise GarminSyncError(f"{filename}: semi-transparent pixels require artwork review")
+        # A 24-bit Garmin BMP cannot store partial alpha. Apply an explicit
+        # midpoint opacity threshold to anti-aliased edges, retaining the
+        # original visible RGB and using magenta only for transparent pixels.
+        pixels = list(rgba.get_flattened_data())
+        if any(px[:3] == MAGENTA and px[3] >= 128 for px in pixels):
+            raise GarminSyncError(f"{filename}: visible magenta conflicts with transparency key")
         rgb = Image.new("RGB", rgba.size, MAGENTA)
-        rgb.paste(rgba.convert("RGB"), mask=alphas)
-        if any(px == MAGENTA for px, alpha in zip(list(rgba.convert("RGB").get_flattened_data()), alphas.get_flattened_data()) if alpha == 255):
-            raise GarminSyncError(f"{filename}: opaque magenta conflicts with transparency key")
+        rgb.putdata([px[:3] if px[3] >= 128 else MAGENTA for px in pixels])
         output = io.BytesIO()
         rgb.save(output, format="BMP")
         value = output.getvalue()
