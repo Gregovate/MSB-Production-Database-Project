@@ -72,3 +72,20 @@ The ExpertGPS GPS Symbol picker displays Garmin stock icons, not MSB custom icon
 **Parallel-workstream boundary:** PR #378 Symbol Library / desktop GIS Manager / Garmin / ExpertGPS workstation release and final Show PC sync run in parallel with PR #319 GIS/PostGIS source ingestion and operational GIS work. Do not duplicate or block the PostgreSQL importer. Refine the existing one-window PC app to offer navigable workspaces, approved external release manifest (no hardcoded workstation SHA/proposal), exact target backup/readback and safe workstation sync. Show PC is the final workstation acceptance after a controlled release; not a gate on GIS development. No Production mutation or physical G: rename is claimed here.
 
 **Repository safeguard:** Current main at reconnaissance was `b183a79124d1de9ccf1844f4fc4613a911bcc938`; #378 source branch had diverged (198 ahead, 48 behind). Preserve existing history, reconcile intentionally before implementation/merge, and do not force push or silently transplant stale source files. This record is an engineering checkpoint and does not assert implementation completion.
+
+## October 14 YOGA-GREG authoritative master GPX mapping audit — 236 waypoints
+
+Operator executed read-only `garmin_mapping_audit.py` against shared authoritative `MSB GIS/MSB-Park-Infrastructure.gpx` (not the separately saved LPFT-PS test). Output: **236 waypoints in 23 ExpertGPS Types; 37 available approved canonical PNGs**. Data evidence and proposed Garmin reconciliation are below. No source/master GPX or Garmin/CustomSymbols changed.
+
+| Type | Count | Existing GPX GPS Symbol distribution | Proposed handling |
+| --- | ---: | --- | --- |
+| Panel | 17 | PANEL 8; Block, Red 9 | 9 reviewed remaps to named PANEL (already physically confirmed) |
+| OUT-Combo | 84 | Navaid, Red/White 84 | 84 proposed remaps to Outlet_Combo; physical earlier evidence exists for working custom Outlet_Combo under another waypoint Type |
+| Stage | 33 | Stadium 33 | 33 proposed remaps to Stage **only after approved new arch Stage.bmp derivative exists**; current archived Stage.bmp is wrong 32-bit star |
+| LP-Combo | 6 | Light 5; Outlet_Combo 1 | individual review; do not treat LP-Combo as Outlet_Combo |
+| Outlet Power | 15 | Navaid, Red/White 1; Navaid, Red 7; Outlet_Combo 5; Outlet_Network 1; PANEL 1 | inconsistent and potentially semantically distinct; examine individual waypoints before remap |
+| Other Types | 81 | Various stock symbols across 18 Types | independent approved Type/artwork mapping required; no blanket changes |
+
+**Subtotal:** 126 proposed symbol-only updates for Panel + OUT-Combo + Stage (9+84+33), not 126 verified/finalized device updates. Previously reviewed 93 count covered Panel and OUT-Combo only; the additional Stage 33 is a new proposed association, not a proven installed BMP rendering. Approved PNG inventory includes panel.png, outlet-combo.png, stage.png; this establishes source presence, not binary-alpha conversion compatibility or formal release approval. The exported GPX can preserve every unrelated waypoint field when changing only sym; never silently write the authoritative master.
+
+**Engineering UI change:** The existing Garmin review workspace now includes a read-only `Inventory master GPX` action, commit 57b8f298, avoiding manual pasted JSON for future audits. The workstation Python 3.13 targeted Garmin unit tests were 8/8 PASS and six modified modules compiled on YOGA-GREG at the preceding checkpoint; this additional GUI update still needs syntax/runtime check. Approved full Type↔BMP mapping and reviewed exception list must precede broad GPX normalization.
