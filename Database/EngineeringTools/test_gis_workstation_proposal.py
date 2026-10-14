@@ -94,7 +94,7 @@ class LaptopProposalTests(unittest.TestCase):
             load_release(self.out, sha256(self.out.read_bytes()))
 
     def test_source_captures_real_dword_kind_without_reg_write(self):
-        self.reg.keys[TYPES_KEY + r"\\Display Anchor"]["Symbol Type"] = (
+        self.reg.keys[TYPES_KEY + r"\Display Anchor"]["Symbol Type"] = (
             2, self.reg.REG_DWORD)
         result = self.build(save=True)
         evidence = json.loads(Path(result["destination"]).read_text("utf-8"))
@@ -132,7 +132,7 @@ class LaptopProposalTests(unittest.TestCase):
         before = self.build(save=False)
         self.assertEqual(len(before["review_source_sha256"]), 64)
         # Operator reviewed one Type, but changed the association afterward.
-        self.reg.keys[TYPES_KEY + r"\\Display Anchor"]["GPS Symbol"] = (
+        self.reg.keys[TYPES_KEY + r"\Display Anchor"]["GPS Symbol"] = (
             "Tall Tower", self.reg.REG_SZ)
         with self.assertRaisesRegex(ProfileError, "changed since review"):
             prepare_laptop_proposal(
