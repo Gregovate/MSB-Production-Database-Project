@@ -44,3 +44,13 @@ The physical Garmin ZIP contains 23 BMP files; most are 24-bit RGB, while Stage.
 ## Cross-reference
 - [GIS Symbol Management](GIS_Symbol_Management.md) — engineering authority for artwork, ExpertGPS and approved compatibility.
 - [Garmin Field Survey Workflow](Garmin_Field_Survey_Workflow.md) — field track recording and operator handoff.
+
+
+## October 14 corrected waypoint-only Garmin candidate
+
+Operator explicitly directs aligning the master waypoint **outgoing GPS symbols** to the installed MSB custom icons rather than collecting more isolated stock-icon observations. This is not permission to modify the authoritative GPX without reviewed acceptance.
+
+Actual master GPX SHA-256: `1594ce1f96c1df8f6751e0d436a99acc824a95274768c2f1b1160376175943fd`. Prepared read-only-derived candidate `MSB-Garmin-Waypoint-Symbols-REVIEW-20261014.gpx` with SHA-256 `96ad2b3111c9852e9ab983d446a750b4bfb825c0ffbfb1215ce90fddc57cf298`. Changed **only** 93 per-waypoint `sym` text elements: nine `Panel` `Block, Red` to `PANEL`, and 84 `OUT-Combo` `Navaid, Red/White` to `Outlet_Combo`. All other XML elements and attributes (including names, Types, map marker URLs, coordinates, all track geometry and metadata) were verified exactly equal after suppressing the candidate `sym` text. No file sent to Garmin and no shared master modified. The candidate requires explicit engineering review before field use.
+
+Compared the 37 approved ExpertGPS PNG basenames from YOGA-GREG's documented proposal with the actual named Garmin BMP files using normalized spelling/hyphens/underscores. Only **14** directly match in this heuristic; **23** do not. These 23 are **unresolved mapping/provisioning candidates, not 23 proven missing icons**: some refer to alias names, different artwork categories, or symbols not needed on Garmin. Full inventory/report produced as `MSB-Garmin-Symbol-Library-Gaps-20261014.csv`. Garmin inventory includes 23 BMP files and 20 numbered PNG images plus a nested ZIP. Determine which artwork is required for field waypoints before producing a device-compatible BMP package; retain exact existing case/legacy aliases and verify real GPSMAP rendering. Next Type mappings such as Outlet Power to an intended red pin require operator-approved device identifier, not an invented name.
+
