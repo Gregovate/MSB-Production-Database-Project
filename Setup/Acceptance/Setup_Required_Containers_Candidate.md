@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | OPERATOR ACCEPTED / PRODUCTION AUTHORIZED — installation pending |
+| Status | INSTALLED PREREQUISITE VERIFIED — original deployment receipt pending |
 | Reviewed | 2026-10-14 |
 | Owner | #122 / DBG-2026-013; Pick List integration #206 |
 | Baseline main | b183a79124d1de9ccf1844f4fc4613a911bcc938 |
@@ -127,3 +127,14 @@ its worktree clean, remove only that worktree and delete only its merged branch.
   fixing two of those failures. Six older report-query-count tests remain unrelated
   to this release; the current runner does not invoke those retired installers.
 - The accepted application source and 763 passing application tests are unchanged.
+
+## October 14 prerequisite verification by later search release
+
+Greg supplied server PASS for PR391-Source-20261014T185934Z. That runner could
+advance only after proving live efb7f26f/V0.3.64 and the exact073 command/body,
+SECURITY DEFINER/search path, owner and narrow permissions. Thus the earlier
+C106 source/command installation is verified as a prerequisite of the successful
+search release. The separate original PR389 deployment report, migration backup
+path/hash and protected Production C106 assignment result remain unprovided;
+do not invent their values or rerun migration073 to obtain documentation.
+Current Setup source is now86341d49/V0.3.65, not the older C106 source.

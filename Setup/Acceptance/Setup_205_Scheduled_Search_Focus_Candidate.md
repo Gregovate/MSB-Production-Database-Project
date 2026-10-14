@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | OPERATOR ACCEPTED / DEPLOYMENT AUTHORIZED — installation pending |
+| Status | PRODUCTION ACCEPTED — server and protected browser PASS |
 | Reviewed | 2026-10-14 |
 | Owner | #205 / #122 DBG-2026-014 |
 | Baseline main | be8988cd4cf65f5ce8eb1816568714a3a643bdf5 |
@@ -117,3 +117,35 @@ After successful deployment, return to primary main, fetch/fast-forward, prove
 fix/205-search-expand-day is ancestral to origin/main, verify review ownership and
 clean state, remove only that worktree and delete only its merged local branch.
 Preserve all Scheduling/Locate/GIS/#88/C106 worktrees.
+
+## Operator-supplied server receipt — October 14, 14:00 CDT
+
+```text
+STAGE returning to service
+STAGE server deployment PASS; protected scheduled search and documentation closeout pending
+PASS: server deployment PASS; protected scheduled search and documentation closeout pending;
+report: /home/msbadmin/setup-deployment-reports/PR391-Source-20261014T185934Z
+```
+
+This is operator-reported execution evidence, not an independent private-host
+inspection. Successful exact runner gates establish deployed Setup source
+`86341d49dc8ccf290575f9d2b418c235094a1377`, V0.3.65, controller ONLINE/unfenced
+proof, exact health/regression and matching frozen ref/ops fingerprints. Actual
+fingerprint values and observed unchanged shared SHA are retained in that report;
+they have not been transcribed. No source rollback was reported.
+
+The enforced baseline also verifies prior C106 source efb7f26f/V0.3.64 and the
+installed exact073 command. This does not supply the missing original PR389
+report, migration snapshot/hash or a protected Production C106 assignment test.
+
+Feature merge4819959b and tooling mergef312a12b are repository integration,
+not the pinned live application. No SQL migration/rollback archive was created
+by this source-only search deployment. Maintenance was used at Greg's request.
+Protected Production collapsed-day search and local cleanup remain pending.
+
+## Protected Production browser acceptance — October 14, 14:02 CDT
+
+Greg confirmed: "checked the browser and it is working" after the server PASS.
+The deployed collapsed-day scheduled search is operator accepted. DBG-2026-014
+is complete; #205's separate Day View wording and other work remain open. Local
+Office cleanup commands were supplied; their execution is not yet evidenced.

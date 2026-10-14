@@ -9,6 +9,17 @@
 | Established | 2026-10-01 |
 | Ordering | Reverse chronological — newest deployment first |
 
+## 2026-10-14 — Setup V0.3.65 scheduled search reveal — Production PASS
+
+- Owner #205 / #122 DBG-2026-014; feature PR #391 merge `4819959be8bdad3d002623775b83ebe876a417e5`; tooling PR #392 merge `f312a12b30e75f8bb5cc7733620ff1f301a54138`.
+- Exact deployed application: `86341d49dc8ccf290575f9d2b418c235094a1377`, `V0.3.65-scheduled-search-focus`, footer Updated 2026-10-14. Tooling/main SHAs are not the live application pin.
+- Clicking a scheduled search result expands the matching collapsed day, updates its arrow/accessibility state, and scrolls/highlights/focuses the task. Other days remain collapsed. Separate Day View terminology is unchanged.
+- Exact-candidate engineering: 764 Setup/shared-preview checks and actual-handler DOM tests PASS. Greg confirmed disposable browser behavior and CLEAN EXIT, then authorized deployment.
+- Operator-reported server PASS: `/home/msbadmin/setup-deployment-reports/PR391-Source-20261014T185934Z` (October 14 UTC). Source-only release used the installed maintenance controller at Greg's request: freeze and complete ref/ops preservation, exact Setup promotion, return ONLINE, exact health and live regression passed per runner receipt. Numerical fingerprints and observed shared SHA remain in the retained report/journal, not transcribed or independently inspected here.
+- Prior Setup/rollback source: `efb7f26fd0d4e1275daa509e2ade62bc291b1d8f` / V0.3.64. The runner's mandatory preflight also proved the exact migration 073 command/security was already installed. No migrations replayed; no PostgreSQL rollback archive created for this source-only release. Separate PR389 installation report/archive receipt remains unprovided.
+- Protected Production browser: Greg confirmed working October 14 at14:02 CDT. Local Office-worktree cleanup was supplied but execution remains unverified. Do not rerun the completed installer for documentation.
+- Detailed evidence: [Scheduled Search Focus candidate/receipt](../Setup/Acceptance/Setup_205_Scheduled_Search_Focus_Candidate.md).
+
 ## 2026-10-13 — People V0.2.2 Directus-to-Person identity reconciliation — PASS
 
 - Owning issue #385; implementation PR #386.
