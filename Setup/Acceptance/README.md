@@ -283,3 +283,10 @@ Greg authorized migration 073 deployment. Feature PR #389 is merged. Use
 controller maintenance runner profile and committed-byte transport own the short
 freeze/snapshot/install/validate/ONLINE window. No Production test assignment,
 manual operator pause or repeated disposable clone. Actual installation pending.
+
+## Scheduled search and collapsed days — DBG-2026-014
+
+[Candidate and browser checks](Setup_205_Scheduled_Search_Focus_Candidate.md):
+selecting a scheduled search result expands its day before scrolling/focusing the
+assignment. V0.3.65 source candidate; no migration or Production change. Reconcile
+with concurrent #205 workload/KPI changes; #389 deployment remains separate.
