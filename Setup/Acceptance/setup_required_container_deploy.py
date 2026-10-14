@@ -19,12 +19,21 @@ SIGNATURE = 'ref.set_setup_task_required_container(text,bigint,integer,boolean,t
 
 
 class RequiredContainerDeploy(Deploy):
+    target = TARGET
+    tree = TREE
+    old_setup = OLD_SETUP
+    old_version = 'V0.3.62-field-networks'
+    version = VERSION
+    profile = 'required-073'
+    release_tag = 'PR389-073'
+    source_only = False
+
     def database_check(self, installed):
         if not installed:
             self.sql("DO $$ BEGIN IF to_regprocedure('" + SIGNATURE + "') IS NOT NULL THEN "
                      "RAISE EXCEPTION '073 command already exists; inspect, do not replay'; END IF; END $$;")
             return
-        source = self.git('show', TARGET + ':' + MIGRATION)
+        source = self.git('show', self.target + ':' + MIGRATION)
         body = re.search(r'AS \$function\$(.*?)\$function\$;', source, re.S).group(1)
         digest = hashlib.md5(body.encode()).hexdigest()
         self.sql("""BEGIN READ ONLY; DO $gate$ BEGIN
@@ -55,7 +64,7 @@ class RequiredContainerDeploy(Deploy):
                 'Backup chain not current')
 
     def baseline(self):
-        require(self.git('rev-parse', 'HEAD', root=SETUP) == OLD_SETUP
+        require(self.git('rev-parse', 'HEAD', root=SETUP) == self.old_setup
                 and not self.git('status', '--porcelain', root=SETUP)
                 and not self.git('branch', '--show-current', root=SETUP), 'Setup baseline drift')
         require(self.git('rev-parse', 'HEAD') == self.m['shared']
@@ -63,14 +72,15 @@ class RequiredContainerDeploy(Deploy):
         health = json.loads(self.run(['curl', '-fsS', '--max-time', '10',
                                      'http://192.168.5.9:8794/api/health']))
         require(health.get('status') == 'ok' and health.get('data_mode') == 'postgres'
-                and health.get('version') == 'V0.3.62-field-networks', 'Unexpected baseline health')
+                and health.get('version') == self.old_version, 'Unexpected baseline health')
 
     def preflight(self):
         # Only this reviewed manifest/profile may use this extension.
-        require(self.m.get('profile') == 'required-073' and self.m.get('release_tag') == 'PR389-073'
-                and self.m.get('target') == TARGET and self.m.get('candidate') == TARGET
-                and self.m.get('tree') == TREE and self.m.get('migration') == MIGRATION
-                and self.m.get('old_setup') == OLD_SETUP and self.m.get('version') == VERSION,
+        require(self.m.get('profile') == self.profile and self.m.get('release_tag') == self.release_tag
+                and self.m.get('target') == self.target and self.m.get('candidate') == self.target
+                and self.m.get('tree') == self.tree and self.m.get('migration') == (None if self.source_only else MIGRATION)
+                and self.m.get('old_setup') == self.old_setup and self.m.get('version') == self.version
+                and self.m.get('old_version') == self.old_version,
                 'Unreviewed deployment manifest')
         self.mark('ONLINE preflight')
         self.online()
@@ -81,24 +91,24 @@ class RequiredContainerDeploy(Deploy):
         self.baseline()
         require(not self.run(['ss', '-ltnH', 'sport = :8898']), 'Preview still active; finish CLEAN EXIT')
         self.git('fetch', 'origin', '+refs/heads/main:refs/remotes/origin/main')
-        self.git('merge-base', '--is-ancestor', TARGET, 'origin/main')
-        for old in (OLD_SETUP, self.m['shared']):
-            self.git('merge-base', '--is-ancestor', old, TARGET)
-        require(self.git('rev-parse', TARGET + '^{tree}') == TREE, 'Accepted tree differs')
-        require(self.git('rev-parse', TARGET + ':' + MIGRATION) == self.m['migration_blob'], 'Migration blob differs')
-        require(self.git('rev-parse', TARGET + ':Setup/Acceptance/setup_required_container_validation.sql')
+        self.git('merge-base', '--is-ancestor', self.target, 'origin/main')
+        for old in (self.old_setup, self.m['shared']):
+            self.git('merge-base', '--is-ancestor', old, self.target)
+        require(self.git('rev-parse', self.target + '^{tree}') == self.tree, 'Accepted tree differs')
+        require(self.git('rev-parse', self.target + ':' + MIGRATION) == self.m['migration_blob'], 'Migration blob differs')
+        require(self.git('rev-parse', self.target + ':Setup/Acceptance/setup_required_container_validation.sql')
                 == self.m['validation_blob'], 'Accepted clone validation differs')
         helper = Path(__file__).with_name('setup_maintenance_deploy.py').read_bytes().replace(b'\r', b'')
         require(hashlib.sha256(helper).hexdigest() == self.m['helper_sha256'], 'Transported orchestrator differs')
         self.database_check(installed=False)
-        ui_date = self.git('log', '-1', '--format=%cs', TARGET, '--',
+        ui_date = self.git('log', '-1', '--format=%cs', self.target, '--',
                            ':(glob)Setup/Application/**/*.html', ':(glob)Setup/Application/**/*.css',
                            ':(glob)Setup/Application/**/*.js')
-        footer = self.git('show', TARGET + ':Setup/Application/production.html')
+        footer = self.git('show', self.target + ':Setup/Application/production.html')
         require(re.findall(r'Updated\s+(\d{4}-\d{2}-\d{2})', footer) == [ui_date], 'Stale UI date')
         self.worktree = tempfile.mkdtemp(prefix='msb-required-container-', dir='/tmp')
         os.chmod(self.worktree, 0o755)
-        self.git('worktree', 'add', '--detach', self.worktree, TARGET)
+        self.git('worktree', 'add', '--detach', self.worktree, self.target)
         self.run(['sudo', '-u', 'fieldwiring', '-H', 'env', 'PYTHONDONTWRITEBYTECODE=1',
                   'bash', '-c', 'cd ' + self.worktree + ' && ' + PYTHON +
                   ' -m pytest -q -p no:cacheprovider Setup/Application'], timeout=300)
@@ -136,10 +146,72 @@ class RequiredContainerDeploy(Deploy):
         # in the same disposable preview; never create a Production test assignment.
 
 
+class ScheduledSearchDeploy(RequiredContainerDeploy):
+    """User-requested maintenance boundary for a proven source-only release."""
+    target = '86341d49dc8ccf290575f9d2b418c235094a1377'
+    tree = 'eaa98f99ebf10a348530a5406e93da82dbbae284'
+    old_setup = TARGET  # Require successful PR389 first; never silently install 073.
+    old_version = VERSION
+    version = 'V0.3.65-scheduled-search-focus'
+    profile = 'scheduled-search-source'
+    release_tag = 'PR391-Source'
+    source_only = True
+
+    def database_check(self, installed):
+        # Both preflight and validation prove the already-installed prerequisite.
+        # This profile cannot apply, replace, or replay any SQL migration.
+        super().database_check(installed=True)
+
+    def deploy(self):
+        require(not self.git('diff', '--name-only', self.old_setup, self.target,
+                             '--', 'Setup/Database'), 'Database delta in source-only release')
+        self.mark('entering maintenance for approved source-only release')
+        self.maintenance_started = True
+        self.journal()
+        self.frozen(self.controller('on'))
+        self.mark('freeze PASS; no database migration or rollback archive required')
+        baseline = self.capture()
+        (self.root/'frozen-invariants.jsonl').write_text(baseline+'\n')
+        self.validate()
+        require(self.git('rev-parse','HEAD',root=SETUP) == self.old_setup, 'Setup source drift')
+        require(self.git('rev-parse','HEAD') == self.m['shared'], 'Shared source drift')
+        self.frozen(self.controller('status'))
+        self.mark('promoting accepted Setup source while fenced')
+        self.git('checkout','--detach',self.target,root=SETUP)
+        require(self.git('rev-parse','HEAD',root=SETUP) == self.target
+                and not self.git('status','--porcelain',root=SETUP), 'Setup promotion mismatch')
+        require(self.git('rev-parse','HEAD') == self.m['shared'], 'Shared source changed')
+        after = self.capture()
+        (self.root/'after-invariants.jsonl').write_text(after+'\n')
+        require(after == baseline, 'Business rows changed during source-only installation')
+        self.frozen(self.controller('status'))
+        self.mark('returning to service')
+        state = self.controller('off')
+        require(state.get('state') == 'ONLINE' and not state.get('last_error')
+                and state.get('live',{}).get('database_fenced') is False
+                and state.get('gates',{}).get('online_proof',{}).get('ok') is True,
+                'Return ONLINE not proven')
+        health = json.loads(self.run(['curl','-fsS','--max-time','10',
+                                     'http://192.168.5.9:8794/api/health']))
+        require(health.get('status') == 'ok' and health.get('data_mode') == 'postgres'
+                and health.get('version') == self.version, 'Live search release health mismatch')
+        self.run(['sudo','-u','fieldwiring','-H','env','PYTHONDONTWRITEBYTECODE=1',
+                  'bash','-c','cd '+SETUP+' && '+PYTHON+
+                  ' -m pytest -q -p no:cacheprovider Setup/Application'],timeout=300)
+        self.validate()
+        self.mark('server deployment PASS; protected scheduled search and documentation closeout pending')
+
+
+def deployment_profile(manifest, root):
+    kind = manifest.get('profile')
+    require(kind in ('required-073','scheduled-search-source'), 'Unknown reviewed deployment profile')
+    return (ScheduledSearchDeploy if kind == 'scheduled-search-source' else RequiredContainerDeploy)(manifest, root)
+
+
 if __name__ == '__main__':
     def interrupted(signum, frame):
         raise KeyboardInterrupt('Deployment signal ' + str(signum))
     signal.signal(signal.SIGTERM, interrupted)
     signal.signal(signal.SIGHUP, interrupted)
-    orchestrator.Deploy = RequiredContainerDeploy
+    orchestrator.Deploy = deployment_profile
     raise SystemExit(orchestrator.main())
