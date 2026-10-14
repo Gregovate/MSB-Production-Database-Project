@@ -231,8 +231,12 @@ def open_garmin_workspace(parent):
                 raise GarminSyncError("Select a separate existing backup history folder")
             target = Path(bmp.get())
             backup_root = Path(backups.get())
-            if not target.is_dir() or not backup_root.is_dir():
-                raise GarminSyncError("BMP destination and separate backup folder must already exist")
+            if not backup_root.is_dir():
+                raise GarminSyncError("Separate backup history folder must already exist")
+            if target.exists() and not target.is_dir():
+                raise GarminSyncError("BMP destination is not a folder")
+            if not target.exists() and (target.name != "bmp" or not target.parent.is_dir()):
+                raise GarminSyncError("Initial BMP folder must be inside existing Symbol Library")
             changes = [r for r in current["icons"] if r["action"] != "identical"]
             if not changes:
                 messagebox.showinfo("No BMP changes", "All reviewed BMPs already match.", parent=dialog)
