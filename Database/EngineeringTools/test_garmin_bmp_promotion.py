@@ -73,7 +73,7 @@ class PromotionTests(unittest.TestCase):
         self.assertEqual(list(self.target.iterdir()), [])
 
     def test_case_collision_stops(self):
-        (self.target / "panel.bmp").write_bytes(b"old")
+        (self.target / "PANEL.bmp").write_bytes(b"old")
         with self.assertRaisesRegex(GarminSyncError, "case collision"):
             review(self.mapping, self.images, self.target)
 
