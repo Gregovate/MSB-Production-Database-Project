@@ -10,7 +10,7 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
 
-from garmin_bmp_derivatives import prepare, GarminSyncError
+from garmin_bmp_derivatives import prepare, GarminSyncError, digest
 from garmin_gpx_export import export_waypoints
 from sync_gis_icons import PARK
 
@@ -98,7 +98,13 @@ def open_garmin_workspace(parent):
                 "The original GPX, Garmin, and Symbol Library remain unchanged.", parent=dialog):
             return
         try:
-            # Re-reads and revalidates approved mapping and GPX. Never overwrite.
+            # Fail closed if reviewed inputs changed since the preview.
+            before = state["last_preview"]
+            refreshed_bmp = prepare(Path(registry.get()), Path(png.get()), Path(bmp.get()))
+            refreshed_gpx = export_waypoints(
+                Path(master.get()), Path(output.get()), Path(registry.get()))
+            if before["BMP_preview"] != refreshed_bmp or before["GPX_preview"] != refreshed_gpx:
+                raise GarminSyncError("Inputs or requested destination changed since preview. Review again.")
             latest = export_waypoints(Path(master.get()), Path(output.get()),
                                       Path(registry.get()), approve=True)
             show({"GPX_export_written": latest})
