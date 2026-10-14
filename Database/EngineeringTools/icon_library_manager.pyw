@@ -78,7 +78,7 @@ class Manager:
         self.root = root
         self.build_identity = source_build_identity()
         self.root.title(
-            f"MSB Icon Library Manager — {APP_VERSION} [{self.build_identity}]")
+            f"MSB GIS Manager — {APP_VERSION} [{self.build_identity}]")
         # The bundled application icon is separate from GIS waypoint artwork.
         # Neither the window nor shortcut needs an installed ExpertGPS folder.
         if os.name == "nt":
@@ -98,11 +98,21 @@ class Manager:
         tools_menu.add_command(label="Garmin symbol review / GPX export",
                                command=self.open_garmin_review)
         main_menu = tk.Menu(self.root)
+        tools_menu.insert_command(0, label="Artwork Library and PNG publication", command=self.show_symbol_page)
         main_menu.add_cascade(label="Symbol Management", menu=tools_menu)
+        pc_menu = tk.Menu(self.root, tearoff=False)
+        pc_menu.add_command(label="Inspect this workstation (read only)", command=self.inspect_this_pc)
+        pc_menu.add_command(label="Compare approved workstation release", command=self.check_workstation)
+        pc_menu.add_command(label="Review workstation alignment", command=self.review_office_repair)
+        pc_menu.add_separator()
+        pc_menu.add_command(label="Advanced: laptop source proposal", command=self.review_current_profile)
+        pc_menu.add_command(label="Advanced: Office calibration", command=self.review_map_repair)
+        main_menu.add_cascade(label="Workstation Management", menu=pc_menu)
         data_menu = tk.Menu(self.root, tearoff=False)
         data_menu.add_command(label="Review GPX source changes (READ ONLY)",
                               command=self.open_gis_source_review)
         main_menu.add_cascade(label="GIS Data Management", menu=data_menu)
+        main_menu.add_command(label="Home", command=self.show_home)
         self.root.config(menu=main_menu)
         self.plain = PARK / "Plain"
         self.dest = PARK / "png"
@@ -128,7 +138,7 @@ class Manager:
         heading.pack(fill="x")
         title_line = ttk.Frame(heading)
         title_line.pack(fill="x")
-        ttk.Label(title_line, text="MSB Icon Library Manager",
+        ttk.Label(title_line, text="Symbol Management — Artwork Library",
                   font=("Segoe UI", 16, "bold")).pack(side="left")
         ttk.Label(title_line, text=f"{APP_VERSION} • {APP_PHASE} • {self.build_identity}",
                   font=("Segoe UI", 9), foreground="#33495b").pack(side="right")
@@ -289,6 +299,41 @@ class Manager:
         ttk.Button(footer, text="Open selected PNG URL", command=self.open_web_png).pack(
             side="left", padx=(12, 0))
         ttk.Button(footer, text="Close", command=self.root.destroy).pack(side="right")
+        self.root.after_idle(self.show_home)
+
+
+    def show_home(self):
+        """Operator-facing home; existing symbol editor remains available."""
+        if not hasattr(self, "_home_overlay"):
+            home = ttk.Frame(self.root, padding=24)
+            self._home_overlay = home
+            ttk.Label(home, text="MSB GIS Manager",
+                      font=("Segoe UI", 19, "bold")).pack(anchor="w")
+            ttk.Label(home, text="Select the task you want to perform.",
+                      font=("Segoe UI", 11)).pack(anchor="w", pady=(3, 16))
+            tasks = ttk.Frame(home)
+            tasks.pack(fill="x")
+            entries = (
+                ("Symbol Management", "Manage approved artwork, PNG/BMP icons and Garmin symbols.", self.show_symbol_page),
+                ("Workstation Management", "Inspect ExpertGPS configuration and review workstation synchronization.", self.inspect_this_pc),
+                ("GIS Data Management", "Review GPX source changes before governed ingestion.", self.open_gis_source_review),
+            )
+            for heading, description, callback in entries:
+                card = ttk.LabelFrame(tasks, text=heading, padding=12)
+                card.pack(fill="x", pady=5)
+                ttk.Label(card, text=description, wraplength=750).pack(anchor="w", pady=(0, 5))
+                ttk.Button(card, text="Open " + heading, command=callback).pack(anchor="w")
+            ttk.Label(home, text="Library: " + str(PARK),
+                      foreground="#42566b", wraplength=770).pack(anchor="w", pady=(12, 2))
+            ttk.Label(home, text="Installer and approved workstation release are not yet accepted.",
+                      foreground="#8b4b16", wraplength=770).pack(anchor="w")
+            ttk.Button(home, text="Close", command=self.root.destroy).pack(side="bottom", anchor="e")
+        self._home_overlay.place(x=0, y=0, relwidth=1, relheight=1)
+        self._home_overlay.lift()
+
+    def show_symbol_page(self):
+        if hasattr(self, "_home_overlay"):
+            self._home_overlay.place_forget()
 
     def open_gis_source_review(self):
         from gis_source_review_dialog import open_review
