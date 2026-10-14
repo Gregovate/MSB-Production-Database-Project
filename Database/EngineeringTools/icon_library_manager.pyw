@@ -128,7 +128,7 @@ class Manager:
                   font=("Segoe UI", 16, "bold")).pack(side="left")
         ttk.Label(title_line, text=f"{APP_VERSION} • {APP_PHASE} • {self.build_identity}",
                   font=("Segoe UI", 9), foreground="#33495b").pack(side="right")
-        ttk.Label(heading, text="Controlled source: Shared Drive / MSB GIS / Symbols   •   Maximum 32 × 32 px per icon",
+        ttk.Label(heading, text=f"Active source: Shared Drive / MSB GIS / {PARK.name}   •   Target: Symbol Library   •   Max 32 × 32 px",
                   font=("Segoe UI", 10)).pack(anchor="w", pady=(5, 0))
         ttk.Label(heading, text="Editable Masters → reviewed Plain SVG → verified canonical PNG. No Downloads copies required.",
                   font=("Segoe UI", 10)).pack(anchor="w")
