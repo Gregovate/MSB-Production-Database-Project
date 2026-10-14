@@ -45,12 +45,12 @@ def resolve_symbol_library() -> Path:
     if explicit:
         chosen = Path(explicit)
         if chosen not in (OLD_LIBRARY, NEW_LIBRARY):
-            raise IconError("MSB_SYMBOL_LIBRARY must point to the approved shared Symbols or Symbol Library root")
+            raise RuntimeError("MSB_SYMBOL_LIBRARY must point to the approved shared Symbols or Symbol Library root")
         return chosen
     # Before migration, maintain the working source; after migration, use new.
     # If both exist, stop rather than silently split reads and writes.
     if OLD_LIBRARY.exists() and NEW_LIBRARY.exists():
-        raise IconError("Both old Symbols and new Symbol Library folders exist. "
+        raise RuntimeError("Both old Symbols and new Symbol Library folders exist. "
                         "Finish reviewed cutover before running tools.")
     return NEW_LIBRARY if NEW_LIBRARY.exists() else OLD_LIBRARY
 
