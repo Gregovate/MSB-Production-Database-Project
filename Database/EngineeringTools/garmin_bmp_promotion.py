@@ -51,8 +51,14 @@ def promote(registry: Path, png: Path, destination: Path, backups: Path, approve
         raise GarminSyncError("Backups may not be inside destination")
     if destination.resolve() in backups.resolve().parents:
         raise GarminSyncError("Backup root may not contain destination")
-    if not destination.is_dir():
-        raise GarminSyncError("BMP destination must exist before controlled promotion")
+    # Initial controlled publication may create only the expected canonical bmp
+    # directory. Keep unexpected paths and missing source library fail-closed.
+    initial = not destination.exists()
+    if initial:
+        if destination.name != "bmp" or not destination.parent.is_dir() or destination.is_symlink():
+            raise GarminSyncError("First BMP destination must be a new bmp folder under an existing library")
+    elif not destination.is_dir() or destination.is_symlink():
+        raise GarminSyncError("BMP destination is not an ordinary directory")
     release = backups / ("Garmin-BMP-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
                          + "-" + uuid.uuid4().hex[:8])
     release.mkdir(exist_ok=False)
@@ -70,6 +76,10 @@ def promote(registry: Path, png: Path, destination: Path, backups: Path, approve
         # Recompute before any destination mutation; prevents stale/mixed releases.
         if review(registry, png, destination)["review_digest"] != approved_digest:
             raise GarminSyncError("Concurrent source/destination change; no files promoted")
+        if initial:
+            destination.mkdir(exist_ok=False)
+        # This is the first destination mutation, after the separate review
+        # receipt and all preflight checks are complete.
         receipt = []
         for row in plan["icons"]:
             name = row["bmp"]
