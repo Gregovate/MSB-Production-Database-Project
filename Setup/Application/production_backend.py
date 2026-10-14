@@ -39,7 +39,7 @@ from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.62-field-networks"
+PRODUCTION_VERSION = "V0.3.64-required-containers"
 
 # #222 lightweight Production request instrumentation.
 #
@@ -109,6 +109,7 @@ PRODUCTION_ASSETS = frozenset(
         "setup_display_ownership_large_scope_fix.js",
         "setup_kit_box_assignment.css",
         "setup_kit_box_assignment.js",
+        "setup_required_containers.js",
         "setup_extra_materials.css",
         "setup_extra_materials.js",
         "setup_task_extra_materials.js",
