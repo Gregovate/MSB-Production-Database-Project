@@ -74,7 +74,7 @@ def bmp_from_png(png: bytes, filename: str) -> tuple[bytes, tuple[int, int]]:
             raise GarminSyncError(f"{filename}: semi-transparent pixels require artwork review")
         rgb = Image.new("RGB", rgba.size, MAGENTA)
         rgb.paste(rgba.convert("RGB"), mask=alphas)
-        if any(px == MAGENTA for px, alpha in zip(list(rgba.convert("RGB").get_flattened_data()), alphas.getdata()) if alpha == 255):
+        if any(px == MAGENTA for px, alpha in zip(list(rgba.convert("RGB").get_flattened_data()), alphas.get_flattened_data()) if alpha == 255):
             raise GarminSyncError(f"{filename}: opaque magenta conflicts with transparency key")
         output = io.BytesIO()
         rgb.save(output, format="BMP")
