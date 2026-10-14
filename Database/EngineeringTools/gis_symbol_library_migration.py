@@ -8,6 +8,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sys
+import time
 from pathlib import Path
 
 from sync_gis_icons import GIS_PARENT
@@ -21,7 +23,12 @@ def manifest(root: Path) -> dict[str, str]:
     if not root.is_dir() or root.is_symlink():
         raise MigrationError(f"Missing or linked source folder: {root}")
     results = {}
-    for f in sorted(root.rglob("*")):
+    started = time.monotonic()
+    print(f"Inventorying shared Symbol Library: {root}", file=sys.stderr, flush=True)
+    for index, f in enumerate(sorted(root.rglob("*")), 1):
+        if index % 100 == 0:
+            print(f"  Scanned {index} entries ({time.monotonic() - started:.1f}s)...",
+                  file=sys.stderr, flush=True)
         if f.is_symlink():
             raise MigrationError(f"Linked file/folder is not allowed: {f}")
         if f.is_file():
@@ -29,6 +36,8 @@ def manifest(root: Path) -> dict[str, str]:
             if key.casefold() in (k.casefold() for k in results):
                 raise MigrationError("Case-clashing library files: " + key)
             results[key] = hashlib.sha256(f.read_bytes()).hexdigest()
+    print(f"  Completed hashing {len(results)} files in "
+          f"{time.monotonic() - started:.1f}s.", file=sys.stderr, flush=True)
     if not results:
         raise MigrationError("Source library is empty; abort")
     for folder in ("Masters", "Plain", "png"):
