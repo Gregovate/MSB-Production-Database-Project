@@ -95,7 +95,7 @@ At the **end** of the cable:
 
 | Cable | Name to type | Example |
 | --- | --- | --- |
-| Power | `HV first-point to second-point` | `HV PANEL 09 to LPFC-01` (only if it is a power cable) |
+| Power | `HV first-point to second-point` | `HV [start point] to [end point]` |
 | Network | `NET first-point to second-point` | `NET PANEL 09 to LPFC-01` |
 
 If you are not sure of either point name, **do not guess**. Tell the crew lead where the cable begins and ends.
