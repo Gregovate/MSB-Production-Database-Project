@@ -6,6 +6,7 @@ This is the technical entry point for the maintained GIS/source/icon subsystem. 
 
 - [GIS Symbol Management — CURRENT icon source, publication, access and consumer contract](GIS_Symbol_Management.md) — definitive roles of `Masters`, `Plain`, canonical PNGs, web SVGs, ExpertGPS, current accepted release, security rules, map symbol sizing/fallback and open acceptance.
 - [ExpertGPS Office Cropped Map Repair](ExpertGPS_Office_Cropped_Map_Repair.md) — targeted, backed-up correction and outstanding acceptance gates under #171.
+- [Garmin symbol association audit — October 14](Garmin_Symbol_Association_Audit_2026-10-14.md) — device BMP inventory versus outgoing GPX GPS Symbol names; unverified firmware display mappings.
 - [Network Source Reconciliation](Network_Source_Reconciliation_2026-10-09.md) — source discovery and historical network reconciliation evidence; review against current #171/#230 controlled source requirements before applying old conclusions.
 
 ## Current Handoff — October 12, 2026
