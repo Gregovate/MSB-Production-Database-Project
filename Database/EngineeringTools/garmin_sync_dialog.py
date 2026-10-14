@@ -130,6 +130,18 @@ def open_garmin_workspace(parent):
             messagebox.showerror("Garmin review stopped", str(exc), parent=dialog)
 
     def write_export():
+        if state["last_preview"] is not None and not output.get():
+            choose(output, source=False)
+            if not output.get():
+                return
+            # The newly selected export filename must be included in the reviewed plan.
+            try:
+                state["last_preview"]["GPX_preview"] = export_waypoints(
+                    Path(master.get()), Path(output.get()), Path(registry.get()))
+                show(state["last_preview"])
+            except (GarminSyncError, OSError, ValueError) as exc:
+                messagebox.showerror("GPX export review stopped", str(exc), parent=dialog)
+                return
         if state["last_preview"] is None or "GPX_preview" not in state["last_preview"]:
             messagebox.showwarning("Preview required", "Preview the complete BMP and GPX mapping first.", parent=dialog)
             return
