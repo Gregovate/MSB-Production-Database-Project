@@ -74,7 +74,7 @@ class Deploy:
         print('STAGE ' + stage, flush=True)
         self.journal()
         if self.maintenance_started:
-            self.controller('stage', ('PR318/070 ' if self.m.get('profile') == 'field-070' else 'PR293 ') + stage)
+            self.controller('stage', (self.m.get('release_tag') or ('PR318/070' if self.m.get('profile') == 'field-070' else 'PR293')) + ' ' + stage)
 
     @staticmethod
     def frozen(state):
@@ -225,7 +225,7 @@ class Deploy:
         self.mark('freeze PASS')
         baseline = self.capture()
         (self.root / 'frozen-invariants.jsonl').write_text(baseline + '\n')
-        archive = '/home/msbadmin/backups/setup-205/msb-pre-' + ('pr318-070-' if self.m.get('profile') == 'field-070' else 'pr293-069-') + self.root.name + '.dump'
+        archive = '/home/msbadmin/backups/setup-205/msb-pre-' + (self.m.get('release_tag', '').lower() + '-' if self.m.get('release_tag') else ('pr318-070-' if self.m.get('profile') == 'field-070' else 'pr293-069-')) + self.root.name + '.dump'
         snap = self.controller('snapshot', archive).get('snapshot', {})
         require(snap.get('validated') is True and snap.get('ok') is True and snap.get('bytes', 0) > 0
                 and snap.get('path') == archive and snap.get('sha256'), 'Snapshot not validated')
@@ -377,7 +377,7 @@ def main():
             print('STOP: another deployment owns the lock')
             return 1
         stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
-        deploy = Deploy(manifest, Path.home() / 'setup-deployment-reports' / (('PR318-070-' if manifest.get('profile') == 'field-070' else 'PR293-') + stamp))
+        deploy = Deploy(manifest, Path.home() / 'setup-deployment-reports' / ((manifest.get('release_tag') + '-' if manifest.get('release_tag') else ('PR318-070-' if manifest.get('profile') == 'field-070' else 'PR293-')) + stamp))
         try:
             deploy.preflight()
             if args.deploy:

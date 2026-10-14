@@ -253,6 +253,8 @@ def test_clone_launch_uses_pinned_corrected_tooling_not_old_candidate(tmp_path, 
 
 def test_windows_transport_normalization_matches_exact_helper_pins():
     for name,blob in mod.HELPERS.items():
-        source=Path(__file__).with_name(name).read_bytes()
+        # Completed #88 deployment is pinned to historical helpers, not later profiles.
+        import subprocess
+        source=subprocess.check_output(['git','show',mod.GRANT_TARGET+':Setup/Acceptance/'+name])
         assert mod.git_blob(source)==blob
         assert mod.git_blob(source.replace(b'\r',b''))==mod.TRANSPORT_BLOBS[name]

@@ -1,0 +1,14 @@
+{
+  "profile": "required-073",
+  "release_tag": "PR389-073",
+  "target": "efb7f26fd0d4e1275daa509e2ade62bc291b1d8f",
+  "candidate": "efb7f26fd0d4e1275daa509e2ade62bc291b1d8f",
+  "tree": "e0161b97296df534e7a009062ef5a9c85e5961a2",
+  "old_setup": "2bc88ae627420c2138268e39a26b4942a3248580",
+  "old_version": "V0.3.62-field-networks",
+  "version": "V0.3.64-required-containers",
+  "migration": "Setup/Database/073_add_setup_required_container_command.sql",
+  "migration_blob": "9685321bc4ac5f7b00bd4e9c23ab3641ac79306f",
+  "validation_blob": "d6a0294fad16015ba1749e5d51acadeeb64923d9",
+  "helper_sha256": "1bca0dfa55d5f8730cca203a20daeb15522097695d4919df6f9ec313985359d7"
+}

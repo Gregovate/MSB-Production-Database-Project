@@ -276,3 +276,10 @@ Package accepted cross-repository artifacts with their owning source/merge and e
 [Candidate and single-clone browser checklist](Setup_Required_Containers_Candidate.md)
 adds a searchable direct physical Container requirement without material/contents
 records. Migration 073 is candidate-only; no Production deployment yet.
+
+C106 direct requirement browser save/refresh and CLEAN EXIT accepted October 14;
+Greg authorized migration 073 deployment. Feature PR #389 is merged. Use
+`run_setup_required_container_deploy.ps1` from updated primary main; the existing
+controller maintenance runner profile and committed-byte transport own the short
+freeze/snapshot/install/validate/ONLINE window. No Production test assignment,
+manual operator pause or repeated disposable clone. Actual installation pending.
