@@ -9,6 +9,9 @@ import json
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
+from PIL import Image, ImageTk
+import io
+from garmin_bmp_derivatives import bmp_from_png
 
 from garmin_bmp_derivatives import GarminSyncError
 from garmin_bmp_promotion import review as review_bmp_promotion, promote as promote_bmp
@@ -46,7 +49,7 @@ def open_garmin_workspace(parent):
     master = tk.StringVar(value=str(PARK.parent / "MSB-Park-Infrastructure.gpx"))
     output = tk.StringVar()
     backups = tk.StringVar(value=str(PARK / "release-history"))
-    state = {"last_preview": None}
+    state = {"last_preview": None, "images": []}
     advanced_open = tk.BooleanVar(value=False)
     def toggle_advanced():
         if advanced_open.get():
@@ -111,6 +114,55 @@ def open_garmin_workspace(parent):
             show({"status": "STOP", "error": str(exc)})
             messagebox.showerror("GPX audit stopped", str(exc), parent=dialog)
 
+    def show_artwork(plan):
+        # Create an image-backed, independently scrollable review: source PNG
+        # alongside its exact generated Garmin BMP, not a JSON hash dump.
+        dialog_preview = tk.Toplevel(dialog)
+        dialog_preview.title("Review six Garmin icons — PNG versus BMP")
+        dialog_preview.geometry("830x510")
+        dialog_preview.transient(dialog)
+        shell = ttk.Frame(dialog_preview, padding=12)
+        shell.pack(fill="both", expand=True)
+        ttk.Label(shell, text="Approved artwork → Garmin 24-bit BMP",
+                  font=("Segoe UI", 13, "bold")).pack(anchor="w")
+        ttk.Label(shell, text="Compare each image before approving Step 2. No files have been saved.").pack(anchor="w", pady=(2, 8))
+        canvas = tk.Canvas(shell, highlightthickness=0)
+        bar = ttk.Scrollbar(shell, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=bar.set)
+        bar.pack(side="right", fill="y")
+        canvas.pack(fill="both", expand=True)
+        inner = ttk.Frame(canvas)
+        window = canvas.create_window((0, 0), window=inner, anchor="nw")
+        inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>", lambda e: canvas.itemconfigure(window, width=e.width))
+        refs = []
+        for row in plan["icons"]:
+            item = ttk.Frame(inner, padding=(6, 6))
+            item.pack(fill="x")
+            payload = (Path(png.get()) / row["source"]).read_bytes()
+            converted, _ = bmp_from_png(payload, row["source"])
+            for col, source in enumerate((payload, converted)):
+                with Image.open(io.BytesIO(source)) as graphic:
+                    if col == 0:
+                        shown = graphic.convert("RGBA")
+                        backing = Image.new("RGBA", graphic.size, "white")
+                        backing.alpha_composite(shown)
+                        shown = backing.convert("RGB")
+                    else:
+                        shown = graphic.convert("RGB")
+                        pixels = [((255, 255, 255) if p == (255, 0, 255) else p) for p in shown.getdata()]
+                        shown.putdata(pixels)
+                    shown = shown.resize((graphic.width * 4, graphic.height * 4), Image.Resampling.NEAREST)
+                    photo = ImageTk.PhotoImage(shown, master=dialog_preview)
+                    refs.append(photo)
+                ttk.Label(item, image=photo).grid(row=0, column=col, padx=(10, 20))
+                ttk.Label(item, text=("Approved PNG" if col == 0 else "Proposed BMP")).grid(row=1, column=col)
+            ttk.Label(item, text=f"{row['type']} → {row['bmp']}\n{row['width']} × {row['height']} | {row['action']}",
+                      justify="left").grid(row=0, column=2, rowspan=2, sticky="w", padx=12)
+            ttk.Separator(inner).pack(fill="x")
+        dialog_preview.image_refs = refs
+        ttk.Button(shell, text="Close review", command=dialog_preview.destroy).pack(anchor="e", pady=(8, 0))
+
     def review():
         state["last_preview"] = None
         try:
@@ -123,8 +175,10 @@ def open_garmin_workspace(parent):
                     Path(master.get()), Path(output.get()), Path(registry.get()))
             state["last_preview"] = review_result
             state_label.set("Reviewed: check the changes below. BMP saving and GPX export each require separate approval.")
-            show(review_result)
-            messagebox.showinfo("Review ready", "Read the change list. No files were changed.", parent=dialog)
+            show({"status": "Preview complete", "icons": [
+                {"type": item["type"], "bmp": item["bmp"], "action": item["action"]}
+                for item in b["icons"]], "no_files_changed": True})
+            show_artwork(b)
         except (GarminSyncError, OSError, ValueError) as exc:
             show({"status": "STOP", "error": str(exc)})
             messagebox.showerror("Garmin review stopped", str(exc), parent=dialog)
