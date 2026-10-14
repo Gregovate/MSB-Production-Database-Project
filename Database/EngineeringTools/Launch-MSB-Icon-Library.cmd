@@ -3,6 +3,7 @@ setlocal
 REM #171 stable launcher. Prefer checkout .venv; preflight dependencies and
 REM keep diagnostics visible when the app cannot start.
 set "HERE=%~dp0"
+pushd "%HERE%" || (echo Cannot enter the GIS Manager folder. & pause & exit /b 1)
 set "PYTHON="
 if exist "%HERE%..\..\.venv\Scripts\python.exe" set "PYTHON=%HERE%..\..\.venv\Scripts\python.exe"
 if not defined PYTHON if exist "%LOCALAPPDATA%\Programs\Python\Python313\python.exe" set "PYTHON=%LOCALAPPDATA%\Programs\Python\Python313\python.exe"
