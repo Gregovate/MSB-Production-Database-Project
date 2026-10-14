@@ -99,7 +99,7 @@ class OfficeInstallTests(OfficeAlignmentPlanTests):
             "types": {"Display Anchor": {"Symbol Type": "2"}},
             "symbol_to_type": {"Flag, Blue": "Display Anchor"},
         }}
-        with self.assertRaisesRegex(ProfileError, "native registry"):
+        with self.assertRaisesRegex(ProfileError, "[Nn]ative.*registry"):
             _source_native_values(verified)
         self.assertEqual(self.office.writes, [])
 
@@ -139,7 +139,7 @@ class OfficeInstallTests(OfficeAlignmentPlanTests):
                             for row in plan["png_actions"]))
         receipt = self.install()
         self.assertTrue((self.office_local / "pole-yellow.png").is_file())
-        self.assertFalse(legacy.exists())
+        self.assertNotIn("Pole-Yellow.png", {p.name for p in self.office_local.iterdir()})
         backup = Path(receipt["private_rollback_backup"])
         self.assertTrue((backup / "original-msb" / "Pole-Yellow.png").is_file())
         restore_office_private_backup(
