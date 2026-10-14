@@ -93,6 +93,13 @@ class Manager:
         self.root.geometry("930x615")
         self.root.minsize(800, 500)
         self.root.configure(bg=BACKGROUND)
+        # Keep the Garmin workflow accessible without more stacked footer buttons.
+        tools_menu = tk.Menu(self.root, tearoff=False)
+        tools_menu.add_command(label="Garmin symbol review / GPX export",
+                               command=self.open_garmin_review)
+        main_menu = tk.Menu(self.root)
+        main_menu.add_cascade(label="Workspaces", menu=tools_menu)
+        self.root.config(menu=main_menu)
         self.plain = PARK / "Plain"
         self.dest = PARK / "png"
         self.web_svg_dest = WEB_SVG
@@ -278,6 +285,10 @@ class Manager:
         ttk.Button(footer, text="Open selected PNG URL", command=self.open_web_png).pack(
             side="left", padx=(12, 0))
         ttk.Button(footer, text="Close", command=self.root.destroy).pack(side="right")
+
+    def open_garmin_review(self):
+        from garmin_sync_dialog import open_garmin_workspace
+        open_garmin_workspace(self.root)
 
     def review_current_profile(self):
         """Laptop-only source proposal, not Office/Show PC reconnaissance.
