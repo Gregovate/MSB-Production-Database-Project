@@ -11,6 +11,23 @@ from test_gis_workstation_profile import FakeRegistry
 from test_sync_gis_icons import png, svg
 
 
+class GUIProposalPinRegressionTests(unittest.TestCase):
+    def test_office_review_uses_matching_typed_source_filename(self):
+        # The read-only GUI must not silently select an older proposal
+        # after the exact laptop-source SHA pin has advanced.
+        from gis_workstation_alignment import PINNED_YOGA_PROPOSAL_SHA256
+        from pathlib import Path
+        gui = (Path(__file__).resolve().parent / "icon_library_manager.pyw").read_text(
+            encoding="utf-8")
+        self.assertIn(
+            "20261014T063601Z-a2f49947d090.json", gui)
+        self.assertNotIn(
+            "20261013T132823Z-6191db1f5562.json", gui)
+        self.assertEqual(
+            PINNED_YOGA_PROPOSAL_SHA256,
+            "bf09186a9913973c85aecd64f5290e3dd0efdb93459395557013af376e30cfc1")
+
+
 class OfficeAlignmentPlanTests(unittest.TestCase):
     def setUp(self):
         t = tempfile.TemporaryDirectory()
