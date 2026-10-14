@@ -12,6 +12,7 @@ from tkinter import ttk, filedialog, messagebox, scrolledtext
 
 from garmin_bmp_derivatives import prepare, GarminSyncError, digest
 from garmin_gpx_export import export_waypoints
+from garmin_mapping_audit import inventory
 from sync_gis_icons import PARK
 
 
@@ -72,6 +73,16 @@ def open_garmin_workspace(parent):
         log.insert(tk.END, json.dumps(info, indent=2))
         log.see("1.0")
 
+    def inspect_master():
+        try:
+            if not master.get():
+                raise GarminSyncError("Select the authoritative master GPX first")
+            show({"Master_Type_and_GPS_Symbol_inventory":
+                  inventory(Path(master.get()), Path(png.get()))})
+        except (GarminSyncError, OSError, ValueError) as exc:
+            show({"status": "STOP", "error": str(exc)})
+            messagebox.showerror("GPX audit stopped", str(exc), parent=dialog)
+
     def review():
         state["last_preview"] = None
         try:
@@ -111,7 +122,8 @@ def open_garmin_workspace(parent):
         except (GarminSyncError, OSError, ValueError) as exc:
             messagebox.showerror("Garmin export stopped", str(exc), parent=dialog)
 
-    ttk.Button(controls, text="Review BMP + GPX mapping", command=review).pack(side="left")
+    ttk.Button(controls, text="Inventory master GPX", command=inspect_master).pack(side="left")
+    ttk.Button(controls, text="Review BMP + GPX mapping", command=review).pack(side="left", padx=8)
     ttk.Button(controls, text="Create reviewed GPX export", command=write_export).pack(side="left", padx=10)
     ttk.Button(controls, text="Close", command=dialog.destroy).pack(side="right")
     return dialog
