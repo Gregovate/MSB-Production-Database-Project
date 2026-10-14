@@ -290,3 +290,10 @@ manual operator pause or repeated disposable clone. Actual installation pending.
 selecting a scheduled search result expands its day before scrolling/focusing the
 assignment. V0.3.65 source candidate; no migration or Production change. Reconcile
 with concurrent #205 workload/KPI changes; #389 deployment remains separate.
+
+PR391 scheduled-search browser acceptance and CLEAN EXIT passed October14; Greg
+approved merge and maintenance-mode deployment. Use the existing wrapper
+`run_setup_required_container_deploy.ps1 -Release ScheduledSearch` from clean
+updated main. The source-only profile requires proven prior V0.3.64/073 and
+applies no migrations; same controller/lock/committed transport, no new clone.
+Exact app86341d49, V0.3.65; actual Production install/closeout pending receipt.
