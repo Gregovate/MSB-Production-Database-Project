@@ -23,7 +23,7 @@ from gis_workstation_release_candidate import inspect_saved_proposal
 LAPTOP_SOURCE_HOST = "YOGA-GREG"
 OFFICE_TARGET_HOST = "MSB-OFFICE-PC"
 PINNED_YOGA_PROPOSAL_SHA256 = (
-    "d40371b711b7bfba78d9aad30e7eaba1983e5fff51ee529c261942f0a540561d"
+    "bf09186a9913973c85aecd64f5290e3dd0efdb93459395557013af376e30cfc1"
 )
 MANAGED_TYPE_FIELDS = ("Symbol Type", "GPS Symbol", "Bitmap Symbol URL")
 
