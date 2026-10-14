@@ -414,7 +414,7 @@ class Manager:
             return
         source = SHARED_ROOT / "Proposals" / "YOGA-GREG" / (
             "MSB-GIS-Workstation-Proposal-YOGA-GREG-"
-            "20261013T132823Z-6191db1f5562.json")
+            "20261014T063601Z-a2f49947d090.json")
         from gis_workstation_proposal import workstation_hostname
         target = workstation_hostname()
         self.status.set(
