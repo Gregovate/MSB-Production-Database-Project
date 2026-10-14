@@ -88,7 +88,7 @@ def open_garmin_workspace(parent):
             var.set(selection)
 
     toggle_advanced()
-    state_label = tk.StringVar(value="Ready: review the proposed six-Type mapping and approved artwork.")
+    state_label = tk.StringVar(value="Ready: review the complete artwork library and GPX symbol assignments.")
     ttk.Label(dialog, textvariable=state_label, padding=(14, 6),
               wraplength=850).grid(row=2, column=0, sticky="ew")
     log = scrolledtext.ScrolledText(dialog, wrap="word", height=16)
@@ -118,7 +118,7 @@ def open_garmin_workspace(parent):
         # Create an image-backed, independently scrollable review: source PNG
         # alongside its exact generated Garmin BMP, not a JSON hash dump.
         dialog_preview = tk.Toplevel(dialog)
-        dialog_preview.title("Review six Garmin icons — PNG versus BMP")
+        dialog_preview.title("Review all approved Garmin icons — PNG versus BMP")
         dialog_preview.geometry("830x510")
         dialog_preview.transient(dialog)
         shell = ttk.Frame(dialog_preview, padding=12)
