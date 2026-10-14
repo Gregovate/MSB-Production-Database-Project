@@ -150,7 +150,7 @@ def open_garmin_workspace(parent):
                         shown = backing.convert("RGB")
                     else:
                         shown = graphic.convert("RGB")
-                        pixels = [((255, 255, 255) if p == (255, 0, 255) else p) for p in shown.getdata()]
+                        pixels = [((255, 255, 255) if p == (255, 0, 255) else p) for p in shown.get_flattened_data()]
                         shown.putdata(pixels)
                     shown = shown.resize((graphic.width * 4, graphic.height * 4), Image.Resampling.NEAREST)
                     photo = ImageTk.PhotoImage(shown, master=dialog_preview)
