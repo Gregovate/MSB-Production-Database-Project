@@ -9,7 +9,7 @@ Every record explicitly couples one ExpertGPS Type, one approved local PNG deriv
 - `Stage` → `stage.png` → `Stage.bmp` / `Stage`: **must use approved arch**, not old Garmin star.
 - `LP-Combo`, `LP-Power`, `LP-Network`: independently mapped as discussed; `LP-Power` deliberately uses artwork filename `lp-outlet.png`, not a nonexistent `lp-power.png`.
 
-The six Types account for **137 waypoints** in the October 14 snapshot (17+84+33+6+4+1). The candidate GPX remaps are 9+84+33+6+4+1 = **137** (LP-Combo has an existing `Outlet_Combo` mismatch, all six map to `LP_Combo`). Exact count must be re-evaluated at release time; the source may change.
+The six Types account for **145 waypoints** in the October 14 snapshot (17+84+33+6+4+1). The candidate GPX remaps are 9+84+33+6+4+1 = **137** (LP-Combo has an existing `Outlet_Combo` mismatch, all six map to `LP_Combo`). Exact count must be re-evaluated at release time; the source may change.
 
 All other Types remain **unmapped**, retaining original `sym` in a preview. In particular, `Outlet Power` historically mixes five GPS symbols; no blanket Type remap or inference is approved. No direct Garmin volume writes, source master mutations, or web-server changes.
 
