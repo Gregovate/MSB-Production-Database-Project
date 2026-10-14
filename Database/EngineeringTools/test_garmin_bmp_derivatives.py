@@ -33,9 +33,19 @@ class GarminBMPTests(unittest.TestCase):
         with Image.open(io.BytesIO(payload)) as bmp:
             self.assertEqual(bmp.getpixel((0, 0)), (255, 0, 255))
 
-    def test_semitransparent_artwork_rejected(self):
+    def test_antialiased_alpha_quantized_to_garmin_key(self):
+        image = Image.new("RGBA", (3, 1))
+        image.putdata([(12, 34, 56, 127), (12, 34, 56, 128), (12, 34, 56, 255)])
+        stream = io.BytesIO()
+        image.save(stream, "PNG")
+        output, _ = bmp_from_png(stream.getvalue(), "antialias.png")
+        with Image.open(io.BytesIO(output)) as bmp:
+            self.assertEqual([bmp.getpixel((x, 0)) for x in range(3)],
+                             [(255, 0, 255), (12, 34, 56), (12, 34, 56)])
+
+    def test_visible_magenta_conflict_rejected(self):
         with self.assertRaises(GarminSyncError):
-            bmp_from_png(make_png(color=(12, 34, 56, 128)), "alpha.png")
+            bmp_from_png(make_png(color=(255, 0, 255, 255)), "conflict.png")
 
     def test_oversize_rejected(self):
         with self.assertRaises(GarminSyncError):
