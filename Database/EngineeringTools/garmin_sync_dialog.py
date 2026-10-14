@@ -19,23 +19,43 @@ from sync_gis_icons import PARK
 
 def open_garmin_workspace(parent):
     dialog = tk.Toplevel(parent)
-    dialog.title("MSB GIS Manager — Garmin symbol review")
-    dialog.geometry("970x610")
-    dialog.minsize(810, 485)
+    dialog.title("MSB GIS Manager — Prepare Garmin symbols")
+    dialog.geometry("920x615")
+    dialog.minsize(740, 490)
     dialog.transient(parent)
     dialog.columnconfigure(0, weight=1)
-    dialog.rowconfigure(2, weight=1)
+    dialog.rowconfigure(3, weight=1)
 
-    inputs = ttk.Frame(dialog, padding=12)
-    inputs.grid(row=0, column=0, sticky="ew")
+    header = ttk.Frame(dialog, padding=(14, 12, 14, 8))
+    header.grid(row=0, column=0, sticky="ew")
+    ttk.Label(header, text="Prepare Garmin symbols", font=("Segoe UI", 16, "bold")).pack(anchor="w")
+    ttk.Label(header, text="1. Review artwork and symbol mapping   →   2. Save approved BMPs   →   3. Export waypoint-only GPX",
+              wraplength=840).pack(anchor="w", pady=(5, 0))
+    ttk.Label(header, text="The original GPX and published web symbols are not modified.",
+              foreground="#42566b").pack(anchor="w", pady=(3, 0))
+
+    options = ttk.LabelFrame(dialog, text="Advanced settings — show only when changing sources", padding=8)
+    options.grid(row=1, column=0, sticky="ew", padx=12)
+    options.columnconfigure(0, weight=1)
+    inputs = ttk.Frame(options)
+    inputs.grid(row=1, column=0, sticky="ew")
     inputs.columnconfigure(1, weight=1)
     registry = tk.StringVar(value=str(Path(__file__).with_name('garmin_symbol_registry.json')))
     png = tk.StringVar(value=str(PARK / "png"))
     bmp = tk.StringVar(value=str(PARK / "bmp"))
-    master = tk.StringVar()
+    master = tk.StringVar(value=str(PARK.parent / "MSB-Park-Infrastructure.gpx"))
     output = tk.StringVar()
     backups = tk.StringVar(value=str(PARK / "release-history"))
     state = {"last_preview": None}
+    advanced_open = tk.BooleanVar(value=False)
+    def toggle_advanced():
+        if advanced_open.get():
+            inputs.grid()
+        else:
+            inputs.grid_remove()
+
+    ttk.Checkbutton(options, text="Show file locations and expert settings",
+                    variable=advanced_open, command=toggle_advanced).grid(row=0, column=0, sticky="w")
 
     def choose(var, *, source=True, json_only=False):
         if source:
@@ -64,12 +84,17 @@ def open_garmin_workspace(parent):
         if selection:
             var.set(selection)
 
-    ttk.Label(dialog, text="Review first. BMP promotion changes only the selected destination after approval; GPX master and web server are never changed.",
-              foreground="#a12323", padding=(12, 2)).grid(row=1, column=0, sticky="w")
+    toggle_advanced()
+    state_label = tk.StringVar(value="Ready: review the proposed six-Type mapping and approved artwork.")
+    ttk.Label(dialog, textvariable=state_label, padding=(14, 6),
+              wraplength=850).grid(row=2, column=0, sticky="ew")
     log = scrolledtext.ScrolledText(dialog, wrap="word", height=16)
-    log.grid(row=2, column=0, sticky="nsew", padx=12, pady=6)
+    log.grid(row=3, column=0, sticky="nsew", padx=12, pady=6)
+    log.insert(tk.END, "Start with Step 1: Review Garmin mapping and BMP changes.\n"
+               "The default mapping is still a review candidate, not a full Garmin release.\n"
+               "Advanced settings contain the file paths if needed.")
     controls = ttk.Frame(dialog, padding=(12, 0, 12, 12))
-    controls.grid(row=3, column=0, sticky="ew")
+    controls.grid(row=4, column=0, sticky="ew")
 
     def show(info):
         log.delete("1.0", tk.END)
@@ -97,6 +122,7 @@ def open_garmin_workspace(parent):
                 review_result["GPX_preview"] = export_waypoints(
                     Path(master.get()), Path(output.get()), Path(registry.get()))
             state["last_preview"] = review_result
+            state_label.set("Reviewed: check the changes below. BMP saving and GPX export each require separate approval.")
             show(review_result)
             messagebox.showinfo("Review ready", "Read the change list. No files were changed.", parent=dialog)
         except (GarminSyncError, OSError, ValueError) as exc:
@@ -121,6 +147,7 @@ def open_garmin_workspace(parent):
                 raise GarminSyncError("Inputs or requested destination changed since preview. Review again.")
             latest = export_waypoints(Path(master.get()), Path(output.get()),
                                       Path(registry.get()), approve=True)
+            state_label.set("New waypoint-only GPX created. Original master preserved.")
             show({"GPX_export_written": latest})
         except (GarminSyncError, OSError, ValueError) as exc:
             messagebox.showerror("Garmin export stopped", str(exc), parent=dialog)
@@ -154,6 +181,7 @@ def open_garmin_workspace(parent):
             # The promotion module verifies the exact preview digest again.
             receipt = promote_bmp(Path(registry.get()), Path(png.get()), target,
                                   backup_root, current["review_digest"])
+            state_label.set("BMP files saved and verified. Next: review again before preparing GPS waypoints.")
             show({"BMP_promotion_verified": str(receipt), "review": current})
             state["last_preview"] = None
             messagebox.showinfo("BMPs verified", f"Receipt and recovery copies:\n{receipt}", parent=dialog)
@@ -161,9 +189,9 @@ def open_garmin_workspace(parent):
             state["last_preview"] = None
             messagebox.showerror("BMP promotion stopped", str(exc), parent=dialog)
 
-    ttk.Button(controls, text="Inventory master GPX", command=inspect_master).pack(side="left")
-    ttk.Button(controls, text="Review BMP + GPX mapping", command=review).pack(side="left", padx=8)
-    ttk.Button(controls, text="Promote reviewed BMPs", command=promote_bmps).pack(side="left", padx=8)
-    ttk.Button(controls, text="Create reviewed GPX export", command=write_export).pack(side="left", padx=8)
+    ttk.Button(controls, text="1. Review mapping and artwork", command=review).pack(side="left")
+    ttk.Button(controls, text="2. Save approved BMPs", command=promote_bmps).pack(side="left", padx=8)
+    ttk.Button(controls, text="3. Export Garmin waypoints", command=write_export).pack(side="left", padx=8)
+    ttk.Button(controls, text="Details", command=inspect_master).pack(side="left", padx=8)
     ttk.Button(controls, text="Close", command=dialog.destroy).pack(side="right")
     return dialog
