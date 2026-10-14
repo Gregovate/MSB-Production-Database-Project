@@ -38,13 +38,13 @@ class PromotionTests(unittest.TestCase):
         self.assertEqual(before["icons"][0]["action"], "create")
         receipt = promote(self.mapping, self.images, self.target, self.backups, before["review_digest"])
         self.assertEqual(json.loads((receipt / "receipt.json").read_text())["status"], "VERIFIED")
-        original = (self.target / "PANEL.bmp").read_bytes()
+        original = (self.target / "panel.bmp").read_bytes()
         (self.images / "panel.png").write_bytes(png((40, 50, 60)))
         candidate = review(self.mapping, self.images, self.target)
         self.assertEqual(candidate["icons"][0]["action"], "replace")
         release = promote(self.mapping, self.images, self.target, self.backups, candidate["review_digest"])
-        self.assertEqual((release / "before" / "PANEL.bmp").read_bytes(), original)
-        self.assertNotEqual((self.target / "PANEL.bmp").read_bytes(), original)
+        self.assertEqual((release / "before" / "panel.bmp").read_bytes(), original)
+        self.assertNotEqual((self.target / "panel.bmp").read_bytes(), original)
         self.assertEqual(json.loads((release / "receipt.json").read_text())["status"], "VERIFIED")
 
     def test_first_release_creates_missing_bmp_directory(self):
@@ -53,7 +53,7 @@ class PromotionTests(unittest.TestCase):
         self.assertFalse(self.target.exists())
         receipt = promote(self.mapping, self.images, self.target,
                           self.backups, before["review_digest"])
-        self.assertTrue((self.target / "PANEL.bmp").is_file())
+        self.assertTrue((self.target / "panel.bmp").is_file())
         self.assertEqual(json.loads((receipt / "receipt.json").read_text())["status"], "VERIFIED")
 
     def test_missing_destination_not_created_on_stale_approval(self):
