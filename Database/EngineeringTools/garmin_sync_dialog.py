@@ -28,7 +28,7 @@ def open_garmin_workspace(parent):
     inputs = ttk.Frame(dialog, padding=12)
     inputs.grid(row=0, column=0, sticky="ew")
     inputs.columnconfigure(1, weight=1)
-    registry = tk.StringVar()
+    registry = tk.StringVar(value=str(Path(__file__).with_name('garmin_symbol_registry.json')))
     png = tk.StringVar(value=str(PARK / "png"))
     bmp = tk.StringVar(value=str(PARK / "bmp"))
     master = tk.StringVar()
