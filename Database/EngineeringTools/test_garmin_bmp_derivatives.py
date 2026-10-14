@@ -60,6 +60,24 @@ class GarminBMPTests(unittest.TestCase):
             with self.assertRaises(GarminSyncError):
                 load_registry(path)
 
+    def test_every_canonical_png_gets_a_bmp_even_without_gpx_type(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            source = root / "png"
+            source.mkdir()
+            for name in ("panel.png", "stage.png", "container-empty.png"):
+                (source / name).write_bytes(make_png())
+            mapping = root / "registry.json"
+            mapping.write_text(json.dumps({"symbols": [
+                {"type": "Panel", "source": "panel.png", "symbol": "PANEL"}]}))
+            report = prepare(mapping, source, root / "bmp")
+            rows = {row["source"]: row for row in report["icons"]}
+            self.assertEqual(len(rows), 3)
+            self.assertEqual(rows["panel.png"]["bmp"], "PANEL.bmp")
+            self.assertEqual(rows["stage.png"]["bmp"], "stage.bmp")
+            self.assertEqual(rows["container-empty.png"]["type"], "(artwork only)")
+            self.assertFalse((root / "bmp").exists())
+
     def test_preview_no_writes_and_additions_only(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d)
