@@ -4,7 +4,7 @@ import shutil
 import subprocess
 import pytest
 import setup_88_report_transport as transport
-from setup_88_report_read_deploy import git_blob, TRANSPORT_BLOBS
+from setup_88_report_read_deploy import git_blob, TRANSPORT_BLOBS, GRANT_TARGET
 
 
 @pytest.fixture
@@ -17,7 +17,9 @@ def checkout(tmp_path):
     git('config','core.autocrlf','false')
     folder=repo/'Setup/Acceptance'; folder.mkdir(parents=True)
     for name in transport.FILES:
-        shutil.copyfile(Path(__file__).with_name(name),folder/name)
+        # Preserve the exact historical mixed-EOL fixture despite newer deployment profiles.
+        (folder/name).write_bytes(subprocess.check_output([
+            'git','show',GRANT_TARGET+':Setup/Acceptance/'+name]))
     git('add','.'); git('commit','-qm','mixed-EOL committed runners')
     return repo,git
 

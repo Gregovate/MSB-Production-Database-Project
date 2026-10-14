@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | ENGINEERING CANDIDATE — not Production deployed |
+| Status | OPERATOR ACCEPTED / PRODUCTION AUTHORIZED — installation pending |
 | Reviewed | 2026-10-14 |
 | Owner | #122 / DBG-2026-013; Pick List integration #206 |
 | Baseline main | b183a79124d1de9ccf1844f4fc4613a911bcc938 |
@@ -77,3 +77,53 @@ Fetch origin main and fast-forward primary main. Remove only this task's clean
 preview worktree after its branch head is proven ancestral to origin/main, then
 `git branch -d fix/122-direct-container-requirements`. Stop on any failure; no force.
 Server CLEAN EXIT and local worktree cleanup are separate steps.
+
+## October 14 operator acceptance and approved deployment
+
+Greg assigned C106 to Setup Who People in the V0.3.64 disposable browser and
+confirmed it remained after refresh. He confirmed reusable preview CLEAN EXIT,
+then explicitly approved deployment including migration 073. Feature PR #389
+merged as `625693fea1f1ca024f14885701e9f4fa55ccda5b`. The accepted/deployment
+application pin remains `efb7f26fd0d4e1275daa509e2ade62bc291b1d8f`.
+
+Use `run_setup_required_container_deploy.ps1` from updated primary main.
+It packages committed bytes through the existing Windows transport, invokes
+`setup_required_container_deploy.py` as a bounded profile of
+`setup_maintenance_deploy.py`, and uses the installed Server Management controller.
+It does not rebuild the already-accepted disposable clone. The exact source
+receives host regression while ONLINE; only the short installation enters
+MAINTENANCE → current freeze proof → controller-validated rollback snapshot →
+migration 073 → exact function/least-privilege and all ref/ops-row preservation →
+Setup source promotion → controller OFF/ONLINE proof → exact health/regression.
+The shared checkout stays at its observed/ancestry-verified identity, including
+newer accepted People work. C106 is not assigned or marked picked by deployment.
+
+Expected Setup baseline is operator-recorded `2bc88ae627420c2138268e39a26b4942a3248580`
+/ V0.3.62. Any baseline drift, active preview, failed snapshot or validation stops.
+The existing deployment lock, retained journal and failure containment are reused.
+No error cleanup calls OFF, retries SQL, reverses data or restores the database.
+After STOP or interrupted SSH, inspect the exact retained journal/controller
+before any retry; do not toggle the dashboard concurrently.
+
+Reports: `/home/msbadmin/setup-deployment-reports/PR389-073-<UTC>/`.
+Snapshot: the existing `/home/msbadmin/backups/setup-205/` archive directory,
+with unique `pr389-073` name and retained validated SHA256. Deployment PASS still
+requires protected Production browser confirmation and actual report transcription.
+
+Office PC primary checkout confirmed:
+`C:\Users\Greg\Github\MSB-Production-Database-Project`.
+C106 preview worktree is `C:\Users\Greg\Github\MSB-389-Containers`.
+Preserve the separately listed Scheduling, Locate, GIS Office and #88 worktrees.
+After PASS, return to updated primary main, prove the C106 branch is merged and
+its worktree clean, remove only that worktree and delete only its merged branch.
+
+### Deployment tooling verification
+
+- 25 targeted maintenance/profile/Windows-transport tests PASS; Python compile and
+  diff checks PASS. Existing controller safety ordering remains unchanged.
+- Broader historical Acceptance suite was also checked: baseline merge 625693fe
+  already has eight legacy #88 installer tests failing against newer report/helper
+  sources. Historical transport fixtures now read their exact pinned Git blobs,
+  fixing two of those failures. Six older report-query-count tests remain unrelated
+  to this release; the current runner does not invoke those retired installers.
+- The accepted application source and 763 passing application tests are unchanged.
