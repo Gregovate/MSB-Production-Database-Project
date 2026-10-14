@@ -32,7 +32,30 @@ import zipfile
 MAX_PX = 32
 CANONICAL_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*\.svg$")
 CANVAS = re.compile(r"^(\d+(?:\.\d+)?)(?:px)?$")
-PARK = Path(r"G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols")
+# Shared-source folder migration, #171. Web URLs and local TopoGrafix stay unchanged.
+# During controlled cutover, permit exactly one populated shared root. Existing
+# installations remain usable until the operator runs and accepts migration.
+GIS_PARENT = Path(r"G:\Shared drives\Display Folders\Park Drawings\MSB GIS")
+OLD_LIBRARY = GIS_PARENT / "Symbols"
+NEW_LIBRARY = GIS_PARENT / "Symbol Library"
+
+
+def resolve_symbol_library() -> Path:
+    explicit = os.environ.get("MSB_SYMBOL_LIBRARY")
+    if explicit:
+        chosen = Path(explicit)
+        if chosen not in (OLD_LIBRARY, NEW_LIBRARY):
+            raise IconError("MSB_SYMBOL_LIBRARY must point to the approved shared Symbols or Symbol Library root")
+        return chosen
+    # Before migration, maintain the working source; after migration, use new.
+    # If both exist, stop rather than silently split reads and writes.
+    if OLD_LIBRARY.exists() and NEW_LIBRARY.exists():
+        raise IconError("Both old Symbols and new Symbol Library folders exist. "
+                        "Finish reviewed cutover before running tools.")
+    return NEW_LIBRARY if NEW_LIBRARY.exists() else OLD_LIBRARY
+
+
+PARK = resolve_symbol_library()
 README_URL = "https://webassets.sheboyganlights.org/images/symbols/"
 COLUMNS = ("SVG", "SVG_SHA256", "PNG", "Width_PX", "Height_PX", "PNG_SHA256")
 
