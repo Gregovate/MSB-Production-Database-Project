@@ -297,3 +297,15 @@ approved merge and maintenance-mode deployment. Use the existing wrapper
 updated main. The source-only profile requires proven prior V0.3.64/073 and
 applies no migrations; same controller/lock/committed transport, no new clone.
 Exact app86341d49, V0.3.65; actual Production install/closeout pending receipt.
+
+### October 14 search deployment server PASS
+
+Operator supplied `/home/msbadmin/setup-deployment-reports/PR391-Source-20261014T185934Z`:
+exact86341d49 / V0.3.65 installed with controller ONLINE and preservation gates
+PASS. No migration replay/archive for the source-only change. Prior V0.3.64/073
+prerequisite verified; original C106 report still unprovided. Protected Production
+search and local cleanup pending. See candidate receipt and deployment change log.
+
+Greg confirmed protected Production search works October14 at14:02 CDT.
+DBG-2026-014 server/browser acceptance is complete; Office cleanup remains
+operator-side and unverified. Day View wording remains separate #205 work.
