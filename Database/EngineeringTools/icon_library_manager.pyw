@@ -107,6 +107,8 @@ class Manager:
         pc_menu.add_separator()
         pc_menu.add_command(label="Advanced: laptop source proposal", command=self.review_current_profile)
         pc_menu.add_command(label="Advanced: Office calibration", command=self.review_map_repair)
+        pc_menu.insert_command(0, label="Workstation overview", command=self.open_workstation_workspace)
+        pc_menu.insert_command(1, label="Install reviewed ExpertGPS PNGs", command=lambda: self.check_png_distribution("expertgps"))
         main_menu.add_cascade(label="Workstation Management", menu=pc_menu)
         data_menu = tk.Menu(self.root, tearoff=False)
         data_menu.add_command(label="Review GPX source changes (READ ONLY)",
@@ -251,7 +253,7 @@ class Manager:
                   wraplength=830, padding=(0, 2, 0, 2)).pack(fill="x")
 
         local_controls = ttk.Frame(action_dock, padding=(0, 0, 0, 3))
-        local_controls.pack(fill="x")
+        # Workstation controls are accessed from the workstation workspace.
         ttk.Label(local_controls, text="Current Windows user / local ExpertGPS:").pack(
             side="left", padx=(0, 10))
         self.local_png_btn = ttk.Button(
@@ -262,7 +264,7 @@ class Manager:
         # #171 first phase: compare only. No HKCU write, GPX modification, or
         # installation callback exists for this separate workstation operation.
         profile_controls = ttk.Frame(action_dock, padding=(0, 0, 0, 2))
-        profile_controls.pack(fill="x")
+        # Workstation controls are accessed from the workstation workspace.
         self.profile_check_btn = ttk.Button(
             profile_controls, text="6. Compare GIS workstation release (READ ONLY)",
             command=self.check_workstation)
@@ -272,7 +274,7 @@ class Manager:
             command=self.review_current_profile)
         self.profile_proposal_btn.pack(side="left")
         profile_advanced = ttk.Frame(action_dock, padding=(0, 1, 0, 1))
-        profile_advanced.pack(fill="x")
+        # Workstation controls are accessed from the workstation workspace.
         self.profile_candidate_btn = ttk.Button(
             profile_advanced, text="Inspect this PC / compare with laptop (READ ONLY)",
             command=self.inspect_this_pc)
@@ -289,8 +291,7 @@ class Manager:
         self.map_repair_btn.pack(side="left", padx=(8, 0))
         self.profile_release_status = tk.StringVar(
             value="GIS workstation configuration: Not verified — no administrator-pinned release selected")
-        ttk.Label(action_dock, textvariable=self.profile_release_status,
-                  padding=(0, 0, 0, 2), wraplength=830).pack(fill="x")
+        # Show workstation status on Home and workstation overview, not artwork.
 
         ttk.Button(footer, text="Open release history / logs", command=lambda: self.open_dir(
             self.releases)).pack(side="left")
@@ -315,7 +316,7 @@ class Manager:
             tasks.pack(fill="x")
             entries = (
                 ("Symbol Management", "Manage approved artwork, PNG/BMP icons and Garmin symbols.", self.show_symbol_page),
-                ("Workstation Management", "Inspect ExpertGPS configuration and review workstation synchronization.", self.inspect_this_pc),
+                ("Workstation Management", "Inspect ExpertGPS configuration and review workstation synchronization.", self.open_workstation_workspace),
                 ("GIS Data Management", "Review GPX source changes before governed ingestion.", self.open_gis_source_review),
             )
             for heading, description, callback in entries:
@@ -325,11 +326,41 @@ class Manager:
                 ttk.Button(card, text="Open " + heading, command=callback).pack(anchor="w")
             ttk.Label(home, text="Library: " + str(PARK),
                       foreground="#42566b", wraplength=770).pack(anchor="w", pady=(12, 2))
+            ttk.Label(home, text="CRITICAL: Install local MSB symbols BEFORE opening MSB GPX in ExpertGPS. Missing icons can replace MSB markers even without Save.",
+                      foreground="#a12323", wraplength=770).pack(anchor="w", pady=(10, 3))
+            ttk.Label(home, textvariable=self.profile_release_status,
+                      wraplength=770).pack(anchor="w", pady=(2, 3))
             ttk.Label(home, text="Installer and approved workstation release are not yet accepted.",
                       foreground="#8b4b16", wraplength=770).pack(anchor="w")
             ttk.Button(home, text="Close", command=self.root.destroy).pack(side="bottom", anchor="e")
         self._home_overlay.place(x=0, y=0, relwidth=1, relheight=1)
         self._home_overlay.lift()
+
+    def open_workstation_workspace(self):
+        win = tk.Toplevel(self.root)
+        win.title("MSB GIS Manager — Workstation Management")
+        win.geometry("750x460")
+        win.minsize(610, 410)
+        pane = ttk.Frame(win, padding=16)
+        pane.pack(fill="both", expand=True)
+        ttk.Label(pane, text="Workstation Management",
+                  font=("Segoe UI", 16, "bold")).pack(anchor="w")
+        ttk.Label(pane, text="Protect existing ExpertGPS settings and scanned maps before making changes.",
+                  wraplength=690).pack(anchor="w", pady=(6, 8))
+        ttk.Label(pane, text="CRITICAL: Install local MSB symbols before opening an MSB GPX in ExpertGPS.",
+                  foreground="#a12323", wraplength=690).pack(anchor="w", pady=(3, 8))
+        ttk.Label(pane, textvariable=self.profile_release_status,
+                  wraplength=690).pack(anchor="w", pady=(3, 9))
+        for label, callback in (
+            ("Inspect this workstation (read only)", self.inspect_this_pc),
+            ("Compare workstation release (read only)", self.check_workstation),
+            ("Install reviewed PNGs for this ExpertGPS user", lambda: self.check_png_distribution("expertgps")),
+            ("Review workstation alignment — advanced", self.review_office_repair),
+            ("Laptop source proposal — advanced", self.review_current_profile),
+            ("Office calibration review — advanced", self.review_map_repair),
+        ):
+            ttk.Button(pane, text=label, command=callback).pack(fill="x", pady=3)
+        ttk.Button(pane, text="Close", command=win.destroy).pack(anchor="e", pady=(10, 0))
 
     def show_symbol_page(self):
         if hasattr(self, "_home_overlay"):
