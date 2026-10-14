@@ -678,6 +678,18 @@ function board205RevealScheduledAssignment(item) {
       `.setup-board205-assignment[data-assignment-id="${Number(item.setup_work_day_task_id)}"]`
     );
     if (!card) return;
+    // A search hit must be visible before scroll/focus can reach its card.
+    // Expand only its day; preserve the other days' collapsed presentation.
+    const dayNode = card.closest('.setup-board205-day');
+    const content = dayNode?.querySelector('.setup-board205-day-content');
+    if (content) content.hidden = false;
+    const toggle = dayNode?.querySelector('.setup-board205-toggle-day');
+    if (toggle) {
+      toggle.setAttribute('aria-expanded', 'true');
+      toggle.textContent = toggle.textContent.replace('▶', '▼');
+    }
+    if (!card.hasAttribute('tabindex')) card.setAttribute('tabindex', '-1');
+    card.focus({ preventScroll: true });
     card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
     card.classList.add('scheduled-search-hit');
     window.setTimeout(() => card.classList.remove('scheduled-search-hit'), 2600);
