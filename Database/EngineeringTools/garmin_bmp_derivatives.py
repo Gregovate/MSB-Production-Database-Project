@@ -94,7 +94,7 @@ def prepare(registry: Path, approved_png: Path, output: Path, *, apply: bool = F
     extras = []
     for path in sorted(approved_png.iterdir(), key=lambda p: p.name.casefold()):
         if path.is_file() and path.suffix.lower() == ".png" and path.name not in named:
-            if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*\\.png", path.name):
+            if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*\.png", path.name):
                 raise GarminSyncError(f"Noncanonical approved PNG filename: {path.name}")
             extras.append({"type": "(artwork only)", "source": path.name, "symbol": path.stem})
     expanded = mapping + extras
