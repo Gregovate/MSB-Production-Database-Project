@@ -241,12 +241,18 @@ def open_garmin_workspace(parent):
             if not changes:
                 messagebox.showinfo("No BMP changes", "All reviewed BMPs already match.", parent=dialog)
                 return
-            summary = ", ".join(f"{r['action']} {r['bmp']}" for r in changes)
+            counts = {name: sum(row["action"] == name for row in current["icons"])
+                      for name in ("create", "replace", "identical")}
             if not messagebox.askyesno(
-                "Approve reviewed BMP promotion",
-                f"Apply {len(changes)} reviewed BMP change(s) to:\n{target}\n\n"
-                f"Backups and receipt:\n{backup_root}\n\n"
-                f"{summary}\n\nNo GPX or web changes. Proceed?", parent=dialog):
+                "Save reviewed Garmin icons",
+                f"Save {len(changes)} Garmin BMP icon(s)?\n\n"
+                f"{counts['create']} new  |  {counts['replace']} replacements  |  "
+                f"{counts['identical']} unchanged\n\n"
+                "Destination: MSB Symbol Library / bmp\n"
+                "Backups and verification receipt: Symbol Library / release-history\n\n"
+                "No master GPX or web changes.\n"
+                "Full filenames and hashes are available in the review details.",
+                parent=dialog):
                 return
             # The promotion module verifies the exact preview digest again.
             receipt = promote_bmp(Path(registry.get()), Path(png.get()), target,
