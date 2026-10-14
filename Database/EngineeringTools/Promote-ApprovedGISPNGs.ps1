@@ -10,8 +10,8 @@
 [CmdletBinding()]
 param(
     [string]$ZipPath = '',
-    [string]$PlainSvgDirectory = 'G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Plain',
-    [string]$DestinationDirectory = 'G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\png',
+    [string]$PlainSvgDirectory = 'G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbol Library\Plain',
+    [string]$DestinationDirectory = 'G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbol Library\png',
     [switch]$Apply
 )
 Set-StrictMode -Version Latest
