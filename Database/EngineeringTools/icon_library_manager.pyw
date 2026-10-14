@@ -99,6 +99,10 @@ class Manager:
                                command=self.open_garmin_review)
         main_menu = tk.Menu(self.root)
         main_menu.add_cascade(label="Symbol Management", menu=tools_menu)
+        data_menu = tk.Menu(self.root, tearoff=False)
+        data_menu.add_command(label="Review GPX source changes (READ ONLY)",
+                              command=self.open_gis_source_review)
+        main_menu.add_cascade(label="GIS Data Management", menu=data_menu)
         self.root.config(menu=main_menu)
         self.plain = PARK / "Plain"
         self.dest = PARK / "png"
@@ -285,6 +289,10 @@ class Manager:
         ttk.Button(footer, text="Open selected PNG URL", command=self.open_web_png).pack(
             side="left", padx=(12, 0))
         ttk.Button(footer, text="Close", command=self.root.destroy).pack(side="right")
+
+    def open_gis_source_review(self):
+        from gis_source_review_dialog import open_review
+        open_review(self.root)
 
     def open_garmin_review(self):
         from garmin_sync_dialog import open_garmin_workspace
