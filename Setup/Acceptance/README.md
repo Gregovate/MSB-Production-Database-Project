@@ -270,3 +270,9 @@ Package accepted cross-repository artifacts with their owning source/merge and e
 [All three #205/#122 tablet launch corrections](Setup_205_Tablet_Launch_Debug_Candidate.md) are a source-only candidate. Local regression passes; disposable/browser/operator acceptance remains pending. Production is unchanged.
 
 - [#206 live Pick demand correction candidate](Setup_206_Live_Pick_Demand_Candidate.md) — reconciles focused validation misses with visible live physical demand and refreshes stale online scan data.
+
+## Direct required Containers — C106
+
+[Candidate and single-clone browser checklist](Setup_Required_Containers_Candidate.md)
+adds a searchable direct physical Container requirement without material/contents
+records. Migration 073 is candidate-only; no Production deployment yet.

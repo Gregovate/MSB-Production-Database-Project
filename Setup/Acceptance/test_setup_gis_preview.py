@@ -47,7 +47,7 @@ for url in ['/fieldwiring/fieldwiring.css','/fieldwiring/fieldwiring.js',
             '/setup/locate/assets/setup_locate_assets.js','/locate/']:
     assert client.get(url).status_code == 200, url
 assert client.get('/fieldwiring/api/health').json['version'] == 'V0.4.1-gis-entry'
-assert client.get('/setup/api/health').json['version'] == 'V0.3.62-field-networks'
+assert client.get('/setup/api/health').json['version'] == 'V0.3.64-required-containers'
 assert client.post('/setup/locate/').status_code == 405
 '''
     subprocess.run([sys.executable, '-c', program], cwd=ROOT, check=True, capture_output=True, text=True)
