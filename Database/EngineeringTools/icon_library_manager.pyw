@@ -98,7 +98,7 @@ class Manager:
         tools_menu.add_command(label="Garmin symbol review / GPX export",
                                command=self.open_garmin_review)
         main_menu = tk.Menu(self.root)
-        main_menu.add_cascade(label="Workspaces", menu=tools_menu)
+        main_menu.add_cascade(label="Symbol Management", menu=tools_menu)
         self.root.config(menu=main_menu)
         self.plain = PARK / "Plain"
         self.dest = PARK / "png"
