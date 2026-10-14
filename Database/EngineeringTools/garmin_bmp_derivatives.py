@@ -99,7 +99,7 @@ def prepare(registry: Path, approved_png: Path, output: Path, *, apply: bool = F
             extras.append({"type": "(artwork only)", "source": path.name, "symbol": path.stem})
     expanded = mapping + extras
     # Case-insensitive collision safety is essential for FAT/Windows Garmin mounts.
-    symbols = [row["symbol"].casefold() for row in expanded]
+    symbols = [Path(row["source"]).stem.casefold() for row in expanded]
     if len(symbols) != len(set(symbols)):
         raise GarminSyncError("Approved mapping and canonical stems produce duplicate BMP names")
     pending, report = {}, []
@@ -109,7 +109,7 @@ def prepare(registry: Path, approved_png: Path, output: Path, *, apply: bool = F
             raise GarminSyncError(f"Missing/invalid approved PNG: {src}")
         data = src.read_bytes()
         payload, dimensions = bmp_from_png(data, src.name)
-        filename = row["symbol"] + ".bmp"
+        filename = Path(row["source"]).stem + ".bmp"
         dest = output / filename
         if dest.is_symlink():
             raise GarminSyncError(f"Refuse symlink destination: {dest}")
