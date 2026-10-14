@@ -73,7 +73,7 @@ class GarminBMPTests(unittest.TestCase):
             report = prepare(mapping, source, root / "bmp")
             rows = {row["source"]: row for row in report["icons"]}
             self.assertEqual(len(rows), 3)
-            self.assertEqual(rows["panel.png"]["bmp"], "PANEL.bmp")
+            self.assertEqual(rows["panel.png"]["bmp"], "panel.bmp")
             self.assertEqual(rows["stage.png"]["bmp"], "stage.bmp")
             self.assertEqual(rows["container-empty.png"]["type"], "(artwork only)")
             self.assertFalse((root / "bmp").exists())
