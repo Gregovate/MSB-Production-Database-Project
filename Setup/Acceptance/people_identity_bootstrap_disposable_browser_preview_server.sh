@@ -436,6 +436,12 @@ if [[ "$PREVIEW_PORT" != "8898" ]]; then
     echo "FAIL: reusable disposable browser review uses registered stable port 8898"
     exit 4
 fi
+if [[ ! "$PREVIEW_EMAIL" =~ ^[A-Za-z0-9._%+-]+@sheboyganlights[.]org$ ]]; then
+    echo "FAIL: People identity preview email must be a sheboyganlights.org address"
+    exit 4
+fi
+sudo -u fieldwiring -H "$PRODUCTION_PYTHON" -m py_compile "$PREVIEW_ENTRY"
+echo "PASS: reusable profile entry compiles in documented Production Python"
 
 echo "--- Selected-port stale preview cleanup ---"
 if ! cleanup_stale_profile_preview; then
