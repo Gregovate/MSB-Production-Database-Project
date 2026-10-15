@@ -110,7 +110,7 @@ dcc8f25f07a74e19ce3de3aae2d9d137b5411815
 
 No `People/Application` or `People/Database` runtime file changed after that accepted SHA.
 
-The existing reusable browser-preview launcher is being extended with a `PeopleIdentityBootstrap` profile rather than adding another independent workstation wrapper. The profile uses the same established foreground SSH/reconnect lifecycle and the registered stable review URL:
+The existing reusable browser-preview launcher has been extended with a `PeopleIdentityBootstrap` profile rather than adding another independent workstation wrapper. The profile uses the same established foreground SSH/reconnect lifecycle and the registered stable review URL:
 
 ```text
 http://127.0.0.1:8898/
@@ -125,6 +125,63 @@ Apps blob  9d340e5e944a7cd1db223b539066eb14ddb1c292
 ```
 
 The profile uses a clone-only synthetic human identity, a disposable current-Production PostgreSQL clone, and disposable Directus 11.17.1. It must not consume Don Martens' real Production fixture during pre-Production browser review.
+
+## Reusable 8898 Profile — Engineering Regression Checkpoint — 2026-10-15
+
+The **two** governing acceptance/runtime procedures have separate responsibilities:
+
+1. `Gregovate/MSB-Server-Management/docs/server/PostgreSQL_Disposable_Acceptance_Standard.md` governs the current-Production clone, isolation and disposable acceptance.
+2. `Gregovate/MSB-Server-Management/docs/server/Pre_Production_Browser_Review_Runbook.md` governs the exact-candidate browser/application review, temporary listener, reconnect, and teardown.
+
+The companion `docs/server/Application_and_Test_Port_Register.md` assigns sequential reusable Production Database browser review to **8898**. The Production Database repository's `Setup/Acceptance/README.md` and `Setup/Acceptance/run_setup_disposable_browser_preview.ps1` own the application-side reusable launcher contract. None of these are Production deployment authorization.
+
+### Accepted runtime versus acceptance-tooling HEAD
+
+```text
+Accepted People/Application + People/Database runtime   dcc8f25f07a74e19ce3de3aae2d9d137b5411815
+Reusable 8898 profile initially staged               b04262c5a3bb11d910c536d5f937964eee37c8e6
+Read-only preview entry preflight correction           2859e6434442a43f63733b66d862aa37017b4481
+Workstation regression contract correction             01606de3c00f668b3e065ccfc38efaf64aa11b36
+Greg's verified local checkout and tests               01606de3c00f668b3e065ccfc38efaf64aa11b36
+```
+
+The first #395 feature-specific browser-preview wrapper was removed; it was never authorized or run. Changes above the accepted runtime remain acceptance tooling/documentation only. Do not reinterpret newer tooling SHA as a new accepted People runtime.
+
+### Preflight issue and correction
+
+The new server runner attempted `sudo -u fieldwiring ... python -m py_compile` on the uploaded entry file. The uploaded bundle is made traversable/readable (`755` directory; `644` entry) but not writable by `fieldwiring`; `py_compile` can try to create `__pycache__` beside the entry and fail before the review starts. Tooling commit `2859e643...` replaces this with Python `compile(source.read_bytes(), str(source), "exec")` in memory under the same service account. Commit `01606de3...` adds the static regression to protect the read-only bundle contract. No Production runtime mutation was made.
+
+### Greg's Windows desktop PowerShell evidence
+
+Greg ran these checks in his existing `C:\Users\Greg\Github\MSB-Production-Database-Project` checkout at `01606de3...`:
+
+```text
+python -m pytest -q -p no:cacheprovider Setup/Application/test_setup_reusable_people_identity_preview_profile_contract.py
+    11 passed in 0.15s
+
+python -m pytest -q -p no:cacheprovider Setup/Application
+    769 passed, 5 skipped in 9.46s
+
+bash -n Setup/Acceptance/people_identity_bootstrap_disposable_browser_preview_server.sh
+    NOT RUN: PowerShell CommandNotFoundException, bash command not on PATH
+```
+
+The last line is a **Windows command-resolution failure**, not an executed Bash syntax failure. Do not describe Bash syntax validation as PASS until an actual Bash interpreter executes `-n`. Reuse/discover the installed Git for Windows Bash if present; do not assume a bare `bash` command works in this PowerShell environment. PowerShell parser/syntax preflight also remains unverified in this evidence.
+
+### Exact stop point and next gate
+
+```text
+#395 disposable runtime acceptance   PASS (dcc8f25...; separate controlled report above)
+Reusable-profile static pytest       PASS (11/11)
+Complete Setup/Application pytest     PASS (769 passed, 5 skipped)
+Bash syntax validation               PENDING (no bash command on PowerShell PATH)
+PowerShell launcher parser check     PENDING
+Real reusable 8898 browser review    NOT STARTED
+Don real Production fixture          UNCONSUMED
+Production deployment                NOT AUTHORIZED
+```
+
+Resolve local shell syntax tooling without changing the accepted runtime, record actual validation output here, then inspect port ownership and follow the **existing** reusable 8898 browser-review runbook. Do not run the rejected People-specific wrapper, create a competing runbook, or consume Don's real fixture for pre-Production review.
 
 ## Disposition
 
