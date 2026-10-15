@@ -94,26 +94,26 @@ class Manager:
         self.root.minsize(800, 500)
         self.root.configure(bg=BACKGROUND)
         # Keep the Garmin workflow accessible without more stacked footer buttons.
-        tools_menu = tk.Menu(self.root, tearoff=False)
-        tools_menu.add_command(label="Garmin symbol review / GPX export",
-                               command=self.open_garmin_review)
         main_menu = tk.Menu(self.root)
-        tools_menu.insert_command(0, label="Artwork Library and PNG publication", command=self.show_symbol_page)
-        main_menu.add_cascade(label="Symbol Management", menu=tools_menu)
-        pc_menu = tk.Menu(self.root, tearoff=False)
-        pc_menu.add_command(label="Inspect this workstation (read only)", command=self.inspect_this_pc)
-        pc_menu.add_command(label="Compare approved workstation release", command=self.check_workstation)
-        pc_menu.add_command(label="Review workstation alignment", command=self.review_office_repair)
-        pc_menu.add_separator()
-        pc_menu.add_command(label="Advanced: laptop source proposal", command=self.review_current_profile)
-        pc_menu.add_command(label="Advanced: Office calibration", command=self.review_map_repair)
-        pc_menu.insert_command(0, label="Workstation overview", command=self.open_workstation_workspace)
-        pc_menu.insert_command(1, label="Install reviewed ExpertGPS PNGs", command=lambda: self.check_png_distribution("expertgps"))
-        main_menu.add_cascade(label="Workstation Management", menu=pc_menu)
-        data_menu = tk.Menu(self.root, tearoff=False)
-        data_menu.add_command(label="Review GPX source changes (READ ONLY)",
-                              command=self.open_gis_source_review)
+        symbol_menu = tk.Menu(main_menu, tearoff=False)
+        symbol_menu.add_command(label="Artwork library and publication", command=self.show_symbol_page)
+        symbol_menu.add_command(label="Garmin symbols and GPX", command=self.open_garmin_review)
+        main_menu.add_cascade(label="Symbol Management", menu=symbol_menu)
+        station_menu = tk.Menu(main_menu, tearoff=False)
+        station_menu.add_command(label="Check this computer", command=self.open_workstation_workspace)
+        main_menu.add_cascade(label="Workstation Management", menu=station_menu)
+        data_menu = tk.Menu(main_menu, tearoff=False)
+        data_menu.add_command(label="Review GPX changes", command=self.open_gis_source_review)
         main_menu.add_cascade(label="GIS Data Management", menu=data_menu)
+        utility_menu = tk.Menu(main_menu, tearoff=False)
+        utility_menu.add_command(label="Inspect ExpertGPS settings", command=self.inspect_this_pc)
+        utility_menu.add_command(label="Compare workstation release", command=self.check_workstation)
+        utility_menu.add_command(label="Review workstation alignment", command=self.review_office_repair)
+        utility_menu.add_command(label="Laptop source proposal", command=self.review_current_profile)
+        utility_menu.add_command(label="Office map calibration review", command=self.review_map_repair)
+        utility_menu.add_separator()
+        utility_menu.add_command(label="Open release history", command=lambda: self.open_dir(self.releases))
+        main_menu.add_cascade(label="Utilities (Advanced)", menu=utility_menu)
         main_menu.add_command(label="Home", command=self.show_home)
         self.root.config(menu=main_menu)
         self.plain = PARK / "Plain"
@@ -303,38 +303,93 @@ class Manager:
         self.root.after_idle(self.show_home)
 
 
+    def scan_operator_readiness(self):
+        """Read-only local readiness signals. Never treat these as an approved release comparison."""
+        from collections import Counter
+        from garmin_bmp_derivatives import load_registry
+        states = []
+        canonical = PARK / "png"
+        local = self.local_png_dest
+        try:
+            approved = {p.name.casefold(): p for p in canonical.glob("*.png") if p.is_file()}
+            existing = {p.name.casefold(): p for p in local.glob("*.png") if p.is_file()}
+            missing = sorted(set(approved) - set(existing))
+            changed = sorted(k for k in set(approved) & set(existing)
+                             if sha_file(approved[k]) != sha_file(existing[k]))
+            if not approved:
+                states.append(("Local ExpertGPS icons", "Needs review", "Approved PNG folder is empty/unavailable"))
+            elif missing or changed:
+                states.append(("Local ExpertGPS icons", "Update available",
+                               f"{len(missing)} missing and {len(changed)} different"))
+            else:
+                states.append(("Local ExpertGPS icons", "Matched",
+                               f"{len(approved)} approved PNG files verified"))
+        except (OSError, ValueError) as exc:
+            states.append(("Local ExpertGPS icons", "Check needed", str(exc)))
+        # Device discovery is read-only, drive-letter independent and opt-in for writes.
+        connected = []
+        if os.name == "nt":
+            import string
+            for drive in string.ascii_uppercase:
+                folder = Path(f"{drive}:/Garmin/CustomSymbols")
+                if folder.is_dir():
+                    connected.append(folder)
+        if connected:
+            states.append(("Garmin device", "Connected",
+                           f"{len(connected)} symbol folder(s) detected; review before updating or importing"))
+        else:
+            states.append(("Garmin device", "Not connected", "Connect a Garmin when ready"))
+        states.append(("Workstation configuration", "Approval pending",
+                       "Exact ExpertGPS Type, reverse mapping and maps require an approved release comparison"))
+        return states
+
+    def refresh_operator_readiness(self):
+        if not hasattr(self, "_readiness_rows"):
+            return
+        for child in self._readiness_rows.winfo_children():
+            child.destroy()
+        for name, status, detail in self.scan_operator_readiness():
+            line = ttk.Frame(self._readiness_rows)
+            line.pack(fill="x", pady=4)
+            ttk.Label(line, text=name, width=24, anchor="w").pack(side="left")
+            ttk.Label(line, text=status, width=18, anchor="w").pack(side="left")
+            ttk.Label(line, text=detail, wraplength=410).pack(side="left", fill="x", expand=True)
+
     def show_home(self):
-        """Operator-facing home; existing symbol editor remains available."""
+        """Operator-first status and next actions, never mutate on startup."""
         if not hasattr(self, "_home_overlay"):
-            home = ttk.Frame(self.root, padding=24)
+            home = ttk.Frame(self.root, padding=20)
             self._home_overlay = home
             ttk.Label(home, text="MSB GIS Manager",
                       font=("Segoe UI", 19, "bold")).pack(anchor="w")
-            ttk.Label(home, text="Select the task you want to perform.",
-                      font=("Segoe UI", 11)).pack(anchor="w", pady=(3, 16))
-            tasks = ttk.Frame(home)
-            tasks.pack(fill="x")
-            entries = (
-                ("Symbol Management", "Manage approved artwork, PNG/BMP icons and Garmin symbols.", self.show_symbol_page),
-                ("Workstation Management", "Inspect ExpertGPS configuration and review workstation synchronization.", self.open_workstation_workspace),
-                ("GIS Data Management", "Review GPX source changes before governed ingestion.", self.open_gis_source_review),
-            )
-            for heading, description, callback in entries:
-                card = ttk.LabelFrame(tasks, text=heading, padding=12)
-                card.pack(fill="x", pady=5)
-                ttk.Label(card, text=description, wraplength=750).pack(anchor="w", pady=(0, 5))
-                ttk.Button(card, text="Open " + heading, command=callback).pack(anchor="w")
-            ttk.Label(home, text="Library: " + str(PARK),
-                      foreground="#42566b", wraplength=770).pack(anchor="w", pady=(12, 2))
-            ttk.Label(home, text="CRITICAL: Install local MSB symbols BEFORE opening MSB GPX in ExpertGPS. Missing icons can replace MSB markers even without Save.",
-                      foreground="#a12323", wraplength=770).pack(anchor="w", pady=(10, 3))
-            ttk.Label(home, textvariable=self.profile_release_status,
-                      wraplength=770).pack(anchor="w", pady=(2, 3))
-            ttk.Label(home, text="Installer and approved workstation release are not yet accepted.",
-                      foreground="#8b4b16", wraplength=770).pack(anchor="w")
+            ttk.Label(home, text="Check what needs attention, then choose an action.",
+                      font=("Segoe UI", 10)).pack(anchor="w", pady=(3, 10))
+            state = ttk.LabelFrame(home, text="This computer and connected equipment", padding=12)
+            state.pack(fill="x")
+            self._readiness_rows = ttk.Frame(state)
+            self._readiness_rows.pack(fill="x")
+            ttk.Button(state, text="Check again (read only)",
+                       command=self.refresh_operator_readiness).pack(anchor="w", pady=(8, 0))
+            ttk.Label(home,
+                      text="IMPORTANT: Install local MSB symbols BEFORE opening an MSB GPX in ExpertGPS. Missing symbols can change markers even without Save.",
+                      foreground="#a12323", wraplength=780).pack(anchor="w", pady=(12, 8))
+            choices = ttk.Frame(home)
+            choices.pack(fill="x")
+            for label, callback in (
+                ("Review workstation differences", self.open_workstation_workspace),
+                ("Review artwork updates", self.show_symbol_page),
+                ("Garmin symbols / recordings", self.open_garmin_review),
+                ("Review GPX source changes", self.open_gis_source_review),
+            ):
+                ttk.Button(choices, text=label, command=callback).pack(side="left", padx=(0, 7), pady=2)
+            ttk.Label(home, text="Advanced diagnostics and manual operations: Utilities menu.",
+                      foreground="#42566b").pack(anchor="w", pady=(10, 0))
+            ttk.Label(home, text="Approved workstation release and installer not yet accepted.",
+                      foreground="#8b4b16").pack(anchor="w")
             ttk.Button(home, text="Close", command=self.root.destroy).pack(side="bottom", anchor="e")
         self._home_overlay.place(x=0, y=0, relwidth=1, relheight=1)
         self._home_overlay.lift()
+        self.refresh_operator_readiness()
 
     def open_workstation_workspace(self):
         win = tk.Toplevel(self.root)
