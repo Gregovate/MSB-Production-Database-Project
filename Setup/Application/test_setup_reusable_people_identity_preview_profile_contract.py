@@ -47,6 +47,32 @@ def test_people_profile_requires_exact_external_apps_identity() -> None:
     assert "Apps candidate blob mismatch" in SERVER
 
 
+
+def test_apps_source_is_authenticated_byte_exact_and_uploaded_before_server_contact() -> None:
+    # The draft Backbone repo cannot be retrieved through anonymous raw GitHub.
+    # Authenticate via workstation Git, pin commit/tree blob/checkout/bundle,
+    # then independently hash the byte-identical SCP payload server-side.
+    assert "git clone --quiet --no-checkout" in LAUNCHER
+    assert "Gregovate/MSB-Internal-Web-Backbone.git" in LAUNCHER
+    assert "core.autocrlf=false" in LAUNCHER
+    assert 'rev-parse "${ExternalAppsSha}:my/apps/index.html"' in LAUNCHER
+    assert "hash-object -- $appsSource" in LAUNCHER
+    assert "[System.IO.File]::Copy($appsSource, $bundledApps)" in LAUNCHER
+    assert "hash-object -- $bundledApps" in LAUNCHER
+    assert 'Stop before server contact' not in LAUNCHER  # exact stop strings are uppercase
+    assert "STOP before server contact: bundled Apps file" in LAUNCHER
+    assert "scp -r $localBundle" in LAUNCHER
+    assert "chmod 644 '$remoteEntry' '$remoteApps'" in LAUNCHER
+    assert "Remove-Item -LiteralPath $backboneSourceDir" in LAUNCHER
+
+    assert "raw.githubusercontent.com" not in SERVER
+    assert '[[ -s "$APPS_HTML" ]]' in SERVER
+    assert "bundled Backbone Apps candidate missing or empty" in SERVER
+    assert 'git hash-object "$APPS_HTML"' in SERVER
+    assert "Apps candidate blob mismatch" in SERVER
+    assert SERVER.index('git hash-object "$APPS_HTML"') < SERVER.index("pg_dump")
+
+
 def test_people_profile_uses_same_foreground_reconnect_transport() -> None:
     assert "$resumeCommand" in LAUNCHER
     assert "timeout --foreground --signal=TERM 28800s" in LAUNCHER
