@@ -86,6 +86,46 @@ PASS: Production directus_users fingerprint unchanged
 Exit status: 0
 ```
 
+## Browser Review Tooling Correction — 2026-10-15
+
+The first post-disposable browser-preview tooling drafted for #395 was **not executed** and was rejected because it used the historical People preview port `8795` and bypassed the established reusable disposable-browser workflow.
+
+Current authority was re-read from:
+
+```text
+Gregovate/MSB-Server-Management
+docs/server/Pre_Production_Browser_Review_Runbook.md
+docs/server/Application_and_Test_Port_Register.md
+
+Gregovate/MSB-Production-Database-Project
+Setup/Acceptance/README.md
+Setup/Acceptance/run_setup_disposable_browser_preview.ps1
+```
+
+The correction preserves the disposable-accepted People runtime at:
+
+```text
+dcc8f25f07a74e19ce3de3aae2d9d137b5411815
+```
+
+No `People/Application` or `People/Database` runtime file changed after that accepted SHA.
+
+The existing reusable browser-preview launcher is being extended with a `PeopleIdentityBootstrap` profile rather than adding another independent workstation wrapper. The profile uses the same established foreground SSH/reconnect lifecycle and the registered stable review URL:
+
+```text
+http://127.0.0.1:8898/
+```
+
+The exact Backbone Apps candidate remains independently pinned:
+
+```text
+Gregovate/MSB-Internal-Web-Backbone PR #25
+Apps SHA   1d7fa310dd5274078910e3a098ddfd633ae58836
+Apps blob  9d340e5e944a7cd1db223b539066eb14ddb1c292
+```
+
+The profile uses a clone-only synthetic human identity, a disposable current-Production PostgreSQL clone, and disposable Directus 11.17.1. It must not consume Don Martens' real Production fixture during pre-Production browser review.
+
 ## Disposition
 
 ```text
