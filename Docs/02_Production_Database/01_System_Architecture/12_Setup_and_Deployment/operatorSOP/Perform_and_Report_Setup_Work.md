@@ -126,6 +126,28 @@ Work completed on:     September 24
 
 That is valid. The schedule records the plan; **Work completed on** records what actually happened.
 
+## If You Get an Email Saying a Work Report Is Missing
+
+This means the computer has no report for one of your scheduled work assignments. **It does not mean you did nothing wrong or that no work happened.** The Manager needs to know what actually happened.
+
+1. Read the email and check the **task name**, **Setup Day/date**, **crew**, and **morning or afternoon**. Make sure it is your assignment.
+2. Open [Setup](https://my.sheboyganlights.org/setup/) and sign in if asked. Confirm **Season 2026**.
+3. Click **Perform Work**.
+4. In the **Captain** dropdown, select your name. A Manager who is helping can choose **All scheduled work**.
+5. Locate the **same date, crew, shift, and task** from the email. If a past day is folded up or not displayed, ask a Manager to help reveal the historical assignment rather than reporting against the wrong task.
+6. Click the task to open it, then choose **Report Work**.
+7. For **Work completed on**, enter the date the crew **actually did the work**, even when it is different from the scheduled date.
+8. Enter the **real number of people** under **Crew size** and the **actual Hours and Minutes** the work took.
+9. Enter **% complete** for the *whole task*: **100** means truly finished. If some work remains, enter the best honest percent and describe **What was done / what remains**. Optional quantity details are only for things you can count.
+10. Review the entries, click **Save Work Report**, and confirm the new entry appears under **Progress history**.
+11. If work is unfinished, tell the Manager what remains. The Manager needs to schedule another work assignment; submitting a partial report does not automatically reschedule it.
+
+**If no one worked on that assignment:** do not enter fake work, time, or a percentage to make the warning disappear. Tell the Manager the assignment was not worked; the Manager must review the plan.
+
+**If somebody already reported the work or the report is wrong:** do not add a duplicate. Ask a Manager to inspect **Progress history** and use **Correct report** where appropriate.
+
+**If you cannot find your name, day, task or the Report Work button:** contact the Manager instead of guessing. The Manager can check your schedule and whether your account has the correct access.
+
 ## Partial Work and Continuation
 
 If the report is below 100%, the annual task remains **In Progress**.
