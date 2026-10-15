@@ -291,3 +291,21 @@ Greg clarified that **Manager Early-Pick Demand was intentionally not communicat
 - Operator language must be concise and explicit for users with limited computer familiarity. Keep Manager scheduling actions separate from material authority. Do not show controls that promise staging/pick capacity which has not been measured.
 
 These are owner-provided operational facts/constraints, **not a grant of Production change authorization**. Reconcile with #122 and #206 without reopening established physical Pick List or movement semantics unnecessarily.
+
+
+## Discoverability defect — contextual operator help (2026-10-15)
+
+Greg confirms operators are not reading existing documentation, in significant part because it is too hard to find even for an experienced Manager. A separate internal web-page workstream crawls repository README.md operator documentation to populate a **static** instruction site. That discoverability system is not currently contextual to controls in Setup and is a separate project; do not redesign or overwrite that workstream here.
+
+**Required Setup engineering contract:** Provide *in-context help entry points* at the application action where a person needs them, e.g. Plan/Schedule workload/overload and rescheduling; Perform Work historical/partial/no-work reporting; Report Work date/crew/time/percent; Pick List and Manager Material Status (with role-specific wording); KPI Action Required and email follow-up. Each entry must give very short, plain-language, field-matched numbered steps (suitable for first-time operators), and link to the **existing authoritative operator SOP**. Do not duplicate and independently maintain long help prose across the app, SOP and internal portal.
+
+**Source-of-truth and integration rules:**
+- Controlled `operatorSOP` documentation owns approved procedure wording; Setup engineering documentation owns how the app presents and links it. PR consumes these authorities.
+- Inspect existing Setup help entry points and actual SOP URLs/repository publication contract before choosing links, embedded content, versioning or assets. Do not guess that a GitHub raw README link works in the protected app or that the internal portal route is stable.
+- Design for Android tablets, keyboard and desktop; label Help beside the corresponding field/action, preserve task and form state, do not navigate away and discard unsaved reports. Accessible close/back and explicit screen context are mandatory.
+- Role-based clarity: Rick needs realistic workload/scheduling and simple rescheduling; Tom owns materials; Captains need simple actual-work reporting; Managers need cross-crew discrepancy resolution. Don't expose a material override instruction to a role that isn't authorized for it.
+- Help for the Manager daily email follows the real Report Work procedure; clickable links target the right historical occurrence and do not require a person to search through general documentation.
+- Verify SOP accuracy and app version together as part of release acceptance. No new standalone documentation portal or competing CMS by default.
+- Cross-project coordination: the static internal web/README crawler can remain a documentation index. The Setup app must own contextual Help at its own actions; confirm integration contract with the separate internal-web workstream before implementing.
+
+**Status:** operator requirement/documentation correction only. Contextual help controls have **not** been implemented or accepted in PR #394; review separate UI ownership and #122 gates before scope/integration changes.
