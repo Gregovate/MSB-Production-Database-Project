@@ -205,6 +205,9 @@ foreach ($listener in $localListeners) {
     if ($owner.ProcessName -ne 'ssh') {
         throw "Local preview port $PreviewPort is owned by non-SSH process $($owner.ProcessName) PID $($owner.Id). Not stopping it automatically."
     }
+    if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+        throw "Local preview port $PreviewPort already has SSH tunnel PID $($owner.Id). Refusing to stop it because it may belong to a preserved Setup review; inspect/resume/clean that review first."
+    }
     Write-Host "Stopping stale local SSH preview tunnel PID $($owner.Id) on port $PreviewPort"
     Stop-Process -Id $owner.Id -Force
 }
@@ -295,7 +298,12 @@ try {
 
     $remoteRunner = "$remoteBundle/setup_disposable_browser_preview_server.sh"
     $remoteManifest = "$remoteBundle/preview_manifest.tsv"
-    $initialCommand = "chmod 700 '$remoteRunner' && bash -n '$remoteRunner' && timeout --foreground --signal=TERM 28800s bash '$remoteRunner' '$remoteManifest' start"
+    $remoteEntry = "$remoteBundle/people_identity_bootstrap_disposable_browser_preview_entry.py"
+    $prepareCommand = "chmod 755 '$remoteBundle' && chmod 700 '$remoteRunner'"
+    if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+        $prepareCommand += " && chmod 644 '$remoteEntry'"
+    }
+    $initialCommand = "$prepareCommand && bash -n '$remoteRunner' && timeout --foreground --signal=TERM 28800s bash '$remoteRunner' '$remoteManifest' start"
     $resumeCommand = "timeout --foreground --signal=TERM 28800s bash '$remoteRunner' '$remoteManifest' resume"
 
     $mode = 'start'
