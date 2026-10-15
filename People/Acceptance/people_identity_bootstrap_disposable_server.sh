@@ -159,7 +159,8 @@ sudo -u fieldwiring -H bash -c \
     "cd '$WORKTREE' && '$PRODUCTION_PYTHON' -m pytest -q -p no:cacheprovider \
       People/Application/test_people_manager_contract.py \
       People/Application/test_people_identity_bootstrap_runtime.py \
-      People/Application/test_people_shared_tablet_identity_contract.py"
+      People/Application/test_people_shared_tablet_identity_contract.py \
+      People/Acceptance/test_people_identity_bootstrap_acceptance_contract.py"
 echo "PASS: candidate People application regression"
 
 PROD_PERSON_FP="$(prod_person_fp)"
