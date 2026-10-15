@@ -165,6 +165,34 @@ This means a supported Google SSO login can create the missing Directus identity
 
 The current Production default-role behavior remains owned by the User Onboarding Flow: a newly created Google-backed Directus user with NULL role is assigned **MSB Browser** / **Read Only - MSB Core**. Role elevation remains an explicit administrator action.
 
+## #395 Disposable Acceptance — 2026-10-15
+
+The first complete V0.2.3 silent human identity bootstrap candidate passed governed current-Production disposable acceptance.
+
+```text
+candidate             dcc8f25f07a74e19ce3de3aae2d9d137b5411815
+result                PASS
+production mutation   NONE
+server report         /tmp/MSB_People_Identity_Bootstrap_Disposable_20261015T200047.txt
+```
+
+Production identity fingerprints were unchanged:
+
+```text
+ref.person       4157a1c63a88bc900d566f6eb094f1c4
+directus_users   3170a3a5b5860bed1c293f2ee6b50131
+```
+
+The disposable gate exercised the real Directus 11.17.1 Users API against a disposable current-Production clone, proved new human identities stay at **MSB Browser**, proved existing roles remain unchanged, proved missing/inactive Person failure, proved non-human tablet/service exclusion, proved exact #385 Person linkage, and proved the legacy User Onboarding missing-Person branch is bypassed when the candidate supplies the non-null Browser role at user creation.
+
+Durable evidence:
+
+```text
+People/Acceptance/People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md
+```
+
+This is not Production deployment approval. The next gate is exact-candidate browser/application integration review through the `my.` Apps workflow and Backbone #24. Don Martens remains the preserved final Production acceptance fixture.
+
 ## Accepted People Manager Behavior
 
 The accepted contact/identity behavior includes:
