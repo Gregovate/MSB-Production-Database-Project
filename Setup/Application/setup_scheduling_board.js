@@ -1598,12 +1598,12 @@ function board205TaskCard(task) {
 function board205NeedsContinuation(task) {
   return task?.execution_status === 'IN_PROGRESS'
     && !task.effective_complete
-    && Number(task.unworked_assignment_count || 0) === 0;
+    && Number(task.future_assignment_count || 0) === 0;
 }
 function board205ContinuationScheduled(task) {
   return task?.execution_status === 'IN_PROGRESS'
     && !task.effective_complete
-    && Number(task.unworked_assignment_count || 0) > 0;
+    && Number(task.future_assignment_count || 0) > 0;
 }
 
 function board205QueueTasks() {
@@ -1692,7 +1692,7 @@ function board205SchedulableTasksForReport() {
       && String(task.task_action_type || '').toUpperCase() !== 'GATE'
       && !board205HasHardBlock(task)
       && board205FinderStatusFamily(task) === 'READY'
-      && Number(task.unworked_assignment_count || 0) === 0
+      && Number(task.future_assignment_count || 0) === 0
     ))
     .sort((a, b) => board205FinderCompare(a, b, 'STAGE'));
 }
@@ -2218,7 +2218,7 @@ function board205RenderKpis() {
   if (!target) return;
   const tasks = setupBoard205State.board.tasks || [];
   const total = tasks.length;
-  const scheduled = tasks.filter((task) => Number(task.unworked_assignment_count || 0) > 0).length;
+  const scheduled = tasks.filter((task) => Number(task.future_assignment_count || 0) > 0).length;
   const complete = tasks.filter((task) => Boolean(task.effective_complete)).length;
   const inProgress = tasks.filter((task) => task.execution_status === 'IN_PROGRESS').length;
   const needsContinuation = tasks.filter(board205NeedsContinuation).length;
@@ -2239,6 +2239,7 @@ function board205RenderKpis() {
     ? String(plannedLaborHours)
     : plannedLaborHours.toFixed(1).replace(/\.0$/, '');
 
+  setup205WireActionCenter(target);
   target.innerHTML = setup205DeadlineKpiHtml(setupBoard205State.board, appState.seasonYear) + [
     `<span><strong>${total}</strong> tasks</span>`,
     `<span><strong>${scheduled}</strong> scheduled · ${pct(scheduled)}%</span>`,
