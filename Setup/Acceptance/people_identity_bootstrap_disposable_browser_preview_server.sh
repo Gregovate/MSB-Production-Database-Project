@@ -91,6 +91,11 @@ prod_directus_fp() {
         -c "SELECT md5(coalesce(string_agg(row_to_json(u)::text,'' ORDER BY u.id),'')) FROM public.directus_users u;"
 }
 
+psql_q() {
+    sudo docker exec -i -e PGPASSWORD="$TEST_DB_PASSWORD" "$TEST_DB_CONTAINER" \
+        psql -X -qAt -v ON_ERROR_STOP=1 -U "$DB_ACTOR" -d "$PROD_DB" "$@"
+}
+
 cleanup() {
     status=$?
     trap - EXIT HUP INT TERM
