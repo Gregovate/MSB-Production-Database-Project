@@ -58,6 +58,11 @@ if ($ServiceScopeProbe) {
     if ($LASTEXITCODE -ne 0 -or $runtimeDiff.Count -gt 0) {
         throw 'STOP: service-scope acceptance tooling changed the disposable-accepted People runtime.'
     }
+    # Keep profile regression local and fail before the first Production server contact.
+    & python -m pytest -q -p no:cacheprovider People/Acceptance/test_people_395_service_scope_disposable_contract.py
+    if ($LASTEXITCODE -ne 0) {
+        throw 'STOP: #49 disposable service policy contract tests failed.'
+    }
 }
 
 Write-Host '========== PEOPLE #395 SILENT IDENTITY BOOTSTRAP ACCEPTANCE =========='
