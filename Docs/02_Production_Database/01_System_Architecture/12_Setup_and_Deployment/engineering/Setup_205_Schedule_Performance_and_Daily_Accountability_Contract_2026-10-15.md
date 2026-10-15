@@ -218,3 +218,41 @@ Verify the progress primary-key column and installed legacy association contract
 **Required follow-up:** Inspect existing repository projection's `unworked_assignment_count` and report matching contract, compare to the 12 needs-rescheduling count seen on the Oct15 UI, and run a bounded hard-block/readiness query. Derive names through existing `ref.person` without exposing private contact details in public evidence. Never present Q6 report-date counts as 7-day *unique annual task completion* pace: the rows can include repeated reports for one annual task.
 
 **Implementation defect to check in PR #394:** its preliminary KPI model uses `actual_completed_at` or linked Work Order completed date, so these completed task rows are undated. The conservative `INSUFFICIENT DATA` warning is right, but the final actual pace must use verified physical workday evidence (at most one completion per annual task) rather than assuming no recorded work.
+
+
+## Operator directive — daily training and recipient split (2026-10-15)
+
+Greg requires daily **actionable follow-up for missing reports**, and the notification itself must teach the recipient how to enter the work report. **Deliver to Managers AND directly to the named Captain only if that Captain has a verified active `@sheboyganlights.org` email identity and current access.** Do not assume `captain_person_id` implies an email address, assume a personal email may be used, or broadcast all Captains' assignments to every Captain. Manager digest covers ALL relevant exceptions; Captain notice covers ONLY that Captain's own missing reporting occurrences. When a Captain has no qualifying organizational address, no linked identity, or Captain TBD, route action to the Managers. Names must come from `ref.person` identity data and existing secure application authorization; verify actual recipient mapping before any send. Repeated notices must be consolidated and idempotent per day, with recorded delivery failure.
+
+### Captain notice — required readable wording and action
+
+Subject: **MSB Setup — Please report your work from [day/date]**
+
+Message must identify exact scheduled **Task name**, Stage/Scene, **Setup Day + work date**, crew and AM/PM, named Captain, and one authenticated link to that exact **Report Work** occurrence (or a fully labeled fallback link to Perform Work until deep-link action is accepted). This is a training notification, not blame or automatic accusation of no work.
+
+**Plain-language step-by-step instructions (must reflect current operator SOP and verified UI):**
+1. Open the link and sign in with your MSB account if asked.
+2. Confirm the season says **2026**, then open **Perform Work**.
+3. Select your name in the **Captain** dropdown, or select **All scheduled work** if a Manager is helping.
+4. Find the exact **Setup Day**, **task name**, **crew** and **AM/PM** shown above. If the day is collapsed or the assignment is hidden, use the provided historical-item link/focus behavior; don't choose a similar task by mistake.
+5. Open the task. Select **Report Work**.
+6. Enter **Work completed on** (the day the crew *actually worked*, even if different from the planned workday), actual **Crew size**, and **Hours**/**Minutes** actually worked.
+7. Enter cumulative **% complete**: enter **100** only if the whole task is done. If unfinished, enter the actual cumulative percent and write **What was done / what remains** clearly. Optional quantity only for countable work.
+8. Check all values and choose **Save Work Report**.
+9. Check the task's **Progress history** to verify the report was saved. If unfinished, tell the Manager what remains so they can schedule a new work assignment; reporting does not create the continuation automatically.
+10. If **no work happened**, do **not** fabricate time, percent or a fake work report. Tell your Manager that the assignment must be reviewed/replanned. If a report is wrong, ask a Manager to use **Correct report**, not a duplicate report. If the task/procedure/data is wrong, use the separate **Report Correction** flow.
+
+Maintain a direct link to the current [Perform and Report Setup Work SOP](../operatorSOP/Perform_and_Report_Setup_Work.md) with this exact field and action sequence. On-screen deep link must be validated in protected browser; no fabricated query string or email send before that acceptance.
+
+### Daily email categories and actions
+
+- **Manager digest:** each unreported past occurrence; each incomplete task with no continuation (including the **13** Q7 `IN_PROGRESS` rows with zero current/future assignments, subject to exact active-unworked verification); upcoming hard and soft readiness blockers; Captain TBD/recipient unmapped. Manager decisions are report follow-up, actual reschedule/continuation, or governed correction. Names and dates are mandatory.
+- **Captain targeted reminder:** their own outstanding unreported assignments, using the training steps above. Never send future dates, other Captains' work, or duplicate notices. Don't ask Captains to change schedules or invent reports.
+- **Resolution:** actual progress report on historical assignment clears that occurrence's missing-report warning; partial report can leave the annual task unfinished and requiring rescheduling. Replanning must never clear the missing report. If no work took place, Manager must reconcile the originally unworked assignment using an existing governed operation and preserve correct history; do not auto-dismiss.
+- **Daily follow-up:** previous workday and *all still-unresolved earlier days*, with Chicago date boundary and an explicit deduplication/delivery log.
+
+### New evidence from Q7 and Q8
+
+- Q7 (operator-supplied Oct15) returned **13 IN_PROGRESS annual tasks**, each with **zero current-or-future dated assignments**. That is a bounded initial view, not proof that all 13 meet the application's exact `unworked_assignment_count` classifier (which also accounts for historical actual evidence). **The displayed 12 needs-rescheduling vs 13 in-progress difference requires an item-by-item projection reconciliation**; don't assert one task has a continuation without evidence.
+- Q8 (operator-supplied) returned **55 unfinished tasks** matching `NOT_READY` readiness and/or a linked Work Order gate. This is not a hard-block count and not 55 imminent actionable delays. For example #548 seasonal deer rut and #339 November 1 are planned date restrictions; separate future temporal readiness from currently blocking imminent work. #546 Replace Light Pole 8 Outlet Box is PLANNED with linked gate #416 not complete; #543 MAS Skin Repair linked WO #156; #542 WO372 Magic Igloo Weld Repairs linked WO372. Verify whether scheduled work bypasses readiness warning and whether notes are stale or contradicted by field activity before auto-escalation.
+- Manager notifications need **priority escalation**, especially scheduled future days with unresolved prerequisites/NOT_READY, but cannot turn every season-later readiness note into a daily crisis. Show days-until-scheduled, blocker type, age, action owner and reason.
