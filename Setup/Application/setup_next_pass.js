@@ -1401,6 +1401,96 @@ function nextLateWorkSummary(assignments, board) {
   }).join('')}</section>`;
 }
 
+
+/* #205 Whole-Setup deadline dashboard. Read-only; annual tasks are counted once.
+   A historical assignment report does not imply annual-task completion. */
+function setup205DeadlineKpiModel(board, year, today = nextSetupLocalDate()) {
+  const tasks = [...new Map((board.tasks || []).filter(t => t.setup_session_task_id != null)
+    .map(t => [Number(t.setup_session_task_id), t])).values()];
+  const incomplete = tasks.filter(t => !t.effective_complete);
+  const complete = tasks.filter(t => Boolean(t.effective_complete));
+  const deferred = incomplete.filter(t => t.execution_status === 'DEFERRED');
+  const actionable = incomplete.filter(t => t.execution_status !== 'DEFERRED');
+  const blocked = actionable.map(t => {
+    const reasons = [];
+    if (t.prerequisites_complete === false) reasons.push('Incomplete prerequisite');
+    if (t.linked_work_order_gate && t.linked_work_order_id && !t.linked_work_order_completed_at) reasons.push('Open Work Order gate');
+    if (t.readiness_state === 'NOT_READY') reasons.push('NOT READY');
+    return {task: t, reasons};
+  }).filter(t => t.reasons.length);
+  const assignments = board.assignments || [];
+  const dayById = new Map((board.work_days || []).map(d => [Number(d.setup_work_day_id), d.work_date]));
+  const overdue = assignments.filter(a => {
+    const date = a.work_date || dayById.get(Number(a.setup_work_day_id));
+    return date && date < today && Number(a.work_report_count || 0) === 0;
+  });
+  const partial = actionable.filter(t => Number(t.percent_complete || 0) > 0);
+  const due = setupAnnualMilestoneDates(year)?.setupComplete;
+  const deadline = due ? due.toISOString().slice(0, 10) : null;
+  const epochDay = d => Date.parse(d + 'T00:00:00Z') / 86400000;
+  const daysLeft = deadline ? Math.max(0, epochDay(deadline) - epochDay(today)) : null;
+  const required = daysLeft > 0 ? actionable.length / daysLeft : null;
+  const windowStart = new Date((epochDay(today) - 6) * 86400000).toISOString().slice(0, 10);
+  let recent = 0, undated = 0;
+  for (const t of complete) {
+    const completedAt = t.actual_completed_at || (t.linked_work_order_gate ? t.linked_work_order_completed_at : null);
+    if (!completedAt) { undated++; continue; }
+    const date = String(completedAt).slice(0, 10);
+    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) { undated++; continue; }
+    if (date >= windowStart && date <= today) recent++;
+  }
+  const pace = recent / 7;
+  // A task whose completion date cannot be established must never produce a green forecast.
+  const reliable = undated === 0 && complete.length > 0 && recent > 0;
+  const projectedDays = reliable ? Math.ceil(actionable.length / pace) : null;
+  const projectedFinish = projectedDays == null ? null :
+    new Date((epochDay(today) + projectedDays) * 86400000).toISOString().slice(0, 10);
+  return {tasks, incomplete, complete, deferred, actionable, blocked, overdue, partial,
+    deadline, daysLeft, required, recent, pace, undated, reliable, projectedFinish};
+}
+
+function setup205DeadlineKpiHtml(board, year) {
+  const k = setup205DeadlineKpiModel(board, year);
+  const safe = v => escapeHtml(String(v ?? ''));
+  const n = (x) => x == null ? '—' : x.toFixed(2);
+  const fmt = d => d || 'Unavailable';
+  const blockerRows = k.blocked.map(({task, reasons}) =>
+    '<li><strong>' + safe(task.task_name || ('Task ' + task.setup_session_task_id)) +
+    '</strong> — ' + safe(reasons.join('; ')) + '</li>').join('');
+  const lateRows = k.overdue.map(a => {
+    const task = k.tasks.find(t => Number(t.setup_session_task_id) === Number(a.setup_session_task_id));
+    return '<li>' + safe(task?.task_name || ('Task ' + a.setup_session_task_id)) +
+      ' — ' + safe(a.work_date || k.deadline || 'past workday') + ': no report for this assignment</li>';
+  }).join('');
+  const dateStatus = !k.deadline ? 'Deadline unavailable'
+    : !k.actionable.length ? 'All non-deferred tasks complete'
+    : !k.reliable ? 'Insufficient dated completion evidence to forecast'
+    : k.projectedFinish > k.deadline ? 'Recorded pace misses deadline' : 'Recorded pace meets deadline (task-count estimate)';
+  return '<section class="setup-205-deadline-kpis" aria-label="Whole Setup schedule performance" ' +
+    'style="padding:12px;border:2px solid #48667b;border-radius:9px;margin:12px 0;background:var(--panel-bg,transparent)">' +
+    '<div style="font-weight:800;margin-bottom:8px">WHOLE SETUP · DEADLINE PERFORMANCE</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:18px;margin-bottom:8px">' +
+    '<span>Total <strong>' + k.tasks.length + '</strong></span>' +
+    '<span>Completed <strong>' + k.complete.length + '</strong></span>' +
+    '<span>Remaining <strong>' + k.incomplete.length + '</strong></span>' +
+    '<span>Blocked / NOT READY <strong>' + k.blocked.length + '</strong></span>' +
+    '<span>Past assignments with no report <strong>' + k.overdue.length + '</strong></span>' +
+    '</div><div style="display:flex;flex-wrap:wrap;gap:18px;margin-bottom:8px">' +
+    '<span>Last 7 days: <strong>' + k.recent + '</strong> dated completions · <strong>' + n(k.pace) + '/day</strong></span>' +
+    '<span>Required: <strong>' + n(k.required) + '/calendar day</strong></span>' +
+    '<span>Deadline: <strong>' + safe(fmt(k.deadline)) + '</strong> (' + safe(k.daysLeft == null ? '?' : k.daysLeft) + ' days)</span>' +
+    '<span>Projected finish: <strong>' + safe(k.reliable ? fmt(k.projectedFinish) : 'INSUFFICIENT DATA') + '</strong></span>' +
+    '</div><strong>' + safe(dateStatus) + '</strong>' +
+    '<div style="font-size:.88rem;margin-top:6px">Task-count forecast only; tasks vary in size. ' +
+    safe(k.undated) + ' completions without usable dates; recorded dates may reflect late reporting. ' +
+    safe(k.deferred.length) + ' deferred tasks included in remaining, excluded from required pace; ' +
+    safe(k.partial.length) + ' unfinished tasks show partial progress. Captain filters do not change this summary.</div>' +
+    '<details style="margin-top:8px"><summary>Blocked / NOT READY (' + k.blocked.length +
+    ') — task and reason</summary><ul>' + (blockerRows || '<li>No recorded readiness blockers</li>') + '</ul></details>' +
+    '<details><summary>Past scheduled assignments with no report (' + k.overdue.length +
+    ')</summary><ul>' + (lateRows || '<li>None</li>') + '</ul></details></section>';
+}
+
 function renderNextExecution() {
   const target = el('next-perform-list');
   if (!target) return;
@@ -1445,7 +1535,7 @@ function renderNextExecution() {
     assignments.some((assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id))
   );
 
-  target.innerHTML = nextLateWorkSummary(scopedAssignments, board) + (days.length ? days.map((day) => {
+  target.innerHTML = setup205DeadlineKpiHtml(board, appState.seasonYear) + nextLateWorkSummary(scopedAssignments, board) + (days.length ? days.map((day) => {
     const dayAssignments = assignments.filter(
       (assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id)
     );
