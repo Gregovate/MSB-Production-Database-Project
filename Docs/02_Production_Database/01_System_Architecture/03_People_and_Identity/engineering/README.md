@@ -222,6 +222,14 @@ The first attempt at local `bash -n` **did not execute** because `bash` was not 
 
 **Durable detailed evidence, authoritative source pins, governing Server Management disposable/browser runbooks, and next commands/gates:** [#395 People Identity Bootstrap acceptance and reusable-preview checkpoint](../../../../../People/Acceptance/People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md). This engineering README is the navigation/handoff, not a competing runbook.
 
+### #395 Merged source versus Production deployment — 2026-10-15
+
+Greg expressly authorized source merge and the subsequent governed Production migration. Accepted People/bootstrap source PR #401 is now **merged** to Production Database `main` as `cab3c1caa7c4c018ee132ffd5918999baf4f837d`; accepted Apps PR #25 is **merged** to Backbone `main` as `91674b254d204235366f7d9a17f8395ae98149af`. The accepted application runtime remains `dcc8f25f...`, People version `V0.2.3`, with migration 006 and the exact Apps HTML blob unchanged.
+
+**Production is not yet updated.** The only verified live People baseline remains `V0.2.2` at shared checkout `bb8dfa498c5b4bbecfc3693f68c4066c1e08242e`. The generic Server Management #37 maintenance and database deployment runbooks remain authoritative, but **RUNBOOK GAP FOUND**: the only People migration runner available from the prior accepted release is pinned to migration 005/V0.2.2 and cannot install #395; a #395-specific verified runner/rollback and production-protected Directus identity-bootstrap token must be proven before executing migration 006. The Backbone controlled Apps publishing procedure/live-file comparison must likewise be reconciled before changing the Synology-hosted Apps file. **Do not consume Don's fixture or represent merged source as deployed.**
+
+Details and exact next gate: [People #395 disposable and browser acceptance, merged-release preflight](../../../../../People/Acceptance/People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md). Preserve single directing deployment owner, maintenance controller, snapshot and operator-result footer requirements. The V0.2.2 live baseline at the start of this README remains authoritative until a new Production receipt passes.
+
 ## Accepted People Manager Behavior
 
 The accepted contact/identity behavior includes:
