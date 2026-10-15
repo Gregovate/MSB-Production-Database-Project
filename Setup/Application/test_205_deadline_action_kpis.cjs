@@ -99,4 +99,10 @@ assert(managerHtml.includes('data-205-action="report"'), 'original report naviga
 assert(managerHtml.includes('data-205-action="schedule"'), 'continuation must use existing scheduler');
 ctx.appState.access.can_manage_setup=false;
 assert(!ctx.setup205DeadlineKpiHtml(base,2026).includes('Manager Setup Action Center'), 'Manager-only action worklist must not leak');
+assert(managerHtml.includes('Review Manager daily email wording — draft only'));
+assert(managerHtml.includes('Review Captain reminder instructions — draft only'));
+assert(managerHtml.includes('NO EMAIL SENT'));
+assert(managerHtml.includes('Minutes worked'));
+assert(managerHtml.includes('Date work actually happened'));
+assert(!managerHtml.includes('mailto:'), 'review draft must not leak recipients or send email');
 console.log('PASS #205 Manager read-only Action Center, permission gating, route action hooks');
