@@ -218,6 +218,7 @@ foreach ($listener in $localListeners) {
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $bundleName = "msb-setup-disposable-browser-preview-$stamp"
 $localBundle = Join-Path $env:TEMP $bundleName
+$backboneSourceDir = Join-Path $env:TEMP "${bundleName}-backbone-source"
 $remoteBundle = "/tmp/$bundleName"
 $localRunner = Join-Path $localBundle 'setup_disposable_browser_preview_server.sh'
 $localManifest = Join-Path $localBundle 'preview_manifest.tsv'
@@ -239,6 +240,46 @@ try {
             $profileEntryText,
             $utf8NoBom
         )
+    }
+
+    if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+        # Obtain the separately owned Backbone Apps candidate through workstation Git.
+        # Anonymous raw GitHub endpoints are not an accepted draft-source authority.
+        if ($ExternalAppsSha -notmatch '^[0-9a-fA-F]{40}$' -or
+            $ExternalAppsBlob -notmatch '^[0-9a-fA-F]{40}$') {
+            throw 'STOP before server contact: Backbone commit and blob must each be 40 hex digits.'
+        }
+        if (Test-Path -LiteralPath $backboneSourceDir) {
+            throw "STOP: disposable Backbone source directory already exists: $backboneSourceDir"
+        }
+
+        & git clone --quiet --no-checkout 'https://github.com/Gregovate/MSB-Internal-Web-Backbone.git' $backboneSourceDir
+        if ($LASTEXITCODE -ne 0) {
+            throw 'STOP before server contact: authenticated Backbone candidate Git clone failed.'
+        }
+        # A detached checkout with autocrlf disabled preserves committed bytes.
+        & git -c core.autocrlf=false -C $backboneSourceDir checkout --quiet --detach $ExternalAppsSha
+        if ($LASTEXITCODE -ne 0) {
+            throw "STOP before server contact: Backbone candidate commit $ExternalAppsSha is unavailable."
+        }
+
+        $sourceBlob = (& git -C $backboneSourceDir rev-parse "${ExternalAppsSha}:my/apps/index.html").Trim()
+        if ($LASTEXITCODE -ne 0 -or $sourceBlob -ne $ExternalAppsBlob) {
+            throw "STOP before server contact: Backbone Apps committed blob '$sourceBlob' does not match pinned '$ExternalAppsBlob'."
+        }
+        $appsSource = Join-Path $backboneSourceDir 'my\apps\index.html'
+        $workingBlob = (& git -C $backboneSourceDir hash-object -- $appsSource).Trim()
+        if ($LASTEXITCODE -ne 0 -or $workingBlob -ne $ExternalAppsBlob) {
+            throw "STOP before server contact: Backbone Apps working bytes differ from pinned '$ExternalAppsBlob'."
+        }
+
+        $bundledApps = Join-Path $localBundle 'apps-index.html'
+        [System.IO.File]::Copy($appsSource, $bundledApps)
+        $bundledBlob = (& git -C $repo hash-object -- $bundledApps).Trim()
+        if ($LASTEXITCODE -ne 0 -or $bundledBlob -ne $ExternalAppsBlob) {
+            throw "STOP before server contact: bundled Apps file differs from pinned '$ExternalAppsBlob'."
+        }
+        Write-Host "PASS: authenticated exact Backbone Apps source and bundle blob $ExternalAppsBlob"
     }
 
     $manifestLines = @(
@@ -302,9 +343,10 @@ try {
     $remoteRunner = "$remoteBundle/setup_disposable_browser_preview_server.sh"
     $remoteManifest = "$remoteBundle/preview_manifest.tsv"
     $remoteEntry = "$remoteBundle/people_identity_bootstrap_disposable_browser_preview_entry.py"
+    $remoteApps = "$remoteBundle/apps-index.html"
     $prepareCommand = "chmod 755 '$remoteBundle' && chmod 700 '$remoteRunner'"
     if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
-        $prepareCommand += " && chmod 644 '$remoteEntry'"
+        $prepareCommand += " && chmod 644 '$remoteEntry' '$remoteApps'"
     }
     $initialCommand = "$prepareCommand && bash -n '$remoteRunner' && timeout --foreground --signal=TERM 28800s bash '$remoteRunner' '$remoteManifest' start"
     $resumeCommand = "timeout --foreground --signal=TERM 28800s bash '$remoteRunner' '$remoteManifest' resume"
@@ -360,4 +402,5 @@ try {
 }
 finally {
     Remove-Item -LiteralPath $localBundle -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $backboneSourceDir -Recurse -Force -ErrorAction SilentlyContinue
 }
