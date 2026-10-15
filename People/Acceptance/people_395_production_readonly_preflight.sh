@@ -192,7 +192,9 @@ try:
     except (ValueError, TypeError):
         raise CredentialNotReady("DIRECTUS_RESPONSE_INVALID")
 
-    if payload.get("data", {}).get("status") != "active":
+    if not isinstance(payload, dict) or not isinstance(payload.get("data"), dict):
+        raise CredentialNotReady("DIRECTUS_RESPONSE_INVALID")
+    if payload["data"].get("status") != "active":
         raise CredentialNotReady("DIRECTUS_USER_INACTIVE")
     print("PRESENT / VALID API READ")
 except CredentialNotReady as error:
