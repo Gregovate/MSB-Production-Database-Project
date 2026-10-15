@@ -228,7 +228,36 @@ Preview port 8898            NOT LISTENING after cleanup
 
 **Engineering correction required:** preserve the existing reusable launcher and registered 8898 profile; acquire the exact Backbone source through the workstation's authenticated Git transport, verify the committed HTML blob, package it with the existing controlled preview SCP bundle, verify the unchanged blob again before disposable clone creation on the server, and retain fail-closed behavior. Do not download by guessed alternate URL, bypass blob verification, mutate Backbone/People Production, or consume Don's fixture.
 
-Status: engineering fix and local contract regression **PENDING**. No second browser command is authorized until updated tooling passes its checks.
+### Controlled reusable tooling repair staged (not yet executed)
+
+Read-only authenticated GitHub inspection returned the following exact source evidence:
+
+```text
+Backbone repository   Gregovate/MSB-Internal-Web-Backbone
+Open draft PR         #25
+Backbone commit       1d7fa310dd5274078910e3a098ddfd633ae58836
+Committed file        my/apps/index.html
+Git blob SHA          9d340e5e944a7cd1db223b539066eb14ddb1c292 (matches existing pin)
+```
+
+Source repair was confined to the Production Database repository's **existing reusable browser tooling**:
+
+- `Setup/Acceptance/run_setup_disposable_browser_preview.ps1`: for the People profile only, clone Backbone through workstation-authenticated Git into a temporary non-bundled directory, check out the exact commit without Windows CRLF rewriting, compare the committed HTML blob with the supplied expected blob, compare the actual file bytes and bundled copy with that same blob, and include `apps-index.html` in the existing SCP preview bundle. Abort before remote contact for missing repo/commit/blob or any mismatch. Delete the temporary clone in the normal `finally` path.
+- `Setup/Acceptance/people_identity_bootstrap_disposable_browser_preview_server.sh`: do **not** download from anonymous `raw.githubusercontent.com`; require and hash-verify `apps-index.html` from the uploaded preview bundle, and reject a mismatched blob or absent Apps version/endpoint markers before `pg_dump`.
+- `Setup/Application/test_setup_reusable_people_identity_preview_profile_contract.py`: regression assertions cover authenticated temporary-clone acquisition, exact commit/blob and raw-byte equality, bundle upload/readability, second server-side verification, and prohibition of the anonymous fetch.
+- `Setup/Acceptance/README.md`: owns the reusable tool's external-asset contract and this failure/recovery handoff.
+
+Relevant tooling commits:
+
+```text
+68fbc553ffcb014ac50ed6d259adbdd5240e3eee  authenticated workstation Git + pinned bundle
+ddbad35f55d027e3abf64b80cedaf813ffabfece  server bundled-asset verification
+2b233de6849af8a50b4f70dd2f63231a632a2d78  new acquisition regression assertions
+ea708c1e4c3565ed98d0e081ed6f22db5b7142fb  evidence-precise test comments
+```
+
+The accepted People runtime `dcc8f25f...` and Backbone source commit `1d7fa310...` are unchanged. **No local executable validation of these new tooling commits has yet been supplied.** Required next gate: PowerShell parser, Bash `-n`, profile regression, full `Setup/Application` regression; confirm exact tooling HEAD and clean checkout. Do **not** issue or run a new browser command before these checks PASS.
+
 
 ## Disposition
 
