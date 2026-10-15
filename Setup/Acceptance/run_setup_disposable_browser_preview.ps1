@@ -172,18 +172,30 @@ foreach ($path in $ValidationPaths) {
     Assert-SafeCandidatePath -Path $path -Kind 'validation'
 }
 
-$serverScript = Join-Path $repo 'Setup\Acceptance\setup_disposable_browser_preview_server.sh'
-if (-not (Test-Path -LiteralPath $serverScript -PathType Leaf)) {
-    throw "Reusable Setup browser-preview server runner is missing: $serverScript"
+$profileEntryScript = $null
+if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+    $serverScript = Join-Path $repo 'Setup\Acceptance\people_identity_bootstrap_disposable_browser_preview_server.sh'
+    $profileEntryScript = Join-Path $repo 'Setup\Acceptance\people_identity_bootstrap_disposable_browser_preview_entry.py'
+    foreach ($tool in @($serverScript, $profileEntryScript)) {
+        if (-not (Test-Path -LiteralPath $tool -PathType Leaf)) {
+            throw "Reusable PeopleIdentityBootstrap browser-preview tooling is missing: $tool"
+        }
+    }
 }
+else {
+    $serverScript = Join-Path $repo 'Setup\Acceptance\setup_disposable_browser_preview_server.sh'
+    if (-not (Test-Path -LiteralPath $serverScript -PathType Leaf)) {
+        throw "Reusable Setup browser-preview server runner is missing: $serverScript"
+    }
 
-& git -C $repo cat-file -e "${CandidateSha}:Setup/Acceptance/setup_disposable_browser_preview_server.sh" 2>$null
-if ($LASTEXITCODE -ne 0) {
-    throw 'Exact candidate does not contain the reusable Setup browser-preview server runner.'
-}
-& git -C $repo cat-file -e "${CandidateSha}:Setup/Acceptance/setup_session_browser_preview_entry.py" 2>$null
-if ($LASTEXITCODE -ne 0) {
-    throw 'Exact candidate does not contain the Setup browser-preview entry point.'
+    & git -C $repo cat-file -e "${CandidateSha}:Setup/Acceptance/setup_disposable_browser_preview_server.sh" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Exact candidate does not contain the reusable Setup browser-preview server runner.'
+    }
+    & git -C $repo cat-file -e "${CandidateSha}:Setup/Acceptance/setup_session_browser_preview_entry.py" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Exact candidate does not contain the Setup browser-preview entry point.'
+    }
 }
 
 $localListeners = @(Get-NetTCPConnection -LocalPort $PreviewPort -State Listen -ErrorAction SilentlyContinue)
