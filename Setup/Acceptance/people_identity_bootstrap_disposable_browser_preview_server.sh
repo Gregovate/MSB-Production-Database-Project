@@ -469,7 +469,11 @@ if [[ ! "$PREVIEW_EMAIL" =~ ^[A-Za-z0-9._%+-]+@sheboyganlights[.]org$ ]]; then
     echo "FAIL: People identity preview email must be a sheboyganlights.org address"
     exit 4
 fi
-sudo -u fieldwiring -H "$PRODUCTION_PYTHON" -m py_compile "$PREVIEW_ENTRY"
+# The scp bundle is readable, not writable, by fieldwiring. Compile in memory
+# so syntax validation does not try to create __pycache__ beside the entry file.
+sudo -u fieldwiring -H "$PRODUCTION_PYTHON" -c \
+    'import pathlib, sys; source=pathlib.Path(sys.argv[1]); compile(source.read_bytes(), str(source), "exec")' \
+    "$PREVIEW_ENTRY"
 echo "PASS: reusable profile entry compiles in documented Production Python"
 
 echo "--- Selected-port stale preview cleanup ---"
