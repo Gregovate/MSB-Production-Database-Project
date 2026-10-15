@@ -80,6 +80,20 @@ function fail(phase,status){console.error('STOP: scoped Directus service '+phase
 const self=await call('GET','/users/me?fields=id,status');
 if(self.status!==200) fail('authentication',self.status);
 else {
+  const rights=await call('GET','/permissions/me');
+  if(rights.status!==200) {
+    fail('effective permissions audit unavailable',rights.status);
+  } else {
+    const doc=await rights.json().catch(()=>null);
+    const rules=doc&&doc.data;
+    if(!rules||typeof rules!=='object') fail('permissions response invalid',rights.status);
+    else {
+      const intake=rules.work_order_intake&&rules.work_order_intake.create;
+      const usersUpdate=rules.directus_users&&rules.directus_users.update;
+      if(intake&&intake.access!=='none') fail('Intake create permission unexpectedly assigned',rights.status);
+      if(usersUpdate&&usersUpdate.access!=='none') fail('Directus user update permission unexpectedly assigned',rights.status);
+    }
+  }
   const payload={email,first_name:'Scope',last_name:'Probe',status:'active',
      provider:'google',external_identifier:email,role:browser};
   const r=await call('POST','/users',payload);
