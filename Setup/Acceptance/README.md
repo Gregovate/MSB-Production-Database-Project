@@ -219,6 +219,16 @@ The browser launcher preserves the same disposable-clone/Production-after safety
 
 When the terminal prints `SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY`, perform the feature-specific operator checklist. Press ENTER only after the review is complete so the same bounded process performs cleanup and Production-after proof.
 
+### People #395: exact external Apps source in reusable browser bundle
+
+`-PreviewProfile PeopleIdentityBootstrap` uses the existing reusable launcher and registered `-PreviewPort 8898`. Unlike the default Setup profile, it also needs one exact HTML asset from `Gregovate/MSB-Internal-Web-Backbone`. Both `-ExternalAppsSha` (commit) and `-ExternalAppsBlob` (`my/apps/index.html` Git blob) are mandatory and independently checked.
+
+The initial October 15 preview attempt with tooling SHA `5865beae...` stopped **before pg_dump/disposable clone creation**: the server's anonymous `raw.githubusercontent.com` download of the valid draft Backbone commit returned HTTP 404; exit 22. Existing Production identity fingerprints, People service, checkout and port 8898 passed cleanup/after-check. Do not retry that anonymous URL, change pins, or bypass blob verification.
+
+The corrected reusable People profile obtains the exact external commit using **authenticated Git in a temporary workstation clone** (outside the Production Database checkout and SCP bundle), detaches at the requested SHA with `core.autocrlf=false`, verifies the committed path blob and actual HTML bytes, then copies the byte-identical file into the already-established SCP bundle. The server independently checks the bundled file's Git blob and expected visible Apps/endpoint markers **before** the Production dump. The temporary workstation source clone is removed on success/failure. This extends only the People profile; default Setup behavior and the existing SSH/reconnect/cleanup model remain unchanged.
+
+Detailed initial failure receipt, immutable pins, and next engineering gate are in [People #395 disposable/bootstrap acceptance](../../People/Acceptance/People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md). Test the corrected reusable profile and Windows PowerShell/Bash syntax before a new browser command. Both governing Server Management runbooks still apply; no Production deployment or Don fixture use is authorized.
+
 ## Legacy feature-specific wrappers
 
 Older Setup acceptance files remain historical evidence for the feature that created them. They contain hard-coded candidate SHAs, migration sets, or feature checks and must not be copied or patched for new work when the reusable launchers above can express the candidate.
