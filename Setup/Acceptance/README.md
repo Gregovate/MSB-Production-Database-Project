@@ -227,6 +227,12 @@ The initial October 15 preview attempt with tooling SHA `5865beae...` stopped **
 
 The corrected reusable People profile obtains the exact external commit using **authenticated Git in a temporary workstation clone** (outside the Production Database checkout and SCP bundle), detaches at the requested SHA with `core.autocrlf=false`, verifies the committed path blob and actual HTML bytes, then copies the byte-identical file into the already-established SCP bundle. The server independently checks the bundled file's Git blob and expected visible Apps/endpoint markers **before** the Production dump. The temporary workstation source clone is removed on success/failure. This extends only the People profile; default Setup behavior and the existing SSH/reconnect/cleanup model remain unchanged.
 
+#### People #395 operator browser checklist — only the local Apps page
+
+The `http://127.0.0.1:8898/` screen is the **isolated Apps shell**, not a disposable copy of every linked Production application. Its buttons retain real `https://my.sheboyganlights.org/...` destinations; following one leaves the preview and **does not test the clone-only identity bootstrap**. Do not click those buttons during this review or make changes in Production. This distinction confused the operator during the October 15 review and must be explicit in future acceptance instructions.
+
+The operator needs only to view the local Apps screen, scroll to the version footer (`MSB Apps v0.2 — Updated 2026-10-15`), verify that no Directus/Google account chooser or identity-bootstrap error banner appears, refresh the same **localhost** tab once, and verify the page remains normal. Then return to the original foreground PowerShell session and press Enter. **The server runner**, not navigation to Production Setup, checks the disposable Directus identity, Browser-only role, exact Person link, repeat/idempotence, cleanup, and Production preservation. The final PowerShell result footer is a transport/runner summary; distinguish `CLEAN EXIT` from actual operator acceptance and preserve any server report.
+
 Detailed initial failure receipt, immutable pins, and next engineering gate are in [People #395 disposable/bootstrap acceptance](../../People/Acceptance/People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md). Test the corrected reusable profile and Windows PowerShell/Bash syntax before a new browser command. Both governing Server Management runbooks still apply; no Production deployment or Don fixture use is authorized.
 
 ## Legacy feature-specific wrappers
