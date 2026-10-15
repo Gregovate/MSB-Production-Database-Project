@@ -198,6 +198,38 @@ Production deployment                NOT AUTHORIZED
 
 Follow both governing Server Management acceptance/browser runbooks and the companion port register. Do not run the rejected People-specific wrapper, create a competing runbook, or use Don's real Production fixture for pre-Production review.
 
+## First reusable 8898 browser attempt — pre-clone STOP — 2026-10-15
+
+Greg ran the approved reusable `PeopleIdentityBootstrap` browser preview on his existing Windows desktop checkout at acceptance-tooling SHA `5865beaed0830825aed2c05cf8a053683b6191e7`, with accepted People runtime `dcc8f25f...`, expected version `V0.2.3`, registered port `8898`, and Backbone Apps commit/blob as pinned above.
+
+```text
+Preview clone-only identity  bootstrap-preview-20261015163303@sheboyganlights.org
+Remote report                /tmp/MSB_People_Identity_Bootstrap_Browser_Preview_20261015T213306.txt
+Production shared checkout   bb8dfa498c5b4bbecfc3693f68c4066c1e08242e
+Runtime version gate         PASS (V0.2.3)
+Exact People regression      PASS (39 passed)
+Backbone Apps source step    FAIL: curl: (22) HTTP 404
+Runner exit                  22, not resumable
+Browser review               NOT STARTED
+Disposable clone             NOT CREATED (failure preceded pg_dump)
+```
+
+Full cleanup/Production after-check from the operator terminal:
+
+```text
+ref.person before/after      4157a1c63a88bc900d566f6eb094f1c4 — UNCHANGED
+directus_users before/after  3170a3a5b5860bed1c293f2ee6b50131 — UNCHANGED
+Production checkout          bb8dfa498c5b4bbecfc3693f68c4066c1e08242e — UNCHANGED
+Production People service    HEALTHY
+Preview port 8898            NOT LISTENING after cleanup
+```
+
+**Verified source fact:** `Gregovate/MSB-Internal-Web-Backbone` has commit `1d7fa310dd5274078910e3a098ddfd633ae58836`; Backbone PR #25 remains open/draft with that head, and `my/apps/index.html` exists at the exact pinned revision through authenticated GitHub access. The server attempted to obtain this source from an anonymous `raw.githubusercontent.com` URL, which returned 404. This does **not** demonstrate that the Git source or requested blob is invalid. Authentication/availability of that anonymous URL has not been established as a supported means of transferring a draft Backbone candidate.
+
+**Engineering correction required:** preserve the existing reusable launcher and registered 8898 profile; acquire the exact Backbone source through the workstation's authenticated Git transport, verify the committed HTML blob, package it with the existing controlled preview SCP bundle, verify the unchanged blob again before disposable clone creation on the server, and retain fail-closed behavior. Do not download by guessed alternate URL, bypass blob verification, mutate Backbone/People Production, or consume Don's fixture.
+
+Status: engineering fix and local contract regression **PENDING**. No second browser command is authorized until updated tooling passes its checks.
+
 ## Disposition
 
 ```text
