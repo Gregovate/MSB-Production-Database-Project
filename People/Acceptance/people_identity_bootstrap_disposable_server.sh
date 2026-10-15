@@ -417,7 +417,7 @@ echo "PASS: disposable Directus healthy"
 
 echo
 echo "--- Verify disposable admin token through supported Directus API ---"
-sudo docker exec -e TOKEN="$DIRECTUS_ADMIN_TOKEN" "$TEST_DIRECTUS_CONTAINER" node - <<'NODE'
+sudo docker exec -i -e TOKEN="$DIRECTUS_ADMIN_TOKEN" "$TEST_DIRECTUS_CONTAINER" node - <<'NODE'
 const token = process.env.TOKEN;
 const r = await fetch('http://127.0.0.1:8055/users/me?fields=id', {
   headers: { Authorization: `Bearer ${token}` }
@@ -585,8 +585,16 @@ JOIN ref.person p ON lower(p.email)=lower(u.email)
 LEFT JOIN public.directus_roles r ON r.id=u.role
 WHERE lower(u.email)=lower('$HUMAN_EMAIL');
 ")"
-[[ "$HUMAN_ROW" == active|google|"$HUMAN_EMAIL"|MSB\ Browser|*|t ]] \
-    || { echo "FAIL: created human identity final state unexpected: $HUMAN_ROW"; exit 20; }
+IFS='|' read -r HUMAN_STATUS HUMAN_PROVIDER HUMAN_EXTERNAL HUMAN_ROLE HUMAN_PERSON_ID HUMAN_LINKED <<< "$HUMAN_ROW"
+if [[ "$HUMAN_STATUS" != "active" \
+      || "$HUMAN_PROVIDER" != "google" \
+      || "$HUMAN_EXTERNAL" != "$HUMAN_EMAIL" \
+      || "$HUMAN_ROLE" != "MSB Browser" \
+      || ! "$HUMAN_PERSON_ID" =~ ^[0-9]+$ \
+      || "$HUMAN_LINKED" != "t" ]]; then
+    echo "FAIL: created human identity final state unexpected: $HUMAN_ROW"
+    exit 20
+fi
 echo "PASS: new human identity exact Google/Browser/Person link"
 
 MANAGER_ROLE_AFTER="$(psql_q -c "
