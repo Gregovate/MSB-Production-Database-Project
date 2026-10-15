@@ -62,9 +62,27 @@ def test_directus_credential_is_checked_without_disclosure_or_mutation():
     assert 'ProxyHandler({})' in SERVER
     assert '"/users/me?fields=id,status"' in SERVER
     assert 'Authorization' in SERVER
-    assert 'print("STOP: protected Directus credential missing, invalid or unusable")' in SERVER
-    assert 'print("PASS: protected credential present and authenticated for read")' in SERVER
+    # Every failure must be classified without exposing a bearer token,
+    # full environment file, response body, account identifier or URL.
+    for reason in (
+        "ENV_FILE_MISSING",
+        "ENV_FILE_PERMISSIONS",
+        "ENV_FILE_UNREADABLE",
+        "TOKEN_NOT_CONFIGURED",
+        "DIRECTUS_URL_MISMATCH",
+        "DIRECTUS_AUTH_HTTP_",
+        "DIRECTUS_UNREACHABLE",
+        "DIRECTUS_RESPONSE_INVALID",
+        "DIRECTUS_USER_INACTIVE",
+    ):
+        assert reason in SERVER
+    assert 'print("STOP: " + str(error))' in SERVER
+    assert 'print("PRESENT / VALID API READ")' in SERVER
+    assert 'SECRET="$credential_status"' in SERVER
+    assert 'SECRET="${credential_status:-STOP: DIAGNOSTIC_FAILED}"' in SERVER
     assert 'print(token)' not in SERVER
+    assert 'print(values)' not in SERVER
+    assert 'print(payload)' not in SERVER
     assert '"POST"' not in SERVER
     assert 'Request(url+"/users", ' not in SERVER
 
