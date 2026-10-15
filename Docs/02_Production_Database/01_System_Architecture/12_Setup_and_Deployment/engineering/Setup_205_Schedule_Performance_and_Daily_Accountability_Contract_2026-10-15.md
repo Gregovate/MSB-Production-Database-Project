@@ -435,3 +435,10 @@ Greg's protected browser screenshot `image(20261015-155223).png` shows **Client 
 6. Governing #122 runbook: full affected regression, single current-Production disposable browser review (port 8898, CLEAN EXIT), Greg authorization, then controlled source-only release with an exact version/commit and health verification.
 
 **No root cause yet established** and no remediation performed by this documentation entry. Randy PR #391 cannot be designated responsible merely because its time coincided. Separate this hotfix from broader unaccepted PR #394 KPI scope; preserve other working source/branch changes.
+
+
+## DBG follow-up — refresh restores visible assignment cards (Oct 15)
+
+Greg refreshed Perform Work after screenshot `image(20261015-155223).png` (Client V0.3.62, crew/workload summaries visible but no individual task cards). Follow-up screenshot `image(20261015-155502).png` now shows **Client V0.3.65**, visible assignment cards for the Oct14 late `Place Polar Express Engine` and Oct16 scheduled tasks, including 4.5/3.0 linear-hours overload. Thus **missing cards is not reproduced after refresh**; no verified evidence that PR391 removed the card renderer. Suspected stale browser assets / mismatched client version; cause remains unproven until cache/loading/version chain is inspected. Do not implement a speculative reporting-code rollback.
+
+Acceptance still requires expanding a visible task and verifying **Report Work** actually opens, plus hard-refresh, stale-tab, navigation-return, and iPhone Safari checks. Investigate whether server/client source identity, asset caching or stale open tabs can leave old code running without an update/reload prompt. A readable version-mismatch/reload warning may be needed, but do not add one without inspecting existing dirty-edit/version protection. No Production change or root-cause assertion from screenshots alone.
