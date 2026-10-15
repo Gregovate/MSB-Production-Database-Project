@@ -362,6 +362,26 @@ Production deployment                        NOT AUTHORIZED
 
 **Next:** preserve this passed evidence; do **not** recreate the disposable clone. Conduct separate Production deployment planning under the current Server Management change/maintenance runbook and Backbone publishing authority only when explicitly authorized. Don's preserved real first-login test is a subsequent Production acceptance gate, not part of this disposable browser review. The operator has completed the prescribed visual check, but the final Production release authorization is **not implied** by the browser test or CLEAN EXIT.
 
+## #395 Release Authorization and Mandatory Deployment Preflight — 2026-10-15
+
+Greg expressly requested: **"if it's ready then merge and migrate to production"** after the accepted disposable and integrated Apps+People browser review. This authorizes advancing approved source through PR review/merge and preparing the governed release; it does not waive any mandatory Production maintenance, verified rollback, secret-handling, live-checkout, exact-SHA, or installation gate.
+
+### Cross-repository release scope
+
+- **Production Database PR #401** supplies the accepted People `V0.2.3` runtime (accepted source `dcc8f25f...`), migration `People/Database/006_create_silent_identity_bootstrap_contract.sql`, acceptance tooling, and engineering evidence.
+- **Internal Web Backbone PR #25** supplies exact accepted `my/apps/index.html` source `1d7fa310dd5274078910e3a098ddfd633ae58836` (blob `9d340e5e944a7cd1db223b539066eb14ddb1c292`). It requires controlled static publication **after** the backend is healthy, with source/live comparison and post-publication visible version verification.
+- **Server Management** owns `docs/server/Production_Database_Change_Deployment_Runbook.md`, `docs/server/Production_Database_Maintenance_Mode.md`, and the established `People_Production_Runtime.md` / `Protected_Flask_Application_Service_Deployment.md`. Its #37 controller must fence writers for migration 006; snapshot validity, checkout identity, least-privilege contract and ONLINE return require proof.
+
+### RUNBOOK GAP FOUND — do not execute migration 006 yet
+
+The accepted #385 Production runner `People/Acceptance/people_identity_reconciliation_production_deploy_server.sh` is hard-pinned to migration **005**, accepted `V0.2.2`, and #385's exact rollback definitions. Replaying or text-substituting it to deploy #395 would violate the reviewed release identity and rollback contract. As of this checkpoint there is **no separately accepted, contract-tested #395 Production migration-006 + V0.2.3 release runner and rollback plan** identified by the owning People release artifacts.
+
+Additionally, `People/Application/README.md` explicitly requires a **protected server-side `PEOPLE_DIRECTUS_IDENTITY_TOKEN` credential** with Directus administrator accountability to create Google-backed user identities through the supported Users API, alongside `PEOPLE_DIRECTUS_URL`. The accepted disposable runner generated a disposable-only credential; that evidence is **not** proof that the Production `/etc/msb-people/people.env` has a properly governed secret. Production installation must check or provision the credential through an accepted protected runtime procedure without exposing or recording its value.
+
+**Before Production mutation:** prepare/review an exact merged-main SHA release profile or runner under the current Server Management runbooks; validate rollback/migration 006 and role grants; verify the protected Directus credential and service startup/negative identity guard; identify the exact Backbone allowlisted Apps publishing procedure and current published source; record a single directing deployment window. Only the approved runner may enter #37 maintenance, create a validated frozen rollback archive, apply migration 006 and promote the source, return ONLINE and verify service/browser. Preserve Don's untouched real first-login fixture until the separate live acceptance is ready.
+
+**Status here:** approved source merge can proceed when merge gates are satisfied. Production database migration and Apps publication are **not yet reported executed**. Do not infer deployed state from GitHub merge or from the successful localhost browser review.
+
 ## Disposition
 
 ```text
