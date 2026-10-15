@@ -2062,14 +2062,15 @@ async function submitNextProgress(event) {
   const durationMinutes = (hours * 60) + minutes;
 
   if (!performedOn) return window.alert('Work completed on date is required.');
-  const scheduledDate = form.querySelector('.next-performed-on')?.closest('form')?.dataset.scheduledDate || '';
-  if (!window.confirm(`Confirm the date you ACTUALLY worked: ${performedOn}${scheduledDate && scheduledDate !== performedOn ? ` (scheduled ${scheduledDate})` : ''}. Save this work report?`)) return;
   if (crew < 1) return window.alert('Crew size must be at least 1.');
   if (hours < 0 || minutes < 0 || minutes > 59 || durationMinutes <= 0) {
     return window.alert('Enter the actual Hours and Minutes worked.');
   }
   if (percent < 1 || percent > 100) return window.alert('Percent complete must be between 1 and 100.');
   if (percent < 100 && !note) return window.alert('For incomplete work, briefly record what was done and what remains.');
+  const scheduledDate = form.querySelector('.next-performed-on')?.closest('form')?.dataset.scheduledDate || '';
+  if (!window.confirm(`Confirm the date you ACTUALLY worked: ${performedOn}${scheduledDate && scheduledDate !== performedOn ? ` (scheduled ${scheduledDate})` : ''}. Save this work report?`)) return;
+
 
   try {
     setBusy(true);
