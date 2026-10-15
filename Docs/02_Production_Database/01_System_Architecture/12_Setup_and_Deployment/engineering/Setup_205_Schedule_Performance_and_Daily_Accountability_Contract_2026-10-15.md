@@ -276,3 +276,18 @@ Maintain a direct link to the current [Perform and Report Setup Work SOP](../ope
 8. Do not silently auto-reschedule or reclassify old tasks, send accusation-style emails, or alter Production history. Investigate first, then show Greg an operator-safe browser candidate for testing.
 
 **Decision boundary:** allow explicit Manager override of overload only under existing documented governance, but display a clear unsustainable schedule signal and record override evidence. Do not equate schedule size with progress toward the deadline. No Production authorization from this discovery.
+
+
+## Operator clarification — Tom/Rick boundaries and capacity constraints (2026-10-15)
+
+Greg clarified that **Manager Early-Pick Demand was intentionally not communicated broadly**. Material staging space was constrained, and the early-pick override had caused operational problems. Greg deliberately trained **Tom**, who typically manages materials, as its limited operator. **Rick primarily manages people/crew scheduling and needs a very simple computer workflow.** Do not assume Rick was expected to know or use Manager Material Status, call it a failure to follow training, broaden override permissions, or tell Rick to create material overrides. Prior generic advice to train every scheduler on Early-Pick Demand is **superseded**.
+
+**Revised engineering responsibilities and questions:**
+- Rick's primary interface remains **Plan / Schedule** for believable crew commitments. Help him see time/crew overload clearly with plain-language next actions; do not make him perform material inventory or logistics management.
+- Tom's material workflow must respect **physical staging space** and the existing #206 override safety rules. A requested early pull can be inappropriate simply because there is nowhere safe to put the items. Check storage/staging capacity and existing picked/moved material before proposing any change to override workflow.
+- Need for materials ahead of scheduled execution must flow via a clear **Rick-to-Tom request/coordination path**, not by inserting fictitious work assignments. Investigate whether a lightweight request/status handoff can reuse current #206 data and existing communication; do not implement a new logistics entity or imply authorization yet.
+- Before any change, reconcile actual schedule overload and report obligations. A schedule set up to generate Pick List demand is a **workflow/system design signal**, not grounds to blame Captain, Rick, or Tom.
+- Daily Manager/Captain reporting reminders should distinguish true scheduled field commitments from inaccurate logistics-driven assignments; obtain Manager disposition before treating every historical no-report as Captain failure.
+- Operator language must be concise and explicit for users with limited computer familiarity. Keep Manager scheduling actions separate from material authority. Do not show controls that promise staging/pick capacity which has not been measured.
+
+These are owner-provided operational facts/constraints, **not a grant of Production change authorization**. Reconcile with #122 and #206 without reopening established physical Pick List or movement semantics unnecessarily.
