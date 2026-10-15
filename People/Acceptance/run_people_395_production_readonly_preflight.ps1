@@ -32,6 +32,10 @@ if ($remoteMainSha -ne $TargetSha) {
     throw "STOP: main is no longer exact approved target $TargetSha (current $remoteMainSha)."
 }
 
+# Contract-test the preflight tool before any server contact.
+& python -m pytest -q -p no:cacheprovider People/Acceptance/test_people_395_production_readonly_preflight_contract.py
+if ($LASTEXITCODE -ne 0) { throw 'STOP: read-only preflight tooling contract tests failed.' }
+
 $source = Join-Path $repo "People\Acceptance\$scriptName"
 if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
     throw "STOP: missing versioned preflight server script: $source"
