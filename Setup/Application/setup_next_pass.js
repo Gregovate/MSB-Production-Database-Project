@@ -1595,7 +1595,8 @@ function setup205ActionCenterHtml(board, model) {
     '</ul></details>';
   const missed = k.overdue.map(a => '<span>' + assignmentLabel(a) +
     ' — No matched report for this original occurrence. ' +
-    button('report',a.setup_work_day_task_id,'Review original / Report Work') + '</span>');
+    button('report',a.setup_work_day_task_id,'Review original / Report Work') +
+    ' ' + button('request-report',a.setup_work_day_task_id,'Request report (gated)') + '</span>');
   const continuations = k.needsRescheduling.map(t => '<strong>' + safe(t.task_name) +
     '</strong> · ' + safe(context(t)) + ' · ' + safe(t.percent_complete ?? 0) +
     '% reported; no current/future continuation. ' +
@@ -1630,7 +1631,8 @@ function setup205ActionCenterHtml(board, model) {
     '<h3>Manager Setup Action Center</h3>' +
     '<p class="muted">Historical reporting and schedule readiness require separate decisions. ' +
     'Replanning never clears an earlier missing report. Dates are America/Chicago. ' +
-    'Email delivery is not activated; this view does not send messages.</p>' +
+    'Daily delivery is OFF; controlled self-test/request actions require the approved Directus Flow and runtime gates.</p>' +
+    '<div class="action-row">' + button('email-myself',0,'Email to Myself (gated test)') + '</div>' +
     section('Past occurrences awaiting reports',missed,'Includes unresolved older work periods, even if the annual task later completed or moved.') +
     section('Incomplete tasks needing continuation',continuations,'A reported partial work period is not the same as a future assignment.') +
     section('Upcoming scheduled readiness exceptions (7 days)',imminent,'Hard prerequisite/Work Order gates and independent NOT READY conditions can overlap.') +
@@ -1677,9 +1679,22 @@ function setup205WireActionCenter(root) {
     event.preventDefault();
     event.stopPropagation();
     if (!appState.access?.can_manage_setup) return;
+    const action = button.dataset['205Action'];
     const id = Number(button.dataset.id);
-    if (!Number.isSafeInteger(id) || id < 1) return;
+    if (action !== 'email-myself' && (!Number.isSafeInteger(id) || id < 1)) return;
     try {
+      if (action === 'email-myself') {
+        if (!window.confirm('Queue one Manager test email to your VERIFIED MSB email only? This requires controlled Directus test-send authorization.')) return;
+        const receipt = await api('api/setup/notifications/email-myself', commandOptions('POST', {}));
+        setAlert(receipt.notice || 'Test request queued. Verify actual mailbox delivery separately.', 'ok');
+        return;
+      }
+      if (action === 'request-report') {
+        if (!window.confirm('Request the original missing report from the eligible named Captain? No email is sent when the service is disabled.')) return;
+        const receipt = await api('api/setup/notifications/request-report/' + id, commandOptions('POST', {}));
+        setAlert(receipt.notice || 'Report request queued. Verify actual delivery separately.', 'ok');
+        return;
+      }
       if (button.dataset['205Action'] === 'report') {
         if (await navigateSetupView('perform') === false) return;
         // A Manager may see all Captains and historic reported occurrences.
