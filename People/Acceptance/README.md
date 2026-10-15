@@ -223,6 +223,18 @@ People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md
 
 Greg's Production authorization is now recorded in the [#395 engineering acceptance](People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md). The disposable Apps+People browser review passed. The next step is the guarded **read-only Production readiness probe**, followed by a separate reviewed migration-006/V0.2.3 deployment runner and controlled Backbone Apps publication. No migration is reported applied. Don Martens remains the preserved Production fixture and has not been consumed.
 
+## #395 Production credential STOP and #49 scoped-permission proof
+
+Greg authorized the #395 Production release after disposable acceptance and the Apps+People browser review passed. Production has **not** been migrated: the read-only credential gate returned `STOP: TOKEN_NOT_CONFIGURED` (exit 30) with both Production identity fingerprints unchanged and controller ONLINE. Exact evidence is in [People Identity Bootstrap disposable/browser acceptance](People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md).
+
+Existing Server Management [Issue #49](https://github.com/Gregovate/MSB-Server-Management/issues/49) owns the generic Directus service-credential provisioning/recovery contract; do not reuse the Work Order Intake service token or a human Administrator token. The accepted existing #395 disposable harness now has an **opt-in** `-ServiceScopeProbe` that tests a restricted, API-only Google/MSB Browser creation permission in the same disposable Directus 11.17.1 clone. The probe is source-staged, not yet operator-executed or accepted; it is not authorization for a Production credential.
+
+```text
+People/Acceptance/run_people_identity_bootstrap_disposable_acceptance.ps1 -ServiceScopeProbe
+```
+
+The wrapper requires the clean `issue-395-production-deployment-readiness` engineering branch and performs focused contract validation before server contact; the server tests only disposable service accounts/roles/policies and prints a compact `BEGIN #395 RESULT` footer with Production preservation results. After that proof, reconcile the separate Server Management credential installation/rollback procedure and the #37-governed migration 006 release runner. Do not rerun the earlier generic Production token preflight while its exact missing configuration remains unchanged.
+
 ## Google Analytics — PASS
 
 ```text
