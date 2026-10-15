@@ -502,8 +502,12 @@ DISPOSABLE RUNTIME ACCEPTANCE: PASS
 APPS + PEOPLE DISPOSABLE BROWSER REVIEW: PASS / CLEAN EXIT 0
 PRODUCTION IDENTITY + SHARED CHECKOUT: UNCHANGED
 DON MARTENS FIXTURE: PRESERVED / UNCONSUMED
-PRODUCTION DEPLOYMENT: NOT AUTHORIZED BY THIS EVIDENCE
-NEXT: separate governed release review/authorization
+PRODUCTION RELEASE AUTHORIZATION: GRANTED BY GREG — 2026-10-15
+PRODUCTION INSTALLATION: BLOCKED — PEOPLE_DIRECTUS_IDENTITY_TOKEN not configured
+CREDENTIAL PERMISSION/PROVISIONING: SERVER MANAGEMENT #49 NOT YET ACCEPTED
+MIGRATION 006: NOT APPLIED
+PEOPLE V0.2.3 / APPS v0.2: NOT PUBLISHED TO PRODUCTION
+NEXT: disposable scoped Directus service credential proof; governed installation
 ```
 
-That isolated Apps+People browser integration gate has passed. A separate governed Production deployment and subsequent real-user verification require explicit authorization and the responsible Server Management and Internal Web Backbone runbooks; neither is implied by this acceptance.
+That isolated Apps+People browser integration gate has passed, **and Greg has explicitly approved Production**. Installation remains stopped by the proven missing credential and the incomplete governed credential/deployment procedures. The approval remains valid; no Production mutation or final real-user acceptance has been performed. Follow the Server Management #49 credential authority, the #37 maintenance controller and the Backbone publishing runbook for their distinct remaining gates.
