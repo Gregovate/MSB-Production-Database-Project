@@ -527,6 +527,29 @@ The disposable Directus container may be restarted **by its exact generated test
 
 **Next:** run the scoped profile from the clean current release-readiness branch, using the accepted wrapper's foreground SSH/clone isolation, and copy only its final `BEGIN #395 RESULT` block. After PASS, design the separately reviewed #49 Production credential creation/install/recovery sequence and migration 006 deploy runner. Don's real first-login fixture remains unconsumed.
 
+## First #49 / #395 Scoped Directus Service Permission Proof — STOP, 2026-10-15
+
+Greg executed the opt-in disposable profile on exact acceptance-tooling SHA `94c505d7dbbd28e8d3f48d7cb02d7cce50232648` against `directus/directus:11.17.1`. The operator supplied the complete **compact result block**:
+
+```text
+Proof target:       #49 / #395 scoped Directus service credential
+Accepted People:    dcc8f25f07a74e19ce3de3aae2d9d137b5411815
+Tooling SHA:        94c505d7dbbd28e8d3f48d7cb02d7cce50232648
+Disposable scope:   STOP (first failed line still to be retrieved)
+Person after:       PASS
+Directus after:     PASS
+Production writes:  NONE
+Real Don fixture:   NOT CONSUMED
+Exit status:        1
+Report:             /tmp/MSB_People_Identity_Bootstrap_Disposable_20261015T235232.txt
+```
+
+**Disposition: NOT ACCEPTED.** Exit 1 is a generic script/command failure, **not evidence of any specific Directus role/policy authorization rejection**. The failed command could have occurred before the scoped Users API test. In particular, do not infer from this receipt that the non-admin Directus user-creation permission is impossible, and do not respond by creating an administrator-authorized Production credential.
+
+The server report must first be inspected **read-only** to identify the exact first failing gate/diagnostic and the immediately preceding accepted stage. Fetch only a short, bounded error/stage excerpt from that specific retained report, with no token, environment file, user email, SQL credential values or broad server log dump. Inspect the error before editing or rerunning the scope probe. The existing harness completed both Production Person/Directus preservation checks with PASS and performed no Production writes. Existing Production remains V0.2.2, controller ONLINE, migration 006 unapplied, Apps unchanged; Don's fixture is unconsumed.
+
+The reusable scoped-probe reporting standard should include a safe first-failure **category/location** in its final result block after diagnosis, avoiding another request for multiple pages of terminal output. That is acceptance-tooling improvement, not a runtime change.
+
 ## Disposition
 
 ```text
