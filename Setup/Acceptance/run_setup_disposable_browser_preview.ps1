@@ -120,6 +120,9 @@ if ($PreviewEmail -notmatch '^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+$') {
     throw 'PreviewEmail is not a valid email address.'
 }
 
+# Setup profile preserves the explicitly approved shared database repair and
+# explicitly approved shared database validation exceptions. Other profiles
+# must use only their own feature-owned migration/validation directories.
 function Assert-SafeCandidatePath {
     param(
         [Parameter(Mandatory=$true)][string]$Path,
