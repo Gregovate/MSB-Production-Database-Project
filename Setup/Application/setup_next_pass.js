@@ -1411,9 +1411,11 @@ function setup205DeadlineKpiModel(board, year, today = nextSetupLocalDate()) {
   const complete = tasks.filter(t => Boolean(t.effective_complete));
   const deferred = incomplete.filter(t => t.execution_status === 'DEFERRED');
   const actionable = incomplete.filter(t => t.execution_status !== 'DEFERRED');
-  const scheduled = actionable.filter(t => Number(t.unworked_assignment_count || 0) > 0);
-  const needsRescheduling = actionable.filter(t => t.execution_status === 'IN_PROGRESS' && Number(t.unworked_assignment_count || 0) === 0);
-  const needsFirstScheduling = actionable.filter(t => t.execution_status !== 'IN_PROGRESS' && Number(t.unworked_assignment_count || 0) === 0);
+  // Only a current/future unworked assignment is a continuation. An old missed
+  // occurrence remains a reporting obligation, not an active schedule.
+  const scheduled = actionable.filter(t => Number(t.future_assignment_count || 0) > 0);
+  const needsRescheduling = actionable.filter(t => t.execution_status === 'IN_PROGRESS' && Number(t.future_assignment_count || 0) === 0);
+  const needsFirstScheduling = actionable.filter(t => t.execution_status !== 'IN_PROGRESS' && Number(t.future_assignment_count || 0) === 0);
   const notReady = actionable.filter(t => t.readiness_state === 'NOT_READY');
   const blocked = actionable.map(t => {
     const reasons = [];
@@ -1423,10 +1425,13 @@ function setup205DeadlineKpiModel(board, year, today = nextSetupLocalDate()) {
     return {task: t, reasons};
   }).filter(t => t.reasons.length);
   const assignments = board.assignments || [];
-  const dayById = new Map((board.work_days || []).map(d => [Number(d.setup_work_day_id), d.work_date]));
+  const dayById = new Map((board.work_days || []).map(d => [Number(d.setup_work_day_id), d]));
   const overdue = assignments.filter(a => {
-    const date = a.work_date || dayById.get(Number(a.setup_work_day_id));
-    return date && date < today && Number(a.work_report_count || 0) === 0;
+    const day = dayById.get(Number(a.setup_work_day_id));
+    const date = a.work_date || day?.work_date;
+    // A cancelled day has no historical reporting obligation.
+    return date && date < today && String(day?.day_status || a.day_status || '').toUpperCase() !== 'CANCELLED'
+      && Number(a.work_report_count || 0) === 0;
   });
   const partial = actionable.filter(t => Number(t.percent_complete || 0) > 0 && Number(t.percent_complete || 0) < 100);
   const lateNoReportTaskCount = new Set(overdue.map(a => Number(a.setup_session_task_id))).size;
@@ -1449,16 +1454,20 @@ function setup205DeadlineKpiModel(board, year, today = nextSetupLocalDate()) {
     ? datesBetween(new Date((epochDay(today) + 1) * 86400000).toISOString().slice(0, 10), deadline) : [];
   const potentialWorkdays = futureDays.filter(d => !d.sunday).length;
   const scheduledWorkdays = new Set((board.work_days || [])
+    .filter(d => String(d.day_status || '').toUpperCase() !== 'CANCELLED')
     .map(d => d.work_date).filter(d => d && d > today && d <= deadline)).size;
   const requiredPerPotentialWorkday = potentialWorkdays > 0 ? actionable.length / potentialWorkdays : null;
   const windowStart = new Date((epochDay(today) - 6) * 86400000).toISOString().slice(0, 10);
-  let recent = 0, recentNonSunday = 0, undated = 0;
+  let recent = 0, recentNonSunday = 0, undated = 0, futureDated = 0;
   for (const t of complete) {
-    const completedAt = t.actual_completed_at || (t.linked_work_order_gate ? t.linked_work_order_completed_at : null);
-    if (!completedAt) { undated++; continue; }
-    const date = String(completedAt).slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { undated++; continue; }
-    if (date >= windowStart && date <= today) {
+    // The repository supplies only verified work dates (100% performed_on)
+    // and completed linked WO dates. NEVER use the entry/audit timestamp.
+    const date = String(t.completion_work_date || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(epochDay(date))) {
+      undated++; continue;
+    }
+    if (date > today) { futureDated++; undated++; continue; }
+    if (date >= windowStart) {
       recent++;
       if (new Date(date + 'T00:00:00Z').getUTCDay() !== 0) recentNonSunday++;
     }
@@ -1467,14 +1476,17 @@ function setup205DeadlineKpiModel(board, year, today = nextSetupLocalDate()) {
   const recentPotentialWorkdays = datesBetween(windowStart, today).filter(d => !d.sunday).length;
   const workdayPace = recentPotentialWorkdays ? recentNonSunday / recentPotentialWorkdays : null;
   // A task whose completion date cannot be established must never produce a green forecast.
-  const reliable = undated === 0 && complete.length > 0 && recent > 0;
+  // One lucky completion cannot justify an on-track claim for a season.
+  // Require seven distinct dated annual completions in the explicit 7-day
+  // window, as well as complete provenance, before giving any projection.
+  const reliable = undated === 0 && recent >= 7;
   const projectedDays = reliable ? Math.ceil(actionable.length / pace) : null;
   const projectedFinish = projectedDays == null ? null :
     new Date((epochDay(today) + projectedDays) * 86400000).toISOString().slice(0, 10);
   return {tasks, incomplete, complete, deferred, actionable, blocked, notReady,
     scheduled, needsRescheduling, needsFirstScheduling, overdue, lateNoReportTaskCount, partial,
     deadline, daysLeft, required, potentialWorkdays, scheduledWorkdays, requiredPerPotentialWorkday,
-    recent, recentNonSunday, recentPotentialWorkdays, workdayPace, pace, undated, reliable, projectedFinish};
+    recent, recentNonSunday, recentPotentialWorkdays, workdayPace, pace, undated, futureDated, reliable, projectedFinish};
 }
 
 function setup205DeadlineKpiHtml(board, year) {
@@ -1498,7 +1510,7 @@ function setup205DeadlineKpiHtml(board, year) {
     '<ul>' + (taskList(tasks) || '<li>None</li>') + '</ul></details>';
   const dateStatus = !k.deadline ? 'Deadline unavailable'
     : !k.actionable.length ? 'All non-deferred tasks complete'
-    : !k.reliable ? 'Insufficient dated completion evidence to forecast'
+    : !k.reliable ? 'Insufficient verified work-date evidence or 7-day sample to forecast'
     : k.projectedFinish > k.deadline ? 'Recorded pace misses deadline' : 'Recorded pace meets deadline (task-count estimate)';
   return '<section class="setup-205-deadline-kpis" aria-label="Whole Setup schedule performance" ' +
     'style="padding:12px;border:2px solid #48667b;border-radius:9px;margin:12px 0;background:var(--panel-bg,transparent)">' +
@@ -1525,7 +1537,8 @@ function setup205DeadlineKpiHtml(board, year) {
     '<span>Projected finish: <strong>' + safe(k.reliable ? fmt(k.projectedFinish) : 'INSUFFICIENT DATA') + '</strong></span>' +
     '</div><strong>' + safe(dateStatus) + '</strong>' +
     '<div style="font-size:.88rem;margin-top:6px">Task-count forecast only; tasks vary in size. ' +
-    safe(k.undated) + ' completions without usable dates; recorded dates may reflect late reporting. ' +
+    safe(k.undated) + ' completions without usable *physical work dates* (' + safe(k.futureDated) + ' future-dated); ' +
+    'completion pace uses distinct completed annual tasks and their Report Work performed-on / completed Work Order dates, never report entry time. ' +
     'Potential workdays exclude Sundays only; they are NOT confirmed crew days. Scheduled dates cover only the rolling plan. ' +
     'Recent non-Sunday pace excludes Sunday completions, including zero-completion weekdays. ' +
     safe(k.deferred.length) + ' deferred tasks included in remaining, excluded from required pace; ' +
