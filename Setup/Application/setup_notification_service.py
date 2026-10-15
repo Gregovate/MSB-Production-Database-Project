@@ -286,7 +286,9 @@ class DirectusSetupOutboxClient:
         self.token = token if token is not None else os.getenv("SETUP_DIRECTUS_NOTIFICATION_TOKEN", "")
 
     def queue(self, notice: dict, *, test_mode: bool = False) -> dict:
-        enable = "SETUP_NOTIFICATION_TEST_SEND_ENABLED" if test_mode else "SETUP_NOTIFICATION_DAILY_ENABLED"
+        enable = ("SETUP_NOTIFICATION_TEST_SEND_ENABLED" if test_mode
+                  else "SETUP_NOTIFICATION_REQUEST_SEND_ENABLED" if notice.get("kind") == "CAPTAIN_REQUEST"
+                  else "SETUP_NOTIFICATION_DAILY_ENABLED")
         if os.getenv(enable) != "1":
             raise SetupNotificationError(f"{enable} is not enabled")
         if not self.token:
