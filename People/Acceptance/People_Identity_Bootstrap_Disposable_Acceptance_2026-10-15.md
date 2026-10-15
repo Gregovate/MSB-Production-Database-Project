@@ -495,6 +495,38 @@ For #395 the required Directus Users API operation creates a Google-backed ident
 
 **Next actionable gate:** implement and accept the #49 procedure (including a scoped-permission disposable proof where feasible), verify the protected People runtime with a non-secret GET to `/users/me`, then follow the separate #395 migration 006 release runner/rollback and controlled Backbone Apps publisher. The user’s Production approval stands, but approval does not waive that credential safety boundary. Keep Production ONLINE while this is unresolved.
 
+## #49 / #395 Scoped Service Credential Proof — Candidate, Not Yet Executed
+
+The exact `TOKEN_NOT_CONFIGURED` Production STOP above remains authoritative. Do **not** rerun that diagnostic until a governed People service credential has actually been installed.
+
+The active release-readiness branch now extends the **existing** accepted #395 disposable PostgreSQL + Directus 11.17.1 harness with an opt-in `-ServiceScopeProbe` switch. It does **not** create another disposable orchestration system and does not change `People/Application`, `People/Database`, the accepted runtime `dcc8f25f...`, or Production service configuration.
+
+```text
+People/Acceptance/run_people_identity_bootstrap_disposable_acceptance.ps1
+    -ServiceScopeProbe
+People/Acceptance/people_identity_bootstrap_disposable_server.sh
+People/Acceptance/people_395_service_scope_disposable_probe.sh
+People/Acceptance/test_people_395_service_scope_disposable_contract.py
+```
+
+**Purpose:** prove (or disprove) in the disposable current-Production clone whether a **non-admin/API-only** Directus service role, with only field-limited `directus_users.create` permission and validation for `google`, `active`, and the baseline `MSB Browser` role, can perform the exact #395 Users API POST. All test roles, users, policies, permissions, tokens and simulated humans are uniquely named **disposable-only** fixtures. The accepted harness verifies Production before/after identity fingerprints and always tears down its disposable containers. This profile is strictly opt-in; the original accepted harness/default branch behavior is preserved.
+
+The probe validates the effective Directus permissions and requires all of the following before declaring PASS:
+
+- active scoped service authentication to disposable Directus 11.17.1;
+- creation of the exact Google-backed Browser identity through the actual Users API;
+- failure of Manager-role elevation, arbitrary Directus user updates, and unrelated Work Order Intake creation;
+- no broad Directus user listing outside the service identity;
+- no `ref.person` auto-creation for the synthetic test email;
+- no `admin_access` or Data Studio app access in the service policy; and
+- unchanged Production identity fingerprints after disposal.
+
+The disposable Directus container may be restarted **by its exact generated test-container name only** to refresh policy cache after clone-only fixture seeding; this is not a restart of Production Directus. Test-generated bearer credentials are never printed or stored in Git.
+
+**STATUS: IMPLEMENTED AS ACCEPTANCE TOOLING; EXECUTABLE PASS/FAIL STILL PENDING.** A failure is useful evidence that the non-admin design may require correction, and is **not** permission to substitute a human Administrator token or immediately grant a dedicated service account full administrative authority. Do not create a Production token, modify `/etc/msb-people/people.env`, apply migration 006, or publish Apps before a reviewed scope proof and Server Management #49 provisioning/rollback procedure.
+
+**Next:** run the scoped profile from the clean current release-readiness branch, using the accepted wrapper's foreground SSH/clone isolation, and copy only its final `BEGIN #395 RESULT` block. After PASS, design the separately reviewed #49 Production credential creation/install/recovery sequence and migration 006 deploy runner. Don's real first-login fixture remains unconsumed.
+
 ## Disposition
 
 ```text
