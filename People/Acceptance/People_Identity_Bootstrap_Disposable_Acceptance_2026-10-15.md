@@ -382,6 +382,30 @@ Additionally, `People/Application/README.md` explicitly requires a **protected s
 
 **Status here:** approved source merge can proceed when merge gates are satisfied. Production database migration and Apps publication are **not yet reported executed**. Do not infer deployed state from GitHub merge or from the successful localhost browser review.
 
+## Merged Release Source and Production Stop Point — 2026-10-15
+
+Greg authorized #395 merge and Production migration, subject to existing MSB governance. The two accepted source pull requests were merged using GitHub's expected-head guard:
+
+```text
+Production Database PR #401 -> main    cab3c1caa7c4c018ee132ffd5918999baf4f837d
+Backbone Apps PR #25 -> main           91674b254d204235366f7d9a17f8395ae98149af
+Accepted People runtime               dcc8f25f07a74e19ce3de3aae2d9d137b5411815
+Accepted Apps HTML source              1d7fa310dd5274078910e3a098ddfd633ae58836
+Accepted Apps HTML Git blob            9d340e5e944a7cd1db223b539066eb14ddb1c292
+Production migration target            People/Database/006_create_silent_identity_bootstrap_contract.sql
+Visible People release version         V0.2.3
+```
+
+**MERGED DOES NOT MEAN DEPLOYED.** Last actual governed remote evidence was the disposable browser review ending in exit 0: the shared Production checkout remained `bb8dfa498c5b4bbecfc3693f68c4066c1e08242e`, People remained healthy as the previous V0.2.2 baseline, and Production identities were unchanged. No subsequent Production maintenance/deployment/Apps publication receipt has been supplied in this workstream.
+
+**RUNBOOK GAP FOUND — deployment intentionally stopped before Production mutation.** The #385 People release runner is specifically pinned to migration 005, V0.2.2 and rollback definitions for that older migration; it is **not** an accepted #395 migration-006 install path. The Server Management production database and #37 maintenance runbooks provide the governing pattern, but #395 still requires a feature-owned **reviewed, testable release runner** with an exact main SHA and migration 006 blob, controller-maintenance/freeze proof, validated rollback snapshot, least-privilege checks, known-function cleanup or fail-closed committed-migration containment, People V0.2.3 health and other live regressions. In particular, do not automatically replay the #385 installer or execute migration 006 as an isolated ad-hoc `psql` operation.
+
+A required protected service secret is separately unresolved: the new backend requires `PEOPLE_DIRECTUS_IDENTITY_TOKEN` with Directus administrator-level provider-field creation accountability in `/etc/msb-people/people.env`. Its current **Production existence/validity has not been verified** and no service credential value may be pasted into chat or Git. An approved least-privilege/dedicated identity and installation/rollback procedure must be reconciled before deployment.
+
+Backbone source is merged but the approved, allowlisted source-to-live **Apps page publishing** procedure, current live file, and publication verification remain to be reconciled from `MSB-Internal-Web-Backbone` authority. Publish `my/apps/index.html` only after People V0.2.3 backend, migration 006 and credential checks are accepted/ONLINE. Never manually copy arbitrary same-named index files or perform whole-root sync.
+
+**Next governed engineering step:** reconcile exact Production live checkout, controller status, service environment credential presence (no secrets displayed), migration 006 absence/presence, and Backbone static publication tooling using read-only checks; prepare/review and contract-test the #395 installation tooling on a separate branch from merged main. No additional disposable Apps browser test is required solely because the release runner is new. Only after those gates can the already authorized operator execute an approved bounded Production migration window. Don's real first-login fixture remains unconsumed until final live acceptance.
+
 ## Disposition
 
 ```text
