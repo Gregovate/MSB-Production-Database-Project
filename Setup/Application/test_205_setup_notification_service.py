@@ -169,7 +169,28 @@ def test_network_timeout_is_delivery_unknown_no_auto_retry(monkeypatch):
         client.queue(mail.notice_plans(board(),people(),TODAY)[0])
 
 
-def test_2026_only_and_no_fake_report():
+def test_daily_and_manual_request_do_not_repeat_same_occurrence(monkeypatch):
+    p=people()
+    covered={(25,100)}
+    plans=mail.notice_plans(board(),p,TODAY,already_covered=covered)
+    captain=[n for n in plans if n["kind"]=="CAPTAIN_DAILY"]
+    assert len(captain)==1
+    assert captain[0]["covered_assignment_ids"]==[101]
+    assert "Place Polar Express Engine" not in captain[0]["body_text"]
+    everything={(25,100),(25,101)}
+    assert not [n for n in mail.notice_plans(board(),p,TODAY,already_covered=everything)
+                if n["kind"]=="CAPTAIN_DAILY"]
+
+    request=mail.notice_plans(board(),p,TODAY)[-1].copy()
+    request.update(kind="CAPTAIN_REQUEST",assignment_id=100,covered_assignment_ids=[100])
+    monkeypatch.setenv("SETUP_NOTIFICATION_DAILY_ENABLED","1")
+    monkeypatch.delenv("SETUP_NOTIFICATION_REQUEST_SEND_ENABLED",raising=False)
+    client=mail.DirectusSetupOutboxClient(token="not-real")
+    with pytest.raises(mail.SetupNotificationError,match="REQUEST_SEND_ENABLED"):
+        client.queue(request)
+
+
+
     wrong=board()
     wrong["session"]["season_year"]=2027
     with pytest.raises(mail.SetupNotificationError,match="2026"):
