@@ -134,16 +134,28 @@ function Assert-SafeCandidatePath {
     }
     if ($Kind -eq 'migration') {
         $isSetupMigration = $Path.StartsWith('Setup/Database/')
+        $isPeopleMigration = $Path.StartsWith('People/Database/')
         $isApprovedSharedMigration = $Path -eq 'Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql'
-        if (-not ($isSetupMigration -or $isApprovedSharedMigration)) {
-            throw "Migration path must be under Setup/Database/ or explicitly approved shared database repair: $Path"
+        $allowed = if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+            $isPeopleMigration
+        } else {
+            $isSetupMigration -or $isApprovedSharedMigration
+        }
+        if (-not $allowed) {
+            throw "Migration path is outside the approved $PreviewProfile preview boundary: $Path"
         }
     }
     if ($Kind -eq 'validation') {
         $isSetupValidation = $Path.StartsWith('Setup/Acceptance/')
+        $isPeopleValidation = $Path.StartsWith('People/Acceptance/')
         $isApprovedSharedValidation = $Path -eq 'Database/Acceptance/database_shared_audit_actor_disposable_validation.sql'
-        if (-not ($isSetupValidation -or $isApprovedSharedValidation)) {
-            throw "Validation path must be under Setup/Acceptance/ or explicitly approved shared database validation: $Path"
+        $allowed = if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+            $isPeopleValidation
+        } else {
+            $isSetupValidation -or $isApprovedSharedValidation
+        }
+        if (-not $allowed) {
+            throw "Validation path is outside the approved $PreviewProfile preview boundary: $Path"
         }
     }
 
