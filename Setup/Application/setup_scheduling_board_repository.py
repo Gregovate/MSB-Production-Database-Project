@@ -158,6 +158,27 @@ class SetupSchedulingBoardRepository:
                     st.annual_notes,
                     st.actual_started_at,
                     st.actual_completed_at,
+                    /* Use the physical work date from a completion-marked report,
+                       not recorded_at or the often-NULL annual audit timestamp. */
+                    CASE
+                        WHEN st.execution_status = 'COMPLETE'
+                            THEN progress.completed_performed_on::text
+                        WHEN st.linked_work_order_gate
+                             AND st.linked_work_order_id IS NOT NULL
+                             AND wo.date_completed IS NOT NULL
+                            THEN wo.date_completed::date::text
+                        ELSE NULL
+                    END AS completion_work_date,
+                    CASE
+                        WHEN st.execution_status = 'COMPLETE'
+                             AND progress.completed_performed_on IS NOT NULL
+                            THEN 'REPORTED_PERFORMED_ON'
+                        WHEN st.linked_work_order_gate
+                             AND st.linked_work_order_id IS NOT NULL
+                             AND wo.date_completed IS NOT NULL
+                            THEN 'WORK_ORDER_COMPLETED'
+                        ELSE 'UNVERIFIED'
+                    END AS completion_date_source,
                     st.actual_crew_count,
                     st.actual_duration_minutes,
                     st.completion_note,
@@ -397,7 +418,7 @@ class SetupSchedulingBoardRepository:
                     SELECT
                         count(*) FILTER (
                             WHERE wd.day_status <> 'CANCELLED'
-                              AND wd.work_date >= current_date
+                              AND wd.work_date >= (now() AT TIME ZONE 'America/Chicago')::date
                               AND NOT (
                                   wdt.actual_crew_count IS NOT NULL
                                   OR wdt.started_at IS NOT NULL
@@ -459,7 +480,11 @@ class SetupSchedulingBoardRepository:
                     SELECT
                         count(*) AS progress_entries,
                         sum(coalesce(p.completed_quantity, 0)) AS completed_quantity,
-                        max(p.percent_complete) AS percent_complete
+                        max(p.percent_complete) AS percent_complete,
+                        /* Current 100% work evidence, one date per annual task. */
+                        max(p.performed_on) FILTER (
+                            WHERE p.percent_complete = 100
+                        ) AS completed_performed_on
                     FROM ops.setup_task_progress p
                     WHERE p.setup_session_task_id = st.setup_session_task_id
                 ) progress ON true
