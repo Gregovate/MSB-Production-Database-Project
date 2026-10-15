@@ -64,6 +64,11 @@ def test_scoped_policy_no_admin_and_only_user_create_fields():
     assert "user update denied" in PROBE
     assert "unrelated Intake create denied" in PROBE
     assert "user listing constrained to self" in PROBE
+    assert "GET','/permissions/me" in PROBE
+    assert "Directus user update permission unexpectedly assigned" in PROBE
+    assert "Intake create permission unexpectedly assigned" in PROBE
+    assert "process.exit(74)" in PROBE
+    assert 'sudo docker restart "$TEST_DIRECTUS_CONTAINER"' in PROBE
     assert "SELECT count(*) FROM ref.person" in PROBE
 
 
