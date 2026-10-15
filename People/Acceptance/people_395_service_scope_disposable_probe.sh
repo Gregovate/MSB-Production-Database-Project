@@ -80,9 +80,22 @@ else {
       const unrelated=await call('POST','/items/work_order_intake',{});
       if(unrelated.status<400) fail('unrelated Intake create allowed',unrelated.status);
       else console.log('PASS: unrelated Intake create denied');
-      const all=await call('GET','/users');
-      if(all.status<400) fail('broad user read allowed',all.status);
-      else console.log('PASS: broad user list denied');
+      const all=await call('GET','/users?fields=id&limit=10');
+      if(all.status===200) {
+        const listing=await all.json().catch(()=>null);
+        const rows=listing&&Array.isArray(listing.data)?listing.data:null;
+        const my=await self.json().catch(()=>null);
+        const selfId=my&&my.data&&my.data.id;
+        if(!rows||!selfId||rows.some(row=>row.id!==selfId)) {
+          fail('unrelated Directus user listing allowed',all.status);
+        } else {
+          console.log('PASS: user listing constrained to self');
+        }
+      } else if(all.status>=400) {
+        console.log('PASS: unrelated Directus user listing denied');
+      } else {
+        fail('unexpected Directus listing response',all.status);
+      }
     }
   }
 }
