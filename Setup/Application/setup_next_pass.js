@@ -1430,23 +1430,45 @@ function setup205DeadlineKpiModel(board, year, today = nextSetupLocalDate()) {
   const epochDay = d => Date.parse(d + 'T00:00:00Z') / 86400000;
   const daysLeft = deadline ? Math.max(0, epochDay(deadline) - epochDay(today)) : null;
   const required = daysLeft > 0 ? actionable.length / daysLeft : null;
+  // The rolling schedule has not committed every future workday.
+  // Non-Sunday days are potential workdays, not confirmed staffed days.
+  const datesBetween = (from, to) => {
+    const out = [];
+    for (let day = epochDay(from); day <= epochDay(to); day++) {
+      out.push({date: new Date(day * 86400000).toISOString().slice(0, 10),
+        sunday: new Date(day * 86400000).getUTCDay() === 0});
+    }
+    return out;
+  };
+  const futureDays = deadline && today < deadline
+    ? datesBetween(new Date((epochDay(today) + 1) * 86400000).toISOString().slice(0, 10), deadline) : [];
+  const potentialWorkdays = futureDays.filter(d => !d.sunday).length;
+  const scheduledWorkdays = new Set((board.work_days || [])
+    .map(d => d.work_date).filter(d => d && d > today && d <= deadline)).size;
+  const requiredPerPotentialWorkday = potentialWorkdays > 0 ? actionable.length / potentialWorkdays : null;
   const windowStart = new Date((epochDay(today) - 6) * 86400000).toISOString().slice(0, 10);
-  let recent = 0, undated = 0;
+  let recent = 0, recentNonSunday = 0, undated = 0;
   for (const t of complete) {
     const completedAt = t.actual_completed_at || (t.linked_work_order_gate ? t.linked_work_order_completed_at : null);
     if (!completedAt) { undated++; continue; }
     const date = String(completedAt).slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { undated++; continue; }
-    if (date >= windowStart && date <= today) recent++;
+    if (date >= windowStart && date <= today) {
+      recent++;
+      if (new Date(date + 'T00:00:00Z').getUTCDay() !== 0) recentNonSunday++;
+    }
   }
   const pace = recent / 7;
+  const recentPotentialWorkdays = datesBetween(windowStart, today).filter(d => !d.sunday).length;
+  const workdayPace = recentPotentialWorkdays ? recentNonSunday / recentPotentialWorkdays : null;
   // A task whose completion date cannot be established must never produce a green forecast.
   const reliable = undated === 0 && complete.length > 0 && recent > 0;
   const projectedDays = reliable ? Math.ceil(actionable.length / pace) : null;
   const projectedFinish = projectedDays == null ? null :
     new Date((epochDay(today) + projectedDays) * 86400000).toISOString().slice(0, 10);
   return {tasks, incomplete, complete, deferred, actionable, blocked, overdue, partial,
-    deadline, daysLeft, required, recent, pace, undated, reliable, projectedFinish};
+    deadline, daysLeft, required, potentialWorkdays, scheduledWorkdays, requiredPerPotentialWorkday,
+    recent, recentNonSunday, recentPotentialWorkdays, workdayPace, pace, undated, reliable, projectedFinish};
 }
 
 function setup205DeadlineKpiHtml(board, year) {
@@ -1477,12 +1499,17 @@ function setup205DeadlineKpiHtml(board, year) {
     '<span>Past assignments with no report <strong>' + k.overdue.length + '</strong></span>' +
     '</div><div style="display:flex;flex-wrap:wrap;gap:18px;margin-bottom:8px">' +
     '<span>Last 7 days: <strong>' + k.recent + '</strong> dated completions · <strong>' + n(k.pace) + '/day</strong></span>' +
-    '<span>Required: <strong>' + n(k.required) + '/calendar day</strong></span>' +
-    '<span>Deadline: <strong>' + safe(fmt(k.deadline)) + '</strong> (' + safe(k.daysLeft == null ? '?' : k.daysLeft) + ' days)</span>' +
+    '<span>Required calendar pace: <strong>' + n(k.required) + '/day</strong></span>' +
+    '<span>Required potential workday pace: <strong>' + n(k.requiredPerPotentialWorkday) + '/day</strong></span>' +
+    '<span>Recent non-Sunday pace: <strong>' + n(k.workdayPace) + '/day</strong></span>' +
+    '<span>Deadline: <strong>' + safe(fmt(k.deadline)) + '</strong> (' + safe(k.daysLeft == null ? '?' : k.daysLeft) + ' calendar days · ' +
+    k.potentialWorkdays + ' possible non-Sunday workdays · ' + k.scheduledWorkdays + ' currently scheduled dates)</span>' +
     '<span>Projected finish: <strong>' + safe(k.reliable ? fmt(k.projectedFinish) : 'INSUFFICIENT DATA') + '</strong></span>' +
     '</div><strong>' + safe(dateStatus) + '</strong>' +
     '<div style="font-size:.88rem;margin-top:6px">Task-count forecast only; tasks vary in size. ' +
     safe(k.undated) + ' completions without usable dates; recorded dates may reflect late reporting. ' +
+    'Potential workdays exclude Sundays only; they are NOT confirmed crew days. Scheduled dates cover only the rolling plan. ' +
+    'Recent non-Sunday pace excludes Sunday completions, including zero-completion weekdays. ' +
     safe(k.deferred.length) + ' deferred tasks included in remaining, excluded from required pace; ' +
     safe(k.partial.length) + ' unfinished tasks show partial progress. Captain filters do not change this summary.</div>' +
     '<details style="margin-top:8px"><summary>Blocked / NOT READY (' + k.blocked.length +
