@@ -377,7 +377,12 @@ def test_identity_bootstrap_api_is_server_side_and_browser_baseline_only() -> No
     assert '"external_identifier": normalized_email' in BOOTSTRAP_CLIENT
     assert '"role": normalized_role' in BOOTSTRAP_CLIENT
     assert '"status": "active"' in BOOTSTRAP_CLIENT
-    assert "update" not in BOOTSTRAP_CLIENT.lower().split("class DirectusIdentityBootstrapClient", 1)[1]
+    client_section = BOOTSTRAP_CLIENT.split("class DirectusIdentityBootstrapClient", 1)[1]
+    assert "def create_google_browser_user" in client_section
+    assert 'method="POST"' in client_section
+    assert 'method="PATCH"' not in client_section
+    assert 'method="PUT"' not in client_section
+    assert 'method="DELETE"' not in client_section
 
 
 def test_identity_bootstrap_endpoint_requires_cloudflare_and_command_guard() -> None:
