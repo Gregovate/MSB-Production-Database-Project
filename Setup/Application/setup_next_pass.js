@@ -778,6 +778,7 @@ function installNextTabs() {
   perform.innerHTML = `
     <div class="card">
       <div class="section-title"><div><div class="eyebrow">Captain / field execution</div><h2>Perform Setup Work</h2></div></div>
+      <div id="next-perform-global-kpis" class="next-perform-global-kpis" aria-label="Whole Setup completion and Manager action center"></div>
       <div id="setup-perform-milestones"></div>
       <p class="muted">Only scheduled work appears here. Work is organized by Setup Day, AM/PM, and Crew/Captain. Report Work records actual crew, elapsed time, and percent complete against the exact scheduled assignment.</p>
       <div class="next-perform-toolbar">
@@ -1734,8 +1735,17 @@ function renderNextExecution() {
     assignments.some((assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id))
   );
 
-  setup205WireActionCenter(target);
-  target.innerHTML = setup205DeadlineKpiHtml(board, appState.seasonYear) + nextLateWorkSummary(scopedAssignments, board) + (days.length ? days.map((day) => {
+  // The whole-season progress and Manager exceptions outrank filtered labor,
+  // individual Captain cards and milestone detail on the Perform Work screen.
+  const globalKpis = el('next-perform-global-kpis');
+  if (globalKpis) {
+    setup205WireActionCenter(globalKpis);
+    globalKpis.innerHTML = setup205DeadlineKpiHtml(board, appState.seasonYear);
+  } else {
+    setup205WireActionCenter(target); // compatibility with older static fixtures
+  }
+  target.innerHTML = (globalKpis ? '' : setup205DeadlineKpiHtml(board, appState.seasonYear)) +
+    nextLateWorkSummary(scopedAssignments, board) + (days.length ? days.map((day) => {
     const dayAssignments = assignments.filter(
       (assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id)
     );
