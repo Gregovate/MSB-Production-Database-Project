@@ -309,3 +309,19 @@ Greg confirms operators are not reading existing documentation, in significant p
 - Cross-project coordination: the static internal web/README crawler can remain a documentation index. The Setup app must own contextual Help at its own actions; confirm integration contract with the separate internal-web workstream before implementing.
 
 **Status:** operator requirement/documentation correction only. Contextual help controls have **not** been implemented or accepted in PR #394; review separate UI ownership and #122 gates before scope/integration changes.
+
+
+## Bounded Report Work usability and Randy acceptance gate — October 15
+
+Greg's investigation found a separate but causal reporting usability defect. Existing **About** copy is too technical and little read. Scattered question-mark (`?`) help controls have not been consistently implemented. The **Hours, Minutes, actual Crew size** inputs visually blend into their surroundings, and operators miss the Minutes input. Failure to report needs both a follow-up prompt **and clear corrective instructions**. This is a bounded improvement to the existing #175/#132 Report Work UI, not authorization for an application-wide redesign.
+
+**Implementation requirements (preserve report commands/history):**
+- Make actual Crew size, elapsed Hours and **Minutes**, cumulative % complete and actual work date visibly distinct, labeled at the field, and ordered in plain language. Minutes must not appear as an inconspicuous secondary control. Check tablet layout, focus order, labels and input affordances; do not change persistence units or silently default Minutes to zero when omitted.
+- Show short `?` contextual instructions at key controls using a **consistent visual, keyboard and touchscreen pattern**. About remains optional overview, never prerequisite for correctly entering a report. Use the controlled Perform and Report Setup Work SOP as the reference for actual steps.
+- Validate required inputs with **specific field-level correction messages**, retaining entered values and showing exactly what needs attention rather than a generic submission error. Do not force a 100% complete report or invent time/crew numbers.
+- In historical missing-report notifications, link to the exact protected occurrence and a short Report Work walkthrough; Manager contact instruction for a workday when no work occurred. Do not auto-clear missing history because an annual task was later marked complete.
+- Preserve existing supported historical Report Work/Correct report split, no duplicate reports, authorization, actual-work-date semantics and #122 scheduling handoff.
+
+**Operator acceptance — Randy as suggested first-time usability tester:** Present a realistic historical missing-report example, a partial task requiring Minutes, a 100%-complete task, and a no-work/incorrect-report situation. Without coaching, Randy should be able to find the exact assignment, enter actual date, crew size, Hours **and Minutes**, percentage and what remains, save, and verify Progress history. Confirm that he can find help at the point of need and distinguish when to ask a Manager instead of saving invented data. Record each stumbling point as an acceptance finding. Greg's proposed heuristic “if Randy understands it, others should” is a practical pilot gate, not a claim of universal accessibility; subsequently verify on the real field tablet and with intended operators.
+
+**Status:** engineering requirement and acceptance gate, not a tested correction. #175/#132 own the reporting surface; #205 consumes/reporting accountability, #122 owns integration. PR #394 must not silently broaden into a redesign; coordinate a bounded reporting UI candidate and reconcile shared changes before release.
