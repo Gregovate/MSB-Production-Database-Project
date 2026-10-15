@@ -214,6 +214,14 @@ Server Management PR #76 made the current #395 allocation durable: `8898` is the
 
 No Production identity or application service is changed by this review, and Don Martens remains the untouched final Production first-login fixture.
 
+### #395 Reusable preview engineering/test checkpoint
+
+The reusable `PeopleIdentityBootstrap` profile is now implemented on the existing Setup acceptance launcher. `dcc8f25f...` remains the **only disposable-accepted People runtime**; later changes are tooling/documentation. On Greg's Windows desktop at tooling SHA `01606de3...`, the profile contract tests returned **11 passed** and the complete `Setup/Application` suite returned **769 passed, 5 skipped**.
+
+The first attempt at local `bash -n` **did not execute** because `bash` was not on the PowerShell PATH. The preview server script's separate `py_compile` write-permission problem was corrected by in-memory syntax compilation under the `fieldwiring` account in tooling commit `2859e643...`. Bash syntax validation, PowerShell parser validation, and integrated operator browser review at registered port 8898 remain **pending**. Do not run the discarded People-specific wrapper or consume Don's browser fixture.
+
+**Durable detailed evidence, authoritative source pins, governing Server Management disposable/browser runbooks, and next commands/gates:** [#395 People Identity Bootstrap acceptance and reusable-preview checkpoint](../../../../../People/Acceptance/People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md). This engineering README is the navigation/handoff, not a competing runbook.
+
 ## Accepted People Manager Behavior
 
 The accepted contact/identity behavior includes:
