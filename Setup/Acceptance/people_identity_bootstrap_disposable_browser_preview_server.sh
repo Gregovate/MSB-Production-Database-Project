@@ -14,6 +14,7 @@ PREVIEW_EMAIL=""
 EXPECTED_VERSION=""
 BACKBONE_APPS_SHA=""
 BACKBONE_APPS_BLOB=""
+ALLOW_CONCURRENT_PRODUCTION_WRITES="false"
 
 while IFS=$'\t' read -r kind value extra; do
     [[ -z "$kind" ]] && continue
@@ -27,6 +28,7 @@ while IFS=$'\t' read -r kind value extra; do
         expected_version) EXPECTED_VERSION="$value" ;;
         external_apps_sha) BACKBONE_APPS_SHA="$value" ;;
         external_apps_blob) BACKBONE_APPS_BLOB="$value" ;;
+        allow_concurrent_production_writes) ALLOW_CONCURRENT_PRODUCTION_WRITES="$value" ;;
         preview_profile) [[ "$value" == "PeopleIdentityBootstrap" ]] || { echo "FAIL: wrong preview profile: $value"; exit 3; } ;;
         *) echo "FAIL: unsupported manifest key for PeopleIdentityBootstrap profile: $kind"; exit 3 ;;
     esac
@@ -39,6 +41,7 @@ done < "$MANIFEST"
 : "${EXPECTED_VERSION:?manifest expected_version is required}"
 : "${BACKBONE_APPS_SHA:?manifest external_apps_sha is required}"
 : "${BACKBONE_APPS_BLOB:?manifest external_apps_blob is required}"
+[[ "$ALLOW_CONCURRENT_PRODUCTION_WRITES" == "false" ]] || { echo "FAIL: PeopleIdentityBootstrap preview does not permit concurrent Production writes"; exit 3; }
 
 REPO_ROOT="/opt/fieldwiring"
 PRODUCTION_PYTHON="/opt/fieldwiring/.venv/bin/python"
