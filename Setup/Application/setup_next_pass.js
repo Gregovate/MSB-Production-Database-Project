@@ -1487,7 +1487,8 @@ function setup205DeadlineKpiModel(board, year, today = nextSetupLocalDate()) {
   return {tasks, incomplete, complete, deferred, actionable, blocked, notReady,
     scheduled, needsRescheduling, needsFirstScheduling, overdue, lateNoReportTaskCount, partial,
     deadline, daysLeft, required, potentialWorkdays, scheduledWorkdays, requiredPerPotentialWorkday,
-    recent, recentNonSunday, recentPotentialWorkdays, workdayPace, pace, undated, futureDated, reliable, projectedFinish};
+    recent, recentNonSunday, recentSunday: recent - recentNonSunday,
+    recentPotentialWorkdays, workdayPace, pace, undated, futureDated, reliable, projectedFinish};
 }
 
 function setup205DeadlineKpiHtml(board, year) {
@@ -1532,7 +1533,7 @@ function setup205DeadlineKpiHtml(board, year) {
     '<span>Last 7 days: <strong>' + k.recent + '</strong> dated completions · <strong>' + n(k.pace) + '/day</strong></span>' +
     '<span>Required calendar pace: <strong>' + n(k.required) + '/day</strong></span>' +
     '<span>Required potential workday pace: <strong>' + n(k.requiredPerPotentialWorkday) + '/day</strong></span>' +
-    '<span>Recent non-Sunday pace: <strong>' + n(k.workdayPace) + '/day</strong></span>' +
+    '<span>Recent non-Sunday pace: <strong>' + n(k.workdayPace) + '/day</strong> (' + k.recentSunday + ' Sunday completions separately)</span>' +
     '<span>Deadline: <strong>' + safe(fmt(k.deadline)) + '</strong> (' + safe(k.daysLeft == null ? '?' : k.daysLeft) + ' calendar days · ' +
     k.potentialWorkdays + ' possible non-Sunday workdays · ' + k.scheduledWorkdays + ' currently scheduled dates)</span>' +
     '<span>Projected finish: <strong>' + safe(k.reliable ? fmt(k.projectedFinish) : 'INSUFFICIENT DATA') + '</strong></span>' +
@@ -1546,8 +1547,8 @@ function setup205DeadlineKpiHtml(board, year) {
     safe(k.partial.length) + ' unfinished tasks show partial progress. Captain filters do not change this summary.</div>' +
     '<details style="margin-top:8px"><summary>Blocked / NOT READY (' + k.blocked.length +
     ') — task and reason</summary><ul>' + (blockerRows || '<li>No recorded readiness blockers</li>') + '</ul></details>' +
-    '<details><summary>Past scheduled assignments with no report (' + k.overdue.length +
-    ')</summary><ul>' + (lateRows || '<li>None</li>') + '</ul></details>' +
+    (appState.access?.can_manage_setup ? '<details><summary>Past scheduled assignments with no report (' + k.overdue.length +
+    ')</summary><ul>' + (lateRows || '<li>None</li>') + '</ul></details>' : '') +
     details('Scheduled', k.scheduled, 'Open the Scheduling Board to view assigned dates and crews.') +
     details('Needs rescheduling', k.needsRescheduling, 'Started work with no active continuation.') +
     details('Needs first scheduling', k.needsFirstScheduling, 'Unstarted work with no active future assignment; some tasks may be blocked.') +
