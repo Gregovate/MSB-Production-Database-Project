@@ -119,6 +119,17 @@ def test_preview_entry_mounts_exact_people_candidate_under_apps_without_analytic
     assert 'run_simple(HOST, PORT, application, use_reloader=False)' in ENTRY
 
 
+
+def test_preview_entry_syntax_gate_works_with_read_only_uploaded_bundle() -> None:
+    # The SSH upload is owned by the operator; fieldwiring can read, not write.
+    # Running py_compile would attempt to create __pycache__ and fail preflight.
+    assert "chmod 755 '$remoteBundle'" in LAUNCHER
+    assert "chmod 644 '$remoteEntry'" in LAUNCHER
+    assert ' -m py_compile "$PREVIEW_ENTRY"' not in SERVER
+    assert 'sudo -u fieldwiring -H "$PRODUCTION_PYTHON" -c' in SERVER
+    assert 'compile(source.read_bytes(), str(source), "exec")' in SERVER
+
+
 def test_people_profile_does_not_touch_don_fixture() -> None:
     combined = LAUNCHER + SERVER + ENTRY
     assert "dmartens@sheboyganlights.org" not in combined
