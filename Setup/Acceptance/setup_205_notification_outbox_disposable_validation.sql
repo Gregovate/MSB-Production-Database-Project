@@ -16,7 +16,15 @@ BEGIN
     RAISE EXCEPTION 'Setup notification migration 074 is incomplete';
   END IF;
   IF has_table_privilege('fieldwiring_app','public.setup_notification_outbox','INSERT')
-     OR has_table_privilege('PUBLIC','public.setup_notification_outbox','INSERT')
+     OR EXISTS (
+        SELECT 1
+        FROM pg_class cl
+        CROSS JOIN LATERAL aclexplode(
+          coalesce(cl.relacl, acldefault('r', cl.relowner))
+        ) ax
+        WHERE cl.oid='public.setup_notification_outbox'::regclass
+          AND ax.grantee=0 AND ax.privilege_type='INSERT'
+     )
   THEN
     RAISE EXCEPTION 'Setup browser/Public database role can insert delivery requests';
   END IF;
