@@ -406,6 +406,35 @@ Backbone source is merged but the approved, allowlisted source-to-live **Apps pa
 
 **Next governed engineering step:** reconcile exact Production live checkout, controller status, service environment credential presence (no secrets displayed), migration 006 absence/presence, and Backbone static publication tooling using read-only checks; prepare/review and contract-test the #395 installation tooling on a separate branch from merged main. No additional disposable Apps browser test is required solely because the release runner is new. Only after those gates can the already authorized operator execute an approved bounded Production migration window. Don's real first-login fixture remains unconsumed until final live acceptance.
 
+## Production authorization — read-only readiness gate staged (October 15, 2026)
+
+Greg explicitly approved Production for Issue #395 after [PR #401](https://github.com/Gregovate/MSB-Production-Database-Project/pull/401) and Backbone [PR #25](https://github.com/Gregovate/MSB-Internal-Web-Backbone/pull/25) merged and after the disposable Apps+People browser review returned PASS. **This is operator Production authorization, not proof of installation.**
+
+The exact merged source pins currently authorized for release reconnaissance are:
+
+```text
+Production Database main  6122d7923c2a07eb6b278225cf71cafc4704d349
+People runtime            dcc8f25f07a74e19ce3de3aae2d9d137b5411815
+People version            V0.2.3
+People migration          People/Database/006_create_silent_identity_bootstrap_contract.sql
+Backbone Apps main        91674b254d204235366f7d9a17f8395ae98149af
+Backbone Apps blob        9d340e5e944a7cd1db223b539066eb14ddb1c292
+```
+
+Before any maintenance or migration, the **new read-only preflight**, staged separately from merged Production source, must be run and its compact receipt inspected:
+
+```text
+People/Acceptance/run_people_395_production_readonly_preflight.ps1
+People/Acceptance/people_395_production_readonly_preflight.sh
+People/Acceptance/test_people_395_production_readonly_preflight_contract.py
+```
+
+This runner follows the Server Management Production Database Change Deployment Runbook and Issue #37 maintenance state query contract; it **does not switch maintenance, apply SQL, restart services, advance a checkout, create Directus users, or publish Apps**. It verifies server/controller ONLINE state, V0.2.2 live People service, clean previously accepted Production HEAD, current `origin/main` equality with the approved SHA, #385 function and baseline Browser role, migration 006 still absent, the real Don fixture still unconsumed, Production identity fingerprints, and protected `/etc/msb-people/people.env` identity-bootstrap token presence and non-mutating Directus `/users/me` authentication. The token must never be printed, passed as a command argument, written to Git or surfaced in the terminal report. Token authentication does **not** yet prove permission to set provider fields and does not remove the dedicated-credential review requirement.
+
+The unique uploaded preflight bundle is removed; the `/tmp/MSB_People395_Production_Readonly_Preflight_*.txt` report is preserved. The runner prints a bounded `BEGIN #395 RESULT` / `END #395 RESULT` footer for Greg to paste without pages of logs. The workstation wrapper enforces source checkout and runs its focused contract tests before server contact; server script syntax is checked via `bash -n`.
+
+**STOP CONDITIONS:** any mismatch in live checkout/version, controller ONLINE/unfenced state, #385/migration objects, Don preservation, exact remote main, or missing/invalid protected Directus token stops the work before database mutation. This is not a substitute for the still-required reviewed migration 006 production deployment runner and validated rollback/commit containment or the Backbone controlled Apps publishing procedure. No Production migration or static publication receipt exists yet. Continue from the preflight result and the governing runbooks, not from ad hoc SQL or #385's migration-005 installer.
+
 ## Disposition
 
 ```text
