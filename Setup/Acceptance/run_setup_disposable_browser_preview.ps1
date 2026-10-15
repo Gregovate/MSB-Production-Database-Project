@@ -225,15 +225,30 @@ try {
     $runnerText = $runnerText.Replace("`r`n", "`n").Replace("`r", "`n")
     [System.IO.File]::WriteAllText($localRunner, $runnerText, $utf8NoBom)
 
+    if ($null -ne $profileEntryScript) {
+        $profileEntryText = [System.IO.File]::ReadAllText($profileEntryScript)
+        $profileEntryText = $profileEntryText.Replace("`r`n", "`n").Replace("`r", "`n")
+        [System.IO.File]::WriteAllText(
+            (Join-Path $localBundle 'people_identity_bootstrap_disposable_browser_preview_entry.py'),
+            $profileEntryText,
+            $utf8NoBom
+        )
+    }
+
     $manifestLines = @(
         "candidate_sha`t$CandidateSha",
         "target_ref`t$TargetRef",
+        "preview_profile`t$PreviewProfile",
         "preview_port`t$PreviewPort",
         "preview_email`t$PreviewEmail",
         "allow_concurrent_production_writes`t$($AllowConcurrentProductionWrites.IsPresent.ToString().ToLowerInvariant())"
     )
     if (-not [string]::IsNullOrWhiteSpace($ExpectedVersion)) {
         $manifestLines += "expected_version`t$ExpectedVersion"
+    }
+    if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+        $manifestLines += "external_apps_sha`t$ExternalAppsSha"
+        $manifestLines += "external_apps_blob`t$ExternalAppsBlob"
     }
     foreach ($path in $MigrationPaths) {
         $manifestLines += "migration`t$path"
@@ -254,6 +269,7 @@ try {
     Write-Host "Server:          $Server"
     Write-Host "Candidate SHA:   $CandidateSha"
     Write-Host "Tooling SHA:     $toolingHead"
+    Write-Host "Preview profile: $PreviewProfile"
     Write-Host "Target ref:      $TargetRef"
     Write-Host "Preview port:    $PreviewPort"
     Write-Host "Browser URL:     $browserUrl"
@@ -329,7 +345,7 @@ try {
     }
 
     Write-Host
-    Write-Host 'SETUP REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT'
+    Write-Host "$PreviewProfile REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT"
 }
 finally {
     Remove-Item -LiteralPath $localBundle -Recurse -Force -ErrorAction SilentlyContinue
