@@ -536,3 +536,13 @@ New source work after the 18:20 checkpoint:
 Evidence to date: connector V8 JavaScript parse and executable shared classifier/Action Center regression fixture PASS, focused static Report Work/source checks PASS. No local full Python suite, remote GitHub CI PASS, Production-clone reconciliation, disposable acceptance, browser `BROWSER REVIEW READY`, operator review, or `CLEAN EXIT` is claimed. A PR-scoped full Setup and FieldWiring GitHub Actions workflow has been committed; record its actual result separately.
 
 **Open release gates:** (1) integrate a protected Setup-specific Directus mail trigger and durable idempotent send/delivery/error audit using verified current runtime/config; (2) dynamic eligible Manager/Captain recipient resolution and exact-assignment links plus authorized self-email/test send; (3) compare live-clone 2026 `effective_complete` and completion `performed_on` row IDs, the observed 12/13 continuation discrepancy, eight no-report occurrences and independent hard/soft readiness; (4) exact final version/client asset pins/footer, full Setup/FieldWiring regression; (5) current-Production one-clone browser review on 8898 with CLEAN EXIT and Greg acceptance. **Production remains unchanged by this source work.**
+
+### Integrated source regression outcome — October 15, 18:40 CDT
+
+The first exact PR GitHub CI run #38824813269 failed with five hard-coded historical source-contract assertions (continuation counted `unworked` instead of current/future, and legacy day labels). No application exception was identified from these five. After updating the owning assertions to the approved #205 semantics, the next integrated GitHub Actions run #38824971449 on source commit `12ddd455e56bda4cad2aabc9a1a2925d66952896` passed:
+
+- full Setup/Application suite **779 passed**;
+- full FieldWiring/Application suite **202 passed**; and
+- executable Node shared #205 KPI classifier, provenance and Manager Action Center tests **PASS**.
+
+This is CI source regression only, not a PostgreSQL-clone/Production-browser test. A passing merge-ref CI checkout does not assert Production has been upgraded. The draft's browser/runtime version remains the previously accepted V0.3.65 until a final candidate is pinned and tested. The 04:00 daily email dispatcher, self-send, actual delivery audit and recipient eligibility are **not** implemented/accepted. Do not check any Production readiness box.
