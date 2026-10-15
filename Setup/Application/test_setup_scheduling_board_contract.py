@@ -430,7 +430,7 @@ def test_205_schedulable_tasks_print_is_separate_blocking_on_report() -> None:
     assert "function board205SchedulableTasksForReport()" in ui
     assert "!board205HasHardBlock(task)" in ui
     assert "board205FinderStatusFamily(task) === 'READY'" in ui
-    assert "Number(task.unworked_assignment_count || 0) === 0" in ui
+    assert "Number(task.future_assignment_count || 0) === 0" in ui
     assert "String(task.task_action_type || '').toUpperCase() !== 'GATE'" in ui
     assert "board205FinderCompare(a, b, 'STAGE')" in ui
     assert "Hard prerequisite blockers excluded" in ui
@@ -459,8 +459,8 @@ def test_205_schedule_command_bar_preserves_board_height_and_controls() -> None:
     assert "setup-board205-dispatch-controls" in ui
     assert "+ Add Work Days" in ui
     assert "Find scheduled task" in ui
-    assert "> Unfinished</label>" in ui
-    assert "> Completed</label>" in ui
+    assert "> Days needing reports</label>" in ui
+    assert "> Fully reported days</label>" in ui
     assert "> Empty</label>" in ui
     assert "setup-board205-selection-count" in ui
     assert "Print Schedule" in ui
@@ -716,7 +716,7 @@ def test_205_browser_fixture_preserves_real_readiness_state() -> None:
 
 def test_205_scheduled_work_uses_scheduled_bucket_even_when_readiness_is_blocked() -> None:
     repo = read_app("setup_scheduling_board_repository.py")
-    scheduled = repo.index("coalesce(sched.unworked_assignment_count, 0) > 0")
+    scheduled = repo.index("coalesce(sched.future_assignment_count, 0) > 0")
     blocked_readiness = repo.index("st.annual_readiness_state = 'NOT_READY'")
     blocked_prereq = repo.index("coalesce(dep.prerequisites_complete, true) IS NOT TRUE")
     assert scheduled < blocked_readiness
@@ -731,12 +731,12 @@ def test_205_rolling_board_filters_days_by_operational_state() -> None:
     assert "function board205DayViewState(day)" in ui
     assert "if (!assignments.length) return 'EMPTY';" in ui
     assert "return assignments.every(nextAssignmentReported) ? 'COMPLETED' : 'UNFINISHED';" in ui
-    assert "> Completed</label>" in ui
+    assert "> Fully reported days</label>" in ui
     assert "cancelled-day" in ui
     assert 'id="setup-board205-show-unfinished-days" type="checkbox" checked' in ui
     assert 'id="setup-board205-show-completed-days" type="checkbox" checked' in ui
     assert 'id="setup-board205-show-empty-days" type="checkbox"' in ui
-    assert "> Unfinished</label>" in ui
+    assert "> Days needing reports</label>" in ui
     assert "if (showEmptyDays) showEmptyDays.checked = true;" in ui
     assert "setup-board205-show-history" not in ui
     assert "day-band-odd" in ui
