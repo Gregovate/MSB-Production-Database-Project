@@ -15,8 +15,10 @@ run_people_395_service_scope_probe() {
          (id,name,icon,description,admin_access,app_access)
          VALUES (gen_random_uuid(),'MSB #395 Google Browser create only','vpn_key',
              'DISPOSABLE ONLY',false,false) RETURNING id;")"
-    psql_q -c "INSERT INTO public.directus_access (role,policy)
-         VALUES ('$role_id'::uuid,'$policy_id'::uuid);" >/dev/null
+    # Directus 11.17.1: directus_access.id is NOT NULL without a usable
+    # default in the current Production clone. Supply a disposable UUID.
+    psql_q -c "INSERT INTO public.directus_access (id,role,policy)
+         VALUES (gen_random_uuid(),'$role_id'::uuid,'$policy_id'::uuid);" >/dev/null
     psql_q -c "INSERT INTO public.directus_permissions
          (policy,collection,action,permissions,validation,presets,fields)
          VALUES ('$policy_id'::uuid,'directus_users','create',NULL,
