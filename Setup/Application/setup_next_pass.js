@@ -1436,7 +1436,7 @@ function setup205DeadlineKpiModel(board, year, today = nextSetupLocalDate()) {
     const completedAt = t.actual_completed_at || (t.linked_work_order_gate ? t.linked_work_order_completed_at : null);
     if (!completedAt) { undated++; continue; }
     const date = String(completedAt).slice(0, 10);
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)) { undated++; continue; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { undated++; continue; }
     if (date >= windowStart && date <= today) recent++;
   }
   const pace = recent / 7;
