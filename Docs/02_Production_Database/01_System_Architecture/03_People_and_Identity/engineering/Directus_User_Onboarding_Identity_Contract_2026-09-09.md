@@ -19,6 +19,21 @@ No Production flow, database row, role, or configuration was changed while gathe
 
 The flow was inspected operation-by-operation in the Production Directus UI. A normal export mechanism was not available from that interface, so the operation configuration was captured manually from the live flow screens.
 
+## Current UI/UX Boundary — 2026-10-15
+
+The Production user-facing application origin is `https://my.sheboyganlights.org/`.
+
+Directus originally served a larger portion of the operator UI on `db.sheboyganlights.org`, but MSB moved operational UI/UX into task-focused applications under `my.sheboyganlights.org` because Directus Data Studio was not suitable for the required operator experience.
+
+Directus remains important behind the scenes for:
+
+- Google-backed Directus identity creation/authentication;
+- Directus role/policy authorization;
+- administrator/backend user-role maintenance;
+- selected Directus-owned backend/administrative functions.
+
+Therefore `db.sheboyganlights.org` is not the normal application destination for human operators. Any #395 first-login/bootstrap solution must return the user to `my.sheboyganlights.org` and must not reintroduce Directus Data Studio as the ordinary user interface.
+
 ## Live Directus Google SSO Configuration — 2026-10-15
 
 Read-only inspection of the running `msb-directus` container confirmed:
