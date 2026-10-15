@@ -705,3 +705,12 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* #132: protect actual work date from being overlooked during late reporting. */
+.next-report-work-form .next-report-work-grid .next-work-date-field {
+  border-color: #a65a16;
+  background: #fff7e8;
+}
+.next-report-work-form .next-report-work-grid .next-work-date-field input {
+  border-color: #a65a16;
+}
