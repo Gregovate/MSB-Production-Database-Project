@@ -455,6 +455,14 @@ The full earlier preflight sequence reached the credential step, which means its
 
 The next controlled action is non-secret **read-only credential failure classification** under the existing Server Management People runtime authority. Any diagnostic must display only a bounded reason category and HTTP status if applicable—never the bearer token, environment file content, service-account password or raw response. Reconcile the actual failure before governed provisioning. Maintain the current Production ONLINE state. The older #385 installer still cannot be reused for migration 006.
 
+### Credential failure classification correction — still read-only
+
+The initial approved preflight intentionally reported one generic `Credential: STOP: NOT READY` outcome for all credential problems. That preserved the secret but could not distinguish whether the environment file or token was absent, permissions were unsafe, authentication failed, the Directus listener was unavailable, or the token owner was inactive.
+
+The reusable **read-only** `people_395_production_readonly_preflight.sh` credential gate now reports exactly one bounded failure code in its existing `Credential:` footer field: `ENV_FILE_MISSING`, `ENV_FILE_PERMISSIONS`, `ENV_FILE_UNREADABLE`, `TOKEN_NOT_CONFIGURED`, `DIRECTUS_URL_MISMATCH`, `DIRECTUS_AUTH_HTTP_401`, `DIRECTUS_AUTH_HTTP_403`, other `DIRECTUS_HTTP_<status>`, `DIRECTUS_UNREACHABLE`, `DIRECTUS_RESPONSE_INVALID`, or `DIRECTUS_USER_INACTIVE`. It never prints credential contents, Directus user ID/email, response JSON, or the environment file. The check remains a read-only authenticated GET to `/users/me` and cannot create/update a Directus identity.
+
+**Next gate:** refresh the current #395 release-readiness feature branch, run its focused read-only-tool contract test and existing foreground preflight, then paste **only the final result block**. Do not replay the migration, add arbitrary static tokens or switch #37 maintenance merely because the credential failed. A PASS of the Directus GET does not prove administrator-level provider-field mutation rights; that will require the separately reviewed release credential contract. No Production mutation has been performed by this correction.
+
 ## Disposition
 
 ```text
