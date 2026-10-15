@@ -13,7 +13,7 @@ def test_report_work_explicit_inputs_and_minutes():
     end = js.index("${nextCorrectionIntakeMarkup", start)
     form = js[start:end]
     for label in (
-        "Work completed on",
+        "Date work actually happened",
         "Actual crew size",
         "Hours worked",
         "Minutes worked",
