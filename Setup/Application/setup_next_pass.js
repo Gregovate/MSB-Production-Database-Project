@@ -1553,7 +1553,141 @@ function setup205DeadlineKpiHtml(board, year) {
     details('NOT READY', k.notReady, 'Readiness is separate from hard prerequisites.') +
     details('Partially reported', k.partial, 'Reported work below 100%; still unfinished.') +
     details('Deferred', k.deferred, 'Excluded from required rate, but included in remaining scope.') +
+    setup205ActionCenterHtml(board, k) +
     '</section>';
+}
+
+
+// Manager-only #205 Action Center: one source classifier shared by both pages.
+// No email or history writes happen from this read-only worklist.
+function setup205ActionCenterHtml(board, model) {
+  if (!appState.access?.can_manage_setup) return '';
+  const k = model || setup205DeadlineKpiModel(board, appState.seasonYear);
+  const safe = value => escapeHtml(String(value ?? ''));
+  const taskById = new Map(k.tasks.map(t => [Number(t.setup_session_task_id), t]));
+  const crewById = new Map((board.crews || []).map(c => [Number(c.setup_work_day_crew_id), c]));
+  const dayById = new Map((board.work_days || []).map(d => [Number(d.setup_work_day_id), d]));
+  const today = nextSetupLocalDate();
+  const dayPlus = n => new Date(Date.parse(today + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+  const imminentThrough = dayPlus(7);
+  const context = t => [
+    t?.stage_name || t?.stage_key || 'Site-wide',
+    t?.scene_name || null
+  ].filter(Boolean).join(' / ');
+  const assignmentLabel = a => {
+    const t = taskById.get(Number(a.setup_session_task_id));
+    const d = dayById.get(Number(a.setup_work_day_id));
+    const c = crewById.get(Number(a.setup_work_day_crew_id));
+    const shift = a.shift_code === 'MORNING' ? 'AM' : a.shift_code === 'AFTERNOON' ? 'PM' : 'All Day';
+    return '<strong>' + safe(t?.task_name || a.task_name || 'Task') + '</strong> · ' +
+      safe(context(t)) + ' · Setup Day ' + safe(d?.setup_day_number ?? a.setup_day_number ?? '—') +
+      ' / ' + safe(a.work_date || d?.work_date || 'unknown date') + ' · Crew ' +
+      safe(c?.crew_code || a.crew_lane || '—') + ' ' + safe(shift) +
+      ' · ' + safe(c?.captain_display_name || 'Captain TBD');
+  };
+  const button = (action, id, label) => '<button type="button" class="small secondary setup205-action" data-205-action="' +
+    action + '" data-id="' + Number(id) + '">' + safe(label) + '</button>';
+  const section = (title, rows, explanatory) => '<details class="setup205-action-group"><summary>' +
+    safe(title) + ' (' + rows.length + ')</summary><p class="muted">' + safe(explanatory) +
+    '</p><ul>' + (rows.length ? rows.map(x => '<li>' + x + '</li>').join('') : '<li>None</li>') +
+    '</ul></details>';
+  const missed = k.overdue.map(a => '<span>' + assignmentLabel(a) +
+    ' — No matched report for this original occurrence. ' +
+    button('report',a.setup_work_day_task_id,'Review original / Report Work') + '</span>');
+  const continuations = k.needsRescheduling.map(t => '<strong>' + safe(t.task_name) +
+    '</strong> · ' + safe(context(t)) + ' · ' + safe(t.percent_complete ?? 0) +
+    '% reported; no current/future continuation. ' +
+    button('schedule',t.setup_session_task_id,'Plan continuation'));
+  const imminent = (board.assignments || []).filter(a => {
+    const d = dayById.get(Number(a.setup_work_day_id));
+    const date = a.work_date || d?.work_date;
+    const t = taskById.get(Number(a.setup_session_task_id));
+    return t && !t.effective_complete && date && date >= today && date <= imminentThrough &&
+      String(d?.day_status || a.day_status || '').toUpperCase() !== 'CANCELLED' &&
+      (t.prerequisites_complete === false ||
+       (t.linked_work_order_gate && t.linked_work_order_id && !t.linked_work_order_completed_at) ||
+       t.readiness_state === 'NOT_READY');
+  }).map(a => {
+    const t = taskById.get(Number(a.setup_session_task_id));
+    const reasons = [
+      ...(t.prerequisites_complete === false ? ['hard predecessor'] : []),
+      ...(t.linked_work_order_gate && t.linked_work_order_id && !t.linked_work_order_completed_at ? ['open Work Order gate'] : []),
+      ...(t.readiness_state === 'NOT_READY' ? ['NOT READY: ' + (t.readiness_note || 'reason not documented')] : [])
+    ];
+    return assignmentLabel(a) + ' — ' + safe(reasons.join('; ')) +
+      ' ' + button('planning',t.setup_session_task_id,'Review readiness');
+  });
+  const captainTbd = (board.assignments || []).filter(a => {
+    const d = dayById.get(Number(a.setup_work_day_id));
+    return String(d?.day_status || a.day_status || '').toUpperCase() !== 'CANCELLED' &&
+      !crewById.get(Number(a.setup_work_day_crew_id))?.captain_person_id;
+  }).map(a => assignmentLabel(a) + ' ' +
+    button('day',a.setup_work_day_id,'Assign / review Captain'));
+  return '<section class="setup205-action-center" aria-label="Manager Setup Action Center" ' +
+    'style="border-top:2px solid #647888;margin-top:12px;padding-top:12px">' +
+    '<h3>Manager Setup Action Center</h3>' +
+    '<p class="muted">Historical reporting and schedule readiness require separate decisions. ' +
+    'Replanning never clears an earlier missing report. Dates are America/Chicago. ' +
+    'Email delivery is not activated; this view does not send messages.</p>' +
+    section('Past occurrences awaiting reports',missed,'Includes unresolved older work periods, even if the annual task later completed or moved.') +
+    section('Incomplete tasks needing continuation',continuations,'A reported partial work period is not the same as a future assignment.') +
+    section('Upcoming scheduled readiness exceptions (7 days)',imminent,'Hard prerequisite/Work Order gates and independent NOT READY conditions can overlap.') +
+    section('Scheduled assignments without Captain',captainTbd,'A Captain TBD or unverified organizational mailbox must be followed up by a Manager.') +
+    '</section>';
+}
+
+// The same action buttons work on Schedule and Perform Work without inventing
+// unaccepted external URL parameters. All writes remain in existing guarded UI.
+function setup205WireActionCenter(root) {
+  if (!root || root.dataset.setup205ActionsInstalled === '1') return;
+  root.dataset.setup205ActionsInstalled = '1';
+  root.addEventListener('click', async event => {
+    const button = event.target.closest('.setup205-action[data-205-action]');
+    if (!button || !root.contains(button)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!appState.access?.can_manage_setup) return;
+    const id = Number(button.dataset.id);
+    if (!Number.isSafeInteger(id) || id < 1) return;
+    try {
+      if (button.dataset['205Action'] === 'report') {
+        if (await navigateSetupView('perform') === false) return;
+        // A Manager may see all Captains and historic reported occurrences.
+        setupNextState.performCaptainFilter = 'ALL';
+        setupNextState.performCaptainFilterTouched = true;
+        const showAll = document.getElementById('next-perform-show-completed');
+        if (showAll) showAll.checked = true;
+        renderNextExecution();
+        const details = [...document.querySelectorAll('#next-perform-list .next-perform-assignment')]
+          .find(node => Number(node.dataset.assignmentId) === id);
+        if (!details) throw new Error('Original assignment not visible. Verify the 2026 Session and refresh.');
+        const dayContent = details.closest('.next-perform-day-content');
+        if (dayContent?.hidden) {
+          dayContent.hidden = false;
+          const toggle = dayContent.closest('.next-perform-day')?.querySelector('.next-perform-toggle-complete-day');
+          if (toggle) toggle.setAttribute('aria-expanded','true');
+        }
+        details.open = true;
+        details.scrollIntoView({block:'center',behavior:'auto'});
+        await loadNextTaskExecution(details,false);
+        details.querySelector('.next-performed-on')?.focus();
+      } else if (button.dataset['205Action'] === 'schedule' ||
+                 button.dataset['205Action'] === 'planning') {
+        if (await navigateSetupView('schedule') === false) return;
+        if (button.dataset['205Action'] === 'schedule') {
+          board205OpenScheduleDialog({kind:'task',id});
+        } else {
+          board205OpenPlanningInfoDialog(id);
+        }
+      } else if (button.dataset['205Action'] === 'day') {
+        const d = (setupBoard205State.board.work_days || []).find(x => Number(x.setup_work_day_id) === id);
+        if (await navigateSetupView('schedule') === false) return;
+        if (d) board205FocusWorkDate(d.work_date);
+      }
+    } catch (error) {
+      setAlert(error.message || String(error),'error');
+    }
+  });
 }
 
 function renderNextExecution() {
@@ -1600,6 +1734,7 @@ function renderNextExecution() {
     assignments.some((assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id))
   );
 
+  setup205WireActionCenter(target);
   target.innerHTML = setup205DeadlineKpiHtml(board, appState.seasonYear) + nextLateWorkSummary(scopedAssignments, board) + (days.length ? days.map((day) => {
     const dayAssignments = assignments.filter(
       (assignment) => Number(assignment.setup_work_day_id) === Number(day.setup_work_day_id)
