@@ -1045,3 +1045,9 @@ training no writes and tablet layout; inspected screenshots and report/print
 regression PASS. Diff/JS/exact source UI date gate PASS. This does not substitute
 for current-Production-clone/audit/privilege/operator/tablet acceptance. Reusable
 8898 exact-candidate handoff is in the acceptance record.
+
+## 2026-10-15 launch debug intake — Container Locate operator workflow
+
+**Owner directive:** Greg spoke with Tom and reports additional problems using Container Locate / Record Location / Container Empty. This must be managed as a **separate #122 launch debug**, implemented and tested under existing **#88**, not absorbed into #205 KPI/Manager-email PR #394. The specific problems Tom found are **not yet described**; do not speculate, assume the current candidate is installed, or change movement data or business rules until observations and current Production identity are verified.
+
+**Next reconnaissance:** capture Tom's actual screen/scan sequence, the expected versus observed result, affected Containers, empty/partial/uncertain choices, connectivity/device and displayed app version where available. Compare installed Record Location behavior with existing #88 engineering/acceptance sources and the controlled movement/event model. Retain original events, source identities and operator audit. Derive an isolated debug correction and browser/tablet acceptance under #122; no Production changes authorized by this intake note.
