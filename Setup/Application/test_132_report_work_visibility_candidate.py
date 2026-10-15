@@ -34,3 +34,37 @@ def test_minutes_field_visibly_distinct_and_mobile_usable():
     assert ".next-report-work-form .next-report-work-grid .next-work-minutes-field" in css
     assert "min-height: 44px" in css
     assert "@media (max-width: 650px)" in css
+
+
+def test_actual_work_date_is_prominent_and_confirmed_before_submission():
+    js = (ROOT / "setup_next_pass.js").read_text(encoding="utf-8")
+    css = (ROOT / "setup_next_pass.css").read_text(encoding="utf-8")
+    start = js.index('<form class="next-completion-form next-report-work-form"')
+    end = js.index("${nextCorrectionIntakeMarkup", start)
+    form = js[start:end]
+    assert "Date work actually happened" in form
+    assert "next-work-date-field" in form
+    assert 'data-scheduled-date=' in form
+    assert "Scheduled:" in form
+    assert ".next-work-date-field" in css
+    begin = js.index("async function submitNextProgress(event)")
+    finish = js.index("const priorNextPopulateStageSelects", begin)
+    handler = js[begin:finish]
+    assert "Confirm the date you ACTUALLY worked" in handler
+    assert handler.index("if (!performedOn)") < handler.index("window.confirm(")
+    assert handler.index("if (percent < 100 && !note)") < handler.index("window.confirm(")
+    assert handler.index("window.confirm(") < handler.index("await api(")
+    assert "if (!window.confirm(" in handler
+    assert "performed_on: performedOn" in handler
+
+
+def test_manager_existing_report_correction_preserves_original_identity():
+    js = (ROOT / "setup_next_pass.js").read_text(encoding="utf-8")
+    start = js.index("async function submitNextProgressCorrection(event)")
+    end = js.index("async function loadNextTaskExecution", start)
+    correct = js[start:end]
+    assert "data-progress-id" in js
+    assert "const progressId = Number(form.dataset.progressId)" in correct
+    assert "performed_on: performedOn" in correct
+    assert "commandOptions('PATCH'" in correct
+    assert "Save Correction" in js
