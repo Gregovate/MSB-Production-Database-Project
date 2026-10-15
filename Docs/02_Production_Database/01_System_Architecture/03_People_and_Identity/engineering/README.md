@@ -193,6 +193,27 @@ People/Acceptance/People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md
 
 This is not Production deployment approval. The next gate is exact-candidate browser/application integration review through the `my.` Apps workflow and Backbone #24. Don Martens remains the preserved final Production acceptance fixture.
 
+## #395 Browser-Review Tooling Correction — 2026-10-15
+
+After the V0.2.3 runtime passed disposable acceptance, the first draft of browser-review tooling was rejected before execution because it used historical People preview port `8795` instead of the established reusable Production Database disposable-browser workflow.
+
+The current controlled path is:
+
+```text
+Setup/Acceptance/run_setup_disposable_browser_preview.ps1
+    -> PreviewProfile PeopleIdentityBootstrap
+    -> explicit PreviewPort 8898
+    -> exact accepted People runtime dcc8f25f...
+    -> exact Backbone Apps candidate SHA/blob
+    -> disposable PostgreSQL + disposable Directus 11.17.1
+    -> clone-only synthetic human
+    -> operator browser review
+```
+
+Server Management PR #76 made the current #395 allocation durable: `8898` is the reusable review port; `8795` is historical People preview evidence only.
+
+No Production identity or application service is changed by this review, and Don Martens remains the untouched final Production first-login fixture.
+
 ## Accepted People Manager Behavior
 
 The accepted contact/identity behavior includes:
