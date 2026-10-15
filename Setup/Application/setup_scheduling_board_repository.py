@@ -262,7 +262,7 @@ class SetupSchedulingBoardRepository:
                              AND st.linked_work_order_id IS NOT NULL
                              AND wo.date_completed IS NULL
                             THEN 'WAITING_ON_WORK_ORDER'
-                        WHEN coalesce(sched.unworked_assignment_count, 0) > 0
+                        WHEN coalesce(sched.future_assignment_count, 0) > 0
                             THEN 'SCHEDULED'
                         WHEN st.execution_status = 'IN_PROGRESS'
                              AND coalesce(sched.future_assignment_count, 0) = 0
