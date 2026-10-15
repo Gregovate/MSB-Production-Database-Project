@@ -256,7 +256,21 @@ ddbad35f55d027e3abf64b80cedaf813ffabfece  server bundled-asset verification
 ea708c1e4c3565ed98d0e081ed6f22db5b7142fb  evidence-precise test comments
 ```
 
-The accepted People runtime `dcc8f25f...` and Backbone source commit `1d7fa310...` are unchanged. **No local executable validation of these new tooling commits has yet been supplied.** Required next gate: PowerShell parser, Bash `-n`, profile regression, full `Setup/Application` regression; confirm exact tooling HEAD and clean checkout. Do **not** issue or run a new browser command before these checks PASS.
+The accepted People runtime `dcc8f25f...` and Backbone source commit `1d7fa310...` are unchanged. ### Repaired tooling — local regression evidence received
+
+Greg's Windows desktop PowerShell output for the repaired tooling confirms:
+
+```text
+python -m pytest -q -p no:cacheprovider Setup/Application
+    770 passed, 5 skipped in 5.13s
+    [100%]
+```
+
+The previously pasted terminal also reached `PASS: Bash server syntax` and `PASS: #395 local tooling validation completed` after executing the guarded regression/syntax sequence. The separate focused profile test's new numeric count was not included in the latest excerpt; do not fabricate it. The full Setup result includes the updated preview-profile test file.
+
+These are **local engineering checks**, not reusable 8898 browser acceptance. The corrected source-acquisition path has not yet been exercised in a new integrated preview. The exact accepted People runtime `dcc8f25f...`, pinned Backbone Apps commit/blob, and preserved Don fixture remain unchanged.
+
+Next controlled action: refresh the existing feature branch, confirm a clean matching tooling HEAD and port ownership, then run the same established reusable 8898 profile with exact accepted runtime/App pins under the Server Management browser-review runbook. Inspect readiness, operator browser result, cleanup and Production after-check before changing any Production deployment state.
 
 
 ## Disposition
