@@ -111,6 +111,25 @@ cleanup() {
 
     echo "Report retained at: $REPORT"
     echo "Exit status: $status"
+    if [[ "$SERVICE_SCOPE_PROBE" == "true" ]]; then
+        echo
+        echo "========== BEGIN #395 RESULT =========="
+        echo "Proof target:    #49 / #395 scoped Directus service credential"
+        echo "Accepted People: dcc8f25f07a74e19ce3de3aae2d9d137b5411815"
+        echo "Tooling SHA:     $CANDIDATE_SHA"
+        echo "Directus image:  $DIRECTUS_IMAGE"
+        if [[ "$status" == "0" ]]; then
+            echo "Disposable scope: PASS"
+        else
+            echo "Disposable scope: STOP (read first failing line in report)"
+        fi
+        echo "Production FP:   See Person/Directus before-after PASS/FAIL above"
+        echo "Production writes: NONE"
+        echo "Real Don fixture: NOT CONSUMED"
+        echo "Exit status:     $status"
+        echo "Report:          $REPORT"
+        echo "========== END #395 RESULT =========="
+    fi
     exit "$status"
 }
 trap cleanup EXIT HUP INT TERM
