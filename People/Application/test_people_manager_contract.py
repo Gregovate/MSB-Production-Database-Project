@@ -348,6 +348,72 @@ def test_people_health_exposes_identity_reconciliation_contract() -> None:
 
 
 def test_identity_bootstrap_database_contract_is_exact_person_fail_closed() -> None:
+    assert SQL_006.count("CREATE OR REPLACE FUNCTION ref.people_identity_bootstrap_status") == 1
+    assert SQL_006.count("CREATE OR REPLACE FUNCTION ref.people_identity_bootstrap_reconcile") == 1
+    assert "OR v_email !~ '^[^@]+@sheboyganlights[.]org    assert "CREATE OR REPLACE FUNCTION ref.people_identity_bootstrap_reconcile" in SQL_006
+    assert "lower(p.email) = v_email" in SQL_006
+    assert "'READY_CREATE'" in SQL_006
+    assert "'NO_PERSON'" in SQL_006
+    assert "'PERSON_INACTIVE'" in SQL_006
+    assert "'NONHUMAN_ACCOUNT'" in SQL_006
+    assert "'SAFE_EXISTING_LINK'" in SQL_006
+    assert "'EXISTING_OK'" in SQL_006
+    assert "ref.reconcile_directus_person_identity" in SQL_006
+    assert "INSERT INTO public.directus_users" not in SQL_006
+    assert "INSERT INTO ref.person" not in SQL_006
+
+
+def test_identity_bootstrap_keeps_people_app_off_directus_tables() -> None:
+    assert "REVOKE ALL ON TABLE public.directus_users FROM people_app" in SQL_006
+    assert "REVOKE ALL ON TABLE public.directus_roles FROM people_app" in SQL_006
+    assert "GRANT EXECUTE ON FUNCTION ref.people_identity_bootstrap_status(text) TO people_app" in SQL_006
+    assert "GRANT EXECUTE ON FUNCTION ref.people_identity_bootstrap_reconcile(text) TO people_app" in SQL_006
+
+
+def test_identity_bootstrap_api_is_server_side_and_browser_baseline_only() -> None:
+    assert 'PEOPLE_DIRECTUS_IDENTITY_TOKEN' in BOOTSTRAP_CLIENT
+    assert 'http://127.0.0.1:8055' in BOOTSTRAP_CLIENT
+    assert 'f"{self.base_url}/users"' in BOOTSTRAP_CLIENT
+    assert '"provider": "google"' in BOOTSTRAP_CLIENT
+    assert '"external_identifier": normalized_email' in BOOTSTRAP_CLIENT
+    assert '"role": normalized_role' in BOOTSTRAP_CLIENT
+    assert '"status": "active"' in BOOTSTRAP_CLIENT
+    client_section = BOOTSTRAP_CLIENT.split("class DirectusIdentityBootstrapClient", 1)[1]
+    assert "def create_google_browser_user" in client_section
+    assert 'method="POST"' in client_section
+    assert 'method="PATCH"' not in client_section
+    assert 'method="PUT"' not in client_section
+    assert 'method="DELETE"' not in client_section
+
+
+def test_identity_bootstrap_endpoint_requires_cloudflare_and_command_guard() -> None:
+    assert '@app.post("/api/identity/bootstrap")' in BACKEND
+    assert 'X-MSB-Identity-Bootstrap' in BACKEND
+    section = BACKEND.split('@app.post("/api/identity/bootstrap")', 1)[1].split('@app.get("/api/people")', 1)[0]
+    assert "require_identity_bootstrap_request()" in section
+    assert "cloudflare_operator_email()" in section
+    assert 'disposition != "READY_CREATE"' in section
+    assert 'str(final_status.get("role_name") or "") != "MSB Browser"' in section
+    assert "require_people_manager()" not in section
+
+
+def test_identity_bootstrap_existing_role_is_never_changed() -> None:
+    section = BACKEND.split('@app.post("/api/identity/bootstrap")', 1)[1].split('@app.get("/api/people")', 1)[0]
+    assert 'disposition == "EXISTING_OK"' in section
+    assert 'disposition == "SAFE_EXISTING_LINK"' in section
+    assert "create_google_browser_user" in section
+    assert "update" not in section.lower()
+
+
+def test_people_health_exposes_identity_bootstrap_contract_without_secret() -> None:
+    assert "ref.people_identity_bootstrap_status(text)" in BACKEND
+    assert "ref.people_identity_bootstrap_reconcile(text)" in BACKEND
+    assert "identity_bootstrap_contract=bool(" in BACKEND
+    assert "identity_bootstrap_configured=bool(" in BACKEND
+    assert "PEOPLE_DIRECTUS_IDENTITY_TOKEN" in BACKEND
+ THEN" in SQL_006
+    assert SQL_006.count("2026-10-15-silent-human-identity-bootstrap-v0.2.3-candidate") == 1
+    assert SQL_006.rstrip().endswith("current_user AS applied_by;")
     assert "CREATE OR REPLACE FUNCTION ref.people_identity_bootstrap_status" in SQL_006
     assert "CREATE OR REPLACE FUNCTION ref.people_identity_bootstrap_reconcile" in SQL_006
     assert "lower(p.email) = v_email" in SQL_006
