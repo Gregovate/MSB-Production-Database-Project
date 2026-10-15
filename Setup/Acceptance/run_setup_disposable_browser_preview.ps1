@@ -77,13 +77,37 @@ function Get-CandidateSetupBuildIdentity {
     }
 }
 
-$buildIdentity = Get-CandidateSetupBuildIdentity -Sha $CandidateSha
-if ($buildIdentity.Server -ne $buildIdentity.Client) {
-    throw "STOP before server contact: Setup client/server version mismatch in exact candidate $CandidateSha. Client $($buildIdentity.Client); server $($buildIdentity.Server)."
-}
+if ($PreviewProfile -eq 'Setup') {
+    $buildIdentity = Get-CandidateSetupBuildIdentity -Sha $CandidateSha
+    if ($buildIdentity.Server -ne $buildIdentity.Client) {
+        throw "STOP before server contact: Setup client/server version mismatch in exact candidate $CandidateSha. Client $($buildIdentity.Client); server $($buildIdentity.Server)."
+    }
 
-if ($ExpectedVersion -ne $buildIdentity.Server) {
-    throw "STOP before server contact: ExpectedVersion '$ExpectedVersion' does not match exact candidate Setup build '$($buildIdentity.Server)'."
+    if ($ExpectedVersion -ne $buildIdentity.Server) {
+        throw "STOP before server contact: ExpectedVersion '$ExpectedVersion' does not match exact candidate Setup build '$($buildIdentity.Server)'."
+    }
+}
+elseif ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+    $peopleBackend = ((& git -C $repo show "${CandidateSha}:People/Application/backend.py") | Out-String)
+    if ($LASTEXITCODE -ne 0) {
+        throw "STOP before server contact: exact candidate $CandidateSha is missing People/Application/backend.py."
+    }
+    $peopleVersionMatch = [regex]::Match($peopleBackend, 'APP_VERSION\s*=\s*"([^"]+)"')
+    if (-not $peopleVersionMatch.Success) {
+        throw "STOP before server contact: unable to resolve People APP_VERSION from exact candidate $CandidateSha."
+    }
+    if ($ExpectedVersion -ne $peopleVersionMatch.Groups[1].Value) {
+        throw "STOP before server contact: ExpectedVersion '$ExpectedVersion' does not match exact People candidate version '$($peopleVersionMatch.Groups[1].Value)'."
+    }
+    if ([string]::IsNullOrWhiteSpace($ExternalAppsSha) -or [string]::IsNullOrWhiteSpace($ExternalAppsBlob)) {
+        throw 'STOP before server contact: PeopleIdentityBootstrap preview requires ExternalAppsSha and ExternalAppsBlob.'
+    }
+    if ($PreviewPort -ne 8898) {
+        throw 'STOP before server contact: reusable disposable browser review must use registered port 8898.'
+    }
+    if ($PreviewEmail -eq 'gliebig@sheboyganlights.org') {
+        $PreviewEmail = "bootstrap-preview-$((Get-Date).ToString('yyyyMMddHHmmss'))@sheboyganlights.org"
+    }
 }
 
 if ($PreviewPort -lt 1024 -or $PreviewPort -gt 65535) {
