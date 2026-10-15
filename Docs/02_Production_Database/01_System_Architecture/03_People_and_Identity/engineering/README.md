@@ -123,6 +123,27 @@ Non-human identities are a separate valid class. A shared tablet or service acco
 
 Issue #395 owns replacement of the visible Directus first-login dependency. It must preserve the accepted #385 reconciliation contract and must not silently create a Person merely because an account authenticates.
 
+## Preserved #395 Production Acceptance Fixture
+
+Don Martens is currently the clean real-world first-login fixture for #395.
+
+```text
+browser/device               office / print-server PC, Google Chrome
+human                        Don Martens
+email                        dmartens@sheboyganlights.org
+Cloudflare / my. login       completed successfully
+db.sheboyganlights.org       never visited by Don
+Directus Google first-login  never completed
+matching Directus user       NONE
+ref.person.person_id         18
+Person directus_user_id      NULL
+current browser state        original Setup authorization error remains open
+```
+
+Preserve this state until the #395 candidate has passed disposable/pre-Production acceptance. Do not have Don visit Directus or manually create/link his Directus identity merely to unblock him before that test, because doing so would destroy the clean Production fixture.
+
+The intended final acceptance is to resume from Don's normal `my.sheboyganlights.org` workflow and prove that the accepted bootstrap creates/initializes the Directus identity without exposing Directus Data Studio/login, assigns only **MSB Browser** initially, safely links Person 18, and leaves later role elevation as a separate administrator action.
+
 ## Directus Google SSO Runtime — 2026-10-15
 
 Live read-only runtime inspection confirmed Directus 11.17.1 is configured with a single Google OpenID provider and public registration enabled:
