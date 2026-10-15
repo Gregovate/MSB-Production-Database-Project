@@ -405,3 +405,14 @@ Sections: historical missing reports (with original assignment and Captain), inc
 **Acceptance:** protected page is navigable and understandable on mobile; sections link to exact assignments/Manager actions; self-email to signed-in Manager only; Captain dispatch requires explicit action; delivery ledger distinguishes self-copies, daily digests and Captain reminders; fresh source check before dispatch; no effects on work reports, annual task completion or physical movements. Daily Manager/Captain notifications remain mandatory; this landing page does not replace them.
 
 **Status:** Engineering requirement, not implemented or authorized for Production.
+
+
+## Navigation defect — Back unexpectedly exits Setup (October 15)
+
+Greg reports inconsistent page-to-page navigation: using Back sometimes takes the operator out of Setup entirely. This is an active field usability defect, not merely an instruction deficiency. Identify whether the failure concerns browser-history Back, application-provided Back controls, or both; reproduce rather than assuming cause.
+
+**Required behavior:** Navigating among Plan / Schedule, Perform Work, Report Work, Setup Action Center, Record Location, Pick List and related Setup detail views must provide a consistent, discoverable route back to the previous relevant Setup screen without unexpectedly leaving the application. A direct email deep link with no in-app predecessor must have an explicit safe **Return to Setup** destination rather than relying on browser history. Preserve selected year, Captain filter and relevant assignment/task context where safely supported, while respecting authentication/access gates. Do not silently lose unsaved work in forms. Explicit external navigation remains permitted when deliberately selected.
+
+**Engineering reconnaissance/acceptance:** Inventory existing links/routes/history push/replace behavior, buttons labeled Back/Return, history popstate handling, direct-link paths and authentication redirects. Test repeated page transitions, reload, first-entry deep link, browser Back/Forward, iPhone Safari including mail-in-app browser, Android Chrome, desktop, expired sessions, collapsed-day reveal and unsaved Report Work forms. Avoid blindly calling `history.back()` without a verified Setup predecessor. Do not replace the existing site-wide navigation or redesign the internal-web portal; application owns safe internal navigation.
+
+**Status:** reported operator defect/acceptance requirement only. No root cause verified, code fix, browser acceptance or deployment is claimed. Cross-screen navigation implementation should be reconciled under #122 with the owning Setup application surfaces; PR #394 consumes this contract for its new Action Center and KPI links.
