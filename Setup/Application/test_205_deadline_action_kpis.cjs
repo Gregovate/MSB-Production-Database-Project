@@ -11,6 +11,7 @@ const ctx = {
   escapeHtml: (s) => String(s),
   nextSetupLocalDate: () => '2026-10-15',
   setupAnnualMilestoneDates: () => ({setupComplete: new Date('2026-11-19T00:00:00Z')}),
+  appState: {seasonYear:2026,access:{can_manage_setup:true}},
 };
 vm.createContext(ctx);
 vm.runInContext(source.slice(begin, end), ctx);
@@ -89,3 +90,13 @@ const six=structuredClone(wellDated);
 six.tasks.shift();
 assert.equal(get(six).reliable,false);
 console.log('PASS #205 proven-work-date and active-continuation regression');
+
+const managerHtml=ctx.setup205DeadlineKpiHtml(base,2026);
+for(const key of ['Manager Setup Action Center','Past occurrences awaiting reports','Incomplete tasks needing continuation','Scheduled assignments without Captain']) {
+  assert(managerHtml.includes(key), 'missing Manager action group: '+key);
+}
+assert(managerHtml.includes('data-205-action="report"'), 'original report navigation must be exact-assignment');
+assert(managerHtml.includes('data-205-action="schedule"'), 'continuation must use existing scheduler');
+ctx.appState.access.can_manage_setup=false;
+assert(!ctx.setup205DeadlineKpiHtml(base,2026).includes('Manager Setup Action Center'), 'Manager-only action worklist must not leak');
+console.log('PASS #205 Manager read-only Action Center, permission gating, route action hooks');
