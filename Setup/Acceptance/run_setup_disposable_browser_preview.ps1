@@ -9,6 +9,10 @@ param(
     [string]$PreviewEmail = 'gliebig@sheboyganlights.org',
     [Parameter(Mandatory=$true)]
     [string]$ExpectedVersion,
+    [ValidateSet('Setup','PeopleIdentityBootstrap')]
+    [string]$PreviewProfile = 'Setup',
+    [string]$ExternalAppsSha = '',
+    [string]$ExternalAppsBlob = '',
     [string[]]$MigrationPaths = @(),
     [string[]]$ValidationPaths = @(),
     [switch]$AllowConcurrentProductionWrites
