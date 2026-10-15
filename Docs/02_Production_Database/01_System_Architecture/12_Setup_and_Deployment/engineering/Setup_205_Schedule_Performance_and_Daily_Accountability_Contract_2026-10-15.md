@@ -392,3 +392,16 @@ Managers require a **Request Report** action on a past scheduled assignment with
 - Test repeated button clicks, simultaneous Managers, retries/provider failure, partial/100% report just before send, multiple assignments, Captain identity missing, and timezone-day rollover; keep protected UI authorization and idempotent provider send semantics.
 
 Status: **approved requirement only**. The Request Report button, notification backend, outbox/audit and scheduler are not yet implemented or deployed. Preserve #205/#132/#122 ownership and run governed acceptance before Production activation.
+
+
+## Dedicated Setup Action Center and self-email — October 15 clarification
+
+**Operator direction:** Provide a separate protected **Setup Action Center** landing page for Manager reporting accountability, rather than burdening Perform Work with the full notification ledger. Retain a discoverable contextual link from Perform Work/Plan-Schedule to the Action Center, preserving the current task/assignment when supplied. This is a focused Manager operational surface, not a competing Scheduling Board or another reporting database.
+
+Sections: historical missing reports (with original assignment and Captain), incomplete work needing rescheduling, upcoming blocked/NOT READY assignments, Captain TBD/no eligible organizational address, and Manager-visible email history (queued/accepted/failed/suppressed). Allow Managers to select missing-report occurrences and request reminder emails subject to existing send-time, deduplication, report-state and access checks. Include a preview of the daily 4:00 AM Manager digest.
+
+**Email report to myself:** The authenticated Manager may generate and email the *current Manager Action Center digest* solely to their own verified MSB organizational email. This is a safe preview/copy and may be used for testing and training, but must not send Captain reminders, suppress future real alerts, resolve exceptions, reset the daily scheduler, or be mistaken for provider delivery proof. The preview/self-send must be clearly differentiated from **Send Captain reminders** and from the automatic daily digest in the UI and audit. No arbitrary recipient input; no emailing protected data to a personal account. Preserve link access authorization and avoid duplicate notifications from double clicks.
+
+**Acceptance:** protected page is navigable and understandable on mobile; sections link to exact assignments/Manager actions; self-email to signed-in Manager only; Captain dispatch requires explicit action; delivery ledger distinguishes self-copies, daily digests and Captain reminders; fresh source check before dispatch; no effects on work reports, annual task completion or physical movements. Daily Manager/Captain notifications remain mandatory; this landing page does not replace them.
+
+**Status:** Engineering requirement, not implemented or authorized for Production.
