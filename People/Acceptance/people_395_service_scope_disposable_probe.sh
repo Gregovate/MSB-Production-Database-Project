@@ -76,7 +76,7 @@ async function call(method,path,body) {
     headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
     ...(body===undefined?{}:{body:JSON.stringify(body)})});
 }
-function fail(phase,status){console.error('STOP: scoped Directus service '+phase+' HTTP '+status);process.exitCode=74;}
+function fail(phase,status){console.error('STOP: scoped Directus service '+phase+' HTTP '+status);process.exit(74);}
 const self=await call('GET','/users/me?fields=id,status');
 if(self.status!==200) fail('authentication',self.status);
 else {
