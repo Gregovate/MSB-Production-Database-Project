@@ -80,6 +80,8 @@ def test_token_never_printed_and_report_is_compact():
     assert "BEGIN #395 RESULT" in RUNNER
     assert "END #395 RESULT" in RUNNER
     assert "Production writes: NONE" in RUNNER
+    assert 'echo "Person after:     $person_after_result"' in RUNNER
+    assert 'echo "Directus after:   $directus_after_result"' in RUNNER
     assert "people_395_service_scope_disposable_probe.sh" in WRAPPER
     assert "bash -n '$remoteProbe'" in WRAPPER
     assert "timeout --foreground --signal=TERM 1800s" in WRAPPER
