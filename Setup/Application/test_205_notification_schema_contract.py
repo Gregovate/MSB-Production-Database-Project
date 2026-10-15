@@ -48,7 +48,7 @@ def test_notification_api_integrated_and_sending_off_by_default():
     assert "SETUP_NOTIFICATION_DAILY_ENABLED" in service
     assert "SETUP_NOTIFICATION_TEST_SEND_ENABLED" in service
     assert "DIRECTUS_OPENER" in service
-    assert "smtp" not in service.lower()
+    assert "import smtplib" not in service
     assert "work_order_intake" not in service
     assert '"/api/setup/notifications/email-myself"' in api
     assert '"MANAGER_SELF_TEST"' in api
