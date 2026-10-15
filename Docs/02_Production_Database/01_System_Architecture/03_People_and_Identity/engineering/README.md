@@ -41,6 +41,27 @@ public route         https://my.sheboyganlights.org/people/
 
 The backend listener is exposed only from Synology `192.168.5.4` through the source-limited UFW rule for `8796/tcp`.
 
+## Application / Authentication Host Boundary
+
+The current end-user application surface is **`my.sheboyganlights.org`**. MSB moved normal operational UI/UX away from Directus because Directus Data Studio did not provide an acceptable task-oriented user experience for field and production workflows.
+
+Current intent:
+
+```text
+my.sheboyganlights.org
+    -> normal human application/navigation surface
+    -> Cloudflare Access authentication at the intranet boundary
+    -> standalone/task-focused MSB applications
+
+db.sheboyganlights.org
+    -> Directus runtime/authentication backend
+    -> Directus role/policy authorization authority
+    -> administrator/backend Directus access when needed
+    -> NOT the normal user application experience
+```
+
+Normal users should not have to visit or understand the Directus login/Data Studio UI merely to initialize access to MSB applications. Issue #395 exists specifically to remove that remaining first-login dependency while retaining Directus as the authentication/authorization backend.
+
 ## Identity and Onboarding
 
 `ref.person` remains the durable person identity. A person may exist without a Google Workspace account, Directus identity, PostgreSQL login, or active system access.
