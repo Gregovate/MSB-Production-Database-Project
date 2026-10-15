@@ -1,5 +1,6 @@
 param(
-    [string]$Server = 'msbadmin@192.168.5.9'
+    [string]$Server = 'msbadmin@192.168.5.9',
+    [switch]$ServiceScopeProbe
 )
 
 $ErrorActionPreference = 'Stop'
@@ -9,6 +10,9 @@ $RepoRoot = (Resolve-Path (Join-Path $ScriptDir '..\..')).Path
 $ServerScript = Join-Path $ScriptDir 'people_identity_bootstrap_disposable_server.sh'
 
 $SourceBranch = 'issue-395-silent-human-identity-bootstrap'
+if ($ServiceScopeProbe) {
+    $SourceBranch = 'issue-395-production-deployment-readiness'
+}
 $SourceRef = "origin/$SourceBranch"
 
 if (-not (Test-Path -LiteralPath $ServerScript)) {
@@ -46,6 +50,15 @@ if ($LASTEXITCODE -ne 0 -or -not $CandidateSha -or -not $RemoteSha) {
 if ($CandidateSha -ne $RemoteSha) {
     throw "STOP: local candidate does not equal remote branch. Local=$CandidateSha Remote=$RemoteSha"
 }
+if ($ServiceScopeProbe) {
+    $acceptedRuntimeSha = 'dcc8f25f07a74e19ce3de3aae2d9d137b5411815'
+    & git -C $RepoRoot merge-base --is-ancestor $acceptedRuntimeSha $CandidateSha
+    if ($LASTEXITCODE -ne 0) { throw 'STOP: accepted People runtime not in service-scope candidate ancestry.' }
+    $runtimeDiff = @(& git -C $RepoRoot diff --name-only "$acceptedRuntimeSha..$CandidateSha" -- People/Application People/Database)
+    if ($LASTEXITCODE -ne 0 -or $runtimeDiff.Count -gt 0) {
+        throw 'STOP: service-scope acceptance tooling changed the disposable-accepted People runtime.'
+    }
+}
 
 Write-Host '========== PEOPLE #395 SILENT IDENTITY BOOTSTRAP ACCEPTANCE =========='
 Write-Host "Candidate SHA: $CandidateSha"
@@ -72,6 +85,23 @@ try {
     $localServer = Join-Path $localBundle 'people_identity_bootstrap_disposable_server.sh'
     [System.IO.File]::WriteAllText($localServer, $serverText, $utf8NoBom)
 
+    if ($ServiceScopeProbe) {
+        $probeScript = Join-Path $ScriptDir 'people_395_service_scope_disposable_probe.sh'
+        if (-not (Test-Path -LiteralPath $probeScript -PathType Leaf)) {
+            throw "STOP: #49 disposable service scope probe missing: $probeScript"
+        }
+        $probeText = [System.IO.File]::ReadAllText($probeScript)
+        $probeText = $probeText.Replace(([string][char]13 + [char]10), [string][char]10).Replace([string][char]13, [string][char]10)
+        [System.IO.File]::WriteAllText(
+            (Join-Path $localBundle 'people_395_service_scope_disposable_probe.sh'),
+            $probeText,
+            $utf8NoBom
+        )
+        if ($probeText.Contains([char]13)) {
+            throw 'STOP: disposable service policy probe contains CR characters.'
+        }
+    }
+
     if ($serverText.Contains([char]13)) {
         throw 'STOP: generated Linux acceptance runner contains CR characters.'
     }
@@ -82,7 +112,14 @@ try {
     }
 
     $remoteScript = "$remoteRoot/people_identity_bootstrap_disposable_server.sh"
-    $remoteCommand = "chmod 700 '$remoteScript' && bash -n '$remoteScript' && timeout --foreground --signal=TERM 1800s bash '$remoteScript' '$CandidateSha'"
+    $probeMode = if ($ServiceScopeProbe) { 'true' } else { 'false' }
+    $probeSyntax = ''
+    if ($ServiceScopeProbe) {
+        $remoteProbe = "$remoteRoot/people_395_service_scope_disposable_probe.sh"
+        $probeSyntax = "bash -n '$remoteProbe' && "
+    }
+    $remoteCommand = "chmod 700 '$remoteScript' && bash -n '$remoteScript' && $probeSyntax" +
+        "timeout --foreground --signal=TERM 1800s bash '$remoteScript' '$CandidateSha' '$SourceBranch' '$probeMode'"
 
     Write-Host
     Write-Host 'Starting bounded current-Production disposable acceptance (30 minute maximum)...'
@@ -98,7 +135,13 @@ try {
     Write-Host
     Write-Host 'PEOPLE #395 SILENT IDENTITY BOOTSTRAP DISPOSABLE WRAPPER: PASS'
     Write-Host 'No Production identity was changed.'
-    Write-Host 'Next gate after engineering review: exact-candidate browser/application integration review; do not consume Don yet.'
+    if ($ServiceScopeProbe) {
+        Write-Host 'Next gate: inspect #49 scoped credential proof and final read-only Production fingerprints.'
+        Write-Host 'No Production identity or Directus credential was changed.'
+    }
+    else {
+        Write-Host 'Next gate after engineering review: exact-candidate browser/application integration review; do not consume Don yet.'
+    }
 }
 finally {
     if (Test-Path -LiteralPath $localBundle) {
