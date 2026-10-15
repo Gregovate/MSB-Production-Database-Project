@@ -86,6 +86,18 @@ def eligible_people(dsn: str) -> list[dict[str, Any]]:
     return result
 
 
+def covered_assignments(dsn: str, today: date) -> set[tuple[int,int]]:
+    """Get only assignment/recipient IDs already covered by a notice today."""
+    with psycopg2.connect(dsn) as conn, conn.cursor() as cur:
+        conn.set_session(readonly=True)
+        cur.execute(
+            "SELECT recipient_person_id,assignment_id "
+            "FROM ops.setup_notice_covered_assignments(%s::date)",
+            (today.isoformat(),),
+        )
+        return {(int(p),int(a)) for p,a in cur.fetchall()}
+
+
 def _date_of(a: dict, days: dict) -> str | None:
     d = days.get(int(a.get("setup_work_day_id") or 0), {})
     return a.get("work_date") or d.get("work_date")
@@ -222,7 +234,8 @@ def captain_email(rows: list[dict]) -> tuple[str, str]:
     return subject, "\n".join(body)
 
 
-def notice_plans(board: dict, people: list[dict], today: date) -> list[dict]:
+def notice_plans(board: dict, people: list[dict], today: date,
+                 already_covered: set[tuple[int,int]] | None = None) -> list[dict]:
     context = notification_context(board, today)
     year = int(board.get("session", {}).get("season_year") or today.year)
     if year != 2026:
@@ -235,11 +248,14 @@ def notice_plans(board: dict, people: list[dict], today: date) -> list[dict]:
             continue
         plans.append({"kind":"MANAGER_DAILY", "recipient_person_id":int(person["person_id"]),
             "recipient_email":person["email"], "subject":manager_subject, "body_text":manager_body,
-            "assignment_id":None})
+            "assignment_id":None, "covered_assignment_ids":[]})
+    covered = already_covered or set()
     by_captain = defaultdict(list)
     for row in context["overdue"]:
         if row["captain_person_id"] is not None:
-            by_captain[int(row["captain_person_id"])].append(row)
+            recipient_id = int(row["captain_person_id"])
+            if (recipient_id,int(row["assignment_id"])) not in covered:
+                by_captain[recipient_id].append(row)
     for person_id, rows in by_captain.items():
         person = by_person.get(person_id)
         if not person or not person.get("can_read_setup"):
@@ -247,7 +263,7 @@ def notice_plans(board: dict, people: list[dict], today: date) -> list[dict]:
         subject, body = captain_email(rows)
         plans.append({"kind":"CAPTAIN_DAILY","recipient_person_id":person_id,
             "recipient_email":person["email"],"subject":subject,"body_text":body,
-            "assignment_id":None})
+            "assignment_id":None, "covered_assignment_ids":[r["assignment_id"] for r in rows]})
     for p in plans:
         p["notice_date"]=today.isoformat()
         p["season_year"]=year
@@ -278,7 +294,7 @@ class DirectusSetupOutboxClient:
         if not organizational_email(notice.get("recipient_email")):
             raise SetupNotificationError("Recipient is not an organizational email")
         allowed = {"message_key","season_year","notice_date","kind","recipient_email",
-                   "recipient_person_id","assignment_id","subject","body_text"}
+                   "recipient_person_id","assignment_id","covered_assignment_ids","subject","body_text"}
         payload = {k:notice[k] for k in allowed if k in notice}
         request_object = Request(
             self.base_url + "/items/setup_notification_outbox",
@@ -309,7 +325,7 @@ def daily_dispatch(dsn: str, *, today: date | None = None, dry_run: bool = True,
     if not board.get("session"):
         raise SetupNotificationError("2026 Setup Session not found")
     people = eligible_people(dsn)
-    plans = notice_plans(board, people, today)
+    plans = notice_plans(board, people, today, already_covered=covered_assignments(dsn,today))
     if dry_run:
         return {"date":today.isoformat(),"mode":"DRY_RUN","planned":len(plans),
                 "manager":sum(p["kind"]=="MANAGER_DAILY" for p in plans),
