@@ -196,3 +196,25 @@ Verify the progress primary-key column and installed legacy association contract
 - Keep personal names in authorized internal reports; redact them from public PR logs when necessary.
 
 **Stop before remediation:** no data repair, mail service activation, schema changes, job schedules or Production deployment are authorized by reconnaissance. The audit will determine which source projection, UI classifier, workflow or recorded history requires a separately governed correction.
+
+
+## Verified read-only Production query observations — October 15, 09:06 CDT
+
+**Evidence provenance:** operator-supplied Q1–Q6 output from `msb` queried as `msbadmin`; query time 2026-10-15 09:06:41 America/Chicago. These are **observations**, not authorized corrections. Full raw query output remains with operator; preserve the exact source in subsequent acceptance capture.
+
+- 2026 `ops.setup_session` = ID **2**, status `PLANNING` (the actual live annual session is already in use; don't infer inactivity from this state label).
+- Annual snapshot: **294** annual/included; **72** `execution_status=COMPLETE`; **13** `IN_PROGRESS`; **0** `DEFERRED`; **222** not `COMPLETE`. Status-count equivalence with `effective_complete` must still be checked for Work Order gates.
+- All thirteen `IN_PROGRESS` tasks have progress records; reported maxima: task 276 95%, 373 90%, 533 90%, 436 90%, 469 80%, 531 80%, 425 75%, 417 66%, 364 60%, 485 50%, 499 50%, 348 50%, 363 15%. They are **not complete**. Prior Q5 output showed historical assignment counts, not verified active continuation counts; cannot claim exactly 13 need rescheduling without proper assignment-state query.
+- Operator-supplied Q3 lists **102 historical assignment occurrences** before Chicago Oct 15, of which **8 with zero matched reports**, affecting **8 distinct annual tasks**:
+  - Oct13: assignment 100 task293, Crew B / Captain person25, morning; assignment101 task295, Crew B / person25, morning; assignment102 task296, Crew B / person25, afternoon.
+  - Oct14: assignment41 task546, Crew E / person25, morning; assignment103 task352, Crew D / person36, morning; assignment104 task300, Crew D / person36, afternoon; assignment145 task363, Crew F / person17, morning; assignment153 task541, Crew C / person31, afternoon.
+  - This is a *candidate historical no-report queue*; recheck cancelled-day and actual-work/scheduling semantics and resolve person IDs through authorized ref.person before notifying. Task363 is IN_PROGRESS from an earlier report yet has an Oct14 unreported occurrence.
+- Operator-supplied Q6 lists **103 progress reports**: **63 same-date** entry and associated work date, **34 reported after work date**, **6 with a future associated work_date relative to report entry**. Negative differences include tasks550 and269 with Oct16 associated dates from Oct13, and others 274,273,266; identify possible rescheduling/early entry vs incorrect history before conclusion.
+- Three entries show lag >=7 days: task533 +7, task291 +15, task324 +17. Date-entry lag means `recorded_at` is not a reliable proxy for physical work date.
+- All completed-task rows returned in Q6 show **NULL `actual_completed_at`** despite completion-marked progress records. Diagnose whether task-based KPI must resolve the completion-marked report's linked work_date, rather than relying on the annual timestamp, and whether that absence is valid by design or a defect. Do NOT silently backfill.
+- D9 Crew B/A historical correction is still separate and unresolved. Treat as an explicit audit exception.
+- Workday readiness, hard prerequisite coverage, linked Work Order completion, definitive unworked continuation, date provenance and Manager notification recipients remain **unverified**.
+
+**Required follow-up:** Inspect existing repository projection's `unworked_assignment_count` and report matching contract, compare to the 12 needs-rescheduling count seen on the Oct15 UI, and run a bounded hard-block/readiness query. Derive names through existing `ref.person` without exposing private contact details in public evidence. Never present Q6 report-date counts as 7-day *unique annual task completion* pace: the rows can include repeated reports for one annual task.
+
+**Implementation defect to check in PR #394:** its preliminary KPI model uses `actual_completed_at` or linked Work Order completed date, so these completed task rows are undated. The conservative `INSUFFICIENT DATA` warning is right, but the final actual pace must use verified physical workday evidence (at most one completion per annual task) rather than assuming no recorded work.
