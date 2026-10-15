@@ -475,3 +475,49 @@ Greg reports having personally recorded hours against the wrong date because the
 Greg confirms MSB already successfully uses email for **Work Order Intake triage** and **Work Order assignment**. Controlled Work Order engineering documentation names Directus Flows `WOI Request Triage Email` and `Work Order Email Assignees`. This proves a working **existing email capability**, NOT that the Setup daily-scheduler/digest or its recipient/query/send/audit contract already exists. Reuse the documented Directus mail infrastructure after inspecting its current Flow configuration and safe host-to-Directus invocation. Do not fabricate Work Orders/Intake rows or disrupt their existing event triggers merely to emit Setup reminders.
 
 **Acceptance sequencing clarified by Greg:** implement/test Manager and Captain send paths using controlled recipient/test data; permit **Email to Myself** to the signed-in authorized Manager; review actual rendered email formatting, human task names, secure links, and novice instructions with Greg **when ready**, before enabling unattended 4:00 AM delivery. Do not require a new discussion of SMTP infrastructure or separate provider without evidence it is needed. Keep test sends distinct from production digests and preserve send audit, no-duplicate and completed-report suppression rules. Manager recipient membership remains dynamic from People (including Don after authorization verification).
+
+
+## THREAD RESTART CHECKPOINT — 2026-10-15 18:20 CDT — NOT TEST READY
+
+**Use this as the next-thread starting point.** The controlled engineering document (this file) is authoritative; conversation and PR descriptions are not specifications. Greg has explicitly authorized continuing engineering and wants a *tested browser candidate* urgently. Do not ask to revisit settled requirements or imply background work continues after the chat stops.
+
+### Identity and authority
+
+- Repository: `Gregovate/MSB-Production-Database-Project`; commanding #122, implementing #205; #132/#175 own Report Work.
+- Draft PR: [#394](https://github.com/Gregovate/MSB-Production-Database-Project/pull/394); branch `fix/205-setup-deadline-kpis-20261015`; checked source HEAD **`b7aeb979ee7469f278a0ab9e18cc93457bc36c00`** before this documentation commit. Determine NEW exact HEAD after checkpoint commit.
+- Baseline comparison checked earlier: main additions were People/Identity documentation with no direct source-file overlap. **Refresh main again at restart**; inspect actual changed paths and reconcile concurrent edits without overwriting GIS or People work. Do not use stale commit count as evidence of code conflict.
+- Controlled engineering source: this file, linked from the Setup engineering README; linked Report Work operator SOP contains simple missed-report steps. Release runbooks and governed 8898 same-clone disposable/browser flow remain under #122.
+- Container Locate / Empty operational problems reported by Tom are explicitly **separate #122 debug/#88**, not KPI PR #394. Stale browser V0.3.62 missing cards resolved by refresh to V0.3.65; no reporting rollback.
+
+### Verified operator data — not a fresh live status
+
+- October 15 09:06 CDT read-only PostgreSQL, `msb`, session 2, 2026: 294 included annual tasks, 72 `COMPLETE`, 222 not complete, 13 `IN_PROGRESS`, 0 deferred.
+- 8 past scheduled assignments missing reports; 13 in-progress tasks with zero current/future dated assignments in operator Q7 (the UI showed 12 needs rescheduling; authoritative `unworked_assignment_count` reconciliation is required). Q8 identified 55 not-ready and/or WO-gated unfinished tasks—not all imminent blockers.
+- Completion report entry date differs from workday in many rows and `actual_completed_at` was blank in returned completed records. **Current draft KPI forecast cannot claim on-track**; need unique annual task completion evidence by real `performed_on` / workday, rather than `recorded_at`.
+- Calendar/workday future averages, excluding Sundays only for potential capacity, were added in source. Rolling future scheduled days are not the full workday capacity calendar.
+
+### Current implementation — source committed, NOT accepted
+
+- `Setup/Application/setup_next_pass.js`: shared `setup205DeadlineKpiModel` and `setup205DeadlineKpiHtml`, render in Perform Work; totals, readiness, scheduled/rescheduling, no-report/partial lists and tentative calendar/potential-workday pace. `setup_scheduling_board.js` renders the shared KPI. Review classifiers against contract before treating counts as reliable.
+- Report Work source corrected: prominent actual crew size, Hours, **Minutes**, percent; Minutes no longer quietly defaults to zero; high contrast and mobile styles in `setup_next_pass.css`.
+- Date field now labeled **Date work actually happened**, scheduled date shown separately, and Save Work Report asks explicit date confirmation after validation. Existing Manager `Correct report` PATCH path was discovered; verify actual browser operation, including completed tasks and report correction.
+- Source tests created/updated: `test_205_deadline_action_kpis.cjs` and `test_132_report_work_visibility_candidate.py`. Connector V8 parsing and focused source assertions passed; **full pytest/Node regressions have NOT run** and the protected disposable browser is **NOT started**. Tests newly added in last commit `b7aeb979` were committed but not full-suite executed.
+- No release version/HTML asset pin finalization, no browser `BROWSER REVIEW READY`, no CLEAN EXIT, no Greg Production approval, no Production deployment.
+
+### Major unfinished implementation (do not claim otherwise)
+
+1. Protected **Manager Setup Action Center** page with data API sourced from authoritative annual task/assignment/report classifications; actionable lists, Captain TBD/organizational-email exceptions, rescheduling/readiness, notification status, secure exact-assignment deep links, safe self-email.
+2. **Daily 4:00 AM America/Chicago** Manager digest and eligible Captain reminders. Reuse existing Directus email transport demonstrated for Work Order Triage and Work Order assignment; do not invent a second SMTP stack or trigger fake Work Orders. Sender orchestration, dynamic authorized Manager recipients (including Don Martens when verified in People), verified Captain organization email matching, idempotence, audit/provider error and retry are not implemented.
+3. **Manager Request Report** immediate action, deduplicated against daily sends. If an occurrence has ANY valid report, including partial/100%, suppress **missing-report** reminders. Separate incomplete/no continuation Manager attention stays. No automatic personal email, no duplicate work report, no email for Captain TBD or missing eligible organization account. Self-email is to authenticated Manager only, without Captain side effects.
+4. Completion-date data trust, reliable forecast, historical reporting correction/disposition, missing-report classification under actual worked/scheduled evidence and direct-action links.
+5. Contextual `?` help and consistency, operator navigation/back safeguards, device/iPhone Safari acceptance. No broad app redesign. Any unknown iPhone defect must be reproduced before asserting cause.
+
+### Next engineering execution — do not substitute discussion
+
+1. Refresh current `main`, review #122 latest release checkpoint, #205 and changed-files overlap; reconcile PR #394 deliberately, preserve unrelated GIS/People branches/worktrees and current accepted #391 search behavior.
+2. Complete the missing Action Center and mail backend **against this controlled contract**. Inspect actual Directus Flow/identity runtime contract before mail integration. Keep outward sending **disabled by default**, and use authorized test recipients for test dispatch; don't activate 4 AM job or send mass emails prior to Greg's actual email format approval.
+3. Repair KPI completion-date logic from authoritative workday/actual performed-on evidence; ensure one completion per annual task, no false green; compare actual SQL and both screens.
+4. Execute focused and full Setup regressions, publish exact source SHA/version+asset pins, then existing one-clone 8898 disposable/browser acceptance under #122 with Greg. Test Randy after release at Greg's direction, not as a prerequisite.
+5. Prepare exact release approval and governed Production installation only after all gates pass. Record tested/deployed identities in controlled documentation, then close out.
+
+**Status at checkpoint:** still substantial unimplemented functionality. Don't tell Greg this is ready to test or that you will keep working in the background. The original operator priority is working software and email tests, not additional specification debate.
