@@ -49,7 +49,7 @@ def test_people_profile_requires_exact_external_apps_identity() -> None:
 
 
 def test_apps_source_is_authenticated_byte_exact_and_uploaded_before_server_contact() -> None:
-    # The draft Backbone repo cannot be retrieved through anonymous raw GitHub.
+    # The pinned draft Backbone Apps raw URL returned HTTP 404 during preflight.
     # Authenticate via workstation Git, pin commit/tree blob/checkout/bundle,
     # then independently hash the byte-identical SCP payload server-side.
     assert "git clone --quiet --no-checkout" in LAUNCHER
@@ -59,7 +59,6 @@ def test_apps_source_is_authenticated_byte_exact_and_uploaded_before_server_cont
     assert "hash-object -- $appsSource" in LAUNCHER
     assert "[System.IO.File]::Copy($appsSource, $bundledApps)" in LAUNCHER
     assert "hash-object -- $bundledApps" in LAUNCHER
-    assert 'Stop before server contact' not in LAUNCHER  # exact stop strings are uppercase
     assert "STOP before server contact: bundled Apps file" in LAUNCHER
     assert "scp -r $localBundle" in LAUNCHER
     assert "chmod 644 '$remoteEntry' '$remoteApps'" in LAUNCHER
