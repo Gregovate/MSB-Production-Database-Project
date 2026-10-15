@@ -73,7 +73,7 @@ def test_locked_cards_are_explicit_and_unlocked_cards_are_keyboard_selectable():
 def test_annual_continuation_is_distinct_from_historical_assignment():
     js = _read("setup_scheduling_board.js")
     assert "function board205NeedsContinuation(task)" in js
-    assert "Number(task.unworked_assignment_count || 0) === 0" in js
+    assert "Number(task.future_assignment_count || 0) === 0" in js
     assert "function board205ContinuationScheduled(task)" in js
     assert "function board205ReschedulingLabel(task)" in js
     assert "PRIORITY CONTINUATION" not in js
