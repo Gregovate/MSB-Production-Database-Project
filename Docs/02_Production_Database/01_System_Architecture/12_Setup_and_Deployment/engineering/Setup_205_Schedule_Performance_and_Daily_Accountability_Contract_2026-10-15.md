@@ -101,3 +101,98 @@ Resolution path: named Captain submits/corrects original report under #132, Mana
 - #205 operating model and October 14–15 operator findings, subordinate to #122.
 - Existing `Setup/Application/setup_scheduling_board_repository.py`, `setup_scheduling_board.js`, `setup_next_pass.js`; #132 report record model and #172 triage integration.
 - Controlled parent portal: [Setup engineering README](README.md). This document supersedes contradictory KPI requirements recorded only in PR descriptions or chat, but does not alter unrelated accepted Setup behavior.
+
+
+## Read-only Production reconnaissance — execution order and evidence (2026-10-15)
+
+**Gate:** these are SELECT-only diagnostic queries. Run against the authoritative 2026 Setup PostgreSQL source using an existing permitted read-only connection. Do not create a session, edit 2026 data, backfill progress, reschedule, mutate history or alter Production. Capture the server timestamp/time zone, exact queries, record counts and redacted detail in a controlled acceptance report, then reconcile classifications here. Prefer existing documented database query tooling and credentials; do not improvise server shell/connection strings.
+
+### A. Verify schema and session before querying work
+
+```sql
+BEGIN READ ONLY;
+SELECT now() AS server_now,
+       now() AT TIME ZONE 'America/Chicago' AS chicago_now,
+       current_database() AS database_name,
+       current_user AS query_actor;
+SELECT table_schema, table_name, column_name, data_type
+FROM information_schema.columns
+WHERE (table_schema, table_name) IN (
+ ('ops','setup_session'), ('ops','setup_session_task'),
+ ('ops','setup_work_day'), ('ops','setup_work_day_task'),
+ ('ops','setup_work_day_crew'), ('ops','setup_task_progress'))
+ORDER BY table_schema, table_name, ordinal_position;
+ROLLBACK;
+```
+
+Confirm actual installed schema. This preflight must precede all later parameterized queries and determines whether session date/season fields and completion/report fields differ from the source definitions. Read-only transaction must not be silently continued past a SQL error.
+
+### B. Annual-task status cross-check — after verifying column names
+
+```sql
+BEGIN READ ONLY;
+SELECT s.setup_session_id, s.season_year,
+       count(*) FILTER (WHERE t.included_flag) AS included,
+       count(*) FILTER (WHERE t.included_flag AND t.execution_status = 'COMPLETE') AS status_complete,
+       count(*) FILTER (WHERE t.included_flag AND t.execution_status = 'IN_PROGRESS') AS status_in_progress,
+       count(*) FILTER (WHERE t.included_flag AND t.execution_status = 'DEFERRED') AS status_deferred,
+       count(*) FILTER (WHERE t.included_flag AND t.execution_status <> 'COMPLETE') AS not_status_complete
+FROM ops.setup_session AS s
+JOIN ops.setup_session_task AS t USING (setup_session_id)
+WHERE s.season_year = 2026
+GROUP BY s.setup_session_id, s.season_year;
+ROLLBACK;
+```
+
+`execution_status` is **not** identical to effective completion (completed linked Work Order gates count too). Compare this query to the repository's existing effective-completion projection before claiming screenshot totals should match.
+
+### C. Past scheduled assignments and report evidence — after verifying schema
+
+```sql
+BEGIN READ ONLY;
+SELECT wd.work_date,
+       a.setup_work_day_task_id, a.setup_session_task_id, a.shift_code,
+       a.setup_work_day_crew_id, c.crew_code, c.captain_person_id,
+       t.annual_task_name AS task_name, t.execution_status,
+       t.actual_completed_at,
+       count(DISTINCT p.setup_task_progress_id) AS report_count,
+       max(p.percent_complete) AS highest_reported_percent,
+       min(p.recorded_at) AS earliest_report_entry,
+       max(p.recorded_at) AS latest_report_entry
+FROM ops.setup_work_day_task AS a
+JOIN ops.setup_work_day AS wd USING (setup_work_day_id)
+JOIN ops.setup_session_task AS t USING (setup_session_task_id)
+LEFT JOIN ops.setup_work_day_crew AS c
+  ON c.setup_work_day_crew_id = a.setup_work_day_crew_id
+LEFT JOIN ops.setup_task_progress AS p
+  ON p.setup_work_day_task_id = a.setup_work_day_task_id
+  OR (p.setup_work_day_task_id IS NULL
+      AND p.setup_work_day_id = a.setup_work_day_id
+      AND p.setup_session_task_id = a.setup_session_task_id
+      AND p.shift_code = a.shift_code)
+WHERE wd.work_date < (now() AT TIME ZONE 'America/Chicago')::date
+  AND t.setup_session_id = (
+    SELECT setup_session_id FROM ops.setup_session
+    WHERE season_year = 2026
+    ORDER BY setup_session_id DESC LIMIT 1)
+GROUP BY wd.work_date, a.setup_work_day_task_id, a.setup_session_task_id,
+         a.shift_code, a.setup_work_day_crew_id, c.crew_code,
+         c.captain_person_id, t.annual_task_name,
+         t.execution_status, t.actual_completed_at
+ORDER BY wd.work_date DESC, a.setup_work_day_task_id;
+ROLLBACK;
+```
+
+Verify the progress primary-key column and installed legacy association contract before running. This is a **historical occurrence** audit. Filter `report_count=0` *after* recording all rows, and separately identify zero-duration but valid progress reports, future continuation records and cancelled workdays. Do not call a task overdue merely because an intentionally cancelled day remains in history.
+
+### D. What the resulting audit must reconcile
+
+- Exact annual total vs inclusion flag and effective completion, with detail for the observed October 14 63 → October 15 72 change.
+- Past assignment no-report, reported-partial, reported-complete but annual incomplete, completed annual task with missing prior occurrence report.
+- Report `recorded_at` vs associated `work_date`, highlighting late-entry lag and questionable annual `actual_completed_at`.
+- One annual task with several assignment records; same Captain/shift unexpectedly repeated across crews; known D9 Crew B/A exception.
+- Independent prerequisite, linked Work Order and NOT_READY flags for **scheduled as well as unscheduled** tasks; only use the repository's effective completion semantics for whole-Setup results.
+- Original missed date retained even when subsequent continuation was scheduled. Label reporting-unknown separately from confirmed-unfinished.
+- Keep personal names in authorized internal reports; redact them from public PR logs when necessary.
+
+**Stop before remediation:** no data repair, mail service activation, schema changes, job schedules or Production deployment are authorized by reconnaissance. The audit will determine which source projection, UI classifier, workflow or recorded history requires a separately governed correction.
