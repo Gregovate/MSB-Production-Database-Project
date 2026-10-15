@@ -463,6 +463,38 @@ The reusable **read-only** `people_395_production_readonly_preflight.sh` credent
 
 **Next gate:** refresh the current #395 release-readiness feature branch, run its focused read-only-tool contract test and existing foreground preflight, then paste **only the final result block**. Do not replay the migration, add arbitrary static tokens or switch #37 maintenance merely because the credential failed. A PASS of the Directus GET does not prove administrator-level provider-field mutation rights; that will require the separately reviewed release credential contract. No Production mutation has been performed by this correction.
 
+## Second governed Production preflight — missing token confirmed (2026-10-15)
+
+Greg ran the corrected non-secret diagnostic and supplied the exact footer:
+
+```text
+Release target         6122d7923c2a07eb6b278225cf71cafc4704d349
+Production HEAD        bb8dfa498c5b4bbecfc3693f68c4066c1e08242e
+Controller             ONLINE / UNFENCED
+Credential             STOP: TOKEN_NOT_CONFIGURED
+Person fingerprint     4157a1c63a88bc900d566f6eb094f1c4
+Directus fingerprint   3170a3a5b5860bed1c293f2ee6b50131
+Exit status            30
+Production writes      NONE
+Retained report        /tmp/MSB_People395_Production_Readonly_Preflight_20261015T233214.txt
+```
+
+This distinguishes the exact problem from the earlier generic `STOP: NOT READY`: **the `PEOPLE_DIRECTUS_IDENTITY_TOKEN` setting has no configured value in the protected People environment-file parsing path**. It does not establish that Directus itself is unhealthy or that a token was rejected; authentication was not attempted because no token was configured. All upstream runbook guards reached the credential gate without stopping. Migration 006, People service promotion, Backbone Apps publication, #37 maintenance transition, and Don's real first-login acceptance were **not** performed.
+
+### Existing Server Management credential authority — Issue #49
+
+Read `Gregovate/MSB-Server-Management` Issue #49 ("Establish governed Directus service-credential provisioning and recovery procedure") and the current `docs/server/Setup_Production_Runtime.md` as provenance, **not as a substitute for a controlled runbook**. Prior read-only evidence established:
+
+- The existing `Work Order Intake (Service)` Directus identity is application-specific and its static token powers `SETUP_DIRECTUS_INTAKE_TOKEN`; accepted #172 deployment reused that unchanged existing identity.
+- The other token-bearing Production identity observed during #49's reconnaissance was a **human Administrator**. The accepted #172 path deliberately did not reuse it.
+- The reusable Directus service-credential **creation, permission design, secure installation, rotation and recovery procedure remains open as Server Management #49** even though Setup #172 deployment succeeded.
+
+For #395 the required Directus Users API operation creates a Google-backed identity, sets `provider` and `external_identifier`, and assigns `MSB Browser`; it is not the Work Order Intake collection-create permission. **Do not reuse or rotate the Work Order service token; do not copy a human Administrator token.** The accepted disposable bootstrap demonstrated an administrator-authorized Directus Users API operation but **did not prove that a narrower Directus service policy can set provider/external_identifier**.
+
+**RUNBOOK GAP FOUND — credential provisioning and authorization.** Before any Production identity/token mutation, Server Management #49 must define and disposable-test a dedicated #395 non-human service principal's effective permissions, including exact field authority, required denied operations, audit attribution, protected runtime-token installation/rotation, rollback and cleanup. A dedicated administrator-level token would be broad and requires explicit architecture/security review if a least-privilege role cannot support the required fields. The root-owned People environment remains outside Git; do not expose tokens in command arguments, reports, chat or repository files.
+
+**Next actionable gate:** implement and accept the #49 procedure (including a scoped-permission disposable proof where feasible), verify the protected People runtime with a non-secret GET to `/users/me`, then follow the separate #395 migration 006 release runner/rollback and controlled Backbone Apps publisher. The user’s Production approval stands, but approval does not waive that credential safety boundary. Keep Production ONLINE while this is unresolved.
+
 ## Disposition
 
 ```text
