@@ -294,15 +294,83 @@ Greg supplied a screenshot of `127.0.0.1:8898/` displaying the expected MSB Apps
 
 This established a review-instruction clarity gap. The operator checklist now explicitly says to **stay on the localhost Apps page**, verify the Apps v0.2 footer, refresh localhost once and confirm no warning, then press Enter in the existing foreground PowerShell session. Only the server runner's real disposable Directus/Person state verification and final cleanup/Production after-check can complete browser acceptance. The durable procedural correction is maintained in [reusable Setup browser acceptance](../../Setup/Acceptance/README.md#people-395-operator-browser-checklist--only-the-local-apps-page).
 
-State at this checkpoint: **browser visually displayed; final server verification and operator disposition still pending**. Do not record `BROWSER PASS` or `CLEAN EXIT` until its evidence is returned. Don's preserved Production fixture remains untouched by the localhost preview.
+Historical interim state: visual review was initially pending final server evidence. **Superseded by the completed runner PASS / exit 0 and Production-after checks documented below.** Don's preserved Production fixture was not consumed by the localhost preview.
+
+## Reusable 8898 Browser Integration — Final Runner PASS — 2026-10-15
+
+### Authoritative operator/server evidence
+
+After the corrected authenticated-Git Backbone Apps acquisition, Greg exercised the same reusable `PeopleIdentityBootstrap` profile on the registered local URL `http://127.0.0.1:8898/` and provided the browser observations and final foreground runner output.
+
+The browser visibly presented the pinned `MSB Apps v0.2 — Updated 2026-10-15` footer. No Directus/Google account chooser or bootstrap-error banner was visible in the reviewed Apps screen. The visual page intentionally remains almost identical to earlier Apps; the #395 behavior is the silent backend identity initialization. The Apps buttons target real `my.sheboyganlights.org` Production applications, **not** a disposable copy of Setup. The user was instructed to remain on localhost for the acceptance; the real Setup screenshot was outside the disposable identity test.
+
+The server runner finished the explicit `verify_browser_result` step and produced:
+
+```text
+PeopleIdentityBootstrap REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT
+Exit status: 0
+Preview report:
+  /tmp/MSB_People_Identity_Bootstrap_Browser_Preview_20261015T215102.txt
+Preview Flask log:
+  /tmp/MSB_People_Identity_Bootstrap_Browser_Preview_Flask_20261015T215102.log
+```
+
+In the current accepted tooling, the remote runner emits its browser `PASS` only after verifying the clone-only Directus identity is active, Google-backed, exact-email, **MSB Browser** role, safely linked to a Person, and remains idempotent on repeat bootstrap. Normal runner completion is impossible after a failed assertion there. The `CLEAN EXIT` result therefore establishes the governed **disposable integration test** PASS, not Production deployment or Don's final real first-login verification.
+
+The final cleanup/Production preservation evidence returned by Greg:
+
+```text
+Production ref.person:
+  before 4157a1c63a88bc900d566f6eb094f1c4
+  after  4157a1c63a88bc900d566f6eb094f1c4
+  PASS: unchanged
+
+Production directus_users:
+  before 3170a3a5b5860bed1c293f2ee6b50131
+  after  3170a3a5b5860bed1c293f2ee6b50131
+  PASS: unchanged
+
+Production shared checkout:
+  before bb8dfa498c5b4bbecfc3693f68c4066c1e08242e
+  after  bb8dfa498c5b4bbecfc3693f68c4066c1e08242e
+  PASS: unchanged
+
+Production People service:  PASS — remains healthy
+Preview TCP 8898:           PASS — no longer listening
+Remote exit status:         0
+```
+
+### Separate workstation reporting error — not a preview failure
+
+After the successful runner exit, Greg's interactive PowerShell console received a standalone `finally { ... }` fragment from a previously supplied multi-part `try/catch/finally` result-summary example. The shell rejected the word `finally` as an unknown command because the matching `try` statement was no longer in the same parsed PowerShell statement. This was an **operator-command composition defect in the assistant's reporting instructions**, unrelated to the validated launcher, Linux server process, clone, or teardown. The final PowerShell `if ($result -ne 'CLEAN EXIT')` condition cannot override or invalidate the already completed remote exit 0.
+
+Do not rerun the disposable browser preview or repeat the regression solely to repair the optional console footer. Future workstation command handoffs must either provide one fully contiguous valid PowerShell `try/catch/finally` command (not fragments/pasted piecemeal) or have the existing script print the bounded results itself; never ask Greg to assemble a `finally` block manually. Keep interactive SSH foreground and **never** pipe it through `Tee-Object`, as prohibited by the Server Management runbook.
+
+### Acceptance and remaining gate
+
+```text
+#395 accepted People runtime                dcc8f25f07a74e19ce3de3aae2d9d137b5411815
+Repaired tooling Setup/Application regression 770 passed, 5 skipped
+Apps + People disposable browser review      PASS — runner exit 0
+Production ref.person fingerprint            UNCHANGED
+Production directus_users fingerprint        UNCHANGED
+Production People service                    HEALTHY
+Preview 8898 after cleanup                   STOPPED / NO LISTENER
+Don first-login Production fixture           UNCONSUMED
+Production deployment                        NOT AUTHORIZED
+```
+
+**Next:** preserve this passed evidence; do **not** recreate the disposable clone. Conduct separate Production deployment planning under the current Server Management change/maintenance runbook and Backbone publishing authority only when explicitly authorized. Don's preserved real first-login test is a subsequent Production acceptance gate, not part of this disposable browser review. The operator has completed the prescribed visual check, but the final Production release authorization is **not implied** by the browser test or CLEAN EXIT.
 
 ## Disposition
 
 ```text
-DISPOSABLE ACCEPTANCE: PASS
-PRODUCTION DEPLOYMENT: NOT AUTHORIZED BY THIS EVIDENCE
+DISPOSABLE RUNTIME ACCEPTANCE: PASS
+APPS + PEOPLE DISPOSABLE BROWSER REVIEW: PASS / CLEAN EXIT 0
+PRODUCTION IDENTITY + SHARED CHECKOUT: UNCHANGED
 DON MARTENS FIXTURE: PRESERVED / UNCONSUMED
-NEXT: exact-candidate browser/application integration review
+PRODUCTION DEPLOYMENT: NOT AUTHORIZED BY THIS EVIDENCE
+NEXT: separate governed release review/authorization
 ```
 
-The next gate is to validate the user-facing `my.sheboyganlights.org/apps/` integration against the exact accepted source candidate before any Production mutation.
+That isolated Apps+People browser integration gate has passed. A separate governed Production deployment and subsequent real-user verification require explicit authorization and the responsible Server Management and Internal Web Backbone runbooks; neither is implied by this acceptance.
