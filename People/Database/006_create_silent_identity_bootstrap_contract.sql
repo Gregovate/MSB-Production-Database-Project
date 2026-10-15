@@ -119,7 +119,10 @@ BEGIN
     END IF;
 
     IF v_email IS NULL
-       OR v_email !~ '^[^@]+@sheboyganlights[.]org
+       OR split_part(v_email, '@', 1) = ''
+       OR split_part(v_email, '@', 2) <> 'sheboyganlights.org'
+       OR split_part(v_email, '@', 3) <> '' THEN
+        RETURN QUERY SELECT
             v_email,
             NULL::integer,
             NULL::text,
