@@ -329,7 +329,7 @@ cleanup_stale_profile_preview() {
 
     if [[ ! -s "$STATE_FILE" ]]; then
         echo "FAIL: preview port $selected_port is occupied without recognized People identity preview state; refusing cleanup"
-        sudo ss -ltnp "sport = :$PREVIEW_PORT" || true
+        sudo ss -ltnp "sport = :$selected_port" || true
         return 8
     fi
 
