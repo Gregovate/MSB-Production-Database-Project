@@ -375,13 +375,15 @@ class Manager:
                       foreground="#a12323", wraplength=780).pack(anchor="w", pady=(12, 8))
             choices = ttk.Frame(home)
             choices.pack(fill="x")
-            for label, callback in (
+            actions = (
                 ("Review workstation differences", self.open_workstation_workspace),
                 ("Review artwork updates", self.show_symbol_page),
                 ("Garmin symbols / recordings", self.open_garmin_review),
                 ("Review GPX source changes", self.open_gis_source_review),
-            ):
-                ttk.Button(choices, text=label, command=callback).pack(side="left", padx=(0, 7), pady=2)
+            )
+            for index, (label, callback) in enumerate(actions):
+                ttk.Button(choices, text=label, command=callback, width=34).grid(
+                    row=index // 2, column=index % 2, sticky="ew", padx=5, pady=4)
             ttk.Label(home, text="Advanced diagnostics and manual operations: Utilities menu.",
                       foreground="#42566b").pack(anchor="w", pady=(10, 0))
             ttk.Label(home, text="Approved workstation release and installer not yet accepted.",
