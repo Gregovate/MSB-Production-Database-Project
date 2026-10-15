@@ -2010,10 +2010,11 @@ async function loadNextTaskExecution(details, focusReport = false) {
       <section class="next-progress-history"><h4>Progress history</h4>${progress.length ? progress.map(nextProgressEntryHtml).join('') : '<div class="muted">No progress recorded yet.</div>'}</section>
       ${complete ? '<div class="next-complete-banner">This annual task is complete.</div>' : `
       <form class="next-completion-form next-report-work-form"
+        data-scheduled-date="${escapeHtml(day?.work_date || assignment?.work_date || '')}"
         data-session-task-id="${sessionTaskId}"
         data-assignment-id="${assignmentId}">
         <div class="next-report-work-grid">
-          <label>Work completed on<input class="next-performed-on" type="date" value="${escapeHtml(day?.work_date || assignment?.work_date || '')}" required></label>
+          <label class="next-work-key-field next-work-date-field">Date work actually happened<input class="next-performed-on" type="date" value="${escapeHtml(day?.work_date || assignment?.work_date || '')}" required><small>Scheduled: ${escapeHtml(day?.work_date || assignment?.work_date || 'unknown')}. Change this if the crew worked another day.</small></label>
           <label class="next-work-key-field">Actual crew size<input class="next-crew" type="number" min="1" inputmode="numeric" placeholder="People who worked" required><small>Include the Captain if they worked.</small></label>
           <label class="next-work-key-field">Hours worked<input class="next-duration-hours" type="number" min="0" step="1" inputmode="numeric" placeholder="0" required></label>
           <label class="next-work-key-field next-work-minutes-field">Minutes worked<input class="next-duration-minutes" type="number" min="0" max="59" step="1" inputmode="numeric" placeholder="0–59" required><small>Enter minutes, even when less than one hour.</small></label>
@@ -2061,6 +2062,8 @@ async function submitNextProgress(event) {
   const durationMinutes = (hours * 60) + minutes;
 
   if (!performedOn) return window.alert('Work completed on date is required.');
+  const scheduledDate = form.querySelector('.next-performed-on')?.closest('form')?.dataset.scheduledDate || '';
+  if (!window.confirm(`Confirm the date you ACTUALLY worked: ${performedOn}${scheduledDate && scheduledDate !== performedOn ? ` (scheduled ${scheduledDate})` : ''}. Save this work report?`)) return;
   if (crew < 1) return window.alert('Crew size must be at least 1.');
   if (hours < 0 || minutes < 0 || minutes > 59 || durationMinutes <= 0) {
     return window.alert('Enter the actual Hours and Minutes worked.');
