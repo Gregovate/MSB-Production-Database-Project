@@ -11,7 +11,7 @@ from setup_api import (
     require_setup_command, setup_database_dsn,
 )
 from setup_notification_service import (
-    DirectusSetupOutboxClient, SetupNotificationError, eligible_people,
+    DirectusSetupOutboxClient, SetupNotificationError, eligible_people, covered_assignments,
     local_today, manager_email, notification_context, captain_email,
     organizational_email,
 )
@@ -65,6 +65,7 @@ def email_myself() -> tuple[Response, int]:
         "subject":"TEST — " + subject,
         "body_text":"CONTROLLED REVIEW TEST — not a daily digest.\n\n" + body,
         "message_key":f'2026|{today.isoformat()}|MANAGER_SELF_TEST|{operator["email"]}',
+        "covered_assignment_ids":[],
     }
     receipt = DirectusSetupOutboxClient().queue(notice,test_mode=True)
     return jsonify(result=receipt, notice="Directus outbox accepted request; inbox delivery is not yet proven"),202
@@ -81,6 +82,12 @@ def request_report(assignment_id: int) -> tuple[Response,int]:
     if row is None:
         raise SetupCommandError("The original assignment is not currently missing a report")
     captain_id = row["captain_person_id"]
+    if captain_id is not None and (int(captain_id),assignment_id) in covered_assignments(
+        setup_database_dsn(), today
+    ):
+        raise SetupCommandError(
+            "This Captain already received a notification request for the assignment today"
+        )
     captain = next((p for p in people if p["person_id"] == captain_id and p["can_read_setup"]), None)
     if captain is None:
         raise SetupCommandError("Captain has no eligible active MSB identity; Manager follow-up required")
@@ -89,6 +96,7 @@ def request_report(assignment_id: int) -> tuple[Response,int]:
         "kind":"CAPTAIN_REQUEST","season_year":2026,"notice_date":today.isoformat(),
         "recipient_person_id":captain_id,"recipient_email":captain["email"],
         "assignment_id":assignment_id,"subject":subject,"body_text":body,
+        "covered_assignment_ids":[assignment_id],
         "message_key":f'2026|{today.isoformat()}|CAPTAIN_REQUEST|{captain["email"]}|{assignment_id}',
     }
     receipt = DirectusSetupOutboxClient().queue(notice,test_mode=False)
