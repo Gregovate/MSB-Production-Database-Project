@@ -66,6 +66,8 @@ cleanup() {
     status=$?
     trap - EXIT HUP INT TERM
     set +e
+    local person_after_result="SKIP"
+    local directus_after_result="SKIP"
 
     echo
     echo "--- Cleanup ---"
@@ -88,7 +90,9 @@ cleanup() {
         if [[ -z "$after_person" || "$after_person" != "$PROD_PERSON_FP" ]]; then
             echo "FAIL: Production ref.person fingerprint changed"
             status=97
+            person_after_result="STOP"
         else
+            person_after_result="PASS"
             echo "PASS: Production ref.person fingerprint unchanged"
         fi
     else
@@ -102,7 +106,9 @@ cleanup() {
         if [[ -z "$after_directus" || "$after_directus" != "$PROD_DIRECTUS_FP" ]]; then
             echo "FAIL: Production directus_users fingerprint changed"
             status=98
+            directus_after_result="STOP"
         else
+            directus_after_result="PASS"
             echo "PASS: Production directus_users fingerprint unchanged"
         fi
     else
@@ -123,7 +129,8 @@ cleanup() {
         else
             echo "Disposable scope: STOP (read first failing line in report)"
         fi
-        echo "Production FP:   See Person/Directus before-after PASS/FAIL above"
+        echo "Person after:     $person_after_result"
+        echo "Directus after:   $directus_after_result"
         echo "Production writes: NONE"
         echo "Real Don fixture: NOT CONSUMED"
         echo "Exit status:     $status"
