@@ -3,8 +3,10 @@ set -Eeuo pipefail
 umask 077
 
 ISSUE="#395"
-SOURCE_REF="issue-395-silent-human-identity-bootstrap"
+SOURCE_REF="${2:-issue-395-silent-human-identity-bootstrap}"
 CANDIDATE_SHA="${1:-}"
+SERVICE_SCOPE_PROBE="${3:-false}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 REPO_ROOT="/opt/fieldwiring"
 PRODUCTION_PYTHON="/opt/fieldwiring/.venv/bin/python"
@@ -39,6 +41,10 @@ GHOST_EMAIL="bootstrap-ghost-${SHORT_STAMP}-$$@sheboyganlights.org"
 
 exec > >(tee "$REPORT") 2>&1
 
+if [[ "$SERVICE_SCOPE_PROBE" != "false" && "$SERVICE_SCOPE_PROBE" != "true" ]]; then
+    echo "FAIL: unsupported disposable service scope profile"
+    exit 2
+fi
 if [[ -z "$CANDIDATE_SHA" ]]; then
     echo "FAIL: exact candidate SHA argument is required"
     exit 2
@@ -113,6 +119,7 @@ echo "========== PEOPLE #395 SILENT IDENTITY BOOTSTRAP DISPOSABLE ACCEPTANCE ===
 echo "Issue:                 $ISSUE"
 echo "Candidate SHA:         $CANDIDATE_SHA"
 echo "Candidate ref:         $SOURCE_REF"
+echo "Service policy proof: $SERVICE_SCOPE_PROBE"
 echo "Authority:             MSB-Server-Management — PostgreSQL_Disposable_Acceptance_Standard.md"
 echo "Production access:     git fetch/worktree + pg_dump + SELECT only"
 echo "Production mutation:   NONE"
@@ -429,6 +436,26 @@ if (r.status !== 200) {
 }
 console.log('PASS: disposable Directus admin API authentication');
 NODE
+
+if [[ "$SERVICE_SCOPE_PROBE" == "true" ]]; then
+    [[ "$SOURCE_REF" == "issue-395-production-deployment-readiness" ]] || {
+        echo "FAIL: #49 service scope probe only supported on its owning readiness branch"
+        exit 31
+    }
+    [[ -s "$SCRIPT_DIR/people_395_service_scope_disposable_probe.sh" ]] || {
+        echo "FAIL: versioned #49 disposable scope probe missing"
+        exit 32
+    }
+    # Never accept runtime changes: the proven People V0.2.3 backend/SQL remains frozen.
+    if ! sudo git -C "$REPO_ROOT" diff --quiet          dcc8f25f07a74e19ce3de3aae2d9d137b5411815          "$CANDIDATE_SHA" -- People/Application People/Database; then
+        echo "FAIL: scoped-permission disposable tool changed accepted People runtime"
+        exit 33
+    fi
+    # shellcheck disable=SC1091
+    source "$SCRIPT_DIR/people_395_service_scope_disposable_probe.sh"
+    run_people_395_service_scope_probe
+    echo "PASS: scoped service policy proof completed without touching Production"
+fi
 
 DB_IP="$(sudo docker inspect "$TEST_DB_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
 DIRECTUS_IP="$(sudo docker inspect "$TEST_DIRECTUS_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
