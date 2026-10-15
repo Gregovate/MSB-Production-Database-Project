@@ -286,20 +286,16 @@ WHERE lower(u.email)=lower('$PREVIEW_EMAIL');
 }
 
 cleanup_stale_profile_preview() {
+    local selected_port="$PREVIEW_PORT"
     local listener_pids=()
     local fieldwiring_uid
     local pid
     local cmdline
     local owner_uid
     local pgid
-    local PREVIEW_PGID=""
-    local TEST_DB_CONTAINER=""
-    local TEST_DIRECTUS_CONTAINER=""
-    local WORKTREE=""
-    local SCRIPT_DIR=""
 
     mapfile -t listener_pids < <(
-        sudo ss -ltnp "sport = :$PREVIEW_PORT" 2>/dev/null \
+        sudo ss -ltnp "sport = :$selected_port" 2>/dev/null \
             | grep -oE 'pid=[0-9]+' | cut -d= -f2 | sort -u || true
     )
 
@@ -308,19 +304,46 @@ cleanup_stale_profile_preview() {
         return 0
     fi
 
+    # Source stale state into function-local variables so it can never replace
+    # the newly requested candidate/ref/operator values in the caller.
+    local RUNTIME_SHA=""
+    local SOURCE_REF=""
+    local PREVIEW_PORT=""
+    local PREVIEW_EMAIL=""
+    local EXPECTED_VERSION=""
+    local BACKBONE_APPS_SHA=""
+    local BACKBONE_APPS_BLOB=""
+    local WORKTREE=""
+    local DUMP_FILE=""
+    local APPS_HTML=""
+    local REPORT=""
+    local PREVIEW_LOG=""
+    local TEST_DB_CONTAINER=""
+    local TEST_DB_PASSWORD=""
+    local TEST_DIRECTUS_CONTAINER=""
+    local PREVIEW_PGID=""
+    local PROD_PERSON_FP=""
+    local PROD_DIRECTUS_FP=""
+    local LIVE_HEAD=""
+    local SCRIPT_DIR=""
+
     if [[ ! -s "$STATE_FILE" ]]; then
-        echo "FAIL: preview port $PREVIEW_PORT is occupied without recognized People identity preview state; refusing cleanup"
+        echo "FAIL: preview port $selected_port is occupied without recognized People identity preview state; refusing cleanup"
         sudo ss -ltnp "sport = :$PREVIEW_PORT" || true
         return 8
     fi
 
     if (( ${#listener_pids[@]} != 1 )); then
-        echo "FAIL: preview port $PREVIEW_PORT has multiple listener PIDs; refusing cleanup"
+        echo "FAIL: preview port $selected_port has multiple listener PIDs; refusing cleanup"
         return 8
     fi
 
     # shellcheck disable=SC1090
     source "$STATE_FILE"
+    if [[ "$PREVIEW_PORT" != "$selected_port" ]]; then
+        echo "FAIL: recognized stale state does not match selected port $selected_port"
+        return 8
+    fi
     pid="${listener_pids[0]}"
     owner_uid="$(ps -o uid= -p "$pid" 2>/dev/null | xargs || true)"
     fieldwiring_uid="$(id -u fieldwiring)"
@@ -329,7 +352,7 @@ cleanup_stale_profile_preview() {
     if [[ "$PREVIEW_PGID" != "$pid" \
           || "$owner_uid" != "$fieldwiring_uid" \
           || "$cmdline" != *"people_identity_bootstrap_disposable_browser_preview_entry.py"* ]]; then
-        echo "FAIL: port $PREVIEW_PORT is not owned by the recognized People identity preview; refusing to kill it"
+        echo "FAIL: port $selected_port is not owned by the recognized People identity preview; refusing to kill it"
         ps -o pid,ppid,pgid,sid,user,args -p "$pid" || true
         return 8
     fi
@@ -337,7 +360,7 @@ cleanup_stale_profile_preview() {
     pgid="$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ')"
     [[ "$pgid" =~ ^[0-9]+$ ]] || { echo "FAIL: could not resolve stale preview PGID"; return 8; }
 
-    echo "Recognized stale People identity preview on port $PREVIEW_PORT; removing only that preview."
+    echo "Recognized stale People identity preview on port $selected_port; removing only that preview."
     sudo -u fieldwiring -H kill -- -"$pgid" >/dev/null 2>&1 || true
     sleep 1
     sudo -u fieldwiring -H kill -KILL -- -"$pgid" >/dev/null 2>&1 || true
@@ -353,7 +376,7 @@ cleanup_stale_profile_preview() {
     [[ "$SCRIPT_DIR" == /tmp/msb-setup-disposable-browser-preview-* ]] && rm -rf "$SCRIPT_DIR" >/dev/null 2>&1 || true
     rm -f "$STATE_FILE" >/dev/null 2>&1 || true
 
-    if ss -ltnH "sport = :$PREVIEW_PORT" | grep -q .; then
+    if ss -ltnH "sport = :$selected_port" | grep -q .; then
         echo "FAIL: selected port remains occupied after narrow stale cleanup"
         return 8
     fi
