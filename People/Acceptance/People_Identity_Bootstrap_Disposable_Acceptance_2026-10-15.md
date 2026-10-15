@@ -166,22 +166,37 @@ bash -n Setup/Acceptance/people_identity_bootstrap_disposable_browser_preview_se
     NOT RUN: PowerShell CommandNotFoundException, bash command not on PATH
 ```
 
-The last line is a **Windows command-resolution failure**, not an executed Bash syntax failure. Do not describe Bash syntax validation as PASS until an actual Bash interpreter executes `-n`. Reuse/discover the installed Git for Windows Bash if present; do not assume a bare `bash` command works in this PowerShell environment. PowerShell parser/syntax preflight also remains unverified in this evidence.
+The original `bash` command-not-found result was a Windows command-resolution failure, **not a failed syntax test**. Greg subsequently used the documented repository checkout to resolve Git for Windows Bash relative to the installed `git.exe` and completed both syntax checks on tooling/documentation HEAD `514b0ca42a392cafc54ace6103f61cd2d876d9bf`:
+
+```text
+PowerShell Parser.ParseFile(
+  Setup/Acceptance/run_setup_disposable_browser_preview.ps1
+)
+  PASS: PowerShell launcher syntax (0 parse errors)
+
+Git for Windows bash.exe -n
+  Setup/Acceptance/people_identity_bootstrap_disposable_browser_preview_server.sh
+  PASS: Bash preview server syntax (exit 0)
+```
+
+These are syntax-only checks: neither launcher nor server script was executed; no server/Production contact was made by these checks. Existing pytest evidence remains **11 passed** for the profile contract and **769 passed, 5 skipped** for full `Setup/Application` at `01606de3...`; newer commits through this checkpoint only update documentation.
 
 ### Exact stop point and next gate
 
 ```text
 #395 disposable runtime acceptance   PASS (dcc8f25...; separate controlled report above)
-Reusable-profile static pytest       PASS (11/11)
+Reusable-profile pytest               PASS (11/11)
 Complete Setup/Application pytest     PASS (769 passed, 5 skipped)
-Bash syntax validation               PENDING (no bash command on PowerShell PATH)
-PowerShell launcher parser check     PENDING
+Bash server syntax                    PASS (Git for Windows Bash, -n)
+PowerShell launcher parser            PASS (ParseFile, 0 errors)
 Real reusable 8898 browser review    NOT STARTED
 Don real Production fixture          UNCONSUMED
 Production deployment                NOT AUTHORIZED
 ```
 
-Resolve local shell syntax tooling without changing the accepted runtime, record actual validation output here, then inspect port ownership and follow the **existing** reusable 8898 browser-review runbook. Do not run the rejected People-specific wrapper, create a competing runbook, or consume Don's real fixture for pre-Production review.
+**Next controlled action:** use the existing `Setup/Acceptance/run_setup_disposable_browser_preview.ps1` with `-PreviewProfile PeopleIdentityBootstrap`, explicit port `8898`, accepted People runtime `dcc8f25f07a74e19ce3de3aae2d9d137b5411815`, accepted `V0.2.3`, feature branch `issue-395-silent-human-identity-bootstrap`, and pinned Backbone Apps source/blob above. The launcher itself enforces a clean matching branch, candidate ancestry/version, selected-port ownership, disposable clone, and foreground reconnect workflow. Open `http://127.0.0.1:8898/` **only after** the runner prints BROWSER REVIEW READY.
+
+Follow both governing Server Management acceptance/browser runbooks and the companion port register. Do not run the rejected People-specific wrapper, create a competing runbook, or use Don's real Production fixture for pre-Production review.
 
 ## Disposition
 
