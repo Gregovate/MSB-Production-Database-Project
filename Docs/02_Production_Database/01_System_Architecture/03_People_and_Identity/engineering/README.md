@@ -138,11 +138,15 @@ matching Directus user       NONE
 ref.person.person_id         18
 Person directus_user_id      NULL
 current browser state        original Setup authorization error remains open
+test operator                 Greg / MSB administrator
+browser-use permission        Don explicitly authorized Greg to use this Chrome session for #395 testing
 ```
 
-Preserve this state until the #395 candidate has passed disposable/pre-Production acceptance. Do not have Don visit Directus or manually create/link his Directus identity merely to unblock him before that test, because doing so would destroy the clean Production fixture.
+This is an authorized operator test fixture; Don does not need to be physically present for each test step. Greg, acting as the MSB administrator, may use Don's existing Chrome session for the controlled #395 browser acceptance work Don authorized.
 
-The intended final acceptance is to resume from Don's normal `my.sheboyganlights.org` workflow and prove that the accepted bootstrap creates/initializes the Directus identity without exposing Directus Data Studio/login, assigns only **MSB Browser** initially, safely links Person 18, and leaves later role elevation as a separate administrator action.
+Preserve the missing-Directus-user state until the #395 candidate has passed disposable/pre-Production acceptance. Authorization to use the browser does not mean the fixture should be consumed early by visiting Directus or manually creating/linking Don's identity before the candidate is ready.
+
+The intended final acceptance is for Greg to resume from Don's normal `my.sheboyganlights.org` workflow in that authorized Chrome session and prove that the accepted bootstrap creates/initializes the Directus identity without exposing Directus Data Studio/login, assigns only **MSB Browser** initially, safely links Person 18, and leaves later role elevation as a separate administrator action.
 
 ## Directus Google SSO Runtime — 2026-10-15
 
