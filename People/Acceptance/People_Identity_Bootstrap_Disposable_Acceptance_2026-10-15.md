@@ -256,7 +256,9 @@ ddbad35f55d027e3abf64b80cedaf813ffabfece  server bundled-asset verification
 ea708c1e4c3565ed98d0e081ed6f22db5b7142fb  evidence-precise test comments
 ```
 
-The accepted People runtime `dcc8f25f...` and Backbone source commit `1d7fa310...` are unchanged. ### Repaired tooling — local regression evidence received
+The accepted People runtime `dcc8f25f...` and Backbone source commit `1d7fa310...` are unchanged.
+
+### Repaired tooling — local regression evidence received
 
 Greg's Windows desktop PowerShell output for the repaired tooling confirms:
 
@@ -272,6 +274,19 @@ These are **local engineering checks**, not reusable 8898 browser acceptance. Th
 
 Next controlled action: refresh the existing feature branch, confirm a clean matching tooling HEAD and port ownership, then run the same established reusable 8898 profile with exact accepted runtime/App pins under the Server Management browser-review runbook. Inspect readiness, operator browser result, cleanup and Production after-check before changing any Production deployment state.
 
+
+### Operator handoff: copy only the final result block
+
+The operator should **not need to copy the whole pytest progress or multi-page SSH transcript** to report results. Every future #395 PowerShell test or browser-review command handoff must end with a bounded, clearly labeled result block that includes:
+
+- exact local tooling HEAD and accepted People runtime SHA;
+- focused profile regression result and full Setup regression count when those tests were actually run;
+- PowerShell/Bash syntax outcomes when checked;
+- browser-review status (`NOT RUN`, `READY/IN PROGRESS`, `STOPPED`, or `CLEAN EXIT`—do not confuse CLEAN EXIT with operator acceptance);
+- the first blocking error and the server report path when known, otherwise a clear statement that the path is in the preceding terminal output; and
+- Production invariants only when verified by the runner.
+
+In PowerShell, capture each command's exit status and retain failure semantics; do **not** pipe an interactive SSH command through `Tee-Object` or other pipelines to harvest its output, because the governed interactive terminal/sudo contract forbids that transport. Prefer a `try/catch/finally` summary printed after the existing launcher returns, and do not claim passing values not actually observed. The operator should only need to paste the lines between `BEGIN #395 RESULT` and `END #395 RESULT`, plus a specific failure detail if the remote report identifies one.
 
 ## Disposition
 
