@@ -9,7 +9,7 @@ People Manager original Production acceptance   PASS
 Identity reconciliation V0.2.2 disposable        PASS
 Identity reconciliation V0.2.2 Production        PASS
 Identity bootstrap V0.2.3 disposable              PASS — #395
-Identity bootstrap browser/application review     NEXT — #395 / Backbone #24
+Identity bootstrap browser/application review     PASS — #395 / Backbone #24
 Production protected /people/ route              PASS
 Cloudflare-authenticated live browser             PASS
 Production GA4 page view                          PASS
@@ -221,7 +221,7 @@ Durable evidence:
 People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md
 ```
 
-This evidence does not authorize Production deployment. The next gate is exact-candidate browser/application integration review with the `my.sheboyganlights.org/apps/` workflow. Don Martens remains the preserved Production acceptance fixture and has not been consumed.
+Greg's Production authorization is now recorded in the [#395 engineering acceptance](People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md). The disposable Apps+People browser review passed. The next step is the guarded **read-only Production readiness probe**, followed by a separate reviewed migration-006/V0.2.3 deployment runner and controlled Backbone Apps publication. No migration is reported applied. Don Martens remains the preserved Production fixture and has not been consumed.
 
 ## Google Analytics — PASS
 
