@@ -659,3 +659,49 @@
   flex-wrap: wrap;
   gap: 0.35rem;
 }
+
+
+/* #132: field-report input visibility. No reporting persistence changes. */
+.next-report-work-form .next-report-work-grid .next-work-key-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-weight: 750;
+  padding: 0.65rem;
+  border: 2px solid var(--border, #aebbc9);
+  border-radius: 0.55rem;
+  background: var(--panel, #fff);
+  min-width: 0;
+}
+.next-report-work-form .next-report-work-grid .next-work-key-field input {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  border: 2px solid var(--accent, #14658b);
+  background: #fff;
+  color: #182936;
+  font-size: 1.12rem;
+  font-weight: 700;
+  padding: 0.55rem;
+}
+.next-report-work-form .next-report-work-grid .next-work-key-field small {
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.next-report-work-form .next-report-work-grid .next-work-minutes-field {
+  border-color: #a65a16;
+  background: #fff7e8;
+}
+.next-report-work-form .next-report-work-grid .next-work-minutes-field input {
+  border-color: #a65a16;
+}
+.next-report-work-form .next-report-work-grid .next-work-key-field input:focus-visible {
+  outline: 3px solid #1568a5;
+  outline-offset: 2px;
+}
+@media (max-width: 650px) {
+  .next-report-work-form .next-report-work-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
