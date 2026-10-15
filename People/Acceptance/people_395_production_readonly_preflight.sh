@@ -136,48 +136,79 @@ DIRECTUS_FP="$(psql_read "SELECT md5(coalesce(string_agg(row_to_json(u)::text,''
 echo "PASS: Production identity fingerprints read (no mutations)"
 
 STEP="Check protected Directus credential without printing secret"
-# The credential is read only inside the Python process, never put in a CLI arg
-# or printed. No request to create or change a Directus user is made.
-if ! sudo python3 - "$ENV_FILE" <<'PY'
+# Return only a fixed, non-secret failure category in the final result block.
+# Never print credential contents, owner UUID/email, response JSON or raw errors.
+credential_status="$(sudo python3 - "$ENV_FILE" <<'PY'
 import json, pathlib, stat, sys
 from urllib.request import Request, build_opener, ProxyHandler
 from urllib.error import HTTPError, URLError
-p=pathlib.Path(sys.argv[1])
+
+p = pathlib.Path(sys.argv[1])
+
+class CredentialNotReady(Exception):
+    pass
+
 try:
-    st=p.stat()
+    if not p.is_file():
+        raise CredentialNotReady("ENV_FILE_MISSING")
+    st = p.stat()
     if st.st_uid != 0 or (stat.S_IMODE(st.st_mode) & 0o027):
-        raise ValueError("protected environment-file owner/mode mismatch")
-    values={}
-    for line in p.read_text(encoding="utf-8").splitlines():
-        raw=line.strip()
+        raise CredentialNotReady("ENV_FILE_PERMISSIONS")
+
+    try:
+        lines = p.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError):
+        raise CredentialNotReady("ENV_FILE_UNREADABLE")
+    values = {}
+    for line in lines:
+        raw = line.strip()
         if not raw or raw.startswith("#") or "=" not in raw:
             continue
-        key,val=raw.split("=",1)
-        val=val.strip()
-        if len(val)>=2 and val[0] in "'\"" and val[-1]==val[0]:
-            val=val[1:-1]
-        values[key.strip()]=val
-    token=values.get("PEOPLE_DIRECTUS_IDENTITY_TOKEN","").strip()
+        key, value = raw.split("=", 1)
+        value = value.strip()
+        if len(value) >= 2 and value[0] in "'\"" and value[-1] == value[0]:
+            value = value[1:-1]
+        values[key.strip()] = value
+
+    token = values.get("PEOPLE_DIRECTUS_IDENTITY_TOKEN", "").strip()
     if not token:
-        raise ValueError("missing identity token")
-    url=values.get("PEOPLE_DIRECTUS_URL","http://127.0.0.1:8055").strip().rstrip("/")
-    if url!="http://127.0.0.1:8055":
-        raise ValueError("unexpected Directus target")
-    request=Request(url+"/users/me?fields=id,status",headers={"Authorization":"Bearer "+token})
-    with build_opener(ProxyHandler({})).open(request,timeout=5) as response:
-        payload=json.load(response)
-    if payload.get("data",{}).get("status")!="active":
-        raise ValueError("token user not active")
-    print("PASS: protected credential present and authenticated for read")
-except (OSError,ValueError,HTTPError,URLError,KeyError,TypeError):
-    print("STOP: protected Directus credential missing, invalid or unusable")
+        raise CredentialNotReady("TOKEN_NOT_CONFIGURED")
+    url = values.get("PEOPLE_DIRECTUS_URL", "http://127.0.0.1:8055").strip().rstrip("/")
+    if url != "http://127.0.0.1:8055":
+        raise CredentialNotReady("DIRECTUS_URL_MISMATCH")
+
+    request = Request(url + "/users/me?fields=id,status", headers={
+        "Authorization": "Bearer " + token
+    })
+    try:
+        with build_opener(ProxyHandler({})).open(request, timeout=5) as response:
+            payload = json.load(response)
+    except HTTPError as error:
+        if error.code in (401, 403):
+            raise CredentialNotReady("DIRECTUS_AUTH_HTTP_" + str(error.code))
+        raise CredentialNotReady("DIRECTUS_HTTP_" + str(error.code))
+    except (URLError, TimeoutError, OSError):
+        raise CredentialNotReady("DIRECTUS_UNREACHABLE")
+    except (ValueError, TypeError):
+        raise CredentialNotReady("DIRECTUS_RESPONSE_INVALID")
+
+    if payload.get("data", {}).get("status") != "active":
+        raise CredentialNotReady("DIRECTUS_USER_INACTIVE")
+    print("PRESENT / VALID API READ")
+except CredentialNotReady as error:
+    print("STOP: " + str(error))
+    sys.exit(1)
+except (OSError, ValueError, TypeError, KeyError):
+    print("STOP: UNSPECIFIED_CREDENTIAL_CHECK_FAILURE")
     sys.exit(1)
 PY
-then
-    SECRET="STOP: NOT READY"
-    stop "Directus identity-bootstrap credential requires governed provisioning"
-fi
-SECRET="PRESENT / VALID API READ"
+)" || {
+    # Only a fixed code produced by the reviewed diagnostic enters the report.
+    SECRET="${credential_status:-STOP: DIAGNOSTIC_FAILED}"
+    stop "Directus identity-bootstrap credential not ready; see Credential status code"
+}
+SECRET="$credential_status"
+echo "PASS: protected credential present and authenticated for read (secret not displayed)"
 echo "NOTE: provider-field creation authority still requires release validation."
 
 STEP="Read-only preflight complete"
