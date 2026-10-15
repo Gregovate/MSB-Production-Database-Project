@@ -102,6 +102,23 @@ Non-human identities are a separate valid class. A shared tablet or service acco
 
 Issue #395 owns replacement of the visible Directus first-login dependency. It must preserve the accepted #385 reconciliation contract and must not silently create a Person merely because an account authenticates.
 
+## Directus Google SSO Runtime — 2026-10-15
+
+Live read-only runtime inspection confirmed Directus 11.17.1 is configured with a single Google OpenID provider and public registration enabled:
+
+```text
+AUTH_PROVIDERS=google
+AUTH_GOOGLE_DRIVER=openid
+AUTH_GOOGLE_SCOPE=openid email profile
+AUTH_GOOGLE_ALLOW_PUBLIC_REGISTRATION=true
+AUTH_GOOGLE_ISSUER_URL=https://accounts.google.com
+PUBLIC_URL=https://db.sheboyganlights.org
+```
+
+This means a supported Google SSO login can create the missing Directus identity. The provider-specific login route can be used without presenting the Directus Data Studio login page first. #395 must still prove shared-tablet account consistency before adopting that as the normal invisible bootstrap path.
+
+The current Production default-role behavior remains owned by the User Onboarding Flow: a newly created Google-backed Directus user with NULL role is assigned **MSB Browser** / **Read Only - MSB Core**. Role elevation remains an explicit administrator action.
+
 ## Accepted People Manager Behavior
 
 The accepted contact/identity behavior includes:
