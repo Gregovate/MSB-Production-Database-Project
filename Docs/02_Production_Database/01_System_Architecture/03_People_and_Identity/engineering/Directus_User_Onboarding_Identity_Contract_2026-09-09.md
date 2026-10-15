@@ -19,6 +19,36 @@ No Production flow, database row, role, or configuration was changed while gathe
 
 The flow was inspected operation-by-operation in the Production Directus UI. A normal export mechanism was not available from that interface, so the operation configuration was captured manually from the live flow screens.
 
+## Live Directus Google SSO Configuration — 2026-10-15
+
+Read-only inspection of the running `msb-directus` container confirmed:
+
+```text
+image                                  directus/directus:11.17.1
+status                                 running
+AUTH_PROVIDERS                         google
+AUTH_GOOGLE_DRIVER                     openid
+AUTH_GOOGLE_SCOPE                      openid email profile
+AUTH_GOOGLE_ALLOW_PUBLIC_REGISTRATION  true
+AUTH_GOOGLE_ISSUER_URL                 https://accounts.google.com
+PUBLIC_URL                             https://db.sheboyganlights.org
+AUTH_GOOGLE_CLIENT_ID                  configured (value intentionally not recorded)
+AUTH_GOOGLE_CLIENT_SECRET              configured (value intentionally not recorded)
+AUTH_GOOGLE_IDENTIFIER_KEY             configured; exact non-secret value still to be re-read
+```
+
+Directus documentation confirms that OpenID/OAuth public registration automatically creates a Directus account when a user authenticates through the configured provider. The supported browser SSO entry point is the provider-specific login route:
+
+```text
+https://db.sheboyganlights.org/auth/login/google?redirect=<allowed return URL>
+```
+
+This can initiate Google SSO without first rendering the Directus Data Studio login page.
+
+The current environment does not expose a configured `AUTH_GOOGLE_DEFAULT_ROLE_ID` in the inspected variable set. Production instead relies on the active **User Onboarding** Flow to assign **MSB Browser** after `directus_users.items.create`.
+
+This makes a direct provider-login bootstrap technically plausible for #395, but it is not yet accepted. Shared tablets create an additional identity-integrity requirement: the Google identity completing the Directus OIDC step must not differ from the human identity already authenticated by Cloudflare Access. That mismatch behavior must be explicitly tested before adopting the browser-redirect approach.
+
 ## Live Metadata Reverification — 2026-10-15
 
 Issue #395 reconnaissance reconstructed this Flow directly from the live Production Directus metadata tables rather than from screenshots.
