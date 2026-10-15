@@ -377,3 +377,18 @@ Evaluate authoritative progress evidence **immediately before constructing/sendi
 The Manager's notification ledger must distinguish **resolved before send (suppressed)** from **actually sent**. Do not deliver a Captain reminder merely because it was queued before a 100% report arrived. Once 100% is confirmed and saved, no more reminders for that resolved reporting obligation; do not equate work completion with historical notification delivery.
 
 Mandatory tests: report saved at 100% before daily batch; report corrected to 100%; report submitted while digest is queued; reported partial on that occurrence; multiple assignments for the same annual task; undated or mismatched reports; manager digest suppresses resolved item but retains unrelated open items. Production email activation remains unapproved.
+
+
+## Manual early reminder from Perform Work — October 15 decision
+
+Managers require a **Request Report** action on a past scheduled assignment with no valid work report, available directly in **Perform Work**, without waiting for the automatic 4:00 AM America/Chicago digest. The request is a Manager-only communication action, not an edit to the historical assignment or task completion.
+
+- Recheck canonical occurrence reporting evidence and current Manager authorization immediately before sending. Disable/remove action if a valid report exists (partial or 100%); no false missing-report email.
+- Show human task name, original workday, shift/crew and mapped Captain, verified `@sheboyganlights.org` destination, and a brief confirmation before sending. If Captain TBD, no verified organizational email, or access mismatch, do not send; show Manager-only follow-up needed.
+- Send an exact occurrence-based, protected Report Work link and plain-language instructions from the controlled operator SOP. No report should ever be fabricated automatically.
+- Persist Manager requester, request time, occurrence, recipient identity, provider acceptance/failure and next action in the same authoritative notification audit used by the 4:00 AM job. Display it in Manager notification history.
+- Avoid duplicate Captain mail: one consolidated reminder per Captain/day covering unresolved occurrences; if a manual request was sent the same local calendar day, the 4:00 AM batch does not duplicate that Captain/occurrence reminder. Recheck outstanding occurrences in case reports arrived meanwhile.
+- Manual request does not resolve the issue; only authoritative saved reporting evidence or a separately governed Manager historical disposition can resolve it.
+- Test repeated button clicks, simultaneous Managers, retries/provider failure, partial/100% report just before send, multiple assignments, Captain identity missing, and timezone-day rollover; keep protected UI authorization and idempotent provider send semantics.
+
+Status: **approved requirement only**. The Request Report button, notification backend, outbox/audit and scheduler are not yet implemented or deployed. Preserve #205/#132/#122 ownership and run governed acceptance before Production activation.
