@@ -2239,7 +2239,7 @@ function board205RenderKpis() {
     ? String(plannedLaborHours)
     : plannedLaborHours.toFixed(1).replace(/\.0$/, '');
 
-  target.innerHTML = [
+  target.innerHTML = setup205DeadlineKpiHtml(setupBoard205State.board, appState.seasonYear) + [
     `<span><strong>${total}</strong> tasks</span>`,
     `<span><strong>${scheduled}</strong> scheduled · ${pct(scheduled)}%</span>`,
     currentAssignments.length
