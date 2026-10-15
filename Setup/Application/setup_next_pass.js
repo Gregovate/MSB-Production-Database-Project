@@ -1634,6 +1634,34 @@ function setup205ActionCenterHtml(board, model) {
     section('Incomplete tasks needing continuation',continuations,'A reported partial work period is not the same as a future assignment.') +
     section('Upcoming scheduled readiness exceptions (7 days)',imminent,'Hard prerequisite/Work Order gates and independent NOT READY conditions can overlap.') +
     section('Scheduled assignments without Captain',captainTbd,'A Captain TBD or unverified organizational mailbox must be followed up by a Manager.') +
+    '<details class="setup205-email-preview"><summary>Review Manager daily email wording — draft only</summary>' +
+      '<div role="note" class="muted">NO EMAIL SENT. Recipients must be dynamically verified authorized Managers at dispatch time; 4:00 AM scheduling, durable deduplication and delivery audit are not active.</div>' +
+      '<p><strong>Subject:</strong> MSB Setup — daily Manager exception follow-up (' + safe(today) + ')</p>' +
+      '<p>Please review unresolved historical work reports and unfinished work needing scheduling. Reported partial work is not a missing report. A schedule change does not erase prior reporting duties.</p>' +
+      '<h4>Past scheduled occurrences without a work report (' + missed.length + ')</h4><ol>' + (missed.map(x=>'<li>'+x+'</li>').join('') || '<li>None</li>') + '</ol>' +
+      '<h4>Incomplete work needing continuation (' + continuations.length + ')</h4><ol>' + (continuations.map(x=>'<li>'+x+'</li>').join('') || '<li>None</li>') + '</ol>' +
+      '<h4>Upcoming readiness exceptions (' + imminent.length + ')</h4><ol>' + (imminent.map(x=>'<li>'+x+'</li>').join('') || '<li>None</li>') + '</ol>' +
+      '<h4>Captain TBD (' + captainTbd.length + ')</h4><ol>' + (captainTbd.map(x=>'<li>'+x+'</li>').join('') || '<li>None</li>') + '</ol>' +
+      '<p>Required action: contact the reporting Captain, correct an existing report through Manager Correct report, or plan the remaining work. No work occurred? Do not fabricate a report; reconcile the original assignment through the governed workflow.</p>' +
+    '</details>' +
+    '<details class="setup205-email-preview"><summary>Review Captain reminder instructions — draft only</summary>' +
+      '<div role="note" class="muted">NO EMAIL SENT. A Captain will receive ONLY that Captain’s own unresolved, reportless occurrences, and ONLY with verified active MSB organizational email and access. This is a wording preview, not a recipient determination.</div>' +
+      '<p><strong>Subject:</strong> MSB Setup — Please report your work from [Setup Day / work date]</p>' +
+      '<p>Scheduled Task name, Stage/Scene, original Setup Day / date, Crew, AM/PM and Captain will be copied from the exact historical occurrence. The protected link must open the exact assignment after authenticated browser acceptance.</p>' +
+      '<ol>' +
+        '<li>Open the link and sign in with your MSB account if requested.</li>' +
+        '<li>Confirm the season is 2026, then open Perform Work.</li>' +
+        '<li>Select your name from Captain, or All scheduled work if a Manager is assisting.</li>' +
+        '<li>Find the exact Setup Day, named task, crew and AM/PM. Reveal a collapsed day if needed; do not select a similar task.</li>' +
+        '<li>Open that task and choose Report Work.</li>' +
+        '<li>Enter Date work actually happened, Actual crew size, Hours worked and Minutes worked.</li>' +
+        '<li>Enter whole-task cumulative % complete; use 100 only if entirely done, otherwise explain what was done and what remains.</li>' +
+        '<li>Verify the details and choose Save Work Report, including the actual-date confirmation.</li>' +
+        '<li>Check Progress history; notify a Manager about unfinished work requiring a continuation.</li>' +
+        '<li>If no work happened, tell your Manager instead of submitting fabricated work. For wrong reports ask a Manager to Correct report; for wrong task data use Report Correction.</li>' +
+      '</ol>' +
+      '<p>Reference: Perform and Report Setup Work operator SOP. Authenticated exact-assignment email links remain acceptance-gated.</p>' +
+    '</details>' +
     '</section>';
 }
 
