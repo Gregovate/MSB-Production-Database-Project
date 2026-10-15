@@ -41,6 +41,25 @@ run_people_395_service_scope_probe() {
         WHERE a.role='$role_id'::uuid AND (p.admin_access OR p.app_access);")" == 0 ]] \
         || { echo "STOP: clone service policy unexpectedly gives admin or Studio"; return 73; }
 
+    # Role and policy fixtures were added directly to the disposable clone.
+    # Restart ONLY this uniquely named test container so no stale policy cache
+    # can create a false permissions result.
+    sudo docker restart "$TEST_DIRECTUS_CONTAINER" >/dev/null
+    local cache_ready=0
+    for _ in $(seq 1 120); do
+        if sudo docker exec "$TEST_DIRECTUS_CONTAINER" node -e \
+            "fetch('http://127.0.0.1:8055/server/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))" \
+            >/dev/null 2>&1; then
+            cache_ready=1
+            break
+        fi
+        sleep 1
+    done
+    [[ "$cache_ready" == "1" ]] || {
+        echo "STOP: disposable Directus did not return healthy after isolated policy-cache refresh"
+        return 74
+    }
+
     sudo docker exec -i \
         -e MSB395_TOKEN="$service_token" \
         -e MSB395_BROWSER_ROLE="$BASELINE_ROLE_ID" \
