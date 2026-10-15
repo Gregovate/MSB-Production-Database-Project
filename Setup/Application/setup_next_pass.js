@@ -1411,6 +1411,10 @@ function setup205DeadlineKpiModel(board, year, today = nextSetupLocalDate()) {
   const complete = tasks.filter(t => Boolean(t.effective_complete));
   const deferred = incomplete.filter(t => t.execution_status === 'DEFERRED');
   const actionable = incomplete.filter(t => t.execution_status !== 'DEFERRED');
+  const scheduled = actionable.filter(t => Number(t.unworked_assignment_count || 0) > 0);
+  const needsRescheduling = actionable.filter(t => t.execution_status === 'IN_PROGRESS' && Number(t.unworked_assignment_count || 0) === 0);
+  const needsFirstScheduling = actionable.filter(t => t.execution_status !== 'IN_PROGRESS' && Number(t.unworked_assignment_count || 0) === 0);
+  const notReady = actionable.filter(t => t.readiness_state === 'NOT_READY');
   const blocked = actionable.map(t => {
     const reasons = [];
     if (t.prerequisites_complete === false) reasons.push('Incomplete prerequisite');
@@ -1424,7 +1428,8 @@ function setup205DeadlineKpiModel(board, year, today = nextSetupLocalDate()) {
     const date = a.work_date || dayById.get(Number(a.setup_work_day_id));
     return date && date < today && Number(a.work_report_count || 0) === 0;
   });
-  const partial = actionable.filter(t => Number(t.percent_complete || 0) > 0);
+  const partial = actionable.filter(t => Number(t.percent_complete || 0) > 0 && Number(t.percent_complete || 0) < 100);
+  const lateNoReportTaskCount = new Set(overdue.map(a => Number(a.setup_session_task_id))).size;
   const due = setupAnnualMilestoneDates(year)?.setupComplete;
   const deadline = due ? due.toISOString().slice(0, 10) : null;
   const epochDay = d => Date.parse(d + 'T00:00:00Z') / 86400000;
@@ -1466,7 +1471,8 @@ function setup205DeadlineKpiModel(board, year, today = nextSetupLocalDate()) {
   const projectedDays = reliable ? Math.ceil(actionable.length / pace) : null;
   const projectedFinish = projectedDays == null ? null :
     new Date((epochDay(today) + projectedDays) * 86400000).toISOString().slice(0, 10);
-  return {tasks, incomplete, complete, deferred, actionable, blocked, overdue, partial,
+  return {tasks, incomplete, complete, deferred, actionable, blocked, notReady,
+    scheduled, needsRescheduling, needsFirstScheduling, overdue, lateNoReportTaskCount, partial,
     deadline, daysLeft, required, potentialWorkdays, scheduledWorkdays, requiredPerPotentialWorkday,
     recent, recentNonSunday, recentPotentialWorkdays, workdayPace, pace, undated, reliable, projectedFinish};
 }
@@ -1484,6 +1490,12 @@ function setup205DeadlineKpiHtml(board, year) {
     return '<li>' + safe(task?.task_name || ('Task ' + a.setup_session_task_id)) +
       ' — ' + safe(a.work_date || k.deadline || 'past workday') + ': no report for this assignment</li>';
   }).join('');
+  const taskList = rows => rows.map(t => '<li>' + safe(t.task_name || ('Task ' + t.setup_session_task_id)) +
+    ' — ' + safe(t.stage_name || t.stage_key || 'Site-wide') +
+    ' · ' + safe(t.percent_complete == null ? 'progress unknown' : t.percent_complete + '% reported') + '</li>').join('');
+  const details = (label, tasks, note) => '<details><summary>' + safe(label) + ' (' + tasks.length +
+    ')</summary>' + (note ? '<p>' + safe(note) + '</p>' : '') +
+    '<ul>' + (taskList(tasks) || '<li>None</li>') + '</ul></details>';
   const dateStatus = !k.deadline ? 'Deadline unavailable'
     : !k.actionable.length ? 'All non-deferred tasks complete'
     : !k.reliable ? 'Insufficient dated completion evidence to forecast'
@@ -1496,7 +1508,13 @@ function setup205DeadlineKpiHtml(board, year) {
     '<span>Completed <strong>' + k.complete.length + '</strong></span>' +
     '<span>Remaining <strong>' + k.incomplete.length + '</strong></span>' +
     '<span>Blocked / NOT READY <strong>' + k.blocked.length + '</strong></span>' +
-    '<span>Past assignments with no report <strong>' + k.overdue.length + '</strong></span>' +
+    '<span>Past assignments with no report <strong>' + k.overdue.length + '</strong> (' +
+    k.lateNoReportTaskCount + ' tasks)</span>' +
+    '<span>NOT READY <strong>' + k.notReady.length + '</strong></span>' +
+    '<span>Scheduled <strong>' + k.scheduled.length + '</strong></span>' +
+    '<span>Needs rescheduling <strong>' + k.needsRescheduling.length + '</strong></span>' +
+    '<span>Needs first scheduling <strong>' + k.needsFirstScheduling.length + '</strong></span>' +
+    '<span>Partially complete <strong>' + k.partial.length + '</strong></span>' +
     '</div><div style="display:flex;flex-wrap:wrap;gap:18px;margin-bottom:8px">' +
     '<span>Last 7 days: <strong>' + k.recent + '</strong> dated completions · <strong>' + n(k.pace) + '/day</strong></span>' +
     '<span>Required calendar pace: <strong>' + n(k.required) + '/day</strong></span>' +
@@ -1515,7 +1533,14 @@ function setup205DeadlineKpiHtml(board, year) {
     '<details style="margin-top:8px"><summary>Blocked / NOT READY (' + k.blocked.length +
     ') — task and reason</summary><ul>' + (blockerRows || '<li>No recorded readiness blockers</li>') + '</ul></details>' +
     '<details><summary>Past scheduled assignments with no report (' + k.overdue.length +
-    ')</summary><ul>' + (lateRows || '<li>None</li>') + '</ul></details></section>';
+    ')</summary><ul>' + (lateRows || '<li>None</li>') + '</ul></details>' +
+    details('Scheduled', k.scheduled, 'Open the Scheduling Board to view assigned dates and crews.') +
+    details('Needs rescheduling', k.needsRescheduling, 'Started work with no active continuation.') +
+    details('Needs first scheduling', k.needsFirstScheduling, 'Unstarted work with no active future assignment; some tasks may be blocked.') +
+    details('NOT READY', k.notReady, 'Readiness is separate from hard prerequisites.') +
+    details('Partially reported', k.partial, 'Reported work below 100%; still unfinished.') +
+    details('Deferred', k.deferred, 'Excluded from required rate, but included in remaining scope.') +
+    '</section>';
 }
 
 function renderNextExecution() {
