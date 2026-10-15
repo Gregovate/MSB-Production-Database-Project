@@ -4,8 +4,11 @@ The People Manager owns governed contact maintenance plus reusable capability,
 qualification, and Setup/Takedown eligibility metadata. It exposes current
 Setup Captain/Alternate/Advisor relationships read-only.
 
-It does not create Google Workspace accounts, Directus users, PostgreSQL logins,
-or delete/merge person identities.
+It does not create Google Workspace accounts or PostgreSQL logins, and it does
+not delete/merge person identities. Issue #395 adds one narrow exception:
+the backend may initialize an exact existing human Person's missing Directus
+Google identity at the MSB Browser baseline through the server-side Directus
+Users API.
 """
 
 from __future__ import annotations
@@ -21,9 +24,15 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 from psycopg2 import Error as PsycopgError
 from psycopg2.extras import RealDictCursor
 
-APP_VERSION = "V0.2.2"
+from directus_identity_bootstrap import (
+    DirectusIdentityBootstrapClient,
+    DirectusIdentityBootstrapError,
+)
+
+APP_VERSION = "V0.2.3"
 BASE_DIR = Path(__file__).resolve().parent
 PEOPLE_COMMAND_HEADER = "X-MSB-People-Command"
+IDENTITY_BOOTSTRAP_HEADER = "X-MSB-Identity-Bootstrap"
 CLOUDFLARE_EMAIL_HEADER = "Cf-Access-Authenticated-User-Email"
 app = Flask(__name__)
 
@@ -56,7 +65,7 @@ def database() -> Iterator[Any]:
 def cloudflare_operator_email() -> str:
     email = request.headers.get(CLOUDFLARE_EMAIL_HEADER, "").strip().lower()
     if not email:
-        raise PeopleApiError("Cloudflare Access identity is required for People Manager.", 401)
+        raise PeopleApiError("Cloudflare Access identity is required.", 401)
     return email
 
 
@@ -112,6 +121,70 @@ def require_people_manager() -> str:
     if not access["can_manage_people"]:
         raise PeopleApiError("This account is not authorized for People Manager.", 403)
     return email
+
+
+def require_identity_bootstrap_request() -> None:
+    if not request.is_json:
+        raise PeopleApiError("Identity bootstrap requires an application/json request.", 403)
+    if request.headers.get(IDENTITY_BOOTSTRAP_HEADER, "") != "1":
+        raise PeopleApiError("Identity bootstrap request guard is missing.", 403)
+
+
+def identity_bootstrap_status(email: str) -> dict[str, Any]:
+    with database() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            "SELECT * FROM ref.people_identity_bootstrap_status(%s)",
+            (email,),
+        )
+        row = cur.fetchone()
+
+    if row is None:
+        raise PeopleApiError(
+            "MSB application identity status is temporarily unavailable.",
+            503,
+        )
+    return dict(row)
+
+
+def identity_bootstrap_reconcile(email: str) -> dict[str, Any]:
+    with database() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            "SELECT * FROM ref.people_identity_bootstrap_reconcile(%s)",
+            (email,),
+        )
+        row = cur.fetchone()
+        conn.commit()
+
+    if row is None:
+        raise PeopleApiError(
+            "MSB application identity reconciliation returned no result.",
+            503,
+        )
+    return dict(row)
+
+
+def identity_bootstrap_failure(status: dict[str, Any]) -> PeopleApiError:
+    disposition = str(status.get("disposition") or "UNKNOWN")
+
+    if disposition == "NO_PERSON":
+        return PeopleApiError(
+            "MSB application access is not initialized because no active People record matches this account.",
+            403,
+        )
+    if disposition == "PERSON_INACTIVE":
+        return PeopleApiError(
+            "MSB application access is not initialized because this People record is inactive.",
+            403,
+        )
+    if disposition in {"INVALID_EMAIL", "MULTIPLE_PERSON"}:
+        return PeopleApiError("MSB application identity is not eligible for automatic initialization.", 403)
+    if disposition == "NONHUMAN_ACCOUNT":
+        return PeopleApiError("Device/service identities are not human People identities.", 403)
+
+    return PeopleApiError(
+        "MSB application identity cannot be initialized automatically because the current identity state requires administrator review.",
+        409,
+    )
 
 
 def json_row(row: Any) -> dict[str, Any]:
@@ -206,7 +279,9 @@ def health() -> Response:
                 to_regprocedure('ref.people_person_qualifications(text,integer,boolean)') IS NOT NULL,
                 to_regprocedure('ref.people_person_setup_roles(text,integer)') IS NOT NULL,
                 to_regprocedure('ref.reconcile_directus_person_identity(text)') IS NOT NULL,
-                to_regprocedure('ref.directus_person_identity_reconciliation_report()') IS NOT NULL
+                to_regprocedure('ref.directus_person_identity_reconciliation_report()') IS NOT NULL,
+                to_regprocedure('ref.people_identity_bootstrap_status(text)') IS NOT NULL,
+                to_regprocedure('ref.people_identity_bootstrap_reconcile(text)') IS NOT NULL
             """
         )
         (
@@ -220,6 +295,8 @@ def health() -> Response:
             setup_role_fn,
             identity_reconcile_fn,
             identity_report_fn,
+            identity_bootstrap_status_fn,
+            identity_bootstrap_reconcile_fn,
         ) = cur.fetchone()
     return jsonify(
         status="ok",
@@ -230,6 +307,12 @@ def health() -> Response:
         setup_role_contract=bool(setup_role_table and setup_role_fn),
         search_contract=bool(search_fn),
         identity_reconciliation_contract=bool(identity_reconcile_fn and identity_report_fn),
+        identity_bootstrap_contract=bool(
+            identity_bootstrap_status_fn and identity_bootstrap_reconcile_fn
+        ),
+        identity_bootstrap_configured=bool(
+            os.environ.get("PEOPLE_DIRECTUS_IDENTITY_TOKEN", "").strip()
+        ),
         delete_exposed=False,
         merge_exposed=False,
         google_provisioning_exposed=False,
@@ -241,6 +324,104 @@ def health() -> Response:
 def api_access() -> Response:
     email = cloudflare_operator_email()
     return jsonify(access=people_access(email))
+
+
+@app.post("/api/identity/bootstrap")
+def api_identity_bootstrap() -> tuple[Response, int] | Response:
+    """Initialize the exact Cloudflare human identity at MSB Browser baseline.
+
+    This route intentionally does not require existing Directus authorization,
+    because creating that missing Directus identity is its sole purpose.
+    It remains guarded by Cloudflare identity, a same-origin command header,
+    an exact active Person precondition, and a server-only Directus credential.
+    """
+
+    require_identity_bootstrap_request()
+    email = cloudflare_operator_email()
+    status = identity_bootstrap_status(email)
+    disposition = str(status.get("disposition") or "UNKNOWN")
+
+    if disposition == "NONHUMAN_ACCOUNT":
+        return jsonify(
+            identity={
+                "state": "nonhuman",
+                "created": False,
+                "linked": False,
+                "role_name": status.get("role_name"),
+            }
+        )
+
+    if disposition == "EXISTING_OK":
+        return jsonify(
+            identity={
+                "state": "ready",
+                "created": False,
+                "linked": True,
+                "role_name": status.get("role_name"),
+            }
+        )
+
+    if disposition == "SAFE_EXISTING_LINK":
+        identity_bootstrap_reconcile(email)
+        final_status = identity_bootstrap_status(email)
+        if final_status.get("disposition") != "EXISTING_OK":
+            raise PeopleApiError(
+                "MSB application identity reconciliation did not reach a stable state.",
+                503,
+            )
+        return jsonify(
+            identity={
+                "state": "ready",
+                "created": False,
+                "linked": True,
+                "role_name": final_status.get("role_name"),
+            }
+        )
+
+    if disposition != "READY_CREATE":
+        raise identity_bootstrap_failure(status)
+
+    baseline_role_id = str(status.get("baseline_role_id") or "").strip()
+    client = DirectusIdentityBootstrapClient()
+    client.create_google_browser_user(
+        email=email,
+        first_name=str(status.get("first_name") or ""),
+        last_name=str(status.get("last_name") or ""),
+        baseline_role_id=baseline_role_id,
+    )
+
+    created_status = identity_bootstrap_status(email)
+    if created_status.get("disposition") not in {"SAFE_EXISTING_LINK", "EXISTING_OK"}:
+        raise PeopleApiError(
+            "MSB application identity was created but could not be reconciled safely; administrator review is required.",
+            503,
+        )
+
+    identity_bootstrap_reconcile(email)
+    final_status = identity_bootstrap_status(email)
+
+    if final_status.get("disposition") != "EXISTING_OK":
+        raise PeopleApiError(
+            "MSB application identity did not reach a stable linked state.",
+            503,
+        )
+    if str(final_status.get("role_name") or "") != "MSB Browser":
+        raise PeopleApiError(
+            "New MSB application identity did not retain the required Browser baseline.",
+            503,
+        )
+
+    return (
+        jsonify(
+            identity={
+                "state": "ready",
+                "created": True,
+                "linked": True,
+                "role_name": final_status.get("role_name"),
+            }
+        ),
+        201,
+    )
 
 
 @app.get("/api/people")
@@ -673,6 +854,11 @@ def api_person_task_leadership(person_id: int) -> Response:
 @app.errorhandler(PeopleApiError)
 def people_api_error(exc: PeopleApiError) -> tuple[Response, int]:
     return jsonify(error=str(exc)), exc.status
+
+
+@app.errorhandler(DirectusIdentityBootstrapError)
+def directus_identity_error(exc: DirectusIdentityBootstrapError) -> tuple[Response, int]:
+    return jsonify(error=str(exc)), 503
 
 
 @app.errorhandler(PsycopgError)

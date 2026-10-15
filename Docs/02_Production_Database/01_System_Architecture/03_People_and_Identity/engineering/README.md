@@ -165,6 +165,63 @@ This means a supported Google SSO login can create the missing Directus identity
 
 The current Production default-role behavior remains owned by the User Onboarding Flow: a newly created Google-backed Directus user with NULL role is assigned **MSB Browser** / **Read Only - MSB Core**. Role elevation remains an explicit administrator action.
 
+## #395 Disposable Acceptance — 2026-10-15
+
+The first complete V0.2.3 silent human identity bootstrap candidate passed governed current-Production disposable acceptance.
+
+```text
+candidate             dcc8f25f07a74e19ce3de3aae2d9d137b5411815
+result                PASS
+production mutation   NONE
+server report         /tmp/MSB_People_Identity_Bootstrap_Disposable_20261015T200047.txt
+```
+
+Production identity fingerprints were unchanged:
+
+```text
+ref.person       4157a1c63a88bc900d566f6eb094f1c4
+directus_users   3170a3a5b5860bed1c293f2ee6b50131
+```
+
+The disposable gate exercised the real Directus 11.17.1 Users API against a disposable current-Production clone, proved new human identities stay at **MSB Browser**, proved existing roles remain unchanged, proved missing/inactive Person failure, proved non-human tablet/service exclusion, proved exact #385 Person linkage, and proved the legacy User Onboarding missing-Person branch is bypassed when the candidate supplies the non-null Browser role at user creation.
+
+Durable evidence:
+
+```text
+People/Acceptance/People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md
+```
+
+This is not Production deployment approval. The next gate is exact-candidate browser/application integration review through the `my.` Apps workflow and Backbone #24. Don Martens remains the preserved final Production acceptance fixture.
+
+## #395 Browser-Review Tooling Correction — 2026-10-15
+
+After the V0.2.3 runtime passed disposable acceptance, the first draft of browser-review tooling was rejected before execution because it used historical People preview port `8795` instead of the established reusable Production Database disposable-browser workflow.
+
+The current controlled path is:
+
+```text
+Setup/Acceptance/run_setup_disposable_browser_preview.ps1
+    -> PreviewProfile PeopleIdentityBootstrap
+    -> explicit PreviewPort 8898
+    -> exact accepted People runtime dcc8f25f...
+    -> exact Backbone Apps candidate SHA/blob
+    -> disposable PostgreSQL + disposable Directus 11.17.1
+    -> clone-only synthetic human
+    -> operator browser review
+```
+
+Server Management PR #76 made the current #395 allocation durable: `8898` is the reusable review port; `8795` is historical People preview evidence only.
+
+No Production identity or application service is changed by this review, and Don Martens remains the untouched final Production first-login fixture.
+
+### #395 Reusable preview engineering/test checkpoint
+
+The reusable `PeopleIdentityBootstrap` profile is now implemented on the existing Setup acceptance launcher. `dcc8f25f...` remains the **only disposable-accepted People runtime**; later changes are tooling/documentation. On Greg's Windows desktop at tooling SHA `01606de3...`, the profile contract tests returned **11 passed** and the complete `Setup/Application` suite returned **769 passed, 5 skipped**.
+
+The first attempt at local `bash -n` **did not execute** because `bash` was not on the PowerShell PATH. The preview server script's separate `py_compile` write-permission problem was corrected by in-memory syntax compilation under the `fieldwiring` account in tooling commit `2859e643...`. On Greg's desktop at documentation HEAD `514b0ca4...`, the reusable PowerShell launcher passed `Parser.ParseFile` with no errors and the server script passed Git for Windows `bash.exe -n` (exit 0). Both syntax checks are now **PASS**. The exact accepted runtime remains unchanged. The first integrated browser-review attempt (tooling `5865beae...`, remote report `/tmp/MSB_People_Identity_Bootstrap_Browser_Preview_20261015T213306.txt`) stopped **before cloning** on an HTTP 404 for the valid, pinned Backbone Apps HTML, exit 22. Cleanup proved both Production identity fingerprints and Production checkout unchanged, People healthy, and port 8898 free. The reusable People profile now stages a correction that obtains and blob-verifies the exact Backbone Apps source using workstation-authenticated Git, then verifies the bundled file again on the server. The repaired reusable tooling has now passed Greg's local full `Setup/Application` regression (**770 passed, 5 skipped in 5.13s**); his guarded PowerShell command also reached the overall local validation PASS marker. The corrected authenticated-Git asset path **has now passed the integrated disposable Apps+People browser review** on registered port `8898`. Greg confirmed the `MSB Apps v0.2 — Updated 2026-10-15` footer and no visible Directus/account chooser or identity error. The governed remote runner reported `CLEAN EXIT`, exit 0, with Production Person/Directus fingerprints and shared checkout unchanged, People service healthy, and no remaining 8898 listener. Final report: `/tmp/MSB_People_Identity_Bootstrap_Browser_Preview_20261015T215102.txt`. Don's real first-login fixture remains unconsumed. **No Production deployment is authorized.** Next: separately reconcile Backend+Backbone release prerequisites with current Server Management deployment/publishing runbooks before requesting explicit Production authorization. **Operator handoff commands must end with a compact `BEGIN #395 RESULT` / `END #395 RESULT` block** so Greg can copy only the final results instead of multi-page logs. See the detailed acceptance record for evidence limits and runbook boundaries. Do not run the discarded People-specific wrapper or consume Don's fixture.
+
+**Durable detailed evidence, authoritative source pins, governing Server Management disposable/browser runbooks, and next commands/gates:** [#395 People Identity Bootstrap acceptance and reusable-preview checkpoint](../../../../../People/Acceptance/People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md). This engineering README is the navigation/handoff, not a competing runbook.
+
 ## Accepted People Manager Behavior
 
 The accepted contact/identity behavior includes:
