@@ -130,6 +130,36 @@ People Manager maintenance is limited to current **Manager / Administrator** or 
 
 Human writes require the authenticated Directus user to resolve to a durable `ref.person` actor. Since V0.2.2, a missing UUID link may self-reconcile only when the active Google Directus user, external identifier, and active existing Person all match the same normalized Sheboygan Lights email and no UUID conflict exists. The reconciliation path never changes Directus role/policy authorization and rejects non-human tablet/device/service identities.
 
+## Current Human Onboarding Gap — #395
+
+A human can successfully authenticate to `my.sheboyganlights.org` through Cloudflare Access while still having no Directus identity. In that state, protected applications cannot authorize the user because Directus role/policy state does not yet exist.
+
+Live Production evidence on 2026-10-15 confirmed this with Don Martens:
+
+```text
+Person exists and is active
+real Sheboygan Lights email exists
+Cloudflare authentication succeeds
+directus_user_id = NULL
+matching Directus user = NONE
+Setup capability row = NONE
+```
+
+The current Directus **User Onboarding** Flow fires only on `directus_users.items.create`. Its default role is **MSB Browser** with **Read Only - MSB Core**.
+
+The required #395 direction is therefore an invisible first-login/bootstrap path that creates or initializes the supported Directus Google identity without requiring normal users to visit the Directus admin/login screen.
+
+First initialization must remain least privilege:
+
+```text
+new human Directus identity
+    -> MSB Browser
+```
+
+Role elevation remains an explicit administrator action after the Directus identity exists. Administrators can continue changing an existing user's role in Directus. Legacy Person flags such as `is_manager` and `is_team` are not authorization sources and must not automatically promote a Directus user.
+
+Shared tablet/device/service identities are intentionally non-human. They may have Directus identities while having no Person row, must remain MSB Browser-only where governed, and must not be reconciled into human Person actors.
+
 ## Browser / UI Contract
 
 The accepted presentation follows the current MSB application family:

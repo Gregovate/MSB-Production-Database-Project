@@ -51,6 +51,57 @@ Protected actor boundaries now use the shared exact-email reconciliation contrac
 
 Shared tablet/device/service identities are explicitly non-human and are rejected from Person reconciliation.
 
+## Current First-Login Gap and Human Access Administration — 2026-10-15
+
+Live Production reconnaissance for Issue #395 proved that the Directus **User Onboarding** flow is an active event Flow on `directus_users.items.create`. It assigns role UUID `0ce54f42-8438-4eb6-8081-4303612c9da1`, currently **MSB Browser**, with policy **Read Only - MSB Core**, before attempting the Person lookup/link.
+
+The flow therefore cannot run merely because a user successfully authenticates through Cloudflare Access to `my.sheboyganlights.org`. If the human has never caused a Directus Google identity to be created, protected applications that authorize through Directus see no active Directus user.
+
+The confirmed Production example is Don Martens:
+
+```text
+ref.person.person_id       18
+name                       Don Martens
+email                      dmartens@sheboyganlights.org
+active_flag                true
+legacy is_manager          true
+directus_user_id           NULL
+matching Directus user     NONE
+Setup capability row       NONE
+```
+
+Don successfully authenticated to the protected MSB intranet through Cloudflare Access but Setup returned **Setup read access is not authorized for this account** because no Directus identity existed yet.
+
+This establishes the current engineering requirement:
+
+```text
+normal human first use
+    -> Cloudflare authenticates the human
+    -> MSB initializes the corresponding Directus Google identity without
+       exposing the Directus admin/login UI
+    -> new Directus identity starts as MSB Browser / least privilege
+    -> exact existing Person is linked when safe
+    -> protected application authorization continues from Directus role/policy
+```
+
+The current administrator workflow for role elevation remains valid and intentionally separate:
+
+```text
+new Directus human identity
+    -> MSB Browser by default
+
+administrator may later change the existing Directus user role
+    -> Production Crew / Manager / Administrator as appropriate
+```
+
+Do **not** use legacy Person flags such as `ref.person.is_manager` or `is_team` as a substitute authorization source and do not automatically promote a new Directus user from those flags. Directus remains the runtime role/policy authority.
+
+People Manager may later become a friendlier administration surface that writes governed Directus role changes, but that is not required for the #395 first-login fix. Administrators can continue changing roles in Directus for identities that already exist.
+
+Non-human identities are a separate valid class. A shared tablet or service account may have a Directus identity while intentionally having **no** `ref.person` row. In particular, `tablet-*@sheboyganlights.org` must remain a non-human device identity, MSB Browser only, with no Person linkage and no human actor attribution.
+
+Issue #395 owns replacement of the visible Directus first-login dependency. It must preserve the accepted #385 reconciliation contract and must not silently create a Person merely because an account authenticates.
+
 ## Accepted People Manager Behavior
 
 The accepted contact/identity behavior includes:

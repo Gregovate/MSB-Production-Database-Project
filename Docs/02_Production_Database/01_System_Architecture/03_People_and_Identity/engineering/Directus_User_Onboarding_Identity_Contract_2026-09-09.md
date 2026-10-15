@@ -4,10 +4,10 @@
 |---|---|
 | Document Type | Engineering Reverse-Engineering / Identity Contract |
 | System | People and Identity |
-| Status | CURRENT OBSERVED PRODUCTION BEHAVIOR — DOCUMENTED, NOT MODIFIED |
+| Status | CURRENT OBSERVED PRODUCTION BEHAVIOR — LIVE REVERIFIED; #395 GAP OPEN |
 | Owner | Production Database / People and Identity |
-| Evidence Date | 2026-09-09 |
-| Related | Issue #130 |
+| Evidence Date | 2026-09-09; live metadata reverified 2026-10-15 |
+| Related | #130; #385; #395 |
 
 ## Purpose
 
@@ -18,6 +18,81 @@ No Production flow, database row, role, or configuration was changed while gathe
 ## Evidence Source
 
 The flow was inspected operation-by-operation in the Production Directus UI. A normal export mechanism was not available from that interface, so the operation configuration was captured manually from the live flow screens.
+
+## Live Metadata Reverification — 2026-10-15
+
+Issue #395 reconnaissance reconstructed this Flow directly from the live Production Directus metadata tables rather than from screenshots.
+
+Confirmed Flow metadata:
+
+```text
+flow id          82013c78-22b1-4e5c-a355-4c2a3a81f644
+name             User Onboarding
+status           active
+trigger          event
+accountability   all
+scope            items.create
+collection       directus_users
+root operation   960c69fc-4e42-4ecd-a5e1-eb3d4d0f5c50
+description      Add users to directus when logging into database 1st time
+```
+
+Confirmed default role:
+
+```text
+role id          0ce54f42-8438-4eb6-8081-4303612c9da1
+role name        MSB Browser
+description      Everyone with read-only access
+policy           Read Only - MSB Core
+```
+
+The live graph also confirms that **Check Google User** requires:
+
+```text
+provider = google
+AND role IS NULL
+```
+
+and has no reject branch. Therefore a Google-backed Directus user whose role is already non-NULL exits the onboarding Flow before the Person lookup/link. This is the historical stale-link failure mode later repaired systemically by the V0.2.2 / #385 protected-actor reconciliation contract.
+
+The separate #395 defect is earlier in the lifecycle: Cloudflare Access can authenticate a real human into `my.sheboyganlights.org` without creating any Directus user. Because this Flow fires only on `directus_users.items.create`, the Flow never runs unless some supported Directus/Google first-login mechanism actually creates the Directus identity.
+
+Confirmed Production example:
+
+```text
+Person 18
+Don Martens
+dmartens@sheboyganlights.org
+active = true
+legacy is_manager = true
+directus_user_id = NULL
+matching Directus user = NONE
+Setup capability row = NONE
+```
+
+Don could authenticate through Cloudflare Access and reach the Apps launcher, but Setup could not authorize him because no Directus identity existed.
+
+### Current engineering direction
+
+Normal human onboarding must not depend on the user seeing or understanding the Directus admin/login screen.
+
+Target behavior:
+
+```text
+Cloudflare-authenticated human
+    -> supported invisible Directus Google identity initialization
+    -> default MSB Browser role only
+    -> exact existing Person link when safe
+    -> application continues using Directus role/policy authorization
+```
+
+Role elevation remains an explicit administrator action after the Directus identity exists. Administrators may continue changing an existing user's role in the Directus backend. The first-login bootstrap must **not** infer or grant Production Crew, Manager, or Administrator from `ref.person.is_manager`, `ref.person.is_team`, or any other legacy Person flag.
+
+A future People Manager role-administration surface may make that administrator workflow friendlier, but Directus remains the runtime authorization authority.
+
+Shared tablet/device/service identities are intentionally different from humans. A tablet account may have a Directus identity and no Person row. It must remain non-human, MSB Browser only, and must never be converted to a Person or elevated automatically.
+
+The current missing-Person branch documented below still auto-creates a Person. That is an accurate description of the live Flow, **not** the accepted design for invisible #395 bootstrap. Any #395 implementation must preserve the #385 rule that human Person reconciliation uses an exact existing Person and must fail closed rather than fabricating a new Person from authentication alone.
 
 ## Current Production Flow
 
@@ -116,7 +191,7 @@ Observed payload:
 }
 ```
 
-The human-readable role name was not established by this inspection and must not be inferred from the UUID alone.
+Live Production metadata reverified on 2026-10-15 identifies this UUID as **MSB Browser** with policy **Read Only - MSB Core**.
 
 ### 4. Read Person
 
@@ -361,6 +436,30 @@ Before any Production implementation is accepted, prove at least these identity 
 6. an inactive seasonal person is preserved and can be reactivated without creating a duplicate;
 7. `directus_user_id` remains protected from ordinary People Manager contact editing; and
 8. no Production flow or database mutation occurs without the separate Production gate.
+
+## Authorization Administration Boundary
+
+The Person table is not the runtime role authority.
+
+```text
+ref.person
+    -> durable human identity and People administration context
+
+Directus role/policy
+    -> runtime application authorization
+```
+
+Legacy `ref.person.is_manager` / `is_team` values must not automatically create or elevate Directus authorization. For an already-existing Directus user, an administrator may continue assigning the appropriate Directus role in the Directus backend.
+
+This keeps first-login identity initialization and later authorization assignment separate:
+
+```text
+first initialization
+    -> MSB Browser
+
+explicit administrator decision
+    -> Production Crew / Manager / Administrator
+```
 
 ## Current Boundary
 
