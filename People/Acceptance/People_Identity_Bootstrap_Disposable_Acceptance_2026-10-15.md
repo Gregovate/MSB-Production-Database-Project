@@ -288,6 +288,14 @@ The operator should **not need to copy the whole pytest progress or multi-page S
 
 In PowerShell, capture each command's exit status and retain failure semantics; do **not** pipe an interactive SSH command through `Tee-Object` or other pipelines to harvest its output, because the governed interactive terminal/sudo contract forbids that transport. Prefer a `try/catch/finally` summary printed after the existing launcher returns, and do not claim passing values not actually observed. The operator should only need to paste the lines between `BEGIN #395 RESULT` and `END #395 RESULT`, plus a specific failure detail if the remote report identifies one.
 
+### Operator browser evidence and scope clarification — October 15 (pending final runner result)
+
+Greg supplied a screenshot of `127.0.0.1:8898/` displaying the expected MSB Apps launcher. The captured portion showed ordinary Apps navigation without a visible identity-bootstrap error, Directus login, or Google account chooser. The visible frame did **not** include the bottom version footer and did **not** prove that the disposable identity was created, linked, or idempotent. A second screenshot showed the real Production Setup `https://my.sheboyganlights.org/setup/?view=perform` reached through an Apps link. That is an **external Production destination**, not an integrated disposable Setup browser instance; no Production write is evidenced by the screenshots, but no Production after-check for this live browser session has yet been supplied.
+
+This established a review-instruction clarity gap. The operator checklist now explicitly says to **stay on the localhost Apps page**, verify the Apps v0.2 footer, refresh localhost once and confirm no warning, then press Enter in the existing foreground PowerShell session. Only the server runner's real disposable Directus/Person state verification and final cleanup/Production after-check can complete browser acceptance. The durable procedural correction is maintained in [reusable Setup browser acceptance](../../Setup/Acceptance/README.md#people-395-operator-browser-checklist--only-the-local-apps-page).
+
+State at this checkpoint: **browser visually displayed; final server verification and operator disposition still pending**. Do not record `BROWSER PASS` or `CLEAN EXIT` until its evidence is returned. Don's preserved Production fixture remains untouched by the localhost preview.
+
 ## Disposition
 
 ```text
