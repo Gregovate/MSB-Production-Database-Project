@@ -1,0 +1,49 @@
+name: Setup #205 source regression
+
+on:
+  push:
+    branches:
+      - fix/205-setup-deadline-kpis-20261015
+    paths:
+      - "Setup/Application/**"
+      - "FieldWiring/Application/**"
+      - ".github/workflows/setup205-regression.yml"
+  pull_request:
+    paths:
+      - "Setup/Application/**"
+      - "FieldWiring/Application/**"
+      - ".github/workflows/setup205-regression.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  setup-full:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install current application test dependencies
+        run: python -m pip install -r Setup/Application/requirements.txt pytest
+      - name: Execute full Setup application regression
+        run: python -m pytest -q -p no:cacheprovider Setup/Application
+      - name: Execute shared deadline classifier
+        run: node Setup/Application/test_205_deadline_action_kpis.cjs
+
+  fieldwiring-full:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install current application test dependencies
+        run: python -m pip install -r FieldWiring/Application/requirements.txt pytest
+      - name: Execute full FieldWiring application regression
+        run: python -m pytest -q -p no:cacheprovider FieldWiring/Application
