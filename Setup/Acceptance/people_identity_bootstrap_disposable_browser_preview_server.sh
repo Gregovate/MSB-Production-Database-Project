@@ -548,11 +548,10 @@ sudo -u fieldwiring -H bash -c \
 echo "PASS: exact accepted People runtime regression"
 
 echo
-echo "--- Fetch exact Backbone Apps candidate ---"
-curl -fsSL \
-    "https://raw.githubusercontent.com/Gregovate/MSB-Internal-Web-Backbone/$BACKBONE_APPS_SHA/my/apps/index.html" \
-    -o "$APPS_HTML"
-[[ -s "$APPS_HTML" ]] || { echo "FAIL: Apps candidate download empty"; exit 14; }
+echo "--- Verify bundled exact Backbone Apps candidate ---"
+# Workstation authenticated Git has already verified the exact commit and blob.
+# This server independently verifies the unmodified SCP bundle before cloning.
+[[ -s "$APPS_HTML" ]] || { echo "FAIL: bundled Backbone Apps candidate missing or empty"; exit 14; }
 actual_apps_blob="$(git hash-object "$APPS_HTML")"
 [[ "$actual_apps_blob" == "$BACKBONE_APPS_BLOB" ]] \
     || { echo "FAIL: Apps candidate blob mismatch: $actual_apps_blob"; exit 15; }
