@@ -435,6 +435,26 @@ The unique uploaded preflight bundle is removed; the `/tmp/MSB_People395_Product
 
 **STOP CONDITIONS:** any mismatch in live checkout/version, controller ONLINE/unfenced state, #385/migration objects, Don preservation, exact remote main, or missing/invalid protected Directus token stops the work before database mutation. This is not a substitute for the still-required reviewed migration 006 production deployment runner and validated rollback/commit containment or the Backbone controlled Apps publishing procedure. No Production migration or static publication receipt exists yet. Continue from the preflight result and the governing runbooks, not from ad hoc SQL or #385's migration-005 installer.
 
+## First governed Production preflight — credential STOP (2026-10-15)
+
+Greg ran the versioned read-only `People/Acceptance/run_people_395_production_readonly_preflight.ps1` wrapper. The retained host report is `/tmp/MSB_People395_Production_Readonly_Preflight_20261015T232453.txt`.
+
+```text
+Exact merged-main release target  6122d7923c2a07eb6b278225cf71cafc4704d349
+Live shared checkout             bb8dfa498c5b4bbecfc3693f68c4066c1e08242e
+Issue #37 controller             ONLINE / UNFENCED
+Production ref.person MD5        4157a1c63a88bc900d566f6eb094f1c4
+Production directus_users MD5    3170a3a5b5860bed1c293f2ee6b50131
+Stop step                        Check protected Directus credential without printing secret
+Credential                       STOP: NOT READY
+Exit                             30
+Production writes                NONE
+```
+
+The full earlier preflight sequence reached the credential step, which means its preceding controller, checkout, baseline-version, object-presence and Don-fixture guards did not stop. The token check deliberately used a single generic failure message covering missing environment key, wrong file protection/URL, invalid/expired credential, Directus connectivity or an inactive token owner. **This result alone does not establish which condition failed. Do not assume the token is merely missing or insert an arbitrary administrator token.** No maintenance transition, migration 006, People deployment, Apps publication or Don bootstrap was performed.
+
+The next controlled action is non-secret **read-only credential failure classification** under the existing Server Management People runtime authority. Any diagnostic must display only a bounded reason category and HTTP status if applicable—never the bearer token, environment file content, service-account password or raw response. Reconcile the actual failure before governed provisioning. Maintain the current Production ONLINE state. The older #385 installer still cannot be reused for migration 006.
+
 ## Disposition
 
 ```text
