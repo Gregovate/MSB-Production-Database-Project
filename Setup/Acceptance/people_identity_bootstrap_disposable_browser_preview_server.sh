@@ -216,6 +216,7 @@ write_resume_state() {
         printf 'REPORT=%q\n' "$REPORT"
         printf 'PREVIEW_LOG=%q\n' "$PREVIEW_LOG"
         printf 'TEST_DB_CONTAINER=%q\n' "$TEST_DB_CONTAINER"
+        printf 'TEST_DB_PASSWORD=%q\n' "$TEST_DB_PASSWORD"
         printf 'TEST_DIRECTUS_CONTAINER=%q\n' "$TEST_DIRECTUS_CONTAINER"
         printf 'PREVIEW_PGID=%q\n' "$PREVIEW_PGID"
         printf 'PROD_PERSON_FP=%q\n' "$PROD_PERSON_FP"
