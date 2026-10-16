@@ -18,7 +18,12 @@
   </div>
   <div class="inventory-header-actions">
     <span id="inventory-access" class="access-badge">Checking access…</span>
-    <nav class="inventory-setup-nav" aria-label="Setup navigation">
+
+    <button id="theme-toggle" type="button" class="secondary">Dark mode</button>
+  </div>
+</header>
+
+<nav class="inventory-setup-nav inventory-setup-tabs" aria-label="Setup navigation">
       <a class="button secondary" href="../?view=review">Reusable Task Catalog</a>
       <a class="button secondary" href="../?view=schedule">Plan / Schedule</a>
       <a class="button secondary" href="../?view=perform">Perform Work</a>
@@ -26,9 +31,6 @@
       <a class="button secondary" href="../t-post-inventory/">T-Post Inventory</a>
       <a id="inventory-back-setup" class="button secondary" href="../">Back to Setup Session</a>
     </nav>
-    <button id="theme-toggle" type="button" class="secondary">Dark mode</button>
-  </div>
-</header>
 
 <main class="inventory-main">
   <section id="inventory-alert" class="notice" aria-live="polite">Loading Kit Inventory…</section>
