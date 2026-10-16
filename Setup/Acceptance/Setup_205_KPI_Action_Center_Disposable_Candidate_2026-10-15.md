@@ -1,5 +1,36 @@
 # #205 Whole-Setup KPI / Action Center / Report Work — Browser Candidate
 
+## CURRENT V0.3.79 — sticky Setup Day beside task search (2026-10-16)
+
+**PASS source regression only; operator browser NOT yet accepted.** Operator REJECTED V0.3.78 because the Find Scheduled Task search remained pinned but the Setup Day # / DOW / Date heading disappeared when scrolling Crew cards. A single sticky current-day label beside the search is required. Existing PR #394, exact application SHA `eca26f631a9472e039b2e2e5482817b00375e47f`, build `V0.3.79-sticky-day-search`, CSS/JS assets pinned `2026-10-16.79`. [CI #38948868529](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38948868529) PASS **838 Setup Python / FieldWiring full / #205 Node** including executable workday-scroll test. PR remains DRAFT; Production UNCHANGED.
+
+**Single visual acceptance:** On Plan/Schedule, scroll down through D16, D19, D20 and adjacent days in the right scheduling pane. The current Setup Day label (number, day of week, calendar date) and Find Scheduled Task must **stay visible beside each other in the same sticky heading** and update with the day in view. The detailed day header must remain visible below that shared heading while viewing its crews (not clipped under the search). Test normal desktop zoom and any tablet width used, and confirm search results remain selectable, crew cells/day boundaries do not bleed off page, and Print Schedule remains unaffected.
+
+**Combined #205 acceptance, unchanged:** Also recheck previous V0.3.71–V0.3.78 operator findings (save/refresh planned crew headcounts independently of actual work; NULL versus Captain=1 semantics; hours/crew-duration labels; Manager Action Center visual states/navigation; Report Work scrolling/volunteers/Hours/Minutes/How?; Catalog quick-edit versus deliberate Full Reusable Task navigation, 2026 TWO-WAY Catalog/annual estimate synchronization incl. reported-task history; Kit Inventory navigation; authorized same-Captain no-work reschedule and day options). No fake reports, Production writes or mail.
+
+**Preflight:** If the old disposable browser is still open, complete that review and obtain the existing launcher `CLEAN EXIT` first. Do NOT create a second clone or kill an unrecognized port/process. On the office desktop, reuse clean `C:\Users\Greg\Github\MSB-Production-Database-Project-205-review`, branch `fix/205-setup-deadline-kpis-20261015`; fetch and fast-forward only, no reset of the primary checkout. Follow Server Management's browser review runbook and port ownership. Run the existing launcher **ONCE**, which creates one current-Production disposable PostgreSQL clone and applies BOTH migrations and BOTH rollback validations before opening 8898:
+
+```powershell
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
+    -PreviewPort 8898 `
+    -CandidateSha 'eca26f631a9472e039b2e2e5482817b00375e47f' `
+    -TargetRef 'fix/205-setup-deadline-kpis-20261015' `
+    -ExpectedVersion 'V0.3.79-sticky-day-search' `
+    -MigrationPaths @(
+        'Setup/Database/075_allow_setup_planned_crew_count_corrections.sql',
+        'Setup/Database/076_capture_2026_reusable_task_estimates.sql'
+    ) `
+    -ValidationPaths @(
+        'Setup/Acceptance/setup_205_planned_crew_count_disposable_validation.sql',
+        'Setup/Acceptance/setup_205_2026_catalog_estimate_disposable_validation.sql'
+    )
+```
+
+**Stop** on failed Git/review preflight or SQL validation; no browser acceptance or Production release claim until `BROWSER REVIEW READY`, operator PASS and `CLEAN EXIT`. The V0.3.78 and older commands below are archived and must not be run for current acceptance.
+
+---
+
+
 ## CURRENT V0.3.79 — sticky Setup Day/date beside task search (source PASS)
 
 **Exact source candidate:** `eca26f631a9472e039b2e2e5482817b00375e47f`  
