@@ -1,6 +1,33 @@
 # #205 Whole-Setup KPI / Action Center / Report Work — Browser Candidate
 
-## CURRENT V0.3.71 single-clone browser review (2026-10-16)
+## CURRENT V0.3.72 planned-crew acceptance (2026-10-16)
+
+**NEW SOURCE-CERTIFIED CANDIDATE; BROWSER/DISPOSABLE NOT YET ACCEPTED.** Under #122/#205; operator rejected V0.3.71. New application SHA `fe07cae28a35e98db30281c64aa366ce0aa72ad0`, version `V0.3.72-planned-crew-corrections` on existing draft PR #394. GitHub [CI 38904126715](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38904126715) PASS **826 Setup Python / 202 FieldWiring Python / #205 Node**. Latest branch commits after this exact application SHA may be documentation only. Treat exact application SHA and current branch/tooling SHA separately; never substitute the branch head without verifying candidate ancestry.
+
+**Operator-confirmed business rule:** Planned AM/PM crew counts are Manager-editable even if actual work was reported; actual crew/progress records and history remain unchanged. Manager/SQL historical lock on changing Captain remains in place. Read-only field evidence for **Crew 22** proved 2026-10-16 assignments 84 and 143 had actual/progress while planned AM/PM were NULL. Earlier `ops.update_setup_work_day_crew` in migration 050 rejected the AM planned count; controlled migration **075** replaces only this guarded SQL function. **Database-changing candidate** — no Production migration, mail or session data changes authorized.
+
+**One-clone operator review ONLY:** Existing `Setup/Acceptance/run_setup_disposable_browser_preview.ps1` runs full Setup + FieldWiring Python regression, makes ONE current-Production disposable copy, applies migration `075` **to clone only**, runs rollback-protected validation that changes Crew 22 planned AM/PM counts while keeping actual and Captain history untouched, and starts the same clone for 8898 operator review. Do NOT run a separate disposable acceptance launcher first. The prior preview reportedly exited cleanly; still check exact-run/port ownership as the launcher requires.
+
+Run only in existing clean, fast-forwarded `C:\lor\ImportExport\VSCode-205-kpi-review` branch `fix/205-setup-deadline-kpis-20261015`, after reading the Server Management Pre-Production Browser Review Runbook and Port Register. Stop on dirty/mismatched checkout, unknown port listener, failed migration or SQL validation.
+
+```powershell
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
+    -PreviewPort 8898 `
+    -CandidateSha 'fe07cae28a35e98db30281c64aa366ce0aa72ad0' `
+    -TargetRef 'fix/205-setup-deadline-kpis-20261015' `
+    -ExpectedVersion 'V0.3.72-planned-crew-corrections' `
+    -MigrationPaths @('Setup/Database/075_allow_setup_planned_crew_count_corrections.sql') `
+    -ValidationPaths @('Setup/Acceptance/setup_205_planned_crew_count_disposable_validation.sql')
+```
+
+**Required operator acceptance:** On the disposable browser test D16 Crew A/22 with actual 1 on two Morning assignments, enter AM planned 3 and optionally PM planned staffing; require autosave **Saved** and the values remain after a fresh GET/browser refresh. Original recorded actual crew remains 1 for assignments 84/143 and progress/history unchanged. Verify legitimate Captain historical change still rejects safely and source other V0.3.71 review findings remain open unless explicitly accepted. `BROWSER REVIEW READY`, explicit operator result and final `CLEAN EXIT` are mandatory. If the SQL validation fails, STOP and correct the candidate; never use Production as a substitute test.
+
+**Release boundary:** Migration-bearing Production deployment will require separate #122 authorization and current Server Management database-change runbook / Issue #37 maintenance boundary, validated rollback snapshot and protected ONLINE return. This handoff does **not** authorize release.
+
+---
+
+
+## ARCHIVED — previous V0.3.71 single-clone browser review (REJECTED)
 
 **Source regression PASSED; operator browser acceptance PENDING.** V0.3.70 was operator rejected. Application SHA `58af4ea3079efe1585314a63329b77b95f31cb4f`, build `V0.3.71-operator-review-corrections`. [GitHub CI #38897393929](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38897393929): PASS 821 Setup Python, 202 FieldWiring Python and #205 executable Node checks. The existing #205 PR branch contains post-app documentation-only changes; use the pinned application SHA rather than substituting branch HEAD for runtime identity.
 
