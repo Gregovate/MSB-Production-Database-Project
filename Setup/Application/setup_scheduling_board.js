@@ -856,13 +856,25 @@ function board205ShiftWorkload(crewId, shift) {
 function board205WorkloadBanner(crewId, shift) {
   const w = board205ShiftWorkload(crewId, shift);
   if (!w.count) return '';
-  const red = w.overload > 0, amber = w.unknown > 0 || w.notReady > 0;
+  // Distinguish a compressed shift from proven whole-day overload. PM time
+  // is available only when a real PM crew count is recorded for this crew.
+  const pm = board205ShiftWorkload(crewId, 'AFTERNOON');
+  const am = board205ShiftWorkload(crewId, 'MORNING');
+  const pmStaffed = Number(board205PlacementCrewCount(crewId, 'AFTERNOON')) > 0;
+  const amStaffed = Number(board205PlacementCrewCount(crewId, 'MORNING')) > 0;
+  const dayCapacity = am.capacity + (pmStaffed ? pm.capacity : 0);
+  const dayDemand = am.known + pm.known;
+  const mayUsePm = shift === 'MORNING' && amStaffed && pmStaffed;
+  const dayOver = dayDemand > dayCapacity;
+  const shiftPressure = w.overload > 0 && mayUsePm && !dayOver;
+  const red = w.overload > 0 && !shiftPressure;
+  const amber = shiftPressure || w.unknown > 0 || w.notReady > 0 || (shift === 'MORNING' && !pmStaffed && w.overload > 0);
   const color = red ? '#9d2424' : amber ? '#835900' : '#146044';
   const background = red ? '#fff0ef' : amber ? '#fff6dd' : '#eaf8f0';
   const hours = (n) => (n / 60).toFixed(2).replace(/0$/, '').replace(/\.$/, '');
-  const label = red ? 'OVERLOADED' : amber ? 'CAPACITY UNCERTAIN' : 'WITHIN CAPACITY';
+  const label = red ? 'OVERLOADED' : shiftPressure ? 'AM PRESSURE — REVIEW PM CONTINUATION' : amber ? 'CAPACITY UNCERTAIN' : 'WITHIN CAPACITY';
   return `<div role="status" style="pointer-events:none;position:relative;z-index:1;border:3px solid ${color};border-radius:7px;background:${background};color:${color};padding:9px;margin:5px 0;font-weight:800">
-    <div style="font-size:1.05rem">${label} · ${hours(w.known)} / ${hours(w.capacity)} linear hours${red ? ` · +${hours(w.overload)}h OVER` : ''}</div>
+    <div style="font-size:1.05rem">${label} · ${hours(w.known)} / ${hours(w.capacity)} linear hours${red ? ` · +${hours(w.overload)}h OVER` : shiftPressure ? ` · PM may absorb ${hours(w.overload)}h if the work can continue` : ''}</div>
     <div style="font-size:.83rem">${w.count} tasks · ${w.unknown} unknown estimates · ${w.notReady} NOT READY</div>
   </div>`;
 }
