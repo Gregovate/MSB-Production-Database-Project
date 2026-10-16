@@ -212,6 +212,7 @@ function setupNavigationActionLabel(route) {
   if (view === 'review') return 'opening reusable task detail';
   if (view === 'library') return 'opening the Reusable Task Catalog';
   if (view === 'perform') return 'opening Perform Work';
+  if (view === 'action-center') return 'opening Manager Setup Action Center';
   if (view === 'extra-materials') return 'opening Extra Materials / Inventory';
   return 'continuing';
 }
@@ -263,7 +264,10 @@ function setupSetFinderReturnVisible(visible) {
 
 async function setupRestoreRoute(route) {
   const requested = route && typeof route === 'object' ? route : { view: 'review' };
-  const view = String(requested.view || 'review');
+  const requestedView = String(requested.view || 'review');
+  // Never expose the Manager-only page via a bookmarked URL to a Captain.
+  const view = requestedView === 'action-center' && !appState.access?.can_manage_setup
+    ? 'perform' : requestedView;
 
   setupSetFinderReturnVisible(false);
   showView(view);
@@ -281,6 +285,8 @@ async function setupRestoreRoute(route) {
     }
   } else if (view === 'perform' && typeof loadNextExecution === 'function') {
     await loadNextExecution();
+  } else if (view === 'action-center' && typeof loadSetup205ActionCenter === 'function') {
+    await loadSetup205ActionCenter();
   }
 
   if (view === 'review' && requested.taskId != null && taskById(requested.taskId)) {
@@ -290,6 +296,7 @@ async function setupRestoreRoute(route) {
 }
 
 async function navigateSetupView(name) {
+  if (name === 'action-center' && !appState.access?.can_manage_setup) return false;
   const route = { view: String(name || 'review') };
   if (!await setupMayLeaveCurrentView(setupNavigationActionLabel(route))) return false;
 
