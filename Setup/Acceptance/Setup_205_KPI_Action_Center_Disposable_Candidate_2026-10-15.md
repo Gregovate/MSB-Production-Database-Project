@@ -1,6 +1,34 @@
 # #205 Whole-Setup KPI / Action Center / Report Work — Browser Candidate
 
-## CURRENT V0.3.82 — final integrated visual operator review: day grouping and crew colors
+## CURRENT V0.3.83 — crew colors visible across Scheduling Board cells
+
+**Exact source:** `60464f2384ffd0a54ef6bc2fc278ab5bbaa8809d`; **version:** `V0.3.83-crew-cell-colors`; [Actions #38966976928](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38966976928) **PASS** Setup and FieldWiring full regressions. Existing draft PR #394 under #205/#122. Source tested; current-Production-derived disposable SQL and browser acceptance **pending**; Production unchanged.
+
+V0.3.82 operator review: **Perform Work day grouping PASS** (keep). **Scheduling crew colors REJECTED** — rows were nearly neutral because `.setup-board205-crew-row` uses `display:contents` and the original styles gave only thin stripes/faint tint. V0.3.83 colors the actual visible Crew A–F label and AM/PM cells, with readable light/dark contrast and no grid/dragdrop/staffing changes. Scope is the rejected crew-color styling only.
+
+**ONE governed disposable/browser command** from clean, fast-forwarded desktop worktree `C:\Users\Greg\Github\MSB-Production-Database-Project-205-review`, branch `fix/205-setup-deadline-kpis-20261015`. Verify prior preview CLEAN EXIT and port 8898 ownership. Apply migrations 075/076 and rollback validations on one disposable current-Production PostgreSQL clone before `BROWSER REVIEW READY`.
+
+```powershell
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
+    -PreviewPort 8898 `
+    -CandidateSha '60464f2384ffd0a54ef6bc2fc278ab5bbaa8809d' `
+    -TargetRef 'fix/205-setup-deadline-kpis-20261015' `
+    -ExpectedVersion 'V0.3.83-crew-cell-colors' `
+    -MigrationPaths @(
+        'Setup/Database/075_allow_setup_planned_crew_count_corrections.sql',
+        'Setup/Database/076_capture_2026_reusable_task_estimates.sql'
+    ) `
+    -ValidationPaths @(
+        'Setup/Acceptance/setup_205_planned_crew_count_disposable_validation.sql',
+        'Setup/Acceptance/setup_205_2026_catalog_estimate_disposable_validation.sql'
+    )
+```
+
+**Operator acceptance focus:** verify that Crew A/B/C/D visibly differ across their full Captain + AM + PM grid cells; check dark mode as well. Confirm existing approved Perform Work day boundaries, Report Work task identity, compact warnings and sticky Setup Day/search remain undisturbed. No new workflow. Record verdict and CLEAN EXIT; require #122 Production release authorization separately.
+
+---
+
+## ARCHIVED V0.3.82 — final integrated visual operator review: day grouping and crew colors
 
 **Exact application source:** `e3e291004bd182d89cbdf378d180d6828f5208ad`. **Build:** `V0.3.82-day-crew-visuals`. [Actions #38965963522](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38965963522) PASS: Setup full and FieldWiring full, including targeted visual source contracts. Existing draft PR #394, governing issue #205 / #122. **Source tested; disposable migration/SQL and human browser review not yet accepted. Production unchanged.**
 
