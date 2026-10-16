@@ -47,6 +47,9 @@ DECLARE
     v_origin text;
     v_season_year integer;
     v_old_readiness text;
+    v_old_weather text;
+    v_old_completion text;
+    v_has_actual boolean;
     v_new_readiness text := nullif(btrim(p_readiness_note), '');
     v_effort text := upper(nullif(btrim(p_effort_level), ''));
     v_state text;
@@ -80,8 +83,10 @@ BEGIN
            st.task_origin,
            ss.season_year,
            st.annual_readiness_note,
+           st.annual_weather_note,
+           st.annual_completion_point,
            st.annual_readiness_state
-      INTO v_setup_task_id, v_origin, v_season_year, v_old_readiness, v_state
+      INTO v_setup_task_id, v_origin, v_season_year, v_old_readiness, v_old_weather, v_old_completion, v_state
     FROM ops.setup_session_task st
     JOIN ops.setup_session ss ON ss.setup_session_id = st.setup_session_id
     WHERE st.setup_session_task_id = p_setup_session_task_id;
@@ -91,21 +96,22 @@ BEGIN
             MESSAGE = 'Annual Setup task was not found';
     END IF;
 
-    IF EXISTS (
-        SELECT 1
-        FROM ops.setup_task_progress p
+    v_has_actual := EXISTS (
+        SELECT 1 FROM ops.setup_task_progress p
         WHERE p.setup_session_task_id = p_setup_session_task_id
     ) OR EXISTS (
-        SELECT 1
-        FROM ops.setup_session_task st
+        SELECT 1 FROM ops.setup_session_task st
         WHERE st.setup_session_task_id = p_setup_session_task_id
-          AND (
-              st.actual_started_at IS NOT NULL
-              OR st.actual_completed_at IS NOT NULL
-          )
+          AND (st.actual_started_at IS NOT NULL OR st.actual_completed_at IS NOT NULL)
+    );
+    IF v_has_actual AND NOT (
+        v_origin = 'REUSABLE' AND v_season_year = 2026
+        AND v_old_readiness IS NOT DISTINCT FROM v_new_readiness
+        AND v_old_weather IS NOT DISTINCT FROM nullif(btrim(p_weather_note), '')
+        AND v_old_completion IS NOT DISTINCT FROM nullif(btrim(p_completion_point), '')
     ) THEN
         RAISE EXCEPTION USING ERRCODE = '23514',
-            MESSAGE = 'Actual work exists for this annual task; planning information is historical. Correct reusable knowledge separately.';
+            MESSAGE = 'Actual work exists; only 2026 reusable task estimates may be revised. Historical readiness and completion evidence is protected.';
     END IF;
 
     IF v_old_readiness IS DISTINCT FROM v_new_readiness THEN
@@ -124,9 +130,9 @@ BEGIN
                normal_crew_max = CASE WHEN v_season_year = 2026 THEN p_normal_crew_max ELSE t.normal_crew_max END,
                expected_duration_minutes = CASE WHEN v_season_year = 2026 THEN p_expected_duration_minutes ELSE t.expected_duration_minutes END,
                effort_level = CASE WHEN v_season_year = 2026 THEN v_effort ELSE t.effort_level END,
-               readiness_note = v_new_readiness,
-               weather_note = nullif(btrim(p_weather_note), ''),
-               completion_point = nullif(btrim(p_completion_point), '')
+               readiness_note = CASE WHEN v_has_actual THEN t.readiness_note ELSE v_new_readiness END,
+               weather_note = CASE WHEN v_has_actual THEN t.weather_note ELSE nullif(btrim(p_weather_note), '') END,
+               completion_point = CASE WHEN v_has_actual THEN t.completion_point ELSE nullif(btrim(p_completion_point), '') END
          WHERE t.setup_task_id = v_setup_task_id;
 
         IF NOT FOUND THEN
@@ -140,10 +146,10 @@ BEGIN
            annual_normal_crew_max = p_normal_crew_max,
            annual_expected_duration_minutes = p_expected_duration_minutes,
            annual_effort_level = v_effort,
-           annual_readiness_note = v_new_readiness,
+           annual_readiness_note = CASE WHEN v_has_actual THEN st.annual_readiness_note ELSE v_new_readiness END,
            annual_readiness_state = v_state,
-           annual_weather_note = nullif(btrim(p_weather_note), ''),
-           annual_completion_point = nullif(btrim(p_completion_point), '')
+           annual_weather_note = CASE WHEN v_has_actual THEN st.annual_weather_note ELSE nullif(btrim(p_weather_note), '') END,
+           annual_completion_point = CASE WHEN v_has_actual THEN st.annual_completion_point ELSE nullif(btrim(p_completion_point), '') END
      WHERE st.setup_session_task_id = p_setup_session_task_id;
 
     RETURN QUERY
@@ -196,20 +202,10 @@ BEGIN
 
     IF v_session_task_id IS NULL THEN RETURN NEW; END IF;
 
-    -- A reported annual occurrence has protected planning history under the
-    -- current command contract. Refuse the Catalog write atomically rather
-    -- than silently diverge from the linked 2026 task.
-    IF EXISTS (
-        SELECT 1 FROM ops.setup_task_progress p
-        WHERE p.setup_session_task_id = v_session_task_id
-    ) OR EXISTS (
-        SELECT 1 FROM ops.setup_session_task st
-        WHERE st.setup_session_task_id = v_session_task_id
-          AND (st.actual_started_at IS NOT NULL OR st.actual_completed_at IS NOT NULL)
-    ) THEN
-        RAISE EXCEPTION USING ERRCODE = '23514',
-            MESSAGE = '2026 annual task has reported work; Catalog estimate sync requires governed historical correction';
-    END IF;
+    -- Only task estimate columns are mirrored. Actual crew, duration,
+    -- progress, work dates and reported evidence are deliberately untouched,
+    -- even where the 2026 annual task already has a Report Work record.
+    -- This temporary 2026 learning contract stops when a newer season exists.
 
     UPDATE ops.setup_session_task st
        SET annual_normal_crew_min = NEW.normal_crew_min,
@@ -244,6 +240,6 @@ WHEN (
 EXECUTE FUNCTION ref.sync_setup_task_estimates_to_2026();
 
 COMMENT ON FUNCTION ref.sync_setup_task_estimates_to_2026() IS
-    '2026 only: Catalog estimate changes mirror linked current annual planning in one transaction; protect reported historical work and later seasons.';
+    '2026 only: Catalog estimate changes mirror linked current annual planning in one transaction; preserve task-level actual work and prevent mirroring into later seasons.';
 
 COMMIT;
