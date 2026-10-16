@@ -884,3 +884,27 @@ html[data-theme="dark"] .setup205-action-center .setup205-action {
   border-color: #80bfeb;
   color: #fff;
 }
+
+/* Distinct navigation action, not a plain-looking text tab. */
+button.tab[data-view="action-center"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.6rem;
+  padding: 0.5rem 0.85rem;
+  background: var(--accent, #14658b);
+  color: #fff;
+  border: 2px solid var(--accent, #14658b);
+  border-radius: 0.5rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+html[data-theme="dark"] button.tab[data-view="action-center"] {
+  background: #2a7fb5;
+  border-color: #80bfeb;
+  color: #fff;
+}
+button.tab[data-view="action-center"]:focus-visible {
+  outline: 3px solid var(--text, #172033);
+  outline-offset: 2px;
+}
