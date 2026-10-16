@@ -467,7 +467,10 @@ def test_205_schedule_command_bar_preserves_board_height_and_controls() -> None:
     assert "Print Schedule" in ui
     assert "Open only when you need to add dates." not in ui
     assert "Each work day starts with Crew A." not in ui
-    assert "setup-board205-board-key" in ui
+    assert 'id="setup-board205-current-day"' in ui
+    assert "board205BindStickyDay()" in ui
+    assert "setup-board205-scheduled-search" in ui
+    assert "top: var(--setup-board205-sticky-heading-height, 5rem)" in css
     assert "grid-template-columns: auto auto minmax(16rem, 1fr) auto auto auto;" in css
     assert "max-height: min(22rem, 55vh);" in css
 
