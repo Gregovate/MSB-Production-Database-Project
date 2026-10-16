@@ -134,6 +134,7 @@ assert(passedDeadline.includes('Hard deadline reached with unfinished work'),'ne
 console.log('PASS #205 upcoming crew overload and deadline-passed labels');
 
 
+ctx.nextSetupLocalDate = () => '2026-10-15'; // restore normal date after deadline-passed test
 const compact=ctx.setup205DeadlineKpiHtml(base,2026);
 const beginGlance=compact.indexOf('<div class="setup205-kpi-glance"');
 const disclosure=compact.indexOf('<details class="setup205-kpi-expand">');
