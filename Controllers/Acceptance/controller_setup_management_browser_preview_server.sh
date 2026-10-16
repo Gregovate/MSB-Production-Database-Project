@@ -7,11 +7,11 @@ DB_ACTOR="msbadmin"
 IMAGE="postgis/postgis:16-3.5"
 NETWORK="msb-stack_default"
 FIELDWIRING_ROOT="/opt/fieldwiring"
-TARGET_REF="agent/controller-inventory-ref-sandbox"
-TARGET_SHA="2fd2067958cc0a903260fe6f089f88ae63a857f1"
+TARGET_REF="${3:?TargetRef required}"
+TARGET_SHA="${4:?CandidateSha required}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PREVIEW_ENTRY="$SCRIPT_DIR/controller_setup_management_browser_preview_entry.py"
-PREVIEW_PORT="${1:-8793}"
+PREVIEW_PORT="${1:?PreviewPort required}"
 PREVIEW_EMAIL="${2:-gliebig@sheboyganlights.org}"
 STAMP="$(date +%Y%m%dT%H%M%S)"
 TEST_CONTAINER="msb-controller-browser-preview-${$}"
@@ -31,6 +31,7 @@ echo "========== CONTROLLER SETUP + MANAGEMENT BROWSER PREVIEW =========="
 echo "Report:         $REPORT"
 echo "Candidate SHA:  $TARGET_SHA"
 echo "Preview port:   $PREVIEW_PORT"
+echo "Candidate ref:  $TARGET_REF"
 echo "Preview user:   $PREVIEW_EMAIL"
 echo "Production DB:  pg_dump + SELECT only"
 echo "Preview writes: disposable PostgreSQL clone only"
@@ -72,7 +73,7 @@ cleanup() {
     sudo docker rm -f "$TEST_CONTAINER" >/dev/null 2>&1 || true
 
     if sudo git -C "$FIELDWIRING_ROOT" worktree list --porcelain 2>/dev/null | grep -Fq "worktree $CANDIDATE_WORKTREE"; then
-        sudo git -C "$FIELDWIRING_ROOT" worktree remove --force "$CANDIDATE_WORKTREE" >/dev/null 2>&1 || true
+        sudo git -C "$FIELDWIRING_ROOT" worktree remove "$CANDIDATE_WORKTREE" >/dev/null 2>&1 || true
     fi
 
     rm -f "$DUMP_FILE" >/dev/null 2>&1 || true
@@ -97,13 +98,17 @@ cleanup() {
     echo "Exit status: $status"
     exit "$status"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT INT TERM HUP
 
 sudo -v
 
 if [[ ! "$PREVIEW_PORT" =~ ^[0-9]+$ ]] || (( PREVIEW_PORT < 1024 || PREVIEW_PORT > 65535 )); then
     echo "FAIL: preview port must be an integer from 1024 through 65535"
     exit 2
+fi
+if [[ "$PREVIEW_PORT" != "8898" ]]; then
+    echo "FAIL: registered shared Controller preview port is 8898"
+    exit 3
 fi
 if [[ "$PREVIEW_PORT" == "8790" || "$PREVIEW_PORT" == "8792" || "$PREVIEW_PORT" == "8055" ]]; then
     echo "FAIL: preview port conflicts with a governed production listener"
@@ -150,15 +155,9 @@ echo "--- Fetch exact accepted candidate ---"
 sudo git -C "$FIELDWIRING_ROOT" fetch origin "$TARGET_REF"
 sudo git -C "$FIELDWIRING_ROOT" cat-file -e "$TARGET_SHA^{commit}"
 if ! sudo git -C "$FIELDWIRING_ROOT" merge-base --is-ancestor "$LIVE_HEAD" "$TARGET_SHA"; then
-    echo "FAIL: accepted candidate is not a forward descendant of the live checkout"
-    exit 11
+    echo "INFO: exact detached preview candidate need not descend from live checkout"
 fi
 sudo git -C "$FIELDWIRING_ROOT" worktree add --detach "$CANDIDATE_WORKTREE" "$TARGET_SHA"
-MIGRATION_023="$CANDIDATE_WORKTREE/Controllers/Database/023_create_controller_management_commands.sql"
-MIGRATION_024="$CANDIDATE_WORKTREE/Controllers/Database/024_harden_controller_assignment_capability.sql"
-for f in "$MIGRATION_023" "$MIGRATION_024"; do
-    [[ -s "$f" ]] || { echo "FAIL: accepted candidate migration missing: $f"; exit 12; }
-done
 
 echo
 echo "--- Capture current production into disposable clone ---"
@@ -176,31 +175,19 @@ sudo docker run -d \
     -e POSTGRES_DB=postgres \
     "$IMAGE" >/dev/null
 
-init_complete=0
-for _ in $(seq 1 120); do
-    if sudo docker logs "$TEST_CONTAINER" 2>&1 | grep -q "PostgreSQL init process complete; ready for start up"; then
-        init_complete=1
-        break
-    fi
-    sleep 1
-done
-if [[ "$init_complete" -ne 1 ]]; then
-    echo "FAIL: disposable PostgreSQL initialization did not complete"
-    sudo docker logs "$TEST_CONTAINER" || true
-    exit 13
-fi
-
+# The PostGIS entrypoint starts and stops a temporary PostgreSQL server.
+# Require final postgres PID 1 plus pg_isready before restore.
 ready=0
-for _ in $(seq 1 60); do
-    if sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" \
-        pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
+for _ in $(seq 1 120); do
+    pid1="$(sudo docker exec "$TEST_CONTAINER" cat /proc/1/comm 2>/dev/null | tr -d '\r\n' || true)"
+    if [[ "$pid1" == "postgres" ]] && sudo docker exec -e PGPASSWORD="$TEST_PASSWORD" "$TEST_CONTAINER" pg_isready -U "$DB_ACTOR" -d postgres >/dev/null 2>&1; then
         ready=1
         break
     fi
     sleep 1
 done
 if [[ "$ready" -ne 1 ]]; then
-    echo "FAIL: disposable PostgreSQL final server did not become ready"
+    echo "FAIL: final disposable PostgreSQL startup not ready"
     exit 14
 fi
 
@@ -226,8 +213,7 @@ GRANT EXECUTE ON FUNCTION ref.controller_browser_capabilities(text) TO fieldwiri
 GRANT EXECUTE ON FUNCTION ref.request_controller_label(text,bigint) TO fieldwiring_app;
 SQL
 
-psql_test < "$MIGRATION_023"
-psql_test < "$MIGRATION_024"
+echo "No migrations: source-only #406 candidate against current Production clone"
 
 echo
 echo "--- Validate disposable browser authorization/write boundary ---"
