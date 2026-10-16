@@ -2825,6 +2825,10 @@ async function loadNextTaskExecution(details, focusReport = false) {
         data-scheduled-date="${escapeHtml(day?.work_date || assignment?.work_date || '')}"
         data-session-task-id="${sessionTaskId}"
         data-assignment-id="${assignmentId}">
+        <div class="next-report-task-identity" role="heading" aria-level="4">
+          <strong>Report Work — ${escapeHtml(task?.task_name || assignment?.task_name || 'Setup task')}</strong>
+          <span>Setup Day ${escapeHtml(day?.setup_day_number ?? '—')} · ${escapeHtml(day?.work_date || assignment?.work_date || '')} · ${escapeHtml(assignment?.shift_code === 'MORNING' ? 'AM' : assignment?.shift_code === 'AFTERNOON' ? 'PM' : 'All Day')} · Crew ${escapeHtml(crew?.crew_code || assignment?.crew_lane || '—')}</span>
+        </div>
         <div class="next-report-work-grid">
           <label class="next-work-key-field next-work-date-field"><span class="next-work-field-label">Date work actually happened ${nextReportHelpButton('date')}</span><input class="next-performed-on" type="date" value="${escapeHtml(day?.work_date || assignment?.work_date || '')}" required><small>Scheduled: ${escapeHtml(day?.work_date || assignment?.work_date || 'unknown')}. Change this if the crew worked another day.</small></label>
           <label class="next-work-key-field next-work-crew-field"><span class="next-work-field-label">Actual crew size ${nextReportHelpButton('crew')}</span><input class="next-crew" type="number" min="1" inputmode="numeric" placeholder="Number of volunteers" required><small>Include the Captain if they worked.</small></label>
