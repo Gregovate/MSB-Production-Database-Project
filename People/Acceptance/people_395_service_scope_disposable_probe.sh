@@ -8,17 +8,21 @@ run_people_395_service_scope_probe() {
     [[ -n "$BASELINE_ROLE_ID" && -n "$DIRECTUS_ADMIN_TOKEN" ]] || { echo "STOP: missing clone baseline"; return 71; }
 
     local role_id policy_id service_token service_email test_email manager_role
+    SCOPE_STAGE="CREATE_ROLE"
     role_id="$(psql_q -c "INSERT INTO public.directus_roles (id,name,icon,description)
          VALUES (gen_random_uuid(),'MSB #395 Disposable Service Scope','vpn_key','DISPOSABLE ONLY')
          RETURNING id;")"
+    SCOPE_STAGE="CREATE_POLICY"
     policy_id="$(psql_q -c "INSERT INTO public.directus_policies
          (id,name,icon,description,admin_access,app_access)
          VALUES (gen_random_uuid(),'MSB #395 Google Browser create only','vpn_key',
              'DISPOSABLE ONLY',false,false) RETURNING id;")"
+    SCOPE_STAGE="LINK_ROLE_POLICY"
     # Directus 11.17.1: directus_access.id is NOT NULL without a usable
     # default in the current Production clone. Supply a disposable UUID.
     psql_q -c "INSERT INTO public.directus_access (id,role,policy)
          VALUES (gen_random_uuid(),'$role_id'::uuid,'$policy_id'::uuid);" >/dev/null
+    SCOPE_STAGE="CREATE_PERMISSION"
     psql_q -c "INSERT INTO public.directus_permissions
          (policy,collection,action,permissions,validation,presets,fields)
          VALUES ('$policy_id'::uuid,'directus_users','create',NULL,
@@ -29,6 +33,7 @@ run_people_395_service_scope_probe() {
              )),NULL,
              'email,first_name,last_name,status,provider,external_identifier,role');" >/dev/null
 
+    SCOPE_STAGE="CREATE_SERVICE_TOKEN_AND_USER"
     service_token="$(openssl rand -hex 32)"
     service_email="bootstrap-service-probe-$SHORT_STAMP-$$@sheboyganlights.org"
     test_email="bootstrap-person-probe-$SHORT_STAMP-$$@sheboyganlights.org"
@@ -43,6 +48,7 @@ run_people_395_service_scope_probe() {
         WHERE a.role='$role_id'::uuid AND (p.admin_access OR p.app_access);")" == 0 ]] \
         || { echo "STOP: clone service policy unexpectedly gives admin or Studio"; return 73; }
 
+    SCOPE_STAGE="REFRESH_DISPOSABLE_DIRECTUS"
     # Role and policy fixtures were added directly to the disposable clone.
     # Restart ONLY this uniquely named test container so no stale policy cache
     # can create a false permissions result.
@@ -62,6 +68,7 @@ run_people_395_service_scope_probe() {
         return 74
     }
 
+    SCOPE_STAGE="VERIFY_SERVICE_API_PERMISSIONS"
     sudo docker exec -i \
         -e MSB395_TOKEN="$service_token" \
         -e MSB395_BROWSER_ROLE="$BASELINE_ROLE_ID" \
@@ -136,6 +143,7 @@ else {
 }
 if(process.exitCode)process.exit(process.exitCode);
 NODE
+    SCOPE_STAGE="VERIFY_CREATED_DISPOSABLE_USER"
     [[ "$(psql_q -c "SELECT count(*) FROM public.directus_users
         WHERE lower(email)=lower('$test_email') AND provider='google'
         AND lower(external_identifier)=lower('$test_email')
@@ -143,5 +151,6 @@ NODE
         || { echo "STOP: resulting clone-only Google identity mismatch"; return 75; }
     [[ "$(psql_q -c "SELECT count(*) FROM ref.person WHERE lower(email)=lower('$test_email');")" == 0 ]] \
         || { echo "STOP: clone-only non-person source created ref.person"; return 76; }
+    SCOPE_STAGE="PASS"
     echo "PASS: Directus 11.17.1 scoped non-admin service credential proof"
 }
