@@ -1,5 +1,10 @@
 # Setup Acceptance Tooling
 
+## #205 current non-mail KPI and Report Work candidate
+
+[V0.3.79 source-tested #205 review: shared sticky current Setup Day beside Find Scheduled Task; full integrated six-defect/cross-Catalog corrections, migration 075/076 and both rollback checks, one disposable browser clone; operator acceptance pending](Setup_205_KPI_Action_Center_Disposable_Candidate_2026-10-15.md). Daily email/Directus integration is parked separately and excluded. Not a Production deployment or browser acceptance.
+
+
 Current integrated #122 candidate: [field release checkpoint and review](Setup_122_Integrated_Field_Release.md). This supersedes separate preview handoffs for the included PR308/309/318/321 changes.
 
 

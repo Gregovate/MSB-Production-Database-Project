@@ -158,6 +158,27 @@ class SetupSchedulingBoardRepository:
                     st.annual_notes,
                     st.actual_started_at,
                     st.actual_completed_at,
+                    /* Use the physical work date from a completion-marked report,
+                       not recorded_at or the often-NULL annual audit timestamp. */
+                    CASE
+                        WHEN st.execution_status = 'COMPLETE'
+                            THEN progress.completed_performed_on::text
+                        WHEN st.linked_work_order_gate
+                             AND st.linked_work_order_id IS NOT NULL
+                             AND wo.date_completed IS NOT NULL
+                            THEN wo.date_completed::date::text
+                        ELSE NULL
+                    END AS completion_work_date,
+                    CASE
+                        WHEN st.execution_status = 'COMPLETE'
+                             AND progress.completed_performed_on IS NOT NULL
+                            THEN 'REPORTED_PERFORMED_ON'
+                        WHEN st.linked_work_order_gate
+                             AND st.linked_work_order_id IS NOT NULL
+                             AND wo.date_completed IS NOT NULL
+                            THEN 'WORK_ORDER_COMPLETED'
+                        ELSE 'UNVERIFIED'
+                    END AS completion_date_source,
                     st.actual_crew_count,
                     st.actual_duration_minutes,
                     st.completion_note,
@@ -241,7 +262,7 @@ class SetupSchedulingBoardRepository:
                              AND st.linked_work_order_id IS NOT NULL
                              AND wo.date_completed IS NULL
                             THEN 'WAITING_ON_WORK_ORDER'
-                        WHEN coalesce(sched.unworked_assignment_count, 0) > 0
+                        WHEN coalesce(sched.future_assignment_count, 0) > 0
                             THEN 'SCHEDULED'
                         WHEN st.execution_status = 'IN_PROGRESS'
                              AND coalesce(sched.future_assignment_count, 0) = 0
@@ -397,7 +418,7 @@ class SetupSchedulingBoardRepository:
                     SELECT
                         count(*) FILTER (
                             WHERE wd.day_status <> 'CANCELLED'
-                              AND wd.work_date >= current_date
+                              AND wd.work_date >= (now() AT TIME ZONE 'America/Chicago')::date
                               AND NOT (
                                   wdt.actual_crew_count IS NOT NULL
                                   OR wdt.started_at IS NOT NULL
@@ -459,7 +480,11 @@ class SetupSchedulingBoardRepository:
                     SELECT
                         count(*) AS progress_entries,
                         sum(coalesce(p.completed_quantity, 0)) AS completed_quantity,
-                        max(p.percent_complete) AS percent_complete
+                        max(p.percent_complete) AS percent_complete,
+                        /* Current full-completion work evidence, one date per annual task. */
+                        max(p.performed_on) FILTER (
+                            WHERE p.percent_complete = 100
+                        ) AS completed_performed_on
                     FROM ops.setup_task_progress p
                     WHERE p.setup_session_task_id = st.setup_session_task_id
                 ) progress ON true
@@ -759,6 +784,105 @@ class SetupSchedulingBoardRepository:
             conn.commit()
             return result
 
+    def add_crew_with_tasks(
+        self, *, email: str, work_day_id: int, items: list[dict[str, Any]],
+        captain_person_id: int | None = None,
+    ) -> dict[str, Any]:
+        """Create destination crew AND place all tasks in one transaction.
+
+        Reuses the authorized, audited Setup crew/assignment SQL functions.
+        If any task cannot move (real progress, duplicate, wrong Session),
+        rollback removes the new crew and preserves ALL old placements.
+        """
+        if not (1 <= len(items) <= 25):
+            raise SetupSchedulingBoardRepositoryError(
+                "Drop one to 25 scheduled or unscheduled tasks into a new crew"
+            )
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT setup_session_id, day_status FROM ops.setup_work_day "
+                "WHERE setup_work_day_id = %s",
+                (work_day_id,),
+            )
+            day = self._one(cur, "Destination Setup workday was not found")
+            if str(day["day_status"]).upper() == "CANCELLED":
+                raise SetupSchedulingBoardRepositoryError(
+                    "Cannot create a crew on a cancelled Setup workday"
+                )
+            cur.execute(
+                "SELECT * FROM ops.add_setup_work_day_crew(%s,%s)",
+                (email, work_day_id),
+            )
+            crew = self._one(cur, "New Setup workday crew was not created")
+            new_crew_id = int(crew["setup_work_day_crew_id"])
+            if captain_person_id is not None:
+                # Preserve Captain identity in the same transaction as crew creation
+                # and assignment moves. Failure rolls back the entire operation.
+                cur.execute(
+                    "SELECT * FROM ops.update_setup_work_day_crew(%s,%s,%s,%s,%s)",
+                    (email, new_crew_id, None, None, captain_person_id),
+                )
+                crew = self._one(cur, "Unable to assign the destination Captain")
+            placed = []
+            for index, item in enumerate(items):
+                kind = item["kind"]
+                if kind == "assignment":
+                    assignment_id = int(item["id"])
+                    # For group moves, rely on the original database AM/PM
+                    # assignment, not the shift of the drop destination cell.
+                    cur.execute(
+                        "SELECT shift_code FROM ops.setup_work_day_task "
+                        "WHERE setup_work_day_task_id = %s",
+                        (assignment_id,),
+                    )
+                    original = self._one(
+                        cur, "An assignment in the selected group no longer exists"
+                    )
+                    shift = original["shift_code"]
+                    if shift not in ("MORNING", "AFTERNOON"):
+                        raise SetupSchedulingBoardRepositoryError(
+                            "Legacy All Day assignments require individual review"
+                        )
+                    cur.execute(
+                        "SELECT * FROM ops.update_setup_work_day_assignment("
+                        "%s,%s,%s,%s,%s,%s)",
+                        (email, assignment_id, work_day_id, shift,
+                         new_crew_id, (index + 1) * 10),
+                    )
+                elif kind == "task":
+                    session_task_id = int(item["id"])
+                    shift = item["shift"]
+                    if shift not in ("MORNING", "AFTERNOON"):
+                        raise SetupSchedulingBoardRepositoryError(
+                            "Choose AM or PM for the newly scheduled task"
+                        )
+                    cur.execute(
+                        "SELECT execution_status, annual_task_action_type "
+                        "FROM ops.setup_session_task "
+                        "WHERE setup_session_task_id = %s AND setup_session_id = %s",
+                        (session_task_id, day["setup_session_id"]),
+                    )
+                    task = self._one(cur, "Task does not belong to this annual Setup Session")
+                    if task["execution_status"] in ("COMPLETE", "DEFERRED") or (
+                        task["annual_task_action_type"] == "GATE"
+                    ):
+                        raise SetupSchedulingBoardRepositoryError(
+                            "Completed, deferred and gate tasks cannot be newly scheduled"
+                        )
+                    cur.execute(
+                        "SELECT * FROM ops.create_setup_work_day_assignment("
+                        "%s,%s,%s,%s,%s,%s)",
+                        (email, work_day_id, session_task_id, shift,
+                         new_crew_id, (index + 1) * 10),
+                    )
+                else:
+                    raise SetupSchedulingBoardRepositoryError("Unsupported dragged task kind")
+                placed.append(dict(self._one(
+                    cur, "Atomic crew-and-task placement returned no assignment"
+                )))
+            conn.commit()
+            return {"crew": crew, "assignments": placed}
+
     def update_crew(
         self,
         *,
@@ -852,6 +976,45 @@ class SetupSchedulingBoardRepository:
             result = self._one(cur, "Setup assignment update returned no result")
             conn.commit()
             return result
+
+    def bulk_reschedule_unworked(
+        self, *, email: str, work_day_id: int, crew_id: int,
+        assignment_ids: list[int]
+    ) -> list[dict[str, Any]]:
+        """All-or-nothing Manager move of no-work occurrences into one crew.
+
+        Existing ops.update_setup_work_day_assignment enforces actual-work
+        locks and writes an actor-stamped ASSIGNMENT_MOVED event (migration 069)
+        inside the same transaction. Original AM/PM shifts are preserved.
+        """
+        if not (1 <= len(assignment_ids) <= 25):
+            raise SetupSchedulingBoardRepositoryError(
+                "Select one to 25 unworked assignments to reschedule"
+            )
+        if len(assignment_ids) != len(set(assignment_ids)):
+            raise SetupSchedulingBoardRepositoryError("Duplicate assignment IDs are not allowed")
+        moved = []
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            for index, assignment_id in enumerate(assignment_ids):
+                cur.execute(
+                    "SELECT shift_code FROM ops.setup_work_day_task "
+                    "WHERE setup_work_day_task_id = %s",
+                    (assignment_id,),
+                )
+                row = self._one(cur, "An assignment no longer exists")
+                shift = str(row["shift_code"])
+                if shift not in ("MORNING","AFTERNOON"):
+                    raise SetupSchedulingBoardRepositoryError(
+                        "Legacy All Day assignments require individual review"
+                    )
+                cur.execute(
+                    "SELECT * FROM ops.update_setup_work_day_assignment("
+                    "%s,%s,%s,%s,%s,%s)",
+                    (email,assignment_id,work_day_id,shift,crew_id,(index + 1)*10),
+                )
+                moved.append(dict(self._one(cur, "Workday reassignment failed")))
+            conn.commit()
+        return moved
 
     def remove_assignment(self, *, email: str, assignment_id: int) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:

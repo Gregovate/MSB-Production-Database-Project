@@ -285,7 +285,6 @@ try {
     $manifestLines = @(
         "candidate_sha`t$CandidateSha",
         "target_ref`t$TargetRef",
-        "preview_profile`t$PreviewProfile",
         "preview_port`t$PreviewPort",
         "preview_email`t$PreviewEmail",
         "allow_concurrent_production_writes`t$($AllowConcurrentProductionWrites.IsPresent.ToString().ToLowerInvariant())"
@@ -293,7 +292,11 @@ try {
     if (-not [string]::IsNullOrWhiteSpace($ExpectedVersion)) {
         $manifestLines += "expected_version`t$ExpectedVersion"
     }
+    # Setup's established server manifest parser has no preview_profile key.
+    # The separate PeopleIdentityBootstrap parser REQUIRES that explicit key.
+    # Keep profile-specific fields out of the default Setup manifest.
     if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+        $manifestLines += "preview_profile`t$PreviewProfile"
         $manifestLines += "external_apps_sha`t$ExternalAppsSha"
         $manifestLines += "external_apps_blob`t$ExternalAppsBlob"
     }

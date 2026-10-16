@@ -1892,3 +1892,418 @@ html[data-theme="dark"] .setup-board205-badge.effort-heavy {
   border-color: var(--setup-board205-badge-warn-border);
   color: var(--setup-board205-badge-warn-text);
 }
+
+
+/* #205 launch correction: the Scheduling Board, not the KPI report, is the
+   primary operational surface. Keep this compact in Schedule and Perform.
+   Details remain available in a bounded, independently scrolling disclosure. */
+@media screen {
+  .setup-board205-kpis {
+    display: block;
+    width: 100%;
+    flex: none;
+    font-size: inherit;
+  }
+
+  .setup-205-deadline-kpis {
+    margin: 0 0 0.3rem;
+    padding: 0.42rem 0.65rem;
+    border: 1px solid var(--border, #64748b);
+    border-radius: 0.55rem;
+    background: var(--panel, transparent);
+  }
+
+  .setup205-kpi-glance {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.18rem 0.95rem;
+    align-items: center;
+    line-height: 1.45;
+    font-size: 0.85rem;
+    color: var(--text, inherit);
+  }
+
+  .setup205-kpi-glance strong {
+    color: var(--text, inherit);
+    font-size: 1em;
+    white-space: nowrap;
+  }
+
+  .setup205-kpi-expand {
+    margin-top: 0.2rem;
+  }
+
+  .setup205-kpi-expand > summary {
+    display: list-item;
+    width: fit-content;
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    font-weight: 700;
+    cursor: pointer;
+    color: var(--accent, #438ed0);
+  }
+
+  .setup205-kpi-expanded {
+    max-height: 34dvh;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin-top: 0.45rem;
+    padding: 0.45rem;
+    border-top: 1px solid var(--border, #64748b);
+  }
+
+  .setup205-scheduling-secondary {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.35rem 1rem;
+    font-size: 0.73rem;
+    line-height: 1.15;
+    color: var(--muted, #64748b);
+    margin-bottom: 0.15rem;
+  }
+
+  .setup-board205-planning-header {
+    padding-block: 0.45rem;
+  }
+}
+
+@media screen and (min-width: 1101px) and (max-width: 1599px) {
+  .setup-board205-main {
+    grid-template-columns: minmax(17rem, 0.72fr) minmax(0, 2.28fr);
+  }
+}
+
+@media screen and (min-width: 1101px) {
+  .setup-board205-main {
+    min-height: 0;
+    height: max(28rem, calc(100dvh - 12rem));
+  }
+}
+
+/* Crew and Captain assignments save automatically; show durable write state
+   beside the crew name without requiring a separate Save button. */
+.setup-board205-crew-save-status {
+  font-size: 0.73rem;
+  font-weight: 650;
+  white-space: normal;
+  color: var(--muted, #64748b);
+}
+.setup-board205-crew-save-status.save-failed {
+  color: var(--danger, #b42318);
+  font-weight: 800;
+}
+
+/* #205 calendar-first crew creation: day-level drop targets use the same
+   AM/PM columns as existing crew rows, rather than requiring a placeholder. */
+.setup-board205-new-crew-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  min-height: 3.5rem;
+  border-top: 2px dashed var(--accent, #0b6ea8);
+}
+.setup-board205-new-crew-label,
+.setup-board205-new-crew-drop {
+  padding: 0.6rem 0.65rem;
+  min-width: 0;
+  border-right: 1px solid var(--border, #d9e0e8);
+}
+.setup-board205-new-crew-label {
+  font-weight: 800;
+  background: var(--soft, #f5f8fb);
+}
+.setup-board205-new-crew-drop {
+  border: 2px dashed var(--border, #9cb2c3);
+  color: var(--muted, #64748b);
+  background: var(--panel, #fff);
+  font-weight: 700;
+  text-align: center;
+  cursor: copy;
+}
+.setup-board205-new-crew-drop.drop-target,
+.setup-board205-new-crew-drop:focus-visible {
+  outline: 3px solid var(--accent, #0b6ea8);
+  outline-offset: -3px;
+  background: var(--accent-soft, #e3f5ff);
+  color: var(--text, #172033);
+}
+
+/* The crew-creation control is interactive, not part of the printed schedule. */
+@media print {
+  .setup-board205-new-crew-row,
+  .setup-board205-crew-save-status { display: none !important; }
+}
+
+/* #205 rejected review: visually bound each day and keep its identity when
+   scrolling through multiple crew shifts. Warnings retain their own colors. */
+.setup-board205-days {
+  gap: 1.35rem;
+}
+.setup-board205-day {
+  overflow: visible;
+  border: 2px solid var(--border, #7d90a5);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 9%);
+  scroll-margin-top: 0.5rem;
+}
+.setup-board205-day.day-band-odd {
+  background: color-mix(in srgb, var(--panel, #fff) 96%, var(--accent, #0b6ea8));
+  border-left: 0.45rem solid var(--accent, #0b6ea8);
+}
+.setup-board205-day.day-band-even {
+  background: color-mix(in srgb, var(--panel, #fff) 94%, var(--text, #263646));
+  border-left: 0.45rem solid var(--muted, #62788d);
+}
+.setup-board205-day-header {
+  position: sticky;
+  top: 0;
+  z-index: 7;
+  border-bottom-width: 3px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 12%);
+}
+.setup-board205-completed-crew-summary {
+  grid-column: 1 / -1;
+  padding: 0.45rem 0.8rem;
+  border-bottom: 1px solid var(--border, #aebbc9);
+  background: var(--soft, #f5f8fb);
+  color: var(--muted, #64748b);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+@media print {
+  .setup-board205-day-header { position: static; box-shadow: none; }
+  .setup-board205-completed-crew-summary { display: none; }
+}
+
+/* #205 operator review: visible workday and crew identity; keep existing task cards readable. */
+.setup-board205-day { border: 3px solid var(--border, #526477); margin-bottom: 1.25rem; box-shadow: 0 0.3rem 0.8rem rgb(0 0 0 / 14%); }
+.setup-board205-day-header { position: sticky; top: 0; z-index: 8; border-bottom: 3px solid var(--accent, #0b6ea8); box-shadow: 0 0.15rem 0.35rem rgb(0 0 0 / 18%); }
+.setup-board205-day.day-band-odd { border-left: 8px solid #356a9a; }
+.setup-board205-day.day-band-even { border-left: 8px solid #a56929; }
+/* The header and controls belong to the top of the right column, not its scroll surface. */
+.setup-board205-filters { position: static; }
+
+/* #205: Stable crew letter identity in both themes. */
+.setup-board205-crew-label[data-crew-letter="A"] { border-left: 0.5rem solid #4478c4; }
+.setup-board205-crew-label[data-crew-letter="B"] { border-left: 0.5rem solid #219475; }
+.setup-board205-crew-label[data-crew-letter="C"] { border-left: 0.5rem solid #b4762c; }
+.setup-board205-crew-label[data-crew-letter="D"] { border-left: 0.5rem solid #9864bd; }
+.setup-board205-crew-label[data-crew-letter="E"] { border-left: 0.5rem solid #b84b6a; }
+.setup-board205-crew-label[data-crew-letter="F"] { border-left: 0.5rem solid #328e9a; }
+
+/* #205 V0.3.71: the right-hand scheduling surface owns its scrolling.
+   The planning controls move off-screen when working down the board; the
+   individual Setup Day headers remain sticky at the top of that same pane. */
+@media screen and (min-width: 1101px) {
+  .setup-board205-right {
+    display: block;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+  .setup-board205-right > .setup-board205-planning-header {
+    position: static;
+    margin-bottom: 0.75rem;
+  }
+  .setup-board205-right > .setup-board205-board {
+    overflow-y: visible;
+    height: auto;
+    max-height: none;
+  }
+}
+
+/* #205 second browser review: the day summary/header must never stretch
+   outside the right pane; the crew grid can scroll horizontally inside it. */
+.setup-board205-right,
+.setup-board205-board,
+.setup-board205-day {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+.setup-board205-day {
+  overflow: clip;
+  overflow-clip-margin: 0;
+}
+.setup-board205-day-header {
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.setup-board205-table-wrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* #205 operator rejection: keep Find scheduled task beside the workday list
+   as the right-hand pane scrolls, without freezing the tall KPI/header area. */
+@media screen and (min-width: 1101px) {
+  .setup-board205-board-heading {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    padding: 0.4rem;
+    border-bottom: 1px solid var(--border, #d9e0e8);
+    background: var(--panel, #fff);
+  }
+}
+.setup-board205-board-title-row {
+  flex-wrap: wrap;
+}
+.setup-board205-board-title-row > .setup-board205-scheduled-search {
+  flex: 1 1 19rem;
+  max-width: 34rem;
+  min-width: min(100%, 17rem);
+  position: relative;
+  grid-template-columns: auto minmax(8rem, 1fr);
+}
+.setup-board205-board-title-row .setup-board205-scheduled-search-results:not(:empty) {
+  position: absolute;
+  z-index: 25;
+  top: calc(100% + 0.2rem);
+  left: 0;
+  right: 0;
+  max-height: min(22rem, 55vh);
+  overflow-y: auto;
+  background: var(--panel, #fff);
+  border: 1px solid var(--border, #d9e0e8);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 18%);
+}
+@media print {
+  .setup-board205-board-heading { position: static; }
+  .setup-board205-board-title-row > .setup-board205-scheduled-search { display: none; }
+}
+
+/* #205 operator-rejected sticky regression (Oct 16): one coherent sticky
+   workday identity + Find Scheduled Task surface. Neither can scroll away
+   independently, and the per-day header stays below the shared heading. */
+.setup-board205-board-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.85rem;
+}
+.setup-board205-board-title-row > h3 {
+  margin: 0;
+  flex: 0 0 auto;
+}
+.setup-board205-current-day {
+  display: inline-flex;
+  align-items: center;
+  min-width: 12rem;
+  flex: 1 1 13rem;
+  padding: 0.42rem 0.55rem;
+  border-left: 0.3rem solid var(--accent, #0b6ea8);
+  background: var(--soft, #f5f8fb);
+  color: var(--text, #172033);
+  font-size: 0.85rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+.setup-board205-board-title-row > .setup-board205-scheduled-search {
+  flex: 1 1 21rem;
+  max-width: none;
+  min-width: min(100%, 18rem);
+}
+@media screen and (min-width: 1101px) {
+  .setup-board205-board-heading {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--panel, #fff);
+  }
+  .setup-board205-day {
+    /* overflow:clip broke position:sticky on the nested workday header */
+    overflow: visible;
+    scroll-margin-top: var(--setup-board205-sticky-heading-height, 5rem);
+  }
+  .setup-board205-day-header {
+    position: sticky;
+    top: var(--setup-board205-sticky-heading-height, 5rem);
+    z-index: 10;
+  }
+  .setup-board205-right {
+    scroll-padding-top: var(--setup-board205-sticky-heading-height, 5rem);
+  }
+}
+@media print {
+  .setup-board205-current-day { display: none; }
+  .setup-board205-day-header { position: static; }
+}
+
+/* One sticky navigation row only. Full Setup Day header scrolls normally,
+   while its identity appears in the navigation row when out of view. */
+.setup-board205-current-day[hidden] { display: none !important; }
+@media screen and (min-width: 1101px) {
+  .setup-board205-day-header { position: static; top: auto; }
+}
+.setup-board205-board-heading { padding: 0.25rem 0.4rem; }
+.setup-board205-board-title-row > .setup-board205-scheduled-search { padding: 0.2rem 0.35rem; }
+
+
+/* #205: consistent crew color across label and both shift cells. */
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="A"]) { --crew-accent:#4478c4; --crew-tint:color-mix(in srgb,#4478c4 9%,var(--panel,#fff)); }
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="B"]) { --crew-accent:#219475; --crew-tint:color-mix(in srgb,#219475 9%,var(--panel,#fff)); }
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="C"]) { --crew-accent:#b4762c; --crew-tint:color-mix(in srgb,#b4762c 9%,var(--panel,#fff)); }
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="D"]) { --crew-accent:#9864bd; --crew-tint:color-mix(in srgb,#9864bd 9%,var(--panel,#fff)); }
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="E"]) { --crew-accent:#b84b6a; --crew-tint:color-mix(in srgb,#b84b6a 9%,var(--panel,#fff)); }
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="F"]) { --crew-accent:#328e9a; --crew-tint:color-mix(in srgb,#328e9a 9%,var(--panel,#fff)); }
+.setup-board205-crew-row .setup-board205-crew-label { background:var(--crew-tint,var(--soft,#f5f8fb)); border-left:0.55rem solid var(--crew-accent,var(--border,#d9e0e8)); }
+.setup-board205-crew-row .setup-board205-cell { border-top:3px solid var(--crew-accent,var(--border,#d9e0e8)); }
+
+/* #205 V0.3.83: Crew rows use display:contents, so color the visible cells.
+   Each crew is visually distinct across Captain, AM and PM without changing
+   grid placement, task states, autosave or drag/drop. */
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="A"]) { --crew-accent:#356fb9; --crew-tint:#e0edfc; }
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="B"]) { --crew-accent:#157f60; --crew-tint:#ddf5e9; }
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="C"]) { --crew-accent:#aa681d; --crew-tint:#fff0d9; }
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="D"]) { --crew-accent:#8556b6; --crew-tint:#eee3fc; }
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="E"]) { --crew-accent:#a83b68; --crew-tint:#fbe1ec; }
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="F"]) { --crew-accent:#168193; --crew-tint:#dcf3f7; }
+.setup-board205-crew-row > .setup-board205-crew-label {
+  background: var(--crew-tint, var(--soft,#f5f8fb));
+  border-left: 0.7rem solid var(--crew-accent,#71869a);
+  border-top: 3px solid var(--crew-accent,#71869a);
+}
+.setup-board205-crew-row > .setup-board205-cell {
+  background: color-mix(in srgb, var(--crew-tint,#f5f8fb) 55%, var(--panel,#fff));
+  border-top: 3px solid var(--crew-accent,#71869a);
+}
+html[data-theme="dark"] .setup-board205-crew-row > .setup-board205-crew-label,
+html[data-theme="dark"] .setup-board205-crew-row > .setup-board205-cell {
+  background: color-mix(in srgb, var(--crew-accent,#71869a) 24%, var(--panel,#18222c));
+}
+@media print {
+  .setup-board205-crew-row > .setup-board205-cell { background: transparent; }
+}
+
+
+/* #205: explicit visible-cell crew identity; no inherited custom properties
+   through display:contents, which failed in the operator's browser. */
+.setup-board205-grid .setup-board205-crew-label[data-crew-letter="A"],
+.setup-board205-grid .setup-board205-cell[data-crew-letter="A"] { background-color:#deebfd; border-top:4px solid #316bb4; }
+.setup-board205-grid .setup-board205-crew-label[data-crew-letter="B"],
+.setup-board205-grid .setup-board205-cell[data-crew-letter="B"] { background-color:#dcf3e8; border-top:4px solid #168361; }
+.setup-board205-grid .setup-board205-crew-label[data-crew-letter="C"],
+.setup-board205-grid .setup-board205-cell[data-crew-letter="C"] { background-color:#fff0d6; border-top:4px solid #a86a1d; }
+.setup-board205-grid .setup-board205-crew-label[data-crew-letter="D"],
+.setup-board205-grid .setup-board205-cell[data-crew-letter="D"] { background-color:#eee1fa; border-top:4px solid #8855b5; }
+.setup-board205-grid .setup-board205-crew-label[data-crew-letter="E"],
+.setup-board205-grid .setup-board205-cell[data-crew-letter="E"] { background-color:#fae0ea; border-top:4px solid #ad436c; }
+.setup-board205-grid .setup-board205-crew-label[data-crew-letter="F"],
+.setup-board205-grid .setup-board205-cell[data-crew-letter="F"] { background-color:#daf2f5; border-top:4px solid #208598; }
+html[data-theme="dark"] .setup-board205-grid .setup-board205-crew-label[data-crew-letter="A"],
+html[data-theme="dark"] .setup-board205-grid .setup-board205-cell[data-crew-letter="A"] { background-color:#223b59; }
+html[data-theme="dark"] .setup-board205-grid .setup-board205-crew-label[data-crew-letter="B"],
+html[data-theme="dark"] .setup-board205-grid .setup-board205-cell[data-crew-letter="B"] { background-color:#1b4638; }
+html[data-theme="dark"] .setup-board205-grid .setup-board205-crew-label[data-crew-letter="C"],
+html[data-theme="dark"] .setup-board205-grid .setup-board205-cell[data-crew-letter="C"] { background-color:#4b3923; }
+html[data-theme="dark"] .setup-board205-grid .setup-board205-crew-label[data-crew-letter="D"],
+html[data-theme="dark"] .setup-board205-grid .setup-board205-cell[data-crew-letter="D"] { background-color:#403052; }
+html[data-theme="dark"] .setup-board205-grid .setup-board205-crew-label[data-crew-letter="E"],
+html[data-theme="dark"] .setup-board205-grid .setup-board205-cell[data-crew-letter="E"] { background-color:#502d3b; }
+html[data-theme="dark"] .setup-board205-grid .setup-board205-crew-label[data-crew-letter="F"],
+html[data-theme="dark"] .setup-board205-grid .setup-board205-cell[data-crew-letter="F"] { background-color:#23434d; }

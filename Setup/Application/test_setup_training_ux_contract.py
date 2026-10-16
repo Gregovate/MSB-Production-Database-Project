@@ -76,8 +76,8 @@ def test_effort_uses_single_reusable_task_save_action():
     assert 'id="save-task-effort"' not in html
     assert "saveSelectedSetupEffort" not in effort_js
     assert "placeSetupEffortSaveControl" not in effort_js
-    assert "const effort = el('edit-effort-level')?.value || null;" in production_js
-    assert "api/setup/tasks/${task.setup_task_id}/effort" in production_js
+    assert "effort_level: el('edit-effort-level')?.value || null" in production_js
+    assert "api/setup/tasks/${task.setup_task_id}/effort" not in production_js
 
 
 def test_catalog_delete_reuses_existing_back_control_position():

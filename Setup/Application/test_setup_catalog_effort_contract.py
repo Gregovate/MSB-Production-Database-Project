@@ -48,6 +48,7 @@ def test_effort_editor_is_part_of_reusable_task_save():
     assert "setup-effort-badge" in js
     assert "async function saveSelectedSetupEffort()" not in js
     assert "placeSetupEffortSaveControl" not in js
-    assert "api/setup/tasks/${task.setup_task_id}/effort" in production
-    assert "const effort = el('edit-effort-level')?.value || null;" in production
+    assert "effort_level: el('edit-effort-level')?.value || null" in production
+    assert "api/setup/tasks/${task.setup_task_id}/effort" not in production
+    assert "commandOptions('PATCH', payload)" in production
 

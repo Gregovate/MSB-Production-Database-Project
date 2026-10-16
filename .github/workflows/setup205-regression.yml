@@ -1,0 +1,58 @@
+name: Setup #205 source regression
+
+on:
+  push:
+    branches:
+      - fix/205-setup-deadline-kpis-20261015
+    paths:
+      - "Setup/Application/**"
+      - "Setup/Acceptance/test_setup_gis_preview.py"
+      - "FieldWiring/Application/**"
+      - ".github/workflows/setup205-regression.yml"
+  pull_request:
+    paths:
+      - "Setup/Application/**"
+      - "Setup/Acceptance/test_setup_gis_preview.py"
+      - "FieldWiring/Application/**"
+      - ".github/workflows/setup205-regression.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  setup-full:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install current application test dependencies
+        run: python -m pip install -r Setup/Application/requirements.txt pytest
+      - name: Execute full Setup application regression
+        run: python -m pytest -q -p no:cacheprovider Setup/Application Setup/Acceptance/test_setup_gis_preview.py
+      - name: Execute shared deadline classifier
+        run: |
+          node Setup/Application/test_205_deadline_action_kpis.cjs
+          node Setup/Application/test_205_action_center_navigation.cjs
+          node Setup/Application/test_205_captain_crew_autosave.cjs
+          node Setup/Application/test_205_nullable_crew_duration.cjs
+          node Setup/Application/test_205_sticky_day_search.cjs
+          node Setup/Application/test_205_mixed_shift_group_drop.cjs
+          node Setup/Application/test_205_perform_manager_reschedule.cjs
+
+  fieldwiring-full:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install current application test dependencies
+        run: python -m pip install -r FieldWiring/Application/requirements.txt pytest
+      - name: Execute full FieldWiring application regression
+        run: python -m pytest -q -p no:cacheprovider FieldWiring/Application

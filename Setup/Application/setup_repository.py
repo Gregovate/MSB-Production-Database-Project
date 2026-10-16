@@ -362,9 +362,34 @@ class SetupRepository:
                 values,
             )
             row = cur.fetchone()
-            conn.commit()
             if row is None:
                 raise SetupRepositoryError("Setup task update returned no result")
+
+            # #205 2026 Catalog/annual reconciliation. The task fields and
+            # effort belong to ONE operator Save, not two HTTP transactions.
+            # Either both governed SQL commands succeed, or this context
+            # rolls back both (including the 2026 annual mirror trigger).
+            if "effort_level" in payload:
+                requested_effort = payload["effort_level"]
+                normalized_effort = (
+                    str(requested_effort).strip().upper()
+                    if requested_effort not in (None, "") else None
+                )
+                cur.execute(
+                    "SELECT effort_level FROM ref.setup_task WHERE setup_task_id = %s",
+                    (setup_task_id,),
+                )
+                existing_effort = cur.fetchone()
+                if existing_effort is None:
+                    raise SetupRepositoryError("Reusable Setup task effort lookup failed")
+                if existing_effort["effort_level"] != normalized_effort:
+                    cur.execute(
+                        "SELECT * FROM ref.set_setup_task_effort(%s,%s,%s)",
+                        (email, setup_task_id, normalized_effort),
+                    )
+                    if cur.fetchone() is None:
+                        raise SetupRepositoryError("Reusable Setup task effort update failed")
+            conn.commit()
             return dict(row)
 
     def update_session_task_review(
