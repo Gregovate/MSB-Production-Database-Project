@@ -605,6 +605,21 @@ A safe route still requires targeted checks: Directus provider redirect/allowed 
 
 **Engineering pause:** Do **not** conduct another scoped service-token experiment, provision a privileged credential, install migration 006 or publish merged Apps v0.2 while this simpler login-route alternative is being evaluated. Preserve previously merged source and accepted test evidence for possible reuse, but do not imply its architecture is still the chosen implementation. Compare a narrow direct-provider route versus continuing silent API bootstrap, disclose complexity and residual second-account selection, and obtain explicit direction before new implementation. This checkpoint is a design clarification, not a Production approval revocation or a claim that Directus Data Studio could have met MSB's broader custom workflow requirements.
 
+### Clarification: pre-existing Directus user vs. Person-link repair (#385, #230, #395)
+
+Greg clarified the operational history of why a volunteer was required to visit the Directus login at least once. The **initial Google sign-in caused Directus to create an otherwise missing Directus user**. Subsequent protected application use also needed that user associated with an existing `ref.person`; newer work now appears to have solved that latter failure once the Directus user exists.
+
+The exact repository owners are distinct:
+
+- **Production Database #385, People V0.2.2, merged/deployed**: shared safe exact-email `ref.person.directus_user_id` self-reconciliation for an existing active Google-backed Directus user, implemented in `People/Database/005_reconcile_directus_person_identity.sql`; does not create Directus users and does not assign roles.
+- **Production Database #230**: Manager Reference Data maintenance (Container, Display, Storage Location, etc.), **not** the ownership authority for this identity-reconciliation contract. Any apparent association with #230 in the operator's recollection should not silently change the owning issue or be dismissed without tracing a specific deployed action.
+- **Production Database #395**: the remaining first-time Directus **user-creation/login-choice** problem. Cloudflare/Google authentication at `my.` already identifies the human, but does not create the needed Directus user.
+- **Original Directus User Onboarding Flow**: triggered only on `directus_users.items.create` and still contains an unsafe missing-Person branch capable of creating a `ref.person` row. #385 means this Flow is no longer the durable link-repair mechanism, but #385 does **not** remove the Flow's unsafe missing-Person behavior.
+
+**Design implication:** stop treating the task as if the Person link, authorization or a new universal identity management layer must be rebuilt. Re-evaluate the simplest one-time creation of the Directus Google user by bypassing the confusing mixed username/password-or-Google Directus login page and entering the existing Directus provider-specific Google sign-in directly. On successful first creation, the existing #385 reconciliation can safely link an existing Person on protected use when exact-email/provider/external-identifier and no-conflict conditions hold. Creation still needs a Browser baseline and the Flow's missing-Person auto-create branch needs correction/containment, with explicit checks for shared-tablet Cloudflare-versus-Directus identity mismatches.
+
+This is an **architecture clarification and pause**, not a passed alternate implementation and not evidence that the Directus user can already be created automatically without the login. The previous merged #395 People V0.2.3/Apps code and its disposable evidence remain preserved but **not deployed**; do not continue the #49 service-token-provisioning experiment or request another Production action before Greg decides whether the smaller direct-Google sign-in path fits his actual operator experience.
+
 ## Disposition
 
 ```text
