@@ -620,6 +620,23 @@ The exact repository owners are distinct:
 
 This is an **architecture clarification and pause**, not a passed alternate implementation and not evidence that the Directus user can already be created automatically without the login. The previous merged #395 People V0.2.3/Apps code and its disposable evidence remain preserved but **not deployed**; do not continue the #49 service-token-provisioning experiment or request another Production action before Greg decides whether the smaller direct-Google sign-in path fits his actual operator experience.
 
+### Operational account scope correction — Google account does not imply Directus entitlement
+
+Greg explicitly clarified that **not every Sheboygan Lights Google Workspace account needs Directus**. Tablets, print servers, and other infrastructure/nonhuman principals should **never be given an interactive human Directus login**. The account `workorders@sheboyganlights.org` is used **strictly for email**, not an MSB human operator, and its Workspace/email existence must not trigger Directus human creation or grant application authorization.
+
+Separate four authorities:
+
+1. **Google Workspace mailbox/account** — may serve email-only, device, service, or human needs. Its existence does not authorize any MSB application.
+2. **`ref.person`** — durable human record and safe exact-email association target; not equivalent to a Directus user, and not itself a role grant.
+3. **Interactive Directus Google identity** — only when an identified human is deliberately entitled to a Directus-backed protected application; initial role at most MSB Browser. Existing higher-role assignments are preserved, not inferred.
+4. **Nonhuman service/API identity** — only when a specific backend integration needs API access, through a separately governed least-privilege credential. It must not acquire interactive human login or be linked/reconciled to `ref.person`. Tablet/device identities, if currently represented in Directus for technical authorization, do not thereby become human sign-in accounts.
+
+**Different literal mailbox names — verify, do not merge:** Greg specified `workorders@sheboyganlights.org` (plural) as email-only. Historical Server Management [Issue #49](https://github.com/Gregovate/MSB-Server-Management/issues/49) separately documents `workorder@sheboyganlights.org` (singular), role `Work Order Intake (Service)`, used by Setup #172 through `SETUP_DIRECTUS_INTAKE_TOKEN`. Current evidence does **not** prove whether the two addresses are distinct accounts, aliases, or a naming discrepancy; do not invent equivalence, change the known service token, or enroll the email-only address in Directus because its name is similar.
+
+**#395 design guard:** eligibility to bootstrap must never be inferred from possession of an `@sheboyganlights.org` email alone. If any automatic login path is retained, it must explicitly reject nonhuman/email-only accounts even if an active Person row or Google account happens to exist. Existing SQL 006 exclusions cover literal `tablet-*`, `printservice@`, and `production-1@` identities, but do not name `workorders@`; these are **not evidence of a complete identity-category model**. Do not silently broaden credentials, whitelist all Workspace members, or provision unnecessary Directus users to eliminate one UI step. The simpler direct Google-provider login option must honor the same human-eligibility rule and must not automatically create a Person through the flawed legacy onboarding Flow.
+
+This correction reinforces the pause on #49 service-token experiments and #395 Production deployment while the operator-facing one-time Google login path is reconsidered. The already deployed #385 reconciliation remains authoritative **only after an active human Directus identity exists** and only when its exact existing Person-link conditions pass. No Production mutation was performed by recording this decision.
+
 ## Disposition
 
 ```text
