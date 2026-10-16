@@ -2063,12 +2063,12 @@ function board205Day(day) {
           <div class="setup-board205-grid-head">Crew / Captain / Volunteers</div>
           <div class="setup-board205-grid-head">AM <span class="setup-board205-shift-hint">≈ 9–12</span></div>
           <div class="setup-board205-grid-head">PM <span class="setup-board205-shift-hint">after lunch ≈ 1 PM</span></div>
-          ${crewRows}
           ${canManage ? `<div class="setup-board205-new-crew-row" data-day-id="${day.setup_work_day_id}">
             <div class="setup-board205-new-crew-label">+ New Crew</div>
             <div class="setup-board205-new-crew-drop" data-day-id="${day.setup_work_day_id}" data-shift="MORNING" role="button" tabindex="0">Drop here · New AM Crew</div>
             <div class="setup-board205-new-crew-drop" data-day-id="${day.setup_work_day_id}" data-shift="AFTERNOON" role="button" tabindex="0">Drop here · New PM Crew</div>
           </div>` : ''}
+          ${crewRows}
         </div>
       </div>
       </div>
