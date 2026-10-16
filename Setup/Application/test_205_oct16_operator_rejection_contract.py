@@ -34,6 +34,8 @@ def test_crew_save_updates_only_its_banner_after_confirmed_patch():
     assert "crew.am_planned_crew_count = saved.am_planned_crew_count" in saver
     assert "oldBanner.outerHTML = board205WorkloadBanner(crewId, shift)" in saver
     assert "daySummary.textContent = nextDayStaffingSummary(" in saver
+    assert "setup-board205-plan-staffing" in saver
+    assert "board205LaborHoursText(planned, task.expected_duration_minutes)" in saver
     assert "board205Load()" not in saver
     assert "Saved" in saver
 
