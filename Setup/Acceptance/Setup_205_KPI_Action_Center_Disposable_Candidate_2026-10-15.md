@@ -2,6 +2,35 @@
 
 ## CURRENT V0.3.75 — ONE integrated #205 2026 Setup browser review (2026-10-16)
 
+
+### October 16 14:17 disposable STOP — SQL syntax fixed; rerun SAME integrated test
+
+The office desktop preview failed before browser startup after first 2026 annual-to-Catalog check passed. PostgreSQL parsed the second catalog-to-annual DO block and rejected \`current_catalog.task_name\`: \`CURRENT_CATALOG\` is a SQL keyword, not a safe PL/pgSQL record variable. This was a **test validator error**, not evidence that the planned two-way synchronization failed. The exact retained report is \`/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20261016T141727.txt\`; exit status 3; Production fingerprint stayed \`76cf1c719bed0ea6bee7c1e85de58f1b\`, live source SHA unchanged \`86341d49dc8ccf290575f9d2b418c235094a1377\`.
+
+**Corrected tested candidate** \`f2e5015b7ab905f390d3ed485c723389e13bcc75\`, same **V0.3.75-2026-reported-sync** application version (validation-only correction, no application changes). Replaced 11 occurrences of reserved \`current_catalog\` with \`v_catalog_row\` in \`Setup/Acceptance/setup_205_2026_catalog_estimate_disposable_validation.sql\`, and added a regression gate in \`Setup/Application/test_205_2026_catalog_sync_contract.py\`. [GitHub CI #38915030375](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38915030375) PASS **832 Setup Python**, all #205 Node, FieldWiring full. PostgreSQL clone validation and browser still require re-run.
+
+**Office desktop worktree, NOT primary:** Existing \`C:\Users\Greg\Github\MSB-Production-Database-Project-205-review\` on branch \`fix/205-setup-deadline-kpis-20261015\`. Update it cleanly with \`git fetch\` and \`git merge --ff-only\` after stopping on dirty/mismatched branch. Run existing browser launcher directly, **one Production snapshot and ONE disposable clone**. Use these exact test arguments (Supersedes earlier SHA in this section):
+
+\`\`\`powershell
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 \`
+    -PreviewPort 8898 \`
+    -CandidateSha 'f2e5015b7ab905f390d3ed485c723389e13bcc75' \`
+    -TargetRef 'fix/205-setup-deadline-kpis-20261015' \`
+    -ExpectedVersion 'V0.3.75-2026-reported-sync' \`
+    -MigrationPaths @(
+        'Setup/Database/075_allow_setup_planned_crew_count_corrections.sql',
+        'Setup/Database/076_capture_2026_reusable_task_estimates.sql'
+    ) \`
+    -ValidationPaths @(
+        'Setup/Acceptance/setup_205_planned_crew_count_disposable_validation.sql',
+        'Setup/Acceptance/setup_205_2026_catalog_estimate_disposable_validation.sql'
+    )
+\`\`\`
+
+**All earlier #205 rejection fixes and 2026 bidirectional Catalog tests remain included.** Never deploy to Production without separate acceptance and database-changing runbook approval. If another validation fails, stop, preserve exact failure and correct *this PR*. The previous candidate SHA in archived material is not for new tests.
+
+
+
 **SOURCE REGRESSION PASS; DISPOSABLE MIGRATION AND OPERATOR BROWSER ACCEPTANCE PENDING.** This is the next test for the **original rejected #205 browser review**, including the October 16 two-way task estimate correction. Do NOT split it into another release, clone or thread. Draft [PR #394](https://github.com/Gregovate/MSB-Production-Database-Project/pull/394), source candidate `055f173cf96539865b4365d6a516246a7c8fa6ff`, build `V0.3.75-2026-reported-sync`. [CI #38913434387](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38913434387) PASS **831 Setup Python, FieldWiring full, #205 executable Node tests**. All following source-only commits may update this handoff, but must not silently replace the pinned application SHA. Production unchanged.
 
 **Included corrections to test together:**
