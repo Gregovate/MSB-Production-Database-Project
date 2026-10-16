@@ -2176,3 +2176,60 @@ html[data-theme="dark"] .setup-board205-badge.effort-heavy {
   .setup-board205-board-heading { position: static; }
   .setup-board205-board-title-row > .setup-board205-scheduled-search { display: none; }
 }
+
+/* #205 operator-rejected sticky regression (Oct 16): one coherent sticky
+   workday identity + Find Scheduled Task surface. Neither can scroll away
+   independently, and the per-day header stays below the shared heading. */
+.setup-board205-board-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.85rem;
+}
+.setup-board205-board-title-row > h3 {
+  margin: 0;
+  flex: 0 0 auto;
+}
+.setup-board205-current-day {
+  display: inline-flex;
+  align-items: center;
+  min-width: 12rem;
+  flex: 1 1 13rem;
+  padding: 0.42rem 0.55rem;
+  border-left: 0.3rem solid var(--accent, #0b6ea8);
+  background: var(--soft, #f5f8fb);
+  color: var(--text, #172033);
+  font-size: 0.85rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+.setup-board205-board-title-row > .setup-board205-scheduled-search {
+  flex: 1 1 21rem;
+  max-width: none;
+  min-width: min(100%, 18rem);
+}
+@media screen and (min-width: 1101px) {
+  .setup-board205-board-heading {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--panel, #fff);
+  }
+  .setup-board205-day {
+    /* overflow:clip broke position:sticky on the nested workday header */
+    overflow: visible;
+    scroll-margin-top: var(--setup-board205-sticky-heading-height, 5rem);
+  }
+  .setup-board205-day-header {
+    position: sticky;
+    top: var(--setup-board205-sticky-heading-height, 5rem);
+    z-index: 10;
+  }
+  .setup-board205-right {
+    scroll-padding-top: var(--setup-board205-sticky-heading-height, 5rem);
+  }
+}
+@media print {
+  .setup-board205-current-day { display: none; }
+  .setup-board205-day-header { position: static; }
+}
