@@ -1741,7 +1741,12 @@ function nextPerformLaborKpis(assignments) {
 function nextPerformShiftWorkload(items, shift) {
   const capacity = shift === 'MORNING' ? 180 : shift === 'AFTERNOON' ? 120 : 300;
   let known = 0, unknown = 0, notReady = 0;
+  const seen = new Set();
   for (const assignment of items) {
+    const taskKey = String(assignment.setup_work_day_crew_id) + ':' +
+      String(assignment.setup_session_task_id);
+    if (seen.has(taskKey)) continue;
+    seen.add(taskKey);
     const task = nextPerformTask(assignment.setup_session_task_id);
     const raw = task?.expected_duration_minutes;
     const minutes = raw == null || raw === '' ? NaN : Number(raw);
@@ -1749,7 +1754,7 @@ function nextPerformShiftWorkload(items, shift) {
     else known += minutes;
     if (task?.readiness_state === 'NOT_READY') notReady += 1;
   }
-  return { capacity, known, unknown, notReady, count: items.length, overload: Math.max(0, known - capacity) };
+  return { capacity, known, unknown, notReady, count: seen.size, overload: Math.max(0, known - capacity) };
 }
 function nextPerformWorkloadLabel(items, shift) {
   const w = nextPerformShiftWorkload(items, shift);
