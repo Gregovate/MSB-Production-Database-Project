@@ -753,3 +753,88 @@
   justify-content: flex-end;
   margin-top: 0.5rem;
 }
+
+/* #205 unified operator rejection correction: Report Work fields use a
+   predictable TWO-column grid, not five unequal cramped inputs.
+   Date/Crew and Hours/Minutes must be readable at the real card width. */
+.next-report-work-form .next-report-work-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  align-items: stretch;
+  width: 100%;
+  max-width: 55rem;
+}
+.next-report-work-form .next-report-work-grid .next-work-key-field {
+  display: flex;
+  grid-column: auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0.6rem;
+  gap: 0.25rem;
+  align-self: stretch;
+}
+.next-report-work-form .next-report-work-grid .next-work-key-field input {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  font-size: 1.05rem;
+  padding: 0.45rem 0.55rem;
+  box-sizing: border-box;
+}
+.next-report-work-form .next-report-work-grid .next-duration-hours,
+.next-report-work-form .next-report-work-grid .next-duration-minutes {
+  min-height: 48px;
+  height: 48px;
+  font-size: 1.05rem;
+}
+.next-report-work-form .next-report-work-grid .next-work-minutes-field {
+  background: var(--panel, #fff);
+  border-color: var(--border, #aebbc9);
+}
+.next-report-work-form .next-report-work-grid .next-work-minutes-field input {
+  border-color: var(--accent, #14658b);
+}
+.next-report-work-form .next-report-work-grid .next-work-field-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+}
+.next-report-work-form .next-report-help {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0 0.4rem;
+  border-radius: 50%;
+  border: 1px solid var(--accent, #14658b);
+  color: var(--accent, #14658b);
+  background: var(--panel, #fff);
+  font-weight: 850;
+  cursor: pointer;
+}
+.next-report-work-form .next-report-help-panel {
+  grid-column: 1 / -1;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--accent, #14658b);
+  border-radius: 0.4rem;
+  background: var(--soft, #f5f8fb);
+  line-height: 1.45;
+}
+.next-report-work-form .next-report-help-panel[hidden] { display: none; }
+@media (max-width: 680px) {
+  .next-report-work-form .next-report-work-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+  .next-report-work-form .next-report-work-grid .next-work-date-field,
+  .next-report-work-form .next-report-work-grid .next-work-crew-field,
+  .next-report-work-form .next-report-work-grid .next-work-percent-field {
+    grid-column: 1 / -1;
+  }
+  .next-report-work-form .next-report-work-grid .next-work-key-field { padding: 0.4rem; }
+}
