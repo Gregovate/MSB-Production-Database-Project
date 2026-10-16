@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MSB Kit Inventory</title>
-  <link rel="stylesheet" href="assets/setup_kit_inventory.css?v=2026-09-29.1">
+  <link rel="stylesheet" href="assets/setup_kit_inventory.css?v=2026-10-16.2">
 </head>
 <body>
 <header class="inventory-header">
@@ -18,8 +18,14 @@
   </div>
   <div class="inventory-header-actions">
     <span id="inventory-access" class="access-badge">Checking access…</span>
-    <a class="button secondary" href="../t-post-inventory/">T-Post Inventory</a>
-    <a id="inventory-back-setup" class="button secondary" href="../">Back to Setup Session</a>
+    <nav class="inventory-setup-nav" aria-label="Setup navigation">
+      <a class="button secondary" href="../?view=review">Reusable Task Catalog</a>
+      <a class="button secondary" href="../?view=schedule">Plan / Schedule</a>
+      <a class="button secondary" href="../?view=perform">Perform Work</a>
+      <a class="button secondary" href="../?view=action-center">Manager Action Center</a>
+      <a class="button secondary" href="../t-post-inventory/">T-Post Inventory</a>
+      <a id="inventory-back-setup" class="button secondary" href="../">Back to Setup Session</a>
+    </nav>
     <button id="theme-toggle" type="button" class="secondary">Dark mode</button>
   </div>
 </header>
