@@ -856,3 +856,31 @@
   outline: 3px solid var(--text, #172033);
   outline-offset: 2px;
 }
+
+/* #205: Action Center is an action surface, not a list of text links.
+   Use theme variables so buttons remain visible in light and dark modes. */
+.setup205-action-center .setup205-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.25rem;
+  min-height: 2.5rem;
+  padding: 0.48rem 0.85rem;
+  border: 2px solid var(--accent, #14658b);
+  border-radius: 0.4rem;
+  background: var(--accent, #14658b);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+}
+.setup205-action-center .setup205-action:hover { filter: brightness(1.12); }
+.setup205-action-center .setup205-action:focus-visible {
+  outline: 3px solid var(--text, #172033);
+  outline-offset: 2px;
+}
+html[data-theme="dark"] .setup205-action-center .setup205-action {
+  background: #2a7fb5;
+  border-color: #80bfeb;
+  color: #fff;
+}
