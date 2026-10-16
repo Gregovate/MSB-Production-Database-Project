@@ -64,13 +64,49 @@ Normal users should not have to visit or understand the Directus login/Data Stud
 
 ## Identity and Onboarding
 
-`ref.person` remains the durable identity of a person involved with MSB. **Many real people intentionally decline an MSB email address**, and their Person records remain complete and legitimate; no account creation or login is implied by being in this table. A person may exist without a Google Workspace account, Directus identity, PostgreSQL login, or active system access. A Google Workspace account is important organizational infrastructure: it grants separately administered access to shared drives, organizational email, Google groups and calendars; none of that by itself grants permission to edit Production Database records. **An eligible real organizational human who first accesses Directus may be initialized with only the default `MSB Browser` read-only role**, even if that person has no reason to enter Setup/Takedown data. Operational edit authority (for example Production Crew or Manager) must be assigned deliberately through Directus roles/policies, never inferred from Workspace membership, a Person row, or legacy Person leadership flags. There is no requirement to proactively create Directus identities for every Workspace member; nonhuman and email-only accounts are excluded from interactive human login.  The deployed #385 exact-email reconciler solves Person linkage **after** a Directus user exists; it does not assign an account, email, or role. Historic Person leadership flags, board membership or volunteer participation must not implicitly confer elevated Directus authorization.
+### Established People, Google Workspace, Cloudflare and Directus access contract
 
-The historical Directus **User Onboarding** flow remains create-event-only and is separately documented. V0.2.2 no longer relies on that one-time event to repair every safe established identity.
+**This is the original March 2026 access design, not a new #395 requirement.** MSB agreed as early as March 2, 2026 that human access to its protected applications should be based on the person's **Sheboygan Lights Google Workspace account**, using Cloudflare Access and the established Google/Directus provider configuration rather than another MSB username/password. The operator reconfirmed this operating contract on October 15, 2026. The different systems have different responsibilities:
 
-Protected actor boundaries now use the shared exact-email reconciliation contract from Issue #385. Reconciliation is allowed only for an active Google-backed Directus user whose email and external identifier exactly match an active existing Person's real Sheboygan Lights email, with no UUID ownership conflict. It may create only the missing `ref.person.directus_user_id` relationship; it does not create a Person or change Directus authorization.
+| Authority | Established meaning and boundary |
+| --- | --- |
+| `ref.person` | Durable record of a person who participates in MSB. People may **decline an MSB email** and still remain active, valid Person records; no Workspace account, Directus user or application role is implied. |
+| Google Workspace | Organizational account, used for Google Shared Drives, email, Groups, calendars and other resources according to their **separate Google permissions**. An account is not itself permission to change Setup/Takedown or any Production Database data. |
+| Cloudflare Access | The **first human browser authentication gate** at protected `my.sheboyganlights.org` and `db.sheboyganlights.org`. Under MSB's current human-access configuration, the user must authenticate with their **Sheboygan Lights Google Workspace identity**. A Person without that account cannot pass this gate merely by appearing in `ref.person`. Nonhuman service-token exceptions are separate integrations, not interactive human logins. |
+| Directus identity | A distinct internal user record, created through supported Directus Google authentication/onboarding when an eligible human first needs Directus-backed access. **Do not pre-create an interactive Directus login for every Person or Workspace account.** It is legitimate for a human to have read-only Directus access without operational write duties. |
+| Directus role and policy | New eligible human Directus accounts start at **MSB Browser**, providing baseline read-only access. Production Crew, Manager, Administrator and other write/management privileges require **explicit separate assignment**. No role elevation from Workspace membership, board/leadership status, `ref.person.is_manager`, `is_team`, or first login. |
+| Service/device/email-only account | Tablets, print servers and mail-only identities have **no interactive human Directus login or Person linkage**. A purpose-specific machine API identity, where already accepted, is a separate credential/permission contract and must not be treated as a human login. |
 
-Shared tablet/device/service identities are explicitly non-human and are rejected from Person reconciliation.
+The normal eligible **human** path is:
+
+```text
+existing ref.person (MSB email optional, not an access grant)
+    + separately provisioned Sheboygan Lights Workspace account
+    -> Cloudflare Access authenticates that human's Workspace identity
+    -> my.sheboyganlights.org / MSB Apps
+    -> Directus-backed application, when needed
+         -> Directus Google identity already exists: preserve its current role
+         -> Directus identity missing: supported first-time Google identity initialization
+            -> MSB Browser (read-only) baseline, never automatic write elevation
+    -> People #385 exact-email Person↔Directus reconciliation, when safe
+    -> existing Directus role/policy controls read/write application capabilities
+```
+
+**The Workspace account is necessary for current human Cloudflare authentication, but not sufficient for operational edit authorization.** Not all Workspace users need a Directus account; an eligible person who reaches Directus may have **Browser-only** rights even when they never enter Setup/Takedown information. An MSB volunteer without a Workspace account can continue to have a valid Person record and participate without being granted protected application access.
+
+**Nonhuman/mail-only identity correction:** `workorders@sheboyganlights.org` (plural) is an **email-only** account per the operator and must not receive a human Directus login. Separately, historical Server Management Issue #49 identifies `workorder@sheboyganlights.org` (singular) as a `Work Order Intake (Service)` Directus API identity. Their alias/account relationship is **not established**; never equate the two addresses without evidence. Shared tablet identities and print-service identities likewise do not become human Persons or interactive login accounts merely because an MSB email exists. In particular, an email-domain check alone is not a sufficient **human-versus-nonhuman** classification.
+
+### Current identity lifecycle and known first-login defect
+
+The original Directus **User Onboarding** Flow is triggered only when a `directus_users` row is created. The original design gave first-time eligible Google users the `MSB Browser` baseline; however, its old missing-Person branch can still **auto-create an unwanted `ref.person`**. That behavior is a defect, not authority to manufacture People from login events.
+
+**#385 / People V0.2.2 is already live in Production.** It performs safe exact-email linkage after a Directus user exists: one active human Person, active Google-backed Directus user with matching normalized real MSB email and `external_identifier`, and no conflicting UUID owner. It updates only the missing `ref.person.directus_user_id` relationship and preserves roles and audit attribution. It does **not** create a Person, a Google Workspace account, a Directus user or a role assignment. Devices and service accounts remain excluded.
+
+**#395 is only the remaining first-time Directus user initialization / confusing login-choice-screen problem**, not a reason to rebuild #385 or redesign the Person table. The mixed Directus username/password and "Login with Google" screen confuses people already signed into MSB through Cloudflare. The existing Directus provider-specific Google sign-in route could bypass the mixed chooser, but has not been approved or tested for a safe return URL, proper Browser default, protection against the legacy Flow's missing-Person auto-create branch, or Cloudflare/Directus Google **same-human** identity on shared tablets. Any alternative must preserve these invariants.
+
+At this checkpoint the merged #395 V0.2.3 silent-bootstrap source is **not deployed**: Production remains People V0.2.2; migration 006 and Apps v0.2 publication are unexecuted. The additional privileged service-credential approach is paused pending a simpler, explicitly chosen first-login UX. Do not confuse accepted disposable/browser test evidence with a Production installation.
+
+Further current authority: [Directus User Onboarding Identity Contract](Directus_User_Onboarding_Identity_Contract_2026-09-09.md), [#385 Directus–Person Reconciliation Contract](Directus_Person_Identity_Reconciliation_Contract_2026-10-13.md), and the [#395 current engineering acceptance](../../../../../People/Acceptance/People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md).
 
 ## Current First-Login Gap and Human Access Administration — 2026-10-15
 
