@@ -595,6 +595,16 @@ The existing authoritative [Directus User Onboarding Identity Contract](../../Do
 
 The merged #395 People/Apps source remains *source-only*, not Production deployed. Do not discard the accepted source or change live login redirects without a reviewed decision. Before further testing, explain the simpler Directus SSO redirect option, its operator-visible difference and the two unresolved safety conditions; let Greg choose whether to re-scope #395 rather than continuing the credential effort automatically. Do not consume Don's final Production fixture.
 
+### Operator correction — actual login UX problem and intended simple remedy
+
+Greg clarified that MSB already has Google authentication at the protected `my.sheboyganlights.org` Cloudflare boundary **and** Google authentication is already possible in Directus. The immediate operator-facing defect is not that people cannot choose Google; it is that the Directus first-login screen unnecessarily offers **both username/password and Login with Google**, confusing volunteers despite explicit instructions to use Google exclusively. Greg expected a much smaller UX correction and objected to the expanding service-credential/migration/deployment burden. This clarification supersedes any implication that a generic second Google redirect is itself the requested innovation.
+
+The most direct UX-only candidate to examine is a **one-time MSB Apps link/redirect straight to the existing Directus Google provider sign-in route**, thereby bypassing the mixed password/Google choice screen and returning the user to MSB Apps/previous destination. This may still invoke Google's normal account selection and is **not necessarily fully silent**; no Production behavior has been changed or this routing proven. It must not send volunteers into Directus Data Studio or alter the existing custom MSB operator applications.
+
+A safe route still requires targeted checks: Directus provider redirect/allowed return origin, matching the Cloudflare identity on shared tablets, prevention of the existing User Onboarding flow's missing-Person auto-create path, and preservation of baseline Browser/existing higher roles. Those are open gates, not evidence the redirect is accepted. A one-time first-login experience may be a reasonable tradeoff if the only unwanted operator screen is Directus's login-choice page.
+
+**Engineering pause:** Do **not** conduct another scoped service-token experiment, provision a privileged credential, install migration 006 or publish merged Apps v0.2 while this simpler login-route alternative is being evaluated. Preserve previously merged source and accepted test evidence for possible reuse, but do not imply its architecture is still the chosen implementation. Compare a narrow direct-provider route versus continuing silent API bootstrap, disclose complexity and residual second-account selection, and obtain explicit direction before new implementation. This checkpoint is a design clarification, not a Production approval revocation or a claim that Directus Data Studio could have met MSB's broader custom workflow requirements.
+
 ## Disposition
 
 ```text
