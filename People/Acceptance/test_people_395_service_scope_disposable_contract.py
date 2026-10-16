@@ -87,6 +87,14 @@ def test_token_never_printed_and_report_is_compact():
     assert "echo $service_token" not in PROBE
     assert "BEGIN #395 RESULT" in RUNNER
     assert "END #395 RESULT" in RUNNER
+    assert 'echo "Scope stage:      $SCOPE_STAGE"' in RUNNER
+    for stage in (
+        "CREATE_ROLE", "CREATE_POLICY", "LINK_ROLE_POLICY",
+        "CREATE_PERMISSION", "CREATE_SERVICE_TOKEN_AND_USER",
+        "REFRESH_DISPOSABLE_DIRECTUS", "VERIFY_SERVICE_API_PERMISSIONS",
+        "VERIFY_CREATED_DISPOSABLE_USER", "PASS",
+    ):
+        assert f'SCOPE_STAGE="{stage}"' in PROBE
     assert "Production writes: NONE" in RUNNER
     assert 'echo "Person after:     $person_after_result"' in RUNNER
     assert 'echo "Directus after:   $directus_after_result"' in RUNNER
