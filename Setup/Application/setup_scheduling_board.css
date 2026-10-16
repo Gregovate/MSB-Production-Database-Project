@@ -2076,3 +2076,11 @@ html[data-theme="dark"] .setup-board205-badge.effort-heavy {
   .setup-board205-day-header { position: static; box-shadow: none; }
   .setup-board205-completed-crew-summary { display: none; }
 }
+
+/* #205 operator review: visible workday and crew identity; keep existing task cards readable. */
+.setup-board205-day { border: 3px solid var(--border, #526477); margin-bottom: 1.25rem; box-shadow: 0 0.3rem 0.8rem rgb(0 0 0 / 14%); }
+.setup-board205-day-header { position: sticky; top: 0; z-index: 8; border-bottom: 3px solid var(--accent, #0b6ea8); box-shadow: 0 0.15rem 0.35rem rgb(0 0 0 / 18%); }
+.setup-board205-day.day-band-odd { border-left: 8px solid #356a9a; }
+.setup-board205-day.day-band-even { border-left: 8px solid #a56929; }
+/* The header and controls belong to the top of the right column, not its scroll surface. */
+.setup-board205-filters { position: static; }
