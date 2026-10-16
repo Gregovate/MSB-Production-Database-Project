@@ -383,3 +383,26 @@ The draft #406 browser now labels one-UID choices as **Available individual UIDs
 in a compact grid; models with width greater than one retain contiguous block
 ranges. The UID availability rules and model metadata were not changed.
 Exact-candidate regression/browser acceptance of this presentation is pending.
+
+## Post-2026 Season — PixCon16 Dual Addressing / E1.31 Capacity (DEFERRED)
+
+Operator-confirmed engineering requirement (2026-10-16): a PixCon16 may legitimately
+operate on a traditional **LOR Network** or by **IP address on E1.31**. Neither
+mode should be globally inferred from the model name alone. The observed
+`lor_uid_capacity=1` entry is not a universal definition of the model's
+E1.31 addressing or its 16 physical outputs.
+
+For post-season planning, investigate a separate E1.31/IP capacity view that
+shows each actual physical Controller, IP address, recorded addressing mode,
+and the DMX universes/ranges it consumes. Identify overlaps and free universe
+capacity without translating universes into traditional LOR Unit IDs. Anticipate
+potential addition of **three more E1.31 addresses/controllers**, but do not
+allocate IP addresses or universe ranges without current network design evidence.
+Reconcile physical inventory/programmed facts with the authoritative LOR/V7
+DMX/universe topology and the existing FieldWiring dense-RGB interpretation.
+
+This is **deferred work, not an unfinished gate for the 2026 Network UID
+planner correction**. Keep the current FieldWiring Viewer behavior, existing
+Controller identities, physical assignments and LOR/V7 source data unchanged.
+Revisit after the 2026 season under the existing Controller Inventory issue
+authority, with a separate accepted design and testing gate before implementation.
