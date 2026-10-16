@@ -2702,19 +2702,20 @@ function board205DraggedAssignmentItems(dragged) {
     .sort(board205CompareAssignmentVisualOrder);
 }
 
-function board205ConfirmAssignmentGroupPlacement(items, crewId, shift) {
+function board205ConfirmAssignmentGroupPlacement(items, crewId, shift, preserveShifts = false) {
   const warnings = [];
   const destinationCrew = board205CrewRow(crewId);
   for (const item of items) {
+    const intendedShift = preserveShifts ? item.shift_code : shift;
     const changedPlacement = (
       Number(item.setup_work_day_id) !== Number(destinationCrew?.setup_work_day_id)
-      || String(item.shift_code === 'ALL_DAY' ? 'MORNING' : item.shift_code) !== String(shift)
+      || String(item.shift_code === 'ALL_DAY' ? 'MORNING' : item.shift_code) !== String(intendedShift)
       || Number(item.setup_work_day_crew_id) !== Number(crewId)
     );
     if (!changedPlacement) continue;
     const task = board205Task(item.setup_session_task_id) || item;
     if (!board205RequireEstimates(task)) return false;
-    for (const warning of board205PlacementWarnings(task, crewId, shift)) {
+    for (const warning of board205PlacementWarnings(task, crewId, intendedShift)) {
       warnings.push(`${task.task_name || item.task_name}: ${warning}`);
     }
   }
@@ -2867,21 +2868,30 @@ async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) 
     const items = board205DraggedAssignmentItems(dragged);
     if (!items.length) return;
     totalMoveCount = items.length;
-    if (!board205ConfirmAssignmentGroupPlacement(items, crewId, shift)) return;
+    // Crossing dates with mixed AM/PM must never put the whole selection
+    // into the shift of the drop cell. Deliberate same-day shift moves remain.
+    const preserveShifts = items.length > 1 &&
+      new Set(items.map(item => item.shift_code)).size > 1 &&
+      items.some(item => Number(item.setup_work_day_id) !== Number(dayId));
+    if (!board205ConfirmAssignmentGroupPlacement(items, crewId, shift, preserveShifts)) return;
 
-    const baseSort = requestedSort == null
-      ? board205EndSort(dayId, shift, crewId)
-      : Number(requestedSort) - Math.max(items.length - 1, 0);
+    const sortByShift = new Map();
     const movedTasks = [];
-
-    for (const [index, item] of items.entries()) {
+    for (const item of items) {
+      const destinationShift = preserveShifts ? item.shift_code : shift;
+      const start = requestedSort != null && !preserveShifts
+        ? Number(requestedSort) - Math.max(items.length - 1, 0)
+        : board205EndSort(dayId, destinationShift, crewId);
+      const sortOrder = sortByShift.has(destinationShift)
+        ? sortByShift.get(destinationShift) + 10 : start;
+      sortByShift.set(destinationShift, sortOrder);
       await api(
         `api/setup/scheduling-board/assignments/${item.setup_work_day_task_id}`,
         commandOptions('PATCH', {
           setup_work_day_id: dayId,
-          shift_code: shift,
+          shift_code: destinationShift,
           setup_work_day_crew_id: crewId,
-          sort_order: baseSort + index
+          sort_order: sortOrder
         })
       );
       movedCount += 1;
@@ -2895,7 +2905,7 @@ async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) 
     if (movedCount > 1) {
       const crew = board205CrewRow(crewId);
       setAlert(
-        `${movedCount} tasks moved to Crew ${crew?.crew_code || '—'} · ${shift === 'MORNING' ? 'AM' : 'PM'}.`,
+        `${movedCount} tasks moved to Crew ${crew?.crew_code || '—'} · ${preserveShifts ? 'Original AM/PM shifts preserved' : (shift === 'MORNING' ? 'AM' : 'PM')}.`,
         'ok'
       );
     }
