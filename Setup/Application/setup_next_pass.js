@@ -816,6 +816,7 @@ function installNextTabs() {
           Show completed
         </label>
         <span id="next-perform-filter-summary" class="muted"></span>
+      <button id="next-perform-back-to-top" type="button" class="small secondary">↑ Back to top / Navigation</button>
       <div id="next-perform-kpis" class="next-perform-kpis" aria-label="Perform Work labor KPIs"></div>
       </div>
       <div id="next-perform-list"></div>
@@ -988,6 +989,16 @@ function nextEnsurePerformToolbar() {
       <div id="next-perform-kpis" class="next-perform-kpis" aria-label="Perform Work labor KPIs"></div>
     `;
     list.insertAdjacentElement('beforebegin', toolbar);
+  }
+  const topButton = el('next-perform-back-to-top');
+  if (topButton && topButton.dataset.backToTopInstalled !== '1') {
+    topButton.dataset.backToTopInstalled = '1';
+    topButton.addEventListener('click', () => {
+      const tabs = document.getElementById('setup-tabs');
+      (tabs || document.querySelector('header') || document.body)
+        .scrollIntoView({block:'start', behavior:'smooth'});
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
   }
   const showCompleted = el('next-perform-show-completed');
   if (showCompleted && showCompleted.dataset.performCompletedFilterInstalled !== '1') {
