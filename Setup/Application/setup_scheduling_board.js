@@ -268,6 +268,8 @@ function board205PlacementWarnings(task, crewId, shift) {
   }
 
   const crew = board205CrewRow(crewId);
+  const missing = board205MissingEstimates(task);
+  if (missing.length) warnings.push('PLANNING ESTIMATE TBD: ' + missing.join(', ') + '. You may schedule now and complete estimates later.');
   const planned = board205PlacementCrewCount(crewId, shift);
   const minCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
   if (planned != null && minCrew != null && planned < minCrew) {
@@ -291,7 +293,8 @@ function board205PlacementWarnings(task, crewId, shift) {
   return warnings;
 }
 
-// Operator estimates are required; never silently invent planning data.
+// #205: Planning estimates are guidance, not a scheduling prerequisite.
+// Preserve unknown duration and crew size instead of inventing values.
 function board205MissingEstimates(task) {
   const missing = [];
   if (!(Number(task?.expected_duration_minutes) > 0)) missing.push('time');
@@ -301,18 +304,9 @@ function board205MissingEstimates(task) {
 }
 
 function board205RequireEstimates(task) {
-  const missing = board205MissingEstimates(task);
-  if (!missing.length) return true;
-  // Existing reports lock annual planning in the database. Keep continuation
-  // schedulable without rewriting historical estimates or inventing defaults.
-  if (Number(task?.progress_entries || 0) > 0 || task?.actual_started_at || task?.actual_completed_at) {
-    setAlert(`Historical estimates are locked; missing ${missing.join(', ')} remains TBD for this continuation.`, 'error');
-    return true;
-  }
-  setAlert(`Enter estimated ${missing.join(', ')} before scheduling. A rough estimate is enough; save Planning Info, then schedule again.`, 'error');
-  document.getElementById('setup-board205-schedule-dialog')?.close();
-  board205OpenPlanningInfoDialog(task?.setup_session_task_id);
-  return false;
+  // A short-horizon task may be scheduled before final crew or duration
+  // estimates exist. Placement warnings disclose gaps without blocking it.
+  return Boolean(task);
 }
 
 function board205ReschedulingLabel(task) {
@@ -981,7 +975,9 @@ function board205LaborHoursText(crewCount, durationMinutes) {
 function board205AssignmentPlannedCrew(item) {
   const crew = board205CrewRow(item?.setup_work_day_crew_id);
   const shiftCrew = board205PlannedCrewForShift(crew, item?.shift_code);
-  if (shiftCrew != null) return Number(shiftCrew);
+  // An existing crew with NULL shift staffing is explicitly unconfirmed.
+  // Historical assignment estimates cannot silently supply a Captain.
+  if (crew) return shiftCrew != null && Number(shiftCrew) > 0 ? Number(shiftCrew) : null;
   if (item?.planned_crew_count != null && Number(item.planned_crew_count) > 0) {
     return Number(item.planned_crew_count);
   }
@@ -2069,8 +2065,8 @@ function board205Day(day) {
             <select class="setup-board205-crew-captain-select">${board205CaptainOptions(crew.captain_person_id)}</select>
           </label>
           <div class="setup-board205-crew-counts">
-            <label>AM Crew w/Captain <input class="setup-board205-crew-am" type="number" min="0" value="${board205Esc(crew.am_planned_crew_count ?? '')}" placeholder="—"></label>
-            <label>PM Crew w/Captain <input class="setup-board205-crew-pm" type="number" min="0" value="${board205Esc(crew.pm_planned_crew_count ?? '')}" placeholder="—"></label>
+            <label>AM Crew w/Captain <input class="setup-board205-crew-am" type="number" min="1" value="${board205Esc(crew.am_planned_crew_count ?? '')}" placeholder="Not staffed" title="Blank = Captain not confirmed in this shift; 1 = Captain alone"></label>
+            <label>PM Crew w/Captain <input class="setup-board205-crew-pm" type="number" min="1" value="${board205Esc(crew.pm_planned_crew_count ?? '')}" placeholder="Not staffed" title="Blank = Captain not confirmed in this shift; 1 = Captain alone"></label>
           </div>
         </div>
         ${board205Cell(day, 'MORNING', crew)}
@@ -2652,10 +2648,10 @@ async function board205SaveCrew(crewId, crewNode) {
       const am = draft.am_planned_crew_count;
       const pm = draft.pm_planned_crew_count;
       const captain = draft.captain_person_id;
-      const invalidShift = captain != null && ((am != null && am < 1) || (pm != null && pm < 1));
+      const invalidShift = (am != null && am < 1) || (pm != null && pm < 1);
       if (invalidShift) {
-        board205CrewSaveMessage(crewNode, 'Not saved — staffed shifts need crew of 1 or more', true);
-        setAlert('Staffed shift crew size must be at least 1; adjust the value to save.', 'error');
+        board205CrewSaveMessage(crewNode, 'Not saved — enter 1 for Captain alone or clear for unstaffed shift', true);
+        setAlert('Crew size 1 means Captain alone. Clear the field for no confirmed crew.', 'error');
         return false;
       }
       if (captain != null) {
