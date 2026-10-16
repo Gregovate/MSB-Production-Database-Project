@@ -1,6 +1,6 @@
 # #205 under #122 — V0.3.84 Production release profile
 
-Status: release tooling verification; Production execution pending.
+Status: engineering verification PASS; Production execution pending.
 
 Authority: current MSB-Server-Management
 `docs/server/Production_Database_Change_Deployment_Runbook.md` (combined database
@@ -72,3 +72,19 @@ engineering tests, not another operator preview or a Production deployment.
 
 Keep #205/#122 open for execution receipts and release closeout. No Production
 installation is asserted by merging this tooling.
+
+## Engineering verification receipt — October 16, 2026
+
+Tooling `3c74167a1fc7c8f3d2237b01897fa9b1f8c62260`, PR #409,
+[CI run 38972599293](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38972599293):
+49 deployment/catalog tests PASS against isolated PostgreSQL 16; full Setup
+regression 840 PASS; Windows PowerShell parser and committed LF/BOM-free transport
+PASS. The preceding CI failure was fixture transaction ownership: psycopg's
+connection context rolled fixture creation back with the read-only validation.
+Using a closing-only context fixed the test; release migrations were unchanged.
+
+Source review checked accepted Setup tree equality, unchanged migration blobs,
+shared checkout preservation, no OFF on failed gates, old-profile behavior,
+transport cleanup and absence of automatic retry/restore. The release command
+remains pending execution. This receipt does not assert live-host preflight PASS
+or a Production release; both are performed by the guarded runner when invoked.
