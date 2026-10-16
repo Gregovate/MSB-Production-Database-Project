@@ -1,6 +1,34 @@
 # #205 Whole-Setup KPI / Action Center / Report Work — Browser Candidate
 
-## CURRENT V0.3.79 — sticky Setup Day beside task search (2026-10-16)
+## CURRENT V0.3.80 — one compact sticky search row, no duplicate day header
+
+**Source CI PASS, disposable PostgreSQL and browser PENDING.** Exact source SHA `891e2a53027ad9c893261901bb147eaf686080f1`, version `V0.3.80-single-sticky-row`, [Setup CI #38961753199](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38961753199) PASS (838 Setup Python tests, #205 JavaScript including sticky day behavior, FieldWiring). PR #394 remains draft; Production unchanged.
+
+**Operator rejection of V0.3.79:** two full-height sticky bars consumed vertical workspace. V0.3.80 retains a compact sticky Rolling Work Days/search navigation row; the full per-day heading scrolls normally. The sticky day/date label is hidden while the real day's heading is visible and appears in the same compact row once that heading is no longer visible. Do not claim browser approval from CI. Source regressions verify both identity while scrolling and no duplicate sticky header; all prior V0.3.78 quick Planning Info, one-line workload, Kit nav changes remain included.
+
+**Only current command**, from clean existing review worktree `C:\Users\Greg\Github\MSB-Production-Database-Project-205-review` on `fix/205-setup-deadline-kpis-20261015`, after documented old-preview CLEAN EXIT and 8898 ownership checks:
+
+```powershell
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
+    -PreviewPort 8898 `
+    -CandidateSha '891e2a53027ad9c893261901bb147eaf686080f1' `
+    -TargetRef 'fix/205-setup-deadline-kpis-20261015' `
+    -ExpectedVersion 'V0.3.80-single-sticky-row' `
+    -MigrationPaths @(
+        'Setup/Database/075_allow_setup_planned_crew_count_corrections.sql',
+        'Setup/Database/076_capture_2026_reusable_task_estimates.sql'
+    ) `
+    -ValidationPaths @(
+        'Setup/Acceptance/setup_205_planned_crew_count_disposable_validation.sql',
+        'Setup/Acceptance/setup_205_2026_catalog_estimate_disposable_validation.sql'
+    )
+```
+
+**Next exact browser check:** at top of day, show ONLY compact search navigation plus full normal day heading; after scrolling past that day heading, show compact Setup Day/date in sticky row beside search; no second persistent day header or extra half-inch bar. Continue all integrated #205 tests; SQL validation must pass before `BROWSER REVIEW READY`, preserve CLEAN EXIT after operator review. No Production approval.
+
+---
+
+## ARCHIVED V0.3.79 — sticky Setup Day beside task search (2026-10-16)
 
 **PASS source regression only; operator browser NOT yet accepted.** Operator REJECTED V0.3.78 because the Find Scheduled Task search remained pinned but the Setup Day # / DOW / Date heading disappeared when scrolling Crew cards. A single sticky current-day label beside the search is required. Existing PR #394, exact application SHA `eca26f631a9472e039b2e2e5482817b00375e47f`, build `V0.3.79-sticky-day-search`, CSS/JS assets pinned `2026-10-16.79`. [CI #38948868529](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38948868529) PASS **838 Setup Python / FieldWiring full / #205 Node** including executable workday-scroll test. PR remains DRAFT; Production UNCHANGED.
 
