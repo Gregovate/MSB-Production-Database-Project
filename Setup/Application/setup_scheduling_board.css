@@ -1892,3 +1892,93 @@ html[data-theme="dark"] .setup-board205-badge.effort-heavy {
   border-color: var(--setup-board205-badge-warn-border);
   color: var(--setup-board205-badge-warn-text);
 }
+
+
+/* #205 launch correction: the Scheduling Board, not the KPI report, is the
+   primary operational surface. Keep this compact in Schedule and Perform.
+   Details remain available in a bounded, independently scrolling disclosure. */
+@media screen {
+  .setup-board205-kpis {
+    display: block;
+    width: 100%;
+    flex: none;
+    font-size: inherit;
+  }
+
+  .setup-205-deadline-kpis {
+    margin: 0 0 0.3rem;
+    padding: 0.42rem 0.65rem;
+    border: 1px solid var(--border, #64748b);
+    border-radius: 0.55rem;
+    background: var(--panel, transparent);
+  }
+
+  .setup205-kpi-glance {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.18rem 0.95rem;
+    align-items: center;
+    line-height: 1.45;
+    font-size: 0.85rem;
+    color: var(--text, inherit);
+  }
+
+  .setup205-kpi-glance strong {
+    color: var(--text, inherit);
+    font-size: 1em;
+    white-space: nowrap;
+  }
+
+  .setup205-kpi-expand {
+    margin-top: 0.2rem;
+  }
+
+  .setup205-kpi-expand > summary {
+    display: list-item;
+    width: fit-content;
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    font-weight: 700;
+    cursor: pointer;
+    color: var(--accent, #438ed0);
+  }
+
+  .setup205-kpi-expanded {
+    max-height: 34dvh;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin-top: 0.45rem;
+    padding: 0.45rem;
+    border-top: 1px solid var(--border, #64748b);
+  }
+
+  .setup205-scheduling-secondary {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.35rem 1rem;
+    font-size: 0.73rem;
+    line-height: 1.15;
+    color: var(--muted, #64748b);
+    margin-bottom: 0.15rem;
+  }
+
+  .setup-board205-planning-header {
+    padding-block: 0.45rem;
+  }
+}
+
+@media screen and (min-width: 1101px) and (max-width: 1599px) {
+  .setup-board205-main {
+    grid-template-columns: minmax(17rem, 0.72fr) minmax(0, 2.28fr);
+  }
+}
+
+@media screen and (min-width: 1101px) {
+  .setup-board205-main {
+    min-height: 0;
+    height: max(28rem, calc(100dvh - 12rem));
+  }
+}
