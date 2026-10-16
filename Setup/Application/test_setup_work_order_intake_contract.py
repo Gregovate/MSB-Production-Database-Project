@@ -121,7 +121,7 @@ def test_172_field_ui_is_low_friction_and_uses_exact_assignment() -> None:
     ui = read_app("setup_next_pass.js")
 
     for token in (
-        "Report Correction",
+        "Task Feedback",
         "What did you find?",
         "Suggested correction / evidence",
         "Work Order Intake for Manager triage",
