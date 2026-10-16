@@ -39,7 +39,7 @@ try {
     & scp -r $bundle "${Server}:/tmp/"
     if ($LASTEXITCODE -ne 0) { throw "SCP failed: $LASTEXITCODE" }
     $remoteScript = "$remote/controller_setup_management_browser_preview_server.sh"
-    $remoteCommand = "bash -n '$remoteScript' && timeout --foreground --signal=TERM 28800s bash '$remoteScript' '$PreviewPort' '$PreviewEmail' '$TargetRef' '$CandidateSha'"
+    $remoteCommand = "chmod 755 '$remote' && chmod 644 '$remote/controller_setup_management_browser_preview_entry.py' && bash -n '$remoteScript' && timeout --foreground --signal=TERM 28800s bash '$remoteScript' '$PreviewPort' '$PreviewEmail' '$TargetRef' '$CandidateSha'"
     & ssh -tt -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -L "${PreviewPort}:127.0.0.1:${PreviewPort}" $Server $remoteCommand
     if ($LASTEXITCODE -ne 0) { throw "STOP: remote preview failed ($LASTEXITCODE). Inspect retained Controller preview report and resources before retry." }
     Write-Host 'CONTROLLER DISPOSABLE BROWSER PREVIEW: CLEAN EXIT'
