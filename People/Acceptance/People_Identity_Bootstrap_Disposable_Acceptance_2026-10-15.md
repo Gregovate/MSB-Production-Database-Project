@@ -406,6 +406,259 @@ Backbone source is merged but the approved, allowlisted source-to-live **Apps pa
 
 **Next governed engineering step:** reconcile exact Production live checkout, controller status, service environment credential presence (no secrets displayed), migration 006 absence/presence, and Backbone static publication tooling using read-only checks; prepare/review and contract-test the #395 installation tooling on a separate branch from merged main. No additional disposable Apps browser test is required solely because the release runner is new. Only after those gates can the already authorized operator execute an approved bounded Production migration window. Don's real first-login fixture remains unconsumed until final live acceptance.
 
+## Production authorization — read-only readiness gate staged (October 15, 2026)
+
+Greg explicitly approved Production for Issue #395 after [PR #401](https://github.com/Gregovate/MSB-Production-Database-Project/pull/401) and Backbone [PR #25](https://github.com/Gregovate/MSB-Internal-Web-Backbone/pull/25) merged and after the disposable Apps+People browser review returned PASS. **This is operator Production authorization, not proof of installation.**
+
+The exact merged source pins currently authorized for release reconnaissance are:
+
+```text
+Production Database main  6122d7923c2a07eb6b278225cf71cafc4704d349
+People runtime            dcc8f25f07a74e19ce3de3aae2d9d137b5411815
+People version            V0.2.3
+People migration          People/Database/006_create_silent_identity_bootstrap_contract.sql
+Backbone Apps main        91674b254d204235366f7d9a17f8395ae98149af
+Backbone Apps blob        9d340e5e944a7cd1db223b539066eb14ddb1c292
+```
+
+Before any maintenance or migration, the **new read-only preflight**, staged separately from merged Production source, must be run and its compact receipt inspected:
+
+```text
+People/Acceptance/run_people_395_production_readonly_preflight.ps1
+People/Acceptance/people_395_production_readonly_preflight.sh
+People/Acceptance/test_people_395_production_readonly_preflight_contract.py
+```
+
+This runner follows the Server Management Production Database Change Deployment Runbook and Issue #37 maintenance state query contract; it **does not switch maintenance, apply SQL, restart services, advance a checkout, create Directus users, or publish Apps**. It verifies server/controller ONLINE state, V0.2.2 live People service, clean previously accepted Production HEAD, current `origin/main` equality with the approved SHA, #385 function and baseline Browser role, migration 006 still absent, the real Don fixture still unconsumed, Production identity fingerprints, and protected `/etc/msb-people/people.env` identity-bootstrap token presence and non-mutating Directus `/users/me` authentication. The token must never be printed, passed as a command argument, written to Git or surfaced in the terminal report. Token authentication does **not** yet prove permission to set provider fields and does not remove the dedicated-credential review requirement.
+
+The unique uploaded preflight bundle is removed; the `/tmp/MSB_People395_Production_Readonly_Preflight_*.txt` report is preserved. The runner prints a bounded `BEGIN #395 RESULT` / `END #395 RESULT` footer for Greg to paste without pages of logs. The workstation wrapper enforces source checkout and runs its focused contract tests before server contact; server script syntax is checked via `bash -n`.
+
+**STOP CONDITIONS:** any mismatch in live checkout/version, controller ONLINE/unfenced state, #385/migration objects, Don preservation, exact remote main, or missing/invalid protected Directus token stops the work before database mutation. This is not a substitute for the still-required reviewed migration 006 production deployment runner and validated rollback/commit containment or the Backbone controlled Apps publishing procedure. No Production migration or static publication receipt exists yet. Continue from the preflight result and the governing runbooks, not from ad hoc SQL or #385's migration-005 installer.
+
+## First governed Production preflight — credential STOP (2026-10-15)
+
+Greg ran the versioned read-only `People/Acceptance/run_people_395_production_readonly_preflight.ps1` wrapper. The retained host report is `/tmp/MSB_People395_Production_Readonly_Preflight_20261015T232453.txt`.
+
+```text
+Exact merged-main release target  6122d7923c2a07eb6b278225cf71cafc4704d349
+Live shared checkout             bb8dfa498c5b4bbecfc3693f68c4066c1e08242e
+Issue #37 controller             ONLINE / UNFENCED
+Production ref.person MD5        4157a1c63a88bc900d566f6eb094f1c4
+Production directus_users MD5    3170a3a5b5860bed1c293f2ee6b50131
+Stop step                        Check protected Directus credential without printing secret
+Credential                       STOP: NOT READY
+Exit                             30
+Production writes                NONE
+```
+
+The full earlier preflight sequence reached the credential step, which means its preceding controller, checkout, baseline-version, object-presence and Don-fixture guards did not stop. The token check deliberately used a single generic failure message covering missing environment key, wrong file protection/URL, invalid/expired credential, Directus connectivity or an inactive token owner. **This result alone does not establish which condition failed. Do not assume the token is merely missing or insert an arbitrary administrator token.** No maintenance transition, migration 006, People deployment, Apps publication or Don bootstrap was performed.
+
+The next controlled action is non-secret **read-only credential failure classification** under the existing Server Management People runtime authority. Any diagnostic must display only a bounded reason category and HTTP status if applicable—never the bearer token, environment file content, service-account password or raw response. Reconcile the actual failure before governed provisioning. Maintain the current Production ONLINE state. The older #385 installer still cannot be reused for migration 006.
+
+### Credential failure classification correction — still read-only
+
+The initial approved preflight intentionally reported one generic `Credential: STOP: NOT READY` outcome for all credential problems. That preserved the secret but could not distinguish whether the environment file or token was absent, permissions were unsafe, authentication failed, the Directus listener was unavailable, or the token owner was inactive.
+
+The reusable **read-only** `people_395_production_readonly_preflight.sh` credential gate now reports exactly one bounded failure code in its existing `Credential:` footer field: `ENV_FILE_MISSING`, `ENV_FILE_PERMISSIONS`, `ENV_FILE_UNREADABLE`, `TOKEN_NOT_CONFIGURED`, `DIRECTUS_URL_MISMATCH`, `DIRECTUS_AUTH_HTTP_401`, `DIRECTUS_AUTH_HTTP_403`, other `DIRECTUS_HTTP_<status>`, `DIRECTUS_UNREACHABLE`, `DIRECTUS_RESPONSE_INVALID`, or `DIRECTUS_USER_INACTIVE`. It never prints credential contents, Directus user ID/email, response JSON, or the environment file. The check remains a read-only authenticated GET to `/users/me` and cannot create/update a Directus identity.
+
+**Next gate:** refresh the current #395 release-readiness feature branch, run its focused read-only-tool contract test and existing foreground preflight, then paste **only the final result block**. Do not replay the migration, add arbitrary static tokens or switch #37 maintenance merely because the credential failed. A PASS of the Directus GET does not prove administrator-level provider-field mutation rights; that will require the separately reviewed release credential contract. No Production mutation has been performed by this correction.
+
+## Second governed Production preflight — missing token confirmed (2026-10-15)
+
+Greg ran the corrected non-secret diagnostic and supplied the exact footer:
+
+```text
+Release target         6122d7923c2a07eb6b278225cf71cafc4704d349
+Production HEAD        bb8dfa498c5b4bbecfc3693f68c4066c1e08242e
+Controller             ONLINE / UNFENCED
+Credential             STOP: TOKEN_NOT_CONFIGURED
+Person fingerprint     4157a1c63a88bc900d566f6eb094f1c4
+Directus fingerprint   3170a3a5b5860bed1c293f2ee6b50131
+Exit status            30
+Production writes      NONE
+Retained report        /tmp/MSB_People395_Production_Readonly_Preflight_20261015T233214.txt
+```
+
+This distinguishes the exact problem from the earlier generic `STOP: NOT READY`: **the `PEOPLE_DIRECTUS_IDENTITY_TOKEN` setting has no configured value in the protected People environment-file parsing path**. It does not establish that Directus itself is unhealthy or that a token was rejected; authentication was not attempted because no token was configured. All upstream runbook guards reached the credential gate without stopping. Migration 006, People service promotion, Backbone Apps publication, #37 maintenance transition, and Don's real first-login acceptance were **not** performed.
+
+### Existing Server Management credential authority — Issue #49
+
+Read `Gregovate/MSB-Server-Management` Issue #49 ("Establish governed Directus service-credential provisioning and recovery procedure") and the current `docs/server/Setup_Production_Runtime.md` as provenance, **not as a substitute for a controlled runbook**. Prior read-only evidence established:
+
+- The existing `Work Order Intake (Service)` Directus identity is application-specific and its static token powers `SETUP_DIRECTUS_INTAKE_TOKEN`; accepted #172 deployment reused that unchanged existing identity.
+- The other token-bearing Production identity observed during #49's reconnaissance was a **human Administrator**. The accepted #172 path deliberately did not reuse it.
+- The reusable Directus service-credential **creation, permission design, secure installation, rotation and recovery procedure remains open as Server Management #49** even though Setup #172 deployment succeeded.
+
+For #395 the required Directus Users API operation creates a Google-backed identity, sets `provider` and `external_identifier`, and assigns `MSB Browser`; it is not the Work Order Intake collection-create permission. **Do not reuse or rotate the Work Order service token; do not copy a human Administrator token.** The accepted disposable bootstrap demonstrated an administrator-authorized Directus Users API operation but **did not prove that a narrower Directus service policy can set provider/external_identifier**.
+
+**RUNBOOK GAP FOUND — credential provisioning and authorization.** Before any Production identity/token mutation, Server Management #49 must define and disposable-test a dedicated #395 non-human service principal's effective permissions, including exact field authority, required denied operations, audit attribution, protected runtime-token installation/rotation, rollback and cleanup. A dedicated administrator-level token would be broad and requires explicit architecture/security review if a least-privilege role cannot support the required fields. The root-owned People environment remains outside Git; do not expose tokens in command arguments, reports, chat or repository files.
+
+**Next actionable gate:** implement and accept the #49 procedure (including a scoped-permission disposable proof where feasible), verify the protected People runtime with a non-secret GET to `/users/me`, then follow the separate #395 migration 006 release runner/rollback and controlled Backbone Apps publisher. The user’s Production approval stands, but approval does not waive that credential safety boundary. Keep Production ONLINE while this is unresolved.
+
+## #49 / #395 Scoped Service Credential Proof — Candidate, Not Yet Executed
+
+The exact `TOKEN_NOT_CONFIGURED` Production STOP above remains authoritative. Do **not** rerun that diagnostic until a governed People service credential has actually been installed.
+
+The active release-readiness branch now extends the **existing** accepted #395 disposable PostgreSQL + Directus 11.17.1 harness with an opt-in `-ServiceScopeProbe` switch. It does **not** create another disposable orchestration system and does not change `People/Application`, `People/Database`, the accepted runtime `dcc8f25f...`, or Production service configuration.
+
+```text
+People/Acceptance/run_people_identity_bootstrap_disposable_acceptance.ps1
+    -ServiceScopeProbe
+People/Acceptance/people_identity_bootstrap_disposable_server.sh
+People/Acceptance/people_395_service_scope_disposable_probe.sh
+People/Acceptance/test_people_395_service_scope_disposable_contract.py
+```
+
+**Purpose:** prove (or disprove) in the disposable current-Production clone whether a **non-admin/API-only** Directus service role, with only field-limited `directus_users.create` permission and validation for `google`, `active`, and the baseline `MSB Browser` role, can perform the exact #395 Users API POST. All test roles, users, policies, permissions, tokens and simulated humans are uniquely named **disposable-only** fixtures. The accepted harness verifies Production before/after identity fingerprints and always tears down its disposable containers. This profile is strictly opt-in; the original accepted harness/default branch behavior is preserved.
+
+The probe validates the effective Directus permissions and requires all of the following before declaring PASS:
+
+- active scoped service authentication to disposable Directus 11.17.1;
+- creation of the exact Google-backed Browser identity through the actual Users API;
+- failure of Manager-role elevation, arbitrary Directus user updates, and unrelated Work Order Intake creation;
+- no broad Directus user listing outside the service identity;
+- no `ref.person` auto-creation for the synthetic test email;
+- no `admin_access` or Data Studio app access in the service policy; and
+- unchanged Production identity fingerprints after disposal.
+
+The disposable Directus container may be restarted **by its exact generated test-container name only** to refresh policy cache after clone-only fixture seeding; this is not a restart of Production Directus. Test-generated bearer credentials are never printed or stored in Git.
+
+**HISTORICAL STATUS (before first run): tooling implemented; executable result was then STOP/exit 1 because required `directus_access.id` was omitted. The corrected fixture is now staged; no second executable result has yet been supplied.** A failure is useful evidence that the non-admin design may require correction, and is **not** permission to substitute a human Administrator token or immediately grant a dedicated service account full administrative authority. Do not create a Production token, modify `/etc/msb-people/people.env`, apply migration 006, or publish Apps before a reviewed scope proof and Server Management #49 provisioning/rollback procedure.
+
+**Next:** run the scoped profile from the clean current release-readiness branch, using the accepted wrapper's foreground SSH/clone isolation, and copy only its final `BEGIN #395 RESULT` block. After PASS, design the separately reviewed #49 Production credential creation/install/recovery sequence and migration 006 deploy runner. Don's real first-login fixture remains unconsumed.
+
+## First #49 / #395 Scoped Directus Service Permission Proof — STOP, 2026-10-15
+
+Greg executed the opt-in disposable profile on exact acceptance-tooling SHA `94c505d7dbbd28e8d3f48d7cb02d7cce50232648` against `directus/directus:11.17.1`. The operator supplied the complete **compact result block**:
+
+```text
+Proof target:       #49 / #395 scoped Directus service credential
+Accepted People:    dcc8f25f07a74e19ce3de3aae2d9d137b5411815
+Tooling SHA:        94c505d7dbbd28e8d3f48d7cb02d7cce50232648
+Disposable scope:   STOP (first failed line still to be retrieved)
+Person after:       PASS
+Directus after:     PASS
+Production writes:  NONE
+Real Don fixture:   NOT CONSUMED
+Exit status:        1
+Report:             /tmp/MSB_People_Identity_Bootstrap_Disposable_20261015T235232.txt
+```
+
+**Disposition: NOT ACCEPTED.** Exit 1 is a generic script/command failure, **not evidence of any specific Directus role/policy authorization rejection**. The failed command could have occurred before the scoped Users API test. In particular, do not infer from this receipt that the non-admin Directus user-creation permission is impossible, and do not respond by creating an administrator-authorized Production credential.
+
+Greg supplied the bounded read-only report excerpt from the retained `/tmp/MSB_People_Identity_Bootstrap_Disposable_20261015T235232.txt` report. The stage sequence definitively reached:
+
+```text
+PASS: disposable PostgreSQL restored from current Production
+PASS: People migrations 001-006 applied to clone
+PASS: disposable Directus 11.17.1 healthy
+PASS: disposable Directus admin API authentication
+--- Disposable Directus API-only service credential scope probe ---
+ERROR: null value in column "id" of relation "directus_access" violates not-null constraint
+--- Cleanup ---
+PASS: Production ref.person fingerprint unchanged
+PASS: Production directus_users fingerprint unchanged
+```
+
+**Root cause: disposable fixture SQL omitted the required `public.directus_access.id`, which has no usable automatic default in the accepted Directus 11.17.1 clone.** The scoped service role/policy linkage failed before the Users API permission test. This is neither evidence that non-admin Directus Users API creation works nor evidence that it is impossible.
+
+Controlled acceptance-tooling correction: change only `People/Acceptance/people_395_service_scope_disposable_probe.sh` to use `INSERT INTO public.directus_access (id,role,policy) VALUES (gen_random_uuid(), ...)`, with a mandatory regression assertion in `test_people_395_service_scope_disposable_contract.py`. The existing People backend/migration remain pinned to `dcc8f25f...` unchanged. The acceptance harness now also prints a **bounded `Scope stage`** in the final `BEGIN #395 RESULT` footer (for example, `LINK_ROLE_POLICY`, `CREATE_PERMISSION`, or `VERIFY_SERVICE_API_PERMISSIONS`) so another stopped probe has a useful location without extracting pages of logs. Do not alter Production schema, Directus users/roles/policies/tokens or the existing Work Order Intake credential. After local regression and exact clean branch checks, one governed opt-in disposable rerun may resume the unfinished permission proof. The original failed report is preserved, not overwritten.
+
+The reusable scoped-probe reporting standard should include a safe first-failure **category/location** in its final result block after diagnosis, avoiding another request for multiple pages of terminal output. That is acceptance-tooling improvement, not a runtime change.
+
+## Second #49 / #395 service-scope disposable attempt — API-permission stage STOP (2026-10-15)
+
+Greg supplied the completed bounded acceptance result from tooling SHA `d57b2177f01aebf55718c2cada2190b73f818e9f`:
+
+```text
+Proof target:      #49 / #395 scoped Directus service credential
+Accepted People:   dcc8f25f07a74e19ce3de3aae2d9d137b5411815
+Tooling SHA:       d57b2177f01aebf55718c2cada2190b73f818e9f
+Directus image:    directus/directus:11.17.1
+Disposable scope:  STOP
+Scope stage:       VERIFY_SERVICE_API_PERMISSIONS
+Person after:      PASS
+Directus after:    PASS
+Production writes: NONE
+Real Don fixture:  NOT CONSUMED
+Exit status:       74
+Server report:     /tmp/MSB_People_Identity_Bootstrap_Disposable_20261016T000349.txt
+```
+
+The scoped-policy fixture progressed past the previous `directus_access.id` insert failure, as the stage reached the actual API-permission verification. **The exact failed API assertion is not established by this compact report**; do not infer that non-admin Directus user creation is unsupported, or that any particular privilege should be added. The guarded runner reports the failure cleanly; Production identities are unchanged.
+
+### Architecture/effort decision re-opened at operator request
+
+Greg questioned the disproportionate engineering effort involved in eliminating the extra Google login at the Directus website and stated that, had this effort been known, he would have considered a different approach. **Pause further service-credential experiments and Production deployment work while the architecture trade-off is made explicit.** This is a design-direction checkpoint, not withdrawal of the earlier Production approval.
+
+The existing authoritative [Directus User Onboarding Identity Contract](../../Docs/02_Production_Database/01_System_Architecture/03_People_and_Identity/engineering/Directus_User_Onboarding_Identity_Contract_2026-09-09.md) already records current Directus 11.17.1 Google OpenID support (`AUTH_GOOGLE_ALLOW_PUBLIC_REGISTRATION=true`) and a supported provider-specific route at `https://db.sheboyganlights.org/auth/login/google` with a configured/allowed return URL. The route can begin Google SSO **without first rendering the Directus Data Studio login screen**. A conditional Apps → Directus Google SSO → protected Apps return flow may avoid creating/maintaining a privileged People bootstrap service token, but this option **has not been accepted or tested**. It must prove the Cloudflare-vs-Directus Google identity match on shared tablets and prevent the live User Onboarding Flow's missing-Person branch from creating a Person, with baseline role/no-elevation and existing-user role preservation intact. A Google account chooser or extra sign-in step may still be visible. Never claim a seamless transparent flow without such proof.
+
+The merged #395 People/Apps source remains *source-only*, not Production deployed. Do not discard the accepted source or change live login redirects without a reviewed decision. Before further testing, explain the simpler Directus SSO redirect option, its operator-visible difference and the two unresolved safety conditions; let Greg choose whether to re-scope #395 rather than continuing the credential effort automatically. Do not consume Don's final Production fixture.
+
+### Operator correction — actual login UX problem and intended simple remedy
+
+Greg clarified that MSB already has Google authentication at the protected `my.sheboyganlights.org` Cloudflare boundary **and** Google authentication is already possible in Directus. The immediate operator-facing defect is not that people cannot choose Google; it is that the Directus first-login screen unnecessarily offers **both username/password and Login with Google**, confusing volunteers despite explicit instructions to use Google exclusively. Greg expected a much smaller UX correction and objected to the expanding service-credential/migration/deployment burden. This clarification supersedes any implication that a generic second Google redirect is itself the requested innovation.
+
+The most direct UX-only candidate to examine is a **one-time MSB Apps link/redirect straight to the existing Directus Google provider sign-in route**, thereby bypassing the mixed password/Google choice screen and returning the user to MSB Apps/previous destination. This may still invoke Google's normal account selection and is **not necessarily fully silent**; no Production behavior has been changed or this routing proven. It must not send volunteers into Directus Data Studio or alter the existing custom MSB operator applications.
+
+A safe route still requires targeted checks: Directus provider redirect/allowed return origin, matching the Cloudflare identity on shared tablets, prevention of the existing User Onboarding flow's missing-Person auto-create path, and preservation of baseline Browser/existing higher roles. Those are open gates, not evidence the redirect is accepted. A one-time first-login experience may be a reasonable tradeoff if the only unwanted operator screen is Directus's login-choice page.
+
+**Engineering pause:** Do **not** conduct another scoped service-token experiment, provision a privileged credential, install migration 006 or publish merged Apps v0.2 while this simpler login-route alternative is being evaluated. Preserve previously merged source and accepted test evidence for possible reuse, but do not imply its architecture is still the chosen implementation. Compare a narrow direct-provider route versus continuing silent API bootstrap, disclose complexity and residual second-account selection, and obtain explicit direction before new implementation. This checkpoint is a design clarification, not a Production approval revocation or a claim that Directus Data Studio could have met MSB's broader custom workflow requirements.
+
+### Clarification: pre-existing Directus user vs. Person-link repair (#385, #230, #395)
+
+Greg clarified the operational history of why a volunteer was required to visit the Directus login at least once. The **initial Google sign-in caused Directus to create an otherwise missing Directus user**. Subsequent protected application use also needed that user associated with an existing `ref.person`; newer work now appears to have solved that latter failure once the Directus user exists.
+
+The exact repository owners are distinct:
+
+- **Production Database #385, People V0.2.2, merged/deployed**: shared safe exact-email `ref.person.directus_user_id` self-reconciliation for an existing active Google-backed Directus user, implemented in `People/Database/005_reconcile_directus_person_identity.sql`; does not create Directus users and does not assign roles.
+- **Production Database #230**: Manager Reference Data maintenance (Container, Display, Storage Location, etc.), **not** the ownership authority for this identity-reconciliation contract. Any apparent association with #230 in the operator's recollection should not silently change the owning issue or be dismissed without tracing a specific deployed action.
+- **Production Database #395**: the remaining first-time Directus **user-creation/login-choice** problem. Cloudflare/Google authentication at `my.` already identifies the human, but does not create the needed Directus user.
+- **Original Directus User Onboarding Flow**: triggered only on `directus_users.items.create` and still contains an unsafe missing-Person branch capable of creating a `ref.person` row. #385 means this Flow is no longer the durable link-repair mechanism, but #385 does **not** remove the Flow's unsafe missing-Person behavior.
+
+**Design implication:** stop treating the task as if the Person link, authorization or a new universal identity management layer must be rebuilt. Re-evaluate the simplest one-time creation of the Directus Google user by bypassing the confusing mixed username/password-or-Google Directus login page and entering the existing Directus provider-specific Google sign-in directly. On successful first creation, the existing #385 reconciliation can safely link an existing Person on protected use when exact-email/provider/external-identifier and no-conflict conditions hold. Creation still needs a Browser baseline and the Flow's missing-Person auto-create branch needs correction/containment, with explicit checks for shared-tablet Cloudflare-versus-Directus identity mismatches.
+
+This is an **architecture clarification and pause**, not a passed alternate implementation and not evidence that the Directus user can already be created automatically without the login. The previous merged #395 People V0.2.3/Apps code and its disposable evidence remain preserved but **not deployed**; do not continue the #49 service-token-provisioning experiment or request another Production action before Greg decides whether the smaller direct-Google sign-in path fits his actual operator experience.
+
+### Operational account scope correction — Google account does not imply Directus entitlement
+
+Greg explicitly clarified that **not every Sheboygan Lights Google Workspace account needs Directus**. Tablets, print servers, and other infrastructure/nonhuman principals should **never be given an interactive human Directus login**. The account `workorders@sheboyganlights.org` is used **strictly for email**, not an MSB human operator, and its Workspace/email existence must not trigger Directus human creation or grant application authorization.
+
+Separate four authorities:
+
+1. **Google Workspace mailbox/account** — may serve email-only, device, service, or human needs. Its existence does not authorize any MSB application.
+2. **`ref.person`** — durable human record and safe exact-email association target; not equivalent to a Directus user, and not itself a role grant.
+3. **Interactive Directus Google identity** — only when an identified human is deliberately entitled to a Directus-backed protected application; initial role at most MSB Browser. Existing higher-role assignments are preserved, not inferred.
+4. **Nonhuman service/API identity** — only when a specific backend integration needs API access, through a separately governed least-privilege credential. It must not acquire interactive human login or be linked/reconciled to `ref.person`. Tablet/device identities, if currently represented in Directus for technical authorization, do not thereby become human sign-in accounts.
+
+**Different literal mailbox names — verify, do not merge:** Greg specified `workorders@sheboyganlights.org` (plural) as email-only. Historical Server Management [Issue #49](https://github.com/Gregovate/MSB-Server-Management/issues/49) separately documents `workorder@sheboyganlights.org` (singular), role `Work Order Intake (Service)`, used by Setup #172 through `SETUP_DIRECTUS_INTAKE_TOKEN`. Current evidence does **not** prove whether the two addresses are distinct accounts, aliases, or a naming discrepancy; do not invent equivalence, change the known service token, or enroll the email-only address in Directus because its name is similar.
+
+**#395 design guard:** eligibility to bootstrap must never be inferred from possession of an `@sheboyganlights.org` email alone. If any automatic login path is retained, it must explicitly reject nonhuman/email-only accounts even if an active Person row or Google account happens to exist. Existing SQL 006 exclusions cover literal `tablet-*`, `printservice@`, and `production-1@` identities, but do not name `workorders@`; these are **not evidence of a complete identity-category model**. Do not silently broaden credentials, whitelist all Workspace members, or provision unnecessary Directus users to eliminate one UI step. The simpler direct Google-provider login option must honor the same human-eligibility rule and must not automatically create a Person through the flawed legacy onboarding Flow.
+
+This correction reinforces the pause on #49 service-token experiments and #395 Production deployment while the operator-facing one-time Google login path is reconsidered. The already deployed #385 reconciliation remains authoritative **only after an active human Directus identity exists** and only when its exact existing Person-link conditions pass. No Production mutation was performed by recording this decision.
+
+### Explicit Person-versus-account lifecycle clarification
+
+Greg reaffirmed that `ref.person` is the long-lived record of **people involved in Making Spirits Bright**, and it intentionally includes many people who **do not have an MSB email address because they do not want one**. That is normal, legitimate data; it is not an onboarding error, missing-account cleanup queue, or reason to provision Google Workspace/Directus access. A person may remain active and participate in MSB work with only existing contact information.
+
+Application access, when actually needed, is a separate decision from Person membership. A Google Workspace mailbox may exist solely for communications; its presence does not authorize a Directus interactive login. An eligible human's Directus identity can be created through a supported, governed mechanism if needed for their application role. If an active, correct Google-backed Directus identity already exists, deployed People V0.2.2 / #385 handles only the safe matching `ref.person.directus_user_id` reconciliation. It does not create a missing Directus user, grant a role, or provide an MSB email address to a Person who does not want one.
+
+The user cited Don, a retired operations manager and board member who is interested in the custom system, as an example of a human Person whose real access needs should be handled deliberately; **past leadership, board membership, expressed curiosity and legacy `is_manager` flags do not automatically grant Directus Manager authorization**. Any future onboarding design must keep actual access entitlements explicit and preserve the Person table's independence from accounts.
+
+**Do not attempt to resolve #395 by auto-provisioning every `ref.person` row, every MSB email, every Google Workspace account, or any nonhuman/email-only identity.** The narrowed operator problem is the confusing first-time Google authentication path for humans who need Directus-backed applications, while safe Person association is already covered by #385. The more invasive service-token approach remains paused pending a clear architecture decision. No Production migration, deployment, identity change or test was performed by documenting this clarification.
+
+### Workspace resources versus Directus Browser versus operational edit permission — operator correction
+
+Greg clarified that a Sheboygan Lights **Google Workspace account is often important in its own right** for Shared Drives, organizational email, Groups, calendars and other Google collaboration resources. Not all Workspace members need to enter or change Setup/Takedown/Production information. MSB deliberately uses Directus roles to keep that boundary:
+
+- A `ref.person` row records a person, whether or not they accept an MSB email or use applications.
+- Google Workspace organizational access does **not** automatically grant Production Database **write** authority.
+- When a real eligible human actually comes to Directus for the first time, the accepted default is **`MSB Browser` (read-only)** rather than denying them merely because they are not Production Crew/Manager. That is the rationale for the original baseline role. It does not require proactively creating Directus users for all Workspace members.
+- The ability to enter, change, approve or administer Setup/Takedown and other Production records is a separate, explicit Directus role/policy authorization decision. Historic Person attributes are not role grants.
+- Nonhuman tablet/print-server identities and email-only mailboxes do not become interactive human Directus logins or People actors merely because they have Workspace addresses.
+
+**Key #395 distinction:** the UX problem is getting an eligible human through Directus's one-time Google identity initialization without the confusing username/password-versus-Google login-choice screen. After an appropriate active Google-backed Directus identity exists, deployed #385 reconciles the existing Person link safely. The old create-event Flow remains defective in its missing-Person branch and must not manufacture People as part of this UX fix. Do not pursue broad automatic Workspace-to-Directus synchronization or treat the absence of a Google email on a Person record as an error. Earlier draft language that implied only people needing write access would warrant a Directus identity is too restrictive: **read-only Browser access is a deliberate legitimate use**.
+
 ## Disposition
 
 ```text
@@ -413,8 +666,12 @@ DISPOSABLE RUNTIME ACCEPTANCE: PASS
 APPS + PEOPLE DISPOSABLE BROWSER REVIEW: PASS / CLEAN EXIT 0
 PRODUCTION IDENTITY + SHARED CHECKOUT: UNCHANGED
 DON MARTENS FIXTURE: PRESERVED / UNCONSUMED
-PRODUCTION DEPLOYMENT: NOT AUTHORIZED BY THIS EVIDENCE
-NEXT: separate governed release review/authorization
+PRODUCTION RELEASE AUTHORIZATION: GRANTED BY GREG — 2026-10-15
+PRODUCTION INSTALLATION: BLOCKED — PEOPLE_DIRECTUS_IDENTITY_TOKEN not configured
+CREDENTIAL PERMISSION/PROVISIONING: SERVER MANAGEMENT #49 NOT YET ACCEPTED
+MIGRATION 006: NOT APPLIED
+PEOPLE V0.2.3 / APPS v0.2: NOT PUBLISHED TO PRODUCTION
+NEXT: disposable scoped Directus service credential proof; governed installation
 ```
 
-That isolated Apps+People browser integration gate has passed. A separate governed Production deployment and subsequent real-user verification require explicit authorization and the responsible Server Management and Internal Web Backbone runbooks; neither is implied by this acceptance.
+That isolated Apps+People browser integration gate has passed, **and Greg has explicitly approved Production**. Installation remains stopped by the proven missing credential and the incomplete governed credential/deployment procedures. The approval remains valid; no Production mutation or final real-user acceptance has been performed. Follow the Server Management #49 credential authority, the #37 maintenance controller and the Backbone publishing runbook for their distinct remaining gates.
