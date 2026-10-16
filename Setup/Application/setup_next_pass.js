@@ -730,6 +730,16 @@ function installNextTabs() {
   performButton.className = 'tab'; performButton.dataset.view = 'perform'; performButton.type = 'button'; performButton.textContent = 'Perform Work';
   tabs.insertBefore(scheduleButton, pickListButton);
   tabs.insertBefore(performButton, pickListButton);
+  const actionButton = document.createElement('button');
+  actionButton.className = 'tab manager-only';
+  actionButton.dataset.view = 'action-center';
+  actionButton.type = 'button';
+  actionButton.textContent = 'Manager Action Center';
+  actionButton.hidden = !appState.access?.can_manage_setup;
+  tabs.insertBefore(actionButton, pickListButton);
+  actionButton.addEventListener('click', () => {
+    if (appState.access?.can_manage_setup) void navigateSetupView('action-center');
+  });
   scheduleButton.addEventListener('click', async () => {
     if (typeof navigateSetupView === 'function') await navigateSetupView('schedule');
     else { showView('schedule'); await loadNextSchedule(); }
@@ -772,6 +782,22 @@ function installNextTabs() {
   el('next-schedule-form').addEventListener('submit', submitNextSchedule);
   el('next-plan-filters').querySelectorAll('input').forEach((input) => input.addEventListener('change', renderPlanningBacklog));
   el('next-promote-baseline').addEventListener('click', promoteNextBaseline);
+
+  const management = document.createElement('section');
+  management.id = 'action-center-view';
+  management.className = 'view manager-only';
+  management.hidden = !appState.access?.can_manage_setup;
+  management.innerHTML = '<div class="card">' +
+    '<div class="section-title"><div><div class="eyebrow">Management · 2026 Setup</div>' +
+    '<h2>Setup Action Center</h2></div>' +
+    '<button type="button" class="secondary" id="setup205-actions-refresh">Refresh current actions</button></div>' +
+    '<p class="muted">Review original missing reports, unfinished work, and upcoming scheduling risks. ' +
+    'Use the actions to open the exact work or crew. Planning and actual work stay separate.</p>' +
+    '<div id="setup205-manager-report" aria-live="polite"></div></div>';
+  main.appendChild(management);
+  management.querySelector('#setup205-actions-refresh').addEventListener('click', () => {
+    void loadSetup205ActionCenter();
+  });
 
   const perform = document.createElement('section');
   perform.id = 'perform-view'; perform.className = 'view';
@@ -1701,7 +1727,7 @@ function setup205DeadlineKpiModel(board, year, today = nextSetupLocalDate()) {
     recentPotentialWorkdays, workdayPace, pace, undated, futureDated, reliable, projectedFinish};
 }
 
-function setup205DeadlineKpiHtml(board, year) {
+function setup205ManagementReportHtml(board, year) {
   const k = setup205DeadlineKpiModel(board, year);
   const safe = v => escapeHtml(String(v ?? ''));
   const n = (x) => x == null ? '—' : x.toFixed(2);
@@ -1816,6 +1842,59 @@ function setup205DeadlineKpiHtml(board, year) {
     '</div></details></section>';
 }
 
+
+// Operator-facing summary must not render the Manager worklist over the
+// Scheduling Board. All detailed work and explanations live on its own tab.
+function setup205DeadlineKpiHtml(board, year) {
+  const k = setup205DeadlineKpiModel(board, year);
+  const safe = x => escapeHtml(String(x ?? ''));
+  const fmt = x => x == null || !Number.isFinite(x) ? '—' : x.toFixed(1);
+  const projection = k.reliable && k.projectedFinish
+    ? k.projectedFinish + ' (tasks only)' : 'Not yet reliable';
+  return '<section class="setup-205-deadline-kpis" aria-label="Setup progress summary">' +
+    '<div class="setup205-kpi-glance">' +
+      '<span>Total <strong>' + k.tasks.length + '</strong></span>' +
+      '<span>Completed <strong>' + k.complete.length + '</strong></span>' +
+      '<span>Remaining <strong>' + k.incomplete.length + '</strong></span>' +
+      '<span>Blocked / NOT READY <strong>' + k.blocked.length + '</strong></span>' +
+      '<span>Actual last 7 days <strong>' + fmt(k.pace) + '/day</strong></span>' +
+      '<span>Required <strong>' + fmt(k.required) + '/day</strong></span>' +
+      '<span>Deadline <strong>' + safe(k.deadline || 'Unavailable') + '</strong></span>' +
+      '<span>Projected finish <strong>' + safe(projection) + '</strong></span>' +
+      (appState.access?.can_manage_setup
+        ? '<button type="button" class="small secondary setup205-open-action-center">Manager Action Center →</button>'
+        : '') +
+    '</div></section>';
+}
+
+async function loadSetup205ActionCenter() {
+  if (!appState.access?.can_manage_setup) return;
+  const target = document.getElementById('setup205-manager-report');
+  if (!target) return;
+  target.textContent = 'Loading current Setup actions…';
+  try {
+    const payload = await api('api/setup/scheduling-board?season_year=' +
+      encodeURIComponent(appState.seasonYear));
+    if (!appState.access?.can_manage_setup) return;
+    const board = payload.board || {};
+    setup205WireActionCenter(target);
+    target.innerHTML = setup205ManagementReportHtml(board, appState.seasonYear);
+  } catch (error) {
+    target.textContent = 'Unable to load current Setup actions: ' + (error.message || error);
+    setAlert(error.message || error, 'error');
+  }
+}
+
+function setup205WireManagementNavigation(root) {
+  if (!root || root.dataset.setup205NavInstalled === '1') return;
+  root.dataset.setup205NavInstalled = '1';
+  root.addEventListener('click', event => {
+    const button = event.target.closest('.setup205-open-action-center');
+    if (!button || !root.contains(button) || !appState.access?.can_manage_setup) return;
+    event.preventDefault();
+    void navigateSetupView('action-center');
+  });
+}
 
 // Manager-only #205 Action Center: one source classifier shared by both pages.
 // No email or history writes happen from this read-only worklist.
@@ -2033,10 +2112,10 @@ function renderNextExecution() {
   // individual Captain cards and milestone detail on the Perform Work screen.
   const globalKpis = el('next-perform-global-kpis');
   if (globalKpis) {
-    setup205WireActionCenter(globalKpis);
+    setup205WireManagementNavigation(globalKpis);
     globalKpis.innerHTML = setup205DeadlineKpiHtml(board, appState.seasonYear);
   } else {
-    setup205WireActionCenter(target); // compatibility with older static fixtures
+    setup205WireManagementNavigation(target); // compatibility with older static fixtures
   }
   target.innerHTML = (globalKpis ? '' : setup205DeadlineKpiHtml(board, appState.seasonYear)) +
     nextLateWorkSummary(scopedAssignments, board) + (days.length ? days.map((day) => {
