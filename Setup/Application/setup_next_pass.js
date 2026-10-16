@@ -1385,6 +1385,11 @@ function nextRescheduleNoWorkCrewOptions() {
     escapeHtml(crew.captain_display_name || 'Captain TBD') + '</option>'
   ).join('') + '<option value="NEW_CREW">+ Create a new crew</option>';
   if ([...crewSelect.options].some(option => option.value === selected)) crewSelect.value = selected;
+  const captainId = Number(dialog.dataset.preferredCaptain || 0);
+  const captainCrew = captainId ? crews.find(crew => Number(crew.captain_person_id) === captainId) : null;
+  if (captainCrew && !crews.some(crew => Number(crew.setup_work_day_crew_id) === Number(selected))) {
+    crewSelect.value = String(captainCrew.setup_work_day_crew_id);
+  }
   const isNew = crewSelect.value === 'NEW_CREW';
   const group = Boolean(dialog.dataset.assignmentIds);
   const shift = dialog.querySelector('#next-reschedule-shift');
@@ -1395,7 +1400,7 @@ function nextRescheduleNoWorkCrewOptions() {
     shift.disabled = false;
   }
   dialog.querySelector('#next-reschedule-shift-note').textContent = isNew
-    ? 'Creating a crew keeps the original AM/PM shift. Captain and staffing may be assigned afterward.'
+    ? 'Creating a crew keeps the original AM/PM shift. Assign the original Captain and staffing in the Scheduling Board afterward; this action does not automatically transfer Captain identity.'
     : 'Choose the destination AM/PM shift.';
 }
 
@@ -1417,7 +1422,7 @@ function nextOpenRescheduleNoWorkDialog(assignmentId) {
   const today = nextSetupLocalDate();
   const days = (board.work_days || []).filter(day =>
     day.work_date >= today && String(day.day_status || '').toUpperCase() !== 'CANCELLED'
-  );
+  ).sort((a, b) => a.work_date.localeCompare(b.work_date));
   if (!days.length) {
     setAlert('No current/future workdays exist. Add a workday in Plan / Schedule before rescheduling.', 'error');
     return;
@@ -1439,10 +1444,25 @@ function nextOpenRescheduleNoWorkDialog(assignmentId) {
     escapeHtml(day.setup_day_number ?? '—') + ' · ' +
     escapeHtml(day.work_date) + '</option>'
   ).join('');
-  if (days.some(day => day.setup_work_day_id === assignment.setup_work_day_id))
+  // Suggest the next existing eligible workday staffed by the original Captain.
+  // This is selection only: moving still requires explicit Manager confirmation.
+  const originalCaptain = oldCrew?.captain_person_id == null ? null : Number(oldCrew.captain_person_id);
+  const nextSameCaptain = originalCaptain == null ? null : days.map(day => ({
+    day,
+    crew: (board.crews || []).find(crew =>
+      Number(crew.setup_work_day_id) === Number(day.setup_work_day_id) &&
+      Number(crew.captain_person_id) === originalCaptain)
+  })).find(candidate => candidate.crew && Number(candidate.day.setup_work_day_id) !== Number(assignment.setup_work_day_id));
+  if (nextSameCaptain) dateControl.value = String(nextSameCaptain.day.setup_work_day_id);
+  else if (days.some(day => day.setup_work_day_id === assignment.setup_work_day_id))
     dateControl.value = String(assignment.setup_work_day_id);
+  dialog.dataset.preferredCaptain = originalCaptain == null ? '' : String(originalCaptain);
   dialog.querySelector('#next-reschedule-shift').value = assignment.shift_code;
   nextRescheduleNoWorkCrewOptions();
+  if (nextSameCaptain) {
+    dialog.querySelector('#next-reschedule-crew').value = String(nextSameCaptain.crew.setup_work_day_crew_id);
+    nextRescheduleNoWorkCrewOptions();
+  }
   dialog.showModal();
 }
 
