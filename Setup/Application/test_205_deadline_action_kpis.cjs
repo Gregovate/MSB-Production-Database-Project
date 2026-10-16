@@ -137,8 +137,8 @@ withPmCapacity.crews[0].pm_planned_crew_count = 2;
 withPmCapacity.tasks = withPmCapacity.tasks.slice(0, 1);
 withPmCapacity.assignments = withPmCapacity.assignments.slice(0, 1);
 const pmReviewHtml = ctx.setup205ActionCenterHtml(withPmCapacity);
-assert(pmReviewHtml.includes('AM pressure — PM continuation requires review'),
-  'Staffed PM must prompt continuation review instead of claiming whole-day overload');
+assert(pmReviewHtml.includes('Morning work may continue into PM when unfinished'),
+  'Staffed PM must permit ordinary continuation without inventing a Manager decision');
 assert(pmReviewHtml.includes('Review shift capacity'));
 assert(overloadHtml.includes('data-205-action="day"'),'overload must navigate to day');
 ctx.nextSetupLocalDate=()=> '2026-11-20';
