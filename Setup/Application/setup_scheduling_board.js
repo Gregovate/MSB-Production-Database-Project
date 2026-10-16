@@ -2314,22 +2314,42 @@ function board205RenderKpis() {
   const currentAssignments = (board.assignments || []).filter(item => !item.historical_locked);
   let plannedLaborHours = 0;
   let plannedLaborUnknown = 0;
+  let knownDurationMinutes = 0;
+  let unknownDurationTasks = 0;
+  let knownLaborTasks = 0;
   for (const item of currentAssignments) {
     const task = board205Task(item.setup_session_task_id) || item;
+    const rawDuration = task.expected_duration_minutes;
+    const durationMinutes = rawDuration == null || rawDuration === '' ? NaN : Number(rawDuration);
+    // Task elapsed duration does not depend on whether a Captain-led crew exists.
+    if (Number.isFinite(durationMinutes) && durationMinutes > 0) knownDurationMinutes += durationMinutes;
+    else unknownDurationTasks++;
     const hours = board205LaborHours(
-      board205AssignmentPlannedCrew(item), task.expected_duration_minutes
+      board205AssignmentPlannedCrew(item), rawDuration
     );
     if (hours == null) plannedLaborUnknown++;
-    else plannedLaborHours += hours;
+    else {
+      knownLaborTasks++;
+      plannedLaborHours += hours;
+    }
   }
-  const labor = Number.isInteger(plannedLaborHours)
-    ? String(plannedLaborHours) : plannedLaborHours.toFixed(1).replace(/\\.0$/, '');
+  const formatHours = value => Number.isInteger(value)
+    ? String(value) : value.toFixed(1).replace(/\\.0$/, '');
+  const durationText = unknownDurationTasks && knownDurationMinutes === 0
+    ? 'Task-hours TBD'
+    : formatHours(knownDurationMinutes / 60) + ' known task-hours';
+  const laborText = plannedLaborUnknown && knownLaborTasks === 0
+    ? 'Planned person-hours TBD'
+    : formatHours(plannedLaborHours) + (plannedLaborUnknown ? ' known planned person-hours' : ' planned person-hours');
   setup205WireManagementNavigation(target);
   target.innerHTML = setup205DeadlineKpiHtml(board, appState.seasonYear) +
     '<div class="setup205-scheduling-secondary" aria-label="Secondary planning indicators">' +
       '<span>' + (board.tasks || []).filter(t => Number(t.future_assignment_count || 0) > 0).length +
-      ' tasks scheduled</span><span>' + board205Esc(labor) + ' planned labor hr' +
-      (plannedLaborUnknown ? ' · ' + plannedLaborUnknown + ' TBD' : '') + '</span>' +
+      ' tasks scheduled</span>' +
+      '<span>' + board205Esc(durationText) +
+        (unknownDurationTasks ? ' · ' + unknownDurationTasks + ' task durations TBD (partial estimate)' : '') + '</span>' +
+      '<span>' + board205Esc(laborText) +
+        (plannedLaborUnknown ? ' · ' + plannedLaborUnknown + ' crew/estimate TBD (partial estimate)' : '') + '</span>' +
     '</div>';
 }
 
