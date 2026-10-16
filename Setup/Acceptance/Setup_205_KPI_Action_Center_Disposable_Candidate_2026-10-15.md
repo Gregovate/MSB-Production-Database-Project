@@ -1,6 +1,34 @@
 # #205 Whole-Setup KPI / Action Center / Report Work — Browser Candidate
 
-## CURRENT V0.3.81 — compact Perform Work shift status and identified Report Work form
+## CURRENT V0.3.82 — final integrated visual operator review: day grouping and crew colors
+
+**Exact application source:** `e3e291004bd182d89cbdf378d180d6828f5208ad`. **Build:** `V0.3.82-day-crew-visuals`. [Actions #38965963522](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38965963522) PASS: Setup full and FieldWiring full, including targeted visual source contracts. Existing draft PR #394, governing issue #205 / #122. **Source tested; disposable migration/SQL and human browser review not yet accepted. Production unchanged.**
+
+**Only changes from approved V0.3.81 browser observations:** Perform Work groups each Setup Day in a distinct bordered/padded calendar-style block, with alternating day accent; Scheduling Board Crew A–F each has a stable distinct colored background/stripe across the crew label and matching AM/PM row border, using existing Crew letter identity. These are CSS/visual-only corrections with no scheduling/reporting/migration logic changes. Prior operator PASS: Report Work task identity visible; concise one-line Perform Work warnings. Preserve those and all other integrated #205 behavior.
+
+**One current governed disposable browser command**: run only from clean, fast-forwarded existing desktop review worktree `C:\Users\Greg\Github\MSB-Production-Database-Project-205-review`, branch `fix/205-setup-deadline-kpis-20261015`. Before launch verify the prior preview's documented CLEAN EXIT and port 8898 ownership; closing a browser is not itself CLEAN EXIT. One current Production-derived disposable PostgreSQL clone, migrations 075/076 and both rollback-only validations; do not open browser unless `BROWSER REVIEW READY` is printed.
+
+```powershell
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
+    -PreviewPort 8898 `
+    -CandidateSha 'e3e291004bd182d89cbdf378d180d6828f5208ad' `
+    -TargetRef 'fix/205-setup-deadline-kpis-20261015' `
+    -ExpectedVersion 'V0.3.82-day-crew-visuals' `
+    -MigrationPaths @(
+        'Setup/Database/075_allow_setup_planned_crew_count_corrections.sql',
+        'Setup/Database/076_capture_2026_reusable_task_estimates.sql'
+    ) `
+    -ValidationPaths @(
+        'Setup/Acceptance/setup_205_planned_crew_count_disposable_validation.sql',
+        'Setup/Acceptance/setup_205_2026_catalog_estimate_disposable_validation.sql'
+    )
+```
+
+**Focused visual verification:** (1) Perform Work — visually distinct Setup Day 18 and Day 19 with clear boundaries while scrolling; crew/task lines remain correctly under their own date. (2) Plan / Schedule — Crew A, B, C, D distinguishable throughout the crew label and both AM/PM columns, including light/dark modes, without altering text/selection or hiding warnings. (3) Brief regression: sticky day/date with search, Report Work task banner, concise warnings, quick Edit Planning Info and its separate Catalog button, persisted crew staffing, and expected #205 same-day/date navigation. Do not redeploy without full #122 operator approval; record final verdict and CLEAN EXIT.
+
+---
+
+## ARCHIVED V0.3.81 — compact Perform Work shift status and identified Report Work form
 
 **Source CI PASS; disposable SQL/browser acceptance PENDING.** Exact candidate application SHA `d37bfa11f1a6b8f851c3f15c4f674c4df4c4a2fb`, build `V0.3.81-compact-perform-status`. [CI #38964298696](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38964298696) PASS: full Setup and FieldWiring jobs. Existing #205 draft PR #394 under #122; Production unchanged.
 
