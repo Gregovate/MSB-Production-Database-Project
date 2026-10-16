@@ -27,9 +27,9 @@ def test_shift_workload_reports_only_unfinished_work_and_does_not_require_pm_man
     assert "needs both shifts" in banner
     assert "SHIFT OK" in banner
     assert "OVERLOADED" in banner
-    assert "currentStaffing = board205PlacementCrewCount(crewId, shift)" in banner
+    assert "planned = board205PlacementCrewCount(crewId, shift)" in banner
     assert "Manager decision" not in banner
-    assert "unfinished task" in banner
+    assert "hours scheduled" in banner
 
 
 def test_day_and_crew_identity_and_visible_actions():
