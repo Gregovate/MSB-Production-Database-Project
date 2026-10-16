@@ -2013,7 +2013,7 @@ function board205Day(day) {
   );
   const printEmptyDay = !dayNote && meaningfulCrewIds.size === 0;
   const dayWorkloads = crews.flatMap((crew) => ['MORNING', 'AFTERNOON'].map((shift) => board205ShiftWorkload(crew.setup_work_day_crew_id, shift))).filter((w) => w.count);
-  const overloadedShifts = dayWorkloads.filter((w) => w.overload > 0).length;
+  const pressuredShifts = dayWorkloads.filter((w) => w.overload > 0).length;
   const unknownTasks = dayWorkloads.reduce((n, w) => n + w.unknown, 0);
   const notReadyTasks = dayWorkloads.reduce((n, w) => n + w.notReady, 0);
   // Defined crew rows are not necessarily staffed crews. Show both explicitly.
@@ -2098,8 +2098,8 @@ function board205Day(day) {
           ${canManage ? '<button type="button" class="small setup-board205-add-crew">+ Add Crew</button>' : ''}
         </div>
       </div>
-      <div role="status" style="border:3px solid ${overloadedShifts ? '#9d2424' : unknownTasks || notReadyTasks ? '#835900' : '#146044'};padding:10px;margin:6px 0;border-radius:8px;font-weight:800;font-size:1.05rem;white-space:pre-line">
-        ${board205Esc(nextDayStaffingSummary(board205DayAssignments(day), crews, setupBoard205State.board.tasks || []))}${overloadedShifts || unknownTasks || notReadyTasks || duplicateCaptainShifts.size ? '<br>Warnings:' : ''}${overloadedShifts ? ` ${overloadedShifts} crew shifts overloaded` : ''}${unknownTasks ? ` · ${unknownTasks} missing time estimates` : ''}${notReadyTasks ? ` · ${notReadyTasks} tasks not ready` : ''}${duplicateCaptainShifts.size ? ` · ⚠ ${duplicateCaptainShifts.size} DUPLICATE CAPTAIN/SHIFT` : ''}
+      <div role="status" style="border:3px solid ${pressuredShifts || unknownTasks || notReadyTasks ? '#835900' : '#146044'};padding:10px;margin:6px 0;border-radius:8px;font-weight:800;font-size:1.05rem;white-space:pre-line">
+        ${board205Esc(nextDayStaffingSummary(board205DayAssignments(day), crews, setupBoard205State.board.tasks || []))}${pressuredShifts || unknownTasks || notReadyTasks || duplicateCaptainShifts.size ? '<br>Warnings:' : ''}${pressuredShifts ? ` ${pressuredShifts} shifts exceed typical duration; staffing/continuation needs review` : ''}${unknownTasks ? ` · ${unknownTasks} missing time estimates` : ''}${notReadyTasks ? ` · ${notReadyTasks} tasks not ready` : ''}${duplicateCaptainShifts.size ? ` · ⚠ ${duplicateCaptainShifts.size} DUPLICATE CAPTAIN/SHIFT` : ''}
       </div>
       <div class="setup-board205-table-wrap">
         <div class="setup-board205-grid">
