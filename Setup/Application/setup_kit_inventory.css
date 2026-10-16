@@ -386,3 +386,29 @@ body.busy button { pointer-events: none; opacity: .65; }
   .inventory-header { max-height: none; overflow: visible; position: relative; }
   .inventory-setup-nav { justify-content: flex-start; }
 }
+
+/* Kit Inventory uses the same separate navigation-row hierarchy as Setup. */
+.inventory-setup-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 29;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--card);
+}
+.inventory-setup-tabs .button {
+  border-radius: 0.5rem;
+  min-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+}
+@media (max-width: 980px) {
+  .inventory-setup-tabs { position: relative; }
+}
+@media print {
+  .inventory-setup-tabs { display: none; }
+}
