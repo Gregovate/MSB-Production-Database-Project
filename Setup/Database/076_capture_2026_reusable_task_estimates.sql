@@ -1,8 +1,8 @@
 -- #205 / #122: 2026 Scheduling Board estimate capture.
--- Existing Planning Info function already atomically updates annual + reusable.
--- Keep that behavior for the 2026 Catalog bootstrap; stop automatic estimate
--- promotion for later annual seasons pending Greg's 2027 Catalog review.
--- Function-only replacement, no table/data migration or retroactive backfill.
+-- 2026 linked task estimate sync is TWO-WAY: annual -> Catalog via existing
+-- governed Planning Info function, Catalog -> annual via guarded trigger.
+-- Later seasons do not inherit 2026 synchronization before the 2027 review.
+-- Function and trigger migration only; no data backfill.
 BEGIN;
 
 DO $preflight$
@@ -164,5 +164,86 @@ GRANT EXECUTE ON FUNCTION ops.update_setup_scheduling_task_planning_info(
 
 COMMENT ON FUNCTION ops.update_setup_scheduling_task_planning_info(text,bigint,integer,integer,integer,text,text,text,text) IS
     'Manager Planning Info: 2026 reusable-origin task estimates atomically update annual plus Catalog; later annual estimates stay annual until reviewed. Actual history remains protected.';
+
+
+-- #205 two-way 2026 reconciliation: Catalog -> linked annual planning.
+-- Catalog editor and effort command both update ref.setup_task. This single
+-- trigger therefore protects both authorized paths, in their SQL transaction.
+-- Recorded actual work fields and old-year annual snapshots are untouched.
+CREATE OR REPLACE FUNCTION ref.sync_setup_task_estimates_to_2026()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, ref, ops
+AS $sync$
+DECLARE
+    v_session_task_id bigint;
+BEGIN
+    SELECT st.setup_session_task_id INTO v_session_task_id
+    FROM ops.setup_session_task st
+    JOIN ops.setup_session ss ON ss.setup_session_id = st.setup_session_id
+    WHERE st.setup_task_id = NEW.setup_task_id
+      AND st.task_origin = 'REUSABLE'
+      AND ss.season_year = 2026
+      AND ss.session_status <> 'HISTORICAL_VERIFICATION'
+      AND NOT EXISTS (
+          SELECT 1 FROM ops.setup_session newer
+          WHERE newer.session_status <> 'HISTORICAL_VERIFICATION'
+            AND newer.season_year > ss.season_year
+      )
+    ORDER BY st.setup_session_task_id
+    LIMIT 1;
+
+    IF v_session_task_id IS NULL THEN RETURN NEW; END IF;
+
+    -- A reported annual occurrence has protected planning history under the
+    -- current command contract. Refuse the Catalog write atomically rather
+    -- than silently diverge from the linked 2026 task.
+    IF EXISTS (
+        SELECT 1 FROM ops.setup_task_progress p
+        WHERE p.setup_session_task_id = v_session_task_id
+    ) OR EXISTS (
+        SELECT 1 FROM ops.setup_session_task st
+        WHERE st.setup_session_task_id = v_session_task_id
+          AND (st.actual_started_at IS NOT NULL OR st.actual_completed_at IS NOT NULL)
+    ) THEN
+        RAISE EXCEPTION USING ERRCODE = '23514',
+            MESSAGE = '2026 annual task has reported work; Catalog estimate sync requires governed historical correction';
+    END IF;
+
+    UPDATE ops.setup_session_task st
+       SET annual_normal_crew_min = NEW.normal_crew_min,
+           annual_normal_crew_max = NEW.normal_crew_max,
+           annual_expected_duration_minutes = NEW.expected_duration_minutes,
+           annual_effort_level = NEW.effort_level
+     WHERE st.setup_session_task_id = v_session_task_id
+       AND (st.annual_normal_crew_min, st.annual_normal_crew_max,
+            st.annual_expected_duration_minutes, st.annual_effort_level)
+           IS DISTINCT FROM
+           (NEW.normal_crew_min, NEW.normal_crew_max,
+            NEW.expected_duration_minutes, NEW.effort_level);
+    RETURN NEW;
+END;
+$sync$;
+
+REVOKE ALL ON FUNCTION ref.sync_setup_task_estimates_to_2026() FROM PUBLIC;
+
+DROP TRIGGER IF EXISTS trg_setup_task_sync_2026_planning ON ref.setup_task;
+CREATE TRIGGER trg_setup_task_sync_2026_planning
+AFTER UPDATE OF normal_crew_min, normal_crew_max,
+                expected_duration_minutes, effort_level
+ON ref.setup_task
+FOR EACH ROW
+WHEN (
+    (OLD.normal_crew_min, OLD.normal_crew_max,
+     OLD.expected_duration_minutes, OLD.effort_level)
+      IS DISTINCT FROM
+    (NEW.normal_crew_min, NEW.normal_crew_max,
+     NEW.expected_duration_minutes, NEW.effort_level)
+)
+EXECUTE FUNCTION ref.sync_setup_task_estimates_to_2026();
+
+COMMENT ON FUNCTION ref.sync_setup_task_estimates_to_2026() IS
+    '2026 only: Catalog estimate changes mirror linked current annual planning in one transaction; protect reported historical work and later seasons.';
 
 COMMIT;
