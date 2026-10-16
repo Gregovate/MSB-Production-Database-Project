@@ -88,7 +88,7 @@ crew.am_planned_crew_count = null;
 crew.pm_planned_crew_count = null;
 const noCrewBanner=ctx.board205WorkloadBanner(7,'MORNING');
 assert.match(noCrewBanner,/STAFFING UNCONFIRMED/);
-assert.match(noCrewBanner,/4 \/ 3 linear hours/);
+assert.match(noCrewBanner,/4[.]0 \/ 3[.]0 linear hours/);
 assert(!noCrewBanner.includes('WITHIN CAPACITY'));
 const noCrewPerform=ctx.nextPerformWorkloadLabel(assignments,'MORNING');
 assert.match(noCrewPerform,/STAFFING UNCONFIRMED/);
