@@ -2,7 +2,7 @@
 
 ## #205 current non-mail KPI and Report Work candidate
 
-[Source-regression evidence, V0.3.71 integrated operator-review corrections (exact candidate 58af4ea3), strict one-clone 8898 review and Clean Exit checklist](Setup_205_KPI_Action_Center_Disposable_Candidate_2026-10-15.md). Daily email/Directus integration is parked separately and excluded. Not a Production deployment or browser acceptance.
+[V0.3.72 source-certified planned-crew correction (migration 075 + rollback validation), one current-Production disposable clone and 8898 browser acceptance checklist](Setup_205_KPI_Action_Center_Disposable_Candidate_2026-10-15.md). Daily email/Directus integration is parked separately and excluded. Not a Production deployment or browser acceptance.
 
 
 Current integrated #122 candidate: [field release checkpoint and review](Setup_122_Integrated_Field_Release.md). This supersedes separate preview handoffs for the included PR308/309/318/321 changes.
