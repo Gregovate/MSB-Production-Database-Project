@@ -4,6 +4,7 @@ MSB_205_TEST_DSN must name the disposable CI fixture. No test is run by the
 Production wrapper. The fixture is deliberately minimal: operator semantics
 already passed current-Production disposable/browser acceptance.
 """
+from contextlib import closing
 import os
 from pathlib import Path
 import re
@@ -47,7 +48,7 @@ def validation_sql(installed):
 @pytest.mark.skipif(not os.getenv('MSB_205_TEST_DSN'), reason='isolated PostgreSQL CI fixture only')
 def test_real_catalog_gates():
     import psycopg2
-    with psycopg2.connect(os.environ['MSB_205_TEST_DSN']) as db:
+    with closing(psycopg2.connect(os.environ['MSB_205_TEST_DSN'])) as db:
         db.autocommit = True
         with db.cursor() as cur:
             cur.execute(fixture_sql())
