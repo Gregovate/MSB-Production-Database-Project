@@ -2084,3 +2084,11 @@ html[data-theme="dark"] .setup-board205-badge.effort-heavy {
 .setup-board205-day.day-band-even { border-left: 8px solid #a56929; }
 /* The header and controls belong to the top of the right column, not its scroll surface. */
 .setup-board205-filters { position: static; }
+
+/* #205: Stable crew letter identity in both themes. */
+.setup-board205-crew-label[data-crew-letter="A"] { border-left: 0.5rem solid #4478c4; }
+.setup-board205-crew-label[data-crew-letter="B"] { border-left: 0.5rem solid #219475; }
+.setup-board205-crew-label[data-crew-letter="C"] { border-left: 0.5rem solid #b4762c; }
+.setup-board205-crew-label[data-crew-letter="D"] { border-left: 0.5rem solid #9864bd; }
+.setup-board205-crew-label[data-crew-letter="E"] { border-left: 0.5rem solid #b84b6a; }
+.setup-board205-crew-label[data-crew-letter="F"] { border-left: 0.5rem solid #328e9a; }
