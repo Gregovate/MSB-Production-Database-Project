@@ -75,3 +75,68 @@ $ref = 'fix/205-setup-deadline-kpis-20261015'
 If live-clone classification mismatches, the source is not accepted. Fix source, commit and redo full regression + clone + browser at new exact SHA. Do not directly edit Production data, issue Manager email or deploy merely because GitHub CI passed.
 
 Production release under #122 is a **separate explicit approval** after current-clone/browser and Clean Exit. Document report SHA, fingerprints, operator outcome and accepted source before requesting installation.
+
+## Worktree-first desktop PowerShell execution (operator handoff)
+
+These are the missing complete operator steps required by the repository Worktree Change Workflow. They preserve other worktrees and uncommitted changes and consume the same reusable Server Management disposable/browser runbooks above. The app candidate stays pinned at `e4ed6ff13d6e16e9d8a6ed5278c1d81ee2d00eaa`; later docs/tooling on the target branch are permitted only when no affected application/database content differs.
+
+```powershell
+$ErrorActionPreference = 'Stop'
+$primary = 'C:\Users\Greg\Github\MSB-Production-Database-Project'
+$worktree = 'C:\Users\Greg\Github\MSB-Production-Database-Project-205-kpi-review'
+$branch = 'fix/205-setup-deadline-kpis-20261015'
+$candidate = 'e4ed6ff13d6e16e9d8a6ed5278c1d81ee2d00eaa'
+$version = 'V0.3.66-setup-action-center'
+
+Set-Location $primary
+& git worktree list
+if ($LASTEXITCODE -ne 0) { throw 'Unable to inspect worktrees.' }
+& git fetch origin --prune
+if ($LASTEXITCODE -ne 0) { throw 'Git fetch failed.' }
+if (Test-Path -LiteralPath $worktree) { throw "Worktree path already exists: $worktree" }
+& git show-ref --verify --quiet "refs/heads/$branch"
+if ($LASTEXITCODE -eq 0) {
+    & git worktree add $worktree $branch
+} elseif ($LASTEXITCODE -eq 1) {
+    & git worktree add -b $branch $worktree "origin/$branch"
+} else { throw 'Failed to inspect local feature branch.' }
+if ($LASTEXITCODE -ne 0) { throw 'Worktree creation failed; stop.' }
+Set-Location $worktree
+& git pull --ff-only origin $branch
+if ($LASTEXITCODE -ne 0) { throw 'Feature branch did not fast-forward; stop.' }
+& git merge-base --is-ancestor $candidate HEAD
+if ($LASTEXITCODE -ne 0) { throw 'Pinned application candidate is not an ancestor; stop.' }
+& git merge-base --is-ancestor origin/main HEAD
+if ($LASTEXITCODE -ne 0) { throw 'Target branch does not include updated main; stop.' }
+$changedApp = @(git diff --name-only $candidate HEAD -- Setup/Application Setup/Database)
+if ($LASTEXITCODE -ne 0 -or $changedApp.Count) { throw 'Application/database changed after pinned candidate; stop and repin.' }
+$dirty = @(git status --porcelain)
+if ($LASTEXITCODE -ne 0 -or $dirty.Count) { throw 'Worktree not clean; stop.' }
+
+.\Setup\Acceptance\run_setup_disposable_acceptance.ps1 `
+    -CandidateSha $candidate -TargetRef $branch `
+    -MigrationPaths @() -ValidationPaths @()
+if (-not $?) { throw 'Disposable acceptance failed; do not launch browser review.' }
+
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
+    -PreviewPort 8898 -CandidateSha $candidate -TargetRef $branch `
+    -ExpectedVersion $version -MigrationPaths @()
+if (-not $?) { throw 'Browser preview failed; preserve report, do not deploy.' }
+```
+
+Wait for `SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY`; only then open `http://127.0.0.1:8898/` and perform the checklist above. Keep the original PowerShell session open. Press ENTER when done to invoke governed cleanup; record a **CLEAN EXIT** and operator outcome. Production deployment is never part of these steps.
+
+After CLEAN EXIT, optional local worktree cleanup (do not delete the open PR's local branch):
+
+```powershell
+Set-Location 'C:\Users\Greg\Github\MSB-Production-Database-Project'
+$worktree = 'C:\Users\Greg\Github\MSB-Production-Database-Project-205-kpi-review'
+if (-not (Test-Path -LiteralPath $worktree)) { throw 'Expected worktree does not exist.' }
+$dirty = @(git -C $worktree status --porcelain)
+if ($LASTEXITCODE -ne 0 -or $dirty.Count) { throw 'Review worktree is not clean; do not remove.' }
+& git worktree remove $worktree
+if ($LASTEXITCODE -ne 0) { throw 'Worktree removal failed.' }
+& git worktree list
+```
+
+An unexpected listener, SSH error, dirty checkout, missing `BROWSER REVIEW READY`, or missing `CLEAN EXIT` is a **STOP**. Do not force-remove any server or worktree resources, or infer acceptance from a successful source-only CI run.
