@@ -172,6 +172,14 @@ Rules:
 4. Crew-size history should be used to improve a **normal/candidate range**, not to manufacture precision the notes do not support.
 5. Capability/qualification information may later help explain why two crews of the same numeric size are not operationally equivalent.
 
+### Mutable daily crew plan versus recorded actual work (2026-10-16 operator confirmation)
+
+**Planned shift staffing is an operational forecast, not historical evidence of who worked.** Crew A/B/etc. `ops.setup_work_day_crew.am_planned_crew_count` and `pm_planned_crew_count` must remain editable by an authorized Manager even when earlier assignments for that crew have actual work/progress records. Changing the planned count is common as volunteers arrive, leave, or shift among tasks. Neither a changed plan nor its mismatch with reported work is itself an error.
+
+**Actual task history is independently authoritative.** `ops.setup_work_day_task.actual_crew_count`, recorded duration/progress, actual completion, historical assignment identity and Captain/work evidence must **not** be modified by a planned crew-size correction. Report Work remains the route to record actual staffing; corrections to actual reports use the governed historical-correction workflow. A planned count edit does not mean someone worked, does not backfill actual crew sizes, and does not reopen completed assignments.
+
+Changing a crew Captain after actual work is **not** made permissible by this staffing-count decision; preserve existing Captain history protection and deliberate Manager-only corrections. Distinguish planning-count edits from historical assignment moves and from actual report corrections. Display a failed persistence response clearly; do not show Saved until the database confirmed it, and prove readback after reload.
+
 ## Hours / Duration Interpretation
 
 Rick's recorded hours are useful evidence, but a person's total hours for a day are **not automatically the duration of a Setup task**.
