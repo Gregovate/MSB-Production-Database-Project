@@ -33,6 +33,7 @@ def test_crew_save_updates_only_its_banner_after_confirmed_patch():
         "\nasync function board205EnsureCrewSaved(", 1)[0]
     assert "crew.am_planned_crew_count = saved.am_planned_crew_count" in saver
     assert "oldBanner.outerHTML = board205WorkloadBanner(crewId, shift)" in saver
+    assert "daySummary.textContent = nextDayStaffingSummary(" in saver
     assert "board205Load()" not in saver
     assert "Saved" in saver
 
