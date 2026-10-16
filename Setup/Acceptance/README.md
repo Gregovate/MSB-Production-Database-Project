@@ -342,4 +342,6 @@ uses the existing maintenance orchestrator with ordered migration and final
 validation hooks. The dedicated `run_setup_205_estimates_deploy.ps1` packages
 committed bytes from merged main. The older RequiredContainers/ScheduledSearch
 wrapper is not a #205 release command. Operator acceptance and CLEAN EXIT are
-already approved; Production execution and its evidence remain pending.
+already approved. Production runner PASS and initial operator spot-check PASS
+were received October 16; the linked record contains the transcript and retained
+report directory. Do not rerun the completed release for documentation.

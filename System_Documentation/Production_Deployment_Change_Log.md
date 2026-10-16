@@ -9,6 +9,16 @@
 | Established | 2026-10-01 |
 | Ordering | Reverse chronological — newest deployment first |
 
+## 2026-10-16 — Setup V0.3.84 direct crew cells / 2026 estimates — Production PASS
+
+- Owner #205 under #122. Accepted application `723a733ffbea516519c6dd7a20ec75faca10a9c4`; feature PR #394; exact deployed Setup target `7740498e6602f36c8cdfd384791bbafaab71ee9e`, `V0.3.84-direct-crew-cells`. Tooling PR #409 merged at `b3cf229ccde4bcdfda9c27acedebb16ee5a61cda`; tooling/documentation SHAs are distinct from deployed source.
+- Operator-visible release includes direct planned AM/PM crew-count editing independent of actual work, 2026 reusable/annual task estimate synchronization, and accepted Scheduling Board/Perform Work/Action Center corrections. Actual work and Captain history protections remain.
+- Installed only `075_allow_setup_planned_crew_count_corrections.sql` then `076_capture_2026_reusable_task_estimates.sql`, in one existing #37 maintenance window. No backfill or Production test assignments. Shared Controller/FieldWiring/People checkout preserved; accepted GIS source retained.
+- Greg supplied the complete runner PASS transcript and confirmed initial Production spot checks found no problems at approximately 17:05 CDT. Current freeze, validated snapshot/hash, ordered migration commits, database security/preservation validation, exact source promotion and return ONLINE/health/live checks passed per the reviewed runner's success contract. No independent host probe or exhaustive operator acceptance is claimed.
+- Retained report: `/home/msbadmin/setup-deployment-reports/Setup205-075-076-20261016T215912Z`. Rollback archive path/hash/size and validation are retained in its `snapshot.json`; literal archive metadata and numerical fingerprints were not supplied in the terminal excerpt and have not been independently read here.
+- Prior clean Setup rollback source: `86341d49dc8ccf290575f9d2b418c235094a1377` / `V0.3.65-scheduled-search-focus`.
+- Engineering verification: 49 deployment/PostgreSQL16 tests, 840 Setup tests, Windows parser and committed-byte transport PASS. Detailed [release and Production receipt](../Setup/Acceptance/Setup_205_075_076_Release.md). Do not rerun the successful installer for documentation; #205/#122 remain open for remaining scope.
+
 ## 2026-10-16 — FieldWiring V0.4.2 Controller Network UID Explorer — Source-only Production PASS (operator-reported)
 
 - Controller Inventory owner #110 / original #111, launch governance #122; implementation PR #406 merged as `b3acf960c9db5ee493f5b14759459315db79be8a`; regression contract follow-up PR #407 merged as `17c522c4f8ec06549bf7a6d9e8530c61276203f7`.
