@@ -3470,16 +3470,11 @@ async function board205PersistPlanningInfo({ closeDialog = true, announce = true
         completion_point: draft.completion_point,
         readiness_note: draft.readiness_note,
         weather_note: draft.weather_note,
-        reusable_notes: draft.reusable_notes
+        reusable_notes: draft.reusable_notes,
+        effort_level: draft.effort_level
       }));
 
-      if ((current.effort_level || null) !== draft.effort_level) {
-        await api(
-          `api/setup/tasks/${reusableTaskId}/effort`,
-          commandOptions('PATCH', { effort_level: draft.effort_level })
-        );
-      }
-
+      // Catalog estimates and effort now share the governed atomic Save.
       // Refresh the shared task cache before any drill-down so full detail
       // opens with the just-saved values and authoritative audit attribution.
       await reloadTasks(reusableTaskId);
