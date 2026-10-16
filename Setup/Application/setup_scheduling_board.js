@@ -860,28 +860,39 @@ function board205ShiftWorkload(crewId, shift) {
 function board205WorkloadBanner(crewId, shift) {
   const w = board205ShiftWorkload(crewId, shift);
   if (!w.count) return '';
-  const pm = board205ShiftWorkload(crewId, 'AFTERNOON');
-  const am = board205ShiftWorkload(crewId, 'MORNING');
+  const otherShift = shift === 'MORNING' ? 'AFTERNOON' : 'MORNING';
+  const other = board205ShiftWorkload(crewId, otherShift);
   const crew = board205CrewRow(crewId);
-  const captain = crew?.captain_person_id != null;
-  const currentStaffing = board205PlacementCrewCount(crewId, shift);
-  const shiftStaffed = captain && currentStaffing != null && currentStaffing >= 1;
-  const hours = n => (n / 60).toFixed(1);
-  const pressure = w.overload > 0;
-  const uncertain = !shiftStaffed || w.unknown > 0 || w.notReady > 0;
-  const color = pressure || uncertain ? '#835900' : '#146044';
-  const bg = pressure || uncertain ? '#fff6dd' : '#eaf8f0';
-  const state = !shiftStaffed ? 'STAFFING NOT CONFIRMED'
-    : pressure ? 'WORK EXTENDS BEYOND TYPICAL SHIFT'
-      : uncertain ? 'TIME / READINESS REVIEW' : 'WITHIN TYPICAL SHIFT';
-  const carry = shift === 'MORNING' && pressure
-    ? ' · continue unfinished AM work into PM; report actual progress task by task'
-    : pressure ? ' · work may need a later shift/day' : '';
-  const durationUnknown = w.unknown > 0 ? ' · total excludes unknown-duration tasks' : '';
-  return `<div class="setup-board205-workload-banner" role="status" data-shift="${shift}" style="pointer-events:none;border:2px solid ${color};border-radius:7px;background:${bg};color:${color};padding:9px;margin:5px 0;font-weight:800">
-    <div>${state} · ${hours(w.known)} known task-hours / ${hours(w.capacity)} typical shift-hours${carry}</div>
-    <div style="font-size:.83rem">${w.count} unfinished task${w.count===1?'':'s'} · ${w.unknown} unknown duration${w.unknown===1?'':'s'} · ${w.notReady} NOT READY${durationUnknown}</div>
-    <div style="font-size:.8rem">This shift: ${shiftStaffed ? currentStaffing + ' planned including Captain' : 'not staffed'} · AM ${am.count} unfinished / ${hours(am.known)} known hours · PM ${pm.count} unfinished / ${hours(pm.known)} known hours</div>
+  const planned = board205PlacementCrewCount(crewId, shift);
+  const staffed = crew?.captain_person_id != null && planned != null && planned >= 1;
+  const fmt = minutes => (minutes / 60).toFixed(1);
+  const extra = Math.max(0, w.known - w.capacity);
+  const totalDay = w.known + other.known;
+  const totalCapacity = w.capacity + other.capacity;
+  const bothLoaded = other.count > 0 && other.known > other.capacity;
+  const unknown = w.unknown > 0 || w.notReady > 0;
+  let label = '';
+  let detail = '';
+  if (!staffed) {
+    label = 'STAFFING NOT CONFIRMED';
+    detail = extra > 0 && !bothLoaded && totalDay <= totalCapacity
+      ? ' · needs both shifts'
+      : extra > 0 ? ' · exceeds this shift' : '';
+  } else if (extra > 0 || bothLoaded) {
+    label = 'OVERLOADED';
+    detail = bothLoaded ? ' · both shifts overloaded' :
+      shift === 'MORNING' && totalDay <= totalCapacity
+        ? ' · continue in PM' : ' · exceeds shift capacity';
+  } else {
+    label = 'SHIFT OK';
+    detail = ' · ' + fmt(w.capacity - w.known) + ' hours remain';
+  }
+  if (unknown) detail += ' · verify estimates/readiness';
+  const alert = label !== 'SHIFT OK';
+  const color = alert ? '#835900' : '#146044';
+  const background = alert ? '#fff6dd' : '#eaf8f0';
+  return `<div class="setup-board205-workload-banner" role="status" data-shift="${shift}" style="pointer-events:none;border:2px solid ${color};border-radius:7px;background:${background};color:${color};padding:7px 9px;margin:5px 0;font-weight:800">
+    ${label} · ${fmt(w.known)} hours scheduled${detail}
   </div>`;
 }
 function board205AmCapacityNote(crewId) {
