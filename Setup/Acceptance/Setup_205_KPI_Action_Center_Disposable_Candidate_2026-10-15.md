@@ -6,8 +6,9 @@
 | Governing | #122 / #205, controlled Setup engineering contract |
 | Candidate branch | `fix/205-setup-deadline-kpis-20261015` |
 | App build | `V0.3.66-setup-action-center` — client/server synchronized |
-| Application source checkpoint | `e4ed6ff13d6e16e9d8a6ed5278c1d81ee2d00eaa` |
-| Latest upstream integrated | `main c63eb5c118ef65bbb80ff72ecc7b283087d5b3d8` |
+| Exact browser/acceptance candidate | `aaf7778c73f09a851db1f12abbe77770b09d5182` (same V0.3.66 application bytes; repaired acceptance test + CI) |
+| Last application implementation SHA | `e4ed6ff13d6e16e9d8a6ed5278c1d81ee2d00eaa` (feature code unchanged) |
+| Latest upstream integrated | `main b2d5f8c2f202b228a180bd950187718937c41019` |
 | Database migrations in this candidate | **NONE**; notification 074 is on a separate parked branch |
 | Production | UNCHANGED; no authorization requested |
 | GIS / People | Preserved; no unrelated subsystem mutation |
@@ -24,12 +25,24 @@
 
 ## Source regression — PASS
 
-At `e4ed6ff13d6e16e9d8a6ed5278c1d81ee2d00eaa`, [GitHub Actions run 38831054784](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38831054784) passed:
+At the original feature source `e4ed6ff13d6e16e9d8a6ed5278c1d81ee2d00eaa`, [GitHub Actions run 38831054784](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38831054784) passed:
 - 779 Setup/Application Python;
 - 202 FieldWiring/Application Python;
 - shared #205 executable Node KPI and Manager Action Center cases, including task overlap, undated/future work dates, cancelled days, overcapacity, deadline passage, missing report, archived/hidden day reveal, guarded navigation and no notification controls.
 
 These are source regressions. No clone or browser result can be inferred from them.
+
+## October 15/16 exact-candidate acceptance failure and repaired test
+
+The laptop browser review on the exact older `e4ed6ff13d6e16e9d8a6ed5278c1d81ee2d00eaa` candidate stopped in `Setup/Acceptance/test_setup_gis_preview.py`. Its real GIS/FieldWiring routing assertions succeeded up to an obsolete Setup health check hard-coded to `V0.3.65-scheduled-search-focus`; the preview intentionally serves `V0.3.66-setup-action-center`. This is **not** a database migration failure, nor proof of a broken park map. The runner explicitly executes the pinned candidate's `Setup/Application` tests **plus** `Setup/Acceptance/test_setup_gis_preview.py`, whereas the earlier source CI exercised only `Setup/Application`. The stale assertion therefore escaped CI.
+
+The repaired acceptance test now imports `PRODUCTION_VERSION` from the same candidate's `production_backend` and compares the protected Setup health endpoint against that runtime identity; it preserves every GIS/FieldWiring route, version, isolation and disallowed-POST check. The CI workflow now includes that acceptance test in its full Setup job. [Actions #38838749001](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38838749001) **PASS** at new exact candidate `aaf7778c73f09a851db1f12abbe77770b09d5182`: **785 Setup (including GIS preview), 202 FieldWiring, Node #205 checks**. No GIS/application source file or schema changed; build stays `V0.3.66-setup-action-center`.
+
+The failed preview report `/home/msbadmin/setup-acceptance-reports/Setup_Disposable_Browser_Preview_20261016T020328.txt` shows **Production Setup fingerprint unchanged** `419a9534bb446e2776008dfdcf3bcda1`, installed Setup SHA unchanged `86341d49dc8ccf290575f9d2b418c235094a1377`, preview cleanup completed, and runner exit 1. It did NOT print `BROWSER REVIEW READY` or `CLEAN EXIT`. Preserve that failure receipt.
+
+Greg reports two recent migrations in other workstreams, which are **not disputed**. This #205 candidate supplies **zero additional migration files**, and a governed disposable current-Production clone starts with whichever previously accepted migrations really exist in current Production. Do not reapply, undo or guess the identities of those earlier migrations.
+
+**Retest rule:** use the new exact SHA `aaf7778c73f09a851db1f12abbe77770b09d5182` for **both** disposable acceptance and browser preview, per governing acceptance runbook; do not use the old SHA with newer branch tooling or skip final operator browser/CLEAN EXIT. The same existing laptop worktree can be fast-forwarded and reused; no new worktree, reset, Production mutation or GIS changes.
 
 ## Governed disposable acceptance and browser review
 
@@ -43,7 +56,7 @@ The *operator's clean checkout of this exact branch* must contain the final cand
 ```powershell
 # Run only in the actual clean target branch checkout. Do not switch an
 # unrelated checkout or alter other active worktrees.
-$sha = 'e4ed6ff13d6e16e9d8a6ed5278c1d81ee2d00eaa'
+$sha = 'aaf7778c73f09a851db1f12abbe77770b09d5182'
 $ref = 'fix/205-setup-deadline-kpis-20261015'
 .\Setup\Acceptance\run_setup_disposable_acceptance.ps1 `
     -CandidateSha $sha -TargetRef $ref -MigrationPaths @() -ValidationPaths @()
@@ -80,7 +93,7 @@ Production release under #122 is a **separate explicit approval** after current-
 
 The authoritative laptop checkout is `C:\lor\ImportExport\VSCode` (Repository Change Workflow). **Never run `git pull` in that dirty primary checkout** to test a feature. An ordinary `git fetch origin --prune` may race a VS Code auto-fetch on `origin/main`; the `cannot lock ref` incident of October 15 returned current `origin/main` SHA `b2d5f8c2`. Treat it as concurrent reference movement, not evidence of corrupt Git. Do not delete lock files, prune worktrees, reset branches, or assume the terminal's unguarded `PASS` line is truthful.
 
-The feature branch was reconciled with the new `main` documentation by additive two-parent merge `70aa51b9b40eb6aa5409a28277e664a2cb01a122`, preserving application source `e4ed6ff13d6e16e9d8a6ed5278c1d81ee2d00eaa` and `V0.3.66-setup-action-center`. Use a **single** copy/paste PowerShell script block; PowerShell's `elseif` may not execute correctly if pasted as a separate interactive statement. Check all status codes before any further step.
+The feature branch was reconciled with the new `main` documentation by additive two-parent merge `70aa51b9b40eb6aa5409a28277e664a2cb01a122`, preserving application source `aaf7778c73f09a851db1f12abbe77770b09d5182` and `V0.3.66-setup-action-center`. Use a **single** copy/paste PowerShell script block; PowerShell's `elseif` may not execute correctly if pasted as a separate interactive statement. Check all status codes before any further step.
 
 ```powershell
 & {
@@ -88,7 +101,7 @@ The feature branch was reconciled with the new `main` documentation by additive 
     $primary = 'C:\lor\ImportExport\VSCode'
     $review = 'C:\lor\ImportExport\VSCode-205-kpi-review'
     $branch = 'fix/205-setup-deadline-kpis-20261015'
-    $candidate = 'e4ed6ff13d6e16e9d8a6ed5278c1d81ee2d00eaa'
+    $candidate = 'aaf7778c73f09a851db1f12abbe77770b09d5182'
     $version = 'V0.3.66-setup-action-center'
 
     Set-Location $primary
