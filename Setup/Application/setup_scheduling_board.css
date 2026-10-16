@@ -2137,3 +2137,42 @@ html[data-theme="dark"] .setup-board205-badge.effort-heavy {
   max-width: 100%;
   overflow-x: auto;
 }
+
+/* #205 operator rejection: keep Find scheduled task beside the workday list
+   as the right-hand pane scrolls, without freezing the tall KPI/header area. */
+@media screen and (min-width: 1101px) {
+  .setup-board205-board-heading {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    padding: 0.4rem;
+    border-bottom: 1px solid var(--border, #d9e0e8);
+    background: var(--panel, #fff);
+  }
+}
+.setup-board205-board-title-row {
+  flex-wrap: wrap;
+}
+.setup-board205-board-title-row > .setup-board205-scheduled-search {
+  flex: 1 1 19rem;
+  max-width: 34rem;
+  min-width: min(100%, 17rem);
+  position: relative;
+  grid-template-columns: auto minmax(8rem, 1fr);
+}
+.setup-board205-board-title-row .setup-board205-scheduled-search-results:not(:empty) {
+  position: absolute;
+  z-index: 25;
+  top: calc(100% + 0.2rem);
+  left: 0;
+  right: 0;
+  max-height: min(22rem, 55vh);
+  overflow-y: auto;
+  background: var(--panel, #fff);
+  border: 1px solid var(--border, #d9e0e8);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 18%);
+}
+@media print {
+  .setup-board205-board-heading { position: static; }
+  .setup-board205-board-title-row > .setup-board205-scheduled-search { display: none; }
+}
