@@ -2233,3 +2233,12 @@ html[data-theme="dark"] .setup-board205-badge.effort-heavy {
   .setup-board205-current-day { display: none; }
   .setup-board205-day-header { position: static; }
 }
+
+/* One sticky navigation row only. Full Setup Day header scrolls normally,
+   while its identity appears in the navigation row when out of view. */
+.setup-board205-current-day[hidden] { display: none !important; }
+@media screen and (min-width: 1101px) {
+  .setup-board205-day-header { position: static; top: auto; }
+}
+.setup-board205-board-heading { padding: 0.25rem 0.4rem; }
+.setup-board205-board-title-row > .setup-board205-scheduled-search { padding: 0.2rem 0.35rem; }
