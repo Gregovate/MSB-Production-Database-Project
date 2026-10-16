@@ -18,15 +18,15 @@ def test_same_captain_move_is_suggestion_not_unconfirmed_write():
     assert "nextCanRescheduleNoWork(row)" in js
 
 
-def test_capacity_distinguishes_am_pressure_from_true_overload():
+def test_shift_workload_reports_only_unfinished_work_and_does_not_require_pm_manager():
     js = source("setup_scheduling_board.js")
-    assert "board205PlacementCrewCount(crewId, 'AFTERNOON')" in js
-    assert "AM PRESSURE — REVIEW PM CONTINUATION" in js
-    assert "const shiftPressure = shift === 'MORNING' && w.overload > 0" in js
-    assert "AM PRESSURE — PM CREW UNCONFIRMED" in js
-    assert "PM staffing needs a Manager decision" in js
-    assert "PM may absorb" in js
-    assert "const dayDemand = am.known + pm.known;" in js
+    banner = js.split("function board205WorkloadBanner(",1)[1].split("\nfunction board205AmCapacityNote(",1)[0]
+    workload = js.split("function board205ShiftWorkload(",1)[1].split("\nfunction board205WorkloadBanner(",1)[0]
+    assert "!nextAssignmentReported(item)" in workload
+    assert "continue unfinished AM work into PM" in banner
+    assert "currentStaffing = board205PlacementCrewCount(crewId, shift)" in banner
+    assert "Manager decision" not in banner
+    assert "unfinished task" in banner
 
 
 def test_day_and_crew_identity_and_visible_actions():
