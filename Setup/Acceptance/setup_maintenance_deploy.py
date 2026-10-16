@@ -239,8 +239,7 @@ class Deploy:
         self.mark('migration starting')
         self.migration_started = True
         self.journal()
-        migration = self.git('show', self.m['target'] + ':' + self.m['migration'])
-        self.sql(migration)
+        self.apply_migrations()
         self.committed = True
         self.mark('migration committed')
         self.validate()
@@ -264,6 +263,7 @@ class Deploy:
             require(not self.git('status', '--porcelain'), 'Shared checkout dirty after promotion')
             self.frozen(self.controller('status'))
             require(self.capture() == baseline, 'Business data changed before reopening')
+        self.before_reopen(baseline)
         self.mark('returning to service')
         state = self.controller('off')
         require(state.get('state') == 'ONLINE' and not state.get('last_error') and
@@ -280,7 +280,20 @@ class Deploy:
         if self.m.get('profile') == 'field-070':
             self.field_health(new=True)
             self.validate()
+        self.after_reopen()
         self.mark('server deployment PASS; protected browser and documentation closeout pending')
+
+    def apply_migrations(self):
+        """Default single-file release; reviewed profiles may supply an ordered set."""
+        self.sql(self.git('show', self.m['target'] + ':' + self.m['migration']))
+
+    def before_reopen(self, baseline):
+        """Profile-specific final frozen gates; never reopen from failure cleanup."""
+        pass
+
+    def after_reopen(self):
+        """Profile-specific live proof before the success marker."""
+        pass
 
     def field_database_check(self, installed=False):
         # Match exact reviewed bodies, security settings and command-only privileges.
