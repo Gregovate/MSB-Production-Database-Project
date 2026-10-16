@@ -25,3 +25,13 @@ def test_crew_color_extends_across_both_shift_cells():
         assert f'.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="{letter}"])' in css
     assert "var(--crew-tint" in css
     assert ".setup-board205-crew-row .setup-board205-cell" in css
+
+def test_crew_letter_is_explicit_on_visible_am_pm_cells():
+    js = (APP / "setup_scheduling_board.js").read_text(encoding="utf-8")
+    css = (APP / "setup_scheduling_board.css").read_text(encoding="utf-8")
+    assert 'data-crew-id="${crew.setup_work_day_crew_id}" data-crew-letter="${board205Esc(crew.crew_code)}"' in js
+    for letter in ("A", "B", "C", "D", "E", "F"):
+        selector = f'.setup-board205-cell[data-crew-letter="{letter}"]'
+        assert selector in css
+    assert "background-color:#deebfd" in css
+    assert "background-color:#dcf3e8" in css
