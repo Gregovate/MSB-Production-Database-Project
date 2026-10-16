@@ -1,5 +1,28 @@
 # #205 Whole-Setup KPI / Action Center / Report Work — Browser Candidate
 
+## CURRENT V0.3.71 single-clone browser review (2026-10-16)
+
+**Source regression PASSED; operator browser acceptance PENDING.** V0.3.70 was operator rejected. Application SHA `a0f01da7600f26d201a2f844b1dbac03f5894eb9`, build `V0.3.71-operator-review-corrections`. [GitHub CI #38896659957](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38896659957): PASS 821 Setup Python, 202 FieldWiring Python and #205 executable Node checks. The existing #205 PR branch contains post-app documentation-only changes; use the pinned application SHA rather than substituting branch HEAD for runtime identity.
+
+Use the existing **clean laptop review checkout** `C:\lor\ImportExport\VSCode-205-kpi-review` on `fix/205-setup-deadline-kpis-20261015`. Follow Repository Change Workflow: fetch this branch and fast-forward clean checkout before launch, check candidate ancestry and all wrapper preflights; do not reset or alter primary checkout. Prior preview must have `CLEAN EXIT` (operator reported). Read current Server Management browser runbook and port register.
+
+**One clone: the browser-preview launcher itself runs full Setup and FieldWiring Python regression, captures current Production ONCE, restores disposable PostgreSQL ONCE and starts the exact candidate on port 8898. Do NOT run the separate disposable-acceptance launcher beforehand.** Source CI supplies Node coverage; preview is still needed to verify visual interactions and actual DB projections.
+
+```powershell
+# Run only in the clean and current existing #205 review branch checkout.
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
+    -PreviewPort 8898 `
+    -CandidateSha 'a0f01da7600f26d201a2f844b1dbac03f5894eb9' `
+    -TargetRef 'fix/205-setup-deadline-kpis-20261015' `
+    -ExpectedVersion 'V0.3.71-operator-review-corrections' `
+    -MigrationPaths @()
+```
+
+Open `http://127.0.0.1:8898/` only after `BROWSER REVIEW READY`; keep foreground console open and obtain `CLEAN EXIT` afterward. **Do not deploy or merge** without operator acceptance and separate #122 release approval. Recheck every Oct 16 design requirement against live browser evidence: board scroll and day header, crew stripes/day boundaries, actions contrast in both themes, numeric volunteering inputs/help, late follow-up vs no-work movement, same-Captain suggestion and atomic new crew, AM/PM capacity classification. Real field-browser geometry, unknown duration/shift eligibility and ability to create a new work date are not certified by source CI.
+
+---
+
+
 | Item | Value |
 |---|---|
 | Status | UPDATED SOURCE REGRESSION PASS — prior browser review REJECTED, new candidate disposable/browser pending |
