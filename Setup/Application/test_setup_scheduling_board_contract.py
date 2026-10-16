@@ -298,8 +298,9 @@ def test_122_planning_screen_uses_compact_operational_kpis_and_stage_scoped_plac
     css = read_app("setup_scheduling_board.css")
 
     assert "function board205RenderKpis()" in ui
-    assert "scheduled · " in ui
-    assert "complete · " in ui
+    assert "tasks scheduled" in ui
+    assert "setup205DeadlineKpiHtml(board, appState.seasonYear)" in ui
+    assert 'class="setup205-kpi-glance"' in read_app("setup_next_pass.js")
     assert "setup-board205-primary-filters" in ui
     assert "setup-board205-scene-label" in ui
     assert "function board205PopulateSeasonPlacementOptions(" in ui
