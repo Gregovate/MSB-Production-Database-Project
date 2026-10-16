@@ -69,7 +69,7 @@ def test_second_review_never_defaults_to_wrong_captain_and_shows_save_failure():
     assert "if (captainId && !captainCrew)" in perform
     assert "crewSelect.value = 'NEW_CREW';" in perform
     assert "The new-crew route records the original Captain atomically." in perform
-    assert "NOT SAVED — " in board
+    assert "Not saved — " in board
     assert "const reason = String(error?.message" in board
     assert "input?.addEventListener('blur'" in board
     assert ".setup205-kpi-glance .setup205-open-action-center" in css
