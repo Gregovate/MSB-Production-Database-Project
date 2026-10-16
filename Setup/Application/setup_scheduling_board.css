@@ -2242,3 +2242,14 @@ html[data-theme="dark"] .setup-board205-badge.effort-heavy {
 }
 .setup-board205-board-heading { padding: 0.25rem 0.4rem; }
 .setup-board205-board-title-row > .setup-board205-scheduled-search { padding: 0.2rem 0.35rem; }
+
+
+/* #205: consistent crew color across label and both shift cells. */
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="A"]) { --crew-accent:#4478c4; --crew-tint:color-mix(in srgb,#4478c4 9%,var(--panel,#fff)); }
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="B"]) { --crew-accent:#219475; --crew-tint:color-mix(in srgb,#219475 9%,var(--panel,#fff)); }
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="C"]) { --crew-accent:#b4762c; --crew-tint:color-mix(in srgb,#b4762c 9%,var(--panel,#fff)); }
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="D"]) { --crew-accent:#9864bd; --crew-tint:color-mix(in srgb,#9864bd 9%,var(--panel,#fff)); }
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="E"]) { --crew-accent:#b84b6a; --crew-tint:color-mix(in srgb,#b84b6a 9%,var(--panel,#fff)); }
+.setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="F"]) { --crew-accent:#328e9a; --crew-tint:color-mix(in srgb,#328e9a 9%,var(--panel,#fff)); }
+.setup-board205-crew-row .setup-board205-crew-label { background:var(--crew-tint,var(--soft,#f5f8fb)); border-left:0.55rem solid var(--crew-accent,var(--border,#d9e0e8)); }
+.setup-board205-crew-row .setup-board205-cell { border-top:3px solid var(--crew-accent,var(--border,#d9e0e8)); }
