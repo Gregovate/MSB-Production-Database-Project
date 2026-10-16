@@ -2036,3 +2036,43 @@ html[data-theme="dark"] .setup-board205-badge.effort-heavy {
   .setup-board205-new-crew-row,
   .setup-board205-crew-save-status { display: none !important; }
 }
+
+/* #205 rejected review: visually bound each day and keep its identity when
+   scrolling through multiple crew shifts. Warnings retain their own colors. */
+.setup-board205-days {
+  gap: 1.35rem;
+}
+.setup-board205-day {
+  overflow: visible;
+  border: 2px solid var(--border, #7d90a5);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 9%);
+  scroll-margin-top: 0.5rem;
+}
+.setup-board205-day.day-band-odd {
+  background: color-mix(in srgb, var(--panel, #fff) 96%, var(--accent, #0b6ea8));
+  border-left: 0.45rem solid var(--accent, #0b6ea8);
+}
+.setup-board205-day.day-band-even {
+  background: color-mix(in srgb, var(--panel, #fff) 94%, var(--text, #263646));
+  border-left: 0.45rem solid var(--muted, #62788d);
+}
+.setup-board205-day-header {
+  position: sticky;
+  top: 0;
+  z-index: 7;
+  border-bottom-width: 3px;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 12%);
+}
+.setup-board205-completed-crew-summary {
+  grid-column: 1 / -1;
+  padding: 0.45rem 0.8rem;
+  border-bottom: 1px solid var(--border, #aebbc9);
+  background: var(--soft, #f5f8fb);
+  color: var(--muted, #64748b);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+@media print {
+  .setup-board205-day-header { position: static; box-shadow: none; }
+  .setup-board205-completed-crew-summary { display: none; }
+}
