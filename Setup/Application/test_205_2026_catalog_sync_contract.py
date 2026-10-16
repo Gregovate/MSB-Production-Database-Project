@@ -65,6 +65,19 @@ def test_disposable_probes_both_directions_and_rolls_back():
     assert "annual and Catalog values unchanged after disposable rollback" in validation
 
 
+
+def test_disposable_catalog_probe_does_not_use_reserved_postgresql_identifier():
+    validation = text("Acceptance/setup_205_2026_catalog_estimate_disposable_validation.sql")
+    # CURRENT_CATALOG is a PostgreSQL keyword; "current_catalog.task_name"
+    # broke the previous disposable test before the browser could start.
+    assert "current_catalog" not in validation.lower()
+    assert "v_catalog_row record;" in validation
+    assert "INTO STRICT v_catalog_row" in validation
+    assert "v_catalog_row.task_name" in validation
+    assert "DO $catalog_to_annual$" in validation
+    assert "ROLLBACK;" in validation
+
+
 def test_two_way_decision_is_documented_in_its_owner():
     model = (ROOT.parent / "Docs/02_Production_Database/01_System_Architecture/"
              "12_Setup_and_Deployment/engineering/Setup_Planning_Operating_Model_2026-09-08.md").read_text(encoding="utf-8")
