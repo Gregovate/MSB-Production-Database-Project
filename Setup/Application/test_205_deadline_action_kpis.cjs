@@ -41,7 +41,7 @@ assert.equal(k.complete.length,2);
 assert.equal(k.incomplete.length,3);
 assert.equal(k.partial.length,1);
 assert.equal(k.blocked.length,1);
-assert(ctx.setup205DeadlineKpiHtml(base,2026).includes('Inspect blocker')); // simultaneous prerequisite and soft readiness = one annual task
+assert(ctx.setup205ManagementReportHtml(base,2026).includes('Inspect blocker')); // simultaneous prerequisite and soft readiness = one annual task
 assert.equal(k.notReady.length,1);
 assert.equal(k.scheduled.length,1);
 assert.equal(k.needsRescheduling.length,1);
@@ -61,7 +61,7 @@ assert.equal(k.undated, 1);
 const cancelled = structuredClone(base);
 cancelled.work_days[0].day_status = 'CANCELLED';
 assert.equal(get(cancelled).overdue.length, 0);
-const html=ctx.setup205DeadlineKpiHtml(base,2026);
+const html=ctx.setup205ManagementReportHtml(base,2026);
 for (const label of ['Needs rescheduling','Partially reported','Past scheduled assignments','Required calendar pace','Required potential workday pace']) {
   assert(html.includes(label), 'missing display section: '+label);
 }
@@ -92,21 +92,22 @@ six.tasks.shift();
 assert.equal(get(six).reliable,false);
 console.log('PASS #205 proven-work-date and active-continuation regression');
 
-const managerHtml=ctx.setup205DeadlineKpiHtml(base,2026);
+const managerHtml=ctx.setup205ActionCenterHtml(base);
 for(const key of ['Manager Setup Action Center','Past occurrences awaiting reports','Incomplete tasks needing continuation','Scheduled assignments without Captain']) {
   assert(managerHtml.includes(key), 'missing Manager action group: '+key);
 }
 assert(managerHtml.includes('data-205-action="report"'), 'original report navigation must be exact-assignment');
 assert(managerHtml.includes('data-205-action="schedule"'), 'continuation must use existing scheduler');
 ctx.appState.access.can_manage_setup=false;
-assert(!ctx.setup205DeadlineKpiHtml(base,2026).includes('Manager Setup Action Center'), 'Manager-only action worklist must not leak');
+assert.equal(ctx.setup205ActionCenterHtml(base),'','Manager-only worklist must not leak');
+assert(!ctx.setup205DeadlineKpiHtml(base,2026).includes('Manager Action Center →'), 'Manager-only navigation must not leak');
 assert(!managerHtml.includes('setup205-email-preview'), 'mail must remain parked');
 assert(!managerHtml.includes('data-205-action="request-report"'), 'no notification action on production candidate');
 assert(managerHtml.includes('data-205-action="planning"'), 'Manager blockers must have navigation');
 assert(managerHtml.includes('data-205-action="report"'), 'unreported original must be directly reachable');
 assert(managerHtml.includes('data-205-action="schedule"'), 'unfinished continuation must open scheduling');
 assert(!managerHtml.includes('mailto:'), 'no email controls in the launch candidate');
-const hidden = ctx.setup205DeadlineKpiHtml(base,2026);
+const hidden = ctx.setup205ManagementReportHtml(base,2026);
 assert(!hidden.includes('Inspect blocker'), 'unprivileged staff must not see Manager task details');
 assert(!hidden.includes('Open original work report'), 'unprivileged staff must not see history-specific Manager links');
 console.log('PASS #205 Manager Action Center, actionable drilldowns, access and paused mail');
@@ -144,13 +145,14 @@ assert(compact.includes('Total <strong>5</strong>'));
 assert(compact.includes('Completed <strong>2</strong>'));
 assert(compact.includes('Remaining <strong>3</strong>'));
 assert(compact.includes('Blocked / NOT READY <strong>1</strong>'));
-assert(compact.includes('Actual last 7 days <strong>0.14/day</strong>'));
-assert(compact.includes('Required <strong>0.06/day</strong>'));
-assert(compact.includes('Projected finish <strong>INSUFFICIENT DATA</strong>'));
-assert(!compact.includes('<details class="setup205-kpi-expand" open'),
-  'long KPI breakdown must be closed by default');
-assert(compact.indexOf('Manager Setup Action Center') > disclosure,
-  'Manager actions belong inside collapsed breakdown, not the board header');
-assert(compact.includes('</div></details></section>'),
-  'nested worklist disclosure must close before returning to the schedule');
+assert(compact.includes('Actual last 7 days <strong>0.1/day</strong>'));
+assert(compact.includes('Required <strong>0.1/day</strong>'));
+assert(compact.includes('Projected finish <strong>Not yet reliable</strong>'));
+assert(!compact.includes('setup205-action-group'),
+  'Manager worklists must never appear on the scheduling/perform summary');
+assert(disclosure === -1, 'even collapsed large manager reports belong to a different tab');
+assert(ctx.setup205ManagementReportHtml(base,2026).includes('setup205-kpi-expand'),
+  'detailed performance remains available on dedicated Manager page');
+assert(ctx.setup205ActionCenterHtml(base).includes('Past occurrences awaiting reports'),
+  'separate Manager Action Center preserves actionable drilldowns');
 console.log('PASS #205 compact above-the-fold KPI summary, closed action breakdown');
