@@ -75,4 +75,27 @@ ctx.board205RenderKpis();
 assert.match(target.innerHTML,/3 known task-hours/);
 assert.match(target.innerHTML,/3 planned person-hours/);
 assert(!target.innerHTML.includes('Planned person-hours TBD'));
+
+vm.runInContext(between(board,'function board205WorkloadBanner(', '\nfunction board205AmCapacityNote('),ctx);
+vm.runInContext(between(perform,'function nextPerformWorkloadLabel(', '\n// Count each crew once per shift'),ctx);
+ctx.board205ShiftWorkload = (id,shift) => shift==='MORNING'
+  ? {known:240,unknown:0,notReady:0,capacity:180,count:1,overload:60}
+  : {known:0,unknown:0,notReady:0,capacity:120,count:0,overload:0};
+ctx.board205PlacementCrewCount = (id,shift) => shift==='MORNING'
+  ? crew.am_planned_crew_count : crew.pm_planned_crew_count;
+ctx.nextPerformShiftWorkload=()=>({known:240,unknown:0,notReady:0,capacity:180,count:1,overload:60});
+crew.am_planned_crew_count = null;
+crew.pm_planned_crew_count = null;
+const noCrewBanner=ctx.board205WorkloadBanner(7,'MORNING');
+assert.match(noCrewBanner,/STAFFING UNCONFIRMED/);
+assert.match(noCrewBanner,/4 \/ 3 linear hours/);
+assert(!noCrewBanner.includes('WITHIN CAPACITY'));
+const noCrewPerform=ctx.nextPerformWorkloadLabel(assignments,'MORNING');
+assert.match(noCrewPerform,/STAFFING UNCONFIRMED/);
+assert.match(noCrewPerform,/no confirmed Captain-led crew/);
+crew.am_planned_crew_count=1;
+crew.pm_planned_crew_count=null;
+assert.match(ctx.board205WorkloadBanner(7,'MORNING'),/PM CREW UNCONFIRMED/);
+crew.pm_planned_crew_count=1;
+assert.match(ctx.board205WorkloadBanner(7,'MORNING'),/AM PRESSURE/);
 console.log('PASS #205 nullable crew, Captain-only one, independent task durations, partial labor and advisory estimates');
