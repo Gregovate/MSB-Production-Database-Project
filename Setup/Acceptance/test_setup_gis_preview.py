@@ -46,7 +46,9 @@ for url in ['/fieldwiring/fieldwiring.css','/fieldwiring/fieldwiring.js',
             '/setup/locate/assets/setup_locate_networks.json',
             '/setup/locate/assets/setup_locate_assets.js','/locate/']:
     assert client.get(url).status_code == 200, url
-assert client.get('/fieldwiring/api/health').json['version'] == 'V0.4.1-gis-entry'
+field_health = client.get('/fieldwiring/api/health')
+assert field_health.status_code == 200, (field_health.status_code, field_health.text)
+assert field_health.json['version'] == 'V0.4.1-gis-entry', field_health.json
 assert client.get('/setup/api/health').json['version'] == PRODUCTION_VERSION
 assert client.post('/setup/locate/').status_code == 405
 '''
