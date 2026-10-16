@@ -85,3 +85,25 @@ def test_capacity_probe_never_issues_a_write_request() -> None:
     assert "method:'DELETE'" not in source
     assert 'method: "DELETE"' not in source
     assert "X-MSB-Controller-Command" not in source
+
+
+def test_network_uid_explorer_is_independent_of_controller_model() -> None:
+    source = (BASE_DIR / "static" / "controllers_planner_v2.js").read_text(encoding="utf-8")
+    assert "Array.from({length:240}" in source
+    assert "const used = lorUsage(network);" in source
+    assert "if (model) {" in source
+    assert 'id="planner-uid-search"' in source
+    assert 'id="planner-uid-filter"' in source
+    assert "choices.map(b =>" in source
+    assert "blocks.slice(0,24)" not in source
+    assert 'No block search' in source
+
+
+def test_network_identity_deduplicates_regular_case_without_lor_mutation() -> None:
+    source = (BASE_DIR / "static" / "controllers_planner_v2.js").read_text(encoding="utf-8")
+    assert "const networkKey = value =>" in source
+    assert "networkKey(value) === 'regular' ? 'Regular'" in source
+    assert "const uniqueNetworks = values =>" in source
+    assert "return uniqueNetworks([" in source
+    assert "return uniqueNetworks(values);" in source
+    assert "method:'POST'" not in source
