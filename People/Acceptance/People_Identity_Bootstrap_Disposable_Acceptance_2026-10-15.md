@@ -647,6 +647,18 @@ The user cited Don, a retired operations manager and board member who is interes
 
 **Do not attempt to resolve #395 by auto-provisioning every `ref.person` row, every MSB email, every Google Workspace account, or any nonhuman/email-only identity.** The narrowed operator problem is the confusing first-time Google authentication path for humans who need Directus-backed applications, while safe Person association is already covered by #385. The more invasive service-token approach remains paused pending a clear architecture decision. No Production migration, deployment, identity change or test was performed by documenting this clarification.
 
+### Workspace resources versus Directus Browser versus operational edit permission — operator correction
+
+Greg clarified that a Sheboygan Lights **Google Workspace account is often important in its own right** for Shared Drives, organizational email, Groups, calendars and other Google collaboration resources. Not all Workspace members need to enter or change Setup/Takedown/Production information. MSB deliberately uses Directus roles to keep that boundary:
+
+- A `ref.person` row records a person, whether or not they accept an MSB email or use applications.
+- Google Workspace organizational access does **not** automatically grant Production Database **write** authority.
+- When a real eligible human actually comes to Directus for the first time, the accepted default is **`MSB Browser` (read-only)** rather than denying them merely because they are not Production Crew/Manager. That is the rationale for the original baseline role. It does not require proactively creating Directus users for all Workspace members.
+- The ability to enter, change, approve or administer Setup/Takedown and other Production records is a separate, explicit Directus role/policy authorization decision. Historic Person attributes are not role grants.
+- Nonhuman tablet/print-server identities and email-only mailboxes do not become interactive human Directus logins or People actors merely because they have Workspace addresses.
+
+**Key #395 distinction:** the UX problem is getting an eligible human through Directus's one-time Google identity initialization without the confusing username/password-versus-Google login-choice screen. After an appropriate active Google-backed Directus identity exists, deployed #385 reconciles the existing Person link safely. The old create-event Flow remains defective in its missing-Person branch and must not manufacture People as part of this UX fix. Do not pursue broad automatic Workspace-to-Directus synchronization or treat the absence of a Google email on a Person record as an error. Earlier draft language that implied only people needing write access would warrant a Directus identity is too restrictive: **read-only Browser access is a deliberate legitimate use**.
+
 ## Disposition
 
 ```text
