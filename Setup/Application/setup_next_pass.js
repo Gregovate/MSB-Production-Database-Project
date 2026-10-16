@@ -1484,6 +1484,44 @@ function nextOpenRescheduleNoWorkDialog(assignmentId) {
     nextRescheduleNoWorkCrewOptions();
   }
   dialog.showModal();
+  // The Perform Work snapshot may predate workdays just created in Scheduling.
+  // Refresh destination dates from the server without closing this dialog.
+  void nextRefreshRescheduleDestinations(dialog);
+}
+
+async function nextRefreshRescheduleDestinations(dialog) {
+  const assignmentId = dialog.dataset.assignmentId;
+  try {
+    const payload = await api('api/setup/scheduling-board?season_year=' +
+      encodeURIComponent(appState.seasonYear));
+    if (!dialog.open || dialog.dataset.assignmentId !== assignmentId) return;
+    const fresh = payload.board || {};
+    const today = nextSetupLocalDate();
+    const dates = (fresh.work_days || []).filter(day =>
+      day.work_date >= today && String(day.day_status || '').toUpperCase() !== 'CANCELLED'
+    ).sort((a, b) => a.work_date.localeCompare(b.work_date));
+    if (!dates.length) return;
+    const dateControl = dialog.querySelector('#next-reschedule-day');
+    const selectedDay = dateControl.value;
+    const selectedCrew = dialog.querySelector('#next-reschedule-crew').value;
+    setupNextState.performBoard.work_days = fresh.work_days || [];
+    setupNextState.performBoard.crews = fresh.crews || [];
+    dateControl.innerHTML = dates.map(day =>
+      '<option value="' + Number(day.setup_work_day_id) + '">Setup Day ' +
+      escapeHtml(day.setup_day_number ?? '—') + ' · ' + escapeHtml(day.work_date) + '</option>'
+    ).join('');
+    if (dates.some(day => String(day.setup_work_day_id) === selectedDay)) {
+      dateControl.value = selectedDay;
+    }
+    nextRescheduleNoWorkCrewOptions();
+    if ([...dialog.querySelector('#next-reschedule-crew').options].some(o => o.value === selectedCrew)) {
+      dialog.querySelector('#next-reschedule-crew').value = selectedCrew;
+      nextRescheduleNoWorkCrewOptions();
+    }
+  } catch (error) {
+    // A failed refresh must not replace or discard the existing choices.
+    setAlert('Could not refresh rescheduling dates: ' + (error.message || error), 'error');
+  }
 }
 
 // During weather or a cancelled volunteer shift, the Manager can move every
