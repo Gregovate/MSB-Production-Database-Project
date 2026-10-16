@@ -363,3 +363,13 @@ This correction is committed to draft PR #406 but has not passed actual
 current-production-clone/browser acceptance. Previously running disposable
 browser sessions remain pinned to their earlier SHA and will **not**
 automatically reflect these changes.
+
+## 2026-10-16 — Pixie contiguous-range visibility in draft #406
+
+Operator browser finding: selecting Pixie4D did not visibly expose candidate
+four-UID ranges because the planner rendered the full 240-UID inventory first.
+The draft now renders the optional model-aware contiguous block results **above**
+the inventory, includes the number of candidate starting addresses and bounds
+its block list with independent scrolling. The Network inventory remains
+model-independent. Requires fresh exact-candidate browser acceptance; do not
+interpret source correction as deployed or accepted behavior.
