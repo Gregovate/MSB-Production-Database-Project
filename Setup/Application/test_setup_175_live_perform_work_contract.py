@@ -165,7 +165,7 @@ def test_field_actions_use_report_correction_and_colored_print_task() -> None:
 
     assert ">Task Feedback</button>" in ui
     assert "Report Correction handoff is owned by #172" not in ui
-    assert "Report Correction requires Production Crew or Manager access" in ui
+    assert "Task Feedback requires Production Crew or Manager access" in ui
     assert ">Report Problem</button>" not in ui
     assert ".next-perform-actions .next-print-task" in css
     assert "var(--accent-soft" in css
