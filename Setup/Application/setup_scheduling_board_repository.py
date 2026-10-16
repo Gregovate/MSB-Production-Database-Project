@@ -968,6 +968,45 @@ class SetupSchedulingBoardRepository:
             conn.commit()
             return result
 
+    def bulk_reschedule_unworked(
+        self, *, email: str, work_day_id: int, crew_id: int,
+        assignment_ids: list[int]
+    ) -> list[dict[str, Any]]:
+        """All-or-nothing Manager move of no-work occurrences into one crew.
+
+        Existing ops.update_setup_work_day_assignment enforces actual-work
+        locks and writes an actor-stamped ASSIGNMENT_MOVED event (migration 069)
+        inside the same transaction. Original AM/PM shifts are preserved.
+        """
+        if not (1 <= len(assignment_ids) <= 25):
+            raise SetupSchedulingBoardRepositoryError(
+                "Select one to 25 unworked assignments to reschedule"
+            )
+        if len(assignment_ids) != len(set(assignment_ids)):
+            raise SetupSchedulingBoardRepositoryError("Duplicate assignment IDs are not allowed")
+        moved = []
+        with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            for index, assignment_id in enumerate(assignment_ids):
+                cur.execute(
+                    "SELECT shift_code FROM ops.setup_work_day_task "
+                    "WHERE setup_work_day_task_id = %s",
+                    (assignment_id,),
+                )
+                row = self._one(cur, "An assignment no longer exists")
+                shift = str(row["shift_code"])
+                if shift not in ("MORNING","AFTERNOON"):
+                    raise SetupSchedulingBoardRepositoryError(
+                        "Legacy All Day assignments require individual review"
+                    )
+                cur.execute(
+                    "SELECT * FROM ops.update_setup_work_day_assignment("
+                    "%s,%s,%s,%s,%s,%s)",
+                    (email,assignment_id,work_day_id,shift,crew_id,(index + 1)*10),
+                )
+                moved.append(dict(self._one(cur, "Workday reassignment failed")))
+            conn.commit()
+        return moved
+
     def remove_assignment(self, *, email: str, assignment_id: int) -> dict[str, Any]:
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
