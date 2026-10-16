@@ -109,7 +109,7 @@ $validate$;
 DO $catalog_to_annual$
 DECLARE
     v record;
-    current_catalog record;
+    v_catalog_row record;
     expected_min integer;
     expected_max integer;
     expected_minutes integer;
@@ -117,7 +117,7 @@ DECLARE
     a record;
 BEGIN
     SELECT * INTO STRICT v FROM setup205_estimate_probe;
-    SELECT * INTO STRICT current_catalog
+    SELECT * INTO STRICT v_catalog_row
     FROM ref.setup_task
     WHERE setup_task_id = v.setup_task_id;
 
@@ -130,18 +130,18 @@ BEGIN
     PERFORM ref.update_setup_task(
         'gliebig@sheboyganlights.org',
         v.setup_task_id,
-        current_catalog.task_name,
-        current_catalog.stage_id,
-        current_catalog.task_action_type,
-        current_catalog.display_order,
-        current_catalog.active_flag,
+        v_catalog_row.task_name,
+        v_catalog_row.stage_id,
+        v_catalog_row.task_action_type,
+        v_catalog_row.display_order,
+        v_catalog_row.active_flag,
         expected_min,
         expected_max,
         expected_minutes,
-        current_catalog.completion_point,
-        current_catalog.readiness_note,
-        current_catalog.weather_note,
-        current_catalog.reusable_notes
+        v_catalog_row.completion_point,
+        v_catalog_row.readiness_note,
+        v_catalog_row.weather_note,
+        v_catalog_row.reusable_notes
     );
     -- The reusable Catalog effort is a separate governed command; its update
     -- must also mirror 2026 annual effort within that command transaction.
