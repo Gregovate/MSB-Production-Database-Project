@@ -125,12 +125,12 @@ const overload={
   {setup_work_day_task_id:62,setup_work_day_id:60,setup_work_day_crew_id:50,setup_session_task_id:8,shift_code:'MORNING',work_report_count:0}
  ]
 };
-const overloadHtml=ctx.setup205DeadlineKpiHtml(overload,2026);
+const overloadHtml=ctx.setup205ActionCenterHtml(overload);
 assert(overloadHtml.includes('Upcoming linear-hour overloads (7 days) (1)'),'Manager must see real shift overload');
 assert(overloadHtml.includes('5.33 planned linear hours / 3.00 available'));
 assert(overloadHtml.includes('data-205-action="day"'),'overload must navigate to day');
 ctx.nextSetupLocalDate=()=> '2026-11-20';
-const passedDeadline=ctx.setup205DeadlineKpiHtml(overload,2026);
+const passedDeadline=ctx.setup205ManagementReportHtml(overload,2026);
 assert(passedDeadline.includes('Hard deadline reached with unfinished work'),'never show ambiguous status after deadline');
 console.log('PASS #205 upcoming crew overload and deadline-passed labels');
 
@@ -140,7 +140,7 @@ const compact=ctx.setup205DeadlineKpiHtml(base,2026);
 const beginGlance=compact.indexOf('<div class="setup205-kpi-glance"');
 const disclosure=compact.indexOf('<details class="setup205-kpi-expand">');
 assert(beginGlance >= 0, 'top KPI glance must exist');
-assert(disclosure > beginGlance, 'KPI breakdown must not precede essential counts');
+assert(disclosure === -1, 'No detailed breakdown may precede the Scheduling Board');
 assert(compact.includes('Total <strong>5</strong>'));
 assert(compact.includes('Completed <strong>2</strong>'));
 assert(compact.includes('Remaining <strong>3</strong>'));
