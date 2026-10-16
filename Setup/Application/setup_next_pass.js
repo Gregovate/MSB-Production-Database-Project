@@ -1742,7 +1742,16 @@ function nextPerformWorkloadLabel(items, shift) {
 function nextDayStaffingSummary(assignments, crews, taskRows = []) {
   return ['MORNING', 'AFTERNOON'].map((shift) => {
     const field = shift === 'MORNING' ? 'am_planned_crew_count' : 'pm_planned_crew_count';
-    const tasks = assignments.filter(item => item.shift_code === shift);
+    // One annual task may have multiple rows for the same crew and shift.
+    // Do not count the same task repeatedly as separate planned work.
+    const seenTaskKeys = new Set();
+    const tasks = assignments.filter(item => {
+      if (item.shift_code !== shift) return false;
+      const key = String(item.setup_work_day_crew_id) + ':' + String(item.setup_session_task_id);
+      if (seenTaskKeys.has(key)) return false;
+      seenTaskKeys.add(key);
+      return true;
+    });
     const ids = new Set(tasks.map(item => Number(item.setup_work_day_crew_id)));
     crews.filter(crew => crew[field] != null && Number(crew[field]) > 0)
       .forEach(crew => ids.add(Number(crew.setup_work_day_crew_id)));
