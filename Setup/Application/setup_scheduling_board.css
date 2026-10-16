@@ -1995,3 +1995,38 @@ html[data-theme="dark"] .setup-board205-badge.effort-heavy {
   color: var(--danger, #b42318);
   font-weight: 800;
 }
+
+/* #205 calendar-first crew creation: day-level drop targets use the same
+   AM/PM columns as existing crew rows, rather than requiring a placeholder. */
+.setup-board205-new-crew-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  min-height: 3.5rem;
+  border-top: 2px dashed var(--accent, #0b6ea8);
+}
+.setup-board205-new-crew-label,
+.setup-board205-new-crew-drop {
+  padding: 0.6rem 0.65rem;
+  min-width: 0;
+  border-right: 1px solid var(--border, #d9e0e8);
+}
+.setup-board205-new-crew-label {
+  font-weight: 800;
+  background: var(--soft, #f5f8fb);
+}
+.setup-board205-new-crew-drop {
+  border: 2px dashed var(--border, #9cb2c3);
+  color: var(--muted, #64748b);
+  background: var(--panel, #fff);
+  font-weight: 700;
+  text-align: center;
+  cursor: copy;
+}
+.setup-board205-new-crew-drop.drop-target,
+.setup-board205-new-crew-drop:focus-visible {
+  outline: 3px solid var(--accent, #0b6ea8);
+  outline-offset: -3px;
+  background: var(--accent-soft, #e3f5ff);
+  color: var(--text, #172033);
+}
