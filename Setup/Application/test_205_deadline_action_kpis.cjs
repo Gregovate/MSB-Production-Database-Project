@@ -110,3 +110,25 @@ const hidden = ctx.setup205DeadlineKpiHtml(base,2026);
 assert(!hidden.includes('Inspect blocker'), 'unprivileged staff must not see Manager task details');
 assert(!hidden.includes('Open original work report'), 'unprivileged staff must not see history-specific Manager links');
 console.log('PASS #205 Manager Action Center, actionable drilldowns, access and paused mail');
+
+ctx.appState.access.can_manage_setup=true;
+const overload={
+ tasks:[
+  {setup_session_task_id:7,task_name:'Place Snowman',effective_complete:false,execution_status:'PLANNED',expected_duration_minutes:200},
+  {setup_session_task_id:8,task_name:'Wire Trees',effective_complete:false,execution_status:'PLANNED',expected_duration_minutes:120},
+ ],
+ work_days:[{setup_work_day_id:60,work_date:'2026-10-16',setup_day_number:15,day_status:'PLANNED'}],
+ crews:[{setup_work_day_crew_id:50,crew_code:'A',captain_person_id:10,captain_display_name:'Test Captain'}],
+ assignments:[
+  {setup_work_day_task_id:61,setup_work_day_id:60,setup_work_day_crew_id:50,setup_session_task_id:7,shift_code:'MORNING',work_report_count:0},
+  {setup_work_day_task_id:62,setup_work_day_id:60,setup_work_day_crew_id:50,setup_session_task_id:8,shift_code:'MORNING',work_report_count:0}
+ ]
+};
+const overloadHtml=ctx.setup205DeadlineKpiHtml(overload,2026);
+assert(overloadHtml.includes('Upcoming linear-hour overloads (7 days) (1)'),'Manager must see real shift overload');
+assert(overloadHtml.includes('5.33 planned linear hours / 3.00 available'));
+assert(overloadHtml.includes('data-205-action="day"'),'overload must navigate to day');
+ctx.nextSetupLocalDate=()=> '2026-11-20';
+const passedDeadline=ctx.setup205DeadlineKpiHtml(overload,2026);
+assert(passedDeadline.includes('Hard deadline reached with unfinished work'),'never show ambiguous status after deadline');
+console.log('PASS #205 upcoming crew overload and deadline-passed labels');
