@@ -2,16 +2,16 @@
 
 ## CURRENT V0.3.80 — one compact sticky search row, no duplicate day header
 
-**Source CI PASS, disposable PostgreSQL and browser PENDING.** Exact source SHA `891e2a53027ad9c893261901bb147eaf686080f1`, version `V0.3.80-single-sticky-row`, [Setup CI #38961753199](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38961753199) PASS (838 Setup Python tests, #205 JavaScript including sticky day behavior, FieldWiring). PR #394 remains draft; Production unchanged.
+**Source CI PASS, disposable PostgreSQL and browser PENDING.** Exact source SHA `92e706d40c5206366be5c67222afb6a14b7db27d`, version `V0.3.80-single-sticky-row`, [Setup CI #38962008182](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38962008182) PASS (838 Setup Python tests, #205 JavaScript including sticky day behavior, FieldWiring). PR #394 remains draft; Production unchanged.
 
-**Operator rejection of V0.3.79:** two full-height sticky bars consumed vertical workspace. V0.3.80 retains a compact sticky Rolling Work Days/search navigation row; the full per-day heading scrolls normally. The sticky day/date label is hidden while the real day's heading is visible and appears in the same compact row once that heading is no longer visible. Do not claim browser approval from CI. Source regressions verify both identity while scrolling and no duplicate sticky header; all prior V0.3.78 quick Planning Info, one-line workload, Kit nav changes remain included.
+**Operator rejection of V0.3.79:** two full-height sticky bars consumed vertical workspace. V0.3.80 retains a compact sticky Rolling Work Days/search navigation row; the full per-day heading scrolls normally. The sticky Setup Day/date label remains visible in the compact search row at all times, updating as the right pane scrolls. It must never disappear. Do not claim browser approval from CI. Source regressions verify both identity while scrolling and no duplicate sticky header; all prior V0.3.78 quick Planning Info, one-line workload, Kit nav changes remain included.
 
 **Only current command**, from clean existing review worktree `C:\Users\Greg\Github\MSB-Production-Database-Project-205-review` on `fix/205-setup-deadline-kpis-20261015`, after documented old-preview CLEAN EXIT and 8898 ownership checks:
 
 ```powershell
 .\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
     -PreviewPort 8898 `
-    -CandidateSha '891e2a53027ad9c893261901bb147eaf686080f1' `
+    -CandidateSha '92e706d40c5206366be5c67222afb6a14b7db27d' `
     -TargetRef 'fix/205-setup-deadline-kpis-20261015' `
     -ExpectedVersion 'V0.3.80-single-sticky-row' `
     -MigrationPaths @(
@@ -24,7 +24,7 @@
     )
 ```
 
-**Next exact browser check:** at top of day, show ONLY compact search navigation plus full normal day heading; after scrolling past that day heading, show compact Setup Day/date in sticky row beside search; no second persistent day header or extra half-inch bar. Continue all integrated #205 tests; SQL validation must pass before `BROWSER REVIEW READY`, preserve CLEAN EXIT after operator review. No Production approval.
+**Next exact browser check:** at the top and throughout scrolling show the same compact search row with persistent current Setup Day/date; the normal day heading appears in the content below and scrolls normally, without another sticky row. Continue all integrated #205 tests; SQL validation must pass before `BROWSER REVIEW READY`, preserve CLEAN EXIT after operator review. No Production approval.
 
 ---
 
