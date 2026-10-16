@@ -96,6 +96,14 @@ existing ref.person (MSB email optional, not an access grant)
 
 **Nonhuman/mail-only identity correction:** `workorders@sheboyganlights.org` (plural) is an **email-only** account per the operator and must not receive a human Directus login. Separately, historical Server Management Issue #49 identifies `workorder@sheboyganlights.org` (singular) as a `Work Order Intake (Service)` Directus API identity. Their alias/account relationship is **not established**; never equate the two addresses without evidence. Shared tablet identities and print-service identities likewise do not become human Persons or interactive login accounts merely because an MSB email exists. In particular, an email-domain check alone is not a sufficient **human-versus-nonhuman** classification.
 
+### Read-only human application access — clarified 2026-10-15
+
+**Accepted operator requirement:** an active, Google-backed **MSB Browser** user must be able to **view Setup and Field Wiring**, including display/controller/wiring context, without operational write privileges. It must not be necessary to assign Production Crew or Manager merely to browse these applications. Setup/Takedown record completion, movement/scanning, scheduling, inventory maintenance, controller changes and label requests remain separately governed actions.
+
+**Existing implementation discrepancy:** `ref.setup_browser_capabilities(email)` in `Setup/Database/002_create_setup_browser_authorization_contract.sql` currently sets `can_read_setup` equal to the same `can_field` value used for `can_move_setup_assets`; `can_field` excludes **MSB Browser**. Consequently active Browser users fail protected Setup read endpoints even though their intended baseline is read-only. The correction must set `can_read_setup` independently while keeping `can_move_setup_assets`, `can_manage_setup`, `can_admin_setup`, and write commands unchanged. Do **not** grant Browser Production Crew simply to clear a read error.
+
+Field Wiring already exposes read-only context endpoints behind Cloudflare Access and guards Controller mutations separately; preserve those protections and verify read-only Browser UX. This is an **authorization defect/follow-up** distinct from the already-solved first Google Directus user creation for Don, distinct from People #385 safe Person-link reconciliation, and distinct from the abandoned/unpublished #395 privileged silent-bootstrap approach. Source and test evidence are required before any Production permission changes.
+
 ### Current identity lifecycle and known first-login defect
 
 The original Directus **User Onboarding** Flow is triggered only when a `directus_users` row is created. The original design gave first-time eligible Google users the `MSB Browser` baseline; however, its old missing-Person branch can still **auto-create an unwanted `ref.person`**. That behavior is a defect, not authority to manufacture People from login events.
