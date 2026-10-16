@@ -3,6 +3,9 @@
 
 ## PAUSED V0.3.73 source review — task-estimate gate restored; new exact-candidate verification required
 
+**Governing correction PASS (2026-10-16):** Greg rejected waiving mandatory task estimates. The exact earlier `board205RequireEstimates()` gate has been restored, including its existing locked-history continuation exception; day-crew AM/PM counts still distinguish NULL (not staffed as Captain-led crew) from 1 (Captain alone). Source/test commit `b2070faa5b71908fbf688af09b0468c66b8bdde8` passed [CI 38907841461](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38907841461): **826 Setup Python, #205 executable Node including restored blocking gate, and FieldWiring full**. This does **not** authorize reuse of the superseded SHA/command below or establish browser acceptance. PR is still draft; Production remains unchanged. A future browser candidate requires a new pinned source/version identity and current governed one-clone acceptance before operator testing.
+
+
 
 **STOP / governing correction:** The previous handoff implied all task estimates could be omitted; that was never authorized. The test command and candidate SHA below describe a now-superseded source snapshot and **must not be used** for a new operator test. The existing `board205RequireEstimates()` mandatory gate was restored, with the original historical-continuation exception. Retest/re-pin a new exact SHA only after full regressions. Blank *day-crew AM/PM staffing* remains distinct from missing mandatory *task-level planning estimates*. Do not run any older archived handoff in this file.
 
