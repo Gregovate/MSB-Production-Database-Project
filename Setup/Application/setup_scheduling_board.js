@@ -676,6 +676,10 @@ function board205RevealScheduledAssignment(item) {
     if (state === 'COMPLETED' && completed) completed.checked = true;
     if (state === 'EMPTY' && empty) empty.checked = true;
   }
+  if (nextAssignmentReported(item)) {
+    const historyToggle = document.getElementById('setup-board205-show-reported-tasks');
+    if (historyToggle) historyToggle.checked = true;
+  }
 
   board205RenderBoard();
   window.requestAnimationFrame(() => {
