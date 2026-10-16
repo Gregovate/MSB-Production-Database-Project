@@ -1,6 +1,36 @@
 # #205 Whole-Setup KPI / Action Center / Report Work — Browser Candidate
 
-## CURRENT V0.3.77 — integrated operator retest (source CI PASS; disposable/browser PENDING)
+## CURRENT V0.3.78 — quick Planning Info, concise shift warnings, sticky task search and Kit navigation
+
+**Source CI PASS / disposable PostgreSQL and browser review PENDING.** Exact source `2cc1fde80dffa35499eb192e17ac11cfdeb6a29d`; build `V0.3.78-quick-edit-sticky-search`; [GitHub CI #38947109427](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38947109427) **Setup and FieldWiring PASS**. PR #394 remains draft, Production unchanged, no mail.
+
+**Operator rejection of V0.3.77:** Reusable-task Edit Planning Info quick dialog was removed by mistake. **Restored in V0.3.78:** click Edit Planning Info → existing compact modal; Save Planning Info remains its own action, and Open Full Reusable Task remains a distinct button for deliberate Catalog editing. 2026 bidirectional estimate synchronization remains governed by migration 076 and its existing disposable validation. The task search is now beside Rolling Work Days with sticky right-pane positioning. Workload warnings use a single status line with hours scheduled / time remaining or continuation indication. Kit Inventory Setup navigation is now a separate dedicated row matching the main Setup hierarchy instead of being crammed into the masthead. Confirm all behavior in browser; source CI is not operator acceptance.
+
+**Previous preview:** Greg reports V0.3.77 browser closed. Closing the window does not itself certify documented `CLEAN EXIT`, so the existing launcher MUST verify cleanup and port 8898 ownership; do not destroy unknown preview processes.
+
+**Only current integrated command** from the existing clean review worktree `C:\Users\Greg\Github\MSB-Production-Database-Project-205-review` (branch `fix/205-setup-deadline-kpis-20261015`, fast-forward only, do not switch primary #395 checkout). Use the governing Server Management Pre-Production Browser Review Runbook. One current-Production **disposable clone** with migrations 075/076 and both rollback-only validations. Stop on any SQL error before displaying `BROWSER REVIEW READY`.
+
+```powershell
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
+    -PreviewPort 8898 `
+    -CandidateSha '2cc1fde80dffa35499eb192e17ac11cfdeb6a29d' `
+    -TargetRef 'fix/205-setup-deadline-kpis-20261015' `
+    -ExpectedVersion 'V0.3.78-quick-edit-sticky-search' `
+    -MigrationPaths @(
+        'Setup/Database/075_allow_setup_planned_crew_count_corrections.sql',
+        'Setup/Database/076_capture_2026_reusable_task_estimates.sql'
+    ) `
+    -ValidationPaths @(
+        'Setup/Acceptance/setup_205_planned_crew_count_disposable_validation.sql',
+        'Setup/Acceptance/setup_205_2026_catalog_estimate_disposable_validation.sql'
+    )
+```
+
+**Integrated browser checks:** (1) quick modal opens from both task backlog and crew assignment; min/max validation stays inline; Cancel and Open Full never auto-save; (2) after valid Save, Catalog ↔ 2026 annual crew min/max, duration, effort mirror, including reported-task guard without touching actuals; (3) search remains visible while scrolling workdays, no day header overlap and keyboard dropdown usable; (4) workload shows one-line statuses for unstaffed, under, over, and both shifts overloaded without fictitious Manager decision; (5) Kit Inventory navigation all routes and responsive layout; (6) persisted AM/PM staffing and correct Crew A task/hour totals; (7) Report Work scroll/help/Task Feedback; (8) October 20 date selection and immediate reschedule visibility. Maintain one integrated operator verdict and `CLEAN EXIT`. #122 Production release authorization remains separate.
+
+---
+
+## ARCHIVED V0.3.77 — integrated operator retest (source CI PASS; disposable/browser PENDING)
 
 **Exact application source SHA:** `732119827bdaffd43c792cc76fb7ee7906421d48`  
 **Build:** `V0.3.77-integrated-operator-retest`  
