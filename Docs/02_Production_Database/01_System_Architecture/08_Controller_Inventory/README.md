@@ -295,3 +295,24 @@ regression contract have been committed; **remote replay and CLEAN EXIT
 verification remain pending**. Do not confuse source-only implementation with
 server acceptance. The present Controller preview shares registered port 8898
 sequentially with Setup/People reviews; preflight refuses occupied listeners.
+
+## October 16, 2026 — #406 Release Gate
+
+Current branch candidate has distinct visible FieldWiring release identity
+`V0.4.2-controller-uid-explorer`, with refreshed browser asset pins.
+`main` was verified at `b2d5f8c2f202b228a180bd950187718937c41019`
+with no incoming commits at this checkpoint. The #406 comparison contains no
+migration/SQL/Production data mutation; deployment classification is
+**SOURCE-ONLY / NON-MIGRATION** under current Server Management #37 rules.
+The database-wide maintenance switch is therefore **not required** for this
+release. Do not replay Controller migrations 023/024.
+
+Prior operator browser findings established correct Regular/39 DMX separation
+and useful model-specific UID ranges. These are accepted behavior evidence,
+not acceptance of a later release-version SHA. Before merging, run the
+current exact candidate's applicable regressions and a bounded browser
+identity/smoke gate under the existing disposable runbook. Then merge through
+the protected PR and install the merged exact SHA through the existing
+FieldWiring source-only release procedure, confirming the actual live checkout
+and healthy shared FieldWiring/Procedures services. Close out with Production
+change-log and #122/owning-issue receipts; never treat GitHub merge as deployment.
