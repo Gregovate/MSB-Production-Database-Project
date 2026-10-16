@@ -2191,8 +2191,16 @@ function board205RenderBoard() {
       const crewId = Number(crewNode.dataset.crewId);
       const autosave = () => { void board205SaveCrew(crewId, crewNode); };
       crewNode.querySelector('.setup-board205-crew-captain-select')?.addEventListener('change', autosave);
-      crewNode.querySelector('.setup-board205-crew-am')?.addEventListener('change', autosave);
-      crewNode.querySelector('.setup-board205-crew-pm')?.addEventListener('change', autosave);
+      for (const selector of ['.setup-board205-crew-am', '.setup-board205-crew-pm']) {
+        const input = crewNode.querySelector(selector);
+        // Numeric change normally fires on blur. Ensure an edit is submitted
+        // when leaving the field even on browsers with unusual change timing.
+        input?.addEventListener('change', autosave);
+        input?.addEventListener('blur', () => {
+          const state = board205CrewAutosaveState.get(crewId);
+          if (!state?.promise) void board205SaveCrew(crewId, crewNode);
+        });
+      }
       crewNode.querySelector('.setup-board205-remove-crew')?.addEventListener('click', () => board205RemoveCrew(crewId));
     });
   });
@@ -2687,8 +2695,11 @@ async function board205SaveCrew(crewId, crewNode) {
           }
         }
       } catch (error) {
-        board205CrewSaveMessage(crewNode, 'Not saved — correct or retry the field', true);
-        setAlert('Crew ' + (crew.crew_code || '') + ' not saved: ' + (error.message || error), 'error');
+        // Show the actual rejected API/SQL reason alongside the field. Never
+        // imply persistence or silently revert the operator's unsaved input.
+        const reason = String(error?.message || error || 'Unknown save failure');
+        board205CrewSaveMessage(crewNode, 'NOT SAVED — ' + reason, true);
+        setAlert('Crew ' + (crew.crew_code || '') + ' NOT SAVED: ' + reason, 'error');
         ok = false;
         break;
       }
