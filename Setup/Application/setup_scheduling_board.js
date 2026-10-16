@@ -3451,6 +3451,19 @@ async function board205PersistPlanningInfo({ closeDialog = true, announce = true
   if (!sessionTaskId && !reusableTaskId) return false;
 
   const draft = board205PlanningDraft();
+  // Validate before the guarded SQL PATCH, with the error at the field.
+  const minInput = document.getElementById('setup-board205-planning-crew-min');
+  const maxInput = document.getElementById('setup-board205-planning-crew-max');
+  minInput?.setCustomValidity('');
+  maxInput?.setCustomValidity('');
+  if (draft.normal_crew_min != null && draft.normal_crew_max != null &&
+      draft.normal_crew_min > draft.normal_crew_max) {
+    const message = 'Crew maximum must be at least the minimum (' + draft.normal_crew_min + ').';
+    maxInput?.setCustomValidity(message);
+    maxInput?.reportValidity();
+    setAlert(message + ' Your entries have not been discarded.', 'error');
+    return false;
+  }
   const missing = board205MissingEstimates(draft);
   if (missing.length) {
     setAlert(`Enter estimated ${missing.join(', ')}. A rough estimate is enough.`, 'error');
@@ -3995,7 +4008,7 @@ function board205InstallView() {
     <dialog id="setup-board205-planning-dialog" class="setup-board205-dialog">
       <form id="setup-board205-planning-form">
         <h3 id="setup-board205-planning-heading">Edit Planning Info</h3>
-        <p id="setup-board205-planning-origin" class="muted"></p>
+        <p id="setup-board205-planning-origin" class="muted"></p><p class="muted">Crew minimum cannot exceed maximum. Open Full Reusable Task to review these estimates in the Catalog editor without automatically saving them.</p>
         <div class="setup-board205-form-grid">
           <label>Crew min<input id="setup-board205-planning-crew-min" type="number" min="0"></label>
           <label>Crew max<input id="setup-board205-planning-crew-max" type="number" min="0"></label>
@@ -4196,21 +4209,36 @@ function board205InstallView() {
     void (async () => {
       const reusableTaskId = setupBoard205State.editPlanningReusableTaskId;
       if (!reusableTaskId) return;
-
-      if (board205PlanningInfoDirty()) {
-        const saved = await board205PersistPlanningInfo({ closeDialog: false, announce: false });
-        if (!saved) return;
-        setAlert('Planning edits saved before opening the full reusable task.', 'ok');
-      }
-
+      // This is navigation, NOT Save Planning Info. Transfer unsaved draft
+      // values into the actual Catalog editor, where the Manager can review
+      // and correct crew range before deliberately pressing Save.
+      const draft = board205PlanningInfoDirty() ? board205PlanningDraft() : null;
+      const ok = typeof setupNavigateToReusableTaskFromFinder === 'function'
+        ? await setupNavigateToReusableTaskFromFinder(reusableTaskId)
+        : (showView('review'), selectTask(reusableTaskId), true);
+      if (ok === false) return;
       document.getElementById('setup-board205-planning-dialog')?.close();
-      if (typeof setupNavigateToReusableTaskFromFinder === 'function') {
-        await setupNavigateToReusableTaskFromFinder(reusableTaskId);
-      } else {
-        showView('review');
-        selectTask(reusableTaskId);
+      if (draft) {
+        const fields = {
+          'edit-crew-min': draft.normal_crew_min,
+          'edit-crew-max': draft.normal_crew_max,
+          'edit-duration-hours': draft.expected_duration_minutes == null ? null : Math.floor(draft.expected_duration_minutes / 60),
+          'edit-duration-minute-remainder': draft.expected_duration_minutes == null ? null : draft.expected_duration_minutes % 60,
+          'edit-effort-level': draft.effort_level,
+          'edit-completion': draft.completion_point,
+          'edit-readiness': draft.readiness_note,
+          'edit-weather': draft.weather_note,
+          'edit-reusable-notes': draft.reusable_notes
+        };
+        for (const [id,value] of Object.entries(fields)) {
+          const input = document.getElementById(id);
+          if (!input) continue;
+          input.value = value == null ? '' : String(value);
+          input.dispatchEvent(new Event('input', {bubbles:true}));
+        }
+        setAlert('Unsaved planning entries transferred to the full Reusable Task editor. Review the crew range, then Save Reusable Task.', 'error');
       }
-    })();
+    })().catch(error => setAlert('Unable to open Reusable Task: ' + (error.message || error), 'error'));
   });
   document.getElementById('setup-board205-season-form').addEventListener('submit', board205SubmitSeasonTask);
   document.getElementById('setup-board205-season-stage').addEventListener('change', () => {
