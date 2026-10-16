@@ -2017,7 +2017,7 @@ function board205Day(day) {
             </div>
             ${canManage ? `<div class="setup-board205-crew-actions"><span class="setup-board205-crew-save-status" role="status" aria-live="polite">Saved automatically</span>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
           </div>
-          ${crew.captain_person_id == null ? nextScheduleWarning('CAPTAIN TBD — NEEDS CAPTAIN') : ''}
+          <div class="setup-board205-captain-tbd-warning"${crew.captain_person_id == null ? '' : ' hidden'}>${nextScheduleWarning('CAPTAIN TBD — NEEDS CAPTAIN')}</div>
           <label class="setup-board205-crew-captain">Captain
             <select class="setup-board205-crew-captain-select">${board205CaptainOptions(crew.captain_person_id)}</select>
           </label>
@@ -2631,6 +2631,8 @@ async function board205SaveCrew(crewId, crewNode) {
         crew.pm_planned_crew_count = saved.pm_planned_crew_count;
         crew.captain_person_id = saved.captain_person_id;
         crew.captain_display_name = board205CaptainCandidate(crew.captain_person_id)?.display_name || null;
+        const captainWarning = crewNode.querySelector('.setup-board205-captain-tbd-warning');
+        if (captainWarning) captainWarning.hidden = crew.captain_person_id != null;
         if (priorCaptain !== draft.captain_person_id) {
           // Only update reusable Captain knowledge when the Captain really
           // changes; declining the optional promotion never cancels crew save.
