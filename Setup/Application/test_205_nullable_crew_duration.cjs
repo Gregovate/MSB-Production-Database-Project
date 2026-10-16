@@ -30,6 +30,7 @@ const ctx = {
   setupNextState:{performBoard:{crews:[crew]},perform:{tasks}},
   document:{getElementById:()=>target},
   board205CrewRow:id=>Number(id)===7?crew:null,
+  board205PlannedCrewForShift:(row,shift)=> row ? (shift==='MORNING' ? row.am_planned_crew_count : shift==='AFTERNOON' ? row.pm_planned_crew_count : null) : null,
   board205Task:id=>tasks.find(t=>t.setup_session_task_id===Number(id)),
   nextPerformCrew:()=>crew,
   nextPerformTask:id=>tasks.find(t=>t.setup_session_task_id===Number(id)),
