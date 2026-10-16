@@ -133,6 +133,9 @@ assert(overloadHtml.includes('5.33 planned linear hours / 3.00 typical shift hou
 const withPmCapacity = structuredClone(overload);
 withPmCapacity.crews[0].am_planned_crew_count = 2;
 withPmCapacity.crews[0].pm_planned_crew_count = 2;
+// 200 min exceeds 180 AM, but fits the staffed 300-minute AM+PM day.
+withPmCapacity.tasks = withPmCapacity.tasks.slice(0, 1);
+withPmCapacity.assignments = withPmCapacity.assignments.slice(0, 1);
 const pmReviewHtml = ctx.setup205ActionCenterHtml(withPmCapacity);
 assert(pmReviewHtml.includes('AM pressure — PM continuation requires review'),
   'Staffed PM must prompt continuation review instead of claiming whole-day overload');
