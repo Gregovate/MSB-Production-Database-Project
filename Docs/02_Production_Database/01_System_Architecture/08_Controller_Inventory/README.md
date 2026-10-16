@@ -217,6 +217,19 @@ Do not resume the Directus Controller relationship workspace experiment. It caus
 
 Directus remains useful as authorization data and optional simple reference maintenance. It is not the Controller operational editor.
 
+## October 16, 2026 — Controller Planner Draft Correction
+
+The currently deployed V0.4.0 planning screen remains the Production baseline.
+A **separate, unaccepted** #110/#111 follow-up under #122 is in draft branch
+`fix/controller-network-uid-explorer-20261016`, based on remote `main`
+`b2d5f8c2f202b228a180bd950187718937c41019`. It makes the complete
+Network-scoped UID inventory searchable without selecting a model, treats
+`Regular`/`regular` as one Network identity, and reserves model selection
+for contiguous UID-block width only. It is **not merged, browser-accepted,
+or deployed**. Run executable regression and disposable acceptance against
+the exact candidate, reconcile newer `main`, and obtain operator approval
+before any merge/deployment. [Authoritative planning contract](Controller_Capacity_and_UID_Planning_Contract_2026-09-02.md).
+
 ## Remaining Work After V0.4.0
 
 The core Controller planning/maintenance system is deployed. Remaining work is narrower:
