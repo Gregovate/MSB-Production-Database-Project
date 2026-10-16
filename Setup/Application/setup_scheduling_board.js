@@ -2703,7 +2703,7 @@ async function board205SaveCrew(crewId, crewNode) {
         // Show the actual rejected API/SQL reason alongside the field. Never
         // imply persistence or silently revert the operator's unsaved input.
         const reason = String(error?.message || error || 'Unknown save failure');
-        board205CrewSaveMessage(crewNode, 'NOT SAVED — ' + reason, true);
+        board205CrewSaveMessage(crewNode, 'Not saved — ' + reason, true);
         setAlert('Crew ' + (crew.crew_code || '') + ' NOT SAVED: ' + reason, 'error');
         ok = false;
         break;
