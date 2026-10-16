@@ -866,15 +866,18 @@ function board205WorkloadBanner(crewId, shift) {
   const dayDemand = am.known + pm.known;
   const mayUsePm = shift === 'MORNING' && amStaffed && pmStaffed;
   const dayOver = dayDemand > dayCapacity;
-  const shiftPressure = w.overload > 0 && mayUsePm && !dayOver;
+  // A blank PM crew is an unresolved staffing decision, not a proven
+  // whole-day overload. Never count those PM hours as committed capacity.
+  const shiftPressure = shift === 'MORNING' && w.overload > 0 &&
+    ((!amStaffed || !pmStaffed) || (mayUsePm && !dayOver));
   const red = w.overload > 0 && !shiftPressure;
   const amber = shiftPressure || w.unknown > 0 || w.notReady > 0 || (shift === 'MORNING' && !pmStaffed && w.overload > 0);
   const color = red ? '#9d2424' : amber ? '#835900' : '#146044';
   const background = red ? '#fff0ef' : amber ? '#fff6dd' : '#eaf8f0';
   const hours = (n) => (n / 60).toFixed(2).replace(/0$/, '').replace(/\.$/, '');
-  const label = red ? 'OVERLOADED' : shiftPressure ? 'AM PRESSURE — REVIEW PM CONTINUATION' : amber ? 'CAPACITY UNCERTAIN' : 'WITHIN CAPACITY';
+  const label = red ? 'OVERLOADED' : shiftPressure ? (pmStaffed ? 'AM PRESSURE — REVIEW PM CONTINUATION' : 'AM PRESSURE — PM CREW UNCONFIRMED') : amber ? 'CAPACITY UNCERTAIN' : 'WITHIN CAPACITY';
   return `<div role="status" style="pointer-events:none;position:relative;z-index:1;border:3px solid ${color};border-radius:7px;background:${background};color:${color};padding:9px;margin:5px 0;font-weight:800">
-    <div style="font-size:1.05rem">${label} · ${hours(w.known)} / ${hours(w.capacity)} linear hours${red ? ` · +${hours(w.overload)}h OVER` : shiftPressure ? ` · PM may absorb ${hours(w.overload)}h if the work can continue` : ''}</div>
+    <div style="font-size:1.05rem">${label} · ${hours(w.known)} / ${hours(w.capacity)} linear hours${red ? ` · +${hours(w.overload)}h OVER` : shiftPressure ? (pmStaffed ? ` · PM may absorb ${hours(w.overload)}h if the work can continue` : ' · AM exceeds typical shift; PM staffing needs a Manager decision') : ''}</div>
     <div style="font-size:.83rem">${w.count} tasks · ${w.unknown} unknown estimates · ${w.notReady} NOT READY</div>
     <div style="font-size:.8rem">AM ${amStaffed ? hours(Math.max(0, am.capacity - am.known)) + 'h remaining' : 'crew not confirmed'} · PM ${pmStaffed ? hours(Math.max(0, pm.capacity - pm.known)) + 'h remaining' : 'crew not confirmed'} · ${hours(dayDemand)}h total planned</div>
   </div>`;
