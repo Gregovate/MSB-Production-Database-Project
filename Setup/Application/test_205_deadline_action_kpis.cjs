@@ -40,7 +40,8 @@ assert.equal(k.tasks.length,5);
 assert.equal(k.complete.length,2);
 assert.equal(k.incomplete.length,3);
 assert.equal(k.partial.length,1);
-assert.equal(k.blocked.length,1); // simultaneous prerequisite and soft readiness = one annual task
+assert.equal(k.blocked.length,1);
+assert(ctx.setup205DeadlineKpiHtml(base,2026).includes('Inspect blocker')); // simultaneous prerequisite and soft readiness = one annual task
 assert.equal(k.notReady.length,1);
 assert.equal(k.scheduled.length,1);
 assert.equal(k.needsRescheduling.length,1);
@@ -99,10 +100,13 @@ assert(managerHtml.includes('data-205-action="report"'), 'original report naviga
 assert(managerHtml.includes('data-205-action="schedule"'), 'continuation must use existing scheduler');
 ctx.appState.access.can_manage_setup=false;
 assert(!ctx.setup205DeadlineKpiHtml(base,2026).includes('Manager Setup Action Center'), 'Manager-only action worklist must not leak');
-assert(managerHtml.includes('Review Manager daily email wording — draft only'));
-assert(managerHtml.includes('Review Captain reminder instructions — draft only'));
-assert(managerHtml.includes('NO EMAIL SENT'));
-assert(managerHtml.includes('Minutes worked'));
-assert(managerHtml.includes('Date work actually happened'));
-assert(!managerHtml.includes('mailto:'), 'review draft must not leak recipients or send email');
-console.log('PASS #205 Manager read-only Action Center, permission gating, route action hooks');
+assert(!managerHtml.includes('setup205-email-preview'), 'mail must remain parked');
+assert(!managerHtml.includes('data-205-action="request-report"'), 'no notification action on production candidate');
+assert(managerHtml.includes('data-205-action="planning"'), 'Manager blockers must have navigation');
+assert(managerHtml.includes('data-205-action="report"'), 'unreported original must be directly reachable');
+assert(managerHtml.includes('data-205-action="schedule"'), 'unfinished continuation must open scheduling');
+assert(!managerHtml.includes('mailto:'), 'no email controls in the launch candidate');
+const hidden = ctx.setup205DeadlineKpiHtml(base,2026);
+assert(!hidden.includes('Inspect blocker'), 'unprivileged staff must not see Manager task details');
+assert(!hidden.includes('Open original work report'), 'unprivileged staff must not see history-specific Manager links');
+console.log('PASS #205 Manager Action Center, actionable drilldowns, access and paused mail');
