@@ -675,16 +675,18 @@ def test_122_b1a_pre2026_compact_editor_writes_reusable_catalog_only() -> None:
     assert "annual_" not in block
 
 
-def test_122_b1a_open_full_reusable_saves_compact_edits_first() -> None:
+def test_122_b1a_open_full_reusable_preserves_unsaved_draft_without_save() -> None:
     ui = read_app("setup_scheduling_board.js")
-
     assert "function board205PlanningInfoDirty()" in ui
     assert "async function board205PersistPlanningInfo(" in ui
-    assert "if (board205PlanningInfoDirty()) {" in ui
-    assert "board205PersistPlanningInfo({ closeDialog: false, announce: false })" in ui
-    assert "Planning edits saved before opening the full reusable task." in ui
-    assert "await reloadTasks(reusableTaskId);" in ui
-    assert "await setupNavigateToReusableTaskFromFinder(reusableTaskId);" in ui
+    opener = ui.split(
+        "document.getElementById('setup-board205-open-full-reusable')?.addEventListener",1
+    )[1].split("document.getElementById('setup-board205-season-form')",1)[0]
+    assert "board205PlanningInfoDirty() ? board205PlanningDraft() : null" in opener
+    assert "setupNavigateToReusableTaskFromFinder(reusableTaskId)" in opener
+    assert "edit-crew-min" in opener and "edit-crew-max" in opener
+    assert "board205PersistPlanningInfo(" not in opener
+    assert "Review the crew range, then Save Reusable Task" in opener
 
 
 def test_122_b1a_pre2026_finder_hides_deferred_and_filters_soft_readiness() -> None:
