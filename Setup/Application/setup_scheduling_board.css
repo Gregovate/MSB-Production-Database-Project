@@ -2113,3 +2113,27 @@ html[data-theme="dark"] .setup-board205-badge.effort-heavy {
     max-height: none;
   }
 }
+
+/* #205 second browser review: the day summary/header must never stretch
+   outside the right pane; the crew grid can scroll horizontally inside it. */
+.setup-board205-right,
+.setup-board205-board,
+.setup-board205-day {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+.setup-board205-day {
+  overflow: clip;
+  overflow-clip-margin: 0;
+}
+.setup-board205-day-header {
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.setup-board205-table-wrap {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
