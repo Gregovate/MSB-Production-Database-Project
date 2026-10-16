@@ -373,3 +373,13 @@ the inventory, includes the number of candidate starting addresses and bounds
 its block list with independent scrolling. The Network inventory remains
 model-independent. Requires fresh exact-candidate browser acceptance; do not
 interpret source correction as deployed or accepted behavior.
+
+## 2026-10-16 — Individual vs contiguous UID presentation
+
+Operator screenshots of the Controller planner showed that PixCon16 was listed as
+one UID in the governed model metadata, while Pixie2D/4D/8D use multi-UID
+blocks. Physical output/channel count must not be confused with LOR UID width.
+The draft #406 browser now labels one-UID choices as **Available individual UIDs**
+in a compact grid; models with width greater than one retain contiguous block
+ranges. The UID availability rules and model metadata were not changed.
+Exact-candidate regression/browser acceptance of this presentation is pending.
