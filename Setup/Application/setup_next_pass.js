@@ -1386,8 +1386,9 @@ function nextRescheduleNoWorkCrewOptions() {
   ).join('') + '<option value="NEW_CREW">+ Create a new crew</option>';
   if ([...crewSelect.options].some(option => option.value === selected)) crewSelect.value = selected;
   const isNew = crewSelect.value === 'NEW_CREW';
+  const group = Boolean(dialog.dataset.assignmentIds);
   const shift = dialog.querySelector('#next-reschedule-shift');
-  if (isNew) {
+  if (isNew || group) {
     shift.value = dialog.dataset.originalShift;
     shift.disabled = true;
   } else {
@@ -1425,6 +1426,7 @@ function nextOpenRescheduleNoWorkDialog(assignmentId) {
   const oldDay = nextPerformDay(assignment.setup_work_day_id);
   const oldCrew = nextPerformCrew(assignment);
   dialog.dataset.assignmentId = String(assignmentId);
+  dialog.dataset.assignmentIds = '';
   dialog.dataset.originalShift = assignment.shift_code;
   dialog.querySelector('#next-reschedule-original').textContent =
     (task?.task_name || assignment.task_name || 'Setup task') +
@@ -1444,23 +1446,56 @@ function nextOpenRescheduleNoWorkDialog(assignmentId) {
   dialog.showModal();
 }
 
+// During weather or a cancelled volunteer shift, the Manager can move every
+// confirmed unworked assignment together. If ANY assignment gained a report,
+// server progress locks reject the entire transaction, preserving history.
+function nextOpenRescheduleNoWorkBatch(dayId, shift) {
+  if (!appState.access?.can_manage_setup || !['MORNING','AFTERNOON'].includes(shift)) return;
+  const day = nextPerformDay(dayId);
+  const items = (setupNextState.performBoard.assignments || [])
+    .filter(item => Number(item.setup_work_day_id) === Number(dayId)
+      && item.shift_code === shift && nextCanRescheduleNoWork(item));
+  if (!items.length) {
+    setAlert('No unworked and movable assignments remain in this shift.', 'error');
+    return;
+  }
+  if (items.length > 25) {
+    setAlert('This shift has more than 25 unworked tasks. Move smaller groups; no task was changed.', 'error');
+    return;
+  }
+  nextOpenRescheduleNoWorkDialog(Number(items[0].setup_work_day_task_id));
+  const dialog = document.getElementById('next-reschedule-no-work-dialog');
+  if (!dialog?.open) return;
+  dialog.dataset.assignmentIds = JSON.stringify(items.map(item =>
+    Number(item.setup_work_day_task_id)));
+  dialog.querySelector('#next-reschedule-original').textContent =
+    items.length + ' unworked tasks on ' + (day?.work_date || 'original workday') +
+    ' · ' + (shift === 'MORNING' ? 'AM' : 'PM') +
+    ': ' + items.map(item => item.task_name).join(', ');
+  dialog.querySelector('#next-reschedule-shift').value = shift;
+  nextRescheduleNoWorkCrewOptions();
+}
+
 async function nextSubmitRescheduleNoWork(event) {
   event.preventDefault();
   if (!appState.access?.can_manage_setup) return;
   const dialog = document.getElementById('next-reschedule-no-work-dialog');
   const assignmentId = Number(dialog?.dataset.assignmentId || 0);
   const board = setupNextState.performBoard;
-  const assignment = (board.assignments || []).find(
-    row => Number(row.setup_work_day_task_id) === assignmentId
-  );
-  if (!assignment || !nextCanRescheduleNoWork(assignment)) {
+  const groupIds = dialog?.dataset.assignmentIds ? JSON.parse(dialog.dataset.assignmentIds) : null;
+  const selectedIds = groupIds || [assignmentId];
+  if (!selectedIds.length || selectedIds.length > 25) return;
+  const selected = selectedIds.map(id => (board.assignments || []).find(
+    row => Number(row.setup_work_day_task_id) === Number(id)));
+  const assignment = selected[0];
+  if (selected.some(row => !row || !nextCanRescheduleNoWork(row))) {
     setAlert('This original assignment cannot be moved: work/history is present or access changed.', 'error');
     return;
   }
   const dayId = Number(dialog.querySelector('#next-reschedule-day').value);
   const crewChoice = dialog.querySelector('#next-reschedule-crew').value;
   const crewId = Number(crewChoice);
-  const shift = crewChoice === 'NEW_CREW' ? assignment.shift_code
+  const shift = crewChoice === 'NEW_CREW' || groupIds ? assignment.shift_code
     : dialog.querySelector('#next-reschedule-shift').value;
   const targetDay = (board.work_days || []).find(day =>
     Number(day.setup_work_day_id) === dayId
@@ -1476,15 +1511,16 @@ async function nextSubmitRescheduleNoWork(event) {
     setAlert('Choose a valid future workday and destination crew/shift.', 'error');
     return;
   }
-  if (dayId === Number(assignment.setup_work_day_id) &&
+  if (selected.every(item => dayId === Number(item.setup_work_day_id) &&
       crewChoice !== 'NEW_CREW' &&
-      crewId === Number(assignment.setup_work_day_crew_id) &&
-      shift === assignment.shift_code) {
+      crewId === Number(item.setup_work_day_crew_id) &&
+      shift === item.shift_code)) {
     setAlert('Choose a different day, crew or shift to reschedule.', 'error');
     return;
   }
   if (!window.confirm(
-    'Confirm NO WORK WAS PERFORMED on the original assignment?\\n\\n' +
+    'Confirm NO WORK WAS PERFORMED on ALL ' + selected.length +
+    ' selected original assignment(s)?\\n\\n' +
     'The task will move to ' + targetDay.work_date + ' ' +
     (shift === 'MORNING' ? 'AM' : 'PM') + '.\\n' +
     'This removes its old Late / No Work Reported warning.\\n' +
@@ -1495,7 +1531,14 @@ async function nextSubmitRescheduleNoWork(event) {
     setBusy(true);
     if (crewChoice === 'NEW_CREW') {
       await api('api/setup/scheduling-board/work-days/' + dayId + '/crews/with-tasks',
-        commandOptions('POST', {items:[{kind:'assignment',id:assignmentId}]}));
+        commandOptions('POST', {items:selectedIds.map(id => ({kind:'assignment',id}))}));
+    } else if (groupIds) {
+      await api('api/setup/scheduling-board/assignments/bulk-reschedule',
+        commandOptions('POST',{
+          assignment_ids:selectedIds,
+          setup_work_day_id:dayId,
+          setup_work_day_crew_id:crewId
+        }));
     } else {
       const existing = (board.assignments || []).filter(item =>
         Number(item.setup_work_day_id) === dayId &&
@@ -2199,6 +2242,12 @@ function renderNextExecution() {
           return `
             <div class="next-perform-shift">
               <h4>${escapeHtml(shift === 'MORNING' ? 'AM' : shift === 'AFTERNOON' ? 'PM' : 'All Day')}</h4>
+              ${appState.access?.can_manage_setup && shift !== 'ALL_DAY' &&
+                shiftItems.some(a => nextCanRescheduleNoWork(a))
+                ? '<button type="button" class="small secondary next-reschedule-unworked-shift" data-day-id="' +
+                  Number(day.setup_work_day_id) + '" data-shift="' + escapeHtml(shift) +
+                  '">Reschedule unworked ' + escapeHtml(shift === 'MORNING' ? 'AM' : 'PM') + ' tasks…</button>'
+                : ''}
               ${crewIds.map((crewId) => {
                 const crew = (board.crews || []).find((item) => Number(item.setup_work_day_crew_id) === crewId);
                 const crewItems = shiftItems
@@ -2260,6 +2309,13 @@ function renderNextExecution() {
       }
     });
   }
+
+  target.querySelectorAll('.next-reschedule-unworked-shift').forEach(button => {
+    button.addEventListener('click', event => {
+      event.preventDefault();
+      nextOpenRescheduleNoWorkBatch(Number(button.dataset.dayId), button.dataset.shift);
+    });
+  });
 
   target.querySelectorAll('.next-perform-assignment').forEach((details) => {
     details.querySelector('.next-report-work')?.addEventListener('click', async (event) => {
