@@ -2041,7 +2041,7 @@ function board205Day(day) {
     const printEmptyCrew = !meaningfulCrewIds.has(Number(crew.setup_work_day_crew_id));
     return `
       <div class="setup-board205-crew-row${printEmptyCrew ? ' print-empty-crew' : ''}">
-        <div class="setup-board205-crew-label" data-crew-id="${crew.setup_work_day_crew_id}">
+        <div class="setup-board205-crew-label" data-crew-letter="${board205Esc(crew.crew_code)}" data-crew-id="${crew.setup_work_day_crew_id}">
           <div class="setup-board205-crew-title-row">
             <div class="setup-board205-crew-title-context">
               <strong>Crew ${board205Esc(crew.crew_code)} <span class="setup-board205-crew-day-context">· ${board205Esc(compactDay)}</span></strong>
