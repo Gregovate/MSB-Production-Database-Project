@@ -51,6 +51,14 @@ def test_probe_shares_existing_disposable_clone_not_new_runtime():
         assert phrase not in PROBE
 
 
+def test_directus_access_join_has_explicit_disposable_uuid_id():
+    # Real Directus 11.17.1 disposable attempt 2026-10-15 stopped
+    # on NOT NULL directus_access.id when role/policy-only INSERT was used.
+    assert "INSERT INTO public.directus_access (id,role,policy)" in PROBE
+    assert "VALUES (gen_random_uuid(),'$role_id'::uuid,'$policy_id'::uuid)" in PROBE
+    assert "INSERT INTO public.directus_access (role,policy)" not in PROBE
+
+
 def test_scoped_policy_no_admin_and_only_user_create_fields():
     assert "admin_access,app_access" in PROBE
     assert "false,false" in PROBE
