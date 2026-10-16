@@ -144,10 +144,10 @@ assert(disclosure === -1, 'No detailed breakdown may precede the Scheduling Boar
 assert(compact.includes('Total <strong>5</strong>'));
 assert(compact.includes('Completed <strong>2</strong>'));
 assert(compact.includes('Remaining <strong>3</strong>'));
-assert(compact.includes('Blocked / NOT READY <strong>1</strong>'));
+assert(compact.includes('Need attention <strong>1</strong>'));
 assert(compact.includes('Actual last 7 days <strong>0.1/day</strong>'));
 assert(compact.includes('Required <strong>0.1/day</strong>'));
-assert(compact.includes('Projected finish <strong>Not yet reliable</strong>'));
+assert(compact.includes('Projected finish <strong>Not enough data</strong>'));
 assert(!compact.includes('setup205-action-group'),
   'Manager worklists must never appear on the scheduling/perform summary');
 assert(disclosure === -1, 'even collapsed large manager reports belong to a different tab');
