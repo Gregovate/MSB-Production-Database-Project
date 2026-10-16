@@ -2030,3 +2030,9 @@ html[data-theme="dark"] .setup-board205-badge.effort-heavy {
   background: var(--accent-soft, #e3f5ff);
   color: var(--text, #172033);
 }
+
+/* The crew-creation control is interactive, not part of the printed schedule. */
+@media print {
+  .setup-board205-new-crew-row,
+  .setup-board205-crew-save-status { display: none !important; }
+}
