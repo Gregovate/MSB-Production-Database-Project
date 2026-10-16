@@ -2092,3 +2092,24 @@ html[data-theme="dark"] .setup-board205-badge.effort-heavy {
 .setup-board205-crew-label[data-crew-letter="D"] { border-left: 0.5rem solid #9864bd; }
 .setup-board205-crew-label[data-crew-letter="E"] { border-left: 0.5rem solid #b84b6a; }
 .setup-board205-crew-label[data-crew-letter="F"] { border-left: 0.5rem solid #328e9a; }
+
+/* #205 V0.3.71: the right-hand scheduling surface owns its scrolling.
+   The planning controls move off-screen when working down the board; the
+   individual Setup Day headers remain sticky at the top of that same pane. */
+@media screen and (min-width: 1101px) {
+  .setup-board205-right {
+    display: block;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+  .setup-board205-right > .setup-board205-planning-header {
+    position: static;
+    margin-bottom: 0.75rem;
+  }
+  .setup-board205-right > .setup-board205-board {
+    overflow-y: visible;
+    height: auto;
+    max-height: none;
+  }
+}
