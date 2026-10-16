@@ -1156,7 +1156,7 @@ function nextCorrectionIntakeMarkup(sessionTaskId, assignmentId) {
         <label>Suggested correction / evidence <span class="muted">(optional)</span>
           <textarea class="next-suggestion-text" rows="2" maxlength="2000"></textarea>
         </label>
-        <button type="submit" class="next-report-correction-submit">Report Correction</button>
+        <button type="submit" class="next-report-correction-submit">Task Feedback</button>
         <div class="next-problem-result" aria-live="polite"></div>
       </form>
     </section>`;
@@ -1323,7 +1323,7 @@ function nextPerformAssignmentCard(assignment) {
         <button type="button" class="small secondary next-print-task">Print Task</button>
         <button type="button" class="small next-report-work">${annualComplete ? 'Review Work History' : 'Report Work'}</button>
         ${nextCanRescheduleNoWork(assignment, task) ? '<button type="button" class="small secondary next-reschedule-no-work">Reschedule · No work performed</button>' : ''}
-        <button type="button" class="small next-report-problem next-report-correction-action"${nextCanSubmitFieldFinding() ? '' : ' disabled title="Report Correction requires Production Crew or Manager access"'}>Report Correction</button>
+        <button type="button" class="small next-report-problem next-report-correction-action"${nextCanSubmitFieldFinding() ? '' : ' disabled title="Report Correction requires Production Crew or Manager access"'}>Task Feedback</button>
       </div>
       <div class="next-perform-body" hidden></div>
     </details>`;
@@ -1519,6 +1519,46 @@ async function nextSubmitRescheduleNoWork(event) {
   } finally {
     setBusy(false);
   }
+}
+
+// Inline Report Work help never reloads or discards unsaved field inputs.
+function nextReportHelpButton(kind) {
+  return '<span class="next-report-help" role="button" tabindex="0" data-help="' +
+    kind + '" aria-label="Help with ' + kind + '" title="Help with ' + kind + '">?</span>';
+}
+const NEXT_REPORT_FIELD_HELP = Object.freeze({
+  date: '1. Choose the day the work ACTUALLY happened, not necessarily the scheduled date. 2. Verify both dates before saving.',
+  crew: '1. Count people who actually worked, including the Captain if they worked. 2. Do not enter the planned crew estimate.',
+  hours: '1. Enter whole elapsed hours actually worked. 2. If the work lasted under one hour, enter 0 Hours and actual Minutes.',
+  minutes: '1. Enter remaining minutes 0 through 59. 2. Example: 1 hour 30 minutes is Hours = 1 and Minutes = 30. 3. Do not guess.',
+  percent: '1. Enter the percent of the WHOLE task completed cumulatively. 2. It is blank until you enter real progress. 3. Under 100 percent requires a note about what remains.',
+  notes: 'Describe work actually done. If the entire task is unfinished, explain what remains. If no work happened, ask a Manager to reschedule—do not invent a report.'
+});
+function wireNextReportHelp(form) {
+  if (!form) return;
+  const panel = form.querySelector('.next-report-help-panel');
+  const text = panel?.querySelector('.next-report-help-text');
+  if (!panel || !text) return;
+  const open = (event, button) => {
+    const message = NEXT_REPORT_FIELD_HELP[button?.dataset.help];
+    if (!message) return;
+    event.preventDefault();
+    event.stopPropagation();
+    text.textContent = message;
+    panel.hidden = false;
+    button.setAttribute('aria-expanded','true');
+  };
+  form.querySelectorAll('.next-report-help').forEach(button => {
+    button.addEventListener('click', event => open(event, button));
+    button.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') open(event, button);
+    });
+  });
+  panel.querySelector('.next-report-help-close')?.addEventListener('click', () => {
+    panel.hidden = true;
+    form.querySelectorAll('.next-report-help').forEach(button =>
+      button.setAttribute('aria-expanded','false'));
+  });
 }
 
 function nextPerformLaborKpis(assignments) {
@@ -2550,13 +2590,18 @@ async function loadNextTaskExecution(details, focusReport = false) {
         data-session-task-id="${sessionTaskId}"
         data-assignment-id="${assignmentId}">
         <div class="next-report-work-grid">
-          <label class="next-work-key-field next-work-date-field">Date work actually happened<input class="next-performed-on" type="date" value="${escapeHtml(day?.work_date || assignment?.work_date || '')}" required><small>Scheduled: ${escapeHtml(day?.work_date || assignment?.work_date || 'unknown')}. Change this if the crew worked another day.</small></label>
-          <label class="next-work-key-field">Actual crew size<input class="next-crew" type="number" min="1" inputmode="numeric" placeholder="People who worked" required><small>Include the Captain if they worked.</small></label>
-          <label class="next-work-key-field">Hours worked<input class="next-duration-hours" type="number" min="0" step="1" inputmode="numeric" placeholder="0" required></label>
-          <label class="next-work-key-field next-work-minutes-field">Minutes worked<input class="next-duration-minutes" type="number" min="0" max="59" step="1" inputmode="numeric" placeholder="0–59" required><small>Enter minutes, even when less than one hour.</small></label>
-          <label class="next-work-key-field">Whole task % complete<input class="next-percent-complete" type="number" min="1" max="100" step="1" inputmode="numeric" value="${lastPercent >= 1 ? lastPercent : ''}" required></label>
+          <label class="next-work-key-field next-work-date-field"><span class="next-work-field-label">Date work actually happened ${nextReportHelpButton('date')}</span><input class="next-performed-on" type="date" value="${escapeHtml(day?.work_date || assignment?.work_date || '')}" required><small>Scheduled: ${escapeHtml(day?.work_date || assignment?.work_date || 'unknown')}. Change this if the crew worked another day.</small></label>
+          <label class="next-work-key-field next-work-crew-field"><span class="next-work-field-label">Actual crew size ${nextReportHelpButton('crew')}</span><input class="next-crew" type="number" min="1" inputmode="numeric" placeholder="People who worked" required><small>Include the Captain if they worked.</small></label>
+          <label class="next-work-key-field next-work-hours-field"><span class="next-work-field-label">Hours worked ${nextReportHelpButton('hours')}</span><input class="next-duration-hours" type="number" min="0" step="1" inputmode="numeric" placeholder="0" required></label>
+          <label class="next-work-key-field next-work-minutes-field"><span class="next-work-field-label">Minutes worked ${nextReportHelpButton('minutes')}</span><input class="next-duration-minutes" type="number" min="0" max="59" step="1" inputmode="numeric" placeholder="0–59" required><small>Enter minutes, even when less than one hour.</small></label>
+          <label class="next-work-key-field next-work-percent-field"><span class="next-work-field-label">Whole task % complete ${nextReportHelpButton('percent')}</span><input class="next-percent-complete" type="number" min="1" max="100" step="1" inputmode="numeric" value="${lastPercent >= 1 ? lastPercent : ''}" required></label>
+          <div class="next-report-help-panel" role="note" aria-live="polite" hidden>
+            <span class="next-report-help-text"></span>
+            <button type="button" class="small secondary next-report-help-close">Close help</button>
+            <a target="_blank" rel="noopener" href="https://github.com/Gregovate/MSB-Production-Database-Project/blob/main/Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/operatorSOP/Perform_and_Report_Setup_Work.md">Full Report Work instructions</a>
+          </div>
         </div>
-        <label class="next-report-note">What was done / what remains<textarea class="next-note" rows="3" placeholder="Required when the task is not 100% complete"></textarea></label>
+        <label class="next-report-note"><span class="next-work-field-label">What was done / what remains ${nextReportHelpButton('notes')}</span><textarea class="next-note" rows="3" placeholder="Required when the task is not 100% complete"></textarea></label>
         <details class="next-report-quantity-details">
           <summary>Add quantity detail (optional)</summary>
           <div class="next-report-quantity-grid">
@@ -2572,6 +2617,7 @@ async function loadNextTaskExecution(details, focusReport = false) {
     details.dataset.loaded = '1';
     const form = body.querySelector('.next-report-work-form');
     form?.addEventListener('submit', submitNextProgress);
+    wireNextReportHelp(form);
     wireNextCorrectionIntake(body);
     body.querySelectorAll('.next-progress-correction-form').forEach(
       (correctionForm) => correctionForm.addEventListener('submit', submitNextProgressCorrection)
