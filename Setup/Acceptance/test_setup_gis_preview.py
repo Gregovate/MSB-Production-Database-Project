@@ -48,7 +48,18 @@ for url in ['/fieldwiring/fieldwiring.css','/fieldwiring/fieldwiring.js',
     assert client.get(url).status_code == 200, url
 field_health = client.get('/fieldwiring/api/health')
 assert field_health.status_code == 200, (field_health.status_code, field_health.text)
-assert field_health.json['version'] == 'V0.4.1-gis-entry', field_health.json
+# Compare mounted runtime with the exact checked-out FieldWiring release,
+# including when main integrates a newer FieldWiring version.
+import ast
+field_source = ast.parse((root / 'FieldWiring' / 'Application' / 'backend.py').read_text(encoding='utf-8'))
+field_version = next(
+    statement.value.value
+    for statement in field_source.body
+    if isinstance(statement, ast.Assign)
+    and any(isinstance(target, ast.Name) and target.id == 'APP_VERSION' for target in statement.targets)
+    and isinstance(statement.value, ast.Constant)
+)
+assert field_health.json['version'] == field_version, (field_health.json, field_version)
 assert client.get('/setup/api/health').json['version'] == PRODUCTION_VERSION
 assert client.post('/setup/locate/').status_code == 405
 '''
