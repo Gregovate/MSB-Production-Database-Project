@@ -1,6 +1,34 @@
 # #205 Whole-Setup KPI / Action Center / Report Work — Browser Candidate
 
-## CURRENT V0.3.83 — crew colors visible across Scheduling Board cells
+## CURRENT V0.3.84 — explicit per-cell crew colors (source PASS; browser PENDING)
+
+Exact source `723a733ffbea516519c6dd7a20ec75faca10a9c4`; build `V0.3.84-direct-crew-cells`; [CI #38967633028](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38967633028) PASS Setup and FieldWiring full, including new direct-cell color markup contract. Existing #205 PR #394 remains draft, Production unchanged.
+
+V0.3.83 operator browser review **REJECTED** for still-neutral Crew A/B despite earlier CSS; the parent grid row uses `display: contents`, so CSS relying on inherited row color did not render as intended. V0.3.84 explicitly places `data-crew-letter` on each existing AM and PM cell, and applies distinct strong background and border colors directly to both cells and Crew labels in light/dark themes. No scheduling or reporting behavior is changed. Previously accepted Perform Work distinct day boxes, task identification, one-line warnings, sticky navigation and quick editor are preserved.
+
+Use only the existing governed one-clone disposable browser preview (port 8898) from the clean existing #205 desktop review worktree, after old-preview CLEAN EXIT and port ownership validation.
+
+```powershell
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
+    -PreviewPort 8898 `
+    -CandidateSha '723a733ffbea516519c6dd7a20ec75faca10a9c4' `
+    -TargetRef 'fix/205-setup-deadline-kpis-20261015' `
+    -ExpectedVersion 'V0.3.84-direct-crew-cells' `
+    -MigrationPaths @(
+        'Setup/Database/075_allow_setup_planned_crew_count_corrections.sql',
+        'Setup/Database/076_capture_2026_reusable_task_estimates.sql'
+    ) `
+    -ValidationPaths @(
+        'Setup/Acceptance/setup_205_planned_crew_count_disposable_validation.sql',
+        'Setup/Acceptance/setup_205_2026_catalog_estimate_disposable_validation.sql'
+    )
+```
+
+Visual acceptance: Crew A blue, B green, C amber, D purple visibly across Captain label and both AM/PM cells in light and dark mode. Do not alter workday layout, assignments, task cards or statuses. The disposable clone must pass both SQL validations and print `BROWSER REVIEW READY` before review; obtain operator verdict and CLEAN EXIT. No Production deployment without #122 approval.
+
+---
+
+## ARCHIVED V0.3.83 — crew colors visible across Scheduling Board cells
 
 **Exact source:** `60464f2384ffd0a54ef6bc2fc278ab5bbaa8809d`; **version:** `V0.3.83-crew-cell-colors`; [Actions #38966976928](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38966976928) **PASS** Setup and FieldWiring full regressions. Existing draft PR #394 under #205/#122. Source tested; current-Production-derived disposable SQL and browser acceptance **pending**; Production unchanged.
 
