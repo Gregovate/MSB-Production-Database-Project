@@ -45,3 +45,18 @@ def test_version_and_asset_pins_change_together():
     assert "2026-10-16.71" in html
     assert "V0.3.71-operator-review-corrections" in source("production_backend.py")
     assert "V0.3.71-operator-review-corrections" in source("setup_catalog_dirty_guard.js")
+
+
+def test_new_crew_move_preserves_captain_inside_one_guarded_transaction():
+    ui = source("setup_next_pass.js")
+    api = source("setup_scheduling_board_api.py")
+    repo = source("setup_scheduling_board_repository.py")
+    assert "captain_person_id: dialog.dataset.preferredCaptain" in ui
+    assert 'captain_person_id=nullable_int(payload.get("captain_person_id"), "captain_person_id")' in api
+    start = repo.index("def add_crew_with_tasks(")
+    end = repo.index("def update_crew(", start)
+    atomic = repo[start:end]
+    assert "ops.add_setup_work_day_crew" in atomic
+    assert "ops.update_setup_work_day_crew" in atomic
+    assert "ops.update_setup_work_day_assignment" in atomic
+    assert "conn.commit()" in atomic
