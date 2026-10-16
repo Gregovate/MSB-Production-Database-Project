@@ -3384,9 +3384,25 @@ function board205OpenPlanningInfoDialog(sessionTaskId = null, reusableTaskId = n
     : (setupBoard205State.board.tasks || []).find(
         (row) => Number(row.setup_task_id) === Number(reusableId)
       );
+  if (!task) return;
+  // Reusable estimates belong in the established Catalog editor, not a
+  // competing Scheduling Board form. The governed 2026 sync owns the annual
+  // planning snapshot; actual work and history remain separate.
+  if (task.task_origin === 'REUSABLE' && task.setup_task_id) {
+    const catalogId = Number(task.setup_task_id);
+    void (async () => {
+      if (typeof setupNavigateToReusableTaskFromFinder !== 'function') {
+        throw new Error('Reusable Task Catalog navigation is unavailable.');
+      }
+      await reloadTasks(catalogId);
+      await setupNavigateToReusableTaskFromFinder(catalogId);
+    })().catch(error => setAlert(
+      'Unable to open the Reusable Task Catalog: ' + (error.message || error), 'error'));
+    return;
+  }
   const dialog = document.getElementById('setup-board205-planning-dialog');
   const form = document.getElementById('setup-board205-planning-form');
-  if (!task || !dialog || !form) return;
+  if (!dialog || !form) return;
 
   setupBoard205State.editPlanningTaskId = sessionTaskId || null;
   setupBoard205State.editPlanningReusableTaskId = Number(task.setup_task_id || reusableId || 0) || null;
