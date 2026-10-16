@@ -908,3 +908,43 @@ button.tab[data-view="action-center"]:focus-visible {
   outline: 3px solid var(--text, #172033);
   outline-offset: 2px;
 }
+
+/* #205 second browser review: style the actual KPI button, not only the tab. */
+.setup205-kpi-glance .setup205-open-action-center {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.7rem;
+  padding: 0.55rem 1rem;
+  background: var(--accent, #14658b);
+  border: 2px solid var(--accent, #14658b);
+  border-radius: 0.5rem;
+  color: #fff;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+html[data-theme="dark"] .setup205-kpi-glance .setup205-open-action-center {
+  background: #2a7fb5;
+  border-color: #80bfeb;
+  color: #fff;
+}
+.setup205-kpi-glance .setup205-open-action-center:focus-visible {
+  outline: 3px solid var(--text, #172033);
+  outline-offset: 2px;
+}
+/* Put controls below consistent task context, rather than inline within sentences. */
+.setup205-action-center .setup205-action-group li {
+  padding: 0.65rem 0.85rem;
+  margin: 0.35rem 0;
+  border: 1px solid var(--border, #c5d3df);
+  border-radius: 0.4rem;
+  background: var(--panel, #fff);
+  line-height: 1.55;
+}
+.setup205-action-center .setup205-action-group li .setup205-action {
+  display: flex;
+  width: fit-content;
+  margin: 0.45rem 0 0;
+}
