@@ -1,6 +1,34 @@
 # #205 Whole-Setup KPI / Action Center / Report Work — Browser Candidate
 
-## CURRENT V0.3.80 — one compact sticky search row, no duplicate day header
+## CURRENT V0.3.81 — compact Perform Work shift status and identified Report Work form
+
+**Source CI PASS; disposable SQL/browser acceptance PENDING.** Exact candidate application SHA `d37bfa11f1a6b8f851c3f15c4f674c4df4c4a2fb`, build `V0.3.81-compact-perform-status`. [CI #38964298696](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38964298696) PASS: full Setup and FieldWiring jobs. Existing #205 draft PR #394 under #122; Production unchanged.
+
+**Operator changes since V0.3.80:** The Perform Work crew/shift warning is one line using the same compact terminology as Scheduling (STAFFING NOT CONFIRMED, OVERLOADED, SHIFT OK; elapsed task-hours scheduled, time remaining, relevant estimates/readiness exceptions only). Report Work now presents the specific task name and Setup Day/date/shift/crew immediately above the actual work inputs; the identity strip stays with the form while scrolling. Preserve existing save, actual-crew, Hours/Minutes, percent, feedback, report history, planning and 2026 two-way Catalog sync. The earlier approved V0.3.80 sticky day/date, quick Planning Info dialog, task search, Kit Inventory navigation, and other integrated #205 repairs remain in the same candidate.
+
+**ONE governed disposable/browser run** from the dedicated clean/fast-forwarded desktop worktree `C:\Users\Greg\Github\MSB-Production-Database-Project-205-review`, branch `fix/205-setup-deadline-kpis-20261015`. Never switch the primary #395 checkout. Confirm prior preview documented CLEAN EXIT and port 8898 ownership. One clone, apply migrations 075/076 and BOTH rollback SQL validations; no `BROWSER REVIEW READY` before all checks pass.
+
+```powershell
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
+    -PreviewPort 8898 `
+    -CandidateSha 'd37bfa11f1a6b8f851c3f15c4f674c4df4c4a2fb' `
+    -TargetRef 'fix/205-setup-deadline-kpis-20261015' `
+    -ExpectedVersion 'V0.3.81-compact-perform-status' `
+    -MigrationPaths @(
+        'Setup/Database/075_allow_setup_planned_crew_count_corrections.sql',
+        'Setup/Database/076_capture_2026_reusable_task_estimates.sql'
+    ) `
+    -ValidationPaths @(
+        'Setup/Acceptance/setup_205_planned_crew_count_disposable_validation.sql',
+        'Setup/Acceptance/setup_205_2026_catalog_estimate_disposable_validation.sql'
+    )
+```
+
+**Initial operator checks:** Perform Work compact one-line shift warning without zero-count clutter; expand an assignment and scroll Report Work to confirm task name + correct day/date/AM-PM/crew remain evident while entering data. Then integrated previous corrections: sticky Setup Day/date next to search, quick reusable Planning Info and distinct Full Catalog button, save/readback crew counts, real task-hour classification, 2026 two-way Catalog↔annual planning sync (including reported task while preserving actual reports), rescheduling date choices, Action Center, Kit navigation, and Report Work scroll/help/feedback. Operator approval is separate, require CLEAN EXIT; draft PR/release gate remains CLOSED.
+
+---
+
+## ARCHIVED V0.3.80 — one compact sticky search row, no duplicate day header
 
 **Source CI PASS, disposable PostgreSQL and browser PENDING.** Exact source SHA `92e706d40c5206366be5c67222afb6a14b7db27d`, version `V0.3.80-single-sticky-row`, [Setup CI #38962008182](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38962008182) PASS (838 Setup Python tests, #205 JavaScript including sticky day behavior, FieldWiring). PR #394 remains draft; Production unchanged.
 
