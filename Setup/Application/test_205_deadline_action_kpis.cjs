@@ -103,7 +103,7 @@ assert.equal(ctx.setup205ActionCenterHtml(base),'','Manager-only worklist must n
 assert(!ctx.setup205DeadlineKpiHtml(base,2026).includes('Manager Action Center →'), 'Manager-only navigation must not leak');
 assert(!managerHtml.includes('setup205-email-preview'), 'mail must remain parked');
 assert(!managerHtml.includes('data-205-action="request-report"'), 'no notification action on production candidate');
-assert(managerHtml.includes('data-205-action="planning"'), 'Manager blockers must have navigation');
+assert(ctx.setup205ManagementReportHtml(base,2026).includes('data-205-action="planning"'), 'Manager blocked-task details must retain navigation');
 assert(managerHtml.includes('data-205-action="report"'), 'unreported original must be directly reachable');
 assert(managerHtml.includes('data-205-action="schedule"'), 'unfinished continuation must open scheduling');
 assert(!managerHtml.includes('mailto:'), 'no email controls in the launch candidate');
