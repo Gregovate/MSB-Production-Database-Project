@@ -714,3 +714,42 @@
 .next-report-work-form .next-report-work-grid .next-work-date-field input {
   border-color: #a65a16;
 }
+
+/* #205: Manager-only correction to an unworked schedule, not a fake report.
+   Short dialog remains usable on laptop and tablet; no dependence on the
+   optional task field-context request, which may be unavailable. */
+.next-reschedule-no-work-dialog {
+  width: min(92vw, 35rem);
+  max-height: 85dvh;
+  overflow-y: auto;
+  padding: 1.1rem;
+  border: 2px solid var(--border, #aebbc9);
+  border-radius: 0.65rem;
+  background: var(--panel, #fff);
+  color: var(--text, #172033);
+}
+.next-reschedule-no-work-dialog::backdrop {
+  background: rgb(0 0 0 / 65%);
+}
+.next-reschedule-no-work-dialog form {
+  display: grid;
+  gap: 0.65rem;
+}
+.next-reschedule-no-work-dialog h3,
+.next-reschedule-no-work-dialog p { margin: 0; }
+.next-reschedule-no-work-dialog label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 700;
+}
+.next-reschedule-no-work-dialog select {
+  width: 100%;
+  min-height: 2.7rem;
+}
+.next-reschedule-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
