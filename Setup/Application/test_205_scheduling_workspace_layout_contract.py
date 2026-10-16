@@ -67,7 +67,8 @@ def test_secondary_labor_does_not_duplicate_primary_complete_remaining():
     )[1].split("\nfunction board205Render()",1)[0]
     assert "setup205DeadlineKpiHtml(board, appState.seasonYear)" in ui
     assert "setup205-scheduling-secondary" in ui
-    assert "planned labor hr" in ui
+    assert "Planned person-hours TBD" in ui
+    assert "known task-hours" in ui
     assert "tasks scheduled" in ui
     assert "setup205WireManagementNavigation(target)" in ui
     assert "<span><strong>" not in ui, "Avoid repeated primary task badges below KPI"
