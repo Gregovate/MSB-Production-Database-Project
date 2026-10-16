@@ -67,9 +67,9 @@ def test_release_version_and_assets_are_exact():
     backend = read(APP / "production_backend.py")
     client = read(APP / "setup_catalog_dirty_guard.js")
     html = read(APP / "production.html")
-    assert 'PRODUCTION_VERSION = "V0.3.72-planned-crew-corrections"' in backend
-    assert "CLIENT_BUILD = 'V0.3.72-planned-crew-corrections'" in client
+    assert 'PRODUCTION_VERSION = "V0.3.73-optional-staffing-plan"' in backend
+    assert "CLIENT_BUILD = 'V0.3.73-optional-staffing-plan'" in client
     for filename in ("setup_scheduling_board.js","setup_scheduling_board.css",
                      "setup_next_pass.js","setup_next_pass.css"):
-        assert filename + "?v=2026-10-16.72" in html
+        assert filename + "?v=2026-10-16.73" in html
     assert "Updated 2026-10-16" in html
