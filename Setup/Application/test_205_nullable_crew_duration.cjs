@@ -46,7 +46,21 @@ vm.runInContext(between(board,'function board205RenderKpis(', '\nfunction board2
 vm.runInContext(between(perform,'function nextLaborHours(', '\nfunction nextPerformDay('),ctx);
 vm.runInContext(between(perform,'function nextPerformLaborKpis(', '\n// #205: Linear elapsed-time capacity'),ctx);
 vm.runInContext(between(perform,'function nextDayStaffingSummary(', '\n// Use the existing Captain scope'),ctx);
-assert.equal(ctx.board205RequireEstimates(tasks[0]),true,'Missing estimates must not block scheduling');
+// Mandatory task estimates remain a scheduling gate. The day crew count is
+// independent and may remain NULL after the task's estimates are supplied.
+const estimateAlerts = [];
+let editRequested = null;
+ctx.setAlert = message => estimateAlerts.push(String(message));
+ctx.board205OpenPlanningInfoDialog = id => { editRequested = Number(id); };
+target.close = () => {};
+assert.equal(ctx.board205RequireEstimates(tasks[0]),false,
+  'Missing task estimates MUST block ordinary new task scheduling');
+assert.equal(editRequested,11,'Missing task estimates must open Planning Info');
+assert(estimateAlerts.some(message => message.includes('Enter estimated')));
+assert.equal(ctx.board205RequireEstimates(tasks[1]),true,
+  'Complete task estimates allow scheduling even when shift headcount is NULL');
+assert.equal(ctx.board205RequireEstimates({...tasks[0], progress_entries:1}),true,
+  'Keep the existing historically locked continuation exception');
 assert.deepEqual(Array.from(ctx.board205MissingEstimates(tasks[0])),['crew size','effort'],
   'Known duration does not become unknown when crew/effort estimates missing');
 assert.equal(ctx.board205AssignmentPlannedCrew(assignments[0]),null,
@@ -98,4 +112,4 @@ crew.pm_planned_crew_count=null;
 assert.match(ctx.board205WorkloadBanner(7,'MORNING'),/PM CREW UNCONFIRMED/);
 crew.pm_planned_crew_count=1;
 assert.match(ctx.board205WorkloadBanner(7,'MORNING'),/AM PRESSURE/);
-console.log('PASS #205 nullable crew, Captain-only one, independent task durations, partial labor and advisory estimates');
+console.log('PASS #205 nullable crew, Captain-only one, independent task durations, partial labor and mandatory task estimates');
