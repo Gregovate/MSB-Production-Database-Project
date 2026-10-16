@@ -1761,22 +1761,23 @@ function nextPerformWorkloadLabel(items, shift) {
   const crew = items.length ? nextPerformCrew(items[0]) : null;
   const count = shift === 'MORNING' ? crew?.am_planned_crew_count
     : shift === 'AFTERNOON' ? crew?.pm_planned_crew_count : null;
-  const crewConfirmed = crew?.captain_person_id != null && count != null && Number(count) >= 1;
-  // Shift duration is known independently of staffing. Typical hours are
-  // guidance, not proven capacity if the Captain-led crew is unavailable.
-  const needsReview = !crewConfirmed || w.overload > 0 || w.unknown > 0 || w.notReady > 0;
-  const status = !crewConfirmed ? 'STAFFING UNCONFIRMED — REVIEW SHIFT'
-    : w.overload > 0 ? 'SHIFT TIME PRESSURE — REVIEW'
-    : needsReview ? 'REVIEW REQUIRED' : 'WITHIN TYPICAL TIME';
-  const color = needsReview ? '#835900' : '#146044';
-  const background = needsReview ? '#fff6dd' : '#eaf8f0';
+  const staffed = crew?.captain_person_id != null && count != null && Number(count) >= 1;
+  // Task-hours are elapsed estimates, never volunteer/person-hours.
   const hours = minutes => (minutes / 60).toFixed(2).replace(/0$/, '').replace(/[.]$/, '');
-  const note = !crewConfirmed
-    ? ' · no confirmed Captain-led crew; work duration still counted'
-    : w.overload ? ` · +${hours(w.overload)}h beyond typical shift; review continuation` : '';
-  return `<div role="status" style="position:sticky;top:0;z-index:3;border:2px solid ${color};border-radius:7px;padding:9px 12px;margin:6px 0 9px;background:${background};color:${color};font-weight:700">
-    <div style="font-size:1.05rem">${status} — ${hours(w.known)} / ${hours(w.capacity)} typical linear hours${note}</div>
-    <div style="font-size:.85rem">${w.count} tasks · ${w.unknown} missing duration estimates · ${w.notReady} NOT READY</div>
+  const status = !staffed ? 'STAFFING NOT CONFIRMED'
+    : w.overload > 0 ? 'OVERLOADED' : 'SHIFT OK';
+  const remaining = Math.max(0, w.capacity - w.known);
+  const detail = w.overload > 0 ? ' · needs additional shift time'
+    : ' · ' + hours(remaining) + ' hours remain';
+  const exception = (w.unknown || w.notReady)
+    ? ' · ' + [w.unknown ? w.unknown + ' durations TBD' : '',
+      w.notReady ? w.notReady + ' NOT READY' : ''].filter(Boolean).join(' · ')
+    : '';
+  const warning = !staffed || w.overload > 0 || w.unknown > 0 || w.notReady > 0;
+  const color = warning ? '#835900' : '#146044';
+  const background = warning ? '#fff6dd' : '#eaf8f0';
+  return `<div role="status" style="position:sticky;top:0;z-index:3;border:2px solid ${color};border-radius:7px;padding:7px 10px;margin:6px 0;background:${background};color:${color};font-weight:700">
+    ${status} · ${hours(w.known)} hours scheduled${detail}${exception}
   </div>`;
 }
 
