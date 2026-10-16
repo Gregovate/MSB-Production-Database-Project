@@ -1,6 +1,37 @@
 # #205 Whole-Setup KPI / Action Center / Report Work — Browser Candidate
 
-## CURRENT V0.3.78 — quick Planning Info, concise shift warnings, sticky task search and Kit navigation
+## CURRENT V0.3.79 — sticky Setup Day/date beside task search (source PASS)
+
+**Exact source candidate:** `eca26f631a9472e039b2e2e5482817b00375e47f`  
+**Version:** `V0.3.79-sticky-day-search`  
+**Source CI:** [Actions #38948868529](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38948868529) PASS — full Setup and FieldWiring.  
+**Status:** PostgreSQL disposable migration/validation and operator browser acceptance PENDING; **not Production-approved**.
+
+Correction after operator REJECTED V0.3.78: fixed sticky search without date context. The scheduling heading now includes the dynamically tracked currently visible **SETUP DAY # · weekday · date** adjacent to Find scheduled task, and scroll-offset CSS keeps day headers below the sticky heading. Quick Planning Info modal, separate Open Full Reusable Task, concise shift warnings and Kit Inventory navigation from V0.3.78 remain included. One integrated retest; no email/Production changes.
+
+**Single current launch command**, only from the existing clean desktop `C:\Users\Greg\Github\MSB-Production-Database-Project-205-review` worktree on `fix/205-setup-deadline-kpis-20261015` after fast-forward and old preview CLEAN EXIT/port 8898 ownership checks:
+
+```powershell
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
+    -PreviewPort 8898 `
+    -CandidateSha 'eca26f631a9472e039b2e2e5482817b00375e47f' `
+    -TargetRef 'fix/205-setup-deadline-kpis-20261015' `
+    -ExpectedVersion 'V0.3.79-sticky-day-search' `
+    -MigrationPaths @(
+        'Setup/Database/075_allow_setup_planned_crew_count_corrections.sql',
+        'Setup/Database/076_capture_2026_reusable_task_estimates.sql'
+    ) `
+    -ValidationPaths @(
+        'Setup/Acceptance/setup_205_planned_crew_count_disposable_validation.sql',
+        'Setup/Acceptance/setup_205_2026_catalog_estimate_disposable_validation.sql'
+    )
+```
+
+**First browser proof:** scroll across multiple workdays; sticky identity MUST display the correct visible Setup Day/date alongside sticky search, including programmatic find/navigation, with no overlap of underlying task cards. All previous #205 integrated checks still required. Stop if the disposable SQL gate does not print `BROWSER REVIEW READY`. Require operator verdict and `CLEAN EXIT` before any #122 Production approval.
+
+---
+
+## ARCHIVED V0.3.78 — quick Planning Info, concise shift warnings, sticky task search and Kit navigation
 
 **Source CI PASS / disposable PostgreSQL and browser review PENDING.** Exact source `2cc1fde80dffa35499eb192e17ac11cfdeb6a29d`; build `V0.3.78-quick-edit-sticky-search`; [GitHub CI #38947109427](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38947109427) **Setup and FieldWiring PASS**. PR #394 remains draft, Production unchanged, no mail.
 
