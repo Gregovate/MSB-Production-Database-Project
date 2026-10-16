@@ -2,10 +2,10 @@
 
 ## CURRENT V0.3.76 — six operator corrections in ONE #205 disposable browser review
 
-**Source PASS / operator browser acceptance PENDING.** Exact candidate `b683a2b3b4404465e53314d56321675d23c92084`, build `V0.3.76-operator-review-fixes`, existing draft PR #394, [GitHub CI #38925344580](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38925344580): **838 Setup Python, FieldWiring full, #205 Node checks PASS**. This candidate follows the operator-rejected V0.3.75 browser preview, which may still be open. **Obtain previous CLEAN EXIT before launching another protected preview; do not force-stop a separate live process or open two clones.** No Production mutation authorized.
+**Source PASS / operator browser acceptance PENDING.** Exact candidate `f4279c1fb850c682623242b361ce7472ef35ab5f`, build `V0.3.76-operator-review-fixes`, existing draft PR #394, [GitHub CI #38925934280](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38925934280): **838 Setup Python, FieldWiring full, #205 Node checks PASS**. This candidate follows the operator-rejected V0.3.75 browser preview, which may still be open. **Obtain previous CLEAN EXIT before launching another protected preview; do not force-stop a separate live process or open two clones.** No Production mutation authorized.
 
 Test **all findings together** in the ONE governed disposable current-Production clone and same port 8898, with migrations **075** and **076**, plus their two rollback-only validations:
-- D16 Crew A count AM 3 / PM 2 auto-saves, survives refresh, and changes shift AND day staffing banners without losing other unsaved inputs. Task count/known hours on active scheduling are only for unfinished assignments (historical reported tasks excluded); 6h expected task may continue past AM to PM with actual partial reporting, without artificial Manager decision. Exact actual work remains protected.
+- D16 Crew A count AM 3 / PM 2 auto-saves, survives refresh, and changes shift, day staffing AND task-card planned crew/labor text without losing other unsaved inputs. Task count/known hours on active scheduling are only for unfinished assignments (historical reported tasks excluded); 6h expected task may continue past AM to PM with actual partial reporting, without artificial Manager decision. Exact actual work remains protected.
 - Mega Cube Planning Info: min 7/max 4 should show inline validation (no SQL alert or trapped form); correct range and save explicitly. **Open Full Reusable Task** must navigate without blindly saving invalid Planning Info and hand unsaved edits to the Catalog form for deliberate review. Test both directions of 2026 Catalog/annual planning estimate sync, including corrections on reported tasks; preserve actual reports and readiness history.
 - Perform Work document scroll and fixed Back to top / Navigation button; Task Feedback and actual Number of Volunteers/Hours/Minutes/help.
 - Manager Action Center tab is active ONLY when actually selected; verify light/dark Action Center links/buttons.
@@ -17,7 +17,7 @@ Test **all findings together** in the ONE governed disposable current-Production
 ```powershell
 .\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
     -PreviewPort 8898 `
-    -CandidateSha 'b683a2b3b4404465e53314d56321675d23c92084' `
+    -CandidateSha 'f4279c1fb850c682623242b361ce7472ef35ab5f' `
     -TargetRef 'fix/205-setup-deadline-kpis-20261015' `
     -ExpectedVersion 'V0.3.76-operator-review-fixes' `
     -MigrationPaths @(
