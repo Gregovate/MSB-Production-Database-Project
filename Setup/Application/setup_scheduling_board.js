@@ -2216,40 +2216,27 @@ function board205RenderBoard() {
 function board205RenderKpis() {
   const target = document.getElementById('setup-board205-kpis');
   if (!target) return;
-  const tasks = setupBoard205State.board.tasks || [];
-  const total = tasks.length;
-  const scheduled = tasks.filter((task) => Number(task.future_assignment_count || 0) > 0).length;
-  const complete = tasks.filter((task) => Boolean(task.effective_complete)).length;
-  const inProgress = tasks.filter((task) => task.execution_status === 'IN_PROGRESS').length;
-  const needsContinuation = tasks.filter(board205NeedsContinuation).length;
-  const pct = (count) => total ? Math.round((count / total) * 100) : 0;
-  const currentAssignments = (setupBoard205State.board.assignments || []).filter((item) => !item.historical_locked);
+  const board = setupBoard205State.board;
+  const currentAssignments = (board.assignments || []).filter(item => !item.historical_locked);
   let plannedLaborHours = 0;
   let plannedLaborUnknown = 0;
   for (const item of currentAssignments) {
     const task = board205Task(item.setup_session_task_id) || item;
     const hours = board205LaborHours(
-      board205AssignmentPlannedCrew(item),
-      task.expected_duration_minutes
+      board205AssignmentPlannedCrew(item), task.expected_duration_minutes
     );
-    if (hours == null) plannedLaborUnknown += 1;
+    if (hours == null) plannedLaborUnknown++;
     else plannedLaborHours += hours;
   }
-  const plannedLaborShown = Number.isInteger(plannedLaborHours)
-    ? String(plannedLaborHours)
-    : plannedLaborHours.toFixed(1).replace(/\.0$/, '');
-
+  const labor = Number.isInteger(plannedLaborHours)
+    ? String(plannedLaborHours) : plannedLaborHours.toFixed(1).replace(/\\.0$/, '');
   setup205WireActionCenter(target);
-  target.innerHTML = setup205DeadlineKpiHtml(setupBoard205State.board, appState.seasonYear) + [
-    `<span><strong>${total}</strong> tasks</span>`,
-    `<span><strong>${scheduled}</strong> scheduled · ${pct(scheduled)}%</span>`,
-    currentAssignments.length
-      ? `<span><strong>${board205Esc(plannedLaborShown)}</strong> planned labor hr${plannedLaborUnknown ? ` · ${plannedLaborUnknown} assignment${plannedLaborUnknown === 1 ? '' : 's'} TBD` : ''}</span>`
-      : '',
-    inProgress ? `<span><strong>${inProgress}</strong> in progress · ${pct(inProgress)}%</span>` : '',
-    needsContinuation ? `<span style="color:#9d2424;font-weight:800"><strong>${needsContinuation}</strong> NEED RESCHEDULING</span>` : '',
-    `<span><strong>${complete}</strong> complete · ${pct(complete)}%</span>`
-  ].filter(Boolean).join('<span class="setup-board205-kpi-sep">·</span>');
+  target.innerHTML = setup205DeadlineKpiHtml(board, appState.seasonYear) +
+    '<div class="setup205-scheduling-secondary" aria-label="Secondary planning indicators">' +
+      '<span>' + (board.tasks || []).filter(t => Number(t.future_assignment_count || 0) > 0).length +
+      ' tasks scheduled</span><span>' + board205Esc(labor) + ' planned labor hr' +
+      (plannedLaborUnknown ? ' · ' + plannedLaborUnknown + ' TBD' : '') + '</span>' +
+    '</div>';
 }
 
 function board205Render() {
@@ -3631,11 +3618,11 @@ function board205InstallView() {
                 <div class="eyebrow">Rolling annual dispatch · historical learning</div>
                 <h2>Setup Scheduling Board</h2>
               </div>
-              <div id="setup-board205-kpis" class="setup-board205-kpis" aria-live="polite"></div>
               <div class="setup-board205-toolbar-actions">
                 <button id="setup-board205-add-season-task" type="button" class="manager-only">Add Task</button>
               </div>
             </div>
+            <div id="setup-board205-kpis" class="setup-board205-kpis" aria-live="polite"></div>
             <div id="setup-board205-milestones"></div>
             <div class="setup-board205-dispatch-controls">
               <form id="setup-board205-day-form" class="setup-board205-day-form" hidden>
