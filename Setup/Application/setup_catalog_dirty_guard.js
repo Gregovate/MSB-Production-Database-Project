@@ -12,7 +12,7 @@
 (() => {
   'use strict';
 
-  const CLIENT_BUILD = 'V0.3.83-crew-cell-colors';
+  const CLIENT_BUILD = 'V0.3.84-direct-crew-cells';
   const CLIENT_BADGE = `Client ${CLIENT_BUILD.split('-')[0]}`;
   const reusableFieldIds = new Set([
     'edit-task-name',
