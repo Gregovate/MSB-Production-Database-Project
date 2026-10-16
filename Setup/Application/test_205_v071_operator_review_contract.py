@@ -23,7 +23,10 @@ def test_shift_workload_reports_only_unfinished_work_and_does_not_require_pm_man
     banner = js.split("function board205WorkloadBanner(",1)[1].split("\nfunction board205AmCapacityNote(",1)[0]
     workload = js.split("function board205ShiftWorkload(",1)[1].split("\nfunction board205WorkloadBanner(",1)[0]
     assert "!nextAssignmentReported(item)" in workload
-    assert "continue unfinished AM work into PM" in banner
+    assert "STAFFING NOT CONFIRMED" in banner
+    assert "needs both shifts" in banner
+    assert "SHIFT OK" in banner
+    assert "OVERLOADED" in banner
     assert "currentStaffing = board205PlacementCrewCount(crewId, shift)" in banner
     assert "Manager decision" not in banner
     assert "unfinished task" in banner
