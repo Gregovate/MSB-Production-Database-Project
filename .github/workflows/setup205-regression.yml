@@ -32,7 +32,9 @@ jobs:
       - name: Execute full Setup application regression
         run: python -m pytest -q -p no:cacheprovider Setup/Application
       - name: Execute shared deadline classifier
-        run: node Setup/Application/test_205_deadline_action_kpis.cjs
+        run: |
+          node Setup/Application/test_205_deadline_action_kpis.cjs
+          node Setup/Application/test_205_action_center_navigation.cjs
 
   fieldwiring-full:
     runs-on: ubuntu-latest
