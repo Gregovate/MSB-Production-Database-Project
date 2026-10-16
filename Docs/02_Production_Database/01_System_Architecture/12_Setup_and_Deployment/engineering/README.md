@@ -2,7 +2,7 @@
 
 ## #205 Schedule performance and daily Manager accountability — engineering contract
 
-[Controlled Setup KPI, reporting reconciliation and daily Manager notification contract](Setup_205_Schedule_Performance_and_Daily_Accountability_Contract_2026-10-15.md) is the engineering source of truth for #205 draft PR #394, including whole-Setup counts, overdue/unreported reporting, blockers/readiness, rescheduling, calendar/workday pace, forecast confidence, same-source daily Manager email, direct links and acceptance gates. The PR implements the document; its description and issue comments are not substitutes for the contract. **Engineering candidate only, not Production or browser accepted.**
+[Controlled Setup KPI/reporting/accountability contract](Setup_205_Schedule_Performance_and_Daily_Accountability_Contract_2026-10-15.md) governs #205 under #122. **Immediate application scope** is non-mail V0.3.66 whole-Setup KPIs, Manager Action Center, scheduling risk/links and Report Work corrections: [exact candidate, regression and 8898 browser checklist](../../../../../Setup/Acceptance/Setup_205_KPI_Action_Center_Disposable_Candidate_2026-10-15.md). Directus Manager/Captain emails were **paused at Greg's direction**; preserved separately on `hold/205-directus-notifications-20261015`, not included in the application candidate. Neither disposable browser nor Production accepted.
 
 
 ## #88 guided contents reconciliation — candidate pending acceptance
