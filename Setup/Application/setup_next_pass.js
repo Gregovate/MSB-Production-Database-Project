@@ -1251,6 +1251,7 @@ function nextPerformAssignmentCard(assignment) {
   const effortLabel = ['light', 'moderate', 'heavy'].includes(effort) ? effort.toUpperCase() : 'EFFORT TBD';
   const minimumCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
   const shortCrew = plannedCrew != null && minimumCrew != null && plannedCrew < minimumCrew;
+  const annualComplete = Boolean(task.effective_complete || String(task.execution_status).toUpperCase() === 'COMPLETE');
 
   const readinessWarning = task.readiness_state === 'NOT_READY'
     ? `<div class="next-perform-readiness-warning"><strong>Readiness condition:</strong> ${escapeHtml(task.readiness_note || 'Marked Not Ready')} <span class="muted">· soft planning condition; actual work may still be reported</span></div>`
@@ -1280,7 +1281,7 @@ function nextPerformAssignmentCard(assignment) {
       ${late ? nextScheduleWarning("LATE — NO WORK REPORTED · Report actual work or ask Manager to review original assignment") : ''}
       <div class="next-perform-actions">
         <button type="button" class="small secondary next-print-task">Print Task</button>
-        <button type="button" class="small next-report-work">Report Work</button>
+        <button type="button" class="small next-report-work">${annualComplete ? 'Review Work History' : 'Report Work'}</button>
         <button type="button" class="small next-report-problem next-report-correction-action"${nextCanSubmitFieldFinding() ? '' : ' disabled title="Report Correction requires Production Crew or Manager access"'}>Report Correction</button>
       </div>
       <div class="next-perform-body" hidden></div>
@@ -2201,7 +2202,7 @@ async function loadNextTaskExecution(details, focusReport = false) {
             : '<p class="muted">No current Setup Procedure is resolved for this task.</p>'}</section>
       </div>
       <section class="next-progress-history"><h4>Progress history</h4>${progress.length ? progress.map(nextProgressEntryHtml).join('') : '<div class="muted">No progress recorded yet.</div>'}</section>
-      ${complete ? '<div class="next-complete-banner">This annual task is complete.</div>' : `
+      ${complete ? '<div class="next-complete-banner">This annual task is complete. Review Progress history above. If an earlier work period has no report, ask a Manager to reconcile the original assignment; do not enter duplicate work.</div>' : `
       <form class="next-completion-form next-report-work-form"
         data-scheduled-date="${escapeHtml(day?.work_date || assignment?.work_date || '')}"
         data-session-task-id="${sessionTaskId}"
