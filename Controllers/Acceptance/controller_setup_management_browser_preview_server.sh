@@ -234,7 +234,7 @@ sudo git -C "$FIELDWIRING_ROOT" worktree add --detach "$CANDIDATE_WORKTREE" "$TA
 
 # Fail before pg_dump or disposable restore on malformed candidate Python.
 # Run under the documented FieldWiring service runtime and candidate worktree.
-sudo -u fieldwiring -H bash -c 'cd "$1" && /opt/fieldwiring/.venv/bin/python -m py_compile FieldWiring/Application/controller_management.py && /opt/fieldwiring/.venv/bin/python -m pytest -q -p no:cacheprovider FieldWiring/Application/test_controller_capacity_planner_contract.py' -- "$CANDIDATE_WORKTREE"
+sudo -u fieldwiring -H bash -c 'cd "$1" && /opt/fieldwiring/.venv/bin/python -B -c "import ast,pathlib; ast.parse(pathlib.Path(\"FieldWiring/Application/controller_management.py\").read_text(encoding=\"utf-8\"))" && PYTHONDONTWRITEBYTECODE=1 /opt/fieldwiring/.venv/bin/python -B -m pytest -q -p no:cacheprovider FieldWiring/Application/test_controller_capacity_planner_contract.py' -- "$CANDIDATE_WORKTREE"
 echo "PASS: Controller planner Python compile and focused contract before clone"
 
 
