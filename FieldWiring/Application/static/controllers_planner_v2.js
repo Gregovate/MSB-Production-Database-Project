@@ -276,9 +276,9 @@
     if (model) {
       const width = Number(model.lor_uid_capacity || 1);
       const choices = candidates(network,width);
-      blocks = `<h3 style="margin-top:14px">Contiguous UID blocks — ${esc(model.model_code)} (${width} UIDs; ${choices.length} candidate starts)</h3>
+      blocks = `<h3 style="margin-top:14px">${width === 1 ? 'Available individual UIDs' : 'Contiguous UID blocks'} — ${esc(model.model_code)} (${width} ${width === 1 ? 'UID' : 'UIDs'}; ${choices.length} ${width === 1 ? 'available addresses' : 'candidate starts'})</h3>
         <div class="planner-note">Model selection affects only this contiguous-block search, not the UID inventory above. These blocks avoid current LOR use and non-AVAILABLE physical programming.</div>
-        <div class="planner-blocks">${choices.map(b => {
+        <div class="planner-blocks ${width === 1 ? 'planner-single-uids' : ''}">${choices.map(b => {
           const matching = b.stock.filter(c => Number(c.controller_model_id) === Number(model.controller_model_id));
           const note = matching.length ? `Compatible AVAILABLE stock: ${matching.map(c => `CTRL ${c.controller_id}`).join(', ')}` :
             b.stock.length ? `AVAILABLE programming overlaps: ${b.stock.map(c => `CTRL ${c.controller_id} ${esc(c.model_code)}`).join(', ')}` : '';
