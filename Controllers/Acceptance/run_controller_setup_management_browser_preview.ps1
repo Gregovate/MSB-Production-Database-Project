@@ -11,7 +11,7 @@ $RepoRoot = (Resolve-Path (Join-Path $ScriptDir '..\..')).Path
 if ($PreviewPort -ne 8898) { throw 'STOP: Controller preview must use registered port 8898.' }
 if ($PreviewEmail -notmatch '^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+$') { throw 'Invalid PreviewEmail.' }
 $branch = (& git -C $RepoRoot branch --show-current).Trim()
-if ($LASTEXITCODE -ne 0 -or $branch -ne $TargetRef) { throw "STOP: working branch '$branch' is not '$TargetRef'." }
+if ($LASTEXITCODE -ne 0 -or ($branch -and $branch -ne $TargetRef)) { throw "STOP: worktree must be detached or on '$TargetRef'; got '$branch'." }
 $dirty = & git -C $RepoRoot status --porcelain
 if ($LASTEXITCODE -ne 0 -or $dirty) { throw 'STOP: preview source worktree must be clean.' }
 & git -C $RepoRoot cat-file -e "${CandidateSha}^{commit}"
