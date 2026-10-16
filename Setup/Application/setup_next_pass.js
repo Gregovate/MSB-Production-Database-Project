@@ -1387,7 +1387,11 @@ function nextRescheduleNoWorkCrewOptions() {
   if ([...crewSelect.options].some(option => option.value === selected)) crewSelect.value = selected;
   const captainId = Number(dialog.dataset.preferredCaptain || 0);
   const captainCrew = captainId ? crews.find(crew => Number(crew.captain_person_id) === captainId) : null;
-  if (captainCrew && !crews.some(crew => Number(crew.setup_work_day_crew_id) === Number(selected))) {
+  if (captainId && !captainCrew) {
+    // A Crew with a different Captain (or TBD) is never an implicit default.
+    // The new-crew route records the original Captain atomically.
+    crewSelect.value = 'NEW_CREW';
+  } else if (captainCrew && !crews.some(crew => Number(crew.setup_work_day_crew_id) === Number(selected))) {
     crewSelect.value = String(captainCrew.setup_work_day_crew_id);
   }
   const isNew = crewSelect.value === 'NEW_CREW';
@@ -1454,8 +1458,11 @@ function nextOpenRescheduleNoWorkDialog(assignmentId) {
       Number(crew.captain_person_id) === originalCaptain)
   })).find(candidate => candidate.crew && Number(candidate.day.setup_work_day_id) !== Number(assignment.setup_work_day_id));
   if (nextSameCaptain) dateControl.value = String(nextSameCaptain.day.setup_work_day_id);
-  else if (days.some(day => day.setup_work_day_id === assignment.setup_work_day_id))
-    dateControl.value = String(assignment.setup_work_day_id);
+  else {
+    // Never default a no-work move back to the original historical day.
+    const future = days.find(day => Number(day.setup_work_day_id) !== Number(assignment.setup_work_day_id));
+    if (future) dateControl.value = String(future.setup_work_day_id);
+  }
   dialog.dataset.preferredCaptain = originalCaptain == null ? '' : String(originalCaptain);
   dialog.querySelector('#next-reschedule-shift').value = assignment.shift_code;
   nextRescheduleNoWorkCrewOptions();
