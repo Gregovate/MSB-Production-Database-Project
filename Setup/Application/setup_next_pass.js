@@ -953,7 +953,9 @@ function nextPerformPlannedCrew(assignment) {
     : shift === 'AFTERNOON'
       ? crew?.pm_planned_crew_count
       : null;
-  if (shiftCount != null && Number(shiftCount) > 0) return Number(shiftCount);
+  // An existing Captain row with NULL shift count is not a staffed crew.
+  // Never revive a stale assignment estimate to manufacture a volunteer.
+  if (crew) return shiftCount != null && Number(shiftCount) > 0 ? Number(shiftCount) : null;
   if (assignment?.planned_crew_count != null && Number(assignment.planned_crew_count) > 0) {
     return Number(assignment.planned_crew_count);
   }
@@ -1674,7 +1676,8 @@ function nextPerformLaborKpis(assignments) {
   );
 
   return {
-    plannedHours: formatHours(plannedHours),
+    // A missing planned crew does not represent zero labor effort.
+    plannedHours: plannedUnknown && plannedHours === 0 ? 'TBD' : formatHours(plannedHours),
     plannedUnknown,
     actualHours: formatHours(actualHours),
     completedPlannedHours: formatHours(completedPlannedHours),
@@ -2230,7 +2233,7 @@ function renderNextExecution() {
       ? `${varianceValue > 0 ? '+' : ''}${Number.isInteger(varianceValue) ? varianceValue : varianceValue.toFixed(1)} hr`
       : 'TBD';
     const plannedNote = labor.plannedUnknown
-      ? `${labor.plannedUnknown} assignment${labor.plannedUnknown === 1 ? '' : 's'} missing plan estimate`
+      ? `${labor.plannedUnknown} assignment${labor.plannedUnknown === 1 ? '' : 's'} with staffing/duration TBD; known person-hours are partial`
       : 'all assignments in Captain scope estimated';
     const varianceNote = labor.completedCount === 0
       ? 'no completed assignments in Captain scope'
@@ -2238,7 +2241,7 @@ function renderNextExecution() {
         ? `${labor.completedPlannedUnknown} completed assignment${labor.completedPlannedUnknown === 1 ? '' : 's'} missing plan estimate`
         : `Completed: ${labor.completedActualHours} hr actual vs ${labor.completedPlannedHours} hr planned`;
     kpis.innerHTML = `
-      <div class="next-perform-kpi"><span>Planned labor</span><strong>${escapeHtml(labor.plannedHours)} hr</strong><small>${escapeHtml(plannedNote)}</small></div>
+      <div class="next-perform-kpi"><span>Planned labor</span><strong>${escapeHtml(labor.plannedHours === 'TBD' ? 'TBD' : labor.plannedHours + ' hr')}</strong><small>${escapeHtml(plannedNote)}</small></div>
       <div class="next-perform-kpi"><span>Actual labor</span><strong>${escapeHtml(labor.actualHours)} hr</strong><small>reported work in Captain scope</small></div>
       <div class="next-perform-kpi"><span>Completed-work variance</span><strong>${escapeHtml(varianceText)}</strong><small>${escapeHtml(varianceNote)}</small></div>
     `;
