@@ -6,7 +6,7 @@
 | System | Production Database — Setup and Deployment |
 | Task | Perform scheduled Setup work and report actual work |
 | Audience | Production Crew, Captains, Setup Managers |
-| Status | CURRENT |
+| Status | V0.3.70 operator SOP candidate — current Production may have older controls |
 | Owner | MSB Production Database / Setup administrator |
 | Last Reviewed | 2026-10-15 |
 | Keywords | Setup, Perform Work, Captain, Report Work, partial work, procedure, Print Task |
@@ -94,7 +94,17 @@ The printed sheet is a field aid. The current Setup application and current publ
 
 Under **Published Setup Procedure**, open the current procedure when the task has one.
 
-If the procedure appears wrong or incomplete, do not silently change the work history to make it fit. Use **Report Correction** to preserve the field finding for Manager triage.
+If the procedure appears wrong or incomplete, do not silently change the work history to make it fit. Use **Task Feedback** to preserve the field finding for Manager triage.
+
+## Manager-only reschedule when no work happened (V0.3.70 candidate; not yet live)
+
+**Only after the #205 candidate has been accepted and installed:** A Manager can open the affected original task on **Perform Work**, select **Reschedule · No work performed**, choose a current/future Setup Day and existing/new Crew, confirm that NO work happened, then verify the new scheduled day. This is a schedule move with an audit trail—not a work report. The original assignment no longer counts as late after a successful audited move.
+
+If weather or staffing prevents **several tasks in the same AM/PM shift** from happening, a Manager can select **Reschedule unworked AM/PM tasks** on that shift to move the eligible tasks together. The move succeeds together or stops entirely if any task has recorded actual work.
+
+If any actual work happened, **do not** claim no work. Report actual time and progress for that original occurrence, then schedule a continuation for what remains. A saved 1% report still counts as history until separately corrected by an authorized Manager; it cannot be silently moved away. Only Manager access can change these schedules.
+
+**This capability and the screen layout are still a disposable browser candidate**; Production may continue to show older controls until the approved deployment. Do not use this section to infer that a command exists on the live screen.
 
 ## Report Work
 
@@ -106,7 +116,7 @@ Enter:
    - It defaults to the scheduled assignment date.
    - Change it when the work happened on a different day.
 2. **Actual crew size** — the actual number of people who worked the task.
-3. **Hours** and **Minutes** — the actual elapsed work period.
+3. **Hours** and **Minutes** — the actual elapsed work period. These are equal-sized inputs side by side in the proposed V0.3.70 form; enter both the real hours and remaining minutes.
 4. **Whole task % complete** — the cumulative percent complete after this work period.
 5. **What was done / what remains** — required when the task is not 100% complete.
 6. **Add quantity detail (optional)** — use only when countable detail is useful.
@@ -177,15 +187,15 @@ The correction updates the existing report and preserves its history/audit infor
 
 Do not enter a second work report solely to repair a data-entry mistake.
 
-## Report Correction
+## Task Feedback
 
-Use **Report Correction** when the scheduled work exposes a field condition, Procedure problem, material relationship, data discrepancy, or other Setup information that may need correction.
+Use **Task Feedback** when the scheduled work exposes a field condition, Procedure problem, material relationship, data discrepancy, or other Setup information that may need correction.
 
 1. Open the scheduled task in **Perform Work**.
-2. Click **Report Correction**.
+2. Click **Task Feedback**.
 3. Enter a concise **What did you find?**
 4. Optionally enter a **Suggested correction / evidence**.
-5. Click **Report Correction**.
+5. Click **Task Feedback**.
 
 Setup automatically preserves the known scheduled context, including the annual task, reusable source task when one exists, exact scheduled assignment, Setup Day/date/shift/Crew/Captain, Stage/Scene, current Procedure identity when available, authenticated reporter, and submission time.
 
@@ -207,7 +217,7 @@ After a work report is saved:
 
 - If the wrong task was scheduled and no work has been reported yet, correct the assignment in **Plan / Schedule**.
 - If the work report itself was entered incorrectly, ask a Manager to use **Correct report**.
-- If the task/procedure/material/data is wrong, use **Report Correction**; do not invent replacement data merely to make the screen look complete.
+- If the task/procedure/material/data is wrong, use **Task Feedback**; do not invent replacement data merely to make the screen look complete.
 - If the application does not behave as described, stop before entering duplicate or guessed information.
 
 ## Related Documents
