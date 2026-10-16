@@ -46,11 +46,12 @@ def test_actual_work_date_is_prominent_and_confirmed_before_submission():
     assert "next-work-date-field" in form
     assert 'data-scheduled-date=' in form
     assert "Scheduled:" in form
+    assert "Scheduled assignment date:" in js
     assert ".next-work-date-field" in css
     begin = js.index("async function submitNextProgress(event)")
     finish = js.index("const priorNextPopulateStageSelects", begin)
     handler = js[begin:finish]
-    assert "Confirm the date you ACTUALLY worked" in handler
+    assert "Date work ACTUALLY happened:" in handler
     assert handler.index("if (!performedOn)") < handler.index("window.confirm(")
     assert handler.index("if (percent < 100 && !note)") < handler.index("window.confirm(")
     assert handler.index("window.confirm(") < handler.index("await api(")
