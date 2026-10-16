@@ -1543,6 +1543,7 @@ function setup205DeadlineKpiHtml(board, year) {
                : '<p>Manager task details require Setup Manager access.</p>') + '</details>';
   const dateStatus = !k.deadline ? 'Deadline unavailable'
     : !k.actionable.length ? 'All non-deferred tasks complete'
+    : k.daysLeft === 0 ? 'Hard deadline reached with unfinished work'
     : !k.reliable ? 'Insufficient verified work-date evidence or 7-day sample to forecast'
     : k.projectedFinish > k.deadline ? 'Recorded pace misses deadline' : 'Recorded pace meets deadline (task-count estimate)';
   return '<section class="setup-205-deadline-kpis" aria-label="Whole Setup schedule performance" ' +
@@ -1628,7 +1629,9 @@ function setup205ActionCenterHtml(board, model) {
     '</ul></details>';
   const missed = k.overdue.map(a => '<span>' + assignmentLabel(a) +
     ' — No matched report for this original occurrence. ' +
-    button('report',a.setup_work_day_task_id,'Review original / Report Work') + '</span>');
+    button('report',a.setup_work_day_task_id,
+      taskById.get(Number(a.setup_session_task_id))?.effective_complete
+        ? 'Review original / Correct report' : 'Review original / Report Work') + '</span>');
   const continuations = k.needsRescheduling.map(t => '<strong>' + safe(t.task_name) +
     '</strong> · ' + safe(context(t)) + ' · ' + safe(t.percent_complete ?? 0) +
     '% reported; no current/future continuation. ' +
