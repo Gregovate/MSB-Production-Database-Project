@@ -180,6 +180,22 @@ Rules:
 
 Changing a crew Captain after actual work is **not** made permissible by this staffing-count decision; preserve existing Captain history protection and deliberate Manager-only corrections. Distinguish planning-count edits from historical assignment moves and from actual report corrections. Display a failed persistence response clearly; do not show Saved until the database confirmed it, and prove readback after reload.
 
+### Shift staffing count, task duration, and Captain availability (2026-10-16 clarification)
+
+**Field rule:** Recording actual crew size and elapsed work belongs to each individual Report Work entry. The Scheduling Board's AM/PM crew count is a **revisable planning indication**, not actual task attendance. Newly created crews frequently have blank counts; delayed or missing estimates are normal at this stage of the rolling schedule.
+
+For each named crew and shift:
+
+- **1** means the Captain alone is the planned crew; it is not zero or a blank. More than one includes the Captain.
+- **NULL / blank** means no confirmed Captain-led crew for that shift. The named Captain may be unavailable in that role or may have joined a different crew as an individual. Do **not** count the named Captain as available, assume one person, invent labor, or silently substitute another crew because a name remains attached to a row.
+- A missing count is not evidence that an assigned task has zero required effort or zero expected duration. Preserve its task identity, estimated elapsed duration if known, and unstaffed/unknown scheduling status. An unplanned count never erases a reported actual crew or hours.
+- Planning a task should not be blocked solely because the estimated duration, standard crew range, effort classification, or assigned crew's AM/PM count is not yet recorded. Surface missing estimates and unconfirmed staffing clearly, and let Managers complete the short-horizon plan as the field situation becomes known. Valid hard predecessors and authorization protections remain separate.
+- Actual `crew_count` / duration in a Report Work record is always specific to that task/period; it must not be inferred from an earlier planned crew count and must never be recalculated because that plan changes.
+
+**Three separate measures:** (1) planned linear task-hours from independently reviewed `expected_duration_minutes`, regardless of planned staffing count; (2) planned person-hours only when both a positive crew count and positive task duration are known, otherwise `TBD` (never a fabricated zero); and (3) reported actual person-hours from individual Report Work records. A subtotal of known planning hours must be explicitly labeled **partial** whenever some tasks have unknown estimates. These measures must not be presented interchangeably or called a verified remaining-effort forecast.
+
+An existing crew row with `NULL` staffing is still a schedulable plan/history record, not proof that its Captain actually worked that shift. The Manager can update AM/PM planning counts on the Scheduling Board without modifying historical task reports.
+
 ## Hours / Duration Interpretation
 
 Rick's recorded hours are useful evidence, but a person's total hours for a day are **not automatically the duration of a Setup task**.
