@@ -158,7 +158,7 @@ def test_controller_management_backend_compiles_before_preview() -> None:
 def test_contiguous_results_precede_scrollable_uid_inventory() -> None:
     source = (BASE_DIR / "static" / "controllers_planner_v2.js").read_text(encoding="utf-8")
     css = (BASE_DIR / "static" / "controllers_planner.css").read_text(encoding="utf-8")
-    assert source.index("      ${blocks}\\n      <h3>Network UID inventory") > 0
+    assert source.index("      ${blocks}") < source.index("<h3>Network UID inventory")
     assert "candidate starts" in source
     assert "max-height:224px" in css
     assert "overflow-y:auto" in css
