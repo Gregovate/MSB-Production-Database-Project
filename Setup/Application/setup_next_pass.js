@@ -1655,6 +1655,37 @@ function setup205ActionCenterHtml(board, model) {
     return assignmentLabel(a) + ' — ' + safe(reasons.join('; ')) +
       ' ' + button('planning',t.setup_session_task_id,'Review readiness');
   });
+  // Real scheduled execution consumes elapsed linear time in each crew/shift.
+  // Avoid treating logistics-only Pick demand or unestimated work as free capacity.
+  const workloadGroups = new Map();
+  for (const a of board.assignments || []) {
+    const d = dayById.get(Number(a.setup_work_day_id));
+    const date = a.work_date || d?.work_date;
+    if (!date || date < today || date > imminentThrough ||
+        String(d?.day_status || a.day_status || '').toUpperCase() === 'CANCELLED' ||
+        a.historical_locked) continue;
+    const key = [a.setup_work_day_id,a.setup_work_day_crew_id,a.shift_code].join(':');
+    if (!workloadGroups.has(key)) workloadGroups.set(key,{date,day:d,crew:crewById.get(Number(a.setup_work_day_crew_id)),
+      shift:a.shift_code,items:[],known:0,unknown:0});
+    const g = workloadGroups.get(key);
+    const t = taskById.get(Number(a.setup_session_task_id));
+    const mins = Number(t?.expected_duration_minutes);
+    if (t?.expected_duration_minutes == null || !Number.isFinite(mins) || mins <= 0) g.unknown++;
+    else g.known += mins;
+    g.items.push(t?.task_name || a.task_name || 'Task');
+  }
+  const overCapacity = [...workloadGroups.values()]
+    .filter(g => g.known > (g.shift === 'MORNING' ? 180 : g.shift === 'AFTERNOON' ? 120 : 300))
+    .sort((a,b) => a.date.localeCompare(b.date))
+    .map(g => {
+      const max = g.shift === 'MORNING' ? 180 : g.shift === 'AFTERNOON' ? 120 : 300;
+      return '<strong>' + safe(g.date) + ' · Setup Day ' + safe(g.day?.setup_day_number ?? '—') +
+        ' · Crew ' + safe(g.crew?.crew_code || '—') + ' · ' + safe(g.shift) + '</strong> — ' +
+        safe((g.known/60).toFixed(2)) + ' planned linear hours / ' + safe((max/60).toFixed(2)) +
+        ' available; ' + safe(g.unknown) + ' additional tasks lack duration. ' +
+        safe(g.items.join(', ')) + ' ' +
+        button('day',g.day?.setup_work_day_id,'Review overloaded day');
+    });
   const captainTbd = (board.assignments || []).filter(a => {
     const d = dayById.get(Number(a.setup_work_day_id));
     const date = a.work_date || d?.work_date;
@@ -1672,6 +1703,7 @@ function setup205ActionCenterHtml(board, model) {
     section('Past occurrences awaiting reports',missed,'Includes unresolved older work periods, even if the annual task later completed or moved.') +
     section('Incomplete tasks needing continuation',continuations,'A reported partial work period is not the same as a future assignment.') +
     section('Upcoming scheduled readiness exceptions (7 days)',imminent,'Hard prerequisite/Work Order gates and independent NOT READY conditions can overlap.') +
+    section('Upcoming linear-hour overloads (7 days)',overCapacity,'These crews have more planned task duration than the shift permits, before weather, travel or unestimated tasks. This is not available labor forecast.') +
     section('Scheduled assignments without Captain',captainTbd,'A Captain TBD or unverified organizational mailbox must be followed up by a Manager.') +
     '</section>';
 }
