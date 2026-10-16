@@ -129,7 +129,14 @@ const overload={
 };
 const overloadHtml=ctx.setup205ActionCenterHtml(overload);
 assert(overloadHtml.includes('Upcoming linear-hour overloads (7 days) (1)'),'Manager must see real shift overload');
-assert(overloadHtml.includes('5.33 planned linear hours / 3.00 available'));
+assert(overloadHtml.includes('5.33 planned linear hours / 3.00 typical shift hours'));
+const withPmCapacity = structuredClone(overload);
+withPmCapacity.crews[0].am_planned_crew_count = 2;
+withPmCapacity.crews[0].pm_planned_crew_count = 2;
+const pmReviewHtml = ctx.setup205ActionCenterHtml(withPmCapacity);
+assert(pmReviewHtml.includes('AM pressure — PM continuation requires review'),
+  'Staffed PM must prompt continuation review instead of claiming whole-day overload');
+assert(pmReviewHtml.includes('Review shift capacity'));
 assert(overloadHtml.includes('data-205-action="day"'),'overload must navigate to day');
 ctx.nextSetupLocalDate=()=> '2026-11-20';
 const passedDeadline=ctx.setup205ManagementReportHtml(overload,2026);
