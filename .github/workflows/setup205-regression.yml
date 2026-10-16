@@ -38,6 +38,7 @@ jobs:
           node Setup/Application/test_205_deadline_action_kpis.cjs
           node Setup/Application/test_205_action_center_navigation.cjs
           node Setup/Application/test_205_captain_crew_autosave.cjs
+          node Setup/Application/test_205_nullable_crew_duration.cjs
           node Setup/Application/test_205_mixed_shift_group_drop.cjs
           node Setup/Application/test_205_perform_manager_reschedule.cjs
 
