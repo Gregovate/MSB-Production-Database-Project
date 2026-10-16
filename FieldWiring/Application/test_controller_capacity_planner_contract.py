@@ -1,3 +1,4 @@
+import ast
 from pathlib import Path
 
 
@@ -147,3 +148,8 @@ def test_controller_disposable_preview_proves_clean_exit() -> None:
     assert 'if (( cleanup_failed )); then' in server
     assert 'rm -rf -- "$SCRIPT_DIR"' in server
     assert "CONTROLLER DISPOSABLE BROWSER PREVIEW: CLEAN EXIT" in wrapper
+
+
+def test_controller_management_backend_compiles_before_preview() -> None:
+    source = (BASE_DIR / "controller_management.py").read_text(encoding="utf-8")
+    ast.parse(source, filename="controller_management.py")
