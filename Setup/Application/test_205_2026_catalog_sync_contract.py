@@ -62,10 +62,8 @@ def test_disposable_probes_both_directions_and_rolls_back():
 
 
 def test_two_way_decision_is_documented_in_its_owner():
-    model = text(
-        "Docs/02_Production_Database/01_System_Architecture/"
-        "12_Setup_and_Deployment/engineering/Setup_Planning_Operating_Model_2026-09-08.md"
-    )
+    model = (ROOT.parent / "Docs/02_Production_Database/01_System_Architecture/"
+             "12_Setup_and_Deployment/engineering/Setup_Planning_Operating_Model_2026-09-08.md").read_text(encoding="utf-8")
     assert "TWO-WAY Catalog / annual planning synchronization" in model
     assert "Edit through the reusable Catalog editor" in model
     assert "2027 decision gate" in model
