@@ -50,4 +50,5 @@ assert client.get('/fieldwiring/api/health').json['version'] == 'V0.4.1-gis-entr
 assert client.get('/setup/api/health').json['version'] == PRODUCTION_VERSION
 assert client.post('/setup/locate/').status_code == 405
 '''
-    subprocess.run([sys.executable, '-c', program], cwd=ROOT, check=True, capture_output=True, text=True)
+    result = subprocess.run([sys.executable, '-c', program], cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 0, f'GIS preview subprocess failed:\nstdout={result.stdout}\nstderr={result.stderr}'
