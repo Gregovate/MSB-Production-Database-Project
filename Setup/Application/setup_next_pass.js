@@ -1400,7 +1400,7 @@ function nextRescheduleNoWorkCrewOptions() {
     shift.disabled = false;
   }
   dialog.querySelector('#next-reschedule-shift-note').textContent = isNew
-    ? 'Creating a crew keeps the original AM/PM shift. Assign the original Captain and staffing in the Scheduling Board afterward; this action does not automatically transfer Captain identity.'
+    ? 'Creating a crew keeps the original AM/PM shift. The original Captain is assigned to the new Crew in the same transaction. Review staffing afterward.'
     : 'Choose the destination AM/PM shift.';
 }
 
@@ -1551,7 +1551,11 @@ async function nextSubmitRescheduleNoWork(event) {
     setBusy(true);
     if (crewChoice === 'NEW_CREW') {
       await api('api/setup/scheduling-board/work-days/' + dayId + '/crews/with-tasks',
-        commandOptions('POST', {items:selectedIds.map(id => ({kind:'assignment',id}))}));
+        commandOptions('POST', {
+          items:selectedIds.map(id => ({kind:'assignment',id})),
+          captain_person_id: dialog.dataset.preferredCaptain
+            ? Number(dialog.dataset.preferredCaptain) : null
+        }));
     } else if (groupIds) {
       await api('api/setup/scheduling-board/assignments/bulk-reschedule',
         commandOptions('POST',{
