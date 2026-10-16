@@ -1,6 +1,34 @@
 # #205 Whole-Setup KPI / Action Center / Report Work — Browser Candidate
 
-## CURRENT V0.3.72 planned-crew acceptance (2026-10-16)
+
+## CURRENT V0.3.73 nullable-staffing and task-hour browser review (2026-10-16)
+
+**SOURCE REGRESSION PASS; DISPOSABLE/BROWSER NOT YET ACCEPTED.** #122 governs #205; this remains existing draft PR #394. Exact source candidate SHA \`3bc3b6588b4fc1f8c350cbe7f064c1360e5a47cd\`; visible client/server build \`V0.3.73-optional-staffing-plan\`. [CI #38906299419](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38906299419) PASS **826 Setup Python, 202 FieldWiring Python, all required #205 Node checks including new nullable-staffing/task-duration executable**.
+
+**Engineering authority:** [Setup Planning Operating Model](../../Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_Planning_Operating_Model_2026-09-08.md), then [#205 contract](../../Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_205_Schedule_Performance_and_Daily_Accountability_Contract_2026-10-15.md). A planned crew of 1 = Captain alone; NULL = no Captain-led crew confirmed that shift (Captain may be unavailable or join another crew). New crew counts frequently start NULL. Actual crew/hours are recorded individually in Report Work and remain protected. Source now allows scheduling with incomplete duration/normal crew/effort estimates as advisory; preserves independently known linear task-hours when planned crew count is NULL; and shows partial/TBD planned labor rather than misleading 0 labor. Known task-hour and staffing-coverage distinctions appear in board and Perform Work.
+
+**Database boundary:** This candidate **still includes NEW migration 075**, the function-only Manager planned AM/PM count correction introduced in V0.3.72, and the corresponding rollback-protected Crew 22 disposable validation. It is NOT source-only. No schema/table/actual-work/history changes are authorized. Notification migration 074 remains parked. Execute both SQL paths **only against the governed disposable current-Production clone**, not Production. Database-changing release requires later explicit #122 authority and Server Management maintenance/rollback runbook.
+
+**One-clone test:** Current clean existing laptop review checkout \`C:\lor\ImportExport\VSCode-205-kpi-review\` must be fast-forwarded to latest \`fix/205-setup-deadline-kpis-20261015\`; verify \`3bc3b658...\` is an ancestor of tooling HEAD. Read Server Management's Pre-Production Browser Review Runbook and Port Register. After previous preview CLEAN EXIT, run the reusable browser launcher directly (do not run separate disposable acceptance, which would copy Production twice):
+
+\`\`\`powershell
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 \`
+    -PreviewPort 8898 \`
+    -CandidateSha '3bc3b6588b4fc1f8c350cbe7f064c1360e5a47cd' \`
+    -TargetRef 'fix/205-setup-deadline-kpis-20261015' \`
+    -ExpectedVersion 'V0.3.73-optional-staffing-plan' \`
+    -MigrationPaths @('Setup/Database/075_allow_setup_planned_crew_count_corrections.sql') \`
+    -ValidationPaths @('Setup/Acceptance/setup_205_planned_crew_count_disposable_validation.sql')
+\`\`\`
+
+**Required combined operator check:** (1) D16 Crew A/22 planned AM 3 saves after prior actual work, persists after refresh; actual recorded 1 on assignments 84/143 remains unchanged; Captain-history change still blocked; (2) leave another crew's shift count NULL: no made-up Captain availability, no 0 total task-hours, and task expected duration still shown; (3) count 1 means Captain only, resulting estimated labor only when task duration is known; (4) intentionally missing estimated duration/normal crew/effort no longer blocks scheduling but shows truthful TBD warnings; (5) independent task-hours and partial/unknown planned person-hours on both screens; (6) preceding V0.3.71 operator rejection findings (Action Center, rescheduling, scroll/day header, AM/PM overload) still require operator review, not automatic approval from CI. No browser opening until \`BROWSER REVIEW READY\`; obtain operator verdict and \`CLEAN EXIT\`.
+
+**Production:** unchanged. The exact source SHA and migration are not deployed; issue #205/PR #394 remain OPEN/DRAFT. Failed migration or validation means STOP and fix a new exact candidate; do not bypass gates.
+
+---
+
+
+## ARCHIVED V0.3.72 planned-crew handoff (source verified, superseded by V0.3.73; DO NOT RUN)
 
 **NEW SOURCE-CERTIFIED CANDIDATE; BROWSER/DISPOSABLE NOT YET ACCEPTED.** Under #122/#205; operator rejected V0.3.71. New application SHA `fe07cae28a35e98db30281c64aa366ce0aa72ad0`, version `V0.3.72-planned-crew-corrections` on existing draft PR #394. GitHub [CI 38904126715](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38904126715) PASS **826 Setup Python / 202 FieldWiring Python / #205 Node**. Latest branch commits after this exact application SHA may be documentation only. Treat exact application SHA and current branch/tooling SHA separately; never substitute the branch head without verifying candidate ancestry.
 
