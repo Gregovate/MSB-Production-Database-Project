@@ -363,3 +363,25 @@ body.busy button { pointer-events: none; opacity: .65; }
   align-items: flex-start;
   flex-wrap: wrap;
 }
+
+/* #205: Full Setup navigation must remain accessible while scrolling kits. */
+.inventory-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  flex-wrap: wrap;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 9%);
+}
+.inventory-header-actions { flex: 1 1 38rem; min-width: 0; }
+.inventory-setup-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+.inventory-setup-nav .button { white-space: nowrap; }
+@media (max-width: 980px) {
+  .inventory-header { max-height: 48dvh; overflow-y: auto; }
+  .inventory-setup-nav { justify-content: flex-start; }
+}
