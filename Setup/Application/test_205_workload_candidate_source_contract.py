@@ -44,7 +44,8 @@ def test_multi_selection_and_drag_drop_handlers_are_preserved():
         "board205DraggedAssignmentItems(",
     ):
         assert expected in js
-    assert "pointer-events:none;position:relative" in js
+    assert 'class="setup-board205-workload-banner"' in js
+    assert "pointer-events:none" in js
 
 
 def test_perform_work_navigation_uses_existing_router_and_day_focus():
