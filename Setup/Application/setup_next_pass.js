@@ -1719,24 +1719,47 @@ function nextPerformWorkloadLabel(items, shift) {
 function nextDayStaffingSummary(assignments, crews, taskRows = []) {
   return ['MORNING', 'AFTERNOON'].map((shift) => {
     const field = shift === 'MORNING' ? 'am_planned_crew_count' : 'pm_planned_crew_count';
-    const tasks = assignments.filter((item) => item.shift_code === shift);
-    const ids = new Set(tasks.map((item) => Number(item.setup_work_day_crew_id)));
-    crews.filter((crew) => Number(crew[field]) > 0).forEach((crew) => ids.add(Number(crew.setup_work_day_crew_id)));
-    let people = 0, unknown = 0, required = 0;
-    ids.forEach((id) => {
-      const crew = crews.find((item) => Number(item.setup_work_day_crew_id) === id);
-      // Tasks in one crew are sequential: use the largest minimum, not a sum.
-      const crewTasks = tasks.filter((item) => Number(item.setup_work_day_crew_id) === id);
-      required += crewTasks.length ? Math.max(1, ...crewTasks.map((item) => {
-        const task = taskRows.find((row) => Number(row.setup_session_task_id) === Number(item.setup_session_task_id));
-        return Math.max(1, Number(task?.normal_crew_min ?? item.normal_crew_min) || 1);
-      })) : 0;
-      if (crew?.[field] == null || crew[field] === '') unknown += 1;
-      else people += Number(crew[field]);
+    const tasks = assignments.filter(item => item.shift_code === shift);
+    const ids = new Set(tasks.map(item => Number(item.setup_work_day_crew_id)));
+    crews.filter(crew => crew[field] != null && Number(crew[field]) > 0)
+      .forEach(crew => ids.add(Number(crew.setup_work_day_crew_id)));
+    let people = 0, unknownCrews = 0, requiredKnown = 0, requiredUnknown = 0;
+    let durationMinutes = 0, durationUnknown = 0;
+    for (const taskAssignment of tasks) {
+      const task = taskRows.find(row => Number(row.setup_session_task_id) === Number(taskAssignment.setup_session_task_id));
+      const raw = task?.expected_duration_minutes ?? taskAssignment.expected_duration_minutes;
+      const duration = raw == null || raw === '' ? NaN : Number(raw);
+      if (Number.isFinite(duration) && duration > 0) durationMinutes += duration;
+      else durationUnknown++;
+    }
+    ids.forEach(id => {
+      const crew = crews.find(item => Number(item.setup_work_day_crew_id) === id);
+      const crewTasks = tasks.filter(item => Number(item.setup_work_day_crew_id) === id);
+      const mins = crewTasks.map(item => {
+        const task = taskRows.find(row => Number(row.setup_session_task_id) === Number(item.setup_session_task_id));
+        const raw = task?.normal_crew_min ?? item.normal_crew_min;
+        return raw == null || raw === '' ? NaN : Number(raw);
+      });
+      if (mins.length) {
+        const valid = mins.filter(value => Number.isFinite(value) && value >= 1);
+        if (valid.length) requiredKnown += Math.max(...valid);
+        if (valid.length !== mins.length) requiredUnknown++;
+      }
+      if (crew?.[field] == null || crew[field] === '') unknownCrews++;
+      else if (Number(crew[field]) > 0) people += Number(crew[field]);
     });
-    return `${shift === 'MORNING' ? 'AM' : 'PM'}: ${ids.size} crews · ${tasks.length} tasks · ${unknown ? `${people} people planned + ${unknown} crew sizes TBD` : `${people} people planned`} / ${required} minimum needed`;
-  }).join('\n') + (assignments.some((item) => item.shift_code === 'ALL_DAY')
-    ? ` · All Day: ${assignments.filter((item) => item.shift_code === 'ALL_DAY').length} tasks` : '');
+    const staffing = unknownCrews
+      ? (people > 0 ? `${people} known volunteers + ${unknownCrews} unconfirmed crew(s)` : `${unknownCrews} unconfirmed crew(s); volunteers TBD`)
+      : `${people} volunteers planned`;
+    const minimum = requiredUnknown
+      ? (requiredKnown ? `${requiredKnown} known minimum + ${requiredUnknown} TBD` : 'minimum crew TBD')
+      : `${requiredKnown} minimum needed`;
+    const taskHours = durationUnknown && durationMinutes === 0
+      ? 'task duration TBD'
+      : `${(durationMinutes / 60).toFixed(1)} known task-hours${durationUnknown ? ` + ${durationUnknown} duration(s) TBD` : ''}`;
+    return `${shift === 'MORNING' ? 'AM' : 'PM'}: ${ids.size} crews · ${tasks.length} tasks · ${staffing} / ${minimum} · ${taskHours}`;
+  }).join('\n') + (assignments.some(item => item.shift_code === 'ALL_DAY')
+    ? ` · All Day: ${assignments.filter(item => item.shift_code === 'ALL_DAY').length} tasks` : '');
 }
 
 // Use the existing Captain scope and authorized board response. No identity lookup
