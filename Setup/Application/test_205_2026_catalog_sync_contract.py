@@ -67,3 +67,26 @@ def test_two_way_decision_is_documented_in_its_owner():
     assert "TWO-WAY Catalog / annual planning synchronization" in model
     assert "Edit through the reusable Catalog editor" in model
     assert "2027 decision gate" in model
+
+
+def test_catalog_editor_uses_one_transaction_for_estimates_and_effort():
+    repo = text("Application/setup_repository.py")
+    ui = text("Application/setup_production.js")
+    board = text("Application/setup_scheduling_board.js")
+    update = repo.split("def update_task(", 1)[1].split("\n    def update_session_task_review(", 1)[0]
+    assert '"effort_level" in payload' in update
+    assert "SELECT * FROM ref.update_setup_task(" in update
+    assert "SELECT * FROM ref.set_setup_task_effort(%s,%s,%s)" in update
+    assert update.index("SELECT * FROM ref.update_setup_task(") < update.index(
+        "SELECT * FROM ref.set_setup_task_effort(%s,%s,%s)"
+    ) < update.index("conn.commit()")
+    save = ui.split("async function saveReusableTask()", 1)[1].split(
+        "\nasync function saveAnnualReview(", 1
+    )[0]
+    assert "effort_level: el('edit-effort-level')" in save
+    assert "/effort" not in save
+    planning = board.split("async function board205PersistPlanningInfo(",1)[1].split(
+        "\nasync function board205SubmitPlanningInfo(",1
+    )[0]
+    assert "effort_level: draft.effort_level" in planning
+    assert "/effort" not in planning
