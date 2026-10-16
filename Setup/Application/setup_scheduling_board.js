@@ -2161,6 +2161,14 @@ function board205UpdateStickyDay() {
     else break;
   }
   const value = active.dataset.dayLabel || 'Setup Day · Unknown';
+  // The full day heading already identifies work at the top of each day.
+  // Only repeat identity when that header is no longer visible.
+  const dayHeader = active.querySelector('.setup-board205-day-header');
+  const rect = dayHeader?.getBoundingClientRect();
+  const headingRect = heading.getBoundingClientRect();
+  const headerVisible = rect && rect.top >= headingRect.bottom - 2 &&
+    rect.top < pane.getBoundingClientRect().bottom;
+  label.hidden = Boolean(headerVisible);
   if (label.textContent !== value) label.textContent = value;
 }
 
