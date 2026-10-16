@@ -1920,7 +1920,7 @@ function board205AssignmentCard(item) {
       </div>
       <div class="setup-board205-meta">${board205Esc(board205Scope(item))}</div>
       <div class="setup-board205-meta">Min crew ${board205Esc(minCrew ?? 'TBD')} · ${board205Esc(board205Duration(task.expected_duration_minutes))}</div>
-      <div class="setup-board205-meta"><strong>Planned crew:</strong> ${board205Esc(planned ?? 'TBD')} · <strong>Est. labor:</strong> ${board205Esc(plannedLabor)}</div>
+      <div class="setup-board205-meta setup-board205-plan-staffing"><strong>Planned crew:</strong> ${board205Esc(planned ?? 'TBD')} · <strong>Est. labor:</strong> ${board205Esc(plannedLabor)}</div>
       <div class="setup-board205-meta setup-board205-assignment-captain"><strong>Crew Captain:</strong> ${board205Esc(crew?.captain_display_name || 'TBD')}</div>
       ${task.readiness_state === 'NOT_READY' ? `<div class="setup-board205-warning">⚠ Readiness not met: ${board205Esc(task.readiness_note || 'annual readiness condition')}</div>` : ''}
       ${understaffed ? `<div class="setup-board205-warning setup-board205-short-crew-warning"><strong>SHORT CREW</strong> · Planned ${board205Esc(item.shift_code === 'MORNING' ? 'AM' : 'PM')} ${board205Esc(planned)} / minimum ${board205Esc(minCrew)} · short by ${board205Esc(shortBy)}.</div>` : ''}
@@ -2732,6 +2732,22 @@ async function board205SaveCrew(crewId, crewNode) {
           const cell = row?.querySelector('.setup-board205-cell[data-shift="' + shift + '"]');
           const oldBanner = cell?.querySelector('.setup-board205-workload-banner');
           if (oldBanner) oldBanner.outerHTML = board205WorkloadBanner(crewId, shift);
+          // Reflect the newly saved staffing in visible cards immediately;
+          // no full board re-render (which could discard another unsaved edit).
+          cell?.querySelectorAll('.setup-board205-assignment').forEach(card => {
+            const item = (setupBoard205State.board.assignments || []).find(a =>
+              Number(a.setup_work_day_task_id) === Number(card.dataset.assignmentId));
+            if (!item) return;
+            const task = board205Task(item.setup_session_task_id) || item;
+            const planned = board205AssignmentPlannedCrew(item);
+            const status = card.querySelector('.setup-board205-plan-staffing');
+            if (status) status.innerHTML = '<strong>Planned crew:</strong> ' +
+              board205Esc(planned ?? 'TBD') + ' · <strong>Est. labor:</strong> ' +
+              board205Esc(board205LaborHoursText(planned, task.expected_duration_minutes));
+            const captainText = card.querySelector('.setup-board205-assignment-captain');
+            if (captainText) captainText.innerHTML = '<strong>Crew Captain:</strong> ' +
+              board205Esc(crew.captain_display_name || 'TBD');
+          });
         }
         const captainWarning = crewNode.querySelector('.setup-board205-captain-tbd-warning');
         if (captainWarning) captainWarning.hidden = crew.captain_person_id != null;
