@@ -876,6 +876,7 @@ function board205WorkloadBanner(crewId, shift) {
   return `<div role="status" style="pointer-events:none;position:relative;z-index:1;border:3px solid ${color};border-radius:7px;background:${background};color:${color};padding:9px;margin:5px 0;font-weight:800">
     <div style="font-size:1.05rem">${label} · ${hours(w.known)} / ${hours(w.capacity)} linear hours${red ? ` · +${hours(w.overload)}h OVER` : shiftPressure ? ` · PM may absorb ${hours(w.overload)}h if the work can continue` : ''}</div>
     <div style="font-size:.83rem">${w.count} tasks · ${w.unknown} unknown estimates · ${w.notReady} NOT READY</div>
+    <div style="font-size:.8rem">AM ${amStaffed ? hours(Math.max(0, am.capacity - am.known)) + 'h remaining' : 'crew not confirmed'} · PM ${pmStaffed ? hours(Math.max(0, pm.capacity - pm.known)) + 'h remaining' : 'crew not confirmed'} · ${hours(dayDemand)}h total planned</div>
   </div>`;
 }
 function board205AmCapacityNote(crewId) {
