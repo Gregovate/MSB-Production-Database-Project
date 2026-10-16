@@ -71,6 +71,31 @@ def email_myself() -> tuple[Response, int]:
     return jsonify(result=receipt, notice="Directus outbox accepted request; inbox delivery is not yet proven"),202
 
 
+@setup_notification_api.get("/api/setup/notifications/request-report/<int:assignment_id>/preview")
+def request_report_preview(assignment_id: int) -> Response:
+    """Manager-only, fresh no-send recipient/occurrence verification before confirmation."""
+    _operator, people, board, today = _manager_context()
+    missing = notification_context(board, today)["overdue"]
+    row = next((r for r in missing if r["assignment_id"] == assignment_id), None)
+    if row is None:
+        raise SetupCommandError("Original assignment no longer has a missing report")
+    captain_id = row["captain_person_id"]
+    if captain_id is None:
+        raise SetupCommandError("Captain TBD; Manager must resolve assignment identity")
+    if (int(captain_id), assignment_id) in covered_assignments(setup_database_dsn(), today):
+        raise SetupCommandError("This Captain/assignment already has today's notification coverage")
+    recipient = next((p for p in people if p["person_id"] == captain_id
+                      and p["can_read_setup"] and organizational_email(p["email"])), None)
+    if recipient is None:
+        raise SetupCommandError("Captain has no verified current MSB organizational recipient")
+    return jsonify(assignment_id=assignment_id,
+                   task_name=row["task_name"], work_date=row["work_date"],
+                   shift=row["shift"], crew=row["crew"],
+                   recipient_name=recipient["display_name"],
+                   recipient_email=recipient["email"],
+                   status="ELIGIBLE_FOR_CONFIRMATION_ONLY")
+
+
 @setup_notification_api.post("/api/setup/notifications/request-report/<int:assignment_id>")
 def request_report(assignment_id: int) -> tuple[Response,int]:
     require_setup_command()
