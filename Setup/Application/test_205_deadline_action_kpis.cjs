@@ -103,16 +103,16 @@ assert(ctx.setup205ManagementReportHtml(base,2026).includes('data-205-action="pl
 ctx.appState.access.can_manage_setup=false;
 assert.equal(ctx.setup205ActionCenterHtml(base),'','Manager-only worklist must not leak');
 assert(!ctx.setup205DeadlineKpiHtml(base,2026).includes('Manager Action Center →'), 'Manager-only navigation must not leak');
-assert(!managerHtml.includes('setup205-email-preview'), 'mail must remain parked');
-assert(!managerHtml.includes('data-205-action="request-report"'), 'no notification action on production candidate');
+assert(!managerHtml.includes('mailto:'), 'no unguarded direct browser mail link');
+assert(managerHtml.includes('data-205-action="request-report"'), 'only Manager worklist shows guarded Request Report action');
 
 assert(managerHtml.includes('data-205-action="report"'), 'unreported original must be directly reachable');
 assert(managerHtml.includes('data-205-action="schedule"'), 'unfinished continuation must open scheduling');
-assert(!managerHtml.includes('mailto:'), 'no email controls in the launch candidate');
+assert(!managerHtml.includes('mailto:'), 'outbound mail must pass guarded server API');
 const hidden = ctx.setup205ManagementReportHtml(base,2026);
 assert(!hidden.includes('Inspect blocker'), 'unprivileged staff must not see Manager task details');
 assert(!hidden.includes('Open original work report'), 'unprivileged staff must not see history-specific Manager links');
-console.log('PASS #205 Manager Action Center, actionable drilldowns, access and paused mail');
+console.log('PASS #205 Manager Action Center, actionable drilldowns, access and guarded email integration');
 
 ctx.appState.access.can_manage_setup=true;
 const overload={
