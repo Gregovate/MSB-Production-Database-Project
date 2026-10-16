@@ -984,3 +984,24 @@ body:not(.setup-schedule-view) #next-perform-list {
 @media (max-width: 680px) {
   #next-perform-back-to-top {right: 0.5rem; bottom: 0.55rem;}
 }
+
+/* #205: Keep the specific assignment identifiable at the point of reporting. */
+.next-report-task-identity {
+  position: sticky;
+  top: 5.8rem;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.8rem;
+  padding: 0.55rem 0.7rem;
+  margin-bottom: 0.6rem;
+  border: 1px solid var(--border, #cbd5e1);
+  border-left: 4px solid var(--accent, #14658b);
+  background: var(--panel, #fff);
+  color: var(--text, #172033);
+}
+.next-report-task-identity span { font-size: 0.86rem; }
+@media (max-width: 680px) {
+  .next-report-task-identity { top: 0; }
+}
