@@ -8,12 +8,12 @@ STYLE = (Path(__file__).parent / "setup_scheduling_board.css").read_text(encodin
 def test_each_crew_field_autosaves_and_button_is_gone():
     assert "setup-board205-save-crew" not in SOURCE
     assert "Saved automatically" in SOURCE
-    for selector in (
-        ".setup-board205-crew-captain-select",
-        ".setup-board205-crew-am",
-        ".setup-board205-crew-pm",
-    ):
-        assert ("querySelector('" + selector + "')?.addEventListener('change', autosave)") in SOURCE
+    assert "querySelector('.setup-board205-crew-captain-select')?.addEventListener('change', autosave)" in SOURCE
+    for selector in (".setup-board205-crew-am", ".setup-board205-crew-pm"):
+        assert selector in SOURCE
+    assert "input?.addEventListener('change', autosave)" in SOURCE
+    assert "input?.addEventListener('blur'" in SOURCE
+    assert "setup-board205-retry-crew" in SOURCE
     assert "setup-board205-crew-save-status" in SOURCE
     assert "aria-live=" in SOURCE
 
