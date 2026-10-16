@@ -39,7 +39,7 @@ from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.65-scheduled-search-focus"
+PRODUCTION_VERSION = "V0.3.66-setup-action-center"
 
 # #222 lightweight Production request instrumentation.
 #

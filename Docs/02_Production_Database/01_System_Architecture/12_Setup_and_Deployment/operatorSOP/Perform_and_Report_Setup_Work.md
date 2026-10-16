@@ -8,7 +8,7 @@
 | Audience | Production Crew, Captains, Setup Managers |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-30 |
+| Last Reviewed | 2026-10-15 |
 | Keywords | Setup, Perform Work, Captain, Report Work, partial work, procedure, Print Task |
 
 ## Purpose
@@ -102,16 +102,16 @@ Use **Report Work** after work has actually been performed.
 
 Enter:
 
-1. **Work completed on** — the date the crew actually did the work.
+1. **Date work actually happened** — the date the crew actually did the work.
    - It defaults to the scheduled assignment date.
    - Change it when the work happened on a different day.
-2. **Crew size** — the actual number of people who worked the task.
+2. **Actual crew size** — the actual number of people who worked the task.
 3. **Hours** and **Minutes** — the actual elapsed work period.
-4. **% complete** — the cumulative percent complete after this work period.
+4. **Whole task % complete** — the cumulative percent complete after this work period.
 5. **What was done / what remains** — required when the task is not 100% complete.
 6. **Add quantity detail (optional)** — use only when countable detail is useful.
 
-Then click **Save Work Report**.
+Then click **Save Work Report** and confirm both the scheduled date and the date work actually happened. Cancel preserves your entries.
 
 ### Scheduled date and actual work date are different facts
 
@@ -124,7 +124,7 @@ Scheduled assignment:  September 23
 Work completed on:     September 24
 ```
 
-That is valid. The schedule records the plan; **Work completed on** records what actually happened.
+That is valid. The schedule records the plan; **Date work actually happened** records what actually happened.
 
 ## If You Get an Email Saying a Work Report Is Missing
 
@@ -136,9 +136,9 @@ This means the computer has no report for one of your scheduled work assignments
 4. In the **Captain** dropdown, select your name. A Manager who is helping can choose **All scheduled work**.
 5. Locate the **same date, crew, shift, and task** from the email. If a past day is folded up or not displayed, ask a Manager to help reveal the historical assignment rather than reporting against the wrong task.
 6. Click the task to open it, then choose **Report Work**.
-7. For **Work completed on**, enter the date the crew **actually did the work**, even when it is different from the scheduled date.
-8. Enter the **real number of people** under **Crew size** and the **actual Hours and Minutes** the work took.
-9. Enter **% complete** for the *whole task*: **100** means truly finished. If some work remains, enter the best honest percent and describe **What was done / what remains**. Optional quantity details are only for things you can count.
+7. For **Date work actually happened**, enter the date the crew **actually did the work**, even when it is different from the scheduled date.
+8. Enter the **real number of people** under **Actual crew size** and the **actual Hours and Minutes** the work took.
+9. Enter **Whole task % complete** for the *whole task*: **100** means truly finished. If some work remains, enter the best honest percent and describe **What was done / what remains**. Optional quantity details are only for things you can count.
 10. Review the entries, click **Save Work Report**, and confirm the new entry appears under **Progress history**.
 11. If work is unfinished, tell the Manager what remains. The Manager needs to schedule another work assignment; submitting a partial report does not automatically reschedule it.
 
