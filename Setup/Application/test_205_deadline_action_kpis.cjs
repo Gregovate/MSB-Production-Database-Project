@@ -132,3 +132,24 @@ ctx.nextSetupLocalDate=()=> '2026-11-20';
 const passedDeadline=ctx.setup205DeadlineKpiHtml(overload,2026);
 assert(passedDeadline.includes('Hard deadline reached with unfinished work'),'never show ambiguous status after deadline');
 console.log('PASS #205 upcoming crew overload and deadline-passed labels');
+
+
+const compact=ctx.setup205DeadlineKpiHtml(base,2026);
+const beginGlance=compact.indexOf('<div class="setup205-kpi-glance"');
+const disclosure=compact.indexOf('<details class="setup205-kpi-expand">');
+assert(beginGlance >= 0, 'top KPI glance must exist');
+assert(disclosure > beginGlance, 'KPI breakdown must not precede essential counts');
+assert(compact.includes('Total <strong>5</strong>'));
+assert(compact.includes('Completed <strong>2</strong>'));
+assert(compact.includes('Remaining <strong>3</strong>'));
+assert(compact.includes('Blocked / NOT READY <strong>1</strong>'));
+assert(compact.includes('Actual last 7 days <strong>0.14/day</strong>'));
+assert(compact.includes('Required <strong>0.06/day</strong>'));
+assert(compact.includes('Projected finish <strong>INSUFFICIENT DATA</strong>'));
+assert(!compact.includes('<details class="setup205-kpi-expand" open'),
+  'long KPI breakdown must be closed by default');
+assert(compact.indexOf('Manager Setup Action Center') > disclosure,
+  'Manager actions belong inside collapsed breakdown, not the board header');
+assert(compact.includes('</div></details></section>'),
+  'nested worklist disclosure must close before returning to the schedule');
+console.log('PASS #205 compact above-the-fold KPI summary, closed action breakdown');
