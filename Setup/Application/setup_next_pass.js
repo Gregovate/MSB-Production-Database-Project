@@ -1237,6 +1237,20 @@ function nextPerformAssignmentStatus(assignment) {
   return nextSetupAssignmentStatus(task);
 }
 
+// A reschedule is a Manager decision that NO actual work happened on this
+// original occurrence. Never move or conceal a progress-locked assignment.
+function nextCanRescheduleNoWork(assignment, task = null) {
+  const annual = task || nextPerformTask(assignment?.setup_session_task_id);
+  const day = nextPerformDay(assignment?.setup_work_day_id);
+  return Boolean(
+    appState.access?.can_manage_setup && assignment?.setup_work_day_task_id
+    && !assignment.historical_locked
+    && !nextAssignmentReported(assignment)
+    && !annual?.effective_complete
+    && String(day?.day_status || assignment.day_status || '').toUpperCase() !== 'CANCELLED'
+  );
+}
+
 function nextPerformAssignmentCard(assignment) {
   const task = nextPerformTask(assignment.setup_session_task_id) || assignment;
   const crew = nextPerformCrew(assignment);
@@ -1282,10 +1296,203 @@ function nextPerformAssignmentCard(assignment) {
       <div class="next-perform-actions">
         <button type="button" class="small secondary next-print-task">Print Task</button>
         <button type="button" class="small next-report-work">${annualComplete ? 'Review Work History' : 'Report Work'}</button>
+        ${nextCanRescheduleNoWork(assignment, task) ? '<button type="button" class="small secondary next-reschedule-no-work">Reschedule · No work performed</button>' : ''}
         <button type="button" class="small next-report-problem next-report-correction-action"${nextCanSubmitFieldFinding() ? '' : ' disabled title="Report Correction requires Production Crew or Manager access"'}>Report Correction</button>
       </div>
       <div class="next-perform-body" hidden></div>
     </details>`;
+}
+
+// A Manager can correct a past plan directly from Perform Work, without
+// opening the optional task context (which may be unavailable) and without
+// creating a zero-hour or fake-progress report.
+function nextRescheduleNoWorkDialog() {
+  let dialog = document.getElementById('next-reschedule-no-work-dialog');
+  if (dialog) return dialog;
+  dialog = document.createElement('dialog');
+  dialog.id = 'next-reschedule-no-work-dialog';
+  dialog.className = 'next-reschedule-no-work-dialog';
+  dialog.innerHTML = `
+    <form id="next-reschedule-no-work-form">
+      <h3>Reschedule — No work performed</h3>
+      <p id="next-reschedule-original" class="muted"></p>
+      <p>This action means no work happened on the original assignment.
+         The original date and crew remain in the scheduling audit. No work report is created.</p>
+      <label>New Setup Work Day
+        <select id="next-reschedule-day" required></select>
+      </label>
+      <label>Destination Crew
+        <select id="next-reschedule-crew" required></select>
+      </label>
+      <label>Shift
+        <select id="next-reschedule-shift">
+          <option value="MORNING">AM</option>
+          <option value="AFTERNOON">PM</option>
+        </select>
+      </label>
+      <p id="next-reschedule-shift-note" class="muted"></p>
+      <div class="next-reschedule-actions">
+        <button type="button" class="secondary next-reschedule-cancel">Cancel</button>
+        <button type="submit">Move unworked assignment</button>
+      </div>
+    </form>`;
+  document.body.appendChild(dialog);
+  dialog.querySelector('.next-reschedule-cancel').addEventListener('click', () => dialog.close());
+  dialog.querySelector('#next-reschedule-day').addEventListener('change', nextRescheduleNoWorkCrewOptions);
+  dialog.querySelector('#next-reschedule-crew').addEventListener('change', nextRescheduleNoWorkCrewOptions);
+  dialog.querySelector('#next-reschedule-no-work-form').addEventListener('submit', nextSubmitRescheduleNoWork);
+  return dialog;
+}
+
+function nextRescheduleNoWorkCrewOptions() {
+  const dialog = document.getElementById('next-reschedule-no-work-dialog');
+  if (!dialog) return;
+  const dayId = Number(dialog.querySelector('#next-reschedule-day')?.value || 0);
+  const crewSelect = dialog.querySelector('#next-reschedule-crew');
+  const selected = crewSelect?.value;
+  const crews = (setupNextState.performBoard.crews || [])
+    .filter(crew => Number(crew.setup_work_day_id) === dayId);
+  // Reuse the accepted atomic create-Crew-and-place operation for New Crew.
+  crewSelect.innerHTML = crews.map(crew =>
+    '<option value="' + Number(crew.setup_work_day_crew_id) + '">Crew ' +
+    escapeHtml(crew.crew_code || '') + ' · ' +
+    escapeHtml(crew.captain_display_name || 'Captain TBD') + '</option>'
+  ).join('') + '<option value="NEW_CREW">+ Create a new crew</option>';
+  if ([...crewSelect.options].some(option => option.value === selected)) crewSelect.value = selected;
+  const isNew = crewSelect.value === 'NEW_CREW';
+  const shift = dialog.querySelector('#next-reschedule-shift');
+  if (isNew) {
+    shift.value = dialog.dataset.originalShift;
+    shift.disabled = true;
+  } else {
+    shift.disabled = false;
+  }
+  dialog.querySelector('#next-reschedule-shift-note').textContent = isNew
+    ? 'Creating a crew keeps the original AM/PM shift. Captain and staffing may be assigned afterward.'
+    : 'Choose the destination AM/PM shift.';
+}
+
+function nextOpenRescheduleNoWorkDialog(assignmentId) {
+  if (!appState.access?.can_manage_setup) return;
+  const board = setupNextState.performBoard;
+  const assignment = (board.assignments || []).find(
+    row => Number(row.setup_work_day_task_id) === Number(assignmentId)
+  );
+  const task = assignment ? nextPerformTask(assignment.setup_session_task_id) : null;
+  if (!assignment || !nextCanRescheduleNoWork(assignment, task)) {
+    setAlert('This assignment has actual work/history or is no longer eligible to move. Review the report or schedule a continuation.', 'error');
+    return;
+  }
+  if (!['MORNING','AFTERNOON'].includes(assignment.shift_code)) {
+    setAlert('Legacy All Day assignments require individual Manager correction in the Scheduling Board.', 'error');
+    return;
+  }
+  const today = nextSetupLocalDate();
+  const days = (board.work_days || []).filter(day =>
+    day.work_date >= today && String(day.day_status || '').toUpperCase() !== 'CANCELLED'
+  );
+  if (!days.length) {
+    setAlert('No current/future workdays exist. Add a workday in Plan / Schedule before rescheduling.', 'error');
+    return;
+  }
+  const dialog = nextRescheduleNoWorkDialog();
+  const oldDay = nextPerformDay(assignment.setup_work_day_id);
+  const oldCrew = nextPerformCrew(assignment);
+  dialog.dataset.assignmentId = String(assignmentId);
+  dialog.dataset.originalShift = assignment.shift_code;
+  dialog.querySelector('#next-reschedule-original').textContent =
+    (task?.task_name || assignment.task_name || 'Setup task') +
+    ' · originally ' + (oldDay?.work_date || assignment.work_date || 'unknown day') +
+    ' · Crew ' + (oldCrew?.crew_code || assignment.crew_lane || '—') +
+    ' · ' + (assignment.shift_code === 'MORNING' ? 'AM' : 'PM');
+  const dateControl = dialog.querySelector('#next-reschedule-day');
+  dateControl.innerHTML = days.map(day =>
+    '<option value="' + Number(day.setup_work_day_id) + '">Setup Day ' +
+    escapeHtml(day.setup_day_number ?? '—') + ' · ' +
+    escapeHtml(day.work_date) + '</option>'
+  ).join('');
+  if (days.some(day => day.setup_work_day_id === assignment.setup_work_day_id))
+    dateControl.value = String(assignment.setup_work_day_id);
+  dialog.querySelector('#next-reschedule-shift').value = assignment.shift_code;
+  nextRescheduleNoWorkCrewOptions();
+  dialog.showModal();
+}
+
+async function nextSubmitRescheduleNoWork(event) {
+  event.preventDefault();
+  if (!appState.access?.can_manage_setup) return;
+  const dialog = document.getElementById('next-reschedule-no-work-dialog');
+  const assignmentId = Number(dialog?.dataset.assignmentId || 0);
+  const board = setupNextState.performBoard;
+  const assignment = (board.assignments || []).find(
+    row => Number(row.setup_work_day_task_id) === assignmentId
+  );
+  if (!assignment || !nextCanRescheduleNoWork(assignment)) {
+    setAlert('This original assignment cannot be moved: work/history is present or access changed.', 'error');
+    return;
+  }
+  const dayId = Number(dialog.querySelector('#next-reschedule-day').value);
+  const crewChoice = dialog.querySelector('#next-reschedule-crew').value;
+  const crewId = Number(crewChoice);
+  const shift = crewChoice === 'NEW_CREW' ? assignment.shift_code
+    : dialog.querySelector('#next-reschedule-shift').value;
+  const targetDay = (board.work_days || []).find(day =>
+    Number(day.setup_work_day_id) === dayId
+    && day.work_date >= nextSetupLocalDate()
+    && String(day.day_status || '').toUpperCase() !== 'CANCELLED'
+  );
+  const crew = (board.crews || []).find(row =>
+    Number(row.setup_work_day_crew_id) === crewId
+    && Number(row.setup_work_day_id) === dayId
+  );
+  if (!targetDay || !['MORNING','AFTERNOON'].includes(shift) ||
+      (crewChoice !== 'NEW_CREW' && !crew)) {
+    setAlert('Choose a valid future workday and destination crew/shift.', 'error');
+    return;
+  }
+  if (dayId === Number(assignment.setup_work_day_id) &&
+      crewChoice !== 'NEW_CREW' &&
+      crewId === Number(assignment.setup_work_day_crew_id) &&
+      shift === assignment.shift_code) {
+    setAlert('Choose a different day, crew or shift to reschedule.', 'error');
+    return;
+  }
+  if (!window.confirm(
+    'Confirm NO WORK WAS PERFORMED on the original assignment?\\n\\n' +
+    'The task will move to ' + targetDay.work_date + ' ' +
+    (shift === 'MORNING' ? 'AM' : 'PM') + '.\\n' +
+    'This removes its old Late / No Work Reported warning.\\n' +
+    'The schedule move remains audited; no work report is invented.'
+  )) return;
+
+  try {
+    setBusy(true);
+    if (crewChoice === 'NEW_CREW') {
+      await api('api/setup/scheduling-board/work-days/' + dayId + '/crews/with-tasks',
+        commandOptions('POST', {items:[{kind:'assignment',id:assignmentId}]}));
+    } else {
+      const existing = (board.assignments || []).filter(item =>
+        Number(item.setup_work_day_id) === dayId &&
+        Number(item.setup_work_day_crew_id) === crewId &&
+        item.shift_code === shift
+      );
+      const sortOrder = existing.length
+        ? Math.max(...existing.map(item => Number(item.sort_order) || 0)) + 10 : 10;
+      await api('api/setup/scheduling-board/assignments/' + assignmentId,
+        commandOptions('PATCH',{
+          setup_work_day_id:dayId,setup_work_day_crew_id:crewId,
+          shift_code:shift,sort_order:sortOrder
+        }));
+    }
+    dialog.close();
+    await loadNextExecution();
+    if (typeof board205Load === 'function') await board205Load();
+    setAlert('Unworked assignment rescheduled. Old late warning cleared; original plan retained in schedule audit.', 'ok');
+  } catch (error) {
+    setAlert('Reschedule did not complete: ' + (error.message || error), 'error');
+  } finally {
+    setBusy(false);
+  }
 }
 
 function nextPerformLaborKpis(assignments) {
@@ -1940,6 +2147,11 @@ function renderNextExecution() {
       event.preventDefault();
       details.open = true;
       await loadNextTaskExecution(details, true);
+    });
+    details.querySelector('.next-reschedule-no-work')?.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      nextOpenRescheduleNoWorkDialog(Number(details.dataset.assignmentId));
     });
     details.querySelector('.next-report-problem')?.addEventListener('click', async (event) => {
       event.preventDefault();
