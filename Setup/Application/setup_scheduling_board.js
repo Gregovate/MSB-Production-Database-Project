@@ -268,8 +268,6 @@ function board205PlacementWarnings(task, crewId, shift) {
   }
 
   const crew = board205CrewRow(crewId);
-  const missing = board205MissingEstimates(task);
-  if (missing.length) warnings.push('PLANNING ESTIMATE TBD: ' + missing.join(', ') + '. You may schedule now and complete estimates later.');
   const planned = board205PlacementCrewCount(crewId, shift);
   const minCrew = task.normal_crew_min == null ? null : Number(task.normal_crew_min);
   if (planned != null && minCrew != null && planned < minCrew) {
@@ -293,8 +291,8 @@ function board205PlacementWarnings(task, crewId, shift) {
   return warnings;
 }
 
-// #205: Planning estimates are guidance, not a scheduling prerequisite.
-// Preserve unknown duration and crew size instead of inventing values.
+// Task estimates are required for new work; missing estimates are not invented.
+// An existing historical report may allow continuation without rewriting locked estimates.
 function board205MissingEstimates(task) {
   const missing = [];
   if (!(Number(task?.expected_duration_minutes) > 0)) missing.push('time');
@@ -304,9 +302,18 @@ function board205MissingEstimates(task) {
 }
 
 function board205RequireEstimates(task) {
-  // A short-horizon task may be scheduled before final crew or duration
-  // estimates exist. Placement warnings disclose gaps without blocking it.
-  return Boolean(task);
+  const missing = board205MissingEstimates(task);
+  if (!missing.length) return true;
+  // Existing reports lock annual planning in the database. Keep continuation
+  // schedulable without rewriting historical estimates or inventing defaults.
+  if (Number(task?.progress_entries || 0) > 0 || task?.actual_started_at || task?.actual_completed_at) {
+    setAlert(`Historical estimates are locked; missing ${missing.join(', ')} remains TBD for this continuation.`, 'error');
+    return true;
+  }
+  setAlert(`Enter estimated ${missing.join(', ')} before scheduling. A rough estimate is enough; save Planning Info, then schedule again.`, 'error');
+  document.getElementById('setup-board205-schedule-dialog')?.close();
+  board205OpenPlanningInfoDialog(task?.setup_session_task_id);
+  return false;
 }
 
 function board205ReschedulingLabel(task) {
