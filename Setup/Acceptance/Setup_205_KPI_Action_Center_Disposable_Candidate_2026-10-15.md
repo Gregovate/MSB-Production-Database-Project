@@ -78,7 +78,7 @@ Open `http://127.0.0.1:8898/` only after `BROWSER REVIEW READY`; keep foreground
 ---
 
 
-## ARCHIVED V0.3.70 source checkpoint — superseded by V0.3.72 above
+## ARCHIVED V0.3.70 source checkpoint — superseded by V0.3.73 above
 
 This older source table and its commands are **historical evidence only**; migration NONE applied then, not to V0.3.72. Never run its older candidate commands for the current review.
 
