@@ -37,11 +37,13 @@ def test_kpi_glance_precedes_closed_disclosure_and_all_manager_actions_survive()
         "\nfunction setup205ActionCenterHtml(",1
     )[0]
     assert 'class="setup205-kpi-glance"' in fn
-    assert 'class="setup205-kpi-expand"' in fn
-    assert fn.index('class="setup205-kpi-glance"') < fn.index('class="setup205-kpi-expand"')
-    assert '<details class="setup205-kpi-expand" open' not in fn
-    assert "setup205ActionCenterHtml(board, k)" in fn
-    assert "'</div></details></section>'" in fn
+    assert 'class="setup205-kpi-expand"' not in fn
+    assert "setup205ActionCenterHtml(board, k)" not in fn
+    assert "setup205-open-action-center" in fn
+    assert "function setup205ManagementReportHtml(board, year)" in js
+    assert "setup205ActionCenterHtml(board) +" in js
+    assert "setup205WireActionCenter(target)" in js
+    assert "loadSetup205ActionCenter()" in js
     for key in ("k.tasks.length", "k.complete.length", "k.incomplete.length",
                 "k.blocked.length", "k.required", "k.projectedFinish", "k.deadline"):
         assert key in fn
@@ -67,5 +69,5 @@ def test_secondary_labor_does_not_duplicate_primary_complete_remaining():
     assert "setup205-scheduling-secondary" in ui
     assert "planned labor hr" in ui
     assert "tasks scheduled" in ui
-    assert "setup205WireActionCenter(target)" in ui
+    assert "setup205WireManagementNavigation(target)" in ui
     assert "<span><strong>" not in ui, "Avoid repeated primary task badges below KPI"

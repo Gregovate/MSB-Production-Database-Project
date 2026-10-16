@@ -738,7 +738,10 @@ def test_205_rolling_board_filters_days_by_operational_state() -> None:
     assert "> Fully reported days</label>" in ui
     assert "cancelled-day" in ui
     assert 'id="setup-board205-show-unfinished-days" type="checkbox" checked' in ui
-    assert 'id="setup-board205-show-completed-days" type="checkbox" checked' in ui
+    assert 'id="setup-board205-show-completed-days" type="checkbox">' in ui
+    assert 'id="setup-board205-show-reported-tasks" type="checkbox"' in ui
+    assert "function board205ActiveAssignmentsFor" in ui
+    assert "reported task cards" in ui
     assert 'id="setup-board205-show-empty-days" type="checkbox"' in ui
     assert "> Days needing reports</label>" in ui
     assert "if (showEmptyDays) showEmptyDays.checked = true;" in ui

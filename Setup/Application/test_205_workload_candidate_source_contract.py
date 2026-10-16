@@ -23,7 +23,7 @@ def test_board_workload_banner_stays_inside_shift_cell():
     start = js.index("function board205Cell(")
     end = js.index("function board205CanRemoveWorkDay(", start)
     cell = js[start:end]
-    assert "${board205WorkloadBanner(crew.setup_work_day_crew_id, shift)}" in cell
+    assert "${showWorkload ? board205WorkloadBanner(crew.setup_work_day_crew_id, shift) : ''}" in cell
     start = js.index("function board205Day(")
     end = js.index("function board205RenderBoard(", start)
     day = js[start:end]
