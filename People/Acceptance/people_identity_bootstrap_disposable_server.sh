@@ -6,6 +6,7 @@ ISSUE="#395"
 SOURCE_REF="${2:-issue-395-silent-human-identity-bootstrap}"
 CANDIDATE_SHA="${1:-}"
 SERVICE_SCOPE_PROBE="${3:-false}"
+SCOPE_STAGE="NOT_STARTED"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 REPO_ROOT="/opt/fieldwiring"
@@ -127,8 +128,9 @@ cleanup() {
         if [[ "$status" == "0" ]]; then
             echo "Disposable scope: PASS"
         else
-            echo "Disposable scope: STOP (read first failing line in report)"
+            echo "Disposable scope: STOP"
         fi
+        echo "Scope stage:      $SCOPE_STAGE"
         echo "Person after:     $person_after_result"
         echo "Directus after:   $directus_after_result"
         echo "Production writes: NONE"
