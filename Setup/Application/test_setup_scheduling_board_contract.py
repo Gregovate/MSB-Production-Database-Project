@@ -662,7 +662,8 @@ def test_122_b1a_pre2026_compact_editor_writes_reusable_catalog_only() -> None:
     assert "board205OpenPlanningInfoDialog(taskId || null, reusableTaskId || null)" in ui
     assert "const reusablePlanning = board205HistoricalReviewMode() && reusableTaskId;" in ui
     assert "api/setup/tasks/${reusableTaskId}" in ui
-    assert "api/setup/tasks/${reusableTaskId}/effort" in ui
+    assert "effort_level: draft.effort_level" in ui
+    assert "api/setup/tasks/${reusableTaskId}/effort" not in ui
     assert "Reusable planning information updated." in ui
     assert "setup-board205-open-full-reusable" in ui
     assert "Open Full Reusable Task" in ui
