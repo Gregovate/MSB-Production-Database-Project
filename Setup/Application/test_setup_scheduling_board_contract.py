@@ -811,7 +811,8 @@ def test_205_season_task_editor_is_in_annual_plan_not_reusable_catalog() -> None
     assert "gate.disabled = !(isGate || isWork) || !workOrderSelected" in ui
     assert "finishing that Work Order also completes this Setup task and unblocks downstream work" in ui
     assert "Est. labor:" in ui
-    assert "planned labor hr" in ui
+    assert "Planned person-hours TBD" in ui
+    assert "known task-hours" in ui
     assert "board205LaborHours" in ui
     assert "board205AssignmentPlannedCrew" in ui
     assert "Locate Power & Network is Setup Work, not Support / Prep." in ui
