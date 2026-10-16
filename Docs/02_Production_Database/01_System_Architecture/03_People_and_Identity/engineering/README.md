@@ -64,7 +64,7 @@ Normal users should not have to visit or understand the Directus login/Data Stud
 
 ## Identity and Onboarding
 
-`ref.person` remains the durable person identity. A person may exist without a Google Workspace account, Directus identity, PostgreSQL login, or active system access.
+`ref.person` remains the durable identity of a person involved with MSB. **Many real people intentionally decline an MSB email address**, and their Person records remain complete and legitimate; no account creation or login is implied by being in this table. A person may exist without a Google Workspace account, Directus identity, PostgreSQL login, or active system access. Conversely, having an MSB email does not automatically grant Directus access; only a human with an actual Directus-backed application need should be considered for an explicitly governed interactive identity. The deployed #385 exact-email reconciler solves Person linkage **after** a Directus user exists; it does not assign an account, email, or role. Historic Person leadership flags, board membership or volunteer participation must not implicitly confer elevated Directus authorization.
 
 The historical Directus **User Onboarding** flow remains create-event-only and is separately documented. V0.2.2 no longer relies on that one-time event to repair every safe established identity.
 
