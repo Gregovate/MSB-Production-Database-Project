@@ -110,7 +110,7 @@ If any actual work happened, **do not** claim no work. Report actual time and pr
 
 The **Plan / Schedule** AM/PM crew count is a working estimate, not an attendance report. Managers may adjust it as volunteers arrive or change crews. A count of **1** means the Captain working alone. A **blank** count means no Captain-led crew is confirmed for that shift; the named Captain may be elsewhere. Do not enter a zero to represent a blank.
 
-A blank crew count does **not** erase the task or its expected duration. You may schedule work while estimates are still unknown; the Scheduling Board will show those planning gaps for later review. Planned **task-hours** are time required for the task, while estimated **person-hours** also require a known crew count and may be marked **TBD**.
+A blank **AM/PM day-crew count** does **not** erase the task or its expected duration. **The existing task-estimate requirement remains mandatory when scheduling new work:** supply expected task duration, normal task crew minimum, and effort classification in Planning Info. The separate AM/PM volunteer count may remain blank until confirmed. Planned **task-hours** describe the task's estimated elapsed time, while estimated **person-hours** also require a known day-crew count and may be marked **TBD**.
 
 When reporting completed work, enter the **actual number of volunteers who worked on that task**, including the Captain only if the Captain worked, plus the actual elapsed Hours and Minutes. The Report Work record is the actual history. Editing planned crew size never changes a saved work report.
 
