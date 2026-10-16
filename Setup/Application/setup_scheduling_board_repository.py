@@ -481,7 +481,7 @@ class SetupSchedulingBoardRepository:
                         count(*) AS progress_entries,
                         sum(coalesce(p.completed_quantity, 0)) AS completed_quantity,
                         max(p.percent_complete) AS percent_complete,
-                        /* Current 100% work evidence, one date per annual task. */
+                        /* Current full-completion work evidence, one date per annual task. */
                         max(p.performed_on) FILTER (
                             WHERE p.percent_complete = 100
                         ) AS completed_performed_on
