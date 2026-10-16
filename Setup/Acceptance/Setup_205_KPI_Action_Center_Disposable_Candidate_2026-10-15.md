@@ -2,11 +2,11 @@
 
 | Item | Value |
 |---|---|
-| Status | CORRECTED SOURCE REGRESSION PASS — BROWSER REJECTED (HTTP 500) / REPEAT PENDING |
+| Status | UPDATED SOURCE REGRESSION PASS — prior browser review REJECTED, new candidate disposable/browser pending |
 | Governing | #122 / #205, controlled Setup engineering contract |
 | Candidate branch | `fix/205-setup-deadline-kpis-20261015` |
-| App build | `V0.3.67-setup-action-center` — client/server synchronized; corrected HTTP 500 |
-| Exact browser/acceptance candidate | `dbf4487ac7b94ced7dd5d2f8fd9cb5f69457ee8c` — SQL bind correction, distinct synchronized version and pre-ready API check |
+| App build | `V0.3.68-scheduling-workspace` — client/server synchronized; Captain and crew auto-save, direct new-crew day drop |
+| Current source-only candidate | `a7572c56d783244dc384a7a4fdb371852c08a241` — CI PASS; protected browser/operator acceptance PENDING |
 | Previous rejected application implementation SHA | `e4ed6ff13d6e16e9d8a6ed5278c1d81ee2d00eaa` (V0.3.66, HTTP 500) |
 | Latest upstream integrated | `main b2d5f8c2f202b228a180bd950187718937c41019` |
 | Database migrations in this candidate | **NONE**; notification 074 is on a separate parked branch |
@@ -178,3 +178,15 @@ Only after confirmed CLEAN EXIT, optional *local* review worktree cleanup. Keep 
 ```
 
 No force-delete, no ref reset, no pulling Production/feature into the dirty laptop primary checkout. If Git reports the branch already checked out in another worktree, stop and inspect ownership rather than forcing a second checkout.
+
+## October 15/16 — Schedule faster without a Crew Save button or placeholder bucket
+
+**Current candidate V0.3.68:** exact implementation SHA `a7572c56d783244dc384a7a4fdb371852c08a241` under draft PR #394; [full source CI #38848810539](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38848810539) PASS: **803 Setup Python, 202 FieldWiring Python**, executable KPI/navigation/Captain autosave/mixed-AM-PM group-drop Node checks.
+
+**Operator request:** Remove the repetitive Save button on crew Captain assignment. Selecting a Captain or changing AM or PM headcount now automatically PATCHes via the existing Manager-protected governed `update_setup_work_day_crew` command; change/blur triggers write, states show Saving / Saved / Not saved; edited values are retained on failure and the task drop explicitly waits for accepted crew values rather than dropping with unsaved staffing. Requests for one crew serialize to avoid old responses overwriting a later Captain/count; duplicate-Captain and short-crew warnings remain. Failed API writes do NOT silently claim persistence. Existing historical actual-work locking remains enforced in PostgreSQL. No schema changes.
+
+**Additional operator idea, implemented as source candidate:** Each workday's crew grid now begins with two visible, keyboard-targetable drag/drop strips: **Drop here · New AM Crew** / **Drop here · New PM Crew**. The operator can first drag unscheduled work onto a day: the server creates a Crew and the selected assignment in **one transaction**, leaving no placeholder if anything fails. A multi-selection of existing AM/PM assignments retains **each original shift**, uses audited existing Setup crew/assignment functions, and rolls back new Crew/entire group if an assignment has actual-work history, wrong Session, duplicate or other failure. Crew/Captain/staffing can then be filled in with autosave. Legacy All Day assignments are explicitly declined for manual review, not silently transformed. Only Manager-authorized operations may write. Task/crew moves to an existing crew across dates were also corrected to preserve mixed AM/PM.
+
+**Still not solved / not claimed:** calendar-first month view, long-day Focus layout, sticky day header, consistent Crew A/B/C colors, Task Feedback/help, misleading progress/1% default, action-tab taxonomy, 404 field context and full user feedback remain open. This V0.3.68 slice is not a complete resolution of the broader rejected review. No further migration, mail service, Directus change or Production deployment.
+
+**Next gates:** current-Production disposable clone acceptance and real 8898 browser workflow, verify unsaved Captain/count on blur before drop, mixed-shift group moved across dates, day-level atomic drop, failure rollback, actual work history locks, operator response on laptop and Android/tablet, final CLEAN EXIT. Previous V0.3.67 browser review CLEAN EXIT does **not** approve this new candidate. User approval and #122 deployment gate separate. Do not hand out deployment commands before browser review.
