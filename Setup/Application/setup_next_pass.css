@@ -1005,3 +1005,20 @@ body:not(.setup-schedule-view) #next-perform-list {
 @media (max-width: 680px) {
   .next-report-task-identity { top: 0; }
 }
+
+
+/* #205: calendar-like day boundaries on Perform Work; no workflow changes. */
+.next-perform-day {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem 1rem;
+  border: 3px solid var(--border, #71869a);
+  border-radius: 0.75rem;
+  background: var(--panel, #fff);
+  box-shadow: 0 3px 10px rgb(0 0 0 / 10%);
+}
+.next-perform-day:nth-of-type(odd) { border-left: 0.5rem solid #356a9a; }
+.next-perform-day:nth-of-type(even) { border-left: 0.5rem solid #a56929; }
+.next-perform-day-content { min-width: 0; }
+@media print {
+  .next-perform-day { box-shadow: none; break-inside: auto; }
+}
