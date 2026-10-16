@@ -5,8 +5,8 @@
 | Status | UPDATED SOURCE REGRESSION PASS — prior browser review REJECTED, new candidate disposable/browser pending |
 | Governing | #122 / #205, controlled Setup engineering contract |
 | Candidate branch | `fix/205-setup-deadline-kpis-20261015` |
-| App build | `V0.3.68-scheduling-workspace` — client/server synchronized; Captain and crew auto-save, direct new-crew day drop |
-| Current source-only candidate | `a7572c56d783244dc384a7a4fdb371852c08a241` — CI PASS; protected browser/operator acceptance PENDING |
+| App build | `V0.3.69-perform-no-work-reschedule` — client/server synchronized; Manager no-work reschedule from Perform Work and no fabricated 1% |
+| Current source-only candidate | `43b993182086d62a0fad08a1deede3624448fcc4` — source CI PASS; current-Production disposable/browser acceptance PENDING |
 | Previous rejected application implementation SHA | `e4ed6ff13d6e16e9d8a6ed5278c1d81ee2d00eaa` (V0.3.66, HTTP 500) |
 | Latest upstream integrated | `main b2d5f8c2f202b228a180bd950187718937c41019` |
 | Database migrations in this candidate | **NONE**; notification 074 is on a separate parked branch |
@@ -190,3 +190,22 @@ No force-delete, no ref reset, no pulling Production/feature into the dirty lapt
 **Still not solved / not claimed:** calendar-first month view, long-day Focus layout, sticky day header, consistent Crew A/B/C colors, Task Feedback/help, misleading progress/1% default, action-tab taxonomy, 404 field context and full user feedback remain open. This V0.3.68 slice is not a complete resolution of the broader rejected review. No further migration, mail service, Directus change or Production deployment.
 
 **Next gates:** current-Production disposable clone acceptance and real 8898 browser workflow, verify unsaved Captain/count on blur before drop, mixed-shift group moved across dates, day-level atomic drop, failure rollback, actual work history locks, operator response on laptop and Android/tablet, final CLEAN EXIT. Previous V0.3.67 browser review CLEAN EXIT does **not** approve this new candidate. User approval and #122 deployment gate separate. Do not hand out deployment commands before browser review.
+
+## MANDATORY acceptance for V0.3.69 — Manager reschedules from Perform Work (not left late)
+
+Greg requires this **in the next #205 browser test**. This is not the optional future calendar-first redesign and does not activate paused email functionality. Corrected exact source candidate `43b993182086d62a0fad08a1deede3624448fcc4` at `V0.3.69-perform-no-work-reschedule`; [GitHub Actions #38851349128](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38851349128) **source PASS**, **806 Setup Python + 202 FieldWiring Python + Node #205 KPI/navigation, Captain autosave, drag-shift and Manager no-work move checks**. Application source did not previously pass protected browser acceptance; **no Production deployment**.
+
+**Actual protected browser/operator verification required:**
+
+1. Find a past unreported 2026 annual task on **Perform Work** with no real work, no progress entry, and noncancelled source day. Manager sees `Reschedule · No work performed` directly on the task card, without needing to load the separately failing optional task context. Captain/Production Crew users must not see or execute this Manager operation.
+2. Click, confirm original task/date/crew/AM-PM, select another **current/future existing Setup Day** and existing Crew/shift. The screen requires explicit `NO WORK WAS PERFORMED` confirmation. **Do not add an invented 0-minute or 1% progress report.**
+3. On successful protected PATCH, verify that same assignment ID now appears in the destination day/Crew/AM-PM. Its prior workday/Perform Work view no longer counts it as `LATE — NO WORK REPORTED`; the historic original location remains in a recorded `ops.setup_schedule_event` **ASSIGNMENT_MOVED** audit (old/new date, crew, shift and Manager actor, from accepted migration 069). The annual task is **not marked complete** by moving it.
+4. Exercise **+ Create a new crew** in the Perform Work reschedule dialog with an existing future workday, preserving original AM/PM. The accepted atomic crew-with-task endpoint should create one destination crew and move the task in one transaction or roll it all back. Captains and crew counts can be assigned using the new auto-save afterward.
+5. Verify no eligible destination day triggers a clear **Add Work Days in Plan / Schedule** instruction, not a fabricated date/crew or a write. Cancel and server denial retain original item and late banner; no success message after failed API.
+6. Verify a valid report, started/actual work or an accidentally recorded **1%** report makes an assignment history-locked: **no Manager no-work reschedule control and server rejects a forged move**. An actual partial-work occurrence needs a *new continuation*; do not move or erase reported history. Existing incorrect 1% records require independent authorized correction/reconciliation.
+7. On an unreported new assignment, open Report Work and verify **Whole task % complete is blank rather than prefilled 1**; a positive actual progress percentage remains required only when work really happened. No new reports or audit records should be invented by merely opening a card.
+8. Repeat at laptop and field tablet viewport where practical. Confirm the action does **not depend on field-context HTTP 404**; inspect read-only clone schedule audit, original/new counts and no progress inserted. Obtain actual current-Production disposable acceptance, one 8898 protected browser review, **CLEAN EXIT and explicit operator approval** under #122 before any Production release.
+
+**Preflight constraint:** Check that the current disposable clone has accepted migration 069 (`ops.setup_schedule_event` and the actor-audited `ops.update_setup_work_day_assignment`) before claiming original scheduling facts are preserved. If it is missing, **STOP**: no silent non-audited move or invented migration. This candidate introduces **zero new schema migrations**. Distinguish a Manager-authorized no-work move of the **original occurrence** (correctly clears its obsolete late condition) from scheduling a different continuation (must not suppress unresolved potentially worked historical reports).
+
+**Other open review findings remain:** weather half-day group-batch rescheduling from Perform Work is not yet a single batch action; rejected KPI/Action Center taxonomy, Report Work grid sizing/help, Task Feedback wording, historical erroneous 1% corrections, and field-context HTTP 404 still require separate resolution. This narrow V0.3.69 source PASS does **not** make the overall PR Production-ready.
