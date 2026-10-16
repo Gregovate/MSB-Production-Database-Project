@@ -16,7 +16,7 @@ def test_setup_browser_readiness_includes_real_cloned_scheduling_board_get():
     ready = "SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY"
     assert smoke in script
     assert script.index(smoke) > script.index("Preview authorization: PASS")
-    assert script.index(smoke) < script.index("write_resume_state\necho") if "write_resume_state\necho" in script else script.index(smoke) < script.index("write_resume_state\ncat <<CHECKLIST")
+    assert script.index(smoke) < script.index("write_resume_state\necho")
     assert script.index(smoke) < script.index(ready)
     assert "curl -fsS --max-time 60" in script
     assert "Scheduling Board disposable API failed before operator browser review" in script
