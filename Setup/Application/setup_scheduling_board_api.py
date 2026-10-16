@@ -132,6 +132,40 @@ def api_setup_scheduling_board_crew_add(
     return jsonify(crew=result), 201
 
 
+@setup_scheduling_board_api.post("/api/setup/scheduling-board/work-days/<int:setup_work_day_id>/crews/with-tasks")
+def api_setup_scheduling_board_crew_with_tasks(
+    setup_work_day_id: int,
+) -> tuple[Response, int]:
+    """Atomic day-level task drop: make one crew and place one selected group."""
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    payload = json_body()
+    items = payload.get("items")
+    if not isinstance(items, list) or not (1 <= len(items) <= 25):
+        raise SetupCommandError("Choose one to 25 tasks to place in the new crew")
+    normalized = []
+    used_ids = set()
+    for item in items:
+        if not isinstance(item, dict) or item.get("kind") not in ("task", "assignment"):
+            raise SetupCommandError("Each dropped item must be a task or an existing assignment")
+        number = required_int(item.get("id"), "id")
+        if number <= 0 or (item["kind"], number) in used_ids:
+            raise SetupCommandError("Dropped task IDs must be positive and distinct")
+        used_ids.add((item["kind"], number))
+        shift = item.get("shift")
+        if item["kind"] == "task" and shift not in ("MORNING", "AFTERNOON"):
+            raise SetupCommandError("Choose AM or PM for a new task")
+        normalized.append({
+            "kind": item["kind"], "id": number,
+            # Existing assignment shifts are read authoritatively by the server.
+            "shift": shift if item["kind"] == "task" else None,
+        })
+    result = repo().add_crew_with_tasks(
+        email=email, work_day_id=setup_work_day_id, items=normalized
+    )
+    return jsonify(result), 201
+
+
 @setup_scheduling_board_api.patch("/api/setup/scheduling-board/crews/<int:setup_work_day_crew_id>")
 def api_setup_scheduling_board_crew_update(
     setup_work_day_crew_id: int,
