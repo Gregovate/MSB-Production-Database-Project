@@ -161,7 +161,8 @@ def api_setup_scheduling_board_crew_with_tasks(
             "shift": shift if item["kind"] == "task" else None,
         })
     result = repo().add_crew_with_tasks(
-        email=email, work_day_id=setup_work_day_id, items=normalized
+        email=email, work_day_id=setup_work_day_id, items=normalized,
+        captain_person_id=nullable_int(payload.get("captain_person_id"), "captain_person_id"),
     )
     return jsonify(result), 201
 
