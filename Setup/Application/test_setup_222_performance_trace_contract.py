@@ -96,4 +96,4 @@ def test_setup_performance_trace_summarizes_fast_gets_and_keeps_exceptions() -> 
 
 def test_setup_performance_trace_version_is_distinct() -> None:
     text = source()
-    assert 'PRODUCTION_VERSION = "V0.3.80-single-sticky-row"' in text
+    assert 'PRODUCTION_VERSION = "V0.3.81-compact-perform-status"' in text
