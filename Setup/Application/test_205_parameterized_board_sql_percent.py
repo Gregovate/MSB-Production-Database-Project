@@ -66,6 +66,24 @@ def test_annual_board_query_has_only_real_psycopg_placeholders() -> None:
     assert _parse_psycopg_placeholders(sql) == len(bound_args.elts)
 
 
+def test_all_parameterized_scheduling_board_queries_have_no_raw_percent() -> None:
+    # Do not repeat the same psycopg2 failure in another existing board query.
+    # SQL string values/comments are processed by psycopg2's bind parser too.
+    tree = ast.parse(REPOSITORY_SOURCE.read_text(encoding="utf-8"))
+    queries = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        if node.func.attr != "execute" or len(node.args) < 2:
+            continue
+        sql_arg = node.args[0]
+        if isinstance(sql_arg, ast.Constant) and isinstance(sql_arg.value, str):
+            queries.append(sql_arg.value)
+    assert len(queries) >= 15, "Expected to inspect the complete scheduling board"
+    for sql in queries:
+        _parse_psycopg_placeholders(sql)
+
+
 def test_bad_percent_in_query_comment_would_fail_before_postgres() -> None:
     sql, _ = _annual_task_query()
     try:
