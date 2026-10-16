@@ -1,6 +1,40 @@
 # #205 Whole-Setup KPI / Action Center / Report Work — Browser Candidate
 
-## HOLD — V0.3.74 2026 TWO-WAY planning synchronization (2026-10-16)
+## CURRENT V0.3.75 — ONE integrated #205 2026 Setup browser review (2026-10-16)
+
+**SOURCE REGRESSION PASS; DISPOSABLE MIGRATION AND OPERATOR BROWSER ACCEPTANCE PENDING.** This is the next test for the **original rejected #205 browser review**, including the October 16 two-way task estimate correction. Do NOT split it into another release, clone or thread. Draft [PR #394](https://github.com/Gregovate/MSB-Production-Database-Project/pull/394), source candidate `055f173cf96539865b4365d6a516246a7c8fa6ff`, build `V0.3.75-2026-reported-sync`. [CI #38913434387](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38913434387) PASS **831 Setup Python, FieldWiring full, #205 executable Node tests**. All following source-only commits may update this handoff, but must not silently replace the pinned application SHA. Production unchanged.
+
+**Included corrections to test together:**
+1. Crew A D16/22 planned AM count can be changed after task-level actual work, shows **Saved**, and survives reload; existing actual Crew 1 / progress on assignments 84 and 143 remains untouched. Blank day-crew AM/PM is **no confirmed Captain-led shift**, not zero task-hours; planned 1 means Captain alone.
+2. Task expected elapsed duration and displayed known task-hours do not disappear when a planned day-crew count is NULL; derived person-hours are TBD/partial without staffing. Retain mandatory task-level expected duration, normal crew minimum and effort entries before new scheduling; keep the existing reported-continuation exception.
+3. **2026 TWO-WAY task estimate synchronization in the very same review:** Save normal crew min/max, duration and effort in **2026 Scheduling Board Planning Info** and verify the linked reusable Catalog record immediately matches; edit the same estimates via the **reusable Catalog editor** and verify 2026 annual Planning Info now matches. Repeat Catalog-to-annual and annual-to-Catalog on a **reported 2026 task** (in disposable data only); earlier reported crew, duration/progress, assignment and historical readiness stay unchanged. Test season-only isolation, future-year boundary and fail-closed atomic behavior. 2027 Catalog policy remains pending deliberate review.
+4. The earlier rejected browser-feedback items stay in this test: the Manager Action Center **navigation** button and action row formatting in both themes; dominant scheduling pane and sticky day header with bounded independent scroll, stronger day boundaries and colored Crew A–D lanes; Report Work numeric volunteers and Hours/Minutes/help; late/no-report versus confirmed no-work Manager rescheduling, original date audit, and same-Captain future crew choice with no arbitrary Captain/TBD default. Where a future workday is missing, verify the app's existing Work Day creation boundary rather than falsely claiming automatic date creation. AM/PM shift pressure must distinguish unconfirmed staffing from proven available capacity.
+5. No fake work reports, no archived/progress mutation, no changes to Production, and no emails from this launch candidate. Rejection on any item leaves #394 DRAFT.
+
+**The existing reusable browser launcher makes ONE current-Production disposable PostgreSQL clone and runs source regression, BOTH migrations and BOTH rollback SQL validations before serving the same clone on port 8898. Do not invoke the separate disposable acceptance launcher.** Run only from a clean, fast-forwarded `C:\lor\ImportExport\VSCode-205-kpi-review` checkout on branch `fix/205-setup-deadline-kpis-20261015`; check the current Server Management Pre-Production Browser Review Runbook and port ownership before starting.
+
+```powershell
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
+    -PreviewPort 8898 `
+    -CandidateSha '055f173cf96539865b4365d6a516246a7c8fa6ff' `
+    -TargetRef 'fix/205-setup-deadline-kpis-20261015' `
+    -ExpectedVersion 'V0.3.75-2026-reported-sync' `
+    -MigrationPaths @(
+        'Setup/Database/075_allow_setup_planned_crew_count_corrections.sql',
+        'Setup/Database/076_capture_2026_reusable_task_estimates.sql'
+    ) `
+    -ValidationPaths @(
+        'Setup/Acceptance/setup_205_planned_crew_count_disposable_validation.sql',
+        'Setup/Acceptance/setup_205_2026_catalog_estimate_disposable_validation.sql'
+    )
+```
+
+**Hard gate:** The source-only CI does not establish SQL runtime success. If migration or validation fails, the runner must STOP without operator browser review and without Production writes; record the report and fix the *same PR*. Only open the review URL after `BROWSER REVIEW READY`; record the operator's integrated verdict and require `CLEAN EXIT`. Release needs separate #122 authorization and current Server Management PostgreSQL maintenance/rollback runbook. Nothing here authorizes a Production migration.
+
+---
+
+
+## ARCHIVED HOLD — V0.3.74 incomplete pre-V0.3.75 snapshot (DO NOT RUN)
 
 **Engineering intent is now corrected and source work has begun; NOT a ready browser candidate.** Controlled authorities: Setup Planning Operating Model and #205 Scheduling Engineering Contract. During the **2026 launch only**, task-level planning estimates (normal crew min/max, expected duration, effort) must synchronize **both directions** between each linked reusable Catalog task and current 2026 annual task. Earlier one-way migration 076 design/checklist was incomplete. Keep mandatory task-estimate scheduling gate, separate nullable day-crew AM/PM counts, season-only isolation, task-level actual reports/history, and explicit 2027 review boundary.
 
