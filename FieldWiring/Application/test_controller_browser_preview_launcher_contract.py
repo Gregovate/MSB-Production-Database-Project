@@ -51,5 +51,5 @@ def test_preview_launcher_uses_one_foreground_ssh_and_waits_for_readiness() -> N
     assert "Start-Process ssh" not in wrapper
     assert "Start-Process $browserUrl" not in wrapper
     assert "timeout --foreground --signal=TERM 28800s" in wrapper
-    assert "BROWSER REVIEW READY" in wrapper
+    assert "Do not open the browser until the runner prints BROWSER REVIEW READY." in wrapper
     assert 'if ($PreviewPort -ne 8898)' in wrapper
