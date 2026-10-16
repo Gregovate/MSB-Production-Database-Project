@@ -1832,6 +1832,15 @@ function board205RenderQueue() {
 }
 
 
+function board205ShowReportedTaskCards() {
+  return Boolean(document.getElementById('setup-board205-show-reported-tasks')?.checked);
+}
+
+function board205ActiveAssignmentsFor(dayId, shift, crewId) {
+  const rows = board205AssignmentsFor(dayId, shift, crewId);
+  return board205ShowReportedTaskCards() ? rows : rows.filter(item => !nextAssignmentReported(item));
+}
+
 function board205AssignmentsFor(dayId, shift, crewId) {
   return (setupBoard205State.board.assignments || [])
     .filter((item) => (
@@ -1910,7 +1919,10 @@ function board205AssignmentCard(item) {
 }
 
 function board205Cell(day, shift, crew) {
-  const items = board205AssignmentsFor(day.setup_work_day_id, shift, crew.setup_work_day_crew_id);
+  const allItems = board205AssignmentsFor(day.setup_work_day_id, shift, crew.setup_work_day_crew_id);
+  const items = board205ActiveAssignmentsFor(day.setup_work_day_id, shift, crew.setup_work_day_crew_id);
+  const reportedHidden = allItems.length - items.length;
+  const showWorkload = items.length > 0;
   const amCapacity = board205AmCapacity(crew.setup_work_day_crew_id);
   const capacityNote = shift === 'MORNING'
     ? board205AmCapacityNote(crew.setup_work_day_crew_id)
@@ -1921,10 +1933,13 @@ function board205Cell(day, shift, crew) {
   return `
     <div class="setup-board205-cell"
       data-day-id="${day.setup_work_day_id}" data-shift="${shift}" data-crew-id="${crew.setup_work_day_crew_id}">
-      ${board205WorkloadBanner(crew.setup_work_day_crew_id, shift)}
-      ${capacityNote}
-      ${carryoverNote}
-      ${items.length ? items.map(board205AssignmentCard).join('') : '<div class="setup-board205-cell-empty">Drop work here</div>'}
+      ${showWorkload ? board205WorkloadBanner(crew.setup_work_day_crew_id, shift) : ''}
+      ${showWorkload ? capacityNote : ''}
+      ${showWorkload ? carryoverNote : ''}
+      ${items.length ? items.map(board205AssignmentCard).join('') :
+        '<div class="setup-board205-cell-empty">' +
+          (reportedHidden ? reportedHidden + ' reported task' + (reportedHidden === 1 ? '' : 's') +
+            ' hidden · use Show reported task cards to review' : 'Drop work here') + '</div>'}
     </div>`;
 }
 
@@ -2006,7 +2021,19 @@ function board205Day(day) {
   const lateCount = board205DayAssignments(day).filter((item) => nextAssignmentLate(item, day.work_date)).length;
   const reportedPersonHours = (board205DayAssignments(day).reduce((sum, item) => sum + Number(item.actual_person_minutes || 0), 0) / 60).toFixed(1);
   const crewRows = crews.map((crew) => {
-    const legacy = board205AssignmentsFor(day.setup_work_day_id, 'ALL_DAY', crew.setup_work_day_crew_id);
+    const legacyAll = board205AssignmentsFor(day.setup_work_day_id, 'ALL_DAY', crew.setup_work_day_crew_id);
+    const legacy = board205ShowReportedTaskCards()
+      ? legacyAll : legacyAll.filter(item => !nextAssignmentReported(item));
+    const crewAssignments = (setupBoard205State.board.assignments || []).filter(item =>
+      Number(item.setup_work_day_crew_id) === Number(crew.setup_work_day_crew_id));
+    const reportedCount = crewAssignments.filter(nextAssignmentReported).length;
+    const activeCount = crewAssignments.length - reportedCount;
+    if (!board205ShowReportedTaskCards() && activeCount === 0 && reportedCount > 0) {
+      return '<div class="setup-board205-completed-crew-summary">Crew ' +
+        board205Esc(crew.crew_code) + ' · ' +
+        reportedCount + ' reported task' + (reportedCount === 1 ? '' : 's') +
+        ' hidden. Select Show reported task cards to review history.</div>';
+    }
     const printEmptyCrew = !meaningfulCrewIds.has(Number(crew.setup_work_day_crew_id));
     return `
       <div class="setup-board205-crew-row${printEmptyCrew ? ' print-empty-crew' : ''}">
@@ -3857,8 +3884,9 @@ function board205InstallView() {
               <div class="setup-board205-day-filters" aria-label="Day view">
                 <strong>Day view</strong>
                 <label><input id="setup-board205-show-unfinished-days" type="checkbox" checked> Days needing reports</label>
-                <label><input id="setup-board205-show-completed-days" type="checkbox" checked> Fully reported days</label>
+                <label><input id="setup-board205-show-completed-days" type="checkbox"> Fully reported days</label>
                 <label><input id="setup-board205-show-empty-days" type="checkbox" checked> Empty</label>
+                <label><input id="setup-board205-show-reported-tasks" type="checkbox"> Show reported task cards</label>
               </div>
 
               <span id="setup-board205-selection-count" class="setup-board205-selection-count" hidden></span>
