@@ -219,6 +219,26 @@ The browser launcher preserves the same disposable-clone/Production-after safety
 
 When the terminal prints `SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY`, perform the feature-specific operator checklist. Press ENTER only after the review is complete so the same bounded process performs cleanup and Production-after proof.
 
+### People #395: exact external Apps source in reusable browser bundle
+
+`-PreviewProfile PeopleIdentityBootstrap` uses the existing reusable launcher and registered `-PreviewPort 8898`. Unlike the default Setup profile, it also needs one exact HTML asset from `Gregovate/MSB-Internal-Web-Backbone`. Both `-ExternalAppsSha` (commit) and `-ExternalAppsBlob` (`my/apps/index.html` Git blob) are mandatory and independently checked.
+
+The initial October 15 preview attempt with tooling SHA `5865beae...` stopped **before pg_dump/disposable clone creation**: the server's anonymous `raw.githubusercontent.com` download of the valid draft Backbone commit returned HTTP 404; exit 22. Existing Production identity fingerprints, People service, checkout and port 8898 passed cleanup/after-check. Do not retry that anonymous URL, change pins, or bypass blob verification.
+
+The corrected reusable People profile obtains the exact external commit using **authenticated Git in a temporary workstation clone** (outside the Production Database checkout and SCP bundle), detaches at the requested SHA with `core.autocrlf=false`, verifies the committed path blob and actual HTML bytes, then copies the byte-identical file into the already-established SCP bundle. The server independently checks the bundled file's Git blob and expected visible Apps/endpoint markers **before** the Production dump. The temporary workstation source clone is removed on success/failure. This extends only the People profile; default Setup behavior and the existing SSH/reconnect/cleanup model remain unchanged.
+
+#### People #395 operator browser checklist — only the local Apps page
+
+The `http://127.0.0.1:8898/` screen is the **isolated Apps shell**, not a disposable copy of every linked Production application. Its buttons retain real `https://my.sheboyganlights.org/...` destinations; following one leaves the preview and **does not test the clone-only identity bootstrap**. Do not click those buttons during this review or make changes in Production. This distinction confused the operator during the October 15 review and must be explicit in future acceptance instructions.
+
+The operator needs only to view the local Apps screen, scroll to the version footer (`MSB Apps v0.2 — Updated 2026-10-15`), verify that no Directus/Google account chooser or identity-bootstrap error banner appears, refresh the same **localhost** tab once, and verify the page remains normal. Then return to the original foreground PowerShell session and press Enter. **The server runner**, not navigation to Production Setup, checks the disposable Directus identity, Browser-only role, exact Person link, repeat/idempotence, cleanup, and Production preservation. The final PowerShell result footer is a transport/runner summary; distinguish `CLEAN EXIT` from actual operator acceptance and preserve any server report.
+
+The repaired profile subsequently passed local Setup regression (770 passed, 5 skipped), both PowerShell and Git Bash syntax checks, and the integrated localhost Apps+People disposable browser gate on October 15, 2026. The foreground remote runner returned `PeopleIdentityBootstrap REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT` / exit 0. Production `ref.person`, `directus_users`, shared Git checkout and People service preservation checks all passed; port 8898 was released. The final report is `/tmp/MSB_People_Identity_Bootstrap_Browser_Preview_20261015T215102.txt`. This is a **completed test**, not a command to rerun. Don's preserved real first-login fixture remains unconsumed and no Production deployment was authorized.
+
+The workstation-only result-summary example issued separately in chat was broken when its `finally` was pasted as a standalone PowerShell statement after the launcher returned. That parser error does **not** invalidate the server PASS, but must not be repeated in operator handoffs. Print a bounded final results summary through one syntactically complete script/invocation; do not ask the operator to append a separate `finally` block or pipe foreground SSH through a capture pipeline.
+
+Detailed initial failure, corrected acquisition contract, exact source pins and final browser acceptance evidence belong in [People #395 disposable/bootstrap acceptance](../../People/Acceptance/People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md). Both governing Server Management runbooks still apply to future reviews and release work.
+
 ## Legacy feature-specific wrappers
 
 Older Setup acceptance files remain historical evidence for the feature that created them. They contain hard-coded candidate SHAs, migration sets, or feature checks and must not be copied or patched for new work when the reusable launchers above can express the candidate.

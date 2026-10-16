@@ -9,6 +9,10 @@ param(
     [string]$PreviewEmail = 'gliebig@sheboyganlights.org',
     [Parameter(Mandatory=$true)]
     [string]$ExpectedVersion,
+    [ValidateSet('Setup','PeopleIdentityBootstrap')]
+    [string]$PreviewProfile = 'Setup',
+    [string]$ExternalAppsSha = '',
+    [string]$ExternalAppsBlob = '',
     [string[]]$MigrationPaths = @(),
     [string[]]$ValidationPaths = @(),
     [switch]$AllowConcurrentProductionWrites
@@ -73,13 +77,37 @@ function Get-CandidateSetupBuildIdentity {
     }
 }
 
-$buildIdentity = Get-CandidateSetupBuildIdentity -Sha $CandidateSha
-if ($buildIdentity.Server -ne $buildIdentity.Client) {
-    throw "STOP before server contact: Setup client/server version mismatch in exact candidate $CandidateSha. Client $($buildIdentity.Client); server $($buildIdentity.Server)."
-}
+if ($PreviewProfile -eq 'Setup') {
+    $buildIdentity = Get-CandidateSetupBuildIdentity -Sha $CandidateSha
+    if ($buildIdentity.Server -ne $buildIdentity.Client) {
+        throw "STOP before server contact: Setup client/server version mismatch in exact candidate $CandidateSha. Client $($buildIdentity.Client); server $($buildIdentity.Server)."
+    }
 
-if ($ExpectedVersion -ne $buildIdentity.Server) {
-    throw "STOP before server contact: ExpectedVersion '$ExpectedVersion' does not match exact candidate Setup build '$($buildIdentity.Server)'."
+    if ($ExpectedVersion -ne $buildIdentity.Server) {
+        throw "STOP before server contact: ExpectedVersion '$ExpectedVersion' does not match exact candidate Setup build '$($buildIdentity.Server)'."
+    }
+}
+elseif ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+    $peopleBackend = ((& git -C $repo show "${CandidateSha}:People/Application/backend.py") | Out-String)
+    if ($LASTEXITCODE -ne 0) {
+        throw "STOP before server contact: exact candidate $CandidateSha is missing People/Application/backend.py."
+    }
+    $peopleVersionMatch = [regex]::Match($peopleBackend, 'APP_VERSION\s*=\s*"([^"]+)"')
+    if (-not $peopleVersionMatch.Success) {
+        throw "STOP before server contact: unable to resolve People APP_VERSION from exact candidate $CandidateSha."
+    }
+    if ($ExpectedVersion -ne $peopleVersionMatch.Groups[1].Value) {
+        throw "STOP before server contact: ExpectedVersion '$ExpectedVersion' does not match exact People candidate version '$($peopleVersionMatch.Groups[1].Value)'."
+    }
+    if ([string]::IsNullOrWhiteSpace($ExternalAppsSha) -or [string]::IsNullOrWhiteSpace($ExternalAppsBlob)) {
+        throw 'STOP before server contact: PeopleIdentityBootstrap preview requires ExternalAppsSha and ExternalAppsBlob.'
+    }
+    if ($PreviewPort -ne 8898) {
+        throw 'STOP before server contact: reusable disposable browser review must use registered port 8898.'
+    }
+    if ($PreviewEmail -eq 'gliebig@sheboyganlights.org') {
+        $PreviewEmail = "bootstrap-preview-$((Get-Date).ToString('yyyyMMddHHmmss'))@sheboyganlights.org"
+    }
 }
 
 if ($PreviewPort -lt 1024 -or $PreviewPort -gt 65535) {
@@ -92,6 +120,9 @@ if ($PreviewEmail -notmatch '^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+$') {
     throw 'PreviewEmail is not a valid email address.'
 }
 
+# Setup profile preserves the explicitly approved shared database repair and
+# explicitly approved shared database validation exceptions. Other profiles
+# must use only their own feature-owned migration/validation directories.
 function Assert-SafeCandidatePath {
     param(
         [Parameter(Mandatory=$true)][string]$Path,
@@ -106,16 +137,28 @@ function Assert-SafeCandidatePath {
     }
     if ($Kind -eq 'migration') {
         $isSetupMigration = $Path.StartsWith('Setup/Database/')
+        $isPeopleMigration = $Path.StartsWith('People/Database/')
         $isApprovedSharedMigration = $Path -eq 'Database/Basic_Query_Tools_Dev/Repair-SetActorOnUpdate-Attribution.sql'
-        if (-not ($isSetupMigration -or $isApprovedSharedMigration)) {
-            throw "Migration path must be under Setup/Database/ or explicitly approved shared database repair: $Path"
+        $allowed = if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+            $isPeopleMigration
+        } else {
+            $isSetupMigration -or $isApprovedSharedMigration
+        }
+        if (-not $allowed) {
+            throw "Migration path is outside the approved $PreviewProfile preview boundary: $Path"
         }
     }
     if ($Kind -eq 'validation') {
         $isSetupValidation = $Path.StartsWith('Setup/Acceptance/')
+        $isPeopleValidation = $Path.StartsWith('People/Acceptance/')
         $isApprovedSharedValidation = $Path -eq 'Database/Acceptance/database_shared_audit_actor_disposable_validation.sql'
-        if (-not ($isSetupValidation -or $isApprovedSharedValidation)) {
-            throw "Validation path must be under Setup/Acceptance/ or explicitly approved shared database validation: $Path"
+        $allowed = if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+            $isPeopleValidation
+        } else {
+            $isSetupValidation -or $isApprovedSharedValidation
+        }
+        if (-not $allowed) {
+            throw "Validation path is outside the approved $PreviewProfile preview boundary: $Path"
         }
     }
 
@@ -132,18 +175,30 @@ foreach ($path in $ValidationPaths) {
     Assert-SafeCandidatePath -Path $path -Kind 'validation'
 }
 
-$serverScript = Join-Path $repo 'Setup\Acceptance\setup_disposable_browser_preview_server.sh'
-if (-not (Test-Path -LiteralPath $serverScript -PathType Leaf)) {
-    throw "Reusable Setup browser-preview server runner is missing: $serverScript"
+$profileEntryScript = $null
+if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+    $serverScript = Join-Path $repo 'Setup\Acceptance\people_identity_bootstrap_disposable_browser_preview_server.sh'
+    $profileEntryScript = Join-Path $repo 'Setup\Acceptance\people_identity_bootstrap_disposable_browser_preview_entry.py'
+    foreach ($tool in @($serverScript, $profileEntryScript)) {
+        if (-not (Test-Path -LiteralPath $tool -PathType Leaf)) {
+            throw "Reusable PeopleIdentityBootstrap browser-preview tooling is missing: $tool"
+        }
+    }
 }
+else {
+    $serverScript = Join-Path $repo 'Setup\Acceptance\setup_disposable_browser_preview_server.sh'
+    if (-not (Test-Path -LiteralPath $serverScript -PathType Leaf)) {
+        throw "Reusable Setup browser-preview server runner is missing: $serverScript"
+    }
 
-& git -C $repo cat-file -e "${CandidateSha}:Setup/Acceptance/setup_disposable_browser_preview_server.sh" 2>$null
-if ($LASTEXITCODE -ne 0) {
-    throw 'Exact candidate does not contain the reusable Setup browser-preview server runner.'
-}
-& git -C $repo cat-file -e "${CandidateSha}:Setup/Acceptance/setup_session_browser_preview_entry.py" 2>$null
-if ($LASTEXITCODE -ne 0) {
-    throw 'Exact candidate does not contain the Setup browser-preview entry point.'
+    & git -C $repo cat-file -e "${CandidateSha}:Setup/Acceptance/setup_disposable_browser_preview_server.sh" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Exact candidate does not contain the reusable Setup browser-preview server runner.'
+    }
+    & git -C $repo cat-file -e "${CandidateSha}:Setup/Acceptance/setup_session_browser_preview_entry.py" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Exact candidate does not contain the Setup browser-preview entry point.'
+    }
 }
 
 $localListeners = @(Get-NetTCPConnection -LocalPort $PreviewPort -State Listen -ErrorAction SilentlyContinue)
@@ -153,6 +208,9 @@ foreach ($listener in $localListeners) {
     if ($owner.ProcessName -ne 'ssh') {
         throw "Local preview port $PreviewPort is owned by non-SSH process $($owner.ProcessName) PID $($owner.Id). Not stopping it automatically."
     }
+    if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+        throw "Local preview port $PreviewPort already has SSH tunnel PID $($owner.Id). Refusing to stop it because it may belong to a preserved Setup review; inspect/resume/clean that review first."
+    }
     Write-Host "Stopping stale local SSH preview tunnel PID $($owner.Id) on port $PreviewPort"
     Stop-Process -Id $owner.Id -Force
 }
@@ -160,6 +218,7 @@ foreach ($listener in $localListeners) {
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $bundleName = "msb-setup-disposable-browser-preview-$stamp"
 $localBundle = Join-Path $env:TEMP $bundleName
+$backboneSourceDir = Join-Path $env:TEMP "${bundleName}-backbone-source"
 $remoteBundle = "/tmp/$bundleName"
 $localRunner = Join-Path $localBundle 'setup_disposable_browser_preview_server.sh'
 $localManifest = Join-Path $localBundle 'preview_manifest.tsv'
@@ -173,15 +232,70 @@ try {
     $runnerText = $runnerText.Replace("`r`n", "`n").Replace("`r", "`n")
     [System.IO.File]::WriteAllText($localRunner, $runnerText, $utf8NoBom)
 
+    if ($null -ne $profileEntryScript) {
+        $profileEntryText = [System.IO.File]::ReadAllText($profileEntryScript)
+        $profileEntryText = $profileEntryText.Replace("`r`n", "`n").Replace("`r", "`n")
+        [System.IO.File]::WriteAllText(
+            (Join-Path $localBundle 'people_identity_bootstrap_disposable_browser_preview_entry.py'),
+            $profileEntryText,
+            $utf8NoBom
+        )
+    }
+
+    if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+        # Obtain the separately owned Backbone Apps candidate through workstation Git.
+        # Anonymous raw GitHub endpoints are not an accepted draft-source authority.
+        if ($ExternalAppsSha -notmatch '^[0-9a-fA-F]{40}$' -or
+            $ExternalAppsBlob -notmatch '^[0-9a-fA-F]{40}$') {
+            throw 'STOP before server contact: Backbone commit and blob must each be 40 hex digits.'
+        }
+        if (Test-Path -LiteralPath $backboneSourceDir) {
+            throw "STOP: disposable Backbone source directory already exists: $backboneSourceDir"
+        }
+
+        & git clone --quiet --no-checkout 'https://github.com/Gregovate/MSB-Internal-Web-Backbone.git' $backboneSourceDir
+        if ($LASTEXITCODE -ne 0) {
+            throw 'STOP before server contact: authenticated Backbone candidate Git clone failed.'
+        }
+        # A detached checkout with autocrlf disabled preserves committed bytes.
+        & git -c core.autocrlf=false -C $backboneSourceDir checkout --quiet --detach $ExternalAppsSha
+        if ($LASTEXITCODE -ne 0) {
+            throw "STOP before server contact: Backbone candidate commit $ExternalAppsSha is unavailable."
+        }
+
+        $sourceBlob = (& git -C $backboneSourceDir rev-parse "${ExternalAppsSha}:my/apps/index.html").Trim()
+        if ($LASTEXITCODE -ne 0 -or $sourceBlob -ne $ExternalAppsBlob) {
+            throw "STOP before server contact: Backbone Apps committed blob '$sourceBlob' does not match pinned '$ExternalAppsBlob'."
+        }
+        $appsSource = Join-Path $backboneSourceDir 'my\apps\index.html'
+        $workingBlob = (& git -C $backboneSourceDir hash-object -- $appsSource).Trim()
+        if ($LASTEXITCODE -ne 0 -or $workingBlob -ne $ExternalAppsBlob) {
+            throw "STOP before server contact: Backbone Apps working bytes differ from pinned '$ExternalAppsBlob'."
+        }
+
+        $bundledApps = Join-Path $localBundle 'apps-index.html'
+        [System.IO.File]::Copy($appsSource, $bundledApps)
+        $bundledBlob = (& git -C $repo hash-object -- $bundledApps).Trim()
+        if ($LASTEXITCODE -ne 0 -or $bundledBlob -ne $ExternalAppsBlob) {
+            throw "STOP before server contact: bundled Apps file differs from pinned '$ExternalAppsBlob'."
+        }
+        Write-Host "PASS: authenticated exact Backbone Apps source and bundle blob $ExternalAppsBlob"
+    }
+
     $manifestLines = @(
         "candidate_sha`t$CandidateSha",
         "target_ref`t$TargetRef",
+        "preview_profile`t$PreviewProfile",
         "preview_port`t$PreviewPort",
         "preview_email`t$PreviewEmail",
         "allow_concurrent_production_writes`t$($AllowConcurrentProductionWrites.IsPresent.ToString().ToLowerInvariant())"
     )
     if (-not [string]::IsNullOrWhiteSpace($ExpectedVersion)) {
         $manifestLines += "expected_version`t$ExpectedVersion"
+    }
+    if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+        $manifestLines += "external_apps_sha`t$ExternalAppsSha"
+        $manifestLines += "external_apps_blob`t$ExternalAppsBlob"
     }
     foreach ($path in $MigrationPaths) {
         $manifestLines += "migration`t$path"
@@ -202,6 +316,7 @@ try {
     Write-Host "Server:          $Server"
     Write-Host "Candidate SHA:   $CandidateSha"
     Write-Host "Tooling SHA:     $toolingHead"
+    Write-Host "Preview profile: $PreviewProfile"
     Write-Host "Target ref:      $TargetRef"
     Write-Host "Preview port:    $PreviewPort"
     Write-Host "Browser URL:     $browserUrl"
@@ -227,7 +342,13 @@ try {
 
     $remoteRunner = "$remoteBundle/setup_disposable_browser_preview_server.sh"
     $remoteManifest = "$remoteBundle/preview_manifest.tsv"
-    $initialCommand = "chmod 700 '$remoteRunner' && bash -n '$remoteRunner' && timeout --foreground --signal=TERM 28800s bash '$remoteRunner' '$remoteManifest' start"
+    $remoteEntry = "$remoteBundle/people_identity_bootstrap_disposable_browser_preview_entry.py"
+    $remoteApps = "$remoteBundle/apps-index.html"
+    $prepareCommand = "chmod 755 '$remoteBundle' && chmod 700 '$remoteRunner'"
+    if ($PreviewProfile -eq 'PeopleIdentityBootstrap') {
+        $prepareCommand += " && chmod 644 '$remoteEntry' '$remoteApps'"
+    }
+    $initialCommand = "$prepareCommand && bash -n '$remoteRunner' && timeout --foreground --signal=TERM 28800s bash '$remoteRunner' '$remoteManifest' start"
     $resumeCommand = "timeout --foreground --signal=TERM 28800s bash '$remoteRunner' '$remoteManifest' resume"
 
     $mode = 'start'
@@ -277,8 +398,9 @@ try {
     }
 
     Write-Host
-    Write-Host 'SETUP REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT'
+    Write-Host "$PreviewProfile REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT"
 }
 finally {
     Remove-Item -LiteralPath $localBundle -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $backboneSourceDir -Recurse -Force -ErrorAction SilentlyContinue
 }

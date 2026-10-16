@@ -8,6 +8,8 @@ Current status:
 People Manager original Production acceptance   PASS
 Identity reconciliation V0.2.2 disposable        PASS
 Identity reconciliation V0.2.2 Production        PASS
+Identity bootstrap V0.2.3 disposable              PASS — #395
+Identity bootstrap browser/application review     NEXT — #395 / Backbone #24
 Production protected /people/ route              PASS
 Cloudflare-authenticated live browser             PASS
 Production GA4 page view                          PASS
@@ -189,6 +191,37 @@ Rollback/evidence:
 Durable acceptance:
 
 `People_Identity_Reconciliation_Production_Acceptance_2026-10-13.md`
+
+## Silent Human Identity Bootstrap V0.2.3 — DISPOSABLE PASS
+
+Issue #395 candidate:
+
+```text
+dcc8f25f07a74e19ce3de3aae2d9d137b5411815
+```
+
+Governed current-Production disposable acceptance passed with a separate PostgreSQL clone and disposable Directus 11.17.1 runtime.
+
+Production invariants remained unchanged:
+
+```text
+ref.person       4157a1c63a88bc900d566f6eb094f1c4 -> same
+directus_users   3170a3a5b5860bed1c293f2ee6b50131 -> same
+```
+
+Retained report:
+
+```text
+/tmp/MSB_People_Identity_Bootstrap_Disposable_20261015T200047.txt
+```
+
+Durable evidence:
+
+```text
+People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md
+```
+
+This evidence does not authorize Production deployment. The next gate is exact-candidate browser/application integration review with the `my.sheboyganlights.org/apps/` workflow. Don Martens remains the preserved Production acceptance fixture and has not been consumed.
 
 ## Google Analytics — PASS
 

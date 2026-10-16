@@ -159,6 +159,28 @@ role = Production Crew
 
 The 2026-10-13 current Production read-only snapshot confirmed Paul as an active existing Person with an active Google-backed Production Crew Directus user at the same email and a NULL Person UUID link. This is an exact safe reconciliation case under the accepted contract.
 
+## Missing Directus Identity Is Outside #385
+
+V0.2.2 reconciliation can repair a missing Person↔Directus UUID link only after an active Directus user exists.
+
+It does not create a Directus user.
+
+Issue #395 confirmed the earlier lifecycle gap with Don Martens:
+
+```text
+active Person exists
+real Sheboygan Lights Google account exists
+Cloudflare authentication succeeds
+Directus user does not exist
+-> Setup authorization returns no capability row
+```
+
+This condition must be solved by the separate first-login/bootstrap path. The #395 bootstrap must initialize the Directus identity at **MSB Browser** only and then allow the exact existing Person link to be established safely.
+
+Legacy Person flags such as `is_manager` or `is_team` must not automatically elevate Directus authorization. Directus role/policy remains authoritative, and administrators may continue changing the role of an existing Directus user directly in the Directus backend.
+
+Non-human tablet/device/service identities may legitimately have no Person row and must remain excluded from human reconciliation.
+
 ## Directus Onboarding Flow Boundary
 
 The existing Directus onboarding flow remains a separate current-state concern.
