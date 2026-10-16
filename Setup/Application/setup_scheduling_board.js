@@ -2270,7 +2270,7 @@ function board205RenderKpis() {
   }
   const labor = Number.isInteger(plannedLaborHours)
     ? String(plannedLaborHours) : plannedLaborHours.toFixed(1).replace(/\\.0$/, '');
-  setup205WireActionCenter(target);
+  setup205WireManagementNavigation(target);
   target.innerHTML = setup205DeadlineKpiHtml(board, appState.seasonYear) +
     '<div class="setup205-scheduling-secondary" aria-label="Secondary planning indicators">' +
       '<span>' + (board.tasks || []).filter(t => Number(t.future_assignment_count || 0) > 0).length +
