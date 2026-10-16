@@ -3980,11 +3980,6 @@ function board205InstallView() {
               </form>
               <button id="setup-board205-historical-day" type="button" class="small secondary manager-only" hidden>Historical Day…</button>
 
-              <div class="setup-board205-scheduled-search">
-                <label for="setup-board205-scheduled-search">Find scheduled task</label>
-                <input id="setup-board205-scheduled-search" type="search" autocomplete="off" placeholder="Stage, task name, or Captain">
-                <div id="setup-board205-scheduled-search-results" class="setup-board205-scheduled-search-results" aria-live="polite"></div>
-              </div>
 
               <div class="setup-board205-day-filters" aria-label="Day view">
                 <strong>Day view</strong>
@@ -4003,6 +3998,12 @@ function board205InstallView() {
             <div class="setup-board205-board-heading">
               <div class="setup-board205-board-title-row">
                 <h3>Rolling Work Days</h3>
+              <div class="setup-board205-scheduled-search">
+                <label for="setup-board205-scheduled-search">Find scheduled task</label>
+                <input id="setup-board205-scheduled-search" type="search" autocomplete="off" placeholder="Stage, task name, or Captain">
+                <div id="setup-board205-scheduled-search-results" class="setup-board205-scheduled-search-results" aria-live="polite"></div>
+              </div>
+
                 <span class="setup-board205-board-key">Setup Day # · DOW · Date</span>
               </div>
             </div>
