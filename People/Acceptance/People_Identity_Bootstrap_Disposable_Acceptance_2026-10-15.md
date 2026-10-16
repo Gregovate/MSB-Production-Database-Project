@@ -566,6 +566,35 @@ Controlled acceptance-tooling correction: change only `People/Acceptance/people_
 
 The reusable scoped-probe reporting standard should include a safe first-failure **category/location** in its final result block after diagnosis, avoiding another request for multiple pages of terminal output. That is acceptance-tooling improvement, not a runtime change.
 
+## Second #49 / #395 service-scope disposable attempt — API-permission stage STOP (2026-10-15)
+
+Greg supplied the completed bounded acceptance result from tooling SHA `d57b2177f01aebf55718c2cada2190b73f818e9f`:
+
+```text
+Proof target:      #49 / #395 scoped Directus service credential
+Accepted People:   dcc8f25f07a74e19ce3de3aae2d9d137b5411815
+Tooling SHA:       d57b2177f01aebf55718c2cada2190b73f818e9f
+Directus image:    directus/directus:11.17.1
+Disposable scope:  STOP
+Scope stage:       VERIFY_SERVICE_API_PERMISSIONS
+Person after:      PASS
+Directus after:    PASS
+Production writes: NONE
+Real Don fixture:  NOT CONSUMED
+Exit status:       74
+Server report:     /tmp/MSB_People_Identity_Bootstrap_Disposable_20261016T000349.txt
+```
+
+The scoped-policy fixture progressed past the previous `directus_access.id` insert failure, as the stage reached the actual API-permission verification. **The exact failed API assertion is not established by this compact report**; do not infer that non-admin Directus user creation is unsupported, or that any particular privilege should be added. The guarded runner reports the failure cleanly; Production identities are unchanged.
+
+### Architecture/effort decision re-opened at operator request
+
+Greg questioned the disproportionate engineering effort involved in eliminating the extra Google login at the Directus website and stated that, had this effort been known, he would have considered a different approach. **Pause further service-credential experiments and Production deployment work while the architecture trade-off is made explicit.** This is a design-direction checkpoint, not withdrawal of the earlier Production approval.
+
+The existing authoritative [Directus User Onboarding Identity Contract](../../Docs/02_Production_Database/01_System_Architecture/03_People_and_Identity/engineering/Directus_User_Onboarding_Identity_Contract_2026-09-09.md) already records current Directus 11.17.1 Google OpenID support (`AUTH_GOOGLE_ALLOW_PUBLIC_REGISTRATION=true`) and a supported provider-specific route at `https://db.sheboyganlights.org/auth/login/google` with a configured/allowed return URL. The route can begin Google SSO **without first rendering the Directus Data Studio login screen**. A conditional Apps → Directus Google SSO → protected Apps return flow may avoid creating/maintaining a privileged People bootstrap service token, but this option **has not been accepted or tested**. It must prove the Cloudflare-vs-Directus Google identity match on shared tablets and prevent the live User Onboarding Flow's missing-Person branch from creating a Person, with baseline role/no-elevation and existing-user role preservation intact. A Google account chooser or extra sign-in step may still be visible. Never claim a seamless transparent flow without such proof.
+
+The merged #395 People/Apps source remains *source-only*, not Production deployed. Do not discard the accepted source or change live login redirects without a reviewed decision. Before further testing, explain the simpler Directus SSO redirect option, its operator-visible difference and the two unresolved safety conditions; let Greg choose whether to re-scope #395 rather than continuing the credential effort automatically. Do not consume Don's final Production fixture.
+
 ## Disposition
 
 ```text
