@@ -2083,17 +2083,27 @@ function setup205ActionCenterHtml(board, model) {
     else g.known += mins;
     g.items.push(t?.task_name || a.task_name || 'Task');
   }
-  const overCapacity = [...workloadGroups.values()]
+  const allCapacityGroups = [...workloadGroups.values()];
+  const overCapacity = allCapacityGroups
     .filter(g => g.known > (g.shift === 'MORNING' ? 180 : g.shift === 'AFTERNOON' ? 120 : 300))
     .sort((a,b) => a.date.localeCompare(b.date))
     .map(g => {
       const max = g.shift === 'MORNING' ? 180 : g.shift === 'AFTERNOON' ? 120 : 300;
+      const pm = allCapacityGroups.find(p => p.day?.setup_work_day_id === g.day?.setup_work_day_id &&
+        p.crew?.setup_work_day_crew_id === g.crew?.setup_work_day_crew_id &&
+        p.shift === 'AFTERNOON');
+      const pmCount = Number(g.crew?.pm_planned_crew_count || 0);
+      const amCount = Number(g.crew?.am_planned_crew_count || 0);
+      const canReviewPm = g.shift === 'MORNING' && amCount > 0 && pmCount > 0 &&
+        g.known + (pm?.known || 0) <= 300;
+      const status = canReviewPm ? 'AM pressure — PM continuation requires review' : 'Shift overload';
       return '<strong>' + safe(g.date) + ' · Setup Day ' + safe(g.day?.setup_day_number ?? '—') +
         ' · Crew ' + safe(g.crew?.crew_code || '—') + ' · ' + safe(g.shift) + '</strong> — ' +
+        safe(status) + ': ' +
         safe((g.known/60).toFixed(2)) + ' planned linear hours / ' + safe((max/60).toFixed(2)) +
-        ' available; ' + safe(g.unknown) + ' additional tasks lack duration. ' +
+        ' typical shift hours; ' + safe(g.unknown) + ' tasks lack duration. ' +
         safe(g.items.join(', ')) + ' ' +
-        button('day',g.day?.setup_work_day_id,'Review overloaded day');
+        button('day',g.day?.setup_work_day_id,'Review shift capacity');
     });
   const captainTbd = (board.assignments || []).filter(a => {
     const d = dayById.get(Number(a.setup_work_day_id));
