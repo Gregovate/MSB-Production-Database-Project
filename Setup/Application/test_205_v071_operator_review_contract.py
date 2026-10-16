@@ -22,7 +22,9 @@ def test_capacity_distinguishes_am_pressure_from_true_overload():
     js = source("setup_scheduling_board.js")
     assert "board205PlacementCrewCount(crewId, 'AFTERNOON')" in js
     assert "AM PRESSURE — REVIEW PM CONTINUATION" in js
-    assert "const shiftPressure = w.overload > 0 && mayUsePm && !dayOver;" in js
+    assert "const shiftPressure = shift === 'MORNING' && w.overload > 0" in js
+    assert "AM PRESSURE — PM CREW UNCONFIRMED" in js
+    assert "PM staffing needs a Manager decision" in js
     assert "PM may absorb" in js
     assert "const dayDemand = am.known + pm.known;" in js
 
