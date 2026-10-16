@@ -22,7 +22,8 @@ def test_existing_annual_save_remains_atomic_with_2026_catalog():
         "v_season_year = 2026",
         "UPDATE ref.setup_task t",
         "UPDATE ops.setup_session_task st",
-        "Actual work exists for this annual task",
+        "v_has_actual",
+        "only 2026 reusable task estimates may be revised",
         "SECURITY DEFINER",
         "ref.setup_management_actor(p_email, false)",
     ):
@@ -42,9 +43,9 @@ def test_catalog_to_2026_annual_is_same_transaction_and_history_safe():
     assert "ss.season_year = 2026" in migration
     assert "newer.season_year > ss.season_year" in migration
     assert "st.task_origin = 'REUSABLE'" in migration
-    assert "2026 annual task has reported work" in migration
-    assert "ops.setup_task_progress" in migration
-    assert "actual_started_at IS NOT NULL" in migration
+    assert "Only task estimate columns are mirrored." in migration
+    assert "2026 annual task has reported work" not in migration
+    assert "newer.season_year > ss.season_year" in migration
     assert "SECURITY DEFINER" in migration
     assert "REVOKE ALL ON FUNCTION ref.sync_setup_task_estimates_to_2026()" in migration
     assert "UPDATE ops.setup_task_progress" not in migration
@@ -57,6 +58,9 @@ def test_disposable_probes_both_directions_and_rolls_back():
     assert "ref.update_setup_task(" in validation
     assert "ref.set_setup_task_effort(" in validation
     assert "Catalog edit did not synchronize ALL four 2026 annual estimate fields" in validation
+    assert "reported 2026 annual/Catalog estimate changes synchronized both directions with actual unchanged" in validation
+    assert "2026 estimate sync modified reported assignment or progress history" in validation
+    assert "reported task readiness remains locked" in validation
     assert "ROLLBACK;" in validation
     assert "annual and Catalog values unchanged after disposable rollback" in validation
 
