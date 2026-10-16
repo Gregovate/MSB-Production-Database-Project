@@ -838,3 +838,21 @@
   }
   .next-report-work-form .next-report-work-grid .next-work-key-field { padding: 0.4rem; }
 }
+
+/* #205 operator rejection: actionable controls require visible semantic colors. */
+.next-perform-actions .next-reschedule-no-work,
+.next-reschedule-actions button[type="submit"] {
+  background: var(--accent, #08689c);
+  color: #fff;
+  border: 2px solid var(--accent, #08689c);
+  font-weight: 750;
+}
+.next-perform-actions .next-reschedule-no-work:hover,
+.next-reschedule-actions button[type="submit"]:hover {
+  filter: brightness(1.12);
+}
+.next-perform-actions .next-reschedule-no-work:focus-visible,
+.next-reschedule-actions button[type="submit"]:focus-visible {
+  outline: 3px solid var(--text, #172033);
+  outline-offset: 2px;
+}
