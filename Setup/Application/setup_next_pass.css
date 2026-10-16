@@ -948,3 +948,31 @@ html[data-theme="dark"] .setup205-kpi-glance .setup205-open-action-center {
   width: fit-content;
   margin: 0.45rem 0 0;
 }
+
+/* #205 operator rejection: Manager Action Center is active ONLY when selected.
+   The previous unqualified selector made two navigation tabs look active. */
+button.tab[data-view="action-center"]:not(.active) {
+  background: var(--card, #fff);
+  border-color: var(--border, #d9e0e8);
+  color: var(--text, #172033);
+}
+html[data-theme="dark"] button.tab[data-view="action-center"]:not(.active) {
+  background: var(--card, #1d2939);
+  border-color: var(--border, #64748b);
+  color: var(--text, #e8f2fb);
+}
+button.tab[data-view="action-center"].active {
+  background: var(--accent, #14658b);
+  border-color: var(--accent, #14658b);
+  color: #fff;
+}
+/* Perform Work scrolls as a document, not a trapped scheduling pane. */
+body:not(.setup-schedule-view) #perform-view,
+body:not(.setup-schedule-view) #next-perform-list {
+  height: auto;
+  max-height: none;
+  overflow-y: visible;
+}
+#next-perform-back-to-top {
+  margin-left: auto;
+}
