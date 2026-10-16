@@ -334,3 +334,12 @@ search and local cleanup pending. See candidate receipt and deployment change lo
 Greg confirmed protected Production search works October14 at14:02 CDT.
 DBG-2026-014 server/browser acceptance is complete; Office cleanup remains
 operator-side and unverified. Day View wording remains separate #205 work.
+
+## #205 V0.3.84 / migrations 075 and 076 release
+
+[Governed release profile and execution record](Setup_205_075_076_Release.md)
+uses the existing maintenance orchestrator with ordered migration and final
+validation hooks. The dedicated `run_setup_205_estimates_deploy.ps1` packages
+committed bytes from merged main. The older RequiredContainers/ScheduledSearch
+wrapper is not a #205 release command. Operator acceptance and CLEAN EXIT are
+already approved; Production execution and its evidence remain pending.

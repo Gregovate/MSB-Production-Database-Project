@@ -1,0 +1,23 @@
+{
+  "profile": "205-estimates-075-076",
+  "release_tag": "Setup205-075-076",
+  "target": "7740498e6602f36c8cdfd384791bbafaab71ee9e",
+  "candidate": "723a733ffbea516519c6dd7a20ec75faca10a9c4",
+  "tree": "cf4ff035447693a9d5c9bb42066c791838a701ad",
+  "old_setup": "86341d49dc8ccf290575f9d2b418c235094a1377",
+  "old_version": "V0.3.65-scheduled-search-focus",
+  "version": "V0.3.84-direct-crew-cells",
+  "migrations": [
+    "Setup/Database/075_allow_setup_planned_crew_count_corrections.sql",
+    "Setup/Database/076_capture_2026_reusable_task_estimates.sql"
+  ],
+  "migration_blobs": {
+    "Setup/Database/075_allow_setup_planned_crew_count_corrections.sql": "fab1abfe7332bfaebf34aab61f03e3140d5d5bbd",
+    "Setup/Database/076_capture_2026_reusable_task_estimates.sql": "8f63fc80d5f8ed0de19098380df6a5aecabd826b"
+  },
+  "helpers": {
+    "setup_maintenance_deploy.py": "3dcc687bb18b0d050b49dd24a697eaf0f8958832e4e6dcec0f1b685812aa5545",
+    "setup_required_container_deploy.py": "9eca5d40e9b86db2798f461b5f0424d37eb6528d850aa5a790aec7298007b9ba",
+    "check_setup_ui_update_date.py": "6815a0f1c85b883493a3cbd4a9b8bc79d804a06128f585b01cb973137a73581b"
+  }
+}
