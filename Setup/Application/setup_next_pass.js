@@ -1795,7 +1795,7 @@ function setup205ManagementReportHtml(board, year) {
     '</div>';
   return '<section class="setup-205-deadline-kpis" aria-label="Whole Setup schedule performance">' +
     glance +
-    '<details class="setup205-kpi-expand"><summary>KPI details, overdue work and Manager Action Center</summary>' +
+    '<details class="setup205-kpi-expand"><summary>Detailed performance numbers and task categories</summary>' +
     '<div class="setup205-kpi-expanded">' +
     '<div style="font-weight:800;margin-bottom:8px">WHOLE SETUP · DEADLINE PERFORMANCE</div>' +
     '<div style="display:flex;flex-wrap:wrap;gap:18px;margin-bottom:8px">' +
@@ -1838,7 +1838,6 @@ function setup205ManagementReportHtml(board, year) {
     details('NOT READY', k.notReady, 'Readiness is separate from hard prerequisites.') +
     details('Partially reported', k.partial, 'Reported work below 100%; still unfinished.') +
     details('Deferred', k.deferred, 'Excluded from required rate, but included in remaining scope.') +
-    setup205ActionCenterHtml(board, k) +
     '</div></details></section>';
 }
 
@@ -1878,7 +1877,8 @@ async function loadSetup205ActionCenter() {
     if (!appState.access?.can_manage_setup) return;
     const board = payload.board || {};
     setup205WireActionCenter(target);
-    target.innerHTML = setup205ManagementReportHtml(board, appState.seasonYear);
+    target.innerHTML = setup205ActionCenterHtml(board) +
+      setup205ManagementReportHtml(board, appState.seasonYear);
   } catch (error) {
     target.textContent = 'Unable to load current Setup actions: ' + (error.message || error);
     setAlert(error.message || error, 'error');
@@ -1999,9 +1999,9 @@ function setup205ActionCenterHtml(board, model) {
   return '<section class="setup205-action-center" aria-label="Manager Setup Action Center" ' +
     'style="border-top:2px solid #647888;margin-top:12px;padding-top:12px">' +
     '<h3>Manager Setup Action Center</h3>' +
-    '<p class="muted">Resolve original missing reports, plan unfinished continuations and review ' +
-    'imminent readiness exceptions. Replanning never clears an earlier missing report. ' +
-    'Dates are America/Chicago. No email workflow is active on this screen.</p>' +
+    '<p class="muted">Choose a task below to report actual work, move an assignment where no work happened, ' +
+    'or plan unfinished work. Reported history is protected; a confirmed no-work reschedule preserves the original schedule in the audit. ' +
+    'No email is sent from this screen.</p>' +
     section('Past occurrences awaiting reports',missed,'Includes unresolved older work periods, even if the annual task later completed or moved.') +
     section('Incomplete tasks needing continuation',continuations,'A reported partial work period is not the same as a future assignment.') +
     section('Upcoming scheduled readiness exceptions (7 days)',imminent,'Hard prerequisite/Work Order gates and independent NOT READY conditions can overlap.') +
