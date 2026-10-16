@@ -107,3 +107,17 @@ def test_network_identity_deduplicates_regular_case_without_lor_mutation() -> No
     assert "return uniqueNetworks([" in source
     assert "return uniqueNetworks(values);" in source
     assert "method:'POST'" not in source
+
+
+def test_dmx_universe_values_cannot_occupy_lor_unit_ids() -> None:
+    source = (BASE_DIR / "controller_management.py").read_text(encoding="utf-8")
+    # Both the network-wide occupied-UID query and the Stage explicit-SPARE
+    # query consume the legacy wiring compatibility view. Neither may count
+    # E1.31/DMX universe values as traditional LOR addresses.
+    gate = "upper(btrim(coalesce(fw.device_type, ''))) <> 'DMX'"
+    assert source.count(gate) == 2
+    assert "fw.device_type" in source
+    assert "options[\"planning_lor_uid_usage\"]" in source
+    assert "options[\"planning_explicit_spares\"]" in source
+    # FieldWiring's existing DMX/E1.31 rendering must not be modified.
+    assert "UPDATE lor_snap." not in source
