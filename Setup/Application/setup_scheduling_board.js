@@ -2098,7 +2098,7 @@ function board205Day(day) {
   }).join('');
 
   return `
-    <section class="setup-board205-day ${dayClass}${printEmptyDay ? ' print-empty-day' : ''}" data-day-id="${day.setup_work_day_id}">
+    <section class="setup-board205-day ${dayClass}${printEmptyDay ? ' print-empty-day' : ''}" data-day-id="${day.setup_work_day_id}" data-day-label="SETUP DAY ${board205Esc(day.setup_day_number)} · ${board205Esc(day.day_of_week)} · ${board205Esc(day.work_date)}">
       <div class="setup-board205-day-collapse-control" style="padding:4px 10px">
         ${collapseEligible ? `<button type="button" class="small secondary setup-board205-toggle-day" aria-expanded="false">▶ SETUP DAY ${board205Esc(day.setup_day_number)} · ${board205Esc(day.work_date)} · ${dayAssignmentCount} reported assignments · ${reportedPersonHours} reported person-hours</button>` : ''}
       </div>
@@ -2137,6 +2137,50 @@ function board205Day(day) {
     </section>`;
 }
 
+// #205: The workday identity and scheduled-task search are one sticky surface.
+// A day header nested inside a scrolled/clipped day cannot substitute for the
+// always-visible current-day identity in the right-hand scheduling pane.
+function board205UpdateStickyDay() {
+  const heading = document.querySelector('.setup-board205-board-heading');
+  const label = document.getElementById('setup-board205-current-day');
+  const pane = document.querySelector('.setup-board205-right');
+  const days = [...document.querySelectorAll('#setup-board205-days .setup-board205-day[data-day-id]')];
+  if (!heading || !label || !pane) return;
+  const height = heading.getBoundingClientRect().height;
+  pane.style.setProperty('--setup-board205-sticky-heading-height', height + 'px');
+  if (!days.length) {
+    label.textContent = 'No matching Setup Days';
+    return;
+  }
+  // Changes when the following day reaches the bottom of the shared sticky
+  // header. Programmatic search/focus and wheel scrolling use the same rule.
+  const threshold = heading.getBoundingClientRect().bottom + 1;
+  let active = days[0];
+  for (const day of days) {
+    if (day.getBoundingClientRect().top <= threshold) active = day;
+    else break;
+  }
+  const value = active.dataset.dayLabel || 'Setup Day · Unknown';
+  if (label.textContent !== value) label.textContent = value;
+}
+
+let board205StickyDayWindowBound = false;
+function board205BindStickyDay() {
+  const pane = document.querySelector('.setup-board205-right');
+  if (!pane) return;
+  if (pane.dataset.stickyDayBound !== 'true') {
+    pane.dataset.stickyDayBound = 'true';
+    pane.addEventListener('scroll', board205UpdateStickyDay, {passive:true});
+  }
+  if (!board205StickyDayWindowBound) {
+    board205StickyDayWindowBound = true;
+    window.addEventListener('resize', board205UpdateStickyDay, {passive:true});
+    // Narrow/tablet layouts use document scrolling rather than the pane.
+    window.addEventListener('scroll', board205UpdateStickyDay, {passive:true});
+  }
+  board205UpdateStickyDay();
+}
+
 function board205RenderBoard() {
   const target = document.getElementById('setup-board205-days');
   if (!target) return;
@@ -2144,6 +2188,7 @@ function board205RenderBoard() {
   target.innerHTML = days.length
     ? days.map(board205Day).join('')
     : '<div class="setup-board205-empty">No work days match the selected Day view filters.</div>';
+  board205BindStickyDay();
 
   target.querySelectorAll('.setup-board205-toggle-day').forEach((button) => {
     button.addEventListener('click', () => {
@@ -4009,13 +4054,13 @@ function board205InstallView() {
             <div class="setup-board205-board-heading">
               <div class="setup-board205-board-title-row">
                 <h3>Rolling Work Days</h3>
+                <strong id="setup-board205-current-day" class="setup-board205-current-day" aria-label="Current Setup Day">Setup Day · Loading</strong>
               <div class="setup-board205-scheduled-search">
                 <label for="setup-board205-scheduled-search">Find scheduled task</label>
                 <input id="setup-board205-scheduled-search" type="search" autocomplete="off" placeholder="Stage, task name, or Captain">
                 <div id="setup-board205-scheduled-search-results" class="setup-board205-scheduled-search-results" aria-live="polite"></div>
               </div>
 
-                <span class="setup-board205-board-key">Setup Day # · DOW · Date</span>
               </div>
             </div>
             <div id="setup-board205-days" class="setup-board205-days"></div>
