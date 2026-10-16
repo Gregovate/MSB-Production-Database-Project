@@ -2,12 +2,12 @@
 
 | Item | Value |
 |---|---|
-| Status | SOURCE REGRESSION PASS — CURRENT-PRODUCTION CLONE/BROWSER REVIEW NOT PERFORMED |
+| Status | CORRECTED SOURCE REGRESSION PASS — BROWSER REJECTED (HTTP 500) / REPEAT PENDING |
 | Governing | #122 / #205, controlled Setup engineering contract |
 | Candidate branch | `fix/205-setup-deadline-kpis-20261015` |
-| App build | `V0.3.66-setup-action-center` — client/server synchronized |
-| Exact browser/acceptance candidate | `aaf7778c73f09a851db1f12abbe77770b09d5182` (same V0.3.66 application bytes; repaired acceptance test + CI) |
-| Last application implementation SHA | `e4ed6ff13d6e16e9d8a6ed5278c1d81ee2d00eaa` (feature code unchanged) |
+| App build | `V0.3.67-setup-action-center` — client/server synchronized; corrected HTTP 500 |
+| Exact browser/acceptance candidate | `dbf4487ac7b94ced7dd5d2f8fd9cb5f69457ee8c` — SQL bind correction, distinct synchronized version and pre-ready API check |
+| Previous rejected application implementation SHA | `e4ed6ff13d6e16e9d8a6ed5278c1d81ee2d00eaa` (V0.3.66, HTTP 500) |
 | Latest upstream integrated | `main b2d5f8c2f202b228a180bd950187718937c41019` |
 | Database migrations in this candidate | **NONE**; notification 074 is on a separate parked branch |
 | Production | UNCHANGED; no authorization requested |
@@ -42,7 +42,17 @@ The failed preview report `/home/msbadmin/setup-acceptance-reports/Setup_Disposa
 
 Greg reports two recent migrations in other workstreams, which are **not disputed**. This #205 candidate supplies **zero additional migration files**, and a governed disposable current-Production clone starts with whichever previously accepted migrations really exist in current Production. Do not reapply, undo or guess the identities of those earlier migrations.
 
-**Retest rule:** use the new exact SHA `aaf7778c73f09a851db1f12abbe77770b09d5182` for **both** disposable acceptance and browser preview, per governing acceptance runbook; do not use the old SHA with newer branch tooling or skip final operator browser/CLEAN EXIT. The same existing laptop worktree can be fast-forwarded and reused; no new worktree, reset, Production mutation or GIS changes.
+**Historical retest instruction (superseded by the HTTP 500 correction above):** formerly used `aaf7778c73f09a851db1f12abbe77770b09d5182` for **both** disposable acceptance and browser preview, per governing acceptance runbook; do not use the old SHA with newer branch tooling or skip final operator browser/CLEAN EXIT. The same existing laptop worktree can be fast-forwarded and reused; no new worktree, reset, Production mutation or GIS changes.
+
+## October 15/16 browser HTTP 500 — root cause proven and corrected (LATEST)
+
+The browser preview at `/tmp/Setup_Disposable_Browser_Preview_Flask_20261016T021107.log` loaded the V0.3.66 assets but the real GET `/api/setup/scheduling-board?season_year=2026` returned 500. The **actual server traceback** was `IndexError: tuple index out of range` from psycopg2 at `setup_scheduling_board_repository.py` line 146, in the **parameterized annual-task board SELECT**. The statement was introduced with the SQL comment `/* Current 100% work evidence, one date per annual task. */`. psycopg2 inspects percent markers (including those in SQL comments) before sending SQL to PostgreSQL; the bare `%` consumed an extra bind specifier with only a single session-ID parameter. This is a proven application-code defect, **not** a need for an additional migration or correction to data. The earlier complete 2026 workday information remained unavailable only because the full board GET failed.
+
+**Corrections on PR #394:** remove the raw SQL percent marker in the comment, without altering intended 100%-progress query semantics; add regression that verifies the actual annual-query bind placeholders and every parameterized board SQL; choose new visibly distinct `V0.3.67-setup-action-center` with synchronized server/client/build/asset pins; extend the existing disposable Setup preview runner with a **read-only 2026 Scheduling Board GET** against the cloned database **before** printing `BROWSER REVIEW READY`. The new check fails with captured Flask traceback on any 500, avoiding another operator entering a broken scheduling screen. GIS, mail, current workday source and database migrations are untouched.
+
+**Test evidence:** [CI #38840185514](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38840185514) PASS, **790 Setup** (including executable GIS preview, parameterized query and fail-before-READY parser checks), **202 FieldWiring**, both #205 executable Node regressions. Exact candidate `dbf4487ac7b94ced7dd5d2f8fd9cb5f69457ee8c`. Source test success does **not** establish live-clone SELECT success; the new acceptance/browser cycle must prove it.
+
+**Operator acceptance:** the ongoing original 8898 browser session is **REJECTED**, irrespective of whether its eventual cleanup reports `CLEAN EXIT`. Preserve its original server error log and review report. Complete governed existing preview cleanup and Production-after fingerprint check **before** opening another disposable session. Then fast-forward the existing **laptop** worktree only; use `dbf4487ac7b94ced7dd5d2f8fd9cb5f69457ee8c` as `-CandidateSha` for both reusable current-Production disposable acceptance and 8898 browser preview, `-ExpectedVersion 'V0.3.67-setup-action-center'`, `-MigrationPaths @()`. The feature supplies **zero NEW migrations**; don't replay or undo the separate real recent installed migrations. No Production release, no GIS or mail work.
 
 ## Governed disposable acceptance and browser review
 
@@ -56,7 +66,7 @@ The *operator's clean checkout of this exact branch* must contain the final cand
 ```powershell
 # Run only in the actual clean target branch checkout. Do not switch an
 # unrelated checkout or alter other active worktrees.
-$sha = 'aaf7778c73f09a851db1f12abbe77770b09d5182'
+$sha = 'dbf4487ac7b94ced7dd5d2f8fd9cb5f69457ee8c'
 $ref = 'fix/205-setup-deadline-kpis-20261015'
 .\Setup\Acceptance\run_setup_disposable_acceptance.ps1 `
     -CandidateSha $sha -TargetRef $ref -MigrationPaths @() -ValidationPaths @()
@@ -64,7 +74,7 @@ $ref = 'fix/205-setup-deadline-kpis-20261015'
 # Only after the preceding disposable gate prints PASS:
 .\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
     -PreviewPort 8898 -CandidateSha $sha -TargetRef $ref `
-    -ExpectedVersion 'V0.3.66-setup-action-center' `
+    -ExpectedVersion 'V0.3.67-setup-action-center' `
     -MigrationPaths @()
 ```
 
@@ -81,7 +91,7 @@ $ref = 'fix/205-setup-deadline-kpis-20261015'
 7. Explicit actual date and scheduled date confirmation, cancel preserving values, minutes distinct from hours, and Manager Correct report of an existing wrong-date report (including completed annual task); field device/mobile width and iPhone Safari date picker.
 8. Upcoming near-term overloaded shifts show accurate linear duration vs 3h AM / 2h PM / 5h All Day, and click opens correct day. Captain TBD shown only as relevant current/future work.
 9. Verify 2026 Nov 19 hard deadline and Chicago/day/Sunday/zero-sample/past-deadline labeling. Labor remains secondary; no fabricated on-track status.
-10. Hard refresh/stale-tab navigation and client/server build guard. Both screens show `V0.3.66`; footer `Updated 2026-10-15`; no email controls, no GIS or People regression.
+10. Hard refresh/stale-tab navigation and client/server build guard. Both screens show `V0.3.67`; footer `Updated 2026-10-15`; no email controls, no GIS or People regression.
 
 ## Hard stop
 
@@ -93,7 +103,7 @@ Production release under #122 is a **separate explicit approval** after current-
 
 The authoritative laptop checkout is `C:\lor\ImportExport\VSCode` (Repository Change Workflow). **Never run `git pull` in that dirty primary checkout** to test a feature. An ordinary `git fetch origin --prune` may race a VS Code auto-fetch on `origin/main`; the `cannot lock ref` incident of October 15 returned current `origin/main` SHA `b2d5f8c2`. Treat it as concurrent reference movement, not evidence of corrupt Git. Do not delete lock files, prune worktrees, reset branches, or assume the terminal's unguarded `PASS` line is truthful.
 
-The feature branch was reconciled with the new `main` documentation by additive two-parent merge `70aa51b9b40eb6aa5409a28277e664a2cb01a122`, preserving application source `aaf7778c73f09a851db1f12abbe77770b09d5182` and `V0.3.66-setup-action-center`. Use a **single** copy/paste PowerShell script block; PowerShell's `elseif` may not execute correctly if pasted as a separate interactive statement. Check all status codes before any further step.
+The feature branch was reconciled with the new `main` documentation by additive two-parent merge `70aa51b9b40eb6aa5409a28277e664a2cb01a122`, preserving application source `dbf4487ac7b94ced7dd5d2f8fd9cb5f69457ee8c` and `V0.3.67-setup-action-center`. Use a **single** copy/paste PowerShell script block; PowerShell's `elseif` may not execute correctly if pasted as a separate interactive statement. Check all status codes before any further step.
 
 ```powershell
 & {
@@ -101,8 +111,8 @@ The feature branch was reconciled with the new `main` documentation by additive 
     $primary = 'C:\lor\ImportExport\VSCode'
     $review = 'C:\lor\ImportExport\VSCode-205-kpi-review'
     $branch = 'fix/205-setup-deadline-kpis-20261015'
-    $candidate = 'aaf7778c73f09a851db1f12abbe77770b09d5182'
-    $version = 'V0.3.66-setup-action-center'
+    $candidate = 'dbf4487ac7b94ced7dd5d2f8fd9cb5f69457ee8c'
+    $version = 'V0.3.67-setup-action-center'
 
     Set-Location $primary
     $url = (& git remote get-url origin).Trim()
