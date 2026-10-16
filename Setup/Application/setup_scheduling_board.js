@@ -29,6 +29,11 @@ const setupBoard205State = {
   dragAutoScrollFrame: null
 };
 
+// Crew edits commit automatically through the existing protected PATCH endpoint.
+// Per-crew serialization prevents an older asynchronous response overwriting a
+// Captain or shift count selected while the previous request was in flight.
+const board205CrewAutosaveState = new Map();
+
 const SETUP_BOARD205_TYPICAL_AM_MINUTES = 180;
 
 function board205Esc(value) {
@@ -2010,7 +2015,7 @@ function board205Day(day) {
             <div class="setup-board205-crew-title-context">
               <strong>Crew ${board205Esc(crew.crew_code)} <span class="setup-board205-crew-day-context">· ${board205Esc(compactDay)}</span></strong>
             </div>
-            ${canManage ? `<div class="setup-board205-crew-actions"><button type="button" class="small setup-board205-save-crew">Save</button>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
+            ${canManage ? `<div class="setup-board205-crew-actions"><span class="setup-board205-crew-save-status" role="status" aria-live="polite">Saved automatically</span>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
           </div>
           ${crew.captain_person_id == null ? nextScheduleWarning('CAPTAIN TBD — NEEDS CAPTAIN') : ''}
           <label class="setup-board205-crew-captain">Captain
@@ -2108,7 +2113,10 @@ function board205RenderBoard() {
     dayNode.querySelector('.setup-board205-add-crew')?.addEventListener('click', () => board205AddCrew(dayId));
     dayNode.querySelectorAll('.setup-board205-crew-label[data-crew-id]').forEach((crewNode) => {
       const crewId = Number(crewNode.dataset.crewId);
-      crewNode.querySelector('.setup-board205-save-crew')?.addEventListener('click', () => board205SaveCrew(crewId, crewNode));
+      const autosave = () => { void board205SaveCrew(crewId, crewNode); };
+      crewNode.querySelector('.setup-board205-crew-captain-select')?.addEventListener('change', autosave);
+      crewNode.querySelector('.setup-board205-crew-am')?.addEventListener('change', autosave);
+      crewNode.querySelector('.setup-board205-crew-pm')?.addEventListener('change', autosave);
       crewNode.querySelector('.setup-board205-remove-crew')?.addEventListener('click', () => board205RemoveCrew(crewId));
     });
   });
@@ -2504,56 +2512,126 @@ async function board205AddCrew(dayId) {
   }
 }
 
+function board205CrewDraft(crewNode) {
+  return {
+    am_planned_crew_count: nullableInteger(crewNode.querySelector('.setup-board205-crew-am')?.value),
+    pm_planned_crew_count: nullableInteger(crewNode.querySelector('.setup-board205-crew-pm')?.value),
+    captain_person_id: nullableInteger(crewNode.querySelector('.setup-board205-crew-captain-select')?.value)
+  };
+}
+
+function board205CrewDraftMatches(crew, draft) {
+  return ['am_planned_crew_count', 'pm_planned_crew_count', 'captain_person_id']
+    .every(key => (crew?.[key] == null ? null : Number(crew[key])) === draft[key]);
+}
+
+function board205CrewSaveMessage(crewNode, text, failed = false) {
+  const label = crewNode?.querySelector('.setup-board205-crew-save-status');
+  if (!label) return;
+  label.textContent = text;
+  label.classList.toggle('save-failed', failed);
+}
+
+// Do not discard edited values or re-render the whole multi-crew day when
+// a Captain/crew size is autosaved: a different crew may be mid-edit.
+// A failed save is announced and prevents task-drop until corrected.
 async function board205SaveCrew(crewId, crewNode) {
-  const captainPersonId = nullableInteger(
-    crewNode.querySelector('.setup-board205-crew-captain-select')?.value
-  );
-  const amCount = nullableInteger(crewNode.querySelector('.setup-board205-crew-am')?.value);
-  const pmCount = nullableInteger(crewNode.querySelector('.setup-board205-crew-pm')?.value);
-  // An active crew must include its Captain and have a unique Captain per shift.
-  if (captainPersonId != null && ((amCount != null && amCount < 1) || (pmCount != null && pmCount < 1))) {
-    window.alert('An active Captain must count as at least one person in each staffed shift.');
-    return;
+  if (!appState.access?.can_manage_setup || !crewNode) return false;
+  let state = board205CrewAutosaveState.get(crewId);
+  if (!state) {
+    state = { pending: null, promise: null };
+    board205CrewAutosaveState.set(crewId, state);
   }
-  if (captainPersonId != null) {
-    const own = board205CrewRow(crewId);
-    const conflict = (setupBoard205State.board.crews || []).find((other) =>
-      Number(other.setup_work_day_id) === Number(own?.setup_work_day_id)
-      && Number(other.setup_work_day_crew_id) !== Number(crewId)
-      && Number(other.captain_person_id) === Number(captainPersonId)
-      && ((amCount > 0 && Number(other.am_planned_crew_count) > 0)
-        || (pmCount > 0 && Number(other.pm_planned_crew_count) > 0))
-    );
-    if (conflict) {
-      window.alert('This Captain is already assigned to another crew in the same shift.');
-      return;
+  state.pending = board205CrewDraft(crewNode);
+  board205CrewSaveMessage(crewNode, 'Saving…');
+  if (state.promise) return state.promise;
+
+  state.promise = (async () => {
+    let ok = true;
+    while (state.pending) {
+      const draft = state.pending;
+      state.pending = null;
+      const crew = board205CrewRow(crewId);
+      if (!crew) {
+        board205CrewSaveMessage(crewNode, 'Not saved — crew no longer exists', true);
+        return false;
+      }
+      if (board205CrewDraftMatches(crew, draft)) continue;
+      const am = draft.am_planned_crew_count;
+      const pm = draft.pm_planned_crew_count;
+      const captain = draft.captain_person_id;
+      const invalidShift = captain != null && ((am != null && am < 1) || (pm != null && pm < 1));
+      if (invalidShift) {
+        board205CrewSaveMessage(crewNode, 'Not saved — staffed shifts need crew of 1 or more', true);
+        setAlert('Staffed shift crew size must be at least 1; adjust the value to save.', 'error');
+        return false;
+      }
+      if (captain != null) {
+        const conflict = (setupBoard205State.board.crews || []).find(other =>
+          Number(other.setup_work_day_id) === Number(crew.setup_work_day_id) &&
+          Number(other.setup_work_day_crew_id) !== Number(crewId) &&
+          Number(other.captain_person_id) === Number(captain) &&
+          ((am > 0 && Number(other.am_planned_crew_count) > 0) ||
+           (pm > 0 && Number(other.pm_planned_crew_count) > 0))
+        );
+        if (conflict) {
+          board205CrewSaveMessage(crewNode, 'Not saved — Captain already assigned to this shift', true);
+          setAlert('Captain is already assigned to another crew in the same shift.', 'error');
+          return false;
+        }
+      }
+      const warnings = board205CrewCapacityWarnings(crewId, am, pm);
+      if (warnings.length && !window.confirm(
+        `SHORT CREW:\\n\\n${warnings.join('\\n')}\\n\\nSave this crew size anyway?`
+      )) {
+        board205CrewSaveMessage(crewNode, 'Not saved — crew size change cancelled', true);
+        return false;
+      }
+
+      const priorCaptain = crew.captain_person_id == null ? null : Number(crew.captain_person_id);
+      try {
+        const result = await api(
+          `api/setup/scheduling-board/crews/${crewId}`,
+          commandOptions('PATCH', draft)
+        );
+        const saved = result?.crew || draft;
+        crew.am_planned_crew_count = saved.am_planned_crew_count;
+        crew.pm_planned_crew_count = saved.pm_planned_crew_count;
+        crew.captain_person_id = saved.captain_person_id;
+        crew.captain_display_name = board205CaptainCandidate(crew.captain_person_id)?.display_name || null;
+        if (priorCaptain !== draft.captain_person_id) {
+          // Only update reusable Captain knowledge when the Captain really
+          // changes; declining the optional promotion never cancels crew save.
+          try {
+            await board205MaybeLearnCaptainForCrewAssignments(crewId, draft.captain_person_id);
+          } catch (error) {
+            setAlert('Crew saved, but Captain task-learning needs review: ' + (error.message || error), 'error');
+          }
+        }
+      } catch (error) {
+        board205CrewSaveMessage(crewNode, 'Not saved — correct or retry the field', true);
+        setAlert('Crew ' + (crew.crew_code || '') + ' not saved: ' + (error.message || error), 'error');
+        ok = false;
+        break;
+      }
     }
-  }
-  const capacityWarnings = board205CrewCapacityWarnings(crewId, amCount, pmCount);
-  if (
-    capacityWarnings.length
-    && !window.confirm(
-      `SHORT CREW:\n\n${capacityWarnings.join('\n')}\n\nSave this crew size anyway?`
-    )
-  ) {
-    return;
-  }
+    if (ok) board205CrewSaveMessage(crewNode, 'Saved');
+    return ok;
+  })();
 
   try {
-    setBusy(true);
-    await api(`api/setup/scheduling-board/crews/${crewId}`, commandOptions('PATCH', {
-      am_planned_crew_count: amCount,
-      pm_planned_crew_count: pmCount,
-      captain_person_id: captainPersonId
-    }));
-    await board205MaybeLearnCaptainForCrewAssignments(crewId, captainPersonId);
-    await board205Load();
-  } catch (error) {
-    setAlert(error.message || error, 'error');
-    window.alert(error.message || error);
+    return await state.promise;
   } finally {
-    setBusy(false);
+    state.promise = null;
   }
+}
+
+async function board205EnsureCrewSaved(crewId) {
+  const node = document.querySelector(
+    `.setup-board205-crew-label[data-crew-id="${Number(crewId)}"]`
+  );
+  if (!node) return false;
+  return board205SaveCrew(crewId, node);
 }
 
 async function board205RemoveCrew(crewId) {
@@ -2649,6 +2727,9 @@ async function board205MaybeLearnCaptainForTasks(tasks, crewId) {
 
 async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) {
   if (!dragged || !appState.access?.can_manage_setup) return;
+  // Await any pending Captain/crew edits before using this drop destination.
+  // Do not move scheduled work into a shift with a failed unsaved crew change.
+  if (!await board205EnsureCrewSaved(crewId)) return;
   let movedCount = 0;
   let totalMoveCount = 0;
 
