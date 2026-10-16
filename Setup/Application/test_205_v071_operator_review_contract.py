@@ -60,3 +60,17 @@ def test_new_crew_move_preserves_captain_inside_one_guarded_transaction():
     assert "ops.update_setup_work_day_crew" in atomic
     assert "ops.update_setup_work_day_assignment" in atomic
     assert "conn.commit()" in atomic
+
+
+def test_second_review_never_defaults_to_wrong_captain_and_shows_save_failure():
+    perform = source("setup_next_pass.js")
+    board = source("setup_scheduling_board.js")
+    css = source("setup_next_pass.css")
+    assert "if (captainId && !captainCrew)" in perform
+    assert "crewSelect.value = 'NEW_CREW';" in perform
+    assert "The new-crew route records the original Captain atomically." in perform
+    assert "NOT SAVED — " in board
+    assert "const reason = String(error?.message" in board
+    assert "input?.addEventListener('blur'" in board
+    assert ".setup205-kpi-glance .setup205-open-action-center" in css
+    assert ".setup205-action-center .setup205-action-group li" in css
