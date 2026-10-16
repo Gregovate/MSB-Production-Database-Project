@@ -1861,7 +1861,7 @@ function setup205ManagementReportHtml(board, year) {
     : !k.actionable.length ? 'All non-deferred tasks complete'
     : k.daysLeft === 0 ? 'Hard deadline reached with unfinished work'
     : !k.reliable ? 'Insufficient verified work-date evidence or 7-day sample to forecast'
-    : k.projectedFinish > k.deadline ? 'Recorded pace misses deadline' : 'Recorded pace meets deadline (task-count estimate)';
+    : k.projectedFinish > k.deadline ? 'Task-count estimate beyond deadline; confirm staffing' : 'Task-count estimate only; future staffing/weather unknown';
   // A schedule is an operational workspace, not a dashboard report.
   // Keep the season-wide progress and deadline always visible but place detailed
   // KPI reasons / Manager actions behind a CLOSED disclosure by default.
@@ -1880,7 +1880,7 @@ function setup205ManagementReportHtml(board, year) {
     glance +
     '<details class="setup205-kpi-expand"><summary>Detailed performance numbers and task categories</summary>' +
     '<div class="setup205-kpi-expanded">' +
-    '<div style="font-weight:800;margin-bottom:8px">WHOLE SETUP · DEADLINE PERFORMANCE</div>' +
+    '<div style="font-weight:800;margin-bottom:8px">Setup performance · all tasks (task-count estimates)</div>' +
     '<div style="display:flex;flex-wrap:wrap;gap:18px;margin-bottom:8px">' +
     '<span>Total <strong>' + k.tasks.length + '</strong></span>' +
     '<span>Completed <strong>' + k.complete.length + '</strong></span>' +
@@ -1891,8 +1891,8 @@ function setup205ManagementReportHtml(board, year) {
     '<span>NOT READY <strong>' + k.notReady.length + '</strong></span>' +
     '<span>Scheduled <strong>' + k.scheduled.length + '</strong></span>' +
     '<span>Needs rescheduling <strong>' + k.needsRescheduling.length + '</strong></span>' +
-    '<span>Needs first scheduling <strong>' + k.needsFirstScheduling.length + '</strong></span>' +
-    '<span>Partially complete <strong>' + k.partial.length + '</strong></span>' +
+    '<span>Unstarted, no future assignment <strong>' + k.needsFirstScheduling.length + '</strong></span>' +
+    '<span>Started, unfinished <strong>' + k.partial.length + '</strong></span>' +
     '</div><div style="display:flex;flex-wrap:wrap;gap:18px;margin-bottom:8px">' +
     '<span>Last 7 days: <strong>' + k.recent + '</strong> dated completions · <strong>' + n(k.pace) + '/day</strong></span>' +
     '<span>Required calendar pace: <strong>' + n(k.required) + '/day</strong></span>' +
@@ -1917,9 +1917,9 @@ function setup205ManagementReportHtml(board, year) {
     ')</summary><ul>' + (lateRows || '<li>None</li>') + '</ul></details>' : '') +
     details('Scheduled', k.scheduled, 'Open the Scheduling Board to view assigned dates and crews.') +
     details('Needs rescheduling', k.needsRescheduling, 'Started work with no active continuation.', 'schedule') +
-    details('Needs first scheduling', k.needsFirstScheduling, 'Unstarted work with no active future assignment; some tasks may be blocked.', 'schedule') +
+    details('Unstarted work without a future assignment', k.needsFirstScheduling, 'Includes tasks blocked by prerequisites or not ready; it does not mean every task is ready to schedule.', 'schedule') +
     details('NOT READY', k.notReady, 'Readiness is separate from hard prerequisites.') +
-    details('Partially reported', k.partial, 'Reported work below 100%; still unfinished.') +
+    details('Partially reported', k.partial, 'A progress count, not a scheduling count: a task may also need a new assignment or already be scheduled.') +
     details('Deferred', k.deferred, 'Excluded from required rate, but included in remaining scope.') +
     '</div></details></section>';
 }
@@ -1932,13 +1932,13 @@ function setup205DeadlineKpiHtml(board, year) {
   const safe = x => escapeHtml(String(x ?? ''));
   const fmt = x => x == null || !Number.isFinite(x) ? '—' : x.toFixed(1);
   const projection = k.reliable && k.projectedFinish
-    ? k.projectedFinish + ' (tasks only)' : 'Not yet reliable';
+    ? 'Estimate ' + k.projectedFinish : 'Not enough data';
   return '<section class="setup-205-deadline-kpis" aria-label="Setup progress summary">' +
     '<div class="setup205-kpi-glance">' +
       '<span>Total <strong>' + k.tasks.length + '</strong></span>' +
       '<span>Completed <strong>' + k.complete.length + '</strong></span>' +
       '<span>Remaining <strong>' + k.incomplete.length + '</strong></span>' +
-      '<span>Blocked / NOT READY <strong>' + k.blocked.length + '</strong></span>' +
+      '<span>Need attention <strong>' + k.blocked.length + '</strong></span>' +
       '<span>Actual last 7 days <strong>' + fmt(k.pace) + '/day</strong></span>' +
       '<span>Required <strong>' + fmt(k.required) + '/day</strong></span>' +
       '<span>Deadline <strong>' + safe(k.deadline || 'Unavailable') + '</strong></span>' +
@@ -2082,6 +2082,18 @@ function setup205ActionCenterHtml(board, model) {
   return '<section class="setup205-action-center" aria-label="Manager Setup Action Center" ' +
     'style="border-top:2px solid #647888;margin-top:12px;padding-top:12px">' +
     '<h3>Manager Setup Action Center</h3>' +
+    '<p><strong>' + k.overdue.length + ' past assignments to check</strong> · ' +
+      '<strong>' + k.needsRescheduling.length + ' started tasks without future work</strong> · ' +
+      '<strong>' + k.notReady.length + ' tasks marked NOT READY</strong></p>' +
+    '<details class="setup205-action-help"><summary>What do these task counts mean?</summary>' +
+      '<p>These categories overlap and must not be added together. ' +
+      k.blocked.length + ' different unfinished tasks need a prerequisite, Work Order or readiness decision; ' +
+      k.notReady.length + ' are explicitly marked NOT READY (possibly also blocked for another reason). ' +
+      k.needsFirstScheduling.length + ' unstarted tasks have no future assignment, including blocked work. ' +
+      k.partial.length + ' unfinished tasks have progress reported; ' +
+      k.needsRescheduling.length + ' started tasks lack a future continuation. ' +
+      'A partial task may already have a future schedule. No-work moves are different from missing actual reports.</p>' +
+    '</details>' +
     '<p class="muted">Choose a task below to report actual work, move an assignment where no work happened, ' +
     'or plan unfinished work. Reported history is protected; a confirmed no-work reschedule preserves the original schedule in the audit. ' +
     'No email is sent from this screen.</p>' +
