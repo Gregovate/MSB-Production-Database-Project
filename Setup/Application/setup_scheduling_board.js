@@ -1967,7 +1967,7 @@ function board205Cell(day, shift, crew) {
     : '';
   return `
     <div class="setup-board205-cell"
-      data-day-id="${day.setup_work_day_id}" data-shift="${shift}" data-crew-id="${crew.setup_work_day_crew_id}">
+      data-day-id="${day.setup_work_day_id}" data-shift="${shift}" data-crew-id="${crew.setup_work_day_crew_id}" data-crew-letter="${board205Esc(crew.crew_code)}">
       ${showWorkload ? board205WorkloadBanner(crew.setup_work_day_crew_id, shift) : ''}
       ${showWorkload ? capacityNote : ''}
       ${showWorkload ? carryoverNote : ''}
