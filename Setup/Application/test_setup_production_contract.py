@@ -191,7 +191,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.3.71-operator-review-corrections"
+    assert payload["version"] == "V0.3.72-planned-crew-corrections"
     assert health.headers["Cache-Control"] == "no-store, max-age=0"
 
     for asset in (
@@ -360,8 +360,8 @@ def test_setup_navigation_uses_browser_history_inside_shared_app() -> None:
     assert 'id="add-task-form" class="add-task-form manager-only" hidden' not in html
     assert "setReusableAddTaskFormOpen(true)" in acceptance
     assert "setReusableAddTaskFormOpen(false)" in acceptance
-    assert "setup_production.js?v=2026-10-16.71" in html
-    assert "setup_next_pass.js?v=2026-10-16.71" in html
-    assert "setup_scheduling_board.js?v=2026-10-16.71" in html
-    assert "Updated 2026-10-15" in html
+    assert "setup_production.js?v=2026-10-16.72" in html
+    assert "setup_next_pass.js?v=2026-10-16.72" in html
+    assert "setup_scheduling_board.js?v=2026-10-16.72" in html
+    assert "Updated 2026-10-16" in html
 
