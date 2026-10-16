@@ -1546,8 +1546,24 @@ function setup205DeadlineKpiHtml(board, year) {
     : k.daysLeft === 0 ? 'Hard deadline reached with unfinished work'
     : !k.reliable ? 'Insufficient verified work-date evidence or 7-day sample to forecast'
     : k.projectedFinish > k.deadline ? 'Recorded pace misses deadline' : 'Recorded pace meets deadline (task-count estimate)';
-  return '<section class="setup-205-deadline-kpis" aria-label="Whole Setup schedule performance" ' +
-    'style="padding:12px;border:2px solid #48667b;border-radius:9px;margin:12px 0;background:var(--panel-bg,transparent)">' +
+  // A schedule is an operational workspace, not a dashboard report.
+  // Keep the season-wide progress and deadline always visible but place detailed
+  // KPI reasons / Manager actions behind a CLOSED disclosure by default.
+  const glance = '<div class="setup205-kpi-glance" aria-label="Whole Setup progress at a glance">' +
+    '<span>Total <strong>' + k.tasks.length + '</strong></span>' +
+    '<span>Completed <strong>' + k.complete.length + '</strong></span>' +
+    '<span>Remaining <strong>' + k.incomplete.length + '</strong></span>' +
+    '<span>Blocked / NOT READY <strong>' + k.blocked.length + '</strong></span>' +
+    '<span>Actual last 7 days <strong>' + n(k.pace) + '/day</strong></span>' +
+    '<span>Required <strong>' + n(k.required) + '/day</strong></span>' +
+    '<span>Deadline <strong>' + safe(fmt(k.deadline)) + '</strong></span>' +
+    '<span>Projected finish <strong>' +
+      safe(k.reliable ? fmt(k.projectedFinish) : 'INSUFFICIENT DATA') + '</strong></span>' +
+    '</div>';
+  return '<section class="setup-205-deadline-kpis" aria-label="Whole Setup schedule performance">' +
+    glance +
+    '<details class="setup205-kpi-expand"><summary>KPI details, overdue work and Manager Action Center</summary>' +
+    '<div class="setup205-kpi-expanded">' +
     '<div style="font-weight:800;margin-bottom:8px">WHOLE SETUP · DEADLINE PERFORMANCE</div>' +
     '<div style="display:flex;flex-wrap:wrap;gap:18px;margin-bottom:8px">' +
     '<span>Total <strong>' + k.tasks.length + '</strong></span>' +
@@ -1590,7 +1606,7 @@ function setup205DeadlineKpiHtml(board, year) {
     details('Partially reported', k.partial, 'Reported work below 100%; still unfinished.') +
     details('Deferred', k.deferred, 'Excluded from required rate, but included in remaining scope.') +
     setup205ActionCenterHtml(board, k) +
-    '</section>';
+    '</div></details></section>';
 }
 
 
