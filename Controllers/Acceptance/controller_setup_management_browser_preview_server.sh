@@ -57,47 +57,120 @@ prod_fingerprint() {
         "
 }
 
+# Flask runs as fieldwiring and is launched in its own setsid process group.
+# Never trust a successful kill invocation alone: verify process identity and
+# listener teardown before announcing a clean exit.
+preview_pid_matches() {
+    [[ "$PREVIEW_PGID" =~ ^[0-9]+$ ]] || return 1
+    local command
+    command="$(sudo ps -p "$PREVIEW_PGID" -o args= 2>/dev/null || true)"
+    [[ "$command" == *"$PREVIEW_ENTRY"* ]] &&
+        [[ "$(sudo ps -p "$PREVIEW_PGID" -o user= 2>/dev/null | xargs)" == "fieldwiring" ]]
+}
+preview_port_owned_by_pid() {
+    local listeners
+    listeners="$(sudo ss -ltnp "sport = :$PREVIEW_PORT" 2>/dev/null || true)"
+    [[ "$listeners" == *"pid=$PREVIEW_PGID,"* ]]
+}
+preview_port_listening() {
+    sudo ss -ltnH "sport = :$PREVIEW_PORT" 2>/dev/null | grep -q .
+}
 cleanup() {
-    status=$?
-    trap - EXIT INT TERM
+    local status=$? cleanup_failed=0 pid_owner=""
+    trap - EXIT INT TERM HUP
     set +e
 
     echo
     echo "--- Browser preview cleanup ---"
     if [[ -n "$PREVIEW_PGID" ]]; then
-        kill -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true
-        sleep 1
-        kill -KILL -- -"$PREVIEW_PGID" >/dev/null 2>&1 || true
+        if preview_pid_matches; then
+            echo "Stopping verified Controller preview PID $PREVIEW_PGID"
+            sudo kill -TERM "$PREVIEW_PGID" || cleanup_failed=1
+            for _ in $(seq 1 20); do
+                if ! preview_pid_matches && ! preview_port_owned_by_pid; then break; fi
+                sleep 1
+            done
+            if preview_pid_matches || preview_port_owned_by_pid; then
+                if preview_pid_matches; then
+                    echo "Controller preview still active; sending KILL to exact verified PID $PREVIEW_PGID"
+                    sudo kill -KILL "$PREVIEW_PGID" || cleanup_failed=1
+                else
+                    echo "FAIL: listening PID identity drift; refusing unsafe kill"
+                    cleanup_failed=1
+                fi
+            fi
+        elif preview_port_owned_by_pid; then
+            echo "FAIL: port belongs to saved PID but executable identity is unverified"
+            cleanup_failed=1
+        fi
+    fi
+    if preview_port_listening; then
+        echo "FAIL: preview port $PREVIEW_PORT remains occupied"
+        sudo ss -ltnp "sport = :$PREVIEW_PORT" || true
+        cleanup_failed=1
+    else
+        echo "PASS: preview port $PREVIEW_PORT has no listener"
     fi
 
-    sudo docker rm -f "$TEST_CONTAINER" >/dev/null 2>&1 || true
-
-    if sudo git -C "$FIELDWIRING_ROOT" worktree list --porcelain 2>/dev/null | grep -Fq "worktree $CANDIDATE_WORKTREE"; then
-        sudo git -C "$FIELDWIRING_ROOT" worktree remove "$CANDIDATE_WORKTREE" >/dev/null 2>&1 || true
+    if sudo docker inspect "$TEST_CONTAINER" >/dev/null 2>&1; then
+        sudo docker rm -f "$TEST_CONTAINER" >/dev/null || cleanup_failed=1
+    fi
+    if sudo docker inspect "$TEST_CONTAINER" >/dev/null 2>&1; then
+        echo "FAIL: preview database container still exists: $TEST_CONTAINER"
+        cleanup_failed=1
+    else
+        echo "PASS: preview database container absent"
     fi
 
-    rm -f "$DUMP_FILE" >/dev/null 2>&1 || true
-    rm -rf "$SCRIPT_DIR" >/dev/null 2>&1 || true
+    if sudo git -C "$FIELDWIRING_ROOT" worktree list --porcelain 2>/dev/null |
+       grep -Fxq "worktree $CANDIDATE_WORKTREE"; then
+        sudo git -C "$FIELDWIRING_ROOT" worktree remove "$CANDIDATE_WORKTREE" ||
+            cleanup_failed=1
+    fi
+    if sudo git -C "$FIELDWIRING_ROOT" worktree list --porcelain 2>/dev/null |
+       grep -Fxq "worktree $CANDIDATE_WORKTREE"; then
+        echo "FAIL: preview detached worktree remains: $CANDIDATE_WORKTREE"
+        cleanup_failed=1
+    else
+        echo "PASS: preview detached worktree absent"
+    fi
+
+    rm -f -- "$DUMP_FILE" || cleanup_failed=1
+    if [[ -e "$DUMP_FILE" ]]; then cleanup_failed=1; fi
+    if [[ -d "$SCRIPT_DIR" ]]; then
+        rm -rf -- "$SCRIPT_DIR" || cleanup_failed=1
+    fi
+    if [[ -e "$SCRIPT_DIR" ]]; then cleanup_failed=1; fi
 
     echo
     echo "--- Production Controller fingerprint after-check ---"
     if [[ -n "$PROD_BEFORE" ]]; then
-        PROD_AFTER="$(prod_fingerprint 2>/dev/null)"
+        local PROD_AFTER
+        PROD_AFTER="$(prod_fingerprint 2>/dev/null)" || cleanup_failed=1
         echo "Before: $PROD_BEFORE"
         echo "After:  $PROD_AFTER"
         if [[ "$PROD_AFTER" != "$PROD_BEFORE" ]]; then
-            echo "FAIL: production Controller fingerprint changed during browser preview"
-            status=97
+            echo "FAIL: production Controller fingerprint mismatch"
+            cleanup_failed=1
         else
             echo "PASS: production Controller fingerprint unchanged"
         fi
+    else
+        echo "SKIP: no preflight fingerprint captured"
     fi
 
+    if (( cleanup_failed )); then
+        echo "CLEANUP FAILED: do not declare CLEAN EXIT"
+        [[ "$status" -ne 0 ]] || status=98
+    elif [[ "$status" -eq 0 ]]; then
+        echo "CLEAN EXIT: Controller preview owned resources verified absent"
+    fi
     echo "Preview Flask log retained at: $PREVIEW_LOG"
     echo "Preview report retained at:    $REPORT"
     echo "Exit status: $status"
     exit "$status"
 }
+
 trap cleanup EXIT INT TERM HUP
 
 sudo -v
