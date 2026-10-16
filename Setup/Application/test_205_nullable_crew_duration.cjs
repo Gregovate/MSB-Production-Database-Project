@@ -72,6 +72,6 @@ assert.equal(ctx.nextPerformPlannedCrew(assignments[0]),1);
 assert.equal(ctx.board205LaborHours(1,120),2);
 ctx.board205RenderKpis();
 assert.match(target.innerHTML,/3 known task-hours/);
-assert.match(target.innerHTML,/known planned person-hours/);
+assert.match(target.innerHTML,/3 planned person-hours/);
 assert(!target.innerHTML.includes('Planned person-hours TBD'));
 console.log('PASS #205 nullable crew, Captain-only one, independent task durations, partial labor and advisory estimates');
