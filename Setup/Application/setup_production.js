@@ -184,7 +184,11 @@ function sortedTasks(tasks = appState.tasks) {
 function showView(name) {
   document.body.classList.toggle('setup-schedule-view', name === 'schedule');
   document.querySelectorAll('.tab').forEach((button) => {
-    button.classList.toggle('active', button.dataset.view === name);
+    const selected = button.dataset.view === name;
+    button.classList.toggle('active', selected);
+    // Keep visual selection and assistive navigation in sync.
+    button.setAttribute('aria-pressed', String(selected));
+    if (!selected) button.blur();
   });
   document.querySelectorAll('.view').forEach((view) => view.classList.remove('active-view'));
   const target = el(`${name}-view`);
