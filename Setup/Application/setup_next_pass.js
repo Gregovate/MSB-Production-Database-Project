@@ -1206,14 +1206,14 @@ async function openNextCorrectionIntake(details) {
     await loadNextTaskExecution(details, false);
   }
   if (details.dataset.loaded !== '1') {
-    window.alert('Scheduled work context could not be loaded, so Report Correction is unavailable.');
+    window.alert('Scheduled work context could not be loaded, so Task Feedback is unavailable.');
     return;
   }
 
   details.open = true;
   const correctionForm = details.querySelector('.next-problem-form');
   if (!correctionForm) {
-    window.alert('Report Correction is not authorized for this account.');
+    window.alert('Task Feedback is not authorized for this account.');
     return;
   }
   correctionForm.hidden = false;
@@ -1323,7 +1323,7 @@ function nextPerformAssignmentCard(assignment) {
         <button type="button" class="small secondary next-print-task">Print Task</button>
         <button type="button" class="small next-report-work">${annualComplete ? 'Review Work History' : 'Report Work'}</button>
         ${nextCanRescheduleNoWork(assignment, task) ? '<button type="button" class="small secondary next-reschedule-no-work">Reschedule · No work performed</button>' : ''}
-        <button type="button" class="small next-report-problem next-report-correction-action"${nextCanSubmitFieldFinding() ? '' : ' disabled title="Report Correction requires Production Crew or Manager access"'}>Task Feedback</button>
+        <button type="button" class="small next-report-problem next-report-correction-action"${nextCanSubmitFieldFinding() ? '' : ' disabled title="Task Feedback requires Production Crew or Manager access"'}>Task Feedback</button>
       </div>
       <div class="next-perform-body" hidden></div>
     </details>`;
