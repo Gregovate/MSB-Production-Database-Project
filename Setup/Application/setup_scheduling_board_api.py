@@ -246,6 +246,27 @@ def api_setup_scheduling_board_assignment_update(
     return jsonify(assignment=result)
 
 
+@setup_scheduling_board_api.post("/api/setup/scheduling-board/assignments/bulk-reschedule")
+def api_setup_scheduling_board_bulk_reschedule() -> Response:
+    """Manager confirms no work for each selected occurrence; move atomically."""
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    body = json_body()
+    assignment_ids = body.get("assignment_ids")
+    if not isinstance(assignment_ids, list) or not (1 <= len(assignment_ids) <= 25):
+        raise SetupCommandError("Select one to 25 original assignments")
+    ids = [required_int(value, "assignment_id") for value in assignment_ids]
+    if any(value <= 0 for value in ids) or len(ids) != len(set(ids)):
+        raise SetupCommandError("Assignment IDs must be positive and distinct")
+    work_day_id = required_int(body.get("setup_work_day_id"), "setup_work_day_id")
+    crew_id = required_int(body.get("setup_work_day_crew_id"), "setup_work_day_crew_id")
+    result = repo().bulk_reschedule_unworked(
+        email=email,work_day_id=work_day_id,crew_id=crew_id,
+        assignment_ids=ids,
+    )
+    return jsonify(assignments=result)
+
+
 @setup_scheduling_board_api.delete(
     "/api/setup/scheduling-board/assignments/<int:setup_work_day_task_id>"
 )
