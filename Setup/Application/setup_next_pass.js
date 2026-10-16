@@ -1716,7 +1716,7 @@ function nextPerformWorkloadLabel(items, shift) {
     : needsReview ? 'REVIEW REQUIRED' : 'WITHIN TYPICAL TIME';
   const color = needsReview ? '#835900' : '#146044';
   const background = needsReview ? '#fff6dd' : '#eaf8f0';
-  const hours = minutes => (minutes / 60).toFixed(2).replace(/0$/, '').replace(/\\.$/, '');
+  const hours = minutes => (minutes / 60).toFixed(2).replace(/0$/, '').replace(/[.]$/, '');
   const note = !crewConfirmed
     ? ' · no confirmed Captain-led crew; work duration still counted'
     : w.overload ? ` · +${hours(w.overload)}h beyond typical shift; review continuation` : '';
