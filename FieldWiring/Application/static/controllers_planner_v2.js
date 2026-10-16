@@ -290,10 +290,10 @@
         <div><span>UIDs used by LOR</span><strong>${used.size}</strong></div>
         <div><span>UIDs without LOR/non-AVAILABLE conflicts</span><strong>${clear}</strong></div></div>
       <div class="planner-note">All 240 addresses (01–F0) are examined on this Network. Intentional shared addresses are retained. AVAILABLE-stock overlaps are not the same as unused physical programming.</div>
+      ${blocks}
       <h3>Network UID inventory (${shown.length} of 240 shown)</h3>
       <div class="planner-table-wrap"><table class="planner-table"><thead><tr><th>UID</th><th>Status</th><th>LOR Displays</th><th>Physical Controllers programmed here</th></tr></thead>
-        <tbody>${rows || '<tr><td colspan="4">No UIDs match this filter.</td></tr>'}</tbody></table></div>
-      ${blocks}`;
+        <tbody>${rows || '<tr><td colspan="4">No UIDs match this filter.</td></tr>'}</tbody></table></div>`;
   }
 
   async function openPlanner() {
