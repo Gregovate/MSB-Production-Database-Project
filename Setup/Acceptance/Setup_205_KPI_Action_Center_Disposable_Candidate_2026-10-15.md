@@ -1,6 +1,40 @@
 # #205 Whole-Setup KPI / Action Center / Report Work — Browser Candidate
 
-## CURRENT V0.3.76 — six operator corrections in ONE #205 disposable browser review
+## CURRENT V0.3.77 — integrated operator retest (source CI PASS; disposable/browser PENDING)
+
+**Exact application source SHA:** `732119827bdaffd43c792cc76fb7ee7906421d48`  
+**Build:** `V0.3.77-integrated-operator-retest`  
+**Existing draft:** PR #394, governed by issue #205 / commanding #122  
+**Source regression:** [GitHub Actions #38932278037](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38932278037) **PASS**, both Setup and FieldWiring full jobs; Setup included 838 Python tests, #205 Node regression checks.  
+**Operator review status:** NOT STARTED for this SHA. **Production unchanged; release gate closed.**
+
+**This supersedes V0.3.76 and ALL previous launch commands.** Review the same integrated seven browser findings, not isolated screen fixes. Corrections since V0.3.76: remove fictitious Manager approval for AM→PM unfinished continuation; deduplicate same-crew annual-task assignment rows when presenting task count/known shift workload; synchronize tab selected state; eliminate Kit Inventory responsive navigation clipping; fetch latest valid workdays/crews when no-work reschedule dialog opens (Oct 20 missing); route reusable-task Edit Planning Info to existing full Catalog editor rather than blind annual edit, preserving separate season-only behavior. Two-way **2026 Catalog↔annual** task-estimate database synchronization remains governed by migration 076. Actual reports/history must not be rewritten.
+
+**Known uncertainties to adjudicate in the SAME test:** distinct assignments vs duplicate rows in Crew A; persisted AM/PM count readback, task vs staffed/linear hours; Catalog→reported-annual guarded sync; Report Work page scrolling in actual viewport; reschedule dropdown freshness and immediate visible moved assignment. A green source CI does not certify any of these browser/SQL results. The earlier UI browser failures remain open until tested on this exact SHA.
+
+**One current command only** (run from the existing clean and refreshed desktop review worktree `C:\Users\Greg\Github\MSB-Production-Database-Project-205-review`, following the current [Server Management Pre-Production Browser Review Runbook](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/Pre_Production_Browser_Review_Runbook.md)). Require previous preview CLEAN EXIT, verify worktree branch and fast-forward to exact accepted SHA, and ensure port 8898 belongs to no other preview. Do not use Production database for preview writes.
+
+```powershell
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
+    -PreviewPort 8898 `
+    -CandidateSha '732119827bdaffd43c792cc76fb7ee7906421d48' `
+    -TargetRef 'fix/205-setup-deadline-kpis-20261015' `
+    -ExpectedVersion 'V0.3.77-integrated-operator-retest' `
+    -MigrationPaths @(
+        'Setup/Database/075_allow_setup_planned_crew_count_corrections.sql',
+        'Setup/Database/076_capture_2026_reusable_task_estimates.sql'
+    ) `
+    -ValidationPaths @(
+        'Setup/Acceptance/setup_205_planned_crew_count_disposable_validation.sql',
+        'Setup/Acceptance/setup_205_2026_catalog_estimate_disposable_validation.sql'
+    )
+```
+
+**Strict gate:** One fresh current-Production disposable PostgreSQL clone; both migration SQL files and BOTH rollback-protected validations must PASS before `BROWSER REVIEW READY`. On any SQL failure STOP and preserve actual error/report, with no browser review, no Production mutation and no improvised rerun. On READY perform all seven operator scenarios including reported/unreported two-way sync, then obtain operator verdict, CLEAN EXIT, and retain release CLOSED until separate #122 approval. No emails.
+
+---
+
+## ARCHIVED V0.3.76 — six operator corrections in ONE #205 disposable browser review
 
 **Source PASS / operator browser acceptance PENDING.** Exact candidate `f4279c1fb850c682623242b361ce7472ef35ab5f`, build `V0.3.76-operator-review-fixes`, existing draft PR #394, [GitHub CI #38925934280](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38925934280): **838 Setup Python, FieldWiring full, #205 Node checks PASS**. This candidate follows the operator-rejected V0.3.75 browser preview, which may still be open. **Obtain previous CLEAN EXIT before launching another protected preview; do not force-stop a separate live process or open two clones.** No Production mutation authorized.
 
