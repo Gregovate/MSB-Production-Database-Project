@@ -2059,7 +2059,7 @@ function board205Day(day) {
             <div class="setup-board205-crew-title-context">
               <strong>Crew ${board205Esc(crew.crew_code)} <span class="setup-board205-crew-day-context">· ${board205Esc(compactDay)}</span></strong>
             </div>
-            ${canManage ? `<div class="setup-board205-crew-actions"><span class="setup-board205-crew-save-status" role="status" aria-live="polite">Saved automatically</span>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
+            ${canManage ? `<div class="setup-board205-crew-actions"><span class="setup-board205-crew-save-status" role="status" aria-live="polite">Saved automatically</span><button type="button" class="small secondary setup-board205-retry-crew" hidden>Retry failed save</button>${Number(crew.crew_number) > 1 ? '<button type="button" class="small secondary setup-board205-remove-crew">Remove</button>' : ''}</div>` : ''}
           </div>
           <div class="setup-board205-captain-tbd-warning"${crew.captain_person_id == null ? '' : ' hidden'}>${nextScheduleWarning('CAPTAIN TBD — NEEDS CAPTAIN')}</div>
           <label class="setup-board205-crew-captain">Captain
@@ -2201,6 +2201,9 @@ function board205RenderBoard() {
           if (!state?.promise) void board205SaveCrew(crewId, crewNode);
         });
       }
+      crewNode.querySelector('.setup-board205-retry-crew')?.addEventListener('click', () => {
+        void board205SaveCrew(crewId, crewNode);
+      });
       crewNode.querySelector('.setup-board205-remove-crew')?.addEventListener('click', () => board205RemoveCrew(crewId));
     });
   });
@@ -2614,6 +2617,8 @@ function board205CrewSaveMessage(crewNode, text, failed = false) {
   if (!label) return;
   label.textContent = text;
   label.classList.toggle('save-failed', failed);
+  const retry = crewNode.querySelector('.setup-board205-retry-crew');
+  if (retry) retry.hidden = !failed;
 }
 
 // Do not discard edited values or re-render the whole multi-crew day when
