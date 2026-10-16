@@ -2336,7 +2336,7 @@ function board205RenderKpis() {
     }
   }
   const formatHours = value => Number.isInteger(value)
-    ? String(value) : value.toFixed(1).replace(/\\.0$/, '');
+    ? String(value) : value.toFixed(1).replace(/[.]0$/, '');
   const durationText = unknownDurationTasks && knownDurationMinutes === 0
     ? 'Task-hours TBD'
     : formatHours(knownDurationMinutes / 60) + ' known task-hours';
