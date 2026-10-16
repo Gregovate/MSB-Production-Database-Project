@@ -785,7 +785,8 @@ class SetupSchedulingBoardRepository:
             return result
 
     def add_crew_with_tasks(
-        self, *, email: str, work_day_id: int, items: list[dict[str, Any]]
+        self, *, email: str, work_day_id: int, items: list[dict[str, Any]],
+        captain_person_id: int | None = None,
     ) -> dict[str, Any]:
         """Create destination crew AND place all tasks in one transaction.
 
@@ -814,6 +815,14 @@ class SetupSchedulingBoardRepository:
             )
             crew = self._one(cur, "New Setup workday crew was not created")
             new_crew_id = int(crew["setup_work_day_crew_id"])
+            if captain_person_id is not None:
+                # Preserve Captain identity in the same transaction as crew creation
+                # and assignment moves. Failure rolls back the entire operation.
+                cur.execute(
+                    "SELECT * FROM ops.update_setup_work_day_crew(%s,%s,%s,%s,%s)",
+                    (email, new_crew_id, None, None, captain_person_id),
+                )
+                crew = self._one(cur, "Unable to assign the destination Captain")
             placed = []
             for index, item in enumerate(items):
                 kind = item["kind"]
