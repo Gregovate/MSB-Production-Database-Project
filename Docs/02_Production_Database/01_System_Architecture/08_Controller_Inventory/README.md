@@ -266,3 +266,22 @@ For current work, read in this order:
 8. Server Management `docs/server/Production_Database_Change_Deployment_Runbook.md` before any future production mutation.
 
 Older bootstrap and Pre-DDL material remains historical evidence. Current production and active management/authentication documents control when older material conflicts.
+
+## 2026-10-16 — Controller preview false CLEAN EXIT repair
+
+Previous candidate browser wrapper printed CLEAN EXIT, but PID 3675872
+(`fieldwiring` runtime, isolated Controller preview) remained listening on
+127.0.0.1:8898. Operator explicitly terminated only that verified orphan;
+the port was released, with no Controller disposable containers or server
+worktrees remaining. This is a preview cleanup defect, not a Production
+service failure.
+
+Draft PR #406 now guards cleanup with exact executable/user PID validation,
+targeted TERM/KILL only when identity matches, port-listener absence,
+disposable container absence, detached worktree absence, temporary bundle/dump
+absence and Controller fingerprint comparison. Any failed proof returns
+nonzero/CLEANUP FAILED rather than misleading CLEAN EXIT. The scripts and
+regression contract have been committed; **remote replay and CLEAN EXIT
+verification remain pending**. Do not confuse source-only implementation with
+server acceptance. The present Controller preview shares registered port 8898
+sequentially with Setup/People reviews; preflight refuses occupied listeners.
