@@ -2757,6 +2757,84 @@ async function board205MaybeLearnCaptainForTasks(tasks, crewId) {
   }
 }
 
+// Drop a task/group directly on a destination day: create its Crew in the
+// SAME audited PostgreSQL transaction as the placement. Existing AM and PM
+// assignments keep their actual shift even if the group lands on an AM zone.
+async function board205DropToNewCrew(dragged, dayId, targetShift) {
+  if (!dragged || !appState.access?.can_manage_setup) return;
+  const day = (setupBoard205State.board.work_days || []).find(
+    row => Number(row.setup_work_day_id) === Number(dayId)
+  );
+  if (!day || String(day.day_status || '').toUpperCase() === 'CANCELLED') {
+    setAlert('Choose an active Setup day to create a crew.', 'error');
+    return;
+  }
+  let items = [];
+  if (dragged.kind === 'task') {
+    const task = board205Task(dragged.id);
+    if (!task || task.effective_complete || task.task_action_type === 'GATE'
+        || !board205RequireEstimates(task)) return;
+    items = [{kind:'task', id:Number(task.setup_session_task_id), shift:targetShift}];
+  } else {
+    const ids = dragged.kind === 'assignments' ? dragged.ids || []
+      : dragged.kind === 'assignment' ? [dragged.id] : [];
+    const assigned = board205DraggedAssignmentItems(dragged);
+    if (!assigned.length || assigned.length !== new Set(ids.map(Number)).size) {
+      setAlert('Selected work contains a locked or missing assignment. Nothing moved.', 'error');
+      return;
+    }
+    if (assigned.some(item => !['MORNING','AFTERNOON'].includes(item.shift_code))) {
+      setAlert('Legacy All Day assignments require separate review. Nothing moved.', 'error');
+      return;
+    }
+    items = assigned.map(item => ({
+      kind:'assignment', id:Number(item.setup_work_day_task_id), shift:item.shift_code
+    }));
+  }
+  if (!items.length) return;
+
+  const mixed = new Set(items.map(item => item.shift)).size > 1;
+  const label = 'Setup Day ' + (day.setup_day_number || '—') + ' / ' + day.work_date;
+  if (!window.confirm(
+    'Create a new crew on ' + label + ' and move ' + items.length
+    + ' task' + (items.length === 1 ? '' : 's') + '?\n\n'
+    + (mixed ? 'Existing AM and PM shifts will both be preserved.\n'
+       : 'Unscheduled work uses the selected AM/PM drop column.\n')
+    + 'Afterward select the Captain and crew count; they save automatically.'
+    + '\n\nAll selected placements succeed together, or none move.'
+  )) return;
+
+  let committed = false;
+  try {
+    setBusy(true);
+    const response = await api(
+      'api/setup/scheduling-board/work-days/' + dayId + '/crews/with-tasks',
+      commandOptions('POST', {items})
+    );
+    committed = true;
+    board205ClearAssignmentSelection(false);
+    await board205Load();
+    const crew = response?.result?.crew;
+    const node = document.querySelector(
+      '.setup-board205-crew-label[data-crew-id="' +
+      Number(crew?.setup_work_day_crew_id) + '"]'
+    );
+    node?.scrollIntoView({block:'center',behavior:'auto'});
+    setAlert('Created Crew ' + (crew?.crew_code || '—') + ' on ' + label +
+      '. ' + items.length + ' task' + (items.length === 1 ? '' : 's') +
+      ' placed. Captain and crew count save automatically.', 'ok');
+  } catch (error) {
+    const explanation = committed
+      ? 'Crew and tasks were saved, but the board could not refresh. Reload before editing.'
+      : 'No new crew or task move was committed. Original assignments are preserved.';
+    setAlert(explanation + ' ' + (error.message || error), 'error');
+    window.alert(explanation + '\n\n' + (error.message || error));
+  } finally {
+    setupBoard205State.dragged = null;
+    setBusy(false);
+  }
+}
+
 async function board205DropToCell(dragged, dayId, shift, crewId, requestedSort) {
   if (!dragged || !appState.access?.can_manage_setup) return;
   // Await any pending Captain/crew edits before using this drop destination.
