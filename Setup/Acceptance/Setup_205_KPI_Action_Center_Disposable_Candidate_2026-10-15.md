@@ -1,7 +1,19 @@
 # #205 Whole-Setup KPI / Action Center / Report Work — Browser Candidate
 
+## HOLD — V0.3.74 2026 TWO-WAY planning synchronization (2026-10-16)
 
-## PAUSED V0.3.73 source review — task-estimate gate restored; new exact-candidate verification required
+**Engineering intent is now corrected and source work has begun; NOT a ready browser candidate.** Controlled authorities: Setup Planning Operating Model and #205 Scheduling Engineering Contract. During the **2026 launch only**, task-level planning estimates (normal crew min/max, expected duration, effort) must synchronize **both directions** between each linked reusable Catalog task and current 2026 annual task. Earlier one-way migration 076 design/checklist was incomplete. Keep mandatory task-estimate scheduling gate, separate nullable day-crew AM/PM counts, season-only isolation, task-level actual reports/history, and explicit 2027 review boundary.
+
+Current implemented source commit `56fad8e15a606b2bad13ce9bc83793ba4863a3db`, build `V0.3.74-2026-catalog-sync`. GitHub [CI 38910656967](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38910656967) PASS **831 Setup Python, FieldWiring full and required #205 Node**. CI verifies source contracts and atomic Catalog UI Save; it does **not** execute live PostgreSQL migration/trigger behavior.
+
+**Migrations in this candidate:** `Setup/Database/075_allow_setup_planned_crew_count_corrections.sql` (preserve actual work while letting day-crew planned headcounts change) and `Setup/Database/076_capture_2026_reusable_task_estimates.sql` (existing annual-to-Catalog command plus guarded Catalog-to-2026 annual trigger). **Disposable-only validations:** `Setup/Acceptance/setup_205_planned_crew_count_disposable_validation.sql` and `Setup/Acceptance/setup_205_2026_catalog_estimate_disposable_validation.sql` (both directions, rollback). These require governed ONE current-Production disposable clone, not a separate acceptance clone and browser clone. No Production migration is authorized.
+
+**Open engineering acceptance boundary:** The Catalog-to-annual mirror currently rejects Catalog estimate edits when the linked 2026 annual task already has actual-work history; this preserves existing annual history safeguards but can conflict with the broad two-way 2026 learning workflow. Its behavior needs explicit reconciliation in the engineering design and disposable tests before any operator browser review. Do not claim unrestricted two-way sync, and do not give a live migration instruction as a workaround. Keep PR #394 DRAFT. Do **not** run older V0.3.73, V0.3.72 or V0.3.70 commands below; those are archived.
+
+---
+
+
+## ARCHIVED V0.3.73 source review — superseded by V0.3.74; DO NOT RUN
 
 **Governing correction PASS (2026-10-16):** Greg rejected waiving mandatory task estimates. The exact earlier `board205RequireEstimates()` gate has been restored, including its existing locked-history continuation exception; day-crew AM/PM counts still distinguish NULL (not staffed as Captain-led crew) from 1 (Captain alone). Source/test commit `b2070faa5b71908fbf688af09b0468c66b8bdde8` passed [CI 38907841461](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38907841461): **826 Setup Python, #205 executable Node including restored blocking gate, and FieldWiring full**. This does **not** authorize reuse of the superseded SHA/command below or establish browser acceptance. PR is still draft; Production remains unchanged. A future browser candidate requires a new pinned source/version identity and current governed one-clone acceptance before operator testing.
 
