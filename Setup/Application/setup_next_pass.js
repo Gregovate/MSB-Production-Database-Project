@@ -2152,10 +2152,11 @@ function setup205ActionCenterHtml(board, model) {
       const amCount = Number(g.crew?.am_planned_crew_count || 0);
       const canReviewPm = g.shift === 'MORNING' && amCount > 0 && pmCount > 0 &&
         g.known + (pm?.known || 0) <= 300;
-      const status = canReviewPm ? 'AM pressure — PM continuation requires review'
-        : g.shift === 'MORNING' && (!amCount || !pmCount)
-          ? 'AM pressure — PM staffing unconfirmed; Manager scheduling review needed'
-          : 'Shift overload';
+      const status = g.shift === 'MORNING'
+        ? (pmCount > 0
+          ? 'Morning work may continue into PM when unfinished'
+          : 'Morning work may continue into PM; PM crew count not yet confirmed')
+        : 'Shift workload exceeds typical shift duration';
       return '<strong>' + safe(g.date) + ' · Setup Day ' + safe(g.day?.setup_day_number ?? '—') +
         ' · Crew ' + safe(g.crew?.crew_code || '—') + ' · ' + safe(g.shift) + '</strong> — ' +
         safe(status) + ': ' +
