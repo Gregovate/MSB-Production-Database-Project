@@ -259,6 +259,10 @@ APP_DIR="$CANDIDATE_WORKTREE/FieldWiring/Application"
 DSN="host=$TEST_IP port=5432 dbname=$TEST_DB user=fieldwiring_app password=$APP_PASSWORD"
 
 echo
+echo "--- Exact candidate focused Controller regression ---"
+sudo -u fieldwiring -H bash -c 'cd "$1" && /opt/fieldwiring/.venv/bin/python -m pytest -q -p no:cacheprovider FieldWiring/Application/test_controller_capacity_planner_contract.py FieldWiring/Application/test_controller_programmed_configuration_contract.py' -- "$CANDIDATE_WORKTREE"
+echo "Targeted Controller regression: PASS"
+echo
 echo "--- Start exact accepted Flask candidate ---"
 # Keep sudo in the foreground so it retains the interactive SSH TTY. Once sudo
 # has switched to the fieldwiring runtime account, that child shell starts the
