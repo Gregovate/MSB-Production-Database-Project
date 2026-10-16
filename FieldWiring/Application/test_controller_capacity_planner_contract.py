@@ -162,3 +162,11 @@ def test_contiguous_results_precede_scrollable_uid_inventory() -> None:
     assert "candidate starts" in source
     assert "max-height:224px" in css
     assert "overflow-y:auto" in css
+
+
+def test_single_uid_model_uses_compact_address_grid() -> None:
+    source = (BASE_DIR / "static" / "controllers_planner_v2.js").read_text(encoding="utf-8")
+    css = (BASE_DIR / "static" / "controllers_planner.css").read_text(encoding="utf-8")
+    assert "'Available individual UIDs' : 'Contiguous UID blocks'" in source
+    assert "width === 1 ? 'planner-single-uids'" in source
+    assert ".planner-single-uids { grid-template-columns:repeat(4,minmax(0,1fr)); }" in css
