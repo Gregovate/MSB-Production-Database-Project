@@ -816,6 +816,29 @@ curl -fsS "http://127.0.0.1:$PREVIEW_PORT/fieldwiring/api/health"
 curl -fsS "http://127.0.0.1:$PREVIEW_PORT/setup/locate/" >/dev/null
 echo "Field Wiring / GIS navigation routes: PASS"
 
+# Prevent a browser review from declaring READY when its central Scheduling
+# Board endpoint fails against the actual disposable current-Production clone.
+# Source-only GET through the same isolated loopback listener, no write.
+echo "--- Scheduling Board disposable endpoint preflight ---"
+if ! curl -fsS --max-time 60 "http://127.0.0.1:$PREVIEW_PORT/api/setup/scheduling-board?season_year=2026" |
+    sudo -u fieldwiring -H "$PYTHON" -c '
+import json, sys
+payload = json.load(sys.stdin)
+board = payload.get("board")
+if not isinstance(board, dict) or not isinstance(board.get("session"), dict):
+    raise SystemExit("FAIL: Scheduling Board 2026 session missing from disposable clone")
+tasks = board.get("tasks")
+days = board.get("work_days")
+if not isinstance(tasks, list) or not isinstance(days, list):
+    raise SystemExit("FAIL: Scheduling Board is missing annual tasks/workdays")
+print("PASS: Scheduling Board 2026 disposable response, "
+      + str(len(tasks)) + " tasks and " + str(len(days)) + " workdays")
+' ; then
+    echo "FAIL: Scheduling Board disposable API failed before operator browser review"
+    tail -n 75 "$PREVIEW_LOG" || true
+    exit 25
+fi
+
 write_resume_state
 echo "Reconnect state: $STATE_FILE"
 
