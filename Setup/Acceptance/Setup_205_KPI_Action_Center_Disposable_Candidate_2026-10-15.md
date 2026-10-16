@@ -50,6 +50,10 @@ Open `http://127.0.0.1:8898/` only after `BROWSER REVIEW READY`; keep foreground
 ---
 
 
+## ARCHIVED V0.3.70 source checkpoint — superseded by V0.3.72 above
+
+This older source table and its commands are **historical evidence only**; migration NONE applied then, not to V0.3.72. Never run its older candidate commands for the current review.
+
 | Item | Value |
 |---|---|
 | Status | UPDATED SOURCE REGRESSION PASS — prior browser review REJECTED, new candidate disposable/browser pending |
@@ -63,9 +67,9 @@ Open `http://127.0.0.1:8898/` only after `BROWSER REVIEW READY`; keep foreground
 | Production | UNCHANGED; no authorization requested |
 | GIS / People | Preserved; no unrelated subsystem mutation |
 
-## CURRENT executable handoff — ONE integrated V0.3.70 browser candidate
+## ARCHIVED executable handoff — V0.3.70, DO NOT RUN
 
-**Use this section, not the archived V0.3.67/0.3.69 examples below.** The October 15 browser review was rejected; CLEAN EXIT there only proved cleanup. This handoff pins the **single integrated** source commit fa07150740e98460944306893d6cdf07a5af02c0 and version V0.3.70-unified-setup-review. Later branch commits through 950e4e16 affect documentation/SOP only. [Integrated CI 38854498823](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38854498823): PASS **816 Setup, 202 FieldWiring**, plus executable KPI, navigation, autosave, drag and no-work rescheduling checks. Source tests are not operator acceptance.
+**Superseded by CURRENT V0.3.72 section above. Do not run.** The October 15 browser review was rejected; CLEAN EXIT there only proved cleanup. This handoff pins the **single integrated** source commit fa07150740e98460944306893d6cdf07a5af02c0 and version V0.3.70-unified-setup-review. Later branch commits through 950e4e16 affect documentation/SOP only. [Integrated CI 38854498823](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38854498823): PASS **816 Setup, 202 FieldWiring**, plus executable KPI, navigation, autosave, drag and no-work rescheduling checks. Source tests are not operator acceptance.
 
 The existing review worktree may still be on the laptop; the block safely **reuses a clean matching worktree** or creates a detached one if absent. It does not pull/reset the primary checkout, disturb Production, or invent migrations. It verifies current remote main without racing VS Code's origin/main auto-fetch. Any non-fast-forward, dirty worktree, SHA mismatch, 8898 port conflict or preview failure is a STOP, not permission for workaround. Read the governing Server Management Pre-Production Browser Review Runbook before launch. This is ONE end-to-end operator review, against the **unified checklist at the end of this document**, not separate feature previews.
 
