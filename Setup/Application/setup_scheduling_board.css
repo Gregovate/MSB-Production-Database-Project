@@ -1982,3 +1982,16 @@ html[data-theme="dark"] .setup-board205-badge.effort-heavy {
     height: max(28rem, calc(100dvh - 12rem));
   }
 }
+
+/* Crew and Captain assignments save automatically; show durable write state
+   beside the crew name without requiring a separate Save button. */
+.setup-board205-crew-save-status {
+  font-size: 0.73rem;
+  font-weight: 650;
+  white-space: normal;
+  color: var(--muted, #64748b);
+}
+.setup-board205-crew-save-status.save-failed {
+  color: var(--danger, #b42318);
+  font-weight: 800;
+}
