@@ -9,6 +9,16 @@
 | Established | 2026-10-01 |
 | Ordering | Reverse chronological — newest deployment first |
 
+## 2026-10-16 — FieldWiring V0.4.2 Controller Network UID Explorer — Source-only Production PASS (operator-reported)
+
+- Controller Inventory owner #110 / original #111, launch governance #122; implementation PR #406 merged as `b3acf960c9db5ee493f5b14759459315db79be8a`; regression contract follow-up PR #407 merged as `17c522c4f8ec06549bf7a6d9e8530c61276203f7`.
+- Exact Production checkout after installation: `17c522c4f8ec06549bf7a6d9e8530c61276203f7`; previous clean live checkout `bb8dfa498c5b4bbecfc3693f68c4066c1e08242e`.
+- Visible FieldWiring version: `V0.4.2-controller-uid-explorer`. Operator-reported health `{"data_mode":"postgres","status":"ok","version":"V0.4.2-controller-uid-explorer"}`; Procedures remained `V0.1.0`, healthy.
+- Changes: selectable Network-wide 01–F0 UID inventory and search; case-insensitive `Regular` identity; removal of DMX/E1.31 universe contamination from LOR UID occupancy; physical Controller overlay; optional model-width contiguous UID search; improved one-UID and grouped-range presentations. Operator confirmed Regular/39 false Mega Tree attribution corrected in disposable browser. Post-season PixCon16 dual LOR/E1.31 IP/universe planning deferred in Controller engineering contract.
+- **Source-only:** no database migrations executed, no PostgreSQL maintenance window. The checkout advance included `Setup/Database/073_add_setup_required_container_command.sql` as a source file, **not** as an executed migration. No evidence of any DB schema/data mutation in this release.
+- Acceptance: prior exact-candidate disposable browser `1944af4140fda651eda173f06dec907c7aa448d6` reported BROWSER REVIEW READY, cleanup CLEAN EXIT, identical Controller fingerprints `0dd5493c19451711c4bf8af0a5960f72`. Full merged Controller/FieldWiring/Procedures regression after test-contract reconciliation: **263 passed in 4.08s**, operator transcript. Final operator-reported source installation: `SOURCE DEPLOYMENT HEALTH PASS` with exact deployed SHA and both services healthy. No post-deploy database fingerprint or full live regression output was supplied; do not claim either.
+- Runtime deployment report/archive: none supplied for source-only direct command sequence. Operator output is current evidence; rollback source is the recorded prior checkout SHA above. Follow-up: verify protected browser Controller UI, perform post-deploy smoke / negative authorization check and document final evidence, then close issue/PR ownership under #122.
+
 ## 2026-10-14 — Setup V0.3.65 scheduled search reveal — Production PASS
 
 - Owner #205 / #122 DBG-2026-014; feature PR #391 merge `4819959be8bdad3d002623775b83ebe876a417e5`; tooling PR #392 merge `f312a12b30e75f8bb5cc7733620ff1f301a54138`.
