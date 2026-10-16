@@ -102,6 +102,69 @@ BEGIN
 END;
 $validate$;
 
+
+-- Second direction: a governed Catalog edit must immediately mirror the linked
+-- current 2026 annual task. Both the Catalog and annual writes are in the
+-- existing single disposable validation transaction and will be ROLLED BACK.
+DO $catalog_to_annual$
+DECLARE
+    v record;
+    current_catalog record;
+    expected_min integer;
+    expected_max integer;
+    expected_minutes integer;
+    expected_effort text;
+    a record;
+BEGIN
+    SELECT * INTO STRICT v FROM setup205_estimate_probe;
+    SELECT * INTO STRICT current_catalog
+    FROM ref.setup_task
+    WHERE setup_task_id = v.setup_task_id;
+
+    expected_min := v.probe_min + 1;
+    expected_max := greatest(v.probe_max, expected_min);
+    expected_minutes := v.probe_minutes + 30;
+    expected_effort := CASE WHEN v.probe_effort = 'HEAVY' THEN 'MODERATE' ELSE 'HEAVY' END;
+
+    -- Existing Manager command; do not use direct table UPDATE as substitute.
+    PERFORM ref.update_setup_task(
+        'gliebig@sheboyganlights.org',
+        v.setup_task_id,
+        current_catalog.task_name,
+        current_catalog.stage_id,
+        current_catalog.task_action_type,
+        current_catalog.display_order,
+        current_catalog.active_flag,
+        expected_min,
+        expected_max,
+        expected_minutes,
+        current_catalog.completion_point,
+        current_catalog.readiness_note,
+        current_catalog.weather_note,
+        current_catalog.reusable_notes
+    );
+    -- The reusable Catalog effort is a separate governed command; its update
+    -- must also mirror 2026 annual effort within that command transaction.
+    PERFORM ref.set_setup_task_effort(
+        'gliebig@sheboyganlights.org',
+        v.setup_task_id, expected_effort
+    );
+
+    SELECT annual_normal_crew_min, annual_normal_crew_max,
+           annual_expected_duration_minutes, annual_effort_level
+      INTO STRICT a
+    FROM ops.setup_session_task
+    WHERE setup_session_task_id = v.setup_session_task_id;
+    IF a.annual_normal_crew_min IS DISTINCT FROM expected_min
+       OR a.annual_normal_crew_max IS DISTINCT FROM expected_max
+       OR a.annual_expected_duration_minutes IS DISTINCT FROM expected_minutes
+       OR a.annual_effort_level IS DISTINCT FROM expected_effort THEN
+        RAISE EXCEPTION 'Catalog edit did not synchronize ALL four 2026 annual estimate fields';
+    END IF;
+    RAISE NOTICE 'PASS: Catalog min/max/duration/effort updated matching 2026 annual estimates';
+END;
+$catalog_to_annual$;
+
 ROLLBACK;
 
 DO $rollback_check$
