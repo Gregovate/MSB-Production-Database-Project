@@ -1210,7 +1210,9 @@ function nextSetupLocalDate(now = new Date()) {
 }
 
 function nextAssignmentLate(assignment, workDate = assignment.work_date) {
-  return Boolean(workDate && workDate < nextSetupLocalDate() && !nextAssignmentReported(assignment));
+  return Boolean(workDate && workDate < nextSetupLocalDate()
+    && String(assignment.day_status || '').toUpperCase() !== 'CANCELLED'
+    && !nextAssignmentReported(assignment));
 }
 
 function nextAssignmentReportedLabel(assignment) {
@@ -1275,7 +1277,7 @@ function nextPerformAssignmentCard(assignment) {
         · Est. labor ${escapeHtml(plannedLabor)}
       </div>
       ${readinessWarning}
-      ${late ? nextScheduleWarning("LATE — NO WORK REPORTED · Report missed work or remove from schedule") : ''}
+      ${late ? nextScheduleWarning("LATE — NO WORK REPORTED · Report actual work or ask Manager to review original assignment") : ''}
       <div class="next-perform-actions">
         <button type="button" class="small secondary next-print-task">Print Task</button>
         <button type="button" class="small next-report-work">Report Work</button>
@@ -1496,20 +1498,48 @@ function setup205DeadlineKpiHtml(board, year) {
   const safe = v => escapeHtml(String(v ?? ''));
   const n = (x) => x == null ? '—' : x.toFixed(2);
   const fmt = d => d || 'Unavailable';
+  const canManage = Boolean(appState.access?.can_manage_setup);
+  const action = (type, id, caption) => canManage && Number(id) > 0
+    ? ' <button type="button" class="small secondary setup205-action" data-205-action="' +
+       type + '" data-id="' + Number(id) + '">' + safe(caption) + '</button>' : '';
+  const dependencyReasons = task => (board.dependencies || [])
+    .filter(d => Number(d.setup_session_task_id) === Number(task.setup_session_task_id)
+      && d.prerequisite_complete !== true)
+    .map(d => d.prerequisite_task_name || ('Prerequisite task ' + (d.prerequisite_setup_session_task_id || 'unresolved')));
   const blockerRows = k.blocked.map(({task, reasons}) =>
     '<li><strong>' + safe(task.task_name || ('Task ' + task.setup_session_task_id)) +
-    '</strong> — ' + safe(reasons.join('; ')) + '</li>').join('');
+    '</strong> — ' + safe(reasons.map(reason =>
+      reason === 'Incomplete prerequisite'
+        ? reason + ': ' + (dependencyReasons(task).join(', ') || 'prerequisite not identified')
+        : reason === 'Open Work Order gate'
+          ? reason + ' #' + task.linked_work_order_id
+          : reason === 'NOT READY'
+            ? reason + ': ' + (task.readiness_note || 'reason not documented')
+            : reason).join('; ')) + action('planning',task.setup_session_task_id,'Inspect blocker') + '</li>').join('');
   const lateRows = k.overdue.map(a => {
     const task = k.tasks.find(t => Number(t.setup_session_task_id) === Number(a.setup_session_task_id));
+    const day = (board.work_days || []).find(d => Number(d.setup_work_day_id) === Number(a.setup_work_day_id));
+    const crew = (board.crews || []).find(c => Number(c.setup_work_day_crew_id) === Number(a.setup_work_day_crew_id));
     return '<li>' + safe(task?.task_name || ('Task ' + a.setup_session_task_id)) +
-      ' — ' + safe(a.work_date || k.deadline || 'past workday') + ': no report for this assignment</li>';
+      ' — Setup Day ' + safe(day?.setup_day_number ?? a.setup_day_number ?? '—') +
+      ' · ' + safe(a.work_date || day?.work_date || 'unknown') +
+      ' · Crew ' + safe(crew?.crew_code || a.crew_lane || '—') +
+      ' ' + safe(a.shift_code === 'MORNING' ? 'AM' : a.shift_code === 'AFTERNOON' ? 'PM' : 'All Day') +
+      ' · ' + safe(crew?.captain_display_name || 'Captain TBD') +
+      ': no report for original assignment' +
+      action('report',a.setup_work_day_task_id,'Open original work report') + '</li>';
   }).join('');
-  const taskList = rows => rows.map(t => '<li>' + safe(t.task_name || ('Task ' + t.setup_session_task_id)) +
-    ' — ' + safe(t.stage_name || t.stage_key || 'Site-wide') +
-    ' · ' + safe(t.percent_complete == null ? 'progress unknown' : t.percent_complete + '% reported') + '</li>').join('');
-  const details = (label, tasks, note) => '<details><summary>' + safe(label) + ' (' + tasks.length +
+  const taskList = (rows, actionType) => rows.map(t => '<li><strong>' +
+    safe(t.task_name || ('Task ' + t.setup_session_task_id)) + '</strong> — ' +
+    safe([t.stage_name || t.stage_key || 'Site-wide', t.scene_name].filter(Boolean).join(' / ')) +
+    ' · ' + safe(t.percent_complete == null ? 'progress unknown' : t.percent_complete + '% reported') +
+    action(actionType,t.setup_session_task_id,actionType === 'schedule' ? 'Schedule task' : 'Review task') +
+    '</li>').join('');
+  const details = (label, tasks, note, actionType = 'planning') =>
+    '<details><summary>' + safe(label) + ' (' + tasks.length +
     ')</summary>' + (note ? '<p>' + safe(note) + '</p>' : '') +
-    '<ul>' + (taskList(tasks) || '<li>None</li>') + '</ul></details>';
+    (canManage ? '<ul>' + (taskList(tasks,actionType) || '<li>None</li>') + '</ul>'
+               : '<p>Manager task details require Setup Manager access.</p>') + '</details>';
   const dateStatus = !k.deadline ? 'Deadline unavailable'
     : !k.actionable.length ? 'All non-deferred tasks complete'
     : !k.reliable ? 'Insufficient verified work-date evidence or 7-day sample to forecast'
@@ -1546,12 +1576,14 @@ function setup205DeadlineKpiHtml(board, year) {
     safe(k.deferred.length) + ' deferred tasks included in remaining, excluded from required pace; ' +
     safe(k.partial.length) + ' unfinished tasks show partial progress. Captain filters do not change this summary.</div>' +
     '<details style="margin-top:8px"><summary>Blocked / NOT READY (' + k.blocked.length +
-    ') — task and reason</summary><ul>' + (blockerRows || '<li>No recorded readiness blockers</li>') + '</ul></details>' +
+    ') — task and reason</summary>' +
+    (canManage ? '<ul>' + (blockerRows || '<li>No recorded readiness blockers</li>') + '</ul>'
+               : '<p>Manager task details require Setup Manager access.</p>') + '</details>' +
     (appState.access?.can_manage_setup ? '<details><summary>Past scheduled assignments with no report (' + k.overdue.length +
     ')</summary><ul>' + (lateRows || '<li>None</li>') + '</ul></details>' : '') +
     details('Scheduled', k.scheduled, 'Open the Scheduling Board to view assigned dates and crews.') +
-    details('Needs rescheduling', k.needsRescheduling, 'Started work with no active continuation.') +
-    details('Needs first scheduling', k.needsFirstScheduling, 'Unstarted work with no active future assignment; some tasks may be blocked.') +
+    details('Needs rescheduling', k.needsRescheduling, 'Started work with no active continuation.', 'schedule') +
+    details('Needs first scheduling', k.needsFirstScheduling, 'Unstarted work with no active future assignment; some tasks may be blocked.', 'schedule') +
     details('NOT READY', k.notReady, 'Readiness is separate from hard prerequisites.') +
     details('Partially reported', k.partial, 'Reported work below 100%; still unfinished.') +
     details('Deferred', k.deferred, 'Excluded from required rate, but included in remaining scope.') +
@@ -1621,48 +1653,22 @@ function setup205ActionCenterHtml(board, model) {
   });
   const captainTbd = (board.assignments || []).filter(a => {
     const d = dayById.get(Number(a.setup_work_day_id));
-    return String(d?.day_status || a.day_status || '').toUpperCase() !== 'CANCELLED' &&
+    const date = a.work_date || d?.work_date;
+    return date && date >= today &&
+      String(d?.day_status || a.day_status || '').toUpperCase() !== 'CANCELLED' &&
       !crewById.get(Number(a.setup_work_day_crew_id))?.captain_person_id;
   }).map(a => assignmentLabel(a) + ' ' +
     button('day',a.setup_work_day_id,'Assign / review Captain'));
   return '<section class="setup205-action-center" aria-label="Manager Setup Action Center" ' +
     'style="border-top:2px solid #647888;margin-top:12px;padding-top:12px">' +
     '<h3>Manager Setup Action Center</h3>' +
-    '<p class="muted">Historical reporting and schedule readiness require separate decisions. ' +
-    'Replanning never clears an earlier missing report. Dates are America/Chicago. ' +
-    'Email delivery is not activated; this view does not send messages.</p>' +
+    '<p class="muted">Resolve original missing reports, plan unfinished continuations and review ' +
+    'imminent readiness exceptions. Replanning never clears an earlier missing report. ' +
+    'Dates are America/Chicago. No email workflow is active on this screen.</p>' +
     section('Past occurrences awaiting reports',missed,'Includes unresolved older work periods, even if the annual task later completed or moved.') +
     section('Incomplete tasks needing continuation',continuations,'A reported partial work period is not the same as a future assignment.') +
     section('Upcoming scheduled readiness exceptions (7 days)',imminent,'Hard prerequisite/Work Order gates and independent NOT READY conditions can overlap.') +
     section('Scheduled assignments without Captain',captainTbd,'A Captain TBD or unverified organizational mailbox must be followed up by a Manager.') +
-    '<details class="setup205-email-preview"><summary>Review Manager daily email wording — draft only</summary>' +
-      '<div role="note" class="muted">NO EMAIL SENT. Recipients must be dynamically verified authorized Managers at dispatch time; 4:00 AM scheduling, durable deduplication and delivery audit are not active.</div>' +
-      '<p><strong>Subject:</strong> MSB Setup — daily Manager exception follow-up (' + safe(today) + ')</p>' +
-      '<p>Please review unresolved historical work reports and unfinished work needing scheduling. Reported partial work is not a missing report. A schedule change does not erase prior reporting duties.</p>' +
-      '<h4>Past scheduled occurrences without a work report (' + missed.length + ')</h4><ol>' + (missed.map(x=>'<li>'+x+'</li>').join('') || '<li>None</li>') + '</ol>' +
-      '<h4>Incomplete work needing continuation (' + continuations.length + ')</h4><ol>' + (continuations.map(x=>'<li>'+x+'</li>').join('') || '<li>None</li>') + '</ol>' +
-      '<h4>Upcoming readiness exceptions (' + imminent.length + ')</h4><ol>' + (imminent.map(x=>'<li>'+x+'</li>').join('') || '<li>None</li>') + '</ol>' +
-      '<h4>Captain TBD (' + captainTbd.length + ')</h4><ol>' + (captainTbd.map(x=>'<li>'+x+'</li>').join('') || '<li>None</li>') + '</ol>' +
-      '<p>Required action: contact the reporting Captain, correct an existing report through Manager Correct report, or plan the remaining work. No work occurred? Do not fabricate a report; reconcile the original assignment through the governed workflow.</p>' +
-    '</details>' +
-    '<details class="setup205-email-preview"><summary>Review Captain reminder instructions — draft only</summary>' +
-      '<div role="note" class="muted">NO EMAIL SENT. A Captain will receive ONLY that Captain’s own unresolved, reportless occurrences, and ONLY with verified active MSB organizational email and access. This is a wording preview, not a recipient determination.</div>' +
-      '<p><strong>Subject:</strong> MSB Setup — Please report your work from [Setup Day / work date]</p>' +
-      '<p>Scheduled Task name, Stage/Scene, original Setup Day / date, Crew, AM/PM and Captain will be copied from the exact historical occurrence. The protected link must open the exact assignment after authenticated browser acceptance.</p>' +
-      '<ol>' +
-        '<li>Open the link and sign in with your MSB account if requested.</li>' +
-        '<li>Confirm the season is 2026, then open Perform Work.</li>' +
-        '<li>Select your name from Captain, or All scheduled work if a Manager is assisting.</li>' +
-        '<li>Find the exact Setup Day, named task, crew and AM/PM. Reveal a collapsed day if needed; do not select a similar task.</li>' +
-        '<li>Open that task and choose Report Work.</li>' +
-        '<li>Enter Date work actually happened, Actual crew size, Hours worked and Minutes worked.</li>' +
-        '<li>Enter whole-task cumulative % complete; use 100 only if entirely done, otherwise explain what was done and what remains.</li>' +
-        '<li>Verify the details and choose Save Work Report, including the actual-date confirmation.</li>' +
-        '<li>Check Progress history; notify a Manager about unfinished work requiring a continuation.</li>' +
-        '<li>If no work happened, tell your Manager instead of submitting fabricated work. For wrong reports ask a Manager to Correct report; for wrong task data use Report Correction.</li>' +
-      '</ol>' +
-      '<p>Reference: Perform and Report Setup Work operator SOP. Authenticated exact-assignment email links remain acceptance-gated.</p>' +
-    '</details>' +
     '</section>';
 }
 
@@ -2256,7 +2262,9 @@ async function submitNextProgress(event) {
   if (percent < 1 || percent > 100) return window.alert('Percent complete must be between 1 and 100.');
   if (percent < 100 && !note) return window.alert('For incomplete work, briefly record what was done and what remains.');
   const scheduledDate = form.querySelector('.next-performed-on')?.closest('form')?.dataset.scheduledDate || '';
-  if (!window.confirm(`Confirm the date you ACTUALLY worked: ${performedOn}${scheduledDate && scheduledDate !== performedOn ? ` (scheduled ${scheduledDate})` : ''}. Save this work report?`)) return;
+  // Both dates stay visible during confirmation, even when they match.
+  // Cancel keeps every form value intact; neither date is silently replaced.
+  if (!window.confirm(`Scheduled assignment date: ${scheduledDate || 'unknown'}\nDate work ACTUALLY happened: ${performedOn}\n\nAre both dates correct? Save Work Report?`)) return;
 
 
   try {
