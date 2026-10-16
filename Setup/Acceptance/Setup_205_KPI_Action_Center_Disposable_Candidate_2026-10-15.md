@@ -2,7 +2,7 @@
 
 ## CURRENT V0.3.71 single-clone browser review (2026-10-16)
 
-**Source regression PASSED; operator browser acceptance PENDING.** V0.3.70 was operator rejected. Application SHA `a0f01da7600f26d201a2f844b1dbac03f5894eb9`, build `V0.3.71-operator-review-corrections`. [GitHub CI #38896659957](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38896659957): PASS 821 Setup Python, 202 FieldWiring Python and #205 executable Node checks. The existing #205 PR branch contains post-app documentation-only changes; use the pinned application SHA rather than substituting branch HEAD for runtime identity.
+**Source regression PASSED; operator browser acceptance PENDING.** V0.3.70 was operator rejected. Application SHA `f8a7035a558ff211fe557c84fd612f023c19144f`, build `V0.3.71-operator-review-corrections`. [GitHub CI #38896929151](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38896929151): PASS 821 Setup Python, 202 FieldWiring Python and #205 executable Node checks. The existing #205 PR branch contains post-app documentation-only changes; use the pinned application SHA rather than substituting branch HEAD for runtime identity.
 
 Use the existing **clean laptop review checkout** `C:\lor\ImportExport\VSCode-205-kpi-review` on `fix/205-setup-deadline-kpis-20261015`. Follow Repository Change Workflow: fetch this branch and fast-forward clean checkout before launch, check candidate ancestry and all wrapper preflights; do not reset or alter primary checkout. Prior preview must have `CLEAN EXIT` (operator reported). Read current Server Management browser runbook and port register.
 
@@ -12,7 +12,7 @@ Use the existing **clean laptop review checkout** `C:\lor\ImportExport\VSCode-20
 # Run only in the clean and current existing #205 review branch checkout.
 .\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
     -PreviewPort 8898 `
-    -CandidateSha 'a0f01da7600f26d201a2f844b1dbac03f5894eb9' `
+    -CandidateSha 'f8a7035a558ff211fe557c84fd612f023c19144f' `
     -TargetRef 'fix/205-setup-deadline-kpis-20261015' `
     -ExpectedVersion 'V0.3.71-operator-review-corrections' `
     -MigrationPaths @()
