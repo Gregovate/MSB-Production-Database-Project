@@ -2475,7 +2475,7 @@ async function loadNextTaskExecution(details, focusReport = false) {
           <label class="next-work-key-field">Actual crew size<input class="next-crew" type="number" min="1" inputmode="numeric" placeholder="People who worked" required><small>Include the Captain if they worked.</small></label>
           <label class="next-work-key-field">Hours worked<input class="next-duration-hours" type="number" min="0" step="1" inputmode="numeric" placeholder="0" required></label>
           <label class="next-work-key-field next-work-minutes-field">Minutes worked<input class="next-duration-minutes" type="number" min="0" max="59" step="1" inputmode="numeric" placeholder="0–59" required><small>Enter minutes, even when less than one hour.</small></label>
-          <label class="next-work-key-field">Whole task % complete<input class="next-percent-complete" type="number" min="1" max="100" step="1" inputmode="numeric" value="${Math.max(lastPercent, 1)}" required></label>
+          <label class="next-work-key-field">Whole task % complete<input class="next-percent-complete" type="number" min="1" max="100" step="1" inputmode="numeric" value="${lastPercent >= 1 ? lastPercent : ''}" required></label>
         </div>
         <label class="next-report-note">What was done / what remains<textarea class="next-note" rows="3" placeholder="Required when the task is not 100% complete"></textarea></label>
         <details class="next-report-quantity-details">
