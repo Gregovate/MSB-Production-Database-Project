@@ -196,6 +196,19 @@ For each named crew and shift:
 
 An existing crew row with `NULL` staffing is still a schedulable plan/history record, not proof that its Captain actually worked that shift. The Manager can update AM/PM planning counts on the Scheduling Board without modifying historical task reports.
 
+
+### 2026 catalog estimate capture at scheduling, 2027 review boundary
+
+**October 16 operator decision — 2026-only first-pass reusable estimate capture.** During 2026, the Manager must enter the existing required **task-level** planning estimates before newly scheduling a task: normal minimum crew, expected duration, and effort classification (plus maximum crew when supplied). These are *reusable task guidance*, not actual attendance or the separate day crew's AM/PM planned headcount. Past Catalog construction left many estimates blank; the 2026 scheduling process is the intentional occasion to capture them rather than create an annual-only estimate that is lost next season.
+
+For a **2026 reusable-origin annual task**, the existing governed Planning Info save must atomically persist the entered task estimates into **both** the 2026 annual snapshot (ops.setup_session_task) and its linked reusable Catalog task (ref.setup_task). The existing ops.update_setup_scheduling_task_planning_info function introduced in migration 050 already updates both in one PostgreSQL transaction; preserve and regression-protect that mechanism rather than invent a second asynchronous Catalog write. Saving must be all-or-nothing: if either update fails, neither can claim success. Keep Manager authorization, actor attribution, data validation and historical-actual-work locks. Do not backfill or rewrite completed/recorded actual work.
+
+**2026-only automatic estimate promotion:** Do not silently apply this 2026 learning rule to 2027 or later annual sessions. In subsequent years Planning Info may change that year's annual planning snapshot, but normal_crew_min, normal_crew_max, expected_duration_minutes and effort_level must **not** be automatically promoted into the reusable Catalog through that seasonal operation until the 2027 review defines how to use accumulated 2026 field evidence to improve reusable estimates. Unrelated existing Catalog-managed fields (readiness/weather/completion notes and explicitly edited Reusable Notes) retain their established ownership/behavior; this decision concerns the four task estimate fields only.
+
+**Season-only annual tasks** have no linked reusable Catalog task and remain annual-only. **AM/PM day-crew headcounts** stay separately nullable/editable; NULL means no confirmed Captain-led shift, and 1 means Captain alone. They must not be copied into normal task crew estimates. **Reported actual crew and elapsed time** are task-by-task, never retroactively inferred or overwritten by an estimate edit.
+
+Regression must prove 2026 dual-write, failure atomicity and 2027 no-automatic-estimate-promotion, along with the existing mandatory task-estimate scheduling gate and previous history constraints. Verify the exact feature against one governed disposable current-Production clone before requesting operator acceptance. This decision is durable engineering authority even if implementation/acceptance remains pending.
+
 ## Hours / Duration Interpretation
 
 Rick's recorded hours are useful evidence, but a person's total hours for a day are **not automatically the duration of a Setup task**.
