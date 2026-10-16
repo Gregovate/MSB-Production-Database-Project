@@ -7,7 +7,7 @@
 | Audience | MSB reviewers, managers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-09-30 |
+| Last Reviewed | 2026-10-16 |
 | Keywords | Setup, 2026 Setup, Plan / Schedule, Perform Work, Report Work, Report Correction, Pick List, Pick Delay, Captain, review, verification, reusable tasks, Display Ownership, materials, Kits |
 
 Use this page to find the Setup instruction for the job you are doing.
@@ -25,6 +25,10 @@ The real **2026 Setup Session is live**. Use **Plan / Schedule** for current ann
 - [Setup Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md) — current scheduling plus reusable-task maintenance, prerequisites, Display Ownership, Resources, Extra Materials, Kits, Kit Inventory, and T-Post Inventory.
 - [Extra Materials and Kit Inventory](Extra_Materials_and_Kit_Inventory.md) — plain-English guide to task material, source Containers, expected Kit contents, and physical counts.
 - [Review and Correct the 2025 Setup History](Review_2025_Setup_History.md) — historical verification only.
+
+## October 16 release — V0.3.84
+
+The updated [Perform and Report Setup Work](Perform_and_Report_Setup_Work.md) covers **new daily crew drop zones**, AM/PM planned volunteer counts and autosave, color-coded crews, sticky Setup Day/search, quick Planning Info, **no-work individual/whole-shift rescheduling**, and the Report Work/Task Feedback improvements. The [Setup Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md) gives Manager-specific procedures. These capabilities are installed in Production and are no longer preview-only.
 
 ## Current Field Execution
 

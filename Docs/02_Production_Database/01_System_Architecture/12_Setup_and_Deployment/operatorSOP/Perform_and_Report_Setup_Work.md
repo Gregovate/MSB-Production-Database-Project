@@ -6,7 +6,7 @@
 | System | Production Database — Setup and Deployment |
 | Task | Perform scheduled Setup work and report actual work |
 | Audience | Production Crew, Captains, Setup Managers |
-| Status | V0.3.70 operator SOP candidate — current Production may have older controls |
+| Status | CURRENT — #205 V0.3.84 Production deployed 2026-10-16 |
 | Owner | MSB Production Database / Setup administrator |
 | Last Reviewed | 2026-10-15 |
 | Keywords | Setup, Perform Work, Captain, Report Work, partial work, procedure, Print Task |
@@ -23,6 +23,37 @@ This screen uses the real 2026 Setup schedule. It keeps the original scheduled a
 - Confirm the Season is **2026**.
 - Use **Perform Work** for field execution.
 - If you need to change the schedule before work starts, use **Plan / Schedule**.
+
+## October 16 Scheduling and Perform Work improvements (V0.3.84)
+
+### Find and organize scheduled work
+
+- In **Plan / Schedule**, the workday header and **Find Scheduled Task** share a sticky heading. The visible **Setup Day number, day of week and date** update as you scroll the schedule.
+- Each day's **Crew A, B, C** and further crew rows are identified by consistent colors across the Crew label and **AM / PM** cells, including light and dark themes. Crew colors are visual aids, not status or attendance.
+- Drag an unfinished task onto a **New Crew** drop target for the intended workday and AM/PM shift to create a crew and assign the task in one action. Confirm the resulting crew, shift, Captain and task; do not drag reported historical work as if it were unworked.
+- Existing crew Captain and planned AM/PM counts save automatically after a successful edit. A blank count is **not** the same as zero. AM and PM counts can differ; entering a planned count never rewrites actual attendance or progress.
+- Reported/completed task cards are hidden from the active scheduling surface by default; expand historical/other status controls when you need to review them. Workdays have clear boundaries and retained historical crew summaries.
+- Open a task's **Edit Planning Info** for quick crew-minimum/maximum, expected duration and effort estimates. Invalid crew guidance (minimum greater than maximum) must be corrected before saving. Use **Open Full Reusable Task** for broader Catalog editing; navigation must not silently discard your pending changes.
+- During **2026**, edits to estimates for an annual reusable task also update its reusable Catalog estimates, and edits in the Catalog update the linked 2026 annual estimates. This affects estimates only; it does not change reported history or automatically establish a rule for 2027.
+
+### Perform and Report Work
+
+- **Perform Work** presents separate, clearly bounded Setup Day groups with compact crew/shift summaries, and a **Back to top** control for long pages.
+- Select the correct task. The **Report Work** panel repeats the task name, scheduled day/date, shift and crew immediately above the fields to help prevent reporting against the wrong assignment.
+- **Hours** and **Minutes** are side-by-side. Use the contextual **?** help when a field is unclear. Enter the actual crew count and date worked, not the planned count or date by default.
+- **Whole task % complete** does **not** automatically become 1%. Enter an honest cumulative percent; if unfinished, describe the work done and what remains. Do not create a report when no work occurred.
+- **Task Feedback** records a procedure/material/task issue for Manager triage. It does not replace **Report Work** and does not automatically edit Catalog or Procedure information.
+- Warnings about unfinished reports are compact reminders, not evidence that work was actually performed.
+
+### Manager rescheduling without a fictitious report
+
+1. On **Perform Work**, find the original assignment using its **Setup Day/date, Captain, Crew and shift**.
+2. When **nothing was done**, open **Reschedule · No work performed**, choose the new workday and available or new crew, and confirm. Verify the result on the Scheduling Board; the original unworked assignment should not remain a false late warning.
+3. For weather/staffing affecting several unworked tasks in one shift, use **Reschedule unworked AM/PM tasks**. The operation is all-or-nothing if any included assignment has actual work.
+4. If **any work happened**, enter the real **Report Work** first. Keep that historical occurrence intact and schedule a new continuation for the remaining work. Never create a 1% report solely to clear a warning.
+5. When moving tasks to an added Work Day, check the new day/crew assignment in the updated schedule, including after a refresh when appropriate. Managers can revise planned volunteer counts later without changing actual work or Captain history.
+
+--- 
 
 ## Find Your Scheduled Work
 
@@ -96,17 +127,15 @@ Under **Published Setup Procedure**, open the current procedure when the task ha
 
 If the procedure appears wrong or incomplete, do not silently change the work history to make it fit. Use **Task Feedback** to preserve the field finding for Manager triage.
 
-## Manager-only reschedule when no work happened (V0.3.70 candidate; not yet live)
+## Manager-only reschedule when no work happened (current Production)
 
-**Only after the #205 candidate has been accepted and installed:** A Manager can open the affected original task on **Perform Work**, select **Reschedule · No work performed**, choose a current/future Setup Day and existing/new Crew, confirm that NO work happened, then verify the new scheduled day. This is a schedule move with an audit trail—not a work report. The original assignment no longer counts as late after a successful audited move.
+A Manager can open the affected original task on **Perform Work**, select **Reschedule · No work performed**, choose a current/future Setup Day and existing/new Crew, confirm that NO work happened, then verify the new scheduled day. This is a schedule move with an audit trail—not a work report. The original assignment no longer counts as late after a successful audited move.
 
 If weather or staffing prevents **several tasks in the same AM/PM shift** from happening, a Manager can select **Reschedule unworked AM/PM tasks** on that shift to move the eligible tasks together. The move succeeds together or stops entirely if any task has recorded actual work.
 
 If any actual work happened, **do not** claim no work. Report actual time and progress for that original occurrence, then schedule a continuation for what remains. A saved 1% report still counts as history until separately corrected by an authorized Manager; it cannot be silently moved away. Only Manager access can change these schedules.
 
-**This capability and the screen layout are still a disposable browser candidate**; Production may continue to show older controls until the approved deployment. Do not use this section to infer that a command exists on the live screen.
-
-## Planned volunteers versus actual people who worked (V0.3.73 candidate, not yet live)
+## Planned volunteers versus actual people who worked (current Production)
 
 The **Plan / Schedule** AM/PM crew count is a working estimate, not an attendance report. Managers may adjust it as volunteers arrive or change crews. A count of **1** means the Captain working alone. A **blank** count means no Captain-led crew is confirmed for that shift; the named Captain may be elsewhere. Do not enter a zero to represent a blank.
 
@@ -124,7 +153,7 @@ Enter:
    - It defaults to the scheduled assignment date.
    - Change it when the work happened on a different day.
 2. **Actual crew size** — the actual number of people who worked the task.
-3. **Hours** and **Minutes** — the actual elapsed work period. These are equal-sized inputs side by side in the proposed V0.3.70 form; enter both the real hours and remaining minutes.
+3. **Hours** and **Minutes** — the actual elapsed work period. These are equal-sized inputs side by side; enter both the real hours and remaining minutes.
 4. **Whole task % complete** — the cumulative percent complete after this work period.
 5. **What was done / what remains** — required when the task is not 100% complete.
 6. **Add quantity detail (optional)** — use only when countable detail is useful.

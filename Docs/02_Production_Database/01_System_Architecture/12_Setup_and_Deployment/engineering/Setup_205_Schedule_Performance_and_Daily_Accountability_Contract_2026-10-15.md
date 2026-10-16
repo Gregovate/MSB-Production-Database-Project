@@ -3,13 +3,35 @@
 | Document Control | Value |
 |---|---|
 | System | Production Database — Setup / Plan Schedule / Perform Work |
-| Status | ENGINEERING CONTRACT — pending reconciliation and acceptance |
+| Status | #205 V0.3.84 DEPLOYED — active contract; remaining scope tracked separately |
 | Owner | MSB Production Database Setup engineering |
 | Governing authority | #122 release gates; #205 Scheduling Board |
 | Related authorities | #132 Report Work, #175 Perform Work, #172 Report Correction, #206 material readiness |
-| Last reviewed | 2026-10-15 |
+| Last reviewed | 2026-10-16 |
 
 This document is the controlled engineering authority for whole-Setup schedule KPIs, reporting reconciliation, daily exception follow-up, Manager notifications, and deep-link acceptance. PRs **consume** this contract; neither issue comments nor PR descriptions replace it. Production behavior remains whatever was separately accepted/deployed; descriptions below are required target behavior, not claims of completed implementation.
+
+## Deployed contract — October 16, 2026 (#205 / #122)
+
+**Production acceptance:** The operator accepted V0.3.84 in light and dark mode and reported disposable preview `CLEAN EXIT`. Feature PR [#394](https://github.com/Gregovate/MSB-Production-Database-Project/pull/394) merged the exact approved application at `7740498e6602f36c8cdfd384791bbafaab71ee9e`; version `V0.3.84-direct-crew-cells`. Governed migrations `075_allow_setup_planned_crew_count_corrections.sql` and `076_capture_2026_reusable_task_estimates.sql` were installed in that order through the #37 controller. Greg supplied runner **PASS** with retained report `/home/msbadmin/setup-deployment-reports/Setup205-075-076-20261016T215912Z`. See [release receipt](../../../../../Setup/Acceptance/Setup_205_075_076_Release.md) and [Production deployment log](../../../../../System_Documentation/Production_Deployment_Change_Log.md). This report confirms the governed runner's declared gates, not independent reinspection of archive metadata.
+
+The following implementation decisions now describe **installed behavior**, superseding any historical candidate-only text below where contradictory:
+
+| Area | Deployed behavior and ownership |
+| --- | --- |
+| Overall Setup progress | Compact **Total / Completed / Remaining**, unfinished and blocked/unschedulable tasks, task-based actual vs required completion pace and projected finish relative to the hard deadline; scheduled remains unfinished. Incomplete labor estimates do not suppress task progress. Detailed Manager exceptions belong in the separate Manager Action Center, not in expanded banners above scheduling. |
+| Daily crew drop targets | `setup_scheduling_board.js` supports an explicit new-crew drop target at each eligible Work Day / shift. A drop can create the crew and assign the annual task atomically. Never create an invented Work Report to move an assignment. |
+| Day/crew presentation | The sticky header co-locates visible Setup Day number, weekday/date and scheduled-task search, updated on scroll; calendar-like day boundaries separate Work Days. Crew letters are explicit `data-crew-letter` attributes on the visible label and AM/PM cells; `setup_scheduling_board.css` directly applies distinct crew colors in light/dark themes rather than inheriting from a `display:contents` row. Crew colors are not business-state encoding. |
+| Planned staff editing | Captain and AM/PM planned counts save automatically. Different AM and PM counts are preserved; a blank count is not silently converted to 0. Migration 075 revises `ops.update_setup_work_day_crew` to allow planned staffing edits after reported task work while prohibiting Captain reassignment once actual history exists; actual crews/progress remain separate and immutable through this command. |
+| Scheduling history | Active scheduling cards hide reported history by default but retain historical crew/day summaries and status-based access. A completed task remains complete; scheduling an unfinished task is not completion. |
+| Manager no-work reschedule | Single **Reschedule · No work performed** and bulk **Reschedule unworked AM/PM tasks** use audited scheduling operations. The bulk move is all-or-nothing when recorded work is present. Prior schedule occurrences should not leave fictitious late warnings after valid unworked moves. Where actual work exists, preserve the worked occurrence and schedule a future continuation instead. |
+| Planning Info | Restore the original quick **Edit Planning Info** surface; `Open Full Reusable Task` is separate and must not silently discard pending edits. Validate min ≤ max. Migration 076 modifies `ops.update_setup_scheduling_task_planning_info` and introduces the Catalog `ref.sync_setup_task_estimates_to_2026()` trigger for 2026 **reusable** annual ↔ Catalog estimate synchronization. No backfill, reported-history changes, or automatic rule for later seasons. |
+| Perform Work | Calendar-style Setup Day groups; compact crew warnings; Back-to-top navigation. Report Work keeps selected task name, assigned day/date, shift and Crew directly before the form. Equal-sized Hours and Minutes, field-specific help, explicit actual people/date/time and cumulative progress; **no automatic 1%**. Optional context fetch errors must not block valid history-backed reporting. |
+| Task Feedback | User-facing wording submits a field finding through existing #172 Work Order Intake, not a Work Report and not a direct Catalog/Procedure/Kit mutation. |
+
+**Non-goals/preservation:** #171 GIS reference map, People identity workflows, Controller Inventory/UID work and paused daily mail are not broadened by this release. #122 continues to own future launch debugging and unfinished scope. Keep source and migration identity distinct from later documentation-only commits. The real Production source is **not** the head of this documentation branch.
+
+---
 
 ## Problem and operator goal
 
