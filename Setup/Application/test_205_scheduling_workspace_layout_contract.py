@@ -27,8 +27,8 @@ def test_board_is_not_pushed_behind_kpis_in_flex_toolbar():
     )
     assert root.index('id="setup-board205-kpis"') < root.index('id="setup-board205-board-pane"')
     assert root.index('id="setup-board205-board-pane"') < root.index('id="setup-board205-days"')
-    assert 'id="setup-board205-schedule-dialog"' in root
     assert 'id="setup-board205-queue"' in root
+    assert 'id="setup-board205-schedule-dialog"' in js
 
 
 def test_kpi_glance_precedes_closed_disclosure_and_all_manager_actions_survive():
