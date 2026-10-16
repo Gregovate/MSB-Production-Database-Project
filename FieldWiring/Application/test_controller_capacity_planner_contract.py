@@ -121,3 +121,29 @@ def test_dmx_universe_values_cannot_occupy_lor_unit_ids() -> None:
     assert "options[\"planning_explicit_spares\"]" in source
     # FieldWiring's existing DMX/E1.31 rendering must not be modified.
     assert "UPDATE lor_snap." not in source
+
+
+def test_controller_disposable_preview_proves_clean_exit() -> None:
+    server = (BASE_DIR.parents[1] / "Controllers" / "Acceptance"
+              / "controller_setup_management_browser_preview_server.sh").read_text(
+                  encoding="utf-8"
+              )
+    wrapper = (BASE_DIR.parents[1] / "Controllers" / "Acceptance"
+               / "run_controller_setup_management_browser_preview.ps1").read_text(
+                   encoding="utf-8"
+               )
+
+    # Cleanup must target the identified fieldwiring-owned Flask process,
+    # not just its process group (the previous CLEAN EXIT left an orphan).
+    assert 'preview_pid_matches()' in server
+    assert 'preview_port_owned_by_pid()' in server
+    assert 'sudo kill -TERM "$PREVIEW_PGID"' in server
+    assert 'sudo kill -KILL "$PREVIEW_PGID"' in server
+    assert 'preview_port_listening' in server
+    assert 'sudo docker inspect "$TEST_CONTAINER"' in server
+    assert 'worktree list --porcelain' in server
+    assert 'CLEANUP FAILED: do not declare CLEAN EXIT' in server
+    assert 'CLEAN EXIT: Controller preview owned resources verified absent' in server
+    assert 'if (( cleanup_failed )); then' in server
+    assert 'rm -rf -- "$SCRIPT_DIR"' in server
+    assert "CONTROLLER DISPOSABLE BROWSER PREVIEW: CLEAN EXIT" in wrapper
