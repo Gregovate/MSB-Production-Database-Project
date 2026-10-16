@@ -815,7 +815,9 @@ function board205AutoScrollPane(pane, event) {
 }
 
 function board205AmCapacity(crewId) {
-  const items = board205CrewSequence(crewId).filter((item) => item.shift_code === 'MORNING');
+  // Reported assignments are history, not outstanding shift capacity.
+  const items = board205CrewSequence(crewId).filter((item) =>
+    item.shift_code === 'MORNING' && !nextAssignmentReported(item));
   if (!items.length) {
     return { total: 0, remaining: SETUP_BOARD205_TYPICAL_AM_MINUTES, carryover: 0, known: true };
   }
@@ -841,7 +843,8 @@ function board205AmCapacity(crewId) {
 // #205: Shift capacity uses linear elapsed task duration, not person-hours.
 // Keep unknown estimates visible even when known work is already overloaded.
 function board205ShiftWorkload(crewId, shift) {
-  const items = board205CrewSequence(crewId).filter((item) => item.shift_code === shift);
+  const items = board205CrewSequence(crewId).filter((item) =>
+    item.shift_code === shift && !nextAssignmentReported(item));
   const capacity = shift === 'MORNING' ? 180 : 120;
   let known = 0, unknown = 0, notReady = 0;
   for (const item of items) {
@@ -857,32 +860,28 @@ function board205ShiftWorkload(crewId, shift) {
 function board205WorkloadBanner(crewId, shift) {
   const w = board205ShiftWorkload(crewId, shift);
   if (!w.count) return '';
-  // Distinguish a compressed shift from proven whole-day overload. PM time
-  // is available only when a real PM crew count is recorded for this crew.
   const pm = board205ShiftWorkload(crewId, 'AFTERNOON');
   const am = board205ShiftWorkload(crewId, 'MORNING');
-  const pmStaffed = Number(board205PlacementCrewCount(crewId, 'AFTERNOON')) > 0;
-  const amStaffed = Number(board205PlacementCrewCount(crewId, 'MORNING')) > 0;
-  const dayCapacity = am.capacity + (pmStaffed ? pm.capacity : 0);
-  const dayDemand = am.known + pm.known;
-  const mayUsePm = shift === 'MORNING' && amStaffed && pmStaffed;
-  const dayOver = dayDemand > dayCapacity;
-  // A blank PM crew is an unresolved staffing decision, not a proven
-  // whole-day overload. Never count those PM hours as committed capacity.
-  const shiftPressure = shift === 'MORNING' && w.overload > 0 &&
-    ((!amStaffed || !pmStaffed) || (mayUsePm && !dayOver));
-  const shiftStaffed = shift === 'MORNING' ? amStaffed : pmStaffed;
-  const crewConfirmed = board205CrewRow(crewId)?.captain_person_id != null && shiftStaffed;
-  const red = w.overload > 0 && !shiftPressure && crewConfirmed;
-  const amber = !crewConfirmed || shiftPressure || w.unknown > 0 || w.notReady > 0 || (shift === 'MORNING' && !pmStaffed && w.overload > 0);
-  const color = red ? '#9d2424' : amber ? '#835900' : '#146044';
-  const background = red ? '#fff0ef' : amber ? '#fff6dd' : '#eaf8f0';
-  const hours = (n) => (n / 60).toFixed(2).replace(/0$/, '').replace(/\.$/, '');
-  const label = red ? 'OVERLOADED' : !crewConfirmed ? (w.overload ? 'SHIFT TIME PRESSURE — STAFFING UNCONFIRMED' : 'STAFFING UNCONFIRMED') : shiftPressure ? (pmStaffed ? 'AM PRESSURE — REVIEW PM CONTINUATION' : 'AM PRESSURE — PM CREW UNCONFIRMED') : amber ? 'CAPACITY UNCERTAIN' : 'WITHIN CAPACITY';
-  return `<div role="status" style="pointer-events:none;position:relative;z-index:1;border:3px solid ${color};border-radius:7px;background:${background};color:${color};padding:9px;margin:5px 0;font-weight:800">
-    <div style="font-size:1.05rem">${label} · ${hours(w.known)} / ${hours(w.capacity)} linear hours${red ? ` · +${hours(w.overload)}h OVER` : shiftPressure ? (pmStaffed ? ` · PM may absorb ${hours(w.overload)}h if the work can continue` : ' · AM exceeds typical shift; PM staffing needs a Manager decision') : ''}</div>
-    <div style="font-size:.83rem">${w.count} tasks · ${w.unknown} unknown estimates · ${w.notReady} NOT READY</div>
-    <div style="font-size:.8rem">AM ${amStaffed ? hours(Math.max(0, am.capacity - am.known)) + 'h remaining' : 'crew not confirmed'} · PM ${pmStaffed ? hours(Math.max(0, pm.capacity - pm.known)) + 'h remaining' : 'crew not confirmed'} · ${hours(dayDemand)}h total planned</div>
+  const crew = board205CrewRow(crewId);
+  const captain = crew?.captain_person_id != null;
+  const currentStaffing = board205PlacementCrewCount(crewId, shift);
+  const shiftStaffed = captain && currentStaffing != null && currentStaffing >= 1;
+  const hours = n => (n / 60).toFixed(1);
+  const pressure = w.overload > 0;
+  const uncertain = !shiftStaffed || w.unknown > 0 || w.notReady > 0;
+  const color = pressure || uncertain ? '#835900' : '#146044';
+  const bg = pressure || uncertain ? '#fff6dd' : '#eaf8f0';
+  const state = !shiftStaffed ? 'STAFFING NOT CONFIRMED'
+    : pressure ? 'WORK EXTENDS BEYOND TYPICAL SHIFT'
+      : uncertain ? 'TIME / READINESS REVIEW' : 'WITHIN TYPICAL SHIFT';
+  const carry = shift === 'MORNING' && pressure
+    ? ' · continue unfinished AM work into PM; report actual progress task by task'
+    : pressure ? ' · work may need a later shift/day' : '';
+  const durationUnknown = w.unknown > 0 ? ' · total excludes unknown-duration tasks' : '';
+  return `<div class="setup-board205-workload-banner" role="status" data-shift="${shift}" style="pointer-events:none;border:2px solid ${color};border-radius:7px;background:${bg};color:${color};padding:9px;margin:5px 0;font-weight:800">
+    <div>${state} · ${hours(w.known)} known task-hours / ${hours(w.capacity)} typical shift-hours${carry}</div>
+    <div style="font-size:.83rem">${w.count} unfinished task${w.count===1?'':'s'} · ${w.unknown} unknown duration${w.unknown===1?'':'s'} · ${w.notReady} NOT READY${durationUnknown}</div>
+    <div style="font-size:.8rem">This shift: ${shiftStaffed ? currentStaffing + ' planned including Captain' : 'not staffed'} · AM ${am.count} unfinished / ${hours(am.known)} known hours · PM ${pm.count} unfinished / ${hours(pm.known)} known hours</div>
   </div>`;
 }
 function board205AmCapacityNote(crewId) {
@@ -2716,6 +2715,14 @@ async function board205SaveCrew(crewId, crewNode) {
         crew.pm_planned_crew_count = saved.pm_planned_crew_count;
         crew.captain_person_id = saved.captain_person_id;
         crew.captain_display_name = board205CaptainCandidate(crew.captain_person_id)?.display_name || null;
+        // Refresh only this crew's computed status; do not discard another
+        // crew's unsaved form fields by rerendering the whole workday.
+        const row = crewNode.closest('.setup-board205-crew-row');
+        for (const shift of ['MORNING','AFTERNOON']) {
+          const cell = row?.querySelector('.setup-board205-cell[data-shift="' + shift + '"]');
+          const oldBanner = cell?.querySelector('.setup-board205-workload-banner');
+          if (oldBanner) oldBanner.outerHTML = board205WorkloadBanner(crewId, shift);
+        }
         const captainWarning = crewNode.querySelector('.setup-board205-captain-tbd-warning');
         if (captainWarning) captainWarning.hidden = crew.captain_person_id != null;
         if (priorCaptain !== draft.captain_person_id) {
