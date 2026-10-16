@@ -506,3 +506,13 @@ Future Setup engineering must preserve these rules:
 - GitHub issue #122
 - GitHub PR #125
 - Global People / Capability / Qualification work: issue #130
+
+### 2026 bidirectional Catalog and annual-task synchronization — governing operator correction
+
+**Operator states this was explicitly agreed in an earlier discussion and should already have been recorded here. The precise original chat wording has not been independently recovered. This paragraph records the operator's current clarification, not an invented quotation from that chat.**
+
+**For the 2026 launch season, changes on EITHER side — the reusable task Catalog or the corresponding 2026 annual Setup task — must synchronize to the other side.** This is a temporary 2026 operational arrangement for bringing the newly launched reusable Catalog into alignment with reality using the actual 2026 Setup schedule. It is **bidirectional**, not just annual Planning Info -> Catalog. The required task planning values include normal minimum/maximum task crew guidance, expected duration, and effort classification. Treat the linked task identities as authoritative; never copy day-crew AM/PM planned volunteer counts into normal reusable task estimates.
+
+**Safety and exclusions:** Preserve Manager authorization, existing historical actual-work/report locks and audit attribution. Do not overwrite any actual task-level crew count, elapsed labor, work reports or historical completed-task evidence. Any synchronous update must be transactionally safe, must not create loops or uncontrolled updates, and must not claim success if one side failed. Season-only annual tasks have no reusable Catalog counterpart. Do not silently backfill data or assume a Catalog edit may alter history where existing protections disallow it; reconcile exact field scope and locked-history handling before implementation.
+
+**2027 boundary:** Review 2026 evidence and deliberately decide the long-term Catalog updating rules in 2027. Do not extrapolate the 2026 bidirectional exception indefinitely or impose an unapproved one-way future rule. **The currently proposed migration 076 handles annual-to-Catalog estimates but does not prove the required Catalog-to-annual direction; it is incomplete and NOT accepted or deployable.** Before completing PR #394, inspect existing reusable edit commands/triggers and annual projection for both directions, update the design/code together, regression-test both paths plus history protection, and perform the governed single disposable browser acceptance. No Production mutation is authorized by this document.
