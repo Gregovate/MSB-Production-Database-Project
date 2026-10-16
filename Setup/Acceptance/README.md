@@ -1,5 +1,10 @@
 # Setup Acceptance Tooling
 
+## #205 current non-mail KPI and Report Work candidate
+
+[Source-regression evidence, V0.3.66 identity, strict one-clone 8898 review and Clean Exit checklist](Setup_205_KPI_Action_Center_Disposable_Candidate_2026-10-15.md). Daily email/Directus integration is parked separately and excluded. Not a Production deployment or browser acceptance.
+
+
 Current integrated #122 candidate: [field release checkpoint and review](Setup_122_Integrated_Field_Release.md). This supersedes separate preview handoffs for the included PR308/309/318/321 changes.
 
 
