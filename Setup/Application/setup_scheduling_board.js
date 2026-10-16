@@ -2112,6 +2112,33 @@ function board205RenderBoard() {
     });
   });
 
+  // Drop on the workday itself instead of preparing an empty Crew bucket.
+  target.querySelectorAll('.setup-board205-new-crew-drop').forEach(zone => {
+    zone.addEventListener('dragover', event => {
+      if (!setupBoard205State.dragged) return;
+      event.preventDefault();
+      zone.classList.add('drop-target');
+    });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drop-target'));
+    zone.addEventListener('drop', async event => {
+      event.preventDefault();
+      event.stopPropagation();
+      zone.classList.remove('drop-target');
+      await board205DropToNewCrew(
+        setupBoard205State.dragged, Number(zone.dataset.dayId), zone.dataset.shift
+      );
+    });
+    zone.addEventListener('keydown', async event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      if (!setupBoard205State.selectedAssignmentIds.size) return;
+      event.preventDefault();
+      await board205DropToNewCrew(
+        {kind: 'assignments', ids: [...setupBoard205State.selectedAssignmentIds]},
+        Number(zone.dataset.dayId), zone.dataset.shift
+      );
+    });
+  });
+
   target.querySelectorAll('.setup-board205-day').forEach((dayNode) => {
     const dayId = Number(dayNode.dataset.dayId);
     dayNode.querySelector('.setup-board205-remove-empty-day')?.addEventListener('click', () => board205RemoveEmptyWorkDay(dayId));
