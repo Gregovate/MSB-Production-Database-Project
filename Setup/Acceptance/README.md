@@ -2,7 +2,7 @@
 
 ## #205 current non-mail KPI and Report Work candidate
 
-[V0.3.74 two-way 2026 Catalog/annual estimate synchronization — source regression passed; migrations 075/076, rollback tests and history-lock gate pending disposable review, one current-Production disposable clone and 8898 browser acceptance checklist](Setup_205_KPI_Action_Center_Disposable_Candidate_2026-10-15.md). Daily email/Directus integration is parked separately and excluded. Not a Production deployment or browser acceptance.
+[V0.3.75 integrated #205 browser candidate — both-way 2026 Catalog/annual estimate sync including reported tasks; source regression PASS; migrations 075/076 and rollback tests pending same disposable/browser review, one current-Production disposable clone and 8898 browser acceptance checklist](Setup_205_KPI_Action_Center_Disposable_Candidate_2026-10-15.md). Daily email/Directus integration is parked separately and excluded. Not a Production deployment or browser acceptance.
 
 
 Current integrated #122 candidate: [field release checkpoint and review](Setup_122_Integrated_Field_Release.md). This supersedes separate preview handoffs for the included PR308/309/318/321 changes.
