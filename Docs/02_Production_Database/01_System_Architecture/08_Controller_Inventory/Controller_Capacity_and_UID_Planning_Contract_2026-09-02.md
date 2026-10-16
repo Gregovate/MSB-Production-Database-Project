@@ -342,3 +342,24 @@ Implementation checkpoint: isolated draft branch
 No Production mutation, schema change or deployment. Executable regression,
 disposable-browser acceptance, concurrent-main reconciliation and Greg's
 operator review are still required.
+
+## 2026-10-16 — E1.31/DMX boundary correction in draft PR #406
+
+The operator reproduced a false Regular/39 entry for `TR-MegaTreeRGBTree`
+alongside `WW-ClarkGriswold`, while permanent CTRL 1177 legitimately
+records only `WW-ClarkGriswold` assigned at Regular/39. The accepted
+FieldWiring dense RGB contract states that `device_type=DMX` may represent
+E1.31 universes in the legacy compatibility wiring view; that `controller`
+value is **not** an LOR UID.
+
+The read-only Controller planner's network-wide UID and explicit Stage SPARE
+queries must exclude `device_type=DMX` compatibility rows from LOR UID
+occupancy, regardless of whether the controller value resembles a hex UID.
+Do not modify the FieldWiring viewer, LOR/V7 snapshots, Controller assignment,
+or E1.31/DMX physical wiring presentation. Mixed/unknown device semantics
+remain a review concern, not grounds for guessing a free UID.
+
+This correction is committed to draft PR #406 but has not passed actual
+current-production-clone/browser acceptance. Previously running disposable
+browser sessions remain pinned to their earlier SHA and will **not**
+automatically reflect these changes.
