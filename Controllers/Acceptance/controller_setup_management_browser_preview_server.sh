@@ -232,6 +232,12 @@ if ! sudo git -C "$FIELDWIRING_ROOT" merge-base --is-ancestor "$LIVE_HEAD" "$TAR
 fi
 sudo git -C "$FIELDWIRING_ROOT" worktree add --detach "$CANDIDATE_WORKTREE" "$TARGET_SHA"
 
+# Fail before pg_dump or disposable restore on malformed candidate Python.
+# Run under the documented FieldWiring service runtime and candidate worktree.
+sudo -u fieldwiring -H bash -c 'cd "$1" && /opt/fieldwiring/.venv/bin/python -m py_compile FieldWiring/Application/controller_management.py && /opt/fieldwiring/.venv/bin/python -m pytest -q -p no:cacheprovider FieldWiring/Application/test_controller_capacity_planner_contract.py' -- "$CANDIDATE_WORKTREE"
+echo "PASS: Controller planner Python compile and focused contract before clone"
+
+
 echo
 echo "--- Capture current production into disposable clone ---"
 sudo docker exec "$PROD_CONTAINER" \
