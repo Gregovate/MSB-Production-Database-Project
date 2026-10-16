@@ -637,6 +637,16 @@ Separate four authorities:
 
 This correction reinforces the pause on #49 service-token experiments and #395 Production deployment while the operator-facing one-time Google login path is reconsidered. The already deployed #385 reconciliation remains authoritative **only after an active human Directus identity exists** and only when its exact existing Person-link conditions pass. No Production mutation was performed by recording this decision.
 
+### Explicit Person-versus-account lifecycle clarification
+
+Greg reaffirmed that `ref.person` is the long-lived record of **people involved in Making Spirits Bright**, and it intentionally includes many people who **do not have an MSB email address because they do not want one**. That is normal, legitimate data; it is not an onboarding error, missing-account cleanup queue, or reason to provision Google Workspace/Directus access. A person may remain active and participate in MSB work with only existing contact information.
+
+Application access, when actually needed, is a separate decision from Person membership. A Google Workspace mailbox may exist solely for communications; its presence does not authorize a Directus interactive login. An eligible human's Directus identity can be created through a supported, governed mechanism if needed for their application role. If an active, correct Google-backed Directus identity already exists, deployed People V0.2.2 / #385 handles only the safe matching `ref.person.directus_user_id` reconciliation. It does not create a missing Directus user, grant a role, or provide an MSB email address to a Person who does not want one.
+
+The user cited Don, a retired operations manager and board member who is interested in the custom system, as an example of a human Person whose real access needs should be handled deliberately; **past leadership, board membership, expressed curiosity and legacy `is_manager` flags do not automatically grant Directus Manager authorization**. Any future onboarding design must keep actual access entitlements explicit and preserve the Person table's independence from accounts.
+
+**Do not attempt to resolve #395 by auto-provisioning every `ref.person` row, every MSB email, every Google Workspace account, or any nonhuman/email-only identity.** The narrowed operator problem is the confusing first-time Google authentication path for humans who need Directus-backed applications, while safe Person association is already covered by #385. The more invasive service-token approach remains paused pending a clear architecture decision. No Production migration, deployment, identity change or test was performed by documenting this clarification.
+
 ## Disposition
 
 ```text
