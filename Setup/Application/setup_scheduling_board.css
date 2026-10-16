@@ -2253,3 +2253,29 @@ html[data-theme="dark"] .setup-board205-badge.effort-heavy {
 .setup-board205-crew-row:has(.setup-board205-crew-label[data-crew-letter="F"]) { --crew-accent:#328e9a; --crew-tint:color-mix(in srgb,#328e9a 9%,var(--panel,#fff)); }
 .setup-board205-crew-row .setup-board205-crew-label { background:var(--crew-tint,var(--soft,#f5f8fb)); border-left:0.55rem solid var(--crew-accent,var(--border,#d9e0e8)); }
 .setup-board205-crew-row .setup-board205-cell { border-top:3px solid var(--crew-accent,var(--border,#d9e0e8)); }
+
+/* #205 V0.3.83: Crew rows use display:contents, so color the visible cells.
+   Each crew is visually distinct across Captain, AM and PM without changing
+   grid placement, task states, autosave or drag/drop. */
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="A"]) { --crew-accent:#356fb9; --crew-tint:#e0edfc; }
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="B"]) { --crew-accent:#157f60; --crew-tint:#ddf5e9; }
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="C"]) { --crew-accent:#aa681d; --crew-tint:#fff0d9; }
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="D"]) { --crew-accent:#8556b6; --crew-tint:#eee3fc; }
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="E"]) { --crew-accent:#a83b68; --crew-tint:#fbe1ec; }
+.setup-board205-crew-row:has(> .setup-board205-crew-label[data-crew-letter="F"]) { --crew-accent:#168193; --crew-tint:#dcf3f7; }
+.setup-board205-crew-row > .setup-board205-crew-label {
+  background: var(--crew-tint, var(--soft,#f5f8fb));
+  border-left: 0.7rem solid var(--crew-accent,#71869a);
+  border-top: 3px solid var(--crew-accent,#71869a);
+}
+.setup-board205-crew-row > .setup-board205-cell {
+  background: color-mix(in srgb, var(--crew-tint,#f5f8fb) 55%, var(--panel,#fff));
+  border-top: 3px solid var(--crew-accent,#71869a);
+}
+html[data-theme="dark"] .setup-board205-crew-row > .setup-board205-crew-label,
+html[data-theme="dark"] .setup-board205-crew-row > .setup-board205-cell {
+  background: color-mix(in srgb, var(--crew-accent,#71869a) 24%, var(--panel,#18222c));
+}
+@media print {
+  .setup-board205-crew-row > .setup-board205-cell { background: transparent; }
+}
