@@ -1591,7 +1591,7 @@ async function nextSubmitRescheduleNoWork(event) {
 // Inline Report Work help never reloads or discards unsaved field inputs.
 function nextReportHelpButton(kind) {
   return '<span class="next-report-help" role="button" tabindex="0" data-help="' +
-    kind + '" aria-label="Help with ' + kind + '" title="Help with ' + kind + '">?</span>';
+    kind + '" aria-label="How to enter ' + kind + '" title="Show field-specific guidance">How?</span>';
 }
 const NEXT_REPORT_FIELD_HELP = Object.freeze({
   date: '1. Choose the day the work ACTUALLY happened, not necessarily the scheduled date. 2. Verify both dates before saving.',
