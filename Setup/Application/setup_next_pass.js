@@ -2530,13 +2530,28 @@ async function loadNextTaskExecution(details, focusReport = false) {
   body.hidden = false;
   body.innerHTML = '<div class="muted">Loading scheduled work context…</div>';
   try {
+    // Field context/resources/procedure are optional references, not a gate
+    // for reporting actual labor or progress. Season-only annual tasks may
+    // have no reusable setup_task_id at all: never call tasks/NaN or tasks/0.
+    const reusableTaskId = Number.isSafeInteger(taskId) && taskId > 0;
+    const optional = (promise, fallback) => promise
+      .then(payload => ({...payload, contextError:null}))
+      .catch(error => ({...fallback, contextError:error}));
     const [contextPayload, resourcePayload, progressPayload, procedureResult] = await Promise.all([
-      api(`api/setup/tasks/${taskId}/field-context?season_year=${encodeURIComponent(appState.seasonYear)}`),
-      api(`api/setup/tasks/${taskId}/resources`),
+      reusableTaskId
+        ? optional(api(`api/setup/tasks/${taskId}/field-context?season_year=${encodeURIComponent(appState.seasonYear)}`),{context:{}})
+        : Promise.resolve({context:{},contextError:null}),
+      reusableTaskId
+        ? optional(api(`api/setup/tasks/${taskId}/resources`),{resources:[]})
+        : Promise.resolve({resources:[],contextError:null}),
+      // Progress is authoritative. Do NOT treat a failed progress fetch as
+      // empty history: it could cause a false new percentage/report.
       api(`api/setup/session-tasks/${sessionTaskId}/progress`),
-      api(`api/setup/tasks/${taskId}/procedure`)
-        .then((payload) => ({ payload, error: null }))
-        .catch((error) => ({ payload: null, error }))
+      reusableTaskId
+        ? api(`api/setup/tasks/${taskId}/procedure`)
+            .then(payload => ({payload,error:null}))
+            .catch(error => ({payload:null,error}))
+        : Promise.resolve({payload:null,error:null})
     ]);
     const context = contextPayload.context || {};
     const resources = resourcePayload.resources || [];
@@ -2575,8 +2590,14 @@ async function loadNextTaskExecution(details, focusReport = false) {
           ${task?.readiness_note ? `<p><strong>Can start when:</strong> ${escapeHtml(task.readiness_note)}</p>` : ''}
           ${task?.weather_note ? `<p><strong>Weather limits:</strong> ${escapeHtml(task.weather_note)}</p>` : ''}
           <p><strong>Expected crew:</strong> ${escapeHtml(formatCrew(task))} · <strong>Expected time:</strong> ${escapeHtml(formatMinutes(task?.expected_duration_minutes))}</p></section>
-        <section><h4>Equipment / Resources</h4>${resources.length ? `<ul>${resources.map((r) => `<li>${escapeHtml(r.resource_name)} · Qty ${r.quantity_required} · ${escapeHtml(r.requirement_type)}</li>`).join('')}</ul>` : '<p class="muted">No structured resource requirement recorded.</p>'}</section>
-        <section><h4>Material / Current Location</h4>${assets.length ? `<ul>${assets.join('')}</ul>` : '<p class="muted">No Displays or support Containers are mapped to this task.</p>'}</section>
+        <section><h4>Equipment / Resources</h4>${resourcePayload.contextError
+          ? '<p class="next-procedure-warning">Equipment context unavailable; Report Work is still available.</p>'
+          : resources.length ? `<ul>${resources.map((r) => `<li>${escapeHtml(r.resource_name)} · Qty ${r.quantity_required} · ${escapeHtml(r.requirement_type)}</li>`).join('')}</ul>`
+            : '<p class="muted">No structured resource requirement recorded.</p>'}</section>
+        <section><h4>Material / Current Location</h4>${contextPayload.contextError
+          ? '<p class="next-procedure-warning">Location context unavailable; Report Work is still available.</p>'
+          : assets.length ? `<ul>${assets.join('')}</ul>`
+            : '<p class="muted">No Displays or support Containers are mapped to this task.</p>'}</section>
         <section><h4>Published Setup Procedure</h4>${docs.length
           ? docs.map((doc) => `<p><a target="_blank" rel="noopener" href="api/setup/tasks/${taskId}/procedure/current?name=${encodeURIComponent(doc.name || '')}">${escapeHtml(doc.name || 'Open current PDF')}</a></p>`).join('')
           : procedureError
