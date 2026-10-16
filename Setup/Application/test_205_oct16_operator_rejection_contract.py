@@ -21,7 +21,7 @@ def test_workload_excludes_reported_assignments_and_keeps_continuation():
         assert "!nextAssignmentReported(item)" in snippet
     assert "w.count" in banner
     assert "hours scheduled" in banner
-    assert "continue unfinished AM work into PM" in banner
+    assert "continue in PM" in banner
     assert "PM staffing needs a Manager decision" not in banner
     assert "total planned" not in banner
     assert "setup-board205-workload-banner" in banner
