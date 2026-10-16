@@ -382,6 +382,7 @@ body.busy button { pointer-events: none; opacity: .65; }
 }
 .inventory-setup-nav .button { white-space: nowrap; }
 @media (max-width: 980px) {
-  .inventory-header { max-height: 48dvh; overflow-y: auto; }
+  /* Never clip Setup navigation behind an independently scrolling header. */
+  .inventory-header { max-height: none; overflow: visible; position: relative; }
   .inventory-setup-nav { justify-content: flex-start; }
 }
