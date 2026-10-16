@@ -2,14 +2,14 @@
 
 | Document control | Value |
 |---|---|
-| Status | PRODUCTION V0.4.0 DEPLOYED — CORE PLANNING / MAINTENANCE ACCEPTED |
+| Status | PRODUCTION V0.4.2 DEPLOYED — CONTROLLER NETWORK UID EXPLORER / V0.4.0 MANAGEMENT CORE |
 | Issue | #110 |
 | Merged PR | #111 |
 | Permanent identity | `ref.controller.controller_id` |
 | Permanent database | Installed on `msb-prod-db` |
-| Current production checkout | `72f5b7164f31753a33e5c2a9d83d9a7a6909a417` |
-| Immediate application rollback | `63be47f40be78f608416935ed0583287da9d90e6` |
-| FieldWiring production | `V0.4.0 / postgres / healthy` |
+| Current production checkout | `17c522c4f8ec06549bf7a6d9e8530c61276203f7` (operator-reported October 16) |
+| Immediate application rollback | `bb8dfa498c5b4bbecfc3693f68c4066c1e08242e` (pre-#406 live checkout) |
+| FieldWiring production | `V0.4.2-controller-uid-explorer / postgres / healthy` (operator-reported) |
 | Procedures production | `V0.1.0 / postgres / healthy` |
 | Production deployment acceptance | [Controller V0.4.0 Production Deployment Acceptance — 2026-09-03](Controller_V0.4.0_Production_Deployment_Acceptance_2026-09-03.md) |
 | Controller Scan acceptance | [Controller Scan Production Deployment Acceptance — 2026-09-03](../07_Labeling_and_Scanning/Controller_Scan_Production_Deployment_Acceptance_2026-09-03.md) |
@@ -20,6 +20,14 @@
 | Label printing integration | [Controller Label Print-Service Integration — 2026-09-03](Controller_Label_Print_Service_Integration_2026-09-03.md) |
 
 Controller Inventory owns permanent physical Controller identity, current Controller-to-Display relationships, physical Controller facts, and the physical Controller's recorded current programmed configuration. LOR/V7 remains authoritative for current show wiring topology and what the show currently requires.
+
+## October 16, 2026 — Controller Planner Production Release
+
+Controller Network UID Explorer PR #406 (merge `b3acf960c9db5ee493f5b14759459315db79be8a`) and test-contract closeout PR #407 (merge `17c522c4f8ec06549bf7a6d9e8530c61276203f7`) are installed in the shared FieldWiring source checkout per operator report. FieldWiring health returns `V0.4.2-controller-uid-explorer`; Procedures health remains `V0.1.0`. Pre-install checkout `bb8dfa498c5b4bbecfc3693f68c4066c1e08242e` is the source rollback reference.
+
+The Controller capacity planner now provides LOR Network scoped UID availability, separately reported physical Controller programmed addresses, DMX/E1.31 universe exclusion from traditional LOR UID use, and optional model-width contiguous UID candidates. Current-release acceptance: operator browser check, disposable CLEAN EXIT with fingerprint unchanged, and 263 combined FieldWiring/Procedures regression checks PASS. The merged source-only installation returned healthy runtime checks. No migration was applied; maintenance mode was not required. Post-install protected-browser smoke and negative-path authorization results are not yet supplied.
+
+Earlier V0.4.0 production snapshots, checkpoint SHAs and acceptance evidence below are **historical** and must not be treated as the currently deployed source. See [Production Deployment Change Log](../../../../System_Documentation/Production_Deployment_Change_Log.md) for current installation evidence. Future PixCon16 LOR/E1.31 IP/universe capacity planning remains deferred until after the 2026 season.
 
 ## Current Production State
 
