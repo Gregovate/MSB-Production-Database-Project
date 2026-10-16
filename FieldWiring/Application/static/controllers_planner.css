@@ -19,7 +19,7 @@
 .planner-meta { color:var(--muted); font-size:11px; line-height:1.45; margin-top:4px; }
 .planner-spare { margin-top:7px; font-size:12px; font-weight:800; color:var(--success); }
 .planner-review { margin-top:7px; font-size:12px; font-weight:800; color:var(--warning); }
-.planner-blocks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:9px; }
+.planner-blocks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:9px; max-height:224px; overflow-y:auto; padding-right:4px; }
 .planner-block { border:1px solid var(--border); border-radius:7px; padding:8px 9px; }
 .planner-block strong { display:block; }
 .planner-block .stock { color:var(--success); font-size:11px; margin-top:3px; }
