@@ -2717,7 +2717,7 @@ async function board205SaveCrew(crewId, crewNode) {
         crew.captain_display_name = board205CaptainCandidate(crew.captain_person_id)?.display_name || null;
         // Refresh only this crew's computed status; do not discard another
         // crew's unsaved form fields by rerendering the whole workday.
-        const row = crewNode.closest('.setup-board205-crew-row');
+        const row = crewNode.closest?.('.setup-board205-crew-row');
         for (const shift of ['MORNING','AFTERNOON']) {
           const cell = row?.querySelector('.setup-board205-cell[data-shift="' + shift + '"]');
           const oldBanner = cell?.querySelector('.setup-board205-workload-banner');
