@@ -55,8 +55,8 @@ def test_uid_probe_is_network_specific_and_model_capacity_aware() -> None:
     assert "row.network" in source
     assert "lor_uid_capacity" in source
     assert "start+width-1<=240" in source
-    assert "UID availability is scoped to this Network" in source
-    assert "same UID on another Network is unrelated" in source
+    assert "All 240 addresses (01–F0) are examined on this Network" in source
+    assert "const used = lorUsage(network);" in source
     assert "controller_status_name!=='AVAILABLE'" in source
     assert "controller_status_name==='AVAILABLE'" in source
 
@@ -66,7 +66,7 @@ def test_regular_network_and_map_boundary_are_visible() -> None:
         BASE_DIR / "static" / "controllers_planner_v2.js"
     ).read_text(encoding="utf-8")
 
-    assert "network.toLowerCase()==='regular'" in source
+    assert "networkKey(network) === 'regular'" in source
     assert "park-wide, slow-speed" in source
     assert "background sequences" in source
     assert "existing park/network map" in source
