@@ -1,6 +1,41 @@
 # #205 Whole-Setup KPI / Action Center / Report Work — Browser Candidate
 
-## CURRENT V0.3.75 — ONE integrated #205 2026 Setup browser review (2026-10-16)
+## CURRENT V0.3.76 — six operator corrections in ONE #205 disposable browser review
+
+**Source PASS / operator browser acceptance PENDING.** Exact candidate `b683a2b3b4404465e53314d56321675d23c92084`, build `V0.3.76-operator-review-fixes`, existing draft PR #394, [GitHub CI #38925344580](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/38925344580): **838 Setup Python, FieldWiring full, #205 Node checks PASS**. This candidate follows the operator-rejected V0.3.75 browser preview, which may still be open. **Obtain previous CLEAN EXIT before launching another protected preview; do not force-stop a separate live process or open two clones.** No Production mutation authorized.
+
+Test **all findings together** in the ONE governed disposable current-Production clone and same port 8898, with migrations **075** and **076**, plus their two rollback-only validations:
+- D16 Crew A count AM 3 / PM 2 auto-saves, survives refresh, and changes shift AND day staffing banners without losing other unsaved inputs. Task count/known hours on active scheduling are only for unfinished assignments (historical reported tasks excluded); 6h expected task may continue past AM to PM with actual partial reporting, without artificial Manager decision. Exact actual work remains protected.
+- Mega Cube Planning Info: min 7/max 4 should show inline validation (no SQL alert or trapped form); correct range and save explicitly. **Open Full Reusable Task** must navigate without blindly saving invalid Planning Info and hand unsaved edits to the Catalog form for deliberate review. Test both directions of 2026 Catalog/annual planning estimate sync, including corrections on reported tasks; preserve actual reports and readiness history.
+- Perform Work document scroll and fixed Back to top / Navigation button; Task Feedback and actual Number of Volunteers/Hours/Minutes/help.
+- Manager Action Center tab is active ONLY when actually selected; verify light/dark Action Center links/buttons.
+- Kit Inventory now has persistent top Setup nav links (Catalog, Plan, Perform, Manager Action Center) and Back to Setup. Verify navigation to all views and the back path.
+- Same-Captain past/no-work reschedule to any valid future day including Oct 20 (prior omission; no false dates or arbitrary captain), saved update visible immediately, original move audit/real reports preserved; Plan/Schedule sticky header, lane colors and day separation at desktop widths.
+
+**The previous V0.3.75 current-Production clone is NOT reusable after its CLEAN EXIT; the new launcher creates ONE fresh current-Production disposable clone** and runs both validations before browser. Launch only from the clean, fast-forwarded *existing* desktop review worktree `C:\Users\Greg\Github\MSB-Production-Database-Project-205-review` (NOT primary checkout), checked on branch `fix/205-setup-deadline-kpis-20261015`. Registered port 8898 must be free of prior preview. Read governing Server Management runbook/port authority before starting.
+
+```powershell
+.\Setup\Acceptance\run_setup_disposable_browser_preview.ps1 `
+    -PreviewPort 8898 `
+    -CandidateSha 'b683a2b3b4404465e53314d56321675d23c92084' `
+    -TargetRef 'fix/205-setup-deadline-kpis-20261015' `
+    -ExpectedVersion 'V0.3.76-operator-review-fixes' `
+    -MigrationPaths @(
+        'Setup/Database/075_allow_setup_planned_crew_count_corrections.sql',
+        'Setup/Database/076_capture_2026_reusable_task_estimates.sql'
+    ) `
+    -ValidationPaths @(
+        'Setup/Acceptance/setup_205_planned_crew_count_disposable_validation.sql',
+        'Setup/Acceptance/setup_205_2026_catalog_estimate_disposable_validation.sql'
+    )
+```
+
+**Stop gate:** Failed source regression, migration, SQL validation, unknown port ownership, or bad fingerprint blocks the browser. On `BROWSER REVIEW READY`, inspect and explicitly report operator pass/fail; preserve `CLEAN EXIT` evidence. PR stays DRAFT, Production unchanged, notifications parked. Avoid archived earlier candidate commands below.
+
+---
+
+
+## ARCHIVED V0.3.75 integrated browser review — operator REJECTED (DO NOT RUN)
 
 
 ### October 16 14:17 validation parse error — corrected before retest
