@@ -228,7 +228,7 @@ Network-scoped UID inventory searchable without selecting a model, treats
 for contiguous UID-block width only. It is **not merged, browser-accepted,
 or deployed**. Run executable regression and disposable acceptance against
 the exact candidate, reconcile newer `main`, and obtain operator approval
-before any merge/deployment. [Authoritative planning contract](Controller_Capacity_and_UID_Planning_Contract_2026-09-02.md).
+before any merge/deployment. The existing Controller disposable browser wrapper/runner has been corrected on this isolated branch for explicit exact-candidate SHA, registered port 8898, detached server worktree, current-production disposable clone, no migration replay, narrow command grants, foreground SSH and browser-ready handoff. It has **not yet been executed on the server**; ownership/preflight, regression, clone/browser health and CLEAN EXIT remain unverified. [Authoritative planning contract](Controller_Capacity_and_UID_Planning_Contract_2026-09-02.md).
 
 ## Remaining Work After V0.4.0
 
