@@ -165,6 +165,122 @@ BEGIN
 END;
 $catalog_to_annual$;
 
+-- Same disposable transaction: prove bidirectional estimate learning remains
+-- available AFTER Report Work, without touching the reported actual records.
+DO $reported_2026$
+DECLARE
+    v record;
+    c record;
+    a record;
+    original_assignments jsonb;
+    original_progress jsonb;
+    after_assignments jsonb;
+    after_progress jsonb;
+    new_min integer;
+    new_max integer;
+    new_minutes integer;
+    new_effort text;
+BEGIN
+    SELECT st.setup_session_task_id, st.setup_task_id,
+           st.annual_readiness_note, st.annual_weather_note,
+           st.annual_completion_point,
+           t.task_name, t.stage_id, t.task_action_type,
+           t.display_order, t.active_flag,
+           t.normal_crew_min AS catalog_min, t.normal_crew_max AS catalog_max,
+           t.expected_duration_minutes AS catalog_minutes, t.effort_level AS catalog_effort,
+           t.completion_point AS catalog_completion, t.readiness_note AS catalog_readiness,
+           t.weather_note AS catalog_weather, t.reusable_notes AS catalog_notes
+    INTO v
+    FROM ops.setup_session_task st
+    JOIN ops.setup_session ss ON ss.setup_session_id = st.setup_session_id
+    JOIN ref.setup_task t ON t.setup_task_id = st.setup_task_id
+    WHERE ss.season_year = 2026 AND st.task_origin = 'REUSABLE'
+      AND (st.actual_started_at IS NOT NULL OR st.actual_completed_at IS NOT NULL
+        OR EXISTS (SELECT 1 FROM ops.setup_task_progress p
+                   WHERE p.setup_session_task_id = st.setup_session_task_id))
+    ORDER BY st.setup_session_task_id LIMIT 1;
+    IF v.setup_session_task_id IS NULL THEN
+        RAISE EXCEPTION 'No reported 2026 reusable task: history-safe two-way sync cannot be certified';
+    END IF;
+
+    SELECT coalesce(jsonb_agg(to_jsonb(wdt) ORDER BY wdt.setup_work_day_task_id), '[]'::jsonb)
+    INTO original_assignments
+    FROM ops.setup_work_day_task wdt WHERE wdt.setup_session_task_id = v.setup_session_task_id;
+    SELECT coalesce(jsonb_agg(to_jsonb(p) ORDER BY to_jsonb(p)::text), '[]'::jsonb)
+    INTO original_progress
+    FROM ops.setup_task_progress p WHERE p.setup_session_task_id = v.setup_session_task_id;
+
+    new_min := greatest(coalesce(v.catalog_min,0),1) + 1;
+    new_max := greatest(coalesce(v.catalog_max,0),new_min) + 1;
+    new_minutes := greatest(coalesce(v.catalog_minutes,0),60) + 15;
+    new_effort := CASE WHEN v.catalog_effort = 'LIGHT' THEN 'MODERATE' ELSE 'LIGHT' END;
+
+    -- Catalog -> reported 2026 annual. Both governed Catalog calls execute
+    -- in this one rollback-protected transaction.
+    PERFORM ref.update_setup_task(
+        'gliebig@sheboyganlights.org', v.setup_task_id,
+        v.task_name, v.stage_id, v.task_action_type,
+        v.display_order, v.active_flag,
+        new_min, new_max, new_minutes,
+        v.catalog_completion, v.catalog_readiness, v.catalog_weather, v.catalog_notes
+    );
+    PERFORM ref.set_setup_task_effort(
+        'gliebig@sheboyganlights.org',v.setup_task_id,new_effort
+    );
+    SELECT annual_normal_crew_min AS crew_min, annual_normal_crew_max AS crew_max,
+           annual_expected_duration_minutes AS minutes, annual_effort_level AS effort
+    INTO STRICT a
+    FROM ops.setup_session_task WHERE setup_session_task_id = v.setup_session_task_id;
+    IF a.crew_min IS DISTINCT FROM new_min OR a.crew_max IS DISTINCT FROM new_max
+       OR a.minutes IS DISTINCT FROM new_minutes OR a.effort IS DISTINCT FROM new_effort THEN
+        RAISE EXCEPTION 'Catalog-to-annual estimate mirror failed on reported 2026 task';
+    END IF;
+
+    -- Annual -> Catalog after actual work: estimates-only; no historical
+    -- readiness/weather/completion changes or Report Work changes.
+    new_min := new_min + 1;
+    new_max := greatest(new_max,new_min) + 1;
+    new_minutes := new_minutes + 15;
+    PERFORM ops.update_setup_scheduling_task_planning_info(
+        'gliebig@sheboyganlights.org',v.setup_session_task_id,
+        new_min,new_max,new_minutes,new_effort,
+        v.annual_readiness_note,v.annual_weather_note,v.annual_completion_point
+    );
+    SELECT normal_crew_min AS crew_min, normal_crew_max AS crew_max,
+           expected_duration_minutes AS minutes, effort_level AS effort
+    INTO STRICT c FROM ref.setup_task WHERE setup_task_id = v.setup_task_id;
+    IF c.crew_min IS DISTINCT FROM new_min OR c.crew_max IS DISTINCT FROM new_max
+       OR c.minutes IS DISTINCT FROM new_minutes OR c.effort IS DISTINCT FROM new_effort THEN
+        RAISE EXCEPTION 'Annual-to-Catalog estimate mirror failed on reported 2026 task';
+    END IF;
+
+    SELECT coalesce(jsonb_agg(to_jsonb(wdt) ORDER BY wdt.setup_work_day_task_id), '[]'::jsonb)
+    INTO after_assignments
+    FROM ops.setup_work_day_task wdt WHERE wdt.setup_session_task_id = v.setup_session_task_id;
+    SELECT coalesce(jsonb_agg(to_jsonb(p) ORDER BY to_jsonb(p)::text), '[]'::jsonb)
+    INTO after_progress
+    FROM ops.setup_task_progress p WHERE p.setup_session_task_id = v.setup_session_task_id;
+    IF after_assignments IS DISTINCT FROM original_assignments
+       OR after_progress IS DISTINCT FROM original_progress THEN
+        RAISE EXCEPTION '2026 estimate sync modified reported assignment or progress history';
+    END IF;
+
+    -- Attempted non-estimate history change MUST still fail.
+    BEGIN
+        PERFORM ops.update_setup_scheduling_task_planning_info(
+            'gliebig@sheboyganlights.org',v.setup_session_task_id,
+            new_min,new_max,new_minutes,new_effort,
+            coalesce(v.annual_readiness_note,'') || ' unauthorized history edit',
+            v.annual_weather_note,v.annual_completion_point
+        );
+        RAISE EXCEPTION 'Unexpected acceptance of reported readiness-history edit';
+    EXCEPTION WHEN check_violation THEN
+        RAISE NOTICE 'PASS: reported task readiness remains locked';
+    END;
+    RAISE NOTICE 'PASS: reported 2026 annual/Catalog estimate changes synchronized both directions with actual unchanged';
+END;
+$reported_2026$;
+
 ROLLBACK;
 
 DO $rollback_check$
