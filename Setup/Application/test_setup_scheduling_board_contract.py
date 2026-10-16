@@ -594,7 +594,10 @@ def test_122_schedule_board_compacts_crew_controls_and_prints_operational_board(
     assert ">AM Crew w/Captain <" in ui
     assert ">PM Crew w/Captain <" in ui
     assert "setup-board205-crew-title-row" in ui
-    assert '<button type="button" class="small setup-board205-save-crew">Save</button>' in ui
+    assert "setup-board205-save-crew" not in ui
+    assert "Saved automatically" in ui
+    assert "async function board205SaveCrew(crewId, crewNode)" in ui
+    assert "board205EnsureCrewSaved(crewId)" in ui
     assert "secondary setup-board205-save-crew" not in ui
     assert "setup-board205-print" in ui
     assert "Print Schedule" in ui
