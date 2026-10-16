@@ -211,6 +211,15 @@ REVOKE ALL ON FUNCTION ref.controller_browser_capabilities(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION ref.request_controller_label(text,bigint) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ref.controller_browser_capabilities(text) TO fieldwiring_app;
 GRANT EXECUTE ON FUNCTION ref.request_controller_label(text,bigint) TO fieldwiring_app;
+-- Preserve the currently deployed narrow Controller management capabilities
+-- after a no-ACL restore; no broad Controller DML.
+GRANT EXECUTE ON FUNCTION ref.controller_management_options(text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.create_controller(text,integer,integer,text,integer,text,text,text,integer,text,boolean,text,text,boolean,text,integer,integer,text,text,text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.update_controller(text,bigint,integer,integer,text,integer,text,text,text,integer,text,boolean,text,text,boolean,text,integer,integer,text,text,text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.assign_controller_display(text,bigint,bigint,bigint,text,text,boolean) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.update_controller_display_assignment(text,bigint,bigint,bigint,text,text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.reassign_controller_display(text,bigint,bigint,bigint,bigint,text,text) TO fieldwiring_app;
+GRANT EXECUTE ON FUNCTION ref.unassign_controller_display(text,bigint,bigint,boolean) TO fieldwiring_app;
 SQL
 
 echo "No migrations: source-only #406 candidate against current Production clone"
