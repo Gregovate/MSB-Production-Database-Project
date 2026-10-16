@@ -4,42 +4,52 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = BASE_DIR.parent.parent
 ACCEPT = REPO_ROOT / "Controllers" / "Acceptance"
-GREEN_CANDIDATE = "63be47f40be78f608416935ed0583287da9d90e6"
-TEMPLATE_CANDIDATE = "2fd2067958cc0a903260fe6f089f88ae63a857f1"
 
 
-def test_preview_launcher_pins_exact_green_candidate_at_upload_time() -> None:
+def test_preview_launcher_uses_operator_pinned_exact_sha() -> None:
     wrapper = (ACCEPT / "run_controller_setup_management_browser_preview.ps1").read_text(
         encoding="utf-8"
     )
+    server = (ACCEPT / "controller_setup_management_browser_preview_server.sh").read_text(
+        encoding="utf-8"
+    )
 
-    assert f"$TemplateCandidateSha = '{TEMPLATE_CANDIDATE}'" in wrapper
-    assert f"$CandidateSha = '{GREEN_CANDIDATE}'" in wrapper
-    assert "$serverText.Replace($TemplateCandidateSha, $CandidateSha)" in wrapper
+    assert "[Parameter(Mandatory=$true)][string]$CandidateSha" in wrapper
+    assert "[Parameter(Mandatory=$true)][string]$TargetRef" in wrapper
     assert 'cat-file -e "${CandidateSha}^{commit}"' in wrapper
+    assert "$head -ne $CandidateSha" in wrapper
+    assert 'TARGET_SHA="${4:?CandidateSha required}"' in server
+    assert 'TARGET_REF="${3:?TargetRef required}"' in server
+    assert "TemplateCandidateSha" not in wrapper
 
 
-def test_preview_launcher_cleans_only_stale_preview_resources_before_start() -> None:
+def test_preview_launcher_preserves_unrelated_listeners() -> None:
     wrapper = (ACCEPT / "run_controller_setup_management_browser_preview.ps1").read_text(
         encoding="utf-8"
     )
+    server = (ACCEPT / "controller_setup_management_browser_preview_server.sh").read_text(
+        encoding="utf-8"
+    )
 
-    assert "controller_setup_management_browser_preview_cleanup_server.sh" in wrapper
     assert "Get-NetTCPConnection -LocalPort $PreviewPort -State Listen" in wrapper
-    assert "$owner.ProcessName -ne 'ssh'" in wrapper
-    assert "Stop-Process -Id $owner.Id -Force" in wrapper
-    assert 'bash -n \'$uploadCleanup\' && bash \'$uploadCleanup\' \'$PreviewPort\'' in wrapper
-    assert "msb-controller-preview-session-$stamp" in wrapper
-    assert "msb-controller-browser-preview-$stamp" in wrapper
-    assert "mv '$uploadRoot' '$remoteRoot'" in wrapper
+    assert 'workstation port $PreviewPort is listening' in wrapper
+    assert "Stop-Process" not in wrapper
+    assert 'preview port $PREVIEW_PORT is already listening' in server
+    assert "preview_pid_matches()" in server
+    assert "preview_port_listening()" in server
+    assert "CLEANUP FAILED: do not declare CLEAN EXIT" in server
 
 
-def test_preview_launcher_keeps_one_upload_and_one_foreground_ssh_session() -> None:
+def test_preview_launcher_uses_one_foreground_ssh_and_waits_for_readiness() -> None:
     wrapper = (ACCEPT / "run_controller_setup_management_browser_preview.ps1").read_text(
         encoding="utf-8"
     )
 
     assert wrapper.count("& scp -r") == 1
-    assert wrapper.count("& ssh -tt -L") == 1
+    assert wrapper.count("& ssh -tt") == 1
+    assert "ServerAliveInterval=30" in wrapper
     assert "Start-Process ssh" not in wrapper
-    assert "timeout --signal=TERM 7200s" in wrapper
+    assert "Start-Process $browserUrl" not in wrapper
+    assert "timeout --foreground --signal=TERM 28800s" in wrapper
+    assert "Do not open the browser until the runner prints BROWSER REVIEW READY." in wrapper
+    assert 'if ($PreviewPort -ne 8898)' in wrapper

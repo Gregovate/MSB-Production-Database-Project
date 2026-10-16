@@ -5,7 +5,6 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = BASE_DIR.parent.parent
 ACCEPT = REPO_ROOT / "Controllers" / "Acceptance"
-CANDIDATE_SHA = "2fd2067958cc0a903260fe6f089f88ae63a857f1"
 
 
 def test_browser_preview_pins_exact_candidate_and_disposable_database() -> None:
@@ -13,13 +12,15 @@ def test_browser_preview_pins_exact_candidate_and_disposable_database() -> None:
         encoding="utf-8"
     )
 
-    assert f'TARGET_SHA="{CANDIDATE_SHA}"' in server
+    assert 'TARGET_SHA="${4:?CandidateSha required}"' in server
+    assert 'TARGET_REF="${3:?TargetRef required}"' in server
     assert 'TEST_CONTAINER="msb-controller-browser-preview-' in server
     assert 'TEST_DB="msb_controller_browser_preview"' in server
     assert 'pg_dump -U "$DB_ACTOR" -d "$PROD_DB" -Fc' in server
     assert 'pg_restore -U "$DB_ACTOR" -d "$TEST_DB" --no-owner --no-acl' in server
-    assert '< "$MIGRATION_023"' in server
-    assert '< "$MIGRATION_024"' in server
+    assert 'No migrations: source-only #406 candidate' in server
+    assert 'psql_test < "$MIGRATION_023"' not in server
+    assert 'psql_test < "$MIGRATION_024"' not in server
     assert 'FIELDWIRING_DATABASE_DSN="$DSN"' in server
 
 
@@ -55,10 +56,12 @@ def test_browser_preview_uses_separate_local_flask_port_and_foreground_ssh() -> 
         encoding="utf-8"
     )
 
-    assert "$PreviewPort = 8793" in wrapper
+    assert "[int]$PreviewPort" in wrapper
+    assert "if ($PreviewPort -ne 8898)" in wrapper
     assert '-L "${PreviewPort}:127.0.0.1:${PreviewPort}"' in wrapper
-    assert "& ssh -tt -L" in wrapper
-    assert "Start-Process $browserUrl" in wrapper
+    assert "& ssh -tt -o ServerAliveInterval=30" in wrapper
+    assert "Start-Process $browserUrl" not in wrapper
+    assert "timeout --foreground --signal=TERM" in wrapper
     assert "Start-Process ssh" not in wrapper
     assert "Tee-Object" not in wrapper
     assert 'MSB_PREVIEW_HOST="127.0.0.1"' in server
@@ -71,10 +74,10 @@ def test_browser_preview_makes_only_temp_bundle_readable_to_runtime_user() -> No
         encoding="utf-8"
     )
 
-    assert "$remoteEntry = \"$remoteRoot/controller_setup_management_browser_preview_entry.py\"" in wrapper
-    assert "chmod 755 '$remoteRoot'" in wrapper
-    assert "chmod 700 '$remoteScript'" in wrapper
-    assert "chmod 644 '$remoteEntry'" in wrapper
+    assert "$remoteScript = \"$remote/controller_setup_management_browser_preview_server.sh\"" in wrapper
+    assert "chmod 755 '$remote'" in wrapper
+    assert "bash -n '$remoteScript'" in wrapper
+    assert "chmod 644 '$remote/controller_setup_management_browser_preview_entry.py'" in wrapper
     assert "/opt/fieldwiring" not in wrapper.split("$remoteCommand =", 1)[1].split("\n", 1)[0]
 
 
@@ -97,11 +100,13 @@ def test_browser_preview_cleanup_proves_production_unchanged() -> None:
 
     assert 'PROD_BEFORE="$(prod_fingerprint)"' in server
     assert 'PROD_AFTER="$(prod_fingerprint 2>/dev/null)"' in server
-    assert "production Controller fingerprint changed during browser preview" in server
+    assert "FAIL: production Controller fingerprint mismatch" in server
     assert 'sudo docker rm -f "$TEST_CONTAINER"' in server
-    assert 'worktree remove --force "$CANDIDATE_WORKTREE"' in server
-    assert 'rm -f "$DUMP_FILE"' in server
-    assert 'kill -- -"$PREVIEW_PGID"' in server
+    assert 'worktree remove "$CANDIDATE_WORKTREE"' in server
+    assert 'rm -f -- "$DUMP_FILE"' in server
+    assert 'sudo kill -TERM "$PREVIEW_PGID"' in server
+    assert "CLEANUP FAILED: do not declare CLEAN EXIT" in server
+    assert "CLEAN EXIT: Controller preview owned resources verified absent" in server
     # merge-base is a read-only ancestry check and must not be mistaken for a
     # live checkout mutation. Reject only an actual `git ... merge` command.
     assert re.search(
