@@ -313,3 +313,32 @@ Current priority becomes:
 7. then final acceptance of Add/Edit/Assign/Reassign/Unassign workflows.
 
 Do not proceed to production acceptance of the simplified assignment UI until this planning context is available or the remaining gaps are explicitly accepted.
+
+## 2026-10-16 — Network-first UID explorer correction (draft candidate)
+
+Operator-accepted correction under #110/#111, governed by #122. This is a proposed
+application change, **not** Production acceptance or deployment.
+
+- Select a Network and inspect the complete hexadecimal 01–F0 UID inventory,
+  regardless of Controller model. Search a UID or filter the inventory without
+  changing the underlying Network-wide occupancy calculation.
+- Show current LOR/V7 usage and Display names separately from recorded physical
+  Controller programming and status. "Unused by LOR" is not proof an address
+  has no physical programming conflict.
+- The optional Controller model only determines contiguous-block width through
+  governed `lor_uid_capacity`; it must not filter the base UID inventory.
+  List all conflict-free candidate ranges instead of silently truncating at 24.
+- Normalize Network **identity** case-insensitively throughout the planner:
+  `Regular` and `regular` refer to one address space, displayed as `Regular`.
+  Preserve raw source spelling and do not silently rewrite LOR/V7 or database
+  rows. A separate read-only source audit is still needed to determine whether
+  reference data contains inconsistent spellings.
+- The Stage panel remains separate. The earlier limits on physical spare
+  attribution, reachability, and LOR/physical authority remain unchanged.
+
+Implementation checkpoint: isolated draft branch
+`fix/controller-network-uid-explorer-20261016` from
+`main` `b2d5f8c2f202b228a180bd950187718937c41019`.
+No Production mutation, schema change or deployment. Executable regression,
+disposable-browser acceptance, concurrent-main reconciliation and Greg's
+operator review are still required.
