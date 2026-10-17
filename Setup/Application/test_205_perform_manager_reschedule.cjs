@@ -17,7 +17,7 @@ const assignment = {
 const task={setup_session_task_id:33,task_name:'Replace Outlet Box',effective_complete:false};
 const days=[
   {setup_work_day_id:10,work_date:'2026-10-14',setup_day_number:10,day_status:'PLANNED'},
-  {setup_work_day_id:20,work_date:'2026-10-16',setup_day_number:11,day_status:'PLANNED'}
+  {setup_work_day_id:20,work_date:'2026-10-26',setup_day_number:11,day_status:'PLANNED'}
 ];
 const crews=[
   {setup_work_day_crew_id:8,setup_work_day_id:10,crew_code:'B'},
@@ -53,7 +53,7 @@ const ctx={
     assignment.setup_work_day_id=options.payload.setup_work_day_id;
     assignment.setup_work_day_crew_id=options.payload.setup_work_day_crew_id;
     assignment.shift_code=options.payload.shift_code;
-    assignment.work_date='2026-10-16';
+    assignment.work_date='2026-10-26';
     return {assignment:{setup_work_day_task_id:44}};
  }
 };
