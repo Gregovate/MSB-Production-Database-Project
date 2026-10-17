@@ -57,7 +57,7 @@ def manager_email_preview():
     """Current authorized Manager roster plus 2026 report; NO SMTP, no writes."""
     _repo, authenticated, _access = require_admin()
     pilot = _piloted_digest_module()
-    dsn = setup_database_dsn()
+    dsn = pilot.accepted_setup_dsn()
     roster = pilot.manager_directory(dsn)
     managers = [p for p in roster if p["send_eligible"]]
     if not managers:
