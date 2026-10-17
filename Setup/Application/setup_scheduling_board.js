@@ -3291,7 +3291,7 @@ function board205PopulateCrewSelect(dayId, selectedCrewId = null) {
   if (!crewSelect) return;
   const crews = board205CrewsForDay(dayId);
   crewSelect.innerHTML = crews.map((crew) => (
-    `<option value="${crew.setup_work_day_crew_id}">Crew ${board205Esc(crew.crew_code)}</option>`
+    `<option value="${crew.setup_work_day_crew_id}">Crew ${board205Esc(crew.crew_code)} · ${board205Esc(crew.captain_display_name || 'Captain not assigned')}</option>`
   )).join('');
   if (selectedCrewId != null) crewSelect.value = String(selectedCrewId);
 }
@@ -4279,7 +4279,7 @@ function board205InstallView() {
     board205CollapseScheduledSearchResults();
     board205RevealScheduledAssignment(first);
   });
-  document.querySelectorAll('.setup-board205-backlog, .setup-board205-board').forEach((pane) => {
+  document.querySelectorAll('.setup-board205-backlog, .setup-board205-right').forEach((pane) => {
     pane.addEventListener('dragover', (event) => board205AutoScrollPane(pane, event), true);
   });
   document.getElementById('setup-board205-print')?.addEventListener('click', () => window.print());

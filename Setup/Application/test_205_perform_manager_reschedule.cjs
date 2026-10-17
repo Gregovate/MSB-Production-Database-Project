@@ -96,7 +96,7 @@ async function submit(){
 
   // Exact original assignment moves to the selected future day, crew, shift.
   await submit();
-  assert.equal(calls.length,1);
+  assert.equal(calls.length,1,'Reschedule blocked: '+JSON.stringify(alerts));
   assert.equal(calls[0].method,'PATCH');
   assert(calls[0].url.endsWith('/assignments/44'));
   assert.equal(calls[0].payload.setup_work_day_id,20);
