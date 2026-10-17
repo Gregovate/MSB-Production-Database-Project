@@ -1,3 +1,11 @@
+## October 17 white MSB logo — single approved-source header edit
+
+The operator reviewed the genuine formatted Gmail receipt; its overall presentation and Container/Manager layout were accepted as a good candidate **except for the missing white MSB logo** in the navy header. The operator showed the NAS `\\192.168.5.4\webassets\images\branding\msb-white-logo-600-plain.svg` asset, already referenced in `Setup/Application/setup_theme.js` as `SETUP_DARK_LOGO`. This is the **existing approved Setup dark-theme asset**, not a new logo request.
+
+Engineering authority and operator SOP were amended before the source edit. The source-managed `manager_digest_html.html` now has a single 92px-wide accessible white logo `<img>` **above the unchanged eyebrow and Setup Morning Brief title** with the exact existing public URL `https://webassets.sheboyganlights.org/images/branding/msb-white-logo-600-plain.svg`. No changed email counts, recipients, timing, transport logic, subject, body task text, or Container criteria. A source regression ensures the email logo URL is exactly the current Setup dark-theme brand URL. Exact source `9614d2c7f0b93c543984419cc6d3ff511a34d18c`: Setup full workflow `39014868799` PASS, #205 release tooling `39014868754` PASS.
+
+**Open compatibility gate:** This is an externally hosted SVG reference, and Gmail's image proxy may refuse to render SVG; test assertions only establish source identity, not Gmail visibility. A versioned PNG export from this exact SVG, published through approved MSB webassets (#359) procedure, may be necessary for reliable email. No such PNG was presumed to exist or published by this change. **No logo-revision email sent yet; no fan-out/timer/Captain permission inferred.**
+
 ## October 17 HTML no-send preview PASS; one-receiver follow-up prepared, not sent
 
 Operator ran the corrected live `--preview` after new HTML and #88/#171 Container integration. **Exit 0, `PREVIEW_ONLY`, `sent=0`**, and HTML was **prepared only** (14216 characters). No new message could appear in Gmail from that command; the operator explicitly reported not seeing a new email.
