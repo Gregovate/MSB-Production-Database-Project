@@ -58,6 +58,29 @@ Show a **read-only preview of the actual Manager message** generated from the cu
 
 The screen must be implemented in the protected Setup application and reviewed on the **exact-current-Production disposable browser candidate**, not substituted by a fabricated ChatGPT interface. No copy of full private Manager roster in GitHub, logs or public previews. This review is prerequisite to sending the user's accepted **one-recipient, real `msb-prod-db` SMTP test**, followed by explicit separate approval for any Manager-wide dispatch and systemd timer. GitHub/ChatGPT Gmail send does not satisfy this test.
 
+## October 17 Gmail review — readable HTML and truthful Container movement
+
+**Operator acceptance feedback:** The actual one-recipient Gmail Inbox message proved live data and SMTP transport, but the large unformatted plain-text task block is **not accepted email presentation**. The digest also omitted Containers **in the park / empty / returned**, a critical operational-progress dimension separate from Setup task completion. Reconcile these against existing #88 state; do not manufacture a new Container status model.
+
+**Delivery presentation:**
+- Deliver `multipart/alternative`: a maintained, readable plain-text fallback PLUS an independently source-reviewed **safe HTML** template. Both display **the same live values**; the HTML is the Gmail default if supported, not an image-only report or external stylesheet. Use inline CSS, approximately 600–680px wide, responsive tables, compact high-contrast headings/label/value hierarchy, adequate mobile text, accessible links and no dynamic scripts or image tracking.
+- Order: **Setup KPI banner** (Total / Complete / Remaining and visual completion rate), **pace/deadline**, **Container field movement** (all counts grounded, evidence notes), **Manager exceptions/actions**, then more detailed rows grouped into skimmable date/crew/task tables. Short guidance once; avoid repeating the same phrase on all twelve continuation rows.
+- Every dynamic personal/task/container value must be HTML-escaped; only source-controlled HTML structure or escaped data is allowed. Plain-text part must remain complete if HTML is unavailable. Never put extra Manager addresses in To/Cc; each Manager receives their individual greeting.
+- Show HTML from the *same renderer* inside the protected Administrator **Email recipients & preview** page (sandboxed preview) for operator review before any further SMTP tests. Do not claim the browser is installed until disposable-browser acceptance and approved deployment.
+
+**Container counts: use the installed #88 read projection**, `setup_production_report.movement_picture` with `include_unobserved=True`, and the existing #171 read-only `setup_locate_assets.locate_assets` interpretation. Both are session-scoped and consume recorded movement/event effects. Do not write to state, reclassify history, or invent a new source of truth.
+
+Required distinctly named, **non-additive where noted** categories:
+- **Containers with park setup-location / stop evidence:** currently `DELIVERED / UNLOADED / STAGED / PLACED / RELOCATED` or a `CONTAINER_MOVE` with a current Stage, named destination or observed coordinates. These are recorded positions, *not an assertion of independently GPS-verified current physical presence*. Exclude RETURNED, PICKED, LOADED, IN_TRANSIT and missing/unknown movement.
+- **Picked / loaded / in transit:** current `PICKED / LOADED / IN_TRANSIT` (not yet confirmed in the park); a PICKED event alone is NOT park delivery.
+- **Recorded empty at park:** a **subset** of park-location Containers with #171 association-derived `load_state=EMPTY`; no active associated Displays remain attached in current recorded state. Explicitly state **physical emptiness is unconfirmed** without a separately verified contents inspection. Never call mere zero known active assignments a confirmed empty Container.
+- **Recorded partially unloaded at park:** a second park subset with `load_state=PARTIAL`.
+- **Returned Home:** current authoritative `movement_status=RETURNED` (or corresponding latest event); separate from at-park. As #88 states, this is a reported empty return to Home, not Workshop GPS proof.
+- **No movement recorded** and **Location/status needs review**: distinguish as separate counts, not a fabricated all-containers-in-Workshop claim. Surface historical contents-review flags as a separate informational count only, not necessarily unresolved.
+- Counts use distinct `container_id`, include entire reference Container scope, show `as of` timestamp/Session and a short scope caveat. Do not sum `empty` and `partial` to the total: they are *subsets* of recorded park positions. If no current Session/read permission/projection, **STOP preview and sending** rather than omit Container progress silently.
+
+The first one-recipient **plain-text** test at 01:45 Central was **received but presentation not accepted**. Do not activate the one-day 04:00 fan-out on the basis of transport alone; Manager roster discrepancies and protected browser preview remain gating items. All Captain mail stays OFF.
+
 ## Strict safety gates
 
 1. **Manager-only:** the first runner contains no Captain dispatch path. Regardless of draft PR #412 code, do not import `DirectusSetupOutboxClient`, enable old 074 schema/Flow or send to Production Crew.
