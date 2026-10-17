@@ -59,7 +59,7 @@ def test_disabled_by_default_even_with_message():
 
 def test_ip_relay_uses_verified_tls_no_password_and_only_one_recipient(monkeypatch):
     monkeypatch.setenv("SETUP_NOTIFICATION_SMTP_SEND_ENABLED", "1")
-    monkeypatch.setenv("SETUP_NOTIFICATION_FROM_EMAIL", "reports@sheboyganlights.org")
+    monkeypatch.setenv("SETUP_NOTIFICATION_FROM_EMAIL", "no-reply@sheboyganlights.org")
     outcome = smtp.send_setup_email(
         recipient="captain@sheboyganlights.org",
         subject="MSB Setup — Report Work",
@@ -72,8 +72,8 @@ def test_ip_relay_uses_verified_tls_no_password_and_only_one_recipient(monkeypat
     entries = [x for x in FakeSMTP.calls if x[0] == "send"]
     assert len(entries) == 1
     _, message, from_addr, to_addrs = entries[0]
-    assert from_addr == "reports@sheboyganlights.org"
-    assert message["From"] == "MSB Production DB <reports@sheboyganlights.org>"
+    assert from_addr == "no-reply@sheboyganlights.org"
+    assert message["From"] == "MSB Production DB <no-reply@sheboyganlights.org>"
     assert to_addrs == ["captain@sheboyganlights.org"]
     assert "Complete your actual work report." in message.get_content()
     assert [x[0] for x in FakeSMTP.calls].count("ehlo") == 2
