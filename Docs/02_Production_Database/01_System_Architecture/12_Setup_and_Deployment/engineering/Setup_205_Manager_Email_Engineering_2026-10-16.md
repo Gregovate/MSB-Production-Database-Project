@@ -36,6 +36,18 @@ Freshly compute from the authoritative board at dispatch time, matching the exis
 
 Email wording is **two source-controlled editable text templates** with validated variables (subject and body; first-day pilot uses reviewed files, **not permanent user-facing strings in Python**). No hard-coded persons, contact addresses, screenshot stats, or invented links. Use the protected Setup entry `https://my.sheboyganlights.org/setup/`; an exact-assignment email deep link may be added only after browser acceptance. Show actual current Manager/recipient preview before any live test or fan-out.
 
+## Email wording and hierarchy — operator revision
+
+The first draft was rejected as too long and buried the decision-making beneath repeated instructions. **Use a short morning briefing, not a lengthy training manual.** The reviewed order is:
+
+1. **2026 Setup progress immediately:** Total / Completed / Remaining; unique Blocked / NOT READY; last-seven-calendar-day actual task-completion pace versus required pace for **November 19**; projected finish with an explicit evidence/confidence limit. Label the estimate *task-based* and do not imply reliable labor-hour data.
+2. **Manager decisions:** number of past scheduled occurrences **to verify**, started unfinished tasks **needing continuation**, upcoming readiness exceptions and assignments with Captain TBD. Do not add overlapping totals or call someone delinquent because a report is missing.
+3. **Very brief next steps:** **No work** → Manager `Reschedule · No work performed`; **work occurred / no report** → contact Captain to record actual work; **partial report already saved** → schedule continuation, no missing-report nag; **uncertain** → investigate, not guess. Never enter false labor/time/percent.
+4. **Task detail after the instructions:** retain task names and original dates/shift/Crew to make review actionable; don't bury totals beneath a long list. Use the existing authenticated Setup entry until exact task deep links pass browser acceptance.
+5. **Consequence in one neutral sentence:** unresolved items remain visible for Manager follow-up; **Captain notifications remain OFF** during the first pilot. Later Captain mail requires case-by-case Manager approval and separately enabled sending. The first-night pilot does not imply daily recurring email is already active.
+
+Keep the subject concise, body human-readable in Gmail (single-spaced plain text), with no double header, accusations, verbose legal/technical warnings, hard-coded personnel, or repeat explanations. Both `manager_digest_subject.txt` and `manager_digest_template.txt` are editable source-reviewed assets for the first pilot. This remains a reviewed wording **candidate**, not an operator-approved production email.
+
 ## Strict safety gates
 
 1. **Manager-only:** the first runner contains no Captain dispatch path. Regardless of draft PR #412 code, do not import `DirectusSetupOutboxClient`, enable old 074 schema/Flow or send to Production Crew.
