@@ -423,6 +423,11 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
         str(test_to or "").strip().lower() != LOGO_TEST_RECIPIENT
     ):
         raise PilotStop("Final logo test limited to October 17 and the single reviewed Manager mailbox")
+    if mode != "preview" and (
+        os.environ.get("MSB_SETUP_MANAGER_PILOT_SEND") != SEND_GUARD or
+        os.environ.get("SETUP_NOTIFICATION_SMTP_SEND_ENABLED") != "1"
+    ):
+        raise PilotStop("SMTP production approval is OFF")
 
     from setup_scheduling_board_repository import SetupSchedulingBoardRepository
     roster = manager_directory(dsn)
