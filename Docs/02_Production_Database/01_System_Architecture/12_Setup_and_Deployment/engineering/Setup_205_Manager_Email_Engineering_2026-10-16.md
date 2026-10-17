@@ -112,6 +112,14 @@ Remove only the previous SVG `img src`; retain its position, 92px width, descrip
 
 The operator asks for **one final Gmail delivery to their own `gliebig@sheboyganlights.org` mailbox**. Create separately titled `FINAL LOGO TEST —` and uniquely keyed `MANAGER_LOGO_REVIEW_TEST` / `logo-test-<date>-<recipient-hash>.json` in the original protected attempt ledger. Keep both prior `test-` and `html-test-` receipts intact; no blanket broadcast, no duplicate/retry, no Captain mail. The original received formatted HTML message is accepted in structure subject to this white-logo correction; verifying actual Gmail logo appearance remains required before later Manager-wide approval.
 
+## October 17 — first 04:00 Manager send requested; enlarged left logo
+
+Operator's final PNG email screenshot confirms branded HTML is readable; requested only **one layout refinement**: move the *same* approved white MSB PNG to the **left of the title and enlarge it**, rather than keeping a small logo above. Use a Gmail-compatible two-column presentational table inside the existing navy header. Keep the same title, subject, recipient eligibility, task/Container calculations, background, and body layout.
+
+At approximately 03:05 Chicago time, the operator explicitly requested turning on the **first 04:00 Manager-only mailing**. This is audience/send intent, **not evidence a server timer exists** or consent to suppress the recipient exceptions. The currently observed directory contains five eligible People Managers (Rick, Greg, Rich, Eric, Tom), one **People Manager held due to absent linked identity** (Don), and one **Setup-authorized person not flagged Manager** (Randy). The existing source intentionally fails closed on held People Managers. **Do not silently omit Don, add Randy, flip People flags, grant Directus privileges, or disable the safeguard.** Resolve the intended recipient scope explicitly with the operator, then compare it to a fresh Production read-only roster before any activation.
+
+To meet 04:00, the governed server runbook must still be accepted and actually executed on msb-prod-db by the authorized SSH operator; a GitHub commit, CI pass, chat promise, or ChatGPT automation cannot activate systemd. Retain the one-time timer and separate approval marker, no persistence/catch-up, no Captain dispatch. If unverified/unfinished by 04:00, fail closed and state no email was sent rather than silently mailing later.
+
 ## Strict safety gates
 
 1. **Manager-only:** the first runner contains no Captain dispatch path. Regardless of draft PR #412 code, do not import `DirectusSetupOutboxClient`, enable old 074 schema/Flow or send to Production Crew.
