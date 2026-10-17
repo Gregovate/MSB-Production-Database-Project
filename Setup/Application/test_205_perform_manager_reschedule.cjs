@@ -64,6 +64,9 @@ vm.runInContext(
  section('function nextAssignmentReported(', 'function nextAssignmentReportedLabel('),
  ctx
 );
+// The evaluated source defines nextSetupLocalDate and overwrites the fixture
+// stub. Reapply it here to pin this historical rescheduling test's Chicago day.
+ctx.nextSetupLocalDate = () => '2026-10-15';
 assert.equal(ctx.nextAssignmentLate(assignment),true);
 assert.equal(ctx.nextCanRescheduleNoWork(assignment,task),true);
 async function submit(){

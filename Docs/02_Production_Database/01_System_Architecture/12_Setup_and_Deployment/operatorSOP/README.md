@@ -20,6 +20,7 @@ Open Setup:
 
 The real **2026 Setup Session is live**. Use **Plan / Schedule** for current annual scheduling. The 2025 Historical Verification view remains history/review evidence; do not use it as the current schedule.
 
+- [Review the Daily Setup Manager Email](Review_Setup_Manager_Email.md) — proposed Manager-only morning report; preview, no-work corrections, unfinished continuation, what to do when a report appears wrong. **Email not yet active.**
 - [Perform and Report Setup Work](Perform_and_Report_Setup_Work.md) — Captain/Production Crew field execution, Print Task, Procedure access, Report Work, partial continuation, Manager correction of mistaken reports, and Report Correction -> Work Order Intake.
 - [Rolling Pick List and Pick Delay](Rolling_Pick_List_and_Pick_Delay.md) — current schedule-derived physical demand, picker ordering, Manager early-pick demand, temporary Pick Delay, and Resume Pick.
 - [Setup Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md) — current scheduling plus reusable-task maintenance, prerequisites, Display Ownership, Resources, Extra Materials, Kits, Kit Inventory, and T-Post Inventory.
