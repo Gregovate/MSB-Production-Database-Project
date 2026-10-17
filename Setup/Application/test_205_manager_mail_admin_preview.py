@@ -34,14 +34,22 @@ def client(monkeypatch):
 
     fake_managers = [
         {"person_id":11,"display_name":"Administrator Example",
-         "email":"admin@sheboyganlights.org"},
+         "email":"admin@sheboyganlights.org", "is_manager":True,
+         "can_manage_setup":True, "identity_linked":True,
+         "send_eligible":True,"review_status":"ELIGIBLE","review_reason":"Eligible"},
         {"person_id":12,"display_name":"Manager Example",
-         "email":"manager@sheboyganlights.org"}
+         "email":"manager@sheboyganlights.org", "is_manager":True,
+         "can_manage_setup":True, "identity_linked":True,
+         "send_eligible":True,"review_status":"ELIGIBLE","review_reason":"Eligible"},
+        {"person_id":13,"display_name":"Held Manager",
+         "email":"held@sheboyganlights.org", "is_manager":True,
+         "can_manage_setup":False, "identity_linked":False,
+         "send_eligible":False,"review_status":"HELD","review_reason":"No Setup access"}
     ]
     monkeypatch.setattr(m,"setup_database_dsn",lambda:"isolated-readonly")
     monkeypatch.setattr(m,"SetupSchedulingBoardRepository",FakeRepo)
     monkeypatch.setattr(m,"_piloted_digest_module",lambda:SimpleNamespace(
-        people_managers=lambda dsn: fake_managers,
+        manager_directory=lambda dsn: fake_managers,
         summarize=fake_report,
         render=lambda template, person, report:
             "Actual preview for " + person["display_name"] + "\n" +
@@ -58,7 +66,11 @@ def test_manager_roster_preview_only_with_auth(client,monkeypatch):
     assert data["mode"]=="READ_ONLY_NO_SEND"
     assert data["recipient_count"]==2
     assert [x["email"] for x in data["recipients"]]==[
-        "admin@sheboyganlights.org","manager@sheboyganlights.org"]
+        "admin@sheboyganlights.org","manager@sheboyganlights.org",
+        "held@sheboyganlights.org"]
+    assert data["reviewed_count"] == 3
+    assert data["held_count"] == 1
+    assert [x["status"] for x in data["recipients"]] == ["ELIGIBLE","ELIGIBLE","HELD"]
     assert "no-reply@sheboyganlights.org" in data["sender"]
     assert data["automatic_status"]=="NOT ACTIVATED"
     assert data["captain_status"]=="OFF"
@@ -98,7 +110,7 @@ def test_admin_can_open_actual_candidate_screen(client,monkeypatch):
 def test_empty_recipient_or_db_problem_fails_closed(client,monkeypatch):
     monkeypatch.setattr(m,"require_admin",lambda:(None,"admin@sheboyganlights.org",{}))
     monkeypatch.setattr(m,"_piloted_digest_module",lambda:SimpleNamespace(
-        people_managers=lambda dsn: (_ for _ in ()).throw(RuntimeError("Sensitive DSN")),
+        manager_directory=lambda dsn: (_ for _ in ()).throw(RuntimeError("Sensitive DSN")),
     ))
     resp=client.get("/api/setup/notifications/manager-preview")
     assert resp.status_code==503
