@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from email.message import EmailMessage
 from email.policy import SMTP as SMTP_POLICY
+from email.utils import formataddr
 import os
 import smtplib
 import ssl
@@ -18,6 +19,8 @@ import ssl
 RELAY_HOST = "smtp-relay.gmail.com"
 RELAY_PORT = 587
 ALLOWED_DOMAIN = "@sheboyganlights.org"
+# Keep the same display identity already used by Work Order triage.
+SENDER_DISPLAY_NAME = "MSB Production DB"
 
 
 class SetupSMTPError(RuntimeError):
@@ -67,7 +70,7 @@ def send_setup_email(
         raise SetupSMTPError("Email body is missing or too long")
 
     message = EmailMessage(policy=SMTP_POLICY)
-    message["From"] = from_address
+    message["From"] = formataddr((SENDER_DISPLAY_NAME, from_address))
     message["To"] = to_address
     message["Subject"] = subject
     message.set_content(body_text, subtype="plain", charset="utf-8")
