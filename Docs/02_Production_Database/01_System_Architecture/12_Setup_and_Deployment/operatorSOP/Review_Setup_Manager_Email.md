@@ -58,6 +58,12 @@ The operator's actual formatted Gmail screenshot confirms the report structure a
 
 For Gmail delivery, confirm the image **actually displays**. A working SVG on the Setup website does not prove it renders in email; if the preview/test does not display it, the controlled email-ready **PNG derivative of the same approved SVG** must be published through the existing MSB webassets workflow. Don't mistake a source-included image tag for a received, visible logo. Keep all other text/figures and layout unchanged. No broad-send approval follows from this visual correction.
 
+## Final white-logo Gmail review — October 17
+
+The operator confirms the email-ready white PNG already exists in the same established MSB webassets branding folder as the dark-theme SVG: `msb-white-logo-600-plain.png`. The revised Gmail mail retains the accepted HTML layout and shows this white PNG at the top of the navy banner. Only this logo link changes.
+
+The operator requests **one final Gmail test to their own mailbox only**, not another `--preview`, not a group distribution. This test uses a distinct `FINAL LOGO TEST —` subject and new durable attempt purpose `MANAGER_LOGO_REVIEW_TEST`; preserve the earlier plain and formatted test records. Confirm actual Inbox arrival and that the white logo appears. Check no other portion of the report or sender was changed. No Manager-wide or Captain activation follows automatically.
+
 ## Before the first email is enabled — Administrator review
 
 1. Open the **Setup** application with your normal Sheboygan Lights Google Workspace account. Select the **2026** season.
