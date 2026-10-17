@@ -14,18 +14,18 @@
 
 ## Code inventory (not an install package)
 
-- `Setup/Acceptance/manager_mail_pilot/manager_mail_pilot.py` — 2026 Session projection, People+active Google Directus+current Manager authorization, external controlled template, read-only preview; explicitly gated single-day Manager send; read-only PostgreSQL, per-recipient protected local receipt.
+- `Setup/Acceptance/manager_mail_pilot/manager_mail_pilot.py` — 2026 Session projection, active ref.person Manager directory plus existing SECURITY DEFINER Setup capability (without direct Directus system-table SELECT), external controlled template, read-only preview; explicitly gated single-day Manager send; read-only PostgreSQL, per-recipient protected local receipt.
 - `Setup/Acceptance/manager_mail_pilot/manager_digest_template.txt` and `manager_digest_subject.txt` — separate human-readable, source-editable first-day Manager body and subject templates. This is **not** the later PostgreSQL-backed Administrator template editor and should not be represented as such.
 - `Setup/Application/test_205_manager_mail_pilot.py` — network-free tests covering totals/partial/cancelled work, preview, guard-off, local-date, one-recipient test, no-duplicate SMTP attempt, zero Captain functionality.
 
-No changes to live Setup UI, Report Work, the installed `/opt/msb-setup` detached worktree, the PostgreSQL schema/data, Directus Flows, or existing Work Order emails. No automatic periodic report: this is one calendar-day pilot only.
+Candidate adds a protected read-only Administrator recipient/preview page to Setup, but **no changes to live Setup UI** until independently accepted/deployed. No changes to Report Work, the installed `/opt/msb-setup` detached worktree, the PostgreSQL schema/data, Directus Flows, or existing Work Order emails. No automatic periodic report: this is one calendar-day pilot only.
 
 ## Required acceptance order
 
 1. Read engineering authority and indexes and accept the operator procedure. Review exact email subject/body with user; do not infer approval from an SMTP connection test.
 2. Run exact source tests: `python -m pytest -q -p no:cacheprovider Setup/Application/test_205_manager_mail_pilot.py` and existing Setup/FieldWiring regressions. CI is not proof of runtime reception.
 3. Verify the Production baseline and account/runtime facts again before staging: `7740498e6602f`, live `fieldwiring` runtime and protected `/etc/msb-setup/setup.env` must match expected values. Treat drift as STOP; do not reset Production.
-4. Use a reviewed separate staging path and exact commit/binary manifest. Candidate must import the **installed** `SetupSchedulingBoardRepository` rather than the stale PR #412 mail service. Only read current Production data: show real Manager identities/count and actual 2026 Task/overdue/continuation projections. **Never use screenshot figures as refreshed counts.**
+4. Use a reviewed separate staging path and exact commit/binary manifest. Candidate must import the **installed** `SetupSchedulingBoardRepository` rather than the stale PR #412 mail service. Only read current Production data: show all current active People Managers with eligibility/HELD reasons, separately show any Setup-authorized-but-not-People-flagged discrepancy, and actual 2026 Task/overdue/continuation projections. Neither privilege escalation nor a direct SELECT on public.directus_users is allowed. **Never use screenshot figures as refreshed counts.**
 5. Check the generated live-data report against the protected 2026 Setup Action Center. Any mismatch (task scope, completion dates,/report status, Captain or eligibility) is STOP.
 6. Approve and conduct **one recipient** SMTP test exclusively to the current authorized operator's own MSB mailbox, and verify received body. No delivery to Captains.
 7. Review full current Manager recipient roster and give **separate explicit** Production send authorization. The fallback “one-day” date/time must be fully governed by Server Management, including secure unit installation, environment, ledger and rollback. Missing Server Management runbook = **RUNBOOK GAP FOUND, STOP**.
