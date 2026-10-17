@@ -104,6 +104,14 @@ The operator verified its source in the existing NAS `192.168.5.4/webassets/imag
 
 **Email-client constraint:** The Setup browser's public SVG is *not equivalent* to a Gmail-ready raster. Gmail image proxies do not consistently render external SVG `<img>` URLs. Prefer a verified PNG export **of that exact existing SVG** hosted on the same MSB-controlled webassets site, following approved #359 publication controls, before claiming Gmail acceptance. Do not invent a PNG URL or claim publication. A temporary source-only SVG `<img>` reference can prove branding integration in the protected browser preview, but **actual Gmail logo display is UNVERIFIED** until an operator opens a received message. Never deploy/send a made-up white PNG, external conversion service, or unapproved provider. Preserve the previously accepted HTML layout and prior delivery receipts. This logo change does not authorize a Manager-wide broadcast or Captain mail.
 
+## FINAL white PNG logo correction — operator October 17 02:55 Central
+
+Operator confirms the **PNG with the same filename stem** exists in the same MSB-owned `webassets/images/branding` folder as the approved Setup dark white SVG. Use this existing email-safe PNG in the *same* HTML email header:
+`https://webassets.sheboyganlights.org/images/branding/msb-white-logo-600-plain.png`.
+Remove only the previous SVG `img src`; retain its position, 92px width, descriptive alt, surrounding navy banner, all Setup task/Container KPIs, and recipient logic. Do not introduce image conversion, a new hosting provider, or other email redesign. An acceptance check should verify the image URL exists with PNG media before the sender is invoked; the operator's existing file evidence establishes the intended asset.
+
+The operator asks for **one final Gmail delivery to their own `gliebig@sheboyganlights.org` mailbox**. Create separately titled `FINAL LOGO TEST —` and uniquely keyed `MANAGER_LOGO_REVIEW_TEST` / `logo-test-<date>-<recipient-hash>.json` in the original protected attempt ledger. Keep both prior `test-` and `html-test-` receipts intact; no blanket broadcast, no duplicate/retry, no Captain mail. The original received formatted HTML message is accepted in structure subject to this white-logo correction; verifying actual Gmail logo appearance remains required before later Manager-wide approval.
+
 ## Strict safety gates
 
 1. **Manager-only:** the first runner contains no Captain dispatch path. Regardless of draft PR #412 code, do not import `DirectusSetupOutboxClient`, enable old 074 schema/Flow or send to Production Crew.
