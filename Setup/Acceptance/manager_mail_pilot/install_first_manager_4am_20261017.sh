@@ -21,7 +21,12 @@ ROSTER_ENV=/etc/msb-setup/manager_pilot_2026_10_17.env
 LEDGER=/var/lib/msb-setup-manager-mail-pilot
 APP_DB_ROOT=/opt/msb-setup/Setup/Application
 PY=/opt/fieldwiring/.venv/bin/python
-EXPECTED_ROSTER="rhoffmann@sheboyganlights.org,gliebig@sheboyganlights.org,dmartens@sheboyganlights.org,rmiller@sheboyganlights.org,rneerhof@sheboyganlights.org,esandvig@sheboyganlights.org,tshircel@sheboyganlights.org"
+# Operator supplies the exact, privately reviewed recipient list at invocation.
+# No hard-coded persons/addresses are shipped in source or public CI.
+EXPECTED_ROSTER="${MSB_FIRST_MANAGER_ROSTER:-}"
+if [[ -z "$EXPECTED_ROSTER" ]]; then
+  echo "STOP: operator approved seven-recipient roster not supplied"; exit 2
+fi
 
 echo "Authority: MSB Server Management #205 one-day Manager mail runbook"
 echo "Action: schedule the first 04:00 Central 2026-10-17 Manager-only run"
