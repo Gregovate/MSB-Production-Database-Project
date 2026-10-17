@@ -13,7 +13,7 @@ def test_one_day_installer_syntax_and_no_directus_privilege_change():
     source = INSTALL.read_text(encoding="utf-8")
     if shutil.which("bash"):
         subprocess.run(["bash", "-n", str(INSTALL)], check=True)
-    assert "202610170400" in source
+    assert "202610170359" in source
     assert 'SETUP_DATABASE_DSN="host=127.0.0.1"' in source
     assert "PGPASSFILE=/var/lib/fieldwiring/.pgpass" in source
     assert "msb-setup-manager-one-day-live" in source
