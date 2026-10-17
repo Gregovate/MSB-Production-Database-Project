@@ -1,0 +1,65 @@
+# Review the Daily Setup Manager Email
+
+| Document control | Value |
+| --- | --- |
+| Document type | **Operator Procedure — Manager / Administrator** |
+| Owner | MSB Production Database / Setup Administrator |
+| Status | **CANDIDATE PROCEDURE — Manager email NOT YET ACTIVE** |
+| Audience | Setup Managers and Administrators |
+| First proposed delivery | October 17, 2026, 4:00 AM Central time |
+| Application | [Open Setup](https://my.sheboyganlights.org/setup/) |
+
+## What this email is for
+
+The Manager email helps us identify what Setup has finished, what remains, what is blocked, and whether we are on pace for the **November 19** deadline. It identifies scheduling/reporting discrepancies so Managers can correct them **before volunteers receive unnecessary reminders**. It is not a demand that Captains report work that never happened.
+
+**Important status:** The current V0.3.84 Setup Action Center is available, but automatic Manager email and the Administrator email settings are **not yet installed**. This procedure describes the intended reviewed workflow; do not expect a 4:00 AM message until installation is separately approved and confirmed.
+
+## Before the first email is enabled — Administrator review
+
+1. Open the **Setup** application with your normal Sheboygan Lights Google Workspace account. Select the **2026** season.
+2. Open the **Manager Action Center**. Check that the whole-Setup **Total, Completed and Remaining** match what you expect. Review the **Past occurrences awaiting reports** and **Incomplete tasks needing continuation** groups.
+3. Review the exact **email preview** supplied for the candidate. Check task names, dates, crew/shift and the plain-language instructions; inspect all Manager recipient addresses drawn from the current authorized People records. **The preview must not send any message.**
+4. Ensure the report states **Captain reminders are OFF**, and does not treat every unfinished or NOT READY task as a missing work report.
+5. Review the separately approved **one-recipient test**, sent only to your own authorized Manager mailbox. Open it in Gmail and confirm the sender, subject, legibility and links. A “queued” or “SMTP accepted” result does **not** prove it arrived in your Inbox.
+6. Tell the directing engineer whether the preview/test is **Approved**, **Changes required**, or **Stop**. Do not approve installation merely because the SMTP connection works.
+
+The first pilot is **Managers only**, not a broadcast to Captains or all volunteers. The release process must show the actual date/time, recipient count and delivery outcome before enabling a timer.
+
+## When you receive the Manager report
+
+1. Start with **Total / Completed / Remaining**, actual completions per day, required completions per day, and task-based projected finish. If the email says **insufficient data**, the forecast is unknown; do not read it as on track.
+2. Open [**Setup**](https://my.sheboyganlights.org/setup/) and the **Manager Action Center**. The email reflects a morning snapshot; the live screen may have changed since it was generated.
+3. Expand **Past occurrences awaiting reports**. Review each original scheduled **Task name, Setup Day/date, Crew, Captain and AM/PM shift**. A missing report is **not proof that work took place**.
+4. **If no work happened**, locate the original assignment in **Perform Work**, choose **Reschedule · No work performed** where offered, select the correct current/future Work Day and crew, and confirm. A Manager may use the existing **Reschedule unworked AM/PM tasks** option for multiple genuinely unworked shift assignments. **Do not create a fake 1% report or enter fake hours/minutes.**
+5. **If real work happened but the report is missing**, contact the Captain and help obtain a truthful work report for the **original occurrence**. Report the actual work date, actual number of people, elapsed Hours/Minutes, cumulative task percent and what remains.
+6. **If work was already reported**, even partially, **do not send a missing-report reminder**. For unfinished tasks open **Incomplete tasks needing continuation** and use **Plan continuation** to schedule remaining work without rewriting worked history.
+7. Review **NOT READY / blocked / upcoming readiness** independently. Resolve material/prerequisite/Work Order issues or correct the plan; these classifications are **not reasons by themselves** to email Captains.
+8. If you're uncertain whether work happened, confirm it with the crew or another Manager. Keep it flagged for review; **do not guess** or clear the history just to remove a warning.
+
+## What happens when a Manager does not act?
+
+The unresolved exception stays in the Manager Action Center and may appear in later **Manager-only** summaries. Email does **not** complete or reschedule a task. During this first pilot, **Captain reminder emails remain OFF**. Later Captain reminders will require a Manager's review of the actual original occurrence and a fresh check that an actionable report is still missing.
+
+## Administrator email controls — not yet available
+
+The accepted planned controls are: **automatic mail master on/off**, **Manager daily report on/off**, and **Captain reminder on/off**. Template editing, manual sending, individual preferences and delivery/audit history belong to the later #205 mail application release. Until those controls are installed, do **not** assume toggles exist in the Production browser and do not attempt to change an email server setting to pause Setup reminders. Contact the Setup Administrator or the directing deployment engineer to stop an installed pilot.
+
+## If something is wrong
+
+- **No email arrives:** check Gmail Inbox/Spam, then ask the Administrator to verify that the pilot was actually installed/enabled, that your current Manager access is valid, and the per-recipient SMTP result. Do not tell the operator to repeatedly re-run an uncertain send.
+- **Wrong recipient or someone no longer a Manager:** stop further sends and notify the Administrator. The current People identity and Setup Manager access must be reviewed.
+- **Wrong task, schedule or completion figures:** compare with the live 2026 Setup screen; request an engineering review before trusting the email for scheduling decisions. Do not edit real work data merely to force the numbers to match.
+- **No work was performed:** **Reschedule · No work performed**, with Manager confirmation; do not fabricate reporting data.
+- **A report exists but email calls it missing:** verify **Progress history**, the original task/day/crew and, when needed, use **Correct report**. Do not create a duplicate.
+- **Email says Captain reminders are already active:** treat this as a release discrepancy. The first Manager-only pilot expressly excludes Captain email.
+
+## Expected result
+
+Managers can see whole-Setup progress, distinguish real reporting obligations from scheduling corrections, assign truthful follow-up and reduce unnecessary volunteer email. No Actual Work or Schedule history changes merely because an email was opened.
+
+## Related operator instructions
+
+- [Perform and Report Setup Work](Perform_and_Report_Setup_Work.md) — currently installed reporting, corrected historical work, no-work rescheduling and continuation.
+- [Setup Manager Review Guide](../../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md) — Manager planning and materials.
+- [Engineering authority](../engineering/Setup_205_Manager_Email_Engineering_2026-10-16.md) — implementation/acceptance, not needed for ordinary operator actions.
