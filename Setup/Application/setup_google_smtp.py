@@ -12,13 +12,21 @@ from email.message import EmailMessage
 from email.policy import SMTP as SMTP_POLICY
 from email.utils import formataddr
 import os
+import re
 import smtplib
 import ssl
 
 
 RELAY_HOST = "smtp-relay.gmail.com"
 RELAY_PORT = 587
-ALLOWED_DOMAIN = "@sheboyganlights.org"
+ALLOWED_DOMAIN = "@sheboyganlights.org"  # Sending identity, NOT a recipient restriction.
+# Conservative ASCII mailbox syntax; recipient may be at any valid domain.
+# The caller must select a verified Person contact for the authorized message type.
+_RECIPIENT_PATTERN = re.compile(
+    r"[a-z0-9!#$%&'*+/=?^`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^`{|}~-]+)*"
+    r"@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
+    r"(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+"
+)
 # Keep the same display identity already used by Work Order triage.
 SENDER_DISPLAY_NAME = "MSB Production DB"
 
@@ -42,6 +50,18 @@ def _organization_address(raw: object) -> str:
     return address
 
 
+def _recipient_address(raw: object) -> str:
+    """Syntax-validate a single destination, with no assumed recipient domain."""
+    address = str(raw or "").strip().lower()
+    if (
+        len(address) > 254
+        or not _RECIPIENT_PATTERN.fullmatch(address)
+        or len(address.split("@", 1)[0]) > 64
+    ):
+        raise SetupSMTPError("Recipient email address is invalid")
+    return address
+
+
 def send_setup_email(
     *,
     recipient: str,
@@ -52,8 +72,9 @@ def send_setup_email(
     """Submit exactly one plain-text email through Google Workspace.
 
     The calling notification workflow must first validate authorization,
-    reporting state, idempotency and outbox claim. Only that workflow decides
-    whether a send is permitted. This function performs no automatic retries.
+    reporting state, contact preference, message content and outbox claim.
+    The SMTP transport accepts normal external addresses, but the authorized
+    notification workflow decides WHO can receive WHAT. No automatic retries.
     """
     if os.environ.get("SETUP_NOTIFICATION_SMTP_SEND_ENABLED") != "1":
         raise SetupSMTPError("SMTP sending is disabled")
@@ -61,7 +82,7 @@ def send_setup_email(
     from_address = _organization_address(
         sender if sender is not None else os.environ.get("SETUP_NOTIFICATION_FROM_EMAIL")
     )
-    to_address = _organization_address(recipient)
+    to_address = _recipient_address(recipient)
     if not isinstance(subject, str) or not subject.strip() or len(subject) > 250:
         raise SetupSMTPError("Email subject is missing or too long")
     if any(c in subject for c in "\r\n\x00"):
