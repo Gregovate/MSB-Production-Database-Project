@@ -30,6 +30,7 @@ DEFAULT_SUBJECT_TEMPLATE = Path(__file__).with_name("manager_digest_subject.txt"
 DEFAULT_HTML_TEMPLATE = Path(__file__).with_name("manager_digest_html.html")
 MANAGER_ADDRESS = re.compile(r"[a-z0-9._%+\-]+@sheboyganlights[.]org")
 SEND_GUARD = "APPROVED_OCT_17_MANAGER_ONLY"
+HTML_TEST_RECIPIENT = "gliebig@sheboyganlights.org"
 
 
 class PilotStop(RuntimeError):
@@ -390,6 +391,11 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
         raise PilotStop("One-day pilot send window is closed")
     if mode == "test" and today not in (date(2026,10,16), DAY):
         raise PilotStop("One-recipient test window is closed")
+    if mode == "html_test" and (
+        today != DAY or
+        str(test_to or "").strip().lower() != HTML_TEST_RECIPIENT
+    ):
+        raise PilotStop("Formatted test limited to October 17 and the single reviewed Manager mailbox")
 
     from setup_scheduling_board_repository import SetupSchedulingBoardRepository
     roster = manager_directory(dsn)
@@ -421,6 +427,8 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
         raise PilotStop("Subject template cannot produce a safe email header")
     if mode == "test":
         subject = "TEST — " + subject
+    elif mode == "html_test":
+        subject = "FORMATTED TEST — " + subject
     if mode == "preview":
         print(json.dumps({
             "mode":"NO_SEND_PREVIEW", "chicago_date":str(today),
@@ -458,13 +466,16 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
     for person, body, html_body in messages:
         digest = hashlib.sha256(person["email"].encode("ascii")).hexdigest()[:24]
         filename = (f"test-{today}-{digest}.json" if mode == "test"
+                    else f"html-test-{today}-{digest}.json" if mode == "html_test"
                     else f"manager-{today}-{digest}.json")
         record_path = ledger / filename
         try:
             fd = os.open(record_path,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
         except FileExistsError as exc:
             raise PilotStop("Prior recipient attempt exists; do not retry automatically") from exc
-        receipt={"recipient":person["email"],"purpose":"MANAGER_TEST" if mode == "test" else "MANAGER_DAILY",
+        purpose = ("MANAGER_HTML_REVIEW_TEST" if mode == "html_test"
+                   else "MANAGER_TEST" if mode == "test" else "MANAGER_DAILY")
+        receipt={"recipient":person["email"],"purpose":purpose,
                  "date":str(today),"status":"ATTEMPTED_UNCONFIRMED",
                  "at":local.isoformat()}
         with os.fdopen(fd,"w",encoding="utf-8") as stream:
@@ -512,15 +523,17 @@ def main(argv=None) -> int:
     mode=parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--preview",action="store_true",help="Read-only, sends nothing")
     mode.add_argument("--live",action="store_true",help="One-day gated Manager only")
-    mode.add_argument("--test-to",metavar="AUTHORIZED_MANAGER_EMAIL",help="One-recipient approved test")
+    mode.add_argument("--test-to",metavar="AUTHORIZED_MANAGER_EMAIL",help="Original one-recipient test (not a resend)")
+    mode.add_argument("--html-test-to",metavar="OPERATOR_MAILBOX",help="One distinct formatted Manager review email, Oct 17 only")
     parser.add_argument("--template",type=Path,default=DEFAULT_TEMPLATE)
     parser.add_argument("--ledger",type=Path,default=Path("/var/lib/msb-setup-manager-mail-pilot"))
     args=parser.parse_args(argv)
     try:
         dsn = accepted_setup_dsn()
         result=send(dsn,args.template,args.ledger,chicago_now(),
-                    "preview" if args.preview else "test" if args.test_to else "live",
-                    args.test_to)
+                    "preview" if args.preview else "html_test" if args.html_test_to
+                    else "test" if args.test_to else "live",
+                    args.html_test_to or args.test_to)
         print(json.dumps(result))
     except (PilotStop,ValueError,OSError) as exc:
         print("STOP:",str(exc))
