@@ -120,6 +120,14 @@ At approximately 03:05 Chicago time, the operator explicitly requested turning o
 
 To meet 04:00, the governed server runbook must still be accepted and actually executed on msb-prod-db by the authorized SSH operator; a GitHub commit, CI pass, chat promise, or ChatGPT automation cannot activate systemd. Retain the one-time timer and separate approval marker, no persistence/catch-up, no Captain dispatch. If unverified/unfinished by 04:00, fail closed and state no email was sent rather than silently mailing later.
 
+## October 17 urgent authoritative Manager recipient decision
+
+At ~03:12 Central the operator clarified: **Randy was deliberately added as a Setup Manager during launch**, and **Don's missing `ref.person.directus_user_id` is an onboarding synchronization issue expected to resolve at his next sign-in**, not disqualification from receiving the morning Manager email. Operator asks for the first Manager-only report at 04:00.
+
+**Recipient rule for this one report:** Active `ref.person` with a unique valid MSB email and (People Manager `is_manager=true` **OR** current `ref.setup_browser_capabilities(p.email).can_manage_setup=true`). The function is the granted Setup authorization source; `ref.person` is still People/email source. A Person identity link is **not necessary to receive email**: it is a separate application audit/onboarding concern. Record link mismatch as `onboarding_note` in the protected review response, **without editing it or suppressing mail**. A Setup Manager like Randy who is not People-flagged is included based on live Setup capability (operator-confirmed). A People Manager like Don can be emailed even if the Person Directus UUID link is missing; he remains flagged for onboarding. Neither permission escalation nor automatic Person/Directus edits are permitted. Never send to inactive persons, malformed/duplicate/missing mailboxes or a person with neither Manager source.
+
+The first operator-observed roster is seven: Rick (15), Greg (17), Don (18), Randy (19), Rich (22), Eric (29), Tom (31). Require **exact fresh query and explicit matching seven-email roster at dispatch**, no guessed/extra recipients; detect roster drift and fail closed. The approved roster in private systemd runtime is one-day only, not source-coded future mail preferences. No Captain/volunteer mail path. `ref.person.directus_user_id` remediation belongs to the already governed onboarding workflow, not this urgent email.
+
 ## Strict safety gates
 
 1. **Manager-only:** the first runner contains no Captain dispatch path. Regardless of draft PR #412 code, do not import `DirectusSetupOutboxClient`, enable old 074 schema/Flow or send to Production Crew.
