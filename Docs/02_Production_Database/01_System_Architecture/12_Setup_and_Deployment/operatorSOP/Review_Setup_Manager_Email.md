@@ -52,6 +52,12 @@ After accepting the no-send data, a separate operator-confirmed `FORMATTED TEST 
 
 Open that Gmail message to inspect colors, font sizes, mobile width, the **296/90/206** style of progress header, actual recorded Container counts, and compact task lists. Check **actual current** numbers rather than assuming earlier October 17 values remain unchanged. Approval of formatted presentation is a decision the Manager makes **after** seeing the Inbox message. The recipient Management interface and any Manager-wide activation remain separately unapproved; Captains remain OFF.
 
+## White logo acceptance — one remaining header refinement
+
+The operator's actual formatted Gmail screenshot confirms the report structure and Container/Manager sections are useful. The only requested presentation correction is the **white MSB logo at the top of the dark blue header**. This artwork already belongs to Setup dark mode at `https://webassets.sheboyganlights.org/images/branding/msb-white-logo-600-plain.svg`; no new logo design is needed.
+
+For Gmail delivery, confirm the image **actually displays**. A working SVG on the Setup website does not prove it renders in email; if the preview/test does not display it, the controlled email-ready **PNG derivative of the same approved SVG** must be published through the existing MSB webassets workflow. Don't mistake a source-included image tag for a received, visible logo. Keep all other text/figures and layout unchanged. No broad-send approval follows from this visual correction.
+
 ## Before the first email is enabled — Administrator review
 
 1. Open the **Setup** application with your normal Sheboygan Lights Google Workspace account. Select the **2026** season.
