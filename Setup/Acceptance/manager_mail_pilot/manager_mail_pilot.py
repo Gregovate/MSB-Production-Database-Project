@@ -384,6 +384,27 @@ def deliver(recipient: str, subject: str, body: str, html_body: str | None = Non
     return "SMTP_ACCEPTED_NOT_DELIVERED"
 
 
+def enforce_approved_manager_audience(managers: list[dict], roster: list[dict]) -> None:
+    """Require exact recipient acknowledgement, including any held People Managers.
+
+    No static email list lives in source; operator-approved root-only systemd
+    environment determines the one-day send and is checked against LIVE People.
+    """
+    approved = os.environ.get("MSB_SETUP_MANAGER_PILOT_APPROVED_ROSTER", "").strip()
+    if not approved:
+        raise PilotStop("Manager fan-out STOP: exact recipient roster not approved")
+    actual = {p["email"] for p in managers}
+    values = [value.strip().lower() for value in approved.split(",")]
+    if (not values or any(not MANAGER_ADDRESS.fullmatch(x) for x in values)
+            or len(set(values)) != len(values) or set(values) != actual):
+        raise PilotStop("Manager fan-out STOP: approved roster differs from current eligible People")
+    held = {str(p["person_id"]) for p in roster if p.get("is_manager") and not p["send_eligible"]}
+    ack = os.environ.get("MSB_SETUP_MANAGER_PILOT_ACKNOWLEDGED_HELD_IDS", "").strip()
+    stated = [v.strip() for v in ack.split(",") if v.strip()]
+    if len(stated) != len(set(stated)) or set(stated) != held:
+        raise PilotStop("Manager fan-out STOP: held People Managers not explicitly acknowledged")
+
+
 def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: str | None) -> dict:
     """Every send must pass a second dispatch-time Manager lookup and guards."""
     local = now.astimezone(CHICAGO)
@@ -408,8 +429,8 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
     managers = [p for p in roster if p["send_eligible"]]
     if not managers:
         raise PilotStop("No eligible Manager recipients; review People and Setup permissions")
-    if mode == "live" and any(p.get("is_manager") and not p["send_eligible"] for p in roster):
-        raise PilotStop("People Manager roster has HELD recipients; review before live broadcast")
+    if mode == "live":
+        enforce_approved_manager_audience(managers, roster)
     board = SetupSchedulingBoardRepository(dsn).board(2026)
     report = summarize(board, today)
     report.update(container_summary(dsn, season_year=2026))
