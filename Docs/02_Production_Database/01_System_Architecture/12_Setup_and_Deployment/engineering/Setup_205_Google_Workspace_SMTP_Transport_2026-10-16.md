@@ -3,7 +3,7 @@
 | Control | Value |
 |---|---|
 | Authority | #205 under #122, V0.3.84 production preserved |
-| Status | **PRODUCTION RELAY PREFLIGHT VERIFIED; SMTP SEND AND NOTIFICATION WORKFLOW NOT YET ACCEPTED** |
+| Status | **PRODUCTION HOST → GOOGLE WORKSPACE INBOX TEST PASS; APPLICATION NOTIFICATION WORKFLOW NOT YET ACCEPTED** |
 | Candidate | [PR #412](https://github.com/Gregovate/MSB-Production-Database-Project/pull/412) |
 | Role | Delivery transport only; no Directus Flow, no additional web server/container |
 
@@ -15,7 +15,13 @@ Greg then executed read-only commands on the MSB server at internal `192.168.5.9
 - `curl -4 -sS https://api.ipify.org` produced **69.21.78.70**.
 - `openssl s_client -starttls smtp -connect smtp-relay.gmail.com:587 -servername smtp-relay.gmail.com -brief < /dev/null` produced **CONNECTION ESTABLISHED**, **TLSv1.3**, **TLS_AES_256_GCM_SHA384**, peer certificate CN `smtp-relay.gmail.com`, **Verification: OK**, and `250 SMTPUTF8`.
 
-**Interpretation:** public source IP matches Workspace relay restriction; STARTTLS/certificate/port accessibility have been demonstrated. This is *not* proof that a real message has been accepted by SMTP DATA, entered an inbox or been read. Existing Google Admin rule is unchanged.
+**Operator-confirmed end-to-end SMTP test — October 16 at approximately 19:39 America/Chicago:**
+- Using a one-time standalone Python `smtplib` script run on the MSB Production server, Greg sent **one test message** through `smtp-relay.gmail.com:587` using mandatory STARTTLS and system certificate verification, with the existing `MSB Production DB <no-reply@sheboyganlights.org>` sender.
+- The sole recipient was Greg's verified organizational mailbox, `gliebig@sheboyganlights.org`. Subject: **MSB Production DB - SMTP Test**.
+- Terminal printed **SMTP ACCEPTED - Now check your mailbox.** Greg then confirmed the actual message appeared in the Gmail Inbox with the expected From, subject and test body.
+- This proves the approved host and Workspace relay can deliver a real email to the tested mailbox. It does **not** test PR #412's `setup_google_smtp.py` directly, the PostgreSQL notification outbox, application routes, eligible-recipient resolution, work-report suppression, failure audit, real Captain recipient, or unattended 04:00 dispatch. No change to Workspace settings, Production application code, Postgres schema or scheduled services was made.
+
+**Earlier network preflight:** Public source IP and TLS reachability are also confirmed independently. Existing Google Admin rule remains unchanged.
 
 **Existing sender identity (operator-confirmed):** Work Order triage already uses **MSB Production DB** `<no-reply@sheboyganlights.org>`. Reuse this same sender for #205 Manager and Captain emails. The sender is not a requested new mailbox, identity, alias or password. A non-replying address must not be presented as a support/contact path; point recipients to authenticated Setup actions and their Manager.
 
