@@ -65,6 +65,7 @@ def manager_email_preview():
     board = SetupSchedulingBoardRepository(dsn).board(2026)
     now = datetime.now(CHICAGO)
     report = pilot.summarize(board, now.date())
+    report.update(pilot.container_summary(dsn, season_year=2026))
     subject = Template((_PILOT_DIR / "manager_digest_subject.txt").read_text(encoding="utf-8")).substitute(report).strip()
     if not subject or len(subject) > 250 or any(c in subject for c in "\r\n\x00"):
         raise RuntimeError("Email subject validation failed")
@@ -73,6 +74,7 @@ def manager_email_preview():
     # A non-recipient Administrator sees an explicit sample recipient identity.
     preview_manager = next((p for p in managers if p["email"] == authenticated), managers[0])
     body = pilot.render((_PILOT_DIR / "manager_digest_template.txt").read_text(encoding="utf-8"), preview_manager, report)
+    html_body = pilot.render_html((_PILOT_DIR / "manager_digest_html.html").read_text(encoding="utf-8"), preview_manager, report)
     recipients = [
         {"person_id":int(p["person_id"]), "name":p["display_name"], "email":p["email"],
          "status":p["review_status"], "reason":p["review_reason"],
@@ -90,7 +92,7 @@ def manager_email_preview():
         audience="Current authorized Setup Managers",
         recipient_count=len(managers), held_count=len(roster) - len(managers),
         reviewed_count=len(roster), recipients=recipients,
-        subject=subject, body_text=body,
+        subject=subject, body_text=body, body_html=html_body,
         preview_for=preview_manager["display_name"],
         report_date=report["report_date"],
         metrics={key:report[key] for key in (
@@ -99,6 +101,11 @@ def manager_email_preview():
             "projected_finish", "projection_confidence",
             "missing_report_occurrences", "continuation_needed",
             "readiness_exceptions", "captain_tbd_count",
+            "completion_percent", "containers_total", "containers_park_recorded",
+            "containers_outbound", "containers_empty_at_park",
+            "containers_partial_at_park", "containers_returned",
+            "containers_no_movement", "containers_location_review",
+            "containers_contents_review_history", "containers_snapshot_as_of",
         )},
     ))
 
