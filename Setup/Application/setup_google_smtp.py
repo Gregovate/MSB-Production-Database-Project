@@ -68,13 +68,16 @@ def send_setup_email(
     subject: str,
     body_text: str,
     sender: str | None = None,
+    sender_display_name: str | None = None,
 ) -> str:
     """Submit exactly one plain-text email through Google Workspace.
 
     The calling notification workflow must first validate authorization,
     reporting state, contact preference, message content and outbox claim.
-    The SMTP transport accepts normal external addresses, but the authorized
-    notification workflow decides WHO can receive WHAT. No automatic retries.
+    The SMTP transport accepts normal external addresses and an MSB-domain
+    sender with a safe display name; the authorized notification workflow must
+    derive the sender from the signed-in user, and decide WHO can receive WHAT.
+    Sender name and address are not trusted client inputs. No automatic retries.
     """
     if os.environ.get("SETUP_NOTIFICATION_SMTP_SEND_ENABLED") != "1":
         raise SetupSMTPError("SMTP sending is disabled")
@@ -83,6 +86,16 @@ def send_setup_email(
         sender if sender is not None else os.environ.get("SETUP_NOTIFICATION_FROM_EMAIL")
     )
     to_address = _recipient_address(recipient)
+    # The authenticated application determines sender identity and permission;
+    # this transport must still reject malformed or injected display names.
+    display_name = (
+        SENDER_DISPLAY_NAME if sender_display_name is None else sender_display_name.strip()
+    ) if sender_display_name is None or isinstance(sender_display_name, str) else ""
+    if (
+        not display_name or len(display_name) > 100
+        or any(ord(c) < 32 or ord(c) == 127 for c in display_name)
+    ):
+        raise SetupSMTPError("Email sender display name is invalid")
     if not isinstance(subject, str) or not subject.strip() or len(subject) > 250:
         raise SetupSMTPError("Email subject is missing or too long")
     if any(c in subject for c in "\r\n\x00"):
@@ -91,7 +104,7 @@ def send_setup_email(
         raise SetupSMTPError("Email body is missing or too long")
 
     message = EmailMessage(policy=SMTP_POLICY)
-    message["From"] = formataddr((SENDER_DISPLAY_NAME, from_address))
+    message["From"] = formataddr((display_name, from_address))
     message["To"] = to_address
     message["Subject"] = subject
     message.set_content(body_text, subtype="plain", charset="utf-8")
