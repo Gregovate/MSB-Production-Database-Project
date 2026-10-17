@@ -32,17 +32,12 @@ def test_one_day_installer_syntax_and_no_directus_privilege_change():
     assert "systemctl is-active" in source
 
 
-def test_authorized_first_seven_and_no_eighth_person():
+def test_exact_seven_operator_roster_is_not_hardcoded_in_source():
     content = INSTALL.read_text(encoding="utf-8")
-    line=next(x for x in content.splitlines() if x.startswith("EXPECTED_ROSTER="))
-    roster = line.split("=", 1)[1].strip('"').split(",")
-    assert len(roster) == 7 and len(set(roster)) == 7
-    assert set(roster) == {
-        "rhoffmann@sheboyganlights.org",
-        "gliebig@sheboyganlights.org",
-        "dmartens@sheboyganlights.org",
-        "rmiller@sheboyganlights.org",
-        "rneerhof@sheboyganlights.org",
-        "esandvig@sheboyganlights.org",
-        "tshircel@sheboyganlights.org",
-    }
+    assert 'MSB_FIRST_MANAGER_ROSTER' in content
+    assert 'EXPECTED_ROSTER="${MSB_FIRST_MANAGER_ROSTER:-}"' in content
+    assert 'assert len(rows) == len(eligible) == 7' in content
+    assert 'enforce_approved_manager_audience' in content
+    assert 'gliebig@sheboyganlights.org' not in content
+    assert 'dmartens@sheboyganlights.org' not in content
+    assert 'rmiller@sheboyganlights.org' not in content
