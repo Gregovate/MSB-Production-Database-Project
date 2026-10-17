@@ -292,7 +292,7 @@ def test_html_protects_people_task_content_and_matches_text_numbers():
     assert "Containers · Field movement" in email
     assert "Park stops recorded" in email
     assert "Returned Home" in email
-    assert ">8</div>" in email or ">8</td>" in email
+    assert "8 reference Containers" in email
     assert "A &amp; B" in email
     assert "&lt;script&gt;" in email
     assert '<script>alert("no")</script>' not in email
