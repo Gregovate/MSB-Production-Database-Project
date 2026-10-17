@@ -73,6 +73,7 @@ def test_ip_relay_uses_verified_tls_no_password_and_only_one_recipient(monkeypat
     assert len(entries) == 1
     _, message, from_addr, to_addrs = entries[0]
     assert from_addr == "reports@sheboyganlights.org"
+    assert message["From"] == "MSB Production DB <reports@sheboyganlights.org>"
     assert to_addrs == ["captain@sheboyganlights.org"]
     assert "Complete your actual work report." in message.get_content()
     assert [x[0] for x in FakeSMTP.calls].count("ehlo") == 2
