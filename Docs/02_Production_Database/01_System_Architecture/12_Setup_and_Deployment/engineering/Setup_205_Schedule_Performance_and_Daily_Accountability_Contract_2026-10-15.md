@@ -137,6 +137,29 @@ Resolution path: named Captain submits/corrects original report under #132, Mana
 
 ---
 
+## Captain reminder must support correcting a mistaken missing-report assumption — October 17 operator clarification
+
+**Operator intent:** Even where an authorized Manager has reviewed a historically unreported occurrence, the Captain receiving a reminder must have a simple, non-accusatory way to say that no work was performed as planned, **without recording fictitious hours, crew, minutes or percent complete**. The email must also explain how a Captain who *did* perform work can submit actuals or ask one of **two identified, available people** for reporting help. This is protection against human review errors, not authority for the Captain to edit a Manager-only schedule.
+
+**Required editable template structure — `CAPTAIN_MISSING_REPORT`:**
+
+> **Subject:** MSB Setup — Please confirm work for {{task_name}}  
+> Hello {{recipient_name}},  
+> Our records do not yet show a work report for **{{task_name}}**, scheduled **{{work_date}}**, **{{shift}}**, **Crew {{crew}}**.  
+> **If NO work was performed as planned:** Do **not** enter hours, crew counts, minutes or progress that didn't happen. Contact **{{scheduling_contact_name}}** at **{{scheduling_contact_email}}** to have this assignment reviewed and, where appropriate, rescheduled by a Manager.  
+> **If work WAS performed:** Please report the **actual work**, including the real work date, crew size, Hours and Minutes, percent complete and what remains. Open **{{report_work_url}}** for the exact original scheduled assignment.  
+> **Need help reporting?** Contact **{{help_contact_1_name}}** at **{{help_contact_1_email}}** or **{{help_contact_2_name}}** at **{{help_contact_2_email}}**.  
+> **If you are uncertain whether a teammate already reported:** Ask a Manager before entering a duplicate.  
+> Thank you for keeping our Setup records accurate.
+
+**Contacts are real governed data, not replacement hard-coded names:** the actual responsible scheduling contact and report-help contacts must be **explicitly configured/resolved from current authorized MSB People and Setup roles**, not guessed from the crew Captain, a legacy Person flag, the user's personal email, or invented “XYZ” names. The scheduling contact must have the existing Manager rescheduling permission (or be a designated contact who routes to one); help contacts must be currently approved to assist with Report Work. Prefer the Manager who actually reviewed/approved the occurrence **when that person's MSB contact is verified**, otherwise an Administrator-maintained scheduling contact. Two distinct, verified help contacts may be set per Setup season; a context-specific selection may override only when validated. Show contact name and email in **the exact message preview**, and never expose another volunteer's private address without the approved operational contact policy. Validate contacts at send time; if no viable rescheduling contact or report-help route exists, **hold the reminder for Manager action** rather than sending unresolved placeholders or unreachable instructions. Do not route replies to `no-reply@sheboyganlights.org`.
+
+**One consolidated email may cover multiple original occurrences:** list each by human task name, date, shift and crew, and preserve the **NO WORK / DID WORK / NOT SURE** instructions once in a clear shared section (or compact per-occurrence choices if the work status differs). A no-work reply or request for assistance is **not itself a Report Work submission**, Manager disposition, cancellation or automatic reschedule. The Manager must confirm actual no-work state and use the existing guarded/audited rescheduling command. If an actual report is already saved (partial or 100%), suppress the missing-report reminder. If the Captain no longer has app reporting authority, do not send an inaccessible reporting link: escalate to a Manager and rely only on appropriate scheduling/contact communication.
+
+**Acceptance additions:** template subject/body editable and revisioned; real resolved manager/help contacts shown in the preview and message; invalid/stale/missing addresses block or safely escalate; Manager-approved reminder still gives non-accusatory no-work appeal; recipient cannot modify scheduling by email; person without Report Work access is not told to sign in/report; duplicated work report blocked; daily consolidated email does not repeat a reminder for every task edit; both actual work and no-work branch are understandable without training; no reply directed to `no-reply@`. The previous **Manager approval BEFORE Captain reminders** and send-time rechecks remain mandatory. This text is **not** a claim that the template editor, contact resolver or mail sender is deployed.
+
+---
+
 ## Administrator-controlled email notifications — October 16 operator direction
 
 **Operator intent:** Automatic email must be useful, not an annoyance. An authenticated Setup **Administrator** can turn scheduled notifications on/off from the Setup Administration area (a concise *Email Notification Settings* panel), without changing Google Workspace, server environment variables, systemd timers, or Directus. This requirement is part of the same #205 notification release; no new issue or system.
