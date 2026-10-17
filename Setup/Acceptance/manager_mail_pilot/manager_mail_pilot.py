@@ -118,6 +118,85 @@ def people_managers(dsn: str) -> list[dict]:
     return people
 
 
+def summarize_container_snapshot(containers: list[dict], generated_at: object) -> dict:
+    """#88 movement + #171 read-only association projection, not physical proof."""
+    if not containers:
+        raise PilotStop("Container reference inventory unavailable")
+    seen=set()
+    counts = {
+        "containers_total":len(containers),
+        "containers_park_recorded":0,
+        "containers_outbound":0,
+        "containers_empty_at_park":0,
+        "containers_partial_at_park":0,
+        "containers_returned":0,
+        "containers_no_movement":0,
+        "containers_location_review":0,
+        "containers_contents_review_history":0,
+    }
+    for c in containers:
+        ident = int(c["container_id"])
+        if ident in seen:
+            raise PilotStop("Duplicate Container in current movement snapshot")
+        seen.add(ident)
+        status = str(c.get("movement_status") or "").upper()
+        observation = c.get("observation") or {}
+        event_type = str(observation.get("event_type") or "").upper()
+        if c.get("review_event_ids"):
+            counts["containers_contents_review_history"] += 1
+        if c.get("reported_home") or status == "RETURNED" or event_type == "RETURNED":
+            counts["containers_returned"] += 1
+        elif status in {"PICKED", "LOADED", "IN_TRANSIT"}:
+            counts["containers_outbound"] += 1
+        elif status in {"DELIVERED", "UNLOADED", "STAGED", "PLACED", "RELOCATED"} or (
+            status == "CONTAINER_MOVE" and (
+                c.get("current_location_note") or
+                observation.get("destination_location_note") or
+                observation.get("stage_name") or
+                c.get("position_source") == "movement-event" and c.get("position")
+            )
+        ):
+            counts["containers_park_recorded"] += 1
+            if c.get("load_state") == "EMPTY":
+                counts["containers_empty_at_park"] += 1
+            elif c.get("load_state") == "PARTIAL":
+                counts["containers_partial_at_park"] += 1
+        elif not status and not c.get("movement_status") and not observation.get("event_type"):
+            counts["containers_no_movement"] += 1
+        else:
+            counts["containers_location_review"] += 1
+    if sum(counts[k] for k in (
+        "containers_park_recorded","containers_outbound","containers_returned",
+        "containers_no_movement","containers_location_review")) != len(containers):
+        raise PilotStop("Container movement categories did not partition the inventory")
+    counts["containers_snapshot_as_of"] = str(generated_at)
+    counts["containers_evidence_note"] = (
+        "Recorded #88 movement/#171 associations. Picked is not park delivery; "
+        "empty/partial are subsets of recorded park stops and not physical inspections."
+    )
+    return counts
+
+
+def container_summary(dsn: str, season_year: int = 2026) -> dict:
+    """Reuse the installed #88 movement snapshot and #171 Container projection."""
+    from setup_repository import SetupRepository
+    from setup_production_report import movement_picture
+    from setup_locate_assets import locate_assets
+
+    repository = SetupRepository(dsn)
+    session = repository.movement_summary(season_year)
+    session_id = session.get("setup_session_id")
+    if not session_id:
+        raise PilotStop("2026 Setup Session missing for Container snapshot")
+    picture = movement_picture(repository, session_id, include_unobserved=True)
+    projected = locate_assets(picture)
+    counts = summarize_container_snapshot(
+        projected["containers"], picture.get("generated_at")
+    )
+    counts["containers_session_id"] = int(session_id)
+    return counts
+
+
 def summarize(board: dict, today: date) -> dict:
     if not board.get("session") or int(board["session"].get("season_year") or 0) != 2026:
         raise PilotStop("The active 2026 Setup Session was not found")
@@ -206,6 +285,12 @@ def summarize(board: dict, today: date) -> dict:
         "projected_finish":finish.isoformat() if finish else "INSUFFICIENT DATA",
         "projection_confidence":("Task-count estimate only; tasks vary in size" if trustworthy
                                  else "Not reliable; completion-date evidence/sample insufficient"),
+        "past_rows":past,
+        "continuation_rows":[{
+            "name":str(t.get("task_name") or "Unnamed task"),
+            "stage":str(t.get("stage_name") or t.get("stage_key") or "Site-wide"),
+            "percent":str(t.get("percent_complete") or 0)
+        } for t in continuations],
         "overdue_lines":lines([
             f"- {r['name']} | {r['stage']} | {r['date']} {r['shift']} | "
             f"Crew {r['crew']} | {r['captain']} | original #{r['id']}"
@@ -266,6 +351,7 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
         raise PilotStop("People Manager roster has HELD recipients; review before live broadcast")
     board = SetupSchedulingBoardRepository(dsn).board(2026)
     report = summarize(board, today)
+    report.update(container_summary(dsn, season_year=2026))
     template = path.read_text(encoding="utf-8")
     if not template.strip() or len(template) > 25000:
         raise PilotStop("Template is empty or unexpectedly large")
@@ -297,7 +383,12 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
             "counts":{k:report[k] for k in (
                 "total_tasks","completed_tasks","remaining_tasks","blocked_tasks",
                 "missing_report_occurrences","continuation_needed","readiness_exceptions",
-                "captain_tbd_count","actual_pace","required_pace","projected_finish")},
+                "captain_tbd_count","actual_pace","required_pace","projected_finish",
+                "containers_total","containers_park_recorded","containers_outbound",
+                "containers_empty_at_park","containers_partial_at_park",
+                "containers_returned","containers_no_movement",
+                "containers_location_review","containers_contents_review_history",
+                "containers_snapshot_as_of")},
             "subject":subject,
         },indent=2))
         print("--- FIRST MANAGER BODY — PREVIEW ONLY ---")
