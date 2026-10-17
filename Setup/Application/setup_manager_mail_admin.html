@@ -67,16 +67,17 @@
         </div>
       </section>
       <section class="card">
-        <h2>Current Setup figures</h2>
+        <h2>Current Setup and Container figures</h2>
         <p class="muted">Calculated from the live 2026 Setup Session; not from the previous screenshot.</p>
         <div class="metrics" id="metrics"></div>
         <p class="small muted">Report generated: <span id="generated"></span></p>
       </section>
       <section class="card">
-        <h2>Exact email preview — first eligible Manager</h2>
+        <h2>Exact formatted Gmail preview — eligible Manager</h2>
         <p><strong>Subject:</strong> <span id="subject"></span></p>
         <p><strong>Greeting for:</strong> <span id="preview-person"></span></p>
-        <pre id="body"></pre>
+        <iframe id="formatted-email" title="Formatted HTML email preview" sandbox="" style="width:100%;min-height:950px;border:1px solid #dde6ee;border-radius:8px;background:#fff;" loading="lazy"></iframe>
+        <details style="margin-top:12px;"><summary>View complete plain-text alternative</summary><pre id="body"></pre></details>
         <p class="small muted">Different recipients receive their own names. Review only; the message has not been submitted to SMTP.</p>
       </section>
     </div>
@@ -92,7 +93,14 @@
       ['Upcoming readiness','readiness_exceptions'],
       ['Future Captain TBD','captain_tbd_count'],
       ['Actual tasks/day','actual_pace'], ['Required tasks/day','required_pace'],
-      ['Task-based projected finish','projected_finish']
+      ['Task-based projected finish','projected_finish'],
+      ['Containers: Park stop recorded','containers_park_recorded'],
+      ['Containers: Picked / en route','containers_outbound'],
+      ['Containers: Empty at park (derived)','containers_empty_at_park'],
+      ['Containers: Partly unloaded at park','containers_partial_at_park'],
+      ['Containers: Returned Home','containers_returned'],
+      ['Containers: No movement','containers_no_movement'],
+      ['Containers: Location needs review','containers_location_review']
     ];
     const cell = (row,value) => {
       const td=document.createElement('td');td.textContent=String(value??'');row.appendChild(td);
@@ -116,6 +124,9 @@
         $('subject').textContent=result.subject;
         $('preview-person').textContent=result.preview_for;
         $('body').textContent=result.body_text;
+        if(typeof result.body_html !== 'string' || !result.body_html.includes('Containers · Field movement'))
+          throw Error('Formatted email/Container section unavailable — STOP');
+        $('formatted-email').srcdoc=result.body_html;
         const tbody=$('recipients');tbody.replaceChildren();
         for(const p of result.recipients) {
           const row=document.createElement('tr');
