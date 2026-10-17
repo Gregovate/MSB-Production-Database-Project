@@ -25,6 +25,7 @@ DEADLINE = date(2026, 11, 19)
 FROM = "no-reply@sheboyganlights.org"
 GOOGLE_RELAY = "smtp-relay.gmail.com"
 DEFAULT_TEMPLATE = Path(__file__).with_name("manager_digest_template.txt")
+DEFAULT_SUBJECT_TEMPLATE = Path(__file__).with_name("manager_digest_subject.txt")
 MANAGER_ADDRESS = re.compile(r"[a-z0-9._%+\-]+@sheboyganlights[.]org")
 SEND_GUARD = "APPROVED_OCT_17_MANAGER_ONLY"
 
@@ -226,7 +227,14 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
         messages = [(p,s) for p,s in messages if p["email"] == test_to.lower().strip()]
         if len(messages) != 1:
             raise PilotStop("Test address is not exactly one current authorized Manager")
-    subject = ("TEST — " if mode == "test" else "") + "MSB Setup — Manager Action Report — " + today.isoformat()
+    try:
+        subject = Template(DEFAULT_SUBJECT_TEMPLATE.read_text(encoding="utf-8")).substitute(report).strip()
+    except (KeyError,ValueError,OSError) as exc:
+        raise PilotStop("Subject template is missing or contains unsupported placeholders") from exc
+    if not subject or len(subject) > 250 or any(c in subject for c in "\r\n\x00"):
+        raise PilotStop("Subject template cannot produce a safe email header")
+    if mode == "test":
+        subject = "TEST — " + subject
     if mode == "preview":
         print(json.dumps({
             "mode":"NO_SEND_PREVIEW", "chicago_date":str(today),
