@@ -47,6 +47,19 @@ def fixture_board():
     }
 
 
+def fixture_containers():
+    return {
+        "containers_total":8, "containers_park_recorded":3,
+        "containers_outbound":1, "containers_empty_at_park":1,
+        "containers_partial_at_park":1, "containers_returned":1,
+        "containers_no_movement":2, "containers_location_review":1,
+        "containers_contents_review_history":1,
+        "containers_snapshot_as_of":"2026-10-17 02:00:00-05:00",
+        "containers_session_id":2,
+        "containers_evidence_note":"Recorded state; not verified empty",
+    }
+
+
 def setup_fakes(monkeypatch):
     class BoardRepo:
         def __init__(self, dsn):
@@ -54,6 +67,7 @@ def setup_fakes(monkeypatch):
         def board(self, year):
             assert year == 2026
             return fixture_board()
+    monkeypatch.setattr(mail,"container_summary",lambda dsn,season_year:fixture_containers())
     monkeypatch.setitem(sys.modules,"setup_scheduling_board_repository",
                         SimpleNamespace(SetupSchedulingBoardRepository=BoardRepo))
     monkeypatch.setattr(mail,"manager_directory",lambda dsn:[
@@ -120,6 +134,7 @@ def test_manager_email_live_holds_disputed_people_roster(monkeypatch,tmp_path):
 
 def test_whole_setup_counts_and_historical_classification():
     a = mail.summarize(fixture_board(),date(2026,10,17))
+    a.update(fixture_containers())
     assert [a["total_tasks"],a["completed_tasks"],a["remaining_tasks"]] == [3,1,2]
     assert a["blocked_tasks"] == 1
     assert a["missing_report_occurrences"] == 1
@@ -131,6 +146,7 @@ def test_whole_setup_counts_and_historical_classification():
 
 def test_template_is_external_reviewable_and_no_fake_reporting():
     a = mail.summarize(fixture_board(),date(2026,10,17))
+    a.update(fixture_containers())
     source = mail.DEFAULT_TEMPLATE.read_text(encoding="utf-8")
     body = mail.render(source,{"display_name":"Manager One"},a)
     assert "Good morning Manager One" in body
@@ -141,6 +157,7 @@ def test_template_is_external_reviewable_and_no_fake_reporting():
 
 def test_manager_email_leads_with_kpis_not_training_or_a_long_task_list():
     report = mail.summarize(fixture_board(),date(2026,10,17))
+    report.update(fixture_containers())
     body = mail.render(
         mail.DEFAULT_TEMPLATE.read_text(encoding="utf-8"),
         {"display_name":"Manager One"}, report,
@@ -211,7 +228,7 @@ def test_success_then_no_duplicate_send(monkeypatch,tmp_path):
     monkeypatch.setenv("MSB_SETUP_MANAGER_PILOT_SEND",mail.SEND_GUARD)
     monkeypatch.setenv("SETUP_NOTIFICATION_SMTP_SEND_ENABLED","1")
     seen=[]
-    monkeypatch.setattr(mail,"deliver",lambda recipient,subject,body:
+    monkeypatch.setattr(mail,"deliver",lambda recipient,subject,body,html_body:
                         seen.append(recipient) or "SMTP_ACCEPTED_NOT_DELIVERED")
     result=mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(),"live",None)
     assert result["recipients"]==2
@@ -227,7 +244,7 @@ def test_one_recipient_test_and_unknown_identity_rejected(monkeypatch,tmp_path):
     monkeypatch.setenv("MSB_SETUP_MANAGER_PILOT_SEND",mail.SEND_GUARD)
     monkeypatch.setenv("SETUP_NOTIFICATION_SMTP_SEND_ENABLED","1")
     seen=[]
-    monkeypatch.setattr(mail,"deliver",lambda recipient,subject,body:
+    monkeypatch.setattr(mail,"deliver",lambda recipient,subject,body,html_body:
                         seen.append(recipient) or "SMTP_ACCEPTED_NOT_DELIVERED")
     mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(20,16),
               "test","manager@sheboyganlights.org")
@@ -236,6 +253,77 @@ def test_one_recipient_test_and_unknown_identity_rejected(monkeypatch,tmp_path):
         mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(20,16),
                   "test","volunteer@example.org")
     assert len(seen)==1
+
+
+def test_existing_88_171_container_projector_is_evidence_qualified():
+    make = lambda ident, status, load="UNKNOWN", note=None, event=None: {
+        "container_id":ident,"movement_status":status,"load_state":load,
+        "current_location_note":note,"observation":event or {},
+    }
+    rows=[
+        make(1,"DELIVERED","LOADED"),
+        make(2,"CONTAINER_MOVE","EMPTY","Near Icicle Tunnel"),
+        make(3,"STAGED","PARTIAL"),
+        make(4,"PICKED"),
+        make(5,"RETURNED","EMPTY"),
+        make(6,None),
+        make(7,None),
+        make(8,"CONTAINER_MOVE","UNKNOWN"),
+    ]
+    counts=mail.summarize_container_snapshot(rows,"2026-10-17T02:00:00-05:00")
+    assert counts["containers_park_recorded"]==3
+    assert counts["containers_empty_at_park"]==1
+    assert counts["containers_partial_at_park"]==1
+    assert counts["containers_outbound"]==1
+    assert counts["containers_returned"]==1
+    assert counts["containers_no_movement"]==2
+    assert counts["containers_location_review"]==1
+    assert counts["containers_total"]==8
+    assert "not physical inspections" in counts["containers_evidence_note"]
+    assert counts["containers_empty_at_park"] <= counts["containers_park_recorded"]
+
+
+def test_html_protects_people_task_content_and_matches_text_numbers():
+    report=mail.summarize(fixture_board(),date(2026,10,17))
+    report.update(fixture_containers())
+    report["past_rows"][0]["name"]='<script>alert("no")</script>'
+    email=mail.render_html(mail.DEFAULT_HTML_TEMPLATE.read_text(encoding="utf-8"),
+                           {"display_name":"A & B"},report)
+    assert "Containers · Field movement" in email
+    assert "Park stops recorded" in email
+    assert "Returned Home" in email
+    assert ">8</div>" in email or ">8</td>" in email
+    assert "A &amp; B" in email
+    assert "&lt;script&gt;" in email
+    assert '<script>alert("no")</script>' not in email
+    assert "$" not in email
+
+
+def test_mail_delivery_contains_html_and_complete_plain_text(monkeypatch):
+    sent=[]
+    class SMTP:
+        def __init__(self,host,port,timeout):
+            assert (host,port)==("smtp-relay.gmail.com",587)
+            self.started=False
+        def __enter__(self):return self
+        def __exit__(self,*a):return None
+        def ehlo(self):return None
+        def has_extn(self,x):return x=="starttls"
+        def starttls(self,context):
+            self.started=True
+        def send_message(self,message,from_addr,to_addrs):
+            assert self.started
+            sent.append(message)
+            assert from_addr=="no-reply@sheboyganlights.org"
+            assert to_addrs==["manager@sheboyganlights.org"]
+            return {}
+    monkeypatch.setattr(mail.smtplib,"SMTP",SMTP)
+    result=mail.deliver("manager@sheboyganlights.org","TEST","Text body",
+                        "<html><body>Styled</body></html>")
+    assert result=="SMTP_ACCEPTED_NOT_DELIVERED"
+    assert len(sent)==1 and sent[0].get_content_type()=="multipart/alternative"
+    assert sent[0].get_body(preferencelist=('plain',)).get_content()=="Text body\n"
+    assert "Styled" in sent[0].get_body(preferencelist=('html',)).get_content()
 
 
 def test_no_sender_header_from_operator_content():
