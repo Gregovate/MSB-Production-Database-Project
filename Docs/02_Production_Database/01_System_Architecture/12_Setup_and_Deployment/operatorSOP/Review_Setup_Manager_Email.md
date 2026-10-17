@@ -15,6 +15,12 @@ The Manager email helps us identify what Setup has finished, what remains, what 
 
 **Important status:** The current V0.3.84 Setup Action Center is available, but automatic Manager email and the Administrator email settings are **not yet installed**. This procedure describes the intended reviewed workflow; do not expect a 4:00 AM message until installation is separately approved and confirmed.
 
+## What the morning email looks like
+
+The subject is **MSB Setup — Manager Actions — [report date]**. Read it from the top: first **Total / Completed / Remaining**, then actual versus required task-based pace and the November 19 deadline. The next section gives separate counts of **past assignments to verify**, **started work needing a continuation**, and **upcoming readiness issues**. Individual task names and dates are below those decisions, not ahead of the main status.
+
+The email deliberately uses the words **review** and **verify**, not “Captain failed to report.” A missing report is not proof that any work happened. The final line explains that unresolved exceptions remain visible and **Captain reminders are OFF** during the Manager pilot. The one-day pilot is not a promise that a recurring daily email is already installed.
+
 ## Before the first email is enabled — Administrator review
 
 1. Open the **Setup** application with your normal Sheboygan Lights Google Workspace account. Select the **2026** season.
