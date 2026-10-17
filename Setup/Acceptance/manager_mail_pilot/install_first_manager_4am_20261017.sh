@@ -26,7 +26,7 @@ EXPECTED_ROSTER="rhoffmann@sheboyganlights.org,gliebig@sheboyganlights.org,dmart
 echo "Authority: MSB Server Management #205 one-day Manager mail runbook"
 echo "Action: schedule the first 04:00 Central 2026-10-17 Manager-only run"
 local_time="$(TZ=America/Chicago date '+%Y%m%d%H%M')"
-if [[ "$local_time" < "202610170000" || "$local_time" >= "202610170400" ]]; then
+if [[ "$local_time" < "202610170000" || "$local_time" > "202610170359" ]]; then
   echo "STOP: not before the October 17 04:00 Chicago trigger"
   exit 2
 fi
