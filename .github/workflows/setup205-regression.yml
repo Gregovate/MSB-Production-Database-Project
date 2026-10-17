@@ -41,6 +41,8 @@ jobs:
           node Setup/Application/test_205_nullable_crew_duration.cjs
           node Setup/Application/test_205_sticky_day_search.cjs
           node Setup/Application/test_205_mixed_shift_group_drop.cjs
+          node Setup/Application/test_205_drag_autoscroll_container.cjs
+          node Setup/Application/test_205_schedule_crew_captain_options.cjs
           node Setup/Application/test_205_perform_manager_reschedule.cjs
 
   fieldwiring-full:
