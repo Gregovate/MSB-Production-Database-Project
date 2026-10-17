@@ -1,39 +1,33 @@
-Hello $recipient_name,
+Good morning $recipient_name,
 
-MSB SETUP — DAILY MANAGER ACTION REPORT — $report_date
-
-WHOLE SETUP
-Total: $total_tasks    Completed: $completed_tasks    Remaining: $remaining_tasks
-Blocked / NOT READY (distinct tasks): $blocked_tasks
-Actual completions (last 7 calendar days): $actual_pace tasks/day
-Required to finish by November 19: $required_pace tasks/day
+2026 SETUP — $report_date
+TOTAL $total_tasks  |  COMPLETED $completed_tasks  |  REMAINING $remaining_tasks
+Blocked / NOT READY: $blocked_tasks
+Task pace: $actual_pace completed/day (last 7 days) vs $required_pace needed/day by November 19
 Task-based projected finish: $projected_finish
-Projection confidence: $projection_confidence
+$projection_confidence
 
-WHAT MANAGERS NEED TO REVIEW
-Past assignments with no matched report: $missing_report_occurrences
-Started tasks awaiting another scheduled work period: $continuation_needed
-Upcoming scheduled readiness exceptions (next 7 days): $readiness_exceptions
-Future assignments with no named Captain: $captain_tbd_count
-
-PAST ASSIGNMENTS TO CHECK (THIS DOES NOT PROVE WORK HAPPENED)
-$overdue_lines
-
-STARTED WORK NEEDING A CONTINUATION
-$continuation_lines
+MANAGER DECISIONS
+$missing_report_occurrences past assignments to verify — no matched work report
+$continuation_needed started tasks needing a future continuation
+$readiness_exceptions upcoming scheduled readiness exceptions
+$captain_tbd_count future assignments with no Captain assigned
 
 WHAT TO DO
-1. Open https://my.sheboyganlights.org/setup/ and Manager Action Center.
-2. If no work was performed on the original assignment, use the Manager's audited “Reschedule · No work performed” action where eligible. Do not fabricate a work report, hours, crew count, minutes or 1% completion.
-3. If work happened but was not reported, check the actual task, date, shift and crew; help the Captain submit an accurate original-occurrence report.
-4. If a valid partial report exists, the reporting obligation is met. Plan a future continuation for work still remaining.
-5. Investigate NOT READY / blocked / speculative Pick List scheduling separately. If you don't know whether work happened, ask rather than guessing.
+- No work occurred? Use "Reschedule · No work performed." Do not enter fictitious time, crew counts or progress.
+- Work occurred but no report? Help the Captain enter actual work against the original assignment.
+- Work already reported but unfinished? Plan the remaining work. Do not ask for a duplicate report.
+- Unsure? Check with the crew before changing the record.
 
-IF NOTHING IS DONE
-Unresolved items remain in Manager Action Center until they are properly resolved. When recurring Manager reports are separately approved and enabled, those items may appear again. This first-night pilot does not schedule later daily emails. Opening this email does not resolve or reschedule work.
+PAST ASSIGNMENTS TO VERIFY
+$overdue_lines
 
-NO CAPTAIN EMAILS ARE BEING SENT IN THIS INITIAL MANAGER-REVIEW PHASE.
-Later Captain reminders require an authorized Manager's review and another check that actual work is still unreported. They must also tell volunteers whom to contact if no work occurred or if they need reporting help.
+STARTED TASKS NEEDING CONTINUATION
+$continuation_lines
 
-— MSB Production DB <no-reply@sheboyganlights.org>
-This address does not accept replies. Use Setup or your normal Manager communications.
+Open Setup → Manager Action Center:
+https://my.sheboyganlights.org/setup/
+
+Unresolved items remain in the Manager Action Center until corrected. No Captain reminders are being sent during this pilot; any future Captain reminder requires Manager review and separate activation.
+
+MSB Production DB — automated message; replies are not monitored.
