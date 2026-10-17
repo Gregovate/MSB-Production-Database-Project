@@ -64,6 +64,12 @@ The operator confirms the email-ready white PNG already exists in the same estab
 
 The operator requests **one final Gmail test to their own mailbox only**, not another `--preview`, not a group distribution. This test uses a distinct `FINAL LOGO TEST —` subject and new durable attempt purpose `MANAGER_LOGO_REVIEW_TEST`; preserve the earlier plain and formatted test records. Confirm actual Inbox arrival and that the white logo appears. Check no other portion of the report or sender was changed. No Manager-wide or Captain activation follows automatically.
 
+## October 17 final layout and 04:00 request
+
+The operator confirmed the final white PNG displays in Gmail and requests the **same logo larger, to the left of** “Setup Morning Brief”. The larger white logo must remain clear on the navy background, with no change to the rest of the report. Source acceptance tests must check the table layout and identical hosted asset.
+
+The operator also requested the first automated **04:00 Manager-only email**. The prior one-recipient delivery tests did **not** activate any service. Before 04:00 activation, reconcile the exact audience against People and current Setup Manager privileges. As of the latest read-only People query five records are eligible (Rick, Greg, Rich, Eric, Tom), one active People Manager (Don) is **HELD because identity is not linked**, and one person (Randy) is Setup-authorized but not marked Manager in People. Do not silently exclude/include either without operator decision. The currently guarded sender stops on any held People Manager. The accepted Server Management timer installation/health check is mandatory and must produce a specific active future trigger, not a planning claim. Never send a catch-up email if setup isn't complete by 04:00, and do not enable Captain notifications.
+
 ## Before the first email is enabled — Administrator review
 
 1. Open the **Setup** application with your normal Sheboygan Lights Google Workspace account. Select the **2026** season.
