@@ -135,6 +135,31 @@ No Production notification settings have been implemented or turned on by this c
 
 ---
 
+## Captain scheduling notices versus Report Work access — October 16 operator direction
+
+**Do not conflate Captain scheduling/contact with authorization to use Setup.** People Manager can represent a real volunteer who is assigned Captain but has no provisioned Google Workspace mailbox or authorized Setup account. This person should be reachable about a **real Captain schedule** where a valid, approved contact address exists, yet must **never** receive a missing-Report-Work reminder or a broken authenticated Report Work action. This supplements the earlier October 15 organizational-email-only requirement **only for scheduling communications**; it does not weaken the original Report Work/self-email eligibility rules.
+
+| Message | Named Captain with verified Setup Report Work capability | Named Captain without that capability |
+| --- | --- | --- |
+| Committed Captain schedule / significant change / cancellation | Eligible for scheduling notice, respecting preferences | Eligible for **scheduling/contact notice only**, respecting preferences and verified contact |
+| Missing original scheduled-assignment work report | Eligible only while that original occurrence is still reportless | **Ineligible; suppress** and show Manager that reporting help or an authorized reporter is needed |
+| Instructions or protected exact-Report-Work deep link | Only if recipient can authenticate and take the action | **Never include** action they cannot perform; do not imply they need to make an MSB account |
+| Daily Manager internal status/exception digest | Manager capability only | Not sent to general Captains |
+
+**People/Identity authority:** `ref.person.email` is the **reserved/current organizational identity** and may exist without a real Google mailbox; `ref.person.personal_email` is the separate contact address. The existing [People onboarding contract](../../03_People_and_Identity/engineering/Directus_User_Onboarding_Identity_Contract_2026-09-09.md) expressly says to use `personal_email` for scheduling/contact until Google Workspace provisioning is actually confirmed, then permit the organizational address when deliverable. `directus_user_id` alone proves neither mail delivery nor application authorization. **Do not assume a deliverable mailbox from an `@sheboyganlights.org` string, or report capability from a scheduled Captain assignment.** Use the current verified account/capability/recipient source; if not safely resolvable, fail closed and show a Manager follow-up.
+
+**Separate message classes and privacy:** scheduling notices may go to an explicitly maintained and validated `personal_email` outside the organization if the volunteer agreed to operational schedule contact; keep content minimal (Captain role, confirmed date, shift, crew, meeting/contact instructions, changed/cancelled status) and avoid Manager-only task status, internal blocked/prerequisite data, materials, other Captains' details, or protected Report Work URLs. The existing `setup_google_smtp.py` currently intentionally restricts all recipients to the organizational domain; **do not relax that globally**. Implement a distinct, opt-in, safely validated Captain **schedule-notice** path, retaining the organizational-only rule for missing-report/self/daily Manager notices.
+
+**Noise / schedule integrity:** automatic email should reflect a real scheduled Captain commitment, not draft drag/drop edits or logistics-only speculative work intended to generate Pick List demand. Consolidate same-day schedule information per Captain, suppress identical notices, and alert on meaningful committed changes/cancellations without flooding people during replanning. Recheck current Captain/date/shift assignment immediately before dispatch. Do not email someone just because they appear as a reusable-task Captain candidate rather than the named Captain of the actual scheduled Work Day.
+
+**Preference/opt-out:** give each Captain, including those **without a Setup account**, a way to decline routine schedule emails or temporarily pause them. For non-account users, an authorized Manager can manage their contact preference in the People workflow while a secure minimal-purpose preference link may be added if its identity/token safety can be demonstrated; **do not send them to a protected page they cannot sign in to**. Respect preference at send time, retain the communication/audit reason **PREFERENCE_SUPPRESSED**, and show authorized Managers whom they must contact by another agreed method. Preferences do **not** change Captain assignment, suppress reporting obligations, or silently grant an app role. Confirm the privacy/security contract for any signed self-service link before implementation. Emergency/safety communications are outside #205.
+
+**Acceptance additions:** active Person with reserved but unprovisioned MSB address + valid contact address; valid organizational mailbox but no Report Work permission; authorized Captain; absent/stale personal contact; named versus TBD Captain; committed versus speculative schedule; updated/cancelled/moved shift; optional preference OFF/pause; unknown account-provisioning state; wrong-person personal contact; outbound permitted personal scheduling notice while Work Report mail remains organizational-only; changed schedule while notice is queued. Test that a Manager sees suppressed/unreachable notification status, and that no unreportable Captain gets a reporting reminder.
+
+**Status:** This is an accepted operator design direction, **not existing Production behavior**. The SMTP transport currently allows organizational recipients only and PR #412 still contains obsolete Directus notification infrastructure pending refactoring; no Captain scheduling mail or opt-out mechanism has been implemented or activated.
+
+---
+
 ## Acceptance and implementation ownership
 
 - #205 owns schedule classifications, Manager exception worklist, deadline KPI and daily Manager accountability interface; #132 retains Report Work persistence, #175 Perform Work, #172 Work Order Intake notification, #122 release authority.
