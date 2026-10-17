@@ -309,9 +309,15 @@ def test_header_uses_exact_existing_setup_dark_white_logo_only():
     assert html.count(logo) == 1
     assert svg not in html
     assert 'alt="Making Spirits Bright"' in html
-    assert 'width="92"' in html
+    assert 'width="177"' in html
+    assert html.count('width="177"') == 1
+    assert 'valign="middle"' in html
     assert html.index(logo) < html.index("Making Spirits Bright · Production")
     assert html.index(logo) < html.index("Setup Morning Brief")
+    header = html.split("</td></tr>", 1)[0]
+    assert '<table role="presentation"' in header
+    assert header.index(logo) < header.index("Setup Morning Brief")
+    assert "msb-white-logo-600-plain.svg" not in html
     assert "https://my.sheboyganlights.org/setup/" in html
 
 
