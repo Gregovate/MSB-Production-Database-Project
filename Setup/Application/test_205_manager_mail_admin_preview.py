@@ -23,7 +23,7 @@ def client(monkeypatch):
     def fake_report(board, today):
         assert board["session"]["season_year"] == 2026
         return {
-            "report_date": today.isoformat(),
+            "report_date": today.isoformat(), "completion_percent":"30.4",
             "total_tasks": 296, "completed_tasks":90, "remaining_tasks":206,
             "blocked_tasks":140, "actual_pace":"7.86","required_pace":"6.06",
             "projected_finish":"INSUFFICIENT DATA",
@@ -51,6 +51,18 @@ def client(monkeypatch):
     monkeypatch.setattr(m,"_piloted_digest_module",lambda:SimpleNamespace(
         manager_directory=lambda dsn: fake_managers,
         summarize=fake_report,
+        container_summary=lambda dsn,season_year:{
+            "containers_total":8,"containers_park_recorded":3,
+            "containers_outbound":1,"containers_empty_at_park":1,
+            "containers_partial_at_park":1,"containers_returned":1,
+            "containers_no_movement":2,"containers_location_review":1,
+            "containers_contents_review_history":0,
+            "containers_snapshot_as_of":"2026-10-17T02:00:00-05:00",
+            "containers_session_id":2,
+        },
+        render_html=lambda template,person,report:
+            "<html><body>Containers · Field movement — " +
+            str(report["containers_park_recorded"]) + "</body></html>",
         render=lambda template, person, report:
             "Actual preview for " + person["display_name"] + "\n" +
             f"Total {report['total_tasks']}, Remaining {report['remaining_tasks']}",
@@ -75,6 +87,9 @@ def test_manager_roster_preview_only_with_auth(client,monkeypatch):
     assert data["automatic_status"]=="NOT ACTIVATED"
     assert data["captain_status"]=="OFF"
     assert data["metrics"]["total_tasks"]==296
+    assert data["metrics"]["containers_park_recorded"]==3
+    assert data["metrics"]["containers_returned"]==1
+    assert "Containers · Field movement" in data["body_html"]
     assert data["metrics"]["remaining_tasks"]==206
     assert data["preview_for"]=="Administrator Example"
     assert resp.headers["Cache-Control"].startswith("private, no-store")
