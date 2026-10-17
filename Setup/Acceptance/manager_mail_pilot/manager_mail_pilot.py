@@ -528,6 +528,9 @@ def main(argv=None) -> int:
     parser.add_argument("--template",type=Path,default=DEFAULT_TEMPLATE)
     parser.add_argument("--ledger",type=Path,default=Path("/var/lib/msb-setup-manager-mail-pilot"))
     args=parser.parse_args(argv)
+    if args.html_test_to and args.ledger != Path("/var/lib/msb-setup-manager-mail-pilot"):
+        print("STOP: Formatted review must use the same protected Production receipt directory")
+        return 2
     try:
         dsn = accepted_setup_dsn()
         result=send(dsn,args.template,args.ledger,chicago_now(),
