@@ -47,7 +47,7 @@ def test_day_and_crew_identity_and_visible_actions():
 
 def test_version_and_asset_pins_change_together():
     html = source("production.html")
-    assert "2026-10-16.84" in html
+    assert "2026-10-17.84" in html
     assert "V0.3.84-direct-crew-cells" in source("production_backend.py")
     assert "V0.3.84-direct-crew-cells" in source("setup_catalog_dirty_guard.js")
 
