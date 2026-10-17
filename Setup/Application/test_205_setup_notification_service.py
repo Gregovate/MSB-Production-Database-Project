@@ -92,8 +92,17 @@ def test_future_unworked_assignment_is_not_a_missing_historical_report():
     assert 102 not in [x["assignment_id"] for x in c["overdue"]]
 
 
-def test_dynamic_manager_roster_and_captain_isolation():
+def test_unreviewed_missing_report_is_manager_only_even_with_eligible_captain():
     plans=mail.notice_plans(board(),people(),TODAY)
+    assert len(plans)==2
+    assert all(p["kind"]=="MANAGER_DAILY" for p in plans)
+    assert "Past assignments missing reports" in plans[0]["body_text"]
+
+
+def test_dynamic_manager_roster_and_captain_isolation():
+    plans=mail.notice_plans(
+        board(),people(),TODAY,reviewed_missing_assignment_ids={100,101}
+    )
     assert sum(p["kind"]=="MANAGER_DAILY" for p in plans)==2
     captain=[p for p in plans if p["kind"]=="CAPTAIN_DAILY"]
     assert len(captain)==1
@@ -172,16 +181,23 @@ def test_network_timeout_is_delivery_unknown_no_auto_retry(monkeypatch):
 def test_daily_and_manual_request_do_not_repeat_same_occurrence(monkeypatch):
     p=people()
     covered={(25,100)}
-    plans=mail.notice_plans(board(),p,TODAY,already_covered=covered)
+    plans=mail.notice_plans(
+        board(),p,TODAY,already_covered=covered,
+        reviewed_missing_assignment_ids={100,101},
+    )
     captain=[n for n in plans if n["kind"]=="CAPTAIN_DAILY"]
     assert len(captain)==1
     assert captain[0]["covered_assignment_ids"]==[101]
     assert "Place Polar Express Engine" not in captain[0]["body_text"]
     everything={(25,100),(25,101)}
-    assert not [n for n in mail.notice_plans(board(),p,TODAY,already_covered=everything)
+    assert not [n for n in mail.notice_plans(
+        board(),p,TODAY,already_covered=everything,
+        reviewed_missing_assignment_ids={100,101})
                 if n["kind"]=="CAPTAIN_DAILY"]
 
-    request=mail.notice_plans(board(),p,TODAY)[-1].copy()
+    request=mail.notice_plans(
+        board(),p,TODAY,reviewed_missing_assignment_ids={100,101}
+    )[-1].copy()
     request.update(kind="CAPTAIN_REQUEST",assignment_id=100,covered_assignment_ids=[100])
     monkeypatch.setenv("SETUP_NOTIFICATION_DAILY_ENABLED","1")
     monkeypatch.delenv("SETUP_NOTIFICATION_REQUEST_SEND_ENABLED",raising=False)
