@@ -101,10 +101,10 @@ def test_people_directory_has_no_direct_directus_select_and_keeps_held_rows():
          "is_manager":False,"identity_linked":True,"can_manage_setup":True},
     ])
     assert checked[0]["send_eligible"] is True
-    assert checked[1]["review_status"] == "HELD"
-    assert "No current Setup Manager access" in checked[1]["review_reason"]
-    assert checked[2]["review_status"] == "HELD"
-    assert "not designated" in checked[2]["review_reason"]
+    assert checked[1]["review_status"] == "ELIGIBLE"
+    assert "People-to-Directus link pending onboarding" in checked[1]["onboarding_note"]
+    assert checked[2]["review_status"] == "ELIGIBLE"
+    assert "Current Setup Manager" in checked[2]["onboarding_note"]
 
 
 def test_duplicate_people_email_addresses_never_sent():
@@ -128,8 +128,43 @@ def test_manager_email_live_holds_disputed_people_roster(monkeypatch,tmp_path):
         "review_reason":"No current Setup Manager access"
     }])
     monkeypatch.setattr(mail,"deliver",lambda *a:pytest.fail("SMTP attempted"))
-    with pytest.raises(mail.PilotStop,match="HELD"):
+    monkeypatch.setenv("MSB_SETUP_MANAGER_PILOT_SEND",mail.SEND_GUARD)
+    monkeypatch.setenv("SETUP_NOTIFICATION_SMTP_SEND_ENABLED","1")
+    monkeypatch.setenv("MSB_SETUP_MANAGER_PILOT_APPROVED_ROSTER",
+                       "manager@sheboyganlights.org,second@sheboyganlights.org")
+    with pytest.raises(mail.PilotStop,match="unknown or malformed"):
         mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(),"live",None)
+
+
+def test_urgent_manager_roster_randy_and_don_not_excluded():
+    rows = mail.classify_manager_directory([
+        {"person_id":18,"display_name":"Don","email":"dmartens@sheboyganlights.org",
+         "is_manager":True,"identity_linked":False,"can_manage_setup":True},
+        {"person_id":19,"display_name":"Randy","email":"rmiller@sheboyganlights.org",
+         "is_manager":False,"identity_linked":True,"can_manage_setup":True},
+    ])
+    assert len(rows)==2 and all(p["send_eligible"] for p in rows)
+    assert "onboarding" in rows[0]["onboarding_note"]
+    assert "Current Setup Manager" in rows[1]["onboarding_note"]
+
+
+def test_live_requires_exact_operator_acknowledged_email_roster(monkeypatch):
+    rows=mail.classify_manager_directory([
+        {"person_id":18,"display_name":"Don","email":"dmartens@sheboyganlights.org",
+         "is_manager":True,"identity_linked":False,"can_manage_setup":True},
+        {"person_id":19,"display_name":"Randy","email":"rmiller@sheboyganlights.org",
+         "is_manager":False,"identity_linked":True,"can_manage_setup":True},
+    ])
+    monkeypatch.delenv("MSB_SETUP_MANAGER_PILOT_APPROVED_ROSTER",raising=False)
+    with pytest.raises(mail.PilotStop,match="not approved"):
+        mail.enforce_approved_manager_audience(rows,rows)
+    monkeypatch.setenv("MSB_SETUP_MANAGER_PILOT_APPROVED_ROSTER",
+                       "dmartens@sheboyganlights.org,rmiller@sheboyganlights.org")
+    mail.enforce_approved_manager_audience(rows,rows)
+    monkeypatch.setenv("MSB_SETUP_MANAGER_PILOT_APPROVED_ROSTER",
+                       "dmartens@sheboyganlights.org")
+    with pytest.raises(mail.PilotStop,match="differs"):
+        mail.enforce_approved_manager_audience(rows,rows)
 
 
 def test_whole_setup_counts_and_historical_classification():
@@ -230,6 +265,8 @@ def test_success_then_no_duplicate_send(monkeypatch,tmp_path):
     seen=[]
     monkeypatch.setattr(mail,"deliver",lambda recipient,subject,body,html_body:
                         seen.append(recipient) or "SMTP_ACCEPTED_NOT_DELIVERED")
+    monkeypatch.setenv("MSB_SETUP_MANAGER_PILOT_APPROVED_ROSTER",
+        "manager@sheboyganlights.org,second@sheboyganlights.org")
     result=mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(),"live",None)
     assert result["recipients"]==2
     assert seen==["manager@sheboyganlights.org","second@sheboyganlights.org"]
