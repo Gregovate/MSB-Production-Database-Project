@@ -126,6 +126,45 @@ def test_nonorganizational_sender_is_rejected_even_for_external_contact(monkeypa
     assert not FakeSMTP.calls
 
 
+def test_manual_sender_display_name_and_address_are_explicit(monkeypatch):
+    # Upstream authorization must bind these to the signed-in verified user.
+    monkeypatch.setenv("SETUP_NOTIFICATION_SMTP_SEND_ENABLED", "1")
+    outcome = smtp.send_setup_email(
+        sender="organizer@sheboyganlights.org",
+        sender_display_name="MSB Event Organizer",
+        recipient="volunteer@example.org",
+        subject="MSB Run-Walk Cookout Invitation",
+        body_text="Reply to this message to RSVP.",
+    )
+    assert outcome == "SMTP_ACCEPTED_NOT_DELIVERED"
+    send = [x for x in FakeSMTP.calls if x[0] == "send"]
+    assert len(send) == 1
+    message, sender_address, recipients = send[0][1:]
+    assert sender_address == "organizer@sheboyganlights.org"
+    assert message["From"] == "MSB Event Organizer <organizer@sheboyganlights.org>"
+    assert recipients == ["volunteer@example.org"]
+    assert message["Reply-To"] is None
+
+
+@pytest.mark.parametrize("name", [
+    "Not Valid\\nBcc: outsider@example.org",
+    "Not Valid\\rFrom: outsider@example.org",
+    "X" * 101,
+    "",
+])
+def test_manual_sender_display_name_rejects_injection(monkeypatch, name):
+    monkeypatch.setenv("SETUP_NOTIFICATION_SMTP_SEND_ENABLED", "1")
+    with pytest.raises(smtp.SetupSMTPError, match="display name"):
+        smtp.send_setup_email(
+            sender="organizer@sheboyganlights.org",
+            sender_display_name=name,
+            recipient="volunteer@example.org",
+            subject="Invitation",
+            body_text="Sample invitation",
+        )
+    assert not FakeSMTP.calls
+
+
 def test_starttls_is_required_without_fallback(monkeypatch):
     monkeypatch.setenv("SETUP_NOTIFICATION_SMTP_SEND_ENABLED", "1")
     FakeSMTP.extn = False
