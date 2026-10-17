@@ -30,7 +30,7 @@ WHAT TO DO
 5. Investigate NOT READY / blocked / speculative Pick List scheduling separately. If you don't know whether work happened, ask rather than guessing.
 
 IF NOTHING IS DONE
-Unresolved items remain in Manager Action Center and may appear in tomorrow's Manager-only report. Opening this email does not resolve or reschedule work.
+Unresolved items remain in Manager Action Center until they are properly resolved. When recurring Manager reports are separately approved and enabled, those items may appear again. This first-night pilot does not schedule later daily emails. Opening this email does not resolve or reschedule work.
 
 NO CAPTAIN EMAILS ARE BEING SENT IN THIS INITIAL MANAGER-REVIEW PHASE.
 Later Captain reminders require an authorized Manager's review and another check that actual work is still unreported. They must also tell volunteers whom to contact if no work occurred or if they need reporting help.
