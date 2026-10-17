@@ -58,7 +58,10 @@ def manager_email_preview():
     _repo, authenticated, _access = require_admin()
     pilot = _piloted_digest_module()
     dsn = setup_database_dsn()
-    managers = pilot.people_managers(dsn)
+    roster = pilot.manager_directory(dsn)
+    managers = [p for p in roster if p["send_eligible"]]
+    if not managers:
+        raise RuntimeError("No eligible Manager recipients; review People directory")
     board = SetupSchedulingBoardRepository(dsn).board(2026)
     now = datetime.now(CHICAGO)
     report = pilot.summarize(board, now.date())
@@ -72,8 +75,10 @@ def manager_email_preview():
     body = pilot.render((_PILOT_DIR / "manager_digest_template.txt").read_text(encoding="utf-8"), preview_manager, report)
     recipients = [
         {"person_id":int(p["person_id"]), "name":p["display_name"], "email":p["email"],
-         "reason":"Active Google-linked identity; current Setup Manager access"}
-        for p in managers
+         "status":p["review_status"], "reason":p["review_reason"],
+         "people_manager":bool(p["is_manager"]),
+         "setup_authorized":bool(p["can_manage_setup"])}
+        for p in roster
     ]
     return _no_store(jsonify(
         mode="READ_ONLY_NO_SEND",
@@ -83,7 +88,8 @@ def manager_email_preview():
         automatic_status="NOT ACTIVATED",
         captain_status="OFF",
         audience="Current authorized Setup Managers",
-        recipient_count=len(recipients), recipients=recipients,
+        recipient_count=len(managers), held_count=len(roster) - len(managers),
+        reviewed_count=len(roster), recipients=recipients,
         subject=subject, body_text=body,
         preview_for=preview_manager["display_name"],
         report_date=report["report_date"],
