@@ -258,7 +258,12 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
         raise PilotStop("One-recipient test window is closed")
 
     from setup_scheduling_board_repository import SetupSchedulingBoardRepository
-    managers = people_managers(dsn)
+    roster = manager_directory(dsn)
+    managers = [p for p in roster if p["send_eligible"]]
+    if not managers:
+        raise PilotStop("No eligible Manager recipients; review People and Setup permissions")
+    if mode == "live" and any(p.get("is_manager") and not p["send_eligible"] for p in roster):
+        raise PilotStop("People Manager roster has HELD recipients; review before live broadcast")
     board = SetupSchedulingBoardRepository(dsn).board(2026)
     report = summarize(board, today)
     template = path.read_text(encoding="utf-8")
@@ -280,7 +285,15 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
     if mode == "preview":
         print(json.dumps({
             "mode":"NO_SEND_PREVIEW", "chicago_date":str(today),
-            "managers":[p["email"] for p in managers], "manager_count":len(managers),
+            "eligible_managers":[
+                {"name":p["display_name"],"email":p["email"],"status":"ELIGIBLE"}
+                for p in managers
+            ],
+            "held_manager_review":[
+                {"name":p["display_name"],"email":p["email"],"reason":p["review_reason"]}
+                for p in roster if not p["send_eligible"]
+            ],
+            "manager_count":len(managers), "reviewed_count":len(roster),
             "counts":{k:report[k] for k in (
                 "total_tasks","completed_tasks","remaining_tasks","blocked_tasks",
                 "missing_report_occurrences","continuation_needed","readiness_exceptions",
