@@ -44,6 +44,14 @@ Container counts must be labeled carefully: **park location recorded** (not just
 
 Below the Container section, see actionable work-report exceptions and unfinished continuations in readable, compact rows rather than repeated long lines. The protected **Email recipients & preview** Administration page will show the proposed HTML email and the exact live recipient list. That page must pass browser acceptance before wide mail is approved. The first received text test does not authorize the next send or the 4:00 AM timer; Captains remain OFF.
 
+## The new formatted test email — separately from the no-send preview
+
+The read-only server preview displays actual 2026 task/Container counts and reports `sent: 0`. **It does not appear in Gmail.** If it prints `HTML alternative: prepared, NOT SENT`, that is source/data validation only.
+
+After accepting the no-send data, a separate operator-confirmed `FORMATTED TEST — MSB Setup — Manager Actions — 2026-10-17` may be sent **only to gliebig@sheboyganlights.org**, from `MSB Production DB <no-reply@sheboyganlights.org>`, using the current tested HTML and a complete plain-text alternative. It is identified as **Manager formatted-review test**, not a resend of the original received plain-text email, and its own duplicate-prevention record must be preserved. Do not repeat the formatted test if delivery status is uncertain.
+
+Open that Gmail message to inspect colors, font sizes, mobile width, the **296/90/206** style of progress header, actual recorded Container counts, and compact task lists. Check **actual current** numbers rather than assuming earlier October 17 values remain unchanged. Approval of formatted presentation is a decision the Manager makes **after** seeing the Inbox message. The recipient Management interface and any Manager-wide activation remain separately unapproved; Captains remain OFF.
+
 ## Before the first email is enabled — Administrator review
 
 1. Open the **Setup** application with your normal Sheboygan Lights Google Workspace account. Select the **2026** season.
