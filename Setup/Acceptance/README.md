@@ -1,8 +1,8 @@
 # Setup Acceptance Tooling
 
-## #205 current non-mail KPI and Report Work candidate
+## #205 deployed V0.3.84 and separate inactive email integration
 
-[V0.3.79 source-tested #205 review: shared sticky current Setup Day beside Find Scheduled Task; full integrated six-defect/cross-Catalog corrections, migration 075/076 and both rollback checks, one disposable browser clone; operator acceptance pending](Setup_205_KPI_Action_Center_Disposable_Candidate_2026-10-15.md). Daily email/Directus integration is parked separately and excluded. Not a Production deployment or browser acceptance.
+[V0.3.84 #205 governed Production release receipt](Setup_205_075_076_Release.md) records approved Scheduling Board/Perform Work/Manager Action Center, migration 075/076 and server runner PASS; retained report `/home/msbadmin/setup-deployment-reports/Setup205-075-076-20261016T215912Z`. The deployed code **does not send daily email**. [Draft PR #412](https://github.com/Gregovate/MSB-Production-Database-Project/pull/412) separately recovers the held #205 notification candidate onto current post-V0.3.84 `main` for regression/disposable/Directus transport/identity/mail rendering tests. Verified Google Workspace SMTP relay IP/TLS preflight and a Python sender candidate are recorded in the [October 16 SMTP transport contract](../Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_205_Google_Workspace_SMTP_Transport_2026-10-16.md). Old migration 074 and Directus Flow are superseded and not deployable. The replacement PostgreSQL delivery audit, actual SMTP send, and daily 04:00 scheduler are **not accepted, deployed or enabled**. The earlier [V0.3.79 browser candidate](Setup_205_KPI_Action_Center_Disposable_Candidate_2026-10-15.md) is historical source-review evidence, not the deployed or email candidate.
 
 
 Current integrated #122 candidate: [field release checkpoint and review](Setup_122_Integrated_Field_Release.md). This supersedes separate preview handoffs for the included PR308/309/318/321 changes.
