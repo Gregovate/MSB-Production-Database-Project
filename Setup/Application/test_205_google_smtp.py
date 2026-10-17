@@ -80,16 +80,48 @@ def test_ip_relay_uses_verified_tls_no_password_and_only_one_recipient(monkeypat
 
 
 @pytest.mark.parametrize("address", [
-    "personal@example.com", "bad @sheboyganlights.org",
+    "bad @sheboyganlights.org",
     "two@example.com,someone@sheboyganlights.org",
     "nobody@sheboyganlights.org\r\nBcc:evil@example.com",
+    "two..dots@example.org",
+    "test@-bad.example",
+    "test@example",
 ])
-def test_external_or_header_injected_recipient_is_rejected(monkeypatch, address):
+def test_malformed_or_header_injected_recipient_is_rejected(monkeypatch, address):
     monkeypatch.setenv("SETUP_NOTIFICATION_SMTP_SEND_ENABLED", "1")
     with pytest.raises(smtp.SetupSMTPError):
         smtp.send_setup_email(
             sender="reports@sheboyganlights.org",
             recipient=address, subject="Test", body_text="Example",
+        )
+    assert not FakeSMTP.calls
+
+
+@pytest.mark.parametrize("recipient", [
+    "volunteer@example.org",
+    "another.volunteer+msb@gmail.com",
+    "person@some-mail-provider.net",
+])
+def test_external_recipients_are_supported_without_weakened_sender_checks(monkeypatch, recipient):
+    monkeypatch.setenv("SETUP_NOTIFICATION_SMTP_SEND_ENABLED", "1")
+    monkeypatch.setenv("SETUP_NOTIFICATION_FROM_EMAIL", "no-reply@sheboyganlights.org")
+    assert smtp.send_setup_email(
+        recipient=recipient,
+        subject="MSB volunteer schedule",
+        body_text="A confirmed schedule notice. No protected report details.",
+    ) == "SMTP_ACCEPTED_NOT_DELIVERED"
+    sent = [x for x in FakeSMTP.calls if x[0] == "send"]
+    assert len(sent) == 1
+    assert sent[0][2] == "no-reply@sheboyganlights.org"
+    assert sent[0][3] == [recipient]
+
+
+def test_nonorganizational_sender_is_rejected_even_for_external_contact(monkeypatch):
+    monkeypatch.setenv("SETUP_NOTIFICATION_SMTP_SEND_ENABLED", "1")
+    with pytest.raises(smtp.SetupSMTPError, match="organizational"):
+        smtp.send_setup_email(
+            sender="someone@gmail.com", recipient="volunteer@example.org",
+            subject="Not allowed", body_text="Example",
         )
     assert not FakeSMTP.calls
 
