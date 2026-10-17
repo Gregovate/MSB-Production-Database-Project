@@ -21,6 +21,21 @@ The subject is **MSB Setup — Manager Actions — [report date]**. Read it from
 
 The email deliberately uses the words **review** and **verify**, not “Captain failed to report.” A missing report is not proof that any work happened. The final line explains that unresolved exceptions remain visible and **Captain reminders are OFF** during the Manager pilot. The one-day pilot is not a promise that a recurring daily email is already installed.
 
+## Preview who will receive the emails — Administrator
+
+**This preview page is part of the new candidate; it is not installed in today's Production Setup.**
+
+1. Open [Setup](https://my.sheboyganlights.org/setup/) with your normal MSB account and choose **Manager Action Center**.
+2. As an authorized **Setup Administrator**, open **Email Notifications — Review recipients**. (The candidate address is `https://my.sheboyganlights.org/setup/notifications/`; it will work only after the approved release.)
+3. Review the **Manager daily email** section. It lists the **actual names and email addresses** selected from active People records with current Setup Manager access, along with a recipient count. This is not a manually typed mailing list.
+4. Confirm **From: MSB Production DB <no-reply@sheboyganlights.org>**, **Captain reminders: OFF** and **Automatic send: NOT ACTIVATED**. A preview does not turn anything on.
+5. Select **Refresh preview** to reread People and the 2026 Setup data. Compare the date, Total / Completed / Remaining, and the exception list against the **Manager Action Center**.
+6. Check any missing/extra Manager with the Administrator in **People Manager** and current authorized access. Do **not** approve a broadcast until the displayed list matches the intended audience.
+7. Only **after** the roster and report are correct, approve the separate single-recipient actual email test to **your own** verified MSB mailbox. Verify that it arrived **from the Production DB sender**, not your Gmail personal account.
+8. Review the email in Gmail, request corrections if needed, and separately decide whether to authorize Manager-wide sending. **Captains remain excluded.**
+
+If the preview is unavailable, shows a **STOP** condition, or does not show real names/addresses, do not send the test or enable the timer. Do not assume a ChatGPT mockup or previous screenshot is a live roster.
+
 ## Before the first email is enabled — Administrator review
 
 1. Open the **Setup** application with your normal Sheboygan Lights Google Workspace account. Select the **2026** season.
