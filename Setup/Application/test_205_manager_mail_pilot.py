@@ -302,9 +302,12 @@ def test_html_protects_people_task_content_and_matches_text_numbers():
 def test_header_uses_exact_existing_setup_dark_white_logo_only():
     html = mail.DEFAULT_HTML_TEMPLATE.read_text(encoding="utf-8")
     theme = (PILOT_PATH.parents[1] / "Application" / "setup_theme.js").read_text(encoding="utf-8")
-    logo = "https://webassets.sheboyganlights.org/images/branding/msb-white-logo-600-plain.svg"
-    assert logo in theme
+    svg = "https://webassets.sheboyganlights.org/images/branding/msb-white-logo-600-plain.svg"
+    logo = "https://webassets.sheboyganlights.org/images/branding/msb-white-logo-600-plain.png"
+    assert svg in theme
+    assert logo == svg.removesuffix(".svg") + ".png"
     assert html.count(logo) == 1
+    assert svg not in html
     assert 'alt="Making Spirits Bright"' in html
     assert 'width="92"' in html
     assert html.index(logo) < html.index("Making Spirits Bright · Production")
@@ -422,6 +425,63 @@ def test_formatted_review_wrong_person_or_day_fails_before_any_db_or_smtp(
         mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(day=day),
                   "html_test",recipient)
     assert not list(tmp_path.iterdir())
+
+
+def test_final_logo_review_distinct_from_both_prior_receipts(monkeypatch,tmp_path):
+    setup_fakes(monkeypatch)
+    monkeypatch.setattr(mail,"manager_directory",lambda dsn:[
+        {"person_id":17,"email":"gliebig@sheboyganlights.org","display_name":"Greg",
+         "is_manager":True,"send_eligible":True,"review_status":"ELIGIBLE",
+         "review_reason":"Eligible","identity_linked":True,"can_manage_setup":True},
+    ])
+    monkeypatch.setenv("MSB_SETUP_MANAGER_PILOT_SEND",mail.SEND_GUARD)
+    monkeypatch.setenv("SETUP_NOTIFICATION_SMTP_SEND_ENABLED","1")
+    sent=[]
+    def delivery(recipient,subject,body,html):
+        assert recipient=="gliebig@sheboyganlights.org"
+        assert subject.startswith("FINAL LOGO TEST —")
+        assert "msb-white-logo-600-plain.png" in html
+        assert ".svg" not in html
+        sent.append(recipient)
+        return "SMTP_ACCEPTED_NOT_DELIVERED"
+    monkeypatch.setattr(mail,"deliver",delivery)
+    import hashlib
+    digest=hashlib.sha256(b"gliebig@sheboyganlights.org").hexdigest()[:24]
+    for prefix in ("test", "html-test"):
+        (tmp_path/f"{prefix}-2026-10-17-{digest}.json").write_text('{"status":"SMTP_ACCEPTED_NOT_DELIVERED"}')
+    prior={p.name:p.read_bytes() for p in tmp_path.iterdir()}
+    result=mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(),"logo_test",
+                     "gliebig@sheboyganlights.org")
+    assert result["recipients"]==1 and sent==["gliebig@sheboyganlights.org"]
+    for name,value in prior.items():
+        assert (tmp_path/name).read_bytes()==value
+    receipt=tmp_path/f"logo-test-2026-10-17-{digest}.json"
+    assert receipt.exists()
+    import json
+    assert json.loads(receipt.read_text())["purpose"]=="MANAGER_LOGO_REVIEW_TEST"
+    with pytest.raises(mail.PilotStop,match="Prior recipient attempt"):
+        mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(),"logo_test",
+                  "gliebig@sheboyganlights.org")
+    assert len(sent)==1
+
+
+@pytest.mark.parametrize("day,recipient", [
+    (16,"gliebig@sheboyganlights.org"),(18,"gliebig@sheboyganlights.org"),
+    (17,"rhoffmann@sheboyganlights.org"),
+])
+def test_final_logo_review_wrong_date_or_person_never_queries_or_sends(
+        monkeypatch,tmp_path,day,recipient):
+    monkeypatch.setattr(mail,"manager_directory",lambda dsn:pytest.fail("DB read"))
+    monkeypatch.setattr(mail,"deliver",lambda *a:pytest.fail("email sent"))
+    with pytest.raises(mail.PilotStop,match="Final logo test limited"):
+        mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(day=day),"logo_test",recipient)
+
+
+def test_final_logo_review_cli_cannot_redirect_protected_receipts(monkeypatch,tmp_path,capsys):
+    monkeypatch.setenv("SETUP_DATABASE_DSN","host=127.0.0.1")
+    assert mail.main(["--logo-test-to","gliebig@sheboyganlights.org",
+                      "--ledger",str(tmp_path)])==2
+    assert "STOP" in capsys.readouterr().out
 
 
 def test_no_sender_header_from_operator_content():
