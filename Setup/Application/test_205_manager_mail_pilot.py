@@ -346,6 +346,71 @@ def test_other_database_or_role_is_never_substituted(monkeypatch):
             mail.accepted_setup_dsn()
 
 
+def test_formatted_review_is_distinct_one_recipient_and_keeps_original_test_receipt(monkeypatch,tmp_path):
+    setup_fakes(monkeypatch)
+    monkeypatch.setattr(mail, "manager_directory", lambda dsn: [
+        {"person_id":17,"email":"gliebig@sheboyganlights.org","display_name":"Greg",
+         "is_manager":True,"send_eligible":True,"review_status":"ELIGIBLE",
+         "review_reason":"Current Setup Manager","identity_linked":True,
+         "can_manage_setup":True},
+        {"person_id":15,"email":"rhoffmann@sheboyganlights.org","display_name":"Rick",
+         "is_manager":True,"send_eligible":True,"review_status":"ELIGIBLE",
+         "review_reason":"Current Setup Manager","identity_linked":True,
+         "can_manage_setup":True},
+    ])
+    monkeypatch.setenv("MSB_SETUP_MANAGER_PILOT_SEND",mail.SEND_GUARD)
+    monkeypatch.setenv("SETUP_NOTIFICATION_SMTP_SEND_ENABLED","1")
+    sent=[]
+    def stub_delivery(to,subject,body,html):
+        assert html.startswith("<!doctype html>")
+        assert "Containers · Field movement" in html
+        assert "CONTAINERS — RECORDED FIELD MOVEMENT" in body
+        sent.append((to,subject))
+        return "SMTP_ACCEPTED_NOT_DELIVERED"
+    monkeypatch.setattr(mail,"deliver",stub_delivery)
+    day=time_at()
+    # The existing accepted original test remains its own protected attempt.
+    first=mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,day,"test",
+                    "gliebig@sheboyganlights.org")
+    files_before=set(p.name for p in tmp_path.iterdir())
+    assert len(files_before)==1
+    original=next(iter(tmp_path.iterdir()))
+    original_bytes=original.read_bytes()
+    second=mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,day,"html_test",
+                     "gliebig@sheboyganlights.org")
+    assert first["recipients"]==1 and second["recipients"]==1
+    assert sent==[
+        ("gliebig@sheboyganlights.org","TEST — MSB Setup — Manager Actions — 2026-10-17"),
+        ("gliebig@sheboyganlights.org","FORMATTED TEST — MSB Setup — Manager Actions — 2026-10-17"),
+    ]
+    all_files=list(tmp_path.iterdir())
+    assert len(all_files)==2
+    assert original.read_bytes()==original_bytes
+    assert any(x.name.startswith("test-") for x in all_files)
+    assert any(x.name.startswith("html-test-") for x in all_files)
+    import json
+    receipt=next(x for x in all_files if x.name.startswith("html-test-"))
+    assert json.loads(receipt.read_text())["purpose"]=="MANAGER_HTML_REVIEW_TEST"
+    with pytest.raises(mail.PilotStop,match="Prior recipient attempt"):
+        mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,day,"html_test",
+                  "gliebig@sheboyganlights.org")
+    assert len(sent)==2
+
+
+@pytest.mark.parametrize("day,recipient", [
+    (17,"other@sheboyganlights.org"),(18,"gliebig@sheboyganlights.org"),
+    (16,"gliebig@sheboyganlights.org"),
+])
+def test_formatted_review_wrong_person_or_day_fails_before_any_db_or_smtp(
+        monkeypatch,tmp_path,day,recipient):
+    monkeypatch.setattr(mail,"manager_directory",lambda dsn:pytest.fail("no DB query"))
+    monkeypatch.setattr(mail,"deliver",lambda *a:pytest.fail("no SMTP"))
+    with pytest.raises(mail.PilotStop,match="Formatted test limited"):
+        mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(day=day),
+                  "html_test",recipient)
+    assert not list(tmp_path.iterdir())
+
+
 def test_no_sender_header_from_operator_content():
     assert mail.FROM == "no-reply@sheboyganlights.org"
     assert not hasattr(mail,"captain_email")
