@@ -50,7 +50,7 @@
         <div class="statusbar">
           <div><strong>Automatic Manager emails:</strong> <span id="auto-status"></span></div>
           <div><strong>Captain reminders:</strong> <span id="captain-status"></span></div>
-          <div><strong>Audience:</strong> <span id="recipient-count"></span> eligible Managers</div>
+          <div><strong>Audience:</strong> <span id="recipient-count"></span> eligible Managers</div><div><strong>Held for review:</strong> <span id="held-count"></span></div>
         </div>
         <p><strong>From:</strong> <span id="sender"></span></p>
         <p><strong>Requested first run:</strong> <span id="schedule"></span></p>
@@ -58,10 +58,10 @@
       </section>
       <section class="card">
         <h2>Managers who would receive this email</h2>
-        <p class="muted">Current active People entries with a linked Google identity and Setup Manager permission. No Captain or volunteer recipients are added by role alone.</p>
+        <p class="muted">Starting from active <strong>People</strong> records: Manager designation and existing protected Setup access are checked separately. Eligible addresses would receive the Manager email; HELD records are visible for correction, not silently included.</p>
         <div class="scroll">
           <table aria-label="Current authorized Manager email recipients">
-            <thead><tr><th>Manager</th><th>Recipient email</th><th>Eligibility</th></tr></thead>
+            <thead><tr><th>Person</th><th>People email</th><th>Email decision / reason</th></tr></thead>
             <tbody id="recipients"></tbody>
           </table>
         </div>
@@ -105,10 +105,11 @@
         const result=await response.json();
         if(!response.ok)throw Error(result.error||('Preview stopped (HTTP '+response.status+')'));
         if(result.mode!=='READ_ONLY_NO_SEND'||!Array.isArray(result.recipients)||!result.recipient_count||
-           result.recipients.length!==result.recipient_count)throw Error('Recipient validation failed — STOP');
+           result.recipients.length!==result.reviewed_count)throw Error('Recipient validation failed — STOP');
         $('auto-status').textContent=result.automatic_status;
         $('captain-status').textContent=result.captain_status;
         $('recipient-count').textContent=String(result.recipient_count);
+        $('held-count').textContent=String(result.held_count);
         $('sender').textContent=result.sender;
         $('schedule').textContent=result.intended_schedule;
         $('generated').textContent=result.generated_at_chicago;
@@ -118,7 +119,7 @@
         const tbody=$('recipients');tbody.replaceChildren();
         for(const p of result.recipients) {
           const row=document.createElement('tr');
-          cell(row,p.name);cell(row,p.email);cell(row,p.reason);
+          cell(row,p.name);cell(row,p.email);cell(row,p.status+' — '+p.reason);
           tbody.appendChild(row);
         }
         const list=$('metrics');list.replaceChildren();
