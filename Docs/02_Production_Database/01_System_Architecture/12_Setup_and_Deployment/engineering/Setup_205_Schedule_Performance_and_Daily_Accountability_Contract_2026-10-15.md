@@ -110,6 +110,31 @@ Mail recipients, Manager authorization, digest timing, sender, deployment schedu
 
 Resolution path: named Captain submits/corrects original report under #132, Manager creates appropriate continuation under #205, resolves #172 work-order gate or readiness issue at its owner, or performs a separately authorized historical correction; retain audit and original occurrence. Daily Manager email should not automatically email Captains without explicit approval. Protect all data and links with existing Setup authentication.
 
+## Administrator-controlled email notifications — October 16 operator direction
+
+**Operator intent:** Automatic email must be useful, not an annoyance. An authenticated Setup **Administrator** can turn scheduled notifications on/off from the Setup Administration area (a concise *Email Notification Settings* panel), without changing Google Workspace, server environment variables, systemd timers, or Directus. This requirement is part of the same #205 notification release; no new issue or system.
+
+Required persisted controls (2026 Setup scope; no new free-form recipient editor):
+
+| Control | Meaning | Initial value |
+| --- | --- | --- |
+| **Automatic notifications** | Master pause/resume for **unattended** scheduled dispatch | **OFF** until separately approved/activated |
+| **Daily Manager status report** | Include authorized current Setup Managers in the 04:00 America/Chicago digest | OFF |
+| **Captain missing-report reminders** | Allow one consolidated automated reminder per eligible Captain per Chicago day, with normal per-occurrence dedup | OFF |
+
+- Authorization: **read status** for authorized Managers; **change settings** only for authenticated actors with existing `can_admin_setup` capability, using the established protected command guard. The current application has `require_admin()` in `setup_api.py`; do not confuse `can_manage_setup` with `can_admin_setup`. Captain/Production Crew cannot see Manager recipient/audit data or alter delivery controls.
+- Store settings in the **authoritative PostgreSQL notification configuration** and preserve state across restarts. Changes take effect on the **next job invocation and again immediately before a queued email is handed to SMTP**. The job may remain scheduled while disabled, but it must exit safely without sending.
+- **Manual, deliberate actions** (Manager *Email Report to Myself* and confirmed *Request Report*) remain independently available when **automatic** notifications are paused, subject to existing Manager authorization, organizational-recipient rules, duplicate suppression, reporting-state rechecks, and separate guarded send activation. Pausing automatic mail must not silently block an explicitly requested Manager communication.
+- Persist setting edits with actor, timestamp, old/new values and operational date. Expose last-change identity/time and current effective state in the Administrator panel, and concise **Automatic email paused/enabled** status to Managers in the Action Center. Do not invent a false `sent` status for skipped jobs.
+- Disabling automation must not clear outstanding missing-work reports, reschedule work, alter annual progress or erase previously accepted/failed email records. Re-enabling must **not** replay each missed daily batch; the next scheduled run produces only that day's normal consolidated current exception report according to the existing 2026 rules.
+- Noise protection: at most one Manager digest per recipient/day and one automatic Captain reminder per recipient/day, even with repeated job starts. Manual requests remain independently deduplicated against the Captain/day/occurrence coverage. Never send a missing-report reminder for a valid saved report (including partial or 100%), and never email ineligible/unverified Captains.
+- Acceptance tests: fresh installation defaults OFF; each audience independently off/on; master OFF overrides both; Manager without Admin cannot toggle; multiple concurrent toggle requests; queued-but-unsent message suppressed after an Administrator pause; resume without a catch-up flood; mixed manual and daily actions; restart persistence; audit actor; no unauthorized email; real recipient/provider audit. Keep SMTP/testing flags as deployment-level **safety gates**, not operator-facing switches that must be changed for routine pausing.
+- Operator interface must **not claim the email system is enabled** merely because an Administrator toggle says On when the service's separate Production activation gate is still OFF. Show the effective combination: configured preference and sender/deployment readiness.
+
+No Production notification settings have been implemented or turned on by this contract change; PR #412 is still a draft.
+
+---
+
 ## Acceptance and implementation ownership
 
 - #205 owns schedule classifications, Manager exception worklist, deadline KPI and daily Manager accountability interface; #132 retains Report Work persistence, #175 Perform Work, #172 Work Order Intake notification, #122 release authority.
