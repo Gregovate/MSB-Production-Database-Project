@@ -34,7 +34,7 @@ Freshly compute from the authoritative board at dispatch time, matching the exis
 - **Reported partially worked tasks needing continuation**, upcoming scheduled readiness/blocker exceptions, and Captain TBD.
 - Clear Manager actions: determine whether work occurred; if no work use the existing audited **Reschedule · No work performed** without fictitious 1%/time; if actual work happened get an accurate report; if already reported partial, schedule continuation; if unknown, investigate/hold. Explain unresolved items continue appearing in Manager action summaries.
 
-Email wording is an **editable external text template** with validated variables (subject and body; first-day pilot may use a controlled, versioned reviewed text file, **not permanent user-facing strings in Python**). No hard-coded persons, contact addresses, screenshot stats, or invented links. Use the protected Setup entry `https://my.sheboyganlights.org/setup/`; an exact-assignment email deep link may be added only after browser acceptance. Show actual current Manager/recipient preview before any live test or fan-out.
+Email wording is **two source-controlled editable text templates** with validated variables (subject and body; first-day pilot uses reviewed files, **not permanent user-facing strings in Python**). No hard-coded persons, contact addresses, screenshot stats, or invented links. Use the protected Setup entry `https://my.sheboyganlights.org/setup/`; an exact-assignment email deep link may be added only after browser acceptance. Show actual current Manager/recipient preview before any live test or fan-out.
 
 ## Strict safety gates
 
