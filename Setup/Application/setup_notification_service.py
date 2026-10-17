@@ -235,7 +235,14 @@ def captain_email(rows: list[dict]) -> tuple[str, str]:
 
 
 def notice_plans(board: dict, people: list[dict], today: date,
-                 already_covered: set[tuple[int,int]] | None = None) -> list[dict]:
+                 already_covered: set[tuple[int,int]] | None = None,
+                 reviewed_missing_assignment_ids: set[int] | None = None) -> list[dict]:
+    """No automatic Captain email without a persisted Manager reporting decision.
+
+    Caller MUST resolve any reviewed IDs from the authorized PostgreSQL ledger,
+    never from client-supplied mail parameters. Default is fail-closed: existing
+    daily_dispatch supplies none and therefore plans Manager review only.
+    """
     context = notification_context(board, today)
     year = int(board.get("session", {}).get("season_year") or today.year)
     if year != 2026:
@@ -250,8 +257,13 @@ def notice_plans(board: dict, people: list[dict], today: date,
             "recipient_email":person["email"], "subject":manager_subject, "body_text":manager_body,
             "assignment_id":None, "covered_assignment_ids":[]})
     covered = already_covered or set()
+    reviewed = reviewed_missing_assignment_ids or set()
     by_captain = defaultdict(list)
     for row in context["overdue"]:
+        # Old overdue classification is NOT a Manager confirmation of field
+        # work. No automatic Captain plans without explicit approved evidence.
+        if int(row["assignment_id"]) not in reviewed:
+            continue
         if row["captain_person_id"] is not None:
             recipient_id = int(row["captain_person_id"])
             if (recipient_id,int(row["assignment_id"])) not in covered:
@@ -327,6 +339,8 @@ def daily_dispatch(dsn: str, *, today: date | None = None, dry_run: bool = True,
     if not board.get("session"):
         raise SetupNotificationError("2026 Setup Session not found")
     people = eligible_people(dsn)
+    # Until the native PostgreSQL Manager review/audit is implemented,
+    # daily dispatch MUST NOT generate automatic Captain reminders.
     plans = notice_plans(board, people, today, already_covered=covered_assignments(dsn,today))
     if dry_run:
         return {"date":today.isoformat(),"mode":"DRY_RUN","planned":len(plans),
