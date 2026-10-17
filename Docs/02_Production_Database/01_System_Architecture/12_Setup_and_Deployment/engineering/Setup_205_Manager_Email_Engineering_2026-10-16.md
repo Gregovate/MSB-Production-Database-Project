@@ -48,6 +48,16 @@ The first draft was rejected as too long and buried the decision-making beneath 
 
 Keep the subject concise, body human-readable in Gmail (single-spaced plain text), with no double header, accusations, verbose legal/technical warnings, hard-coded personnel, or repeat explanations. Both `manager_digest_subject.txt` and `manager_digest_template.txt` are editable source-reviewed assets for the first pilot. This remains a reviewed wording **candidate**, not an operator-approved production email.
 
+## Administrator recipient-review interface — mandatory operator-visible acceptance
+
+A command-line recipient count is **not** the management interface. Provide a protected **Email Notifications** review screen reachable from the existing Setup **Manager Action Center** when `can_admin_setup` is true. Use an authenticated Administrator-only route and a matching JSON read endpoint, both guarded by existing trusted Cloudflare+Setup role authority; do not add a second login or new email account.
+
+The screen must show, using **fresh current PostgreSQL data**: the exact names and MSB email addresses of active Google-linked Setup Managers **who would receive the Manager digest**, their eligibility status (not merely old Person role flags), audience count, actual SMTP From, 04:00 America/Chicago proposed schedule and category statuses: Manager auto-email **NOT ACTIVATED**, Captain auto-email **OFF**, other recipients **NONE**. Recipients not verified with current directus/capability eligibility are **not** included; never infer actual recipients from a sample or previous screenshot. A recipient review does **not** enable or schedule sends.
+
+Show a **read-only preview of the actual Manager message** generated from the current 2026 Session (whole-Setup totals and exception rows) with a captured/as-of date, so the user can review the very content to be sent. Review controls: **Refresh data**, **Open Setup Action Center**, and **Email template preview** only until the actual one-recipient server SMTP path is accepted. Do not display an active `Send test` or `Enable` button if the function is not connected to an authorized sender; no decorative working-looking controls. A current Administrator who isn't a resolved Manager recipient is not automatically added to the list. Zero eligible Managers, duplicate mailboxes, invalid identities, missing 2026 Session or DB failure must display a clear **STOP**, not a guessed roster or empty sent claim.
+
+The screen must be implemented in the protected Setup application and reviewed on the **exact-current-Production disposable browser candidate**, not substituted by a fabricated ChatGPT interface. No copy of full private Manager roster in GitHub, logs or public previews. This review is prerequisite to sending the user's accepted **one-recipient, real `msb-prod-db` SMTP test**, followed by explicit separate approval for any Manager-wide dispatch and systemd timer. GitHub/ChatGPT Gmail send does not satisfy this test.
+
 ## Strict safety gates
 
 1. **Manager-only:** the first runner contains no Captain dispatch path. Regardless of draft PR #412 code, do not import `DirectusSetupOutboxClient`, enable old 074 schema/Flow or send to Production Crew.
