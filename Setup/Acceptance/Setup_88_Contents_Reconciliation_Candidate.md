@@ -2,15 +2,107 @@
 
 | Document control | Value |
 |---|---|
-| Status | DRAFT — guided-stop source ready; current-clone/operator acceptance and delayed review resolution pending |
+| Status | October 8 candidate history; guided behavior/070 subsequently integrated and deployed October 10; October 17 recovery findings below remain open |
 | Owner | #88; commanding #122 / DBG-2026-007, 009, 010 |
-| Reviewed | 2026-10-08 (Chicago; required guided Container stops) |
+| Reviewed | 2026-10-17 (Chicago; current Production report reconnaissance) |
 | Baseline main | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
 | Branch | `fix/88-container-contents-reconciliation` |
 | Release | `V0.3.49-guided-container-stop` |
 | Exact application candidate | `fe801e18f58acc58c0d4d6798d9ab6c334648b2e` |
 | Migration | `070_reconcile_setup_container_contents.sql` — functions only |
 | Preview allocation | Setup `8898` |
+
+## October 17 current field picture — event 494
+
+This section supersedes the historical candidate's uninstalled status, not its
+unresolved Manager-review requirements. PR #309 remains an open draft, but its
+guided behavior was integrated through PR #318. The Production change log records
+application `6192a1fdf5acb234fd83731b6a8eb73072b7a35d` / V0.3.62 and migration 070
+installed October 10, report `PR318-070-20261010T172234Z`. Do not replay 070 or
+the old preview/deployment handoffs to diagnose current records.
+
+Greg supplied **MSB Setup — Container Movement.pdf**, 143 pages, generated
+October 17 16:56:39 CDT, database `msb`, 2026 Session 2 / PLANNING, synced through
+movement event **494**. Source SHA256:
+`2a6a9bda69219ec8ba7a549bf2019fc2e637dd735e54380263dc875e50f41c8e`.
+PDF text was extracted and relevant printed pages 49/110 visually inspected.
+Reconnaissance main: `be03270af4ea1fb270a6127f77fcf4dd69972b19`.
+This is a supplied snapshot, not an independent live database query or physical
+inventory. Unsynced/unrecorded work remains absent. Its **14 unresolved material
+requirements** are a separate material-source/planning problem, not the number
+of incorrect Container/Display movements.
+
+### Concrete current cases
+
+| Case / printed pages | Recorded evidence | Disposition |
+|---|---|---|
+| C216, pp49–50 | Container still at Oct6 event122; 0 attached / 9 detached. The seven MtCrumpitPanel Displays and WV-WhoMatrix still use event122. PeaceOnEarth has newer independent Oct14 event226. | Earlier operator-confirmed erroneous Oct6 scope remains in current state. Establish today's physical state of those eight before a correction; preserve PeaceOnEarth event226 and all other later valid observations. Do not blindly reattach all nine or replay the old stop. |
+| C154, p110; child p114 | Oct14 return237, 0 attached / 1 detached. Scaffold-02 unload236 uses the prior Whoville-area GPS. | Recorded return/detachment is coherent; this is no longer the earlier missing-return case. No repeat scan or repair is established by this PDF. |
+| C155, pp110–111; child p114 | Oct14 return233, 0 attached / 1 detached. Scaffold-03 unload232 uses the prior Whoville-area GPS. | Same distinction as C154. Completion, unloading and return remain separate facts. |
+| C052/C053, pp103–105 | Both returned Home Oct9 (183/182), but each retains 16 attached Festive Trees wraps; no removal recorded in either trail. | Thirty-two Displays remain recorded as following returned pallets. Determine whether wraps are installed at Festive Trees or truly returned with pallets. Do not assume all returned Containers were empty; these returns predate 070 installation. |
+| C177/C178/C199, pp41/52–53 | Current type Standalone, but detached counts 3/3/1; latest bad effects still events43/44/123 from Oct5/6. | Seven Displays violate the current protected-Standalone attachment rule. Prepare evidence-preserving historical recovery after current-state checks; do not silently patch master assignment or generate fake field scans. |
+| C034, pp13–15 | Arch Trailer event452 Oct17; 121 attached / 0 detached; no Display removal in its trail. | Latest record says cargo follows trailer. Confirm actual remaining load; this could be a valid full/interim stop or missed physical removals. Preserve the normal multi-stop HERE workflow; count alone does not establish error. |
+| C131, p40; child p113 | Trailer 0 attached / 7 detached. SW-PotterPole is still at unresolved-location event196. Trailer latest199 has GPS with nearest Stage reference 2,227ft away. | Contents detachment and missing placement are different problems. Preserve the separately confirmed empty state and subsequent Church Display observations; resolve PotterPole using actual evidence. A distant nearest point is not proof of Front Entrance placement or of incorrect GPS. |
+
+### Review backlog and report defects
+
+The Container trail contains **19 historical review flags on 17 Containers**:
+C152, C153, C072, C156, C005, C106, C022, C037, C145 (two), C058,
+C067, C186, C189 (two), C010, C141, C151, C027. These are recorded flags,
+not 19 proven mistakes or a count of unresolved physical items. C027 has later
+individual detachments and a Home return, but its historical flag still has no
+recorded resolution. That does not authorize automatically closing the flag.
+
+C151/C152/C153 and C037 are currently Standalone yet have Oct17 review flags.
+Current Record Location JS bypasses contents reconciliation for protected
+Containers; API, captured command notes, offline/cache/build history and type
+history must be inspected before attributing these flags to operator error or
+claiming that the guard is broken. The PDF does not expose their command payloads.
+
+Three source-proven presentation gaps make valid and invalid records hard to tell
+apart:
+
+- `material_status_report.jinja2` unconditionally prints **Physical contents
+  unconfirmed** for every Container. `report_context` counts marker text in event
+  notes but does not project an EMPTY/NOT_EMPTY/NOT_SURE attestation with its
+  source/time. Future presentation must distinguish recorded confirmation from
+  independent physical truth, rather than treating every case alike.
+- The Container history is selected by event `container_id`. Reconciliation
+  children are Display `TASK_UNLOAD` events and appear in the separate Direct
+  Display section. C154/C155's parent return therefore says zero removals while
+  the child unloads are on p114. Link children through their recorded
+  `reconciliation_parent` provenance when available; never guess linkage from
+  neighboring IDs/timestamps. Legacy effects and later Display placements must
+  remain distinguishable. Recorded notes are collapsed details in the printed
+  source, so the PDF does not supply those parent UUIDs/decision JSON.
+- The report formats reconciliation-child GPS as **Recorded GPS** without
+  showing that the coordinates were copied from a prior Container observation.
+  C154/C155's Oct14 child rows use the Oct6 Container coordinates. Retain that
+  recorded evidence, but show inferred prior-location provenance separately from
+  a fresh GPS observation and from a calculated nearest Stage. Do not portray the
+  child timestamp as the time those coordinates were physically measured.
+
+### Recovery order and acceptance boundary
+
+1. Preserve this event494 baseline. Use existing current state/history and
+   read-only command metadata to distinguish outstanding cases from resolved
+   recorded returns; refresh guards again before any write.
+2. Prioritize protected attachment violations and the conditional C052/C053 and
+   C216 corrections. Obtain only the physical facts necessary for those cases;
+   do not mandate scanning every Display or mark task100% as physical Empty.
+3. Complete the existing Manager Contents Review specification below: scoped
+   current-state-guarded audited corrections, evidence source/time, partial
+   resolution and explicit unresolved status. Original events and subsequent
+   valid work remain intact; no alternate movement model or schema assumption.
+4. Correct confirmation/child-trail presentation and implement the existing
+   October14 Containers to Move/direct Return Home requirement. Shared remaining
+   demand and loaded Standalone final placement must remain protected.
+
+No Production mutation, field confirmation, repair, new migration, runtime code
+change or new browser candidate was performed by this report analysis. Current
+schema/command suitability and current Production state must be proven before
+writing a correction. Keep #88/#122 open. The local engineering environment is
+connected again; the earlier workspace-offline limitation is no longer current.
 
 ## V0.3.49 required guided Container stops — current source candidate
 
