@@ -9,6 +9,14 @@
 | Established | 2026-10-01 |
 | Ordering | Reverse chronological — newest deployment first |
 
+## 2026-10-17 — #205 Scheduling Board drag-scroll and Crew Captain labels — Production PASS
+
+- Emergency source-only correction under #205/#122: PR [#414](https://github.com/Gregovate/MSB-Production-Database-Project/pull/414) merged at `bcebcedde6c8043d00e26d1c3f72a244a338f76f`. Final source-only release PR [#415](https://github.com/Gregovate/MSB-Production-Database-Project/pull/415) merged at `65ea23dbfa474d50b9ffe8c23f101dbb76f9951c`; exact deployed application target `ec6d3f0e6a6a1cd69dd60256dcb7f76699e07910`, version remains `V0.3.84-direct-crew-cells` with October 17 UI footer/cache pins.
+- Corrects drag-edge auto-scrolling to use the actual right Scheduling Board scroll owner `.setup-board205-right`, after #205 had changed the inner `.setup-board205-board` to non-scrolling overflow. Preserves established crew colors, scheduling and Report Work history. Schedule Annual Task/Move Crew choices now display Captain names, consistent with Perform Work.
+- Greg explicitly reported disposable browser PASS for restored drag-and-drop and Captain names across both screens, then `Setup REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT`. Candidate browser SHA `86d9983d1ba2dff8b9c03b24e25cf6420985143b`; subsequent source-only release updated only browser cache/date and associated source contracts. Setup/FieldWiring and source-release safety/Windows transport GitHub CI PASS prior to merge.
+- Operator reported `PASS: PR414 source-only deployment completed` and `#414 SOURCE-ONLY DEPLOYMENT PASS`, followed by **confirmed PASS in the protected Production browser**. Deployment used the established Setup source-only runner; no schema/data migrations, no #37 database maintenance entry or PostgreSQL rollback archive. Only Setup source/service is intended to be promoted. Exact server report path/fingerprint, old source SHA, and tested counts from the Production run were not supplied in the abbreviated output; do not invent them. Retain the runner report as controlling detail.
+- #205 accepted functional behavior restored. Do not redeploy migrations 075/076 for this repair. This documentation-only closeout commit is not the installed application SHA.
+
 ## 2026-10-16 — Setup V0.3.84 direct crew cells / 2026 estimates — Production PASS
 
 - Owner #205 under #122. Accepted application `723a733ffbea516519c6dd7a20ec75faca10a9c4`; feature PR #394; exact deployed Setup target `7740498e6602f36c8cdfd384791bbafaab71ee9e`, `V0.3.84-direct-crew-cells`. Tooling PR #409 merged at `b3cf229ccde4bcdfda9c27acedebb16ee5a61cda`; tooling/documentation SHAs are distinct from deployed source.
