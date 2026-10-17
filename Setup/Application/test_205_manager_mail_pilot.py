@@ -81,7 +81,7 @@ def test_template_is_external_reviewable_and_no_fake_reporting():
     a = mail.summarize(fixture_board(),date(2026,10,17))
     source = mail.DEFAULT_TEMPLATE.read_text(encoding="utf-8")
     body = mail.render(source,{"display_name":"Manager One"},a)
-    assert "Hello Manager One" in body
+    assert "Good morning Manager One" in body
     assert "Reschedule" in body and "Do not enter fictitious" in body
     assert "No Captain reminders are being sent" in body
     assert "$" not in body
