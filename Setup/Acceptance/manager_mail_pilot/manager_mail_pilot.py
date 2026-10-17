@@ -483,6 +483,30 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
     return {"status":"SMTP_ACCEPTED_NOT_INBOX_PROOF","recipients":len(messages),"day":str(today)}
 
 
+def accepted_setup_dsn() -> str:
+    """Resolve *only* the existing msb/fieldwiring_app service identity.
+
+    The installed Setup env can contain host-only SETUP_DATABASE_DSN; libpq's
+    implicit OS user/dbname then fails despite a valid existing .pgpass entry.
+    Never accept another supplied role/db or grant Directus privileges.
+    """
+    from psycopg2.extensions import make_dsn, parse_dsn
+    raw = next((os.environ[key] for key in (
+        "SETUP_DATABASE_DSN", "FIELDWIRING_DATABASE_DSN", "PROCEDURE_DATABASE_DSN"
+    ) if os.environ.get(key, "").strip()), "")
+    if not raw:
+        raise PilotStop("Protected Setup PostgreSQL connection is not configured")
+    try:
+        opts = parse_dsn(raw)
+    except Exception as exc:
+        raise PilotStop("Protected Setup DSN is invalid") from exc
+    expected = {"host":"127.0.0.1","port":"5432","dbname":"msb","user":"fieldwiring_app"}
+    for key,value in expected.items():
+        if opts.get(key) and str(opts[key]) != value:
+            raise PilotStop("Setup DSN does not match accepted msb fieldwiring_app identity")
+    return make_dsn(raw, **expected)
+
+
 def main(argv=None) -> int:
     parser=argparse.ArgumentParser(description="Manager-only single-day 2026 Setup mail pilot")
     mode=parser.add_mutually_exclusive_group(required=True)
@@ -492,13 +516,8 @@ def main(argv=None) -> int:
     parser.add_argument("--template",type=Path,default=DEFAULT_TEMPLATE)
     parser.add_argument("--ledger",type=Path,default=Path("/var/lib/msb-setup-manager-mail-pilot"))
     args=parser.parse_args(argv)
-    dsn=next((os.environ[v] for v in (
-        "SETUP_DATABASE_DSN","FIELDWIRING_DATABASE_DSN","PROCEDURE_DATABASE_DSN"
-    ) if os.environ.get(v)),None)
-    if not dsn:
-        print("STOP: Existing protected PostgreSQL DSN unavailable")
-        return 2
     try:
+        dsn = accepted_setup_dsn()
         result=send(dsn,args.template,args.ledger,chicago_now(),
                     "preview" if args.preview else "test" if args.test_to else "live",
                     args.test_to)
