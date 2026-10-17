@@ -81,6 +81,19 @@ Required distinctly named, **non-additive where noted** categories:
 
 The first one-recipient **plain-text** test at 01:45 Central was **received but presentation not accepted**. Do not activate the one-day 04:00 fan-out on the basis of transport alone; Manager roster discrepancies and protected browser preview remain gating items. All Captain mail stays OFF.
 
+## Separate formatted-email test after the initial plaintext Inbox test
+
+The operator's October 17 02:16 UTC-5 live Container preview returned `PREVIEW_ONLY / sent=0`; `HTML characters: 14216` means **HTML was generated, not emailed**. The operator expects to review the formatted Gmail message and stated that no email appeared. Do not misrepresent a no-send query as delivery.
+
+Authorize a **separate, one-recipient formatted-review purpose** named `MANAGER_HTML_REVIEW_TEST`. It must:
+- explicitly select `--html-test-to gliebig@sheboyganlights.org` (an exact, allowlisted current eligible Setup Manager and the previously authorized operator mailbox); reject any other address and any date other than October 17 Central;
+- generate both the complete actual-data plain text **and** the source-controlled styled HTML and pass both to the existing Google STARTTLS relay; prefix the subject **FORMATTED TEST —** for easy separation from the previously received 01:45 `TEST —` message;
+- atomically reserve `html-test-<date>-<recipient-hash>.json` in the same protected `/var/lib/msb-setup-manager-mail-pilot` receipt directory **before SMTP** and record `MANAGER_HTML_REVIEW_TEST`, rather than deleting, resetting, bypassing, or reusing the prior `test-<date>-...` receipt. Do not retry an uncertain SMTP result;
+- require the existing explicit guard flags, never accept a test address as a broadcast recipient list, never create a Captain dispatch path or install a timer, and keep separate fan-out approval as an explicit later gate;
+- display the exact tested From/To/subject, source SHA, current Session/Container count evidence, and whether the outcome is SMTP-accepted versus verified in the operator's actual Gmail Inbox.
+
+Before the operator's single invocation: exact source regression PASS, the already-observed full 2026 live task + Container `--preview` PASS, and a pinned detached worktree. One current operator instruction should request only this separate HTML test, without another no-send preview masquerading as an email. This is not a recurring daily email or a replacement for the protected Administrator recipient interface.
+
 ## Strict safety gates
 
 1. **Manager-only:** the first runner contains no Captain dispatch path. Regardless of draft PR #412 code, do not import `DirectusSetupOutboxClient`, enable old 074 schema/Flow or send to Production Crew.
