@@ -4279,7 +4279,7 @@ function board205InstallView() {
     board205CollapseScheduledSearchResults();
     board205RevealScheduledAssignment(first);
   });
-  document.querySelectorAll('.setup-board205-backlog, .setup-board205-board').forEach((pane) => {
+  document.querySelectorAll('.setup-board205-backlog, .setup-board205-right').forEach((pane) => {
     pane.addEventListener('dragover', (event) => board205AutoScrollPane(pane, event), true);
   });
   document.getElementById('setup-board205-print')?.addEventListener('click', () => window.print());
