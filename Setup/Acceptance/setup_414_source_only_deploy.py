@@ -3,7 +3,7 @@ import subprocess
 import setup_305_source_only_deploy as engine
 
 # Application source includes approved PR414 and October 17 cache/date refresh.
-engine.TARGET = '9e1c2b512ec7b5d0fd7a029392f4cf808a3df255'
+engine.TARGET = 'ec6d3f0e6a6a1cd69dd60256dcb7f76699e07910'
 engine.EXPECTED_OLD = '7740498e6602f36c8cdfd384791bbafaab71ee9e'
 engine.OLD_VERSION = 'V0.3.84-direct-crew-cells'
 engine.VERSION = 'V0.3.84-direct-crew-cells'
