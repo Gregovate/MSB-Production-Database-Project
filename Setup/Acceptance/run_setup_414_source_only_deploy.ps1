@@ -1,7 +1,7 @@
 param([string]$Server = 'msbadmin@192.168.5.9')
 $ErrorActionPreference = 'Stop'
 $repo = 'C:\Users\Greg\Github\MSB-Production-Database-Project'
-$target = '9e1c2b512ec7b5d0fd7a029392f4cf808a3df255'
+$target = 'ec6d3f0e6a6a1cd69dd60256dcb7f76699e07910'
 $mergedFix = 'bcebcedde6c8043d00e26d1c3f72a244a338f76f'
 if (-not (Test-Path $repo)) { throw 'STOP: Office PC primary checkout missing.' }
 Set-Location $repo
