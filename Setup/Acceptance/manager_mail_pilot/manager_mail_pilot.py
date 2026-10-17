@@ -38,8 +38,53 @@ def chicago_now():
     return datetime.now(CHICAGO)
 
 
-def people_managers(dsn: str) -> list[dict]:
-    """The established People+Google-Directus+Setup authorization contract."""
+def classify_manager_directory(rows: list[dict]) -> list[dict]:
+    """People is the recipient directory; Setup capability is a separate gate.
+
+    Return both eligible and held rows to the protected Admin preview.
+    Do not silently omit People Managers without Setup access, or elevate anyone
+    with Setup access but no People Manager designation.
+    """
+    if not 1 <= len(rows) <= 100:
+        raise PilotStop("Unexpected Manager directory size; review People records")
+    email_counts = {}
+    for row in rows:
+        address = str(row.get("email") or "").strip().lower()
+        if address:
+            email_counts[address] = email_counts.get(address, 0) + 1
+    reviewed = []
+    for original in rows:
+        row = dict(original)
+        email = str(row.get("email") or "").strip().lower()
+        person_name = str(row.get("display_name") or "").strip()
+        reasons = []
+        if row.get("is_manager") is not True:
+            reasons.append("Setup Manager access but not designated as Manager in People")
+        if not MANAGER_ADDRESS.fullmatch(email):
+            reasons.append("Missing/invalid organizational Manager email")
+        if email_counts.get(email, 0) > 1:
+            reasons.append("Duplicate People email")
+        if not row.get("identity_linked"):
+            reasons.append("No linked protected Setup identity")
+        if row.get("can_manage_setup") is not True:
+            reasons.append("No current Setup Manager access")
+        if not person_name:
+            reasons.append("Missing People display name")
+        row["email"] = email
+        row["display_name"] = person_name
+        row["send_eligible"] = not reasons
+        row["review_status"] = "ELIGIBLE" if not reasons else "HELD"
+        row["review_reason"] = "Current People Manager and Setup authorization" if not reasons else "; ".join(reasons)
+        reviewed.append(row)
+    return reviewed
+
+
+def manager_directory(dsn: str) -> list[dict]:
+    """The accepted fieldwiring_app read boundary: ref.person + SECDEF function.
+
+    Direct SELECT on public.directus_users is intentionally forbidden, and is
+    never needed for the Manager recipient preview.
+    """
     import psycopg2
     from psycopg2.extras import RealDictCursor
 
@@ -47,15 +92,14 @@ def people_managers(dsn: str) -> list[dict]:
     SELECT p.person_id, lower(btrim(p.email)) AS email,
            coalesce(nullif(btrim(p.preferred_name),''),
                     nullif(btrim(concat_ws(' ',p.first_name,p.last_name)),''),
-                    lower(btrim(p.email))) AS display_name
+                    lower(btrim(p.email))) AS display_name,
+           coalesce(p.is_manager,false) AS is_manager,
+           p.directus_user_id IS NOT NULL AS identity_linked,
+           coalesce(caps.can_manage_setup,false) AS can_manage_setup
     FROM ref.person p
-    JOIN public.directus_users u ON u.id = p.directus_user_id
-    JOIN LATERAL ref.setup_browser_capabilities(lower(btrim(p.email))) caps ON true
+    LEFT JOIN LATERAL ref.setup_browser_capabilities(lower(btrim(p.email))) caps ON true
     WHERE p.active_flag IS TRUE
-      AND u.status='active' AND u.provider='google'
-      AND lower(btrim(u.email)) = lower(btrim(p.email))
-      AND lower(btrim(u.external_identifier)) = lower(btrim(p.email))
-      AND caps.can_manage_setup IS TRUE
+      AND (p.is_manager IS TRUE OR caps.can_manage_setup IS TRUE)
     ORDER BY p.person_id
     """
     with psycopg2.connect(dsn) as conn:
@@ -63,17 +107,15 @@ def people_managers(dsn: str) -> list[dict]:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(sql)
             rows = [dict(row) for row in cur.fetchall()]
-    if not 1 <= len(rows) <= 35:
-        raise PilotStop("Unexpected Manager count; investigate the People list")
-    seen = set()
-    for person in rows:
-        address = str(person.get("email") or "").lower()
-        if not MANAGER_ADDRESS.fullmatch(address) or address in seen:
-            raise PilotStop("Manager addresses are malformed or duplicated")
-        if not person.get("display_name"):
-            raise PilotStop("Manager identity has no display name")
-        seen.add(address)
-    return rows
+    return classify_manager_directory(rows)
+
+
+def people_managers(dsn: str) -> list[dict]:
+    """Eligible, unique recipients only; held People Managers remain visible."""
+    people = [row for row in manager_directory(dsn) if row["send_eligible"]]
+    if not people:
+        raise PilotStop("No eligible Manager recipients; review People and Setup permissions")
+    return people
 
 
 def summarize(board: dict, today: date) -> dict:
