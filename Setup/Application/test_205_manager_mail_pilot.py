@@ -82,15 +82,31 @@ def test_template_is_external_reviewable_and_no_fake_reporting():
     source = mail.DEFAULT_TEMPLATE.read_text(encoding="utf-8")
     body = mail.render(source,{"display_name":"Manager One"},a)
     assert "Hello Manager One" in body
-    assert "Reschedule" in body and "Do not fabricate" in body
-    assert "NO CAPTAIN EMAILS" in body
+    assert "Reschedule" in body and "Do not enter fictitious" in body
+    assert "No Captain reminders are being sent" in body
     assert "$" not in body
+
+
+def test_manager_email_leads_with_kpis_not_training_or_a_long_task_list():
+    report = mail.summarize(fixture_board(),date(2026,10,17))
+    body = mail.render(
+        mail.DEFAULT_TEMPLATE.read_text(encoding="utf-8"),
+        {"display_name":"Manager One"}, report,
+    )
+    assert body.index("TOTAL 3") < body.index("MANAGER DECISIONS")
+    assert body.index("MANAGER DECISIONS") < body.index("WHAT TO DO")
+    assert body.index("WHAT TO DO") < body.index("PAST ASSIGNMENTS TO VERIFY")
+    assert "Task pace:" in body and "November 19" in body
+    assert "No Captain reminders are being sent" in body
+    assert "Unresolved items remain in the Manager Action Center" in body
+    assert "tomorrow's Manager-only report" not in body
+    assert len(body.split()) < 300, "Template briefing must stay concise with small fixture"
 
 
 def test_subject_and_body_are_both_reviewable_external_templates():
     source=mail.DEFAULT_SUBJECT_TEMPLATE.read_text(encoding="utf-8")
     subject=mail.Template(source).substitute(report_date="2026-10-17").strip()
-    assert subject == "MSB Setup — Manager Action Report — 2026-10-17"
+    assert subject == "MSB Setup — Manager Actions — 2026-10-17"
     assert "recipient_name" in mail.DEFAULT_TEMPLATE.read_text(encoding="utf-8")
 
 
