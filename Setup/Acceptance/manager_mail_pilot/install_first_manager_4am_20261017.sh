@@ -104,7 +104,7 @@ for p in manager_mail_pilot.py manager_digest_subject.txt manager_digest_templat
   install -o root -g root -m 0644 "$PILOT_DIR/$p" "$INSTALL_DIR/$p"
   cmp -s "$PILOT_DIR/$p" "$INSTALL_DIR/$p" || { echo "STOP: asset checksum mismatch"; exit 2; }
 done
-install -d -m 0750 -o root -g fieldwiring /etc/msb-setup
+test -d /etc/msb-setup || { echo "STOP: existing Setup config directory missing"; exit 2; }
 printf '%s\n' "MSB_SETUP_MANAGER_PILOT_APPROVED_ROSTER=$EXPECTED_ROSTER" > "$ROSTER_ENV"
 chown root:fieldwiring "$ROSTER_ENV"
 chmod 0640 "$ROSTER_ENV"
