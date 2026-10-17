@@ -87,6 +87,28 @@ def test_template_is_external_reviewable_and_no_fake_reporting():
     assert "$" not in body
 
 
+def test_subject_and_body_are_both_reviewable_external_templates():
+    source=mail.DEFAULT_SUBJECT_TEMPLATE.read_text(encoding="utf-8")
+    subject=mail.Template(source).substitute(report_date="2026-10-17").strip()
+    assert subject == "MSB Setup — Manager Action Report — 2026-10-17"
+    assert "recipient_name" in mail.DEFAULT_TEMPLATE.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("bad_subject", [
+    "Subject\nBcc: someone@example.com",
+    "Oops: $unsupported_field",
+])
+def test_unsafe_or_unknown_subject_placeholder_blocks_preview(
+        monkeypatch,tmp_path,bad_subject):
+    setup_fakes(monkeypatch)
+    subject_path=tmp_path/"subject.txt"
+    subject_path.write_text(bad_subject,encoding="utf-8")
+    monkeypatch.setattr(mail,"DEFAULT_SUBJECT_TEMPLATE",subject_path)
+    monkeypatch.setattr(mail,"deliver",lambda *a:pytest.fail("sent"))
+    with pytest.raises(mail.PilotStop,match="Subject template"):
+        mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(),"preview",None)
+
+
 def test_no_send_preview_never_touches_smtp_or_ledger(monkeypatch,tmp_path,capsys):
     setup_fakes(monkeypatch)
     monkeypatch.setattr(mail,"deliver",lambda *args: pytest.fail("no SMTP in preview"))
