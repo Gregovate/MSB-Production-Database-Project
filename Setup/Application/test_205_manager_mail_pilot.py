@@ -299,6 +299,19 @@ def test_html_protects_people_task_content_and_matches_text_numbers():
     assert "$" not in email
 
 
+def test_header_uses_exact_existing_setup_dark_white_logo_only():
+    html = mail.DEFAULT_HTML_TEMPLATE.read_text(encoding="utf-8")
+    theme = (PILOT_PATH.parents[1] / "Application" / "setup_theme.js").read_text(encoding="utf-8")
+    logo = "https://webassets.sheboyganlights.org/images/branding/msb-white-logo-600-plain.svg"
+    assert logo in theme
+    assert html.count(logo) == 1
+    assert 'alt="Making Spirits Bright"' in html
+    assert 'width="92"' in html
+    assert html.index(logo) < html.index("Making Spirits Bright · Production")
+    assert html.index(logo) < html.index("Setup Morning Brief")
+    assert "https://my.sheboyganlights.org/setup/" in html
+
+
 def test_mail_delivery_contains_html_and_complete_plain_text(monkeypatch):
     sent=[]
     class SMTP:
