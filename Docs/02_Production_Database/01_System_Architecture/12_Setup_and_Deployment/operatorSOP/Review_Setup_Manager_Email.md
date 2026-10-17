@@ -36,6 +36,14 @@ The email deliberately uses the words **review** and **verify**, not “Captain 
 
 If the preview is unavailable, shows a **STOP** condition, or does not show real names/addresses, do not send the test or enable the timer. Do not assume a ChatGPT mockup or previous screenshot is a live roster.
 
+## What to look for in the revised Gmail message
+
+The first real Production SMTP test reached the operator's Inbox, but the **plain-text appearance and omitted Container progress were not accepted**. The next candidate must render a clear HTML email in Gmail, with a complete plain-text fallback. Start with three large **Total / Completed / Remaining** numbers, actual-versus-required task pace and November 19, then a separate **Containers — field movement** section above the task follow-up lists.
+
+Container counts must be labeled carefully: **park location recorded** (not just Picked), **picked/on the way**, **empty at park based on recorded Display associations** (physical contents not confirmed), **partially unloaded at park**, **returned Home** (recorded empty return), and **not yet observed/uncertain**. Empty and partially unloaded are *subsets* of park-location Containers, so do not add all these columns together. The report should say where its Container information came from and when it was refreshed.
+
+Below the Container section, see actionable work-report exceptions and unfinished continuations in readable, compact rows rather than repeated long lines. The protected **Email recipients & preview** Administration page will show the proposed HTML email and the exact live recipient list. That page must pass browser acceptance before wide mail is approved. The first received text test does not authorize the next send or the 4:00 AM timer; Captains remain OFF.
+
 ## Before the first email is enabled — Administrator review
 
 1. Open the **Setup** application with your normal Sheboygan Lights Google Workspace account. Select the **2026** season.
