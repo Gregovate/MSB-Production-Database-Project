@@ -70,6 +70,10 @@ The operator confirmed the final white PNG displays in Gmail and requests the **
 
 The operator also requested the first automated **04:00 Manager-only email**. The prior one-recipient delivery tests did **not** activate any service. Before 04:00 activation, reconcile the exact audience against People and current Setup Manager privileges. As of the latest read-only People query five records are eligible (Rick, Greg, Rich, Eric, Tom), one active People Manager (Don) is **HELD because identity is not linked**, and one person (Randy) is Setup-authorized but not marked Manager in People. Do not silently exclude/include either without operator decision. The currently guarded sender stops on any held People Manager. The accepted Server Management timer installation/health check is mandatory and must produce a specific active future trigger, not a planning claim. Never send a catch-up email if setup isn't complete by 04:00, and do not enable Captain notifications.
 
+## First Manager email: operator-confirmed recipient interpretation
+
+For October 17, Randy's Setup Manager capability is intentional and Don's missing People-to-Directus link is an onboarding follow-up, not an email disqualification. An active People contact is eligible if marked as a People Manager OR currently authorized in Setup as a Manager, with a unique valid MSB email. Seven named recipients must match the operator-reviewed list before dispatch. Keep the mismatches as review notes without editing identities. Captain sending stays OFF.
+
 ## Before the first email is enabled — Administrator review
 
 1. Open the **Setup** application with your normal Sheboygan Lights Google Workspace account. Select the **2026** season.
