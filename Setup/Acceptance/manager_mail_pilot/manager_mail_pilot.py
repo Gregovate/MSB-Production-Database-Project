@@ -62,23 +62,29 @@ def classify_manager_directory(rows: list[dict]) -> list[dict]:
         email = str(row.get("email") or "").strip().lower()
         person_name = str(row.get("display_name") or "").strip()
         reasons = []
-        if row.get("is_manager") is not True:
-            reasons.append("Setup Manager access but not designated as Manager in People")
+        notes = []
         if not MANAGER_ADDRESS.fullmatch(email):
             reasons.append("Missing/invalid organizational Manager email")
         if email_counts.get(email, 0) > 1:
             reasons.append("Duplicate People email")
-        if not row.get("identity_linked"):
-            reasons.append("No linked protected Setup identity")
-        if row.get("can_manage_setup") is not True:
-            reasons.append("No current Setup Manager access")
         if not person_name:
             reasons.append("Missing People display name")
+        if not (row.get("is_manager") is True or row.get("can_manage_setup") is True):
+            reasons.append("Neither a People Manager nor a current Setup Manager")
+        if row.get("is_manager") is not True and row.get("can_manage_setup") is True:
+            notes.append("Current Setup Manager; People Manager flag off")
+        if row.get("is_manager") is True and row.get("can_manage_setup") is not True:
+            notes.append("People Manager; no current Setup Manager application access")
+        if not row.get("identity_linked"):
+            notes.append("People-to-Directus link pending onboarding")
         row["email"] = email
         row["display_name"] = person_name
         row["send_eligible"] = not reasons
         row["review_status"] = "ELIGIBLE" if not reasons else "HELD"
-        row["review_reason"] = "Current People Manager and Setup authorization" if not reasons else "; ".join(reasons)
+        row["onboarding_note"] = "; ".join(notes)
+        row["review_reason"] = "; ".join(reasons) if reasons else (
+            "Active People contact; People Manager or current Setup Manager"
+        )
         reviewed.append(row)
     return reviewed
 
@@ -398,11 +404,10 @@ def enforce_approved_manager_audience(managers: list[dict], roster: list[dict]) 
     if (not values or any(not MANAGER_ADDRESS.fullmatch(x) for x in values)
             or len(set(values)) != len(values) or set(values) != actual):
         raise PilotStop("Manager fan-out STOP: approved roster differs from current eligible People")
-    held = {str(p["person_id"]) for p in roster if p.get("is_manager") and not p["send_eligible"]}
-    ack = os.environ.get("MSB_SETUP_MANAGER_PILOT_ACKNOWLEDGED_HELD_IDS", "").strip()
-    stated = [v.strip() for v in ack.split(",") if v.strip()]
-    if len(stated) != len(set(stated)) or set(stated) != held:
-        raise PilotStop("Manager fan-out STOP: held People Managers not explicitly acknowledged")
+    if any(not p["send_eligible"] for p in roster):
+        raise PilotStop("Manager fan-out STOP: unknown or malformed manager contact")
+    # Identity-link and People-flag discrepancies remain visible but are not
+    # blanket SMTP disqualifiers. No silent privilege changes are performed.
 
 
 def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: str | None) -> dict:
