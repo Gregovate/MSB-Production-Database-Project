@@ -8,7 +8,18 @@
 Current integrated #122 candidate: [field release checkpoint and review](Setup_122_Integrated_Field_Release.md). This supersedes separate preview handoffs for the included PR308/309/318/321 changes.
 
 
-## #88 report-only Production release
+## #88 current contents recovery
+
+[October 17 event494 field-picture findings and recovery order](Setup_88_Contents_Reconciliation_Candidate.md#october-17-current-field-picture--event-494)
+distinguish coherent C154/C155 returns, still-old C216 detachments, protected
+Standalone violations, C052/C053 returned-but-attached wraps, missing C131
+Display location, historical review flags and source-proven report gaps.
+Guided behavior/070 shipped via #318 on October10 despite the old #309 draft
+remaining open. Manager resolve/correct and Containers to Move remain unfinished.
+The PDF analysis performed no Production mutation; the October8 source pins and
+handoffs below are historical release evidence, not current deployment advice.
+
+## #88 October 8 report-only Production release — historical
 
 [Approved Container Movement source-only release and pinned install handoff](Setup_88_Container_Movement_Report_Deployment.md)
 uses V0.3.50 / exact application 6c44a082dd520b75881c50ad2ce78feb029ff87d.
@@ -22,8 +33,8 @@ snapshot path/hash transcription remain pending. **Do not rerun deployment.**
 
 [Read prerequisite, failure history and actual server receipt](Setup_88_Report_Read_Prerequisite.md)
 retain earlier transport/backup/stdin STOPs and their corrections. Execution used
-merged tooling main `cc93378f`; deployed application remains `6c44a082` / V0.3.50.
-Guided #309, migration 070 and historical movement repair remain separate. No
+merged tooling main `cc93378f`; that run deployed `6c44a082` / V0.3.50.
+Guided #309, migration 070 and historical movement repair were separate then. No
 operator pause or new workstation dependency was needed.
 
 ## #88 contents reconciliation browser candidate
