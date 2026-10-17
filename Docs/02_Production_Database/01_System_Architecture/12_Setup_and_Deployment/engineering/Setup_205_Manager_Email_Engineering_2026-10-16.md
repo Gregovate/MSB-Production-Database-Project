@@ -94,6 +94,16 @@ Authorize a **separate, one-recipient formatted-review purpose** named `MANAGER_
 
 Before the operator's single invocation: exact source regression PASS, the already-observed full 2026 live task + Container `--preview` PASS, and a pinned detached worktree. One current operator instruction should request only this separate HTML test, without another no-send preview masquerading as an email. This is not a recurring daily email or a replacement for the protected Administrator recipient interface.
 
+## Approved Setup white logo asset — October 17 visual acceptance
+
+Operator reviewed the actual formatted Gmail message and approved its appearance subject to the **single missing white MSB logo** in the navy header. The exact canonical source already exists in Setup dark-theme code (`Setup/Application/setup_theme.js`):
+
+`https://webassets.sheboyganlights.org/images/branding/msb-white-logo-600-plain.svg`
+
+The operator verified its source in the existing NAS `192.168.5.4/webassets/images/branding`. Reuse this artwork; no hand-drawn/new brand variant, no alternate third-party logo site, no alteration to the approved KPI/movement/recipient/wording layout. Place it above the small “MAKING SPIRITS BRIGHT · PRODUCTION” label, left aligned in the current navy banner, with descriptive `alt`, controlled width, and padding.
+
+**Email-client constraint:** The Setup browser's public SVG is *not equivalent* to a Gmail-ready raster. Gmail image proxies do not consistently render external SVG `<img>` URLs. Prefer a verified PNG export **of that exact existing SVG** hosted on the same MSB-controlled webassets site, following approved #359 publication controls, before claiming Gmail acceptance. Do not invent a PNG URL or claim publication. A temporary source-only SVG `<img>` reference can prove branding integration in the protected browser preview, but **actual Gmail logo display is UNVERIFIED** until an operator opens a received message. Never deploy/send a made-up white PNG, external conversion service, or unapproved provider. Preserve the previously accepted HTML layout and prior delivery receipts. This logo change does not authorize a Manager-wide broadcast or Captain mail.
+
 ## Strict safety gates
 
 1. **Manager-only:** the first runner contains no Captain dispatch path. Regardless of draft PR #412 code, do not import `DirectusSetupOutboxClient`, enable old 074 schema/Flow or send to Production Crew.
