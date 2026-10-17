@@ -25,7 +25,7 @@ const base = {
     {setup_session_task_id:5, task_name:'No date', effective_complete:true, execution_status:'COMPLETE', actual_completed_at:null, completion_work_date:null, completion_date_source:'UNVERIFIED'},
   ],
   assignments: [
-    {setup_session_task_id:2, setup_work_day_task_id:11, setup_work_day_id:10, work_report_count:0},
+    {setup_session_task_id:2, setup_work_day_task_id:11, setup_work_day_id:10, work_report_count:0,shift_code:'MORNING'},
     {setup_session_task_id:2, setup_work_day_task_id:12, setup_work_day_id:11, work_report_count:1},
     {setup_session_task_id:3, setup_work_day_task_id:13, setup_work_day_id:12, work_report_count:0}
   ],
@@ -96,6 +96,21 @@ const managerHtml=ctx.setup205ActionCenterHtml(base);
 for(const key of ['Manager Setup Action Center','Past occurrences awaiting reports','Incomplete tasks needing continuation','Scheduled assignments without Captain']) {
   assert(managerHtml.includes(key), 'missing Manager action group: '+key);
 }
+assert(managerHtml.includes('data-205-action="review-reschedule"'), 'eligible missing report must allow Manager to review and use audited no-work reschedule');
+assert(managerHtml.includes('Manager review needed:'), 'missing-report row must not imply automatic Captain mail');
+assert(managerHtml.includes('Request Report after review'), 'manual Captain reminder needs explicit field-work review');
+const historyLocked = structuredClone(base);
+historyLocked.assignments[0].historical_locked = true;
+assert(!ctx.setup205ActionCenterHtml(historyLocked).includes('data-205-action="review-reschedule"'),
+  'never offer to move a progress/history-locked assignment');
+const reported = structuredClone(base);
+reported.assignments[0].work_report_count = 1;
+assert(!ctx.setup205ActionCenterHtml(reported).includes('data-205-action="review-reschedule"'),
+  'saved partial or full report blocks misleading no-work move');
+assert(!ctx.setup205ActionCenterHtml(reported).includes('data-205-action="request-report"'),
+  'reported original occurrence must not be treated as missing report');
+assert(source.includes("nextOpenRescheduleNoWorkDialog(id);"),
+  'Action Center no-work route must consume guarded existing Perform Work reschedule');
 assert(managerHtml.includes('data-205-action="report"'), 'original report navigation must be exact-assignment');
 assert(managerHtml.includes('data-205-action="schedule"'), 'continuation must use existing scheduler');
 assert(ctx.setup205ManagementReportHtml(base,2026).includes('data-205-action="planning"'),
