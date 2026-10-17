@@ -56,14 +56,66 @@ def setup_fakes(monkeypatch):
             return fixture_board()
     monkeypatch.setitem(sys.modules,"setup_scheduling_board_repository",
                         SimpleNamespace(SetupSchedulingBoardRepository=BoardRepo))
-    monkeypatch.setattr(mail,"people_managers",lambda dsn:[
-        {"person_id":1,"email":"manager@sheboyganlights.org","display_name":"Manager One"},
-        {"person_id":2,"email":"second@sheboyganlights.org","display_name":"Manager Two"},
+    monkeypatch.setattr(mail,"manager_directory",lambda dsn:[
+        {"person_id":1,"email":"manager@sheboyganlights.org","display_name":"Manager One",
+         "is_manager":True,"can_manage_setup":True,"identity_linked":True,
+         "send_eligible":True,"review_status":"ELIGIBLE","review_reason":"Eligible"},
+        {"person_id":2,"email":"second@sheboyganlights.org","display_name":"Manager Two",
+         "is_manager":True,"can_manage_setup":True,"identity_linked":True,
+         "send_eligible":True,"review_status":"ELIGIBLE","review_reason":"Eligible"},
     ])
 
 
 def time_at(hour=4, day=17):
     return datetime(2026,10,day,hour,0,tzinfo=CHI)
+
+
+def test_people_directory_has_no_direct_directus_select_and_keeps_held_rows():
+    source = (PILOT_PATH/"manager_mail_pilot.py").read_text(encoding="utf-8")
+    sql = source.split('    sql = """',1)[1].split('"""',1)[0]
+    assert "FROM ref.person p" in sql
+    assert "ref.setup_browser_capabilities(" in sql
+    assert "JOIN public.directus_users" not in sql
+    assert "SELECT p.person_id" in sql
+
+    checked = mail.classify_manager_directory([
+        {"person_id":11,"display_name":"A","email":"a@sheboyganlights.org",
+         "is_manager":True,"identity_linked":True,"can_manage_setup":True},
+        {"person_id":12,"display_name":"B","email":"b@sheboyganlights.org",
+         "is_manager":True,"identity_linked":False,"can_manage_setup":False},
+        {"person_id":13,"display_name":"C","email":"c@sheboyganlights.org",
+         "is_manager":False,"identity_linked":True,"can_manage_setup":True},
+    ])
+    assert checked[0]["send_eligible"] is True
+    assert checked[1]["review_status"] == "HELD"
+    assert "No current Setup Manager access" in checked[1]["review_reason"]
+    assert checked[2]["review_status"] == "HELD"
+    assert "not designated" in checked[2]["review_reason"]
+
+
+def test_duplicate_people_email_addresses_never_sent():
+    rows = [
+        {"person_id":i,"display_name":str(i),"email":"same@sheboyganlights.org",
+         "is_manager":True,"identity_linked":True,"can_manage_setup":True}
+        for i in (1,2)
+    ]
+    checked = mail.classify_manager_directory(rows)
+    assert all(x["review_status"] == "HELD" for x in checked)
+    assert all("Duplicate" in x["review_reason"] for x in checked)
+
+
+def test_manager_email_live_holds_disputed_people_roster(monkeypatch,tmp_path):
+    setup_fakes(monkeypatch)
+    # Append a flagged, unauthenticated person to the fake eligible roster.
+    eligible = mail.manager_directory("fixture")
+    monkeypatch.setattr(mail, "manager_directory",lambda dsn: eligible + [{
+        "person_id":20,"email":"held@sheboyganlights.org","display_name":"Held Person",
+        "is_manager":True,"send_eligible":False,"review_status":"HELD",
+        "review_reason":"No current Setup Manager access"
+    }])
+    monkeypatch.setattr(mail,"deliver",lambda *a:pytest.fail("SMTP attempted"))
+    with pytest.raises(mail.PilotStop,match="HELD"):
+        mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(),"live",None)
 
 
 def test_whole_setup_counts_and_historical_classification():
@@ -140,7 +192,7 @@ def test_no_send_preview_never_touches_smtp_or_ledger(monkeypatch,tmp_path,capsy
     time_at(3), time_at(5), time_at(4,18), time_at(1,17),
 ])
 def test_send_outside_exact_window_fails_before_db_or_smtp(monkeypatch,tmp_path,moment):
-    monkeypatch.setattr(mail,"people_managers",lambda dsn:pytest.fail("queried"))
+    monkeypatch.setattr(mail,"manager_directory",lambda dsn:pytest.fail("queried"))
     with pytest.raises(mail.PilotStop,match="window"):
         mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,moment,"live",None)
 
