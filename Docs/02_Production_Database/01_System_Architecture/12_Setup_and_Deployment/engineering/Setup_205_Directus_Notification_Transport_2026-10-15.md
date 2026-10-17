@@ -1,3 +1,9 @@
+# SUPERSEDED — Historical October 15 Directus Candidate (NOT FOR DEPLOYMENT)
+
+**Current transport authority:** [#205 Google Workspace SMTP Transport — October 16](Setup_205_Google_Workspace_SMTP_Transport_2026-10-16.md). Do not install the Directus Event Hook, token or old migration 074 below. This is preserved as historical candidate design only, and its source must be refactored in PR #412 before acceptance.
+
+---
+
 # Setup #205 — Dedicated Directus Event-Flow Mail Handoff
 
 | Document Control | Value |
