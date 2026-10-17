@@ -50,6 +50,7 @@ def client(monkeypatch):
     monkeypatch.setattr(m,"SetupSchedulingBoardRepository",FakeRepo)
     monkeypatch.setattr(m,"_piloted_digest_module",lambda:SimpleNamespace(
         manager_directory=lambda dsn: fake_managers,
+        accepted_setup_dsn=lambda:"isolated-readonly",
         summarize=fake_report,
         container_summary=lambda dsn,season_year:{
             "containers_total":8,"containers_park_recorded":3,
