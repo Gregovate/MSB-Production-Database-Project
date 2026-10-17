@@ -15,7 +15,7 @@
 ## Code inventory (not an install package)
 
 - `Setup/Acceptance/manager_mail_pilot/manager_mail_pilot.py` — 2026 Session projection, People+active Google Directus+current Manager authorization, external controlled template, read-only preview; explicitly gated single-day Manager send; read-only PostgreSQL, per-recipient protected local receipt.
-- `Setup/Acceptance/manager_mail_pilot/manager_digest_template.txt` — human-readable and source-editable first-day Manager template. This is **not** the later PostgreSQL-backed Administrator template editor and should not be represented as such.
+- `Setup/Acceptance/manager_mail_pilot/manager_digest_template.txt` and `manager_digest_subject.txt` — separate human-readable, source-editable first-day Manager body and subject templates. This is **not** the later PostgreSQL-backed Administrator template editor and should not be represented as such.
 - `Setup/Application/test_205_manager_mail_pilot.py` — network-free tests covering totals/partial/cancelled work, preview, guard-off, local-date, one-recipient test, no-duplicate SMTP attempt, zero Captain functionality.
 
 No changes to live Setup UI, Report Work, the installed `/opt/msb-setup` detached worktree, the PostgreSQL schema/data, Directus Flows, or existing Work Order emails. No automatic periodic report: this is one calendar-day pilot only.
