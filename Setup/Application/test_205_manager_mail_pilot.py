@@ -326,6 +326,26 @@ def test_mail_delivery_contains_html_and_complete_plain_text(monkeypatch):
     assert "Styled" in sent[0].get_body(preferencelist=('html',)).get_content()
 
 
+def test_host_only_production_env_gets_accepted_db_user_without_password_exposure(monkeypatch):
+    from psycopg2.extensions import parse_dsn
+    for key in ("SETUP_DATABASE_DSN","FIELDWIRING_DATABASE_DSN","PROCEDURE_DATABASE_DSN"):
+        monkeypatch.delenv(key,raising=False)
+    monkeypatch.setenv("SETUP_DATABASE_DSN","host=127.0.0.1")
+    opts=parse_dsn(mail.accepted_setup_dsn())
+    assert opts["host"]=="127.0.0.1"
+    assert opts["dbname"]=="msb"
+    assert opts["user"]=="fieldwiring_app"
+    assert opts["port"]=="5432"
+
+
+def test_other_database_or_role_is_never_substituted(monkeypatch):
+    for raw in ("host=otherhost", "dbname=some_other_db",
+                "user=msbadmin", "port=1555"):
+        monkeypatch.setenv("SETUP_DATABASE_DSN",raw)
+        with pytest.raises(mail.PilotStop,match="does not match"):
+            mail.accepted_setup_dsn()
+
+
 def test_no_sender_header_from_operator_content():
     assert mail.FROM == "no-reply@sheboyganlights.org"
     assert not hasattr(mail,"captain_email")
