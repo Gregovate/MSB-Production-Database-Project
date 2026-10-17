@@ -7,6 +7,19 @@ Task pace: $actual_pace completed/day (last 7 days) vs $required_pace needed/day
 Task-based projected finish: $projected_finish
 $projection_confidence
 
+CONTAINERS — RECORDED FIELD MOVEMENT
+Reference Containers: $containers_total
+Park setup stop recorded: $containers_park_recorded
+Picked / loaded / on the way: $containers_outbound
+Empty at park (recorded Display associations, not physically verified): $containers_empty_at_park
+Partly unloaded at park (recorded associations): $containers_partial_at_park
+Returned Home (reported empty return): $containers_returned
+No movement recorded: $containers_no_movement
+Location / status needs review: $containers_location_review
+Containers with historical contents-review events: $containers_contents_review_history
+Recorded snapshot: $containers_snapshot_as_of
+$containers_evidence_note
+
 MANAGER DECISIONS
 $missing_report_occurrences past assignments to verify — no matched work report
 $continuation_needed started tasks needing a future continuation
