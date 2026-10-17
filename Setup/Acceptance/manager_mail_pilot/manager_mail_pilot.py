@@ -10,6 +10,7 @@ import argparse
 from datetime import date, datetime, timedelta
 from email.message import EmailMessage
 import hashlib
+from html import escape as html_escape
 import json
 import os
 from pathlib import Path
@@ -26,6 +27,7 @@ FROM = "no-reply@sheboyganlights.org"
 GOOGLE_RELAY = "smtp-relay.gmail.com"
 DEFAULT_TEMPLATE = Path(__file__).with_name("manager_digest_template.txt")
 DEFAULT_SUBJECT_TEMPLATE = Path(__file__).with_name("manager_digest_subject.txt")
+DEFAULT_HTML_TEMPLATE = Path(__file__).with_name("manager_digest_html.html")
 MANAGER_ADDRESS = re.compile(r"[a-z0-9._%+\-]+@sheboyganlights[.]org")
 SEND_GUARD = "APPROVED_OCT_17_MANAGER_ONLY"
 
@@ -276,6 +278,7 @@ def summarize(board: dict, today: date) -> dict:
     lines = lambda values: "\n".join(values) if values else "- None"
     return {
         "report_date":today.isoformat(), "total_tasks":len(tasks),
+        "completion_percent":f"{(len(complete) * 100 / len(tasks)):.1f}",
         "completed_tasks":len(complete), "remaining_tasks":len(remaining),
         "blocked_tasks":len(blocked), "missing_report_occurrences":len(past),
         "continuation_needed":len(continuations),
@@ -312,7 +315,51 @@ def render(template: str, person: dict, report: dict) -> str:
         raise PilotStop("Template contains an unsupported placeholder") from exc
 
 
-def deliver(recipient: str, subject: str, body: str) -> str:
+def render_html(template: str, person: dict, report: dict) -> str:
+    """Source-reviewed HTML structure; ALL injected PostgreSQL values escaped."""
+    values = {key: html_escape(str(value), quote=True)
+              for key,value in report.items() if not isinstance(value, (list,dict))}
+    values["recipient_name"] = html_escape(str(person["display_name"]), quote=True)
+
+    def td(value: object, *, right: bool = False) -> str:
+        align = ' align="right"' if right else ''
+        return ('<td' + align + ' style="padding:9px 8px;border-bottom:1px solid '
+                '#e6edf2;vertical-align:top;">' +
+                html_escape(str(value), quote=True) + '</td>')
+
+    def rows_or_none(lines: list[str]) -> str:
+        return '\n'.join(lines) if lines else (
+            '<tr><td colspan="3" style="padding:11px 8px;color:#587085;">'
+            'None recorded</td></tr>'
+        )
+
+    past = []
+    for row in report.get("past_rows") or []:
+        # Restrict markup to known table tags; stage and names are escaped by td.
+        task = str(row["name"]) + " — " + str(row["stage"])
+        crew = "Crew " + str(row["crew"]) + " / " + str(row["captain"])
+        original = str(row["date"]) + " " + str(row["shift"])
+        past.append("<tr>" + td(original) + td(task) + td(crew) + "</tr>")
+    values["overdue_html_rows"] = rows_or_none(past)
+
+    continuation = []
+    for row in report.get("continuation_rows") or []:
+        task = str(row["name"]) + " — " + str(row["stage"])
+        continuation.append("<tr>" + td(task) + td(str(row["percent"]) + "%",right=True) + "</tr>")
+    values["continuation_html_rows"] = rows_or_none(continuation).replace(
+        'colspan="3"', 'colspan="2"'
+    )
+
+    try:
+        body = Template(template).substitute(values)
+    except (KeyError, ValueError) as exc:
+        raise PilotStop("HTML template contains an unsupported placeholder") from exc
+    if len(body) > 150000:
+        raise PilotStop("HTML email unexpectedly large")
+    return body
+
+
+def deliver(recipient: str, subject: str, body: str, html_body: str | None = None) -> str:
     """No passwords, no non-TLS fallback and never a Captain recipient."""
     if not MANAGER_ADDRESS.fullmatch(recipient):
         raise PilotStop("Manager recipient email rejected")
@@ -321,6 +368,8 @@ def deliver(recipient: str, subject: str, body: str) -> str:
     message["To"] = recipient
     message["Subject"] = subject
     message.set_content(body, charset="utf-8")
+    if html_body is not None:
+        message.add_alternative(html_body, subtype="html", charset="utf-8")
     with smtplib.SMTP(GOOGLE_RELAY, 587, timeout=20) as smtp:
         smtp.ehlo()
         if not smtp.has_extn("starttls"):
@@ -355,9 +404,13 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
     template = path.read_text(encoding="utf-8")
     if not template.strip() or len(template) > 25000:
         raise PilotStop("Template is empty or unexpectedly large")
-    messages = [(p,render(template,p,report)) for p in managers]
+    html_source = DEFAULT_HTML_TEMPLATE.read_text(encoding="utf-8")
+    if not html_source.strip() or len(html_source) > 30000:
+        raise PilotStop("HTML email template unavailable or unexpectedly large")
+    messages = [(p,render(template,p,report),render_html(html_source,p,report))
+                for p in managers]
     if test_to:
-        messages = [(p,s) for p,s in messages if p["email"] == test_to.lower().strip()]
+        messages = [(p,s,h) for p,s,h in messages if p["email"] == test_to.lower().strip()]
         if len(messages) != 1:
             raise PilotStop("Test address is not exactly one current authorized Manager")
     try:
@@ -393,6 +446,8 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
         },indent=2))
         print("--- FIRST MANAGER BODY — PREVIEW ONLY ---")
         print(messages[0][1])
+        print("--- REVIEWED HTML ALTERNATIVE: prepared, NOT SENT ---")
+        print("HTML characters:",len(messages[0][2]))
         return {"status":"PREVIEW_ONLY","sent":0}
     if os.environ.get("MSB_SETUP_MANAGER_PILOT_SEND") != "APPROVED_OCT_17_MANAGER_ONLY" or (
         os.environ.get("SETUP_NOTIFICATION_SMTP_SEND_ENABLED") != "1"):
@@ -400,7 +455,7 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
     if not ledger.is_dir():
         raise PilotStop("Protected SMTP attempt directory unavailable")
 
-    for person, body in messages:
+    for person, body, html_body in messages:
         digest = hashlib.sha256(person["email"].encode("ascii")).hexdigest()[:24]
         filename = (f"test-{today}-{digest}.json" if mode == "test"
                     else f"manager-{today}-{digest}.json")
@@ -417,7 +472,7 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
             stream.flush()
             os.fsync(stream.fileno())
         try:
-            receipt["status"]=deliver(person["email"],subject,body)
+            receipt["status"]=deliver(person["email"],subject,body,html_body)
         except (OSError,smtplib.SMTPException,PilotStop) as exc:
             receipt["status"]="UNKNOWN_NO_AUTORETRY"
             receipt["error_class"]=type(exc).__name__
