@@ -147,8 +147,8 @@ def test_manual_sender_display_name_and_address_are_explicit(monkeypatch):
 
 
 @pytest.mark.parametrize("name", [
-    "Not Valid\\nBcc: outsider@example.org",
-    "Not Valid\\rFrom: outsider@example.org",
+    "Not Valid\nBcc: outsider@example.org",
+    "Not Valid\rFrom: outsider@example.org",
     "X" * 101,
     "",
 ])
