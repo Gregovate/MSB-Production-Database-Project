@@ -27,10 +27,10 @@ The email deliberately uses the words **review** and **verify**, not “Captain 
 
 1. Open [Setup](https://my.sheboyganlights.org/setup/) with your normal MSB account and choose **Manager Action Center**.
 2. As an authorized **Setup Administrator**, open **Email Notifications — Review recipients**. (The candidate address is `https://my.sheboyganlights.org/setup/notifications/`; it will work only after the approved release.)
-3. Review the **Manager daily email** section. It lists the **actual names and email addresses** selected from active People records with current Setup Manager access, along with a recipient count. This is not a manually typed mailing list.
+3. Review the **Manager daily email** section. The starting list comes from **People (`ref.person`)**: active persons marked **Manager**. The screen shows their actual names/emails, whether they are **Eligible** for this initial Manager-only email (current Setup Manager permission and linked identity), and any **Held** record needing review. Review authorized Setup Managers without the People Manager flag as a separate discrepancy; those are not added silently.
 4. Confirm **From: MSB Production DB <no-reply@sheboyganlights.org>**, **Captain reminders: OFF** and **Automatic send: NOT ACTIVATED**. A preview does not turn anything on.
 5. Select **Refresh preview** to reread People and the 2026 Setup data. Compare the date, Total / Completed / Remaining, and the exception list against the **Manager Action Center**.
-6. Check any missing/extra Manager with the Administrator in **People Manager** and current authorized access. Do **not** approve a broadcast until the displayed list matches the intended audience.
+6. Check missing/extra Managers and any **Held** rows in **People Manager** and existing Setup access controls. The People Manager flag is a recipient-directory designation, not a permission grant; do not change Directus roles or the email sender just to clear the review. **Do not approve a broadcast until the actual eligible list matches the intended audience.**
 7. Only **after** the roster and report are correct, approve the separate single-recipient actual email test to **your own** verified MSB mailbox. Verify that it arrived **from the Production DB sender**, not your Gmail personal account.
 8. Review the email in Gmail, request corrections if needed, and separately decide whether to authorize Manager-wide sending. **Captains remain excluded.**
 
