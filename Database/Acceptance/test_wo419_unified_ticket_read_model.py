@@ -174,3 +174,34 @@ def test_419_directus_cutover_is_per_event_and_testing_safe():
 
     assert "Launch blocker" in readme
     assert "per-event Directus Flow" in readme
+
+
+def test_419_disposable_browser_acceptance_is_end_to_end():
+    """#419 candidate cannot stop at a static list or a mock mail success."""
+    design = DESIGN.read_text(encoding="utf-8")
+    readme = (WO_DIR / "README.md").read_text(encoding="utf-8")
+    section_title = "### #419 disposable end-to-end browser acceptance candidate"
+    assert section_title in design
+    section = design.split(section_title, 1)[1].split(
+        "### Permission, integration, and engineering sequence", 1
+    )[0]
+    for required in (
+        "My Work",
+        "All Work Orders",
+        "Show completed",
+        "New Internal Work Order",
+        "choose assignees",
+        "Task Feedback",
+        "clarification",
+        "reporter",
+        "display_test_session_id",
+        "current-Production PostgreSQL clone",
+        "test-only",
+        "exact source SHA",
+        "CLEAN EXIT",
+        "Server Management Application and Test Port Register",
+        "Do not call the design complete",
+    ):
+        assert required.casefold() in section.casefold(), required
+    assert "first integrated application review target" in readme
+    assert "not merged, built or deployed" in readme
