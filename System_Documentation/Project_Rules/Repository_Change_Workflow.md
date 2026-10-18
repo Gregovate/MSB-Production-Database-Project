@@ -124,3 +124,20 @@ Protected GitHub settings remain administrator-controlled. The new job must
 run and pass on a PR before being selected as required in the existing active
 **Protect Main** ruleset. Existing protections must not be weakened. Do not
 claim enforcement active merely because the workflow exists on a branch.
+
+### Verification of design authority references
+
+The compliance gate must verify that a PR's claimed governing design names
+an **existing** controlled Markdown document under `Docs/` or
+`System_Documentation/`. A plausible string, issue, PR, or chat reference
+does not prove a controlled design exists. Documentation-only changes must
+also provide authority and scope evidence; they must not silently bypass the
+check. This automatic test does not prove the referenced document governs the
+specific change, that the design was reviewed before implementation, or that
+operator acceptance occurred. Those require source review and accountable
+operator approval.
+
+The October 18 merged initial gate (#421) accepted unverified design-path
+strings and did not require evidence for ordinary documentation-only changes.
+The follow-up hardening explicitly closes those detectable gaps; it is not
+an amendment of #421's already-merged history.
