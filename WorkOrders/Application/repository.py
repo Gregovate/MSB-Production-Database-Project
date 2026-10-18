@@ -269,7 +269,8 @@ class WorkManagementRepository:
                 is_kit = int(c["container_type_id"]) == 2
                 kind = "Kit Box" if is_kit else "Container"
                 direct = task_id is not None and c["setup_task_id"] == task_id
-                url = f"/setup/kit-inventory/{cid}" if is_kit else None
+                url = (f"/setup/kit-inventory/{cid}" if is_kit
+                       else f"/scan/CONT/{cid}")
                 register(
                     kind, cid, f"C{cid:03d} · {c['description'] or kind}",
                     "DIRECT_TASK" if direct else "STAGE_RELATED",
@@ -300,6 +301,7 @@ class WorkManagementRepository:
                     display["display_name"] or f"Display #{did}",
                     "DIRECT_TASK" if display["direct_task_id"] is not None else "STAGE_RELATED",
                     "LOR/Stage or current Display reference",
+                    url=f"/scan/DISP/{did}",
                 )
 
             cur.execute(
