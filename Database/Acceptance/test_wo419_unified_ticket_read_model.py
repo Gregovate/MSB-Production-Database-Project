@@ -130,7 +130,7 @@ def test_419_testing_origin_is_explicit_and_not_a_fake_intake():
         "### Test Session-generated Work Orders — feedback and ownership",
         "Test Session repair",
         "No competing communication model",
-        "do **not** automatically have an original Intake reporter",
+        "does **not** automatically have an original Intake reporter",
     ):
         assert token.casefold() in design.casefold(), token
 
