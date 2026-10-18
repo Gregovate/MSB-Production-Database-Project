@@ -34,6 +34,12 @@ The candidate requires WORK_MGMT_PREVIEW_MODE=disposable and WORK_MGMT_DATABASE_
 
 The protected Cloudflare Access email header must come only from the trusted perimeter. The candidate also checks the existing Directus-backed Setup browse capability and exact active linked Person identity. Final Work Order-specific read permissions remain an acceptance item. There is no outgoing email transport or mutation route in this slice.
 
+## Prepared disposable review profile (not executed)
+
+The Work Orders subsystem now contains [WorkOrders/Acceptance](../Acceptance/README.md) with a feature-owned clone-only SQL/grants validator, source-only Bash/PostGIS/Flask profile runner, an exact-SHA Windows SSH launcher, negative-identity/write assertions and clean-exit procedures. This follows the existing MSB Server Management current-Production disposable standard rather than changing or reusing the hard-coded Setup runner.
+
+[Server Management draft PR #80](https://github.com/Gregovate/MSB-Server-Management/pull/80) proposes explicit **sequential** #419 reuse of the current localhost 8898 profile. The profile is **not approved/merged**, the listener has not been checked, the runner has not been tested on the server and there is no BROWSER REVIEW READY output. Do not execute the launch template until the Server Management port/profile approval and exact runner preflight are completed. Production remains unchanged.
+
 ## Next validation and handoff
 
 Run Python/JavaScript source tests and the amended ledger SQL against the approved current-Production clone. Inspect actual My Work/All/person scope, Intake #60/#40/#57, WO372, Testing repairs, no-Person/unauthorized paths, and the collapsed Related Information panel for tasks with and without direct Kit assignments. Correct any discovered SQL or navigation drift before operator browser acceptance. **No executable test or browser PASS is asserted from this source-only commit.**
