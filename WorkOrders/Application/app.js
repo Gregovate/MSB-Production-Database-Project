@@ -4,7 +4,7 @@
   const $ = (id) => document.getElementById(id);
   const state = {
     actor: null, tickets: [], assignees: [], selected: null,
-    detail: null, relatedLoadedFor: null, fetchId: 0,
+    detail: null, relatedLoadedFor: null, fetchId: 0, listFetchId: 0,
   };
 
   function escapeHtml(value) {
@@ -97,6 +97,7 @@
   }
 
   async function loadTickets() {
+    const serial = ++state.listFetchId;
     const scope = $("scope").value;
     const person = $("assignee").value;
     if (scope === "person" && !person) {
@@ -112,9 +113,11 @@
     try {
       error("");
       const response = await getJson("/api/work-orders/tickets?" + params);
+      if (serial !== state.listFetchId) return;
       state.tickets = response.tickets || [];
       renderList();
     } catch (exc) {
+      if (serial !== state.listFetchId) return;
       state.tickets = [];
       renderList();
       error(exc.message);
