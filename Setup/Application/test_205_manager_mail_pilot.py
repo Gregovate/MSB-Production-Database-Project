@@ -530,3 +530,89 @@ def test_final_logo_review_cli_cannot_redirect_protected_receipts(monkeypatch,tm
 def test_no_sender_header_from_operator_content():
     assert mail.FROM == "no-reply@sheboyganlights.org"
     assert not hasattr(mail,"captain_email")
+
+# October 18 first missed day, followed by bounded pre-opening 04:00 daily.
+def _enable_bounded_mail(monkeypatch, end="2026-11-27"):
+    monkeypatch.setenv("MSB_MANAGER_MAIL_STOP_DATE",end)
+    monkeypatch.setenv("MSB_SETUP_MANAGER_SEASON_SEND",mail.SEASON_SEND_GUARD)
+    monkeypatch.setenv("SETUP_NOTIFICATION_SMTP_SEND_ENABLED","1")
+    monkeypatch.setenv("MSB_SETUP_MANAGER_PILOT_APPROVED_ROSTER",
+                       "manager@sheboyganlights.org,second@sheboyganlights.org")
+
+
+def test_oct18_immediate_send_is_authorized_once_and_reuses_daily_key(monkeypatch,tmp_path):
+    setup_fakes(monkeypatch)
+    _enable_bounded_mail(monkeypatch)
+    monkeypatch.setenv("MSB_SETUP_MANAGER_TODAY_SEND",mail.MISSED_DAY_SEND_GUARD)
+    sent=[]
+    monkeypatch.setattr(mail,"deliver",lambda recipient,subject,body,html:
+        sent.append((recipient,subject,body,html)) or "SMTP_ACCEPTED_NOT_DELIVERED")
+    # Preserve an October 17 receipt; October 18 is a new day.
+    older=tmp_path/"manager-2026-10-17-existing.json"
+    older.write_text('{"status":"SMTP_ACCEPTED_NOT_DELIVERED"}')
+    result=mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(5,18),"today",None)
+    assert result["day"]=="2026-10-18"
+    assert result["recipients"]==2 and len(sent)==2
+    assert all("2026-10-18" in subject for _,subject,_,_ in sent)
+    assert all("msb-white-logo-600-plain.png" in markup for _,_,_,markup in sent)
+    assert older.read_text()=='{"status":"SMTP_ACCEPTED_NOT_DELIVERED"}'
+    from hashlib import sha256
+    for addr,_,_,_ in sent:
+        key=sha256(addr.encode("ascii")).hexdigest()[:24]
+        receipt=tmp_path/f"manager-2026-10-18-{key}.json"
+        import json
+        assert json.loads(receipt.read_text())["purpose"]=="MANAGER_DAILY"
+    with pytest.raises(mail.PilotStop,match="Prior recipient attempt"):
+        mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(5,18),"today",None)
+    assert len(sent)==2
+
+
+def test_oct18_manual_send_requires_specific_independent_approval(monkeypatch,tmp_path):
+    setup_fakes(monkeypatch)
+    _enable_bounded_mail(monkeypatch)
+    monkeypatch.delenv("MSB_SETUP_MANAGER_TODAY_SEND",raising=False)
+    monkeypatch.setattr(mail,"deliver",lambda *args: pytest.fail("not permitted"))
+    with pytest.raises(mail.PilotStop,match="Immediate Oct 18 Manager mail approval"):
+        mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(5,18),"today",None)
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("mode,when,end", [
+    ("today",time_at(5,19),"2026-11-27"),
+    ("daily",time_at(4,18),"2026-11-27"),
+    ("daily",time_at(5,19),"2026-11-27"),
+    ("daily",time_at(3,19),"2026-11-27"),
+    ("daily",datetime(2026,11,28,4,0,tzinfo=CHI),"2026-11-27"),
+    ("daily",datetime(2026,11,1,4,0,tzinfo=CHI),"2026-10-31"),
+])
+def test_bounded_season_rejects_unapproved_date_or_hour_before_db(
+        monkeypatch,tmp_path,mode,when,end):
+    _enable_bounded_mail(monkeypatch,end)
+    monkeypatch.setenv("MSB_SETUP_MANAGER_TODAY_SEND",mail.MISSED_DAY_SEND_GUARD)
+    monkeypatch.setattr(mail,"manager_directory",lambda dsn:pytest.fail("DB queried"))
+    monkeypatch.setattr(mail,"deliver",lambda *a:pytest.fail("SMTP"))
+    with pytest.raises(mail.PilotStop):
+        mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,when,mode,None)
+    assert not list(tmp_path.iterdir())
+
+
+def test_nov27_is_last_show_opening_morning_and_dsts_are_local(monkeypatch,tmp_path):
+    setup_fakes(monkeypatch)
+    _enable_bounded_mail(monkeypatch)
+    monkeypatch.setattr(mail,"deliver",lambda *a:"SMTP_ACCEPTED_NOT_DELIVERED")
+    for now in (datetime(2026,11,1,4,0,tzinfo=CHI),
+                datetime(2026,11,27,4,0,tzinfo=CHI)):
+        path=tmp_path/now.strftime("%Y-%m-%d")
+        path.mkdir()
+        result=mail.send("fixture",mail.DEFAULT_TEMPLATE,path,now,"daily",None)
+        assert result["recipients"]==2
+
+
+@pytest.mark.parametrize("stop",["", "2026-12-01", "not-a-date", "2026-10-17"])
+def test_bounded_end_date_must_be_explicit_and_not_pass_show_open(
+        monkeypatch,tmp_path,stop):
+    _enable_bounded_mail(monkeypatch,stop)
+    monkeypatch.setattr(mail,"manager_directory",lambda dsn:pytest.fail("DB"))
+    with pytest.raises(mail.PilotStop,match="end date"):
+        mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(4,19),"daily",None)
+
