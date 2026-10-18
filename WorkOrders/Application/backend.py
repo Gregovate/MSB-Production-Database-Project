@@ -25,6 +25,9 @@ app.logger.setLevel(logging.INFO)
 
 def actor() -> dict:
     """The trusted perimeter must remove client-supplied identity headers."""
+    # Temporary preview must remain localhost-only even if a port is misbound.
+    if request.remote_addr not in ("127.0.0.1", "::1"):
+        raise WorkManagementError("Preview is restricted to the approved local tunnel.", 403)
     email = request.headers.get(CLOUDFLARE_HEADER, "").strip().lower()
     if not email or len(email) > 254 or "@" not in email:
         raise WorkManagementError("Cloudflare Access identity is required.", 401)
