@@ -242,3 +242,63 @@ def test_419_p0_reporter_email_and_one_step_promotion_are_release_gates():
         assert required.casefold() in p0.casefold(), required
     assert "**#419 P0 first-release acceptance:**" in readme
     assert "None of these P0 actions has been implemented" in readme
+
+
+def test_419_setup_task_feedback_consumed_as_alternate_correction_workflow():
+    """Do not turn every Setup finding into a repair Work Order."""
+    design = DESIGN.read_text(encoding="utf-8")
+    readme = (WO_DIR / "README.md").read_text(encoding="utf-8")
+    heading = "### Setup Task Feedback consumption — alternate correction workflow (P0)"
+    assert heading in design
+    section = design.split(heading, 1)[1].split(
+        "### P0 first-release gate", 1
+    )[0]
+
+    for requirement in (
+        "existing Setup Task Feedback",
+        "separate",
+        "stage.work_order_intake",
+        "source_form_name='SETUP_CORRECTION'",
+        "source_payload",
+        "ops.prepare_setup_work_order_intake",
+        "What did you find?",
+        "Manager",
+        "non-Work-Order correction",
+        "assigned to the authorized owning subsystem",
+        "Request More Information",
+        "outcome email",
+        "Triage → Promote & Assign",
+        "not automatically prove",
+        "triage_dropdown='4'",
+        "Intake #60",
+        "#209",
+        "disposable",
+        "not yet implemented",
+    ):
+        assert requirement.casefold() in section.casefold(), requirement
+
+    assert "**#419 Setup Task Feedback consumer (P0):**" in readme
+    assert "the work management consumer and alternate correction workflow are not" in (
+        readme.casefold()
+    )
+
+
+def test_419_setup_correction_input_remains_existing_172_contract():
+    """Actual #172 submitter provenance is not replaced by a new public form."""
+    source = ROOT / "Setup/Database/062_add_setup_context_work_order_intake.sql"
+    api = ROOT / "Setup/Application/setup_work_order_intake_api.py"
+    assert source.is_file()
+    assert api.is_file()
+    sql = source.read_text(encoding="utf-8")
+    handler = api.read_text(encoding="utf-8")
+    for required in (
+        "'source_form_name', 'SETUP_CORRECTION'",
+        "'source_payload', v_payload",
+        "'reporter_person_id', v_person_id",
+        "'setup_session_task_id', p_setup_session_task_id",
+        "'setup_work_day_task_id', p_setup_work_day_task_id",
+        "'procedure_context', v_procedure",
+        "'triage_dropdown', '1'",
+    ):
+        assert required in sql, required
+    assert "directus_client().create_intake(intake_payload)" in handler
