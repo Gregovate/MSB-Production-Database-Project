@@ -87,3 +87,40 @@ Refreshing first prevents:
 - [Documentation Standards](../Standards/Documentation_Standards.md)
 - [README Portal Standard](../Standards/README_Portal_Standard.md)
 - [Document Control Standard](../Standards/Document_Control_Standard.md)
+
+## Engineering authority and automated compliance boundary
+
+The governing hierarchy is: (1) Project rules and documentation standards,
+(2) owning subsystem engineering design, (3) issues for unfinished work,
+(4) pull requests for implementation/regression/controlled integration, and
+(5) chat for working discussion only. A PR must conform to the existing design;
+a PR comment or issue comment does not replace an owning controlled document.
+Read existing design, update owning decisions, implement within the existing PR,
+protect with regression, validate against the design, obtain operator browser
+acceptance where applicable, then merge under established rules.
+
+The GitHub **Engineering Compliance** job performs limited deterministic checks
+of PR evidence and documentation changes, plus applicable application regression.
+It is not an automated engineering architect or a substitute for authorizing
+exceptions, verifying design quality, reading external Server Management
+runbooks, assessing acceptance, or granting Production mutation permission.
+Evidence in a PR description must be truthful and link to the actual owning
+design. A mandatory green check is necessary but not sufficient for merge.
+
+A PR touching controlled acceptance runners, deployment procedures, workflows
+or project standards must explain **Infrastructure reuse / exception** and
+identify the established mechanism reused. If a new mechanism is proposed, the
+responsible controlled engineering/runbook document must authorize and specify
+it before implementation; entering text in a PR field is not approval.
+
+For applicable engineering PRs include these named evidence fields in the PR
+description: **Design authority**, **Implementation scope**, **Regression
+evidence**, **Acceptance status**, and **Runbook / existing mechanism**.
+Protected tooling changes also include **Infrastructure reuse / exception**.
+The checker cannot prove chronology; reviewers must verify the recorded
+design-first sequence from source and PR history.
+
+Protected GitHub settings remain administrator-controlled. The new job must
+run and pass on a PR before being selected as required in the existing active
+**Protect Main** ruleset. Existing protections must not be weakened. Do not
+claim enforcement active merely because the workflow exists on a branch.
