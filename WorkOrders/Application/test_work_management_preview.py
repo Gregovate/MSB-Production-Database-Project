@@ -163,3 +163,13 @@ def test_related_information_is_collapsed_before_fetch():
     assert "Related Information" in html
     assert "Request More Information" in html
     assert "Promote &amp; Assign" in html
+
+
+def test_disposable_preview_rejects_nonlocal_header(client):
+    response = client.get(
+        "/api/work-orders/access",
+        headers=identity(),
+        environ_base={"REMOTE_ADDR": "192.0.2.20"},
+    )
+    assert response.status_code == 403
+    assert FakeRepo.calls == []
