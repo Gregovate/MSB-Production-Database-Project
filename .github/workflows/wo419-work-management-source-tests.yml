@@ -27,6 +27,21 @@ jobs:
         run: python -m pip install --disable-pip-version-check pytest flask psycopg2-binary
       - name: Verify server Bash parser without executing any runner
         run: bash -n WorkOrders/Acceptance/work_management_disposable_browser_preview_server.sh
+      - name: Parse Windows PowerShell Work Management launcher
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            "WorkOrders/Acceptance/run_work_management_disposable_browser_preview.ps1",
+            [ref]$tokens, [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_ }
+            exit 1
+          }
+          Write-Host "PASS: Windows PowerShell launcher parses"
+
       - name: Verify Python app/preview/clone syntax
         run: |
           python -m py_compile \
