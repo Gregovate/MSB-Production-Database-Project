@@ -9,6 +9,9 @@
 
 ## Why this slice first
 
+**Repository ownership correction (October 18):** Existing `06_Work_Orders` is the governing subsystem; no new GitHub repository is needed. Prior separate-repo assumptions are superseded by the controlling operator decision now documented in [Work Order System Design](../Work_Order_System_Design.md). The three actual pending Intake examples (#60, #40, #57) are unchanged; all browser writes must target a disposable clone.
+
+
 MSB already has authoritative Work Orders, Intake, Persons, normalized assignments,
 Work Order status history, Test Session repair integration, and Task Feedback
 `SETUP_CORRECTION` submissions. The missing capability is a unified, actionable
@@ -17,10 +20,11 @@ not a proposed second ticket database or an editable Directus screen.
 
 It is deliberately a standalone `SELECT`: no `CREATE VIEW`, no new table,
 no security grants, no Work Order/Intake mutation, no email send.
-Its future application must live under its own controlled repository/deployment
-lifecycle according to the
+Its Work Management application belongs to this existing Work Orders subsystem
+and the **same MSB Database repository**, while maintaining a controlled deployment
+lifecycle under the
 [repository ownership standard](../../../../../System_Documentation/Standards/System_Boundary_and_Repository_Ownership_Standard.md);
-the Production Database repo retains database read/write integration contracts.
+the Production Database repo retains database read/write integration contracts and owns the new Work Management application source.
 
 ## Live DBeaver evidence provided on October 18
 
@@ -113,7 +117,7 @@ or treat triage promotion as correction resolution.
    source, active/completed). Identify and fix any schema/privilege or
    pagination issue before any web endpoint.
 5. Implement an authenticated, least-privilege read API and ticket-list/detail
-   browser candidate in the **dedicated Work Management application repo**;
+   browser candidate in this **existing Work Orders subsystem and MSB Database repository**;
    allocate a distinct preview/runtime through Server Management. Reuse the
    established protected disposable browser review process, with approved
    port and clean exit. No guessed port, no Production DB browser writes.
