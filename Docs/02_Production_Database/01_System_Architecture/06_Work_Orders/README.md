@@ -14,7 +14,7 @@ The [Work Order System Design](Work_Order_System_Design.md) is the **governing e
 
 ## Start Here
 
-- [Work Order System Design](Work_Order_System_Design.md) — **authoritative** current engineering/Work Management contract: existing tables/Flows, #419 decisions, live October 18 evidence, known gaps, acceptance and resume point.
+- [Work Order System Design](Work_Order_System_Design.md) — **authoritative** existing-system contract, including [why the Directus operator experience needs improvement](Work_Order_System_Design.md#why-work-management-must-improve-the-existing-directus-experience), #419 design decisions, real schema/Flow evidence, acceptance requirements and resume point.
 - [Work Order Operational SOPs](../../02_Operational_SOPs/Work_Orders/README.md) — current operator procedures.
 
 ## System Boundary
