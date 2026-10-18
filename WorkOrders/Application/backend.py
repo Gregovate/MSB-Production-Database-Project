@@ -79,6 +79,12 @@ def access() -> Response:
     return jsonify(access=actor(), version=APP_VERSION, read_only=True)
 
 
+@app.get("/api/work-orders/assignees")
+def assignees() -> Response:
+    actor()
+    return jsonify(assignees=WorkManagementRepository().assignees())
+
+
 @app.get("/api/work-orders/tickets")
 def tickets() -> Response:
     who = actor()
