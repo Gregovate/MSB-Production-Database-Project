@@ -101,6 +101,28 @@ class WorkManagementRepository:
             "can_read": True,
         }
 
+    def assignees(self) -> list[dict[str, Any]]:
+        """Person-ID based selector; no private contact fields returned."""
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT DISTINCT p.person_id,
+                       COALESCE(
+                           NULLIF(btrim(concat_ws(' ',
+                               COALESCE(NULLIF(btrim(p.preferred_name), ''),
+                                        NULLIF(btrim(p.first_name), '')),
+                               NULLIF(btrim(p.last_name), '')
+                           )), ''),
+                           'Person #' || p.person_id::text
+                       ) AS display_name
+                FROM ops.work_order_assignment a
+                JOIN ref.person p ON p.person_id = a.person_id
+                WHERE a.active_flag AND p.active_flag
+                ORDER BY display_name, person_id
+                """
+            )
+            return [dict(row) for row in cur.fetchall()]
+
     def tickets(
         self, *, actor: dict[str, Any], scope: str, person_id: int | None,
         show_completed: bool, search: str, limit: int = 80,
