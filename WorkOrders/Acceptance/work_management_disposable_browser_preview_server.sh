@@ -219,8 +219,13 @@ psql_clone() {
 # The app role exists only in the disposable instance, not Production.
 psql_clone -c "CREATE ROLE fieldwiring_app LOGIN PASSWORD '$APP_PASSWORD';"
 psql_clone -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on;"
-psql_clone -c "SET msb.wo419_preview_authorized='approved_disposable_clone';" \
-  -f "$WORKTREE/WorkOrders/Acceptance/wo419_preview_clone_read_grants.sql"
+# The SQL file resides on the HOST worktree, not inside Docker.
+# Stream it via stdin to the one disposable psql session, with a session-only
+# approval marker. Never use `psql -f /tmp/host-worktree/...` inside a container.
+{
+  printf "%s\\n" "SET msb.wo419_preview_authorized='approved_disposable_clone';"
+  cat "$WORKTREE/WorkOrders/Acceptance/wo419_preview_clone_read_grants.sql"
+} | psql_clone
 
 # Require a real private instance, not a public exposed port.
 HOST_IP="$(sudo docker inspect "$CLONE_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
