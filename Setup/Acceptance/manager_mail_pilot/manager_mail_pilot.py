@@ -22,6 +22,11 @@ from zoneinfo import ZoneInfo
 
 CHICAGO = ZoneInfo("America/Chicago")
 DAY = date(2026, 10, 17)
+OCT18 = date(2026, 10, 18)
+FIRST_RECURRING = date(2026, 10, 19)
+SHOW_OPENING = date(2026, 11, 27)
+SEASON_SEND_GUARD = "APPROVED_OCT_18_TO_SHOW_START_MANAGER_ONLY"
+MISSED_DAY_SEND_GUARD = "APPROVED_OCT_18_IMMEDIATE_MANAGER_ONLY"
 DEADLINE = date(2026, 11, 19)
 FROM = "no-reply@sheboyganlights.org"
 GOOGLE_RELAY = "smtp-relay.gmail.com"
@@ -416,6 +421,22 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
     today = local.date()
     if mode == "live" and (today != DAY or not (local.hour == 4 and local.minute <= 30)):
         raise PilotStop("One-day pilot send window is closed")
+    if mode in ("today", "daily"):
+        raw = os.environ.get("MSB_MANAGER_MAIL_STOP_DATE", "").strip()
+        try:
+            stop_date = date.fromisoformat(raw)
+        except ValueError as exc:
+            raise PilotStop("Bounded Manager mail end date missing or invalid") from exc
+        if stop_date < OCT18 or stop_date > SHOW_OPENING:
+            raise PilotStop("Manager mail end date must be Oct 18 through Nov 27, 2026")
+        if mode == "today":
+            if today != OCT18:
+                raise PilotStop("Oct 18 immediate Manager send only; no other catch-up")
+            if os.environ.get("MSB_SETUP_MANAGER_TODAY_SEND") != MISSED_DAY_SEND_GUARD:
+                raise PilotStop("Immediate Oct 18 Manager mail approval is OFF")
+        elif not (FIRST_RECURRING <= today <= stop_date
+                  and local.hour == 4 and 0 <= local.minute <= 30):
+            raise PilotStop("Bounded Manager 04:00 daily send window is closed")
     if mode == "test" and today not in (date(2026,10,16), DAY):
         raise PilotStop("One-recipient test window is closed")
     if mode == "html_test" and (
@@ -428,7 +449,11 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
         str(test_to or "").strip().lower() != LOGO_TEST_RECIPIENT
     ):
         raise PilotStop("Final logo test limited to October 17 and the single reviewed Manager mailbox")
-    if mode != "preview" and (
+    if mode in ("today", "daily"):
+        if (os.environ.get("MSB_SETUP_MANAGER_SEASON_SEND") != SEASON_SEND_GUARD
+                or os.environ.get("SETUP_NOTIFICATION_SMTP_SEND_ENABLED") != "1"):
+            raise PilotStop("Bounded season Manager SMTP approval is OFF")
+    elif mode != "preview" and (
         os.environ.get("MSB_SETUP_MANAGER_PILOT_SEND") != SEND_GUARD or
         os.environ.get("SETUP_NOTIFICATION_SMTP_SEND_ENABLED") != "1"
     ):
@@ -439,7 +464,7 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
     managers = [p for p in roster if p["send_eligible"]]
     if not managers:
         raise PilotStop("No eligible Manager recipients; review People and Setup permissions")
-    if mode == "live":
+    if mode in ("live", "today", "daily"):
         enforce_approved_manager_audience(managers, roster)
     board = SetupSchedulingBoardRepository(dsn).board(2026)
     report = summarize(board, today)
@@ -496,7 +521,11 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
         print("--- REVIEWED HTML ALTERNATIVE: prepared, NOT SENT ---")
         print("HTML characters:",len(messages[0][2]))
         return {"status":"PREVIEW_ONLY","sent":0}
-    if os.environ.get("MSB_SETUP_MANAGER_PILOT_SEND") != "APPROVED_OCT_17_MANAGER_ONLY" or (
+    if mode in ("today", "daily"):
+        if (os.environ.get("MSB_SETUP_MANAGER_SEASON_SEND") != SEASON_SEND_GUARD
+                or os.environ.get("SETUP_NOTIFICATION_SMTP_SEND_ENABLED") != "1"):
+            raise PilotStop("Bounded season Manager SMTP approval is OFF")
+    elif os.environ.get("MSB_SETUP_MANAGER_PILOT_SEND") != SEND_GUARD or (
         os.environ.get("SETUP_NOTIFICATION_SMTP_SEND_ENABLED") != "1"):
         raise PilotStop("SMTP production approval is OFF")
     if not ledger.is_dir():
@@ -563,20 +592,23 @@ def main(argv=None) -> int:
     parser=argparse.ArgumentParser(description="Manager-only single-day 2026 Setup mail pilot")
     mode=parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--preview",action="store_true",help="Read-only, sends nothing")
-    mode.add_argument("--live",action="store_true",help="One-day gated Manager only")
+    mode.add_argument("--live",action="store_true",help="Historic Oct 17 one-day Manager only")
+    mode.add_argument("--send-today",action="store_true",help="One immediate Oct 18 Manager digest only")
+    mode.add_argument("--daily",action="store_true",help="Bounded daily 04:00 Manager digest until opening")
     mode.add_argument("--test-to",metavar="AUTHORIZED_MANAGER_EMAIL",help="Original one-recipient test (not a resend)")
     mode.add_argument("--html-test-to",metavar="OPERATOR_MAILBOX",help="One distinct formatted Manager review email, Oct 17 only")
     mode.add_argument("--logo-test-to",metavar="OPERATOR_MAILBOX",help="One final white PNG logo review email, Oct 17 only")
     parser.add_argument("--template",type=Path,default=DEFAULT_TEMPLATE)
     parser.add_argument("--ledger",type=Path,default=Path("/var/lib/msb-setup-manager-mail-pilot"))
     args=parser.parse_args(argv)
-    if (args.html_test_to or args.logo_test_to) and args.ledger != Path("/var/lib/msb-setup-manager-mail-pilot"):
+    if (args.send_today or args.daily or args.html_test_to or args.logo_test_to) and args.ledger != Path("/var/lib/msb-setup-manager-mail-pilot"):
         print("STOP: Review must use the same protected Production receipt directory")
         return 2
     try:
         dsn = accepted_setup_dsn()
         result=send(dsn,args.template,args.ledger,chicago_now(),
-                    "preview" if args.preview else "logo_test" if args.logo_test_to
+                    "preview" if args.preview else "today" if args.send_today
+                    else "daily" if args.daily else "logo_test" if args.logo_test_to
                     else "html_test" if args.html_test_to
                     else "test" if args.test_to else "live",
                     args.logo_test_to or args.html_test_to or args.test_to)
