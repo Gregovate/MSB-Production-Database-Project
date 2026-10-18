@@ -223,7 +223,7 @@ psql_clone -c "ALTER ROLE fieldwiring_app SET default_transaction_read_only = on
 # Stream it via stdin to the one disposable psql session, with a session-only
 # approval marker. Never use `psql -f /tmp/host-worktree/...` inside a container.
 {
-  printf "%s\\n" "SET msb.wo419_preview_authorized='approved_disposable_clone';"
+  printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
   cat "$WORKTREE/WorkOrders/Acceptance/wo419_preview_clone_read_grants.sql"
 } | psql_clone
 
