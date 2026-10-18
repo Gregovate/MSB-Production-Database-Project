@@ -1,6 +1,6 @@
 # #419 — Read-only unified ticket ledger: first engineering candidate
 
-**Status:** SOURCE-ONLY / NOT RUN AGAINST PRODUCTION OR CLONE / NOT BROWSER-ACCEPTED  
+**Status:** READ-ONLY SQL PRODUCTION DBEAVER PASS (operator-supplied October 18 result) / SOURCE-ONLY PR DRAFT / NOT CLONE OR BROWSER-ACCEPTED  
 **Issue:** [#419 MSB Work Management](https://github.com/Gregovate/MSB-Production-Database-Project/issues/419)  
 **Command authority:** [#122 Setup integration](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122) for Setup cross-links only  
 **Date:** October 18, 2026  
@@ -50,6 +50,14 @@ the Production Database repo retains database read/write integration contracts.
   `AFTER UPDATE OF triage_dropdown` trigger invokes this processor. These
   business transitions must not be invoked from a prototype search action.
 
+## Executed live SQL result (2026-10-18)
+
+Authorized DBeaver supplied **389 ticket rows**: **386 Work Orders**, **one retained Task Feedback Intake**, and **two retained public Work Order Intake requests**. Of the Work Orders, **328 have a nonnull completion date**; **58 have NULL**, with **57 active and one inactive** in that undated group. Of the 57 active undated orders, **10 lack active assignees**. For **all 386**, the read model exposes no status-history event: `DONE_DATE_ONLY` (328) or `STATUS_NOT_RECORDED` (58); these code strings are provisional backend provenance, not user-friendly or authoritative claims that any work was physically verified. There are no displayed integrity mismatch flags because there is no joined status event to compare to date. The current `is_active` flag is not an open/completed status.
+
+The live result proves `WO-372`, `WO-418`, `INTAKE-60`, `INTAKE-57` and `INTAKE-40` are retrievable through a single result. It does not prove that status history cannot be used in the future, that every dated completion is correct, or that recent record updates represent work progress. See the **governing** [Work Order System Design](../Work_Order_System_Design.md) for design decisions and treatment of known lifecycle gaps; this checkpoint is acceptance evidence only.
+
+---
+
 ## Query output contract
 
 Single row per **existing** Work Order or **retained** Intake record, no
@@ -83,13 +91,9 @@ or treat triage promotion as correction resolution.
    currently retained Intake + Work Order. Query errors are STOP conditions;
    do not grant broad rights or adapt production schema in place.
 3. Verify genuine examples:
-   - WO 372 Magic Igloo weld repairs displays current status, real active
-     assignees and its original source information; it must not be marked done
-     just because the repairs were expected to occur.
-   - The actual retained `SETUP_CORRECTION` Intake displays its free-form
-     original and source, but no invented correction assignee or closed state.
-     Do not assume it is Intake 60 solely from historical acceptance.
-   - The two public submitted requests remain unpromoted and discoverable.
+   - **Verified DBeaver:** WO372 Magic Igloo weld repairs is present with no completion date and three assigned volunteers; expected prior welding alone cannot mark it done.
+   - **Verified DBeaver:** retained `SETUP_CORRECTION` is Intake #60, with original cribbing finding, Submitted state, and no tracked correction owner.
+   - **Verified DBeaver:** public Intake #40 and #57 remain Submitted. Promoted WO418 retains source `SETUP_CORRECTION` Intake #64 through `source_intake_id` and has an assigned person, but the original Intake row was deleted by the currently implemented Promote behavior.
 4. On a governed current-Production **disposable** PostgreSQL clone,
    exercise read-only search scenarios (ID, title, Stage, assignee, status,
    source, active/completed). Identify and fix any schema/privilege or
@@ -109,14 +113,11 @@ or treat triage promotion as correction resolution.
 
 ## Explicitly outstanding
 
-- The query has **not** been executed against a database; SQL parser/connector
-  static inspection is not a substitute for PostgreSQL validation.
+- The source query **successfully executed in authorized Production DBeaver** on October 18; its full 389-row result was supplied. SQL execution is proven, but **does not prove** a protected API, permission matrix, disposable clone, browser interaction, new tickets, or reporter email. Candidate source remains unmerged.
 - `ref.stage` and `ref.work_area` names are from existing repository
   contracts, not freshly verified Q03 columns; validate their use against live
   catalog during the controlled read-only query test.
-- Current Work Order status-event completeness, actual active assignment
-  records, existing outbound sender usage, secure reporter link/account
-  eligibility, and app-specific read permission require further proof.
+- The 386-row Work Order population showed **zero joined status-history events**, with 328 dated completed and 58 lacking a completion date; 57 are both undated and active, including 10 without active assignees; one undated Work Order is inactive. This is snapshot proof, not a verified activity audit or a reason to invent state transitions. Existing outbound sender usage, exact reporter link/account eligibility, and app-specific read permission still require further proof.
 - Feedback to the same reporter, two-way clarification and durable correction
   closure are **not** claimed implemented by this slice.
 
