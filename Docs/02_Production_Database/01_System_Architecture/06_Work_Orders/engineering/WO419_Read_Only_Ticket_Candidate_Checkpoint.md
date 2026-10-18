@@ -1,6 +1,6 @@
 # #419 — Read-only unified ticket ledger: first engineering candidate
 
-**Status:** READ-ONLY SQL PRODUCTION DBEAVER PASS (operator-supplied October 18 result) / SOURCE-ONLY PR DRAFT / NOT CLONE OR BROWSER-ACCEPTED  
+**Status:** ORIGINAL READ-ONLY SQL PRODUCTION DBEAVER PASS (operator-supplied October 18 result) / PERSON-ID & TEST-SOURCE SQL REVISION NOT RE-RUN / PR DRAFT / NOT CLONE OR BROWSER-ACCEPTED  
 **Issue:** [#419 MSB Work Management](https://github.com/Gregovate/MSB-Production-Database-Project/issues/419)  
 **Command authority:** [#122 Setup integration](https://github.com/Gregovate/MSB-Production-Database-Project/issues/122) for Setup cross-links only  
 **Date:** October 18, 2026  
@@ -49,6 +49,20 @@ the Production Database repo retains database read/write integration contracts.
   `4` deletes Intake without a retained Denied record. The enabled
   `AFTER UPDATE OF triage_dropdown` trigger invokes this processor. These
   business transitions must not be invoked from a prototype search action.
+
+## October 18 follow-up — default My Work and Testing-generated repair provenance
+
+**Governing design:** The [Work Order System Design](../Work_Order_System_Design.md) now explicitly requires the accepted Setup Report Work navigation pattern for the new Work Order landing view: signed-in person's current open assignments first, an explicit **All Work Orders** or other-person selector, and a **Show completed** control independent of person scope. The app must resolve `ref.person.person_id` from the authenticated identity and match active `ops.work_order_assignment.person_id` records exactly, **not name strings or reporters**. Broader read visibility and edit permissions are separate capabilities; the server enforces access regardless of what scope the UI requests.
+
+**Testing Work Orders:** a Work Order linked to `ops.display_test_session` follows Testing's authoritative repair workflow. It appears alongside other WOs in each selected assignee scope and links back to the exact test. Completion must continue updating Testing's repair result/history. The originating tester and notification destination are **not proven to be a human Work Order reporter**; validate the Testing provenance and approved recipients before sending feedback emails. Do not create an Intake or duplicate repair job.
+
+**Candidate revision to original WO419-M01 (source-only, unexecuted):** the read model now includes exact `assignee_ids` (active Person-ID array), `reporter_id`, `test_id` (Work Order `display_test_session_id`) and `disp_id` for a protected application to use. For retained Intake, these fields are NULL except its actual submitter Person ID. The **earlier 389-row DBeaver PASS is for the prior SQL revision**, not this amended one. Existing documented row counts therefore remain historical evidence, not new acceptance of these columns.
+
+**Regression protection:** existing [test_wo419_unified_ticket_read_model.py](../../../../../../Database/Acceptance/test_wo419_unified_ticket_read_model.py) now asserts stable Person-ID assignment fields, source Test Session IDs and these design sections. Python/CI execution still pending; only file retrieval/source assertions have been performed so far.
+
+**Next:** source regression execution, disposable-current-Production clone SELECT validation, then role-protected My Work / All / other-assignee / Show completed browser review and a Testing repair detail with link to the exact test. No Production source/database writes or mail.
+
+---
 
 ## Executed live SQL result (2026-10-18)
 
@@ -113,7 +127,7 @@ or treat triage promotion as correction resolution.
 
 ## Explicitly outstanding
 
-- The source query **successfully executed in authorized Production DBeaver** on October 18; its full 389-row result was supplied. SQL execution is proven, but **does not prove** a protected API, permission matrix, disposable clone, browser interaction, new tickets, or reporter email. Candidate source remains unmerged.
+- The **original revision** of this source query **successfully executed in authorized Production DBeaver** on October 18; its full 389-row result was supplied. SQL execution is proven, but **does not prove** a protected API, permission matrix, disposable clone, browser interaction, new tickets, or reporter email. Candidate source remains unmerged.
 - `ref.stage` and `ref.work_area` names are from existing repository
   contracts, not freshly verified Q03 columns; validate their use against live
   catalog during the controlled read-only query test.
