@@ -177,14 +177,19 @@ sudo -u fieldwiring -H test -r "$WORKTREE/WorkOrders/Application/backend.py" || 
   echo "HOLD: candidate worktree not accessible to approved service account"; exit 9;
 }
 
-echo "--- Candidate source tests (no database) ---"
+echo "--- Exact candidate full application regression (no database) ---"
+# Match the established Setup disposable acceptance regression, then
+# exercise the #419 feature-owned tests. No partial-suite substitution.
 sudo -u fieldwiring -H env PYTHONDONTWRITEBYTECODE=1 bash -c "
   cd '$WORKTREE'
+  '$PYTHON' -m pytest -q -p no:cacheprovider Setup/Application Setup/Acceptance/test_setup_gis_preview.py
+  '$PYTHON' -m pytest -q -p no:cacheprovider FieldWiring/Application
   '$PYTHON' -m pytest -q -p no:cacheprovider \
     WorkOrders/Application/test_work_management_preview.py \
+    WorkOrders/Acceptance/test_work_management_disposable_profile.py \
     Database/Acceptance/test_wo419_unified_ticket_read_model.py
 "
-echo "PASS: candidate source and isolated Flask tests"
+echo "PASS: exact candidate full Setup, FieldWiring and #419 regression"
 
 echo "--- Current Production dump to Docker-private clone ---"
 sudo docker exec "$PRODUCTION_CONTAINER" pg_dump \
