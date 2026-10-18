@@ -48,9 +48,19 @@
 <td style="width:33%;background:#f5f7f9;border-radius:6px;padding:13px 8px;text-align:center;vertical-align:top;"><div style="font-size:24px;font-weight:bold;color:#123b57;">$containers_partial_at_park</div><div style="font-size:12px;font-weight:bold;">Partly unloaded*</div></td>
 <td style="width:33%;background:#f5f7f9;border-radius:6px;padding:13px 8px;text-align:center;vertical-align:top;"><div style="font-size:24px;font-weight:bold;color:#123b57;">$containers_no_movement</div><div style="font-size:12px;font-weight:bold;">No movement logged</div></td>
 </tr></table>
-<p style="font-size:12px;margin:6px 0 4px;color:#526a7e;">$containers_total reference Containers · $containers_location_review location/status exceptions · $containers_contents_review_history with contents-review history</p>
+<p style="font-size:12px;margin:6px 0 4px;color:#526a7e;">$containers_total reference Containers · $containers_location_review unclassified movement statuses (not all discrepancies) · $containers_contents_review_history with historical contents-review flags</p>
 <p style="font-size:11px;margin:6px 0 0;color:#66788a;">* Empty and partial are subsets of recorded park stops, inferred from Display associations—not physical empty-container inspections. PICKED does not prove arrival. RETURNED is a reported empty return Home.</p>
 <p style="font-size:11px;margin:5px 0 0;color:#66788a;">As of $containers_snapshot_as_of · Setup Session $containers_session_id</p>
+<div style="border-top:1px solid #dce5ec;margin-top:18px;padding-top:14px;">
+  <h3 style="font-size:16px;color:#123b57;margin:0 0 8px;">Returned Containers · Display association review</h3>
+  <p style="font-size:13px;margin:0 0 10px;color:#31485b;"><strong>$containers_returned_recorded_attached returned Containers</strong> still have <strong>$displays_with_returned_container active Display records</strong> showing WITH_CONTAINER. These are recorded contradictions to review, not proof of physically returned loads.</p>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:12px;">
+    <tr style="background:#eef3f7;"><th align="left" style="padding:8px;">Container</th><th align="left" style="padding:8px;">Recorded</th><th align="left" style="padding:8px;">Display Names</th></tr>
+    $returned_attachment_html_rows
+  </table>
+  <p style="font-size:12px;margin:10px 0 4px;"><a href="https://my.sheboyganlights.org/setup/material-status/" style="color:#12608d;text-decoration:underline;">Open Container Movement evidence (read-only)</a></p>
+  <p style="font-size:11px;color:#66788a;margin:0;">A Manager Contents Review/Resolve action is still pending in #88. Do not infer historical unload time or automatically change Display locations.</p>
+</div>
 </div>
 </td></tr>
 <tr><td style="padding:18px 26px 7px;">
