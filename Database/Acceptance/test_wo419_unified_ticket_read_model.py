@@ -402,7 +402,7 @@ def test_419_stage_resource_discovery_has_explicit_provenance():
     ):
         assert required.casefold() in section.casefold(), required
     assert "**#419 Stage-first relevant resources (P0):**" in readme
-    assert "This Stage resources panel is not yet implemented" in readme
+    assert "read-only Stage resource aggregation and collapsed Related Information UI" in readme
 
 
 def test_419_stage_source_reuses_existing_setup_relationships():
@@ -440,3 +440,41 @@ def test_419_stage_source_reuses_existing_setup_relationships():
         "'procedure_context', v_procedure",
     ):
         assert required in feedback, required
+
+
+def test_419_first_app_source_is_read_only_and_related_information_optional():
+    """First V0.1 source uses a collapsed disclosure; P0 actions not mocked as done."""
+    app_dir = ROOT / "WorkOrders/Application"
+    backend = (app_dir / "backend.py").read_text(encoding="utf-8")
+    repo = (app_dir / "repository.py").read_text(encoding="utf-8")
+    html = (app_dir / "index.html").read_text(encoding="utf-8")
+    js = (app_dir / "app.js").read_text(encoding="utf-8")
+    for required in (
+        "WORK_MGMT_PREVIEW_MODE",
+        "WORK_MGMT_DATABASE_DSN",
+        "readonly=True",
+        "current_database()",
+        "stage.work_order_intake",
+        "ref.setup_browser_capabilities",
+        "ref.person",
+        "ref.setup_task_container_support",
+        "ref.lor_scene_display",
+        "source_payload",
+    ):
+        assert required in backend + repo + html + js, required
+
+    assert '<details id="related-information"' in html
+    assert '<details id="related-information" open' not in html
+    assert '"toggle", loadRelated' in js
+    assert "Related Information" in html
+    for required in (
+        'scope=person',
+        "My Work",
+        "Show completed",
+        "Request More Information",
+        "Promote &amp; Assign",
+    ):
+        if required != "scope=person":
+            assert required in html + js, required
+    for forbidden in ("@app.post(", "@app.patch(", "@app.delete("):
+        assert forbidden not in backend
