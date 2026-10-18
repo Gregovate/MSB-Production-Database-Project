@@ -58,7 +58,7 @@ the Production Database repo retains database read/write integration contracts.
 
 **Candidate revision to original WO419-M01 (source-only, unexecuted):** the read model now includes exact `assignee_ids` (active Person-ID array), `reporter_id`, `test_id` (Work Order `display_test_session_id`) and `disp_id` for a protected application to use. For retained Intake, these fields are NULL except its actual submitter Person ID. The **earlier 389-row DBeaver PASS is for the prior SQL revision**, not this amended one. Existing documented row counts therefore remain historical evidence, not new acceptance of these columns.
 
-**Regression protection:** existing [test_wo419_unified_ticket_read_model.py](../../../../../../Database/Acceptance/test_wo419_unified_ticket_read_model.py) now asserts stable Person-ID assignment fields, source Test Session IDs and these design sections. Python/CI execution still pending; only file retrieval/source assertions have been performed so far.
+**Regression protection:** existing [test_wo419_unified_ticket_read_model.py](../../../../../Database/Acceptance/test_wo419_unified_ticket_read_model.py) now asserts stable Person-ID assignment fields, source Test Session IDs and these design sections. Python/CI execution still pending; only file retrieval/source assertions have been performed so far.
 
 **Next:** source regression execution, disposable-current-Production clone SELECT validation, then role-protected My Work / All / other-assignee / Show completed browser review and a Testing repair detail with link to the exact test. No Production source/database writes or mail.
 
