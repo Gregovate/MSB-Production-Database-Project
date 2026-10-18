@@ -302,3 +302,72 @@ def test_419_setup_correction_input_remains_existing_172_contract():
     ):
         assert required in sql, required
     assert "directus_client().create_intake(intake_payload)" in handler
+
+
+def test_419_correction_category_and_typed_source_references():
+    """A correction stays distinct from repair and may refer to many existing objects."""
+    design = DESIGN.read_text(encoding="utf-8")
+    readme = (WO_DIR / "README.md").read_text(encoding="utf-8")
+    section = design.split(
+        "### Correction category and linked references — P0", 1
+    )[1].split("### Setup Task Feedback consumption", 1)[0]
+    for phrase in (
+        "**Repair** and **Correction**",
+        "Correction / Task Feedback",
+        "Kit Inventory / Extra Materials",
+        "Procedure / Work Instructions",
+        "more than one linked object",
+        "ref.container.container_id",
+        "ref.container.container_type_id=2",
+        "ref.setup_task_container_support",
+        "ref.setup_container_extra_material",
+        "ref.display.display_id",
+        "display_name",
+        "source_payload.procedure_context",
+        "optional searchable selector",
+        "reference kind",
+        "Add related item",
+        "Kit Inventory correction",
+        "Procedure correction",
+        "not an assertion",
+    ):
+        assert phrase.casefold() in section.casefold(), phrase
+    assert "**#419 correction categories and source links (P0):**" in readme
+    assert "don't invent a second Kit identity" in readme
+
+
+def test_419_existing_kit_and_procedure_references_are_reused():
+    """Protect real Kit Box container and existing Setup Procedure resolver."""
+    kit_api = (ROOT / "Setup/Application/setup_kit_inventory_api.py").read_text(
+        encoding="utf-8"
+    )
+    for token in (
+        "FROM ref.container AS c",
+        "WHERE c.container_type_id = 2",
+        "ref.setup_task_container_support",
+        "tc.relationship_type = 'KIT'",
+        "ref.setup_container_extra_material",
+        "FROM ref.display AS d",
+        "d.display_id",
+    ):
+        assert token in kit_api, token
+
+    correction_api = (
+        ROOT / "Setup/Application/setup_work_order_intake_api.py"
+    ).read_text(encoding="utf-8")
+    correction_sql = (
+        ROOT / "Setup/Database/062_add_setup_context_work_order_intake.sql"
+    ).read_text(encoding="utf-8")
+    for token in (
+        '"scope_type": scope_type',
+        '"documents": documents',
+        'for item in (instructions.get("current_documents") or [])',
+    ):
+        assert token in correction_api, token
+    for token in (
+        "'procedure_context', v_procedure",
+        "'setup_session_task_id', p_setup_session_task_id",
+        "'setup_work_day_task_id', p_setup_work_day_task_id",
+        "'source_form_name', 'SETUP_CORRECTION'",
+    ):
+        assert token in correction_sql, token
