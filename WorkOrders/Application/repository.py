@@ -324,6 +324,7 @@ class WorkManagementRepository:
                     "Setup task Extra Materials",
                 )
 
+        original_procedures = []
         proc = ctx.get("procedure_context")
         if isinstance(proc, dict):
             names = [
@@ -331,12 +332,18 @@ class WorkManagementRepository:
                 for item in (proc.get("documents") or [])
                 if isinstance(item, dict) and isinstance(item.get("name"), str)
             ]
-            for i, name in enumerate(names):
-                register("Procedure", i + 1, name, "SUBMITTED_CONTEXT", "Original Setup Procedure")
+            for name in sorted(set(n for n in names if n)):
+                # Procedure documents have no proven stable procedure_id.
+                # Never fabricate IDs 1,2,... merely to render related UI.
+                original_procedures.append({
+                    "kind": "Procedure", "id": None, "name": name,
+                    "relation": "SUBMITTED_CONTEXT",
+                    "source": "Original Setup Procedure", "url": None,
+                })
 
         order = {"DIRECT_TASK": 0, "SUBMITTED_CONTEXT": 1, "STAGE_RELATED": 2}
         values = sorted(
-            entries.values(),
+            [*entries.values(), *original_procedures],
             key=lambda entry: (
                 order.get(entry["relation"], 3), entry["kind"], entry["name"].lower()
             ),
