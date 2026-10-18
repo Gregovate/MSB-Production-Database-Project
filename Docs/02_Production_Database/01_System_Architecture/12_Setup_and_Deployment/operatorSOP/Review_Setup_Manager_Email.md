@@ -1,3 +1,11 @@
+## October 18 — Current location/contents conflicts need an actionable Manager review
+
+The operator confirms normal Setup never intentionally **returns a Container from the park while it is still loaded with its Setup Displays**. An email value such as `18 Returned Home` with `0 location/status exceptions` does NOT prove those returns have coherent Display associations. The existing “with contents-review history” number is historical and does not mean exactly that many outstanding active issues; the Manager must see the **actual Container numbers and Display Names**.
+
+**Available now for investigation (read-only):** Open the Setup **Material Status** screen (`/setup/material-status/`) and select **Container Movement**, which contains the movement and Display-effect history. For confirmed cases **C052** and **C053**, the operator separately observed their 32 Tree Wrap Displays installed at Festive Trees despite the recorded returned-Container associations. This report is for evidence, not an update/resolve facility. Do not repeat scans to invent missing October 9 unload facts or hand-edit returned status. The #88 Manager Contents Review/Resolve facility remains unimplemented; it must be built and browser-tested before any email **“Review / Correct”** deep link is called operational.
+
+**Required future result:** the daily mail links to the exact affected Container's protected Manager case, with all current named Displays, recorded Home/park status, chronology, physical field evidence and open/resolved classification. The Manager decides whether to verify in field, annotate uncertainty, or authorize a guarded #88 event correction preserving later independent Display observations. Only genuine authoritative evidence closes a case; merely opening it does not. Email reports discrepancies and decisions, but does not automatically change Container/Display or Setup-task completion.
+
 ## October 18 — daily Manager email until 2026 show opening
 
 The approved October 17 initial 04:00 report was a one-day pilot; it **did not schedule October 18 or any later day**. The operator now requests an immediate, specifically approved missing October 18 Manager report and then an automatic **04:00 America/Chicago** briefing every morning until the show opens, **November 27, 2026**, or an earlier Manager-selected cutoff.
