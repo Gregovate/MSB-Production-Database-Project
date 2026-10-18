@@ -21,10 +21,10 @@ Recorded snapshot: $containers_snapshot_as_of
 $containers_evidence_note
 
 RETURNED CONTAINERS — DISPLAY ASSOCIATIONS NEED REVIEW
-$containers_returned_recorded_attached returned Containers still have $displays_with_returned_container active Display associations recorded WITH_CONTAINER.
+$containers_returned_recorded_attached returned Containers / $displays_with_returned_container active Displays still WITH_CONTAINER in records (not physical proof).
 $returned_attachment_case_lines
-Read-only Container Movement evidence: https://my.sheboyganlights.org/setup/material-status/
-Manager Contents Review/Resolve is not available yet. No physical return-load claim, invented unload, or automatic correction is made.
+Read-only details: https://my.sheboyganlights.org/setup/material-status/
+Manager correction pending in #88; no automatic unload or history change.
 
 MANAGER DECISIONS
 $missing_report_occurrences past assignments to verify — no matched work report
@@ -33,10 +33,10 @@ $readiness_exceptions upcoming scheduled readiness exceptions
 $captain_tbd_count future assignments with no Captain assigned
 
 WHAT TO DO
-- No work occurred? Use "Reschedule · No work performed." Do not enter fictitious time, crew counts or progress.
-- Work occurred but no report? Help the Captain enter actual work against the original assignment.
-- Work already reported but unfinished? Plan the remaining work. Do not ask for a duplicate report.
-- Unsure? Check with the crew before changing the record.
+- No work? Reschedule · No work performed. Do not enter fictitious time or progress.
+- Actual work missing a report? Record it against the original assignment.
+- Reported partial? Plan continuation, never a duplicate.
+- Unsure? Confirm with crew.
 
 PAST ASSIGNMENTS TO VERIFY
 $overdue_lines
@@ -47,6 +47,5 @@ $continuation_lines
 Open Setup → Manager Action Center:
 https://my.sheboyganlights.org/setup/
 
-Unresolved items remain in the Manager Action Center until corrected. No Captain reminders are being sent during this pilot; any future Captain reminder requires Manager review and separate activation.
-
-MSB Production DB — automated message; replies are not monitored.
+Unresolved items remain in the Manager Action Center. No Captain reminders are being sent; any future Captain mail needs separate approval.
+MSB Production DB — replies not monitored.
