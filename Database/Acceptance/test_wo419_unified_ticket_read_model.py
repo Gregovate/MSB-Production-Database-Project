@@ -371,3 +371,72 @@ def test_419_existing_kit_and_procedure_references_are_reused():
         "'source_form_name', 'SETUP_CORRECTION'",
     ):
         assert token in correction_sql, token
+
+
+def test_419_stage_resource_discovery_has_explicit_provenance():
+    """Show relevant Stage/Scene resources even when the reporting task lacks links."""
+    design = DESIGN.read_text(encoding="utf-8")
+    readme = (WO_DIR / "README.md").read_text(encoding="utf-8")
+    heading = "### Stage-first relevant resources — no scavenger hunt (P0)"
+    assert heading in design
+    section = design.split(heading, 1)[1].split(
+        "### Setup Task Feedback consumption", 1
+    )[0]
+    for required in (
+        "Stage Setup context is the starting point",
+        "Relevant Stage Resources",
+        "Directly linked to this task",
+        "Related to this Scene",
+        "Related to this Stage",
+        "Confirmed for this correction",
+        "ref.setup_task_container_support",
+        "ref.setup_task_extra_material",
+        "ref.setup_container_extra_material",
+        "ref.lor_scene_display",
+        "source_payload.procedure_context",
+        "same Stage",
+        "Mark relevant to this correction",
+        "no pre-confirmed Kit/Display links",
+        "not implemented or accepted",
+        "No fabricated candidate",
+    ):
+        assert required.casefold() in section.casefold(), required
+    assert "**#419 Stage-first relevant resources (P0):**" in readme
+    assert "This Stage resources panel is not yet implemented" in readme
+
+
+def test_419_stage_source_reuses_existing_setup_relationships():
+    """Source check only: Stage resource discovery reuses Setup ownership."""
+    board = (ROOT / "Setup/Application/setup_scheduling_board_repository.py").read_text(
+        encoding="utf-8"
+    )
+    kit = (ROOT / "Setup/Application/setup_kit_inventory_api.py").read_text(
+        encoding="utf-8"
+    )
+    scope = (ROOT / "Setup/Application/setup_assignment_layer.py").read_text(
+        encoding="utf-8"
+    )
+    feedback = (
+        ROOT / "Setup/Database/062_add_setup_context_work_order_intake.sql"
+    ).read_text(encoding="utf-8")
+    for required in (
+        "st.annual_stage_id AS stage_id",
+        "ref.setup_task_container_support tc",
+        "ref.setup_task_extra_material tm",
+    ):
+        assert required in board, required
+    for required in (
+        "c.container_type_id = 2",
+        "ref.setup_container_extra_material",
+        "tc.relationship_type = 'KIT'",
+        "d.container_id = c.container_id",
+    ):
+        assert required in kit, required
+    for required in ("ref.lor_scene_display", "ref.lor_scene", "LOR_STAGE_LEVEL"):
+        assert required in scope, required
+    for required in (
+        "'stage_id', v_stage_id",
+        "'lor_scene_id', v_scene_id",
+        "'procedure_context', v_procedure",
+    ):
+        assert required in feedback, required
