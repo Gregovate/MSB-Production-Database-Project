@@ -137,5 +137,5 @@ def test_disposable_preview_runs_full_established_application_regressions():
     assert "FieldWiring/Application" in runner
     assert "WorkOrders/Application/test_work_management_preview.py" in runner
     assert "WorkOrders/Acceptance/test_work_management_disposable_profile.py" in runner
-    assert runner.index("Setup/Application Setup/Acceptance/test_setup_gis_preview.py") < runner.index("pg_dump")
+    assert runner.index("Setup/Application Setup/Acceptance/test_setup_gis_preview.py") < runner.index('sudo docker exec "$PRODUCTION_CONTAINER" pg_dump')
     assert runner.index("FieldWiring/Application") < runner.index("pg_dump")
