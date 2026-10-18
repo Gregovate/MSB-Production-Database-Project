@@ -384,7 +384,7 @@ def test_419_stage_resource_discovery_has_explicit_provenance():
     )[0]
     for required in (
         "Stage Setup context is the starting point",
-        "Relevant Stage Resources",
+        "Related Information",
         "Directly linked to this task",
         "Related to this Scene",
         "Related to this Stage",
@@ -397,7 +397,7 @@ def test_419_stage_resource_discovery_has_explicit_provenance():
         "same Stage",
         "Mark relevant to this correction",
         "no pre-confirmed Kit/Display links",
-        "not implemented or accepted",
+        "not a runnable/accepted browser result",
         "No fabricated candidate",
     ):
         assert required.casefold() in section.casefold(), required
