@@ -46,3 +46,15 @@ jobs:
           else
             echo "SKIP: No FieldWiring application changes"
           fi
+      - name: Work Management regression for Work Orders changes
+        shell: bash
+        run: |
+          if grep -Eq '^(WorkOrders/|Database/Acceptance/test_wo419_)' /tmp/msb_changed_paths; then
+            python -m pip install pytest flask psycopg2-binary
+            python -m pytest -q -p no:cacheprovider \
+              WorkOrders/Application/test_work_management_preview.py \
+              WorkOrders/Acceptance/test_work_management_disposable_profile.py \
+              Database/Acceptance/test_wo419_unified_ticket_read_model.py
+          else
+            echo "SKIP: No Work Orders application or acceptance changes"
+          fi
