@@ -1,5 +1,6 @@
 -- WO419-M01 | Unified Intake + Work Order ticket ledger | READ ONLY
--- #419 SOURCE-ONLY MODEL CANDIDATE; not yet executed on a Production clone.
+-- #419 SOURCE-ONLY MODEL CANDIDATE; original version ran in Production DBeaver.
+-- This amended person-scope/test-provenance revision has NOT been re-run.
 -- PostgreSQL remains authoritative; this SELECT creates NO tables/views.
 -- Query only with an authorized Manager/read-only identity.
 --
@@ -17,6 +18,14 @@
 -- NOT an application permission boundary: app must enforce the current
 -- authenticated Person/Manager rights before serving ticket data.
 -- No Production rollout or browser approval is implied.
+-- App read-scope requirements:
+--   My Work defaults to ACTIVE assignee person_id = signed-in ref.person,
+--   is_active=true and date_completed IS NULL. Exact person IDs are mandatory;
+--   do not filter by human name, reporter or created_by.
+--   Selecting another person/All is explicit and reader-role-checked by API.
+--   Show completed is an INDEPENDENT status filter.
+-- Test repair origin: display_test_session_id, display_id; never fabricate
+-- a human reporter or Intake merely because Testing generated a Work Order.
 
 WITH assignment_rollup AS (
     SELECT
@@ -40,6 +49,8 @@ WITH assignment_rollup AS (
             ELSE NULL END,
             ', '
         ) AS active_assignees,
+        array_agg(DISTINCT a.person_id ORDER BY a.person_id)
+            FILTER (WHERE a.active_flag) AS active_assignee_person_ids,
         max(a.updated_at) AS latest_assignment_change
     FROM ops.work_order_assignment a
     LEFT JOIN ref.person p ON p.person_id = a.person_id
@@ -65,6 +76,9 @@ all_tickets AS (
         ('WO-' || w.work_order_id::text) AS ticket_key,
         w.work_order_id,
         w.source_intake_id AS intake_id,
+        w.display_test_session_id AS test_detail_id,
+        w.display_id AS display_id,
+        w.submitted_by_person_id AS reporter_person_id,
         w.problem::text AS summary,
         COALESCE(w.source_form_name, w.source_system,
                  'NOT_RECORDED')::text AS source_name,
@@ -91,6 +105,7 @@ all_tickets AS (
         )::text AS place,
         COALESCE(ar.active_assignees, 'UNASSIGNED')::text AS assigned_to,
         ar.active_assignee_count,
+        ar.active_assignee_person_ids,
         COALESCE(
             NULLIF(btrim(concat_ws(' ',
                 COALESCE(NULLIF(btrim(sub.preferred_name), ''),
@@ -132,6 +147,9 @@ all_tickets AS (
         ('INTAKE-' || i.intake_id::text) AS ticket_key,
         NULL::bigint AS work_order_id,
         i.intake_id,
+        NULL::bigint AS test_detail_id,
+        NULL::bigint AS display_id,
+        i.submitter_person_id AS reporter_person_id,
         i.problem_raw::text AS summary,
         COALESCE(i.source_form_name, i.source_system)::text AS source_name,
         CASE
@@ -155,6 +173,7 @@ all_tickets AS (
         )::text AS place,
         'CORRECTION_OWNER_NOT_TRACKED'::text AS assigned_to,
         NULL::bigint AS active_assignee_count,
+        NULL::integer[] AS active_assignee_person_ids,
         COALESCE(
             NULLIF(btrim(concat_ws(' ',
                 COALESCE(NULLIF(btrim(sub.preferred_name), ''),
@@ -181,6 +200,9 @@ SELECT
     ticket_key AS ticket,
     work_order_id AS wo_id,
     intake_id AS in_id,
+    test_detail_id AS test_id,
+    display_id AS disp_id,
+    reporter_person_id AS reporter_id,
     summary AS title,
     current_state AS state,
     state_source AS state_from,
@@ -190,6 +212,7 @@ SELECT
     place AS location,
     assigned_to AS owners,
     active_assignee_count AS assigned_n,
+    active_assignee_person_ids AS assignee_ids,
     reporter AS reported_by,
     latest_activity_at AS last_at,
     done_at,
