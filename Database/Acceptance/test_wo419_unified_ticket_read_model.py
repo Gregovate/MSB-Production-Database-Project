@@ -86,3 +86,50 @@ def test_419_design_is_authority_for_reader_and_reporter_closure():
         "source provenance",
     ):
         assert required.casefold() in design, required
+
+
+def test_419_scope_uses_real_person_ids_not_display_names():
+    """App may choose Me / All / another assignee using stable Person IDs."""
+    sql = SQL.read_text(encoding="utf-8")
+    design = DESIGN.read_text(encoding="utf-8")
+    for token in (
+        "a.person_id",
+        "a.active_flag",
+        "active_assignee_person_ids",
+        "array_agg(DISTINCT a.person_id ORDER BY a.person_id)",
+        "NULL::integer[] AS active_assignee_person_ids",
+        "active_assignee_person_ids AS assignee_ids",
+    ):
+        assert token in sql, token
+    for token in (
+        "### Work Order landing view — default My Work",
+        "All Work Orders",
+        "Show completed",
+        "ref.person.person_id",
+        "server-side",
+    ):
+        assert token in design, token
+
+
+def test_419_testing_origin_is_explicit_and_not_a_fake_intake():
+    """Testing-generated repairs must link back to the real Test Session."""
+    sql = SQL.read_text(encoding="utf-8")
+    design = DESIGN.read_text(encoding="utf-8")
+    for token in (
+        "w.display_test_session_id AS test_detail_id",
+        "w.display_id AS display_id",
+        "NULL::bigint AS test_detail_id",
+        "NULL::bigint AS display_id",
+        "test_detail_id AS test_id",
+        "display_id AS disp_id",
+        "w.submitted_by_person_id AS reporter_person_id",
+        "i.submitter_person_id AS reporter_person_id",
+    ):
+        assert token in sql, token
+    for token in (
+        "### Test Session-generated Work Orders — feedback and ownership",
+        "Test Session repair",
+        "No competing communication model",
+        "do **not** automatically have an original Intake reporter",
+    ):
+        assert token.casefold() in design.casefold(), token
