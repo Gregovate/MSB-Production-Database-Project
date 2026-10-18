@@ -54,6 +54,10 @@ def fixture_containers():
         "containers_partial_at_park":1, "containers_returned":1,
         "containers_no_movement":2, "containers_location_review":1,
         "containers_contents_review_history":1,
+        "containers_returned_recorded_attached":0,
+        "displays_with_returned_container":0,
+        "returned_attachment_cases":[],
+        "returned_attachment_case_lines":"No recorded returned/attached contradictions in the current snapshot",
         "containers_snapshot_as_of":"2026-10-17 02:00:00-05:00",
         "containers_session_id":2,
         "containers_evidence_note":"Recorded state; not verified empty",
@@ -616,3 +620,82 @@ def test_bounded_end_date_must_be_explicit_and_not_pass_show_open(
     with pytest.raises(mail.PilotStop,match="end date"):
         mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,time_at(4,19),"daily",None)
 
+
+def test_returned_containers_with_stale_active_display_associations_are_actionable():
+    # Real-world pattern: C052/C053 returned, but 16 Tree Wrap Displays each
+    # remain WITH_CONTAINER; a returned load_state=EMPTY must not hide them.
+    containers=[
+        {"container_id":52,"container_name":"Wraps One","movement_status":"RETURNED",
+         "last_movement_event_id":183},
+        {"container_id":53,"container_name":"Wraps Two","movement_status":"RETURNED",
+         "last_movement_event_id":182},
+        {"container_id":54,"container_name":"Empty Return","movement_status":"RETURNED"},
+        {"container_id":34,"container_name":"Active Trailer","movement_status":"DELIVERED"},
+    ]
+    displays=[
+        {"display_id":cid*100+i,"container_id":cid,
+         "display_name":f"Tree Wrap {cid}-{i:02d}", "position_mode":"WITH_CONTAINER"}
+        for cid in (52,53) for i in range(16)
+    ]
+    displays += [
+        # Legitimate detached Display remains independent of returned Container.
+        {"display_id":9001,"container_id":54,"display_name":"Already Unloaded",
+         "position_mode":"DETACHED","last_movement_event_id":220},
+        # Active trailer is a legitimate multi-stop full/interim load, NOT return.
+        {"display_id":9002,"container_id":34,"display_name":"Still on Trailer",
+         "position_mode":"WITH_CONTAINER"},
+    ]
+    result=mail.returned_attached_review({"containers":containers,"displays":displays})
+    assert result["containers_returned_recorded_attached"]==2
+    assert result["displays_with_returned_container"]==32
+    assert len(result["returned_attachment_cases"])==2
+    assert "CONT:052" in result["returned_attachment_case_lines"]
+    assert "CONT:053" in result["returned_attachment_case_lines"]
+    assert "Tree Wrap 52-00" in result["returned_attachment_case_lines"]
+    assert "last Container event #183" in result["returned_attachment_case_lines"]
+    assert "CONT:034" not in result["returned_attachment_case_lines"]
+    assert "CONT:054" not in result["returned_attachment_case_lines"]
+
+
+def test_returned_association_detection_requires_current_snapshot_and_unique_display_identity():
+    with pytest.raises(mail.PilotStop,match="lacks Container/Display states"):
+        mail.returned_attached_review({"containers":[]})
+    with pytest.raises(mail.PilotStop,match="Duplicate active Display"):
+        mail.returned_attached_review({"containers":[],"displays":[
+            {"display_id":1}, {"display_id":1}
+        ]})
+
+
+def test_html_returned_association_rows_escape_display_names_and_preserve_no_resolve_link():
+    report=mail.summarize(fixture_board(),date(2026,10,17))
+    report.update(fixture_containers())
+    report["containers_returned_recorded_attached"]=1
+    report["displays_with_returned_container"]=1
+    report["returned_attachment_cases"]=[{
+        "container_id":52,"container_identity":"CONT:052",
+        "container_name":'<img src=x onerror=alert(1)>',
+        "display_count":1,"display_names":['<script>alert("pwn")</script>'],
+        "event_id":183,
+    }]
+    html=mail.render_html(mail.DEFAULT_HTML_TEMPLATE.read_text(encoding="utf-8"),
+                          {"display_name":"Manager"},report)
+    assert "Returned Containers · Display association review" in html
+    assert "CONT:052" in html
+    assert "&lt;img" in html and "&lt;script&gt;" in html
+    assert '<script>alert("pwn")</script>' not in html
+    assert 'https://my.sheboyganlights.org/setup/material-status/' in html
+    assert "read-only" in html
+    assert 'href="https://my.sheboyganlights.org/setup/resolve' not in html
+
+
+def test_plain_text_discloses_false_zero_status_and_historical_review_context():
+    report=mail.summarize(fixture_board(),date(2026,10,17))
+    report.update(fixture_containers())
+    text=mail.render(mail.DEFAULT_TEMPLATE.read_text(encoding="utf-8"),
+                     {"display_name":"Manager"},report)
+    assert "Unclassified movement statuses:" in text
+    assert "NOT an overall discrepancy count" in text
+    assert "Returned Containers still have" not in text  # number precedes word
+    assert "returned Containers still have 0 active Display" in text
+    assert "historical contents-review events" in text
+    assert "No recorded returned/attached contradictions" in text
