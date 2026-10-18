@@ -170,6 +170,12 @@ if ! sudo git -C "$REPO_ROOT" merge-base --is-ancestor "$LIVE_HEAD" "$CANDIDATE_
   exit 9
 fi
 sudo git -C "$REPO_ROOT" worktree add --detach "$WORKTREE" "$CANDIDATE_SHA"
+# Only the temporary public-source worktree is readable by the service account;
+# do not change /opt runtime permissions or live checkout ownership.
+sudo chmod -R a+rX "$WORKTREE"
+sudo -u fieldwiring -H test -r "$WORKTREE/WorkOrders/Application/backend.py" || {
+  echo "HOLD: candidate worktree not accessible to approved service account"; exit 9;
+}
 
 echo "--- Candidate source tests (no database) ---"
 sudo -u fieldwiring -H env PYTHONDONTWRITEBYTECODE=1 bash -c "
