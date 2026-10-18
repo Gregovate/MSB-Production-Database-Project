@@ -205,3 +205,40 @@ def test_419_disposable_browser_acceptance_is_end_to_end():
         assert required.casefold() in section.casefold(), required
     assert "first integrated application review target" in readme
     assert "not merged, built or deployed" in readme
+
+
+def test_419_p0_reporter_email_and_one_step_promotion_are_release_gates():
+    """Existing Intake + Work Orders need closed-loop reporting before launch."""
+    design = DESIGN.read_text(encoding="utf-8")
+    readme = (WO_DIR / "README.md").read_text(encoding="utf-8")
+    heading = (
+        "### P0 first-release gate — reporter clarification, outcome email, "
+        "and one-step triage"
+    )
+    assert heading in design
+    p0 = design.split(heading, 1)[1].split(
+        "### Accountability and two-way reporter communication", 1
+    )[0]
+    for required in (
+        "P0 release blockers",
+        "Request More Information",
+        "Send Request",
+        "original verified reporter",
+        "View/Respond",
+        "same ticket",
+        "final outcome email",
+        "Promote is not Complete",
+        "Promote & Assign",
+        "one transaction",
+        "assignee_count=0",
+        "original Intake remains actionable",
+        "Repeated clicks",
+        "no-send",
+        "INTAKE-60",
+        "INTAKE-40",
+        "Test Session",
+        "do not deploy",
+    ):
+        assert required.casefold() in p0.casefold(), required
+    assert "**#419 P0 first-release acceptance:**" in readme
+    assert "None of these P0 actions has been implemented" in readme
