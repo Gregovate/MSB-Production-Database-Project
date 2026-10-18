@@ -20,6 +20,83 @@ The core model preserves these design rules:
 
 Current PostgreSQL schema, constraints, procedures, and triggers are implementation truth when they differ from older design drafts.
 
+## #419 — Unified MSB Work Management Application Contract (October 18, 2026)
+
+**Engineering authority and status:** This section records the agreed operating model and the **verified current Production findings** for [#419](https://github.com/Gregovate/MSB-Production-Database-Project/issues/419). It governs application implementation and regression acceptance; GitHub issues track the work and PRs implement it. **New Work Management screens, correction ownership/replies, and reporter notification workflows are NOT deployed merely because this design or a candidate SQL query is committed.** The earlier production Work Order and Intake data models remain authoritative.
+
+### Product boundary — one operator experience, two distinct lifecycles
+
+The next major application after the accepted Setup Scheduling Board work is **MSB Work Management**, a single, ticket-style interface for existing Work Orders and Task Feedback. A volunteer or Manager should not need to navigate raw Directus collections or change personalized bookmark filters to learn what was reported, assigned, done, or still outstanding.
+
+- **One searchable Inbox / All Tickets, My Work, My Submitted Feedback, and Manager follow-up** with common detail presentation (human description, original source/reporter, Stage or Work Area, owners, evidence, time, next action, outcome, history). Provide direct, authorized links into the owning Setup task/Stage, Work Order, Testing or Procedure.
+- **One UI does not create a new authoritative ticket table.** The native permanent Work Order identity remains `ops.work_order.work_order_id`; pending Intake and correction submissions remain `stage.work_order_intake.intake_id` until governed disposition. Display aliases such as `WO-372` and `INTAKE-60` are not new identities. Cross-links must preserve both source and outcome identities.
+- **Work Orders** cover actionable repair, build/maintenance and related work. **Task Feedback** covers a reported observation or correction requiring review; it is not automatically a Work Order. The Manager may explicitly promote/link a real repair while preserving the original reporter and source, or route the correction to the authorized Procedure, Catalog, Kit/material, inventory, GIS, Testing or engineering owner. A report is not proof work occurred.
+- The approved **#172 free-form Task Feedback entry** must remain simple: `What did you find?` plus optional suggestion/evidence. Capture known annual task, Stage/Scene, scheduled assignment, Crew/Captain, Procedure, authenticated reporter/time automatically where available. An unscheduled observation requires a truthful route **without fabricating a workday or Report Work**.
+- **#209** owns annual experience → reusable Catalog review: distinguish proposed, verified, accepted, rejected and deferred improvements, and never modify reusable records without the governed confirmation. Work Management makes reports and their outcomes available to that review; it does not replace #209.
+
+### Entry paths — existing and new
+
+| Entry | Existing/current Production behavior | Intended Work Management behavior |
+| --- | --- | --- |
+| Public Work Order Request | Google form / Apps Script → Work Order Intake → Manager triage | Preserve the form and current Intake. Correct details, **choose assignees before** a guarded single Promote/Release action, preserve request provenance, and send accountable notifications |
+| Production Crew Task Feedback | Authenticated #172 free-form submission → `SETUP_CORRECTION` Intake, initially Submitted | Same free-form entry and provenance; Manager routes/assigns a correction, requests clarification and records outcome; only explicitly promotes to a Work Order for actual repair/action |
+| **Internal Work Order (new)** | There is no proven governed Manager direct-create-plus-assign command in the inspected current source | Authorized Manager creates an active Work Order directly, including Stage/Work Area, type, urgency/year, problem, related Display where valid and one or more actual assignees. Do **not** manufacture a public request or Intake row to create it |
+| Test Session repair | Governed testing failure creates an active Work Order without Intake | Keep the same Test Session repair creation, downstream repair completion feedback, and closure blocking rules |
+
+Work Orders use the existing Stage **or** Work Area location rule, People identities and normalized assignment relationships. The application must not grant broad browser DML rights, change the Test Session repair truth, automatically complete annual Setup tasks, or bypass existing audit, validation and authorization.
+
+### Current Production model — verified read-only, October 18, 2026
+
+The following observations are **current live database evidence**, not assumptions based on archived migration files:
+
+- `ops.work_order` uses **`urgency_id`**, not historical `urgency`; it also has `source_intake_id`, source submitter and triage provenance, `repair_complete`, `date_completed`, completer, completion notes, `is_active`, related Stage/Work Area/Display/Test Session, and created/updated actor fields.
+- **`ops.work_order_assignment`** is the actual relation, not the archived `work_order_assignee`. It has active flags, assignment roles, person identity, assignment/unassignment timestamps/actors and audit columns. The initial read model rolls up only active assignments, preserving the historical rows.
+- `ref.work_order_status` currently defines active `SUBMITTED`, `TRIAGED`, `APPROVED`, `DENIED`, `IN_PROGRESS` and `DONE`; `ops.work_order_status_history` stores status events when they exist. **Catalog existence does not mean every Work Order has a status-history event.**
+- `stage.work_order_intake` records human form requests and `SETUP_CORRECTION` submissions including raw free-form notes, original source, linked/raw reporter, time and triage details. Its trigger `trg_process_work_order_intake_on_triage` is an **enabled AFTER UPDATE OF triage_dropdown** trigger invoking `stage.tf_process_work_order_intake_on_triage()`.
+- Actual `stage.p_process_work_order_intake(bigint)`: `triage_dropdown='1'` keeps Submitted; `'3'` inserts an active `ops.work_order` with source ID/person/time/details then **DELETES the original Intake** and returns **`assignee_count=0`** (so promotion and assignment are separate today); `'4'` **DELETES Intake** with no retained Denied record. It rejects unsupported values. The Directus **Work Order Promote from Intake** Flow is inactive, but database promotion is active. Do **not** use either destructive Intake action as a proposed correction closure mechanism, and do not assume a deleted original `source_payload` survived promotion.
+- `ops.work_order` has an enabled completion-autofill trigger; Directus **Create Repair Work Order**, **WOI Request Triage Email**, **Work Order Email Assignees**, and **Work Order Complete-Update Display Test Session** Flows were active in the inspected metadata. Preserve existing non-mail side effects until each is reconciled and accepted.
+- `ops.work_order_outbound_message` exists with channel/template/recipient/subject/body preview, `sent_flag`, time/provider/error and actor fields, but **requires `work_order_id`**. It is not, by itself, a queue for unpromoted feedback notifications. A read-only current grouping showed **zero rows** despite active Directus mail Flows. The October 17–18 server-to-Google Workspace SMTP work is promising, but reusable Work Management delivery, retry/dedup and recipient routes are **not yet independently accepted** from these results.
+
+### Actual first unified-ledger result — Production DBeaver, October 18
+
+The #419 read-only `SELECT` candidate [WO419 Unified Ticket Read-Only Candidate](engineering/WO419_Unified_Ticket_Read_Only_Candidate.sql) **executed successfully in authorized DBeaver**. The operator supplied all 389 data rows:
+
+| Verified measure from supplied query output | Count |
+| --- | ---: |
+| Existing Work Order rows | 386 |
+| Work Orders with non-null `date_completed` | 328 |
+| Work Orders with NULL `date_completed` | 58 |
+| Active Work Orders without completion date | 57 |
+| Active, undated Work Orders with **no active assignee** | 10 |
+| Inactive Work Order without completion date | 1 |
+| Retained pending Intake | 3 (one `SETUP_CORRECTION`, two public form requests) |
+| Work Orders with a status-history state surfaced by this query | 0 |
+| Existing outbound-message rows in preceding grouped DBeaver result | 0 |
+
+**Status interpretation:** For this measured snapshot all 386 Work Order rows appear as `DONE_DATE_ONLY` (328) or `STATUS_NOT_RECORDED` (58), because there is no joined status-history event. A real application must label them truthfully as **Completed (date recorded)** or **Not recorded complete (no completion date)** while explicitly indicating missing workflow history. `is_active` is **not** synonymous with open: completed Work Orders may still be active and one undated Work Order is inactive. A `last_at` value from `updated_at` or assignment changes is **last recorded record change**, not proof of physical progress, recent communication or acknowledgement. Avoid artificially labeling a Work Order `IN_PROGRESS`, `APPROVED` or `DONE` in status history unless that event genuinely exists.
+
+**Identity examples grounded in the live result:** WO #372 Magic Igloo broken welds has no completion date and three assigned people; `INTAKE-60` is the retained Command Center cribbing `SETUP_CORRECTION`, still Submitted without a tracked correction owner; WO #418 originated as `SETUP_CORRECTION` Intake #64 and is now a Work Order, demonstrating a transition whose original Intake row was removed. `INTAKE-40` Magic Igloo section P/R and `INTAKE-57` test remain Submitted; the design must not silently delete or promote them.
+
+These numbers are an **October 18 source snapshot**, not durable current KPIs or verified evidence that all dated completions reflect physically completed tasks. Validate against current data during browser review; no write or external mail occurred in this read-only query.
+
+### Accountability and two-way reporter communication — required acceptance
+
+**Every actionable item must be discoverable with a truthful status, named responsible owner or an explicit unassigned state, last recorded activity, next action and disposition.** A Manager must be able to find all outstanding repair Work Orders regardless of urgency, assignee or completed status; a Stage view under #205 must link to the authoritative Work Order rather than implementing competing Work Order edits.
+
+The original reporter must see their own Task Feedback, with its current outcome and history. A correction owner can **Request Clarification** from that reporter; the original reporter receives a targeted email with a safe link to answer in the **same ticket**, and the assigned owner sees the reply. On a final verified correction resolution, deferral, denied/no action with reason or linked duplicate, notify the original reporter with the decision and explanation. If Feedback is promoted to a repair Work Order, **promotion is not completion**: source provenance and eventual Work Order closure outcome must remain traceable and communication must not falsely imply the repair occurred. Never default all ownership or notifications to a single experienced volunteer.
+
+Every request/reply, correction owner assignment, next action, disposition, actor/date and notification outcome must be durable and auditable for the January review. The existing raw Intake status/delete/promotion operation cannot meet these requirements by itself. Identify whether narrowly scoped additional correction comment/ownership/outcome and cross-link persistence is necessary; do **not** create an independent master ticket store merely for a common interface. Keep the original free-form report intact and do not grant Crew members controlled Catalog/Procedure write access.
+
+For outgoing email, use the governed MSB/Google Workspace delivery authority after real runtime proof. Record recipient, subject/template/event, QUEUED/SENT/FAILED (or equivalent authoritative states), deduplication and retry outcome. Delivery failure is visible to management, never silently claimed as sent, and does not fabricate ticket completion. Existing active Directus mail Flows may be retired only through explicit duplicate-free acceptance/cutover while preserving test/repair business effects.
+
+### Permission, integration, and engineering sequence
+
+- PostgreSQL owns existing Work Orders, Intake, People relationships, history and business rules. The **database repository owns their integration contract**. A separate dedicated Work Management application repository owns protected API/UI/deployment/tests according to the [System Boundary and Repository Ownership Standard](../../../../System_Documentation/Standards/System_Boundary_and_Repository_Ownership_Standard.md).
+- Managers may have whole-system authorized search and triage; volunteers see only their own submitted reports, assigned work and allowed related details. Authorization uses existing trusted Person/Cloudflare/Directus identity mapping rather than a separate Work Management user table; email links must not reveal other people's reports or permit unauthenticated updates.
+- Preserve the current user-filtered Directus `work_order_assignment?bookmark=100` as a legacy entry point until an accepted equal-or-better protected `My Work` UI replaces it. Preserve #172 Task Feedback from Perform Work, #132 Report Work as separate actual-work facts, #205 scheduling/Stage progress, #209 reusable review and Testing repair completion.
+- **Engineering order:** Read current Project Rules/Standards and *this design* → document new findings here → source-only read model → regression/SQL review against known cases → governed current-Production disposable clone + protected browser acceptance → develop guarded Manager internal Work Order Create; integrated Triage→Assign→Release; My Work/progress/completion; and correction assignment/questions/reporter response/verified closure → tested notification cutover → explicit Production approval and controlled deployment. Do not interpret a PR merge, static validation, browser preview or mail connectivity alone as Production acceptance.
+- Current implementation checkpoint: source-only **draft PR #420** contains the read-model spike and checkpoint. The live DBeaver run is **PASS for executing its SELECT**; API/role security, actual browser list/detail, clone acceptance, transactional write actions, reporter notifications, app repo/runtime allocation and Production deployment remain **NOT DONE**. Future implementation must conform to this design, not rewrite it merely to justify code already written.
+
 ## Work Entry Paths
 
 There are two lifecycle classes with multiple intake sources:
