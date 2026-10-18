@@ -1,0 +1,48 @@
+name: MSB Engineering Compliance
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  engineering-compliance:
+    name: Engineering Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate authority, evidence and change classification
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: python System_Documentation/Automation/check_engineering_compliance.py
+      - name: Validate checker negative and positive cases
+        run: python -m unittest discover -s System_Documentation/Automation -p 'test_engineering_compliance.py' -v
+      - name: Full Setup regression for Setup implementation changes
+        shell: bash
+        run: |
+          git diff --name-only "${{ github.event.pull_request.base.sha || 'HEAD^' }}" HEAD > /tmp/msb_changed_paths
+          if grep -Eq '^Setup/(Application|Database|Acceptance)/' /tmp/msb_changed_paths; then
+            python -m pip install pytest flask psycopg2-binary
+            python -m pytest -q -p no:cacheprovider Setup/Application
+          else
+            echo "SKIP: No Setup implementation changes"
+          fi
+      - name: Full FieldWiring regression for FieldWiring changes
+        shell: bash
+        run: |
+          if grep -Eq '^FieldWiring/Application/' /tmp/msb_changed_paths; then
+            python -m pip install pytest flask psycopg2-binary
+            python -m pytest -q -p no:cacheprovider FieldWiring/Application
+          else
+            echo "SKIP: No FieldWiring application changes"
+          fi
