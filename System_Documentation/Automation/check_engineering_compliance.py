@@ -42,11 +42,11 @@ def validate(changed: list[str], body: str, existing: set[str]) -> list[str]:
             match = re.search(r"(?im)^\s*" + re.escape(field) + r"\s*(.+)$", body)
             if not match or len(match.group(1).strip()) < 8:
                 errors.append(f"PR description must give nonempty '{field}' evidence.")
-        reference = re.search(r"(?im)^\\s*Design authority:\\s*(.+)$", body)
+        reference = re.search(r"(?im)^\s*Design authority:\s*(.+)$", body)
         if reference:
             value = reference.group(1).strip()
             candidates = re.findall(
-                r"(?:System_Documentation|Docs)/[A-Za-z0-9_./-]+\\.md", value
+                r"(?:System_Documentation|Docs)/[A-Za-z0-9_./-]+\.md", value
             )
             if not any(path in existing and ".." not in Path(path).parts
                        for path in candidates):
