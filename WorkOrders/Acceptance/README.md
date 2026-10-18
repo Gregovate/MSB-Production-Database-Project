@@ -55,6 +55,12 @@ python -m pytest -q -p no:cacheprovider
 
 The prior exact-wording source guard in `test_419_testing_origin_is_explicit_and_not_a_fake_intake` was corrected to match the existing engineering design; this run has **zero failures**. The one skipped test's reason was not printed in the operator's `-q` output; the profile suite explicitly skips Linux/Bash syntax validation when `bash` is unavailable. **Linux `bash -n`, revised PostgreSQL query against a current-Production disposable clone, live Flask browser, authorized reviewer/port checks and P0 write/email workflows have NOT been accepted.** The resulting receipt does not establish an isolated clone or browser READY.
 
+## Linux GitHub Actions source gate — 2026-10-18
+
+**PASS** for commit `8871a796847f635b1108b3f00f1989455fc159e9`, GitHub Actions run **39127213541** (`Work Management` / `source-only-regression`). Source checkout, Python 3.12 install, `bash -n` on the Work Management server runner, Python module compilation, `node --check` for the browser JavaScript, isolated fake-repository Flask/Work Management/DB-contract pytest suites, and the no-Production-contact step all concluded **success**. This follows the laptop **29 passed, 1 skipped** receipt above; the Windows-only Bash skip was exercised in Linux CI.
+
+Immediately preceding the gate, source-only runner fixes streamed the host-side clone grants file through Docker `psql` **stdin** and corrected the SQL approval marker's actual line terminator. The new source regression protects those invariants. This **does not prove** the disposable restore, live-schema SELECT, Flask/DB integration, port-owner check, authorized user, Production fingerprint or browser interaction. Those must be executed and reported separately by the governed runner. **Production was not contacted by the GitHub Actions job.**
+
 ## Remaining acceptance gates
 
 Run and correct Python source tests, revised WO419 PostgreSQL read model and clone audit before calling the first browser review READY. #419 P0 **atomic triage/Promote & Assign, alternate Setup corrections, original-reporter Request More Information/replies, final resolution emails and noncompeting Directus cutover are NOT implemented or accepted**. No temporary read-only preview can waive those future gates.
