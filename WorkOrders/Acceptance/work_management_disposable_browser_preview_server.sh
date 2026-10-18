@@ -196,21 +196,48 @@ sudo docker run -d --name "$CLONE_CONTAINER" --network "$NETWORK" \
   -e POSTGRES_USER="$PG_ACTOR" -e POSTGRES_PASSWORD="$CLONE_DB_PASSWORD" \
   -e POSTGRES_DB=postgres "$IMAGE" >/dev/null
 CLONE_OWNED=1
+# PostGIS 16-3.5 runs a temporary initialization PostgreSQL instance:
+# pg_isready may PASS during that temporary server, which the entrypoint
+# intentionally shuts down. Existing MSB-Server-Management standard:
+# PostgreSQL_Disposable_Acceptance_Standard.md -> final PID 1 contract.
 ready=0
+pid1=""
 for _ in $(seq 1 120); do
-  if sudo docker exec -e PGPASSWORD="$CLONE_DB_PASSWORD" "$CLONE_CONTAINER" \
-    pg_isready -U "$PG_ACTOR" -d postgres >/dev/null 2>&1; then
-    ready=1; break
+  if [[ "$(sudo docker inspect "$CLONE_CONTAINER" --format '{{.State.Running}}' 2>/dev/null || true)" != "true" ]]; then
+    break
+  fi
+  pid1="$(sudo docker exec "$CLONE_CONTAINER" sh -c 'cat /proc/1/comm' 2>/dev/null | tr -d '\r\n' || true)"
+  if [[ "$pid1" == "postgres" ]] && \
+     sudo docker exec -e PGPASSWORD="$CLONE_DB_PASSWORD" "$CLONE_CONTAINER" \
+       pg_isready -U "$PG_ACTOR" -d postgres >/dev/null 2>&1; then
+    ready=1
+    break
   fi
   sleep 1
 done
-[[ "$ready" == 1 ]] || { echo "HOLD: isolated clone not ready"; exit 10; }
+if [[ "$ready" != 1 ]]; then
+  echo "HOLD: disposable PostGIS did not reach final PID1=postgres ready state"
+  echo "Observed PID 1 command: ${pid1:-unknown}"
+  sudo docker inspect "$CLONE_CONTAINER" --format 'Clone state: running={{.State.Running}} oom_killed={{.State.OOMKilled}} exit={{.State.ExitCode}}' || true
+  sudo docker logs --tail 40 "$CLONE_CONTAINER" || true
+  exit 10
+fi
+echo "PASS: disposable PostgreSQL final post-init PID1=postgres and pg_isready"
 
 sudo docker exec -e PGPASSWORD="$CLONE_DB_PASSWORD" "$CLONE_CONTAINER" \
   createdb -U "$PG_ACTOR" -T template0 "$CLONE_DATABASE"
-sudo docker exec -i -e PGPASSWORD="$CLONE_DB_PASSWORD" "$CLONE_CONTAINER" \
-  pg_restore -U "$PG_ACTOR" -d "$CLONE_DATABASE" \
-    --no-owner --no-acl --exit-on-error < "$DUMP"
+if sudo docker exec -i -e PGPASSWORD="$CLONE_DB_PASSWORD" "$CLONE_CONTAINER" \
+   pg_restore -U "$PG_ACTOR" -d "$CLONE_DATABASE" \
+     --no-owner --no-acl --exit-on-error < "$DUMP"; then
+  echo "PASS: disposable database restore finished on final PostgreSQL server"
+else
+  restore_status=$?
+  echo "HOLD: disposable PostgreSQL restore failed (exit $restore_status)"
+  echo "Final-server gate passed; inspect clone rather than assuming OOM or schema failure"
+  sudo docker inspect "$CLONE_CONTAINER" --format 'Clone state: running={{.State.Running}} oom_killed={{.State.OOMKilled}} exit={{.State.ExitCode}}' || true
+  sudo docker logs --tail 40 "$CLONE_CONTAINER" || true
+  exit "$restore_status"
+fi
 
 psql_clone() {
   sudo docker exec -i -e PGPASSWORD="$CLONE_DB_PASSWORD" "$CLONE_CONTAINER" \
