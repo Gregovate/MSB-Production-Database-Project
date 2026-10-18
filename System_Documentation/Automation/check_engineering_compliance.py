@@ -32,21 +32,28 @@ def validate(changed: list[str], body: str, existing: set[str]) -> list[str]:
         "Setup/Acceptance/", "WorkOrders/Acceptance/", ".github/workflows/",
         "System_Documentation/Project_Rules/", "System_Documentation/Standards/"
     )) for p in changed)
+    documentation = any(p.startswith(("Docs/", "System_Documentation/")) and p.endswith(".md") for p in changed)
     implementation = any(p.startswith((
         "Setup/Application/", "Setup/Database/", "WorkOrders/Application/",
         "WorkOrders/Database/", "FieldWiring/Application/", "Database/"
     )) for p in changed)
-    if implementation or protected:
+    if implementation or protected or documentation:
         for field in FIELDS:
             match = re.search(r"(?im)^\s*" + re.escape(field) + r"\s*(.+)$", body)
             if not match or len(match.group(1).strip()) < 8:
                 errors.append(f"PR description must give nonempty '{field}' evidence.")
-        reference = re.search(r"(?im)^\s*Design authority:\s*(.+)$", body)
+        reference = re.search(r"(?im)^\\s*Design authority:\\s*(.+)$", body)
         if reference:
-            # Prevent a chat URL, issue or PR alone being asserted as design authority.
-            value = reference.group(1).strip().lower()
-            if value.startswith(("chat", "issue #", "pr #", "conversation")):
-                errors.append("Design authority must identify a controlled design document.")
+            value = reference.group(1).strip()
+            candidates = re.findall(
+                r"(?:System_Documentation|Docs)/[A-Za-z0-9_./-]+\\.md", value
+            )
+            if not any(path in existing and ".." not in Path(path).parts
+                       for path in candidates):
+                errors.append(
+                    "Design authority must identify an existing controlled "
+                    "Docs/ or System_Documentation/ Markdown file."
+                )
     if protected:
         justification = re.search(r"(?im)^\s*Infrastructure reuse / exception:\s*(.+)$", body)
         if not justification or len(justification.group(1).strip()) < 12:
