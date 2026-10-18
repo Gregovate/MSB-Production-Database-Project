@@ -40,6 +40,21 @@ Press ENTER in the SSH session when done, and require the exact **WO419 DISPOSAB
 
 The [source-only Work Management CI workflow](../../.github/workflows/wo419-work-management-source-tests.yml) is committed in draft PR #420. It checks Bash parsing, Python module compilation, Node JavaScript parsing, fake-repository Flask tests, and the DB-owned ledger/design contracts. It does not have server credentials and cannot touch Production. **A committed workflow is not a passing workflow: no GitHub Actions PASS has yet been reported for this candidate.** The server runner independently repeats feature tests before creating a clone. If CI/source tests fail, correct them and pin a new exact SHA before asking for browser review.
 
+## Laptop source regression receipt — 2026-10-18
+
+**Operator-run PASS (source/fake-repository only):** In the clean Windows laptop worktree `C:\\lor\\ImportExport\\MSB-WorkOrders-419` on branch `issue-419-unified-ticket-read-model-20261018`, commit `8a6d55df64a156af51294c3e7eaec2f40508534d`:
+
+```text
+python -m pytest -q -p no:cacheprovider
+  WorkOrders/Application/test_work_management_preview.py
+  WorkOrders/Acceptance/test_work_management_disposable_profile.py
+  Database/Acceptance/test_wo419_unified_ticket_read_model.py
+
+29 passed, 1 skipped in 0.28s
+```
+
+The prior exact-wording source guard in `test_419_testing_origin_is_explicit_and_not_a_fake_intake` was corrected to match the existing engineering design; this run has **zero failures**. The one skipped test's reason was not printed in the operator's `-q` output; the profile suite explicitly skips Linux/Bash syntax validation when `bash` is unavailable. **Linux `bash -n`, revised PostgreSQL query against a current-Production disposable clone, live Flask browser, authorized reviewer/port checks and P0 write/email workflows have NOT been accepted.** The resulting receipt does not establish an isolated clone or browser READY.
+
 ## Remaining acceptance gates
 
 Run and correct Python source tests, revised WO419 PostgreSQL read model and clone audit before calling the first browser review READY. #419 P0 **atomic triage/Promote & Assign, alternate Setup corrections, original-reporter Request More Information/replies, final resolution emails and noncompeting Directus cutover are NOT implemented or accepted**. No temporary read-only preview can waive those future gates.
