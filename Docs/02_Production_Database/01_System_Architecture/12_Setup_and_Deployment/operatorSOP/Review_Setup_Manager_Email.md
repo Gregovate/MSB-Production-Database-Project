@@ -1,3 +1,11 @@
+## October 18 — daily Manager email until 2026 show opening
+
+The approved October 17 initial 04:00 report was a one-day pilot; it **did not schedule October 18 or any later day**. The operator now requests an immediate, specifically approved missing October 18 Manager report and then an automatic **04:00 America/Chicago** briefing every morning until the show opens, **November 27, 2026**, or an earlier Manager-selected cutoff.
+
+**Default:** the last scheduled email is **November 27 at 04:00 AM** (the morning of show opening); none on November 28 or later. The Administrator can request an earlier YYYY-MM-DD cutoff before then. Future cutoff changes must go through the governed server procedure; do not assume this first candidate installs an editable Setup settings screen or that changing a browser field already controls a timer. The server timer must use finite year-2026 calendar entries and its runner must independently decline sends outside its date/time gate. No unbounded daily recurrence, no late/catch-up replay, and no Captain messages.
+
+**Today's exception:** an Administrator can execute the separately guarded `--send-today` **once on October 18 only**. It recalculates current task, readiness, Container and assignment figures at execution rather than reusing yesterday's 296/90/206 snapshot, sends to the same authorized seven Managers, and creates today's distinct immutable per-recipient receipts in the existing secure mail ledger. The original October 17 delivery and all test receipts remain untouched. After a failed/uncertain attempt, inspect the ledger before trying anything else; do not rerun or reset it to force duplicates. SMTP acceptance is not Inbox delivery proof.
+
 # Review the Daily Setup Manager Email
 
 | Document control | Value |
