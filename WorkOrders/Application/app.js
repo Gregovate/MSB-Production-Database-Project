@@ -180,11 +180,16 @@
   }
 
   function safeLink(item) {
-    const match = String(item.url || "").match(/^\/setup\/kit-inventory\/([1-9]\d*)$/);
+    // Only exact current MSB routes from known source identities may open.
+    const match = String(item.url || "").match(
+      /^\/(setup\/kit-inventory|scan\/DISP|scan\/CONT)\/([1-9]\d*)$/
+    );
     if (!match) return "";
-    const target = "https://my.sheboyganlights.org/setup/kit-inventory/" + match[1];
+    const target = "https://my.sheboyganlights.org/" + match[1] + "/" + match[2];
+    const label = match[1].startsWith("scan/") ? "Open asset ↗" : "Open Kit ↗";
     return '<a href="' + escapeHtml(target) +
-      '" target="_blank" rel="noopener noreferrer" title="Opens existing MSB Setup in a new tab">Open in Setup ↗</a>';
+      '" target="_blank" rel="noopener noreferrer" title="Opens existing protected MSB application in a new tab">' +
+      label + '</a>';
   }
 
   function renderRelated(items) {
