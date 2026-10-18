@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MSB Work Management — Candidate</title>
+  <link rel="stylesheet" href="/work-orders/assets/app.css">
+  <script src="/work-orders/assets/app.js" defer></script>
+</head>
+<body>
+  <header class="app-header">
+    <div class="head-inner">
+      <div class="identity">
+        <span class="brand-mark" aria-hidden="true">MSB</span>
+        <div>
+          <h1>Work Management</h1>
+          <p>Work Orders and Task Feedback</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <span id="preview-tag" class="preview-tag">Disposable browser candidate · Read only</span>
+        <span id="user-identity" class="signed-in" aria-live="polite">Verifying access…</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <div class="page-intro">
+      <div>
+        <h2>Your work, with the full picture when you need it</h2>
+        <p class="subtle">Open your assignments first. Search all authorized work, including correction findings from Setup.</p>
+      </div>
+    </div>
+    <div id="page-error" class="error-box" role="alert" hidden></div>
+
+    <section class="controls" aria-label="Work Order filters">
+      <div class="field">
+        <label for="scope">Show work for</label>
+        <select id="scope">
+          <option value="mine">My Work</option>
+          <option value="all">All Work Orders and Intake</option>
+          <option value="person">Another volunteer</option>
+        </select>
+      </div>
+      <div class="field" id="person-field" hidden>
+        <label for="assignee">Assigned volunteer</label>
+        <select id="assignee"><option value="">Choose a volunteer</option></select>
+      </div>
+      <div class="field search-field">
+        <label for="ticket-search">Search work</label>
+        <input id="ticket-search" type="search" autocomplete="off"
+               placeholder="Work Order number, finding, Stage, volunteer…">
+      </div>
+      <label class="check-field">
+        <input id="show-completed" type="checkbox">
+        <span>Show completed</span>
+      </label>
+      <button id="refresh" type="button" class="quiet-button">Refresh</button>
+    </section>
+
+    <div class="workspace">
+      <section class="ticket-column" aria-label="Ticket list">
+        <div class="section-header">
+          <div>
+            <h3 id="list-heading">My Work</h3>
+            <p id="list-count" aria-live="polite">Loading your assignments…</p>
+          </div>
+        </div>
+        <div id="ticket-list" class="ticket-list" role="list" aria-live="polite"></div>
+      </section>
+
+      <section class="detail-column" aria-label="Selected ticket">
+        <div id="detail-empty" class="empty-panel">
+          <div class="empty-icon" aria-hidden="true">↗</div>
+          <h3>Choose a Work Order or correction</h3>
+          <p>Open a ticket to see the original finding and the information relevant to it.</p>
+        </div>
+        <div id="detail-content" hidden>
+          <div class="detail-heading">
+            <span id="detail-category" class="type-label"></span>
+            <span id="detail-ticket-id" class="ticket-id"></span>
+            <h3 id="detail-title"></h3>
+            <div class="detail-meta">
+              <span id="detail-status"></span>
+              <span id="detail-location"></span>
+            </div>
+          </div>
+          <div class="detail-body">
+            <div class="detail-fields">
+              <div><span class="tiny-label">Assigned to</span><p id="detail-owner"></p></div>
+              <div><span class="tiny-label">Reported by</span><p id="detail-reporter"></p></div>
+              <div><span class="tiny-label">Source</span><p id="detail-source"></p></div>
+            </div>
+            <div class="detail-notes">
+              <h4>Original finding / Work Order</h4>
+              <p id="detail-description"></p>
+              <div id="detail-extra-note" class="multiline-note" hidden></div>
+            </div>
+
+            <details id="related-information" class="related-information">
+              <summary>
+                <span class="related-title">
+                  <span class="fold-icon" aria-hidden="true">⌄</span>
+                  <strong>Related Information</strong>
+                </span>
+                <span class="related-hint">Stage Kits, Containers, Displays, materials and Procedures · Expand if needed</span>
+              </summary>
+              <div class="related-inner">
+                <p class="related-help">These are existing MSB references that may be useful. Stage-related does not mean assigned to this task.</p>
+                <div id="related-status" role="status" aria-live="polite">Expand to load related information.</div>
+                <div id="related-items"></div>
+              </div>
+            </details>
+
+            <div class="next-actions">
+              <h4>Follow-up actions</h4>
+              <p>This candidate is read-only. Triage, <strong>Promote &amp; Assign</strong>, correction ownership, <strong>Request More Information</strong>, reporter replies, and actual completion emails are required for P0 acceptance and are not enabled yet.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <p class="footer-note">Engineering candidate V0.1 · No database updates, notification delivery or Directus Flow changes. Source-only until isolated browser acceptance.</p>
+  </main>
+</body>
+</html>
