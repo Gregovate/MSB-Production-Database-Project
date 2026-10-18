@@ -167,6 +167,8 @@ def test_419_directus_cutover_is_per_event_and_testing_safe():
         "exact live Flow IDs",
         "governing Server Management",
         "no lost Intake",
+        "RUNBOOK GAP FOUND",
+        "before any Production Flow change",
     ):
         assert requirement.casefold() in section.casefold(), requirement
 
