@@ -14,6 +14,11 @@ Current integrated #122 candidate: [field release checkpoint and review](Setup_1
 distinguish coherent C154/C155 returns, still-old C216 detachments, protected
 Standalone violations, C052/C053 returned-but-attached wraps, missing C131
 Display location, historical review flags and source-proven report gaps.
+Greg confirmed October18 that the wraps are installed; preserve their pallet
+returns while preparing the separate attachment correction. The same record
+tracks Tom's **Empty selected / Record button disabled** incident. Normal online
+fixture behavior passes; the affected blocked Container/device context is still
+needed before a cause or fix can be claimed.
 Guided behavior/070 shipped via #318 on October10 despite the old #309 draft
 remaining open. Manager resolve/correct and Containers to Move remain unfinished.
 The PDF analysis performed no Production mutation; the October8 source pins and

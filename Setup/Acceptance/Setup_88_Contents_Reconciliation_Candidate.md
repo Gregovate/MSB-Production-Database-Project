@@ -14,6 +14,46 @@
 
 ## October 17 current field picture — event 494
 
+### October 18 operator confirmation and Empty-button incident
+
+At 01:24 CDT Greg confirmed the Festive Trees wraps are **installed**. C052/C053's
+32 recorded attached Displays are therefore a current attachment discrepancy,
+not an unresolved question about whether their load returned Home. This does not
+establish the physical unload time or authorize using the October9 drop as an
+invented unload observation. Preserve the valid pallet RETURNED events182/183
+and refresh each Display's state before preparing a scoped audited correction.
+
+Greg also reports Tom cannot record an empty Container and is forced to use
+Unknown/Not Sure. When asked where the failure occurs, Greg selected **Record
+button stays disabled**, distinguishing this report from a rejected SQL save.
+Affected Container number, full blocked-screen text, current GPS/named-location
+evidence, device build/cache and queue state have not yet been supplied.
+
+Current-source checks at main `35f398df1217b85358b6ef72e5cbbeff7a2d9bd2`:
+
+- The actual HTML/JS/CSS in headless Chromium, with a realistic ordinary C052
+  contents response (16 Displays), allows Empty plus selected Festive Trees
+  reference to enable **Review and record**; no page errors. Not Sure enables
+  the same location action. This synthetic browser check does **not** reproduce
+  Tom's failure or prove his device/API response matches the fixture.
+- Source gates distinguish valid context, protected Standalone identity, failed
+  queued reconciliation, active review/write, Display placement and fresh current
+  location evidence. NOT_SURE can proceed without a trustworthy contents snapshot;
+  EMPTY cannot. Prior location evidence does not automatically confirm a new stop.
+  No single gate has yet been proven to cause this incident. Do not bypass the
+  guard, clear the queue or call the issue fixed from fixture success.
+- The existing guided executable regression passes (3 tests). Application/full
+  Setup baseline results are recorded in the owning issue. Earlier full-discovery
+  legacy report-deployment tests retain their already documented six-query pin
+  incompatibility; that is separate from the disabled Record button.
+
+Next required evidence is one affected Container number and a screenshot of its
+contents/location/recording panel while blocked, including the button label and
+nearby explanatory text. That distinguishes a missing current location/context
+or failed offline predecessor from an enable/disable defect. Do not make Tom claim
+uncertain physical contents merely to get past a blocked action. No runtime or
+Database change, repair, fix acceptance or browser candidate is claimed here.
+
 This section supersedes the historical candidate's uninstalled status, not its
 unresolved Manager-review requirements. PR #309 remains an open draft, but its
 guided behavior was integrated through PR #318. The Production change log records
