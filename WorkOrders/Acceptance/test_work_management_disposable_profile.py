@@ -90,7 +90,7 @@ def test_clone_read_checker_validates_exact_sha_and_original_cases():
         "checked_sha(args.candidate_sha)",
         "WORK_MGMT_PREVIEW_MODE",
         "current_database()",
-        "readonly",
+        "transaction_read_only",
         "WO-372",
         "INTAKE-60",
         "person_id",
