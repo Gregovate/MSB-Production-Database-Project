@@ -131,10 +131,13 @@ def main() -> int:
     except (ValueError, RuntimeError, OSError, WorkManagementError) as exc:
         print("WORK MANAGEMENT #419 DISPOSABLE READ ACCEPTANCE HOLD:", str(exc))
         return 1
-    except Exception:
-        # Avoid logging DSN, credentials, PII, SQL or provider details.
+    except Exception as exc:
+        # Retain the exception class and failing test phase without emitting
+        # database errors, SQL, reporter text, credentials or stack traces.
+        # Detailed traceback stays out of both operator terminal and report.
         print("WORK MANAGEMENT #419 DISPOSABLE READ ACCEPTANCE HOLD:"
-              " source/database contract failed; consult protected runner log.")
+              f" unexpected validator exception class={type(exc).__name__};"
+              " no source/database diagnostic details emitted.")
         return 1
 
 
