@@ -39,3 +39,13 @@ def inject_review_identity() -> None:
         raise WorkManagementError("Preview is restricted to localhost.", 403)
     request.environ.pop(EMAIL_HEADER, None)
     request.environ[EMAIL_HEADER] = PREVIEW_EMAIL
+
+
+if __name__ == "__main__":
+    from werkzeug.serving import run_simple
+
+    port_text = os.environ.get("WORK_MGMT_PREVIEW_PORT", "")
+    if not port_text.isdecimal() or int(port_text) < 1024 or int(port_text) > 65535:
+        raise RuntimeError("Approved Work Management preview port required.")
+    # The existing MSB disposable runner owns process lifetime and cleanup.
+    run_simple("127.0.0.1", int(port_text), app, use_reloader=False, threaded=True)
