@@ -128,3 +128,14 @@ def test_clone_read_checker_validates_exact_sha_and_original_cases():
         "not browser or P0 acceptance",
     ):
         assert required in s
+
+
+def test_disposable_preview_runs_full_established_application_regressions():
+    """#419 feature tests must not replace the established Setup/FieldWiring gates."""
+    runner = RUNNER.read_text(encoding="utf-8")
+    assert "Setup/Application Setup/Acceptance/test_setup_gis_preview.py" in runner
+    assert "FieldWiring/Application" in runner
+    assert "WorkOrders/Application/test_work_management_preview.py" in runner
+    assert "WorkOrders/Acceptance/test_work_management_disposable_profile.py" in runner
+    assert runner.index("Setup/Application Setup/Acceptance/test_setup_gis_preview.py") < runner.index("pg_dump")
+    assert runner.index("FieldWiring/Application") < runner.index("pg_dump")
