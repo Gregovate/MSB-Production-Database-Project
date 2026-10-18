@@ -133,3 +133,42 @@ def test_419_testing_origin_is_explicit_and_not_a_fake_intake():
         "do **not** automatically have an original Intake reporter",
     ):
         assert token.casefold() in design.casefold(), token
+
+
+def test_419_directus_cutover_is_per_event_and_testing_safe():
+    """A unified app cannot run alongside competing Directus event handlers."""
+    design = DESIGN.read_text(encoding="utf-8")
+    readme = (WO_DIR / "README.md").read_text(encoding="utf-8")
+    section_title = (
+        "### Directus Flow retirement and one-authority Production cutover"
+    )
+    assert section_title in design
+    section = design.split(section_title, 1)[1].split(
+        "### Permission, integration, and engineering sequence", 1
+    )[0]
+
+    for flow in (
+        "WOI Request Triage Email",
+        "Work Order Email Assignees",
+        "Create Repair Work Order",
+        "Work Order Complete-Update Display Test Session",
+        "Work Order – Auto Complete Fields",
+        "Work Order Promote from Intake",
+    ):
+        assert flow in section, flow
+
+    for requirement in (
+        "one authoritative writer",
+        "one authorized notification producer",
+        "Do not bulk-disable every Work Order Flow",
+        "duplicate",
+        "rollback",
+        "Test Session",
+        "exact live Flow IDs",
+        "governing Server Management",
+        "no lost Intake",
+    ):
+        assert requirement.casefold() in section.casefold(), requirement
+
+    assert "Launch blocker" in readme
+    assert "per-event Directus Flow" in readme
