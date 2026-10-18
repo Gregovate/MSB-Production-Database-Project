@@ -69,6 +69,25 @@ def test_clone_sql_is_streamed_from_host_file_with_real_newline():
     assert '  -f "$WORKTREE/WorkOrders/Acceptance/wo419_preview_clone_read_grants.sql"' not in runner
 
 
+def test_postgis_clone_waits_for_final_pid1_not_temporary_init_server():
+    """Prevent the documented PostGIS temporary-server pg_isready restore race."""
+    runner = RUNNER.read_text(encoding="utf-8")
+    assert "PostgreSQL_Disposable_Acceptance_Standard.md" in runner
+    assert "pid1=" in runner
+    assert "sudo docker inspect" in runner
+    assert "'{{.State.Running}}'" in runner
+    assert "sh -c 'cat /proc/1/comm'" in runner
+    assert '[[ "$pid1" == "postgres" ]]' in runner
+    assert "pg_isready" in runner
+    assert "PASS: disposable PostgreSQL final post-init PID1=postgres" in runner
+    assert "sudo docker logs --tail 40" in runner
+    assert "oom_killed={{.State.OOMKilled}}" in runner
+    assert "HOLD: disposable PostgreSQL restore failed" in runner
+    assert runner.index("cat /proc/1/comm") < runner.index("createdb -U")
+    assert runner.index('[[ "$pid1" == "postgres" ]]') < runner.index("pg_restore -U")
+    assert "PASS: disposable database restore finished" in runner
+
+
 def test_role_grants_cannot_run_on_production():
     sql = GRANTS.read_text(encoding="utf-8")
     assert "current_database() = 'msb'" in sql
