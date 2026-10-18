@@ -1,0 +1,326 @@
+"""#419 Work Management: read-only projection of existing PostgreSQL authority.
+
+SOURCE-ONLY disposable preview. No ticket writes or email are implemented.
+The Server Management launcher must supply an isolated current-Production clone.
+"""
+from __future__ import annotations
+
+import os
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Any, Iterator
+
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+
+ROOT = Path(__file__).resolve().parents[2]
+LEDGER_PATH = (
+    ROOT
+    / "Docs/02_Production_Database/01_System_Architecture/06_Work_Orders"
+    / "engineering/WO419_Unified_Ticket_Read_Only_Candidate.sql"
+)
+
+
+class WorkManagementError(RuntimeError):
+    def __init__(self, message: str, status: int = 400):
+        super().__init__(message)
+        self.status = status
+
+
+def ledger_select() -> str:
+    """Reuse the already documented DB-owned ledger rather than a second model."""
+    sql = LEDGER_PATH.read_text(encoding="utf-8").strip().rstrip(";")
+    if not sql.startswith("-- WO419-M01") or "FROM stage.work_order_intake i" not in sql:
+        raise WorkManagementError("Approved read model unavailable.", 503)
+    return sql
+
+
+class WorkManagementRepository:
+    def __init__(self) -> None:
+        self.dsn = os.environ.get("WORK_MGMT_DATABASE_DSN", "").strip()
+        if os.environ.get("WORK_MGMT_PREVIEW_MODE") != "disposable" or not self.dsn:
+            raise WorkManagementError(
+                "Work Management preview requires disposable mode and a clone DSN.", 503
+            )
+
+    @contextmanager
+    def connect(self) -> Iterator[Any]:
+        conn = psycopg2.connect(self.dsn)
+        try:
+            conn.set_session(readonly=True, autocommit=False)
+            with conn.cursor() as cur:
+                cur.execute("SELECT current_database()")
+                database_name = str(cur.fetchone()[0] or "").lower()
+                if database_name == "msb" or not database_name:
+                    raise WorkManagementError(
+                        "Work Management preview refuses the Production database.", 503
+                    )
+            yield conn
+        finally:
+            conn.close()
+
+    def access(self, email: str) -> dict[str, Any]:
+        """Reuse deployed Directus capability authority and exact Person identity.
+
+        This first slice uses existing Setup browsing capabilities, NOT a new
+        grant. It fails closed if the signed-in human Person is not reconciled.
+        """
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT caps.email, caps.display_name, caps.role_name,
+                       caps.policy_names, caps.can_read_setup,
+                       caps.can_manage_setup
+                FROM ref.setup_browser_capabilities(%s) AS caps
+                """,
+                (email,),
+            )
+            cap = cur.fetchone()
+            if not cap or not cap["can_read_setup"]:
+                raise WorkManagementError("Work Order access is not authorized.", 403)
+            cur.execute(
+                """
+                SELECT p.person_id
+                FROM ref.person AS p
+                WHERE lower(p.email) = %s
+                  AND p.active_flag
+                  AND p.directus_user_id IS NOT NULL
+                """,
+                (email,),
+            )
+            matches = cur.fetchall()
+        if len(matches) != 1:
+            raise WorkManagementError(
+                "A unique active linked Person is required for My Work.", 403
+            )
+        return {
+            "person_id": int(matches[0]["person_id"]),
+            "display_name": cap["display_name"] or email,
+            "can_manage": bool(cap["can_manage_setup"]),
+            "can_read": True,
+        }
+
+    def tickets(
+        self, *, actor: dict[str, Any], scope: str, person_id: int | None,
+        show_completed: bool, search: str, limit: int = 80,
+    ) -> list[dict[str, Any]]:
+        if scope not in ("mine", "all", "person"):
+            raise WorkManagementError("Unknown Work Order scope.")
+        if scope == "person" and (person_id is None or person_id < 1):
+            raise WorkManagementError("Select a valid assignee.")
+        limit = max(1, min(int(limit), 100))
+        user = int(actor["person_id"])
+        selected = user if scope == "mine" else person_id
+        conditions: list[str] = []
+        params: list[Any] = []
+        if not show_completed:
+            conditions.append("t.done_at IS NULL AND t.active")
+        if scope in ("mine", "person"):
+            conditions.append("t.type = 'WORK_ORDER' AND %s = ANY(t.assignee_ids)")
+            params.append(selected)
+        elif not actor["can_manage"]:
+            # General Work Orders are browsable like accepted Perform Work;
+            # human Intake remains private except to the original reporter.
+            conditions.append(
+                "(t.type = 'WORK_ORDER' OR t.reporter_id = %s)"
+            )
+            params.append(user)
+        if search:
+            conditions.append(
+                "(t.ticket ILIKE %s OR t.title ILIKE %s "
+                "OR t.location ILIKE %s OR t.owners ILIKE %s)"
+            )
+            params.extend([f"%{search}%" for _ in range(4)])
+        where = " AND ".join(conditions) if conditions else "TRUE"
+        query = (
+            "SELECT t.* FROM (" + ledger_select() + ") AS t "
+            "WHERE " + where + " "
+            "ORDER BY t.last_at DESC NULLS LAST, t.ticket LIMIT %s"
+        )
+        params.append(limit)
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(query, params)
+            return [dict(row) for row in cur.fetchall()]
+
+    def ticket(self, *, actor: dict[str, Any], ticket_key: str) -> dict[str, Any]:
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT t.* FROM (" + ledger_select() + ") t WHERE t.ticket = %s",
+                (ticket_key,),
+            )
+            row = cur.fetchone()
+            if row is None:
+                raise WorkManagementError("Ticket not found.", 404)
+            row = dict(row)
+            if row["type"] != "WORK_ORDER" and not (
+                actor["can_manage"] or row["reporter_id"] == actor["person_id"]
+            ):
+                raise WorkManagementError("Ticket is not authorized.", 403)
+            if row["type"] == "WORK_ORDER":
+                cur.execute(
+                    """
+                    SELECT w.stage_id, w.work_area_id, w.notes,
+                           w.problem, w.source_form_name, w.completion_notes,
+                           w.display_test_session_id
+                    FROM ops.work_order w WHERE w.work_order_id = %s
+                    """,
+                    (row["wo_id"],),
+                )
+                detail = dict(cur.fetchone() or {})
+                context = {}
+            else:
+                cur.execute(
+                    """
+                    SELECT i.stage_id, i.work_area_id, i.problem_raw, i.notes_raw,
+                           i.source_form_name, i.source_payload
+                    FROM stage.work_order_intake i WHERE i.intake_id = %s
+                    """,
+                    (row["in_id"],),
+                )
+                raw = dict(cur.fetchone() or {})
+                # Whitelist context. Do not return raw reporter contact or
+                # internal Directus/Setup audit identity via this read endpoint.
+                payload = raw.pop("source_payload", None) or {}
+                context_keys = (
+                    "season_year", "setup_session_task_id", "setup_task_id",
+                    "task_name", "stage_id", "stage_name", "stage_key",
+                    "lor_scene_id", "scene_name", "setup_work_day_task_id",
+                    "work_date", "shift_code", "crew_code", "procedure_context",
+                )
+                context = {k: payload[k] for k in context_keys if k in payload}
+                if "procedure_context" in context:
+                    proc = context["procedure_context"]
+                    if not isinstance(proc, dict):
+                        context["procedure_context"] = {}
+                    else:
+                        context["procedure_context"] = {
+                            k: proc.get(k) for k in ("status", "scope_type", "summary", "documents")
+                        }
+                detail = raw
+            row["detail"] = detail
+            row["setup_context"] = context
+            return row
+
+    def related_information(
+        self, *, actor: dict[str, Any], ticket_key: str,
+    ) -> dict[str, Any]:
+        """Discover existing sources without creating task links or new inventory."""
+        record = self.ticket(actor=actor, ticket_key=ticket_key)
+        ctx = record["setup_context"]
+        stage_id = ctx.get("stage_id") or record["detail"].get("stage_id")
+        task_id = ctx.get("setup_task_id")
+        if not isinstance(stage_id, int) or stage_id < 1:
+            return {"stage_id": None, "groups": [], "notice": "No Stage recorded."}
+        if not isinstance(task_id, int) or task_id < 1:
+            task_id = None
+
+        entries: dict[tuple[str, int], dict[str, Any]] = {}
+
+        def register(kind: str, key: int, label: str, relation: str, source: str,
+                     *, url: str | None = None) -> None:
+            identity = (kind, int(key))
+            found = entries.get(identity)
+            entry = {
+                "kind": kind, "id": int(key), "name": str(label),
+                "relation": relation, "source": source, "url": url,
+            }
+            if found is None or (relation == "DIRECT_TASK" and found["relation"] != "DIRECT_TASK"):
+                entries[identity] = entry
+
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT DISTINCT c.container_id, c.description, c.container_type_id,
+                       tc.setup_task_id, tc.relationship_type
+                FROM ref.setup_task_container_support tc
+                JOIN ref.setup_task t ON t.setup_task_id = tc.setup_task_id
+                JOIN ref.container c ON c.container_id = tc.container_id
+                WHERE t.stage_id = %s OR (%s IS NOT NULL AND tc.setup_task_id = %s)
+                ORDER BY c.container_id, tc.setup_task_id
+                LIMIT 180
+                """,
+                (stage_id, task_id, task_id),
+            )
+            for c in cur.fetchall():
+                cid = int(c["container_id"])
+                is_kit = int(c["container_type_id"]) == 2
+                kind = "Kit Box" if is_kit else "Container"
+                direct = task_id is not None and c["setup_task_id"] == task_id
+                url = f"/setup/kit-inventory/{cid}" if is_kit else None
+                register(
+                    kind, cid, f"C{cid:03d} · {c['description'] or kind}",
+                    "DIRECT_TASK" if direct else "STAGE_RELATED",
+                    str(c["relationship_type"]), url=url,
+                )
+
+            cur.execute(
+                """
+                SELECT d.display_id, d.display_name, d.container_id,
+                       td.setup_task_id AS direct_task_id
+                FROM ref.display d
+                LEFT JOIN ref.setup_task_display td
+                  ON td.display_id = d.display_id AND td.setup_task_id = %s
+                WHERE d.stage_id = %s OR EXISTS (
+                    SELECT 1 FROM ref.lor_scene_display lsd
+                    JOIN ref.lor_scene ls ON ls.lor_scene_id = lsd.lor_scene_id
+                    WHERE lsd.display_id = d.display_id AND ls.stage_id = %s
+                )
+                ORDER BY d.display_name, d.display_id
+                LIMIT 160
+                """,
+                (task_id, stage_id, stage_id),
+            )
+            for display in cur.fetchall():
+                did = int(display["display_id"])
+                register(
+                    "Display", did,
+                    display["display_name"] or f"Display #{did}",
+                    "DIRECT_TASK" if display["direct_task_id"] is not None else "STAGE_RELATED",
+                    "LOR/Stage or current Display reference",
+                )
+
+            cur.execute(
+                """
+                SELECT m.setup_extra_material_id, m.material_name,
+                       tm.setup_task_id
+                FROM ref.setup_task_extra_material tm
+                JOIN ref.setup_extra_material m
+                  ON m.setup_extra_material_id = tm.setup_extra_material_id
+                JOIN ref.setup_task t ON t.setup_task_id = tm.setup_task_id
+                WHERE tm.active_flag AND t.stage_id = %s
+                ORDER BY m.material_name, m.setup_extra_material_id
+                LIMIT 120
+                """,
+                (stage_id,),
+            )
+            for mat in cur.fetchall():
+                mid = int(mat["setup_extra_material_id"])
+                register(
+                    "Extra Material", mid, mat["material_name"],
+                    "DIRECT_TASK" if task_id == mat["setup_task_id"] else "STAGE_RELATED",
+                    "Setup task Extra Materials",
+                )
+
+        proc = ctx.get("procedure_context")
+        if isinstance(proc, dict):
+            names = [
+                item.get("name", "").strip()
+                for item in (proc.get("documents") or [])
+                if isinstance(item, dict) and isinstance(item.get("name"), str)
+            ]
+            for i, name in enumerate(names):
+                register("Procedure", i + 1, name, "SUBMITTED_CONTEXT", "Original Setup Procedure")
+
+        order = {"DIRECT_TASK": 0, "SUBMITTED_CONTEXT": 1, "STAGE_RELATED": 2}
+        values = sorted(
+            entries.values(),
+            key=lambda entry: (
+                order.get(entry["relation"], 3), entry["kind"], entry["name"].lower()
+            ),
+        )
+        return {
+            "stage_id": stage_id,
+            "groups": values,
+            "notice": "Stage candidates are not confirmed task assignments.",
+        }
