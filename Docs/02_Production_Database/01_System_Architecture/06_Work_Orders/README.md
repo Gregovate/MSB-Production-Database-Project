@@ -4,15 +4,15 @@ This subsystem documents the Production Database work-order system, including in
 
 ## Current State
 
-Work Orders are implemented and actively evolving. PostgreSQL is the system of record. A public Google Form participates in intake. Directus currently handles triage/completion interaction and several workflow automations.
+Work Orders and Setup Task Feedback are implemented on the existing PostgreSQL Production Database. The public Google Form and accepted #172 free-form Task Feedback enter governed Work Order Intake; Test Session failures can create active repair Work Orders directly. Directus currently presents Intake triage, assignment and completion and runs selected notification/testing Flows.
 
-Directus is not required to remain the permanent operator interface. Its general-purpose data interface is inadequate for some repeated Work Order tasks, particularly helping assigned volunteers reliably find and complete their work.
+**Next engineering priority — #419 unified MSB Work Management:** one ticket-style protected application for all Work Orders and Task Feedback, preserving each database identity and business lifecycle rather than creating a competing ticket table. The app's initial read-only ledger SELECT was **successfully run against Production via authorized DBeaver on October 18**; it has **not** received protected app/browser acceptance. New internal Manager Work Order creation, one-step Triage→Assign→Release, correction owners/replies, reporter clarification and outcome emails, and controlled mail-flow replacement remain **unimplemented**. Draft PR #420 is **source-only and unmerged**, not a Production application.
 
-A dedicated task-focused Work Order application may replace parts of the Directus user experience without changing the PostgreSQL ownership model.
+The [Work Order System Design](Work_Order_System_Design.md) is the **governing engineering authority** for #419 and the accepted underlying Work Order/Intake system. [GitHub issue #419](https://github.com/Gregovate/MSB-Production-Database-Project/issues/419) tracks unfinished work; [draft PR #420](https://github.com/Gregovate/MSB-Production-Database-Project/pull/420) protects candidate implementation and tests. Neither issue commentary nor the PR substitutes for the design.
 
 ## Start Here
 
-- [Work Order System Design](Work_Order_System_Design.md) — current engineering contract for Work Order identity, intake, triage, assignment, completion, testing integration, and application boundaries.
+- [Work Order System Design](Work_Order_System_Design.md) — **authoritative** current engineering/Work Management contract: existing tables/Flows, #419 decisions, live October 18 evidence, known gaps, acceptance and resume point.
 - [Work Order Operational SOPs](../../02_Operational_SOPs/Work_Orders/README.md) — current operator procedures.
 
 ## System Boundary
@@ -129,9 +129,11 @@ The former loose `G_Work_Order_Design_Plan.md` has been reconciled into this sub
 
 Before changing the public Work Order Request form, inspect its attached Apps Script and document any dependencies on question titles, answer values, branching, or response processing.
 
-For broader Work Order engineering, inspect the current PostgreSQL implementation, current Directus flows, and [Work Order System Design](Work_Order_System_Design.md) before making changes.
+**#419 current resume point (October 18):** Read the governing [Work Order System Design](Work_Order_System_Design.md) first, then the source-only [WO419 unified read-only ledger](engineering/WO419_Unified_Ticket_Read_Only_Candidate.sql) and its [evidence/checkpoint](engineering/WO419_Read_Only_Ticket_Candidate_Checkpoint.md). The operator-provided DBeaver output established 386 Work Orders (328 with completion dates; 58 without), 3 retained Intake items, 10 active undated Work Orders without active assignees, and no joined Work Order status-history states. Keep completion-date truth separate from status-history and record-update timestamps. **Do not re-run broad schema reconnaissance to rediscover these facts** unless live change or a specific contract question requires it.
 
-When the dedicated Work Order application is started, create or use its separate implementation repository and link it here. Keep the Production Database schema/business contract in this subsystem and application implementation in the application repository.
+Next: reconcile PR #420 query with the design, add tested regression assertions, validate role/permissions and browser-accessible API on a disposable clone, then implement the approved business actions and reporter communication with governed authority. No new service or preview port has been allocated and there is no accepted Work Management browser candidate yet.
+
+Before changing public Work Order Request/Intake behavior, inspect the attached Google Apps Script, live PostgreSQL processing functions and active Directus Flows; preserve completed #172 Task Feedback and all Testing completion side effects. A separate **dedicated Work Management application repository** should own user-facing code when started; record its exact source/runtime linkage here and preserve PostgreSQL lifecycle rules in this subsystem.
 
 
 ### Setup Report Correction / Directus notification integration
