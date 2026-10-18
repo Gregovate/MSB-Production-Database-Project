@@ -58,6 +58,17 @@ def test_exact_preview_profile_is_explicit_and_no_production_mutations():
         assert dangerous not in shell
 
 
+
+def test_clone_sql_is_streamed_from_host_file_with_real_newline():
+    """Host-side worktree paths are not mounted into the disposable DB container."""
+    runner = RUNNER.read_text(encoding="utf-8")
+    assert 'printf \'%s\\n\' "SET msb.wo419_preview_authorized=' in runner
+    assert '} | psql_clone' in runner
+    assert 'cat "$WORKTREE/WorkOrders/Acceptance/wo419_preview_clone_read_grants.sql"' in runner
+    assert 'psql_clone -c "SET msb.wo419_preview_authorized=' not in runner
+    assert '  -f "$WORKTREE/WorkOrders/Acceptance/wo419_preview_clone_read_grants.sql"' not in runner
+
+
 def test_role_grants_cannot_run_on_production():
     sql = GRANTS.read_text(encoding="utf-8")
     assert "current_database() = 'msb'" in sql
