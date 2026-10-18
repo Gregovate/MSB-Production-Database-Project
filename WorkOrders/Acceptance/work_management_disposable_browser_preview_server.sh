@@ -192,8 +192,15 @@ sudo -u fieldwiring -H env PYTHONDONTWRITEBYTECODE=1 bash -c "
 echo "PASS: exact candidate full Setup, FieldWiring and #419 regression"
 
 echo "--- Current Production dump to Docker-private clone ---"
-sudo docker exec "$PRODUCTION_CONTAINER" pg_dump \
-  -U "$PG_ACTOR" -d "$PRODUCTION_DB" -Fc > "$DUMP"
+if command -v pv >/dev/null 2>&1; then
+  echo "Production dump: streaming archive bytes (total unknown during export)"
+  sudo docker exec "$PRODUCTION_CONTAINER" pg_dump \
+    -U "$PG_ACTOR" -d "$PRODUCTION_DB" -Fc | pv -f -b -r -t > "$DUMP"
+else
+  echo "INFO: pv unavailable; dump transfer progress not displayed"
+  sudo docker exec "$PRODUCTION_CONTAINER" pg_dump \
+    -U "$PG_ACTOR" -d "$PRODUCTION_DB" -Fc > "$DUMP"
+fi
 test -s "$DUMP"
 sudo docker exec -i "$PRODUCTION_CONTAINER" pg_restore --list < "$DUMP" >/dev/null
 
@@ -231,12 +238,30 @@ echo "PASS: disposable PostgreSQL final post-init PID1=postgres and pg_isready"
 
 sudo docker exec -e PGPASSWORD="$CLONE_DB_PASSWORD" "$CLONE_CONTAINER" \
   createdb -U "$PG_ACTOR" -T template0 "$CLONE_DATABASE"
-if sudo docker exec -i -e PGPASSWORD="$CLONE_DB_PASSWORD" "$CLONE_CONTAINER" \
-   pg_restore -U "$PG_ACTOR" -d "$CLONE_DATABASE" \
-     --no-owner --no-acl --exit-on-error < "$DUMP"; then
+# The optional progress display never weakens pipefail/restore exit gates.
+if command -v pv >/dev/null 2>&1; then
+  echo "Clone restore: archive transfer progress (not restored-object count)"
+  if pv -f -p -t -e -r -b -s "$(stat -c %s "$DUMP")" "$DUMP" | \
+    sudo docker exec -i -e PGPASSWORD="$CLONE_DB_PASSWORD" "$CLONE_CONTAINER" \
+      pg_restore -U "$PG_ACTOR" -d "$CLONE_DATABASE" \
+        --no-owner --no-acl --exit-on-error; then
+    restore_status=0
+  else
+    restore_status=$?
+  fi
+else
+  echo "INFO: pv unavailable; restoring archive without progress display"
+  if sudo docker exec -i -e PGPASSWORD="$CLONE_DB_PASSWORD" "$CLONE_CONTAINER" \
+    pg_restore -U "$PG_ACTOR" -d "$CLONE_DATABASE" \
+      --no-owner --no-acl --exit-on-error < "$DUMP"; then
+    restore_status=0
+  else
+    restore_status=$?
+  fi
+fi
+if [[ "$restore_status" -eq 0 ]]; then
   echo "PASS: disposable database restore finished on final PostgreSQL server"
 else
-  restore_status=$?
   echo "HOLD: disposable PostgreSQL restore failed (exit $restore_status)"
   echo "Final-server gate passed; inspect clone rather than assuming OOM or schema failure"
   sudo docker inspect "$CLONE_CONTAINER" --format 'Clone state: running={{.State.Running}} oom_killed={{.State.OOMKilled}} exit={{.State.ExitCode}}' || true
