@@ -46,7 +46,8 @@
 
   function statusLabel(row) {
     if (row.done_at) return "Completed (date recorded)";
-    if (row.type !== "WORK_ORDER") return "Submitted — awaiting review";
+    if (row.type !== "WORK_ORDER") return row.state === "SUBMITTED"
+      ? "Submitted — awaiting review" : "Intake review state: " + (row.state || "Not recorded");
     if (!row.active) return "Inactive — not recorded complete";
     return "Not recorded complete";
   }
