@@ -192,6 +192,67 @@ def summarize_container_snapshot(containers: list[dict], generated_at: object) -
     return counts
 
 
+def returned_attached_review(picture: dict, *, max_cases: int = 5) -> dict:
+    """Manager evidence: a RETURNED Container with active WITH_CONTAINER Displays.
+
+    Read ONLY the current recorded attachment state, before #171's returned
+    load_state=EMPTY business interpretation. This does not prove physical load,
+    operator fault, or that any historic event may safely be rewritten.
+    """
+    if not isinstance(picture.get("containers"), list) or not isinstance(picture.get("displays"), list):
+        raise PilotStop("Current movement snapshot lacks Container/Display states")
+    attached = {}
+    observed = set()
+    for d in picture["displays"]:
+        ident = int(d["display_id"])
+        if ident in observed:
+            raise PilotStop("Duplicate active Display in movement snapshot")
+        observed.add(ident)
+        if d.get("container_id") is not None and d.get("position_mode") == "WITH_CONTAINER":
+            attached.setdefault(int(d["container_id"]), []).append(d)
+    cases = []
+    for c in picture["containers"]:
+        if str(c.get("movement_status") or "").upper() != "RETURNED":
+            continue
+        cid = int(c["container_id"])
+        displays = attached.get(cid, [])
+        if not displays:
+            continue
+        # Human-readable names are essential; never substitute numeric Display
+        # IDs or claim that a returned Container was physically full.
+        names = sorted(str(d.get("display_name") or "Unnamed Display") for d in displays)
+        cases.append({
+            "container_id": cid,
+            "container_identity": f"CONT:{cid:03d}",
+            "container_name": str(c.get("container_name") or "Unnamed Container"),
+            "display_names": names,
+            "display_count": len(names),
+            "event_id": c.get("last_movement_event_id"),
+        })
+    cases.sort(key=lambda row: (-row["display_count"],row["container_id"]))
+    featured = []
+    for case in cases[:max_cases]:
+        n = case["display_count"]
+        brief = ", ".join(case["display_names"][:5])
+        if n > 5:
+            brief += f" (+{n-5} other names in Container Movement)"
+        featured.append(
+            f"- {case['container_identity']} {case['container_name']}: {n} Displays "
+            f"still WITH_CONTAINER in recorded data; {brief}; "
+            f"last Container event #{case['event_id'] or 'unknown'}"
+        )
+    if len(cases) > max_cases:
+        featured.append(f"- And {len(cases)-max_cases} more returned Containers needing review")
+    return {
+        "containers_returned_recorded_attached":len(cases),
+        "displays_with_returned_container":sum(c["display_count"] for c in cases),
+        "returned_attachment_cases":cases[:max_cases],
+        "returned_attachment_case_lines":"\n".join(featured) if featured else (
+            "No recorded returned/attached contradictions in the current snapshot"
+        ),
+    }
+
+
 def container_summary(dsn: str, season_year: int = 2026) -> dict:
     """Reuse the installed #88 movement snapshot and #171 Container projection."""
     from setup_repository import SetupRepository
@@ -208,6 +269,7 @@ def container_summary(dsn: str, season_year: int = 2026) -> dict:
     counts = summarize_container_snapshot(
         projected["containers"], picture.get("generated_at")
     )
+    counts.update(returned_attached_review(picture))
     counts["containers_session_id"] = int(session_id)
     return counts
 
@@ -363,6 +425,16 @@ def render_html(template: str, person: dict, report: dict) -> str:
         'colspan="3"', 'colspan="2"'
     )
 
+    return_cases = []
+    for case in report.get("returned_attachment_cases") or []:
+        names = ", ".join(case["display_names"][:5])
+        if case["display_count"] > 5:
+            names += f" (+{case['display_count']-5} more names in detailed report)"
+        return_cases.append("<tr>" + td(case["container_identity"] + " — " + case["container_name"])
+                            + td(f"{case['display_count']} recorded attached")
+                            + td(names) + "</tr>")
+    values["returned_attachment_html_rows"] = rows_or_none(return_cases)
+
     try:
         body = Template(template).substitute(values)
     except (KeyError, ValueError) as exc:
@@ -513,6 +585,7 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
                 "containers_empty_at_park","containers_partial_at_park",
                 "containers_returned","containers_no_movement",
                 "containers_location_review","containers_contents_review_history",
+                "containers_returned_recorded_attached","displays_with_returned_container",
                 "containers_snapshot_as_of")},
             "subject":subject,
         },indent=2))
