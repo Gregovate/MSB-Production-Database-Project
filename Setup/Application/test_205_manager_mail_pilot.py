@@ -696,6 +696,6 @@ def test_plain_text_discloses_false_zero_status_and_historical_review_context():
     assert "Unclassified movement statuses:" in text
     assert "NOT an overall discrepancy count" in text
     assert "Returned Containers still have" not in text  # number precedes word
-    assert "returned Containers still have 0 active Display" in text
+    assert "0 returned Containers / 0 active Displays still WITH_CONTAINER" in text
     assert "historical contents-review events" in text
     assert "No recorded returned/attached contradictions" in text
