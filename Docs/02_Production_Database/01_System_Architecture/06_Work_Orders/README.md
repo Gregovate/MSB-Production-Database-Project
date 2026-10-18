@@ -17,9 +17,11 @@ The [Work Order System Design](Work_Order_System_Design.md) is the **governing e
 
 ## System Boundary
 
-**Relationship Class:** Core Database Subsystem with a future Dedicated Database-Backed Operational Application.
+**#419 repository placement:** The Work Orders subsystem already exists under this engineering portal. New Work Management code, database contracts and acceptance tests stay in `Gregovate/MSB-Production-Database-Project`; a separate app repository was proposed prematurely and is **not required or approved**. Server Management continues to own its controlled preview/runtime setup. The October 18 Intake snapshot contains three submitted entries: Intake #60 (Setup correction) and #40/#57 (public requests). Use a disposable clone of these actual rows during acceptance; never fabricate or silently process them.
 
-PostgreSQL owns the Work Order identity, relationships, lifecycle state, and database-enforced business rules. A dedicated Work Order application may live in a separate repository and provide the operator/manager user experience while continuing to use the Production Database as the system of record.
+**Relationship Class:** Existing core Work Orders database subsystem, with the Work Management operator application developed inside this same MSB Production Database repository.
+
+PostgreSQL owns Work Order identities, relationships, lifecycle state, and database-enforced business rules. The new Work Management interface is part of this **existing in-repository Work Orders subsystem**; the user-facing application has its own code and protected runtime but does not require another GitHub repository or authoritative database.
 
 A dedicated Work Order application must not create a second Work Order database or competing lifecycle model.
 
@@ -31,7 +33,7 @@ A dedicated Work Order application must not create a second Work Order database 
 - durable history and audit attribution
 - integration contract consumed by the operator application
 
-### Dedicated Work Order application responsibility
+### Work Management application responsibilities
 
 - task-focused operator and manager UI
 - finding assigned work reliably
@@ -131,11 +133,11 @@ Before changing the public Work Order Request form, inspect its attached Apps Sc
 
 **#419 current resume point (October 18):** Read the governing [Work Order System Design](Work_Order_System_Design.md) first, including **Work Order landing view — default My Work** and **Test Session-generated Work Orders — feedback and ownership**. Opening Open Work Orders must default to the authenticated assignee, with explicit All / other-person scope and independent Show completed (same concept as Setup Perform Work); Test Session-generated repairs remain Testing-owned for source feedback and never acquire an invented human Intake reporter. Then read the source-only [WO419 unified read-only ledger](engineering/WO419_Unified_Ticket_Read_Only_Candidate.sql) and its [evidence/checkpoint](engineering/WO419_Read_Only_Ticket_Candidate_Checkpoint.md). The operator-provided DBeaver output established 386 Work Orders (328 with completion dates; 58 without), 3 retained Intake items, 10 active undated Work Orders without active assignees, and no joined Work Order status-history states. Keep completion-date truth separate from status-history and record-update timestamps. **Do not re-run broad schema reconnaissance to rediscover these facts** unless live change or a specific contract question requires it.
 
-**#419 first integrated application review target:** the governing [Work Order System Design](Work_Order_System_Design.md#419-disposable-end-to-end-browser-acceptance-candidate--next-engineering-milestone) now specifies one coherent disposable-clone/browser acceptance of My Work/All, Work Order details and Testing links, Manager internal Create, Triage→Assign→Release, Task Feedback clarification/reply/verified closure, and a test-only reporter-notification ledger. That is the acceptance scope for the first usable Work Management review—not a cosmetic list prototype. **The contract is documented on draft PR #420's branch, not merged, built or deployed.** The #419 app repo and governed preview port still need to be established before the isolated test launcher exists.
+**#419 first integrated application review target:** the governing [Work Order System Design](Work_Order_System_Design.md#419-disposable-end-to-end-browser-acceptance-candidate--next-engineering-milestone) now specifies one coherent disposable-clone/browser acceptance of My Work/All, Work Order details and Testing links, Manager internal Create, Triage→Assign→Release, Task Feedback clarification/reply/verified closure, and a test-only reporter-notification ledger. That is the acceptance scope for the first usable Work Management review—not a cosmetic list prototype. **The contract is documented on draft PR #420's branch, not merged, built or deployed.** The Work Orders subsystem already exists here; application implementation and a governed preview-port allocation are still required before the isolated test launcher exists.
 
 Next: execute source regression checks and validate the **revised** Person-ID/Test-Session-aware ledger on a disposable current-Production clone (the earlier original SELECT had DBeaver PASS); confirm authorized read scope and protected browser list/detail, then implement governed business actions and reporter communication. **Before enabling any new write or email production path**, inspect the full current Directus Flow graphs, designate a single event writer/sender for each Work Order/Intake/Testing event, and document exact approved per-Flow enable/disable, validation, and rollback under the governing Work Order design and Server Management runtime authority. Read current Testing source/Flows before choosing Test Session notification recipients; do not silently mail an absent reporter. No new service or preview port has been allocated and there is no accepted Work Management browser candidate yet.
 
-Before changing public Work Order Request/Intake behavior, inspect the attached Google Apps Script, live PostgreSQL processing functions and active Directus Flows; preserve completed #172 Task Feedback and all Testing completion side effects. A separate **dedicated Work Management application repository** should own user-facing code when started; record its exact source/runtime linkage here and preserve PostgreSQL lifecycle rules in this subsystem.
+Before changing public Work Order Request/Intake behavior, inspect the attached Google Apps Script, live PostgreSQL processing functions and active Directus Flows; preserve completed #172 Task Feedback and all Testing completion side effects. The Work Management UI/API belongs in this existing MSB Database repository, following its established subsystem/application conventions; record its exact source/runtime linkage here while preserving PostgreSQL lifecycle rules in this subsystem.
 
 
 ### Setup Report Correction / Directus notification integration
