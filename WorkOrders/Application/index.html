@@ -12,15 +12,15 @@
   <header class="app-header">
     <div class="head-inner">
       <div class="identity">
-        <span class="brand-mark" aria-hidden="true">MSB</span>
+        <img id="screen-logo" class="screen-logo" src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
         <div>
           <h1>Work Management</h1>
           <p>Work Orders and Task Feedback</p>
         </div>
       </div>
       <div class="header-right">
-        <button id="theme-toggle" type="button" class="theme-toggle" aria-pressed="false">Dark theme</button>
-        <span id="preview-tag" class="preview-tag">Disposable browser candidate · Read only</span>
+        <button id="theme-toggle" type="button" class="theme-toggle">Dark mode</button>
+        <span id="preview-tag" class="preview-tag">Disposable clone · Saved changes are discarded at cleanup · No emails sent</span>
         <span id="user-identity" class="signed-in" aria-live="polite">Verifying access…</span>
       </div>
     </div>
@@ -65,6 +65,7 @@
         <span>Show completed</span>
       </label>
       <button id="refresh" type="button" class="quiet-button">Refresh</button>
+      <button id="create-work-order" type="button" class="primary-button" hidden>+ New Work Order</button>
     </section>
 
     <div class="workspace">
@@ -106,36 +107,13 @@
               <div id="detail-extra-note" class="multiline-note" hidden></div>
             </div>
 
-            <details id="related-information" class="related-information">
-              <summary>
-                <span class="related-title">
-                  <span class="fold-icon" aria-hidden="true">⌄</span>
-                  <strong>Related Information</strong>
-                </span>
-                <span class="related-hint">Stage Kits, Containers, Displays, materials and Procedures · Expand if needed</span>
-              </summary>
-              <div class="related-inner">
-                <p class="related-help">These are existing MSB references that may be useful. Stage-related does not mean assigned to this task.</p>
-                <div id="related-status" role="status" aria-live="polite">Expand to load related information.</div>
-                <div id="related-items"></div>
-              </div>
-            </details>
-
-            <div class="next-actions">
-              <h4>Follow-up actions</h4>
-              <p>This candidate is read-only. Triage, <strong>Promote &amp; Assign</strong>, correction ownership, <strong>Request More Information</strong>, reporter replies, and actual completion emails are required for P0 acceptance and are not enabled yet.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-    <section id="review-workbench" class="review-workbench" aria-label="Operator workflow rehearsal">
+    <section id="review-workbench" class="review-workbench" aria-label="Ticket actions">
       <div class="section-header">
-        <h3>Operator workflow review</h3>
-        <p><strong>No-save rehearsal.</strong> These controls validate proposed steps against cloned catalog choices; they do not update records, create assignments, complete work, or send emails.</p>
+        <h3>Ticket actions</h3>
+        <p><strong>Disposable database only.</strong> Save actions will change the temporary clone, which is discarded during cleanup. No notifications are sent.</p>
       </div>
       <div class="review-inner">
-        <label for="review-action">Review an action</label>
+        <label for="review-action">Choose an action</label>
         <select id="review-action" disabled><option value="">Choose a ticket or sign in</option></select>
         <p id="review-context" class="subtle">Select a Work Order or Intake item to review the available actions.</p>
         <form id="review-action-form" hidden>
@@ -173,12 +151,35 @@
             <label for="review-disposition">Outcome (only for closing feedback)</label>
             <select id="review-disposition"><option value="">Choose outcome</option><option value="resolved">Resolved / Verified</option><option value="deferred">Deferred</option><option value="rejected">Rejected / No Action</option><option value="duplicate">Duplicate / Linked</option></select>
           </fieldset>
-          <button type="submit" class="primary-button">Validate proposed action (no save)</button>
+          <button type="submit" class="primary-button">Save to disposable database</button>
           <div id="review-result" class="review-result" role="status" aria-live="polite"></div>
         </form>
       </div>
     </section>
-    <p class="footer-note">Engineering candidate V0.2 · No-save operator workflow review, no database updates, email or Directus Flow changes. Browser review is not operational write-path acceptance.</p>
+            <details id="related-information" class="related-information">
+              <summary>
+                <span class="related-title">
+                  <span class="fold-icon" aria-hidden="true">⌄</span>
+                  <strong>Related Information</strong>
+                </span>
+                <span class="related-hint">Stage Kits, Containers, Displays, materials and Procedures · Expand if needed</span>
+              </summary>
+              <div class="related-inner">
+                <p class="related-help">These are existing MSB references that may be useful. Stage-related does not mean assigned to this task.</p>
+                <div id="related-status" role="status" aria-live="polite">Expand to load related information.</div>
+                <div id="related-items"></div>
+              </div>
+            </details>
+
+            <div class="next-actions">
+              <h4>Follow-up actions</h4>
+              <p>This candidate is read-only. Triage, <strong>Promote &amp; Assign</strong>, correction ownership, <strong>Request More Information</strong>, reporter replies, and actual completion emails are required for P0 acceptance and are not enabled yet.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <p class="footer-note">Temporary isolated PostgreSQL clone · No Production changes · Email/Directus Flows disabled · Test data discarded at cleanup</p>
   </main>
 </body>
 </html>
