@@ -9,6 +9,23 @@
 | Production Setup runtime | `6f53d7f0c4b15f7175e773a2069595eef3f0e698` / `V0.3.22-pick-list-delay` |
 | Owner | Setup movement / Labeling and Scanning integration |
 
+## October 19 Setup closeout logistics — truthful empty/return eligibility (small operational slice)
+
+**Operator requirement:** a volunteer who scans a physical Container or selects it in Setup must be able to see **whether its removable cargo is actually accounted for**, whether its physical base remains a show Display, and whether it can **actually go back to the Workshop**. This is a focused #88 operational completion deliverable, not the whole #230 editor or #231 Testing overhaul.
+
+For each real Container in the active annual Session, show readable name/C-number, permanent cargo expectations and *current recorded* assignments, optional verified integral LOR Display, latest valid park location/source/time/accuracy and explicit one of:
+- **Cargo remains / partial unload** — name exactly which removable Displays still recorded onboard; allow actual selected Stage removals as documented, retain previously unloaded items.
+- **Empty of removable cargo — return eligible** — confirmed physical Empty for a transport-only Container, no still-required cargo/task work. It is a **proposal to return**, not a RETURNED event.
+- **Empty of removable cargo — show base stays** — physical Container is an integral Display/carrier now installed at its show position (Ginger Bread House, Peanuts/Thank You, U.S. Flag etc), **not** due to Workshop even if its cargo count is zero.
+- **Empty status uncertain / field check required** — contradictory current association, old inferred contents state, missing scan or unresolved review; do not silently declare Empty/Returned.
+- **Actually Returned to Workshop/Home** — only with actual physical return receipt/scan; show canonical Home rack separately from last park observation.
+
+Do not infer Empty from task 100% or a null cargo list, and do not treat permanently assigned integral Display as missing removable cargo. Do not call a synthetic Testing wrapper a physical Container awaiting pickup. The existing #418 Manager Contents Review/Resolution must handle historical errors with before/after scope, evidence, actor and last-event guard, preserving valid later independent scans. The ordinary volunteer's immediate field view must be short, prominent, searchable by C-number and human Display Names, support partial unload, and distinguish operator confirmed, inferred prior, and no verification. A captain need not use raw Directus, SQL, GIS editor or Testing UI to make a physical return decision.
+
+**Acceptance cases:** C009 one integral 909 plus twelve detachable; Traditional Christmas/Peanuts Thank You sign; U.S. Flag show base; C131 Antenna Trailer recorded empty/park with previous DBG-2026-012 missing named Command Center picker; C034 multi-stop mile loop; C052/C053 RETURNED but recorded-attached 32 already-installed wraps; C216 genuine newer Display observation; historical synthetic Standalone never becomes a Return Empty suggestion. No bulk movement or DML against live Production based on these examples.
+
+**Boundary:** #230 governs permanent reference integral/synthetic/physical role; #88 governs current physical cargo and actual return event; #132 owns installed-Setup-task closeout and wiring readiness; #231 Testing uses confirmed physical assets and eventual returned receipts. No new invented movement ledger or automatic stage/position GPS.
+
 ## October 19 operator scope correction — repeated Containers that become Displays; Antenna Trailer independent regression
 
 **The C009 identity defect is a repeatable MSB pattern, not a rare single-Container exception.** Greg confirms the **Traditional Christmas / Peanuts Container** transports contents and becomes the **Thank You for Visiting** sign in the show, and the **U.S. Flag Container** similarly becomes the physical U.S. Flag Display. **Both were moved into show position October 19**. The exact Container/Display IDs and current event chronology for these two cases are not yet read back and must not be guessed from labels/descriptions. A normal Setup unloading action must remove only *removable cargo*, preserve the integral physical show/display identity, and keep the base present at its confirmed park location. The actual per-Display physical role is reference authority owned by #230, not a hardcoded C009 special case or a child-count heuristic.
