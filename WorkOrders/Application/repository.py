@@ -240,6 +240,8 @@ class WorkManagementRepository:
             "priority_desc": "t.urgency DESC NULLS LAST, COALESCE(t.wo_id, t.in_id) DESC",
             "number_asc": "COALESCE(t.wo_id, t.in_id) ASC",
             "number_desc": "COALESCE(t.wo_id, t.in_id) DESC",
+            "created_asc": "t.opened_at ASC NULLS LAST, COALESCE(t.wo_id, t.in_id) ASC",
+            "created_desc": "t.opened_at DESC NULLS LAST, COALESCE(t.wo_id, t.in_id) DESC",
         }
         if sort not in sort_modes:
             raise WorkManagementError("Unknown Work Order sort.")
@@ -312,6 +314,40 @@ class WorkManagementRepository:
             rows = [dict(row) for row in cur.fetchall()]
             self.enrich_feedback(cur, rows)
             return rows
+
+    def aging_report(self, *, actor: dict[str, Any],
+                     sort: str = "created_asc") -> list[dict[str, Any]]:
+        """ALL recorded-open Work Orders, including inactive exceptions.
+
+        Use native created_at, not last activity or assignment date. No
+        LIMIT or active_flag predicate: this is an exception/audit report,
+        not just the first page of the active repair dispatch queue.
+        """
+        if not actor["can_manage"]:
+            raise WorkManagementError("Manager aging report is not authorized.", 403)
+        sorts = {
+            "created_asc": "t.opened_at ASC NULLS LAST, t.wo_id ASC",
+            "created_desc": "t.opened_at DESC NULLS LAST, t.wo_id DESC",
+            "priority": "t.urgency ASC NULLS LAST, t.opened_at ASC NULLS LAST, t.wo_id",
+            "priority_desc": "t.urgency DESC NULLS LAST, t.opened_at ASC NULLS LAST, t.wo_id",
+            "number_asc": "t.wo_id ASC",
+            "number_desc": "t.wo_id DESC",
+        }
+        if sort not in sorts:
+            raise WorkManagementError("Unknown aging-report sort.")
+        sql_text = (
+            "SELECT t.ticket, t.wo_id, t.title, t.opened_at, "
+            "GREATEST(0, FLOOR(EXTRACT(EPOCH FROM "
+            "(CURRENT_TIMESTAMP - t.opened_at)) / 86400))::integer AS days_open, "
+            "t.urgency, t.owners, t.assigned_n, t.location, t.yr, "
+            "t.active, t.test_id, t.state, t.review_flag "
+            "FROM (" + ledger_select() + ") t "
+            "WHERE t.type = 'WORK_ORDER' AND t.done_at IS NULL "
+            "ORDER BY " + sorts[sort]
+        )
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(sql_text)
+            return [dict(item) for item in cur.fetchall()]
 
     def manager_inbox(self, actor: dict[str, Any]) -> dict[str, int]:
         """Actionable Public Intake versus pending feedback for Managers ONLY."""
