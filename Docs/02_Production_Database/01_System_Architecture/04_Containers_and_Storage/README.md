@@ -2,6 +2,13 @@
 
 This subsystem documents physical container identity, display-to-container relationships, storage locations, container state, and the operational data needed before container-based testing or deployment can occur.
 
+## Start Here — #230 reference-data engineering contract
+
+- [Reference Data Manager — Physical Identity and Labelability (DRAFT)](engineering/Reference_Data_Manager_Physical_Identity_and_Labelability_Contract.md) — **owning #230 engineering specification** for permanent Container/Display physical-role relationships, integral show-base Displays versus removable cargo, label presence/24mm candidate/no-label exceptions, and real October 19 C009/Traditional Christmas/Flag/C131 examples.
+- [#230 Manager Reference Data issue](https://github.com/Gregovate/MSB-Production-Database-Project/issues/230) — open implementation/acceptance and governed permanent ref.* editing. The issue and PRs consume the above contract rather than replacing engineering authority.
+
+**Current handoff, October 19:** C009 Ginger Bread House is a mixed show-base/Container with Display 909 integral and twelve additional removable Displays; a 2026 `EMPTY` scan incorrectly detached all thirteen in current #88 state. Two additional structures (Traditional Christmas/Peanuts → Thank You for Visiting sign; U.S. Flag Container → Flag Display) follow the repeatable Container-becomes-show pattern, exact master IDs still to be verified. C131 Antenna Trailer has a separate known drop-picker/GPS unload incident, not yet proven to be an integral-Display detachment. Existing approved 36mm Display labeling is not adequate for every small item; 24mm is a proposed tested profile and permanently unlabelable pieces need a governed task-scoped alternative. **No new physical-role/24mm printing workflow or correction is deployed.**
+
 ## Current State
 
 Containers and storage locations are active Production Database entities used by operational workflows and Directus views/bookmarks.
