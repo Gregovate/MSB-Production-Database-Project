@@ -18,9 +18,13 @@
   function evidence(o) {
     let text = `Observation: ${esc(o.occurred_at ? new Date(o.occurred_at).toLocaleString('en-US', {timeZone: 'America/Chicago'}) + ' (Chicago)' : 'not recorded')}`;
     if (o.gps_latitude != null && o.gps_longitude != null) text += `<br>Recorded GPS: ${esc(o.gps_latitude)}, ${esc(o.gps_longitude)}`;
-    if (o.gps_accuracy_m != null && Number(o.gps_accuracy_m) >= 0) text += `<br>Accuracy: ±${Math.round(Number(o.gps_accuracy_m) / 0.3048)} ft`;
+    // Device accuracy is a reported estimate, never proof of surveyed placement.
+    if (o.gps_accuracy_m != null && Number.isFinite(Number(o.gps_accuracy_m)) && Number(o.gps_accuracy_m) >= 0)
+      text += `<br>Accuracy: ±${Math.round(Number(o.gps_accuracy_m) / 0.3048)} ft (device estimate; not surveyed)`;
     text += `<br>Event: ${esc(o.setup_movement_event_id ?? 'none')} · ${esc(o.event_type ?? '')}`;
     text += `<br>Source: ${esc(o.capture_method ?? 'not recorded')}${o.offline_captured ? ' · offline capture' : ''}`;
+    // Attribute this observation to its stored capture identity, not the viewer.
+    text += `<br>Recorded by: ${esc(String(o.captured_operator_email || '').trim() || 'Not recorded')}`;
     if (o.destination_location_note) text += `<br>Recorded destination: ${esc(o.destination_location_note)}`;
     if (o.stage_name) text += `<br>Recorded Stage: ${esc(o.stage_key)} ${esc(o.stage_name)}`;
     if (o.gps_quality) text += `<br>GPS quality: ${esc(o.gps_quality)}`;
