@@ -5,7 +5,7 @@
 (() => {
   "use strict";
   const byId = (id) => document.getElementById(id);
-  const model = { actor: null, ticket: null, options: null, selected: new Set(), csrf: "" };
+  const model = { actor: null, ticket: null, options: null, selected: new Set(), csrf: "", pendingSignature: null, pendingKey: null };
   const actions = {
     create: "Manager Create · Internal Work Order",
     assign: "Assign / Reassign · Multiple volunteers",
@@ -208,7 +208,6 @@
     )) return null;
     const location = byId("review-location-type").value;
     const body = {
-      request_key: crypto.randomUUID(),
       action: kind,
       ticket: kind === "create" ? null : model.ticket?.ticket,
       person_ids: [...model.selected],
@@ -222,6 +221,12 @@
       response: byId("review-response").value.trim(),
       disposition: byId("review-disposition").value,
     };
+    const signature = JSON.stringify(body);
+    if (signature !== model.pendingSignature) {
+      model.pendingSignature = signature;
+      model.pendingKey = crypto.randomUUID();
+    }
+    body.request_key = model.pendingKey;
     const response = await fetch("/api/work-orders/commands", {
       method: "POST", credentials: "same-origin", cache: "no-store",
       headers: { "Content-Type": "application/json", "Accept": "application/json",
@@ -232,6 +237,8 @@
     if (!response.ok || !payload.result?.saved) {
       throw new Error(payload.error || "Disposable database save failed.");
     }
+    model.pendingSignature = null;
+    model.pendingKey = null;
     document.dispatchEvent(new CustomEvent("wo419:saved", { detail: payload.result }));
     return payload.result;
   }
