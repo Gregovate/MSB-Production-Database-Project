@@ -20,6 +20,31 @@ Do not assume that repository state remembered from an earlier conversation is s
 
 For connector/API-based work where a local `git pull` is not available, creating the work branch directly from current remote `main` and reading the current remote files satisfies the refresh requirement.
 
+## Mandatory Feature-Worktree VS Code Identity
+
+**Before the first edit or test on a newly prepared feature branch/worktree, provide a dedicated VS Code window for that exact Git worktree.** This is part of feature-branch setup, not a cosmetic afterthought. Parallel #171 GIS, #88 Container and #419 Work Orders windows must be unambiguously distinguishable while remaining open at the same time.
+
+Use the existing shared cross-subsystem utility [`Utilities/Open-MSBFeatureWorkspace.ps1`](../../Utilities/Open-MSBFeatureWorkspace.ps1). It opens a VS Code `.code-workspace` with:
+- an explicit **verified Git root**, **feature branch**, and issue number/workstream in the folder name and title bar;
+- a stable issue-specific accent (automatic color mapping or a deliberate caller selection; e.g. #171 teal, #88 yellow, #419 blue);
+- the high-contrast **Default Dark Modern** palette with a dark terminal/editor, readable white text, **14-pixel terminal and editor fonts**, and **zoom 0**; no all-white editor with faint console text or oversized workspace-wide font;
+- a separate workspace file under the user's Windows `%LOCALAPPDATA%\MSB-VSCode-Workspaces\`, **outside every Git checkout**, named uniquely for the issue, workstream, and worktree path;
+- no change to tracked repository `.vscode/settings.json`, the tracked repository `*.code-workspace`, Git worktrees/branches, other VS Code windows, or Production services.
+
+Example from the laptop **after creating or confirming the desired feature worktree and refreshing the primary checkout**:
+
+```powershell
+& 'C:\lor\ImportExport\VSCode\Utilities\Open-MSBFeatureWorkspace.ps1' `
+    -WorktreePath 'C:\lor\ImportExport\MSB-WorkOrders-419' `
+    -IssueNumber 419 -Label 'WORK ORDERS'
+```
+
+The utility validates the exact worktree root and a non-`main` checked-out branch. **Never pass a leftover `$Worktree` variable from another feature** or open `code --new-window` against an inferred folder. The script may warn if the checkout is dirty, but must not clean, reset, stash, stage, switch branches, or modify existing local changes. Git cleanliness for acceptance/deployment remains an independent strict gate.
+
+**Tracked editor-setting trap (observed #419 October 19):** `.gitignore` contains `.vscode/`, but `.vscode/settings.json` was already tracked in that feature checkout, so changing it made the worktree dirty and blocked the approved disposable browser launcher. **An ignore rule cannot make an already tracked file untracked.** Keep personalized window/title/color/font settings in the external feature workspace, not in the repository. If an existing tracked configuration was edited, first inspect `git status --short` / `git diff` and back it up; restore that exact tracked file only with explicit approval, never broad `git reset --hard`, blanket clean, or forced worktree removal.
+
+**Required handoff check:** in the new colored window, verify its Explorer root, `git branch --show-current`, `git rev-parse --show-toplevel`, `git status --short`, and intended exact candidate SHA. The workspace should remain available until its owning feature/PR and local worktree are safely closed out. Local workspace appearance setup is **not** a substitute for the governed disposable browser tunnel, database/port isolation, branch clean gate, Production release approval or Server Management runbooks.
+
 ## Greg's Workstation and Checkout Context
 
 Confirmed by Greg on 2026-10-05. Greg actively switches between machines; use the latest pasted PowerShell prompt as the working-location indicator. Do not assume the machine or checkout stayed the same between messages.
