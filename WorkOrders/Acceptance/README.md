@@ -104,6 +104,10 @@ HOLD must not be misreported as a failed dump. Do not conduct operator browser
 review until query assertions and application health pass. Keep P0 write/email
 behavior separate from V0.1 read-only review.**
 
+## Read-validator diagnostic checkpoint — 2026-10-18
+
+The previous disposable database restored successfully, but the read validator failed before browser READY. The exact cause is not established. This branch now reports the failing validation phase and exception class without exposing query text, reporter details, or credentials. Source regression protects those phase markers. The next private-server execution remains necessary to identify the actual database failure. No browser or Production acceptance is claimed.
+
 ## Remaining acceptance gates
 
 Run and correct Python source tests, revised WO419 PostgreSQL read model and clone audit before calling the first browser review READY. #419 P0 **atomic triage/Promote & Assign, alternate Setup corrections, original-reporter Request More Information/replies, final resolution emails and noncompeting Directus cutover are NOT implemented or accepted**. No temporary read-only preview can waive those future gates.
