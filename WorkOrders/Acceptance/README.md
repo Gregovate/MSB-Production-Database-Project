@@ -2,6 +2,18 @@
 
 **Status: V0.3 source-only candidate; new disposable-write validation and browser review still pending. V0.2 operator review was CHANGES REQUIRED.** Work Management is the existing MSB Database Work Orders subsystem.
 
+## October 19 — second write-preflight HOLD: Setup season read requested unauthorized row lock
+
+**Operator real run:** exact candidate `dc98c63b5e72896aaaeb7898551a34d10a7f4252`; retained server report `/home/msbadmin/setup-acceptance-reports/WO419_Disposable_Browser_Preview_20261019T102500.txt`. The previous `/32` clone-IP mismatch is **fixed and proven** by canonical `172.18.0.5` reporting and progression into the Write/Create/Assign → Setup linkage preflight. Source regressions, current-Production dump/private final-PID1 PostgreSQL restore, read/ledger, 58-open/one-inactive Manager Aging Report, and clone-only write grant/no-send outbox setup all PASSED. The test reached `atomic_work_order_setup_season_gate` and raised `InsufficientPrivilege`, before browser READY.
+
+**Source diagnosis:** `CloneCommands.create_season_only_work_order_gate()` ran `SELECT setup_session_id FROM ops.setup_session ... FOR SHARE` under the clone application role. This requests a PostgreSQL row-level lock, requiring table privileges beyond the deliberately limited `SELECT` on `ops.setup_session`. There is **no justification to grant UPDATE** or broader annual-task DML merely to check if the season is open. The released `SECURITY DEFINER ops.create_setup_season_task` is already Manager-authorized and independently checks season/actor/stage/Work Order. This source-level row lock is the specific likely cause of the observed failure; no full SQL error details were exposed, so live reproduction of that exact statement was not captured.
+
+**Narrow fix:** remove only the unnecessary `FOR SHARE` from the read-only season precheck, retaining selected `ACTIVE/PLANNING` status, existing Manager role, open season/WO duplicate validation, native Setup command and **same PostgreSQL atomic transaction**. Do NOT grant update privileges on `ops.setup_session`, INSERT on `ops.setup_session_task`, or replace the existing Setup command. New restricted-cursor regression fails if the Setup read attempts `FOR SHARE/FOR UPDATE` and proves it reaches `ops.create_setup_season_task` with the same WO and approval. The existing clone-only grant/security regression remains.
+
+**Cleanup proved in operator log:** Production Work Order/Intake fingerprint unchanged, shared checkout unchanged, localhost 8898 listener released; server `WO419 DISPOSABLE BROWSER REVIEW: HOLD (status 1)`. No browser UI opened, no saved WO or Setup task committed, no email/Directus Flow/Production change.
+
+**Retry gate:** only after exact successor SHA source tests PASS. Use existing clean workstation branch, **same** Server Management sequential 8898 wrapper and authorized Manager reviewer, with dump→private disposable clone→read/native rollback and linked Setup gate acceptance. If next step HOLDS, retain the new phase and report, do not bypass grants or mutate Production; continue #419 PR #420. No competing runner/DB.
+
 ## October 19 — latest disposable browser attempt HOLD: clone IP string formatting
 
 **Operator report:** exact candidate `f4afad0b82ab7748cfd9c6578465e32d782d4e3f`; server acceptance report
