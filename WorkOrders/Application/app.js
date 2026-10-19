@@ -40,6 +40,7 @@
     if (scope === "mine") return "My Assigned Work Orders";
     if (scope === "my-created") return "Work Orders I Created";
     if (scope === "all") return "All Work Orders";
+    if (scope === "tickets") return "All Tickets · Search";
     if (scope === "my-feedback") return "My Submitted Feedback";
     if (scope === "critical") return "Manager · Immediate / Critical Repairs";
     if (scope === "unassigned") return "Manager · Unassigned Work Orders";
