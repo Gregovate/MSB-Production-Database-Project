@@ -38,7 +38,7 @@
   function scopeLabel() {
     const scope = $("scope").value;
     if (scope === "mine") return "My Work";
-    if (scope === "all") return "All Work Orders and Intake";
+    if (scope === "all") return "All Work Orders";
     if (scope === "my-feedback") return "My Submitted Feedback";
     if (scope === "critical") return "Manager · Immediate / Critical Repairs";
     if (scope === "unassigned") return "Manager · Unassigned Work Orders";
@@ -82,7 +82,7 @@
     if (!state.tickets.length) {
       list.innerHTML =
         '<div class="empty-list">No matching work recorded in this view.' +
-        ($("scope").value === "mine"
+        ($("scope").value === "mine" && state.actor?.can_manage
           ? '<button id="empty-view-all" type="button" class="quiet-button">View All Work Orders</button>'
           : "") +
         "</div>";
@@ -116,6 +116,39 @@
     });
   }
 
+  async function loadManagerInbox() {
+    if (!state.actor?.can_manage) {
+      $("manager-inbox-banner").hidden = true;
+      return;
+    }
+    const banner = $("manager-inbox-banner");
+    try {
+      const result = await getJson("/api/work-orders/manager-inbox");
+      const summary = result.inbox || {};
+      const publicCount = Number(summary.public_intake || 0);
+      const feedbackCount = Number(summary.task_feedback || 0);
+      $("manager-inbox-message").textContent =
+        publicCount + " Public Work Order Request" + (publicCount === 1 ? "" : "s") +
+        " awaiting triage · " + feedbackCount + " Task Feedback finding" +
+        (feedbackCount === 1 ? "" : "s") + " requiring review";
+      $("go-intake").textContent = "Public Intake (" + publicCount + ")";
+      $("go-feedback").textContent = "Task Feedback (" + feedbackCount + ")";
+      banner.hidden = publicCount === 0 && feedbackCount === 0;
+    } catch (exc) {
+      banner.hidden = false;
+      $("manager-inbox-message").textContent =
+        "Unable to verify Intake status: " + exc.message;
+      $("go-intake").textContent = "Open Public Intake";
+      $("go-feedback").textContent = "Open Task Feedback";
+    }
+  }
+
+  function goManagerQueue(scope) {
+    if (!state.actor?.can_manage) return;
+    $("scope").value = scope;
+    scopeChanged();
+  }
+
   async function loadTickets() {
     const serial = ++state.listFetchId;
     const scope = $("scope").value;
@@ -128,6 +161,7 @@
     const params = new URLSearchParams({
       scope, q: $("ticket-search").value.trim(),
       show_completed: $("show-completed").checked ? "1" : "0",
+      sort: $("ticket-sort").value,
     });
     if (scope === "person") params.set("person_id", person);
     try {
@@ -317,6 +351,11 @@
         getJson("/api/work-orders/assignees"),
       ]);
       state.actor = access.access;
+      $("home-heading").textContent = state.actor.can_manage
+        ? "Work Management · Manager" : "My Work Orders";
+      $("home-description").textContent = state.actor.can_manage
+        ? "Manage repair assignments, urgent jobs, and pending Intake triage."
+        : "Work and complete your assigned Work Orders, or create a new internal repair.";
       document.dispatchEvent(new CustomEvent("wo419:actor", {
         detail: { ...state.actor, csrf_token: access.csrf_token }
       }));
@@ -333,7 +372,7 @@
         option.textContent = person.display_name;
         picker.appendChild(option);
       });
-      await loadTickets();
+      await Promise.all([loadTickets(), loadManagerInbox()]);
     } catch (exc) {
       error(exc.message);
       setText("user-identity", "Access unavailable");
@@ -361,18 +400,25 @@
   document.addEventListener("wo419:saved", async (event) => {
     const saved = event.detail || {};
     if (!saved.ticket) return;
-    if ($("scope").value === "mine" && (!state.tickets.some(row => row.ticket === saved.ticket))) {
+    // A Crew-created unassigned WO is not in their My Work assignment list.
+    // Keep the Crew on My Work, but open the newly created ticket explicitly.
+    if (state.actor?.can_manage && $("scope").value === "mine" &&
+        !state.tickets.some(row => row.ticket === saved.ticket)) {
       $("scope").value = "all";
       scopeChanged();
     } else {
       await loadTickets();
     }
-    await selectTicket(saved.ticket);
+    await Promise.all([selectTicket(saved.ticket), loadManagerInbox()]);
   });
   $("scope").addEventListener("change", scopeChanged);
   $("assignee").addEventListener("change", loadTickets);
   $("show-completed").addEventListener("change", loadTickets);
-  $("refresh").addEventListener("click", loadTickets);
+  $("refresh").addEventListener("click", () =>
+    Promise.all([loadTickets(), loadManagerInbox()]));
+  $("ticket-sort").addEventListener("change", loadTickets);
+  $("go-intake").addEventListener("click", () => goManagerQueue("intake"));
+  $("go-feedback").addEventListener("click", () => goManagerQueue("feedback"));
   let searchTimer = null;
   $("ticket-search").addEventListener("input", () => {
     clearTimeout(searchTimer);
