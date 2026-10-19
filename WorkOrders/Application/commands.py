@@ -200,6 +200,77 @@ class CloneCommands:
         return int(cur.fetchone()["work_order_id"])
 
     @staticmethod
+    def create_season_only_work_order_gate(
+        cur: Any, actor: dict[str, Any], work_order_id: int, body: dict
+    ) -> int:
+        """One transaction: existing Work Order plus governing Setup annual gate.
+
+        The released Setup Board computes effective completion directly from
+        linked WO date_completed; never invent duplicate Report Work or a
+        reusable ref.setup_task definition.
+        """
+        if not actor["can_manage"]:
+            raise WorkManagementError("Only a Manager may create seasonal Setup work.", 403)
+        stage_id = body.get("stage_id")
+        if not stage_id or body.get("work_area_id"):
+            raise WorkManagementError("Seasonal Setup integration needs a Park Stage.")
+        stage_id = numeric(stage_id, "Setup Stage")
+        season_year = numeric(body.get("setup_season_year"), "Setup season")
+        cur.execute(
+            "SELECT setup_session_id FROM ops.setup_session "
+            "WHERE season_year=%s AND session_status IN ('PLANNING','ACTIVE') "
+            "FOR SHARE", (season_year,),
+        )
+        if cur.fetchone() is None:
+            raise WorkManagementError(
+                "Selected Setup season is not open for new annual tasks.", 409
+            )
+        cur.execute(
+            "SELECT 1 FROM ops.setup_session_task "
+            "WHERE linked_work_order_id=%s AND setup_session_id IN "
+            "(SELECT setup_session_id FROM ops.setup_session WHERE season_year=%s) "
+            "LIMIT 1", (work_order_id, season_year),
+        )
+        if cur.fetchone() is not None:
+            raise WorkManagementError("Work Order already has an annual Setup task.", 409)
+        cur.execute(
+            "SELECT email FROM ref.person WHERE person_id=%s "
+            "AND active_flag AND directus_user_id IS NOT NULL",
+            (actor["person_id"],),
+        )
+        current_person = cur.fetchone()
+        if not current_person or not current_person["email"]:
+            raise WorkManagementError("A verified Manager email is required.", 403)
+        title = body.get("setup_task_name")
+        if title is None or not str(title).strip():
+            title = str(body.get("problem") or "").splitlines()[0][:160]
+        title = substantive(title, "Seasonal Setup task name", minimum=5)
+        # Existing SECURITY DEFINER Setup command enforces Manager authority,
+        # Stage/Scene ownership and the real open seasonal Setup Session.
+        # GATE + linked_work_order_gate avoids duplicate Crew Report Work:
+        # Setup board marks effective_complete when WO.date_completed is set.
+        cur.execute(
+            """
+            SELECT setup_session_task_id
+            FROM ops.create_setup_season_task(
+                %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+            )
+            """,
+            (
+                current_person["email"], season_year, title, stage_id,
+                None, "GATE", None, None, None, None, None,
+                "Complete and verify linked Work Order",
+                "Awaiting repair Work Order completion", None,
+                work_order_id, True,
+                "Season-only Work Order repair; native WO owns completion notes.",
+            ),
+        )
+        created = cur.fetchone()
+        if not created:
+            raise WorkManagementError("Linked Setup annual task was not created.", 503)
+        return int(created["setup_session_task_id"])
+
+    @staticmethod
     def reassign(cur: Any, wo: int, selected: list[int]) -> tuple[list[int], list[int]]:
         """Preserve prior assignment rows; do not reuse arbitrary historical roles."""
         CloneCommands.ensure_people(cur, selected)
@@ -261,6 +332,18 @@ class CloneCommands:
         # Crew can create a native unassigned WO, never assign anyone.
         if action == "create" and not actor["can_manage"] and body.get("person_ids"):
             raise WorkManagementError("Only Managers may assign Work Orders.", 403)
+        # Crew may request Setup association; only a Manager may commit
+        # seasonal task creation through the existing Setup authority.
+        setup_mode = body.get("setup_mode", "none")
+        if setup_mode not in ("none", "request", "create"):
+            raise WorkManagementError("Unknown seasonal Setup option.")
+        if action not in ("create", "promote") and setup_mode != "none":
+            raise WorkManagementError("Setup linkage applies to creation/promotion only.")
+        if setup_mode == "create" and not actor["can_manage"]:
+            raise WorkManagementError("Manager approval required for seasonal Setup.", 403)
+        if setup_mode != "none" and not body.get("stage_id"):
+            raise WorkManagementError("A Park Stage is required for seasonal Setup.")
+
         if action in ("assign", "progress", "complete") and kind != "WO":
             raise WorkManagementError("This action requires an active Work Order.")
         if action in ("promote", "correction_owner", "clarify", "reply", "resolve") and kind != "INTAKE":
@@ -315,11 +398,21 @@ class CloneCommands:
                 # Zero assignees is deliberate for Crew-created work awaiting
                 # Manager dispatch. Manager creation may also remain unassigned.
                 added, _ = self.reassign(cur, wo, selected) if selected else ([], [])
+                linked_setup_task_id = None
+                if setup_mode == "create":
+                    linked_setup_task_id = self.create_season_only_work_order_gate(
+                        cur, actor, wo, body
+                    )
                 result_ticket = f"WO-{wo}"
                 note = "Work Order created" if action == "create" else "Intake promoted and assigned"
-                event = self.persist_event(cur, request_key, result_ticket, action, actor,
-                                           note, details={"source_intake": number,
-                                                          "assignee_ids": selected})
+                event = self.persist_event(
+                    cur, request_key, result_ticket, action, actor, note,
+                    details={
+                        "source_intake": number, "assignee_ids": selected,
+                        "setup_mode": setup_mode,
+                        "linked_setup_session_task_id": linked_setup_task_id,
+                    },
+                )
                 for who in added:
                     self.capture(cur, event, result_ticket, "assignment", who)
                 if action == "promote":
@@ -425,7 +518,10 @@ class CloneCommands:
                 else:
                     raise WorkManagementError("Unsupported correction command.")
             return {"ticket": result_ticket, "saved": True, "repeat": False,
-                    "notifications": "NO_SEND", "activity_id": event}
+                    "notifications": "NO_SEND", "activity_id": event,
+                    "linked_setup_session_task_id": (
+                        linked_setup_task_id if action in ("create", "promote") else None
+                    )}
 
     def activity(self, actor: dict[str, Any], ticket: str) -> list[dict]:
         if not TICKET_KEY.fullmatch(ticket):
