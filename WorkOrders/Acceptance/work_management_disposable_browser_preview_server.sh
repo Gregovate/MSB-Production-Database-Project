@@ -333,6 +333,11 @@ if [[ "$ready" != 1 ]]; then
 fi
 # Real authorized browser routes and explicit negative write path.
 curl -fsS --max-time 10 "http://127.0.0.1:$PREVIEW_PORT/api/work-orders/tickets?scope=all" >/dev/null
+# A reporter-facing personal queue is read-only; Manager queues are gated
+# by the approved identity, not by a client-controlled preview flag.
+curl -fsS --max-time 10 "http://127.0.0.1:$PREVIEW_PORT/api/work-orders/tickets?scope=my-feedback" >/dev/null
+curl -fsS --max-time 10 "http://127.0.0.1:$PREVIEW_PORT/work-orders/assets/review_actions.js" >/dev/null
+
 WRITE_STATUS="$(curl -s -o /dev/null -w '%{http_code}' -X POST \
   -H 'Content-Type: application/json' -d '{}' \
   "http://127.0.0.1:$PREVIEW_PORT/api/work-orders/tickets")"
@@ -344,6 +349,8 @@ echo "Open via the protected SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/"
 echo "Candidate SHA: $CANDIDATE_SHA"
 echo "Reviewer: $PREVIEW_EMAIL"
 echo "DB: private disposable clone only; Work Management GET API/read-only"
-echo "Do not treat V0.1 as completed P0 triage/email/browser acceptance."
+echo "V0.2: action workbench is NO-SAVE rehearsal; it cannot create/assign/complete/notify."
+echo "Review: Manager Create, multi-person assignment, notes, separate triage, Testing and Feedback."
+echo "Do not treat V0.2 as operational write-path or notification acceptance."
 read -r -p "After reviewing the browser, press ENTER here for controlled teardown. " _
 echo "Operator browser review window ended"
