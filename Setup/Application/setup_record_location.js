@@ -56,6 +56,8 @@
   const SCAN_RESET_MS = 5000;
 
   let access = null;
+  // Chrome's navigator.onLine is a network hint, not authenticated API reachability.
+  let setupApiReachability = 'UNVERIFIED';
   let referenceSet = null;
   let latestPosition = null;
   let watchId = null;
@@ -140,13 +142,23 @@
   function updateNetwork() {
     if (trainingMode) {
       networkState.textContent = navigator.onLine
-        ? 'ONLINE · TRAINING READ-ONLY'
+        ? 'NETWORK AVAILABLE · TRAINING READ-ONLY'
         : 'OFFLINE · TRAINING READ-ONLY';
       return;
     }
-    networkState.textContent = navigator.onLine
-      ? 'ONLINE'
-      : 'OFFLINE — observations will queue locally';
+    networkState.textContent = !navigator.onLine
+      ? 'OFFLINE — only previously cached assets can be recorded'
+      : setupApiReachability === 'UNREACHABLE'
+        ? 'NETWORK CONNECTED · SETUP API UNREACHABLE'
+        : setupApiReachability === 'REACHABLE'
+          ? 'ONLINE · SETUP API REACHABLE'
+          : 'NETWORK CONNECTED · SETUP API NOT VERIFIED';
+  }
+
+  // No HTTP response means a transport failure. A server-side refusal must
+  // never be turned into a cached-authority fallback.
+  function transportFailed(error) {
+    return !error || error.httpStatus == null;
   }
 
   function applyTrainingMode() {
@@ -280,7 +292,16 @@
   }
 
   async function apiJson(url, options) {
-    const response = await fetch(url, options || {cache: 'no-store'});
+    let response;
+    try {
+      response = await fetch(url, options || {cache: 'no-store'});
+      setupApiReachability = 'REACHABLE';
+    } catch (error) {
+      setupApiReachability = 'UNREACHABLE';
+      updateNetwork();
+      throw error;
+    }
+    updateNetwork();
     let data = {};
     try {
       data = await response.json();
@@ -299,6 +320,8 @@
       access = data.access || {};
       localStorage.setItem(ACCESS_CACHE_KEY, JSON.stringify(access));
     } catch (error) {
+      // Do not reuse old authority after an actual HTTP 401/403/other denial.
+      if (!transportFailed(error)) throw error;
       const cached = localStorage.getItem(ACCESS_CACHE_KEY);
       if (!cached) throw error;
       access = JSON.parse(cached);
@@ -666,9 +689,16 @@
       state = data.state || null;
       localStorage.setItem(key, JSON.stringify(state));
     } catch (error) {
-      if (navigator.onLine) throw error;
-      state = JSON.parse(localStorage.getItem(key) || 'null');
-      if (!state) throw error;
+      if (!transportFailed(error)) throw error;
+      const cached = localStorage.getItem(key);
+      if (!cached) {
+        throw new Error(identity.identity
+          + ' — NO CACHED DISPLAY CONTEXT. No observation saved. Reopen this Display while the Setup API is reachable.');
+      }
+      state = JSON.parse(cached);
+      if (!state || Number(state.asset_id) !== identity.asset_id || state.asset_type !== 'DISPLAY') {
+        throw new Error(identity.identity + ' — Cached identity mismatch. No observation saved.');
+      }
     }
     const rows = await queueRows().catch(() => []);
     if (state && rows.some(row => row.asset_type === 'DISPLAY' && Number(row.asset_id) === identity.asset_id
@@ -732,10 +762,17 @@
       localStorage.setItem(key, JSON.stringify(data.container));
       return applyQueuedContainerContext(data.container || null, await queueRows().catch(() => []), containerId);
     } catch (error) {
-      if (navigator.onLine) throw error;
+      if (!transportFailed(error)) throw error;
       const cached = localStorage.getItem(key);
-      if (!cached) throw error;
-      return applyQueuedContainerContext(JSON.parse(cached), await queueRows(), containerId);
+      if (!cached) {
+        throw new Error('CONT:' + containerId
+          + ' — NO CACHED CONTAINER CONTENTS. No observation saved. Reopen this Container while the Setup API is reachable.');
+      }
+      const state = JSON.parse(cached);
+      if (!state || Number(state.container_id) !== containerId) {
+        throw new Error('CONT:' + containerId + ' — Cached identity mismatch. No observation saved.');
+      }
+      return applyQueuedContainerContext(state, await queueRows(), containerId);
     }
   }
 
@@ -1406,15 +1443,10 @@
       }
     } catch (error) {
       if (generation !== selectionGeneration) return;
-      if (navigator.onLine) {
-        clearPending();
-        setFeedback('warning', identity.identity + ' — ' + (error.message || error));
-        return;
-      }
-      pendingStateRow = {
-        label: identity.identity,
-        movement_status: 'OFFLINE — CURRENT CONTEXT UNAVAILABLE'
-      };
+      // Never fabricate a writable asset state for an unknown offline asset.
+      clearPending();
+      setFeedback('blocked', identity.identity + ' — NO OBSERVATION RECORDED · ' + (error.message || error));
+      return;
     }
 
     renderPending();
