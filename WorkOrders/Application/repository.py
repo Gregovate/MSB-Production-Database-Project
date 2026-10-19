@@ -212,11 +212,11 @@ class WorkManagementRepository:
                 "(t.ticket ILIKE %s OR t.title ILIKE %s "
                 "OR t.location ILIKE %s OR t.owners ILIKE %s "
                 "OR t.reported_by ILIKE %s OR t.state ILIKE %s "
-                "OR t.source ILIKE %s)"
+                "OR t.source ILIKE %s "
+                "OR replace(t.ticket, '-', '') ILIKE %s)"
             )
-            normalized = search.upper().replace(" ", "").replace("-", "")
-            search_term = search if not normalized.startswith(("WO", "INTAKE")) else search
-            params.extend([f"%{search_term}%" for _ in range(7)])
+            params.extend([f"%{search}%" for _ in range(7)])
+            params.append(f"%{search.replace('-', '').replace(' ', '')}%")
         where = " AND ".join(conditions) if conditions else "TRUE"
         query = (
             "SELECT t.* FROM (" + ledger_select() + ") AS t "
