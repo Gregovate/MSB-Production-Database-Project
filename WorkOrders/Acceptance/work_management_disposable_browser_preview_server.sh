@@ -13,6 +13,7 @@ CANDIDATE_SHA="$1"
 PREVIEW_PORT="$2"
 PREVIEW_EMAIL="$3"
 CANDIDATE_REF="$4"
+MODE="${5:-start}"
 
 if [[ ! "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
   echo "HOLD: exact 40-hex candidate SHA required"; exit 2
@@ -26,6 +27,11 @@ fi
 if [[ "$CANDIDATE_REF" != "issue-419-unified-ticket-read-model-20261018" ]]; then
   echo "HOLD: #419 source branch changed; review target ancestry first"; exit 2
 fi
+if [[ "$MODE" != "start" && "$MODE" != "resume" ]]; then
+  echo "HOLD: browser preview mode must be start or resume"; exit 2
+fi
+STATE_FILE="/tmp/msb-wo419-preview-state-${PREVIEW_PORT}.env"
+PRESERVE_FOR_RECONNECT=0
 
 REPO_ROOT="/opt/fieldwiring"
 PRODUCTION_DB="msb"
@@ -79,6 +85,13 @@ cleanup() {
   local status=$?
   trap - EXIT HUP INT TERM
   set +e
+  if [[ "$PRESERVE_FOR_RECONNECT" == 1 ]]; then
+    echo
+    echo "WO419_PREVIEW_TRANSPORT_LOST: preserving exact browser/clone for reconnect."
+    echo "State: $STATE_FILE"
+    echo "No Production fingerprint or cleanup is claimed before operator finish."
+    exit "$status"
+  fi
   echo
   echo "WO419 preview cleanup, initial status=$status"
   if [[ -n "$PREVIEW_PID" ]]; then
@@ -100,6 +113,7 @@ cleanup() {
     fi
   fi
   [[ "$DUMP" == /tmp/msb-wo419-preview-* ]] && rm -f "$DUMP"
+  rm -f "$STATE_FILE"
   if [[ -n "$PROD_BEFORE" ]]; then
     local after
     after="$(fingerprint 2>/dev/null)"
@@ -137,7 +151,118 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-trap 'exit 129' HUP
+trap 'PRESERVE_FOR_RECONNECT=1; exit 75' HUP
+
+write_resume_state() {
+  # No credentials, CSRF tokens, clone DB passwords, or request data in state.
+  # Only the owning msbadmin user can read this file.
+  umask 077
+  if [[ -e "$STATE_FILE" || -L "$STATE_FILE" ]]; then
+    echo "HOLD: preview state already exists on port $PREVIEW_PORT; inspect before overwriting"
+    return 1
+  fi
+  {
+    printf 'CANDIDATE_SHA=%q\\n' "$CANDIDATE_SHA"
+    printf 'CANDIDATE_REF=%q\\n' "$CANDIDATE_REF"
+    printf 'PREVIEW_EMAIL=%q\\n' "$PREVIEW_EMAIL"
+    printf 'PREVIEW_PORT=%q\\n' "$PREVIEW_PORT"
+    printf 'CLONE_CONTAINER=%q\\n' "$CLONE_CONTAINER"
+    printf 'CLONE_DATABASE=%q\\n' "$CLONE_DATABASE"
+    printf 'CLONE_OWNED=%q\\n' "$CLONE_OWNED"
+    printf 'WORKTREE=%q\\n' "$WORKTREE"
+    printf 'DUMP=%q\\n' "$DUMP"
+    printf 'REPORT=%q\\n' "$REPORT"
+    printf 'APP_LOG=%q\\n' "$APP_LOG"
+    printf 'PREVIEW_PID=%q\\n' "$PREVIEW_PID"
+    printf 'PROD_BEFORE=%q\\n' "$PROD_BEFORE"
+    printf 'LIVE_HEAD=%q\\n' "$LIVE_HEAD"
+    printf 'VERIFIED_WORKTREE_SHA=%q\\n' "$VERIFIED_WORKTREE_SHA"
+  } > "$STATE_FILE"
+  chmod 600 "$STATE_FILE"
+}
+
+resume_existing_preview() {
+  # This path NEVER makes a new clone or runs start/stale cleanup.
+  # Unknown listener/session always HOLD. No identity guessing.
+  local requested_sha="$CANDIDATE_SHA"
+  local requested_ref="$CANDIDATE_REF"
+  local requested_port="$PREVIEW_PORT"
+  local requested_email="$PREVIEW_EMAIL"
+  local saved_version=""
+  PRESERVE_FOR_RECONNECT=1
+  sudo -v
+  if [[ -L "$STATE_FILE" || ! -s "$STATE_FILE" ||
+        "$(stat -c '%u:%a' "$STATE_FILE" 2>/dev/null)" != "$(id -u):600" ]]; then
+    echo "HOLD: no owned private resume state for port $requested_port"
+    exit 76
+  fi
+  # State created using Bash %q by the exact approved script, not HTTP input.
+  # shellcheck disable=SC1090
+  source "$STATE_FILE"
+  if [[ "$CANDIDATE_SHA" != "$requested_sha" ||
+        "$CANDIDATE_REF" != "$requested_ref" ||
+        "$PREVIEW_PORT" != "$requested_port" ||
+        "$PREVIEW_EMAIL" != "$requested_email" ||
+        "$VERIFIED_WORKTREE_SHA" != "$requested_sha" ]]; then
+    echo "HOLD: resume request does not match exact SHA/ref/port/reviewer"
+    exit 77
+  fi
+  if [[ ! "$PREVIEW_PID" =~ ^[0-9]+$ ||
+        "$(sudo ps -p "$PREVIEW_PID" -o user= 2>/dev/null | xargs)" != "fieldwiring" ||
+        "$(sudo ps -p "$PREVIEW_PID" -o args= 2>/dev/null)" != *"WorkOrders/Application/preview_entry.py"* ]]; then
+    echo "HOLD: expected exact Work Management preview PID not running/owned"
+    exit 78
+  fi
+  if ! sudo ss -ltnp "sport = :$PREVIEW_PORT" 2>/dev/null |
+      grep -Fq "pid=$PREVIEW_PID,"; then
+    echo "HOLD: port is not owned by the saved preview PID; no cleanup attempted"
+    exit 79
+  fi
+  if [[ "$CLONE_OWNED" != 1 || "$CLONE_CONTAINER" != msb-wo419-preview-* ||
+        "$CLONE_DATABASE" != msb_wo419_preview ||
+        "$(sudo docker inspect "$CLONE_CONTAINER" --format '{{.State.Running}}' 2>/dev/null)" != true ||
+        -n "$(sudo docker inspect "$CLONE_CONTAINER" --format '{{range .NetworkSettings.Ports}}{{.HostIp}}{{end}}' 2>/dev/null)" ]]; then
+    echo "HOLD: exact saved private disposable PostgreSQL clone not verified"
+    exit 80
+  fi
+  if [[ "$WORKTREE" != /tmp/msb-wo419-preview-candidate-* ||
+        "$(sudo git -C "$WORKTREE" rev-parse HEAD 2>/dev/null)" != "$CANDIDATE_SHA" ]]; then
+    echo "HOLD: saved candidate worktree identity differs"
+    exit 81
+  fi
+  local health
+  health="$(curl -fsS --max-time 8 "http://127.0.0.1:$PREVIEW_PORT/api/work-orders/health")" || {
+    echo "HOLD: preserved browser health unavailable"
+    exit 82
+  }
+  saved_version="$(printf '%s' "$health" |
+    sudo -u fieldwiring -H "$PYTHON" -c 'import sys,json; j=json.load(sys.stdin); print(j.get("version", ""))')" || {
+      echo "HOLD: preserved browser version cannot be read"; exit 82;
+    }
+  local expected_version
+  expected_version="$(grep -E '^APP_VERSION = ' "$WORKTREE/WorkOrders/Application/backend.py" | head -1 |
+    sed -E 's/^APP_VERSION = "([^"]+)".*/\\1/')"
+  if [[ -z "$saved_version" || "$saved_version" != "$expected_version" ]]; then
+    echo "HOLD: preserved browser version differs from pinned source"
+    exit 83
+  fi
+  echo "WO419 DISPOSABLE BROWSER REVIEW RESUMED"
+  echo "Same private clone, original Work Order edits, and preserved report: $REPORT"
+  echo "Candidate: $CANDIDATE_SHA; reviewer: $PREVIEW_EMAIL; URL: http://127.0.0.1:$PREVIEW_PORT/"
+  echo "When review is finished press ENTER; SSH loss will preserve it again."
+  PRESERVE_FOR_RECONNECT=0
+  if ! read -r -p "Press ENTER only after completing browser review. " _; then
+    PRESERVE_FOR_RECONNECT=1
+    echo "SSH/PTTY input lost; preserving preview state"
+    exit 75
+  fi
+  echo "Operator finished resumed review; performing controlled teardown"
+}
+
+if [[ "$MODE" == "resume" ]]; then
+  resume_existing_preview
+  exit 0
+fi
 
 # No clone, worktree, cleanup, sudo or listener modification before
 # verifying the explicit non-Production port and foreground authorization.
@@ -362,6 +487,8 @@ COMMAND_NEGATIVE_STATUS="$(curl -s -o /dev/null -w '%{http_code}' -X POST   -H '
 [[ "$COMMAND_NEGATIVE_STATUS" == 403 ]] || { echo "HOLD: cross-site/no-CSRF write gate failed"; exit 14; }
 
 echo
+write_resume_state
+echo "Reconnect state: $STATE_FILE"
 echo "WO419 BROWSER REVIEW READY"
 echo "Open via the protected SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/"
 echo "Candidate SHA: $CANDIDATE_SHA"
@@ -370,5 +497,9 @@ echo "DB: private disposable clone only; Work Management GET API/read-only"
 echo "V0.3: Save actions mutate ONLY disposable clone; no mail/Directus send."
 echo "Review: Manager Create, multi-person assignment, notes, separate triage, Testing and Feedback."
 echo "Clone writes disappear at cleanup; Production and Directus remain unchanged."
-read -r -p "After reviewing the browser, press ENTER here for controlled teardown. " _
-echo "Operator browser review window ended"
+if ! read -r -p "After reviewing the browser, press ENTER here for controlled teardown. " _; then
+  PRESERVE_FOR_RECONNECT=1
+  echo "Review input/tunnel was lost; preserving browser, clone, and saved review changes"
+  exit 75
+fi
+echo "Operator browser review window ended; performing controlled teardown"
