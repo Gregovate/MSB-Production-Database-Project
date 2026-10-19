@@ -11,6 +11,8 @@
 
 ## October 19 Setup closeout logistics — truthful empty/return eligibility (small operational slice)
 
+**Focused implementation issue:** [#430 — actual removable-cargo Empty, show-base stay versus return-ready, physical receipt](https://github.com/Gregovate/MSB-Production-Database-Project/issues/430). Permanent physical/synthetic role comes from [#429](https://github.com/Gregovate/MSB-Production-Database-Project/issues/429); no duplicate #230 editing here. Final installed/ready-for-wiring is independent [#431](https://github.com/Gregovate/MSB-Production-Database-Project/issues/431).
+
 **Operator requirement:** a volunteer who scans a physical Container or selects it in Setup must be able to see **whether its removable cargo is actually accounted for**, whether its physical base remains a show Display, and whether it can **actually go back to the Workshop**. This is a focused #88 operational completion deliverable, not the whole #230 editor or #231 Testing overhaul.
 
 For each real Container in the active annual Session, show readable name/C-number, permanent cargo expectations and *current recorded* assignments, optional verified integral LOR Display, latest valid park location/source/time/accuracy and explicit one of:
