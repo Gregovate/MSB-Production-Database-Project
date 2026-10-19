@@ -314,6 +314,16 @@ def test_wo419_cleanup_uses_real_listener_and_preserves_unknown_owners(tmp_path)
     assert runner.index('echo "PASS: verified Work Orders listener stopped') < runner.index(
         'sudo docker rm -f "$CLONE_CONTAINER"'
     )
+    for safeguard in (
+        "PASS: owned disposable clone removed",
+        "HOLD: owned disposable clone still exists after teardown",
+        "PASS: disposable candidate worktree unregistered",
+        "HOLD: disposable candidate worktree still registered",
+        "HOLD: private preview resume state remained after teardown",
+        "WO419 DISPOSABLE BROWSER REVIEW: CLEAN EXIT",
+    ):
+        assert safeguard in runner, safeguard
+    assert 'if [[ -e "$STATE_FILE" || -L "$STATE_FILE" ]]; then' in runner
     if not all(shutil.which(exe) for exe in ("bash", "setsid", "ss")):
         pytest.skip("Linux Bash, setsid and ss required for live process test")
 
