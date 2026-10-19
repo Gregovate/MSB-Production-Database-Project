@@ -6,6 +6,8 @@ clone. This entry point deliberately has no ticket mutation or email routes.
 from __future__ import annotations
 
 import logging
+import os
+import hmac
 import re
 from pathlib import Path
 
@@ -13,8 +15,9 @@ import psycopg2
 from flask import Flask, Response, jsonify, request, send_from_directory
 
 from repository import WorkManagementError, WorkManagementRepository
+from commands import CloneCommands
 
-APP_VERSION = "V0.2.0-no-save-operator-review"
+APP_VERSION = "V0.3.0-disposable-write-review"
 BASE_DIR = Path(__file__).resolve().parent
 CLOUDFLARE_HEADER = "Cf-Access-Authenticated-User-Email"
 TICKET_KEY = re.compile(r"^(?:WO|INTAKE)-[1-9][0-9]{0,12}$")
@@ -71,7 +74,7 @@ def work_management_health() -> Response:
     return jsonify(
         status="preview",
         version=APP_VERSION,
-        read_only=True,
+        read_only=False,
         disposable_only=True,
         person_id=current["person_id"],
     )
@@ -79,7 +82,8 @@ def work_management_health() -> Response:
 
 @app.get("/api/work-orders/access")
 def access() -> Response:
-    return jsonify(access=actor(), version=APP_VERSION, read_only=True)
+    return jsonify(access=actor(), version=APP_VERSION, read_only=False,
+                   csrf_token=os.environ.get("WORK_MGMT_PREVIEW_CSRF_TOKEN", ""))
 
 
 @app.get("/api/work-orders/assignees")
@@ -93,7 +97,41 @@ def reviewer_options() -> Response:
     """Manager-only existing catalogs for no-save UX rehearsal."""
     who = actor()
     return jsonify(options=WorkManagementRepository().reviewer_options(who),
-                   read_only=True, rehearsal_only=True)
+                   read_only=False, disposable_only=True)
+
+
+def require_command_safety() -> dict:
+    """Reject cross-site requests and any missing disposable session key."""
+    current = actor()
+    token = os.environ.get("WORK_MGMT_PREVIEW_CSRF_TOKEN", "")
+    provided = request.headers.get("X-WO419-CSRF", "")
+    if not re.fullmatch(r"[a-f0-9]{48}", token) or not hmac.compare_digest(token, provided):
+        raise WorkManagementError("Approved disposable session key required.", 403)
+    origin = request.headers.get("Origin", "")
+    if origin and origin.rstrip("/") != request.host_url.rstrip("/"):
+        raise WorkManagementError("Cross-origin ticket changes are not permitted.", 403)
+    if not request.is_json:
+        raise WorkManagementError("JSON command required.")
+    return current
+
+
+@app.post("/api/work-orders/commands")
+def ticket_command() -> Response:
+    current = require_command_safety()
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        raise WorkManagementError("Valid JSON command required.")
+    action = body.get("action")
+    ticket = body.get("ticket")
+    result = CloneCommands().perform(current, action, ticket, body)
+    return jsonify(result=result, disposable_only=True, notifications="NO_SEND")
+
+
+@app.get("/api/work-orders/tickets/<key>/activity")
+def ticket_activity(key: str) -> Response:
+    current = actor()
+    result = CloneCommands().activity(current, ticket_key(key))
+    return jsonify(activity=result, disposable_only=True, notifications="NO_SEND")
 
 
 @app.get("/api/work-orders/tickets")
