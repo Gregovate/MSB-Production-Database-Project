@@ -95,10 +95,13 @@ wo419_listener_pid() {
 }
 
 wo419_verified_listener() {
-  local pid="$1" expected actual uid pgid sid current
+  local pid="$1" uid pgid sid current
+  local -a argv=()
   [[ "$pid" =~ ^[0-9]+$ ]] || return 1
-  expected="$PYTHON $WORKTREE/WorkOrders/Application/preview_entry.py"
-  actual="$(sudo ps -p "$pid" -o args= 2>/dev/null)" || return 1
+  # ps -o args= may truncate paths when Git worktrees are deeply nested.
+  # Read the two exact NUL-delimited argv strings, never grep a short suffix.
+  mapfile -d '' -t argv < <(sudo cat "/proc/$pid/cmdline" 2>/dev/null)
+  [[ "${#argv[@]}" -eq 2 ]] || return 1
   uid="$(sudo ps -p "$pid" -o uid= 2>/dev/null | xargs)" || return 1
   pgid="$(sudo ps -p "$pid" -o pgid= 2>/dev/null | xargs)" || return 1
   sid="$(sudo ps -p "$pid" -o sid= 2>/dev/null | xargs)" || return 1
@@ -106,7 +109,8 @@ wo419_verified_listener() {
   [[ "$current" == "$pid" &&
      "$uid" == "$(id -u fieldwiring)" &&
      "$pgid" == "$pid" && "$sid" == "$pid" &&
-     "$actual" == "$expected" ]]
+     "${argv[0]}" == "$PYTHON" &&
+     "${argv[1]}" == "$WORKTREE/WorkOrders/Application/preview_entry.py" ]]
 }
 
 cleanup() {
