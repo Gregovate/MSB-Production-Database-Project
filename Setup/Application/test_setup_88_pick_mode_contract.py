@@ -542,3 +542,24 @@ def test_record_location_requires_visible_location_review_before_record_action()
     assert "Manager correction required before return" in ui
     assert "Returned " in ui
     assert "home_location_code" in ui
+
+
+def test_record_location_search_links_container_to_display_names_without_master_mutation():
+    """#88: finding GingerbreadHouse must reveal linked C009 without Directus."""
+    repository = read("setup_movement_repository.py")
+    ui = read("setup_record_location.js")
+    search = repository.split("    def search_assets(", 1)[1].split(
+        "    def current_state(", 1
+    )[0]
+    # A known Display Name must discover its assigned Container even when
+    # the Container description is legacy or misleading.
+    assert "linked.container_id = c.container_id" in search
+    assert "linked.display_name ILIKE %s" in search
+    assert "d.container_id::bigint AS assigned_container_id" in search
+    assert "SELECT asset_type, asset_id, identity, label, assigned_container_id" in search
+    assert "like,  # Container lookup through assigned Display Name." in search
+    assert "assigned CONT:" in ui
+    assert "row.asset_type === 'DISPLAY' && row.assigned_container_id != null" in ui
+    # The added path is read-only and must not create/rename Container identity.
+    assert "UPDATE ref.container" not in search
+    assert "INSERT INTO ref.container" not in search
