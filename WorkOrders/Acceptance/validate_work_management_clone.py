@@ -1,4 +1,6 @@
-"""#419 reusable current-Production-clone read acceptance (NO production writes).
+"""#419 current-Production clone read AND rolled-back native-write preflight.
+
+All mutation checks run against the disposable isolated clone, never Production.
 
 Run only in a detached, pinned candidate checkout through the governed
 MSB Server Management disposable Postgres runbook. This is a feature test,
@@ -17,6 +19,7 @@ APP_DIR = ROOT / "WorkOrders/Application"
 sys.path.insert(0, str(APP_DIR))
 
 from repository import WorkManagementError, WorkManagementRepository, ledger_select  # noqa:E402
+from commands import CloneCommands  # noqa:E402
 
 HEX40 = re.compile(r"^[a-f0-9]{40}$")
 CURRENT_PHASE = "preflight"
@@ -109,7 +112,44 @@ def validate(preview_email: str) -> None:
             raise RuntimeError("Manager rehearsal needs current linked People and task types.")
         if not catalogs["stages"] or not catalogs["work_areas"]:
             raise RuntimeError("Manager rehearsal needs real Stage and Work Area choices.")
-        print("CHECK: Manager catalogs PASS; source-only/no-save controls")
+        print("CHECK: Manager catalog authority PASS; isolated clone write preflight follows")
+
+        # Prove native CRUD and assignment audit tables BEFORE displaying READY.
+        # SAVEPOINT rollback means even the disposable clone has no preflight data.
+        phase("clone_write_transaction_rollback")
+        writer = CloneCommands()
+        with writer.transaction(access) as cur:
+            cur.execute("SHOW transaction_read_only")
+            if cur.fetchone()["transaction_read_only"] != "off":
+                raise RuntimeError("Disposable command transaction is unexpectedly read only.")
+            cur.execute("SAVEPOINT wo419_preflight")
+            wo = writer.new_work_order(cur, access, {
+                "problem": "WO419 disposable preflight only; deliberately rolled back",
+                "task_type_id": catalogs["task_types"][0]["id"],
+                "urgency": 3,
+                "target_year": 2026,
+                "stage_id": catalogs["stages"][0]["id"],
+                "work_area_id": None,
+            })
+            added, removed = writer.reassign(cur, wo, [
+                int(catalogs["people"][0]["person_id"])
+            ])
+            if len(added) != 1 or removed:
+                raise RuntimeError("New Work Order assignment did not persist in transaction.")
+            cur.execute("SELECT count(*) AS count FROM ops.work_order_assignment "
+                        "WHERE work_order_id=%s AND active_flag", (wo,))
+            if cur.fetchone()["count"] != 1:
+                raise RuntimeError("Assigned Person row was not present.")
+            cur.execute("UPDATE ops.work_order SET completion_notes=%s,"
+                        "completed_by_person_id=%s,repair_complete=true,date_completed=now() "
+                        "WHERE work_order_id=%s", (
+                            "WO419 disposable rollback-only completion check",
+                            access["person_id"], wo))
+            if cur.rowcount != 1:
+                raise RuntimeError("Existing native completion command failed.")
+            cur.execute("ROLLBACK TO SAVEPOINT wo419_preflight")
+        print("CHECK: clone-only Create/Assign/Complete transactional rollback PASS; "
+              "no fixture retained, no email generated")
 
         # The accepted source report Intake #60 is an excellent data fixture
         # but cannot be assumed present on every future/current clone.
