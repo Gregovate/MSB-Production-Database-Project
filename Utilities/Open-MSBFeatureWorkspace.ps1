@@ -139,7 +139,7 @@ $json = $workspace | ConvertTo-Json -Depth 10
 
 Write-Host ('Feature:  #{0} / {1}' -f $IssueNumber, $branchName)
 Write-Host ('Checkout: {0}' -f $gitRoot)
-Write-Host ('Color:    {0}; terminal/editor 14 pt, zoom 0' -f $Color)
+Write-Host ('Color:    {0}; terminal/editor 14px, zoom 0' -f $Color)
 Write-Host ('Workspace (outside Git): {0}' -f $workspaceFile)
 
 $changes = @(& git -C $gitRoot status --porcelain --untracked-files=all)
