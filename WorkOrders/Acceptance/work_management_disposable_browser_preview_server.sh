@@ -81,6 +81,34 @@ fingerprint() {
                 FROM stage.work_order_intake i),'')
     )"
 }
+# Identify the REAL listening Flask PID. "setsid ... & echo $!" is only a
+# launch handle: setsid may fork when its child is a process-group leader.
+# The actual listener owns the port and has its own session/PGID.
+wo419_listener_pid() {
+  local -a matches=()
+  mapfile -t matches < <(
+    sudo ss -H -ltnp "sport = :$PREVIEW_PORT" 2>/dev/null |
+      grep -oE 'pid=[0-9]+' | cut -d= -f2 | sort -u
+  )
+  [[ "${#matches[@]}" -eq 1 ]] || return 1
+  printf '%s\n' "${matches[0]}"
+}
+
+wo419_verified_listener() {
+  local pid="$1" expected actual uid pgid sid current
+  [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+  expected="$PYTHON $WORKTREE/WorkOrders/Application/preview_entry.py"
+  actual="$(sudo ps -p "$pid" -o args= 2>/dev/null)" || return 1
+  uid="$(sudo ps -p "$pid" -o uid= 2>/dev/null | xargs)" || return 1
+  pgid="$(sudo ps -p "$pid" -o pgid= 2>/dev/null | xargs)" || return 1
+  sid="$(sudo ps -p "$pid" -o sid= 2>/dev/null | xargs)" || return 1
+  current="$(wo419_listener_pid)" || return 1
+  [[ "$current" == "$pid" &&
+     "$uid" == "$(id -u fieldwiring)" &&
+     "$pgid" == "$pid" && "$sid" == "$pid" &&
+     "$actual" == "$expected" ]]
+}
+
 cleanup() {
   local status=$?
   trap - EXIT HUP INT TERM
@@ -94,16 +122,42 @@ cleanup() {
   fi
   echo
   echo "WO419 preview cleanup, initial status=$status"
-  if [[ -n "$PREVIEW_PID" ]]; then
-    local line
-    line="$(sudo ps -p "$PREVIEW_PID" -o args= 2>/dev/null)"
-    if [[ "$line" == *"WorkOrders/Application/preview_entry.py"* ]]; then
-      sudo -u fieldwiring -H kill -- -"$PREVIEW_PID" >/dev/null 2>&1 || true
-    else
-      echo "HOLD: preview PID command mismatch; no broad process kill"
-      status=80
+  # Never delete the disposable DB while its Flask process still runs.
+  # Before browser READY, PID may be unset; the actual port listener is
+  # still discoverable. Any foreign/ambiguous listener HALTS safely.
+  if [[ -n "$(ss -ltnH "sport = :$PREVIEW_PORT")" ]]; then
+    local listener
+    listener="$(wo419_listener_pid)" || {
+      echo "HOLD: cannot uniquely identify the preview listener; preserving clone/worktree"
+      exit 83
+    }
+    if [[ -n "$PREVIEW_PID" && "$listener" != "$PREVIEW_PID" ]] ||
+       ! wo419_verified_listener "$listener"; then
+      echo "HOLD: port owner differs from exact Work Orders candidate; no kill or clone removal"
+      exit 83
+    fi
+    echo "Stopping verified Work Orders listener PID $listener only"
+    sudo -u fieldwiring -H kill -TERM -- "$listener" || {
+      echo "HOLD: verified listener did not accept TERM; preserving clone/worktree"
+      exit 83
+    }
+    for _ in $(seq 1 30); do
+      [[ -z "$(ss -ltnH "sport = :$PREVIEW_PORT")" ]] && break
+      sleep 0.2
+    done
+    if [[ -n "$(ss -ltnH "sport = :$PREVIEW_PORT")" ]]; then
+      if wo419_verified_listener "$listener"; then
+        echo "Verified listener ignored TERM; terminating that same PID only"
+        sudo -u fieldwiring -H kill -KILL -- "$listener" || true
+        sleep 1
+      fi
+    fi
+    if [[ -n "$(ss -ltnH "sport = :$PREVIEW_PORT")" ]]; then
+      echo "HOLD: preview still listening; preserving clone/worktree/state for recovery"
+      exit 83
     fi
   fi
+  echo "PASS: verified Work Orders listener stopped; disposable teardown permitted"
   if [[ "$CLONE_OWNED" == 1 && "$CLONE_CONTAINER" == msb-wo419-preview-* ]]; then
     sudo docker rm -f "$CLONE_CONTAINER" >/dev/null 2>&1 || true
   fi
@@ -207,16 +261,9 @@ resume_existing_preview() {
     echo "HOLD: resume request does not match exact SHA/ref/port/reviewer"
     exit 77
   fi
-  if [[ ! "$PREVIEW_PID" =~ ^[0-9]+$ ||
-        "$(sudo ps -p "$PREVIEW_PID" -o uid= 2>/dev/null | xargs)" != "$(id -u fieldwiring)" ||
-        "$(sudo ps -p "$PREVIEW_PID" -o args= 2>/dev/null)" != *"WorkOrders/Application/preview_entry.py"* ]]; then
-    echo "HOLD: expected exact Work Management preview PID not running/owned"
+  if ! wo419_verified_listener "$PREVIEW_PID"; then
+    echo "HOLD: saved Work Orders PID is not the exact owned session/port/source"
     exit 78
-  fi
-  if ! sudo ss -ltnp "sport = :$PREVIEW_PORT" 2>/dev/null |
-      grep -Fq "pid=$PREVIEW_PID,"; then
-    echo "HOLD: port is not owned by the saved preview PID; no cleanup attempted"
-    exit 79
   fi
   if [[ "$CLONE_OWNED" != 1 || "$CLONE_CONTAINER" != msb-wo419-preview-* ||
         "$CLONE_DATABASE" != msb_wo419_preview ||
@@ -450,7 +497,7 @@ sudo -u fieldwiring -H env WORK_MGMT_PREVIEW_MODE=disposable \
     --candidate-sha "$CANDIDATE_SHA" --preview-email "$PREVIEW_EMAIL"
 
 echo "--- Start pinned Work Management reviewer (no client-supplied identity) ---"
-PREVIEW_PID="$(
+LAUNCH_PID="$(
   sudo -u fieldwiring -H env WORK_MGMT_PREVIEW_MODE=disposable \
     WORK_MGMT_DATABASE_DSN="$DSN" WORK_MGMT_CLONE_IP="$HOST_IP" \
     WORK_MGMT_CLONE_WRITE_TOKEN="$CLONE_WRITE_TOKEN" WORK_MGMT_PREVIEW_CSRF_TOKEN="$PREVIEW_CSRF_TOKEN" \
@@ -463,7 +510,7 @@ PREVIEW_PID="$(
       echo $!
     '
 )"
-[[ "$PREVIEW_PID" =~ ^[0-9]+$ ]] || { echo "HOLD: preview PID missing"; exit 12; }
+[[ "$LAUNCH_PID" =~ ^[0-9]+$ ]] || { echo "HOLD: preview launch handle missing"; exit 12; }
 ready=0
 for _ in $(seq 1 60); do
   if curl -fsS --max-time 5 "http://127.0.0.1:$PREVIEW_PORT/api/work-orders/health" >/dev/null 2>&1; then
@@ -476,6 +523,16 @@ if [[ "$ready" != 1 ]]; then
   # Avoid printing raw sensitive app/runtime details from logs to the operator.
   exit 13
 fi
+# Resolve PID from the bound port, NOT the background setsid launch handle.
+PREVIEW_PID="$(wo419_listener_pid)" || {
+  echo "HOLD: Work Orders listener PID could not be uniquely identified"
+  exit 13
+}
+if ! wo419_verified_listener "$PREVIEW_PID"; then
+  echo "HOLD: Work Orders listener is not the expected fieldwiring session/candidate"
+  exit 13
+fi
+echo "PASS: actual port $PREVIEW_PORT listener PID $PREVIEW_PID verified"
 # Real authorized browser routes and explicit negative write path.
 curl -fsS --max-time 10 "http://127.0.0.1:$PREVIEW_PORT/api/work-orders/tickets?scope=all" >/dev/null
 # A reporter-facing personal queue is read-only; Manager queues are gated
