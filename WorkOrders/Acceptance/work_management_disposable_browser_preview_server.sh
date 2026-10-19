@@ -170,6 +170,14 @@ if ! sudo git -C "$REPO_ROOT" merge-base --is-ancestor "$LIVE_HEAD" "$CANDIDATE_
   exit 9
 fi
 sudo git -C "$REPO_ROOT" worktree add --detach "$WORKTREE" "$CANDIDATE_SHA"
+# The root-admin boundary owns Git metadata; the fieldwiring reader must
+# never be granted traverse access to the shared production Git directory.
+VERIFIED_WORKTREE_SHA="$(sudo git -C "$WORKTREE" rev-parse HEAD)"
+[[ "$VERIFIED_WORKTREE_SHA" == "$CANDIDATE_SHA" ]] || {
+  echo "HOLD: detached candidate Git identity mismatch"; exit 9;
+}
+echo "PASS: privileged detached candidate SHA verified"
+
 # Only the temporary public-source worktree is readable by the service account;
 # do not change /opt runtime permissions or live checkout ownership.
 sudo chmod -R a+rX "$WORKTREE"
@@ -294,7 +302,7 @@ DSN="host=$HOST_IP port=5432 dbname=$CLONE_DATABASE user=fieldwiring_app passwor
 
 echo "--- Clone query/read authorization and real stage assertions ---"
 sudo -u fieldwiring -H env WORK_MGMT_PREVIEW_MODE=disposable \
-  WORK_MGMT_DATABASE_DSN="$DSN" PYTHONDONTWRITEBYTECODE=1 \
+  WORK_MGMT_DATABASE_DSN="$DSN" WORK_MGMT_VERIFIED_CANDIDATE_SHA="$VERIFIED_WORKTREE_SHA" PYTHONDONTWRITEBYTECODE=1 \
   "$PYTHON" "$WORKTREE/WorkOrders/Acceptance/validate_work_management_clone.py" \
     --candidate-sha "$CANDIDATE_SHA" --preview-email "$PREVIEW_EMAIL"
 
