@@ -1661,7 +1661,11 @@
       rows.forEach(function (row) {
         const button = document.createElement('button');
         button.type = 'button';
-        button.textContent = row.identity + ' — ' + (row.label || '');
+        // Show the existing permanent Container relationship without implying
+        // that a linked testing wrapper is a second physical object.
+        const linked = row.asset_type === 'DISPLAY' && row.assigned_container_id != null
+          ? ' · assigned CONT:' + row.assigned_container_id : '';
+        button.textContent = row.identity + ' — ' + (row.label || '') + linked;
         button.addEventListener('click', function () {
           void handleIdentity(row.identity, 'TOUCH_SELECT');
         });
