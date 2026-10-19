@@ -67,6 +67,8 @@ def require_native_database(cur: Any) -> None:
 class V1Repository(WorkManagementRepository):
     """Existing unified read-model SQL with a governed Production reader."""
 
+    activity_table = "ops.work_management_activity"
+
     def __init__(self) -> None:
         self.dsn = require_v1_production_configuration()
 
