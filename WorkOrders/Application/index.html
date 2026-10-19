@@ -181,6 +181,20 @@
             <select id="review-urgency"><option value="">Select urgency</option><option value="1">1 · Immediate / Critical</option><option value="2">2 · High</option><option value="3">3 · Normal</option><option value="4">4 · Low</option><option value="5">5 · Planning</option></select>
             <label for="review-target-year">Target year</label>
             <input id="review-target-year" type="number" min="2020" max="2100" placeholder="2026">
+            <label for="review-setup-mode">Does this repair affect seasonal Setup?</label>
+            <select id="review-setup-mode">
+              <option value="none">No · Work Order only</option>
+              <option value="request">Yes · Flag for Manager Setup review</option>
+              <option value="create" data-manager-only>Manager · Create linked season-only Setup task now</option>
+            </select>
+            <p class="subtle">A seasonal task is not a reusable Catalog task. Crew may flag it; Managers can create the linked Setup gate in the same save.</p>
+            <div id="review-setup-fields" hidden>
+              <label for="review-setup-season">Open seasonal Setup session</label>
+              <select id="review-setup-season"><option value="">Choose a current season</option></select>
+              <label for="review-setup-name">Season-only task name (optional)</label>
+              <input id="review-setup-name" type="text" maxlength="160" placeholder="Defaults to the repair description">
+              <p class="subtle">Setup will show Waiting on Work Order until the repair is recorded complete. No duplicate Report Work required.</p>
+            </div>
           </fieldset>
           <fieldset id="review-person-fields" hidden>
             <legend>Manager · Assign one or more existing volunteers</legend>
