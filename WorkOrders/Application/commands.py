@@ -364,8 +364,14 @@ class CloneCommands:
             if prior:
                 if prior["event_kind"] != action:
                     raise WorkManagementError("Command key already used for another action.", 409)
-                return {"ticket": prior["ticket_key"], "saved": True,
-                        "repeat": True, "notifications": "NO_SEND"}
+                return {
+                    "ticket": prior["ticket_key"], "saved": True,
+                    "repeat": True, "notifications": "NO_SEND",
+                    "linked_setup_session_task_id": (
+                        prior["details"].get("linked_setup_session_task_id")
+                        if isinstance(prior["details"], dict) else None
+                    ),
+                }
             if kind == "WO":
                 cur.execute(
                     "SELECT work_order_id,date_completed,display_test_session_id, "
