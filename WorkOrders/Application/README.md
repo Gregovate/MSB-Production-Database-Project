@@ -27,6 +27,14 @@ The operator's first actual read-only disposable browser review returned **CHANG
 
 **Next gated work:** Establish reviewed schema/command authorization on current-Production disposable PostgreSQL; implement transaction-safe write routes with actor/role checks and no-send notification outbox; add browser functional tests; execute current full source regression and guarded server clone/8898 review, recording fingerprint and clean exit. Remain on draft PR #420. Never deploy or cut over without separate authorization.
 
+## October 19 — all-open Work Order aging report (Manager)
+
+The operator additionally requires an **aging report for every open Work Order by original creation date**. This is now source-implemented in the same WorkOrders/Application browser and PostgreSQL WO419-M01 projection; no competing reporter system or migration. For this report, "open" means `ops.work_order.date_completed IS NULL`, even if the record is inactive and needs reconciliation. Last-update timestamp, assignment date, or absent status events are **not** age-start dates.
+
+The Manager's explicit **Open Work Order Aging Report** view shows numeric Work Order ID, original creation date, full 24-hour days open, priority, problem/location, active assignees and inactive exceptions. By default it is **oldest created first**, with newest-created, highest/lowest priority and numeric-ID sorts available. It includes **all recorded-open rows**, not just the normal Work Order list's first 80, and offers a complete guarded CSV export with spreadsheet-injection escaping. Counters group 0–7, 8–30, 31–60, 61+ day ages, plus unassigned and inactive-but-undated exceptions. Clicking a row opens its existing Work Order detail. It does not change any Work Order records.
+
+Backend `GET /api/work-orders/aging` strictly requires Manager authorization. The Crew browser does not expose the view. The current-Production disposable validator compares the full aging-result count and inactive-exception count against native `ops.work_order` and checks created-date sort order before browser READY; negative Crew access is tested. No Production database was mutated and no mail was sent. Source CI and actual disposable browser acceptance are distinct gates.
+
 ## October 19 V0.3.1 — Role-oriented home and sortable queues
 
 **Operator directive:** Separate Production Crew and Manager screens/actions, not just a shared dropdown. Public Google Work Order Request remains at the existing MSB portal for any reporter, using current Park/Workshop Google Form and Apps Script. Internal authenticated Production Crew may also create **direct native Work Orders** without Intake. Manager controls current Work Order assignments and public Intake triage.
