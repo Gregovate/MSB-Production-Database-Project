@@ -43,7 +43,6 @@
     return {
       scope: $("scope").value, person: $("assignee").value,
       sort: $("ticket-sort").value,
-      include_planning: $("include-planning").checked ? "1" : "0",
       showCompleted: $("show-completed").checked,
       includePlanning: $("include-planning").checked,
       search: $("ticket-search").value,
@@ -131,7 +130,7 @@
     state.navigationReady = true;
     writeNavigation("replace");
     const ticket = qs.get("ticket");
-    return {ticket: /^(WO|INTAKE)-[1-9]\\d{0,12}$/.test(ticket || "") ? ticket : null,
+    return {ticket: /^(WO|INTAKE)-[1-9]\d{0,12}$/.test(ticket || "") ? ticket : null,
       create: qs.get("mode") === "create"};
   }
 
@@ -405,6 +404,7 @@
       scope, q: $("ticket-search").value.trim(),
       show_completed: $("show-completed").checked ? "1" : "0",
       sort: $("ticket-sort").value,
+      include_planning: $("include-planning").checked ? "1" : "0",
     });
     if (scope === "person") params.set("person_id", person);
     try {
@@ -491,9 +491,11 @@
     }
   }
 
-  async function selectTicket(key) {
+  async function selectTicket(key, options = {}) {
     if (!/^(WO|INTAKE)-[1-9]\d{0,12}$/.test(key || "")) return;
+    if (!options.noHistory) writeNavigation("replace");
     state.selected = key;
+    state.createMode = false;
     renderList();
     const serial = ++state.fetchId;
     try {
