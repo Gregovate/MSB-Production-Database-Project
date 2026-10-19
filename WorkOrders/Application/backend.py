@@ -17,7 +17,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 from repository import WorkManagementError, WorkManagementRepository
 from commands import CloneCommands
 
-APP_VERSION = "V0.3.0-disposable-write-review"
+APP_VERSION = "V0.3.1-role-based-crew-create-manager-triage-sort"
 BASE_DIR = Path(__file__).resolve().parent
 CLOUDFLARE_HEADER = "Cf-Access-Authenticated-User-Email"
 TICKET_KEY = re.compile(r"^(?:WO|INTAKE)-[1-9][0-9]{0,12}$")
@@ -134,6 +134,14 @@ def ticket_activity(key: str) -> Response:
     return jsonify(activity=result, disposable_only=True, notifications="NO_SEND")
 
 
+@app.get("/api/work-orders/manager-inbox")
+def manager_inbox() -> Response:
+    """Manager-only actionable Intake counts for the home-screen alert."""
+    who = actor()
+    return jsonify(inbox=WorkManagementRepository().manager_inbox(who),
+                   disposable_only=True)
+
+
 @app.get("/api/work-orders/tickets")
 def tickets() -> Response:
     who = actor()
@@ -146,9 +154,10 @@ def tickets() -> Response:
         raise WorkManagementError("Invalid selected Person.")
     person_id = int(raw_id) if raw_id else None
     show_completed = request.args.get("show_completed", "0") == "1"
+    sort = request.args.get("sort", "priority").strip().lower()
     rows = WorkManagementRepository().tickets(
         actor=who, scope=scope, person_id=person_id,
-        show_completed=show_completed, search=search,
+        show_completed=show_completed, search=search, sort=sort,
     )
     for row in rows:
         row["category"] = (
@@ -161,7 +170,7 @@ def tickets() -> Response:
             else "Submitted — awaiting review" if row["type"] != "WORK_ORDER"
             else "Not recorded complete"
         )
-    return jsonify(tickets=rows, scope=scope, read_only=True)
+    return jsonify(tickets=rows, scope=scope, sort=sort, read_only=True)
 
 
 @app.get("/api/work-orders/tickets/<key>")
