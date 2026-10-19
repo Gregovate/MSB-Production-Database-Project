@@ -1,4 +1,4 @@
-/* #419 disposable-only read browser. All ticket operations are GET. */
+/* #419 V0.3: read browser with approved disposable-only save commands. */
 (() => {
   "use strict";
   const $ = (id) => document.getElementById(id);
@@ -146,6 +146,7 @@
 
   function showDetail(row) {
     state.detail = row;
+    $("detail-content").classList.remove("create-mode");
     const more = $("related-information");
     more.open = false;
     state.relatedLoadedFor = null;
@@ -275,7 +276,9 @@
         getJson("/api/work-orders/assignees"),
       ]);
       state.actor = access.access;
-      document.dispatchEvent(new CustomEvent("wo419:actor", { detail: state.actor }));
+      document.dispatchEvent(new CustomEvent("wo419:actor", {
+        detail: { ...state.actor, csrf_token: access.csrf_token }
+      }));
       document.querySelectorAll("#scope option[data-manager-only]").forEach((option) => {
         option.disabled = !state.actor.can_manage;
         option.hidden = !state.actor.can_manage;
@@ -297,10 +300,33 @@
     }
   }
 
+  // Same MSB brand assets, local preference key and theme rule as Setup.
+  const lightLogo = "https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg";
+  const darkLogo = "https://webassets.sheboyganlights.org/images/branding/msb-white-logo-600-plain.svg";
+  function applyTheme(value) {
+    document.documentElement.dataset.theme = value;
+    $("theme-toggle").textContent = value === "dark" ? "Light mode" : "Dark mode";
+    $("screen-logo").src = value === "dark" ? darkLogo : lightLogo;
+  }
+  let savedTheme = null;
+  try { savedTheme = localStorage.getItem("msb-theme"); } catch (_) { /* Storage optional. */ }
+  applyTheme(savedTheme === "light" || savedTheme === "dark" ? savedTheme :
+    (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
   $("theme-toggle").addEventListener("click", () => {
-    const dark = document.body.classList.toggle("dark-theme");
-    $("theme-toggle").setAttribute("aria-pressed", String(dark));
-    $("theme-toggle").textContent = dark ? "Light theme" : "Dark theme";
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    applyTheme(next);
+    try { localStorage.setItem("msb-theme", next); } catch (_) { /* Keep current theme. */ }
+  });
+  document.addEventListener("wo419:saved", async (event) => {
+    const saved = event.detail || {};
+    if (!saved.ticket) return;
+    if ($("scope").value === "mine" && (!state.tickets.some(row => row.ticket === saved.ticket))) {
+      $("scope").value = "all";
+      scopeChanged();
+    } else {
+      await loadTickets();
+    }
+    await selectTicket(saved.ticket);
   });
   $("scope").addEventListener("change", scopeChanged);
   $("assignee").addEventListener("change", loadTickets);
