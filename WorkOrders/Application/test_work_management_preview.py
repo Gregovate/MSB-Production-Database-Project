@@ -595,8 +595,7 @@ def test_setup_season_link_is_manager_only_and_uses_existing_setup_command():
     assert "ops.create_setup_season_task(" in source
     assert 'None, "GATE"' in source
     assert "work_order_id, True" in source
-    assert '"SEASON_ONLY"' not in source or "SEASON_ONLY" in source
-    assert "SETUP" not in source or "setup_session_task" in source
+    assert "ops.setup_session_task" in source
     assert "CREATE TABLE ref.setup_task" not in source
     assert '"linked_setup_session_task_id"' in source
 
