@@ -20,6 +20,16 @@ The core model preserves these design rules:
 
 Current PostgreSQL schema, constraints, procedures, and triggers are implementation truth when they differ from older design drafts.
 
+## #419 browser finding — assignment backlog and dedicated Testing view (October 18)
+
+During the first successful read-only browser review, the operator found that Work Orders assigned to the signed-in volunteer included previously unknown work, work needing reassignment, and work physically done but not recorded complete. **Do not interpret current assignment or recorded status as evidence the volunteer received notice or actually performed the work.** The candidate exposed a real historical operational backlog; no Production assignments or completions were changed by reviewing it.
+
+The unified application's Manager workflows must make **New Internal Work Order**, **Assign/Reassign (one or multiple existing People)**, **Unassigned**, and **Review/Complete** easy to discover without reverting to Directus table navigation. Preserve assignment history, legitimate actual completion notes, actor/time and Testing integration. A physically completed but open record requires review and authorized completion, not automatic bulk closure. Reassignment must not rewrite who historically held the assignment.
+
+**Dedicated Testing Work Orders view:** retain the existing Testing-origin repair identity and automatic creation rules, but present a separate filter/queue for Test Session repairs, including repair jobs still requiring human assignment, alongside the general My Work and All Work Orders views. This is a *view of the same authoritative ops.work_order records*, not a new source of truth or Intake pathway. Assigning Testing work remains a deliberate authorized Manager operation; do not confuse automatic repair creation with automatic assignee selection. Completion must still update the linked Testing record through the approved lifecycle.
+
+The read-only V0.1 browser cannot exercise these required commands and is **CHANGES REQUIRED**, not P0 acceptance. The findings do not authorize Production data cleanup, alternate completion SQL, Flow retirement, or a new database model.
+
 ## #419 — Unified MSB Work Management Application Contract (October 18, 2026)
 
 **Engineering authority and status:** This section records the agreed operating model and the **verified current Production findings** for [#419](https://github.com/Gregovate/MSB-Production-Database-Project/issues/419). It governs application implementation and regression acceptance; GitHub issues track the work and PRs implement it. **New Work Management screens, correction ownership/replies, and reporter notification workflows are NOT deployed merely because this design or a candidate SQL query is committed.** The earlier production Work Order and Intake data models remain authoritative.
