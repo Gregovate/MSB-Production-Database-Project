@@ -13,6 +13,8 @@
 -- Thus original promoted/denied Intake rows are NOT recoverable here.
 -- Do not call promotion or reject paths merely to test this SELECT.
 -- No Work Order outbound message or notification is sent by this query.
+-- opened_at is native ops.work_order.created_at, never updated_at/assignment date.
+-- Pending human Intake has opened_at NULL in this WO aging context.
 --
 -- This query is a backend read-model SPIKE for future protected app API.
 -- NOT an application permission boundary: app must enforce the current
@@ -120,6 +122,7 @@ all_tickets AS (
         GREATEST(w.updated_at,
                  ar.latest_assignment_change,
                  st.status_at) AS latest_activity_at,
+        w.created_at AS opened_at,
         w.date_completed AS done_at,
         w.is_active,
         CASE
@@ -187,6 +190,7 @@ all_tickets AS (
             END
         )::text AS reporter,
         i.updated_at AS latest_activity_at,
+        NULL::timestamptz AS opened_at,
         NULL::timestamptz AS done_at,
         true AS is_active,
         NULL::text AS integrity_note
@@ -215,6 +219,7 @@ SELECT
     active_assignee_person_ids AS assignee_ids,
     reporter AS reported_by,
     latest_activity_at AS last_at,
+    opened_at,
     done_at,
     is_active AS active,
     integrity_note AS review_flag
