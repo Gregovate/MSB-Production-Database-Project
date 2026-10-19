@@ -69,7 +69,13 @@
     option(picker, "", "Choose an action");
     available.forEach((kind) => option(picker, kind, actions[kind]));
     picker.disabled = !model.actor || !available.length;
+    // A late reviewer-options/actor refresh must not silently close a Create
+    // form that the operator explicitly opened. The selector is hidden from
+    // view, so losing its selected value otherwise looks like a dead button.
+    const creating = !model.ticket && model.actor?.can_create &&
+      byId("detail-content").classList.contains("create-mode");
     if (available.includes(previous)) picker.value = previous;
+    else if (creating && available.includes("create")) picker.value = "create";
 
     const ticket = model.ticket;
     const title = byId("review-panel-title");
@@ -382,7 +388,15 @@
     drawActions();
     byId("review-action").value = "create";
     actionChanged();
-    byId("review-workbench").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    // Explicitly expose the form: a disabled/hidden action picker cannot be
+    // the only UI state proof for direct Create. If a later asynchronous
+    // redraw runs, drawActions() above preserves create-mode.
+    const form = byId("review-action-form");
+    form.hidden = false;
+    byId("review-create-fields").hidden = false;
+    byId("create-work-order").setAttribute("aria-expanded", "true");
+    byId("review-workbench").scrollIntoView({ behavior: "smooth", block: "start" });
+    byId("review-problem").focus();
     document.dispatchEvent(new CustomEvent("wo419:open-create"));
   }
 
@@ -436,6 +450,7 @@
   document.addEventListener("wo419:ticket", (event) => {
     model.ticket = event.detail;
     byId("detail-content").classList.remove("create-mode");
+    byId("create-work-order").setAttribute("aria-expanded", "false");
     byId("review-action").value = "";
     setSelectionFromTicket();
     drawActions();
