@@ -449,3 +449,27 @@ def test_manager_intake_count_excludes_promoted_and_closed_history():
     assert "!model.actor?.can_manage" in js or "!model.actor?.can_create" in js
     assert "model.actor?.can_manage" in js
     assert "payload.disposable_only" in js
+
+
+def test_directus_role_permissions_do_not_promote_generic_volunteer_or_browser():
+    permits = repository.work_management_role_permissions
+    crew = permits({"role_name": "Production Crew", "policy_names": [],
+                    "can_manage_setup": False})
+    assert crew == {"can_manage": False, "can_create": True,
+                    "can_assign": False, "can_triage": False}
+    manager = permits({"role_name": "Manager", "policy_names": [],
+                       "can_manage_setup": True})
+    assert all(manager.values())
+    admin = permits({"role_name": "Administrator", "policy_names": [],
+                     "can_manage_setup": True})
+    assert all(admin.values())
+    delegated = permits({"role_name": "Unassigned", "policy_names": ["Production Crew"],
+                         "can_manage_setup": False})
+    assert delegated["can_create"] and not delegated["can_assign"]
+    for role, policy in (("Volunteer", ["Volunteer"]), ("MSB Browser", []),
+                         ("Unassigned", [])):
+        ordinary = permits({"role_name": role, "policy_names": policy,
+                            "can_manage_setup": False})
+        assert not ordinary["can_create"]
+        assert not ordinary["can_assign"]
+        assert not ordinary["can_triage"]
