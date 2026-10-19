@@ -214,7 +214,7 @@ class WorkManagementRepository:
     ) -> list[dict[str, Any]]:
         manager_scopes = ("all", "person", "repairs", "testing",
                           "intake", "feedback", "unassigned", "critical")
-        if scope not in ("mine", "my-feedback", *manager_scopes):
+        if scope not in ("mine", "my-created", "my-feedback", *manager_scopes):
             raise WorkManagementError("Unknown Work Order scope.")
         if scope in manager_scopes and not actor["can_manage"]:
             raise WorkManagementError("Manager view requires Manager permission.", 403)
@@ -239,7 +239,12 @@ class WorkManagementRepository:
         if scope in ("mine", "person"):
             conditions.append("t.type = 'WORK_ORDER' AND %s = ANY(t.assignee_ids)")
             params.append(selected)
-        if scope == "my-feedback":
+        if scope == "my-created":
+            # Newly created Crew WO is initially unassigned, but discoverable
+            # to its creator without granting access to Manager queues.
+            conditions.append("t.type = 'WORK_ORDER' AND t.reporter_id = %s")
+            params.append(user)
+        elif scope == "my-feedback":
             conditions.append("t.type = 'TASK_FEEDBACK' AND t.reporter_id = %s")
             params.append(user)
         elif scope == "unassigned":
