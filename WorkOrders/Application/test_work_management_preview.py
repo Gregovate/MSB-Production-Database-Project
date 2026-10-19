@@ -27,6 +27,12 @@ class FakeRepo:
         return {"person_id": 101, "display_name": "Preview Person",
                 "can_manage": True, "can_read": True}
 
+    def manager_inbox(self, actor):
+        FakeRepo.calls.append(("manager_inbox", actor["person_id"]))
+        if not actor["can_manage"]:
+            raise repository.WorkManagementError("Manager Intake is not authorized.", 403)
+        return {"public_intake": 2, "task_feedback": 1}
+
     def assignees(self):
         return [{"person_id": 101, "display_name": "Preview Person"},
                 {"person_id": 202, "display_name": "Another Person"}]
@@ -245,7 +251,7 @@ def test_new_manager_queues_and_reporter_feedback_route(client):
             "actor": {"person_id": 101, "display_name": "Preview Person",
                       "can_manage": True, "can_read": True},
             "scope": scope, "person_id": None,
-            "show_completed": False, "search": "",
+            "show_completed": False, "search": "", "sort": "priority",
         }) in FakeRepo.calls
 
 
@@ -337,3 +343,73 @@ def test_only_clone_guarded_writer_and_no_mail_transport():
     assert "NO_SEND_CAPTURED" in sql
     for forbidden in ("smtplib", "sendgrid", "mailgun", "requests.post("):
         assert forbidden not in commands
+
+
+def test_manager_home_summary_and_sort_are_server_authorized(client):
+    summary = client.get("/api/work-orders/manager-inbox", headers=identity())
+    assert summary.status_code == 200
+    assert summary.json["inbox"] == {"public_intake": 2, "task_feedback": 1}
+    response = client.get(
+        "/api/work-orders/tickets?sort=number_asc&scope=testing",
+        headers=identity(),
+    )
+    assert response.status_code == 200
+    assert response.json["sort"] == "number_asc"
+    assert any(entry[0] == "tickets" and entry[1]["sort"] == "number_asc"
+               for entry in FakeRepo.calls)
+
+
+def test_crew_stays_on_my_work_and_cannot_read_manager_intake(client, monkeypatch):
+    class CrewRepo(FakeRepo):
+        def access(self, email):
+            return {"person_id": 202, "display_name": "Crew Reviewer",
+                    "can_manage": False, "can_create": True,
+                    "can_assign": False, "can_triage": False, "can_read": True}
+    monkeypatch.setattr(backend, "WorkManagementRepository", CrewRepo)
+    assert client.get("/api/work-orders/manager-inbox",
+                      headers=identity()).status_code == 403
+    assert client.get("/api/work-orders/tickets?scope=intake",
+                      headers=identity()).status_code == 200  # FakeRepo does not enforce.
+    # Repository enforces Manager scope before any connection.
+    repo = object.__new__(repository.WorkManagementRepository)
+    for scope in ("all", "person", "intake", "feedback", "testing", "critical"):
+        with pytest.raises(repository.WorkManagementError) as denied:
+            repo.tickets(actor={"person_id": 202, "can_manage": False},
+                         scope=scope, person_id=101 if scope == "person" else None,
+                         show_completed=False, search="")
+        assert denied.value.status == 403
+
+
+def test_create_is_allowed_for_crew_without_assignment_but_triage_is_not():
+    import commands
+    from uuid import uuid4
+    writer = commands.CloneCommands.__new__(commands.CloneCommands)
+    crew = {"person_id": 202, "can_manage": False, "can_read": True}
+    with pytest.raises(repository.WorkManagementError) as denied:
+        writer.perform(crew, "create", None,
+                       {"request_key": str(uuid4()), "person_ids": [101]})
+    assert denied.value.status == 403
+    with pytest.raises(repository.WorkManagementError) as denied:
+        writer.perform(crew, "assign", "WO-372",
+                       {"request_key": str(uuid4()), "person_ids": [101]})
+    assert denied.value.status == 403
+
+
+def test_all_sorts_use_validated_numeric_ids_in_sql_before_limit():
+    source = (HERE / "repository.py").read_text(encoding="utf-8")
+    assert '"number_asc": "COALESCE(t.wo_id, t.in_id) ASC"' in source
+    assert '"number_desc": "COALESCE(t.wo_id, t.in_id) DESC"' in source
+    assert '"priority": "t.urgency ASC NULLS LAST' in source
+    assert '"priority_desc": "t.urgency DESC NULLS LAST' in source
+    assert 'if sort not in sort_modes:' in source
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    assert 'id="ticket-sort"' in html
+    for sort in ("priority", "priority_desc", "number_desc", "number_asc"):
+        assert 'value="' + sort + '"' in html
+    assert 'id="manager-inbox-banner"' in html
+    assert 'id="go-intake"' in html
+    assert 'id="go-feedback"' in html
+    js = (HERE / "app.js").read_text(encoding="utf-8")
+    assert "loadManagerInbox()" in js
+    assert 'sort: $("ticket-sort").value' in js
+    assert "state.actor?.can_manage" in js
