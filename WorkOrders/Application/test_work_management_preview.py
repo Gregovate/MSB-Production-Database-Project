@@ -368,9 +368,7 @@ def test_crew_stays_on_my_work_and_cannot_read_manager_intake(client, monkeypatc
     monkeypatch.setattr(backend, "WorkManagementRepository", CrewRepo)
     assert client.get("/api/work-orders/manager-inbox",
                       headers=identity()).status_code == 403
-    assert client.get("/api/work-orders/tickets?scope=intake",
-                      headers=identity()).status_code == 200  # FakeRepo does not enforce.
-    # Repository enforces Manager scope before any connection.
+    # Manager-specific scope is rejected in the real repository before SQL.
     repo = object.__new__(repository.WorkManagementRepository)
     for scope in ("all", "person", "intake", "feedback", "testing", "critical"):
         with pytest.raises(repository.WorkManagementError) as denied:
@@ -413,3 +411,41 @@ def test_all_sorts_use_validated_numeric_ids_in_sql_before_limit():
     assert "loadManagerInbox()" in js
     assert 'sort: $("ticket-sort").value' in js
     assert "state.actor?.can_manage" in js
+
+
+def test_crew_direct_create_reaches_clone_command_without_manager_privilege():
+    import commands
+    from uuid import uuid4
+    writer = commands.CloneCommands.__new__(commands.CloneCommands)
+    sentinel = "Crew permission passed; clone transaction required"
+    class TransactionReached(RuntimeError):
+        pass
+    def fake_transaction(_actor):
+        raise TransactionReached(sentinel)
+    writer.transaction = fake_transaction
+    crew = {"person_id": 202, "can_manage": False, "can_create": True,
+            "can_read": True}
+    with pytest.raises(TransactionReached, match=sentinel):
+        writer.perform(crew, "create", None, {
+            "request_key": str(uuid4()), "person_ids": [],
+        })
+
+
+def test_manager_intake_count_excludes_promoted_and_closed_history():
+    source = (HERE / "repository.py").read_text(encoding="utf-8")
+    assert "def manager_inbox(" in source
+    assert "a.event_kind = 'promoted_source'" in source
+    assert "a.event_kind IN ('resolve','promoted_source')" in source
+    assert 'scope == "intake"' in source
+    assert 'scope == "feedback"' in source
+    assert 'scope == "my-created"' in source
+    assert "t.reporter_id = %s" in source
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    assert 'value="my-created"' in html
+    assert 'value="intake" data-manager-only' in html
+    assert "Public Work Order Request" in html
+    js = (HERE / "review_actions.js").read_text(encoding="utf-8")
+    assert "if (actor.can_create)" in js
+    assert "!model.actor?.can_manage" in js or "!model.actor?.can_create" in js
+    assert "model.actor?.can_manage" in js
+    assert "payload.disposable_only" in js
