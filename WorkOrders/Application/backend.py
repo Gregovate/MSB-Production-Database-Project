@@ -134,6 +134,29 @@ def ticket_activity(key: str) -> Response:
     return jsonify(activity=result, disposable_only=True, notifications="NO_SEND")
 
 
+@app.get("/api/work-orders/aging")
+def open_work_order_aging() -> Response:
+    """Full manager aging report; all undated WOs, including inactive exceptions."""
+    who = actor()
+    order = request.args.get("sort", "created_asc").strip().lower()
+    rows = WorkManagementRepository().aging_report(actor=who, sort=order)
+    return jsonify(
+        rows=rows,
+        count=len(rows),
+        inactive_count=sum(1 for row in rows if not row["active"]),
+        unassigned_count=sum(1 for row in rows if not row["assigned_n"]),
+        buckets={
+            "0-7": sum(1 for row in rows if row["days_open"] is not None and row["days_open"] <= 7),
+            "8-30": sum(1 for row in rows if row["days_open"] is not None and 8 <= row["days_open"] <= 30),
+            "31-60": sum(1 for row in rows if row["days_open"] is not None and 31 <= row["days_open"] <= 60),
+            "61+": sum(1 for row in rows if row["days_open"] is not None and row["days_open"] >= 61),
+        },
+        sort=order,
+        read_only=True,
+        all_open_work_orders=True,
+    )
+
+
 @app.get("/api/work-orders/manager-inbox")
 def manager_inbox() -> Response:
     """Manager-only actionable Intake counts for the home-screen alert."""
