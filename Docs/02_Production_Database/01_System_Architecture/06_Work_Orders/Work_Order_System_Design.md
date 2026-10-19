@@ -63,6 +63,22 @@ Current PostgreSQL schema, constraints, procedures, and triggers are implementat
 
 **Related future lifecycle:** [#423 January 2027 Takedown](https://github.com/Gregovate/MSB-Production-Database-Project/issues/423) is a separate #122-governed, container-first operational release with January 1 readiness; its physical loading/movement/testing handoff uses #88/#230/#231 and may generate Work Orders, but #419 must never become a competing movement or storage system. Takedown is the first operational preparation for the following Setup season, not a pretext to fabricate 2027 Setup task progress.
 
+## October 19, afternoon — Tom/operator correction: request-to-Intake before Crew Work Orders (supersedes earlier direct-Crew-create decision)
+
+**Governing operator decision made during live Command Center review:** All **non-Managers** must submit a **Work Order Request** to the **same existing Park/Workshop Google Form** as other reporters (`https://forms.gle/Gve4ZbXHDWxs43yh6`), feeding the existing `stage.work_order_intake` and established Manager investigation/triage. They **must not directly create native `ops.work_order`** from the internal Work Management app. Do not create a competing second Intake model or use unassigned native Work Orders as a substitute for triage. A request may be clarified, rejected/closed, or promoted/assigned during Manager triage. Crew still may read/complete truly assigned Work Orders with authenticated required actual-work notes.
+
+**Manager-only direct Create:** Retain the existing native Create editor for a **verified Manager** (capability from `ref.setup_browser_capabilities`, not `ref.person.is_manager` or any informal flag). Server commands must reject non-Manager direct Create even if they forge `can_create` or POST directly. Manager may optionally create an unassigned native WO without routing through Intake; Intake promotion is the normal route for volunteer submissions. No Intake assignments, target year, or native work-order ID before approval/promotion. Manager may assign one or more volunteers **at triage/promotion**.
+
+**Urgency and year:** Default new Work Order urgency to **3 — Normal**. No default target year or target-year request at Intake. The *native* Work Order editor shows/accepts **target year only for urgency 5 — Planning**; require a valid year when creating/promoting Planning. Other priorities omit target year in the form and the PostgreSQL save. Existing historical Work Orders retain existing fields unless a Manager performs a separately authorized correction. Public Google Form default, if any, is owned by the existing Google Form and not silently asserted/modified in this source branch.
+
+**People:** Existing `ref.person.available_for_work_orders` boolean merits dependency review since the new assignment picker searches People, but do not remove it or modify authoritative People without verifying current references and release scope.
+
+**Permission follow-up:** Operator expressed concern about effectiveness of a delegated Manager. Do not revoke named individual's permissions without separate explicit authorization. Review whether Work Order triage rights should be separated from broader Setup management permissions rather than conflating manager labels.
+
+**Source-only:** #419 draft PR #420 implements the application route and authorization/Planning year rule. Preserve original Park/Workshop public form URL, Intake statuses/manager queues, historic WO projections, notification no-send, and independent #88/#171/#230 scope. Browser acceptance still CHANGES REQUIRED until controlled disposable UI retest. No Production or Directus/Google Form deployment.
+
+---
+
 ## October 19 — #419 role-oriented Work Management home and universal sorting
 
 **Operator decision (supersedes any Manager-only direct-create assumption):** The existing public Google Work Order Request Form remains reachable from the MSB portal for any reporter, including users with sheboyganlights.org accounts. Its existing Park/Workshop branches and Apps Script stay unchanged. A public submission enters `stage.work_order_intake` for **Manager triage**; it must not silently become an active Work Order.
