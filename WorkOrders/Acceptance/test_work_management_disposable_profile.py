@@ -265,3 +265,28 @@ def test_wo419_resume_state_is_valid_private_bash_and_has_no_credentials(tmp_pat
     )
     assert again.returncode != 0
     assert "state already exists" in again.stdout
+
+
+def test_wo419_runner_start_resume_argument_gate_before_any_server_actions():
+    """Five-argument start/resume entry must not be mistaken for four-only."""
+    shell = RUNNER.read_text(encoding="utf-8")
+    assert 'if [[ $# -lt 4 || $# -gt 5 ]]; then' in shell
+    assert 'MODE="' + '$' + '{5:-start}"' in shell
+    if not shutil.which("bash"):
+        pytest.skip("Bash required for early-argument regression")
+    for args, expected in (
+        (["short"], "optional start/resume mode required"),
+        (["badsha", "8898", "reviewer@sheboyganlights.org",
+          "issue-419-unified-ticket-read-model-20261018", "resume"], "exact 40-hex"),
+        (["badsha", "8898", "reviewer@sheboyganlights.org",
+          "issue-419-unified-ticket-read-model-20261018", "resume", "extra"],
+         "optional start/resume mode required"),
+    ):
+        result = subprocess.run(["bash", str(RUNNER), *args],
+                                capture_output=True, text=True)
+        assert result.returncode == 2, result.stderr
+        assert expected in result.stdout, result.stdout
+    wrapper = WRAPPER.read_text(encoding="utf-8")
+    assert '$StartCommand = $RemotePrefix + ((' in wrapper
+    assert '$ResumeCommand = $RemotePrefix + ((' in wrapper
+    assert 'rc=$?; if [ "$rc" -eq 0 ]; then rm -f' in wrapper
