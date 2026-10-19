@@ -1,6 +1,6 @@
-# MSB Work Management — V0.1 read-only disposable candidate
+# MSB Work Management — V0.3 disposable-save browser candidate
 
-**Status: SOURCE-ONLY.** Draft PR #420, unmerged, not executed on a disposable PostgreSQL clone, and not browser-accepted or deployed.
+**Status: DRAFT PR #420 / V0.3 SOURCE TESTING; disposable clone-write and new browser acceptance pending.** V0.2 was operator-reviewed as CHANGES REQUIRED. Not deployed.
 
 ## Governing authority
 
