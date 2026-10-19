@@ -14,6 +14,14 @@ In the same Manager browser session and on the same private current-Production c
 
 No new runner, port, Production deployment, or email permission is introduced by this report.
 
+## Current #419 seasonal-work and January handoff gate
+
+The same exact-SHA disposable runner tests native Work Order Create/Assign/Complete **plus** an optional rollback-only **linked 2026/other open Setup season GATE** when a real ACTIVE/PLANNING season is present. This calls the accepted, Manager-authorized `ops.create_setup_season_task` function inside the same private clone transaction, requiring `SEASON_ONLY`, a null reusable task key, `linked_work_order_id` and `linked_work_order_gate`. No direct `ops.setup_session_task` INSERT/UPDATE permission or second runner was introduced. On any SQL/permission/trigger error the candidate MUST HOLD before BROWSER REVIEW READY; no one should bypass that with manual Production SQL.
+
+In browser, test Manager direct Create+annual task, Manager Add to seasonal Setup on a Crew-created existing Stage Work Order, Crew-only Setup review flag (no unauthorized annual writes), and duplicate/closed-season rejection. Reopen the Work Order to see the retained linkage event, and use the existing Setup Board to verify waiting/complete semantics. Both reviewers must finish with server-side CLEAN EXIT and unchanged Production fingerprints. These are still **candidate** workflows; do not treat CI PASS as disposable server/browser acceptance.
+
+Separate [#423 2027 Takedown](https://github.com/Gregovate/MSB-Production-Database-Project/issues/423) tracks the January 1 release deadline under #122/#88/#230/#231 without changing the #419 runner.
+
 ## V0.3.1 role-specific browser checks — two real reviewer identities
 
 The next source candidate must be reviewed through **the same** approved Server Management PowerShell wrapper and sequential localhost port 8898. Do **not** create a second runner or simultaneous preview. This role change does not authorize Production writes or outgoing email.
