@@ -805,7 +805,7 @@ def test_seasonal_setup_gate_needs_only_select_on_session_and_governed_execute()
                 raise AssertionError("Read-only Setup season precheck requested a row lock")
 
         def fetchone(self):
-            if "SELECT setup_session_id FROM ops.setup_session " in self.current:
+            if self.current.startswith("SELECT setup_session_id FROM ops.setup_session "):
                 return {"setup_session_id": 909}
             if "SELECT 1 FROM ops.setup_session_task " in self.current:
                 return None
