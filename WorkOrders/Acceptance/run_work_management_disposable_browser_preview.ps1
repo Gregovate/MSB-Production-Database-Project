@@ -50,10 +50,14 @@ try {
     # a second database or changes the application candidate.
     $RemotePrefix = ('chmod 700 "{0}"; hash=$(sha256sum "{0}" | cut -d " " -f1); ' +
         'if [ "$hash" != "{1}" ]; then echo "HOLD: runner digest mismatch"; exit 50; fi; ') -f $Remote, $Hash
-    $StartCommand = $RemotePrefix + ( 'timeout --foreground --signal=TERM 28800s bash "{0}" "{1}" "{2}" "{3}" "{4}" start; ' +
-        'rc=$?; if [ "$rc" -eq 0 ]; then rm -f "{0}"; fi; exit "$rc"') -f $Remote, $CandidateSha, $PreviewPort, $PreviewEmail, $Ref
-    $ResumeCommand = $RemotePrefix + ( 'timeout --foreground --signal=TERM 28800s bash "{0}" "{1}" "{2}" "{3}" "{4}" resume; ' +
-        'rc=$?; if [ "$rc" -eq 0 ]; then rm -f "{0}"; fi; exit "$rc"') -f $Remote, $CandidateSha, $PreviewPort, $PreviewEmail, $Ref
+    $StartCommand = $RemotePrefix + ((
+        'timeout --foreground --signal=TERM 28800s bash "{0}" "{1}" "{2}" "{3}" "{4}" start; ' +
+        'rc=$?; if [ "$rc" -eq 0 ]; then rm -f "{0}"; fi; exit "$rc"'
+    ) -f $Remote, $CandidateSha, $PreviewPort, $PreviewEmail, $Ref)
+    $ResumeCommand = $RemotePrefix + ((
+        'timeout --foreground --signal=TERM 28800s bash "{0}" "{1}" "{2}" "{3}" "{4}" resume; ' +
+        'rc=$?; if [ "$rc" -eq 0 ]; then rm -f "{0}"; fi; exit "$rc"'
+    ) -f $Remote, $CandidateSha, $PreviewPort, $PreviewEmail, $Ref)
     $Tunnel = '{0}:127.0.0.1:{0}' -f $PreviewPort
     $mode = 'start'
     $reconnectAttempts = 0
