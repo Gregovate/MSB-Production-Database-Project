@@ -10,6 +10,23 @@ This application belongs to the **existing Work Orders subsystem** of Gregovate/
 
 The design and released [Work Order SOPs](../../Docs/02_Production_Database/02_Operational_SOPs/Work_Orders/README.md) already establish the database identities, intake, triage, assignment, repair and completion semantics. Do not create a separate GitHub repository or master ticket database.
 
+
+## October 18 continuation — post-review CHANGES REQUIRED (source-only slice)
+
+The operator's first actual read-only disposable browser review returned **CHANGES REQUIRED**, not accepted. This supersedes earlier README language that the browser had never been reviewed; the October 18 browser finding is preserved in the governing design. The subsequent clone restore readiness HOLD is separately documented in PR #420 and does not erase the first review.
+
+**This continuation implements only an incremental UI/read-path correction:**
+- The existing unified SQL ledger and native Work Order, Intake and Testing identities remain unchanged.
+- Manager-only server-authorized filtered views: active/general Work Order repairs, Testing-origin repairs, public Work Order Intake triage, and Setup Task Feedback. Testing repairs remain the same authoritative Work Orders and never become fake Intake requests.
+- Backend SQL orders incomplete Work Orders first, by authoritative urgency ID ascending (1 critical, 2 high, 3 normal, 4 low, 5 planning), before recent activity and before the 80-row limit. Unrecorded urgency sorts last. The UI still labels actual recorded completion only; assignment does not assert notification or acknowledgment. This is a first read-only queue, not the full overdue/unassigned dispatch workflow.
+- An accessible header light/dark theme switch for this candidate. Visual styling is an original MSB Work Management theme; no claim of compliance with a separately approved brand asset or theme library is made.
+
+**New test coverage:** Manager scope gates, queue routing and SQL urgency-sort source assertions in `test_work_management_preview.py`. CI results and clone/database/browser behavior must be recorded only after actually observed.
+
+**NOT YET IMPLEMENTED:** Manager direct Create; atomic Intake Promote & multi-person Assign; reassignment history/notification; authenticated completion with required notes and Testing feedback; correction owner, clarification, response, disposition/closure; no-send durable mail/audit; search/urgency/overdue pagination and full operational backlog handling. The public Park/Workshop Google Form and attached Apps Script are not changed. No Production Work Order or Intake cleanup is approved, including WO-372/400/107/147/389/416. Existing Directus Flows and Setup/Testing are untouched.
+
+**Next gated work:** Establish reviewed schema/command authorization on current-Production disposable PostgreSQL; implement transaction-safe write routes with actor/role checks and no-send notification outbox; add browser functional tests; execute current full source regression and guarded server clone/8898 review, recording fingerprint and clean exit. Remain on draft PR #420. Never deploy or cut over without separate authorization.
+
 ## Currently implemented source
 
 - Protected, **read-only** Flask ticket browser backed by the existing WO419-M01 database-owned SQL projection.
