@@ -7,7 +7,7 @@
   const byId = (id) => document.getElementById(id);
   const model = { actor: null, ticket: null, options: null, selected: new Set(), csrf: "", pendingSignature: null, pendingKey: null };
   const actions = {
-    create: "Manager Create · Internal Work Order",
+    create: "Create · New Internal Work Order",
     assign: "Assign / Reassign · Multiple volunteers",
     complete: "Complete · Required verified work notes",
     promote: "Public Intake · Promote & Assign",
@@ -36,8 +36,10 @@
     const actor = model.actor;
     const result = [];
     if (!actor) return result;
-    if (actor.can_manage) result.push("create");
-    if (!ticket) return result;
+    if (!ticket) {
+      if (actor.can_create) result.push("create");
+      return result;
+    }
     if (ticket.type === "WORK_ORDER" && !ticket.done_at) {
       if (actor.can_manage) result.push("assign");
       if (actor.can_manage ||
@@ -65,7 +67,7 @@
       ? "Current source: " + model.ticket.ticket + " · " +
         (model.ticket.title || "Untitled") + " · " +
         (model.ticket.reported_by || "Reporter not recorded")
-      : "No selected ticket. Managers may still rehearse direct internal creation.";
+      : "New internal Work Order. A Crew-created Work Order awaits Manager assignment.";
     showForm();
   }
 
@@ -147,7 +149,9 @@
     const form = byId("review-action-form");
     form.hidden = !kind;
     byId("review-create-fields").hidden = !["create", "promote"].includes(kind);
-    byId("review-person-fields").hidden = !["create", "assign", "promote", "correction_owner"].includes(kind);
+    byId("review-person-fields").hidden =
+      !model.actor?.can_manage ||
+      !["create", "assign", "promote", "correction_owner"].includes(kind);
     byId("review-complete-fields").hidden = kind !== "complete";
     byId("review-feedback-fields").hidden = !["clarify", "resolve", "reply"].includes(kind);
     byId("review-disposition").disabled = kind !== "resolve";
@@ -239,12 +243,14 @@
     }
     model.pendingSignature = null;
     model.pendingKey = null;
-    document.dispatchEvent(new CustomEvent("wo419:saved", { detail: payload.result }));
+    document.dispatchEvent(new CustomEvent("wo419:saved", {
+      detail: { ...payload.result, action: kind },
+    }));
     return payload.result;
   }
 
   function openCreate() {
-    if (!model.actor?.can_manage) return;
+    if (!model.actor?.can_create) return;
     model.ticket = null;
     const detail = byId("detail-content");
     byId("detail-empty").hidden = true;
@@ -257,7 +263,7 @@
   }
 
   async function initializeReviewerOptions() {
-    if (!model.actor?.can_manage) return;
+    if (!model.actor?.can_create) return;
     try {
       const result = await fetch("/api/work-orders/reviewer-options", {
         credentials: "same-origin", cache: "no-store",
@@ -265,8 +271,8 @@
       });
       if (!result.ok) throw new Error("Manager catalog read failed.");
       const payload = await result.json();
-      if (!payload.read_only || !payload.rehearsal_only)
-        throw new Error("Invalid no-save acceptance mode.");
+      if (!payload.disposable_only || payload.read_only)
+        throw new Error("Valid disposable catalog acceptance mode required.");
       model.options = payload.options;
       catalog("review-task-type", model.options.task_types || []);
       catalog("review-stage", model.options.stages || []);
@@ -275,7 +281,7 @@
       drawActions();
     } catch (_) {
       byId("review-context").textContent =
-        "Catalog verification unavailable. Hold Manager rehearsal; do not enter invented IDs.";
+        "Catalog verification unavailable. Hold internal creation; do not enter invented IDs.";
       byId("review-action").disabled = true;
     }
   }
@@ -283,7 +289,7 @@
   document.addEventListener("wo419:actor", (event) => {
     model.actor = event.detail;
     model.csrf = event.detail.csrf_token || "";
-    byId("create-work-order").hidden = !model.actor.can_manage;
+    byId("create-work-order").hidden = !model.actor.can_create;
     drawActions();
     initializeReviewerOptions();
   });
