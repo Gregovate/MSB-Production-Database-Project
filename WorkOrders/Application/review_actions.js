@@ -147,12 +147,15 @@
       for (const name of ("review-problem", "review-target-year",
                           "review-task-type", "review-location-type",
                           "review-stage", "review-area", "review-urgency",
-                          "review-setup-mode", "review-setup-season",
-                          "review-setup-name")) {
+                          "review-setup-season", "review-setup-name")) {
         byId(name).value = "";
       }
+      byId("review-setup-mode").value = "none";
     } else {
       setSelectionFromTicket();
+      // A previous seasonal request can never leak into an assignment,
+      // progress/completion, or unrelated triage decision.
+      byId("review-setup-mode").value = "none";
     }
     byId("review-progress-note").value = "";
     byId("review-completion-notes").value = "";
