@@ -600,13 +600,21 @@
         getJson("/api/work-orders/assignees"),
       ]);
       state.actor = access.access;
+      state.actor.runtime_mode = access.runtime_mode || "disposable";
+      if (state.actor.runtime_mode === "production") {
+        $("preview-tag").textContent =
+          "Work Orders V1 · Production records · Notifications pending controlled cutover";
+        $("review-workbench").querySelector(".section-header p").textContent =
+          "Actions save to the authoritative Work Orders database. Notifications are not yet enabled.";
+      }
       $("home-heading").textContent = state.actor.can_manage
         ? "Work Management · Manager" : "My Work Orders";
       $("home-description").textContent = state.actor.can_manage
         ? "Manage repair assignments, urgent jobs, and pending Intake triage."
-        : "Work and complete your assigned Work Orders, or create a new internal repair.";
+        : "Work and complete assigned Work Orders. Submit new requests for Manager triage.";
       document.dispatchEvent(new CustomEvent("wo419:actor", {
-        detail: { ...state.actor, csrf_token: access.csrf_token }
+        detail: { ...state.actor, csrf_token: access.csrf_token,
+                  runtime_mode: state.actor.runtime_mode }
       }));
       document.querySelectorAll("#scope option[data-manager-only]").forEach((option) => {
         option.disabled = !state.actor.can_manage;
