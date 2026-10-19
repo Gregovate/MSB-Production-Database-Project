@@ -781,3 +781,61 @@ def test_clone_write_host_identity_preserves_all_other_fail_closed_gates(
     assert fake.closed
     assert "host(inet_server_addr()) AS ip" in fake.cur.statements[0][0]
     assert "inet_server_addr()::text AS ip" not in fake.cur.statements[0][0]
+
+
+def test_seasonal_setup_gate_needs_only_select_on_session_and_governed_execute():
+    """Regression for real October 19 privilege HOLD at atomic_work_order_setup_season_gate.
+
+    fieldwiring_app has only SELECT on ops.setup_session. The old FOR SHARE
+    asked PostgreSQL to acquire a row lock requiring extra table privileges.
+    Keep Setup Session management authority inside existing SECURITY DEFINER
+    ops.create_setup_season_task; do NOT grant UPDATE merely to read the season.
+    """
+    from commands import CloneCommands
+
+    class RestrictedSetupCursor:
+        def __init__(self):
+            self.executed = []
+            self.current = ""
+
+        def execute(self, statement, params=None):
+            self.current = str(statement)
+            self.executed.append((self.current, params))
+            if "FOR SHARE" in self.current or "FOR UPDATE" in self.current:
+                raise AssertionError("Read-only Setup season precheck requested a row lock")
+
+        def fetchone(self):
+            if "SELECT setup_session_id FROM ops.setup_session " in self.current:
+                return {"setup_session_id": 909}
+            if "SELECT 1 FROM ops.setup_session_task " in self.current:
+                return None
+            if "SELECT email FROM ref.person" in self.current:
+                return {"email": "manager@sheboyganlights.org"}
+            if "FROM ops.create_setup_season_task(" in self.current:
+                return {"setup_session_task_id": 1212}
+            raise AssertionError("Unexpected Setup command query")
+
+    cursor = RestrictedSetupCursor()
+    created_id = CloneCommands.create_season_only_work_order_gate(
+        cursor,
+        {"person_id": 101, "can_manage": True},
+        372,
+        {"stage_id": 17, "work_area_id": None, "setup_season_year": 2026,
+         "problem": "Magic Igloo actual weld repair requiring seasonal readiness"},
+    )
+    assert created_id == 1212
+    assert len(cursor.executed) == 4
+    assert "session_status IN ('PLANNING','ACTIVE')" in cursor.executed[0][0]
+    assert "FROM ops.create_setup_season_task(" in cursor.executed[-1][0]
+    assert cursor.executed[-1][1][0] == "manager@sheboyganlights.org"
+    assert cursor.executed[-1][1][14] == 372
+    assert cursor.executed[-1][1][15] is True
+
+    grants = (ROOT / "WorkOrders/Acceptance/wo419_preview_clone_read_grants.sql").read_text(
+        encoding="utf-8"
+    )
+    assert "ops.setup_session," in grants
+    assert "ops.setup_session_task," in grants
+    assert "GRANT EXECUTE ON FUNCTION ops.create_setup_season_task(" in grants
+    assert "GRANT UPDATE ON ops.setup_session" not in grants
+    assert "GRANT INSERT ON ops.setup_session_task" not in grants
