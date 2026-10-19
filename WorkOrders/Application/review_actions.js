@@ -76,6 +76,9 @@
     const buttons = byId("review-action-buttons");
     const guidance = byId("review-action-guidance");
     buttons.replaceChildren();
+    const managerMaintenance = byId("detail-manager-maintenance");
+    managerMaintenance.hidden = !ticket || !model.actor?.can_manage ||
+      ticket.type !== "WORK_ORDER" || Boolean(ticket.done_at);
     title.textContent = !ticket ? "New internal Work Order" :
       ticket.type === "WORK_ORDER" ? "Work on this Work Order" :
       ticket.type === "TASK_FEEDBACK" ? "Review Task Feedback" : "Review Public Intake";
@@ -91,7 +94,10 @@
       reply: "Reply to clarification",
       resolve: "Record resolution",
     };
-    const visible = available.filter((kind) => kind !== "create");
+    // Assignment is a distinct Manager maintenance action in the
+    // Work Order heading, not mixed with crew work/complete buttons.
+    const visible = available.filter((kind) =>
+      kind !== "create" && kind !== "assign");
     visible.forEach((kind) => {
       const button = document.createElement("button");
       button.type = "button";
@@ -114,7 +120,7 @@
       });
       buttons.appendChild(button);
     });
-    guidance.textContent = !ticket ? "Create a new Work Order using the button above." :
+    guidance.textContent = !ticket ? "Complete the new Work Order fields and save to the disposable database." :
       ticket.type === "WORK_ORDER" && ticket.done_at
         ? "This Work Order has a recorded completion date. Work notes and completion are locked."
         : ticket.type === "WORK_ORDER" && !visible.length
@@ -126,7 +132,7 @@
               : "Manager correction review and original-reporter follow-up.";
     byId("review-context").textContent = ticket
       ? "Selected: " + ticket.ticket + " · " +
-        (ticket.title || "Untitled") : "";
+        (ticket.title || "Untitled") : "Create this Work Order directly; no Intake is generated.";
     showForm();
   }
 
@@ -377,6 +383,16 @@
     byId("review-action").value = "create";
     actionChanged();
     byId("review-workbench").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    document.dispatchEvent(new CustomEvent("wo419:open-create"));
+  }
+
+  function openManagerAssignment() {
+    if (!model.actor?.can_manage || !model.ticket ||
+        model.ticket.type !== "WORK_ORDER" || model.ticket.done_at) return;
+    byId("review-action").value = "assign";
+    actionChanged();
+    byId("review-workbench").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    byId("review-person-filter").focus();
   }
 
   async function initializeReviewerOptions() {
@@ -426,6 +442,8 @@
   });
   byId("review-action").addEventListener("change", actionChanged);
   byId("create-work-order").addEventListener("click", openCreate);
+  byId("manager-assign-button").addEventListener("click", openManagerAssignment);
+  document.addEventListener("wo419:history-create", openCreate);
   byId("review-location-type").addEventListener("change", locationChanged);
   byId("review-setup-mode").addEventListener("change", setupModeChanged);
   byId("review-person-filter").addEventListener("input", drawPeople);
