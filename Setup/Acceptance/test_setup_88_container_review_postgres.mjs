@@ -65,5 +65,16 @@ try {
  await fail(()=>save({...legacy,resolve_flag_ids:[bad]},199),/whole case/);
  assert.deepEqual((await save({...legacy,resolve_flag_ids:[bad],whole_case_confirmed:true},199)).resolved_flag_ids,[bad]);
  assert.equal((await rows('SELECT movement_effect FROM ops.setup_movement_event_display WHERE setup_movement_event_id=$1',[restored.movement_event_ids[0]]))[0].movement_effect,'REATTACHED');
+ // Parse and execute the actual rollback-only host validator too. These actor
+ // records are local fixtures only; the host validator uses real cloned actors.
+ await db.exec(`CREATE TABLE public.directus_users(id uuid,email text,status text);
+ ALTER TABLE ref.person ADD COLUMN directus_user_id uuid;
+ INSERT INTO public.directus_users VALUES('88000000-0000-4000-8000-000000000001','manager@example.org','active');
+ UPDATE ref.person SET directus_user_id='88000000-0000-4000-8000-000000000001';
+ CREATE FUNCTION ref.setup_browser_capabilities(text) RETURNS TABLE(can_manage_setup boolean,can_move_setup_assets boolean)
+ LANGUAGE sql AS $$ SELECT true,true $$;`);
+ const reviewsBefore=(await rows('SELECT count(*) n FROM ops.setup_container_review_event'))[0].n;
+ await db.exec(readFileSync(resolve(root,'Acceptance/setup_88_container_review_disposable_validation.sql'),'utf8').replace(/^\\.*$/gm,''));
+ assert.equal((await rows('SELECT count(*) n FROM ops.setup_container_review_event'))[0].n,reviewsBefore);
  console.log('PASS: PostgreSQL review scope/partial closure, idempotency, stale guards, Manager authorization, no table DML, prior-park return recovery, preserved Home/later placement, protected attachment repair and legacy closure.');
 } finally {await db.close();}
