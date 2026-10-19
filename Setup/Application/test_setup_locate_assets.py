@@ -24,7 +24,9 @@ def test_adapter_uses_state_event_and_does_not_infer_load_or_duplicate_attached_
     assert [d['name'] for d in result['displays']] == ['Independent']
     assert result['displays'][0]['position'] == [43, -87]
 
-\n\ndef test_recorded_operator_is_from_each_event_not_the_current_user():
+
+
+def test_recorded_operator_is_from_each_event_not_the_current_user():
     """#171 consumes #88 event attribution, including older unattributed events."""
     picture = dict(generated_at=None, through_event_id=525, containers=[],
         effect_rows=[
