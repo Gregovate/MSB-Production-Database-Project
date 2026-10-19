@@ -184,8 +184,21 @@ class WorkManagementRepository:
                 "FROM ref.work_area ORDER BY work_area_name LIMIT 150"
             )
             areas = [dict(item) for item in cur.fetchall()]
+            # Only Managers may create governed season-only Setup tasks.
+            # Never offer HISTORICAL_VERIFICATION as a live season.
+            seasons = []
+            if actor["can_manage"]:
+                cur.execute(
+                    "SELECT season_year AS id, "
+                    "season_year::text || ' · ' || session_status AS name "
+                    "FROM ops.setup_session "
+                    "WHERE session_status IN ('PLANNING','ACTIVE') "
+                    "ORDER BY season_year DESC"
+                )
+                seasons = [dict(item) for item in cur.fetchall()]
         return {"people": people, "task_types": task_types,
-                "stages": stages, "work_areas": areas}
+                "stages": stages, "work_areas": areas,
+                "setup_seasons": seasons}
 
     @staticmethod
     def enrich_feedback(cur: Any, rows: list[dict[str, Any]]) -> None:
