@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 import os
 import hmac
+import hashlib
 import re
 from pathlib import Path
 
@@ -17,7 +18,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 from repository import WorkManagementError, WorkManagementRepository
 from commands import CloneCommands
 
-APP_VERSION = "V0.3.2-work-order-actions-navigation-planning-filter"
+APP_VERSION = "V1.0.0-work-orders-release-candidate"
 BASE_DIR = Path(__file__).resolve().parent
 CLOUDFLARE_HEADER = "Cf-Access-Authenticated-User-Email"
 TICKET_KEY = re.compile(r"^(?:WO|INTAKE)-[1-9][0-9]{0,12}$")
@@ -26,15 +27,63 @@ app = Flask(__name__, static_folder=None)
 app.logger.setLevel(logging.INFO)
 
 
+def runtime_mode() -> str:
+    """Never select Production merely because someone supplies a database DSN."""
+    mode = os.environ.get("WORK_MGMT_RUNTIME_MODE", "disposable")
+    if mode not in ("disposable", "production"):
+        raise WorkManagementError("Unapproved Work Orders runtime mode.", 503)
+    return mode
+
+
+def store():
+    if runtime_mode() == "production":
+        from v1_runtime import V1Repository
+        return V1Repository()
+    return WorkManagementRepository()
+
+
+def command_store():
+    if runtime_mode() == "production":
+        from v1_runtime import V1Commands
+        return V1Commands()
+    return CloneCommands()
+
+
+def command_token(current: dict) -> str:
+    if runtime_mode() == "disposable":
+        return os.environ.get("WORK_MGMT_PREVIEW_CSRF_TOKEN", "")
+    from v1_runtime import require_v1_production_configuration
+    require_v1_production_configuration()
+    key = os.environ.get("WORK_MGMT_PRODUCTION_COMMAND_SECRET", "")
+    if len(key) < 48:
+        raise WorkManagementError("Work Orders V1 CSRF secret unavailable.", 503)
+    email = current.get("email", "")
+    person = current.get("person_id", "")
+    if not isinstance(email, str) or not str(person).isdigit():
+        raise WorkManagementError("Verified V1 identity unavailable.", 403)
+    return hmac.new(key.encode("utf-8"),
+                    (email + ":" + str(person)).encode("utf-8"),
+                    hashlib.sha256).hexdigest()
+
+
+def runtime_response() -> dict:
+    if runtime_mode() == "production":
+        return {"runtime_mode": "production", "disposable_only": False,
+                "notifications": "PENDING_CUTOVER"}
+    return {"runtime_mode": "disposable", "disposable_only": True,
+            "notifications": "NO_SEND"}
+
+
 def actor() -> dict:
     """The trusted perimeter must remove client-supplied identity headers."""
-    # Temporary preview must remain localhost-only even if a port is misbound.
+    # BOTH preview and Production bind to loopback behind the existing trusted
+    # server reverse proxy. An external request must never supply CF identity.
     if request.remote_addr not in ("127.0.0.1", "::1"):
-        raise WorkManagementError("Preview is restricted to the approved local tunnel.", 403)
+        raise WorkManagementError("Work Orders is restricted to the approved local proxy.", 403)
     email = request.headers.get(CLOUDFLARE_HEADER, "").strip().lower()
     if not email or len(email) > 254 or "@" not in email:
         raise WorkManagementError("Cloudflare Access identity is required.", 401)
-    return WorkManagementRepository().access(email)
+    return store().access(email)
 
 
 def ticket_key(value: str) -> str:
@@ -72,41 +121,45 @@ def work_management_health() -> Response:
     # Requires user identity and clone readiness. Not a public diagnostic.
     current = actor()
     return jsonify(
-        status="preview",
+        status="ready" if runtime_mode() == "production" else "preview",
         version=APP_VERSION,
         read_only=False,
-        disposable_only=True,
         person_id=current["person_id"],
+        **runtime_response(),
     )
 
 
 @app.get("/api/work-orders/access")
 def access() -> Response:
-    return jsonify(access=actor(), version=APP_VERSION, read_only=False,
-                   csrf_token=os.environ.get("WORK_MGMT_PREVIEW_CSRF_TOKEN", ""))
+    current = actor()
+    return jsonify(access=current, version=APP_VERSION, read_only=False,
+                   csrf_token=command_token(current), **runtime_response())
 
 
 @app.get("/api/work-orders/assignees")
 def assignees() -> Response:
     actor()
-    return jsonify(assignees=WorkManagementRepository().assignees())
+    return jsonify(assignees=store().assignees())
 
 
 @app.get("/api/work-orders/reviewer-options")
 def reviewer_options() -> Response:
     """Manager-only existing catalogs for no-save UX rehearsal."""
     who = actor()
-    return jsonify(options=WorkManagementRepository().reviewer_options(who),
-                   read_only=False, disposable_only=True)
+    return jsonify(options=store().reviewer_options(who),
+                   read_only=False, **runtime_response())
 
 
 def require_command_safety() -> dict:
-    """Reject cross-site requests and any missing disposable session key."""
+    """Same-origin custom header + server-issued token + verified actor."""
     current = actor()
-    token = os.environ.get("WORK_MGMT_PREVIEW_CSRF_TOKEN", "")
+    token = command_token(current)
     provided = request.headers.get("X-WO419-CSRF", "")
-    if not re.fullmatch(r"[a-f0-9]{48}", token) or not hmac.compare_digest(token, provided):
-        raise WorkManagementError("Approved disposable session key required.", 403)
+    allowed_length = 64 if runtime_mode() == "production" else 48
+    if not re.fullmatch("[a-f0-9]{" + str(allowed_length) + "}", token) or not hmac.compare_digest(token, provided):
+        raise WorkManagementError("Approved Work Orders session key required.", 403)
+    if runtime_mode() == "production" and request.headers.get("X-MSB-Work-Order-Command") != "1":
+        raise WorkManagementError("Protected Work Order command header missing.", 403)
     origin = request.headers.get("Origin", "")
     if origin and origin.rstrip("/") != request.host_url.rstrip("/"):
         raise WorkManagementError("Cross-origin ticket changes are not permitted.", 403)
@@ -123,15 +176,15 @@ def ticket_command() -> Response:
         raise WorkManagementError("Valid JSON command required.")
     action = body.get("action")
     ticket = body.get("ticket")
-    result = CloneCommands().perform(current, action, ticket, body)
-    return jsonify(result=result, disposable_only=True, notifications="NO_SEND")
+    result = command_store().perform(current, action, ticket, body)
+    return jsonify(result=result, **runtime_response())
 
 
 @app.get("/api/work-orders/tickets/<key>/activity")
 def ticket_activity(key: str) -> Response:
     current = actor()
-    result = CloneCommands().activity(current, ticket_key(key))
-    return jsonify(activity=result, disposable_only=True, notifications="NO_SEND")
+    result = command_store().activity(current, ticket_key(key))
+    return jsonify(activity=result, **runtime_response())
 
 
 @app.get("/api/work-orders/aging")
@@ -140,7 +193,7 @@ def open_work_order_aging() -> Response:
     who = actor()
     order = request.args.get("sort", "created_asc").strip().lower()
     include_planning = request.args.get("include_planning", "1") == "1"
-    rows = WorkManagementRepository().aging_report(
+    rows = store().aging_report(
         actor=who, sort=order, include_planning=include_planning)
     return jsonify(
         rows=rows,
@@ -164,8 +217,8 @@ def open_work_order_aging() -> Response:
 def manager_inbox() -> Response:
     """Manager-only actionable Intake counts for the home-screen alert."""
     who = actor()
-    return jsonify(inbox=WorkManagementRepository().manager_inbox(who),
-                   disposable_only=True)
+    return jsonify(inbox=store().manager_inbox(who),
+                   **runtime_response())
 
 
 @app.get("/api/work-orders/tickets")
@@ -182,7 +235,7 @@ def tickets() -> Response:
     show_completed = request.args.get("show_completed", "0") == "1"
     sort = request.args.get("sort", "priority").strip().lower()
     include_planning = request.args.get("include_planning", "1") == "1"
-    rows = WorkManagementRepository().tickets(
+    rows = store().tickets(
         actor=who, scope=scope, person_id=person_id,
         show_completed=show_completed, search=search, sort=sort,
         include_planning=include_planning,
@@ -204,7 +257,7 @@ def tickets() -> Response:
 
 @app.get("/api/work-orders/tickets/<key>")
 def ticket(key: str) -> Response:
-    result = WorkManagementRepository().ticket(
+    result = store().ticket(
         actor=actor(), ticket_key=ticket_key(key)
     )
     return jsonify(ticket=result, read_only=True)
@@ -212,7 +265,7 @@ def ticket(key: str) -> Response:
 
 @app.get("/api/work-orders/tickets/<key>/related-information")
 def related_information(key: str) -> Response:
-    result = WorkManagementRepository().related_information(
+    result = store().related_information(
         actor=actor(), ticket_key=ticket_key(key)
     )
     return jsonify(related_information=result, read_only=True)
