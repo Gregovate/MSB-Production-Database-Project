@@ -119,6 +119,28 @@
     byId("review-area-wrap").hidden = byId("review-location-type").value !== "area";
   }
 
+  function actionChanged() {
+    // Direct Create must never reuse a previously selected ticket's report,
+    // assignees, urgency or location as if it were a new instruction.
+    const kind = byId("review-action").value;
+    if (kind === "create") {
+      model.selected.clear();
+      byId("review-person-filter").value = "";
+      drawPeople();
+      for (const name of ("review-problem", "review-target-year",
+                          "review-task-type", "review-location-type",
+                          "review-stage", "review-area", "review-urgency")) {
+        byId(name).value = "";
+      }
+    } else {
+      setSelectionFromTicket();
+    }
+    byId("review-completion-notes").value = "";
+    byId("review-response").value = "";
+    byId("review-disposition").value = "";
+    showForm();
+  }
+
   function showForm() {
     const kind = byId("review-action").value;
     const form = byId("review-action-form");
@@ -204,10 +226,11 @@
   });
   document.addEventListener("wo419:ticket", (event) => {
     model.ticket = event.detail;
+    byId("review-action").value = "";
     setSelectionFromTicket();
     drawActions();
   });
-  byId("review-action").addEventListener("change", showForm);
+  byId("review-action").addEventListener("change", actionChanged);
   byId("review-location-type").addEventListener("change", locationChanged);
   byId("review-person-filter").addEventListener("input", drawPeople);
   byId("review-action-form").addEventListener("submit", (event) => {
