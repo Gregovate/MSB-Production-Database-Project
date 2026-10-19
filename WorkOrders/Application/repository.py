@@ -94,13 +94,24 @@ class WorkManagementRepository:
             raise WorkManagementError(
                 "A unique active linked Person is required for My Work.", 403
             )
+        # Existing Setup can_read_setup also covers Volunteer policy holders.
+        # Direct internal creation is explicitly limited to a verified
+        # Production Crew / Manager / Administrator role or policy, NOT all
+        # domain accounts, Browsers or generic Setup-enabled Volunteers.
+        directus_policies = set(cap["policy_names"] or [])
+        can_manage = bool(cap["can_manage_setup"])
+        can_create = can_manage or cap["role_name"] in (
+            "Production Crew", "Manager", "Administrator"
+        ) or bool(directus_policies.intersection(
+            {"Production Crew", "Manager", "Administrator"}
+        ))
         return {
             "person_id": int(matches[0]["person_id"]),
             "display_name": cap["display_name"] or email,
-            "can_manage": bool(cap["can_manage_setup"]),
-            "can_create": True,  # Linked Crew can create without Manager triage.
-            "can_assign": bool(cap["can_manage_setup"]),
-            "can_triage": bool(cap["can_manage_setup"]),
+            "can_manage": can_manage,
+            "can_create": can_create,
+            "can_assign": can_manage,
+            "can_triage": can_manage,
             "can_read": True,
         }
 
