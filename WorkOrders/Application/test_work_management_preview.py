@@ -918,3 +918,29 @@ def test_backend_planning_toggle_passes_to_native_repo_without_mutation(client):
     )
     assert aging.status_code == 200
     assert aging.json["include_planning"] is False
+
+
+def test_oct19_operator_create_form_visibility_and_responsive_filters():
+    """Oct 19 CHANGES REQUIRED: Create panel appeared without editable fields."""
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    js = (HERE / "review_actions.js").read_text(encoding="utf-8")
+    css = (HERE / "app.css").read_text(encoding="utf-8")
+    assert '<div class="control-filters">' in html
+    assert '<div class="control-actions">' in html
+    assert html.index('id="scope"') < html.index('id="ticket-search"') < html.index('id="ticket-sort"')
+    assert 'aria-controls="review-action-form" aria-expanded="false"' in html
+    assert 'id="review-action-form" hidden' in html
+    assert 'id="review-create-fields" hidden' in html
+    assert '.control-filters { display:grid;' in css
+    assert 'grid-template-columns:repeat(3, minmax(0, 1fr))' in css
+    assert '@media(max-width:650px)' in css
+    assert '.control-filters .field { min-width:0; }' in css
+    assert 'h3::after { content:" · New internal Work Order"' not in css
+    assert 'byId("detail-content").classList.contains("create-mode")' in js
+    assert 'else if (creating && available.includes("create")) picker.value = "create"' in js
+    assert 'form.hidden = false' in js
+    assert 'byId("review-create-fields").hidden = false;' in js
+    assert 'byId("create-work-order").setAttribute("aria-expanded", "true")' in js
+    assert 'byId("review-problem").focus();' in js
+    assert 'byId("create-work-order").setAttribute("aria-expanded", "false")' in js
+    assert 'byId("review-action-form").addEventListener("submit"' in js
