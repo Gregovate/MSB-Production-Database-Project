@@ -20,6 +20,20 @@ The core model preserves these design rules:
 
 Current PostgreSQL schema, constraints, procedures, and triggers are implementation truth when they differ from older design drafts.
 
+## #419 first operator review — representative backlog dispositions (October 18)
+
+The active read-only disposable review exposed actual existing records with stale completion/assignment states. These are **operator-reported findings**, not verified Production corrections. Source screenshot references are held in the operator conversation; no private report text or contact data is required in this design.
+
+| Existing WO | Operator finding | Required future authorized action |
+| --- | --- | --- |
+| WO-372 — Magic Igloo broken welds | Physical work completed Saturday, as part of testing schedule advancement; still recorded not complete | Verify completed work and required completion notes; mark complete using the authenticated Work Order workflow and confirm the related Setup scheduling gate reflects authoritative completion. Do not fabricate Report Work. |
+| WO-400 — Stage 17 wiring photos not appearing | Should be assigned to Adam | Resolve Adam to one exact active `ref.person` identity before Manager reassignment; preserve prior assignment history and make notification accountable. |
+| WO-107 — candy cane display naming from Wiring | Operator reports this was resolved through Controller Inventory and Controller label work | Review the completed correction and record substantive completion notes through the existing Work Order completion lifecycle; do not automatically infer the Work Order's completion timestamp from implementation history. |
+| WO-147 — Food Collection background Wiring work | Operator reports complete | Review and mark complete with required notes and authenticated completer; preserve original evidence. |
+| WO-389 — rack RD04-B-03 for Container C213 | Depends on database change, rack-space creation and #230; defer attention until Dec/Jan | Keep visible as deferred/planned follow-up with ownership, reason, #230 link, and target review period, not an incorrectly completed Work Order or forgotten My Work item. Verify existing status/target-year capabilities before adding a new state. |
+
+These examples establish a **backlog reconciliation** use case: Manager must distinguish completed-but-open, reassignment required, planned/deferred dependencies, and actually actionable open jobs, without bulk mutation or erasure of history. The Work Orders UI must provide clear human-readable owner, next action, provenance, target/review date where supported, and accurately recorded completion status. A volunteer who discovers an old assignment is not assumed to have been notified or to have accepted responsibility. No Production writes were authorized by this browser review.
+
 ## #419 browser finding — assignment backlog and dedicated Testing view (October 18)
 
 During the first successful read-only browser review, the operator found that Work Orders assigned to the signed-in volunteer included previously unknown work, work needing reassignment, and work physically done but not recorded complete. **Do not interpret current assignment or recorded status as evidence the volunteer received notice or actually performed the work.** The candidate exposed a real historical operational backlog; no Production assignments or completions were changed by reviewing it.
