@@ -168,3 +168,54 @@ body.dark-theme {
   .review-inner { padding:14px; }
   .review-workbench fieldset { padding:12px; }
 }
+
+/* #419: exactly the established Setup shared MSB theme palette and brand assets. */
+:root {
+  --ink:#18212b; --muted:#66717d; --border:#d8dee5;
+  --canvas:#f4f6f8; --surface:#fff; --accent:#0f5f8f;
+  --accent-faint:#e9f4fb; --button:#0f5f8f;
+}
+.app-header { background:var(--surface); color:var(--ink);
+  border-bottom:1px solid var(--border); box-shadow:0 1px 3px rgb(23 36 50 / 10%); }
+.head-inner { max-width:1500px; min-height:78px; }
+.screen-logo { width:86px; height:auto; flex-shrink:0; }
+.identity p,.signed-in { color:var(--muted); }
+.preview-tag { color:var(--muted); border-color:var(--border); border-radius:8px; }
+.theme-toggle { color:var(--ink); background:var(--surface); border-color:var(--border);
+  min-height:44px; }
+.theme-toggle:hover { color:var(--ink); background:var(--accent-faint); }
+.app-shell { max-width:1500px; }
+.review-workbench { margin:18px 0; border-color:var(--border); }
+.review-workbench .section-header { padding:13px 16px; }
+.review-workbench .review-inner { padding:14px 16px; }
+.review-workbench .review-inner > label { margin-top:0; }
+.review-workbench fieldset { padding:11px 13px; }
+.review-workbench .section-header p { margin:6px 0 0; }
+#detail-content .review-workbench .section-header h3 { font-size:17px; }
+html[data-theme="dark"] {
+  color-scheme:dark;
+  --ink:#eef4fb; --muted:#b2c0d3; --border:#34445e;
+  --canvas:#0b1322; --surface:#111c2e; --accent:#318cff;
+  --accent-faint:#172b45; --button:#a7d6ff;
+}
+html[data-theme="dark"] .app-header,
+html[data-theme="dark"] .controls,
+html[data-theme="dark"] .ticket-column,
+html[data-theme="dark"] .detail-column,
+html[data-theme="dark"] .review-workbench { background:var(--surface); color:var(--ink); }
+html[data-theme="dark"] .detail-heading,
+html[data-theme="dark"] .related-information { background:#17253a; }
+html[data-theme="dark"] .review-workbench input,
+html[data-theme="dark"] .review-workbench select,
+html[data-theme="dark"] .review-workbench textarea,
+html[data-theme="dark"] .field input,
+html[data-theme="dark"] .field select,
+html[data-theme="dark"] .quiet-button { background:#101a2c; color:var(--ink); border-color:var(--border); }
+html[data-theme="dark"] .ticket-card:hover,
+html[data-theme="dark"] .ticket-card.selected { background:#1d3350; }
+html[data-theme="dark"] .related-row { border-bottom-color:var(--border); }
+html[data-theme="dark"] .related-information > summary:hover { background:#1c334e; }
+html[data-theme="dark"] .review-people label:hover { background:#1b3352; }
+html[data-theme="dark"] .theme-toggle { background:#111c2e; color:var(--ink); }
+html[data-theme="dark"] .theme-toggle:hover { background:#1d3350; }
+@media(max-width:550px) { .screen-logo { width:70px; } }
