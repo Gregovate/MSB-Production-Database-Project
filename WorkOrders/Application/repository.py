@@ -278,6 +278,33 @@ class WorkManagementRepository:
             self.enrich_feedback(cur, rows)
             return rows
 
+    def manager_inbox(self, actor: dict[str, Any]) -> dict[str, int]:
+        """Actionable Public Intake versus pending feedback for Managers ONLY."""
+        if not actor["can_manage"]:
+            raise WorkManagementError("Manager Intake is not authorized.", 403)
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                  count(*) FILTER (
+                    WHERE i.source_form_name IS DISTINCT FROM 'SETUP_CORRECTION'
+                  ) AS public_intake,
+                  count(*) FILTER (
+                    WHERE i.source_form_name = 'SETUP_CORRECTION'
+                    AND NOT EXISTS (
+                      SELECT 1 FROM wo419_preview.activity a
+                      WHERE a.ticket_key = 'INTAKE-' || i.intake_id::text
+                        AND a.event_kind IN ('resolve','promoted_source')
+                    )
+                  ) AS task_feedback
+                FROM stage.work_order_intake i
+                WHERE i.triage_dropdown IS NULL OR i.triage_dropdown = '1'
+                """
+            )
+            row = cur.fetchone()
+            return {"public_intake": int(row["public_intake"] or 0),
+                    "task_feedback": int(row["task_feedback"] or 0)}
+
     def ticket(self, *, actor: dict[str, Any], ticket_key: str) -> dict[str, Any]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
