@@ -288,6 +288,11 @@
     }
   }
 
+  $("theme-toggle").addEventListener("click", () => {
+    const dark = document.body.classList.toggle("dark-theme");
+    $("theme-toggle").setAttribute("aria-pressed", String(dark));
+    $("theme-toggle").textContent = dark ? "Light theme" : "Dark theme";
+  });
   $("scope").addEventListener("change", scopeChanged);
   $("assignee").addEventListener("change", loadTickets);
   $("show-completed").addEventListener("change", loadTickets);
