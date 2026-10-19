@@ -241,3 +241,28 @@ html[data-theme=dark] .review-result[data-valid=false] { color:#ffaaaa; }
 .activity-entry small { display:block; color:var(--muted); margin:3px 0; }
 .activity-entry p { white-space:pre-wrap; margin:4px 0 0; line-height:1.4; font-size:14px; }
 #detail-content.create-mode #ticket-activity { display:none; }
+
+/* #419 role-specific Manager Intake flag; hidden entirely for Production Crew. */
+.manager-inbox-banner {
+  display:flex; gap:14px; justify-content:space-between; align-items:center;
+  flex-wrap:wrap; padding:15px 18px; margin-bottom:16px;
+  background:var(--surface); border:2px solid var(--accent);
+  border-left-width:6px; border-radius:10px;
+}
+.manager-inbox-banner strong { font-size:16px; }
+.manager-inbox-banner p { color:var(--muted); margin:5px 0 0; }
+.inbox-actions { display:flex; flex-wrap:wrap; gap:9px; }
+.manager-inbox-banner .quiet-button {
+  border-color:var(--accent); color:var(--button); min-height:42px;
+}
+.public-request-link {
+  align-self:center; text-decoration:underline; color:var(--button);
+  font-size:13px; font-weight:650; white-space:nowrap;
+}
+html[data-theme=dark] .manager-inbox-banner { background:var(--surface); color:var(--ink); }
+html[data-theme=dark] .public-request-link { color:#b7dbff; }
+@media(max-width:650px) {
+  .manager-inbox-banner { align-items:stretch; }
+  .inbox-actions,.inbox-actions button { width:100%; }
+  .public-request-link { white-space:normal; }
+}
