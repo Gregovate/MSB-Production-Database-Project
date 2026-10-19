@@ -485,3 +485,19 @@ def test_manager_all_work_orders_is_not_the_intake_queue():
     assert 'value="all" data-manager-only' in html
     assert 'value="intake" data-manager-only' in html
     assert "Number (WO / Intake)" in html
+
+
+def test_assigned_crew_progress_is_distinct_from_completion():
+    commands_source = (HERE / "commands.py").read_text(encoding="utf-8")
+    browser = (HERE / "review_actions.js").read_text(encoding="utf-8")
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    assert '("create", "assign", "progress", "complete", "promote"' in commands_source
+    assert 'elif action in ("progress", "complete"):' in commands_source
+    assert '"Work progress note"' in commands_source
+    assert "NULLIF(btrim(notes), '')" in commands_source
+    assert "submitted_by_person_id" in commands_source
+    assert "Progress alone never marks repair complete" in commands_source
+    assert 'progress: "Record Work Note' in browser
+    assert "result.push(\"progress\", \"complete\")" in browser
+    assert 'id="review-progress-fields"' in html
+    assert 'id="review-progress-note"' in html
