@@ -95,32 +95,14 @@
       if (!container) window.msbReferenceSymbols.setSymbol(marker, 'T-Post', {yOffset:16});
       const title = values.map(v => container ? 'C' + String(v.container_id).padStart(3, '0') : v.name).join(' · ');
       marker.bindTooltip(esc(title));
-      // The icon art extends above the recorded coordinate: keep the popup
-      // tip ABOVE the whole selected icon rather than covering the marker.
-      // Display SVGs load asynchronously; reserve clearance for their largest
-      // supported icon before the final natural-sized marker is available.
-      marker.bindPopup(values.map(v => popup(v, container)).join('<hr>'), {
-        maxHeight: 360,
-        offset: [0, container ? -28 : -60],
-        autoPan: true
-      });
-      // Expanding native details changes height after Leaflet opened the popup.
-      // Update layout/auto-pan, never the marker or its recorded coordinate.
-      marker.on('popupopen', function () {
-        const livePopup = marker.getPopup();
-        if (!livePopup) return;
-        // Reflect the real icon anchor once SVG loading has finished.
-        const activeAnchorY = Number(marker.options.icon.options.iconAnchor?.[1] || (container ? 16 : 48));
-        livePopup.options.offset = [0, -(activeAnchorY + 12)];
-        livePopup.update();
-        const popupElement = livePopup.getElement();
-        if (!popupElement) return;
-        popupElement.querySelectorAll('details').forEach(function (details) {
-          details.addEventListener('toggle', function () {
-            if (livePopup.isOpen()) livePopup.update();
-          });
-        });
-      });
+      // Shared #171 rule: popup pointer centers 8px above the REAL icon's
+      // top edge. Symbol Manager accounts for iconAnchor + popupAnchor and
+      // refreshes after async SVG replacement and details disclosure.
+      window.msbReferenceSymbols.bindPopupAtIconTop(
+        marker,
+        values.map(v => popup(v, container)).join('<hr>'),
+        {maxHeight: 360}
+      );
       marker.addTo(group);
       for (const v of values) mapSearch.addAsset(v, container, marker);
     }
