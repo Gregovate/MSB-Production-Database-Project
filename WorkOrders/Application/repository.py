@@ -127,7 +127,7 @@ class WorkManagementRepository:
         self, *, actor: dict[str, Any], scope: str, person_id: int | None,
         show_completed: bool, search: str, limit: int = 80,
     ) -> list[dict[str, Any]]:
-        if scope not in ("mine", "all", "person"):
+        if scope not in ("mine", "all", "person", "repairs", "testing", "intake", "feedback"):
             raise WorkManagementError("Unknown Work Order scope.")
         if scope == "person" and (person_id is None or person_id < 1):
             raise WorkManagementError("Select a valid assignee.")
@@ -148,6 +148,16 @@ class WorkManagementRepository:
                 "(t.type = 'WORK_ORDER' OR t.reporter_id = %s)"
             )
             params.append(user)
+        if scope in ("repairs", "testing", "intake", "feedback") and not actor["can_manage"]:
+            raise WorkManagementError("Manager queue requires Manager permission.", 403)
+        if scope == "repairs":
+            conditions.append("t.type = 'WORK_ORDER' AND t.test_id IS NULL")
+        elif scope == "testing":
+            conditions.append("t.type = 'WORK_ORDER' AND t.test_id IS NOT NULL")
+        elif scope == "intake":
+            conditions.append("t.type = 'INTAKE_REQUEST'")
+        elif scope == "feedback":
+            conditions.append("t.type = 'TASK_FEEDBACK'")
         if search:
             conditions.append(
                 "(t.ticket ILIKE %s OR t.title ILIKE %s "
@@ -158,7 +168,10 @@ class WorkManagementRepository:
         query = (
             "SELECT t.* FROM (" + ledger_select() + ") AS t "
             "WHERE " + where + " "
-            "ORDER BY t.last_at DESC NULLS LAST, t.ticket LIMIT %s"
+            "ORDER BY CASE WHEN t.type = 'WORK_ORDER' AND t.done_at IS NULL "
+            "THEN 0 ELSE 1 END, "
+            "t.urgency ASC NULLS LAST, "
+            "t.last_at DESC NULLS LAST, t.ticket LIMIT %s"
         )
         params.append(limit)
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
