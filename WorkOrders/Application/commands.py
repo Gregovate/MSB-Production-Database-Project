@@ -221,10 +221,16 @@ class CloneCommands:
             raise WorkManagementError("Seasonal Setup integration needs a Park Stage.")
         stage_id = numeric(stage_id, "Setup Stage")
         season_year = numeric(body.get("setup_season_year"), "Setup season")
+        # This is a read-only precheck. PostgreSQL SELECT ... FOR SHARE
+        # requires additional table privileges beyond the clone reader's
+        # deliberately narrow SELECT grant; don't widen ops.setup_session
+        # DML grants just to read it. The governing SECURITY DEFINER
+        # ops.create_setup_season_task command checks open season/identity
+        # itself, inside this same transaction.
         cur.execute(
             "SELECT setup_session_id FROM ops.setup_session "
-            "WHERE season_year=%s AND session_status IN ('PLANNING','ACTIVE') "
-            "FOR SHARE", (season_year,),
+            "WHERE season_year=%s AND session_status IN ('PLANNING','ACTIVE')",
+            (season_year,),
         )
         if cur.fetchone() is None:
             raise WorkManagementError(
