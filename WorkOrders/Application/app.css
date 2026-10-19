@@ -134,3 +134,37 @@ body.dark-theme {
 .dark-theme .status.done { background:#244f41; border-color:#448b71; color:#d6f8dd; }
 .dark-theme a { color:#9ddffa; }
 .dark-theme .empty-icon { background:#345265; }
+
+/* #419 V0.2: visible no-save operator workflow test panel. */
+.review-workbench { margin-top:20px; border:1px solid var(--border); border-radius:14px;
+  background:var(--surface); overflow:hidden; }
+.review-workbench .section-header p { max-width:980px; line-height:1.5; }
+.review-inner { padding:20px; }
+.review-inner > label, .review-workbench fieldset label { display:block; margin:13px 0 5px;
+  font-size:13px; font-weight:700; color:var(--ink); }
+.review-workbench select, .review-workbench input, .review-workbench textarea {
+  width:100%; max-width:680px; border-radius:8px; border:1px solid var(--border);
+  background:var(--surface); padding:10px; color:var(--ink); font:inherit; }
+.review-workbench textarea { resize:vertical; }
+.review-workbench fieldset { border:1px solid var(--border); border-radius:10px;
+  margin:15px 0; padding:16px; min-width:0; }
+.review-workbench legend { font-weight:800; padding:0 6px; }
+.review-workbench .subtle { margin-top:10px; font-size:13px; }
+.review-people { max-height:160px; overflow:auto; padding:9px;
+  border:1px solid var(--border); border-radius:8px; max-width:680px; }
+.review-people label { display:block; margin:0 !important; padding:6px;
+  font-weight:500 !important; }
+.review-people label:hover { background:var(--accent-faint); }
+.review-people input[type=checkbox] { width:auto; margin-right:6px; }
+.primary-button { padding:11px 17px; color:#fff; background:#146585;
+  border:0; border-radius:9px; font-weight:700; min-height:44px; }
+.primary-button:hover { background:#0e4b65; }
+.review-result { margin-top:13px; font-weight:600; padding:12px 0; }
+.review-result[data-valid="true"] { color:#20683b; }
+.review-result[data-valid="false"] { color:#aa382b; }
+.dark-theme .review-result[data-valid="true"] { color:#a1f0bf; }
+.dark-theme .review-result[data-valid="false"] { color:#ffaaa2; }
+@media (max-width:720px) {
+  .review-inner { padding:14px; }
+  .review-workbench fieldset { padding:12px; }
+}
