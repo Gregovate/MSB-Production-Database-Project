@@ -97,10 +97,11 @@
       marker.bindTooltip(esc(title));
       // The icon art extends above the recorded coordinate: keep the popup
       // tip ABOVE the whole selected icon rather than covering the marker.
-      const anchorY = Number(marker.options.icon.options.iconAnchor?.[1] || 16);
+      // Display SVGs load asynchronously; reserve clearance for their largest
+      // supported icon before the final natural-sized marker is available.
       marker.bindPopup(values.map(v => popup(v, container)).join('<hr>'), {
         maxHeight: 360,
-        offset: [0, -(anchorY + 12)],
+        offset: [0, container ? -28 : -60],
         autoPan: true
       });
       // Expanding native details changes height after Leaflet opened the popup.
@@ -108,6 +109,10 @@
       marker.on('popupopen', function () {
         const livePopup = marker.getPopup();
         if (!livePopup) return;
+        // Reflect the real icon anchor once SVG loading has finished.
+        const activeAnchorY = Number(marker.options.icon.options.iconAnchor?.[1] || (container ? 16 : 48));
+        livePopup.options.offset = [0, -(activeAnchorY + 12)];
+        livePopup.update();
         const popupElement = livePopup.getElement();
         if (!popupElement) return;
         popupElement.querySelectorAll('details').forEach(function (details) {
