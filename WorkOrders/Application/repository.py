@@ -123,11 +123,53 @@ class WorkManagementRepository:
             )
             return [dict(row) for row in cur.fetchall()]
 
+    def reviewer_options(self, actor: dict[str, Any]) -> dict[str, Any]:
+        """Current catalogs for a no-save operator rehearsal; not a write grant.
+
+        Manager users may inspect actual active Person/task type/Stage/Work Area
+        choices. Never expose raw contact fields or arbitrary SQL column names.
+        """
+        if not actor["can_manage"]:
+            raise WorkManagementError("Manager permission required.", 403)
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT person_id,
+                       coalesce(nullif(btrim(concat_ws(' ',
+                           coalesce(nullif(btrim(preferred_name), ''),
+                                    nullif(btrim(first_name), '')),
+                           nullif(btrim(last_name), ''))), ''),
+                           'Person #' || person_id::text) AS display_name
+                FROM ref.person
+                WHERE active_flag AND directus_user_id IS NOT NULL
+                ORDER BY display_name, person_id
+                LIMIT 600
+                """
+            )
+            people = [dict(item) for item in cur.fetchall()]
+            cur.execute(
+                "SELECT task_type_id AS id, task_type_name AS name "
+                "FROM ref.task_type WHERE active_flag ORDER BY sort_order, task_type_name"
+            )
+            task_types = [dict(item) for item in cur.fetchall()]
+            cur.execute(
+                "SELECT stage_id AS id, concat_ws(' — ', 'Stage ' || stage_key, stage_name) AS name "
+                "FROM ref.stage ORDER BY stage_key LIMIT 300"
+            )
+            stages = [dict(item) for item in cur.fetchall()]
+            cur.execute(
+                "SELECT work_area_id AS id, work_area_name AS name "
+                "FROM ref.work_area ORDER BY work_area_name LIMIT 150"
+            )
+            areas = [dict(item) for item in cur.fetchall()]
+        return {"people": people, "task_types": task_types,
+                "stages": stages, "work_areas": areas}
+
     def tickets(
         self, *, actor: dict[str, Any], scope: str, person_id: int | None,
         show_completed: bool, search: str, limit: int = 80,
     ) -> list[dict[str, Any]]:
-        if scope not in ("mine", "all", "person", "repairs", "testing", "intake", "feedback"):
+        if scope not in ("mine", "all", "person", "repairs", "testing", "intake", "feedback", "my-feedback", "unassigned", "critical"):
             raise WorkManagementError("Unknown Work Order scope.")
         if scope == "person" and (person_id is None or person_id < 1):
             raise WorkManagementError("Select a valid assignee.")
@@ -148,9 +190,16 @@ class WorkManagementRepository:
                 "(t.type = 'WORK_ORDER' OR t.reporter_id = %s)"
             )
             params.append(user)
-        if scope in ("repairs", "testing", "intake", "feedback") and not actor["can_manage"]:
+        if scope in ("repairs", "testing", "intake", "feedback", "unassigned", "critical") and not actor["can_manage"]:
             raise WorkManagementError("Manager queue requires Manager permission.", 403)
-        if scope == "repairs":
+        if scope == "my-feedback":
+            conditions.append("t.type = 'TASK_FEEDBACK' AND t.reporter_id = %s")
+            params.append(user)
+        elif scope == "unassigned":
+            conditions.append("t.type = 'WORK_ORDER' AND t.assigned_n = 0")
+        elif scope == "critical":
+            conditions.append("t.type = 'WORK_ORDER' AND t.urgency = 1")
+        elif scope == "repairs":
             conditions.append("t.type = 'WORK_ORDER' AND t.test_id IS NULL")
         elif scope == "testing":
             conditions.append("t.type = 'WORK_ORDER' AND t.test_id IS NOT NULL")
@@ -161,9 +210,13 @@ class WorkManagementRepository:
         if search:
             conditions.append(
                 "(t.ticket ILIKE %s OR t.title ILIKE %s "
-                "OR t.location ILIKE %s OR t.owners ILIKE %s)"
+                "OR t.location ILIKE %s OR t.owners ILIKE %s "
+                "OR t.reported_by ILIKE %s OR t.state ILIKE %s "
+                "OR t.source ILIKE %s)"
             )
-            params.extend([f"%{search}%" for _ in range(4)])
+            normalized = search.upper().replace(" ", "").replace("-", "")
+            search_term = search if not normalized.startswith(("WO", "INTAKE")) else search
+            params.extend([f"%{search_term}%" for _ in range(7)])
         where = " AND ".join(conditions) if conditions else "TRUE"
         query = (
             "SELECT t.* FROM (" + ledger_select() + ") AS t "
