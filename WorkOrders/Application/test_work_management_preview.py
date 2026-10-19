@@ -370,7 +370,7 @@ def test_crew_stays_on_my_work_and_cannot_read_manager_intake(client, monkeypatc
                       headers=identity()).status_code == 403
     # Manager-specific scope is rejected in the real repository before SQL.
     repo = object.__new__(repository.WorkManagementRepository)
-    for scope in ("all", "person", "intake", "feedback", "testing", "critical"):
+    for scope in ("all", "tickets", "person", "intake", "feedback", "testing", "critical"):
         with pytest.raises(repository.WorkManagementError) as denied:
             repo.tickets(actor={"person_id": 202, "can_manage": False},
                          scope=scope, person_id=101 if scope == "person" else None,
@@ -473,3 +473,15 @@ def test_directus_role_permissions_do_not_promote_generic_volunteer_or_browser()
         assert not ordinary["can_create"]
         assert not ordinary["can_assign"]
         assert not ordinary["can_triage"]
+
+
+def test_manager_all_work_orders_is_not_the_intake_queue():
+    source = (HERE / "repository.py").read_text(encoding="utf-8")
+    assert 'if scope == "all":' in source
+    assert '''conditions.append("t.type = 'WORK_ORDER'")''' in source
+    assert '"tickets"' in source
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    assert 'value="tickets" data-manager-only' in html
+    assert 'value="all" data-manager-only' in html
+    assert 'value="intake" data-manager-only' in html
+    assert "Number (WO / Intake)" in html
