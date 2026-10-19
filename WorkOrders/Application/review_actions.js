@@ -9,6 +9,7 @@
   const actions = {
     create: "Create · New Internal Work Order",
     assign: "Assign / Reassign · Multiple volunteers",
+    progress: "Record Work Note · Keep open",
     complete: "Complete · Required verified work notes",
     promote: "Public Intake · Promote & Assign",
     correction_owner: "Task Feedback · Choose correction owner",
@@ -44,7 +45,7 @@
       if (actor.can_manage) result.push("assign");
       if (actor.can_manage ||
           (ticket.assignee_ids || []).some((id) => Number(id) === Number(actor.person_id))) {
-        result.push("complete");
+        result.push("progress", "complete");
       }
     } else if (actor.can_manage && ticket.type === "INTAKE_REQUEST") {
       result.push("promote");
@@ -138,6 +139,7 @@
     } else {
       setSelectionFromTicket();
     }
+    byId("review-progress-note").value = "";
     byId("review-completion-notes").value = "";
     byId("review-response").value = "";
     byId("review-disposition").value = "";
@@ -152,6 +154,7 @@
     byId("review-person-fields").hidden =
       !model.actor?.can_manage ||
       !["create", "assign", "promote", "correction_owner"].includes(kind);
+    byId("review-progress-fields").hidden = kind !== "progress";
     byId("review-complete-fields").hidden = kind !== "complete";
     byId("review-feedback-fields").hidden = !["clarify", "resolve", "reply"].includes(kind);
     byId("review-disposition").disabled = kind !== "resolve";
@@ -182,6 +185,8 @@
     }
     if (["assign", "promote", "correction_owner"].includes(kind) && !model.selected.size)
       throw new Error("Select at least one exact existing Person.");
+    if (kind === "progress" && byId("review-progress-note").value.trim().length < 10)
+      throw new Error("Record a substantive work note before saving (at least 10 characters).");
     if (kind === "complete" && byId("review-completion-notes").value.trim().length < 10)
       throw new Error("Completion requires substantive notes explaining actual work.");
     if (kind === "reply" && note.length < 10)
@@ -221,6 +226,7 @@
       target_year: byId("review-target-year").value,
       stage_id: location === "stage" ? byId("review-stage").value : null,
       work_area_id: location === "area" ? byId("review-area").value : null,
+      progress_note: byId("review-progress-note").value.trim(),
       completion_notes: byId("review-completion-notes").value.trim(),
       response: byId("review-response").value.trim(),
       disposition: byId("review-disposition").value,
