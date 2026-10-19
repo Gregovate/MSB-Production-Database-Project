@@ -20,6 +20,20 @@ The core model preserves these design rules:
 
 Current PostgreSQL schema, constraints, procedures, and triggers are implementation truth when they differ from older design drafts.
 
+## #419 Manager-only Intake triage and existing public Google Form boundary (October 18)
+
+**Operator direction:** Intake review/triage is a distinct **Manager task/queue**, not an ordinary volunteer's My Work list and not automatic promotion. The Manager opens submitted public requests, reviews original reporter/source and location, resolves missing information, corrects urgency/type/target year, and chooses the governed disposition and assignees. Triage must not be conflated with the separate active Work Order queue or with Testing-origin repair assignment. The one-step Manager **Promote & Assign** command and preservation of original Intake evidence remain mandatory.
+
+The current [public request SOP](../../02_Operational_SOPs/Work_Orders/Submit_a_Work_Order_Request.md) documents an existing **Google Work Order Request Form** reachable from `my.sheboyganlights.org`, requiring no Directus login, with two conditional branches:
+- **Park:** show-site/park work with park location and problem details; resolve the supported Stage/park relationships during Manager review.
+- **Workshop:** workshop, storage, office, equipment and other non-park/general work; resolve a valid **Work Area**, not a fabricated Park Stage.
+
+The accepted Stage XOR Work Area rule still applies to promoted Work Orders. Public requests enter existing `stage.work_order_intake` and await Manager triage; they do **not** become active `ops.work_order` merely on form submission. The current [triage SOP](../../02_Operational_SOPs/Work_Orders/Triage_a_Work_Order_Request.md) describes Submitted/Promote/Delete legacy choices, but the governed #419 design must retain required source/report/provenance, use atomic assignment and avoid destructive correction disposition. Treat Task Feedback (`SETUP_CORRECTION`) as a separately filtered correction-review route within the Manager function, not as an indistinguishable repair Intake.
+
+**Form-code provenance gap:** the Work Orders SOP states that an **attached Google Apps Script** depends on the form's current question titles/answers and branching. Current repository-tree reconnaissance found the public-facing SOP and screenshot evidence and the separate #172 `Setup/Application/setup_work_order_intake_api.py` / `Setup/Database/062_add_setup_context_work_order_intake.sql`; it did **not** establish a version-controlled export of the public Google Form's Apps Script. That script's live source, destination mapping, validation and ownership must be inspected and documented before changing the form or Intake parser. Do not misidentify the #172 authenticated Setup API as the public form's Apps Script, invent source code, or change the external form during #419 UI implementation.
+
+**Browser acceptance:** Manager sees separate Public Intake/Triage and Task Feedback review queues and can distinguish Park/Stage from Workshop/general Work Area; a submitted public request may be reviewed, assigned and promoted once without losing original data. An unprivileged volunteer cannot triage. Testing-generated active repair jobs never enter public Intake. Capture end-to-end cases for both form branches against approved disposable records; no live Google Form submissions or outbound email during disposable acceptance unless separately authorized.
+
 ## #419 launch-critical park repair punch list and urgency queues (October 18)
 
 **Operator browser finding:** WO-416, Light Pole 8 Outlet Box Damaged, appears among assignments without urgency sorting or an actionable Manager workflow. The existing Work Order system must serve as the *2026 setup punch list and show-season repair manager* for problems discovered during setup or in the park that are **not reusable Setup Catalog tasks**. Do not create annual/reusable Setup tasks to compensate for the missing Work Order UI. Link the real Stage/Display/Container/asset and relevant Setup gate when supported; retain authoritative Work Order identity.
