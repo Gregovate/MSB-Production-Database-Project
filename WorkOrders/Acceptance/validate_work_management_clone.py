@@ -162,6 +162,33 @@ def validate(preview_email: str) -> None:
                         "WHERE work_order_id=%s AND active_flag", (wo,))
             if cur.fetchone()["count"] != 1:
                 raise RuntimeError("Assigned Person row was not present.")
+            if catalogs.get("setup_seasons"):
+                phase("atomic_work_order_setup_season_gate")
+                setup_season_year = int(catalogs["setup_seasons"][0]["id"])
+                linked_task = writer.create_season_only_work_order_gate(
+                    cur, access, wo, {
+                        "problem": "WO419 disposable linked Setup gate preflight",
+                        "stage_id": catalogs["stages"][0]["id"],
+                        "work_area_id": None,
+                        "setup_season_year": setup_season_year,
+                    }
+                )
+                cur.execute(
+                    "SELECT task_origin,setup_task_id,linked_work_order_gate,"
+                    "linked_work_order_id FROM ops.setup_session_task "
+                    "WHERE setup_session_task_id=%s", (linked_task,)
+                )
+                annual = cur.fetchone()
+                if not annual or (
+                    annual["task_origin"] != "SEASON_ONLY"
+                    or annual["setup_task_id"] is not None
+                    or annual["linked_work_order_gate"] is not True
+                    or annual["linked_work_order_id"] != wo
+                ):
+                    raise RuntimeError("Linked Setup gate lost seasonal-only/WO identity.")
+            else:
+                print("INFO: No ACTIVE/PLANNING Setup season: atomic linked gate "
+                      "cannot be exercised; Manager must not be offered season creation.")
             cur.execute("UPDATE ops.work_order SET completion_notes=%s,"
                         "completed_by_person_id=%s,repair_complete=true,date_completed=now() "
                         "WHERE work_order_id=%s", (
@@ -170,7 +197,8 @@ def validate(preview_email: str) -> None:
             if cur.rowcount != 1:
                 raise RuntimeError("Existing native completion command failed.")
             cur.execute("ROLLBACK TO SAVEPOINT wo419_preflight")
-        print("CHECK: clone-only Create/Assign/Complete transactional rollback PASS; "
+        print("CHECK: clone-only Create/Assign/Complete and optional "
+              "season-only Setup GATE transactional rollback PASS; "
               "no fixture retained, no email generated")
 
         # The accepted source report Intake #60 is an excellent data fixture
