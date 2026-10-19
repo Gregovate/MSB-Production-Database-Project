@@ -62,18 +62,71 @@
   }
 
   function drawActions() {
-    const select = byId("review-action");
-    const previous = select.value;
-    select.replaceChildren();
-    option(select, "", "Select proposed action");
-    for (const kind of permitted()) option(select, kind, actions[kind]);
-    select.disabled = !model.actor || !permitted().length;
-    if (permitted().includes(previous)) select.value = previous;
-    byId("review-context").textContent = model.ticket
-      ? "Current source: " + model.ticket.ticket + " · " +
-        (model.ticket.title || "Untitled") + " · " +
-        (model.ticket.reported_by || "Reporter not recorded")
-      : "New internal Work Order. A Crew-created Work Order awaits Manager assignment.";
+    const picker = byId("review-action");
+    const previous = picker.value;
+    const available = permitted();
+    picker.replaceChildren();
+    option(picker, "", "Choose an action");
+    available.forEach((kind) => option(picker, kind, actions[kind]));
+    picker.disabled = !model.actor || !available.length;
+    if (available.includes(previous)) picker.value = previous;
+
+    const ticket = model.ticket;
+    const title = byId("review-panel-title");
+    const buttons = byId("review-action-buttons");
+    const guidance = byId("review-action-guidance");
+    buttons.replaceChildren();
+    title.textContent = !ticket ? "New internal Work Order" :
+      ticket.type === "WORK_ORDER" ? "Work on this Work Order" :
+      ticket.type === "TASK_FEEDBACK" ? "Review Task Feedback" : "Review Public Intake";
+
+    const labels = {
+      progress: "Add Work Note",
+      complete: "Complete Work Order",
+      assign: "Assign / Reassign",
+      link_setup: "Link to seasonal Setup",
+      promote: "Promote & Assign",
+      correction_owner: "Assign correction owner",
+      clarify: "Ask reporter for details",
+      reply: "Reply to clarification",
+      resolve: "Record resolution",
+    };
+    const visible = available.filter((kind) => kind !== "create");
+    visible.forEach((kind) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "review-action-button" +
+        (kind === "complete" || kind === "promote" ? " primary-action" : "") +
+        (["assign", "link_setup", "correction_owner", "clarify", "resolve"].includes(kind)
+          ? " manager-action" : "");
+      button.dataset.action = kind;
+      button.textContent = labels[kind] || actions[kind];
+      button.setAttribute("aria-pressed", String(picker.value === kind));
+      button.addEventListener("click", () => {
+        if (!permitted().includes(kind)) return;
+        picker.value = kind;
+        actionChanged();
+        buttons.querySelectorAll("button").forEach((item) =>
+          item.setAttribute("aria-pressed", String(item.dataset.action === kind)));
+        const input = kind === "complete" ? byId("review-completion-notes") :
+          kind === "progress" ? byId("review-progress-note") : null;
+        if (input) input.focus();
+      });
+      buttons.appendChild(button);
+    });
+    guidance.textContent = !ticket ? "Create a new Work Order using the button above." :
+      ticket.type === "WORK_ORDER" && ticket.done_at
+        ? "This Work Order has a recorded completion date. Work notes and completion are locked."
+        : ticket.type === "WORK_ORDER" && !visible.length
+          ? "Only the Manager or an active assignee can update this Work Order."
+          : ticket.type === "WORK_ORDER"
+            ? "Record what was done, or mark the work complete with required notes."
+            : ticket.type === "INTAKE_REQUEST"
+              ? "This is a submitted request, not an assigned Work Order. Managers triage it here."
+              : "Manager correction review and original-reporter follow-up.";
+    byId("review-context").textContent = ticket
+      ? "Selected: " + ticket.ticket + " · " +
+        (ticket.title || "Untitled") : "";
     showForm();
   }
 
@@ -183,6 +236,20 @@
     byId("review-feedback-fields").hidden = !["clarify", "resolve", "reply"].includes(kind);
     byId("review-disposition").disabled = kind !== "resolve";
     byId("review-result").textContent = "";
+    const submit = byId("review-submit");
+    const submitNames = {
+      create: "Create Work Order",
+      assign: "Save assignments",
+      progress: "Save Work Note · Keep open",
+      complete: "Confirm and Save Completion",
+      link_setup: "Link Work Order to Setup",
+      promote: "Promote & Assign",
+      correction_owner: "Save correction owner",
+      clarify: "Save clarification request · No email sent",
+      reply: "Save reporter reply",
+      resolve: "Save feedback resolution · No email sent",
+    };
+    submit.textContent = submitNames[kind] || "Save to disposable database";
     if (kind && ["create", "promote"].includes(kind)) locationChanged();
     else byId("review-setup-fields").hidden = true;
   }
