@@ -210,12 +210,25 @@ class WorkManagementRepository:
 
     def tickets(
         self, *, actor: dict[str, Any], scope: str, person_id: int | None,
-        show_completed: bool, search: str, limit: int = 80,
+        show_completed: bool, search: str, sort: str = "priority", limit: int = 80,
     ) -> list[dict[str, Any]]:
-        if scope not in ("mine", "all", "person", "repairs", "testing", "intake", "feedback", "my-feedback", "unassigned", "critical"):
+        manager_scopes = ("all", "person", "repairs", "testing",
+                          "intake", "feedback", "unassigned", "critical")
+        if scope not in ("mine", "my-feedback", *manager_scopes):
             raise WorkManagementError("Unknown Work Order scope.")
+        if scope in manager_scopes and not actor["can_manage"]:
+            raise WorkManagementError("Manager view requires Manager permission.", 403)
         if scope == "person" and (person_id is None or person_id < 1):
             raise WorkManagementError("Select a valid assignee.")
+        sort_modes = {
+            "priority": "t.urgency ASC NULLS LAST, COALESCE(t.wo_id, t.in_id) DESC",
+            "priority_desc": "t.urgency DESC NULLS LAST, COALESCE(t.wo_id, t.in_id) DESC",
+            "number_asc": "COALESCE(t.wo_id, t.in_id) ASC",
+            "number_desc": "COALESCE(t.wo_id, t.in_id) DESC",
+        }
+        if sort not in sort_modes:
+            raise WorkManagementError("Unknown Work Order sort.")
+        # These ORDER BY expressions are constants, never client-authored SQL.
         limit = max(1, min(int(limit), 100))
         user = int(actor["person_id"])
         selected = user if scope == "mine" else person_id
@@ -226,15 +239,6 @@ class WorkManagementRepository:
         if scope in ("mine", "person"):
             conditions.append("t.type = 'WORK_ORDER' AND %s = ANY(t.assignee_ids)")
             params.append(selected)
-        elif not actor["can_manage"]:
-            # General Work Orders are browsable like accepted Perform Work;
-            # human Intake remains private except to the original reporter.
-            conditions.append(
-                "(t.type = 'WORK_ORDER' OR t.reporter_id = %s)"
-            )
-            params.append(user)
-        if scope in ("repairs", "testing", "intake", "feedback", "unassigned", "critical") and not actor["can_manage"]:
-            raise WorkManagementError("Manager queue requires Manager permission.", 403)
         if scope == "my-feedback":
             conditions.append("t.type = 'TASK_FEEDBACK' AND t.reporter_id = %s")
             params.append(user)
@@ -264,9 +268,7 @@ class WorkManagementRepository:
         query = (
             "SELECT t.* FROM (" + ledger_select() + ") AS t "
             "WHERE " + where + " "
-            "ORDER BY CASE WHEN t.type = 'WORK_ORDER' AND t.done_at IS NULL "
-            "THEN 0 ELSE 1 END, "
-            "t.urgency ASC NULLS LAST, "
+            "ORDER BY " + sort_modes[sort] + ", "
             "t.last_at DESC NULLS LAST, t.ticket LIMIT %s"
         )
         params.append(limit)
