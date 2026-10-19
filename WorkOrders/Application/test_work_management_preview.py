@@ -948,4 +948,4 @@ def test_oct19_tom_crew_intake_manager_direct_creation_and_planning_year():
     assert '"Target year applies only to Planning (urgency 5)."' in commands_source
     assert 'if action == "create" and not actor["can_manage"]' in commands_source
     assert "Only Managers may create Work Orders directly." in commands_source
-    assert "stage.work_order_intake" not in commands_source  # no parallel Intake subsystem
+    assert 'href="https://forms.gle/Gve4ZbXHDWxs43yh6"' in html  # reuse public Intake form
