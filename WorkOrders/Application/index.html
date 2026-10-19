@@ -98,7 +98,7 @@
       </label>
       <button id="refresh" type="button" class="quiet-button">Refresh</button>
       <button id="create-work-order" type="button" class="primary-button" aria-controls="review-action-form" aria-expanded="false" hidden>+ Create Work Order</button>
-      <a class="public-request-link" href="https://my.sheboyganlights.org/" target="_blank" rel="noopener noreferrer" title="Open the existing MSB portal and select Work Order Request">Public Work Order Request ↗</a>
+      <a class="public-request-link" href="https://forms.gle/Gve4ZbXHDWxs43yh6" target="_blank" rel="noopener noreferrer" title="Submit to the existing Park/Workshop Work Order Intake form; Manager review required">Submit Work Order Request ↗</a>
       </div>
     </section>
 
@@ -182,9 +182,11 @@
             <div id="review-stage-wrap" hidden><label for="review-stage">Stage</label><select id="review-stage"><option value="">Choose Stage</option></select></div>
             <div id="review-area-wrap" hidden><label for="review-area">Work Area</label><select id="review-area"><option value="">Choose Work Area</option></select></div>
             <label for="review-urgency">Urgency (existing catalog)</label>
-            <select id="review-urgency"><option value="">Select urgency</option><option value="1">1 · Immediate / Critical</option><option value="2">2 · High</option><option value="3">3 · Normal</option><option value="4">4 · Low</option><option value="5">5 · Planning</option></select>
-            <label for="review-target-year">Target year</label>
-            <input id="review-target-year" type="number" min="2020" max="2100" placeholder="2026">
+            <select id="review-urgency"><option value="1">1 · Immediate / Critical</option><option value="2">2 · High</option><option value="3" selected>3 · Normal</option><option value="4">4 · Low</option><option value="5">5 · Planning</option></select>
+            <div id="review-year-wrap" hidden>
+              <label for="review-target-year">Planning target year</label>
+              <input id="review-target-year" type="number" min="2020" max="2100" placeholder="Target year for Planning only">
+            </div>
             <label for="review-setup-mode">Does this repair affect seasonal Setup?</label>
             <select id="review-setup-mode">
               <option value="none">No · Work Order only</option>
