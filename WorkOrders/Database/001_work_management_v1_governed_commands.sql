@@ -44,6 +44,15 @@ BEGIN
       ('ops','work_order','completed_by_person_id'),
       ('ops','work_order','repair_complete'),
       ('ops','work_order','source_intake_id'),
+      ('ops','work_order','source_system'),
+      ('ops','work_order','source_form_name'),
+      ('ops','work_order','submitted_by_person_id'),
+      ('ops','work_order','created_by_person_id'),
+      ('ops','work_order','updated_by_person_id'),
+      ('ops','work_order','urgency_id'),
+      ('ops','work_order','target_year'),
+      ('ops','work_order','notes'),
+      ('ops','work_order','display_test_session_id'),
       ('ops','work_order_assignment','work_order_assignment_id'),
       ('ops','work_order_assignment','active_flag'),
       ('ops','work_order_assignment','unassigned_at'),
@@ -110,8 +119,9 @@ RETURNS TABLE(person_id integer, directus_user_id uuid, can_manage boolean)
 LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path = pg_catalog,ops,ref
 AS $func$
-DECLARE v_email text := lower(btrim(coalesce(p_email,'')));
-DECLARE v_count integer;
+DECLARE
+  v_email text := lower(btrim(coalesce(p_email,'')));
+  v_count integer;
 BEGIN
   IF v_email !~ '^[a-z0-9._%+-]+@sheboyganlights[.]org$' THEN
     RAISE EXCEPTION 'Work Orders: verified organization identity required'
@@ -492,8 +502,9 @@ CREATE OR REPLACE FUNCTION ops.work_management_v1_activity(
 LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path=pg_catalog,ops,ref,stage
 AS $activity$
-DECLARE v_actor record;
-DECLARE v_id integer;
+DECLARE
+  v_actor record;
+  v_id integer;
 BEGIN
   SELECT a.* INTO v_actor FROM ops.work_management_v1_actor(p_email) a;
   IF NOT FOUND OR p_ticket !~ '^(WO|INTAKE)-[1-9][0-9]*$' THEN
