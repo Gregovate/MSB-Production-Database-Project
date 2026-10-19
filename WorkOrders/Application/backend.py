@@ -17,7 +17,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 from repository import WorkManagementError, WorkManagementRepository
 from commands import CloneCommands
 
-APP_VERSION = "V0.3.1-role-based-crew-create-manager-triage-sort"
+APP_VERSION = "V0.3.2-work-order-actions-navigation-planning-filter"
 BASE_DIR = Path(__file__).resolve().parent
 CLOUDFLARE_HEADER = "Cf-Access-Authenticated-User-Email"
 TICKET_KEY = re.compile(r"^(?:WO|INTAKE)-[1-9][0-9]{0,12}$")
