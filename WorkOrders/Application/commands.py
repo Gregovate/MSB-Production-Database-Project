@@ -143,7 +143,7 @@ class CloneCommands:
                        source: dict | None = None) -> int:
         problem = substantive(body.get("problem"), "Work description")
         task_type = numeric(body.get("task_type_id"), "Task Type")
-        urgency = numeric(body.get("urgency"), "urgency")
+        urgency = numeric(body.get("urgency") or 3, "urgency")
         if urgency not in range(1, 6):
             raise WorkManagementError("Urgency must be 1 through 5.")
         stage = body.get("stage_id")
@@ -153,10 +153,14 @@ class CloneCommands:
         stage = numeric(stage, "Stage") if stage else None
         area = numeric(area, "Work Area") if area else None
         year = body.get("target_year")
-        if year not in (None, ""):
+        if urgency == 5:
+            if year in (None, ""):
+                raise WorkManagementError("Planning Work Orders require a target year.")
             year = numeric(year, "target year")
             if year < 2020 or year > 2100:
                 raise WorkManagementError("Invalid target year.")
+        elif year not in (None, ""):
+            raise WorkManagementError("Target year applies only to Planning (urgency 5).")
         else:
             year = None
         if stage:
@@ -335,16 +339,15 @@ class CloneCommands:
                 raise WorkManagementError("Internal Create cannot reuse an existing ticket.")
         elif ticket is None:
             raise WorkManagementError("Select the ticket being changed.")
-        if action == "create" and not actor.get("can_create", actor.get("can_read", False)):
-            raise WorkManagementError("Direct Work Order creation is not authorized.", 403)
+        if action == "create" and not actor["can_manage"]:
+            raise WorkManagementError(
+                "Only Managers may create Work Orders directly. "
+                "Submit a Work Order Request through the existing Intake form.", 403)
         if action in ("assign", "link_setup", "promote", "correction_owner", "clarify", "resolve") \
                 and not actor["can_manage"]:
             raise WorkManagementError("Manager action is not authorized.", 403)
-        # Crew can create a native unassigned WO, never assign anyone.
-        if action == "create" and not actor["can_manage"] and body.get("person_ids"):
-            raise WorkManagementError("Only Managers may assign Work Orders.", 403)
-        # Crew may request Setup association; only a Manager may commit
-        # seasonal task creation through the existing Setup authority.
+        # Manager triage/promote owns assignment. Intake requests do not
+        # independently assign volunteers or create annual Setup tasks.
         setup_mode = body.get("setup_mode", "none")
         if setup_mode not in ("none", "request", "create"):
             raise WorkManagementError("Unknown seasonal Setup option.")
@@ -414,8 +417,8 @@ class CloneCommands:
                     if cur.fetchone():
                         raise WorkManagementError("Intake is already promoted.", 409)
                 wo = self.new_work_order(cur, actor, body, intake)
-                # Zero assignees is deliberate for Crew-created work awaiting
-                # Manager dispatch. Manager creation may also remain unassigned.
+                # Manager may create unassigned Work Orders; new Intake requests
+                # receive no assignment until the Manager triages/promotes.
                 added, _ = self.reassign(cur, wo, selected) if selected else ([], [])
                 linked_setup_task_id = None
                 if setup_mode == "create":
