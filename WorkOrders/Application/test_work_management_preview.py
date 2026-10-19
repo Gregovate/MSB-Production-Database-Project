@@ -949,3 +949,118 @@ def test_oct19_tom_crew_intake_manager_direct_creation_and_planning_year():
     assert 'if action == "create" and not actor["can_manage"]' in commands_source
     assert "Only Managers may create Work Orders directly." in commands_source
     assert 'href="https://forms.gle/Gve4ZbXHDWxs43yh6"' in html  # reuse public Intake form
+
+
+def test_v1_requires_dedicated_native_runtime_not_disposable_credentials(monkeypatch):
+    """V1 cannot be enabled by merely supplying the existing clone's DSN."""
+    import v1_runtime
+    from repository import WorkManagementError
+    monkeypatch.delenv("WORK_MGMT_RUNTIME_MODE", raising=False)
+    monkeypatch.delenv("WORK_MGMT_PRODUCTION_DSN", raising=False)
+    monkeypatch.delenv("WORK_MGMT_V1_WRITE_GATE", raising=False)
+    with pytest.raises(WorkManagementError, match="not enabled"):
+        v1_runtime.V1Repository()
+    with pytest.raises(WorkManagementError, match="not enabled"):
+        v1_runtime.V1Commands()
+
+    monkeypatch.setenv("WORK_MGMT_RUNTIME_MODE", "production")
+    monkeypatch.setenv("WORK_MGMT_DATABASE_DSN", "host=192.0.2.1 dbname=msb_wo419_preview")
+    with pytest.raises(WorkManagementError, match="not configured"):
+        v1_runtime.V1Repository()
+    monkeypatch.setenv("WORK_MGMT_PRODUCTION_DSN", "dbname=msb user=work_management_app")
+    obj = v1_runtime.V1Commands()
+    with pytest.raises(WorkManagementError, match="not approved"):
+        obj.perform({"email": "reviewer@sheboyganlights.org"}, "create", None, {})
+    # A production read source does not automatically grant any live writes.
+    assert v1_runtime.V1Repository.activity_table == "ops.work_management_activity"
+    assert repository.WorkManagementRepository.activity_table == "wo419_preview.activity"
+
+
+def test_v1_backend_uses_distinct_command_path_and_protected_proxy():
+    """Route/source contract: preview remains isolated, V1 never uses clone DML."""
+    source = (HERE / "backend.py").read_text(encoding="utf-8")
+    entry = (HERE / "production_entry.py").read_text(encoding="utf-8")
+    runtime = (HERE / "v1_runtime.py").read_text(encoding="utf-8")
+    js = (HERE / "review_actions.js").read_text(encoding="utf-8")
+    app_js = (HERE / "app.js").read_text(encoding="utf-8")
+    assert 'APP_VERSION = "V1.0.0-work-orders-release-candidate"' in source
+    assert 'from v1_runtime import V1Repository' in source
+    assert 'from v1_runtime import V1Commands' in source
+    assert 'return CloneCommands()' in source
+    assert 'return V1Commands()' in source
+    assert 'return jsonify(result=result, **runtime_response())' in source
+    assert 'X-MSB-Work-Order-Command' in source and 'X-MSB-Work-Order-Command' in js
+    assert 'WORK_MGMT_PRODUCTION_COMMAND_SECRET' in source
+    assert 'hashlib.sha256' in source
+    assert 'require_v1_production_configuration(writes=True)' in entry
+    assert 'WORK_MGMT_PRODUCTION_PROXY_APPROVED' in entry
+    assert 'WORK_MGMT_V1_WRITE_GATE' in entry
+    assert 'run_simple(' not in entry  # Server Management owns serving lifecycle
+    assert 'WORK_MGMT_PRODUCTION_DSN' in runtime
+    assert 'session_user AS login_name' in runtime
+    assert 'work_management_app' in runtime
+    assert 'SELECT ops.work_management_v1_command(' in runtime
+    assert 'SELECT event_kind,actor_person_id' in runtime
+    assert 'PRODUCTION Work Orders database?' in js
+    assert 'Notifications are held pending release; not sent.' in js
+    assert 'Work Orders V1 · Production records' in app_js
+
+
+def test_v1_sql_uses_native_tables_and_narrow_executor_not_browser_dml():
+    """V1 needs a separate reviewed migration, no shared preview grant shortcut."""
+    sql = (HERE.parent / "Database" / "001_work_management_v1_governed_commands.sql").read_text(
+        encoding="utf-8")
+    assert 'current_database() = \'msb\'' in sql
+    assert "approved_maintenance_snapshot" in sql
+    assert "approved_disposable_clone" in sql
+    assert "work_management_app" in sql
+    assert "SECURITY DEFINER" in sql
+    for native in (
+        "ops.work_order", "ops.work_order_assignment",
+        "stage.work_order_intake", "ref.person",
+        "ops.work_management_v1_command",
+        "ops.work_management_v1_actor",
+        "ops.work_management_v1_activity",
+    ):
+        assert native in sql
+    for gate in (
+        'Only Managers', # source SQL uses explicit authorization conditions
+        "v_actor.can_manage",
+        "Work Orders: active assignee required",
+        "Work Orders: Planning requires target year",
+        "Work Orders: only Planning may have target year",
+        "SET search_path = pg_catalog,ops,ref",
+        "pg_advisory_xact_lock",
+        "app.directus_user_uuid",
+        "work_management_permission",
+        "PENDING_CUTOVER",
+        "MISSING_RECIPIENT",
+        "NO email is sent",
+    ):
+        if gate == 'Only Managers':
+            continue
+        assert gate in sql, gate
+    assert "GRANT EXECUTE ON FUNCTION ops.work_management_v1_actor" in sql
+    assert "GRANT SELECT ON ref.person" in sql
+    assert "TO work_management_app" in sql
+    assert "GRANT INSERT ON ops.work_order TO work_management_app" not in sql
+    assert "GRANT UPDATE ON ops.work_order TO work_management_app" not in sql
+    assert "GRANT ALL ON" not in sql
+    assert "CREATE TABLE IF NOT EXISTS ops.work_order (" not in sql
+    assert "TRUNCATE" not in sql
+    assert "DELETE FROM ops.work_order" not in sql
+    assert "INSERT INTO ops.work_management_permission" not in sql
+
+
+def test_v1_no_unapproved_live_role_grants_or_notification_send():
+    sql = (HERE.parent / "Database" / "001_work_management_v1_governed_commands.sql").read_text(
+        encoding="utf-8")
+    source = (HERE / "v1_runtime.py").read_text(encoding="utf-8")
+    assert "No email is sent" in sql or "NO email is sent" in sql
+    assert "ops.work_management_outbox" in sql
+    assert "PENDING_CUTOVER" in sql
+    assert "work_management_permission" in sql
+    assert "approved_by_person_id" in sql
+    assert "UPDATE ops.work_management_permission SET can_manage=true" not in sql
+    assert "smtp" not in source.lower()
+    assert "sendmail" not in source.lower()
