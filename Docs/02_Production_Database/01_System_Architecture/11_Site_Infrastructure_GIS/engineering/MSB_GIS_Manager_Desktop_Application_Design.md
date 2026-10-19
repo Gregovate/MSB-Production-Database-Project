@@ -124,6 +124,8 @@ Preview the proposed effective/current park-map result and historic-source reten
 
 ## October 19 field-first priority — capture current ground paint before it disappears (#171)
 
+**Focused urgent work item:** [#428 — capture visible 2026 paint marks on the existing map](https://github.com/Gregovate/MSB-Production-Database-Project/issues/428). This is the first operator-deliverable; it does not depend on #429–#432.
+
 **Operator priority: now, while locate/paint marks are still visible.** This urgent field-evidence work is a **smaller deliverable than complete GIS Manager installation, PostGIS migration, full ExpertGPS synchronization, or historical cable cleanup**. Do not use those larger projects as prerequisites to *capturing* ground truth.
 
 ### Minimum field capture, without assuming smartphone GPS is surveyed truth
