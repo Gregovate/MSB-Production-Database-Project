@@ -7,6 +7,7 @@ This subsystem documents permanent physical-site identities, location history, p
 **This README is a handoff and document pointer, not the controlling GIS design.** For approved system behavior, access boundaries, source file relationships, acceptance gates and future implementation requirements, use the controlled engineering documents. **PRs must comply with those documents, not define a competing system through their descriptions.**
 
 - [GIS engineering documents](engineering/README.md) — start with the [CURRENT GIS Symbol Management contract](engineering/GIS_Symbol_Management.md), including the source/publishing security model, dated field acceptance and map consumers.
+- [MSB GIS Manager desktop application design — DRAFT](engineering/MSB_GIS_Manager_Desktop_Application_Design.md) — Windows installer, current G: Symbol Library, Show PC safety/acceptance and read-only-first Garmin repair-track reconciliation; implementation evidence remains on existing #378/#319, not in this portal.
 - [MSB icon operator procedures](operatorSOP/README.md) — install/update the Windows Icon Library Manager, update local ExpertGPS icons, and **administrator-only** publication of approved Plain SVGs to the web.
 - [Icon Library Manager source/tool handoff](../../../../Database/EngineeringTools/README-Icon-Library-Manager.md) — the actual launcher, GUI, publishing engine and targeted regression entry points.
 
