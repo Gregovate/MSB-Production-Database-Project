@@ -53,6 +53,15 @@
 
   function statusLabel(row) {
     if (row.done_at) return "Completed (date recorded)";
+    if (row.type === "TASK_FEEDBACK") {
+      const dispositions = {
+        RESOLVED: "Resolved / Verified", DEFERRED: "Deferred",
+        REJECTED: "Rejected / No Action", DUPLICATE: "Duplicate / Linked",
+        WAITING_ON_REPORTER: "Waiting on reporter",
+        PROMOTED_TO_WO: "Promoted to Work Order",
+      };
+      if (dispositions[row.state]) return dispositions[row.state];
+    }
     if (row.type !== "WORK_ORDER") return row.state === "SUBMITTED"
       ? "Submitted — awaiting review" : "Intake review state: " + (row.state || "Not recorded");
     if (!row.active) return "Inactive — not recorded complete";
