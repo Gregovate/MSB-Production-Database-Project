@@ -580,3 +580,70 @@ def test_aging_browser_has_manager_view_full_table_and_safe_csv():
     assert "text.replaceAll" in js
     assert "0–7 days" in js
     assert "Inactive exceptions" in js
+
+
+def test_setup_season_link_is_manager_only_and_uses_existing_setup_command():
+    import commands
+    # A Crew member may REQUEST linkage without gaining Setup Manager rights.
+    with pytest.raises(repository.WorkManagementError) as denied:
+        commands.CloneCommands.create_season_only_work_order_gate(
+            None, {"person_id": 202, "can_manage": False}, 372,
+            {"stage_id": 17, "setup_season_year": 2026},
+        )
+    assert denied.value.status == 403
+    source = (HERE / "commands.py").read_text(encoding="utf-8")
+    assert "ops.create_setup_season_task(" in source
+    assert 'None, "GATE"' in source
+    assert "work_order_id, True" in source
+    assert '"SEASON_ONLY"' not in source or "SEASON_ONLY" in source
+    assert "SETUP" not in source or "setup_session_task" in source
+    assert "CREATE TABLE ref.setup_task" not in source
+    assert '"linked_setup_session_task_id"' in source
+
+
+def test_crew_setup_review_request_and_manager_only_auto_link():
+    import commands
+    from uuid import uuid4
+    writer = commands.CloneCommands.__new__(commands.CloneCommands)
+    crew = {"person_id": 202, "can_manage": False, "can_create": True,
+            "can_read": True}
+    request = {"request_key": str(uuid4()), "person_ids": [],
+               "setup_mode": "request", "stage_id": 17}
+    class TransactionReached(RuntimeError):
+        pass
+    def fail_at_connection(actor):
+        raise TransactionReached("Reached disposable transaction")
+    writer.transaction = fail_at_connection
+    with pytest.raises(TransactionReached):
+        writer.perform(crew, "create", None, request)
+    with pytest.raises(repository.WorkManagementError) as denied:
+        writer.perform(crew, "create", None, {
+            **request, "setup_mode": "create",
+            "setup_season_year": 2026,
+        })
+    assert denied.value.status == 403
+
+
+def test_season_link_ui_and_clone_rollback_gate_are_not_replacement_setup_work():
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    js = (HERE / "review_actions.js").read_text(encoding="utf-8")
+    clone = (ROOT / "WorkOrders/Acceptance/validate_work_management_clone.py"
+             ).read_text(encoding="utf-8")
+    grants = (ROOT / "WorkOrders/Acceptance/wo419_preview_clone_read_grants.sql"
+              ).read_text(encoding="utf-8")
+    for name in ("review-setup-mode", "review-setup-season", "review-setup-name"):
+        assert 'id="' + name + '"' in html
+        assert name in js
+    assert "Manager · Create linked season-only Setup task now" in html
+    assert "setup_seasons" in js
+    assert "setupModeChanged" in js
+    assert "atomic_work_order_setup_season_gate" in clone
+    assert "create_season_only_work_order_gate(" in clone
+    assert "ROLLBACK TO SAVEPOINT wo419_preflight" in clone
+    assert "ops.create_setup_season_task(" in grants
+    assert "GRANT INSERT ON ops.setup_session_task" not in grants
+    setup_board = (
+        ROOT / "Setup/Application/setup_scheduling_board_repository.py"
+    ).read_text(encoding="utf-8")
+    assert "linked_work_order_gate" in setup_board
+    assert "wo.date_completed IS NOT NULL" in setup_board
