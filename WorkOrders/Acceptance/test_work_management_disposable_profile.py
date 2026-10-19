@@ -139,3 +139,19 @@ def test_disposable_preview_runs_full_established_application_regressions():
     assert "WorkOrders/Acceptance/test_work_management_disposable_profile.py" in runner
     assert runner.index("Setup/Application Setup/Acceptance/test_setup_gis_preview.py") < runner.index('sudo docker exec "$PRODUCTION_CONTAINER" pg_dump')
     assert runner.index("FieldWiring/Application") < runner.index('sudo docker exec "$PRODUCTION_CONTAINER" pg_dump')
+
+
+def test_clone_read_failure_reports_safe_validation_stage():
+    """Next real clone HOLD must identify which query/authorization stage failed."""
+    source = CLONE_CHECK.read_text(encoding="utf-8")
+    for stage in (
+        "clone_connection", "read_only_transaction", "clone_identity",
+        "unified_ledger_query", "reviewer_authorization", "my_work_query",
+        "all_tickets_query", "assignee_selector_query",
+        "intake_60_detail_query", "intake_60_related_information",
+    ):
+        assert f'phase("{stage}")' in source
+    assert "phase={CURRENT_PHASE}" in source
+    assert "exception_class={type(exc).__name__}" in source
+    assert "traceback.print_exc" not in source
+    assert "print(exc)" not in source
