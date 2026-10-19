@@ -1,7 +1,7 @@
-"""#419 Work Management: protected disposable-only read-only browser candidate.
+"""#419 Work Management: protected disposable-only save-capable browser candidate.
 
-Run ONLY behind the existing Cloudflare Access perimeter and with an isolated
-clone. This entry point deliberately has no ticket mutation or email routes.
+Run ONLY through the existing Server Management isolated-clone runner.
+POST writes are clone-token/CSRF guarded. No email transport or Directus Flows.
 """
 from __future__ import annotations
 
