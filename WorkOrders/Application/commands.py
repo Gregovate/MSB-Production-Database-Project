@@ -405,6 +405,10 @@ class CloneCommands:
                     )
                 result_ticket = f"WO-{wo}"
                 note = "Work Order created" if action == "create" else "Intake promoted and assigned"
+                if setup_mode == "request":
+                    note += " · Seasonal Setup review requested"
+                elif linked_setup_task_id is not None:
+                    note += f" · Linked season-only Setup task #{linked_setup_task_id}"
                 event = self.persist_event(
                     cur, request_key, result_ticket, action, actor, note,
                     details={
