@@ -186,6 +186,8 @@ class CloneCommands:
         else:
             if "source_system" in available:
                 fields["source_system"] = "WORK_MANAGEMENT_INTERNAL"
+            if "submitted_by_person_id" in available:
+                fields["submitted_by_person_id"] = actor["person_id"]
             if "notes" in available:
                 fields["notes"] = body.get("notes") or None
         if not set(fields).issubset(available) or not {"urgency_id", "date_completed"}.issubset(available):
@@ -251,9 +253,14 @@ class CloneCommands:
                 raise WorkManagementError("Internal Create cannot reuse an existing ticket.")
         elif ticket is None:
             raise WorkManagementError("Select the ticket being changed.")
-        if action in ("create", "assign", "promote", "correction_owner", "clarify", "resolve") \
+        if action == "create" and not actor.get("can_create", actor.get("can_read", False)):
+            raise WorkManagementError("Direct Work Order creation is not authorized.", 403)
+        if action in ("assign", "promote", "correction_owner", "clarify", "resolve") \
                 and not actor["can_manage"]:
             raise WorkManagementError("Manager action is not authorized.", 403)
+        # Crew can create a native unassigned WO, never assign anyone.
+        if action == "create" and not actor["can_manage"] and body.get("person_ids"):
+            raise WorkManagementError("Only Managers may assign Work Orders.", 403)
         if action in ("assign", "complete") and kind != "WO":
             raise WorkManagementError("This action requires an active Work Order.")
         if action in ("promote", "correction_owner", "clarify", "reply", "resolve") and kind != "INTAKE":
@@ -264,8 +271,8 @@ class CloneCommands:
                 raise ValueError("Version 4 required")
         except (ValueError, TypeError, AttributeError):
             raise WorkManagementError("New client command key required.")
-        selected = people(body.get("person_ids"), required=True) if action in \
-            ("create", "assign", "promote", "correction_owner") else []
+        selected = people(body.get("person_ids", []), required=(action != "create")) \
+            if action in ("create", "assign", "promote", "correction_owner") else []
         with self.transaction(actor) as cur:
             cur.execute(
                 "SELECT ticket_key,event_kind,details FROM wo419_preview.activity WHERE request_key=%s",
@@ -305,7 +312,9 @@ class CloneCommands:
                     if cur.fetchone():
                         raise WorkManagementError("Intake is already promoted.", 409)
                 wo = self.new_work_order(cur, actor, body, intake)
-                added, _ = self.reassign(cur, wo, selected)
+                # Zero assignees is deliberate for Crew-created work awaiting
+                # Manager dispatch. Manager creation may also remain unassigned.
+                added, _ = self.reassign(cur, wo, selected) if selected else ([], [])
                 result_ticket = f"WO-{wo}"
                 note = "Work Order created" if action == "create" else "Intake promoted and assigned"
                 event = self.persist_event(cur, request_key, result_ticket, action, actor,
