@@ -29,20 +29,30 @@
   <main class="app-shell">
     <div class="page-intro">
       <div>
-        <h2>Your work, with the full picture when you need it</h2>
-        <p class="subtle">Open your assignments first. Search all authorized work, including correction findings from Setup.</p>
+        <h2 id="home-heading">My Work Orders</h2>
+        <p id="home-description" class="subtle">Find your assigned Work Orders, perform repairs, and record completed work.</p>
       </div>
     </div>
     <div id="page-error" class="error-box" role="alert" hidden></div>
+    <section id="manager-inbox-banner" class="manager-inbox-banner" aria-label="Manager Intake requiring review" hidden>
+      <div>
+        <strong>Manager attention · New requests awaiting triage</strong>
+        <p id="manager-inbox-message" aria-live="polite">Checking Public Intake and Task Feedback…</p>
+      </div>
+      <div class="inbox-actions">
+        <button id="go-intake" type="button" class="quiet-button">Review Public Intake</button>
+        <button id="go-feedback" type="button" class="quiet-button">Review Task Feedback</button>
+      </div>
+    </section>
 
     <section class="controls" aria-label="Work Order filters">
       <div class="field">
         <label for="scope">Show work for</label>
         <select id="scope">
           <option value="mine">My Work</option>
-          <option value="all">All Work Orders and Intake</option>
+          <option value="all" data-manager-only>All Work Orders</option>
           <option value="my-feedback">My Submitted Feedback</option>
-          <option value="person">Another volunteer</option>
+          <option value="person" data-manager-only>Another volunteer</option>
           <option value="critical" data-manager-only>Manager · Immediate / Critical</option>
           <option value="unassigned" data-manager-only>Manager · Unassigned Work Orders</option>
           <option value="repairs" data-manager-only>Manager · Park / routine repairs</option>
@@ -60,12 +70,22 @@
         <input id="ticket-search" type="search" autocomplete="off"
                placeholder="Work Order number, finding, Stage, volunteer…">
       </div>
+      <div class="field">
+        <label for="ticket-sort">Sort by</label>
+        <select id="ticket-sort">
+          <option value="priority">Priority · Critical first</option>
+          <option value="priority_desc">Priority · Planning first</option>
+          <option value="number_desc">Work Order # · Highest first</option>
+          <option value="number_asc">Work Order # · Lowest first</option>
+        </select>
+      </div>
       <label class="check-field">
         <input id="show-completed" type="checkbox">
         <span>Show completed</span>
       </label>
       <button id="refresh" type="button" class="quiet-button">Refresh</button>
-      <button id="create-work-order" type="button" class="primary-button" hidden>+ New Work Order</button>
+      <button id="create-work-order" type="button" class="primary-button" hidden>+ Create Work Order</button>
+      <a class="public-request-link" href="https://my.sheboyganlights.org/" target="_blank" rel="noopener noreferrer" title="Open the existing MSB portal and select Work Order Request">Public Work Order Request ↗</a>
     </section>
 
     <div class="workspace">
@@ -133,11 +153,11 @@
             <input id="review-target-year" type="number" min="2020" max="2100" placeholder="2026">
           </fieldset>
           <fieldset id="review-person-fields" hidden>
-            <legend>Assign one or more existing volunteers</legend>
+            <legend>Manager · Assign one or more existing volunteers</legend>
             <label for="review-person-filter">Find volunteers</label>
             <input id="review-person-filter" type="search" placeholder="Filter existing People">
             <div id="review-people" class="review-people" role="group" aria-label="Volunteers"></div>
-            <p class="subtle">Current assignment history must be retained when the eventual command is approved.</p>
+            <p class="subtle">Managers only. Newly created Crew Work Orders enter the Manager unassigned queue.</p>
           </fieldset>
           <fieldset id="review-complete-fields" hidden>
             <legend>Authenticated completion</legend>
