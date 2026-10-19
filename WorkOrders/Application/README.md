@@ -27,6 +27,18 @@ The operator's first actual read-only disposable browser review returned **CHANG
 
 **Next gated work:** Establish reviewed schema/command authorization on current-Production disposable PostgreSQL; implement transaction-safe write routes with actor/role checks and no-send notification outbox; add browser functional tests; execute current full source regression and guarded server clone/8898 review, recording fingerprint and clean exit. Remain on draft PR #420. Never deploy or cut over without separate authorization.
 
+## October 19 V0.3 — disposable SAVE review candidate (not browser accepted)
+
+**Decision superseding V0.2 no-save:** Greg requires actual saves in the current-Production disposable clone, no notifications, and ticket actions **within the selected detail** rather than at the bottom. Work Management must reuse the exact existing MSB Setup logo and light/dark themes (source authority: Setup/Application/setup_theme.js and setup.css). The first V0.2 operator review remains **CHANGES REQUIRED**.
+
+**Implemented source:** Top-bar Manager New Work Order; embedded ticket-detail actions for Create, multi-person Assign/Reassign, authenticated required-note Complete, Intake Promote & Assign, correction ownership/clarification/reply/verified disposition; original Setup MSB SVG logos, palette and msb-theme shared preference; clone-only event/activity display. Native Work Order/assignment DML is bounded by verified Person and Manager permissions, exact private clone IP/database, separate server-generated 48-character write-token plus CSRF secret, and transactional idempotent action UUID. Existing Intake is preserved on promotion (no destructive triage trigger). No new Production master ticket table.
+
+**Isolation:** ONLY the established #419 Server Management disposable runner installs WorkOrders/Acceptance/wo419_disposable_actions.sql on the private clone with a session approval marker. It creates clone-only attributed wo419_preview.activity and NO_SEND outbox. There is no email transport, Directus Flow invocation, live service restart, Production mutation or Flow cutover. Each preview write disappears at cleanup.
+
+**Browser READY gate:** Full Setup/FieldWiring/#419 source tests; PostGIS final PID1 readiness; current-Production pg_dump/private restore and original read ledger; authorized reviewer/Manager catalog; clone-only native Create/Assign/Complete preflight inside a rolled-back savepoint; CSRF negative route; verified localhost listener. Any schema/actor/assignment/trigger failure is HOLD, not acceptance. Full actual Testing writeback/notification equivalence still requires a documented disposable browser test.
+
+**Known review targets (no Production cleanup authorized):** WO-372, WO-400, WO-107, WO-147, WO-389 (#230 dependency), WO-416, Testing repairs, Intake-60/40/57. Operator acceptance and a server CLEAN EXIT with unchanged fingerprints are still pending on the new SHA.
+
 ## October 18 V0.2 — new UX/browser review candidate (NOT P0 functional acceptance)
 
 **Disposition remains CHANGES REQUIRED.** The existing first browser review proved the V0.1 read-only shell but exposed lack of operational Manager, Testing, urgency and feedback workflows. This source-only continuation is a **second disposable browser candidate** for reviewing the proposed UX, not a claim of live Write acceptance. It stays on draft PR #420 and uses the same Server Management 8898 sequential profile, same PostgreSQL ledger, same Work Order/Intake identities, and same standalone preview process. It **does not** introduce a ticket database, competing application, mail transport or runner.
