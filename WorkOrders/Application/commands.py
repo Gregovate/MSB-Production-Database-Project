@@ -62,8 +62,13 @@ class CloneCommands:
         try:
             conn.set_session(readonly=False, autocommit=False)
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Docker inspect returns a bare IP (e.g. 172.18.0.5).
+                # PostgreSQL inet::text includes its mask (172.18.0.5/32),
+                # so compare the host address, without weakening the exact
+                # database-name, clone-token or resolved-actor gates.
                 cur.execute(
-                    "SELECT current_database() AS name, inet_server_addr()::text AS ip")
+                    "SELECT current_database() AS name, "
+                    "host(inet_server_addr()) AS ip")
                 found = cur.fetchone()
                 if (found["name"] != "msb_wo419_preview"
                         or found["ip"] != self.ip):
