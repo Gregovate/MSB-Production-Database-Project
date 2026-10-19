@@ -74,15 +74,16 @@
                placeholder="Work Order number, finding, Stage, volunteer…">
       </div>
       <div class="field">
-        <label for="ticket-sort">Sort work orders</label>
+        <label for="ticket-sort">Sort by</label>
         <select id="ticket-sort">
           <option value="priority">Priority · Most urgent first (1 → 5)</option>
           <option value="priority_desc">Priority · Least urgent first (5 → 1)</option>
-          <option value="number_desc">Work Order # · Newest number first</option>
-          <option value="number_asc">Work Order # · Oldest number first</option>
+          <option value="number_desc">Ticket number · Highest first</option>
+          <option value="number_asc">Ticket number · Lowest first</option>
           <option value="created_asc">Created date · Oldest first</option>
           <option value="created_desc">Created date · Newest first</option>
         </select>
+        <span class="sort-hint">Priority 1 = Critical; 5 = Planning</span>
       </div>
       <label class="check-field">
         <input id="show-completed" type="checkbox">
