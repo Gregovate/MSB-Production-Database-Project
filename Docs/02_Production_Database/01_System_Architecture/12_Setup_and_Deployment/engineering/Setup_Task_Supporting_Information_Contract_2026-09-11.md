@@ -46,6 +46,14 @@ The installed resolver/assignment queries all preserve that distinction.
 Reconciled TASK_UNLOAD evidence is explicitly inferred; without a prior usable
 observation it remains unloaded/location unresolved. Acceptance is pending.
 
+### #171 Park Map — recorded scan actor and GPS uncertainty (October 19, 2026)
+
+The protected existing Setup Park Map consumes #88's current Container/Display movement observations read-only. In the expandable **Record details** for each marker, expose the **captured operator attributed to that exact movement event**, not the current viewing user or the person who happened to complete a later scan. The existing event carries `captured_operator_email` (and an associated person ID) and the already-approved read-only `movement_picture()` exposes the captured email. Preserve the exact stored attribution in the protected popup; if it is absent, show **Not recorded**, never invent a person. Readable person-name enrichment is future work only when the role-gated existing lookup and its privileges are actually verified. **No new event table, mutation, inferred Rich attribution or broad People directory endpoint** is authorized by this presentation requirement.
+
+Display reported `gps_accuracy_m` converted to feet as an **estimated device uncertainty**, not surveyed placement or a guaranteed hard radius. Retain `gps_quality=UNASSESSED` as not assessed; it does not imply accepted positioning quality. Do not snap observations to park rows, approved static GIS waypoints, inferred stage locations, or other markers, and do not reclassify position mode. Retain capture time (Chicago), source, event ID, actual GPS, and the existing #88 movement and storage distinctions. Field screenshot for event #525, GG-Elden-20-02, at 10:05:54 AM October 19 reported ±11 ft, CAMERA_SCAN, UNASSESSED, DETACHED; the screenshot itself does not prove its operator identity or true position error. The optional uncertainty-circle visualization remains separately unaccepted; avoid covering dense groups of GG markers by default.
+
+**Acceptance:** source-only #171 map projection/popup regression proves event-specific captured email and missing-attribution fallback, clear estimated-accuracy wording and HTML-safe rendering, unchanged positions/associations and #88 historical events. Full protected/browser acceptance and any Production deployment remain separately gated under established Server Management rules. #319's current Park Map candidate must deliberately integrate this accepted source-only correction before its eventual merge.
+
 ## Effective Current Location — #175 / DBG-2026-001
 
 Home storage (`ref.container.location_code`) is permanent reference information.

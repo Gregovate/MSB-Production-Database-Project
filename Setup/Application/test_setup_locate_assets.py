@@ -25,6 +25,44 @@ def test_adapter_uses_state_event_and_does_not_infer_load_or_duplicate_attached_
     assert result['displays'][0]['position'] == [43, -87]
 
 
+
+def test_recorded_operator_is_from_each_event_not_the_current_user():
+    """#171 consumes #88 event attribution, including older unattributed events."""
+    picture = dict(generated_at=None, through_event_id=525, containers=[],
+        effect_rows=[
+            dict(setup_movement_event_id=525, event_type='DISPLAY_MOVE',
+                 gps_latitude=43.775782, gps_longitude=-87.743801,
+                 gps_accuracy_m=3.35, gps_quality='UNASSESSED',
+                 capture_method='CAMERA_SCAN', captured_operator_email='rich@example.org'),
+            dict(setup_movement_event_id=524, event_type='DISPLAY_MOVE',
+                 gps_latitude=43.775793, gps_longitude=-87.743812,
+                 captured_operator_email=None),
+        ],
+        displays=[
+            dict(display_id=1, display_name='GG-Elden-20-02', position_mode='DETACHED',
+                 last_movement_event_id=525),
+            dict(display_id=2, display_name='GG-other', position_mode='DETACHED',
+                 last_movement_event_id=524),
+        ])
+    rows = locate_assets(picture)['displays']
+    assert rows[0]['observation']['captured_operator_email'] == 'rich@example.org'
+    assert rows[0]['observation']['setup_movement_event_id'] == 525
+    assert rows[0]['observation']['gps_accuracy_m'] == 3.35
+    assert rows[0]['position'] == [43.775782, -87.743801]
+    assert rows[1]['observation']['captured_operator_email'] is None
+    assert rows[1]['observation']['setup_movement_event_id'] == 524
+
+
+def test_map_popup_labels_attribution_and_uncertainty_as_recorded_evidence():
+    """Map records are HTML-escaped and device accuracy cannot imply a surveyed fix."""
+    from pathlib import Path
+    source = Path(__file__).with_name('setup_locate_assets.js').read_text()
+    assert 'Recorded by:' in source and 'captured_operator_email' in source
+    assert "esc(String(o.captured_operator_email || '').trim() || 'Not recorded')" in source
+    assert 'Accuracy: ±' in source and '(device estimate; not surveyed)' in source
+    assert 'Number.isFinite(Number(o.gps_accuracy_m))' in source
+    assert 'L.marker(a.position' in source
+
 def test_map_endpoint_authentication_validation_and_no_store(monkeypatch):
     import setup_movement_api as api
     import setup_production_report as report
