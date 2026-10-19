@@ -155,3 +155,8 @@ Before changing public Work Order Request/Intake behavior, inspect the attached 
 ### Setup Report Correction / Directus notification integration
 
 The current Manager triage email is an active Directus Flow (`WOI Request Triage Email`) triggered by `items.create` on `work_order_intake`. Setup Report Correction therefore enters Intake through the Directus Items API after PostgreSQL has authenticated the reporter and derived authoritative Setup context. A direct PostgreSQL Intake insert would bypass that event and is not the accepted #172 path.
+
+
+### October 18 first browser review — five backlog examples
+
+The first disposable Work Management list/detail browser review is **CHANGES REQUIRED**, not accepted P0. Five specific open-in-database Work Orders exposed required backlog reconciliation: **WO-372** physically completed Saturday (related to schedule advancement), **WO-400** reassign to Adam after exact Person resolution, **WO-107** resolved through Controller Inventory/labels and needs reviewed closure, **WO-147** reportedly complete and needs closure, and **WO-389** rack RD04-B-03 / C213 blocked on #230 and rack-space database work, with Dec/Jan review. The owning [Work Order System Design](Work_Order_System_Design.md#419-first-operator-review--representative-backlog-dispositions-october-18) contains the disposition contract. These are operator observations, **not Production database updates**. Resume with authorized Create, multi-assignee Reassign, completion with required notes, Testing assignment queue, and accountable deferred/dependency follow-up before seeking browser acceptance.
