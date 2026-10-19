@@ -39,6 +39,9 @@
     const scope = $("scope").value;
     if (scope === "mine") return "My Work";
     if (scope === "all") return "All Work Orders and Intake";
+    if (scope === "my-feedback") return "My Submitted Feedback";
+    if (scope === "critical") return "Manager · Immediate / Critical Repairs";
+    if (scope === "unassigned") return "Manager · Unassigned Work Orders";
     if (scope === "repairs") return "Manager · Park and routine repairs";
     if (scope === "testing") return "Manager · Testing repair assignment";
     if (scope === "intake") return "Manager · Public Intake triage";
@@ -90,7 +93,10 @@
         escapeHtml(categoryLabel(row)) + '</span><span class="ticket-id">' +
         escapeHtml(row.ticket) + '</span></div>' +
         '<h4>' + escapeHtml(row.title || "Untitled item") + '</h4>' +
-        '<p class="card-meta">' + escapeHtml(loc) + '</p>' +
+        '<p class="card-meta">' + escapeHtml(loc) +
+        (row.urgency ? ' · <strong>Urgency ' + escapeHtml(row.urgency) +
+          (row.urgency === 1 ? ' · CRITICAL' : '') + '</strong>' : ' · Urgency not recorded') +
+        '</p>' +
         '<div class="card-footer"><span>' +
         escapeHtml(row.owners || "Unassigned") + '</span><span class="status' +
         (row.done_at ? " done" : "") + '">' +
@@ -151,7 +157,8 @@
     setText("detail-ticket-id", row.ticket);
     setText("detail-title", row.title || "Untitled item");
     setText("detail-status", statusLabel(row));
-    setText("detail-location", row.location || "Location not recorded");
+    setText("detail-location", (row.location || "Location not recorded") +
+      (row.urgency ? " · Urgency " + row.urgency : " · Urgency not recorded"));
     setText("detail-owner", row.owners || "Unassigned");
     setText("detail-reporter", row.reported_by || "Not recorded");
     setText("detail-source", row.source || "Not recorded");
@@ -160,6 +167,7 @@
     const extra = detail.notes_raw || detail.notes || "";
     $("detail-extra-note").hidden = !extra;
     setText("detail-extra-note", extra);
+    document.dispatchEvent(new CustomEvent("wo419:ticket", { detail: row }));
   }
 
   async function selectTicket(key) {
@@ -267,6 +275,7 @@
         getJson("/api/work-orders/assignees"),
       ]);
       state.actor = access.access;
+      document.dispatchEvent(new CustomEvent("wo419:actor", { detail: state.actor }));
       document.querySelectorAll("#scope option[data-manager-only]").forEach((option) => {
         option.disabled = !state.actor.can_manage;
         option.hidden = !state.actor.can_manage;
