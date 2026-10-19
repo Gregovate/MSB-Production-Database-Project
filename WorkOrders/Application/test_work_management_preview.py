@@ -646,3 +646,40 @@ def test_season_link_ui_and_clone_rollback_gate_are_not_replacement_setup_work()
     ).read_text(encoding="utf-8")
     assert "linked_work_order_gate" in setup_board
     assert "wo.date_completed IS NOT NULL" in setup_board
+
+
+def test_manager_link_existing_work_order_does_not_duplicate_work_order_or_intake():
+    import commands
+    from uuid import uuid4
+    source = (HERE / "commands.py").read_text(encoding="utf-8")
+    assert '"link_setup"' in source
+    assert 'elif action == "link_setup":' in source
+    assert 'self.create_season_only_work_order_gate(' in source
+    assert 'wo = self.new_work_order' in source
+    assert 'if action == "promote":' in source
+    # Linking must consume the already locked native WO identity and stage.
+    assert '"stage_id": work_order["stage_id"]' in source
+    assert '"problem": work_order["problem"]' in source
+    writer = commands.CloneCommands.__new__(commands.CloneCommands)
+    crew = {"person_id": 202, "can_create": True,
+            "can_manage": False, "can_read": True}
+    with pytest.raises(repository.WorkManagementError) as denied:
+        writer.perform(crew, "link_setup", "WO-372", {
+            "request_key": str(uuid4()), "setup_mode": "create",
+            "setup_season_year": 2026, "stage_id": 17,
+        })
+    assert denied.value.status == 403
+
+
+def test_manager_setup_link_action_is_ticket_local_and_has_real_season_select():
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    js = (HERE / "review_actions.js").read_text(encoding="utf-8")
+    assert 'id="review-link-setup-fields"' in html
+    assert 'id="review-link-setup-season"' in html
+    assert 'id="review-link-setup-name"' in html
+    assert 'Manager · Add this Work Order to seasonal Setup' in js
+    assert 'result.push("link_setup")' in js
+    assert 'kind === "link_setup"' in js
+    assert 'catalog("review-link-setup-season"' in js
+    assert '"linked_setup_session_task_id"' in (
+        HERE / "commands.py").read_text(encoding="utf-8")
