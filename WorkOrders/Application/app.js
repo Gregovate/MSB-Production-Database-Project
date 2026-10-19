@@ -39,6 +39,10 @@
     const scope = $("scope").value;
     if (scope === "mine") return "My Work";
     if (scope === "all") return "All Work Orders and Intake";
+    if (scope === "repairs") return "Manager · Park and routine repairs";
+    if (scope === "testing") return "Manager · Testing repair assignment";
+    if (scope === "intake") return "Manager · Public Intake triage";
+    if (scope === "feedback") return "Manager · Task Feedback review";
     const name = state.assignees.find((p) =>
       String(p.person_id) === $("assignee").value);
     return name ? "Assigned to " + name.display_name : "Choose a volunteer";
@@ -263,6 +267,10 @@
         getJson("/api/work-orders/assignees"),
       ]);
       state.actor = access.access;
+      document.querySelectorAll("#scope option[data-manager-only]").forEach((option) => {
+        option.disabled = !state.actor.can_manage;
+        option.hidden = !state.actor.can_manage;
+      });
       state.assignees = people.assignees || [];
       setText("user-identity", state.actor.display_name || "Signed in");
       const picker = $("assignee");
