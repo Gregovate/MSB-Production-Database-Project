@@ -442,8 +442,8 @@ def test_419_stage_source_reuses_existing_setup_relationships():
         assert required in feedback, required
 
 
-def test_419_first_app_source_is_read_only_and_related_information_optional():
-    """First V0.1 source uses a collapsed disclosure; P0 actions not mocked as done."""
+def test_419_read_projection_remains_immutable_and_related_information_optional():
+    """Read API retains governed model; writes confined to marker-gated clone commands."""
     app_dir = ROOT / "WorkOrders/Application"
     backend = (app_dir / "backend.py").read_text(encoding="utf-8")
     repo = (app_dir / "repository.py").read_text(encoding="utf-8")
@@ -476,5 +476,11 @@ def test_419_first_app_source_is_read_only_and_related_information_optional():
     ):
         if required != "scope=person":
             assert required in html + js, required
-    for forbidden in ("@app.post(", "@app.patch(", "@app.delete("):
-        assert forbidden not in backend
+    assert '@app.post("/api/work-orders/commands")' in backend
+    assert "require_command_safety()" in backend
+    writer = (app_dir / "commands.py").read_text(encoding="utf-8")
+    assert "wo419_preview.authorization" in writer
+    assert "msb_wo419_preview" in writer
+    assert "hmac.compare_digest" in writer
+    assert "NO_SEND_CAPTURED" in (ROOT / "WorkOrders/Acceptance/wo419_disposable_actions.sql").read_text(encoding="utf-8")
+    assert "@app.patch(" not in backend and "@app.delete(" not in backend
