@@ -46,6 +46,7 @@
     </section>
 
     <section class="controls" aria-label="Work Order filters">
+      <div class="control-filters">
       <div class="field">
         <label for="scope">Show work for</label>
         <select id="scope">
@@ -85,6 +86,8 @@
         </select>
         <span class="sort-hint">Priority 1 = Critical; 5 = Planning</span>
       </div>
+      </div>
+      <div class="control-actions">
       <label class="check-field">
         <input id="show-completed" type="checkbox">
         <span>Show completed</span>
@@ -94,8 +97,9 @@
         <span>Show planning work (Priority 5)</span>
       </label>
       <button id="refresh" type="button" class="quiet-button">Refresh</button>
-      <button id="create-work-order" type="button" class="primary-button" hidden>+ Create Work Order</button>
+      <button id="create-work-order" type="button" class="primary-button" aria-controls="review-action-form" aria-expanded="false" hidden>+ Create Work Order</button>
       <a class="public-request-link" href="https://my.sheboyganlights.org/" target="_blank" rel="noopener noreferrer" title="Open the existing MSB portal and select Work Order Request">Public Work Order Request ↗</a>
+      </div>
     </section>
 
     <section id="aging-report" class="aging-report" aria-label="Open Work Order Aging Report" hidden>
