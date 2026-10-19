@@ -27,7 +27,7 @@ class FakeRepo:
         return {"person_id": 101, "display_name": "Preview Person",
                 "can_manage": True, "can_read": True}
 
-    def aging_report(self, *, actor, sort="created_asc"):
+    def aging_report(self, *, actor, sort="created_asc", include_planning=True):
         FakeRepo.calls.append(("aging_report", sort))
         if not actor["can_manage"]:
             raise repository.WorkManagementError("Manager only.", 403)
@@ -272,6 +272,7 @@ def test_new_manager_queues_and_reporter_feedback_route(client):
                       "can_manage": True, "can_read": True},
             "scope": scope, "person_id": None,
             "show_completed": False, "search": "", "sort": "priority",
+            "include_planning": True,
         }) in FakeRepo.calls
 
 
@@ -279,7 +280,7 @@ def test_review_script_is_ticket_local_and_clone_only(client):
     page = client.get("/work-orders/", headers=identity())
     assert page.status_code == 200
     assert b"review_actions.js" in page.data
-    assert b"Disposable database only." in page.data
+    assert b"disposable database only" in page.data
     assert page.data.index(b'id="review-workbench"') < page.data.index(b'id="related-information"')
     assert b'id="create-work-order"' in page.data
     assert b"msb-blue-logo-600-plain.svg" in page.data
@@ -504,7 +505,7 @@ def test_manager_all_work_orders_is_not_the_intake_queue():
     assert 'value="tickets" data-manager-only' in html
     assert 'value="all" data-manager-only' in html
     assert 'value="intake" data-manager-only' in html
-    assert "Number (WO / Intake)" in html
+    assert "Ticket number" in html
 
 
 def test_assigned_crew_progress_is_distinct_from_completion():
