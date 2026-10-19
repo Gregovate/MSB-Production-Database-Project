@@ -121,6 +121,19 @@
   function locationChanged() {
     byId("review-stage-wrap").hidden = byId("review-location-type").value !== "stage";
     byId("review-area-wrap").hidden = byId("review-location-type").value !== "area";
+    setupModeChanged();
+  }
+
+  function setupModeChanged() {
+    const mode = byId("review-setup-mode").value;
+    const isManager = Boolean(model.actor?.can_manage);
+    const create = mode === "create" && isManager;
+    byId("review-setup-fields").hidden = !create;
+    // Only Stage-based park repair can create a linked Setup gate.
+    if (create && byId("review-location-type").value !== "stage") {
+      byId("review-setup-mode").value = "request";
+      byId("review-setup-fields").hidden = true;
+    }
   }
 
   function actionChanged() {
@@ -133,7 +146,9 @@
       drawPeople();
       for (const name of ("review-problem", "review-target-year",
                           "review-task-type", "review-location-type",
-                          "review-stage", "review-area", "review-urgency")) {
+                          "review-stage", "review-area", "review-urgency",
+                          "review-setup-mode", "review-setup-season",
+                          "review-setup-name")) {
         byId(name).value = "";
       }
     } else {
@@ -160,6 +175,7 @@
     byId("review-disposition").disabled = kind !== "resolve";
     byId("review-result").textContent = "";
     if (kind && ["create", "promote"].includes(kind)) locationChanged();
+    else byId("review-setup-fields").hidden = true;
   }
 
   function validate() {
@@ -182,6 +198,13 @@
       const year = byId("review-target-year").value;
       if (year && (!/^\d{4}$/.test(year) || +year < 2020 || +year > 2100))
         throw new Error("Choose a valid target year.");
+      const setupMode = byId("review-setup-mode").value;
+      if (setupMode === "create") {
+        if (!model.actor?.can_manage) throw new Error("Only a Manager can add seasonal Setup work.");
+        if (locationKind !== "stage") throw new Error("Choose the park Stage for seasonal Setup.");
+        if (!byId("review-setup-season").value)
+          throw new Error("Choose an existing open seasonal Setup session.");
+      }
     }
     if (["assign", "promote", "correction_owner"].includes(kind) && !model.selected.size)
       throw new Error("Select at least one exact existing Person.");
@@ -224,6 +247,9 @@
       task_type_id: byId("review-task-type").value,
       urgency: byId("review-urgency").value,
       target_year: byId("review-target-year").value,
+      setup_mode: byId("review-setup-mode").value,
+      setup_season_year: byId("review-setup-season").value,
+      setup_task_name: byId("review-setup-name").value.trim(),
       stage_id: location === "stage" ? byId("review-stage").value : null,
       work_area_id: location === "area" ? byId("review-area").value : null,
       progress_note: byId("review-progress-note").value.trim(),
@@ -280,6 +306,12 @@
       if (!payload.disposable_only || payload.read_only)
         throw new Error("Valid disposable catalog acceptance mode required.");
       model.options = payload.options;
+      document.querySelectorAll("#review-setup-mode option[data-manager-only]")
+        .forEach((option) => {
+          option.hidden = !model.actor?.can_manage;
+          option.disabled = !model.actor?.can_manage;
+        });
+      catalog("review-setup-season", model.options.setup_seasons || []);
       catalog("review-task-type", model.options.task_types || []);
       catalog("review-stage", model.options.stages || []);
       catalog("review-area", model.options.work_areas || []);
@@ -309,6 +341,7 @@
   byId("review-action").addEventListener("change", actionChanged);
   byId("create-work-order").addEventListener("click", openCreate);
   byId("review-location-type").addEventListener("change", locationChanged);
+  byId("review-setup-mode").addEventListener("change", setupModeChanged);
   byId("review-person-filter").addEventListener("input", drawPeople);
   byId("review-action-form").addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -319,6 +352,9 @@
       const saved = await saveAction();
       if (saved) {
         box.textContent = "SAVED on disposable clone: " + saved.ticket +
+          (saved.linked_setup_session_task_id
+            ? " · linked Setup season-only task #" + saved.linked_setup_session_task_id
+            : "") +
           ". Notification: NO SEND. This change disappears at cleanup.";
         box.dataset.valid = "true";
       }
