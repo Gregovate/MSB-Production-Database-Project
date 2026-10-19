@@ -2,6 +2,24 @@
 
 **Status: SOURCE-ONLY; not started or browser accepted.** Work Management is the existing MSB Database Work Orders subsystem.
 
+## V0.2 operator workflow rehearsal candidate — CHANGES REQUIRED, source-only
+
+The current branch's V0.2 read-only candidate extends the first completed browser's **CHANGES REQUIRED** finding; it is **not** full P0 workflow acceptance. The separate subsequent PostGIS first-restore HOLD and final-server readiness fix remain documented below. The existing **same** server runner and protected localhost 8898 profile are reused, not cloned or bypassed.
+
+**After latest source CI success**, from the existing clean local branch checkout use the same governed wrapper, supplying the exact current branch SHA and an explicitly approved reviewer Person:
+
+```powershell
+git pull --ff-only
+$sha = (git rev-parse HEAD).Trim()
+.\WorkOrders\Acceptance\run_work_management_disposable_browser_preview.ps1 -CandidateSha $sha -PreviewPort 8898 -PreviewEmail 'REPLACE-WITH-APPROVED-REVIEWER@sheboyganlights.org' -ApprovedReviewProfile
+```
+
+The uppercase reviewer placeholder is documentation only and **must not** be used literally. Wrapper enforces branch, clean checkout, SHA, email, local listener and remote ownership. Do not open the browser until the runner reports `WO419 BROWSER REVIEW READY`; if HOLD, retain output and do not improvise or deploy. The new clone validator verifies active People, Task Types, Stages and Work Areas for Manager users. All actions in the browser's **Operator workflow review** remain no-save; their validated summary cannot be used to claim an assignment, completion, Intake promotion or reporter email was persisted.
+
+**Review checklist (still no database writes):** My Work/all/person/completed; My Submitted Feedback and original reporter identity; Manager Critical/Unassigned/General/Testing/Public Intake/Feedback distinct queues; `WO372`, `WO-416`, Testing repairs, `INTAKE-60` and retained public Intake where present; light/dark theme; directly create without invented Intake; exactly one Park Stage or Workshop Work Area; select multiple existing People; required completion notes; specific feedback clarification and reasoned closure; negative user permissions; confirm the no-save truth is conspicuous. Original field findings WO-372/400/107/147/389/416 are **evidence and human-review targets**, never test-mutation instructions.
+
+**After review:** press ENTER in the foreground SSH console, inspect final `WO419 DISPOSABLE BROWSER REVIEW: CLEAN EXIT`, unchanged Production Work Order/assignment/Intake fingerprint and preview listener removed. Store screenshots/findings and the retained acceptance report path on this PR. Missing READY/CLEAN EXIT or any validation drift is HOLD, not acceptance. Next engineering work is durable clone-only actions and no-send notification tests before Production authorization is even considered.
+
 ## Authorities
 
 - [Work Orders design](../../Docs/02_Production_Database/01_System_Architecture/06_Work_Orders/Work_Order_System_Design.md) governs identities, Stage Related Information, and P0 acceptance.
