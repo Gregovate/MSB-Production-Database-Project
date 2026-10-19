@@ -33,7 +33,17 @@ h1 { font-size:23px; line-height:1.2; margin:0; font-weight:700; }
 h2 { margin:0 0 5px; font-size:24px; letter-spacing:-.4px; }
 .subtle, .footer-note { color:var(--muted); }
 .page-intro p { margin:0; }
-.controls { display:flex; align-items:end; flex-wrap:wrap; gap:12px; background:var(--surface); padding:16px; border:1px solid var(--border); border-radius:14px; margin-bottom:18px; }
+.controls { display:block; background:var(--surface); padding:16px; border:1px solid var(--border); border-radius:14px; margin-bottom:18px; }
+.control-filters { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); align-items:end; gap:12px 16px; }
+.control-filters .field { min-width:0; }
+.control-filters .search-field { min-width:0; }
+.control-filters .field select, .control-filters .field input { min-width:0; }
+.control-actions { display:flex; align-items:center; gap:10px 18px; flex-wrap:wrap; margin-top:12px; }
+.control-actions .check-field { min-height:44px; }
+.control-actions .public-request-link { white-space:normal; }
+@media(max-width:1050px) { .control-filters { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+@media(max-width:650px) { .control-filters { grid-template-columns:minmax(0,1fr); } }
+
 .field { display:flex; flex-direction:column; min-width:188px; gap:6px; }
 .field label { font-size:12px; font-weight:700; color:var(--muted); }
 .field select, .field input { width:100%; border:1px solid #b9cbd4; background:white; border-radius:8px; padding:10px 11px; color:var(--ink); min-height:44px; }
@@ -228,7 +238,7 @@ html[data-theme="dark"] .theme-toggle:hover { background:#1d3350; }
 #detail-content.create-mode .next-actions { display:none !important; }
 #detail-content.create-mode .detail-body { padding-top:8px; }
 #detail-content.create-mode .review-workbench { margin-top:8px; }
-#detail-content.create-mode .review-workbench h3::after { content:" · New internal Work Order"; }
+/* The JS heading already identifies New internal Work Order. No duplicate suffix. */
 #review-result[data-valid=true] { font-weight:750; }
 html[data-theme=dark] .review-result[data-valid=true] { color:#a2f4c0; }
 html[data-theme=dark] .review-result[data-valid=false] { color:#ffaaaa; }
