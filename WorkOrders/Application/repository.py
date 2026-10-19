@@ -196,7 +196,7 @@ class WorkManagementRepository:
             conditions.append("t.type = 'TASK_FEEDBACK' AND t.reporter_id = %s")
             params.append(user)
         elif scope == "unassigned":
-            conditions.append("t.type = 'WORK_ORDER' AND t.assigned_n = 0")
+            conditions.append("t.type = 'WORK_ORDER' AND COALESCE(t.assigned_n, 0) = 0")
         elif scope == "critical":
             conditions.append("t.type = 'WORK_ORDER' AND t.urgency = 1")
         elif scope == "repairs":
