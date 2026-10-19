@@ -58,7 +58,7 @@ def work_management() -> Response:
 
 @app.get("/work-orders/assets/<name>")
 def work_management_asset(name: str) -> Response:
-    if name not in {"app.js", "app.css"}:
+    if name not in {"app.js", "app.css", "review_actions.js"}:
         raise WorkManagementError("Asset not found.", 404)
     actor()
     return send_from_directory(BASE_DIR, name)
