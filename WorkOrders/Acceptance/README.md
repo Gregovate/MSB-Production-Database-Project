@@ -2,6 +2,36 @@
 
 **Status: V0.3 source-only candidate; new disposable-write validation and browser review still pending. V0.2 operator review was CHANGES REQUIRED.** Work Management is the existing MSB Database Work Orders subsystem.
 
+## October 19, 16:39 — Work Orders browser cleanup HOLD, owner-verified recovery, and root correction
+
+**Operator impact:** Candidate `14f4a15a5118401ba084aed87f3f25146419c3d2` completed an operator review on the Command Center PC. When the operator pressed ENTER to finish, the existing WO419 shell runner printed:
+
+```
+HOLD: preview PID command mismatch; no broad process kill
+PASS: shared checkout HEAD unchanged
+HOLD: preview listener remains after cleanup; inspect exact PID before retry
+WO419 DISPOSABLE BROWSER REVIEW: HOLD (status 83)
+Retained report: /home/msbadmin/setup-acceptance-reports/WO419_Disposable_Browser_Preview_20261019T202331.txt
+```
+
+It **removed the disposable database/worktree before proving the Flask listener was gone**, leaving a broken, orphaned Python process on the shared sequential port 8898. The subsequent read-only server check identified exactly `PID=3469910`, `PGID=3469910`, `SID=3469910`, `fieldwiring`, `/tmp/msb-wo419-preview-candidate-20261019T202331-3468774/WorkOrders/Application/preview_entry.py`, port `127.0.0.1:8898`, **no #419 Docker containers**, and **no resume state**. The operator then ran the exact-identity-gated targeted PID stop and explicitly reported:
+
+```
+PASS: Exact orphaned #419 browser verified.
+PASS: Port 8898 released.
+WO419 ORPHANED BROWSER PROCESS CLEANUP COMPLETE
+```
+
+**Root cause:** The source recorded the background launch handle `$!` from `setsid python ... &` as if it were the actual serving PID. `setsid` can fork when its launch handle is already a process-group leader, yielding a different Flask PID. The cleanup compared the wrong PID, correctly refused a broad kill, but wrongly continued deleting the clone/worktree. This is a **browser process ownership/lifecycle defect**, not a WO/Intake data failure.
+
+**Source correction on existing PR #420:** In the existing `WorkOrders/Acceptance/work_management_disposable_browser_preview_server.sh` only, resolve the **real bound listener PID** from `sudo ss -H -ltnp` after Flask health is ready, then verify exact NUL-delimited `/proc/PID/cmdline` argv (`/opt/fieldwiring/.venv/bin/python` + exact candidate `WorkOrders/Application/preview_entry.py` path), numeric `fieldwiring` UID, PGID and SID equal to actual listener PID, and unique port ownership. Store that verified PID in the 0600 reconnect state instead of the untrusted launch handle. On operator completion or failure, attempt a narrow TERM against **only** the freshly verified listener PID; escalate KILL only if that **same exact validated PID** still owns the port. **Any ambiguous/foreign/unverified port halts cleanup without touching the clone/worktree/state**, preserving evidence and recoverability. Only after proving port free may runner remove the owned disposable Docker container and git worktree. Independently check container removed, candidate worktree unregistered, state absent, unchanged Production WO/Intake fingerprint (subject to concurrent external writes), unchanged shared checkout HEAD and port free before reporting CLEAN EXIT. No port reassignment, broad `pkill`, guessed PID, process-group kill, Production migration, or server service change.
+
+**Regression:** GitHub source tests run the real extracted Bash cleanup/verification functions against a disposable local `setsid` Python socket, prove unknown candidate owner is **not killed** and its state remains, then prove the expected listener is stopped, port freed and owned state deleted. Other #419 and engineering compliance checks remain required. **Operator-run live server full disposable lifecycle validation is still pending**; source tests are not evidence of a successful real server CLEAN EXIT on this correction. Next test must report normal complete teardown with no `sudo` manual orphan cleanup and preserve retained report path.
+
+**Governance:** MSB-Server-Management `docs/server/Pre_Production_Browser_Review_Runbook.md` and `docs/server/PostgreSQL_Disposable_Acceptance_Standard.md` remain controlling; reuse established current #419 runner and sequential port 8898. #419 PR #420 remains draft. Do not touch #88/#171 sessions, release Production, alter Flow, send notifications, or silently claim browser acceptance.
+
+---
+
 ## October 19 — Reuse fault-tolerant Setup SSH review pattern; office feature handoff
 
 **Authority:** [MSB-Server-Management browser review runbook](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/Pre_Production_Browser_Review_Runbook.md), plus [reusable Setup reconnect contract](../../Setup/Acceptance/README.md#recoverable-browser-preview-transport). The September 29 #205 Setup browser review established that an SSH/PTTY disconnect must preserve the actual healthy disposable clone, entered browser changes, and Flask process, and the **same** workstation SSH wrapper must reattach after exact SHA/ref/port/operator/process/clone/version verification. No new runner or port allocation is permitted.
