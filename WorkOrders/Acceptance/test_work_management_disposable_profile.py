@@ -197,9 +197,9 @@ def test_work_orders_preview_transport_recovers_using_setup_contract():
     assert "git reset --hard" not in wrapper
     assert shell.index('if [[ "$MODE" == "resume" ]]') < shell.index('sudo git -C "$REPO_ROOT" fetch origin')
     for required in (
-        'sudo ps -p "$PREVIEW_PID" -o uid=',
+        'sudo ps -p "$pid" -o uid=',
         'id -u fieldwiring',
-        'pid=$PREVIEW_PID,',
+        'current="$(wo419_listener_pid)"',
         '.State.Running',
         'msb_wo419_preview',
         'git -C "$WORKTREE" rev-parse HEAD',
@@ -290,3 +290,113 @@ def test_wo419_runner_start_resume_argument_gate_before_any_server_actions():
     assert '$StartCommand = $RemotePrefix + ((' in wrapper
     assert '$ResumeCommand = $RemotePrefix + ((' in wrapper
     assert 'rc=$?; if [ "$rc" -eq 0 ]; then rm -f' in wrapper
+
+
+def test_wo419_cleanup_uses_real_listener_and_preserves_unknown_owners(tmp_path):
+    """Exercise the exact Bash cleanup with disposable local socket processes.
+
+    No Docker, SSH, Production database, server users or privileged operations.
+    This reproduces the setsid $! versus bound-PID mismatch and unknown owner.
+    """
+    import os
+    import re
+    import signal
+    import socket
+    import sys
+    import time
+
+    runner = RUNNER.read_text(encoding="utf-8")
+    assert 'LAUNCH_PID="$(' in runner
+    assert 'PREVIEW_PID="$(wo419_listener_pid)"' in runner
+    assert 'if ! wo419_verified_listener "$PREVIEW_PID"' in runner
+    assert 'sudo -u fieldwiring -H kill -TERM -- "$listener"' in runner
+    assert 'sudo -u fieldwiring -H kill -- -"$PREVIEW_PID"' not in runner
+    assert runner.index('echo "PASS: verified Work Orders listener stopped') < runner.index(
+        'sudo docker rm -f "$CLONE_CONTAINER"'
+    )
+    if not all(shutil.which(exe) for exe in ("bash", "setsid", "ss")):
+        pytest.skip("Linux Bash, setsid and ss required for live process test")
+
+    helper = runner[runner.index("wo419_listener_pid() {"):
+                    runner.index("\ncleanup() {")]
+    cleanup = runner[runner.index("cleanup() {"):
+                     runner.index("\ntrap cleanup EXIT")]
+    root = tmp_path / "owned-candidate"
+    entry = root / "WorkOrders" / "Application" / "preview_entry.py"
+    entry.parent.mkdir(parents=True)
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    entry.write_text(
+        "import socket,time\ns=socket.socket()\n"
+        "s.bind(('127.0.0.1'," + str(port) + "))\n"
+        "s.listen(5)\ntime.sleep(50)\n", encoding="utf-8",
+    )
+    launched = subprocess.run(
+        ["bash", "-c", 'setsid "$1" "$2" > "$3" 2>&1 & echo $!',
+         "bash", sys.executable, str(entry), str(tmp_path / "app.log")],
+        capture_output=True, text=True, timeout=8,
+    )
+    assert launched.returncode == 0, launched.stderr
+    launch_pid = int(launched.stdout.strip())
+    live_pid = None
+    try:
+        deadline = time.monotonic() + 7
+        while time.monotonic() < deadline:
+            found = subprocess.run(
+                ["ss", "-ltnp", "sport = :" + str(port)],
+                capture_output=True, text=True,
+            )
+            matches = re.findall(r"pid=(\d+),", found.stdout)
+            if matches:
+                live_pid = int(matches[0])
+                break
+            time.sleep(.15)
+        assert live_pid is not None, "Local socket fixture did not start"
+
+        def exercise(expected_root, saved_pid, marker):
+            script = "\n".join([
+                "set -Eeuo pipefail",
+                'PYTHON="$1"; WORKTREE="$2"; PREVIEW_PORT="$3"; PREVIEW_PID="$4"',
+                'STATE_FILE="$5"; CLONE_OWNED=0; CLONE_CONTAINER=""; DUMP=""',
+                'PROD_BEFORE=""; LIVE_HEAD=""; REPORT="fixture"; REPO_ROOT=""',
+                'sudo() { if [[ "$1" == "-u" ]]; then shift 3; fi; "$@"; }',
+                'id() { if [[ "$1" == "-u" && "$2" == "fieldwiring" ]]; then command id -u; else command id "$@"; fi; }',
+                helper, cleanup,
+                'trap cleanup EXIT',
+                'exit 0',
+            ])
+            return subprocess.run(
+                ["bash", "-c", script, "bash", sys.executable,
+                 str(expected_root), str(port), str(saved_pid), str(marker)],
+                capture_output=True, text=True, timeout=15,
+            )
+
+        marker = tmp_path / "owner-state"
+        marker.write_text("RETAIN\n", encoding="utf-8")
+        foreign = exercise(tmp_path / "wrong-worktree", "", marker)
+        assert foreign.returncode == 83, foreign.stdout + foreign.stderr
+        assert "no kill or clone removal" in foreign.stdout
+        assert marker.read_text(encoding="utf-8") == "RETAIN\n"
+        assert subprocess.run(
+            ["ss", "-ltnH", "sport = :" + str(port)],
+            capture_output=True, text=True,
+        ).stdout.strip(), "Unknown listener must remain running"
+
+        owned = exercise(root, live_pid, marker)
+        assert owned.returncode == 0, owned.stdout + owned.stderr
+        assert "PASS: verified Work Orders listener stopped" in owned.stdout
+        assert "WO419 DISPOSABLE BROWSER REVIEW: CLEAN EXIT" in owned.stdout
+        assert not marker.exists(), "Successful owned teardown removes resume state"
+        assert not subprocess.run(
+            ["ss", "-ltnH", "sport = :" + str(port)],
+            capture_output=True, text=True,
+        ).stdout.strip(), "Port must be released before declaring clean exit"
+        assert launch_pid > 0
+    finally:
+        for pid in {launch_pid, live_pid}:
+            if pid:
+                try:
+                    os.kill(pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
