@@ -37,19 +37,14 @@ def ledger_select() -> str:
 
 
 def work_management_role_permissions(cap: dict[str, Any]) -> dict[str, bool]:
-    """Map existing Directus role/policies; never infer Crew from Person flags.
+    """Only verified Managers directly create, assign or promote Work Orders.
 
-    Setup read permission includes generic Volunteers, but internal Work Order
-    creation requires real Production Crew or Manager/Administrator authority.
+    Other authenticated Crew submit requests through the existing public
+    Park/Workshop Google Form into stage.work_order_intake for Manager triage.
+    Do not infer Manager status from the legacy Person boolean.
     """
-    policies = set(cap.get("policy_names") or [])
     can_manage = bool(cap.get("can_manage_setup"))
-    can_create = can_manage or cap.get("role_name") in (
-        "Production Crew", "Manager", "Administrator"
-    ) or bool(policies.intersection(
-        {"Production Crew", "Manager", "Administrator"}
-    ))
-    return {"can_manage": can_manage, "can_create": can_create,
+    return {"can_manage": can_manage, "can_create": can_manage,
             "can_assign": can_manage, "can_triage": can_manage}
 
 
