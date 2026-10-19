@@ -251,9 +251,22 @@ class WorkManagementRepository:
         elif scope == "testing":
             conditions.append("t.type = 'WORK_ORDER' AND t.test_id IS NOT NULL")
         elif scope == "intake":
-            conditions.append("t.type = 'INTAKE_REQUEST'")
+            # Original Intake remains immutable on clone promotion.
+            # The actionable queue omits records already promoted.
+            conditions.append(
+                "t.type = 'INTAKE_REQUEST' AND NOT EXISTS ("
+                "SELECT 1 FROM wo419_preview.activity a "
+                "WHERE a.ticket_key=t.ticket AND a.event_kind='promoted_source')"
+            )
         elif scope == "feedback":
-            conditions.append("t.type = 'TASK_FEEDBACK'")
+            # Resolved/promoted correction history remains searchable in All,
+            # not in the pending review queue.
+            conditions.append(
+                "t.type = 'TASK_FEEDBACK' AND NOT EXISTS ("
+                "SELECT 1 FROM wo419_preview.activity a "
+                "WHERE a.ticket_key=t.ticket "
+                "AND a.event_kind IN ('resolve','promoted_source'))"
+            )
         if search:
             conditions.append(
                 "(t.ticket ILIKE %s OR t.title ILIKE %s "
@@ -288,6 +301,11 @@ class WorkManagementRepository:
                 SELECT
                   count(*) FILTER (
                     WHERE i.source_form_name IS DISTINCT FROM 'SETUP_CORRECTION'
+                    AND NOT EXISTS (
+                      SELECT 1 FROM wo419_preview.activity a
+                      WHERE a.ticket_key = 'INTAKE-' || i.intake_id::text
+                        AND a.event_kind = 'promoted_source'
+                    )
                   ) AS public_intake,
                   count(*) FILTER (
                     WHERE i.source_form_name = 'SETUP_CORRECTION'
