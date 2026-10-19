@@ -36,6 +36,23 @@ def ledger_select() -> str:
     return sql
 
 
+def work_management_role_permissions(cap: dict[str, Any]) -> dict[str, bool]:
+    """Map existing Directus role/policies; never infer Crew from Person flags.
+
+    Setup read permission includes generic Volunteers, but internal Work Order
+    creation requires real Production Crew or Manager/Administrator authority.
+    """
+    policies = set(cap.get("policy_names") or [])
+    can_manage = bool(cap.get("can_manage_setup"))
+    can_create = can_manage or cap.get("role_name") in (
+        "Production Crew", "Manager", "Administrator"
+    ) or bool(policies.intersection(
+        {"Production Crew", "Manager", "Administrator"}
+    ))
+    return {"can_manage": can_manage, "can_create": can_create,
+            "can_assign": can_manage, "can_triage": can_manage}
+
+
 class WorkManagementRepository:
     def __init__(self) -> None:
         self.dsn = os.environ.get("WORK_MGMT_DATABASE_DSN", "").strip()
@@ -94,24 +111,11 @@ class WorkManagementRepository:
             raise WorkManagementError(
                 "A unique active linked Person is required for My Work.", 403
             )
-        # Existing Setup can_read_setup also covers Volunteer policy holders.
-        # Direct internal creation is explicitly limited to a verified
-        # Production Crew / Manager / Administrator role or policy, NOT all
-        # domain accounts, Browsers or generic Setup-enabled Volunteers.
-        directus_policies = set(cap["policy_names"] or [])
-        can_manage = bool(cap["can_manage_setup"])
-        can_create = can_manage or cap["role_name"] in (
-            "Production Crew", "Manager", "Administrator"
-        ) or bool(directus_policies.intersection(
-            {"Production Crew", "Manager", "Administrator"}
-        ))
+        permissions = work_management_role_permissions(cap)
         return {
             "person_id": int(matches[0]["person_id"]),
             "display_name": cap["display_name"] or email,
-            "can_manage": can_manage,
-            "can_create": can_create,
-            "can_assign": can_manage,
-            "can_triage": can_manage,
+            **permissions,
             "can_read": True,
         }
 
@@ -138,10 +142,10 @@ class WorkManagementRepository:
             return [dict(row) for row in cur.fetchall()]
 
     def reviewer_options(self, actor: dict[str, Any]) -> dict[str, Any]:
-        """Current catalogs for a no-save operator rehearsal; not a write grant.
+        """Read Task Type/Stage/Work Area for authorized internal Creators.
 
-        Manager users may inspect actual active Person/task type/Stage/Work Area
-        choices. Never expose raw contact fields or arbitrary SQL column names.
+        Only Managers may receive the People assignment selector. Read
+        catalog access is not itself a Work Order mutation permission.
         """
         if not actor.get("can_create", actor.get("can_read", False)):
             raise WorkManagementError("Work Order creation is not authorized.", 403)
