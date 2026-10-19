@@ -232,3 +232,12 @@ html[data-theme="dark"] .theme-toggle:hover { background:#1d3350; }
 #review-result[data-valid=true] { font-weight:750; }
 html[data-theme=dark] .review-result[data-valid=true] { color:#a2f4c0; }
 html[data-theme=dark] .review-result[data-valid=false] { color:#ffaaaa; }
+
+.ticket-activity { border:1px solid var(--border); border-radius:9px; margin:12px 0 16px; padding:13px; background:var(--surface); }
+.ticket-activity h4 { margin:0 0 7px; }
+.activity-entry { padding:9px 0; border-bottom:1px solid var(--border); }
+.activity-entry:last-child { border-bottom:0; }
+.activity-entry strong { font-size:13px; text-transform:capitalize; }
+.activity-entry small { display:block; color:var(--muted); margin:3px 0; }
+.activity-entry p { white-space:pre-wrap; margin:4px 0 0; line-height:1.4; font-size:14px; }
+#detail-content.create-mode #ticket-activity { display:none; }
