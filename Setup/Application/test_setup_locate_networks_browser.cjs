@@ -235,3 +235,80 @@ function search(query) { elements['map-search'].value = query; elements['map-sea
   assert.equal(controls['asset-refresh'].disabled,false);
   console.log('PASS: failed movement refresh clears obsolete locations, retaining reference-only offline map');
 })().catch(error => {console.error(error);process.exitCode=1;});
+
+
+// Regression: expanded Record details cannot hide its selected Container / Display marker.
+{
+  const source = read('setup_locate_assets.js');
+  const begin = source.indexOf('  function render(items, container) {');
+  const end = source.indexOf('  async function load() {', begin);
+  assert(begin >= 0 && end > begin, 'Use the actual existing map renderer');
+  const created = [];
+  function icon(options) { return {options}; }
+  const ctx = {
+    layers: {containers:{}, displays:{}},
+    icons: {UNKNOWN:'unknown.svg',EMPTY:'empty.svg'},
+    esc: String,
+    popup: a => a.name,
+    unlocated: {appendChild() {}},
+    mapSearch: {addAsset() {}},
+    window: {msbReferenceSymbols: {
+      setSymbol(marker) {
+        // Simulate the async T-Post SVG replacing its small placeholder with
+        // taller natural artwork while retaining the GPS coordinate.
+        marker.options.icon = icon({iconSize:[18,32],iconAnchor:[9,48]});
+      }
+    }},
+    L: {
+      icon,divIcon:icon,
+      marker(xy,options) {
+        const original = xy.slice(), handlers = {};
+        const marker = {
+          original, xy, options, handlers, updates:0,
+          bindTooltip() {return this;},
+          bindPopup(content,options) {
+            const details = {addEventListener(type,handler){this[type]=handler;}};
+            this.details = details;
+            this.popup = {
+              options:{...options},isOpen(){return true;},
+              getElement(){return {querySelectorAll:()=>[details]};},
+              update:()=>{marker.updates++;}
+            };
+            return this;
+          },
+          on(type,handler){handlers[type]=handler;return this;},
+          getPopup(){return this.popup;},
+          addTo(){created.push(this);return this;}
+        };
+        return marker;
+      }
+    }
+  };
+  vm.createContext(ctx);
+  vm.runInContext(source.slice(begin,end),ctx);
+  ctx.render([{container_id:9,name:'Ginger Bread House',
+    load_state:'EMPTY',position:[43.77,-87.74]}],true);
+  const cont=created[0];
+  assert.equal(cont.popup.options.offset[1],-28,
+    'Container popup must clear actual icon above its stored coordinate');
+  cont.handlers.popupopen();
+  assert.equal(cont.popup.options.offset[1],-28);
+  cont.details.toggle();
+  assert.equal(cont.updates,2,'Opening the popup and expanding details must reflow it');
+  assert.deepEqual(cont.xy,cont.original,'Reflow must not move the Container marker');
+
+  ctx.render([
+    {display_id:909,name:'CL-GingerbreadHouse',position:[43.78,-87.75]},
+    {display_id:910,name:'CL-Other',position:[43.78,-87.75]}
+  ],false);
+  assert.equal(created.length,2,'Colocated Displays still share one marker');
+  const disp=created[1];
+  assert.equal(disp.popup.options.offset[1],-60,'Reserve room for SVG before popup opens');
+  disp.handlers.popupopen();
+  assert.equal(disp.popup.options.offset[1],-60,
+    'Popup must use actual taller SVG anchor after symbol loading');
+  disp.details.toggle();
+  assert.equal(disp.updates,2,'Display details must reflow popup');
+  assert.deepEqual(disp.xy,disp.original,'Reflow must not change Display GPS');
+  console.log('PASS: Container and Display popups clear selected icons and resize on disclosure');
+}
