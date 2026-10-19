@@ -2,6 +2,8 @@
 
 This is the technical entry point for the maintained GIS/source/icon subsystem. **Engineering documents set system contracts and acceptance gates; pull requests must implement those contracts.** A README is a handoff and navigation page, not a substitute for engineering authority.
 
+**Immediate October 19 field priority:** [#428 — capture visible park paint marks before they disappear](https://github.com/Gregovate/MSB-Production-Database-Project/issues/428), governed by the [GIS Manager Desktop Application Design](MSB_GIS_Manager_Desktop_Application_Design.md#october-19-field-first-priority--capture-current-ground-paint-before-it-disappears-171). Capture named/photo/landmark-offset evidence now; full #319 PostGIS migration and #378 Windows installer are not prerequisites to evidence preservation. No field capture or Production map deployment is claimed by this documentation-only handoff.
+
 ## Current Engineering Authority
 
 - [GIS Symbol Management — CURRENT icon source, publication, access and consumer contract](GIS_Symbol_Management.md) — definitive roles of `Masters`, `Plain`, canonical PNGs, web SVGs, ExpertGPS, current accepted release, security rules, map symbol sizing/fallback and open acceptance.
