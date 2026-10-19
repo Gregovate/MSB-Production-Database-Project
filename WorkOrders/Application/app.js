@@ -171,6 +171,37 @@
     document.dispatchEvent(new CustomEvent("wo419:ticket", { detail: row }));
   }
 
+  async function loadActivity(key) {
+    const list = $("ticket-activity-entries");
+    const status = $("ticket-activity-status");
+    list.replaceChildren();
+    status.textContent = "Loading retained clone events…";
+    try {
+      const result = await getJson("/api/work-orders/tickets/" +
+        encodeURIComponent(key) + "/activity");
+      if (state.selected !== key) return;
+      const events = result.activity || [];
+      status.textContent = events.length ?
+        events.length + " attributed event(s) · mail disabled / no send" :
+        "No new clone action events recorded. Earlier Directus history is unchanged.";
+      events.forEach((event) => {
+        const box = document.createElement("div");
+        box.className = "activity-entry";
+        const top = document.createElement("strong");
+        top.textContent = (event.event_kind || "Action").replaceAll("_", " ") +
+          " · Person #" + (event.actor_person_id || "?");
+        const date = document.createElement("small");
+        date.textContent = event.created_at ? new Date(event.created_at).toLocaleString() : "";
+        const note = document.createElement("p");
+        note.textContent = event.note || "No additional notes";
+        box.append(top, date, note);
+        list.appendChild(box);
+      });
+    } catch (exc) {
+      if (state.selected === key) status.textContent = exc.message;
+    }
+  }
+
   async function selectTicket(key) {
     if (!/^(WO|INTAKE)-[1-9]\d{0,12}$/.test(key || "")) return;
     state.selected = key;
@@ -181,6 +212,7 @@
       const data = await getJson("/api/work-orders/tickets/" + encodeURIComponent(key));
       if (serial !== state.fetchId || state.selected !== key) return;
       showDetail(data.ticket);
+      loadActivity(key);
     } catch (exc) {
       if (serial === state.fetchId) error(exc.message);
     }
