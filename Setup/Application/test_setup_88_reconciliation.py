@@ -119,9 +119,14 @@ def test_actual_record_location_decisions_review_and_payload():
     const groups=[{label:'15 — Church-ParkingLot',bulk_selectable:true,display_ids:[900,902],displays:[contents.displays[0],third]},
       {label:'01 — Front Entrance',bulk_selectable:true,display_ids:[901],displays:[contents.displays[1]]}];
     const grouped={...contents,displays:[...contents.displays,third],groups};
-    // Every ordinary stop leads with the contents question. No default drop bypass.
+    // Stage-scoped unload must be the first control at a mixed-Stage stop,
+    // ahead of potentially long contents lists; its click never auto-unloads.
     const root=elements['movement-unload-groups'];
-    w.select(grouped,34);w.renderContentsDecision();
+    w.select(grouped,134);w.renderContentsDecision();
+    assert.equal(root.children[0].tag,'button');
+    assert.equal(root.children[0].textContent,'Unload by Stage — select Displays physically removed HERE');
+    assert.equal(root.children[0].className,'unload-entry-primary');
+    assert.ok(root.children.some(child=>child.textContent==='Is this Container empty?'));
     let intentButtons=root.querySelectorAll('button');
     assert.ok(intentButtons.some(button=>button.textContent==='Empty'));
     assert.ok(intentButtons.some(button=>button.textContent==='Not Empty'));
