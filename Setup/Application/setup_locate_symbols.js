@@ -64,11 +64,59 @@
     });
   }
 
+  const POPUP_TOP_GAP_PX = 8;
+
+  // Leaflet combines an icon's popupAnchor with popup.options.offset.
+  // Correct both components once: icon art top-center plus a short gap.
+  // This works for centered 32x32 containers, narrow natural SVGs and
+  // the temporary icons displayed while their SVG dimensions load.
+  function popupOffsetForMarker(item) {
+    const opts = item?.options || {};
+    const icon = opts.icon?.options;
+    if (!icon) {
+      const radius = Number(opts.radius || 0);
+      return [0, -(radius + POPUP_TOP_GAP_PX)];
+    }
+    const width = Number(icon.iconSize?.[0] ?? 32);
+    const height = Number(icon.iconSize?.[1] ?? 32);
+    const x = Number(icon.iconAnchor?.[0] ?? width / 2);
+    const y = Number(icon.iconAnchor?.[1] ?? height / 2);
+    const paX = Number(icon.popupAnchor?.[0] ?? 0);
+    const paY = Number(icon.popupAnchor?.[1] ?? 0);
+    return [width / 2 - x - paX, -y - paY - POPUP_TOP_GAP_PX];
+  }
+
+  function refreshPopup(item) {
+    const current = item?.getPopup?.();
+    if (!current) return;
+    current.options.offset = popupOffsetForMarker(item);
+    if (current.isOpen()) current.update();
+  }
+
+  function bindPopupAtIconTop(item, html, options = {}) {
+    if (!item || typeof item.bindPopup !== 'function') return item;
+    item.bindPopup(html, {
+      ...options, offset: popupOffsetForMarker(item), autoPan: true
+    });
+    item.on('popupopen', function () {
+      refreshPopup(item);
+      const el = item.getPopup()?.getElement();
+      if (!el || el.__msbPopupDisclosureListener) return;
+      // Native <details> toggle does not bubble, so capture it at popup root.
+      el.addEventListener('toggle', function (event) {
+        if (event.target?.tagName === 'DETAILS') refreshPopup(item);
+      }, true);
+      el.__msbPopupDisclosureListener = true;
+    });
+    return item;
+  }
+
   function setSymbol(marker, type, options = {}) {
     const filename = TYPE_TO_SVG[type];
     if (!filename || !marker || typeof marker.setIcon !== 'function') return false;
     const offset = Number(options.yOffset) || 0;
     marker.setIcon(placeholder(offset));
+    refreshPopup(marker);
     imageSize(filename).then(size => {
       if (!size) return;  // Explicit fallback; never show a broken image icon.
       const [width, height] = size;
@@ -79,6 +127,8 @@
         popupAnchor: [0, -height / 2 - offset],
         className: 'msb-reference-icon'
       }));
+      // Async SVG dimensions can change the correct popup offset while open.
+      refreshPopup(marker);
     });
     return true;
   }
@@ -96,6 +146,7 @@
   window.msbReferenceSymbols = Object.freeze({
     marker,
     setSymbol,
+    bindPopupAtIconTop,
     has: type => Object.prototype.hasOwnProperty.call(TYPE_TO_SVG, type),
     urlFor: type => TYPE_TO_SVG[type] ? BASE + TYPE_TO_SVG[type] : null,
     urls: () => [...new Set(Object.values(TYPE_TO_SVG))].map(name => BASE + name),
