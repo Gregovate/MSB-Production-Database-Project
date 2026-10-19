@@ -161,6 +161,12 @@
             <div id="review-people" class="review-people" role="group" aria-label="Volunteers"></div>
             <p class="subtle">Managers only. Newly created Crew Work Orders enter the Manager unassigned queue.</p>
           </fieldset>
+          <fieldset id="review-progress-fields" hidden>
+            <legend>Record Work Note · Work remains open</legend>
+            <label for="review-progress-note">What work was done, found, or remains?</label>
+            <textarea id="review-progress-note" rows="3" placeholder="Describe what was checked, repaired, found or still needed."></textarea>
+            <p class="subtle">Saves an attributed note to this Work Order without marking it complete.</p>
+          </fieldset>
           <fieldset id="review-complete-fields" hidden>
             <legend>Authenticated completion</legend>
             <label for="review-completion-notes">Required actual work performed / verification notes</label>
