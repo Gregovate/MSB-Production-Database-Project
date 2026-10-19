@@ -95,7 +95,27 @@
       if (!container) window.msbReferenceSymbols.setSymbol(marker, 'T-Post', {yOffset:16});
       const title = values.map(v => container ? 'C' + String(v.container_id).padStart(3, '0') : v.name).join(' · ');
       marker.bindTooltip(esc(title));
-      marker.bindPopup(values.map(v => popup(v, container)).join('<hr>'), {maxHeight: 360});
+      // The icon art extends above the recorded coordinate: keep the popup
+      // tip ABOVE the whole selected icon rather than covering the marker.
+      const anchorY = Number(marker.options.icon.options.iconAnchor?.[1] || 16);
+      marker.bindPopup(values.map(v => popup(v, container)).join('<hr>'), {
+        maxHeight: 360,
+        offset: [0, -(anchorY + 12)],
+        autoPan: true
+      });
+      // Expanding native details changes height after Leaflet opened the popup.
+      // Update layout/auto-pan, never the marker or its recorded coordinate.
+      marker.on('popupopen', function () {
+        const livePopup = marker.getPopup();
+        if (!livePopup) return;
+        const popupElement = livePopup.getElement();
+        if (!popupElement) return;
+        popupElement.querySelectorAll('details').forEach(function (details) {
+          details.addEventListener('toggle', function () {
+            if (livePopup.isOpen()) livePopup.update();
+          });
+        });
+      });
       marker.addTo(group);
       for (const v of values) mapSearch.addAsset(v, container, marker);
     }
