@@ -5,8 +5,8 @@
 set -Eeuo pipefail
 umask 077
 
-if [[ $# -ne 4 ]]; then
-  echo "HOLD: candidate SHA, explicit registered port, reviewer email and approved ref required"
+if [[ $# -lt 4 || $# -gt 5 ]]; then
+  echo "HOLD: candidate SHA, registered port, reviewer email, approved ref and optional start/resume mode required"
   exit 2
 fi
 CANDIDATE_SHA="$1"
