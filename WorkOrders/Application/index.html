@@ -196,6 +196,14 @@
               <p class="subtle">Setup will show Waiting on Work Order until the repair is recorded complete. No duplicate Report Work required.</p>
             </div>
           </fieldset>
+          <fieldset id="review-link-setup-fields" hidden>
+            <legend>Manager · Add existing Work Order to seasonal Setup</legend>
+            <p class="subtle">The existing repair remains the Work Order. Create exactly one season-only Setup GATE, completed when that same Work Order is completed. No reusable task or second Work Order.</p>
+            <label for="review-link-setup-season">Open Setup season</label>
+            <select id="review-link-setup-season"><option value="">Choose an active season</option></select>
+            <label for="review-link-setup-name">Season-only task name (optional)</label>
+            <input id="review-link-setup-name" type="text" maxlength="160" placeholder="Defaults to Work Order problem">
+          </fieldset>
           <fieldset id="review-person-fields" hidden>
             <legend>Manager · Assign one or more existing volunteers</legend>
             <label for="review-person-filter">Find volunteers</label>
