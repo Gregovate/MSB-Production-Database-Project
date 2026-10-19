@@ -155,3 +155,14 @@ def test_clone_read_failure_reports_safe_validation_stage():
     assert "exception_class={type(exc).__name__}" in source
     assert "traceback.print_exc" not in source
     assert "print(exc)" not in source
+
+
+def test_clone_candidate_sha_verified_by_privileged_runner_not_service_git():
+    """Retain root/service-account Git boundary and reject missing SHA proof."""
+    shell = RUNNER.read_text(encoding="utf-8")
+    validator = CLONE_CHECK.read_text(encoding="utf-8")
+    assert 'VERIFIED_WORKTREE_SHA="$(sudo git -C "$WORKTREE" rev-parse HEAD)"' in shell
+    assert '[[ "$VERIFIED_WORKTREE_SHA" == "$CANDIDATE_SHA" ]]' in shell
+    assert 'WORK_MGMT_VERIFIED_CANDIDATE_SHA="$VERIFIED_WORKTREE_SHA"' in shell
+    assert 'os.environ.get("WORK_MGMT_VERIFIED_CANDIDATE_SHA"' in validator
+    assert 'subprocess.check_output(' not in validator
