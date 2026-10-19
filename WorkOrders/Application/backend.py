@@ -139,7 +139,9 @@ def open_work_order_aging() -> Response:
     """Full manager aging report; all undated WOs, including inactive exceptions."""
     who = actor()
     order = request.args.get("sort", "created_asc").strip().lower()
-    rows = WorkManagementRepository().aging_report(actor=who, sort=order)
+    include_planning = request.args.get("include_planning", "1") == "1"
+    rows = WorkManagementRepository().aging_report(
+        actor=who, sort=order, include_planning=include_planning)
     return jsonify(
         rows=rows,
         count=len(rows),
@@ -154,6 +156,7 @@ def open_work_order_aging() -> Response:
         sort=order,
         read_only=True,
         all_open_work_orders=True,
+        include_planning=include_planning,
     )
 
 
@@ -178,9 +181,11 @@ def tickets() -> Response:
     person_id = int(raw_id) if raw_id else None
     show_completed = request.args.get("show_completed", "0") == "1"
     sort = request.args.get("sort", "priority").strip().lower()
+    include_planning = request.args.get("include_planning", "1") == "1"
     rows = WorkManagementRepository().tickets(
         actor=who, scope=scope, person_id=person_id,
         show_completed=show_completed, search=search, sort=sort,
+        include_planning=include_planning,
     )
     for row in rows:
         row["category"] = (
@@ -193,7 +198,8 @@ def tickets() -> Response:
             else "Submitted — awaiting review" if row["type"] != "WORK_ORDER"
             else "Not recorded complete"
         )
-    return jsonify(tickets=rows, scope=scope, sort=sort, read_only=True)
+    return jsonify(tickets=rows, scope=scope, sort=sort,
+                   include_planning=include_planning, read_only=True)
 
 
 @app.get("/api/work-orders/tickets/<key>")
