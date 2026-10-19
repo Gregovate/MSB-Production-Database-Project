@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MSB Setup — Container Exceptions</title><link rel="stylesheet" href="assets/setup_container_review.css?v=2026-10-18.85"></head>
+<body><header><div><p class="eyebrow">MSB Setup · Manager</p><h1>Container Exceptions</h1><p id="status" role="status">Loading current records…</p></div>
+<nav><a id="back" href="../material-status/">Material Status</a><a id="trail" target="_blank" rel="noopener">Full movement trail</a><button id="refresh">Refresh</button><button id="print">Print exceptions</button></nav></header>
+<main><section id="counts" class="counts" aria-label="Review counts"></section>
+<section class="filters"><label>Search<input id="search" type="search" placeholder="Container or Display Name"></label>
+<label>Show<select id="filter"><option value="OPEN">Outstanding</option><option value="NEEDS_FIELD_CHECK">Needs field check</option><option value="RETURNED_ATTACHED">Returned with recorded contents</option><option value="PROTECTED_DETACHED">Protected attachment errors</option><option value="CONTENTS_REVIEW">Contents reviews</option><option value="UNRESOLVED_LOCATION">Unresolved locations</option><option value="RESOLVED">Resolved reviews</option><option value="ALL">All review history</option></select></label></section>
+<details><summary>Review another Container</summary><label>Container number<input id="open-container-id" type="number" min="1" step="1" placeholder="For example: 216"></label><button id="open-container" type="button">Open contents review</button><p class="muted">Open known field concerns without a scan. Saving a field-check request adds the case to the outstanding list.</p></details>
+<div id="cases"></div></main>
+<dialog id="case-dialog" aria-labelledby="case-title"><form id="review-form"><header><div><p class="eyebrow">Contents review</p><h2 id="case-title"></h2></div><button id="close" type="button">Close</button></header>
+<div class="dialog-body"><section id="case-evidence"></section>
+<details><summary>Original review flags and captured Display Names</summary><div id="flags"></div></details>
+<fieldset><legend>1. Select Display Names reviewed</legend><div class="selection-tools"><input id="display-search" type="search" aria-label="Find Display Names" placeholder="Find a Display Name"><button id="select-all" type="button">Select all</button><button id="select-none" type="button">Clear</button></div><p id="selected-count" aria-live="polite"></p><div id="displays" class="display-list"></div></fieldset>
+<fieldset><legend>2. Record the outcome</legend><label>Action<select id="action" required></select></label>
+<div id="location-fields" hidden><label>Verified location / Stage name<input id="location-note" maxlength="300" placeholder="For example: 05-Festive Trees-FT"></label></div>
+<label>Evidence observed / confirmed at<input id="observed-at" type="datetime-local" required></label><p class="muted">Your device's local time. Prior park coordinates retain their original source; this is when the supporting evidence was confirmed.</p>
+<label>Evidence, source and reason<textarea id="evidence" rows="3" required minlength="5" maxlength="4000" placeholder="Who confirmed what, or which existing observation establishes it?"></textarea></label>
+<div id="resolve-flags"></div><label id="whole-case-label" hidden><input id="whole-case" type="checkbox">I reviewed the whole case, including the missing original scope.</label></fieldset>
+<details><summary>Review history</summary><div id="review-history"></div></details>
+<p id="save-status" role="status"></p></div><footer><p id="review-summary">Choose the outcome and Display Names.</p><button id="save" type="submit">Review changes</button></footer></form></dialog>
+<dialog id="confirm-dialog" aria-labelledby="confirm-title"><h2 id="confirm-title">Record this review?</h2><div id="confirmation"></div><div class="confirm-actions"><button id="cancel-save">Back</button><button id="confirm-save">Record review</button></div></dialog>
+<script src="../setup_analytics.js?v=2026-09-07.1"></script>
+<script src="assets/setup_container_review.js?v=2026-10-18.85"></script></body></html>

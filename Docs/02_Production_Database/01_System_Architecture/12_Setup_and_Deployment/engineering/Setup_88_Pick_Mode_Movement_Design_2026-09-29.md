@@ -1051,3 +1051,84 @@ for current-Production-clone/audit/privilege/operator/tablet acceptance. Reusabl
 **Owner directive:** Greg spoke with Tom and reports additional problems using Container Locate / Record Location / Container Empty. This must be managed as a **separate #122 launch debug**, implemented and tested under existing **#88**, not absorbed into #205 KPI/Manager-email PR #394. The specific problems Tom found are **not yet described**; do not speculate, assume the current candidate is installed, or change movement data or business rules until observations and current Production identity are verified.
 
 **Next reconnaissance:** capture Tom's actual screen/scan sequence, the expected versus observed result, affected Containers, empty/partial/uncertain choices, connectivity/device and displayed app version where available. Compare installed Record Location behavior with existing #88 engineering/acceptance sources and the controlled movement/event model. Retain original events, source identities and operator audit. Derive an isolated debug correction and browser/tablet acceptance under #122; no Production changes authorized by this intake note.
+
+## October 18 — actionable Container Exceptions and Manager review
+
+Owner #88 under #122; implementation continues in existing PR #418, based on
+main `a770e755` after reconciling the governance change. This supersedes prior
+statements that a historical review flag alone is an operational review tool.
+
+**Entry and scope.** Material Status and the Setup Manager navigation expose
+Container Exceptions. Default list contains current contradictions and unresolved
+contents reviews only, one compact card per Container. Filter by reason/status
+and search Container number/name or Display Name. Full Container Movement remains
+supporting evidence, linked directly to the selected Container. A separate desk
+entry can open any Container number for a known concern such as C216; healthy
+inventory is not automatically added to the exception list. Show recorded
+location and calculated nearest reference separately, last activity, outstanding
+Display Names, original flagged event/operator and the next action. Do not mix
+material-source audit requirements, task completion, or every GPS-only stop into
+this queue. No automatic physical placement from nearest-reference calculations.
+
+**Rules preserved.** Ordinary/interim stops can retain the complete load. Explicit
+HERE/group unloading for trailers remains unchanged. Setup Containers return Home
+empty: remaining Displays stay at the prior reported park location, with inference
+and its source event shown. C052/C053's installed Festive Trees wraps use prior
+park events145/143; keep valid returns183/182 and later valid Display observations.
+No Workshop GPS, repeated field scan, or exact historical unload time is required
+for that inference. Food Collection interim staging alone does not prove unload.
+Standalone/single-Display Pallets stay attached; repairs of erroneous detachments
+restore that relationship rather than physically unloading the wrapper.
+
+**Review actions.** An authorized Manager can record Needs field check, confirm
+selected current records, correct selected Displays to an explicitly chosen Stage
+or recorded prior-park anchor, and restore selected erroneous detachments to their
+assigned Container. Show a review summary before saving. Require evidence/source,
+observation time and reason; the recording time and signed-in reviewer are server
+controlled. Helpers supplying facts need no account. Select exact Display Names;
+never silently select every current assignment. Explicitly resolve selected
+original review flags only when their complete captured scope has been accounted
+for. Unknown/missing legacy scope requires explicit whole-case attestation; partial
+work leaves the flag open. Current contradictions cannot be dismissed by a note.
+Needs field check stays visible; later flags are new cases even after an earlier
+review. Historical resolved flags remain available in the case timeline.
+
+**Model inventory and minimal schema necessity.** Existing
+`ops.setup_movement_event` stores immutable destination-bearing movement events;
+its allowed event types and destination constraint cannot represent a review,
+field-check disposition, or resolution without fabricating movement. Its notes
+contain capture snapshots but no linked resolution state. No general Setup
+management-event ledger exists. The existing
+`ref.setup_container_extra_material_review` is a permanent per-Container free-text
+extra-material note, without Session, flagged-event scope or resolution history;
+`ops.setup_schedule_event` is schedule-specific. Neither can serve this lifecycle
+without changing its established meaning. Therefore add one append-only
+`ops.setup_container_review_event` ledger, not a competing movement/location
+model. Store source flag IDs, selected Display IDs, evidence/observed time,
+reviewer/receipt time, request UUID, guarded snapshot and resulting movement IDs.
+No rewrite of original flags, movement history or permanent assignments. Grant
+SELECT plus one Manager-only SECURITY DEFINER command; no app table DML grants.
+
+**Concurrency and correction.** Reuse permanent parent locking and current
+Container/Display state from #88. A server-generated snapshot includes current
+master membership/type, Container/Display state/event IDs, movement history receipt
+watermark and review watermark. Reject changed snapshots and mismatched retry UUIDs.
+Execute corrections atomically using existing movement events/effects/current-state
+projection; location corrections reuse `record_setup_movement_event`. An explicitly
+guarded attachment correction uses existing DISPLAY_REATTACH / REATTACHED model
+values, clears independent location and keeps permanent ownership. Reject attachment
+to a returned Container, and reject unloading protected identities. Prior-park
+inference requires a returned ordinary Container and the last eligible observation
+before that return within the same trip. Copy source GPS with provenance, never
+claim it was measured at correction time. Review/correction is recorded now with
+separate supplied evidence time; no fabricated historical scan.
+
+**Acceptance boundary.** GET never writes. Manager authorization and the existing
+same-origin JSON command guard apply. Tests must cover old flags, absent snapshots,
+partial resolution, later valid Display placement/stale submission, idempotency,
+protected identities, returned-with-attached cases, prior-park inference, review
+history, XSS and tablet layout. Full Setup tests, exact current-Production-clone SQL
+validation and protected disposable browser/operator acceptance precede Production.
+Reuse the established disposable browser runner on8898; no new host deployment
+mechanism or Node dependency on Greg's workstation. No Production change is
+performed or authorized by this design record.

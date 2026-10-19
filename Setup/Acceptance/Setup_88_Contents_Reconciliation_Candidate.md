@@ -4,7 +4,7 @@
 |---|---|
 | Status | October 8 candidate history; guided behavior/070 subsequently integrated and deployed October 10; October 17 recovery findings below remain open |
 | Owner | #88; commanding #122 / DBG-2026-007, 009, 010 |
-| Reviewed | 2026-10-17 (Chicago; current Production report reconnaissance) |
+| Reviewed | 2026-10-18 (Chicago; operator confirmations and prior-location rule) |
 | Baseline main | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
 | Branch | `fix/88-container-contents-reconciliation` |
 | Release | `V0.3.49-guided-container-stop` |
@@ -18,10 +18,22 @@
 
 At 01:24 CDT Greg confirmed the Festive Trees wraps are **installed**. C052/C053's
 32 recorded attached Displays are therefore a current attachment discrepancy,
-not an unresolved question about whether their load returned Home. This does not
-establish the physical unload time or authorize using the October9 drop as an
-invented unload observation. Preserve the valid pallet RETURNED events182/183
-and refresh each Display's state before preparing a scoped audited correction.
+not an unresolved question about whether their load returned Home. Greg reiterated
+the already agreed rule: Containers return to the shop empty; remaining Displays
+stay at the last reported park location before the return. Use that prior-location
+inference, with its source event identified, rather than requiring a new scan or
+an exact physical unload time. A correction must not describe the inferred
+location/time as a fresh field observation. For these pallets the prior park
+anchors are Festive Trees events145 (C052) and143 (C053). Preserve the valid pallet
+RETURNED events183/182 and any later valid Display observations; refresh each
+Display's state before preparing a scoped audited correction.
+
+An ordinary stop, including Food Collection interim staging, does not itself mean
+the load was removed. Keep location-only moves and deliberate HERE/group unloads
+available. The empty-return rule must not turn every park or staging scan into an
+unload. Tom's missing blocked-screen evidence limits diagnosis of his disabled
+Record button; it does not reopen these settled movement rules or block the
+independent Manager-review work.
 
 Greg also reports Tom cannot record an empty Container and is forced to use
 Unknown/Not Sure. When asked where the failure occurs, Greg selected **Record
@@ -79,7 +91,7 @@ of incorrect Container/Display movements.
 | C216, pp49–50 | Container still at Oct6 event122; 0 attached / 9 detached. The seven MtCrumpitPanel Displays and WV-WhoMatrix still use event122. PeaceOnEarth has newer independent Oct14 event226. | Earlier operator-confirmed erroneous Oct6 scope remains in current state. Establish today's physical state of those eight before a correction; preserve PeaceOnEarth event226 and all other later valid observations. Do not blindly reattach all nine or replay the old stop. |
 | C154, p110; child p114 | Oct14 return237, 0 attached / 1 detached. Scaffold-02 unload236 uses the prior Whoville-area GPS. | Recorded return/detachment is coherent; this is no longer the earlier missing-return case. No repeat scan or repair is established by this PDF. |
 | C155, pp110–111; child p114 | Oct14 return233, 0 attached / 1 detached. Scaffold-03 unload232 uses the prior Whoville-area GPS. | Same distinction as C154. Completion, unloading and return remain separate facts. |
-| C052/C053, pp103–105 | Both returned Home Oct9 (183/182), but each retains 16 attached Festive Trees wraps; no removal recorded in either trail. | Thirty-two Displays remain recorded as following returned pallets. Determine whether wraps are installed at Festive Trees or truly returned with pallets. Do not assume all returned Containers were empty; these returns predate 070 installation. |
+| C052/C053, pp103–105 | Both returned Home Oct9 (183/182), but each retains 16 attached Festive Trees wraps; no removal recorded in either trail. Greg confirms the wraps are installed. | Thirty-two Displays incorrectly remain recorded as following returned pallets. Prepare a guarded correction using the agreed prior park anchors, Festive Trees events145/143, with inferred-location provenance. Preserve returns183/182 and later valid Display observations. These returns predate 070 installation; do not replay the return or ask again whether the wraps came Home. |
 | C177/C178/C199, pp41/52–53 | Current type Standalone, but detached counts 3/3/1; latest bad effects still events43/44/123 from Oct5/6. | Seven Displays violate the current protected-Standalone attachment rule. Prepare evidence-preserving historical recovery after current-state checks; do not silently patch master assignment or generate fake field scans. |
 | C034, pp13–15 | Arch Trailer event452 Oct17; 121 attached / 0 detached; no Display removal in its trail. | Latest record says cargo follows trailer. Confirm actual remaining load; this could be a valid full/interim stop or missed physical removals. Preserve the normal multi-stop HERE workflow; count alone does not establish error. |
 | C131, p40; child p113 | Trailer 0 attached / 7 detached. SW-PotterPole is still at unresolved-location event196. Trailer latest199 has GPS with nearest Stage reference 2,227ft away. | Contents detachment and missing placement are different problems. Preserve the separately confirmed empty state and subsequent Church Display observations; resolve PotterPole using actual evidence. A distant nearest point is not proof of Front Entrance placement or of incorrect GPS. |
@@ -127,8 +139,8 @@ apart:
 1. Preserve this event494 baseline. Use existing current state/history and
    read-only command metadata to distinguish outstanding cases from resolved
    recorded returns; refresh guards again before any write.
-2. Prioritize protected attachment violations and the conditional C052/C053 and
-   C216 corrections. Obtain only the physical facts necessary for those cases;
+2. Prioritize protected attachment violations, the confirmed C052/C053 discrepancy
+   and the still-conditional C216 correction. Obtain only missing physical facts;
    do not mandate scanning every Display or mark task100% as physical Empty.
 3. Complete the existing Manager Contents Review specification below: scoped
    current-state-guarded audited corrections, evidence source/time, partial
@@ -1183,3 +1195,80 @@ refresh/prove ancestry, and perform the separately authorized migration-bearing
 Production deployment under Server Management's maintenance/rollback runbook.
 Do not run a source-only installer across migration 070. #88 and the debug entries
 stay open until their applicable acceptance/deployment/repository gates are proven.
+
+## October 18 Container Exceptions / Contents Review — PR #418 source candidate
+
+**V0.3.85-container-review**, based on current main `a770e755`, adds a focused
+Manager entry from Setup and Material Status at `container-exceptions/`. The full
+Container Movement report remains supporting detail with per-Container anchors.
+Default list shows current returned-with-attached contradictions, protected
+attachment violations, unresolved unload locations and outstanding contents
+reviews/field checks. Resolved reviews have a separate filter. Names/search,
+reason, next action, age and last activity make the list usable without printing
+all Container history. Review another Container opens known concerns such as C216
+from a desk without a scan or automatically flagging healthy inventory. Material-authority unresolved requirements remain separate.
+
+The owning design is the October18 section of
+[the controlled #88 movement design](../../Docs/02_Production_Database/01_System_Architecture/12_Setup_and_Deployment/engineering/Setup_88_Pick_Mode_Movement_Design_2026-09-29.md#october-18--actionable-container-exceptions-and-manager-review).
+Recon proves the existing movement destination/type constraints cannot represent
+a review lifecycle honestly. Migration **077** adds only an append-only review
+ledger and guarded commands; it reuses existing movement events/effects/state for
+location and attachment corrections. It does not replace that model, change
+permanent assignment or rewrite earlier observations. Do not replay070/071/072.
+
+Manager selects Display Names, outcome, evidence/source and observation time,
+reviews the summary, then records. Actions: Needs field check; confirm selected
+records; correct selected locations; use the prior park anchor for an empty Home
+return; restore erroneous detachments. Uncertain legacy scope needs explicit
+whole-case attestation; partial work stays open. Later movements alone do not
+close flags or field-check requests. Old and newly created flags remain distinct.
+Server checks the whole current Container/Display/master/history/review snapshot
+before any write, rejects stale submissions, and applies an idempotent transaction.
+Prior-park correction preserves existing Home return and independent Display
+placements. Protected identities cannot be unloaded. Attachment restoration cannot
+attach Displays to a returned Container. Report copied-GPS inference is labelled.
+
+**Engineering verification (synthetic evidence, not live acceptance):**
+
+- Actual 070+077 SQL executes in PostgreSQL/WASM, with retained event/effect/state
+  checks, Manager reauthorization, denied app-role table UPDATE/DELETE, retry and
+  request mismatch handling, stale snapshots, partial scope/legacy closure,
+  prior-park recovery preserving Home/later placement, and protected restoration.
+- Actual HTML/JS in Chromium passes list/filter/Display Name search, escaped text,
+  explicit selection, cancel/no-write, confirmation/command payload, protected
+  choices and field-check paths at desktop and600px tablet; screenshots inspected.
+  Browser uses a synthetic API. PostgreSQL command proof is separate.
+- Final Application: **847 passed, 3 skipped** (optional native PostgreSQL).
+  Full Setup: **973 passed, 5 skipped, 6 failed**. The six failures are the same
+  already-documented old report-deployment source-query pin incompatibilities;
+  no full Setup PASS is claimed. Existing guided PostgreSQL reconciliation and
+  new review PostgreSQL/WASM proofs both pass.
+  Optional native PostgreSQL tests require non-root engineering tooling and skip
+  elsewhere; no Node installation is required on Greg's PC.
+
+**Disposable handoff:** use the existing reusable browser runner, one current-
+Production capture/clone, port8898, `fix/88-empty-recording`, selected existing
+Manager, exact candidate SHA and V0.3.85 identity. Apply only
+`Setup/Database/077_add_setup_container_contents_review.sql` and validate with
+`Setup/Acceptance/setup_88_container_review_disposable_validation.sql`. The SQL
+uses a real mapped Manager/app role, tests review/retry/stale/DML denial and one
+Display correction with real constraints/audit, then rolls back. Existing runner
+owns service/source/fingerprint guards, launch readiness and CLEAN EXIT. No new
+SSH, migration, clone, deployment or cleanup mechanism was introduced. Do not run
+concurrently with another8898 Setup/People/Work Management review.
+
+**Operator checklist:** Material Status -> Container Exceptions; verify C052/C053
+and other current cases against the clone; review selected installed wraps -> prior
+park anchor -> confirm; refresh to verify Displays detach while pallets remain
+Home; verify no newer independent location is overwritten. Review one old Not Sure
+flag, save partial confirmation without closing, then resolve complete scope with
+evidence; legacy scope requires explicit whole-case attestation. Record Needs
+field check and verify it persists after refresh. Inspect one protected attachment
+case, restore only known erroneous detachments and verify unload choices absent.
+Cancel once with no write. Check full movement trail link, copied GPS provenance,
+print filters and600px layout. End with reusable preview CLEAN EXIT.
+
+**Not claimed:** current-Production clone/operator acceptance, Production deployment
+or any Production repair. Tom's separate Empty/disabled Record incident remains
+unreproduced pending his device/context; this tool does not claim to fix it.
+Containers to Move/direct Return Home expansion and takedown loading remain open.

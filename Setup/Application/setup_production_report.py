@@ -6,6 +6,7 @@ assignment edits, repair command or material-authority rules are introduced here
 """
 from __future__ import annotations
 
+from contextlib import nullcontext
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -44,9 +45,9 @@ def gps_text(row: dict) -> str:
     return text
 
 
-def movement_picture(repository, session_id: int, *, include_unobserved: bool = False) -> dict:
+def movement_picture(repository, session_id: int, *, include_unobserved: bool = False, connection=None) -> dict:
     """Use event effects for historical membership, not today's assigned count."""
-    with repository.connect() as conn:
+    with (repository.connect() if connection is None else nullcontext(connection)) as conn:
         conn.set_session(readonly=True, isolation_level="REPEATABLE READ")
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SET LOCAL statement_timeout = '30s'")
@@ -93,8 +94,9 @@ def movement_picture(repository, session_id: int, *, include_unobserved: bool = 
                 # Map-only inventory completeness; still in the same read snapshot.
                 cur.execute("""
                     SELECT c.container_id, c.description AS container_name,
-                           c.location_code AS home_location_code
+                           c.location_code AS home_location_code, ct.container_type_name
                     FROM ref.container c
+                    LEFT JOIN ref.container_type ct USING(container_type_id)
                     WHERE NOT EXISTS (
                         SELECT 1 FROM ops.setup_container_state cs
                         WHERE cs.container_id=c.container_id AND cs.setup_session_id=%s

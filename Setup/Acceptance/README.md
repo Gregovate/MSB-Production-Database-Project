@@ -10,6 +10,8 @@ Current integrated #122 candidate: [field release checkpoint and review](Setup_1
 
 ## #88 current contents recovery
 
+[PR #418 Container Exceptions / Contents Review source candidate and disposable checklist](Setup_88_Contents_Reconciliation_Candidate.md#october-18-container-exceptions--contents-review--pr-418-source-candidate): focused outstanding list, Manager confirm/correct/field-check/resolve, V0.3.85 and migration077. Source-tested; actual current-clone/operator acceptance pending. Reuse8898 with only077, not the historical070 launch below.
+
 [October 17 event494 field-picture findings and recovery order](Setup_88_Contents_Reconciliation_Candidate.md#october-17-current-field-picture--event-494)
 distinguish coherent C154/C155 returns, still-old C216 detachments, protected
 Standalone violations, C052/C053 returned-but-attached wraps, missing C131
@@ -20,7 +22,8 @@ tracks Tom's **Empty selected / Record button disabled** incident. Normal online
 fixture behavior passes; the affected blocked Container/device context is still
 needed before a cause or fix can be claimed.
 Guided behavior/070 shipped via #318 on October10 despite the old #309 draft
-remaining open. Manager resolve/correct and Containers to Move remain unfinished.
+remaining open. Manager resolve/correct now has the source candidate above;
+Production installation and Containers to Move remain unfinished.
 The PDF analysis performed no Production mutation; the October8 source pins and
 handoffs below are historical release evidence, not current deployment advice.
 

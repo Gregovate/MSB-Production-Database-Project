@@ -6,6 +6,7 @@ body{font:16px/1.45 Arial,sans-serif;color:#17212b;background:#fff;margin:0 auto
 </style></head><body>
 <div class="toolbar"><a href="../../../material-status/?season_year={{ material.session.season_year if material.session else '' }}">Back to Material Status</a><button type="button" onclick="window.print()">Print / Save PDF</button><form method="get"><input type="hidden" name="season_year" value="{{ material.session.season_year if material.session else '' }}"><label>Compare after event <input type="number" name="since_event_id" min="0" step="1" value="{{ since_event_id or '' }}" placeholder="e.g. 123" style="width:110px"></label> <button>Generate fresh report</button></form></div>
 <h1>MSB Setup — Container Movement</h1>
+<p class="toolbar"><a href="../../../container-exceptions/?season_year={{ material.session.season_year if material.session else '' }}">Open actionable Container Exceptions / Contents Review</a></p>
 <p>{{ material.session.season_year if material.session else 'No active season' }} · Session {{ material.session.setup_session_id if material.session else 'none' }} · {{ material.session.session_status if material.session else '' }}</p>
 <p><strong>Generated {{ generated }}</strong> · Database {{ database_name }} · Synced movement records through event {{ through_event_id }}</p>
 <div class="notice">Based on synced records. Unrecorded work and unsynced tablets are absent. Recorded removals show what the system detached; physical removal still needs confirmation. Current contents reflect generation time. Planning can change during generation.</div>
@@ -19,10 +20,11 @@ body{font:16px/1.45 Arial,sans-serif;color:#17212b;background:#fff;margin:0 auto
 {% macro event_line(e) %}
 <div><strong>{{ e.observed }} — {{ e.event_type }}</strong> · event {{ e.setup_movement_event_id }} {% if e.new_receipt %}<span class="tag">NEW RECEIPT</span>{% endif %}</div>
 <div>{{ recorded_destination(e) }}</div>
+{% if 'inferred_unload=true' in (e.notes or '') %}<div><strong>Inferred unload location:</strong> copied from a prior Container observation; this event does not represent a fresh GPS measurement. Source event is retained in recorded notes.</div>{% endif %}
 {% if e.nearest_reference %}<div>{{ nearest_line(e) }}</div>{% endif %}
 <div><strong>Recorded Display removals: {{ e.unloaded_names|length }}</strong>{% if not e.unloaded_names %} — no Display detachment effect recorded; physical load unconfirmed{% endif %}</div>
 {% if e.effects %}<ul class="names">{% for d in e.effects %}<li>{{ d.display_name or 'Unnamed Display' }} [{{ d.movement_effect }}]</li>{% endfor %}</ul>{% endif %}
-{% if e.review_required %}<div><strong>Contents review flagged at this stop; resolution status unavailable.</strong></div>{% endif %}
+{% if e.review_required %}<div><strong>Contents review flagged at this stop.</strong> Open Container Exceptions for current resolution and review actions.</div>{% endif %}
 <small>Received {{ e.received }} · Recorder {{ e.captured_operator_email or 'not recorded' }} · {{ e.capture_method }}{% if e.offline_captured %} · captured offline{% endif %}</small>
 {% if e.notes %}<details><summary>Recorded notes</summary><small>{{ e.notes }}</small></details>{% endif %}
 {% endmacro %}
@@ -31,7 +33,7 @@ body{font:16px/1.45 Arial,sans-serif;color:#17212b;background:#fff;margin:0 auto
 <h2 id="trail">Container movement / location trail</h2>
 <p>Recorded destination and GPS are saved observation data. Calculated nearest Stage reference is an estimate from that GPS; both are shown together. GPS-only destinations are grouped by their nearest reference. Distance is to a reference point, not a Stage boundary; GPS accuracy and stale/weak fix flags remain visible. Prior named context is shown separately. Home is a storage assignment. Attached and detached lists are current recorded assignments, not historical load totals or physical Empty confirmations.</p>
 {% if reference_versions %}<p class="muted"><small>GPS reference set: {{ reference_versions|join(', ') }}. Estimates do not assign a Stage or change recorded locations.</small></p>{% endif %}
-{% for c in containers %}<article class="container"><h3>C{{ '%03d'|format(c.container_id) }} — {{ c.container_name }}</h3><div class="location">{{ c.location_group }}</div><p>{{ c.container_type_name or 'Type not recorded' }} · Home {{ c.home_location_code or 'not recorded' }} · Recorded status {{ c.movement_status }} · Current event {{ c.last_movement_event_id }}</p>
+{% for c in containers %}<article class="container"><h3 id="container-{{ c.container_id }}">C{{ '%03d'|format(c.container_id) }} — {{ c.container_name }}</h3><div class="location">{{ c.location_group }}</div><p>{{ c.container_type_name or 'Type not recorded' }} · Home {{ c.home_location_code or 'not recorded' }} · Recorded status {{ c.movement_status }} · Current event {{ c.last_movement_event_id }}</p>
 {% if c.latest %}<p>{{ recorded_destination(c.latest) }} · observed {{ c.latest.observed }}</p>{% endif %}
 {% if c.latest.nearest_reference %}<p>{{ nearest_line(c.latest) }}</p>{% endif %}
 {% if c.prior_named_context and not c.latest.destination_location_note %}<p>Prior named context: {{ c.prior_named_context }}. This does not prove the latest GPS fix is at that Stage.</p>{% endif %}

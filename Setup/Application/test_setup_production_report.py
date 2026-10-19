@@ -148,7 +148,7 @@ def test_report_html_escapes_evidence_and_explains_unresolved_and_uncertainty():
     assert 'Recorded Display removals: 2' in html
     assert 'Physical contents unconfirmed' in html
     assert 'not a count of missing Containers' in html
-    assert 'resolution status unavailable' in html
+    assert 'Open Container Exceptions for current resolution and review actions' in html
     assert 'Print / Save PDF' in html
 
 
