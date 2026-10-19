@@ -357,3 +357,17 @@ html[data-theme="dark"] .review-action-button.primary-action:hover {
   .review-action-buttons { display:grid; grid-template-columns:1fr; }
   .review-action-button { width:100%; }
 }
+
+/* Ticket navigation + Manager maintenance are separate from Crew execution. */
+.detail-back-button { display:block; width:max-content; max-width:100%;
+  margin:0 0 14px; padding:5px 0; background:transparent; border:0;
+  color:var(--button); font-size:15px; font-weight:700; text-align:left;
+  text-decoration:underline; text-underline-offset:3px; }
+.detail-back-button:hover { color:var(--accent); }
+.detail-manager-maintenance { display:flex; justify-content:flex-end; margin:0 0 12px; }
+.detail-manager-maintenance button { border-color:var(--accent); color:var(--button);
+  background:var(--surface); font-size:15px; }
+#detail-content.create-mode .detail-back-button,
+#detail-content.create-mode .detail-manager-maintenance { display:none !important; }
+.planning-control { padding:0 4px; }
+.review-workbench .review-action-guidance { max-width:800px; }
