@@ -2,6 +2,16 @@
 
 **Status: SOURCE-ONLY; not started or browser accepted.** Work Management is the existing MSB Database Work Orders subsystem.
 
+## V0.3 disposable-write operator review — after source CI PASS only
+
+The operator's prior workstation tunnel reported CLEAN EXIT. That is a workstation transport result, **not independent evidence of server-side CLEAN EXIT or unchanged Production database fingerprint**. The V0.2 review was CHANGES REQUIRED. The next review intentionally allows real writes to the disposable clone, as with prior Setup browser acceptance; all writes disappear at cleanup and no email is sent.
+
+**Existing launcher/port/branch remain unchanged.** After a new exact source-only GitHub Actions PASS and a clean branch checkout, use the same PowerShell wrapper below with the new HEAD, explicit port 8898 and a named approved reviewer. The runner must restore the isolated PostGIS clone, install the clone-only authorization/action SQL in the same source worktree, validate the current Manager catalogs, and perform an automatic Savepoint-rolled-back native Create/Assign/Complete preflight. On failure it must print HOLD, tear down owned disposable resources and retain the evidence report; DO NOT manually bypass a failed preflight or repurpose Production permissions.
+
+**Browser review after WO419 BROWSER REVIEW READY:** MSB logos and light/dark mode match Setup; top-bar Manager Create; ticket-local Assign/Reassign (multiple real volunteers), completion notes and actual clone save; separate public Intake triage, Testing repair, Task Feedback owner/clarification/reply/disposition; saved actor/time and no-send activity; reporter history; user-role negative paths. Use real-shaped WO-372/400/107/147/389/416 and Intake-60/40/57 without modifying Production. Verify a saved clone WO appears on refresh and that linked Testing behavior is truthful.
+
+**Exit:** Press ENTER; require server message WO419 DISPOSABLE BROWSER REVIEW: CLEAN EXIT, unchanged Production Work Order/assignments/Intake fingerprint, shared checkout unchanged, listener released and private clone discarded. Workstation tunnel CLEAN EXIT by itself is not a substitute. Keep report path and findings in owning PR. No Production send, schema deployment, Flow cutover, or Directus bookmark change.
+
 ## V0.2 operator workflow rehearsal candidate — CHANGES REQUIRED, source-only
 
 The current branch's V0.2 read-only candidate extends the first completed browser's **CHANGES REQUIRED** finding; it is **not** full P0 workflow acceptance. The separate subsequent PostGIS first-restore HOLD and final-server readiness fix remain documented below. The existing **same** server runner and protected localhost 8898 profile are reused, not cloned or bypassed.
