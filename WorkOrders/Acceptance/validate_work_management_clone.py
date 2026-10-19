@@ -52,7 +52,7 @@ def validate(preview_email: str) -> None:
         if cur.fetchone()[0] != "on":
             raise RuntimeError("Disposable reader transaction is not READ ONLY.")
         phase("clone_identity")
-        cur.execute("SELECT current_database(), inet_server_addr()::text")
+        cur.execute("SELECT current_database(), host(inet_server_addr())")
         db_name, db_addr = cur.fetchone()
         if db_name == "msb" or not db_name.startswith("msb_"):
             raise RuntimeError("Expected a separately named approved MSB disposable clone.")
