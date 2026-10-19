@@ -2,6 +2,18 @@
 
 **Status: V0.3 source-only candidate; new disposable-write validation and browser review still pending. V0.2 operator review was CHANGES REQUIRED.** Work Management is the existing MSB Database Work Orders subsystem.
 
+## V0.3.1 role-specific browser checks — two real reviewer identities
+
+The next source candidate must be reviewed through **the same** approved Server Management PowerShell wrapper and sequential localhost port 8898. Do **not** create a second runner or simultaneous preview. This role change does not authorize Production writes or outgoing email.
+
+**Manager session:** Choose an existing linked Manager identity in the approved wrapper. After exact-SHA regression, current-Production private PostGIS clone restore, native Create/Assign/Complete rollback preflight and WO419 BROWSER REVIEW READY, verify the homepage automatically shows pending **Public Intake** and separate Task Feedback counts, with buttons into each Manager queue. Create a disposable Work Order; assign and reassign multiple exact People; triage retained public Park/Workshop Intake (one-step Promote & Assign), verify saved original Intake no longer appears as *pending*; use Testing Repair and urgent/unassigned queues; sort every view by priority both ways and Work Order number both ways.
+
+**Production Crew session:** Close the prior review with server-side CLEAN EXIT and unchanged Production fingerprints first; run the **same wrapper again**, with a separate approved actual Crew identity and fresh private clone. Crew homepage must show only My Assigned Work, Work Orders I Created, My Submitted Feedback, Create and completion of genuinely assigned WOs. Verify an internal Create saves natively without a fake public Intake or self-assignment and appears in Work Orders I Created. Verify required completion notes and person attribution. No manager Intake badge/queue, no manager assignee selector/triage, and direct attempts against Manager endpoints return 403. Sort the Crew's authorized lists by both priority and numeric number.
+
+**Public form:** The external Work Order Request link navigates only to the existing MSB portal, where the current public Park/Workshop Google Form remains available. Do not test by submitting to the live form or alter Apps Script. This form is distinct from authenticated Crew Create.
+
+Retain both review reports, exact SHA, and server-side CLEAN EXIT outcomes. The historical V0.2 **CHANGES REQUIRED** finding remains, and V0.3.1 operator acceptance is pending. Both sessions must keep outgoing notifications NO_SEND; no Production deployment or Flow cutover.
+
 ## V0.3 disposable-write operator review — after source CI PASS only
 
 The operator's prior workstation tunnel reported CLEAN EXIT. That is a workstation transport result, **not independent evidence of server-side CLEAN EXIT or unchanged Production database fingerprint**. The V0.2 review was CHANGES REQUIRED. The next review intentionally allows real writes to the disposable clone, as with prior Setup browser acceptance; all writes disappear at cleanup and no email is sent.
