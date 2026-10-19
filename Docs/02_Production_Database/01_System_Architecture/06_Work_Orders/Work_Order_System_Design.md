@@ -20,6 +20,14 @@ The core model preserves these design rules:
 
 Current PostgreSQL schema, constraints, procedures, and triggers are implementation truth when they differ from older design drafts.
 
+## October 19 — V0.3 operator review: disposable saves, ticket-local actions and Setup brand
+
+**Operator correction:** V0.2 CHANGES REQUIRED. The controlled current-Production **disposable** browser must permit real saves against the isolated clone as established for other MSB applications; blocking all writes was a mistaken engineering restriction, not an operator decision. Notifications remain no-send. Ticket actions belong in selected Work Order/Intake detail; Manager New Work Order belongs at the top. Reuse the released Setup MSB blue/white SVG assets, shared msb-theme key, and Setup color variables in both themes.
+
+**V0.3 candidate implementation:** Existing Work Orders and normalized assignment rows remain authoritative. New clone-only commands use real Person/Manager authorization, explicit private clone IP and db name, a distinct private clone authorization token, CSRF, request-key deduplication, native completion fields and existing Testing data triggers. Existing Intake is retained during candidate one-step Promote & Assign, with an attributed clone-only link/history; no destructive legacy triage trigger. Clone-only correction owner/questions/replies/dispositions and a NO_SEND outbox provide browser-verifiable history without introducing a new Production ticket authority. No Production mail path, Directus Flow, Google Form or Work Order record is modified.
+
+**Acceptance remains gated:** Source CI is necessary but not enough. On the **existing** Server Management disposable runner, validate real schema/trigger grants and Create→Assign→Complete on a savepoint-rolled-back clone fixture before browser READY; then verify Manager actions, feedback, Testing-origin repairs, rollback/failure cases and clean exit. Reconcile any discovered mismatch in this owning design rather than patching Production or inventing defaults. Do not claim Production capability or reporter email delivery from a clone-only result. PR #420 remains draft. Historical findings WO-372/400/107/147/389 and WO-416 are preserved unchanged in Production.
+
 ## #419 Manager-only Intake triage and existing public Google Form boundary (October 18)
 
 **Operator direction:** Intake review/triage is a distinct **Manager task/queue**, not an ordinary volunteer's My Work list and not automatic promotion. The Manager opens submitted public requests, reviews original reporter/source and location, resolves missing information, corrects urgency/type/target year, and chooses the governed disposition and assignees. Triage must not be conflated with the separate active Work Order queue or with Testing-origin repair assignment. The one-step Manager **Promote & Assign** command and preservation of original Intake evidence remain mandatory.
