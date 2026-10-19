@@ -49,6 +49,9 @@ def work_management_role_permissions(cap: dict[str, Any]) -> dict[str, bool]:
 
 
 class WorkManagementRepository:
+    # Source-controlled query fragment, never user input. Production subclass
+    # binds to persistent V1 events; disposable preview retains its own schema.
+    activity_table = "wo419_preview.activity"
     def __init__(self) -> None:
         self.dsn = os.environ.get("WORK_MGMT_DATABASE_DSN", "").strip()
         if os.environ.get("WORK_MGMT_PREVIEW_MODE") != "disposable" or not self.dsn:
@@ -195,22 +198,21 @@ class WorkManagementRepository:
                 "stages": stages, "work_areas": areas,
                 "setup_seasons": seasons}
 
-    @staticmethod
-    def enrich_feedback(cur: Any, rows: list[dict[str, Any]]) -> None:
+    def enrich_feedback(self, cur: Any, rows: list[dict[str, Any]]) -> None:
         """Overlay clone-only correction decisions without rewriting Intake truth."""
         intake = [r["ticket"] for r in rows if r["type"] == "TASK_FEEDBACK"]
         if not intake:
             return
         cur.execute(
             "SELECT DISTINCT ON (ticket_key) ticket_key,event_kind,details "
-            "FROM wo419_preview.activity WHERE ticket_key = ANY(%s) "
+            "FROM " + self.activity_table + " WHERE ticket_key = ANY(%s) "
             "ORDER BY ticket_key,activity_id DESC", (intake,))
         latest = {r["ticket_key"]: r for r in cur.fetchall()}
         cur.execute(
             "SELECT a.ticket_key, a.target_person_id, "
             "COALESCE(NULLIF(btrim(concat_ws(' ',p.preferred_name,p.last_name)),''), "
             " 'Person #' || a.target_person_id::text) AS owner "
-            "FROM wo419_preview.activity a JOIN ref.person p "
+            "FROM " + self.activity_table + " a JOIN ref.person p "
             "ON p.person_id=a.target_person_id "
             "WHERE a.event_kind='correction_owner' AND a.ticket_key=ANY(%s) "
             "ORDER BY a.activity_id DESC", (intake,))
@@ -225,7 +227,7 @@ class WorkManagementRepository:
             info = latest.get(row["ticket"])
             if info and info["event_kind"] == "resolve":
                 row["state"] = str(info["details"].get("disposition", "resolved")).upper()
-                row["state_from"] = "DISPOSABLE_CORRECTION_ACTIVITY"
+                row["state_from"] = "PERSISTENT_CORRECTION_ACTIVITY" if self.activity_table == "ops.work_management_activity" else "DISPOSABLE_CORRECTION_ACTIVITY"
             elif info and info["event_kind"] == "clarify":
                 row["state"] = "WAITING_ON_REPORTER"
             elif info and info["event_kind"] == "promoted_source":
@@ -295,7 +297,7 @@ class WorkManagementRepository:
             # The actionable queue omits records already promoted.
             conditions.append(
                 "t.type = 'INTAKE_REQUEST' AND NOT EXISTS ("
-                "SELECT 1 FROM wo419_preview.activity a "
+                "SELECT 1 FROM " + self.activity_table + " a "
                 "WHERE a.ticket_key=t.ticket AND a.event_kind='promoted_source')"
             )
         elif scope == "feedback":
@@ -303,7 +305,7 @@ class WorkManagementRepository:
             # not in the pending review queue.
             conditions.append(
                 "t.type = 'TASK_FEEDBACK' AND NOT EXISTS ("
-                "SELECT 1 FROM wo419_preview.activity a "
+                "SELECT 1 FROM " + self.activity_table + " a "
                 "WHERE a.ticket_key=t.ticket "
                 "AND a.event_kind IN ('resolve','promoted_source'))"
             )
@@ -374,12 +376,12 @@ class WorkManagementRepository:
             raise WorkManagementError("Manager Intake is not authorized.", 403)
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
-                """
+                f"""
                 SELECT
                   count(*) FILTER (
                     WHERE i.source_form_name IS DISTINCT FROM 'SETUP_CORRECTION'
                     AND NOT EXISTS (
-                      SELECT 1 FROM wo419_preview.activity a
+                      SELECT 1 FROM {self.activity_table} a
                       WHERE a.ticket_key = 'INTAKE-' || i.intake_id::text
                         AND a.event_kind = 'promoted_source'
                     )
@@ -387,7 +389,7 @@ class WorkManagementRepository:
                   count(*) FILTER (
                     WHERE i.source_form_name = 'SETUP_CORRECTION'
                     AND NOT EXISTS (
-                      SELECT 1 FROM wo419_preview.activity a
+                      SELECT 1 FROM {self.activity_table} a
                       WHERE a.ticket_key = 'INTAKE-' || i.intake_id::text
                         AND a.event_kind IN ('resolve','promoted_source')
                     )
@@ -416,6 +418,11 @@ class WorkManagementRepository:
                 actor["can_manage"] or row["reporter_id"] == actor["person_id"]
             ):
                 raise WorkManagementError("Ticket is not authorized.", 403)
+            if row["type"] == "WORK_ORDER" and not actor["can_manage"] and (
+                int(actor["person_id"]) not in
+                [int(person) for person in (row.get("assignee_ids") or [])]
+            ):
+                raise WorkManagementError("Work Order is not assigned to this Person.", 403)
             if row["type"] == "WORK_ORDER":
                 cur.execute(
                     """
