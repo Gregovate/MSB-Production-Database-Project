@@ -32,6 +32,7 @@ GRANT SELECT ON
     ref.stage,
     ref.work_area,
     ref.work_order_status,
+    ref.task_type,
     ref.container,
     ref.display,
     ref.setup_task,
