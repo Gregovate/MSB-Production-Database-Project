@@ -39,7 +39,7 @@
     const result = [];
     if (!actor) return result;
     if (!ticket) {
-      if (actor.can_create) result.push("create");
+      if (actor.can_manage) result.push("create");
       return result;
     }
     if (actor.can_manage && ticket.type === "WORK_ORDER" &&
@@ -178,14 +178,22 @@
     byId("review-problem").value =
       model.ticket?.detail?.problem_raw || model.ticket?.detail?.problem ||
       model.ticket?.title || "";
-    byId("review-target-year").value = model.ticket?.yr || "";
-    byId("review-urgency").value = model.ticket?.urgency || "";
+    byId("review-target-year").value = model.ticket?.urgency == 5 ? (model.ticket?.yr || "") : "";
+    byId("review-urgency").value = String(model.ticket?.urgency || 3);
+    planningChanged();
     const detail = model.ticket?.detail || {};
     const kind = detail.stage_id ? "stage" : detail.work_area_id ? "area" : "";
     byId("review-location-type").value = kind;
     byId("review-stage").value = detail.stage_id || "";
     byId("review-area").value = detail.work_area_id || "";
     locationChanged();
+  }
+
+  function planningChanged() {
+    const planning = byId("review-urgency").value === "5";
+    byId("review-year-wrap").hidden = !planning;
+    byId("review-target-year").required = planning;
+    if (!planning) byId("review-target-year").value = "";
   }
 
   function locationChanged() {
@@ -220,6 +228,7 @@
                           "review-setup-season", "review-setup-name")) {
         byId(name).value = "";
       }
+      byId("review-urgency").value = "3";
       byId("review-setup-mode").value = "none";
     } else {
       setSelectionFromTicket();
@@ -231,6 +240,7 @@
     byId("review-completion-notes").value = "";
     byId("review-response").value = "";
     byId("review-disposition").value = "";
+    planningChanged();
     showForm();
   }
 
@@ -262,8 +272,14 @@
       resolve: "Save feedback resolution · No email sent",
     };
     submit.textContent = submitNames[kind] || "Save to disposable database";
-    if (kind && ["create", "promote"].includes(kind)) locationChanged();
-    else byId("review-setup-fields").hidden = true;
+    if (kind && ["create", "promote"].includes(kind)) {
+      locationChanged();
+      planningChanged();
+    } else {
+      byId("review-year-wrap").hidden = true;
+      byId("review-target-year").required = false;
+      byId("review-setup-fields").hidden = true;
+    }
   }
 
   function validate() {
@@ -284,8 +300,12 @@
       if (!["stage", "area"].includes(locationKind) || !locationId)
         throw new Error("Choose exactly one valid Stage OR Work Area.");
       const year = byId("review-target-year").value;
-      if (year && (!/^\d{4}$/.test(year) || +year < 2020 || +year > 2100))
-        throw new Error("Choose a valid target year.");
+      if (byId("review-urgency").value === "5") {
+        if (!/^\d{4}$/.test(year) || +year < 2020 || +year > 2100)
+          throw new Error("Planning Work Orders require a valid target year.");
+      } else if (year) {
+        throw new Error("Target year is only used for Planning work.");
+      }
       const setupMode = byId("review-setup-mode").value;
       if (setupMode === "create") {
         if (!model.actor?.can_manage) throw new Error("Only a Manager can add seasonal Setup work.");
@@ -341,7 +361,9 @@
       problem: byId("review-problem").value.trim(),
       task_type_id: byId("review-task-type").value,
       urgency: byId("review-urgency").value,
-      target_year: byId("review-target-year").value,
+      target_year: ["create", "promote"].includes(kind) &&
+        byId("review-urgency").value === "5"
+        ? byId("review-target-year").value : null,
       setup_mode: kind === "link_setup" ? "create" : byId("review-setup-mode").value,
       setup_season_year: kind === "link_setup"
         ? byId("review-link-setup-season").value : byId("review-setup-season").value,
@@ -379,7 +401,7 @@
   }
 
   function openCreate() {
-    if (!model.actor?.can_create) return;
+    if (!model.actor?.can_manage) return;
     model.ticket = null;
     const detail = byId("detail-content");
     byId("detail-empty").hidden = true;
@@ -443,7 +465,11 @@
   document.addEventListener("wo419:actor", (event) => {
     model.actor = event.detail;
     model.csrf = event.detail.csrf_token || "";
-    byId("create-work-order").hidden = !model.actor.can_create;
+    byId("create-work-order").hidden = !model.actor.can_manage;
+    byId("create-work-order").setAttribute("aria-expanded", "false");
+    byId("create-work-order").title = "Managers create approved Work Orders; others submit Intake requests.";
+    byId("review-action").disabled = !model.actor.can_manage;
+    byId("review-context").textContent = "New requests enter Intake for Manager triage.";
     drawActions();
     initializeReviewerOptions();
   });
@@ -460,6 +486,7 @@
   byId("manager-assign-button").addEventListener("click", openManagerAssignment);
   document.addEventListener("wo419:history-create", openCreate);
   byId("review-location-type").addEventListener("change", locationChanged);
+  byId("review-urgency").addEventListener("change", planningChanged);
   byId("review-setup-mode").addEventListener("change", setupModeChanged);
   byId("review-person-filter").addEventListener("input", drawPeople);
   byId("review-action-form").addEventListener("submit", async (event) => {
