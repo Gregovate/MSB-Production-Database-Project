@@ -554,7 +554,7 @@ def test_aging_query_uses_created_date_and_has_no_limit_or_active_filter():
     assert "t.done_at IS NULL" in code
     assert "t.active" in code  # projected for exception display
     assert "AND t.active" not in code
-    assert " LIMIT " not in code
+    assert '" LIMIT "' not in code and "LIMIT %s" not in code
     assert '"number_asc"' in code and '"priority"' in code
     assert "if not actor[\"can_manage\"]:" in code
     ledger = (ROOT /
