@@ -20,7 +20,7 @@ from psycopg2.extras import RealDictCursor, Json
 from repository import WorkManagementError
 
 TICKET_KEY = re.compile(r"^(WO|INTAKE)-([1-9][0-9]{0,12})$")
-EVENT_KINDS = frozenset(("create", "assign", "progress", "complete", "promote",
+EVENT_KINDS = frozenset(("create", "assign", "progress", "complete", "link_setup", "promote",
                          "correction_owner", "clarify", "reply", "resolve"))
 
 
@@ -326,7 +326,7 @@ class CloneCommands:
             raise WorkManagementError("Select the ticket being changed.")
         if action == "create" and not actor.get("can_create", actor.get("can_read", False)):
             raise WorkManagementError("Direct Work Order creation is not authorized.", 403)
-        if action in ("assign", "promote", "correction_owner", "clarify", "resolve") \
+        if action in ("assign", "link_setup", "promote", "correction_owner", "clarify", "resolve") \
                 and not actor["can_manage"]:
             raise WorkManagementError("Manager action is not authorized.", 403)
         # Crew can create a native unassigned WO, never assign anyone.
@@ -337,14 +337,16 @@ class CloneCommands:
         setup_mode = body.get("setup_mode", "none")
         if setup_mode not in ("none", "request", "create"):
             raise WorkManagementError("Unknown seasonal Setup option.")
-        if action not in ("create", "promote") and setup_mode != "none":
+        if action not in ("create", "promote", "link_setup") and setup_mode != "none":
             raise WorkManagementError("Setup linkage applies to creation/promotion only.")
         if setup_mode == "create" and not actor["can_manage"]:
             raise WorkManagementError("Manager approval required for seasonal Setup.", 403)
+        if action == "link_setup" and setup_mode != "create":
+            raise WorkManagementError("Explicit Manager Setup link confirmation required.")
         if setup_mode != "none" and not body.get("stage_id"):
             raise WorkManagementError("A Park Stage is required for seasonal Setup.")
 
-        if action in ("assign", "progress", "complete") and kind != "WO":
+        if action in ("assign", "progress", "complete", "link_setup") and kind != "WO":
             raise WorkManagementError("This action requires an active Work Order.")
         if action in ("promote", "correction_owner", "clarify", "reply", "resolve") and kind != "INTAKE":
             raise WorkManagementError("This action requires original Intake.")
@@ -375,7 +377,7 @@ class CloneCommands:
             if kind == "WO":
                 cur.execute(
                     "SELECT work_order_id,date_completed,display_test_session_id, "
-                    "submitted_by_person_id,source_intake_id "
+                    "submitted_by_person_id,source_intake_id,stage_id,work_area_id,problem "
                     "FROM ops.work_order WHERE work_order_id=%s FOR UPDATE", (number,))
                 work_order = cur.fetchone()
                 if not work_order:
@@ -431,6 +433,26 @@ class CloneCommands:
                     self.persist_event(cur, uuid.uuid4(), ticket, "promoted_source",
                                        actor, "Promoted to " + result_ticket,
                                        details={"work_order_id": wo})
+            elif action == "link_setup":
+                # Work Order already exists (often created by Crew). Reuse
+                # that exact permanent identity; no duplicate WO/Intake.
+                # Ignore client-supplied Stage/name in favor of the native WO.
+                linked_setup_task_id = self.create_season_only_work_order_gate(
+                    cur, actor, number, {
+                        "stage_id": work_order["stage_id"],
+                        "work_area_id": work_order["work_area_id"],
+                        "problem": work_order["problem"],
+                        "setup_season_year": body.get("setup_season_year"),
+                        "setup_task_name": body.get("setup_task_name"),
+                    }
+                )
+                result_ticket = ticket
+                event = self.persist_event(
+                    cur, request_key, ticket, action, actor,
+                    f"Manager linked existing repair to season-only Setup task #{linked_setup_task_id}",
+                    details={"linked_setup_session_task_id": linked_setup_task_id,
+                             "setup_season_year": int(body["setup_season_year"])},
+                )
             elif action == "assign":
                 if work_order["date_completed"] is not None:
                     raise WorkManagementError("Completed work cannot be reassigned.", 409)
@@ -530,7 +552,7 @@ class CloneCommands:
             return {"ticket": result_ticket, "saved": True, "repeat": False,
                     "notifications": "NO_SEND", "activity_id": event,
                     "linked_setup_session_task_id": (
-                        linked_setup_task_id if action in ("create", "promote") else None
+                        linked_setup_task_id if action in ("create", "promote", "link_setup") else None
                     )}
 
     def activity(self, actor: dict[str, Any], ticket: str) -> list[dict]:
