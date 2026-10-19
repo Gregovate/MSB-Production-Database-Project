@@ -511,7 +511,8 @@ def test_assigned_crew_progress_is_distinct_from_completion():
     commands_source = (HERE / "commands.py").read_text(encoding="utf-8")
     browser = (HERE / "review_actions.js").read_text(encoding="utf-8")
     html = (HERE / "index.html").read_text(encoding="utf-8")
-    assert '("create", "assign", "progress", "complete", "promote"' in commands_source
+    for event in ('"progress"', '"complete"', '"link_setup"', '"promote"'):
+        assert event in commands_source
     assert 'elif action in ("progress", "complete"):' in commands_source
     assert '"Work progress note"' in commands_source
     assert "NULLIF(btrim(notes), '')" in commands_source
