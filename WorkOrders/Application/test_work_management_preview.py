@@ -898,7 +898,7 @@ def test_planning_is_reversible_view_filter_and_preserves_unknown_priority():
     assert repo_source.index('if not include_planning:') < repo_source.index('LIMIT %s')
     assert 'include_planning: $("include-planning").checked ? "1" : "0"' in js
     assert '"&include_planning="' in js
-    assert '"Planning (priority 5) hidden"' in js
+    assert "Planning (priority 5) hidden" in js
     assert "DELETE FROM ops.work_order" not in repo_source
     # An all-open aging auditor can still ask for the complete native dataset.
     assert "include_planning: bool = True" in repo_source
