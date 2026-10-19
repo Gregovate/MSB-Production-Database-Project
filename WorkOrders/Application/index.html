@@ -6,6 +6,7 @@
   <title>MSB Work Management — Candidate</title>
   <link rel="stylesheet" href="/work-orders/assets/app.css">
   <script src="/work-orders/assets/app.js" defer></script>
+  <script src="/work-orders/assets/review_actions.js" defer></script>
 </head>
 <body>
   <header class="app-header">
@@ -40,7 +41,10 @@
         <select id="scope">
           <option value="mine">My Work</option>
           <option value="all">All Work Orders and Intake</option>
+          <option value="my-feedback">My Submitted Feedback</option>
           <option value="person">Another volunteer</option>
+          <option value="critical" data-manager-only>Manager · Immediate / Critical</option>
+          <option value="unassigned" data-manager-only>Manager · Unassigned Work Orders</option>
           <option value="repairs" data-manager-only>Manager · Park / routine repairs</option>
           <option value="testing" data-manager-only>Manager · Testing repairs</option>
           <option value="intake" data-manager-only>Manager · Public Intake triage</option>
@@ -125,7 +129,59 @@
         </div>
       </section>
     </div>
-    <p class="footer-note">Engineering candidate V0.1 · No database updates, notification delivery or Directus Flow changes. Source-only until isolated browser acceptance.</p>
+    <section id="review-workbench" class="review-workbench" aria-label="Operator workflow rehearsal">
+      <div class="section-header">
+        <h3>Operator workflow review</h3>
+        <p><strong>No-save rehearsal.</strong> These controls validate proposed steps against cloned catalog choices; they do not update records, create assignments, complete work, or send emails.</p>
+      </div>
+      <div class="review-inner">
+        <label for="review-action">Review an action</label>
+        <select id="review-action" disabled><option value="">Choose a ticket or sign in</option></select>
+        <p id="review-context" class="subtle">Select a Work Order or Intake item to review the available actions.</p>
+        <form id="review-action-form" hidden>
+          <fieldset id="review-create-fields" hidden>
+            <legend>New internal Work Order</legend>
+            <label for="review-problem">Describe the work</label>
+            <textarea id="review-problem" rows="3" placeholder="What needs to be done?"></textarea>
+            <label for="review-task-type">Task type</label>
+            <select id="review-task-type"><option value="">Choose existing type</option></select>
+            <label for="review-location-type">Operational location</label>
+            <select id="review-location-type"><option value="">Select Stage or Work Area</option><option value="stage">Park / Stage</option><option value="area">Workshop / Work Area</option></select>
+            <div id="review-stage-wrap" hidden><label for="review-stage">Stage</label><select id="review-stage"><option value="">Choose Stage</option></select></div>
+            <div id="review-area-wrap" hidden><label for="review-area">Work Area</label><select id="review-area"><option value="">Choose Work Area</option></select></div>
+            <label for="review-urgency">Urgency (existing catalog)</label>
+            <select id="review-urgency"><option value="">Select urgency</option><option value="1">1 · Immediate / Critical</option><option value="2">2 · High</option><option value="3">3 · Normal</option><option value="4">4 · Low</option><option value="5">5 · Planning</option></select>
+            <label for="review-target-year">Target year</label>
+            <input id="review-target-year" type="number" min="2020" max="2100" placeholder="2026">
+          </fieldset>
+          <fieldset id="review-person-fields" hidden>
+            <legend>Assign one or more existing volunteers</legend>
+            <label for="review-person-filter">Find volunteers</label>
+            <input id="review-person-filter" type="search" placeholder="Filter existing People">
+            <div id="review-people" class="review-people" role="group" aria-label="Volunteers"></div>
+            <p class="subtle">Current assignment history must be retained when the eventual command is approved.</p>
+          </fieldset>
+          <fieldset id="review-complete-fields" hidden>
+            <legend>Authenticated completion</legend>
+            <label for="review-completion-notes">Required actual work performed / verification notes</label>
+            <textarea id="review-completion-notes" rows="3" placeholder="Describe what was actually done, not what should be done."></textarea>
+          </fieldset>
+          <fieldset id="review-feedback-fields" hidden>
+            <legend>Reporter follow-up</legend>
+            <label for="review-response">Clarification question or disposition reason</label>
+            <textarea id="review-response" rows="3" placeholder="Specific question or substantive resolution reason"></textarea>
+            <label for="review-disposition">Outcome (only for closing feedback)</label>
+            <select id="review-disposition"><option value="">Choose outcome</option><option value="resolved">Resolved / Verified</option><option value="deferred">Deferred</option><option value="rejected">Rejected / No Action</option><option value="duplicate">Duplicate / Linked</option></select>
+          </fieldset>
+          <button type="submit" class="primary-button">Validate proposed action (no save)</button>
+          <div id="review-result" class="review-result" role="status" aria-live="polite"></div>
+        </form>
+      </div>
+    </section>
+    <p class="footer-note">Engineering candidate V0.2 · No-save operator workflow review, no database updates, email or Directus Flow changes. Browser review is not operational write-path acceptance.</p>
+  </main>
+</body>
+</html> · No database updates, notification delivery or Directus Flow changes. Source-only until isolated browser acceptance.</p>
   </main>
 </body>
 </html>
