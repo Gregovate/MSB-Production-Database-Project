@@ -111,3 +111,26 @@ h2 { margin:0 0 5px; font-size:24px; letter-spacing:-.4px; }
   .detail-fields { grid-template-columns:1fr; }
   .related-hint { width:100%; padding-left:29px; }
 }
+
+/* #419 operator-review theme: presentation only; never changes ticket state. */
+.theme-toggle { color:#fff; background:transparent; border:1px solid #a9bfca;
+  border-radius:8px; padding:7px 12px; font-weight:650; }
+.theme-toggle:hover { background:#285870; }
+body.dark-theme {
+  --ink:#ecf4f7; --muted:#aec2cc; --border:#415563;
+  --canvas:#142530; --surface:#203744; --accent:#8bd8f5;
+  --accent-faint:#304b5c; --button:#a5e4fb; --warning:#ffd08b;
+}
+.dark-theme .controls, .dark-theme .ticket-column,
+.dark-theme .detail-column { color:var(--ink); }
+.dark-theme .field select, .dark-theme .field input,
+.dark-theme .quiet-button { background:#294555; border-color:#618092; color:var(--ink); }
+.dark-theme .ticket-card:hover, .dark-theme .ticket-card:focus,
+.dark-theme .ticket-card.selected { background:#305162; }
+.dark-theme .detail-heading, .dark-theme .related-information { background:#294250; }
+.dark-theme .related-information > summary:hover { background:#36586a; }
+.dark-theme .related-row { border-bottom-color:#415563; }
+.dark-theme .status { background:#345265; border-color:#69889a; color:#e7f6fc; }
+.dark-theme .status.done { background:#244f41; border-color:#448b71; color:#d6f8dd; }
+.dark-theme a { color:#9ddffa; }
+.dark-theme .empty-icon { background:#345265; }
