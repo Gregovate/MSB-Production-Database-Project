@@ -278,7 +278,8 @@ class CloneCommands:
                         "repeat": True, "notifications": "NO_SEND"}
             if kind == "WO":
                 cur.execute(
-                    "SELECT work_order_id,date_completed,display_test_session_id "
+                    "SELECT work_order_id,date_completed,display_test_session_id, "
+                    "submitted_by_person_id,source_intake_id "
                     "FROM ops.work_order WHERE work_order_id=%s FOR UPDATE", (number,))
                 work_order = cur.fetchone()
                 if not work_order:
@@ -349,6 +350,11 @@ class CloneCommands:
                 result_ticket = ticket
                 event = self.persist_event(cur, request_key, ticket, action,
                                            actor, completed_note)
+                # Capture only genuine human-reporter outcome, never a guessed
+                # Testing-origin reporter. No message is actually dispatched.
+                if work_order["display_test_session_id"] is None:
+                    self.capture(cur, event, ticket, "completion",
+                                 work_order["submitted_by_person_id"])
                 # Existing database triggers own Testing completion feedback;
                 # no invented Testing message or new testing record.
             else:
