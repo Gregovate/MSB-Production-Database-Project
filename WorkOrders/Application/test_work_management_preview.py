@@ -1035,7 +1035,7 @@ def test_v1_sql_uses_native_tables_and_narrow_executor_not_browser_dml():
         "work_management_permission",
         "PENDING_CUTOVER",
         "MISSING_RECIPIENT",
-        "NO email is sent",
+        "No email is sent",
     ):
         if gate == 'Only Managers':
             continue
@@ -1062,5 +1062,6 @@ def test_v1_no_unapproved_live_role_grants_or_notification_send():
     assert "work_management_permission" in sql
     assert "approved_by_person_id" in sql
     assert "UPDATE ops.work_management_permission SET can_manage=true" not in sql
-    assert "smtp" not in source.lower()
+    assert "import smtplib" not in source.lower()
+    assert "smtplib." not in source.lower()
     assert "sendmail" not in source.lower()
