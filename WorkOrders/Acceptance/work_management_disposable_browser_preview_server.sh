@@ -208,7 +208,7 @@ resume_existing_preview() {
     exit 77
   fi
   if [[ ! "$PREVIEW_PID" =~ ^[0-9]+$ ||
-        "$(sudo ps -p "$PREVIEW_PID" -o user= 2>/dev/null | xargs)" != "fieldwiring" ||
+        "$(sudo ps -p "$PREVIEW_PID" -o uid= 2>/dev/null | xargs)" != "$(id -u fieldwiring)" ||
         "$(sudo ps -p "$PREVIEW_PID" -o args= 2>/dev/null)" != *"WorkOrders/Application/preview_entry.py"* ]]; then
     echo "HOLD: expected exact Work Management preview PID not running/owned"
     exit 78
@@ -269,6 +269,10 @@ fi
 if ss -ltnH "sport = :$PREVIEW_PORT" | grep -q .; then
   echo "HOLD: port $PREVIEW_PORT already has a listener; do not kill it"
   ss -ltnp "sport = :$PREVIEW_PORT" || true
+  exit 4
+fi
+if [[ -e "$STATE_FILE" || -L "$STATE_FILE" ]]; then
+  echo "HOLD: an earlier #419 preview resume state exists; inspect ownership before start"
   exit 4
 fi
 sudo -v
