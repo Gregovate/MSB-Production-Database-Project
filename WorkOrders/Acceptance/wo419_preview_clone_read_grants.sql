@@ -45,11 +45,19 @@ GRANT SELECT ON
     ops.work_order,
     ops.work_order_assignment,
     ops.work_order_status_history,
+    ops.setup_session,
+    ops.setup_session_task,
     stage.work_order_intake
 TO fieldwiring_app;
 
 GRANT EXECUTE ON FUNCTION ref.setup_browser_capabilities(text)
 TO fieldwiring_app;
+
+-- The EXISTING Manager-only Setup command, no direct Setup annual INSERT grant.
+GRANT EXECUTE ON FUNCTION ops.create_setup_season_task(
+    text,integer,text,integer,bigint,text,integer,integer,integer,integer,text,
+    text,text,text,bigint,boolean,text
+) TO fieldwiring_app;
 
 COMMIT;
 
