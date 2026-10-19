@@ -79,6 +79,31 @@ Immediately preceding the gate, source-only runner fixes streamed the host-side 
 
 **Current gate:** source changes are unmerged and must pass Linux CI and actual controlled disposable retry. The unexpected validator exception has only been classified safely so far, not root-caused; no P0 functionality or browser acceptance is implied. Keep protected logs/PII out of GitHub; any further detailed diagnostics should be scoped to a named failing phase and sanitized. The operator is not responsible for debugging restore scripts or completing the regression suite by hand.
 
+## Corrected exact-candidate CI regression gate — October 18
+
+At candidate `1aade5888eb6fb9936911df812f3ae3d2c254054`, GitHub Actions Work Management source CI run
+[39179779076](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/39179779076)
+PASSED: 33 #419 source/Flask/profile tests, 841 complete Setup/GIS tests,
+and 209 FieldWiring application tests (1,083 tests total). Bash, Python,
+JavaScript and PowerShell parsing also passed. The preceding source-gate HOLD
+was a false-negative ordering regression that matched an explanatory `pg_dump`
+comment rather than the actual dump invocation. The test now targets the
+actual command. The existing workflow's source-only restrictions remain in
+place, so this receipt establishes **no disposable clone execution, live
+read-query PASS, browser READY, or application acceptance**.
+
+The active main-branch Engineering Compliance required check initially failed
+because the existing #420 PR body did not provide the required named evidence
+fields; its body was updated without changing the controlling design.
+Follow-up [check run 39179836986](https://github.com/Gregovate/MSB-Production-Database-Project/actions/runs/39179836986)
+PASSED. A later documentation commit must be retested at its own exact SHA.
+
+**Next gate remains a controlled, current-Production private disposable clone
+and read validator; the previously successful restore followed by read-validator
+HOLD must not be misreported as a failed dump. Do not conduct operator browser
+review until query assertions and application health pass. Keep P0 write/email
+behavior separate from V0.1 read-only review.**
+
 ## Remaining acceptance gates
 
 Run and correct Python source tests, revised WO419 PostgreSQL read model and clone audit before calling the first browser review READY. #419 P0 **atomic triage/Promote & Assign, alternate Setup corrections, original-reporter Request More Information/replies, final resolution emails and noncompeting Directus cutover are NOT implemented or accepted**. No temporary read-only preview can waive those future gates.
