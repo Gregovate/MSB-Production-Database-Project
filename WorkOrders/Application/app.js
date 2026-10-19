@@ -5,6 +5,7 @@
   const state = {
     actor: null, tickets: [], assignees: [], selected: null,
     detail: null, relatedLoadedFor: null, fetchId: 0, listFetchId: 0,
+    agingRows: [], agingFetchId: 0,
   };
 
   function escapeHtml(value) {
@@ -41,6 +42,7 @@
     if (scope === "my-created") return "Work Orders I Created";
     if (scope === "all") return "All Work Orders";
     if (scope === "tickets") return "All Tickets · Search";
+    if (scope === "aging") return "Open Work Order Aging Report";
     if (scope === "my-feedback") return "My Submitted Feedback";
     if (scope === "critical") return "Manager · Immediate / Critical Repairs";
     if (scope === "unassigned") return "Manager · Unassigned Work Orders";
@@ -151,9 +153,140 @@
     scopeChanged();
   }
 
+  function agingCsvCell(value) {
+    // Prevent spreadsheet formula execution from free-form report text.
+    let text = String(value ?? "");
+    if (/^[\s]*[=+\-@]/.test(text)) text = "'" + text;
+    return '"' + text.replaceAll('"', '""') + '"';
+  }
+
+  function exportAgingCsv() {
+    if (!state.actor?.can_manage || !state.agingRows.length) return;
+    const columns = [
+      ["WO Number", "ticket"], ["Created", "opened_at"],
+      ["Days Open", "days_open"], ["Priority", "urgency"],
+      ["Description", "title"], ["Location", "location"],
+      ["Assigned To", "owners"], ["Assignee Count", "assigned_n"],
+      ["Active Record", "active"], ["Testing Repair ID", "test_id"],
+      ["Review Flag", "review_flag"],
+    ];
+    const rows = [columns.map(([label]) => agingCsvCell(label)).join(",")];
+    state.agingRows.forEach((row) => {
+      rows.push(columns.map(([, field]) => agingCsvCell(row[field])).join(","));
+    });
+    const csv = "\ufeff" + rows.join("\r\n") + "\r\n";
+    const url = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"}));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "MSB_Open_Work_Order_Aging_Disposable.csv";
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function renderAgingReport(data) {
+    const summary = $("aging-metrics");
+    const buckets = data.buckets || {};
+    const labels = [
+      ["All open", data.count], ["0–7 days", buckets["0-7"]],
+      ["8–30 days", buckets["8-30"]], ["31–60 days", buckets["31-60"]],
+      ["61+ days", buckets["61+"]],
+      ["Unassigned", data.unassigned_count],
+      ["Inactive exceptions", data.inactive_count],
+    ];
+    summary.replaceChildren();
+    for (const [label, value] of labels) {
+      const item = document.createElement("div");
+      const figure = document.createElement("strong");
+      figure.textContent = String(value ?? 0);
+      const name = document.createElement("span");
+      name.textContent = label;
+      item.append(figure, name);
+      summary.appendChild(item);
+    }
+    summary.hidden = false;
+    const table = $("aging-rows");
+    table.replaceChildren();
+    for (const row of state.agingRows) {
+      const tr = document.createElement("tr");
+      const cells = [
+        null,
+        row.opened_at ? new Date(row.opened_at).toLocaleDateString() : "Not recorded",
+        row.days_open ?? "Unknown",
+        row.urgency == null ? "Not set" : String(row.urgency),
+        (row.title || "Untitled") + " · " + (row.location || "Location not recorded"),
+        row.owners || "Unassigned",
+        row.active ? "Open" : "Inactive / not completed",
+      ];
+      cells.forEach((value, index) => {
+        const td = document.createElement("td");
+        if (index === 0) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "aging-open-ticket";
+          button.textContent = row.ticket || ("WO-" + row.wo_id);
+          button.addEventListener("click", () => {
+            $("scope").value = "all";
+            scopeChanged();
+            selectTicket(row.ticket);
+          });
+          td.appendChild(button);
+        } else {
+          td.textContent = String(value);
+        }
+        tr.appendChild(td);
+      });
+      table.appendChild(tr);
+    }
+    $("aging-export").disabled = !state.agingRows.length;
+    $("aging-status").textContent =
+      data.count + " recorded-open Work Orders · Created-date aging · " +
+      "No row limit; all open records included" +
+      (data.inactive_count ? " · Includes " + data.inactive_count +
+        " inactive-but-undated exception(s)" : "");
+  }
+
+  async function loadAgingReport() {
+    const serial = ++state.agingFetchId;
+    if (!state.actor?.can_manage) {
+      error("The Open Work Order Aging Report requires Manager permission.");
+      return;
+    }
+    $("aging-status").textContent = "Loading all open Work Orders by creation date…";
+    $("aging-export").disabled = true;
+    const sort = $("ticket-sort").value;
+    try {
+      const response = await getJson("/api/work-orders/aging?sort=" +
+        encodeURIComponent(sort));
+      if (serial !== state.agingFetchId || $("scope").value !== "aging") return;
+      state.agingRows = response.rows || [];
+      renderAgingReport(response);
+      error("");
+    } catch (exc) {
+      if (serial !== state.agingFetchId) return;
+      state.agingRows = [];
+      $("aging-rows").replaceChildren();
+      $("aging-metrics").hidden = true;
+      $("aging-export").disabled = true;
+      $("aging-status").textContent = "Aging report unavailable.";
+      error(exc.message);
+    }
+  }
+
   async function loadTickets() {
     const serial = ++state.listFetchId;
     const scope = $("scope").value;
+    const aging = scope === "aging";
+    $("aging-report").hidden = !aging;
+    $("work-ticket-workspace").hidden = aging;
+    $("show-completed").disabled = aging;
+    $("ticket-search").disabled = aging;
+    if (aging) {
+      await loadAgingReport();
+      return;
+    }
+    ++state.agingFetchId;
     const person = $("assignee").value;
     if (scope === "person" && !person) {
       state.tickets = [];
@@ -182,6 +315,7 @@
 
   function scopeChanged() {
     $("person-field").hidden = $("scope").value !== "person";
+    if ($("scope").value === "aging") $("ticket-sort").value = "created_asc";
     loadTickets();
   }
 
@@ -424,6 +558,7 @@
   $("ticket-sort").addEventListener("change", loadTickets);
   $("go-intake").addEventListener("click", () => goManagerQueue("intake"));
   $("go-feedback").addEventListener("click", () => goManagerQueue("feedback"));
+  $("aging-export").addEventListener("click", exportAgingCsv);
   let searchTimer = null;
   $("ticket-search").addEventListener("input", () => {
     clearTimeout(searchTimer);
