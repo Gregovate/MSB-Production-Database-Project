@@ -684,3 +684,100 @@ def test_manager_setup_link_action_is_ticket_local_and_has_real_season_select():
     assert 'catalog("review-link-setup-season"' in js
     assert '"linked_setup_session_task_id"' in (
         HERE / "commands.py").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "db_name,server_host,authorized_token,linked_identity,expected_status",
+    [
+        ("msb_wo419_preview", "172.18.0.5", True, True, None),
+        ("msb_wo419_preview", "172.18.0.6", True, True, 503),
+        ("msb", "172.18.0.5", True, True, 503),
+        ("msb_wo419_preview", "172.18.0.5", False, True, 503),
+        ("msb_wo419_preview", "172.18.0.5", True, False, 403),
+    ],
+)
+def test_clone_write_host_identity_preserves_all_other_fail_closed_gates(
+    monkeypatch, db_name, server_host, authorized_token, linked_identity,
+    expected_status,
+):
+    """The October 19 restore showed PostgreSQL inet text 172.18.0.5/32.
+
+    Docker inspect supplies 172.18.0.5, not its mask. PostgreSQL host(inet)
+    strips only inet's output mask; database, address, per-clone secret and
+    authenticated Person checks must still match exactly. No database used.
+    """
+    import commands
+
+    class FakeCursor:
+        def __init__(self):
+            self.query = ""
+            self.statements = []
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def execute(self, statement, params=None):
+            self.query = statement
+            self.statements.append((statement, params))
+
+        def fetchone(self):
+            if "host(inet_server_addr()) AS ip" in self.query:
+                return {"name": db_name, "ip": server_host}
+            if "wo419_preview.authorization" in self.query:
+                return {"token": "a" * 48 if authorized_token else "b" * 48}
+            if "FROM ref.person" in self.query:
+                return {"uuid": "12345678-1234-4234-8234-123456789abc"} if linked_identity else None
+            return None
+
+    class FakeConnection:
+        def __init__(self):
+            self.cur = FakeCursor()
+            self.commits = 0
+            self.rollbacks = 0
+            self.closed = False
+            self.session = None
+
+        def set_session(self, **kwargs):
+            self.session = kwargs
+
+        def cursor(self, **kwargs):
+            return self.cur
+
+        def commit(self):
+            self.commits += 1
+
+        def rollback(self):
+            self.rollbacks += 1
+
+        def close(self):
+            self.closed = True
+
+    fake = FakeConnection()
+    monkeypatch.setattr(commands.psycopg2, "connect", lambda dsn: fake)
+    writer = object.__new__(commands.CloneCommands)
+    writer.dsn = "dbname=isolated_test_fixture"
+    writer.token = "a" * 48
+    writer.ip = "172.18.0.5"  # Docker inspect host address, no /32
+
+    if expected_status is None:
+        with writer.transaction({"person_id": 101}) as cursor:
+            assert cursor is fake.cur
+        assert fake.commits == 1
+        assert fake.rollbacks == 0
+        assert any("set_config('app.directus_user_uuid'" in stmt
+                   for stmt, _ in fake.cur.statements)
+    else:
+        with pytest.raises(repository.WorkManagementError) as denied:
+            with writer.transaction({"person_id": 101}):
+                pytest.fail("Unverified clone/actor was given write access")
+        assert denied.value.status == expected_status
+        assert fake.commits == 0
+        assert fake.rollbacks == 1
+
+    assert fake.session == {"readonly": False, "autocommit": False}
+    assert fake.closed
+    assert "host(inet_server_addr()) AS ip" in fake.cur.statements[0][0]
+    assert "inet_server_addr()::text AS ip" not in fake.cur.statements[0][0]
