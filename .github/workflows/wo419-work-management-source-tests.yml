@@ -50,7 +50,9 @@ jobs:
             WorkOrders/Application/preview_entry.py \
             WorkOrders/Acceptance/validate_work_management_clone.py
       - name: Verify browser JavaScript syntax
-        run: node --check WorkOrders/Application/app.js
+        run: |
+          node --check WorkOrders/Application/app.js
+          node --check WorkOrders/Application/review_actions.js
       - name: Run source-only Work Management safety regression
         run: |
           python -m pytest -q -p no:cacheprovider \
