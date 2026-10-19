@@ -14,7 +14,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 
 from repository import WorkManagementError, WorkManagementRepository
 
-APP_VERSION = "V0.1.0-read-only-stage-context"
+APP_VERSION = "V0.2.0-no-save-operator-review"
 BASE_DIR = Path(__file__).resolve().parent
 CLOUDFLARE_HEADER = "Cf-Access-Authenticated-User-Email"
 TICKET_KEY = re.compile(r"^(?:WO|INTAKE)-[1-9][0-9]{0,12}$")
@@ -86,6 +86,14 @@ def access() -> Response:
 def assignees() -> Response:
     actor()
     return jsonify(assignees=WorkManagementRepository().assignees())
+
+
+@app.get("/api/work-orders/reviewer-options")
+def reviewer_options() -> Response:
+    """Manager-only existing catalogs for no-save UX rehearsal."""
+    who = actor()
+    return jsonify(options=WorkManagementRepository().reviewer_options(who),
+                   read_only=True, rehearsal_only=True)
 
 
 @app.get("/api/work-orders/tickets")
