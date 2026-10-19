@@ -360,6 +360,7 @@ def test_wo419_cleanup_uses_real_listener_and_preserves_unknown_owners(tmp_path)
                 'PYTHON="$1"; WORKTREE="$2"; PREVIEW_PORT="$3"; PREVIEW_PID="$4"',
                 'STATE_FILE="$5"; CLONE_OWNED=0; CLONE_CONTAINER=""; DUMP=""',
                 'PROD_BEFORE=""; LIVE_HEAD=""; REPORT="fixture"; REPO_ROOT=""',
+                'PRESERVE_FOR_RECONNECT=0',
                 'sudo() { if [[ "$1" == "-u" ]]; then shift 3; fi; "$@"; }',
                 'id() { if [[ "$1" == "-u" && "$2" == "fieldwiring" ]]; then command id -u; else command id "$@"; fi; }',
                 helper, cleanup,
