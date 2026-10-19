@@ -166,3 +166,102 @@ def test_clone_candidate_sha_verified_by_privileged_runner_not_service_git():
     assert 'WORK_MGMT_VERIFIED_CANDIDATE_SHA="$VERIFIED_WORKTREE_SHA"' in shell
     assert 'os.environ.get("WORK_MGMT_VERIFIED_CANDIDATE_SHA"' in validator
     assert 'subprocess.check_output(' not in validator
+
+
+def test_work_orders_preview_transport_recovers_using_setup_contract():
+    """Use the same protected resumable preview lifecycle already accepted for Setup."""
+    shell = RUNNER.read_text(encoding="utf-8")
+    wrapper = WRAPPER.read_text(encoding="utf-8")
+    setup = (HERE.parent.parent / "Setup/Acceptance/setup_disposable_browser_preview_server.sh").read_text(encoding="utf-8")
+    assert "PRESERVE_FOR_RECONNECT" in setup
+    assert 'STATE_FILE="/tmp/msb-wo419-preview-state-' + '$' + '{PREVIEW_PORT}.env"' in shell
+    assert 'trap cleanup EXIT' in shell
+    assert "PRESERVE_FOR_RECONNECT=1" in shell
+    assert "resume_existing_preview()" in shell
+    assert '"$MODE" == "resume"' in shell
+    assert "write_resume_state" in shell
+    assert "WO419 DISPOSABLE BROWSER REVIEW RESUMED" in shell
+    assert "if ! read -r -p" in shell
+    assert "Same private clone" in shell
+    assert "no new clone" in wrapper.lower()
+    assert "$maxReconnectAttempts = 12" in wrapper
+    assert "$mode = 'resume'" in wrapper
+    assert '$remoteExit -notin @(75, 255)' in wrapper
+    assert "Start-Sleep -Seconds 2" in wrapper
+    assert "Get-NetTCPConnection" in wrapper
+    assert "ssh -tt -o ServerAliveInterval=15" in wrapper
+    assert " start; " in wrapper and " resume; " in wrapper
+    assert 'if [ "$rc" -eq 0 ]; then rm -f' in wrapper
+    assert "Stop-Process" not in wrapper
+    assert "Start-Process" not in wrapper
+    assert "git reset --hard" not in wrapper
+    assert shell.index('if [[ "$MODE" == "resume" ]]') < shell.index('sudo git -C "$REPO_ROOT" fetch origin')
+    for required in (
+        'sudo ps -p "$PREVIEW_PID" -o uid=',
+        'id -u fieldwiring',
+        'pid=$PREVIEW_PID,',
+        '.State.Running',
+        'msb_wo419_preview',
+        'git -C "$WORKTREE" rev-parse HEAD',
+        '/api/work-orders/health',
+        'saved_version',
+        'expected_version',
+        'PREVIEW_EMAIL',
+        'VERIFIED_WORKTREE_SHA',
+    ):
+        assert required in shell, required
+
+
+def test_wo419_resume_state_is_valid_private_bash_and_has_no_credentials(tmp_path):
+    """Execute Bash metadata writer and re-source the result in a separate shell."""
+    if not shutil.which("bash"):
+        pytest.skip("Bash required for server state fixture")
+    shell = RUNNER.read_text(encoding="utf-8")
+    start = shell.index("write_resume_state() {")
+    end = shell.index("\n\nresume_existing_preview() {", start)
+    function = shell[start:end]
+    state = tmp_path / "wo419-state.env"
+    script = "\n".join([
+        "set -euo pipefail",
+        "STATE_FILE=$1",
+        "CANDIDATE_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "CANDIDATE_REF=issue-419-unified-ticket-read-model-20261018",
+        "PREVIEW_EMAIL=reviewer@sheboyganlights.org",
+        "PREVIEW_PORT=8898",
+        "CLONE_CONTAINER=msb-wo419-preview-77",
+        "CLONE_DATABASE=msb_wo419_preview",
+        "CLONE_OWNED=1",
+        "WORKTREE=/tmp/msb-wo419-preview-candidate-fixture-77",
+        "DUMP=/tmp/msb-wo419-preview-fixture-77.dump",
+        "REPORT=/tmp/WO419-fixture-report.txt",
+        "APP_LOG=/tmp/WO419-fixture-app.log",
+        "PREVIEW_PID=177",
+        "PROD_BEFORE=0123456789abcdef",
+        "LIVE_HEAD=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "VERIFIED_WORKTREE_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        function,
+        "write_resume_state",
+        "bash -c 'set -euo pipefail; source \"$1\"; "
+        "test \"$PREVIEW_PORT\" = 8898; "
+        "test \"$PREVIEW_PID\" = 177; "
+        "test \"$CLONE_DATABASE\" = msb_wo419_preview; "
+        "test \"$PREVIEW_EMAIL\" = reviewer@sheboyganlights.org' bash \"$STATE_FILE\"",
+    ])
+    first = subprocess.run(
+        ["bash", "-c", script, "bash", str(state)],
+        capture_output=True, text=True,
+    )
+    assert first.returncode == 0, first.stderr
+    content = state.read_text(encoding="utf-8")
+    for token in ("CANDIDATE_SHA=", "PREVIEW_PID=177\n", "PROD_BEFORE=",
+                  "VERIFIED_WORKTREE_SHA="):
+        assert token in content, token
+    assert state.stat().st_mode & 0o777 == 0o600
+    for forbidden in ("WRITE_TOKEN", "PASSWORD", "CSRF", "DSN"):
+        assert forbidden not in content
+    again = subprocess.run(
+        ["bash", "-c", script, "bash", str(state)],
+        capture_output=True, text=True,
+    )
+    assert again.returncode != 0
+    assert "state already exists" in again.stdout
