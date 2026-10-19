@@ -20,6 +20,15 @@ sys.path.insert(0, str(APP_DIR))
 from repository import WorkManagementError, WorkManagementRepository, ledger_select  # noqa:E402
 
 HEX40 = re.compile(r"^[a-f0-9]{40}$")
+CURRENT_PHASE = "preflight"
+
+
+def phase(name: str) -> None:
+    """Expose only a fixed validation stage, never SQL, DSN or PII."""
+    global CURRENT_PHASE
+    CURRENT_PHASE = name
+    print(f"CHECK: beginning {name}", flush=True)
+
 
 
 def checked_sha(expected_sha: str) -> None:
@@ -35,11 +44,14 @@ def checked_sha(expected_sha: str) -> None:
 
 
 def validate(preview_email: str) -> None:
+    phase("clone_connection")
     repo = WorkManagementRepository()
     with repo.connect() as conn, conn.cursor() as cur:
+        phase("read_only_transaction")
         cur.execute("SHOW transaction_read_only")
         if cur.fetchone()[0] != "on":
             raise RuntimeError("Disposable reader transaction is not READ ONLY.")
+        phase("clone_identity")
         cur.execute("SELECT current_database(), inet_server_addr()::text")
         db_name, db_addr = cur.fetchone()
         if db_name == "msb" or not db_name.startswith("msb_"):
@@ -47,6 +59,7 @@ def validate(preview_email: str) -> None:
         # This is NOT sufficient to prove instance isolation; the governing
         # server runner must verify container IP, network, dump and live invariants.
         print(f"CHECK: clone_database={db_name}, internal_addr={db_addr}")
+        phase("unified_ledger_query")
         cur.execute(
             "SELECT t.ticket, t.type, t.state, t.done_at, t.owners "
             "FROM (" + ledger_select() + ") t "
@@ -61,10 +74,12 @@ def validate(preview_email: str) -> None:
             print("CHECK: ticket=%s type=%s state=%s completion=%s assignees=%s"
                   % (row[0], row[1], row[2], "dated" if row[3] else "none", row[4]))
 
+    phase("reviewer_authorization")
     access = repo.access(preview_email)
     if access["person_id"] < 1:
         raise RuntimeError("Approved reviewer is not a linked active Person.")
 
+    phase("my_work_query")
     scope = repo.tickets(
         actor=access, scope="mine", person_id=None,
         show_completed=False, search="", limit=20,
@@ -77,12 +92,14 @@ def validate(preview_email: str) -> None:
         raise RuntimeError("Default My Work included dated-completed Work Orders.")
     print(f"CHECK: My Work identity/person scope PASS; rows={len(scope)}")
 
+    phase("all_tickets_query")
     all_rows = repo.tickets(
         actor=access, scope="all", person_id=None,
         show_completed=True, search="", limit=100,
     )
     print(f"CHECK: authorized All Work Orders read PASS; sampled_rows={len(all_rows)}")
 
+    phase("assignee_selector_query")
     names = repo.assignees()
     if any(row["person_id"] < 1 for row in names):
         raise RuntimeError("Assignee list contains an invalid permanent Person ID.")
@@ -92,10 +109,12 @@ def validate(preview_email: str) -> None:
         # The accepted source report Intake #60 is an excellent data fixture
         # but cannot be assumed present on every future/current clone.
         if any(row[0] == "INTAKE-60" for row in examples):
+            phase("intake_60_detail_query")
             ticket = repo.ticket(actor=access, ticket_key="INTAKE-60")
             original = ticket["setup_context"]
             if not original.get("stage_id"):
                 raise RuntimeError("Intake #60 has no retained Stage provenance.")
+            phase("intake_60_related_information")
             related = repo.related_information(actor=access, ticket_key="INTAKE-60")
             if related["stage_id"] != original["stage_id"]:
                 raise RuntimeError("Related Information did not use original Stage identity.")
@@ -125,18 +144,19 @@ def main() -> int:
             raise RuntimeError("WORK_MGMT_PREVIEW_MODE=disposable required.")
         if not os.environ.get("WORK_MGMT_DATABASE_DSN", "").strip():
             raise RuntimeError("Clone DSN not supplied by approved runner.")
+        phase("candidate_identity")
         checked_sha(args.candidate_sha)
         validate(args.preview_email.strip().lower())
         return 0
     except (ValueError, RuntimeError, OSError, WorkManagementError) as exc:
-        print("WORK MANAGEMENT #419 DISPOSABLE READ ACCEPTANCE HOLD:", str(exc))
+        print(f"WORK MANAGEMENT #419 DISPOSABLE READ ACCEPTANCE HOLD at {CURRENT_PHASE}:", str(exc))
         return 1
     except Exception as exc:
         # Retain the exception class and failing test phase without emitting
         # database errors, SQL, reporter text, credentials or stack traces.
         # Detailed traceback stays out of both operator terminal and report.
         print("WORK MANAGEMENT #419 DISPOSABLE READ ACCEPTANCE HOLD:"
-              f" unexpected validator exception class={type(exc).__name__};"
+              f" phase={CURRENT_PHASE} exception_class={type(exc).__name__};"
               " no source/database diagnostic details emitted.")
         return 1
 
