@@ -384,7 +384,7 @@ def test_crew_stays_on_my_work_and_cannot_read_manager_intake(client, monkeypatc
     class CrewRepo(FakeRepo):
         def access(self, email):
             return {"person_id": 202, "display_name": "Crew Reviewer",
-                    "can_manage": False, "can_create": True,
+                    "can_manage": False, "can_create": False,
                     "can_assign": False, "can_triage": False, "can_read": True}
     monkeypatch.setattr(backend, "WorkManagementRepository", CrewRepo)
     assert client.get("/api/work-orders/manager-inbox",
@@ -399,20 +399,19 @@ def test_crew_stays_on_my_work_and_cannot_read_manager_intake(client, monkeypatc
         assert denied.value.status == 403
 
 
-def test_create_is_allowed_for_crew_without_assignment_but_triage_is_not():
+
+def test_crew_cannot_directly_create_or_assign_native_work_orders():
     import commands
     from uuid import uuid4
     writer = commands.CloneCommands.__new__(commands.CloneCommands)
-    crew = {"person_id": 202, "can_manage": False, "can_read": True}
-    with pytest.raises(repository.WorkManagementError) as denied:
-        writer.perform(crew, "create", None,
-                       {"request_key": str(uuid4()), "person_ids": [101]})
-    assert denied.value.status == 403
-    with pytest.raises(repository.WorkManagementError) as denied:
-        writer.perform(crew, "assign", "WO-372",
-                       {"request_key": str(uuid4()), "person_ids": [101]})
-    assert denied.value.status == 403
-
+    crew = {"person_id": 202, "can_manage": False, "can_create": True,
+            "can_read": True}
+    for action, ticket, ids in (("create", None, []), ("create", None, [101]),
+                                ("assign", "WO-372", [101])):
+        with pytest.raises(repository.WorkManagementError) as denied:
+            writer.perform(crew, action, ticket,
+                           {"request_key": str(uuid4()), "person_ids": ids})
+        assert denied.value.status == 403
 
 def test_all_sorts_use_validated_numeric_ids_in_sql_before_limit():
     source = (HERE / "repository.py").read_text(encoding="utf-8")
@@ -434,23 +433,21 @@ def test_all_sorts_use_validated_numeric_ids_in_sql_before_limit():
     assert "state.actor?.can_manage" in js
 
 
-def test_crew_direct_create_reaches_clone_command_without_manager_privilege():
+
+def test_crew_direct_create_fails_before_any_disposable_write():
     import commands
     from uuid import uuid4
     writer = commands.CloneCommands.__new__(commands.CloneCommands)
-    sentinel = "Crew permission passed; clone transaction required"
-    class TransactionReached(RuntimeError):
-        pass
-    def fake_transaction(_actor):
-        raise TransactionReached(sentinel)
-    writer.transaction = fake_transaction
+    def fail_if_called(_actor):
+        raise AssertionError("Crew must never reach a native WO transaction")
+    writer.transaction = fail_if_called
     crew = {"person_id": 202, "can_manage": False, "can_create": True,
             "can_read": True}
-    with pytest.raises(TransactionReached, match=sentinel):
-        writer.perform(crew, "create", None, {
-            "request_key": str(uuid4()), "person_ids": [],
-        })
-
+    with pytest.raises(repository.WorkManagementError) as denied:
+        writer.perform(crew, "create", None,
+                       {"request_key": str(uuid4()), "person_ids": []})
+    assert denied.value.status == 403
+    assert "Work Order Request" in str(denied.value)
 
 def test_manager_intake_count_excludes_promoted_and_closed_history():
     source = (HERE / "repository.py").read_text(encoding="utf-8")
@@ -464,37 +461,28 @@ def test_manager_intake_count_excludes_promoted_and_closed_history():
     html = (HERE / "index.html").read_text(encoding="utf-8")
     assert 'value="my-created"' in html
     assert 'value="intake" data-manager-only' in html
-    assert "Public Work Order Request" in html
+    assert "Submit Work Order Request" in html
     js = (HERE / "review_actions.js").read_text(encoding="utf-8")
-    assert "if (actor.can_create)" in js
-    assert "!model.actor?.can_manage" in js or "!model.actor?.can_create" in js
+    assert "if (actor.can_manage)" in js
+    assert "!model.actor?.can_manage" in js
     assert "model.actor?.can_manage" in js
     assert "payload.disposable_only" in js
 
 
-def test_directus_role_permissions_do_not_promote_generic_volunteer_or_browser():
+
+def test_directus_role_permissions_require_actual_manager_capability_for_create():
     permits = repository.work_management_role_permissions
-    crew = permits({"role_name": "Production Crew", "policy_names": [],
-                    "can_manage_setup": False})
-    assert crew == {"can_manage": False, "can_create": True,
-                    "can_assign": False, "can_triage": False}
-    manager = permits({"role_name": "Manager", "policy_names": [],
-                       "can_manage_setup": True})
-    assert all(manager.values())
-    admin = permits({"role_name": "Administrator", "policy_names": [],
-                     "can_manage_setup": True})
-    assert all(admin.values())
-    delegated = permits({"role_name": "Unassigned", "policy_names": ["Production Crew"],
-                         "can_manage_setup": False})
-    assert delegated["can_create"] and not delegated["can_assign"]
-    for role, policy in (("Volunteer", ["Volunteer"]), ("MSB Browser", []),
-                         ("Unassigned", [])):
+    for role, policy in (("Production Crew", []), ("Volunteer", ["Volunteer"]),
+                         ("MSB Browser", []), ("Unassigned", ["Production Crew"]),
+                         ("Administrator", [])):
         ordinary = permits({"role_name": role, "policy_names": policy,
                             "can_manage_setup": False})
-        assert not ordinary["can_create"]
-        assert not ordinary["can_assign"]
-        assert not ordinary["can_triage"]
-
+        assert ordinary == {"can_manage": False, "can_create": False,
+                            "can_assign": False, "can_triage": False}
+    for role in ("Manager", "Administrator"):
+        manager = permits({"role_name": role, "policy_names": [],
+                           "can_manage_setup": True})
+        assert all(manager.values())
 
 def test_manager_all_work_orders_is_not_the_intake_queue():
     source = (HERE / "repository.py").read_text(encoding="utf-8")
@@ -602,28 +590,21 @@ def test_setup_season_link_is_manager_only_and_uses_existing_setup_command():
     assert '"linked_setup_session_task_id"' in source
 
 
-def test_crew_setup_review_request_and_manager_only_auto_link():
+
+def test_crew_seasonal_setup_requests_go_through_intake_not_native_create():
     import commands
     from uuid import uuid4
     writer = commands.CloneCommands.__new__(commands.CloneCommands)
     crew = {"person_id": 202, "can_manage": False, "can_create": True,
             "can_read": True}
-    request = {"request_key": str(uuid4()), "person_ids": [],
-               "setup_mode": "request", "stage_id": 17}
-    class TransactionReached(RuntimeError):
-        pass
-    def fail_at_connection(actor):
-        raise TransactionReached("Reached disposable transaction")
-    writer.transaction = fail_at_connection
-    with pytest.raises(TransactionReached):
-        writer.perform(crew, "create", None, request)
-    with pytest.raises(repository.WorkManagementError) as denied:
-        writer.perform(crew, "create", None, {
-            **request, "setup_mode": "create",
-            "setup_season_year": 2026,
-        })
-    assert denied.value.status == 403
-
+    writer.transaction = lambda _: (_ for _ in ()).throw(
+        AssertionError("Crew must not create any native Work Order or Setup task"))
+    for mode in ("request", "create"):
+        with pytest.raises(repository.WorkManagementError) as denied:
+            writer.perform(crew, "create", None,
+                           {"request_key": str(uuid4()), "person_ids": [],
+                            "setup_mode": mode, "stage_id": 17})
+        assert denied.value.status == 403
 
 def test_season_link_ui_and_clone_rollback_gate_are_not_replacement_setup_work():
     html = (HERE / "index.html").read_text(encoding="utf-8")
@@ -944,3 +925,27 @@ def test_oct19_operator_create_form_visibility_and_responsive_filters():
     assert 'byId("review-problem").focus();' in js
     assert 'byId("create-work-order").setAttribute("aria-expanded", "false")' in js
     assert 'byId("review-action-form").addEventListener("submit"' in js
+
+
+def test_oct19_tom_crew_intake_manager_direct_creation_and_planning_year():
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    js = (HERE / "review_actions.js").read_text(encoding="utf-8")
+    commands_source = (HERE / "commands.py").read_text(encoding="utf-8")
+    assert 'href="https://forms.gle/Gve4ZbXHDWxs43yh6"' in html
+    assert "Submit Work Order Request" in html
+    assert 'id="create-work-order"' in html
+    assert 'id="review-year-wrap" hidden' in html
+    assert '<option value="3" selected>3 · Normal</option>' in html
+    assert 'if (actor.can_manage) result.push("create")' in js
+    assert 'byId("create-work-order").hidden = !model.actor.can_manage' in js
+    assert 'if (!model.actor?.can_manage) return;' in js
+    assert 'byId("review-urgency").value = "3"' in js
+    assert 'byId("review-urgency").addEventListener("change", planningChanged)' in js
+    assert 'byId("review-year-wrap").hidden = !planning' in js
+    assert 'byId("review-target-year").required = planning' in js
+    assert 'byId("review-urgency").value === "5"' in js
+    assert '"Planning Work Orders require a target year."' in commands_source
+    assert '"Target year applies only to Planning (urgency 5)."' in commands_source
+    assert 'if action == "create" and not actor["can_manage"]' in commands_source
+    assert "Only Managers may create Work Orders directly." in commands_source
+    assert "stage.work_order_intake" not in commands_source  # no parallel Intake subsystem
