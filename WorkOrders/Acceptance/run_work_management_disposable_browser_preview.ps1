@@ -42,13 +42,46 @@ try {
     Write-Host 'Keep the SSH tunnel open until remote BROWSER REVIEW READY and browser review completion.'
     & scp -q $Local ($Server + ':' + $Remote)
     if ($LASTEXITCODE -ne 0) { throw 'HOLD: SCP upload failed.' }
-    $RemoteCommand = ('chmod 700 "{0}"; hash=$(sha256sum "{0}" | cut -d " " -f1); ' +
-        'if [ "$hash" != "{1}" ]; then echo "HOLD: runner digest mismatch"; rm -f "{0}"; exit 50; fi; ' +
-        'timeout --foreground --signal=TERM 28800s bash "{0}" "{2}" "{3}" "{4}" "{5}"; ' +
-        'rc=$?; rm -f "{0}"; exit $rc') -f $Remote, $Hash, $CandidateSha, $PreviewPort, $PreviewEmail, $Ref
+    # This is the established Setup acceptance reconnect lifecycle applied to
+    # the SAME pinned #419 runner, not a competing server runner or port.
+    # On SSH exit 75/255 do not throw away the uploaded verified script.
+    # A resume must prove the exact saved SHA, owner, port, clone, worktree
+    # and healthy application before it can reconnect; it never restores
+    # a second database or changes the application candidate.
+    $RemotePrefix = ('chmod 700 "{0}"; hash=$(sha256sum "{0}" | cut -d " " -f1); ' +
+        'if [ "$hash" != "{1}" ]; then echo "HOLD: runner digest mismatch"; exit 50; fi; ') -f $Remote, $Hash
+    $StartCommand = $RemotePrefix + ( 'timeout --foreground --signal=TERM 28800s bash "{0}" "{1}" "{2}" "{3}" "{4}" start; ' +
+        'rc=$?; if [ "$rc" -eq 0 ]; then rm -f "{0}"; fi; exit "$rc"') -f $Remote, $CandidateSha, $PreviewPort, $PreviewEmail, $Ref
+    $ResumeCommand = $RemotePrefix + ( 'timeout --foreground --signal=TERM 28800s bash "{0}" "{1}" "{2}" "{3}" "{4}" resume; ' +
+        'rc=$?; if [ "$rc" -eq 0 ]; then rm -f "{0}"; fi; exit "$rc"') -f $Remote, $CandidateSha, $PreviewPort, $PreviewEmail, $Ref
     $Tunnel = '{0}:127.0.0.1:{0}' -f $PreviewPort
-    & ssh -tt -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -L $Tunnel $Server $RemoteCommand
-    if ($LASTEXITCODE -ne 0) { throw "HOLD: remote review returned $LASTEXITCODE; inspect report/ownership before relaunch." }
-    Write-Host 'WO419 workstation browser tunnel: CLEAN EXIT'
+    $mode = 'start'
+    $reconnectAttempts = 0
+    $maxReconnectAttempts = 12
+    while ($true) {
+        $RemoteCommand = if ($mode -eq 'start') { $StartCommand } else { $ResumeCommand }
+        & ssh -tt -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -L $Tunnel $Server $RemoteCommand
+        $remoteExit = $LASTEXITCODE
+        if ($remoteExit -eq 0) {
+            Write-Host 'WO419 workstation browser tunnel: CLEAN EXIT'
+            break
+        }
+        if ($remoteExit -notin @(75, 255)) {
+            throw "HOLD: remote $mode returned $remoteExit. Preserve original report/clone and inspect exact ownership before another preview."
+        }
+        $mode = 'resume'
+        $reconnectAttempts += 1
+        if ($reconnectAttempts -gt $maxReconnectAttempts) {
+            throw "HOLD: SSH reconnect retries exhausted; the exact remote review MAY still be preserved. Inspect ownership, do NOT launch a new clone."
+        }
+        # Never indiscriminately stop a local listener, even if process name
+        # is ssh. This is a shared sequential port with Setup/#88/#171.
+        $listeners = @(Get-NetTCPConnection -LocalPort $PreviewPort -State Listen -ErrorAction SilentlyContinue)
+        if ($listeners.Count -gt 0) {
+            throw "HOLD: local port $PreviewPort remains occupied during reconnect. Inspect listener ownership; no process stopped."
+        }
+        Write-Warning "SSH transport lost. Reconnecting to exact preserved Work Orders review ($reconnectAttempts/$maxReconnectAttempts); no new clone or application startup."
+        Start-Sleep -Seconds 2
+    }
 }
 finally { Remove-Item -LiteralPath $Local -Force -ErrorAction SilentlyContinue }
