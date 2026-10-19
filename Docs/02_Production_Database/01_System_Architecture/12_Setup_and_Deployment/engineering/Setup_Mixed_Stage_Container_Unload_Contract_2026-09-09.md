@@ -14,6 +14,14 @@ Preserve the operator-confirmed execution model for shared/mixed-Stage Container
 
 This contract applies generally to any Container whose current authoritative contents span more than one Setup Stage/scope. Known examples include Container 34 / Arch Trailer and the Antenna Trailer.
 
+## October 19 — some unloaded Containers remain physical show structures
+
+**Operator-confirmed physical exception:** Certain Display Containers/Pallets carry several separable Displays that are unloaded at Setup, but the **pallet/base/container itself stays in the park at that Stage and becomes part of the installed display/show**. Such a Container can be `cargo empty` while still **present, in use and at its show location**. Do not mislabel it `Returned Home` or automatically route it to Workshop when all child Displays detach. Preserve its permanent Home rack for later takedown only, and retain its actual current park position as a Container observation. The carried Displays have separate installed-position evidence, linked to their applicable Setup installation tasks.
+
+This differs from (a) transport-only pallets eligible for return only after an actual empty/receipt decision, (b) synthetic Standalone Display testing wrappers representing **one** physical unit under linked Display/Container IDs, and (c) single integral Display-Pallets whose Display can never detach. The governed current-type/flag matrix (`container_type_name`, `display_pallet`, active content count and source relationships) must be audited before an automated return recommendation or type-specific status rule; multi-Display count by itself does not establish whether the remaining base is part of the show. More details, label variance and scan reasonableness are owned by [#88 movement engineering contract](Setup_88_Pick_Mode_Movement_Design_2026-09-29.md#october-19-follow-up--verified-2026-recovery-scans-and-physical-container-role-boundaries).
+
+**Required Stage unload UI acceptance:** Unload physically removed cargo with Stage group confirmation, leave other cargo attached and the show-base Container anchored in the park; independently verify each installed Display at actual position during its Setup task (2026 voluntarily, 2027 required by the [Crew Work Reporting contract](Setup_Crew_Work_Reporting_Contract_2026-09-08.md)). A zero-onboard-Displays total is **not** an automatic trigger to return Home. Takedown can repack that same physical base using fast scan-each confirmation under #423. This is design/acceptance scope; no present production records were changed.
+
 ## Core Rule
 
 A mixed-Stage Container is handled at **Container + unload-scope** level, not Display-by-Display.
