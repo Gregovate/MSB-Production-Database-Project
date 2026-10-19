@@ -238,7 +238,8 @@ class WorkManagementRepository:
 
     def tickets(
         self, *, actor: dict[str, Any], scope: str, person_id: int | None,
-        show_completed: bool, search: str, sort: str = "priority", limit: int = 80,
+        show_completed: bool, search: str, sort: str = "priority",
+        include_planning: bool = True, limit: int = 80,
     ) -> list[dict[str, Any]]:
         manager_scopes = ("all", "tickets", "person", "repairs", "testing",
                           "intake", "feedback", "unassigned", "critical")
@@ -266,6 +267,13 @@ class WorkManagementRepository:
         params: list[Any] = []
         if not show_completed:
             conditions.append("t.done_at IS NULL AND t.active")
+        # The existing native urgency catalog defines 5=Planning.
+        # This is a reversible VIEW filter, not a destructive status change.
+        # Include null/unknown priority rather than silently discarding it.
+        if not include_planning:
+            conditions.append(
+                "(t.type <> 'WORK_ORDER' OR t.urgency IS DISTINCT FROM 5)"
+            )
         if scope in ("mine", "person"):
             conditions.append("t.type = 'WORK_ORDER' AND %s = ANY(t.assignee_ids)")
             params.append(selected)
@@ -329,7 +337,8 @@ class WorkManagementRepository:
             return rows
 
     def aging_report(self, *, actor: dict[str, Any],
-                     sort: str = "created_asc") -> list[dict[str, Any]]:
+                     sort: str = "created_asc",
+                     include_planning: bool = True) -> list[dict[str, Any]]:
         """ALL recorded-open Work Orders, including inactive exceptions.
 
         Use native created_at, not last activity or assignment date. No
@@ -356,7 +365,9 @@ class WorkManagementRepository:
             "t.active, t.test_id, t.state, t.review_flag "
             "FROM (" + ledger_select() + ") t "
             "WHERE t.type = 'WORK_ORDER' AND t.done_at IS NULL "
-            "ORDER BY " + sorts[sort]
+            + ("" if include_planning else
+               "AND t.urgency IS DISTINCT FROM 5 ")
+            + "ORDER BY " + sorts[sort]
         )
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(sql_text)
