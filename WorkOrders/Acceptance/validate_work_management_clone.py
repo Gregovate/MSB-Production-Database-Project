@@ -112,6 +112,25 @@ def validate(preview_email: str) -> None:
     print("CHECK: authorized internal Create catalogs PASS")
 
     if access["can_manage"]:
+        phase("manager_aging_all_open_work_orders")
+        report = repo.aging_report(actor=access, sort="created_asc")
+        with repo.connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT count(*), count(*) FILTER (WHERE NOT is_active) "
+                "FROM ops.work_order WHERE date_completed IS NULL"
+            )
+            expected_open, expected_inactive = cur.fetchone()
+        if len(report) != expected_open:
+            raise RuntimeError("Aging report omitted some recorded-open Work Orders.")
+        if sum(1 for row in report if not row["active"]) != expected_inactive:
+            raise RuntimeError("Aging report excluded undated inactive exceptions.")
+        dates = [row["opened_at"] for row in report if row["opened_at"] is not None]
+        if dates != sorted(dates):
+            raise RuntimeError("Aging report is not oldest-creation-first.")
+        if any(row["days_open"] is not None and row["days_open"] < 0 for row in report):
+            raise RuntimeError("Aging report contains a negative age.")
+        print("CHECK: Manager all-open aging report PASS; "
+              f"rows={len(report)} inactive-exceptions={expected_inactive}")
         phase("manager_rehearsal_catalogs")
         if not catalogs["people"]:
             raise RuntimeError("Manager assignment requires current active People.")
@@ -176,6 +195,13 @@ def validate(preview_email: str) -> None:
         else:
             print("HOLD: Intake #60 absent on this clone; select documented current fixture.")
     else:
+        phase("crew_aging_denied")
+        try:
+            repo.aging_report(actor=access, sort="created_asc")
+            raise RuntimeError("Crew obtained Manager-only aging report.")
+        except WorkManagementError as denied:
+            if denied.status != 403:
+                raise RuntimeError("Unexpected aging-report rejection.")
         phase("crew_direct_create_rollback")
         writer = CloneCommands()
         # Crew Create is an unassigned native WO, never a false My Work assignment.
