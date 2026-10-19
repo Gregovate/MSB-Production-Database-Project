@@ -219,3 +219,16 @@ html[data-theme="dark"] .review-people label:hover { background:#1b3352; }
 html[data-theme="dark"] .theme-toggle { background:#111c2e; color:var(--ink); }
 html[data-theme="dark"] .theme-toggle:hover { background:#1d3350; }
 @media(max-width:550px) { .screen-logo { width:70px; } }
+
+/* Ticket edit is embedded in the selected detail, never below the work list. */
+#detail-content.create-mode > .detail-heading,
+#detail-content.create-mode .detail-fields,
+#detail-content.create-mode .detail-notes,
+#detail-content.create-mode .related-information,
+#detail-content.create-mode .next-actions { display:none !important; }
+#detail-content.create-mode .detail-body { padding-top:8px; }
+#detail-content.create-mode .review-workbench { margin-top:8px; }
+#detail-content.create-mode .review-workbench h3::after { content:" · New internal Work Order"; }
+#review-result[data-valid=true] { font-weight:750; }
+html[data-theme=dark] .review-result[data-valid=true] { color:#a2f4c0; }
+html[data-theme=dark] .review-result[data-valid=false] { color:#ffaaaa; }
