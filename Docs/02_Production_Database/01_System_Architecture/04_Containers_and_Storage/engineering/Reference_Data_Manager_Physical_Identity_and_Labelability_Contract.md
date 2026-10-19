@@ -11,6 +11,8 @@
 
 ## Purpose and authoritative ownership
 
+**Focused delivery issues:** [#429 — canonical LOR Display versus physical/synthetic Container, Testing dependency](https://github.com/Gregovate/MSB-Production-Database-Project/issues/429) and [#432 — actual tag inventory / proposed 24mm labels / no-QR exceptions](https://github.com/Gregovate/MSB-Production-Database-Project/issues/432). These are independent deliverables within #230, not new physical-data systems. [#430](https://github.com/Gregovate/MSB-Production-Database-Project/issues/430) consumes the classification for current cargo/return, and [#431](https://github.com/Gregovate/MSB-Production-Database-Project/issues/431) consumes it for final Setup readiness. **Urgent #428 paint capture is deliberately independent.**
+
 **This is the owning #230 engineering contract** for permanent physical Container/Display classification and labelability. Permanent `ref.*` identity and relationship metadata must let #88 Setup movements, #231 Testing, #423 Takedown, #132 Report Work, #171 GIS and the existing LabelPrintService handle each *real physical object* correctly.
 
 Do **not** infer the number of physical objects from the number of database IDs or the number of `ref.display` children. A Container may **become part of the show**, may carry *separate removable Displays*, and may also have **one Display identity integral to its base**. These conditions are not mutually exclusive. A Display may already have a permanent `ref.display.display_id` while still **not bearing any readable physical label**. Not labeled, not serialized in the database, not installed, not physically scan-verifiable, and not currently onboard a Container are five different facts.
