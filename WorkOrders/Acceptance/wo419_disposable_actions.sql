@@ -22,6 +22,7 @@ INSERT INTO wo419_preview.authorization(singleton,token)
 VALUES (true,current_setting('msb.wo419_clone_write_token'));
 CREATE TABLE wo419_preview.activity (
  activity_id bigserial PRIMARY KEY,
+ request_key uuid NOT NULL UNIQUE,
  ticket_key text NOT NULL CHECK (ticket_key ~ '^(WO|INTAKE)-[1-9][0-9]*$'),
  event_kind text NOT NULL,
  actor_person_id integer NOT NULL REFERENCES ref.person(person_id),
