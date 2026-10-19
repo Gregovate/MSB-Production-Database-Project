@@ -226,7 +226,7 @@ def test_urgent_work_is_sorted_in_sql_before_limit():
 def test_manager_catalog_is_read_only_and_actor_scoped(client):
     response = client.get("/api/work-orders/reviewer-options", headers=identity())
     assert response.status_code == 200
-    assert response.json["read_only"] and response.json["rehearsal_only"]
+    assert response.json["disposable_only"] and not response.json["read_only"]
     assert response.json["options"]["people"][0]["person_id"] == 101
     assert ("reviewer_options", 101) in FakeRepo.calls
     for method in ("post", "patch", "delete"):
@@ -249,18 +249,23 @@ def test_new_manager_queues_and_reporter_feedback_route(client):
         }) in FakeRepo.calls
 
 
-def test_review_script_is_protected_and_does_not_send_or_mutate(client):
+def test_review_script_is_ticket_local_and_clone_only(client):
     page = client.get("/work-orders/", headers=identity())
     assert page.status_code == 200
     assert b"review_actions.js" in page.data
-    assert b"No-save rehearsal" in page.data
+    assert b"Disposable database only." in page.data
+    assert page.data.index(b'id="review-workbench"') < page.data.index(b'id="related-information"')
+    assert b'id="create-work-order"' in page.data
+    assert b"msb-blue-logo-600-plain.svg" in page.data
     js = client.get("/work-orders/assets/review_actions.js", headers=identity())
     assert js.status_code == 200
     source = (HERE / "review_actions.js").read_text(encoding="utf-8")
     assert "wo419:ticket" in source and "wo419:actor" in source
     assert "No matching active linked People." in source
-    assert "VALIDATION ONLY: Nothing was saved or sent." in source
-    assert 'method: "POST"' not in source
+    assert "SAVED on disposable clone:" in source
+    assert 'method: "POST"' in source
+    assert "X-WO419-CSRF" in source
+    assert "No emails will be sent" in source
     assert "fetch(" in source
     assert "review-completion-notes" in source
     assert "review-disposition" in source
@@ -278,3 +283,57 @@ def test_short_ticket_search_and_all_unassigned_covered():
     source = (HERE / "repository.py").read_text(encoding="utf-8")
     assert "replace(t.ticket, '-', '') ILIKE" in source
     assert "COALESCE(t.assigned_n, 0) = 0" in source
+
+
+def test_disposable_save_csrf_gate_and_actual_perimeter(client, monkeypatch):
+    """Requests lacking server-generated key cannot reach clone writer."""
+    monkeypatch.delenv("WORK_MGMT_PREVIEW_CSRF_TOKEN", raising=False)
+    response = client.post("/api/work-orders/commands", headers=identity(),
+                           json={"action": "create", "request_key": "x"})
+    assert response.status_code == 403
+    monkeypatch.setenv("WORK_MGMT_PREVIEW_CSRF_TOKEN", "a" * 48)
+    response = client.post("/api/work-orders/commands", headers=identity(),
+                           json={"action": "create"}, environ_base={"REMOTE_ADDR": "192.0.2.2"})
+    assert response.status_code == 403
+    response = client.post("/api/work-orders/commands",
+                           headers={**identity(), "X-WO419-CSRF": "a" * 48,
+                                    "Origin": "https://attacker.example"},
+                           json={"action": "create"})
+    assert response.status_code == 403
+
+
+def test_clone_writer_configuration_rejects_non_disposable(monkeypatch):
+    import commands
+    monkeypatch.setenv("WORK_MGMT_PREVIEW_MODE", "production")
+    monkeypatch.setenv("WORK_MGMT_DATABASE_DSN", "dbname=msb")
+    monkeypatch.setenv("WORK_MGMT_CLONE_WRITE_TOKEN", "a" * 48)
+    monkeypatch.setenv("WORK_MGMT_CLONE_IP", "127.0.0.1")
+    with pytest.raises(repository.WorkManagementError):
+        commands.CloneCommands()
+
+
+def test_clone_command_validation_guards_duplicate_people_notes_and_ticket_id():
+    import commands
+    import uuid
+    with pytest.raises(repository.WorkManagementError):
+        commands.people([101, 101])
+    with pytest.raises(repository.WorkManagementError):
+        commands.substantive(" ", "Completion notes")
+    action = commands.CloneCommands.__new__(commands.CloneCommands)
+    with pytest.raises(repository.WorkManagementError):
+        action.perform({"person_id": 1, "can_manage": True},
+                       "complete", "WO-one", {"request_key": str(uuid.uuid4())})
+
+
+def test_only_clone_guarded_writer_and_no_mail_transport():
+    commands = (HERE / "commands.py").read_text(encoding="utf-8")
+    sql = (ROOT / "WorkOrders/Acceptance/wo419_disposable_actions.sql").read_text(encoding="utf-8")
+    assert '"msb_wo419_preview"' in commands
+    assert "hmac.compare_digest" in commands
+    assert "app.directus_user_uuid" in commands
+    assert "current_database()" in sql
+    assert "approved_disposable_clone" in sql
+    assert "wo419_preview.outbox" in sql
+    assert "NO_SEND_CAPTURED" in sql
+    for forbidden in ("smtplib", "sendgrid", "mailgun", "requests.post("):
+        assert forbidden not in commands
