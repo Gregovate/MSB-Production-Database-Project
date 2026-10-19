@@ -2,6 +2,20 @@
 
 **Status: V0.3 source-only candidate; new disposable-write validation and browser review still pending. V0.2 operator review was CHANGES REQUIRED.** Work Management is the existing MSB Database Work Orders subsystem.
 
+## October 19 — latest disposable browser attempt HOLD: clone IP string formatting
+
+**Operator report:** exact candidate `f4afad0b82ab7748cfd9c6578465e32d782d4e3f`; server acceptance report
+`/home/msbadmin/setup-acceptance-reports/WO419_Disposable_Browser_Preview_20261019T101641.txt`.
+Source application regressions **836 passed, 5 skipped (Setup); 209 passed (FieldWiring); 65 passed (#419)**. Production pg_dump, PostGIS final PID1 readiness and private clone restore PASS; clone-only grants/action/outbox fixture installed. Ledger verification returned original WO-372, WO-418 and INTAKE-40/57/60. Manager aging report validated **58 open WOs including one inactive/undated exception**.
+
+**Actual HOLD:** `clone_write_transaction_rollback` failed with `Write target is not the verified clone.` The read-side PostgreSQL query logged `inet_server_addr()::text` as `172.18.0.5/32`; server runner supplied the same private clone's Docker inspect `IPAddress` as a bare address `172.18.0.5`. `CloneCommands.transaction` compared the text representations literally, so the mask caused a false mismatch. This was a **clone identifier serialization error**, NOT an observed schema/SQL/Testing/assignment failure (those mutations never ran).
+
+**Correction:** the existing writer now queries `host(inet_server_addr())`, which produces PostgreSQL's host address without its CIDR mask; the strict expected `msb_wo419_preview` database name, same exact Docker-derived clone IP, separate clone authorization secret and authenticated linked Person audit check are unchanged. Read-side stage output also uses `host()` for comparable diagnostics. The source/fake connection regression covers matching `172.18.0.5` versus previous logged `172.18.0.5/32` formatting, and denies wrong IP, Production database, wrong clone authorization token and missing active linked Person. No broadening of authorized database or another runner/port.
+
+**Cleanup proved by operator report:** Production Work Order/Intake fingerprint unchanged; shared repository checkout unchanged; port 8898 not listening; server runner ended `WO419 DISPOSABLE BROWSER REVIEW: HOLD (status 1)`, followed by workstation exception. **No browser READY, no V0.3 UI or write acceptance.**
+
+**Next:** after new exact-SHA GitHub source CI PASS, use the existing Windows wrapper/branch/8898 profile and authorized reviewer; reuse the same current-Production dump→private clone→source tests→rolled-back native write preflight→browser sequence. If it HOLDS on actual native schema/privileges, retain the phase/report and correct that defect on PR #420. Do not bypass the clone identity check or deploy/send to Production. **Source CI PASS alone is not a server/database or browser acceptance.**
+
 ## Aging report acceptance — Manager all open by original created date
 
 In the same Manager browser session and on the same private current-Production clone, select **Open Work Order Aging Report**. This is a **report**, not the normal 80-row work queue.
