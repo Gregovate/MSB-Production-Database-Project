@@ -5,7 +5,8 @@
 (() => {
   "use strict";
   const byId = (id) => document.getElementById(id);
-  const model = { actor: null, ticket: null, options: null, selected: new Set(), csrf: "", pendingSignature: null, pendingKey: null };
+  const model = { actor: null, ticket: null, options: null, selected: new Set(), csrf: "", runtime: "disposable", pendingSignature: null, pendingKey: null };
+  const isLive = () => model.runtime === "production";
   const actions = {
     create: "Create · New Internal Work Order",
     link_setup: "Manager · Add this Work Order to seasonal Setup",
@@ -126,7 +127,9 @@
       });
       buttons.appendChild(button);
     });
-    guidance.textContent = !ticket ? "Complete the new Work Order fields and save to the disposable database." :
+    guidance.textContent = !ticket
+      ? (isLive() ? "Manager Create saves an approved native Work Order." :
+          "Complete the new Work Order fields and save to the disposable database.") :
       ticket.type === "WORK_ORDER" && ticket.done_at
         ? "This Work Order has a recorded completion date. Work notes and completion are locked."
         : ticket.type === "WORK_ORDER" && !visible.length
@@ -271,7 +274,8 @@
       reply: "Save reporter reply",
       resolve: "Save feedback resolution · No email sent",
     };
-    submit.textContent = submitNames[kind] || "Save to disposable database";
+    submit.textContent = submitNames[kind] ||
+      (isLive() ? "Save authoritative Work Order" : "Save to disposable database");
     if (kind && ["create", "promote"].includes(kind)) {
       locationChanged();
       planningChanged();
@@ -350,8 +354,11 @@
     if (!model.csrf || !model.actor) throw new Error("Approved disposable login is missing.");
     const summary = validate();
     if (!window.confirm(
-      summary + "\n\nSave this change in the TEMPORARY disposable database?\n" +
-      "It will be discarded when the browser review ends. No emails will be sent."
+      summary + (isLive()
+        ? "\n\nSave this change to the PRODUCTION Work Orders database?\n" +
+          "This change is permanent. Notifications are held pending release; not sent."
+        : "\n\nSave this change in the TEMPORARY disposable database?\n" +
+          "It will be discarded when the browser review ends. No emails will be sent.")
     )) return null;
     const location = byId("review-location-type").value;
     const body = {
@@ -385,12 +392,13 @@
     const response = await fetch("/api/work-orders/commands", {
       method: "POST", credentials: "same-origin", cache: "no-store",
       headers: { "Content-Type": "application/json", "Accept": "application/json",
-                 "X-WO419-CSRF": model.csrf },
+                 "X-WO419-CSRF": model.csrf,
+                 "X-MSB-Work-Order-Command": "1" },
       body: JSON.stringify(body),
     });
     const payload = await response.json();
     if (!response.ok || !payload.result?.saved) {
-      throw new Error(payload.error || "Disposable database save failed.");
+      throw new Error(payload.error || "Work Order save failed; no success was recorded.");
     }
     model.pendingSignature = null;
     model.pendingKey = null;
@@ -440,8 +448,10 @@
       });
       if (!result.ok) throw new Error("Manager catalog read failed.");
       const payload = await result.json();
-      if (!payload.disposable_only || payload.read_only)
-        throw new Error("Valid disposable catalog acceptance mode required.");
+      if (payload.read_only ||
+          !(payload.disposable_only ||
+            (isLive() && payload.runtime_mode === "production")))
+        throw new Error("Approved Work Order catalog permission unavailable.");
       model.options = payload.options;
       document.querySelectorAll("#review-setup-mode option[data-manager-only]")
         .forEach((option) => {
@@ -465,6 +475,7 @@
   document.addEventListener("wo419:actor", (event) => {
     model.actor = event.detail;
     model.csrf = event.detail.csrf_token || "";
+    model.runtime = event.detail.runtime_mode || "disposable";
     byId("create-work-order").hidden = !model.actor.can_manage;
     byId("create-work-order").setAttribute("aria-expanded", "false");
     byId("create-work-order").title = "Managers create approved Work Orders; others submit Intake requests.";
@@ -497,11 +508,13 @@
     try {
       const saved = await saveAction();
       if (saved) {
-        box.textContent = "SAVED on disposable clone: " + saved.ticket +
+        box.textContent = (isLive() ? "SAVED to Work Orders: " :
+          "SAVED on disposable clone: ") + saved.ticket +
           (saved.linked_setup_session_task_id
             ? " · linked Setup season-only task #" + saved.linked_setup_session_task_id
             : "") +
-          ". Notification: NO SEND. This change disappears at cleanup.";
+          (isLive() ? ". Notifications: PENDING CUTOVER; no send yet." :
+            ". Notification: NO SEND. This change disappears at cleanup.");
         box.dataset.valid = "true";
       }
     } catch (error) {
