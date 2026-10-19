@@ -2,6 +2,18 @@
 
 **Status: V0.3 source-only candidate; new disposable-write validation and browser review still pending. V0.2 operator review was CHANGES REQUIRED.** Work Management is the existing MSB Database Work Orders subsystem.
 
+## Aging report acceptance — Manager all open by original created date
+
+In the same Manager browser session and on the same private current-Production clone, select **Open Work Order Aging Report**. This is a **report**, not the normal 80-row work queue.
+
+1. Require full native `date_completed IS NULL` population, including `is_active=false` exceptions, independent of Show completed or My Work assignment scope. The clone validator counts native ops.work_order undated rows and compares with the report **before browser READY**.
+2. Verify **oldest original `created_at` first**, days elapsed from creation, priority, assignee, human description/location and inactive exception labels. Change sort to newest, priority both ways and numeric WO number both ways. Do not allow lexical ticket-number ordering.
+3. Verify 0–7, 8–30, 31–60, 61+ day aging counts, unassigned and inactive exceptions. Export CSV and verify that the export includes **every report row**, not only visible rows. Clicking WO number must open native ticket detail.
+4. Reopen the same application through an approved Production Crew preview identity **in a separate sequential clone session**. The aging option must not be available, and direct API access must return 403. Verify Crew My Assigned Work and Create/Complete remain unaffected.
+5. Review examples WO-372/400/107/147/389/416 where present. Do not correct Production data; all preview saves remain disposable. Confirm no-send mail and server-side CLEAN EXIT before finalizing acceptance.
+
+No new runner, port, Production deployment, or email permission is introduced by this report.
+
 ## V0.3.1 role-specific browser checks — two real reviewer identities
 
 The next source candidate must be reviewed through **the same** approved Server Management PowerShell wrapper and sequential localhost port 8898. Do **not** create a second runner or simultaneous preview. This role change does not authorize Production writes or outgoing email.
