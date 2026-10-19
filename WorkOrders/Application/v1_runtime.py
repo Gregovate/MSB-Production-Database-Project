@@ -98,6 +98,7 @@ class V1Repository(WorkManagementRepository):
             raise WorkManagementError("Work Order Person permission differs.", 403)
         manager = bool(row["can_manage"])
         current.update(
+            email=email.strip().lower(),
             can_manage=manager,
             can_create=manager,
             can_assign=manager,
