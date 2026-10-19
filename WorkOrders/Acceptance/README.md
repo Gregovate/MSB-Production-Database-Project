@@ -1,6 +1,6 @@
 # Work Management #419 — disposable clone and browser review
 
-**Status: SOURCE-ONLY; not started or browser accepted.** Work Management is the existing MSB Database Work Orders subsystem.
+**Status: V0.3 source-only candidate; new disposable-write validation and browser review still pending. V0.2 operator review was CHANGES REQUIRED.** Work Management is the existing MSB Database Work Orders subsystem.
 
 ## V0.3 disposable-write operator review — after source CI PASS only
 
