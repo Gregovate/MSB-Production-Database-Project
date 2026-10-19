@@ -684,6 +684,13 @@
   window.addEventListener("popstate", (event) => {
     if (event.state?.wo419) void restoreNavigation(event.state.wo419);
   });
+  $("back-to-work-list").addEventListener("click", () => {
+    writeNavigation("replace");
+    resetDetail();
+    renderList();
+    writeNavigation("push");
+    $("ticket-list").focus?.();
+  });
   $("scope").addEventListener("change", scopeChanged);
   $("assignee").addEventListener("change", () => {
     writeNavigation("replace");
