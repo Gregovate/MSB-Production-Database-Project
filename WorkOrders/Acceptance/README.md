@@ -108,6 +108,29 @@ behavior separate from V0.1 read-only review.**
 
 The previous disposable database restored successfully, but the read validator failed before browser READY. The exact cause is not established. This branch now reports the failing validation phase and exception class without exposing query text, reporter details, or credentials. Source regression protects those phase markers. The next private-server execution remains necessary to identify the actual database failure. No browser or Production acceptance is claimed.
 
+## October 19 — candidate identity HOLD after successful clone restore
+
+Operator run on candidate `d81c2de6438ad8216f6f0d2f0bd13cacf589732b`
+passed 836 Setup tests (5 skipped), 209 FieldWiring tests and 34
+Work Management tests. Private PostGIS final readiness, dump/restore, role
+creation and clone grants passed. The validator then failed during
+`candidate_identity` with `CalledProcessError`, before querying any
+Work Order records; cleanup preserved the Production fingerprint, shared
+checkout HEAD and port. Retained report:
+`/home/msbadmin/setup-acceptance-reports/WO419_Disposable_Browser_Preview_20261019T002340.txt`.
+
+**Root-cause boundary:** the detached worktree's Git metadata points into
+root-managed shared repository metadata; the restricted `fieldwiring` account
+must not be given broader Git access. The existing privileged runner now
+verifies the detached commit's exact SHA using `sudo git`, checks it against
+the requested candidate and passes the verified SHA to the restricted
+read-validator. The validator fails closed for a missing/mismatched proof
+without trying to traverse shared Git metadata. The source regression
+protects this division. There is no change to Production permissions,
+PostgreSQL schema, Docker layout or the authorized clone workflow.
+Next: exact-commit CI and a new private disposable clone/query/browser gate;
+**no browser READY or Production authorization established yet**.
+
 ## Remaining acceptance gates
 
 Run and correct Python source tests, revised WO419 PostgreSQL read model and clone audit before calling the first browser review READY. #419 P0 **atomic triage/Promote & Assign, alternate Setup corrections, original-reporter Request More Information/replies, final resolution emails and noncompeting Directus cutover are NOT implemented or accepted**. No temporary read-only preview can waive those future gates.
