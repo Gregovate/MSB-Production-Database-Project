@@ -227,7 +227,7 @@ class WorkManagementRepository:
         self, *, actor: dict[str, Any], scope: str, person_id: int | None,
         show_completed: bool, search: str, sort: str = "priority", limit: int = 80,
     ) -> list[dict[str, Any]]:
-        manager_scopes = ("all", "person", "repairs", "testing",
+        manager_scopes = ("all", "tickets", "person", "repairs", "testing",
                           "intake", "feedback", "unassigned", "critical")
         if scope not in ("mine", "my-created", "my-feedback", *manager_scopes):
             raise WorkManagementError("Unknown Work Order scope.")
@@ -254,7 +254,9 @@ class WorkManagementRepository:
         if scope in ("mine", "person"):
             conditions.append("t.type = 'WORK_ORDER' AND %s = ANY(t.assignee_ids)")
             params.append(selected)
-        if scope == "my-created":
+        if scope == "all":
+            conditions.append("t.type = 'WORK_ORDER'")
+        elif scope == "my-created":
             # Newly created Crew WO is initially unassigned, but discoverable
             # to its creator without granting access to Manager queues.
             conditions.append("t.type = 'WORK_ORDER' AND t.reporter_id = %s")
