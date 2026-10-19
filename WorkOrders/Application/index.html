@@ -74,12 +74,12 @@
                placeholder="Work Order number, finding, Stage, volunteer…">
       </div>
       <div class="field">
-        <label for="ticket-sort">Sort by</label>
+        <label for="ticket-sort">Sort work orders</label>
         <select id="ticket-sort">
-          <option value="priority">Priority · Critical first</option>
-          <option value="priority_desc">Priority · Planning first</option>
-          <option value="number_desc">Number (WO / Intake) · Highest first</option>
-          <option value="number_asc">Number (WO / Intake) · Lowest first</option>
+          <option value="priority">Priority · Most urgent first (1 → 5)</option>
+          <option value="priority_desc">Priority · Least urgent first (5 → 1)</option>
+          <option value="number_desc">Work Order # · Newest number first</option>
+          <option value="number_asc">Work Order # · Oldest number first</option>
           <option value="created_asc">Created date · Oldest first</option>
           <option value="created_desc">Created date · Newest first</option>
         </select>
@@ -146,25 +146,16 @@
             </div>
           </div>
           <div class="detail-body">
-            <div class="detail-fields">
-              <div><span class="tiny-label">Assigned to</span><p id="detail-owner"></p></div>
-              <div><span class="tiny-label">Reported by</span><p id="detail-reporter"></p></div>
-              <div><span class="tiny-label">Source</span><p id="detail-source"></p></div>
-            </div>
-            <div class="detail-notes">
-              <h4>Original finding / Work Order</h4>
-              <p id="detail-description"></p>
-              <div id="detail-extra-note" class="multiline-note" hidden></div>
-            </div>
-
     <section id="review-workbench" class="review-workbench" aria-label="Ticket actions">
       <div class="section-header">
-        <h3>Ticket actions</h3>
-        <p><strong>Disposable database only.</strong> Save actions will change the temporary clone, which is discarded during cleanup. No notifications are sent.</p>
+        <h3 id="review-panel-title">Work Order actions</h3>
+        <p>Save work notes or completion to the <strong>disposable database only</strong>. Changes are discarded at cleanup; no emails sent.</p>
       </div>
       <div class="review-inner">
-        <label for="review-action">Choose an action</label>
-        <select id="review-action" disabled><option value="">Choose a ticket or sign in</option></select>
+        <div id="review-action-buttons" class="review-action-buttons" role="group" aria-label="Available actions for selected ticket"></div>
+        <label for="review-action" class="visually-hidden">Selected ticket action</label>
+        <select id="review-action" hidden disabled aria-hidden="true" tabindex="-1"><option value="">Choose a ticket or sign in</option></select>
+        <p id="review-action-guidance" class="review-action-guidance" role="status"></p>
         <p id="review-context" class="subtle">Select a Work Order or Intake item to review the available actions.</p>
         <form id="review-action-form" hidden>
           <fieldset id="review-create-fields" hidden>
@@ -229,11 +220,22 @@
             <label for="review-disposition">Outcome (only for closing feedback)</label>
             <select id="review-disposition"><option value="">Choose outcome</option><option value="resolved">Resolved / Verified</option><option value="deferred">Deferred</option><option value="rejected">Rejected / No Action</option><option value="duplicate">Duplicate / Linked</option></select>
           </fieldset>
-          <button type="submit" class="primary-button">Save to disposable database</button>
+          <button id="review-submit" type="submit" class="primary-button">Save to disposable database</button>
           <div id="review-result" class="review-result" role="status" aria-live="polite"></div>
         </form>
       </div>
     </section>
+            <div class="detail-fields">
+              <div><span class="tiny-label">Assigned to</span><p id="detail-owner"></p></div>
+              <div><span class="tiny-label">Reported by</span><p id="detail-reporter"></p></div>
+              <div><span class="tiny-label">Source</span><p id="detail-source"></p></div>
+            </div>
+            <div class="detail-notes">
+              <h4>Original finding / Work Order</h4>
+              <p id="detail-description"></p>
+              <div id="detail-extra-note" class="multiline-note" hidden></div>
+            </div>
+
             <section id="ticket-activity" class="ticket-activity" aria-label="Recorded ticket activity">
               <h4>Recorded activity and reporter communication</h4>
               <p id="ticket-activity-status" class="subtle">Loading retained clone events…</p>
