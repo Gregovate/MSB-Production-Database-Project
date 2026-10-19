@@ -1080,6 +1080,16 @@
       renderUnloadHere();
       return;
     }
+    // Put the frequently used physical Stage unload action before long
+    // Empty/Not Empty choices. This changes order only, never auto-detaches.
+    if (pendingContents && pendingContents.reconciliation_allowed && selectableUnloadGroups().length) {
+      const here = document.createElement('button');
+      here.type = 'button';
+      here.className = 'unload-entry-primary';
+      here.textContent = 'Unload by Stage — select Displays physically removed HERE';
+      here.addEventListener('click', () => switchContentsView('UNLOAD'));
+      unloadGroups.appendChild(here);
+    }
     const heading = document.createElement('h3');
     heading.textContent = 'Is this Container empty?';
     unloadGroups.appendChild(heading);
@@ -1153,13 +1163,6 @@
         unloadGroups.appendChild(list);
         renderRemainingList(list);
       }
-    }
-    if (pendingContents && pendingContents.reconciliation_allowed && selectableUnloadGroups().length) {
-      const here = document.createElement('button');
-      here.type = 'button';
-      here.textContent = 'Displays were physically removed HERE — select Stage groups';
-      here.addEventListener('click', () => switchContentsView('UNLOAD'));
-      unloadGroups.appendChild(here);
     }
   }
 
