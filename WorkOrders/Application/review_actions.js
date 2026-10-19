@@ -1,12 +1,11 @@
 /* #419 V0.2 operator workflow rehearsal.
- * No POST, mutation, notification transport, or new ticket identity.
- * Real clone catalog choices + client-side validation only.
- * This is a UX acceptance slice, NOT operational P0 write acceptance.
+ * Save POSTs commit ONLY to an authorization-marked isolated clone.
+ * No outgoing email or live Directus behavior is invoked.
  */
 (() => {
   "use strict";
   const byId = (id) => document.getElementById(id);
-  const model = { actor: null, ticket: null, options: null, selected: new Set() };
+  const model = { actor: null, ticket: null, options: null, selected: new Set(), csrf: "" };
   const actions = {
     create: "Manager Create · Internal Work Order",
     assign: "Assign / Reassign · Multiple volunteers",
@@ -15,6 +14,7 @@
     correction_owner: "Task Feedback · Choose correction owner",
     clarify: "Task Feedback · Request clarification",
     resolve: "Task Feedback · Verified disposition",
+    reply: "Task Feedback · Respond to clarification",
   };
 
   function option(select, value, name) {
@@ -46,8 +46,9 @@
       }
     } else if (actor.can_manage && ticket.type === "INTAKE_REQUEST") {
       result.push("promote");
-    } else if (actor.can_manage && ticket.type === "TASK_FEEDBACK") {
-      result.push("correction_owner", "clarify", "resolve", "promote");
+    } else if (ticket.type === "TASK_FEEDBACK") {
+      if (actor.can_manage) result.push("correction_owner", "clarify", "resolve", "promote");
+      if (Number(ticket.reporter_id) === Number(actor.person_id)) result.push("reply");
     }
     return result;
   }
@@ -148,7 +149,7 @@
     byId("review-create-fields").hidden = !["create", "promote"].includes(kind);
     byId("review-person-fields").hidden = !["create", "assign", "promote", "correction_owner"].includes(kind);
     byId("review-complete-fields").hidden = kind !== "complete";
-    byId("review-feedback-fields").hidden = !["clarify", "resolve"].includes(kind);
+    byId("review-feedback-fields").hidden = !["clarify", "resolve", "reply"].includes(kind);
     byId("review-disposition").disabled = kind !== "resolve";
     byId("review-result").textContent = "";
     if (kind && ["create", "promote"].includes(kind)) locationChanged();
@@ -179,6 +180,8 @@
       throw new Error("Select at least one exact existing Person.");
     if (kind === "complete" && byId("review-completion-notes").value.trim().length < 10)
       throw new Error("Completion requires substantive notes explaining actual work.");
+    if (kind === "reply" && note.length < 10)
+      throw new Error("Respond with a substantive detail (at least 10 characters).");
     if (kind === "clarify" && note.length < 10)
       throw new Error("Ask a specific clarification question (at least 10 characters).");
     if (kind === "clarify" && !model.ticket?.reporter_id)
@@ -192,7 +195,58 @@
     return label + " · " + source +
       (names.length && ["create","assign","promote","correction_owner"].includes(kind)
         ? " · " + names.join(", ") : "") +
-      ". VALIDATION ONLY: Nothing was saved or sent.";
+      ".";
+  }
+
+  async function saveAction() {
+    const kind = byId("review-action").value;
+    if (!model.csrf || !model.actor) throw new Error("Approved disposable login is missing.");
+    const summary = validate();
+    if (!window.confirm(
+      summary + "\n\nSave this change in the TEMPORARY disposable database?\n" +
+      "It will be discarded when the browser review ends. No emails will be sent."
+    )) return null;
+    const location = byId("review-location-type").value;
+    const body = {
+      request_key: crypto.randomUUID(),
+      action: kind,
+      ticket: kind === "create" ? null : model.ticket?.ticket,
+      person_ids: [...model.selected],
+      problem: byId("review-problem").value.trim(),
+      task_type_id: byId("review-task-type").value,
+      urgency: byId("review-urgency").value,
+      target_year: byId("review-target-year").value,
+      stage_id: location === "stage" ? byId("review-stage").value : null,
+      work_area_id: location === "area" ? byId("review-area").value : null,
+      completion_notes: byId("review-completion-notes").value.trim(),
+      response: byId("review-response").value.trim(),
+      disposition: byId("review-disposition").value,
+    };
+    const response = await fetch("/api/work-orders/commands", {
+      method: "POST", credentials: "same-origin", cache: "no-store",
+      headers: { "Content-Type": "application/json", "Accept": "application/json",
+                 "X-WO419-CSRF": model.csrf },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.result?.saved) {
+      throw new Error(payload.error || "Disposable database save failed.");
+    }
+    document.dispatchEvent(new CustomEvent("wo419:saved", { detail: payload.result }));
+    return payload.result;
+  }
+
+  function openCreate() {
+    if (!model.actor?.can_manage) return;
+    model.ticket = null;
+    const detail = byId("detail-content");
+    byId("detail-empty").hidden = true;
+    detail.hidden = false;
+    detail.classList.add("create-mode");
+    drawActions();
+    byId("review-action").value = "create";
+    actionChanged();
+    byId("review-workbench").scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
   async function initializeReviewerOptions() {
@@ -221,27 +275,39 @@
 
   document.addEventListener("wo419:actor", (event) => {
     model.actor = event.detail;
+    model.csrf = event.detail.csrf_token || "";
+    byId("create-work-order").hidden = !model.actor.can_manage;
     drawActions();
     initializeReviewerOptions();
   });
   document.addEventListener("wo419:ticket", (event) => {
     model.ticket = event.detail;
+    byId("detail-content").classList.remove("create-mode");
     byId("review-action").value = "";
     setSelectionFromTicket();
     drawActions();
   });
   byId("review-action").addEventListener("change", actionChanged);
+  byId("create-work-order").addEventListener("click", openCreate);
   byId("review-location-type").addEventListener("change", locationChanged);
   byId("review-person-filter").addEventListener("input", drawPeople);
-  byId("review-action-form").addEventListener("submit", (event) => {
+  byId("review-action-form").addEventListener("submit", async (event) => {
     event.preventDefault();
-    const result = byId("review-result");
+    const box = byId("review-result");
+    const submit = event.submitter;
+    if (submit) submit.disabled = true;
     try {
-      result.textContent = validate();
-      result.dataset.valid = "true";
+      const saved = await saveAction();
+      if (saved) {
+        box.textContent = "SAVED on disposable clone: " + saved.ticket +
+          ". Notification: NO SEND. This change disappears at cleanup.";
+        box.dataset.valid = "true";
+      }
     } catch (error) {
-      result.textContent = error.message;
-      result.dataset.valid = "false";
+      box.textContent = error.message || "Save failed; no success recorded.";
+      box.dataset.valid = "false";
+    } finally {
+      if (submit) submit.disabled = false;
     }
   });
 })();
