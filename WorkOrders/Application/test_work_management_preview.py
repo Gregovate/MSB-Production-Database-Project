@@ -840,3 +840,81 @@ def test_seasonal_setup_gate_needs_only_select_on_session_and_governed_execute()
     assert "GRANT EXECUTE ON FUNCTION ops.create_setup_season_task(" in grants
     assert "GRANT UPDATE ON ops.setup_session" not in grants
     assert "GRANT INSERT ON ops.setup_session_task" not in grants
+
+
+def test_manager_maintenance_is_separate_from_crew_work_and_create_opens_editor():
+    """Operator CHANGES REQUIRED: normal work actions, manager maintenance, Create."""
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    js = (HERE / "review_actions.js").read_text(encoding="utf-8")
+    css = (HERE / "app.css").read_text(encoding="utf-8")
+    assert html.index('id="review-workbench"') < html.index('class="detail-fields"')
+    assert 'id="review-action-buttons"' in html
+    assert 'id="manager-assign-button"' in html
+    assert 'id="review-submit"' in html
+    assert 'id="review-completion-notes"' in html
+    assert 'id="review-progress-note"' in html
+    assert 'id="review-action" hidden' in html
+    assert "progress: \"Add Work Note\"" in js
+    assert "complete: \"Complete Work Order\"" in js
+    assert "kind !== \"create\" && kind !== \"assign\"" in js
+    assert "function openManagerAssignment()" in js
+    assert 'byId("manager-assign-button").addEventListener("click"' in js
+    assert 'byId("review-action").value = "create"' in js
+    assert 'byId("review-action-form").addEventListener("submit"' in js
+    assert "function showForm()" in js
+    assert '.review-action-button.primary-action' in css
+    assert 'font-size:17px' in css
+
+
+def test_in_app_navigation_preserves_browser_back_and_previous_filters():
+    js = (HERE / "app.js").read_text(encoding="utf-8")
+    for required in (
+        'window.history[mode === "replace" ? "replaceState" : "pushState"]',
+        'window.addEventListener("popstate"',
+        "function restoreNavigation(",
+        "function navigationSnapshot(",
+        "state.restoringNavigation = true",
+        'state.createMode = true',
+        '"wo419:history-create"',
+        'await selectTicket(snapshot.ticket, {noHistory: true})',
+        "state.selected = key;",
+        'if (!options.noHistory) writeNavigation("push")',
+    ):
+        assert required in js, required
+    assert 'window.location.href =' not in js
+    assert 'window.location.assign(' not in js
+
+
+def test_planning_is_reversible_view_filter_and_preserves_unknown_priority():
+    repo_source = (HERE / "repository.py").read_text(encoding="utf-8")
+    backend_source = (HERE / "backend.py").read_text(encoding="utf-8")
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    js = (HERE / "app.js").read_text(encoding="utf-8")
+    assert 'id="include-planning"' in html
+    assert 'Show planning work (Priority 5)' in html
+    assert '"include_planning"' in backend_source
+    assert 't.urgency IS DISTINCT FROM 5' in repo_source
+    assert 'if not include_planning:' in repo_source
+    assert repo_source.index('if not include_planning:') < repo_source.index('LIMIT %s')
+    assert 'include_planning: $("include-planning").checked ? "1" : "0"' in js
+    assert '"&include_planning="' in js
+    assert '"Planning (priority 5) hidden"' in js
+    assert "DELETE FROM ops.work_order" not in repo_source
+    # An all-open aging auditor can still ask for the complete native dataset.
+    assert "include_planning: bool = True" in repo_source
+
+
+def test_backend_planning_toggle_passes_to_native_repo_without_mutation(client):
+    response = client.get(
+        "/api/work-orders/tickets?scope=mine&include_planning=0", headers=identity(),
+    )
+    assert response.status_code == 200
+    assert response.json["include_planning"] is False
+    latest = [value for key, value in FakeRepo.calls if key == "tickets"][-1]
+    assert latest["include_planning"] is False
+    aging = client.get(
+        "/api/work-orders/aging?sort=created_asc&include_planning=0",
+        headers=identity(),
+    )
+    assert aging.status_code == 200
+    assert aging.json["include_planning"] is False
