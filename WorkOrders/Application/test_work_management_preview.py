@@ -173,3 +173,40 @@ def test_disposable_preview_rejects_nonlocal_header(client):
     )
     assert response.status_code == 403
     assert FakeRepo.calls == []
+
+
+def test_manager_testing_queue_is_distinct_from_public_intake(client):
+    """Preview may filter existing source records; it may not create another repair."""
+    for scope in ("repairs", "testing", "intake", "feedback"):
+        FakeRepo.calls.clear()
+        response = client.get(
+            "/api/work-orders/tickets?scope=" + scope, headers=identity()
+        )
+        assert response.status_code == 200
+        calls = [entry for entry in FakeRepo.calls if entry[0] == "tickets"]
+        assert len(calls) == 1
+        assert calls[0][1]["scope"] == scope
+
+
+def test_manager_queues_fail_closed_for_nonmanager_repository():
+    """The queue authorization is enforced server-side, not just hidden in HTML."""
+    repo = repository.WorkManagementRepository
+    instance = object.__new__(repo)
+    for scope in ("repairs", "testing", "intake", "feedback"):
+        with pytest.raises(repository.WorkManagementError) as error:
+            instance.tickets(
+                actor={"person_id": 101, "can_manage": False},
+                scope=scope, person_id=None,
+                show_completed=False, search="",
+            )
+        assert error.value.status == 403
+
+
+def test_urgent_work_is_sorted_in_sql_before_limit():
+    """Do not sort the first 80 recent tickets in the browser and miss emergencies."""
+    source = (HERE / "repository.py").read_text(encoding="utf-8")
+    assert "t.urgency ASC NULLS LAST" in source
+    assert source.index("t.urgency ASC NULLS LAST") < source.index('LIMIT %s')
+    assert "t.test_id IS NOT NULL" in source
+    assert "t.type = 'INTAKE_REQUEST'" in source
+    assert "t.type = 'TASK_FEEDBACK'" in source
