@@ -151,7 +151,7 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-trap 'PRESERVE_FOR_RECONNECT=1; exit 75' HUP
+trap 'if [[ -s "$STATE_FILE" ]]; then PRESERVE_FOR_RECONNECT=1; exit 75; else exit 129; fi' HUP
 
 write_resume_state() {
   # No credentials, CSRF tokens, clone DB passwords, or request data in state.
@@ -162,21 +162,21 @@ write_resume_state() {
     return 1
   fi
   {
-    printf 'CANDIDATE_SHA=%q\\n' "$CANDIDATE_SHA"
-    printf 'CANDIDATE_REF=%q\\n' "$CANDIDATE_REF"
-    printf 'PREVIEW_EMAIL=%q\\n' "$PREVIEW_EMAIL"
-    printf 'PREVIEW_PORT=%q\\n' "$PREVIEW_PORT"
-    printf 'CLONE_CONTAINER=%q\\n' "$CLONE_CONTAINER"
-    printf 'CLONE_DATABASE=%q\\n' "$CLONE_DATABASE"
-    printf 'CLONE_OWNED=%q\\n' "$CLONE_OWNED"
-    printf 'WORKTREE=%q\\n' "$WORKTREE"
-    printf 'DUMP=%q\\n' "$DUMP"
-    printf 'REPORT=%q\\n' "$REPORT"
-    printf 'APP_LOG=%q\\n' "$APP_LOG"
-    printf 'PREVIEW_PID=%q\\n' "$PREVIEW_PID"
-    printf 'PROD_BEFORE=%q\\n' "$PROD_BEFORE"
-    printf 'LIVE_HEAD=%q\\n' "$LIVE_HEAD"
-    printf 'VERIFIED_WORKTREE_SHA=%q\\n' "$VERIFIED_WORKTREE_SHA"
+    printf 'CANDIDATE_SHA=%q\n' "$CANDIDATE_SHA"
+    printf 'CANDIDATE_REF=%q\n' "$CANDIDATE_REF"
+    printf 'PREVIEW_EMAIL=%q\n' "$PREVIEW_EMAIL"
+    printf 'PREVIEW_PORT=%q\n' "$PREVIEW_PORT"
+    printf 'CLONE_CONTAINER=%q\n' "$CLONE_CONTAINER"
+    printf 'CLONE_DATABASE=%q\n' "$CLONE_DATABASE"
+    printf 'CLONE_OWNED=%q\n' "$CLONE_OWNED"
+    printf 'WORKTREE=%q\n' "$WORKTREE"
+    printf 'DUMP=%q\n' "$DUMP"
+    printf 'REPORT=%q\n' "$REPORT"
+    printf 'APP_LOG=%q\n' "$APP_LOG"
+    printf 'PREVIEW_PID=%q\n' "$PREVIEW_PID"
+    printf 'PROD_BEFORE=%q\n' "$PROD_BEFORE"
+    printf 'LIVE_HEAD=%q\n' "$LIVE_HEAD"
+    printf 'VERIFIED_WORKTREE_SHA=%q\n' "$VERIFIED_WORKTREE_SHA"
   } > "$STATE_FILE"
   chmod 600 "$STATE_FILE"
 }
@@ -241,7 +241,7 @@ resume_existing_preview() {
     }
   local expected_version
   expected_version="$(grep -E '^APP_VERSION = ' "$WORKTREE/WorkOrders/Application/backend.py" | head -1 |
-    sed -E 's/^APP_VERSION = "([^"]+)".*/\\1/')"
+    sed -E 's/^APP_VERSION = "([^"]+)".*/\1/')"
   if [[ -z "$saved_version" || "$saved_version" != "$expected_version" ]]; then
     echo "HOLD: preserved browser version differs from pinned source"
     exit 83
