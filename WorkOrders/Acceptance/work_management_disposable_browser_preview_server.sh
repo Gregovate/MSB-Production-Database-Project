@@ -164,14 +164,30 @@ cleanup() {
   echo "PASS: verified Work Orders listener stopped; disposable teardown permitted"
   if [[ "$CLONE_OWNED" == 1 && "$CLONE_CONTAINER" == msb-wo419-preview-* ]]; then
     sudo docker rm -f "$CLONE_CONTAINER" >/dev/null 2>&1 || true
+    if sudo docker container inspect "$CLONE_CONTAINER" >/dev/null 2>&1; then
+      echo "HOLD: owned disposable clone still exists after teardown"
+      status=84
+    else
+      echo "PASS: owned disposable clone removed"
+    fi
   fi
   if [[ "$WORKTREE" == /tmp/msb-wo419-preview-candidate-* ]]; then
-    if sudo git -C "$REPO_ROOT" worktree list --porcelain 2>/dev/null | grep -Fq "worktree $WORKTREE"; then
+    if sudo git -C "$REPO_ROOT" worktree list --porcelain 2>/dev/null | grep -Fxq "worktree $WORKTREE"; then
       sudo git -C "$REPO_ROOT" worktree remove --force "$WORKTREE" >/dev/null 2>&1 || true
+    fi
+    if sudo git -C "$REPO_ROOT" worktree list --porcelain 2>/dev/null | grep -Fxq "worktree $WORKTREE"; then
+      echo "HOLD: disposable candidate worktree still registered"
+      status=85
+    else
+      echo "PASS: disposable candidate worktree unregistered"
     fi
   fi
   [[ "$DUMP" == /tmp/msb-wo419-preview-* ]] && rm -f "$DUMP"
   rm -f "$STATE_FILE"
+  if [[ -e "$STATE_FILE" || -L "$STATE_FILE" ]]; then
+    echo "HOLD: private preview resume state remained after teardown"
+    status=86
+  fi
   if [[ -n "$PROD_BEFORE" ]]; then
     local after
     after="$(fingerprint 2>/dev/null)"
