@@ -7,6 +7,15 @@
 **Base main observed before branch:** `35f398df1217b85358b6ef72e5cbbeff7a2d9bd2`  
 **Read-only SQL:** [WO419_Unified_Ticket_Read_Only_Candidate.sql](WO419_Unified_Ticket_Read_Only_Candidate.sql)
 
+## October 19 — First V0.3 disposable-write preflight HOLD resolved in source
+
+- Failed SHA `f4afad0b82ab7748cfd9c6578465e32d782d4e3f` passed 836 Setup/209 FieldWiring/65 #419 source tests, final PostGIS init, dump and restore, read ledger, Manager aging query (58 open; one inactive exception), and installed clone-only grant/NO_SEND fixtures. The browser did **not** start.
+- Retained report: `/home/msbadmin/setup-acceptance-reports/WO419_Disposable_Browser_Preview_20261019T101641.txt`. HOLD phase: `clone_write_transaction_rollback` / `Write target is not the verified clone.`
+- Diagnosed source cause: PostgreSQL `inet_server_addr()::text` includes an address mask (`172.18.0.5/32`) but the established Docker inspector/runner passes the host IP without a mask (`172.18.0.5`). An exact string comparison incorrectly rejects that otherwise matching private disposable clone.
+- Corrective action: only the writer's query is normalized using PostgreSQL `host(inet_server_addr())` and the read validator's displayed IP uses the same host representation. **Do not weaken** the exact clone database name, IP equality, randomly generated per-clone authorization token, linked actor identity, no-send gate, or native write transaction.
+- Source regression now simulates the previous masked-address case and requires denial of a wrong IP, `msb` Production database, wrong clone token, and unlinked Person; original accepted source suites remain. No runner/port/clone bootstrap modifications, no Production DML, no emails, no Flows.
+- Operator-supplied cleanup PASS: Production Work Order/Intake fingerprint unchanged, shared Git HEAD unchanged, port 8898 not listening, server ended HOLD 1. **Not** disposable-write/browser accepted. The next exact-SHA review must run the existing single Server Management launcher and may expose the *next* genuine schema/trigger problem only after this guard passes; that would be another HOLD, not license for ad hoc Production SQL.
+
 ## Why this slice first
 
 **Repository ownership correction (October 18):** Existing `06_Work_Orders` is the governing subsystem; no new GitHub repository is needed. Prior separate-repo assumptions are superseded by the controlling operator decision now documented in [Work Order System Design](../Work_Order_System_Design.md). The three actual pending Intake examples (#60, #40, #57) are unchanged; all browser writes must target a disposable clone.
