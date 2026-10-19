@@ -1,6 +1,20 @@
-# MSB Work Management — V0.3 disposable-save browser candidate
+# MSB Work Management — V0.3.2 disposable browser candidate
 
-**Status: DRAFT PR #420 / V0.3 SOURCE TESTING; disposable clone-write and new browser acceptance pending.** V0.2 was operator-reviewed as CHANGES REQUIRED. Not deployed.
+**Status: DRAFT PR #420 / V0.3.2 SOURCE CANDIDATE; new disposable functional browser acceptance pending.** The previous Manager disposable browser ran and ended workstation tunnel CLEAN EXIT, but the operator reported CHANGES REQUIRED for navigation, work/complete, assignment, Create, planning ideas and readability. No Production deployment or notifications.
+
+## V0.3.2 — next test is the *actual operator workflow*
+
+The next source candidate corrects the latest operator-rejected Manager preview in the same application and PR. Read the [governing Work Order design](../../Docs/02_Production_Database/01_System_Architecture/06_Work_Orders/Work_Order_System_Design.md#october-19--work-management-disposable-operator-browser-acceptance-changes-required) and [acceptance checklist](../Acceptance/README.md#october-19--manager-disposable-browser-review-changes-required-source-candidate-underway) before changes.
+
+- **Assigned Work Order:** direct **Add Work Note** and **Complete Work Order** action buttons appear at top of ticket detail, above original descriptions. Notes and completion are genuine isolated-clone writes; substantive work notes required. Server owns verified Person completion identity/date and preserves Testing source behavior. The Manager-only **Assign / Reassign** button is deliberately separate in the heading, not a Crew work dropdown.
+- **Create:** one top **+ Create Work Order** click reveals the actual blank native entry form without an additional selection step or previous ticket data. Crew creation does not silently assign anyone; Manager can dispatch via the existing normalized assignment model.
+- **Navigation:** built-in Back to Work Order list and browser Back/Forward restore in-app scope, ticket, search, sort, Show completed, planning flag and list scroll. Does not navigate into another browser application simply for viewing a ticket.
+- **Planning:** important long-term WOs such as WO-105 are not deleted or automatically assigned. The existing **Priority 5 = Planning** category supports a reversible **Show planning work (Priority 5)** boolean filter, default off. It applies to every authorized list **and Manager aging report**, before normal list LIMIT, while leaving NULL priorities visible. Toggle on to recover full original entries; no Production classification migration has been authorized.
+- **Sorting:** clear Most urgent (1→5) / Least urgent (5→1), numeric WO/Intake number and creation dates instead of cryptic Critical/Planning first. The common light/dark palette follows existing [#159](https://github.com/Gregovate/MSB-Production-Database-Project/issues/159), and semantic business meaning follows [#140](https://github.com/Gregovate/MSB-Production-Database-Project/issues/140); the new text defaults target 15–17px rather than a browser-level zoom workaround.
+
+**Preserved:** Original public Google Form, Manager Intake banner, complete native Work Order aging report/CSV and inactivity exceptions (all open remains accessible with planning toggle on), authentic Testing repair source, annual Setup link, normalized people relationships, clone-only no-send notifications, strict CSRF and Docker-private clone guards. Existing physical reports WO-402 completed and WO-105 future proposal are **operator observations only** and do not authorize live data correction.
+
+**Next gate:** Source CI, one fresh current-Production disposable clone through the **existing** server runner/registered 8898 port, Manager and real Crew browser tests, persisted disposable Work Note/Complete/Create/Assign, browser Back/Forward and planning toggles, no-send and server-clean exit/fingerprint. Keep PR draft until acceptance.
 
 ## Governing authority
 
