@@ -35,6 +35,15 @@ The Manager's explicit **Open Work Order Aging Report** view shows numeric Work 
 
 Backend `GET /api/work-orders/aging` strictly requires Manager authorization. The Crew browser does not expose the view. The current-Production disposable validator compares the full aging-result count and inactive-exception count against native `ops.work_order` and checks created-date sort order before browser READY; negative Crew access is tested. No Production database was mutated and no mail was sent. Source CI and actual disposable browser acceptance are distinct gates.
 
+## October 19 — native season-only Setup integration (candidate, not accepted)
+
+- **Purpose:** Park repair Work Orders created during Setup can also create a linked **season-only** Setup obligation without a second screen, using existing `ops.create_setup_season_task` and `ops.setup_session_task.linked_work_order_id`. This does not create `ref.setup_task` or duplicate work-completion reporting.
+- **Crew:** direct Create may flag **Setup review requested**. That request stays on the Work Order's attributed candidate activity; Crew cannot run Manager Setup commands.
+- **Manager:** at Create/Intake Promote, choose **Create linked Setup task now**, a real open Setup season, and Stage; native WO + annual `GATE` are one PostgreSQL transaction. Alternatively choose **Add this Work Order to seasonal Setup** on an existing Stage WO created by Crew. The latter creates no duplicate Work Order.
+- **Authority:** Setup's existing Manager command checks the authenticated Directus identity, season and Stage; Work Management requires Manager role and clone write marker. Board status is already `WAITING_ON_WORK_ORDER` until native WO is marked complete, then effectively `COMPLETE`. Planned dates, crews and annual Report Work remain solely Setup-owned.
+- **Tests:** new source contracts and a rollback-only connected current-Production disposable clone test for season-only identity and WO linkage. Browser acceptance still pending. Non-Setup WOs are unchanged; never auto-create annual tasks from free text or Stage inference.
+- **2027 takedown:** [#423](https://github.com/Gregovate/MSB-Production-Database-Project/issues/423) is a distinct #122 container-first release due before January 1, 2027. It may send actual repair findings into Work Management, but must use #88 movement, #230 Container/storage and #231 Testing authority.
+
 ## October 19 V0.3.1 — Role-oriented home and sortable queues
 
 **Operator directive:** Separate Production Crew and Manager screens/actions, not just a shared dropdown. Public Google Work Order Request remains at the existing MSB portal for any reporter, using current Park/Workshop Google Form and Apps Script. Internal authenticated Production Crew may also create **direct native Work Orders** without Intake. Manager controls current Work Order assignments and public Intake triage.
