@@ -27,6 +27,20 @@ The operator's first actual read-only disposable browser review returned **CHANG
 
 **Next gated work:** Establish reviewed schema/command authorization on current-Production disposable PostgreSQL; implement transaction-safe write routes with actor/role checks and no-send notification outbox; add browser functional tests; execute current full source regression and guarded server clone/8898 review, recording fingerprint and clean exit. Remain on draft PR #420. Never deploy or cut over without separate authorization.
 
+## October 19 V0.3.1 — Role-oriented home and sortable queues
+
+**Operator directive:** Separate Production Crew and Manager screens/actions, not just a shared dropdown. Public Google Work Order Request remains at the existing MSB portal for any reporter, using current Park/Workshop Google Form and Apps Script. Internal authenticated Production Crew may also create **direct native Work Orders** without Intake. Manager controls current Work Order assignments and public Intake triage.
+
+**Crew landing:** My Assigned Work Orders defaults to exact current Person assignments and actual non-complete status; independent Show completed; Work Orders I Created for directly submitted, as-yet-unassigned native WOs; My Submitted Feedback to see original findings; top Create Work Order; an existing public form link. Crew Create records actual linked creator/reporter and starts without an assignment. Crew can Complete only assigned WOs, with substantive completion notes. Crew cannot see Manager Intake counts, Manager queue selectors, assignment controls, or triage commands; these are blocked by backend, not only by hidden HTML.
+
+**Manager landing:** Full views, Create, Manager-only multi-person Assign/Reassign, public Park/Workshop Intake triage, separate Feedback corrections, Testing repairs and urgent/unassigned queues. On home load the API evaluates **unpromoted public Intake** and **unresolved Task Feedback** counts with Manager-only access; a visible clickable banner appears when either count is nonzero. Promoted original Intake stays preserved but is not counted as awaiting triage, and resolved feedback does not remain in the actionable queue.
+
+**Sorting:** Every authorized view uses the same select: Priority Critical-first or Planning-first, Work Order/Intake number lowest-first or highest-first. Query ORDER BY is selected only from four fixed server-side expressions using native numeric IDs and existing `urgency`, **before LIMIT**. On unpromoted public Intake urgency is only the original reporter estimate, subject to Manager review; no new priority schema or Work Order identity was introduced.
+
+**Authorization model:** Preview reuses the current protected Setup browse/Manager capability as an interim Work Management role gate, with exact active linked `ref.person`. Public form access does not confer internal create or assignment permission. This is a **pre-Production** contract pending a specific Work Order permission review. All write tests remain on the isolated disposable clone and notifications remain NO_SEND; no Production / Directus / public form change.
+
+**Acceptance:** Test Manager and Production Crew **as distinct approved reviewer sessions** through the existing sequential 8898 disposable profile, each with an isolated new clone; verify the Crew Create → unassigned → personal Created view, Manager pending Intake banner and eventual Manager assignment, Crew assigned-note completion, priority/numeric number sorts in every scope, and manager-only API denial for Crew. Never infer Production role cutover from source-only tests.
+
 ## October 19 V0.3 — disposable SAVE review candidate (not browser accepted)
 
 **Decision superseding V0.2 no-save:** Greg requires actual saves in the current-Production disposable clone, no notifications, and ticket actions **within the selected detail** rather than at the bottom. Work Management must reuse the exact existing MSB Setup logo and light/dark themes (source authority: Setup/Application/setup_theme.js and setup.css). The first V0.2 operator review remains **CHANGES REQUIRED**.
