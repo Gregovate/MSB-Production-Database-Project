@@ -89,6 +89,10 @@
         <input id="show-completed" type="checkbox">
         <span>Show completed</span>
       </label>
+      <label class="check-field planning-control" for="include-planning">
+        <input id="include-planning" type="checkbox">
+        <span>Show planning work (Priority 5)</span>
+      </label>
       <button id="refresh" type="button" class="quiet-button">Refresh</button>
       <button id="create-work-order" type="button" class="primary-button" hidden>+ Create Work Order</button>
       <a class="public-request-link" href="https://my.sheboyganlights.org/" target="_blank" rel="noopener noreferrer" title="Open the existing MSB portal and select Work Order Request">Public Work Order Request ↗</a>
@@ -138,6 +142,9 @@
         </div>
         <div id="detail-content" hidden>
           <div class="detail-heading">
+            <div id="detail-manager-maintenance" class="detail-manager-maintenance" hidden>
+              <button id="manager-assign-button" type="button" class="quiet-button">Manager · Assign / Reassign</button>
+            </div>
             <span id="detail-category" class="type-label"></span>
             <span id="detail-ticket-id" class="ticket-id"></span>
             <h3 id="detail-title"></h3>
