@@ -37,7 +37,8 @@
 
   function scopeLabel() {
     const scope = $("scope").value;
-    if (scope === "mine") return "My Work";
+    if (scope === "mine") return "My Assigned Work Orders";
+    if (scope === "my-created") return "Work Orders I Created";
     if (scope === "all") return "All Work Orders";
     if (scope === "my-feedback") return "My Submitted Feedback";
     if (scope === "critical") return "Manager · Immediate / Critical Repairs";
@@ -400,10 +401,13 @@
   document.addEventListener("wo419:saved", async (event) => {
     const saved = event.detail || {};
     if (!saved.ticket) return;
-    // A Crew-created unassigned WO is not in their My Work assignment list.
-    // Keep the Crew on My Work, but open the newly created ticket explicitly.
-    if (state.actor?.can_manage && $("scope").value === "mine" &&
-        !state.tickets.some(row => row.ticket === saved.ticket)) {
+    // Crew-created native WOs are intentionally unassigned. Show the
+    // creator their new order without misrepresenting it as My Assigned Work.
+    if (saved.action === "create" && !state.actor?.can_manage) {
+      $("scope").value = "my-created";
+      await loadTickets();
+    } else if (state.actor?.can_manage && $("scope").value === "mine" &&
+               !state.tickets.some(row => row.ticket === saved.ticket)) {
       $("scope").value = "all";
       scopeChanged();
     } else {
