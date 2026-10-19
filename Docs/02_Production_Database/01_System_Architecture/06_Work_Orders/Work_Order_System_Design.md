@@ -20,6 +20,16 @@ The core model preserves these design rules:
 
 Current PostgreSQL schema, constraints, procedures, and triggers are implementation truth when they differ from older design drafts.
 
+## #419 launch-critical park repair punch list and urgency queues (October 18)
+
+**Operator browser finding:** WO-416, Light Pole 8 Outlet Box Damaged, appears among assignments without urgency sorting or an actionable Manager workflow. The existing Work Order system must serve as the *2026 setup punch list and show-season repair manager* for problems discovered during setup or in the park that are **not reusable Setup Catalog tasks**. Do not create annual/reusable Setup tasks to compensate for the missing Work Order UI. Link the real Stage/Display/Container/asset and relevant Setup gate when supported; retain authoritative Work Order identity.
+
+**Existing urgency catalog remains authoritative:** 1 Immediate/Critical (including emergency weather/operational repairs); 2 High; 3 Normal (routine repair); 4 Low; 5 Planning. The public Request priority is merely an Intake estimate until Manager triage. Managers must be able to set/correct urgency, filter and sort by urgency as the default actionable repair queue, with completion/target-year ordering and explicit unassigned/overdue views. Display readable urgency labels and emphasize critical items without replacing database priorities with a new category. Surface critical unassigned work immediately and preserve accurate owner/acknowledgment and next action.
+
+**Operational two-mode use:** pre-show punch-list discovery/assignment/completion for one-time setup findings, and during-show immediate/emergency response and normal park Display repairs. Provide a dedicated Testing-generated repair filter without hiding the same Work Orders from appropriate My Work/All Work views. Emergency notification must have reviewed and audited event/recipient authority, delivered-vs-queued truth, and one sender per event; do not assume the current Directus mail Flows implement a verified new emergency alert. Completion uses required notes, authenticated completer/date and linked Testing or Setup prerequisite behavior; non-completion or deferral cannot falsely release a Setup dependency.
+
+**Release blocker:** a read-only list lacking Create, multi-person Assign/Reassign, urgent triage/sort, completion, Intake, feedback correction and notifications is not an operational punch-list candidate. Verify these actions end-to-end on a disposable current-Production clone with no-send delivery and real-shape park repairs before operator acceptance or any Production cutover. Preserve existing Directus/Testing operations until individually reconciled.
+
 ## #419 first operator review — representative backlog dispositions (October 18)
 
 The active read-only disposable review exposed actual existing records with stale completion/assignment states. These are **operator-reported findings**, not verified Production corrections. Source screenshot references are held in the operator conversation; no private report text or contact data is required in this design.
