@@ -27,6 +27,26 @@ class FakeRepo:
         return {"person_id": 101, "display_name": "Preview Person",
                 "can_manage": True, "can_read": True}
 
+    def aging_report(self, *, actor, sort="created_asc"):
+        FakeRepo.calls.append(("aging_report", sort))
+        if not actor["can_manage"]:
+            raise repository.WorkManagementError("Manager only.", 403)
+        return [{
+            "ticket": "WO-372", "wo_id": 372, "title": "Existing Work Order",
+            "opened_at": "2026-08-19T00:00:00Z", "days_open": 61,
+            "urgency": 2, "owners": "Team", "assigned_n": 3,
+            "location": "Stage 9", "yr": 2026, "active": True,
+            "test_id": None, "state": "STATUS_NOT_RECORDED",
+            "review_flag": None,
+        }, {
+            "ticket": "WO-389", "wo_id": 389, "title": "Inactive but undated",
+            "opened_at": "2026-09-25T00:00:00Z", "days_open": 24,
+            "urgency": None, "owners": "UNASSIGNED", "assigned_n": 0,
+            "location": "Rack D", "yr": 2026, "active": False,
+            "test_id": None, "state": "STATUS_NOT_RECORDED",
+            "review_flag": None,
+        }]
+
     def manager_inbox(self, actor):
         FakeRepo.calls.append(("manager_inbox", actor["person_id"]))
         if not actor["can_manage"]:
@@ -501,3 +521,62 @@ def test_assigned_crew_progress_is_distinct_from_completion():
     assert "result.push(\"progress\", \"complete\")" in browser
     assert 'id="review-progress-fields"' in html
     assert 'id="review-progress-note"' in html
+
+
+def test_manager_open_aging_report_counts_all_open_inactive_unassigned(client):
+    response = client.get(
+        "/api/work-orders/aging?sort=created_asc", headers=identity()
+    )
+    assert response.status_code == 200
+    body = response.json
+    assert body["count"] == 2 and body["all_open_work_orders"]
+    assert body["inactive_count"] == 1 and body["unassigned_count"] == 1
+    assert body["buckets"]["61+"] == 1
+    assert body["buckets"]["8-30"] == 1
+    assert body["rows"][0]["ticket"] == "WO-372"
+    assert ("aging_report", "created_asc") in FakeRepo.calls
+
+
+def test_aging_denies_crew_at_repository_boundary_without_sql():
+    repo = object.__new__(repository.WorkManagementRepository)
+    with pytest.raises(repository.WorkManagementError) as denied:
+        repo.aging_report(actor={"can_manage": False}, sort="created_asc")
+    assert denied.value.status == 403
+
+
+def test_aging_query_uses_created_date_and_has_no_limit_or_active_filter():
+    src = (HERE / "repository.py").read_text(encoding="utf-8")
+    start = src.index("    def aging_report(")
+    stop = src.index("    def manager_inbox(", start)
+    code = src[start:stop]
+    assert "opened_at ASC NULLS LAST" in code
+    assert "CURRENT_TIMESTAMP - t.opened_at" in code
+    assert "t.done_at IS NULL" in code
+    assert "t.active" in code  # projected for exception display
+    assert "AND t.active" not in code
+    assert " LIMIT " not in code
+    assert '"number_asc"' in code and '"priority"' in code
+    assert "if not actor[\"can_manage\"]:" in code
+    ledger = (ROOT /
+        "Docs/02_Production_Database/01_System_Architecture/06_Work_Orders/engineering"
+        "/WO419_Unified_Ticket_Read_Only_Candidate.sql").read_text(encoding="utf-8")
+    assert "w.created_at AS opened_at" in ledger
+    assert "NULL::timestamptz AS opened_at" in ledger
+    assert "opened_at," in ledger
+
+
+def test_aging_browser_has_manager_view_full_table_and_safe_csv():
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    js = (HERE / "app.js").read_text(encoding="utf-8")
+    assert 'value="aging" data-manager-only' in html
+    assert 'id="aging-report"' in html
+    assert 'id="aging-export"' in html
+    assert 'id="aging-rows"' in html
+    assert '"aging-report").hidden = !aging' in js
+    assert 'getJson("/api/work-orders/aging?sort="' in js
+    assert '"aging-export").addEventListener("click", exportAgingCsv)' in js
+    assert "state.agingRows.forEach" in js
+    assert "URL.createObjectURL" in js
+    assert "text.replaceAll" in js
+    assert "0–7 days" in js
+    assert "Inactive exceptions" in js
