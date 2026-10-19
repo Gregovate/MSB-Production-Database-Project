@@ -141,7 +141,7 @@ class WorkManagementRepository:
                            nullif(btrim(last_name), ''))), ''),
                            'Person #' || person_id::text) AS display_name
                 FROM ref.person
-                WHERE active_flag AND directus_user_id IS NOT NULL
+                WHERE active_flag
                 ORDER BY display_name, person_id
                 LIMIT 600
                 """
