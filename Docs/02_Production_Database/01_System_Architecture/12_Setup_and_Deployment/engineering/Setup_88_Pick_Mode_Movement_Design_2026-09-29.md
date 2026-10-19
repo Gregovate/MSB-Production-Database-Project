@@ -13,6 +13,12 @@
 
 **Current operator direction — #88 / commanding #122, with #423 owning January takedown readiness.** This section supersedes the **October 7 proposed takedown shortcut** where it says that expected contents can be loaded without individual Display scans. The newer [#423 takedown requirements](https://github.com/Gregovate/MSB-Production-Database-Project/issues/423) require a fast **scan each actual Display** confirmation, not a group-wide assertion of physical presence. Historical sections remain evidence of the earlier design, not currently approved January loading behavior. This is a design/acceptance checkpoint, **not an installed function or permission to mutate 2026 Production rows**.
 
+### October 19 clarification — the Setup *work-completion* gate is the owner, not a standalone location button
+
+Greg's later operator clarification establishes that **unloading only delivers Displays to the park for Setup; the installing task must require scanning each Display as installed before declaring that task verified complete**. A generic optional "At Show Position" button in Record Location alone would still leave installation tasks reporting 100% without verification and would **not** solve the systemic issue. The [controlled Setup Crew Work Reporting contract — October 19](Setup_Crew_Work_Reporting_Contract_2026-09-08.md#october-19-2026--display-installation-is-part-of-setup-task-completion-not-container-unloading) now owns the end-to-end 2026 learning exception, 2027 required task-linked Display confirmation, partial progress and later-verification distinction. It supersedes any suggestion immediately below that fixing the Record Location button alone is sufficient.
+
+The #88 scan/movement application supplies **real per-Display installation-position observations and guarded current location evidence** consumed by #132/#175 task completion; it must not create a second task-completion ledger. A newer valid Display scan supersedes old unload-derived GPS for that Display, but no automatic completion promotion or invented coordinates. **Do not impose required scans retrospectively on 2026**; identify unverified current installations for voluntary real-position field review and preserve all accepted 2026 work reports.
+
 ### 2026 Setup sequence and missing final-placement confirmation
 
 The required physical workflow is:
