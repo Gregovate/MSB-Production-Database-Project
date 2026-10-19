@@ -103,6 +103,14 @@ def validate(preview_email: str) -> None:
     print(f"CHECK: assignee Person selector PASS; choices={len(names)}")
 
     if access["can_manage"]:
+        phase("manager_rehearsal_catalogs")
+        catalogs = repo.reviewer_options(access)
+        if not catalogs["people"] or not catalogs["task_types"]:
+            raise RuntimeError("Manager rehearsal needs current linked People and task types.")
+        if not catalogs["stages"] or not catalogs["work_areas"]:
+            raise RuntimeError("Manager rehearsal needs real Stage and Work Area choices.")
+        print("CHECK: Manager catalogs PASS; source-only/no-save controls")
+
         # The accepted source report Intake #60 is an excellent data fixture
         # but cannot be assumed present on every future/current clone.
         if any(row[0] == "INTAKE-60" for row in examples):
