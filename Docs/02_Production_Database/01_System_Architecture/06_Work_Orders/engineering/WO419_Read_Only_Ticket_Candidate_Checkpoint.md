@@ -7,6 +7,13 @@
 **Base main observed before branch:** `35f398df1217b85358b6ef72e5cbbeff7a2d9bd2`  
 **Read-only SQL:** [WO419_Unified_Ticket_Read_Only_Candidate.sql](WO419_Unified_Ticket_Read_Only_Candidate.sql)
 
+## October 19 — second real disposable preflight HOLD: Setup row lock privilege
+
+- Exact operator-tested commit `dc98c63b5e72896aaaeb7898551a34d10a7f4252`; retained report `/home/msbadmin/setup-acceptance-reports/WO419_Disposable_Browser_Preview_20261019T102500.txt`. Previous clone IP mismatch resolved: `internal_addr=172.18.0.5`, native Create/Assign preflight passed until Manager annual gate.
+- At `atomic_work_order_setup_season_gate`, `InsufficientPrivilege` aborted the transaction; no browser READY. Source reconnaissance isolates an additional `SELECT ... FOR SHARE` on `ops.setup_session` in the new Work Management command, not in the accepted Setup command. The disposable reader intentionally has SELECT but no UPDATE/row-lock privileges on the Setup Session table.
+- Corrective candidate removes **only** that unnecessary locking clause; the Manager-authorized, SECURITY DEFINER `ops.create_setup_season_task` retains season/Stage/actor verification and the same atomic WO+annual gate. Separate fake-cursor regressions prohibit a future `FOR SHARE/FOR UPDATE` and ensure the call uses the original WO ID. No expanded table grants, Production migration or runner changes.
+- Cleanup independently PASS by operator: original Production WO/Intake fingerprint, shared git checkout unchanged, preview listener absent; server HOLD(1). Full server clone/native linked gate acceptance remains **unproven after this correction** until a new exact-SHA retry.
+
 ## October 19 — First V0.3 disposable-write preflight HOLD resolved in source
 
 - Failed SHA `f4afad0b82ab7748cfd9c6578465e32d782d4e3f` passed 836 Setup/209 FieldWiring/65 #419 source tests, final PostGIS init, dump and restore, read ledger, Manager aging query (58 open; one inactive exception), and installed clone-only grant/NO_SEND fixtures. The browser did **not** start.
