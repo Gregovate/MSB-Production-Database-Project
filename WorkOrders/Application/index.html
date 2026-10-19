@@ -53,6 +53,7 @@
           <option value="my-created">Work Orders I Created</option>
           <option value="all" data-manager-only>All Work Orders</option>
           <option value="tickets" data-manager-only>All Tickets · Search</option>
+          <option value="aging" data-manager-only>Manager · Open Work Order Aging Report</option>
           <option value="my-feedback">My Submitted Feedback</option>
           <option value="person" data-manager-only>Another volunteer</option>
           <option value="critical" data-manager-only>Manager · Immediate / Critical</option>
@@ -79,6 +80,8 @@
           <option value="priority_desc">Priority · Planning first</option>
           <option value="number_desc">Number (WO / Intake) · Highest first</option>
           <option value="number_asc">Number (WO / Intake) · Lowest first</option>
+          <option value="created_asc">Created date · Oldest first</option>
+          <option value="created_desc">Created date · Newest first</option>
         </select>
       </div>
       <label class="check-field">
@@ -90,7 +93,32 @@
       <a class="public-request-link" href="https://my.sheboyganlights.org/" target="_blank" rel="noopener noreferrer" title="Open the existing MSB portal and select Work Order Request">Public Work Order Request ↗</a>
     </section>
 
-    <div class="workspace">
+    <section id="aging-report" class="aging-report" aria-label="Open Work Order Aging Report" hidden>
+      <div class="aging-heading">
+        <div>
+          <h3>Open Work Order Aging Report</h3>
+          <p>All Work Orders without a recorded completion date, including inactive exceptions. Age is measured from original Work Order creation, not last update or assignment.</p>
+        </div>
+        <button id="aging-export" type="button" class="quiet-button" disabled>Export all open Work Orders · CSV</button>
+      </div>
+      <p id="aging-status" role="status" aria-live="polite">Select the report to load every recorded-open Work Order.</p>
+      <div id="aging-metrics" class="aging-metrics" hidden></div>
+      <div class="aging-table-scroll">
+        <table class="aging-table">
+          <thead><tr>
+            <th scope="col">Work Order #</th>
+            <th scope="col">Created</th>
+            <th scope="col">Days open</th>
+            <th scope="col">Priority</th>
+            <th scope="col">Work / location</th>
+            <th scope="col">Assigned to</th>
+            <th scope="col">Record state</th>
+          </tr></thead>
+          <tbody id="aging-rows"></tbody>
+        </table>
+      </div>
+    </section>
+    <div id="work-ticket-workspace" class="workspace">
       <section class="ticket-column" aria-label="Ticket list">
         <div class="section-header">
           <div>
