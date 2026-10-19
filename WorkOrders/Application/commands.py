@@ -20,7 +20,7 @@ from psycopg2.extras import RealDictCursor, Json
 from repository import WorkManagementError
 
 TICKET_KEY = re.compile(r"^(WO|INTAKE)-([1-9][0-9]{0,12})$")
-EVENT_KINDS = frozenset(("create", "assign", "complete", "promote",
+EVENT_KINDS = frozenset(("create", "assign", "progress", "complete", "promote",
                          "correction_owner", "clarify", "reply", "resolve"))
 
 
@@ -261,7 +261,7 @@ class CloneCommands:
         # Crew can create a native unassigned WO, never assign anyone.
         if action == "create" and not actor["can_manage"] and body.get("person_ids"):
             raise WorkManagementError("Only Managers may assign Work Orders.", 403)
-        if action in ("assign", "complete") and kind != "WO":
+        if action in ("assign", "progress", "complete") and kind != "WO":
             raise WorkManagementError("This action requires an active Work Order.")
         if action in ("promote", "correction_owner", "clarify", "reply", "resolve") and kind != "INTAKE":
             raise WorkManagementError("This action requires original Intake.")
@@ -338,7 +338,7 @@ class CloneCommands:
                                            details={"added": added, "removed": removed})
                 for who in added:
                     self.capture(cur, event, ticket, "assignment", who)
-            elif action == "complete":
+            elif action in ("progress", "complete"):
                 if work_order["date_completed"] is not None:
                     raise WorkManagementError("Already recorded complete.", 409)
                 if not actor["can_manage"]:
@@ -348,24 +348,41 @@ class CloneCommands:
                         (number, actor["person_id"]))
                     if cur.fetchone() is None:
                         raise WorkManagementError("Only assignees or Manager may complete.", 403)
-                completed_note = substantive(body.get("completion_notes"), "Completion notes")
-                cur.execute(
-                    "UPDATE ops.work_order SET completion_notes=%s, "
-                    "completed_by_person_id=%s, repair_complete=true,"
-                    "date_completed=now() WHERE work_order_id=%s AND date_completed IS NULL",
-                    (completed_note, actor["person_id"], number))
-                if cur.rowcount != 1:
-                    raise WorkManagementError("Completion did not update native Work Order.", 409)
                 result_ticket = ticket
-                event = self.persist_event(cur, request_key, ticket, action,
-                                           actor, completed_note)
-                # Capture only genuine human-reporter outcome, never a guessed
-                # Testing-origin reporter. No message is actually dispatched.
-                if work_order["display_test_session_id"] is None:
-                    self.capture(cur, event, ticket, "completion",
-                                 work_order["submitted_by_person_id"])
-                # Existing database triggers own Testing completion feedback;
-                # no invented Testing message or new testing record.
+                if action == "progress":
+                    progress = substantive(body.get("progress_note"), "Work progress note")
+                    cur.execute(
+                        "UPDATE ops.work_order SET notes=concat_ws(E'\\n', "
+                        "NULLIF(btrim(notes), ''), "
+                        "'[' || to_char(clock_timestamp() AT TIME ZONE 'UTC', "
+                        "'YYYY-MM-DD HH24:MI') || ' UTC | Person #' || "
+                        "%s::text || '] ' || %s) "
+                        "WHERE work_order_id=%s AND date_completed IS NULL",
+                        (actor["person_id"], progress, number))
+                    if cur.rowcount != 1:
+                        raise WorkManagementError("Work note was not recorded.", 409)
+                    event = self.persist_event(
+                        cur, request_key, ticket, action, actor, progress)
+                    # Progress alone never marks repair complete, releases a
+                    # Testing gate or sends the reporter a closure email.
+                else:
+                    completed_note = substantive(body.get("completion_notes"), "Completion notes")
+                    cur.execute(
+                        "UPDATE ops.work_order SET completion_notes=%s, "
+                        "completed_by_person_id=%s, repair_complete=true,"
+                        "date_completed=now() WHERE work_order_id=%s AND date_completed IS NULL",
+                        (completed_note, actor["person_id"], number))
+                    if cur.rowcount != 1:
+                        raise WorkManagementError("Completion did not update native Work Order.", 409)
+                    event = self.persist_event(cur, request_key, ticket, action,
+                                               actor, completed_note)
+                    # Capture only genuine human-reporter outcome, never a guessed
+                    # Testing-origin reporter. No message is actually dispatched.
+                    if work_order["display_test_session_id"] is None:
+                        self.capture(cur, event, ticket, "completion",
+                                     work_order["submitted_by_person_id"])
+                    # Existing database triggers own Testing completion feedback;
+                    # no invented Testing message or new testing record.
             else:
                 # Correction decisions are additional attributed activity on
                 # retained Intake, never a fake Work Order.
