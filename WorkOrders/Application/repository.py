@@ -165,6 +165,42 @@ class WorkManagementRepository:
         return {"people": people, "task_types": task_types,
                 "stages": stages, "work_areas": areas}
 
+    @staticmethod
+    def enrich_feedback(cur: Any, rows: list[dict[str, Any]]) -> None:
+        """Overlay clone-only correction decisions without rewriting Intake truth."""
+        intake = [r["ticket"] for r in rows if r["type"] == "TASK_FEEDBACK"]
+        if not intake:
+            return
+        cur.execute(
+            "SELECT DISTINCT ON (ticket_key) ticket_key,event_kind,details "
+            "FROM wo419_preview.activity WHERE ticket_key = ANY(%s) "
+            "ORDER BY ticket_key,activity_id DESC", (intake,))
+        latest = {r["ticket_key"]: r for r in cur.fetchall()}
+        cur.execute(
+            "SELECT a.ticket_key, a.target_person_id, "
+            "COALESCE(NULLIF(btrim(concat_ws(' ',p.preferred_name,p.last_name)),''), "
+            " 'Person #' || a.target_person_id::text) AS owner "
+            "FROM wo419_preview.activity a JOIN ref.person p "
+            "ON p.person_id=a.target_person_id "
+            "WHERE a.event_kind='correction_owner' AND a.ticket_key=ANY(%s) "
+            "ORDER BY a.activity_id DESC", (intake,))
+        owners: dict[str, str] = {}
+        for item in cur.fetchall():
+            owners.setdefault(item["ticket_key"], item["owner"])
+        for row in rows:
+            if row["type"] != "TASK_FEEDBACK":
+                continue
+            if row["ticket"] in owners:
+                row["owners"] = owners[row["ticket"]]
+            info = latest.get(row["ticket"])
+            if info and info["event_kind"] == "resolve":
+                row["state"] = str(info["details"].get("disposition", "resolved")).upper()
+                row["state_from"] = "DISPOSABLE_CORRECTION_ACTIVITY"
+            elif info and info["event_kind"] == "clarify":
+                row["state"] = "WAITING_ON_REPORTER"
+            elif info and info["event_kind"] == "promoted_source":
+                row["state"] = "PROMOTED_TO_WO"
+
     def tickets(
         self, *, actor: dict[str, Any], scope: str, person_id: int | None,
         show_completed: bool, search: str, limit: int = 80,
@@ -229,7 +265,9 @@ class WorkManagementRepository:
         params.append(limit)
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(query, params)
-            return [dict(row) for row in cur.fetchall()]
+            rows = [dict(row) for row in cur.fetchall()]
+            self.enrich_feedback(cur, rows)
+            return rows
 
     def ticket(self, *, actor: dict[str, Any], ticket_key: str) -> dict[str, Any]:
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -241,6 +279,8 @@ class WorkManagementRepository:
             if row is None:
                 raise WorkManagementError("Ticket not found.", 404)
             row = dict(row)
+            if row["type"] == "TASK_FEEDBACK":
+                self.enrich_feedback(cur, [row])
             if row["type"] != "WORK_ORDER" and not (
                 actor["can_manage"] or row["reporter_id"] == actor["person_id"]
             ):
