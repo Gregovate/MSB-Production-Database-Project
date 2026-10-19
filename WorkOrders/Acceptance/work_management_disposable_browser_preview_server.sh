@@ -39,6 +39,8 @@ CLONE_CONTAINER="msb-wo419-preview-$$"
 CLONE_DATABASE="msb_wo419_preview"
 CLONE_DB_PASSWORD="$(openssl rand -hex 22)"
 APP_PASSWORD="$(openssl rand -hex 22)"
+CLONE_WRITE_TOKEN="$(openssl rand -hex 24)"
+PREVIEW_CSRF_TOKEN="$(openssl rand -hex 24)"
 WORKTREE="/tmp/msb-wo419-preview-candidate-$STAMP-$$"
 DUMP="/tmp/msb-wo419-preview-$STAMP-$$.dump"
 REPORT_DIR="$HOME/setup-acceptance-reports"
@@ -298,18 +300,32 @@ HOST_IP="$(sudo docker inspect "$CLONE_CONTAINER" --format '{{range .NetworkSett
 if [[ "$(sudo docker inspect "$CLONE_CONTAINER" --format '{{json .NetworkSettings.Ports}}')" == *"HostIp"* ]]; then
   echo "HOLD: unexpected published clone DB port"; exit 11
 fi
+# Apply guarded acceptance persistence only INSIDE the private disposable clone.
+# The marker and secret never appear in operator logs or Git and are destroyed
+# with the clone. Production has neither the approval marker nor token table.
+{
+  printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
+  printf '%s\n' "SET msb.wo419_clone_write_token='$CLONE_WRITE_TOKEN';"
+  cat "$WORKTREE/WorkOrders/Acceptance/wo419_disposable_actions.sql"
+} | psql_clone
+echo "PASS: isolated clone write commands and no-send activity/outbox fixture installed"
+
 DSN="host=$HOST_IP port=5432 dbname=$CLONE_DATABASE user=fieldwiring_app password=$APP_PASSWORD"
 
 echo "--- Clone query/read authorization and real stage assertions ---"
 sudo -u fieldwiring -H env WORK_MGMT_PREVIEW_MODE=disposable \
-  WORK_MGMT_DATABASE_DSN="$DSN" WORK_MGMT_VERIFIED_CANDIDATE_SHA="$VERIFIED_WORKTREE_SHA" PYTHONDONTWRITEBYTECODE=1 \
+  WORK_MGMT_DATABASE_DSN="$DSN" WORK_MGMT_CLONE_IP="$HOST_IP" \
+  WORK_MGMT_CLONE_WRITE_TOKEN="$CLONE_WRITE_TOKEN" \
+  WORK_MGMT_VERIFIED_CANDIDATE_SHA="$VERIFIED_WORKTREE_SHA" PYTHONDONTWRITEBYTECODE=1 \
   "$PYTHON" "$WORKTREE/WorkOrders/Acceptance/validate_work_management_clone.py" \
     --candidate-sha "$CANDIDATE_SHA" --preview-email "$PREVIEW_EMAIL"
 
 echo "--- Start pinned Work Management reviewer (no client-supplied identity) ---"
 PREVIEW_PID="$(
   sudo -u fieldwiring -H env WORK_MGMT_PREVIEW_MODE=disposable \
-    WORK_MGMT_DATABASE_DSN="$DSN" WORK_MGMT_PREVIEW_EMAIL="$PREVIEW_EMAIL" \
+    WORK_MGMT_DATABASE_DSN="$DSN" WORK_MGMT_CLONE_IP="$HOST_IP" \
+    WORK_MGMT_CLONE_WRITE_TOKEN="$CLONE_WRITE_TOKEN" WORK_MGMT_PREVIEW_CSRF_TOKEN="$PREVIEW_CSRF_TOKEN" \
+    WORK_MGMT_PREVIEW_EMAIL="$PREVIEW_EMAIL" \
     WORK_MGMT_PREVIEW_PORT="$PREVIEW_PORT" PYTHONDONTWRITEBYTECODE=1 \
     APP_DIR="$WORKTREE/WorkOrders/Application" APP_LOG="$APP_LOG" \
     PYTHON="$PYTHON" bash -c '
@@ -341,7 +357,9 @@ curl -fsS --max-time 10 "http://127.0.0.1:$PREVIEW_PORT/work-orders/assets/revie
 WRITE_STATUS="$(curl -s -o /dev/null -w '%{http_code}' -X POST \
   -H 'Content-Type: application/json' -d '{}' \
   "http://127.0.0.1:$PREVIEW_PORT/api/work-orders/tickets")"
-[[ "$WRITE_STATUS" == 405 ]] || { echo "HOLD: read-only POST boundary failed"; exit 14; }
+[[ "$WRITE_STATUS" == 405 ]] || { echo "HOLD: legacy list POST boundary failed"; exit 14; }
+COMMAND_NEGATIVE_STATUS="$(curl -s -o /dev/null -w '%{http_code}' -X POST   -H 'Content-Type: application/json' -d '{"action":"create"}'   "http://127.0.0.1:$PREVIEW_PORT/api/work-orders/commands")"
+[[ "$COMMAND_NEGATIVE_STATUS" == 403 ]] || { echo "HOLD: cross-site/no-CSRF write gate failed"; exit 14; }
 
 echo
 echo "WO419 BROWSER REVIEW READY"
@@ -349,8 +367,8 @@ echo "Open via the protected SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/"
 echo "Candidate SHA: $CANDIDATE_SHA"
 echo "Reviewer: $PREVIEW_EMAIL"
 echo "DB: private disposable clone only; Work Management GET API/read-only"
-echo "V0.2: action workbench is NO-SAVE rehearsal; it cannot create/assign/complete/notify."
+echo "V0.3: Save actions mutate ONLY disposable clone; no mail/Directus send."
 echo "Review: Manager Create, multi-person assignment, notes, separate triage, Testing and Feedback."
-echo "Do not treat V0.2 as operational write-path or notification acceptance."
+echo "Clone writes disappear at cleanup; Production and Directus remain unchanged."
 read -r -p "After reviewing the browser, press ENTER here for controlled teardown. " _
 echo "Operator browser review window ended"
