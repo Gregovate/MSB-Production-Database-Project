@@ -6,6 +6,7 @@
     actor: null, tickets: [], assignees: [], selected: null,
     detail: null, relatedLoadedFor: null, fetchId: 0, listFetchId: 0,
     agingRows: [], agingFetchId: 0,
+    navigationReady: false, restoringNavigation: false, createMode: false,
   };
 
   function escapeHtml(value) {
@@ -28,6 +29,110 @@
     catch (_) { throw new Error("Server did not return an expected response."); }
     if (!result.ok) throw new Error(payload.error || "Work Management request failed.");
     return payload;
+  }
+
+  // Work Management is a single-screen application: browser Back/Forward
+  // must restore internal views and selected tickets, not eject the operator.
+  const knownScopes = new Set(["mine", "my-created", "my-feedback", "all",
+    "tickets", "aging", "person", "critical", "unassigned", "repairs",
+    "testing", "intake", "feedback"]);
+  const knownSorts = new Set(["priority", "priority_desc", "number_asc",
+    "number_desc", "created_asc", "created_desc"]);
+
+  function navigationSnapshot() {
+    return {
+      scope: $("scope").value, person: $("assignee").value,
+      sort: $("ticket-sort").value,
+      include_planning: $("include-planning").checked ? "1" : "0",
+      showCompleted: $("show-completed").checked,
+      includePlanning: $("include-planning").checked,
+      search: $("ticket-search").value,
+      ticket: state.selected,
+      mode: state.createMode ? "create" : "view",
+      listScroll: $("ticket-list").scrollTop,
+    };
+  }
+
+  function writeNavigation(mode = "push") {
+    if (!state.navigationReady || state.restoringNavigation) return;
+    const next = navigationSnapshot();
+    const current = window.history.state?.wo419;
+    if (mode === "push" && current &&
+        JSON.stringify({...current, listScroll: 0}) ===
+        JSON.stringify({...next, listScroll: 0})) return;
+    const url = new URL(window.location.href);
+    const values = {
+      scope: next.scope, sort: next.sort,
+      show_completed: next.showCompleted ? "1" : "0",
+      include_planning: next.includePlanning ? "1" : "0",
+      q: next.search, person_id: next.person,
+      ticket: next.ticket || "", mode: next.mode === "create" ? "create" : "",
+    };
+    Object.entries(values).forEach(([key, value]) => {
+      if (value) url.searchParams.set(key, value);
+      else url.searchParams.delete(key);
+    });
+    window.history[mode === "replace" ? "replaceState" : "pushState"](
+      {wo419: next}, "", url.pathname + url.search);
+  }
+
+  function restoreControls(snapshot) {
+    const requested = knownScopes.has(snapshot.scope) ? snapshot.scope : "mine";
+    const manager = Boolean(state.actor?.can_manage);
+    $("scope").value = !manager &&
+      !["mine","my-created","my-feedback"].includes(requested) ? "mine" : requested;
+    $("ticket-sort").value = knownSorts.has(snapshot.sort) ? snapshot.sort : "priority";
+    $("show-completed").checked = Boolean(snapshot.showCompleted);
+    $("include-planning").checked = Boolean(snapshot.includePlanning);
+    $("ticket-search").value = String(snapshot.search || "").slice(0, 120);
+    $("assignee").value = snapshot.person || "";
+    $("person-field").hidden = $("scope").value !== "person";
+  }
+
+  function resetDetail() {
+    state.selected = null;
+    state.detail = null;
+    state.createMode = false;
+    ++state.fetchId;
+    $("detail-content").hidden = true;
+    $("detail-empty").hidden = false;
+    $("detail-content").classList.remove("create-mode");
+    document.dispatchEvent(new CustomEvent("wo419:ticket", {detail: null}));
+  }
+
+  async function restoreNavigation(snapshot) {
+    if (!snapshot) return;
+    state.restoringNavigation = true;
+    try {
+      restoreControls(snapshot);
+      resetDetail();
+      await loadTickets();
+      if (snapshot.mode === "create" && state.actor?.can_create) {
+        state.createMode = true;
+        document.dispatchEvent(new CustomEvent("wo419:history-create"));
+      } else if (snapshot.ticket) {
+        await selectTicket(snapshot.ticket, {noHistory: true});
+      }
+      $("ticket-list").scrollTop = Number(snapshot.listScroll) || 0;
+    } finally {
+      state.restoringNavigation = false;
+    }
+  }
+
+  function initializeNavigation() {
+    const qs = new URLSearchParams(window.location.search);
+    restoreControls({
+      scope: qs.get("scope") || "mine", sort: qs.get("sort") || "priority",
+      person: qs.get("person_id") || "",
+      showCompleted: qs.get("show_completed") === "1",
+      includePlanning: qs.get("include_planning") === "1",
+      search: qs.get("q") || "",
+    });
+    state.navigationReady = true;
+    writeNavigation("replace");
+    const ticket = qs.get("ticket");
+    return {ticket: /^(WO|INTAKE)-[1-9]\\d{0,12}$/.test(ticket || "") ? ticket : null,
+      create: qs.get("mode") === "create"};
   }
 
   function error(message) {
@@ -242,7 +347,9 @@
     $("aging-export").disabled = !state.agingRows.length;
     $("aging-status").textContent =
       data.count + " recorded-open Work Orders · Created-date aging · " +
-      "No row limit; all open records included" +
+      "No row limit; all matching open records included" +
+      ($("include-planning").checked ? " · Planning included" :
+        " · Planning (priority 5) hidden") +
       (data.inactive_count ? " · Includes " + data.inactive_count +
         " inactive-but-undated exception(s)" : "");
   }
@@ -258,7 +365,8 @@
     const sort = $("ticket-sort").value;
     try {
       const response = await getJson("/api/work-orders/aging?sort=" +
-        encodeURIComponent(sort));
+        encodeURIComponent(sort) + "&include_planning=" +
+        ($("include-planning").checked ? "1" : "0"));
       if (serial !== state.agingFetchId || $("scope").value !== "aging") return;
       state.agingRows = response.rows || [];
       renderAgingReport(response);
@@ -316,6 +424,8 @@
   function scopeChanged() {
     $("person-field").hidden = $("scope").value !== "person";
     if ($("scope").value === "aging") $("ticket-sort").value = "created_asc";
+    resetDetail();
+    writeNavigation("push");
     loadTickets();
   }
 
@@ -391,6 +501,7 @@
       const data = await getJson("/api/work-orders/tickets/" + encodeURIComponent(key));
       if (serial !== state.fetchId || state.selected !== key) return;
       showDetail(data.ticket);
+      if (!options.noHistory) writeNavigation("push");
       loadActivity(key);
     } catch (exc) {
       if (serial === state.fetchId) error(exc.message);
@@ -508,7 +619,18 @@
         option.textContent = person.display_name;
         picker.appendChild(option);
       });
+      const initialView = initializeNavigation();
       await Promise.all([loadTickets(), loadManagerInbox()]);
+      if (initialView.ticket) await selectTicket(initialView.ticket, {noHistory: true});
+      else if (initialView.create && state.actor?.can_create) {
+        state.restoringNavigation = true;
+        try {
+          state.createMode = true;
+          document.dispatchEvent(new CustomEvent("wo419:history-create"));
+        } finally {
+          state.restoringNavigation = false;
+        }
+      }
     } catch (exc) {
       error(exc.message);
       setText("user-identity", "Access unavailable");
@@ -550,19 +672,45 @@
     }
     await Promise.all([selectTicket(saved.ticket), loadManagerInbox()]);
   });
+  document.addEventListener("wo419:open-create", () => {
+    if (!state.actor?.can_create) return;
+    writeNavigation("replace");
+    state.selected = null;
+    state.createMode = true;
+    writeNavigation("push");
+  });
+  window.addEventListener("popstate", (event) => {
+    if (event.state?.wo419) void restoreNavigation(event.state.wo419);
+  });
   $("scope").addEventListener("change", scopeChanged);
-  $("assignee").addEventListener("change", loadTickets);
-  $("show-completed").addEventListener("change", loadTickets);
+  $("assignee").addEventListener("change", () => {
+    writeNavigation("replace");
+    loadTickets();
+  });
+  $("show-completed").addEventListener("change", () => {
+    writeNavigation("replace");
+    loadTickets();
+  });
+  $("include-planning").addEventListener("change", () => {
+    writeNavigation("replace");
+    loadTickets();
+  });
   $("refresh").addEventListener("click", () =>
     Promise.all([loadTickets(), loadManagerInbox()]));
-  $("ticket-sort").addEventListener("change", loadTickets);
+  $("ticket-sort").addEventListener("change", () => {
+    writeNavigation("replace");
+    loadTickets();
+  });
   $("go-intake").addEventListener("click", () => goManagerQueue("intake"));
   $("go-feedback").addEventListener("click", () => goManagerQueue("feedback"));
   $("aging-export").addEventListener("click", exportAgingCsv);
   let searchTimer = null;
   $("ticket-search").addEventListener("input", () => {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(loadTickets, 240);
+    searchTimer = setTimeout(() => {
+      writeNavigation("replace");
+      loadTickets();
+    }, 240);
   });
   $("related-information").addEventListener("toggle", loadRelated);
   initialize();
