@@ -1,6 +1,6 @@
 """#419 Work Management: read-only projection of existing PostgreSQL authority.
 
-SOURCE-ONLY disposable preview. No ticket writes or email are implemented.
+Disposable preview: role-scoped reads and clone-only saves; no email.
 The Server Management launcher must supply an isolated current-Production clone.
 """
 from __future__ import annotations
@@ -98,6 +98,9 @@ class WorkManagementRepository:
             "person_id": int(matches[0]["person_id"]),
             "display_name": cap["display_name"] or email,
             "can_manage": bool(cap["can_manage_setup"]),
+            "can_create": True,  # Linked Crew can create without Manager triage.
+            "can_assign": bool(cap["can_manage_setup"]),
+            "can_triage": bool(cap["can_manage_setup"]),
             "can_read": True,
         }
 
@@ -129,12 +132,13 @@ class WorkManagementRepository:
         Manager users may inspect actual active Person/task type/Stage/Work Area
         choices. Never expose raw contact fields or arbitrary SQL column names.
         """
-        if not actor["can_manage"]:
-            raise WorkManagementError("Manager permission required.", 403)
+        if not actor.get("can_create", actor.get("can_read", False)):
+            raise WorkManagementError("Work Order creation is not authorized.", 403)
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                """
-                SELECT person_id,
+            if actor["can_manage"]:
+                cur.execute(
+                    """
+                    SELECT person_id,
                        coalesce(nullif(btrim(concat_ws(' ',
                            coalesce(nullif(btrim(preferred_name), ''),
                                     nullif(btrim(first_name), '')),
@@ -143,10 +147,13 @@ class WorkManagementRepository:
                 FROM ref.person
                 WHERE active_flag
                 ORDER BY display_name, person_id
-                LIMIT 600
-                """
-            )
-            people = [dict(item) for item in cur.fetchall()]
+                    LIMIT 600
+                    """
+                )
+                people = [dict(item) for item in cur.fetchall()]
+            else:
+                # Crew have no Person assignment selector.
+                people = []
             cur.execute(
                 "SELECT task_type_id AS id, task_type_name AS name "
                 "FROM ref.task_type WHERE active_flag ORDER BY sort_order, task_type_name"
