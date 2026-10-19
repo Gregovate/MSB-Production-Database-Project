@@ -8,6 +8,7 @@
   const model = { actor: null, ticket: null, options: null, selected: new Set(), csrf: "", pendingSignature: null, pendingKey: null };
   const actions = {
     create: "Create · New Internal Work Order",
+    link_setup: "Manager · Add this Work Order to seasonal Setup",
     assign: "Assign / Reassign · Multiple volunteers",
     progress: "Record Work Note · Keep open",
     complete: "Complete · Required verified work notes",
@@ -40,6 +41,10 @@
     if (!ticket) {
       if (actor.can_create) result.push("create");
       return result;
+    }
+    if (actor.can_manage && ticket.type === "WORK_ORDER" &&
+        (ticket.detail?.stage_id || ticket.setup_context?.stage_id)) {
+      result.push("link_setup");
     }
     if (ticket.type === "WORK_ORDER" && !ticket.done_at) {
       if (actor.can_manage) result.push("assign");
@@ -169,6 +174,7 @@
     const form = byId("review-action-form");
     form.hidden = !kind;
     byId("review-create-fields").hidden = !["create", "promote"].includes(kind);
+    byId("review-link-setup-fields").hidden = kind !== "link_setup";
     byId("review-person-fields").hidden =
       !model.actor?.can_manage ||
       !["create", "assign", "promote", "correction_owner"].includes(kind);
@@ -208,6 +214,13 @@
         if (!byId("review-setup-season").value)
           throw new Error("Choose an existing open seasonal Setup session.");
       }
+    }
+    if (kind === "link_setup") {
+      if (!model.actor?.can_manage) throw new Error("Only a Manager may link Setup work.");
+      if (!model.ticket?.detail?.stage_id)
+        throw new Error("This Work Order has no Park Stage to link to Setup.");
+      if (!byId("review-link-setup-season").value)
+        throw new Error("Choose an existing open seasonal Setup session.");
     }
     if (["assign", "promote", "correction_owner"].includes(kind) && !model.selected.size)
       throw new Error("Select at least one exact existing Person.");
@@ -250,9 +263,11 @@
       task_type_id: byId("review-task-type").value,
       urgency: byId("review-urgency").value,
       target_year: byId("review-target-year").value,
-      setup_mode: byId("review-setup-mode").value,
-      setup_season_year: byId("review-setup-season").value,
-      setup_task_name: byId("review-setup-name").value.trim(),
+      setup_mode: kind === "link_setup" ? "create" : byId("review-setup-mode").value,
+      setup_season_year: kind === "link_setup"
+        ? byId("review-link-setup-season").value : byId("review-setup-season").value,
+      setup_task_name: kind === "link_setup"
+        ? byId("review-link-setup-name").value.trim() : byId("review-setup-name").value.trim(),
       stage_id: location === "stage" ? byId("review-stage").value : null,
       work_area_id: location === "area" ? byId("review-area").value : null,
       progress_note: byId("review-progress-note").value.trim(),
@@ -315,6 +330,7 @@
           option.disabled = !model.actor?.can_manage;
         });
       catalog("review-setup-season", model.options.setup_seasons || []);
+      catalog("review-link-setup-season", model.options.setup_seasons || []);
       catalog("review-task-type", model.options.task_types || []);
       catalog("review-stage", model.options.stages || []);
       catalog("review-area", model.options.work_areas || []);
