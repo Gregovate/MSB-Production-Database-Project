@@ -57,6 +57,10 @@ jobs:
             WorkOrders/Application/test_work_management_preview.py \
             WorkOrders/Acceptance/test_work_management_disposable_profile.py \
             Database/Acceptance/test_wo419_unified_ticket_read_model.py
+      - name: Run full established Setup application regression
+        run: python -m pytest -q -p no:cacheprovider Setup/Application Setup/Acceptance/test_setup_gis_preview.py
+      - name: Run full FieldWiring application regression
+        run: python -m pytest -q -p no:cacheprovider FieldWiring/Application
       - name: Production contact prohibition
         run: |
           echo "Only static and fake-repository tests run in this workflow."
