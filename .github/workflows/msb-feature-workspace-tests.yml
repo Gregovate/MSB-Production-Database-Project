@@ -1,0 +1,32 @@
+name: MSB Feature Workspace Safety
+
+on:
+  pull_request:
+    paths:
+      - "Utilities/Open-MSBFeatureWorkspace.ps1"
+      - "Utilities/tests/Test-MSBFeatureWorkspace.ps1"
+      - ".github/workflows/msb-feature-workspace-tests.yml"
+      - "System_Documentation/Project_Rules/Repository_Change_Workflow.md"
+      - "System_Documentation/Project_Rules/README.md"
+
+permissions:
+  contents: read
+
+jobs:
+  windows-worktree-workspace:
+    name: Windows Feature Workspace Contract
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse workspace launcher and regression syntax
+        shell: pwsh
+        run: |
+          $files = @('Utilities/Open-MSBFeatureWorkspace.ps1', 'Utilities/tests/Test-MSBFeatureWorkspace.ps1')
+          foreach ($file in $files) {
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$null, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { throw "PowerShell parse error in $file : $($errors -join '; ')" }
+          }
+      - name: Verify isolated windows and unchanged tracked files
+        shell: pwsh
+        run: ./Utilities/tests/Test-MSBFeatureWorkspace.ps1
