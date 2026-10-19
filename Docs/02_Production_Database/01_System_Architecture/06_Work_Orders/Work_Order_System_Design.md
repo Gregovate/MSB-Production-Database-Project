@@ -20,6 +20,16 @@ The core model preserves these design rules:
 
 Current PostgreSQL schema, constraints, procedures, and triggers are implementation truth when they differ from older design drafts.
 
+## October 19 — Manager Open Work Order Aging Report (additional #419 requirement)
+
+**Operator direction:** Managers need a dedicated aging report of **all open Work Orders ordered by original creation date**, not a recency list ordered by `updated_at`, a narrow first-page sample, or a mix of human Intake and active Work Orders. Native `ops.work_order.created_at` is the starting date. **Recorded-open means `date_completed IS NULL`**: include Work Orders whose `is_active=false` but which have no completion date as explicit exceptions, rather than letting stale/inconsistent records disappear from review. Do not infer completion from assignment, Testing milestones, active_flag or absent status-history events.
+
+**Implemented draft V0.3.1 source:** Extend the existing WO419-M01 PostgreSQL projection with `opened_at = ops.work_order.created_at` (Intake has NULL in this Work Order report). A new authenticated **Manager-only** aging endpoint queries the same PostgreSQL projection, calculating nonnegative elapsed calendar-equivalent 24-hour days using `CURRENT_TIMESTAMP - opened_at`. The report returns **every recorded-open Work Order without the normal list's 80/100-row LIMIT**, sorted by oldest creation by default, and can also sort by newest creation, native numeric WO ID and urgency in either direction. Show WO number, original created date, days open, recorded priority, human description/location, current assignees, active/inactive exception, and totals by 0–7, 8–30, 31–60 and 61+ days. A Manager-controlled CSV exports the **entire open report**, not only what is visible in the scroll pane; free-form CSV text is escaped against spreadsheet formula execution. The report does not mutate Work Orders.
+
+**Navigation/permissions:** The Manager has an explicit **Open Work Order Aging Report** choice under the existing role-oriented home. Production Crew does not see the option, and the report API rejects Crew requests independently. Crew continues to use My Assigned Work / Created by Me. Opening a row navigates to the actual existing Work Order detail (no duplicate ticket identity or record).
+
+**Test gate:** Source tests verify the no-LIMIT SQL, native creation-date projection, 403 for Crew, all-open/inactive/unassigned counts, urgency/number sorting, full CSV, and native record links. The governed current-Production disposable clone must prove actual `created_at` read and counts before browser READY; operator verifies oldest-first results and report/CSV match, then CLEAN EXIT. These are acceptance requirements, not an assertion that V0.3.1 was deployed. No Production DML, notification send or Flow cutover.
+
 ## October 19 — #419 role-oriented Work Management home and universal sorting
 
 **Operator decision (supersedes any Manager-only direct-create assumption):** The existing public Google Work Order Request Form remains reachable from the MSB portal for any reporter, including users with sheboyganlights.org accounts. Its existing Park/Workshop branches and Apps Script stay unchanged. A public submission enters `stage.work_order_intake` for **Manager triage**; it must not silently become an active Work Order.
