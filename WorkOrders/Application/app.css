@@ -294,3 +294,66 @@ html[data-theme=dark] .public-request-link { color:#b7dbff; }
 html[data-theme="dark"] .aging-report,
 html[data-theme="dark"] .aging-table th { background:var(--surface); color:var(--ink); }
 html[data-theme="dark"] .aging-open-ticket { color:#acd9ff; }
+
+
+/* #419 operator usability correction from the first save-capable browser
+   review. Reuse issue #159 shared MSB app palette and #140 semantic meanings;
+   no new competing global stylesheet or raw priority-state color taxonomy. */
+:root {
+  --ink:#1f2937; --muted:#667085; --border:#c8cdd4;
+  --canvas:#f4f6f8; --surface:#ffffff; --accent:#1f6feb;
+  --accent-faint:#eef6ff; --button:#1f6feb;
+}
+html[data-theme="dark"] {
+  --ink:#f1f5f9; --muted:#aab6c5; --border:#334155;
+  --canvas:#0b1220; --surface:#111a2b; --accent:#2f81f7;
+  --accent-faint:#15243a; --button:#acd9ff;
+}
+body { font-size:16px; line-height:1.45; }
+button, input, select, textarea { font-size:16px; }
+.field label, .review-workbench fieldset label, .review-inner > label,
+.tiny-label { font-size:14px; }
+.section-header p, .card-meta, .detail-meta, .detail-notes p,
+.multiline-note, .detail-fields p, .review-workbench .subtle,
+.review-workbench .section-header p, .status, .card-footer,
+.related-hint, .related-help, .related-row .name,
+.aging-table, #aging-status, .aging-metrics span { font-size:15px; }
+.ticket-card h4 { font-size:17px; line-height:1.35; }
+.ticket-type, .ticket-id, .card-top { font-size:14px; }
+.section-header h3 { font-size:20px; }
+.review-workbench { margin:0 0 18px; border:1px solid var(--border);
+  border-radius:10px; }
+.review-workbench .section-header { padding:15px 17px; }
+.review-inner { padding:15px 17px; }
+.review-action-buttons { display:flex; flex-wrap:wrap; gap:10px;
+  margin:7px 0 11px; }
+.review-action-button { min-height:46px; border:1px solid var(--accent);
+  border-radius:8px; padding:9px 15px; font-size:16px; font-weight:700;
+  background:var(--surface); color:var(--button); }
+.review-action-button:hover, .review-action-button:focus-visible {
+  background:var(--accent-faint);
+}
+.review-action-button[aria-pressed="true"] { outline:2px solid var(--accent);
+  outline-offset:2px; background:var(--accent-faint); }
+.review-action-button.primary-action { background:#1f6feb; color:#ffffff;
+  border-color:#1f6feb; }
+.review-action-button.primary-action:hover { background:#1559bd; }
+html[data-theme="dark"] .review-action-button.primary-action {
+  background:#2f81f7; color:#ffffff; border-color:#2f81f7; }
+html[data-theme="dark"] .review-action-button.primary-action:hover {
+  background:#1f6feb; }
+.review-action-guidance { color:var(--muted); font-size:15px;
+  line-height:1.5; margin:8px 0 10px; }
+.sort-hint { color:var(--muted); font-size:13px; }
+.visually-hidden { position:absolute !important; width:1px !important;
+  height:1px !important; overflow:hidden !important; clip:rect(0,0,0,0) !important;
+  white-space:nowrap !important; }
+#detail-content .review-workbench .section-header h3 { font-size:20px; }
+.review-workbench textarea { max-width:100%; min-height:100px; }
+.review-workbench fieldset label { line-height:1.4; }
+#review-submit { font-size:16px; min-height:46px; }
+#detail-content.create-mode .review-workbench { margin-top:4px; }
+@media(max-width:550px) {
+  .review-action-buttons { display:grid; grid-template-columns:1fr; }
+  .review-action-button { width:100%; }
+}
