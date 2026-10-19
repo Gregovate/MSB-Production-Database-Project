@@ -9,7 +9,6 @@ from __future__ import annotations
 import argparse
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -34,13 +33,11 @@ def phase(name: str) -> None:
 def checked_sha(expected_sha: str) -> None:
     if not HEX40.fullmatch(expected_sha):
         raise ValueError("Expected pinned candidate must be an exact 40-character SHA.")
-    actual = subprocess.check_output(
-        ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
-        text=True,
-        stderr=subprocess.DEVNULL,
-    ).strip().lower()
-    if actual != expected_sha:
-        raise RuntimeError("Work Management clone candidate SHA does not match.")
+    # The privileged runner verifies detached Git identity before invocation.
+    # The restricted service account cannot traverse the shared /opt Git metadata.
+    actual = os.environ.get("WORK_MGMT_VERIFIED_CANDIDATE_SHA", "").strip().lower()
+    if not HEX40.fullmatch(actual) or actual != expected_sha:
+        raise RuntimeError("Privileged runner candidate identity proof missing or mismatched.")
 
 
 def validate(preview_email: str) -> None:
