@@ -266,3 +266,31 @@ html[data-theme=dark] .public-request-link { color:#b7dbff; }
   .inbox-actions,.inbox-actions button { width:100%; }
   .public-request-link { white-space:normal; }
 }
+
+/* #419 Manager open-WO aging: original created date, not last update. */
+.aging-report {
+  min-width:0; background:var(--surface); border:1px solid var(--border);
+  border-radius:11px; padding:16px; margin-bottom:18px;
+}
+.aging-heading { display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--border); padding-bottom:12px; }
+.aging-heading h3 { margin:0 0 5px; font-size:19px; }
+.aging-heading p { color:var(--muted); margin:0; max-width:850px; line-height:1.4; }
+.aging-metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(125px,1fr)); gap:10px; padding:13px 0; }
+.aging-metrics > div { border:1px solid var(--border); border-radius:8px;
+  padding:10px; background:var(--accent-faint); }
+.aging-metrics strong { display:block; font-size:20px; color:var(--ink); font-variant-numeric:tabular-nums; }
+.aging-metrics span { display:block; font-size:12px; color:var(--muted); margin-top:2px; }
+#aging-status { color:var(--muted); font-size:13px; margin:12px 0; }
+.aging-table-scroll { width:100%; max-height:65vh; overflow:auto; border:1px solid var(--border); border-radius:8px; }
+.aging-table { border-collapse:collapse; width:100%; font-size:13px; }
+.aging-table th { position:sticky; top:0; z-index:1; background:var(--surface); color:var(--ink);
+  border-bottom:2px solid var(--border); text-align:left; font-size:12px; }
+.aging-table th,.aging-table td { padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top; }
+.aging-table tr:hover { background:var(--accent-faint); }
+.aging-open-ticket { border:0; background:transparent; text-decoration:underline;
+  padding:0; font:inherit; font-weight:750; color:var(--button); }
+.aging-open-ticket:hover { color:var(--accent); }
+html[data-theme="dark"] .aging-report,
+html[data-theme="dark"] .aging-table th { background:var(--surface); color:var(--ink); }
+html[data-theme="dark"] .aging-open-ticket { color:#acd9ff; }
