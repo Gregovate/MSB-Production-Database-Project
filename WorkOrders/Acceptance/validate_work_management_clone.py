@@ -105,13 +105,16 @@ def validate(preview_email: str) -> None:
         raise RuntimeError("Assignee list contains an invalid permanent Person ID.")
     print(f"CHECK: assignee Person selector PASS; choices={len(names)}")
 
+    phase("direct_create_catalogs")
+    catalogs = repo.reviewer_options(access)
+    if not catalogs["task_types"] or not catalogs["stages"] or not catalogs["work_areas"]:
+        raise RuntimeError("Internal creation requires current Task Type/Stage/Work Area.")
+    print("CHECK: authorized internal Create catalogs PASS")
+
     if access["can_manage"]:
         phase("manager_rehearsal_catalogs")
-        catalogs = repo.reviewer_options(access)
-        if not catalogs["people"] or not catalogs["task_types"]:
-            raise RuntimeError("Manager rehearsal needs current linked People and task types.")
-        if not catalogs["stages"] or not catalogs["work_areas"]:
-            raise RuntimeError("Manager rehearsal needs real Stage and Work Area choices.")
+        if not catalogs["people"]:
+            raise RuntimeError("Manager assignment requires current active People.")
         print("CHECK: Manager catalog authority PASS; isolated clone write preflight follows")
 
         # Prove native CRUD and assignment audit tables BEFORE displaying READY.
@@ -173,7 +176,32 @@ def validate(preview_email: str) -> None:
         else:
             print("HOLD: Intake #60 absent on this clone; select documented current fixture.")
     else:
-        print("INFO: non-manager reviewer; Manager Intake fixture validation not applicable.")
+        phase("crew_direct_create_rollback")
+        writer = CloneCommands()
+        # Crew Create is an unassigned native WO, never a false My Work assignment.
+        with writer.transaction(access) as cur:
+            cur.execute("SAVEPOINT wo419_crew_preflight")
+            wo = writer.new_work_order(cur, access, {
+                "problem": "WO419 Crew direct-create preflight, disposable and rolled back",
+                "task_type_id": catalogs["task_types"][0]["id"],
+                "urgency": 3, "target_year": 2026,
+                "stage_id": catalogs["stages"][0]["id"],
+                "work_area_id": None,
+            })
+            cur.execute(
+                "SELECT submitted_by_person_id FROM ops.work_order WHERE work_order_id=%s",
+                (wo,))
+            row = cur.fetchone()
+            if not row or row["submitted_by_person_id"] != access["person_id"]:
+                raise RuntimeError("Crew Create did not attribute original reporter.")
+            cur.execute(
+                "SELECT count(*) AS count FROM ops.work_order_assignment "
+                "WHERE work_order_id=%s AND active_flag", (wo,))
+            if cur.fetchone()["count"] != 0:
+                raise RuntimeError("Crew direct Create unexpectedly assigned volunteers.")
+            cur.execute("ROLLBACK TO SAVEPOINT wo419_crew_preflight")
+        print("CHECK: Crew native Create, attribution and unassigned rollback PASS;"
+              " Manager Intake fixture not applicable.")
 
     print("WORK MANAGEMENT #419 DISPOSABLE READ ACCEPTANCE PASS"
           " (not browser or P0 acceptance)")
