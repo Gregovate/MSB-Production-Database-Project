@@ -395,7 +395,7 @@ class WorkManagementRepository:
                     AND NOT EXISTS (
                       SELECT 1 FROM {self.activity_table} a
                       WHERE a.ticket_key = 'INTAKE-' || i.intake_id::text
-                        AND a.event_kind = 'promoted_source'
+                        AND a.event_kind IN ('promoted_source','resolve')
                     )
                   ) AS public_intake,
                   count(*) FILTER (
