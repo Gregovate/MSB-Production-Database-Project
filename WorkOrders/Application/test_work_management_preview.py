@@ -271,7 +271,7 @@ def test_new_manager_queues_and_reporter_feedback_route(client):
             "actor": {"person_id": 101, "display_name": "Preview Person",
                       "can_manage": True, "can_read": True},
             "scope": scope, "person_id": None,
-            "show_completed": False, "search": "", "sort": "priority",
+            "show_completed": False, "search": "", "task_type_id": None, "sort": "priority",
             "include_planning": True,
         }) in FakeRepo.calls
 
@@ -940,7 +940,7 @@ def test_oct19_tom_crew_intake_manager_direct_creation_and_planning_year():
     assert 'byId("create-work-order").hidden = !model.actor.can_manage' in js
     assert 'if (!model.actor?.can_manage) return;' in js
     assert 'byId("review-urgency").value = "3"' in js
-    assert 'byId("review-urgency").addEventListener("change", planningChanged)' in js
+    assert 'byId("review-urgency").addEventListener("change", () => { planningChanged(); updateIntakeComparison(); })' in js
     assert 'byId("review-year-wrap").hidden = !planning' in js
     assert 'byId("review-target-year").required = planning' in js
     assert 'byId("review-urgency").value === "5"' in js
@@ -1147,3 +1147,26 @@ def test_native_v1_browser_announces_disposable_sql_and_hides_unsupported_setup_
     assert 'result.push("link_setup");' in actions
     assert 'model.runtime === "production"' in actions
     assert 'X-MSB-Work-Order-Command' in actions
+
+
+def test_oct20_task_type_search_and_nondestructive_public_intake_review_contract():
+    """Manager UI must distinguish raw report from catalog identity and nonpromotion."""
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    app_js = (HERE / "app.js").read_text(encoding="utf-8")
+    actions = (HERE / "review_actions.js").read_text(encoding="utf-8")
+    repository_source = (HERE / "repository.py").read_text(encoding="utf-8")
+    backend_source = (HERE / "backend.py").read_text(encoding="utf-8")
+    sql = (HERE.parent / "Database" / "001_work_management_v1_governed_commands.sql").read_text(encoding="utf-8")
+    assert 'id="task-type-filter"' in html
+    assert 'task_type_id: $("task-type-filter").value' in app_js
+    assert 'task_type_id=task_type_id' in backend_source
+    assert "w.task_type_id=%s" in repository_source
+    assert 'id="review-intake-comparison"' in html
+    assert 'id="intake-original-type"' in html
+    assert 'id="intake-mapping-status"' in html
+    assert "uniqueCatalogMatch" in actions
+    assert 'result.push("promote", "resolve")' in actions
+    assert 'if (ticket.reporter_id) result.push("clarify")' in actions
+    assert "p_action='correction_owner' AND" in sql
+    assert "p_action IN ('clarify','resolve') AND EXISTS" in sql
+    assert "('promoted_source','resolve')" in repository_source
