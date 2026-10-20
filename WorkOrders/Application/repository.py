@@ -235,7 +235,7 @@ class WorkManagementRepository:
 
     def tickets(
         self, *, actor: dict[str, Any], scope: str, person_id: int | None,
-        show_completed: bool, search: str, sort: str = "priority",
+        show_completed: bool, search: str, task_type_id: int | None = None, sort: str = "priority",
         include_planning: bool = True, limit: int = 80,
     ) -> list[dict[str, Any]]:
         manager_scopes = ("all", "tickets", "person", "repairs", "testing",
@@ -309,6 +309,17 @@ class WorkManagementRepository:
                 "WHERE a.ticket_key=t.ticket "
                 "AND a.event_kind IN ('resolve','promoted_source'))"
             )
+        if task_type_id is not None:
+            # Filter by native Work Order catalog identity. Intake raw text
+            # is not a verified ref.task_type relationship and must not be guessed.
+            if task_type_id < 1:
+                raise WorkManagementError("Invalid Task Type.")
+            conditions.append(
+                "t.type = 'WORK_ORDER' AND EXISTS ("
+                "SELECT 1 FROM ops.work_order w "
+                "WHERE w.work_order_id=t.wo_id AND w.task_type_id=%s)"
+            )
+            params.append(task_type_id)
         if search:
             conditions.append(
                 "(t.ticket ILIKE %s OR t.title ILIKE %s "
