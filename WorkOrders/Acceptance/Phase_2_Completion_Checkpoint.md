@@ -34,7 +34,17 @@ change the cleanup runner to accommodate this environment.
 The existing rollback-only Phase 2 SQL fixture now checks Testing deadline-only
 field preservation, original-reporter clarification/reply, owner notification,
 repeat-answer rejection, Manager uncertainty visibility and Crew denials. It
-has NOT executed on current-Production clone in this workstream.
+executed on the current-Production clone but HOLD at the Testing fixture lookup:
+report `/home/msbadmin/setup-acceptance-reports/WO419_Disposable_Browser_Preview_20261020T233903.txt`.
+The restored data contained no open Testing-linked WO matching the old test.
+Setup (836 passed, 5 skipped), FieldWiring (209 passed), Work Orders (163 passed),
+clone read acceptance, migration installation and V1 SQL assertions passed before
+that failure. Teardown passed; Production fingerprint and shared HEAD unchanged.
+The corrected fixture creates its own open WO inside the existing rollback-only
+transaction, attaches an existing Testing-session identity, and asserts that
+both unrelated WO fields and the complete Testing-session row remain unchanged.
+It does not reopen a real completed WO. This correction still requires fresh SQL
+acceptance; the earlier failure is not waived.
 
 Use the original `run_work_management_disposable_browser_preview.ps1`, exact
 CI-green SHA, registered sequential 8898, `-V1Validation`, then separate

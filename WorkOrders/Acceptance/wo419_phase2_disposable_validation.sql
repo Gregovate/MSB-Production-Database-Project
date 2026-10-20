@@ -4,7 +4,8 @@ BEGIN;
 DO $test$
 DECLARE
   v_email text := current_setting('msb.wo419_v1_reviewer_email');
-  v_intake bigint; v_testing bigint; v_before jsonb; v_after jsonb;
+  v_intake bigint; v_testing bigint; v_session bigint; v_before jsonb; v_after jsonb;
+  v_session_before jsonb;
   v_actor record; v_body jsonb; v_result jsonb; v_ticket text;
   v_event text; v_recipient text; v_key text := repeat('a',64);
 BEGIN
@@ -74,11 +75,21 @@ BEGIN
     AND message_kind='outcome' AND payload->>'outcome'='Canceled — no work performed') THEN
     RAISE EXCEPTION 'Cancellation notification is missing or misleading';
   END IF;
-  -- Use actual Testing-shaped work in the restored clone; preserve every business field.
-  SELECT work_order_id INTO v_testing FROM ops.work_order
-    WHERE display_test_session_id IS NOT NULL AND is_active AND date_completed IS NULL
-    ORDER BY work_order_id LIMIT 1;
-  IF v_testing IS NULL THEN RAISE EXCEPTION 'Testing deadline fixture absent'; END IF;
+  -- Create our own open work in this rollback-only clone transaction. Production
+  -- may legitimately have no open Testing repairs; that is not a test failure.
+  -- Reuse only the foreign-key identity of an existing Testing session, preserving
+  -- its complete row as an assertion below. Never reopen a real completed WO.
+  SELECT display_test_session_id, to_jsonb(d) INTO v_session, v_session_before
+    FROM ops.display_test_session d ORDER BY display_test_session_id LIMIT 1;
+  IF v_session IS NULL THEN
+    RAISE EXCEPTION 'Testing session prerequisite absent from restored clone';
+  END IF;
+  v_result := ops.work_management_v1_command(v_email,'create',NULL,
+    v_body || '{"due_by":"2026-10-25","problem":"Disposable Testing deadline fixture"}'::jsonb,
+    gen_random_uuid());
+  v_testing := split_part(v_result->>'ticket','-',2)::bigint;
+  UPDATE ops.work_order SET display_test_session_id=v_session
+    WHERE work_order_id=v_testing;
   SELECT to_jsonb(w)-ARRAY['due_by','updated_by_person_id','updated_at','updated_by']
     INTO v_before FROM ops.work_order w WHERE work_order_id=v_testing;
   PERFORM ops.work_management_v1_command(v_email,'due_date','WO-'||v_testing,
@@ -88,6 +99,11 @@ BEGIN
   IF v_before IS DISTINCT FROM v_after OR NOT EXISTS (
     SELECT 1 FROM ops.work_order WHERE work_order_id=v_testing AND due_by=DATE '2026-10-26') THEN
     RAISE EXCEPTION 'Testing deadline update changed unrelated work fields';
+  END IF;
+  IF v_session_before IS DISTINCT FROM (
+    SELECT to_jsonb(d) FROM ops.display_test_session d WHERE display_test_session_id=v_session
+  ) THEN
+    RAISE EXCEPTION 'Testing deadline fixture changed its Testing session';
   END IF;
   IF NOT EXISTS(SELECT 1 FROM ops.work_management_mail_status(v_email,v_ticket) WHERE status='UNKNOWN') THEN
     RAISE EXCEPTION 'Manager cannot see uncertain delivery';
