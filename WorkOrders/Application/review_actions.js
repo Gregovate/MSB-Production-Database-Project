@@ -357,9 +357,12 @@
     byId("review-result").textContent = "";
     byId("review-cancel-create").hidden = kind !== "create";
     byId("review-cancel-edit").hidden = kind !== "edit";
+    byId("review-cancel-action").hidden = !kind || ["create", "edit"].includes(kind);
     // A selected Edit is a separate workspace, not another browsing column.
+    // Browse is two-column; any open work form uses the full workspace.
+    // Assignments remain in the same layout to avoid special-case navigation.
     document.dispatchEvent(new CustomEvent("wo419:edit-mode", {
-      detail: {editing: kind === "edit"}
+      detail: {editing: Boolean(kind && !form.hidden)}
     }));
     const submit = byId("review-submit");
     const submitNames = {
@@ -605,6 +608,15 @@
   byId("review-action").addEventListener("change", actionChanged);
   byId("create-work-order").addEventListener("click", openCreate);
   byId("manager-assign-button").addEventListener("click", openManagerAssignment);
+  // All remaining work forms share one explicit Cancel/Back action.
+  byId("review-cancel-action").addEventListener("click", () => {
+    if (!byId("review-action").value || ["create", "edit"].includes(byId("review-action").value)) return;
+    if (!window.confirm("Discard this unsaved action and return to browsing?")) return;
+    model.pendingSignature = null;
+    model.pendingKey = null;
+    byId("review-action").value = "";
+    drawActions();
+  });
   byId("review-cancel-edit").addEventListener("click", () => {
     if (byId("review-action").value !== "edit") return;
     const dirty = byId("review-edit-reason").value.trim() ||
@@ -638,10 +650,9 @@
     try {
       const saved = await saveAction();
       if (saved) {
-        if (kind === "edit") {
-          byId("review-action").value = "";
-          drawActions();
-        }
+        // Keep the selected Work Order, but leave focused action mode on success.
+        byId("review-action").value = "";
+        drawActions();
         box.textContent = (isLive() ? "SAVED to Work Orders: " :
           "SAVED on disposable clone: ") + saved.ticket +
           (saved.linked_setup_session_task_id
