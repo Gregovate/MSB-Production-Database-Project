@@ -210,6 +210,25 @@ class WorkManagementRepository:
                 "stages": stages, "work_areas": areas,
                 "setup_seasons": seasons}
 
+    def enrich_work_order(self, cur: Any, rows: list[dict[str, Any]]) -> None:
+        """Show auditable cancellation separately from completed physical repair."""
+        keys = [r["ticket"] for r in rows if r["type"] == "WORK_ORDER"]
+        if not keys:
+            return
+        cur.execute(
+            "SELECT DISTINCT ON (ticket_key) ticket_key,event_kind,note,created_at "
+            "FROM " + self.activity_table + " "
+            "WHERE ticket_key=ANY(%s) AND event_kind='cancel' "
+            "ORDER BY ticket_key,activity_id DESC", (keys,)
+        )
+        canceled = {r["ticket_key"]: dict(r) for r in cur.fetchall()}
+        for row in rows:
+            finding = canceled.get(row["ticket"])
+            if finding:
+                row["state"] = "CANCELLED_NO_ACTION"
+                row["state_from"] = "WORK_MANAGEMENT_ACTIVITY"
+                row["cancel_reason"] = finding["note"]
+
     def enrich_feedback(self, cur: Any, rows: list[dict[str, Any]]) -> None:
         """Overlay clone-only correction decisions without rewriting Intake truth."""
         intake = [r["ticket"] for r in rows if r["type"] in ("TASK_FEEDBACK", "INTAKE_REQUEST")]
@@ -359,6 +378,7 @@ class WorkManagementRepository:
             cur.execute(query, params)
             rows = [dict(row) for row in cur.fetchall()]
             self.enrich_feedback(cur, rows)
+            self.enrich_work_order(cur, rows)
             return rows
 
     def aging_report(self, *, actor: dict[str, Any],
@@ -442,6 +462,8 @@ class WorkManagementRepository:
             row = dict(row)
             if row["type"] in ("TASK_FEEDBACK", "INTAKE_REQUEST"):
                 self.enrich_feedback(cur, [row])
+            if row["type"] == "WORK_ORDER":
+                self.enrich_work_order(cur, [row])
             if row["type"] != "WORK_ORDER" and not (
                 actor["can_manage"] or row["reporter_id"] == actor["person_id"]
             ):
@@ -454,7 +476,8 @@ class WorkManagementRepository:
             if row["type"] == "WORK_ORDER":
                 cur.execute(
                     """
-                    SELECT w.stage_id, w.work_area_id, w.notes,
+                    SELECT w.stage_id, w.work_area_id, w.task_type_id, w.urgency_id,
+                           w.target_year, w.is_active, w.notes,
                            w.problem, w.source_form_name, w.completion_notes,
                            w.display_test_session_id
                     FROM ops.work_order w WHERE w.work_order_id = %s
