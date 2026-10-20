@@ -1203,3 +1203,40 @@ def test_task_type_filter_reads_catalog_and_rejects_invalid_identifiers(client, 
     assert "Manager view requires Manager permission" in (
         HERE / "repository.py"
     ).read_text(encoding="utf-8")
+
+
+def test_oct20_second_review_edit_cancel_and_manager_buttons_contract():
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    js = (HERE / "review_actions.js").read_text(encoding="utf-8")
+    app = (HERE / "app.js").read_text(encoding="utf-8")
+    db = (HERE.parent / "Database" / "001_work_management_v1_governed_commands.sql").read_text(encoding="utf-8")
+    commands = (HERE / "commands.py").read_text(encoding="utf-8")
+    assert 'id="review-cancel-create"' in html
+    assert 'id="review-edit-reason"' in html
+    assert 'id="review-cancel-reason"' in html
+    assert 'value="intake" data-manager-only' not in html
+    assert 'value="feedback" data-manager-only' not in html
+    assert 'id="go-intake"' in html and 'id="go-feedback"' in html
+    assert 'result.push("assign", "edit", "cancel")' in js
+    assert 'review-edit-reason' in js and 'review-cancel-reason' in js
+    assert 'wo419:cancel-create' in js and 'wo419:cancel-create' in app
+    assert 'CANCELLED_NO_ACTION' in app and 'CANCELLED_NO_ACTION' in db
+    assert 'p_action=\'edit\'' in db and 'p_action=\'cancel\'' in db
+    assert 'action in ("edit", "cancel")' in commands
+    assert 'updated_by_person_id=v_actor.person_id' in db
+    assert 'physical_work_completed' in db
+    assert 'v_wo.display_test_session_id IS NOT NULL' in db
+
+
+def test_oct20_rejected_work_order_requires_manager_before_clone_write():
+    import commands
+    from uuid import uuid4
+    writer = commands.CloneCommands.__new__(commands.CloneCommands)
+    writer.transaction = lambda _actor: (_ for _ in ()).throw(
+        AssertionError("Crew cannot enter a mutation transaction")
+    )
+    crew = {"person_id": 202, "can_manage": False, "can_read": True}
+    for action in ("edit", "cancel"):
+        with pytest.raises(repository.WorkManagementError) as denial:
+            writer.perform(crew, action, "WO-47", {"request_key": str(uuid4())})
+        assert denial.value.status == 403
