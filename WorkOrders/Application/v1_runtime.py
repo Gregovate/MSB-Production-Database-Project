@@ -161,7 +161,7 @@ class V1Commands:
             raise WorkManagementError("Work Order command body must be an object.")
         if action not in {
             "create", "promote", "assign", "progress", "complete",
-            "correction_owner", "clarify", "reply", "resolve",
+            "correction_owner", "clarify", "reply", "resolve", "edit", "cancel",
         }:
             raise WorkManagementError(
                 "This Work Orders V1 operation is not yet approved for release.", 409
