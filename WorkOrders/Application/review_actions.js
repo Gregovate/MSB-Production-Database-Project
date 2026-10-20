@@ -62,7 +62,7 @@
     } else if (ticket.type === "INTAKE_REQUEST") {
       if (actor.can_manage) {
         result.push("promote", "resolve");
-        if (ticket.reporter_id) result.push("clarify");
+        result.push("clarify");
       }
       if (Number(ticket.reporter_id) === Number(actor.person_id))
         result.push("reply");
@@ -415,8 +415,8 @@
       throw new Error("Respond with a substantive detail (at least 10 characters).");
     if (kind === "clarify" && note.length < 10)
       throw new Error("Ask a specific clarification question (at least 10 characters).");
-    if (kind === "clarify" && !model.ticket?.reporter_id)
-      throw new Error("Original reporter identity is not verified; no notification may be targeted.");
+    // The Manager may record a question when contact cannot be verified,
+    // but it remains flagged for manual contact; no message is claimed sent.
     if (kind === "resolve" && (!byId("review-disposition").value || note.length < 10))
       throw new Error("Choose a disposition and provide a substantive explanation.");
     const names = (model.options?.people || [])
@@ -424,6 +424,8 @@
       .map((person) => person.display_name);
     const label = actions[kind];
     return label + " · " + source +
+      (kind === "clarify" && !model.ticket?.reporter_id
+        ? " · Reporter is not linked: contact will be flagged, NOT sent." : "") +
       (names.length && ["create","assign","promote","correction_owner"].includes(kind)
         ? " · " + names.join(", ") : "") +
       ".";
