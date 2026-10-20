@@ -2,6 +2,22 @@
 
 **Status: V0.3 source-only candidate; new disposable-write validation and browser review still pending. V0.2 operator review was CHANGES REQUIRED.** Work Management is the existing MSB Database Work Orders subsystem.
 
+## October 20, 00:44 server report — V1 SQL validation BLOCKED by outdated preliminary CloneCommands fixture
+
+**Operator evidence:** Laptop invoked the existing `run_work_management_disposable_browser_preview.ps1 -V1Validation` candidate `c0c1f5518accad0638ec2ca4a84429a3bb480538`. Original server report: `/home/msbadmin/setup-acceptance-reports/WO419_Disposable_Browser_Preview_20261020T004438.txt`.
+
+**Verified first gate:** Current Production data restored privately to `msb_wo419_preview`, network address `172.18.0.5`. Existing unified read projection passed, including `INTAKE-40`, `INTAKE-57`, `INTAKE-60`, `WO-372` and `WO-418`. Manager My Work=20, All sampled rows=100, 12 assignee choices, full aging=58 open including one inactive exception; validated catalog authority. This is **read/preflight** acceptance, not the new V1 migration.
+
+**Failure:** `WORK MANAGEMENT #419 DISPOSABLE READ ACCEPTANCE HOLD at clone_write_transaction_rollback: Target year applies only to Planning (urgency 5).` Source `WorkOrders/Acceptance/validate_work_management_clone.py` still provided `urgency=3` **and** `target_year=2026` in a legacy preflight fixture, which contradicted Tom's accepted October 19 *non-Planning target year absent* rule. Its Crew branch also still attempted Crew native Create, contrary to the new Intake-first authorization. The runner correctly stopped before `validate_v1` SQL migration. Do not misreport that V1 SQL failed or passed—**it was not reached**.
+
+**Observed cleanup PASS:** `PASS: verified Work Orders listener stopped; disposable teardown permitted`; `PASS: owned disposable clone removed`; `PASS: disposable candidate worktree unregistered`; `PASS: Production Work Order/Intake fingerprint unchanged`; `PASS: shared checkout HEAD unchanged`; `PASS: preview port no longer listening`. Runner exit `HOLD (status 1)` reflects failed validation. No manual cleanup/retry of abandoned state is required.
+
+**Correction in existing PR #420:** Preflight uses `urgency=3,target_year=None` and replaces obsolete Crew-direct-create positive rehearsal with a transaction-denied 403 assertion, using the same existing Intake path. Added guard tests to detect reintroduced non-Planning years and Crew direct Create before a real clone test. Also corrected the proposed V1 grant contract: `work_management_app` needs **SELECT only** on `ops.work_management_activity` so the existing Manager Intake and Task Feedback read projection can resolve durable V1 activity; no new outbox SELECT, native Work Order DML, or notification sends. This was identified by source inspection and **has not been applied to a clone or Production yet**.
+
+**Next gate:** Run exact new candidate SHA once with the same original `-V1Validation` path. Require a `WO419 V1 DISPOSABLE SQL VALIDATION PASS` **and** full server/laptop CLEAN EXIT before claiming V1 PostgreSQL acceptance; if HOLD again preserve the new report and inspect phase first. Never claim browser/Production acceptance based on source CI.
+
+---
+
 ## October 19 — V1 native PostgreSQL disposable validation, no browser (new acceptance mode)
 
 **Purpose:** Before asking for another Work Management browser review or any Production V1 release, run the proposed `WorkOrders/Database/001_work_management_v1_governed_commands.sql` against the **existing current-Production private disposable database clone**, *not* Production. The existing #419 runner and its established **8898 sequential review profile** now have one optional `validate_v1` start mode, selected by the laptop's existing `run_work_management_disposable_browser_preview.ps1 -V1Validation` flag. It does not start a Flask browser/listener, alter `/opt/fieldwiring`, deploy a service, or use a new SSH workflow/port.
