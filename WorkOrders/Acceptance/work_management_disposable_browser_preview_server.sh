@@ -27,8 +27,9 @@ fi
 if [[ "$CANDIDATE_REF" != "issue-419-unified-ticket-read-model-20261018" ]]; then
   echo "HOLD: #419 source branch changed; review target ancestry first"; exit 2
 fi
-if [[ "$MODE" != "start" && "$MODE" != "resume" && "$MODE" != "validate_v1" ]]; then
-  echo "HOLD: approved mode must be start, resume, or validate_v1"; exit 2
+if [[ "$MODE" != "start" && "$MODE" != "resume" && "$MODE" != "validate_v1" &&
+      "$MODE" != "start_v1_manager" && "$MODE" != "start_v1_crew" ]]; then
+  echo "HOLD: approved mode must be start, resume, validate_v1, or V1 role review"; exit 2
 fi
 STATE_FILE="/tmp/msb-wo419-preview-state-${PREVIEW_PORT}.env"
 PRESERVE_FOR_RECONNECT=0
@@ -45,6 +46,7 @@ CLONE_CONTAINER="msb-wo419-preview-$$"
 CLONE_DATABASE="msb_wo419_preview"
 CLONE_DB_PASSWORD="$(openssl rand -hex 22)"
 APP_PASSWORD="$(openssl rand -hex 22)"
+V1_APP_PASSWORD="$(openssl rand -hex 22)"
 CLONE_WRITE_TOKEN="$(openssl rand -hex 24)"
 PREVIEW_CSRF_TOKEN="$(openssl rand -hex 24)"
 WORKTREE="/tmp/msb-wo419-preview-candidate-$STAMP-$$"
@@ -539,10 +541,55 @@ if [[ "$MODE" == "validate_v1" ]]; then
   exit 0
 fi
 
+# The real V1 browser uses ONLY the native V1 SQL commands; it never
+# substitutes the earlier permissive CloneCommands for this acceptance.
+# Both distinct roles are tested in separate original-runner sessions.
+if [[ "$MODE" == "start_v1_manager" || "$MODE" == "start_v1_crew" ]]; then
+  echo "--- Work Orders V1 native SQL browser acceptance: exact private clone ---"
+  psql_clone -c "CREATE ROLE work_management_app LOGIN PASSWORD '$V1_APP_PASSWORD';"
+  {
+    printf '%s\\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
+    cat "$WORKTREE/WorkOrders/Database/001_work_management_v1_governed_commands.sql"
+  } | psql_clone
+  echo "PASS: V1 native SQL installed inside private restored clone only"
+  # Inside CLONE only: a Manager review temporarily approves exactly the
+  # validated pinned reviewer identity. Crew gets NO Manager grant.
+  if [[ "$MODE" == "start_v1_manager" ]]; then
+    granted="$(
+      psql_clone -qAt -c "
+      INSERT INTO ops.work_management_permission
+        (person_id,can_manage,approved_by_person_id)
+      SELECT p.person_id,true,p.person_id FROM ref.person p
+      JOIN public.directus_users u ON u.id=p.directus_user_id
+      WHERE lower(p.email)='$PREVIEW_EMAIL'
+        AND p.active_flag AND u.status='active'
+        AND lower(u.email)='$PREVIEW_EMAIL'
+      RETURNING person_id;
+      "
+    )"
+    [[ "$granted" =~ ^[0-9]+$ ]] || {
+      echo "HOLD: V1 private Manager review Person grant was not unique"
+      exit 15
+    }
+    echo "PASS: exact reviewer temporarily receives V1 Manager permission in clone"
+  else
+    echo "PASS: V1 Crew review retains no Manager permissions in clone"
+  fi
+  V1_DSN="host=$HOST_IP port=5432 dbname=$CLONE_DATABASE user=work_management_app password=$V1_APP_PASSWORD"
+  APP_RUNTIME="v1_disposable"
+  echo "PASS: disposable V1 browser uses dedicated role and native commands"
+else
+  V1_DSN=""
+  APP_RUNTIME="disposable"
+fi
+
 echo "--- Start pinned Work Management reviewer (no client-supplied identity) ---"
 LAUNCH_PID="$(
   sudo -u fieldwiring -H env WORK_MGMT_PREVIEW_MODE=disposable \
+    WORK_MGMT_RUNTIME_MODE="$APP_RUNTIME" \
     WORK_MGMT_DATABASE_DSN="$DSN" WORK_MGMT_CLONE_IP="$HOST_IP" \
+    WORK_MGMT_V1_CLONE_DSN="$V1_DSN" WORK_MGMT_V1_CLONE_IP="$HOST_IP" \
+    WORK_MGMT_V1_CLONE_WRITE_GATE="approved_private_clone" \
     WORK_MGMT_CLONE_WRITE_TOKEN="$CLONE_WRITE_TOKEN" WORK_MGMT_PREVIEW_CSRF_TOKEN="$PREVIEW_CSRF_TOKEN" \
     WORK_MGMT_PREVIEW_EMAIL="$PREVIEW_EMAIL" \
     WORK_MGMT_PREVIEW_PORT="$PREVIEW_PORT" PYTHONDONTWRITEBYTECODE=1 \
@@ -593,7 +640,12 @@ COMMAND_NEGATIVE_STATUS="$(curl -s -o /dev/null -w '%{http_code}' -X POST   -H '
 echo
 write_resume_state
 echo "Reconnect state: $STATE_FILE"
-echo "WO419 BROWSER REVIEW READY"
+if [[ "$APP_RUNTIME" == "v1_disposable" ]]; then
+  echo "WO419 V1 NATIVE BROWSER REVIEW READY"
+  echo "Native SQL commands, dedicated clone role, held notifications; NO Production changes."
+else
+  echo "WO419 BROWSER REVIEW READY"
+fi
 echo "Open via the protected SSH tunnel: http://127.0.0.1:$PREVIEW_PORT/"
 echo "Candidate SHA: $CANDIDATE_SHA"
 echo "Reviewer: $PREVIEW_EMAIL"
