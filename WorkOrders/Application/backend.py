@@ -231,6 +231,10 @@ def tickets() -> Response:
     search = request.args.get("q", "").strip()
     if len(search) > 120:
         raise WorkManagementError("Search is too long.")
+    raw_type = request.args.get("task_type_id", "").strip()
+    if raw_type and (not raw_type.isdecimal() or int(raw_type) < 1):
+        raise WorkManagementError("Invalid Task Type.")
+    task_type_id = int(raw_type) if raw_type else None
     raw_id = request.args.get("person_id", "").strip()
     if raw_id and (not raw_id.isdecimal() or int(raw_id) < 1):
         raise WorkManagementError("Invalid selected Person.")
@@ -240,7 +244,7 @@ def tickets() -> Response:
     include_planning = request.args.get("include_planning", "1") == "1"
     rows = store().tickets(
         actor=who, scope=scope, person_id=person_id,
-        show_completed=show_completed, search=search, sort=sort,
+        show_completed=show_completed, search=search, task_type_id=task_type_id, sort=sort,
         include_planning=include_planning,
     )
     for row in rows:
