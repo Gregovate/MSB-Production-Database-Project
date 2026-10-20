@@ -7,11 +7,14 @@ param(
     [Parameter(Mandatory=$true)][int]$PreviewPort,
     [Parameter(Mandatory=$true)][string]$PreviewEmail,
     [switch]$ApprovedReviewProfile,
-    [switch]$V1Validation
+    [switch]$V1Validation,
+    [switch]$V1Browser,
+    [ValidateSet('Manager','Crew')][string]$V1ReviewerRole = 'Manager'
 )
 $ErrorActionPreference = 'Stop'
 $Ref = 'issue-419-unified-ticket-read-model-20261018'
 if (-not $ApprovedReviewProfile) { throw 'HOLD: #419 Server Management review profile not approved.' }
+if ($V1Validation -and $V1Browser) { throw 'HOLD: choose V1 SQL validation OR native V1 browser review, not both.' }
 if ($CandidateSha -cnotmatch '^[a-f0-9]{40}$') { throw 'HOLD: exact 40-hex SHA required.' }
 if ($PreviewPort -ne 8898) { throw 'HOLD: only proposed sequential 8898 is known.' }
 if ($PreviewEmail -notmatch '^[A-Za-z0-9._%+\-]+@sheboyganlights\.org$') { throw 'HOLD: existing MSB reviewer email required.' }
@@ -62,6 +65,11 @@ try {
         'timeout --foreground --signal=TERM 28800s bash "{0}" "{1}" "{2}" "{3}" "{4}" validate_v1; ' +
         'rc=$?; if [ "$rc" -eq 0 ]; then rm -f "{0}"; fi; exit "$rc"'
     ) -f $Remote, $CandidateSha, $PreviewPort, $PreviewEmail, $Ref)
+    $V1RoleMode = if ($V1ReviewerRole -eq 'Crew') { 'start_v1_crew' } else { 'start_v1_manager' }
+    $V1BrowserCommand = $RemotePrefix + ((
+        'timeout --foreground --signal=TERM 28800s bash "{0}" "{1}" "{2}" "{3}" "{4}" {5}; ' +
+        'rc=$?; if [ "$rc" -eq 0 ]; then rm -f "{0}"; fi; exit "$rc"'
+    ) -f $Remote, $CandidateSha, $PreviewPort, $PreviewEmail, $Ref, $V1RoleMode)
     $ResumeCommand = $RemotePrefix + ((
         'timeout --foreground --signal=TERM 28800s bash "{0}" "{1}" "{2}" "{3}" "{4}" resume; ' +
         'rc=$?; if [ "$rc" -eq 0 ]; then rm -f "{0}"; fi; exit "$rc"'
@@ -71,12 +79,14 @@ try {
     $reconnectAttempts = 0
     $maxReconnectAttempts = 12
     while ($true) {
-        $RemoteCommand = if ($V1Validation) { $ValidationCommand } elseif ($mode -eq 'start') { $StartCommand } else { $ResumeCommand }
+        $RemoteCommand = if ($V1Validation) { $ValidationCommand } elseif ($mode -eq 'resume') { $ResumeCommand } elseif ($V1Browser) { $V1BrowserCommand } else { $StartCommand }
         & ssh -tt -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -L $Tunnel $Server $RemoteCommand
         $remoteExit = $LASTEXITCODE
         if ($remoteExit -eq 0) {
             if ($V1Validation) {
                 Write-Host 'WO419 V1 disposable SQL validation: CLEAN EXIT' -ForegroundColor Green
+            } elseif ($V1Browser) {
+                Write-Host 'WO419 V1 native browser tunnel: CLEAN EXIT' -ForegroundColor Green
             } else {
                 Write-Host 'WO419 workstation browser tunnel: CLEAN EXIT'
             }
