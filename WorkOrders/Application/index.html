@@ -50,19 +50,27 @@
       <div class="field">
         <label for="scope">Show work for</label>
         <select id="scope">
-          <option value="mine">My Work</option>
-          <option value="my-created">Work Orders I Created</option>
-          <option value="all" data-manager-only>All Work Orders</option>
-          <option value="tickets" data-manager-only>All Tickets · Search</option>
-          <option value="aging" data-manager-only>Manager · Open Work Order Aging Report</option>
-          <option value="my-feedback">My Submitted Feedback</option>
-          <option value="person" data-manager-only>Another volunteer</option>
-          <option value="critical" data-manager-only>Manager · Immediate / Critical</option>
-          <option value="unassigned" data-manager-only>Manager · Unassigned Work Orders</option>
-          <option value="repairs" data-manager-only>Manager · Park / routine repairs</option>
-          <option value="testing" data-manager-only>Manager · Testing repairs</option>
-          <option value="intake" data-manager-only>Manager · Public Intake triage</option>
-          <option value="feedback" data-manager-only>Manager · Task Feedback review</option>
+          <optgroup label="My Work">
+            <option value="mine">My Assigned Work Orders</option>
+            <option value="my-created">Work Orders I Created</option>
+            <option value="my-feedback">My Submitted Feedback</option>
+          </optgroup>
+          <optgroup label="Find Work">
+            <option value="all" data-manager-only>All Work Orders</option>
+            <option value="tickets" data-manager-only>Search All Work Orders and Feedback</option>
+          </optgroup>
+          <optgroup label="Manager · Work Order Queues" data-manager-only>
+            <option value="critical" data-manager-only>Immediate / Critical</option>
+            <option value="repairs" data-manager-only>Park / Routine Repairs</option>
+            <option value="testing" data-manager-only>Testing Repairs</option>
+            <option value="unassigned" data-manager-only>Unassigned Work Orders</option>
+            <option value="aging" data-manager-only>Open Work Order Aging Report</option>
+            <option value="person" data-manager-only>Another Volunteer's Work</option>
+          </optgroup>
+          <optgroup label="Manager · Request Review" data-manager-only>
+            <option value="intake" data-manager-only>Public Work Order Requests</option>
+            <option value="feedback" data-manager-only>Task Feedback Review</option>
+          </optgroup>
         </select>
       </div>
       <div class="field" id="person-field" hidden>
@@ -79,12 +87,11 @@
         <select id="ticket-sort">
           <option value="priority">Priority · Most urgent first (1 → 5)</option>
           <option value="priority_desc">Priority · Least urgent first (5 → 1)</option>
-          <option value="number_desc">Ticket number · Highest first</option>
-          <option value="number_asc">Ticket number · Lowest first</option>
+          <option value="number_desc">Work Order / Intake number · Highest first</option>
+          <option value="number_asc">Work Order / Intake number · Lowest first</option>
           <option value="created_asc">Created date · Oldest first</option>
           <option value="created_desc">Created date · Newest first</option>
         </select>
-        <span class="sort-hint">Priority 1 = Critical; 5 = Planning</span>
       </div>
       </div>
       <div class="control-actions">
@@ -98,7 +105,7 @@
       </label>
       <button id="refresh" type="button" class="quiet-button">Refresh</button>
       <button id="create-work-order" type="button" class="primary-button" aria-controls="review-action-form" aria-expanded="false" hidden>+ Create Work Order</button>
-      <a class="public-request-link" href="https://forms.gle/Gve4ZbXHDWxs43yh6" target="_blank" rel="noopener noreferrer" title="Submit to the existing Park/Workshop Work Order Intake form; Manager review required">Submit Work Order Request ↗</a>
+      <a class="public-request-link quiet-button" href="https://forms.gle/Gve4ZbXHDWxs43yh6" target="_blank" rel="noopener noreferrer" title="Submit to the existing Park/Workshop Work Order Intake form; Manager review required">Submit Work Order Request ↗</a>
       </div>
     </section>
 
