@@ -851,3 +851,60 @@ uninstalled worktree and isolated runtime dependency installation before service
 startup. Preserve shared /opt/fieldwiring and completed SQL/credentials/maintenance
 inventory. No database apply retry or shared-environment pip upgrade is authorized
 by this source change.
+
+## October 20 — operator objection, access dependency and removal criteria
+
+Greg explicitly objects to requiring Cloudflare authentication for local access
+and requested that this dependency and a way to remove it be preserved in
+engineering documentation and the implementing PR. Its operational impact was
+not explained clearly before installation. Deployment is not blanket acceptance
+of permanent Cloudflare dependence for LAN application use.
+
+Why it was added: the normal public my.sheboyganlights.org path challenged an
+unauthenticated request (302), but a direct-LAN request to Synology using that same
+Host and a supplied email returned People access data (200). The hostname alone
+does not prove a request traversed Cloudflare. This was a read-only observation,
+not evidence of an Internet write exploit. Work Management now verifies the
+existing signed Cloudflare identity, then checks the current Directus user/roles.
+Directus remains the only user/role/policy authority.
+
+Scope and availability: SSH, sudo, DSM, nginx route administration and existing
+Directus administration do not require this new application JWT check and were
+not changed. Work Management application requests do require a valid Cloudflare
+JWT, including requests arriving over the LAN. A Directus browser login alone
+does not satisfy the current Work Management entry point. New authentication and
+uncached signing-key retrieval depend on Cloudflare/connectivity. Cached keys and
+an unexpired JWT can avoid some network requests; offline availability is not
+guaranteed. No 24-hour session setting was changed by this deployment.
+
+Reconsider/remove this dependency if it obstructs required LAN operation, causes
+unacceptable login interruptions, or fails during Cloudflare/network outages.
+This is a revisitable design decision, not an immutable business requirement.
+The correction belongs under #419/#81 and must preserve Directus as sole user/role
+authority and intentional LAN administration. Candidate replacements include a
+verified Directus-authenticated LAN path, or a separately proven trusted ingress
+that authenticates identity before the backend. Neither replacement exists yet.
+
+Change map: application PR #433 added WorkOrders/Application/access_identity.py,
+its invocation in production_entry.py and requirements-auth.txt. Infrastructure
+PR #85 added WORK_MGMT_ACCESS_ISSUER / WORK_MGMT_ACCESS_AUDIENCE and the isolated
+/opt/msb-work-management-runtime; Synology forwards Cf-Access-Jwt-Assertion.
+Removing only the environment values fails startup; deleting only the JWT check
+would restore reliance on a caller-supplied email. Do not use either as a recovery
+shortcut. Prepare a versioned, tested replacement and source-only deployment;
+retain current source/environment/unit/route backups and verify Manager, Crew,
+revoked/inactive users, forged identities and intended LAN/public paths.
+No database rollback, role duplication or automatic Flow change is required.
+
+Current installed evidence: V1.0.3-signed-access at
+ac46c560da412610f90eba3611c259a10c01b267; 136 server source tests PASS.
+Backend report /home/msbadmin/work-management-deployment-reports/WO81-service-20261020T203658Z;
+transport receipt WO81-service-6902259f08374d528bfcdfdeefa6d1a7.txt.
+UFW permits 8797/tcp from 192.168.5.4 only. Synology /workorder/ is installed;
+direct email-only request returns 401. Procedures, Setup and People health each
+returned 200. Nginx rollback backup:
+/root/msb-nginx-backups/user.conf.pre-workorder-20261020-154211.
+Browser screenshot shows V1.0.3 and 21 assigned Work Orders. This is evidence of
+page/data loading, not completed Manager/Crew write or email acceptance.
+Apps cutover, complete role smoke and existing Manager Intake email verification
+remain outstanding. Preserve current Directus Flows; Phase 2 mail remains off.
