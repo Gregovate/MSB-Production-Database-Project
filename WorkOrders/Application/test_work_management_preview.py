@@ -1242,3 +1242,14 @@ def test_oct20_rejected_work_order_requires_manager_before_clone_write():
         with pytest.raises(repository.WorkManagementError) as denial:
             writer.perform(crew, action, "WO-47", {"request_key": str(uuid4())})
         assert denial.value.status == 403
+
+
+def test_oct20_edit_does_not_enter_create_insert_branch():
+    sql = (HERE.parent / "Database" /
+           "001_work_management_v1_governed_commands.sql").read_text(encoding="utf-8")
+    assert "IF p_action IN ('create','promote','edit')" not in sql
+    assert "IF p_action IN ('create','promote') THEN" in sql
+    assert "ELSIF p_action='edit' THEN" in sql
+    assert sql.count("v_problem := btrim(coalesce(p_body->>'problem',''));") == 2
+    assert sql.index("ELSIF p_action='edit' THEN") > sql.index("INSERT INTO ops.work_order(")
+    assert "WHERE work_order_id=v_wo_id AND is_active AND date_completed IS NULL" in sql
