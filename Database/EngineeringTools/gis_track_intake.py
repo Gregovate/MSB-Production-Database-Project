@@ -258,12 +258,13 @@ def find_garmin_gpx_dirs():
 
 def open_intake(parent):
     win = tk.Toplevel(parent)
-    win.title("MSB GIS Manager — Garmin Track Intake #428")
+    build_title = parent.title()
+    win.title(f"{build_title} — Garmin Track Intake #428")
     win.geometry("1400x900")
     if win.tk.call("tk", "windowingsystem")=="win32":win.state("zoomed")
     base = ttk.Frame(win, padding=12)
     base.pack(fill="both", expand=True)
-    ttk.Label(base, text="Garmin Track Intake", font=("Segoe UI",16,"bold")).pack(anchor="w")
+    ttk.Label(base, text=f"Garmin Track Intake — {build_title.removeprefix('MSB GIS Manager — ')}", font=("Segoe UI",16,"bold")).pack(anchor="w")
     ttk.Label(base, text="Read track → identify on aerial → suggest name/type → correct → Save & Next. Originals stay unchanged.").pack(anchor="w")
     found_devices = find_garmin_gpx_dirs()
     gis_root = PARK.parent
