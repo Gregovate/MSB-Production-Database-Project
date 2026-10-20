@@ -163,6 +163,7 @@
   }
 
   function statusLabel(row) {
+    if (row.state === "CANCELLED_NO_ACTION") return "Cancelled / No Action (not completed)";
     if (row.done_at) return "Completed (date recorded)";
     if (row.type === "TASK_FEEDBACK" || row.type === "INTAKE_REQUEST") {
       const dispositions = {
