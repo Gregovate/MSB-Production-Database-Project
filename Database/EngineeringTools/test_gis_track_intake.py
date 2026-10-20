@@ -171,6 +171,7 @@ class IntakeTests(unittest.TestCase):
                  patch('gis_track_intake.aerial_image',side_effect=fake_map) as map_fetch, \
                  patch('gis_track_intake.messagebox.showerror',side_effect=lambda *a,**k:errors.append(a)):
                 win=open_intake(root); root.update()
+                self.assertEqual(next(w for w in walk(win) if isinstance(w,tk.Listbox)).cget("selectmode"),"extended")
                 entries=[w for w in walk(win) if type(w) is ttk.Entry]
                 for entry,value in zip(entries,[str(raw),str(master),str(intake)]):
                     entry.delete(0,'end'); entry.insert(0,value)
@@ -240,10 +241,13 @@ class IntakeTests(unittest.TestCase):
                 self.assertFalse(errors)
                 self.assertTrue(next(w for w in walk(win) if isinstance(w,tk.Listbox)).curselection())
                 buttons['Match and name from master'].invoke();root.update()
-                review=next(w for w in walk(win) if isinstance(w,tk.Toplevel) and w is not win)
+                review=next(w for w in walk(win) if w.winfo_name()=="run_review")
                 self.assertFalse(any(isinstance(w,ttk.Treeview) for w in walk(review)))
-                combo=next(w for w in walk(review) if isinstance(w,ttk.Combobox))
-                combo.current(0);combo.event_generate('<<ComboboxSelected>>');root.update()
+                self.assertFalse(isinstance(review,tk.Toplevel))
+                metadata=next(w for w in walk(review) if isinstance(w,tk.Text) and str(w.cget("state"))=="disabled")
+                self.assertIn("Master track #",metadata.get("1.0","end"))
+                combo=next(w for w in walk(review) if isinstance(w,tk.Listbox))
+                combo.selection_set(0);combo.event_generate('<<ListboxSelect>>');root.update()
                 deadline=time.monotonic()+3
                 while time.monotonic()<deadline:
                     root.update();time.sleep(.02)

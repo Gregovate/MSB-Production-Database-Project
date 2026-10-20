@@ -259,7 +259,8 @@ def find_garmin_gpx_dirs():
 def open_intake(parent):
     win = tk.Toplevel(parent)
     win.title("MSB GIS Manager — Garmin Track Intake #428")
-    win.geometry("1040x700")
+    win.geometry("1400x900")
+    if win.tk.call("tk", "windowingsystem")=="win32":win.state("zoomed")
     base = ttk.Frame(win, padding=12)
     base.pack(fill="both", expand=True)
     ttk.Label(base, text="Garmin Track Intake", font=("Segoe UI",16,"bold")).pack(anchor="w")
@@ -271,8 +272,9 @@ def open_intake(parent):
     intake = tk.StringVar(value=str(gis_root / "Field-Recordings"))
     fields = [("Garmin GPX folder", src, True), ("Current master GPX", master, False),
               ("Existing Field-Recordings folder", intake, True)]
+    path_rows=[]
     for label, variable, isdir in fields:
-        row = ttk.Frame(base); row.pack(fill="x", pady=3)
+        row = ttk.Frame(base); row.pack(fill="x", pady=3);path_rows.append(row)
         ttk.Label(row, text=label, width=29).pack(side="left")
         ttk.Entry(row, textvariable=variable).pack(side="left", fill="x", expand=True)
         def browse(v=variable, d=isdir):
@@ -281,7 +283,7 @@ def open_intake(parent):
             if value: v.set(value)
         ttk.Button(row, text="Browse", command=browse).pack(side="left")
     row = ttk.Frame(base); row.pack(fill="both", expand=True)
-    queue = tk.Listbox(row, width=34, exportselection=False); queue.pack(side="left",fill="y")
+    queue = tk.Listbox(row, width=34, exportselection=False, selectmode="extended"); queue.pack(side="left",fill="y")
     panel = ttk.Frame(row, padding=8); panel.pack(side="left",fill="both",expand=True)
     ttk.Label(panel, text="Selected track and waypoint suggestions").pack(anchor="w")
     map_controls = ttk.Frame(panel); map_controls.pack(fill="x")
@@ -291,15 +293,18 @@ def open_intake(parent):
     aerial_status = tk.StringVar(value="2019 aerial loads when you select a track.")
     ttk.Label(panel, textvariable=aerial_status, wraplength=620).pack(side="bottom",anchor="w",before=drawing)
     start, end, name, kind = tk.StringVar(),tk.StringVar(),tk.StringVar(),tk.StringVar(value="Unknown")
+    identification_rows=[]
     for label,var in [("Start waypoint",start),("End waypoint",end),("Working name",name)]:
-        r=ttk.Frame(editor);r.pack(fill="x",pady=3)
+        r=ttk.Frame(editor);r.pack(fill="x",pady=3);identification_rows.append(r)
         ttk.Label(r,text=label,width=19).pack(side="left")
         ttk.Entry(r,textvariable=var).pack(side="left",fill="x",expand=True)
     r=ttk.Frame(editor);r.pack(fill="x",pady=3)
+    identification_rows.append(r)
     ttk.Label(r,text="Temporary type",width=19).pack(side="left")
     type_choice=ttk.Combobox(r,textvariable=kind,values=KINDS,state="readonly")
     type_choice.pack(side="left",fill="x",expand=True)
     show_roads=tk.BooleanVar(value=False)
+    show_all_runs=tk.BooleanVar(value=True)
     status=tk.StringVar(value="Garmin GPX detected — verify paths and click Read." if len(found_devices)==1 else
                        "Select mounted Garmin GPX folder, current master and intake root.")
     ttk.Label(base,textvariable=status,wraplength=900).pack(anchor="w",before=row)
@@ -309,11 +314,16 @@ def open_intake(parent):
         if state.get("review_window") and state["review_window"].winfo_exists():
             state["review_window"].destroy()
         state.pop("matched_track",None)
+        show_all_runs.set(True)
         state["generation"] += 1
         state["aerial_ready"]=False
         selection=queue.curselection()
         if not selection:return
-        source,(idx,original,points)=state["items"][selection[0]]
+        active=state.get("active_recording",selection[0])
+        if active not in selection:active=selection[0]
+        state["active_recording"]=active
+        state["comparison_points"]=[state["items"][i][1][2] for i in selection if i!=active]
+        source,(idx,original,points)=state["items"][active]
         digest=state["digests"][source]
         a,b=nearest(points[0],state["waypoints"]),nearest(points[-1],state["waypoints"])
         start.set(a[0][0] if a else "Unknown");end.set(b[0][0] if b else "Unknown")
@@ -332,7 +342,8 @@ def open_intake(parent):
             status.set(f"Cannot read saved review: {error}")
             return
         state["points"] = points
-        state["nearby_runs"]=nearby_runs(points,state["master_tracks"])
+        comparison=TrackPoints([*points.segments,*[seg for p in state["comparison_points"] for seg in p.segments]])
+        state["nearby_runs"]=nearby_runs(comparison,state["master_tracks"])
         state["nearby"] = [w for w in state["waypoints"] if min(dist_ft((w[1],w[2]),p) for p in points)<250]
         state["center"] = None
         state["zoom"] = None
@@ -404,22 +415,27 @@ def open_intake(parent):
                             drawing.create_line(*coords,fill="#ffffff",width=2,dash=(6,4),tags=("road-trail",))
             for track in state.get("nearby_runs",[]):
                 selected=track["index"]==state.get("matched_track",{}).get("index")
+                if not show_all_runs.get() and state.get("matched_track") and not selected:
+                    continue
                 for segment in track["segments"]:
                     if len(segment)>1:
                         coords=[c for p in segment for c in xy(p)]
-                        drawing.create_line(*coords,fill="white",width=8 if selected else 5,tags=("master-run",))
-                        drawing.create_line(*coords,fill=run_color(track),width=5 if selected else 3,tags=("master-run",))
+                        drawing.create_line(*coords,fill="white",width=8 if selected else 5,tags=("master-run",f"run-{track['index']}"))
+                        drawing.create_line(*coords,fill=run_color(track),width=5 if selected else 3,tags=("master-run",f"run-{track['index']}"))
             if state.get("review_window") and state["review_window"].winfo_exists():
                 for i,p in enumerate(state.get("raw_preview",points),1):
                     x,y=xy(p)
-                    drawing.create_oval(x-3,y-3,x+3,y+3,fill="#ff00cc",outline="black")
+                    drawing.create_oval(x-3,y-3,x+3,y+3,fill="#ffe600",outline="black")
                     drawing.create_text(x+6,y+6,text=str(i),anchor="nw",fill="white",font=("Segoe UI",9,"bold"))
+            for comparison in state.get("comparison_points",[]):
+                for segment in comparison.segments:
+                    if len(segment)>1:drawing.create_line(*[c for p in segment for c in xy(p)],fill="#ffe600",width=2,dash=(3,7))
             for segment in getattr(points, "segments", [points]):
                 if len(segment) > 1:
-                    drawing.create_line(*[c for p in segment for c in xy(p)],fill="#ff00cc",width=4,dash=(8,4))
+                    drawing.create_line(*[c for p in segment for c in xy(p)],fill="#ffe600",width=4,dash=(8,4))
                 elif segment:
                     x,y=xy(segment[0])
-                    drawing.create_oval(x-3,y-3,x+3,y+3,fill="#ff00cc")
+                    drawing.create_oval(x-3,y-3,x+3,y+3,fill="#ffe600")
             for label,p in [("START",points[0]),("END",points[-1])]:
                 x,y=xy(p)
                 map_label(x,y+24,label)
@@ -473,6 +489,13 @@ def open_intake(parent):
         state.pop("drag_last",None)
         drawing.configure(cursor="hand2")
         if anchor is None or not state.get("aerial_ready"): return
+        if abs(event.x-anchor[0])+abs(event.y-anchor[1])<5:
+            hits=drawing.find_overlapping(event.x-7,event.y-7,event.x+7,event.y+7)
+            for item in reversed(hits):
+                for tag in drawing.gettags(item):
+                    if tag.startswith("run-"):
+                        review_replacement(int(tag[4:]));return
+            return
         x,y=mercator(*state["center"],state["zoom"])
         state["center"]=unproject(x-(event.x-anchor[0]),y-(event.y-anchor[1]),state["zoom"])
         request_map()
@@ -480,9 +503,11 @@ def open_intake(parent):
     ttk.Button(map_controls,text="+",command=lambda:change_zoom(1),width=3).pack(side="left")
     ttk.Button(map_controls,text="6-inch detail",command=lambda:change_zoom(target=24)).pack(side="left")
     ttk.Button(map_controls,text="Fit track",command=fit_track).pack(side="left")
+    ttk.Checkbutton(map_controls,text="All nearby runs",variable=show_all_runs,
+                    command=request_map).pack(side="left")
     ttk.Checkbutton(map_controls,text="Roads / trails",variable=show_roads,
                     command=request_map).pack(side="left")
-    ttk.Label(map_controls,text="Master: blue network / red power / orange primary. Pink = Garmin. Wheel to zoom • Drag to pan").pack(side="left")
+    ttk.Label(map_controls,text="Master: blue network / red power / orange primary. Yellow = Garmin. Wheel to zoom • Drag to pan").pack(side="left")
     drawing.bind("<MouseWheel>",lambda e:change_zoom(1 if e.delta>0 else -1,e))
     drawing.bind("<ButtonPress-1>",pan_start)
     drawing.bind("<B1-Motion>",pan_move)
@@ -568,29 +593,29 @@ def open_intake(parent):
         except (OSError, ValueError) as e:messagebox.showerror("Save stopped",str(e),parent=win)
     def suggest(*_):
         if start.get() and end.get():name.set(propose(kind.get(),start.get(),end.get()))
-    def review_replacement():
+    def review_replacement(master_index=None):
         selected=queue.curselection()
         if not selected or not state.get("aerial_ready"):return
         if state.get("review_window") and state["review_window"].winfo_exists():
-            state["review_window"].lift();return
-        file,(raw_index,raw_name,raw_points)=state["items"][selected[0]]
-        review=tk.Toplevel(win);state["review_window"]=review
-        review.title("Choose cable runs to update from this Garmin walk")
-        review.geometry("1050x680")
+            if master_index is not None:state["choose_master"](master_index)
+            return
+        active=state.get("active_recording",selected[0])
+        file,(raw_index,raw_name,raw_points)=state["items"][active]
+        review=ttk.Frame(row,name="run_review",width=410);state["review_window"]=review
+        review.pack(side="right",fill="y");review.pack_propagate(False)
         frame=ttk.Frame(review,padding=10);frame.pack(fill="both",expand=True)
-        ttk.Label(frame,text="Current ExpertGPS master → reviewed replacement",font=("Segoe UI",13,"bold")).pack(anchor="w")
-        ttk.Label(frame,text="Choose a cable run, review its notes, and select the part of this walk to use. Save each run separately.\nMaster: network blue / power red / primary orange. Garmin recording: dashed pink.").pack(anchor="w")
+        ttk.Label(frame,text="Current ExpertGPS master → reviewed replacement",font=("Segoe UI",11,"bold"),wraplength=375).pack(anchor="w")
+        ttk.Label(frame,text="Choose a cable run, review its notes, and select the part of this walk to use. Save each run separately.\nMaster: network blue / power red / primary orange. Garmin recording: yellow.",wraplength=375).pack(anchor="w")
         matches=reconcile.rank_matches(raw_points,state["nearby_runs"],limit=None)
-        choices=ttk.Combobox(frame,state="readonly",width=110,
-                            values=[f'{m["track"]["name"]} | route {m["route_ft"]} ft; endpoints {m["endpoint_ft"]} ft'
-                                    for m in matches])
+        choices=tk.Listbox(frame,exportselection=False,height=7)
+        for m in matches:choices.insert("end",m["track"]["name"])
         choices.pack(fill="x",pady=5)
-        metadata=tk.Text(frame,height=12,wrap="word");metadata.pack(fill="both",expand=True)
+        metadata=tk.Text(frame,height=8,width=35,wrap="word");metadata.pack(fill="both",expand=True)
         verts=reconcile.recording_vertices(file,raw_index)
         draft=[dict(v) for v in verts]
         state["raw_preview"]=raw_points
         range_row=ttk.Frame(frame);range_row.pack(fill="x")
-        ttk.Label(range_row,text="Garmin point range (suggested endpoints; verify on map): From").pack(side="left")
+        ttk.Label(range_row,text="Points: From").pack(side="left")
         first,last=tk.IntVar(value=1),tk.IntVar(value=len(verts))
         ttk.Spinbox(range_row,from_=1,to=len(verts),textvariable=first,width=7).pack(side="left")
         ttk.Label(range_row,text="through").pack(side="left")
@@ -611,10 +636,11 @@ def open_intake(parent):
         first.trace_add("write",lambda *_:confirmed.set(False))
         last.trace_add("write",lambda *_:confirmed.set(False))
         def choose(event=None):
-            i=choices.current()
+            i=(choices.curselection()[0] if choices.curselection() else -1)
             if i<0:return
             track=matches[i]["track"]
             state["matched_track"]=track
+            show_all_runs.set(False)
             metadata.configure(state="normal");metadata.delete("1.0","end")
             metadata.insert("end",f'Master track #{track["index"]}: {track["name"]}\nType: {track["type"]}\n'
                             f'Years mentioned in notes: {", ".join(str(y["year"]) for y in reconcile.annual_history_evidence(track)) or "Not specified"}\n'
@@ -626,23 +652,28 @@ def open_intake(parent):
             message.set("Very close to existing master geometry — this may already be processed. Compare the notes before replacing."
                         if near["route_ft"]<3 and near["endpoint_ft"]<3 else
                         "Verify the match, then save. Finish geometry edits in ExpertGPS.")
-        choices.bind("<<ComboboxSelected>>",choose)
-        ttk.Label(frame,text="Match note (optional; existing master notes remain unchanged):").pack(anchor="w")
-        note=tk.Text(frame,height=3,wrap="word");note.pack(fill="x")
+        choices.bind("<<ListboxSelect>>",choose)
+        def choose_master(index):
+            i=next((i for i,m in enumerate(matches) if m["track"]["index"]==index),None)
+            if i is not None:
+                choices.selection_clear(0,"end");choices.selection_set(i);choices.see(i);choose()
+        state["choose_master"]=choose_master
+        ttk.Label(frame,text="Optional match note:").pack(anchor="w")
+        note=tk.Text(frame,height=2,width=35,wrap="word");note.pack(fill="x")
         confirmed=tk.BooleanVar(value=False)
-        ttk.Checkbutton(frame,text="I verified this recording matches the selected physical master track.",variable=confirmed).pack(anchor="w")
+        ttk.Checkbutton(frame,text="I verified this run and point range.",variable=confirmed).pack(anchor="w")
         message=tk.StringVar(value="Select a candidate; proximity is only a suggestion.")
-        ttk.Label(frame,textvariable=message,wraplength=1000).pack(anchor="w")
+        ttk.Label(frame,textvariable=message,wraplength=375).pack(anchor="w")
         def accept(action="replace",advance=True):
             try:
-                if choices.current()<0 or not confirmed.get():raise ValueError("Select and verify the matching master track")
+                if (choices.curselection()[0] if choices.curselection() else -1)<0 or not confirmed.get():raise ValueError("Select and verify the matching master track")
                 if not state.get("aerial_ready"):raise ValueError("Wait for the calibrated preview before acceptance")
                 a,b=first.get(),last.get()
                 if [v["source_index"] for v in draft]!=list(range(a-1,b)):raise ValueError("Preview the selected range before saving")
-                track=matches[choices.current()]["track"]
+                track=matches[(choices.curselection()[0] if choices.curselection() else -1)]["track"]
                 path=reconcile.accept_replacement(state["intake"],state["master"],state["master_digest"],file,
                       state["digests"][file],raw_index,track["index"],draft,note.get("1.0","end").strip() or "Operator matched Garmin recording to master for editing in ExpertGPS.",action=action)
-                old=selected[0]
+                old=active
                 queue.delete(old);queue.insert(old,("✓ Replace: " if action=="replace" else "✓ Keep: ")+track["name"])
                 if not advance:
                     confirmed.set(False)
@@ -654,14 +685,18 @@ def open_intake(parent):
                 status.set(("Match saved for ExpertGPS: " if action=="replace" else "Existing master route retained: ")
                            +track["name"]+". Shared master and PostgreSQL unchanged.")
             except (ValueError,OSError) as error:messagebox.showerror("Replacement stopped",str(error),parent=review)
-        ttk.Button(frame,text="Save run; choose another",command=lambda:accept(advance=False)).pack(side="right",pady=6)
-        ttk.Button(frame,text="Save match & Next",command=accept).pack(side="right",pady=6)
-        ttk.Button(frame,text="Keep existing & Next",command=lambda:accept("keep")).pack(side="right",pady=6)
+        ttk.Button(frame,text="Save run; choose another",command=lambda:accept(advance=False)).pack(fill="x",pady=2)
+        ttk.Button(frame,text="Save match & Next",command=accept).pack(fill="x",pady=2)
+        ttk.Button(frame,text="Keep existing & Next",command=lambda:accept("keep")).pack(fill="x",pady=2)
         def cancel():
             state["points"]=raw_points;state.pop("matched_track",None)
             review.destroy();request_map()
-        ttk.Button(frame,text="Close without accepting",command=cancel).pack(side="left",pady=6)
-        review.protocol("WM_DELETE_WINDOW",cancel)
+        ttk.Button(frame,text="Close review",command=cancel).pack(fill="x",pady=2)
+        if matches:
+            choose_master(master_index if master_index is not None else matches[0]["track"]["index"])
+        else:
+            metadata.insert("end","No nearby master cable runs found for this recording.")
+            metadata.configure(state="disabled")
     def export_reviewed():
         if not state.get("master"):return
         output=filedialog.asksaveasfilename(parent=win,title="Export working GPX for ExpertGPS",
@@ -677,6 +712,21 @@ def open_intake(parent):
     ttk.Button(review_controls,text="Export GPX for ExpertGPS",command=export_reviewed).pack(side="right")
     ttk.Button(base,text="Read Garmin tracks (read only)",command=load).pack(anchor="w",pady=4,before=row)
     queue.bind("<<ListboxSelect>>",select)
+    def clicked_recording(event):
+        index=queue.nearest(event.y)
+        if index in queue.curselection():
+            state["active_recording"]=index;select()
+    queue.bind("<ButtonRelease-1>",clicked_recording)
+    def focus_map():
+        for widget in path_rows+identification_rows:widget.pack_forget()
+        controls.pack_forget()
+    def show_fields():
+        for widget in path_rows:widget.pack(fill="x",pady=3,before=row)
+        for widget in identification_rows:widget.pack(fill="x",pady=3,before=review_controls)
+        controls.pack(fill="x")
+    ttk.Button(map_controls,text="Maximize map",command=focus_map).pack(side="left",before=map_controls.winfo_children()[0])
+    ttk.Button(map_controls,text="Show fields",command=show_fields).pack(side="left",before=map_controls.winfo_children()[1])
+    win.after(500,focus_map)
     start.trace_add("write",lambda *_:None);end.trace_add("write",lambda *_:None)
     controls=ttk.Frame(editor);controls.pack(fill="x")
     ttk.Button(controls,text="Suggest name from selected endpoints",command=suggest).pack(side="left")
