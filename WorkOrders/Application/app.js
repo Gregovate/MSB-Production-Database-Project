@@ -46,6 +46,7 @@
       showCompleted: $("show-completed").checked,
       includePlanning: $("include-planning").checked,
       search: $("ticket-search").value,
+      taskType: $("task-type-filter").value,
       ticket: state.selected,
       mode: state.createMode ? "create" : "view",
       listScroll: $("ticket-list").scrollTop,
@@ -65,6 +66,7 @@
       show_completed: next.showCompleted ? "1" : "0",
       include_planning: next.includePlanning ? "1" : "0",
       q: next.search, person_id: next.person,
+      task_type_id: next.taskType,
       ticket: next.ticket || "", mode: next.mode === "create" ? "create" : "",
     };
     Object.entries(values).forEach(([key, value]) => {
@@ -81,6 +83,7 @@
     $("scope").value = !manager &&
       !["mine","my-created","my-feedback"].includes(requested) ? "mine" : requested;
     $("ticket-sort").value = knownSorts.has(snapshot.sort) ? snapshot.sort : "priority";
+    $("task-type-filter").value = snapshot.taskType || "";
     $("show-completed").checked = Boolean(snapshot.showCompleted);
     $("include-planning").checked = Boolean(snapshot.includePlanning);
     $("ticket-search").value = String(snapshot.search || "").slice(0, 120);
@@ -402,6 +405,7 @@
     }
     const params = new URLSearchParams({
       scope, q: $("ticket-search").value.trim(),
+      task_type_id: $("task-type-filter").value,
       show_completed: $("show-completed").checked ? "1" : "0",
       sort: $("ticket-sort").value,
       include_planning: $("include-planning").checked ? "1" : "0",
@@ -634,6 +638,21 @@
         option.textContent = person.display_name;
         picker.appendChild(option);
       });
+      // Reuse the existing authorized Task Type catalog; do not create raw IDs.
+      try {
+        const typeResponse = await getJson("/api/work-orders/reviewer-options");
+        const types = typeResponse.options?.task_types || [];
+        const picker = $("task-type-filter");
+        types.forEach((type) => {
+          const option = document.createElement("option");
+          option.value = String(type.id);
+          option.textContent = String(type.name);
+          picker.appendChild(option);
+        });
+      } catch (_) {
+        $("task-type-filter").disabled = true;
+        $("task-type-filter").title = "Task Type catalog unavailable";
+      }
       const initialView = initializeNavigation();
       await Promise.all([loadTickets(), loadManagerInbox()]);
       if (initialView.ticket) await selectTicket(initialView.ticket, {noHistory: true});
@@ -719,6 +738,10 @@
   });
   $("refresh").addEventListener("click", () =>
     Promise.all([loadTickets(), loadManagerInbox()]));
+  $("task-type-filter").addEventListener("change", () => {
+    writeNavigation("replace");
+    loadTickets();
+  });
   $("ticket-sort").addEventListener("change", () => {
     writeNavigation("replace");
     loadTickets();
