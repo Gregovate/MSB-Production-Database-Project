@@ -392,7 +392,8 @@ class CloneCommands:
             if kind == "WO":
                 cur.execute(
                     "SELECT work_order_id,date_completed,display_test_session_id, "
-                     "submitted_by_person_id,source_intake_id,stage_id,work_area_id,problem "
+                     "submitted_by_person_id,source_intake_id,stage_id,work_area_id,problem, "
+                    "task_type_id,urgency_id,target_year,is_active "
                     "FROM ops.work_order WHERE work_order_id=%s FOR UPDATE", (number,))
                 work_order = cur.fetchone()
                 if not work_order:
