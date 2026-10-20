@@ -416,6 +416,12 @@ class CloneCommands:
                                 "WHERE source_intake_id=%s LIMIT 1", (number,))
                     if cur.fetchone():
                         raise WorkManagementError("Intake is already promoted.", 409)
+                    cur.execute(
+                        "SELECT 1 FROM wo419_preview.activity "
+                        "WHERE ticket_key=%s AND event_kind='resolve' LIMIT 1", (ticket,))
+                    if cur.fetchone():
+                        raise WorkManagementError(
+                            "Disposed Intake cannot be promoted into a Work Order.", 409)
                 wo = self.new_work_order(cur, actor, body, intake)
                 # Manager may create unassigned Work Orders; new Intake requests
                 # receive no assignment until the Manager triages/promotes.
