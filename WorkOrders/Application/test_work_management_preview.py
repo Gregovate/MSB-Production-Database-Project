@@ -466,7 +466,8 @@ def test_manager_intake_count_excludes_promoted_and_closed_history():
     assert "t.reporter_id = %s" in source
     html = (HERE / "index.html").read_text(encoding="utf-8")
     assert 'value="my-created"' in html
-    assert 'value="intake" data-manager-only' in html
+    assert 'id="go-intake"' in html
+    assert 'value="intake" data-manager-only' not in html
     assert "Submit Work Order Request" in html
     js = (HERE / "review_actions.js").read_text(encoding="utf-8")
     assert "if (actor.can_manage)" in js
@@ -498,7 +499,8 @@ def test_manager_all_work_orders_is_not_the_intake_queue():
     html = (HERE / "index.html").read_text(encoding="utf-8")
     assert 'value="tickets" data-manager-only' in html
     assert 'value="all" data-manager-only' in html
-    assert 'value="intake" data-manager-only' in html
+    assert 'id="go-intake"' in html
+    assert 'value="intake" data-manager-only' not in html
     assert "Work Order / Intake number" in html
 
 
