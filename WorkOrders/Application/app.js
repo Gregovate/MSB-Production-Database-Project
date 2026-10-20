@@ -148,7 +148,7 @@
     if (scope === "mine") return "My Assigned Work Orders";
     if (scope === "my-created") return "Work Orders I Created";
     if (scope === "all") return "All Work Orders";
-    if (scope === "tickets") return "All Tickets · Search";
+    if (scope === "tickets") return "Search All Work Orders and Feedback";
     if (scope === "aging") return "Open Work Order Aging Report";
     if (scope === "my-feedback") return "My Submitted Feedback";
     if (scope === "critical") return "Manager · Immediate / Critical Repairs";
@@ -164,11 +164,12 @@
 
   function statusLabel(row) {
     if (row.done_at) return "Completed (date recorded)";
-    if (row.type === "TASK_FEEDBACK") {
+    if (row.type === "TASK_FEEDBACK" || row.type === "INTAKE_REQUEST") {
       const dispositions = {
         RESOLVED: "Resolved / Verified", DEFERRED: "Deferred",
         REJECTED: "Rejected / No Action", DUPLICATE: "Duplicate / Linked",
         WAITING_ON_REPORTER: "Waiting on reporter",
+        REPORTER_CONTACT_NEEDED: "Reporter contact needed — Manager follow-up",
         PROMOTED_TO_WO: "Promoted to Work Order",
       };
       if (dispositions[row.state]) return dispositions[row.state];
