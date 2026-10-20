@@ -976,3 +976,8 @@ documented in Server Management, preserving shared FieldWiring dependencies.
 Clone-only tests temporarily enable capture/disable the two cloned Flows and
 roll back all data and simulated receipts. Source regression is not SQL proof.
 No Production or live-email activation follows automatically from clone PASS.
+
+
+### Phase 2 deadline navigation — October 20 operator direction
+
+Add Due by sorting (earliest/latest, missing dates last) and Work Order deadline filters: All, Overdue, Due today, Missing due date. Apply database filtering and ordering before the normal list limit; preserve existing actor permissions and other filters. Overdue means active, unfinished, due before today's America/Chicago date; due today is not overdue. Missing-date filter selects active unfinished Work Orders without inventing deadlines. Include the Manager aging report and preserve selections through URL/back navigation. This is candidate behavior pending the Phase 2 migration and acceptance.
