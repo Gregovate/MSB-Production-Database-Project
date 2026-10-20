@@ -79,3 +79,20 @@ def test_missing_question_rejected(values):
     del values['question']
     with pytest.raises(ValueError):
         render_email('more_info', values)
+
+
+def test_setup_feedback_names_task_and_does_not_call_it_a_work_request(values):
+    values.update(source_form_name='SETUP_CORRECTION', task_name='Build command center')
+    message = render_email('new_request', values)
+    assert message.subject.startswith('Build command center has feedback that needs review')
+    assert 'Work Order request' not in message.text
+    assert 'approve or deny' not in message.text
+    assert 'Review feedback and respond' in message.html
+    assert 'db.sheboyganlights.org' not in message.html
+
+
+def test_public_request_keeps_received_from_wording(values):
+    values.update(source_form_name='Public form', task_name='Not applicable')
+    message = render_email('new_request', values)
+    assert 'Work Order request was received from Reporter' in message.text
+    assert 'has feedback' not in message.subject

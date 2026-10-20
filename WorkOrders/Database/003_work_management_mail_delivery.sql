@@ -176,7 +176,11 @@ BEGIN
       WHERE is_manager AND active_flag AND email IS NOT NULL;
     SELECT coalesce(nullif(btrim(concat_ws(' ',coalesce(nullif(preferred_name,''),first_name),last_name)),''),'Reporter')
       INTO v_reporter_name FROM ref.person WHERE person_id=v_reporter;
-    v_payload := jsonb_build_object('reporter',coalesce(v_reporter_name,'Not recorded'));
+    v_payload := jsonb_build_object('reporter',coalesce(v_reporter_name,
+      nullif(NEW.submitter_name_raw,''),nullif(NEW.submitter_email_raw,''),'Not recorded'),
+      'source_form_name',NEW.source_form_name,
+      'task_name',coalesce(nullif(btrim(NEW.source_payload->>'task_name'),''),
+                          'Setup task (name not recorded)'));
   ELSIF TG_TABLE_NAME='work_order_assignment' THEN
     IF NOT NEW.active_flag THEN RETURN NEW; END IF;
     SELECT * INTO STRICT v_wo FROM ops.work_order WHERE work_order_id=NEW.work_order_id;

@@ -25,6 +25,12 @@ def preview(output_dir: Path) -> None:
             sample.update(ticket='INTAKE-123',
                           ticket_url='https://my.sheboyganlights.org/workorder/?ticket=INTAKE-123')
         rendered[kind] = render_email(kind, sample)
+    # Feedback is a source variant of the same new-request event, not another send.
+    rendered['task_feedback'] = render_email('new_request', dict(values,
+        ticket='INTAKE-66', source_form_name='SETUP_CORRECTION',
+        task_name='Example Setup task',
+        title='Need a place to store the stakes for the UTV garage.',
+        ticket_url='https://my.sheboyganlights.org/workorder/?ticket=INTAKE-66'))
     output_dir.mkdir(parents=True, exist_ok=True)
     links = []
     for kind, message in rendered.items():

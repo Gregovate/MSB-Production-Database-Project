@@ -2,7 +2,7 @@
 
 Status: Phase 2 candidate under #419. These files do not activate delivery.
 
-Edit the four JSON files here using GitHub's file editor. Each file contains
+Edit the JSON files here using GitHub's file editor. Each file contains
 `subject`, `html` (formatted message), and `text` (plain-text alternative).
 Keep both bodies equivalent. JSON newlines are written as `\n`; quotation marks
 inside HTML attributes are escaped as `\"`. Review changes through the normal PR
@@ -11,12 +11,13 @@ and configuration deployment process; editing GitHub does not change Production.
 | File | Purpose |
 | --- | --- |
 | new_request.json | New Intake notice to the existing interim Manager mailing list |
+| task_feedback.json | Setup task feedback notice; selected by SETUP_CORRECTION source, names the original task |
 | assignment.json | Assignment notice, including Due by |
 | outcome.json | Original reporter's done/canceled/disposition notice |
 | more_info.json | Original reporter's clarification question and response link |
 
 Available placeholders: `$ticket`, `$title`, `$reporter`, `$assignees`, `$due_by`,
-`$question`, `$outcome`, `$reason`, `$ticket_url`. A literal dollar sign is `$$`.
+`$task_name`, `$question`, `$outcome`, `$reason`, `$ticket_url`. A literal dollar sign is `$$`.
 No Python, JavaScript, expressions or template includes are executed. Unknown,
 blank or missing values fail validation. Ticket values are HTML-escaped.
 

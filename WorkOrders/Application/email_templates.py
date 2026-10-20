@@ -14,7 +14,7 @@ import re
 
 TEMPLATE_ROOT = Path(__file__).with_name('email_templates')
 FIELDS = frozenset({'ticket', 'title', 'reporter', 'assignees', 'due_by',
-                    'question', 'outcome', 'reason', 'ticket_url'})
+                    'question', 'outcome', 'reason', 'ticket_url', 'task_name'})
 KINDS = frozenset({'new_request', 'assignment', 'outcome', 'more_info'})
 
 
@@ -36,7 +36,10 @@ def render_email(kind: str, values: dict[str, str], *,
     """
     if kind not in KINDS:
         raise ValueError('Unknown email type')
-    raw = (template_root / (kind + '.json')).read_bytes()
+    # Use retained source identity, never guess from the problem wording.
+    template_name = ('task_feedback' if kind == 'new_request'
+                     and values.get('source_form_name') == 'SETUP_CORRECTION' else kind)
+    raw = (template_root / (template_name + '.json')).read_bytes()
     if len(raw) > 65536:
         raise ValueError('Email template exceeds 64 KiB')
     document = json.loads(raw)
