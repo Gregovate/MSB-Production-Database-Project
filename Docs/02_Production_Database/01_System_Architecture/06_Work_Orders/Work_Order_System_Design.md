@@ -904,3 +904,27 @@ explicit backlog disposition, then disable only the two replaced email Flows.
 Status: implementation in progress, no Phase 2 sender or due-date migration
 installed. Server Management #81 owns mail transport reconnaissance, runtime,
 cutover and rollback. Do not infer delivery from a queued database row.
+
+
+### Confirmed existing SMTP authority — correction to Phase 2 reconnaissance
+
+The October 18 deployed Manager digest already establishes the mail transport.
+See [actual activation evidence](https://github.com/Gregovate/MSB-Production-Database-Project/issues/205#issuecomment-6248399405),
+application PR #413 (deployed source e53c31069b7354ad7fda78665d6666145942a70d),
+and Server Management PR #79, specifically
+docs/server/Setup_205_Bounded_Manager_Daily_Mail_2026-10-18.md.
+These documents exist on their open PR branches; absence from main does not mean
+the installed transport is undocumented or unproven.
+
+Reuse Google Workspace IP-authorized smtp-relay.gmail.com on port 587 with
+required STARTTLS and certificate verification, no SMTP password. Reuse the
+established sender identity and multipart HTML/plain-text pattern after reading
+the exact accepted implementation. Seven Manager messages were SMTP accepted
+October 18; this is not proof of Inbox delivery or Work Order sender activation.
+Preserve the existing Setup timer, environment and protected attempt receipts.
+Work Orders needs its own event delivery records and activation boundary, not
+reuse or rerun of the Setup digest's seven-recipient/day-specific send guards.
+
+The earlier request to rediscover transport through Directus environment was
+unnecessary. No further Directus SMTP inspection is needed for this design.
+Live Work Order schema readback also confirms 31 columns and no due-date field.
