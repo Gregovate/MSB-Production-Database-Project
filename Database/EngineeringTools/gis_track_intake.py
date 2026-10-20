@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import re
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -57,11 +58,20 @@ def save(intake, source, index, name, kind, start, end):
         raise ValueError("Name and temporary classification are required")
     source = Path(source)
     digest = source_digest(source)
+    day = datetime.fromtimestamp(source.stat().st_mtime).strftime("%Y-%m-%d")
+    originals = Path(intake) / day / "Originals"
+    archive = originals / (digest[:16] + "_" + re.sub(r"[^A-Za-z0-9_.-]", "_", source.name))
+    originals.mkdir(parents=True, exist_ok=True)
+    if not archive.exists():
+        with archive.open("xb") as target:
+            target.write(source.read_bytes())
+    if source_digest(archive) != digest:
+        raise ValueError("Archive hash mismatch — review not saved")
     destination = reviewed_path(intake, digest, index)
     destination.parent.mkdir(parents=True, exist_ok=True)
     previous = json.loads(destination.read_text(encoding="utf8")) if destination.exists() else None
     data = dict(schema="msb.gis.intake.v1", source_sha256=digest,
-                source_path=str(source), track_index=index, working_name=name.strip(),
+                source_path=str(source), archived_original=str(archive), track_index=index, working_name=name.strip(),
                 temporary_type=kind, start_waypoint=start, end_waypoint=end,
                 status="Identified (not merged)",
                 reviewed_utc=datetime.now(timezone.utc).isoformat())
