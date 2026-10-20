@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS ops.work_management_activity (
   ticket_key text NOT NULL CHECK (ticket_key ~ '^(WO|INTAKE)-[1-9][0-9]*$'),
   event_kind text NOT NULL CHECK (event_kind IN
     ('create','assign','progress','complete','promote','promoted_source',
-     'correction_owner','clarify','reply','resolve')),
+     'correction_owner','clarify','reply','resolve','edit','cancel')),
   actor_person_id integer NOT NULL REFERENCES ref.person(person_id),
   target_person_id integer REFERENCES ref.person(person_id),
   note text NOT NULL DEFAULT '',
@@ -185,14 +185,14 @@ BEGIN
   IF p_body IS NULL OR jsonb_typeof(p_body) <> 'object' OR
      p_request_key IS NULL OR p_action IS NULL OR
      p_action NOT IN ('create','assign','progress','complete','promote',
-                      'correction_owner','clarify','reply','resolve') THEN
+                      'correction_owner','clarify','reply','resolve','edit','cancel') THEN
     RAISE EXCEPTION 'Work Orders: invalid command/request key' USING ERRCODE='22023';
   END IF;
   SELECT a.* INTO v_actor FROM ops.work_management_v1_actor(p_email) a;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Work Orders: actor not verified' USING ERRCODE='42501';
   END IF;
-  IF p_action IN ('create','assign','promote','correction_owner','clarify','resolve')
+  IF p_action IN ('create','assign','promote','correction_owner','clarify','resolve','edit','cancel')
      AND NOT v_actor.can_manage THEN
     RAISE EXCEPTION 'Work Orders: Manager authorization required'
       USING ERRCODE='42501';
@@ -251,7 +251,7 @@ BEGIN
     v_people := ARRAY[]::integer[];
   END IF;
 
-  IF p_action IN ('create','promote') THEN
+  IF p_action IN ('create','promote','edit') THEN
     v_problem := btrim(coalesce(p_body->>'problem',''));
     IF length(v_problem)<10 OR length(v_problem)>5000 THEN
       RAISE EXCEPTION 'Work Orders: work description must be 10 to 5000 characters'
@@ -337,7 +337,7 @@ BEGIN
     RETURNING work_order_id INTO v_wo_id;
     v_ticket:='WO-'||v_wo_id;
     v_details:=jsonb_build_object('source_intake_id',v_intake_id);
-  ELSIF p_action IN ('assign','progress','complete') THEN
+  ELSIF p_action IN ('assign','progress','complete','edit','cancel') THEN
     IF p_ticket !~ '^WO-[1-9][0-9]*$' THEN
       RAISE EXCEPTION 'Work Orders: active native WO required' USING ERRCODE='22023';
     END IF;
@@ -348,6 +348,11 @@ BEGIN
     END IF;
     IF v_wo.date_completed IS NOT NULL THEN
       RAISE EXCEPTION 'Work Orders: completed WO is immutable' USING ERRCODE='23514';
+    END IF;
+    IF p_action IN ('edit','cancel') AND
+       (NOT v_wo.is_active OR v_wo.display_test_session_id IS NOT NULL) THEN
+      RAISE EXCEPTION 'Work Orders: inactive/Testing Work Order requires separate governed review'
+        USING ERRCODE='23514';
     END IF;
     IF p_action IN ('progress','complete') AND NOT v_actor.can_manage AND
        NOT EXISTS (SELECT 1 FROM ops.work_order_assignment
@@ -405,6 +410,44 @@ BEGIN
                  WHEN p_action='promote' THEN 'Manager promoted Intake'
                  ELSE 'Manager created Work Order' END;
     v_details:=v_details||jsonb_build_object('assignees',v_people);
+  ELSIF p_action='edit' THEN
+    v_note:=btrim(coalesce(p_body->>'edit_reason',''));
+    IF length(v_note)<10 OR length(v_note)>5000 THEN
+      RAISE EXCEPTION 'Work Orders: Manager correction reason required'
+        USING ERRCODE='22023';
+    END IF;
+    v_details:=jsonb_build_object(
+      'before',jsonb_build_object('problem',v_wo.problem,'task_type_id',v_wo.task_type_id,
+        'urgency_id',v_wo.urgency_id,'target_year',v_wo.target_year,
+        'stage_id',v_wo.stage_id,'work_area_id',v_wo.work_area_id),
+      'after',jsonb_build_object('problem',v_problem,'task_type_id',v_task_type,
+        'urgency_id',v_urgency,'target_year',v_year,
+        'stage_id',v_stage,'work_area_id',v_area));
+    UPDATE ops.work_order SET
+      problem=v_problem,task_type_id=v_task_type,urgency_id=v_urgency,
+      target_year=v_year,stage_id=v_stage,work_area_id=v_area,
+      updated_by_person_id=v_actor.person_id
+    WHERE work_order_id=v_wo_id AND is_active AND date_completed IS NULL;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Work Orders: edit target changed concurrently'
+        USING ERRCODE='23514';
+    END IF;
+  ELSIF p_action='cancel' THEN
+    v_note:=btrim(coalesce(p_body->>'cancel_reason',''));
+    IF length(v_note)<10 OR length(v_note)>5000 THEN
+      RAISE EXCEPTION 'Work Orders: cancellation requires a substantive safety/no-action reason'
+        USING ERRCODE='22023';
+    END IF;
+    v_details:=jsonb_build_object('prior_active',v_wo.is_active,
+                                  'physical_work_completed',false,
+                                  'disposition','CANCELLED_NO_ACTION');
+    UPDATE ops.work_order SET is_active=false,
+      updated_by_person_id=v_actor.person_id
+    WHERE work_order_id=v_wo_id AND is_active AND date_completed IS NULL;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Work Orders: cancellation target changed concurrently'
+        USING ERRCODE='23514';
+    END IF;
   ELSIF p_action='progress' THEN
     v_note:=btrim(coalesce(p_body->>'progress_note',''));
     IF length(v_note)<10 OR length(v_note)>5000 THEN
