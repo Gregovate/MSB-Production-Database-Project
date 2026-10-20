@@ -741,3 +741,44 @@ The operator supplied the live Apps index screenshot, which already has **Produc
 ## October 20 — year-round Work Management independence
 
 **Work Management is a standalone, year-round Production subsystem.** It serves Park, Workshop, maintenance, future planning, Testing repairs, public Intake and Setup-origin feedback. Setup is one integrated source of tasks and correction reports, not the owner or seasonal availability gate. The Production Work Management service, portal route, operational support, access controls, and release lifecycle must be independent of Setup schedules and maintenance state. Testing integrations likewise must not cause the Work Management service to be disabled outside the Testing season. Manager authorization is Work Order-specific; do not grant it merely because a user can manage Setup. Governing permanent-service deployment is MSB-Server-Management issue #81 under #419. Preserve existing PostgreSQL Work Order identities and current Directus Intake Manager emails in Phase 1.
+
+## October 20 — Phase 1 permanent route deployment contract (#81)
+
+Operator approved Phase 1 Production release and selected the public entry
+`https://my.sheboyganlights.org/workorder/`. Existing Apps tile changes only after
+that route passes authenticated Manager/Crew acceptance. Earlier source-only
+approval caveats above are historical; runtime/database gates remain mandatory.
+
+Live operator evidence establishes Synology `192.168.5.4` forwarding directly to
+application listeners on `192.168.5.9`, restricted by UFW. No host loopback proxy
+is established. Use that existing protected service topology; the earlier
+`verified_cloudflare_loopback` requirement is superseded for Production only.
+
+Production WSGI must enforce the actual socket peer as exactly Synology
+`192.168.5.4`, the public Host `my.sheboyganlights.org`, and HTTPS forwarded by
+that peer. Never trust X-Forwarded-For as the authorization peer or allow client
+headers to substitute a trusted peer. Existing Cloudflare Access ingress must
+overwrite client identity; verify direct-origin bypass protection before cutover.
+Missing identity and untrusted peers remain denied. Disposable loopback identity
+behavior is unchanged. Production startup requires the explicit
+`verified_synology_access` perimeter attestation, dedicated database account,
+release gate and protected command secret. This attestation is configuration,
+not proof that external Cloudflare controls have been tested.
+
+Synology strips only the /workorder/ prefix. The WSGI entry sets a fixed SCRIPT_NAME
+of /workorder and verified HTTPS scheme. HTML asset URLs and JavaScript fetches
+include that prefix; do not publish unrelated root /api or /work-orders routes.
+Same-origin POST checks compare against the real HTTPS origin. No new local proxy
+daemon is required. The service export remains `production_entry:application`.
+
+This security/routing correction is a materially distinct candidate:
+`V1.0.1-production-route`, Updated 2026-10-20. Preserve accepted Phase 1 business
+behavior and SQL; test trusted/untrusted peer, spoofed forwarding, missing
+identity, wrong Host/scheme, prefixed page/assets/API and CSRF with fake repositories,
+then verify actual protected routing/roles before Production acceptance. Existing
+Manager Intake mail remains enabled; Phase 2 notification sender remains disabled.
+
+Shared checkout observed clean at 17c522c4f8ec06549bf7a6d9e8530c61276203f7.
+Do not advance it merely to install this app. Server Management must use an exact,
+persistent independent application checkout with the established runtime account
+and Python environment, and maintain the existing #37 database mutation boundary.
