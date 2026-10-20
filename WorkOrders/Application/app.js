@@ -7,6 +7,7 @@
     detail: null, relatedLoadedFor: null, fetchId: 0, listFetchId: 0,
     agingRows: [], agingFetchId: 0,
     navigationReady: false, restoringNavigation: false, createMode: false,
+    managerQueue: null,
   };
 
   function escapeHtml(value) {
@@ -39,9 +40,14 @@
   const knownSorts = new Set(["priority", "priority_desc", "number_asc",
     "number_desc", "created_asc", "created_desc"]);
 
+  function effectiveScope() {
+    return state.actor?.can_manage && ["intake", "feedback"].includes(state.managerQueue)
+      ? state.managerQueue : $("scope").value;
+  }
+
   function navigationSnapshot() {
     return {
-      scope: $("scope").value, person: $("assignee").value,
+      scope: effectiveScope(), person: $("assignee").value,
       sort: $("ticket-sort").value,
       showCompleted: $("show-completed").checked,
       includePlanning: $("include-planning").checked,
@@ -80,8 +86,11 @@
   function restoreControls(snapshot) {
     const requested = knownScopes.has(snapshot.scope) ? snapshot.scope : "mine";
     const manager = Boolean(state.actor?.can_manage);
+    state.managerQueue = manager && ["intake", "feedback"].includes(requested)
+      ? requested : null;
+    const displayed = state.managerQueue ? "all" : requested;
     $("scope").value = !manager &&
-      !["mine","my-created","my-feedback"].includes(requested) ? "mine" : requested;
+      !["mine","my-created","my-feedback"].includes(displayed) ? "mine" : displayed;
     $("ticket-sort").value = knownSorts.has(snapshot.sort) ? snapshot.sort : "priority";
     $("task-type-filter").value = snapshot.taskType || "";
     $("show-completed").checked = Boolean(snapshot.showCompleted);
@@ -144,7 +153,7 @@
   }
 
   function scopeLabel() {
-    const scope = $("scope").value;
+    const scope = effectiveScope();
     if (scope === "mine") return "My Assigned Work Orders";
     if (scope === "my-created") return "Work Orders I Created";
     if (scope === "all") return "All Work Orders";
@@ -257,9 +266,14 @@
   }
 
   function goManagerQueue(scope) {
-    if (!state.actor?.can_manage) return;
-    $("scope").value = scope;
-    scopeChanged();
+    if (!state.actor?.can_manage || !["intake", "feedback"].includes(scope)) return;
+    // These are separate Manager functions, not options in the Work Order picker.
+    state.managerQueue = scope;
+    $("ticket-search").value = "";
+    $("task-type-filter").value = "";
+    resetDetail();
+    writeNavigation("push");
+    loadTickets();
   }
 
   function agingCsvCell(value) {
@@ -388,7 +402,7 @@
 
   async function loadTickets() {
     const serial = ++state.listFetchId;
-    const scope = $("scope").value;
+    const scope = effectiveScope();
     const aging = scope === "aging";
     $("aging-report").hidden = !aging;
     $("work-ticket-workspace").hidden = aging;
@@ -428,6 +442,7 @@
   }
 
   function scopeChanged() {
+    state.managerQueue = null;
     $("person-field").hidden = $("scope").value !== "person";
     if ($("scope").value === "aging") $("ticket-sort").value = "created_asc";
     resetDetail();
