@@ -1251,5 +1251,12 @@ def test_oct20_edit_does_not_enter_create_insert_branch():
     assert "IF p_action IN ('create','promote') THEN" in sql
     assert "ELSIF p_action='edit' THEN" in sql
     assert sql.count("v_problem := btrim(coalesce(p_body->>'problem',''));") == 2
+    assert sql.count("CREATE OR REPLACE FUNCTION ops.work_management_v1_command") == 1
+    assert sql.count("CREATE OR REPLACE FUNCTION ops.work_management_v1_activity") == 1
+    assert sql.count("$cmd$") == 2
+    assert sql.count("COMMIT;") == 1
+    assert "{0,9}btrim" not in sql
+    assert sql.count("^[1-9][0-9]{0,9}$") >= 7
+
     assert sql.index("ELSIF p_action='edit' THEN") > sql.index("INSERT INTO ops.work_order(")
     assert "WHERE work_order_id=v_wo_id AND is_active AND date_completed IS NULL" in sql
