@@ -981,3 +981,8 @@ No Production or live-email activation follows automatically from clone PASS.
 ### Phase 2 deadline navigation — October 20 operator direction
 
 Add Due by sorting (earliest/latest, missing dates last) and Work Order deadline filters: All, Overdue, Due today, Missing due date. Apply database filtering and ordering before the normal list limit; preserve existing actor permissions and other filters. Overdue means active, unfinished, due before today's America/Chicago date; due today is not overdue. Missing-date filter selects active unfinished Work Orders without inventing deadlines. Include the Manager aging report and preserve selections through URL/back navigation. This is candidate behavior pending the Phase 2 migration and acceptance.
+
+
+### Phase 2 source-specific Intake email — October 20 operator correction
+
+New Intake notices must distinguish Setup Task Feedback (source_form_name=SETUP_CORRECTION) from work requests. Feedback subject names source_payload.task_name and asks for review; it must not call the feedback a Work Order request or imply approval/denial is the only response. Work requests retain received-from wording. Both use the permanent same-ticket Work Management URL. Keep the interim Manager recipient list unchanged. Store source classification and task name in the event snapshot, with a truthful missing-task-name fallback. Maintain a separate editable formatted/plain-text feedback template and include it in offline previews. This replaces wording only after Phase 2 activation; the live Directus Flow is unchanged.
