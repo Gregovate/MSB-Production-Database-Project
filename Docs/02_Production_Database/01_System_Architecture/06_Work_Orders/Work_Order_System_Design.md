@@ -928,3 +928,26 @@ reuse or rerun of the Setup digest's seven-recipient/day-specific send guards.
 The earlier request to rediscover transport through Directus environment was
 unnecessary. No further Directus SMTP inspection is needed for this design.
 Live Work Order schema readback also confirms 31 columns and no due-date field.
+
+
+### Phase 2 delivery implementation contract
+
+The worker uses a separate restricted work_management_mail database identity.
+Each delivery claim must commit immutable subject/text/HTML/template digest and
+event/recipient identity before SMTP. A unique event key excludes concurrent or
+repeated attempts. Store SMTP_ACCEPTED separately from Inbox delivery evidence.
+Keep FAILED_BEFORE_DATA, REJECTED and UNKNOWN distinct. A crash or failed receipt
+write leaves IN_PROGRESS for investigation; never automatically reclaim it.
+SMTP cannot promise exactly-once delivery after an uncertain DATA response.
+
+The new mail claim functions must refuse dispatch while either exact replaced
+Directus email Flow is active or missing. This gate does not itself disable a
+Flow or authorize cutover. Existing PENDING_CUTOVER records are never implicitly
+promoted to QUEUED. Stop the worker before any rollback/re-enabling old Flows.
+
+Every rendered ticket URL must identify the same WO/INTAKE record via the
+existing /workorder/?ticket=... navigation. Verify reporter read/reply scope
+before activation; do not substitute the home page or invent public access.
+The initial SMTP adapter and delivery-claim migration are source candidates only;
+event capture, worker activation, live SQL acceptance and Flow cutover are not
+established by offline tests.

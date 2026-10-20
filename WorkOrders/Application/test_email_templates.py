@@ -10,7 +10,7 @@ def values():
                 assignees='Assigned volunteer', due_by='2026-10-25',
                 question='Which connector failed?', outcome='Canceled — no work performed',
                 reason='Duplicate request; original work remains open.',
-                ticket_url='https://my.sheboyganlights.org/workorder/')
+                ticket_url='https://my.sheboyganlights.org/workorder/?ticket=WO-123')
 
 
 @pytest.mark.parametrize('kind', sorted(KINDS))
@@ -39,7 +39,9 @@ def test_header_injection_rejected(values):
 @pytest.mark.parametrize('url', ['http://my.sheboyganlights.org/workorder/',
     'https://evil.example/workorder/', 'javascript:alert(1)',
     'https://my.sheboyganlights.org/people/',
-    'https://my.sheboyganlights.org@evil.example/workorder/'])
+    'https://my.sheboyganlights.org@evil.example/workorder/',
+    'https://my.sheboyganlights.org/workorder/',
+    'https://my.sheboyganlights.org/workorder/?ticket=WO-999'])
 def test_unapproved_link_rejected(url, values):
     values['ticket_url'] = url
     with pytest.raises(ValueError):

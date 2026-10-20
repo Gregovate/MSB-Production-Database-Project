@@ -9,7 +9,8 @@ from html import escape
 import json
 from pathlib import Path
 from string import Template
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qs
+import re
 
 TEMPLATE_ROOT = Path(__file__).with_name('email_templates')
 FIELDS = frozenset({'ticket', 'title', 'reporter', 'assignees', 'due_by',
@@ -59,7 +60,10 @@ def render_email(kind: str, values: dict[str, str], *,
             if name == 'ticket_url':
                 url = urlsplit(value)
                 if (url.scheme != 'https' or url.netloc != 'my.sheboyganlights.org'
-                        or not url.path.startswith('/workorder/')
+                        or url.path != '/workorder/'
+                        or url.fragment
+                        or not re.fullmatch(r'(WO|INTAKE)-[1-9][0-9]*', values.get('ticket', ''))
+                        or parse_qs(url.query).get('ticket') != [values.get('ticket')]
                         or any(c.isspace() or ord(c) < 32 for c in value)):
                     raise ValueError('Ticket link must use the protected Work Orders route')
             context[name] = escape(value, quote=True) if part == 'html' else value
