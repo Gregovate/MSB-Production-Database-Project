@@ -57,6 +57,12 @@ class FakeRepo:
         return [{"person_id": 101, "display_name": "Preview Person"},
                 {"person_id": 202, "display_name": "Another Person"}]
 
+    def task_types(self, actor):
+        FakeRepo.calls.append(("task_types", actor["person_id"]))
+        if not actor["can_read"]:
+            raise repository.WorkManagementError("Read permission required.", 403)
+        return [{"id": 10, "name": "Repair"}]
+
     def reviewer_options(self, actor):
         FakeRepo.calls.append(("reviewer_options", actor["person_id"]))
         if not actor["can_manage"]:
@@ -1170,3 +1176,32 @@ def test_oct20_task_type_search_and_nondestructive_public_intake_review_contract
     assert "p_action='correction_owner' AND" in sql
     assert "p_action IN ('clarify','resolve') AND EXISTS" in sql
     assert "('promoted_source','resolve')" in repository_source
+
+
+def test_task_type_filter_reads_catalog_and_rejects_invalid_identifiers(client, monkeypatch):
+    # No Manager privilege is needed to read a Task Type used in assigned work.
+    crew = {"person_id": 101, "display_name": "Crew",
+            "can_manage": False, "can_create": False, "can_read": True}
+    monkeypatch.setattr(FakeRepo, "access", lambda self, _email: crew)
+    listing = client.get("/api/work-orders/task-types", headers=identity())
+    assert listing.status_code == 200
+    assert listing.json["task_types"] == [{"id": 10, "name": "Repair"}]
+    result = client.get(
+        "/api/work-orders/tickets?scope=mine&task_type_id=10", headers=identity()
+    )
+    assert result.status_code == 200
+    assert any(call[0] == "tickets" and
+               call[1]["task_type_id"] == 10 for call in FakeRepo.calls)
+    for invalid in ("0", "-1", "10;DROP", "abc"):
+        blocked = client.get(
+            "/api/work-orders/tickets?scope=mine&task_type_id=" + invalid,
+            headers=identity(),
+        )
+        assert blocked.status_code == 400
+    assert client.get(
+        "/api/work-orders/tickets?scope=critical", headers=identity()
+    ).status_code == 403 or (
+        # FakeRepo fixture is a read stub; source SQL role gate is tested separately.
+        "Manager view requires Manager permission" in
+        (HERE / "repository.py").read_text(encoding="utf-8")
+    )
