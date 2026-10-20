@@ -1069,3 +1069,69 @@ def test_v1_no_unapproved_live_role_grants_or_notification_send():
     assert "import smtplib" not in source.lower()
     assert "smtplib." not in source.lower()
     assert "sendmail" not in source.lower()
+
+
+def test_v1_native_browser_cloned_mode_stays_separate_from_production(monkeypatch):
+    import backend
+    import v1_runtime
+    from repository import WorkManagementError
+    monkeypatch.setenv("WORK_MGMT_RUNTIME_MODE", "v1_disposable")
+    monkeypatch.delenv("WORK_MGMT_V1_CLONE_DSN", raising=False)
+    monkeypatch.delenv("WORK_MGMT_V1_CLONE_IP", raising=False)
+    monkeypatch.delenv("WORK_MGMT_PREVIEW_MODE", raising=False)
+    with pytest.raises(WorkManagementError, match="clone configuration missing"):
+        v1_runtime.V1Repository()
+    with pytest.raises(WorkManagementError, match="clone configuration missing"):
+        v1_runtime.V1Commands()
+    monkeypatch.setenv("WORK_MGMT_PREVIEW_MODE", "disposable")
+    monkeypatch.setenv("WORK_MGMT_V1_CLONE_DSN", "dbname=msb_wo419_preview user=work_management_app")
+    monkeypatch.setenv("WORK_MGMT_V1_CLONE_IP", "172.18.0.5")
+    with pytest.raises(WorkManagementError, match="not authorized"):
+        v1_runtime.V1Commands().perform(
+            {"email": "someone@sheboyganlights.org"}, "create", None, {}
+        )
+    assert type(backend.store()).__name__ == "V1Repository"
+    assert type(backend.command_store()).__name__ == "V1Commands"
+    assert backend.runtime_response() == {
+        "runtime_mode": "v1_disposable",
+        "disposable_only": True,
+        "notifications": "NO_SEND_V1",
+    }
+
+
+def test_v1_browser_clone_exact_db_role_and_ip_required():
+    import v1_runtime
+    from repository import WorkManagementError
+    class StubCursor:
+        def __init__(self, first, second):
+            self.rows = [first, second]
+        def execute(self, *_args):
+            pass
+        def fetchone(self):
+            return self.rows.pop(0)
+    import os
+    previous = {k: os.environ.get(k) for k in ("WORK_MGMT_RUNTIME_MODE", "WORK_MGMT_V1_CLONE_IP")}
+    try:
+        os.environ["WORK_MGMT_RUNTIME_MODE"] = "v1_disposable"
+        os.environ["WORK_MGMT_V1_CLONE_IP"] = "172.18.0.5"
+        v1_runtime.require_native_database(
+            StubCursor(
+                {"db_name": "msb_wo419_preview", "login_name": "work_management_app"},
+                {"host_ip": "172.18.0.5"},
+            )
+        )
+        for db, user, ip in (
+            ("msb", "work_management_app", "172.18.0.5"),
+            ("msb_wo419_preview", "fieldwiring_app", "172.18.0.5"),
+            ("msb_wo419_preview", "work_management_app", "172.18.0.99"),
+        ):
+            with pytest.raises(WorkManagementError):
+                v1_runtime.require_native_database(
+                    StubCursor({"db_name": db, "login_name": user}, {"host_ip": ip})
+                )
+    finally:
+        for key, value in previous.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
