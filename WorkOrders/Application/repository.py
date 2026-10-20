@@ -241,7 +241,11 @@ class WorkManagementRepository:
                 row["state"] = str(info["details"].get("disposition", "resolved")).upper()
                 row["state_from"] = "PERSISTENT_CORRECTION_ACTIVITY" if self.activity_table == "ops.work_management_activity" else "DISPOSABLE_CORRECTION_ACTIVITY"
             elif info and info["event_kind"] == "clarify":
-                row["state"] = "WAITING_ON_REPORTER"
+                row["state"] = (
+                    "REPORTER_CONTACT_NEEDED"
+                    if info["details"].get("communication") == "MISSING_RECIPIENT"
+                    else "WAITING_ON_REPORTER"
+                )
             elif info and info["event_kind"] == "promoted_source":
                 row["state"] = "PROMOTED_TO_WO"
 
