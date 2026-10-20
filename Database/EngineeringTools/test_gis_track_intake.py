@@ -132,6 +132,9 @@ class IntakeTests(unittest.TestCase):
             yield w
             for child in w.winfo_children():
                 yield from walk(child)
+        def fake_map(points,width,height,zoom,center=None):
+            x,y=mercator(*(center or points[0]),zoom)
+            return Image.new('RGB',(width,height)),(x-width/2,y-height/2)
         with tempfile.TemporaryDirectory() as d:
             rootdir=Path(d); raw=rootdir/'Garmin'; raw.mkdir()
             master=rootdir/'master.gpx'; master.write_text(GPX)
@@ -142,7 +145,7 @@ class IntakeTests(unittest.TestCase):
             self.addCleanup(root.destroy)
             errors=[]
             with patch('gis_track_intake.find_garmin_gpx_dirs',return_value=[]), \
-                 patch('gis_track_intake.aerial_image',return_value=(Image.new('RGB',(550,290)),(0,0))), \
+                 patch('gis_track_intake.aerial_image',side_effect=fake_map) as map_fetch, \
                  patch('gis_track_intake.messagebox.showerror',side_effect=lambda *a,**k:errors.append(a)):
                 win=open_intake(root); root.update()
                 entries=[w for w in walk(win) if type(w) is ttk.Entry]
@@ -184,6 +187,18 @@ class IntakeTests(unittest.TestCase):
                         break
                 self.assertEqual(entries[-1].get(),'Operator corrected name')
                 self.assertTrue(any('zoom 24' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)))
+                prior_call=map_fetch.call_args
+                win.geometry('1300x850')
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if (canvas.image_ref.width(),canvas.image_ref.height()) == (canvas.winfo_width(),canvas.winfo_height()):
+                        break
+                self.assertEqual((canvas.image_ref.width(),canvas.image_ref.height()),
+                                 (canvas.winfo_width(),canvas.winfo_height()))
+                self.assertEqual(map_fetch.call_args.kwargs['zoom'],24)
+                self.assertEqual(map_fetch.call_args.kwargs['center'],prior_call.kwargs['center'])
+                self.assertEqual(entries[-1].get(),'Operator corrected name')
                 buttons['Save & Next'].invoke();root.update()
                 self.assertFalse(errors)
                 receipt=next((intake/'Reviews').glob('*.json'))

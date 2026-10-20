@@ -277,7 +277,8 @@ def open_intake(parent):
         state["generation"] += 1
         state["aerial_ready"] = False
         points, nearby = state["points"], state["nearby"]
-        width=max(drawing.winfo_width(),550); height=max(drawing.winfo_height(),290)
+        width=max(drawing.winfo_width(),1); height=max(drawing.winfo_height(),1)
+        state["requested_size"] = (width,height)
         zoom, center = state.get("zoom"), state.get("center")
         aerial_status.set("Loading published 2019 aerial…")
         generation = state["generation"]
@@ -397,6 +398,20 @@ def open_intake(parent):
     drawing.bind("<B1-Motion>",pan_move)
     drawing.bind("<ButtonRelease-1>",pan_end)
     drawing.configure(cursor="hand2")
+    def resized(event):
+        if not state.get("points") or (event.width,event.height)==state.get("requested_size"):
+            return
+        # Invalidate in-flight tiles immediately, then wait for the resize to
+        # settle. Keep the geographic center, zoom and operator edits.
+        state["generation"] += 1
+        state["aerial_ready"] = False
+        pending=state.pop("resize_job",None)
+        if pending is not None: win.after_cancel(pending)
+        def redraw():
+            state.pop("resize_job",None)
+            request_map()
+        state["resize_job"]=win.after(250,redraw)
+    drawing.bind("<Configure>",resized)
     def load():
         state["generation"] += 1
         state["aerial_ready"] = False
