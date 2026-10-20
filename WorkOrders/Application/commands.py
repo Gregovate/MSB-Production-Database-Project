@@ -21,7 +21,7 @@ from repository import WorkManagementError
 
 TICKET_KEY = re.compile(r"^(WO|INTAKE)-([1-9][0-9]{0,12})$")
 EVENT_KINDS = frozenset(("create", "assign", "progress", "complete", "link_setup", "promote",
-                         "correction_owner", "clarify", "reply", "resolve"))
+                         "correction_owner", "clarify", "reply", "resolve", "edit", "cancel"))
 
 
 def numeric(value: Any, label: str) -> int:
@@ -344,7 +344,7 @@ class CloneCommands:
             raise WorkManagementError(
                 "Only Managers may create Work Orders directly. "
                 "Submit a Work Order Request through the existing Intake form.", 403)
-        if action in ("assign", "link_setup", "promote", "correction_owner", "clarify", "resolve") \
+        if action in ("assign", "link_setup", "promote", "correction_owner", "clarify", "resolve", "edit", "cancel") \
                 and not actor["can_manage"]:
             raise WorkManagementError("Manager action is not authorized.", 403)
         # Manager triage/promote owns assignment. Intake requests do not
@@ -361,7 +361,7 @@ class CloneCommands:
         if setup_mode != "none" and not body.get("stage_id"):
             raise WorkManagementError("A Park Stage is required for seasonal Setup.")
 
-        if action in ("assign", "progress", "complete", "link_setup") and kind != "WO":
+        if action in ("assign", "progress", "complete", "link_setup", "edit", "cancel") and kind != "WO":
             raise WorkManagementError("This action requires an active Work Order.")
         if action in ("promote", "correction_owner", "clarify", "reply", "resolve") and kind != "INTAKE":
             raise WorkManagementError("This action requires original Intake.")
@@ -392,7 +392,7 @@ class CloneCommands:
             if kind == "WO":
                 cur.execute(
                     "SELECT work_order_id,date_completed,display_test_session_id, "
-                    "submitted_by_person_id,source_intake_id,stage_id,work_area_id,problem "
+                     "submitted_by_person_id,source_intake_id,stage_id,work_area_id,problem "
                     "FROM ops.work_order WHERE work_order_id=%s FOR UPDATE", (number,))
                 work_order = cur.fetchone()
                 if not work_order:
@@ -474,6 +474,73 @@ class CloneCommands:
                     details={"linked_setup_session_task_id": linked_setup_task_id,
                              "setup_season_year": int(body["setup_season_year"])},
                 )
+            elif action in ("edit", "cancel"):
+                if work_order["date_completed"] is not None or not work_order["is_active"]:
+                    raise WorkManagementError("Completed or inactive Work Order cannot be changed.", 409)
+                if work_order["display_test_session_id"] is not None:
+                    raise WorkManagementError("Testing-linked Work Order requires Testing review.", 409)
+                result_ticket = ticket
+                if action == "cancel":
+                    reason = substantive(body.get("cancel_reason"), "Cancellation reason")
+                    cur.execute(
+                        "UPDATE ops.work_order SET is_active=false, updated_by_person_id=%s "
+                        "WHERE work_order_id=%s AND is_active AND date_completed IS NULL",
+                        (actor["person_id"], number))
+                    if cur.rowcount != 1:
+                        raise WorkManagementError("Work Order state changed; refresh.", 409)
+                    event = self.persist_event(
+                        cur, request_key, ticket, "cancel", actor, reason,
+                        details={"disposition": "CANCELLED_NO_ACTION",
+                                 "physical_work_completed": False})
+                else:
+                    reason = substantive(body.get("edit_reason"), "Correction reason")
+                    problem = substantive(body.get("problem"), "Work Order description")
+                    task_type = numeric(body.get("task_type_id"), "Task Type")
+                    urgency = numeric(body.get("urgency"), "Urgency")
+                    if urgency not in range(1, 6):
+                        raise WorkManagementError("Urgency must be 1 through 5.")
+                    stage_raw = body.get("stage_id")
+                    area_raw = body.get("work_area_id")
+                    if bool(stage_raw) == bool(area_raw):
+                        raise WorkManagementError("Select exactly one Stage or Work Area.")
+                    stage = numeric(stage_raw, "Stage") if stage_raw else None
+                    area = numeric(area_raw, "Work Area") if area_raw else None
+                    year_raw = body.get("target_year")
+                    if urgency == 5:
+                        year = numeric(year_raw, "Planning target year")
+                        if not 2020 <= year <= 2100:
+                            raise WorkManagementError("Planning year out of range.")
+                    else:
+                        if year_raw not in (None, ""):
+                            raise WorkManagementError("Only Planning may specify a target year.")
+                        year = None
+                    cur.execute("SELECT 1 FROM ref.task_type WHERE task_type_id=%s AND active_flag",
+                                (task_type,))
+                    if cur.fetchone() is None:
+                        raise WorkManagementError("Choose active Task Type.")
+                    if stage is not None:
+                        cur.execute("SELECT 1 FROM ref.stage WHERE stage_id=%s", (stage,))
+                    else:
+                        cur.execute("SELECT 1 FROM ref.work_area WHERE work_area_id=%s", (area,))
+                    if cur.fetchone() is None:
+                        raise WorkManagementError("Choose existing Stage or Work Area.")
+                    before = {key: work_order[key] for key in
+                              ("problem", "task_type_id", "urgency_id", "target_year",
+                               "stage_id", "work_area_id")}
+                    after = {"problem": problem, "task_type_id": task_type,
+                             "urgency_id": urgency, "target_year": year,
+                             "stage_id": stage, "work_area_id": area}
+                    cur.execute(
+                        "UPDATE ops.work_order SET problem=%s,task_type_id=%s,urgency_id=%s,"
+                        "target_year=%s,stage_id=%s,work_area_id=%s,updated_by_person_id=%s "
+                        "WHERE work_order_id=%s AND is_active AND date_completed IS NULL",
+                        (problem, task_type, urgency, year, stage, area,
+                         actor["person_id"], number))
+                    if cur.rowcount != 1:
+                        raise WorkManagementError("Work Order state changed; refresh.", 409)
+                    event = self.persist_event(
+                        cur, request_key, ticket, "edit", actor, reason,
+                        details={"before": before, "after": after})
             elif action == "assign":
                 if work_order["date_completed"] is not None:
                     raise WorkManagementError("Completed work cannot be reassigned.", 409)
