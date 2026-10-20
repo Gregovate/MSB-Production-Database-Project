@@ -130,6 +130,19 @@ def aerial_image(track, width, height, zoom=19, fetch=None):
                 output.paste(tile.convert("RGB"), (round(tx*256-ox), round(ty*256-oy)))
     return output, (ox,oy)
 
+def find_garmin_gpx_dirs():
+    """Read-only discovery of mounted Windows Garmin GPX folders."""
+    from string import ascii_uppercase
+    found = []
+    for drive in ascii_uppercase:
+        root = Path(f"{drive}:/Garmin/GPX")
+        try:
+            if root.is_dir():
+                found.append(root)
+        except OSError:
+            continue
+    return found
+
 def open_intake(parent):
     win = tk.Toplevel(parent)
     win.title("MSB GIS Manager — Garmin Track Intake #428")
@@ -138,7 +151,8 @@ def open_intake(parent):
     base.pack(fill="both", expand=True)
     ttk.Label(base, text="Garmin Track Intake", font=("Segoe UI",16,"bold")).pack(anchor="w")
     ttk.Label(base, text="Read track → identify on aerial → suggest name/type → correct → Save & Next. Originals stay unchanged.").pack(anchor="w")
-    src, master, intake = tk.StringVar(), tk.StringVar(), tk.StringVar()
+    found_devices = find_garmin_gpx_dirs()
+    src, master, intake = tk.StringVar(value=str(found_devices[0]) if len(found_devices)==1 else ""), tk.StringVar(), tk.StringVar()
     fields = [("Garmin GPX folder", src, True), ("Current master GPX", master, False),
               ("Existing Field-Recordings folder", intake, True)]
     for label, variable, isdir in fields:
@@ -165,7 +179,8 @@ def open_intake(parent):
     r=ttk.Frame(panel);r.pack(fill="x",pady=3)
     ttk.Label(r,text="Temporary type",width=19).pack(side="left")
     ttk.Combobox(r,textvariable=kind,values=KINDS,state="readonly").pack(side="left",fill="x",expand=True)
-    status=tk.StringVar(value="Choose a mounted Garmin GPX folder, master and intake root.")
+    status=tk.StringVar(value="Garmin GPX detected — verify paths and click Read." if len(found_devices)==1 else
+                       "Select mounted Garmin GPX folder, current master and intake root.")
     ttk.Label(base,textvariable=status,wraplength=900).pack(anchor="w")
     state={"items":[],"waypoints":[],"aerial_ready":False}
     def select(event=None):
