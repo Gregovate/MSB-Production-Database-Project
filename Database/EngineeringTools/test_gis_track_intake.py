@@ -181,6 +181,17 @@ class IntakeTests(unittest.TestCase):
                     self.assertTrue(button.winfo_ismapped(),label)
                     self.assertLessEqual(button.winfo_rooty()+button.winfo_height(),
                                          win.winfo_rooty()+win.winfo_height(),label)
+                # Enlarging the map must never hide identification or save tools.
+                buttons['Hide folders'].invoke(); root.update()
+                for entry in entries[3:]:
+                    self.assertTrue(entry.winfo_ismapped())
+                for label in ['Save identification only','Suggest name from selected endpoints',
+                              'Match and name from master','Export GPX for ExpertGPS']:
+                    self.assertTrue(buttons[label].winfo_ismapped(),label)
+                self.assertFalse(entries[0].winfo_ismapped())
+                buttons['Show folders'].invoke(); root.update()
+                self.assertTrue(entries[0].winfo_ismapped())
+                buttons['Hide folders'].invoke(); root.update()
                 buttons['Read Garmin tracks (read only)'].invoke()
                 deadline=time.monotonic()+3
                 while time.monotonic()<deadline:

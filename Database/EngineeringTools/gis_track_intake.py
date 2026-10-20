@@ -718,14 +718,11 @@ def open_intake(parent):
             state["active_recording"]=index;select()
     queue.bind("<ButtonRelease-1>",clicked_recording)
     def focus_map():
-        for widget in path_rows+identification_rows:widget.pack_forget()
-        controls.pack_forget()
+        for widget in path_rows:widget.pack_forget()
     def show_fields():
         for widget in path_rows:widget.pack(fill="x",pady=3,before=row)
-        for widget in identification_rows:widget.pack(fill="x",pady=3,before=review_controls)
-        controls.pack(fill="x")
-    ttk.Button(map_controls,text="Maximize map",command=focus_map).pack(side="left",before=map_controls.winfo_children()[0])
-    ttk.Button(map_controls,text="Show fields",command=show_fields).pack(side="left",before=map_controls.winfo_children()[1])
+    ttk.Button(map_controls,text="Hide folders",command=focus_map).pack(side="left",before=map_controls.winfo_children()[0])
+    ttk.Button(map_controls,text="Show folders",command=show_fields).pack(side="left",before=map_controls.winfo_children()[1])
     win.after(500,focus_map)
     start.trace_add("write",lambda *_:None);end.trace_add("write",lambda *_:None)
     controls=ttk.Frame(editor);controls.pack(fill="x")
