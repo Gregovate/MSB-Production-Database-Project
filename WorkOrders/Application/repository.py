@@ -139,6 +139,18 @@ class WorkManagementRepository:
             )
             return [dict(row) for row in cur.fetchall()]
 
+    def task_types(self, actor: dict[str, Any]) -> list[dict[str, Any]]:
+        """Read-only, catalog-backed filter choices for Manager and Crew."""
+        if not actor.get("can_read"):
+            raise WorkManagementError("Work Order search is not authorized.", 403)
+        with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                "SELECT task_type_id AS id, task_type_name AS name "
+                "FROM ref.task_type WHERE active_flag "
+                "ORDER BY sort_order, task_type_name"
+            )
+            return [dict(row) for row in cur.fetchall()]
+
     def reviewer_options(self, actor: dict[str, Any]) -> dict[str, Any]:
         """Read Task Type/Stage/Work Area for authorized internal Creators.
 
