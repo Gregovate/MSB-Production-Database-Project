@@ -210,7 +210,8 @@ def open_work_order_aging() -> Response:
     order = request.args.get("sort", "created_asc").strip().lower()
     include_planning = request.args.get("include_planning", "1") == "1"
     rows = store().aging_report(
-        actor=who, sort=order, include_planning=include_planning)
+        actor=who, sort=order, include_planning=include_planning,
+        **({"due_filter": request.args["due"]} if request.args.get("due") else {}))
     return jsonify(
         rows=rows,
         count=len(rows),
@@ -226,6 +227,7 @@ def open_work_order_aging() -> Response:
         read_only=True,
         all_open_work_orders=True,
         include_planning=include_planning,
+        due_filter=request.args.get("due", ""),
     )
 
 
@@ -259,6 +261,7 @@ def tickets() -> Response:
         actor=who, scope=scope, person_id=person_id,
         show_completed=show_completed, search=search, task_type_id=task_type_id, sort=sort,
         include_planning=include_planning,
+        **({"due_filter": request.args["due"]} if request.args.get("due") else {}),
     )
     for row in rows:
         row["category"] = (

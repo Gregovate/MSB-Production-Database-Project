@@ -87,9 +87,20 @@
         </select>
       </div>
       <div class="field">
+        <label for="due-filter">Due date (open Work Orders)</label>
+        <select id="due-filter">
+          <option value="">All due dates</option>
+          <option value="overdue">Overdue</option>
+          <option value="today">Due today</option>
+          <option value="missing">Missing due date</option>
+        </select>
+      </div>
+      <div class="field">
         <label for="ticket-sort">Sort by</label>
         <select id="ticket-sort">
-          <option value="priority">Priority · Most urgent first (1 → 5)</option>
+          <option value="due_asc">Due date · Earliest first</option>
+          <option value="due_desc">Due date · Latest first</option>
+          <option value="priority" selected>Priority · Most urgent first (1 → 5)</option>
           <option value="priority_desc">Priority · Least urgent first (5 → 1)</option>
           <option value="number_desc">Work Order / Intake number · Highest first</option>
           <option value="number_asc">Work Order / Intake number · Lowest first</option>

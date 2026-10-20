@@ -28,6 +28,26 @@ class WorkManagementError(RuntimeError):
         self.status = status
 
 
+# Native date expression stays compatible with a pre-migration read-only clone.
+# SQL performs deadline selection before LIMIT, never on a truncated browser list.
+DUE_SQL = "(SELECT (to_jsonb(dw)->>'due_by')::date FROM ops.work_order dw WHERE dw.work_order_id=t.wo_id)"
+TODAY_SQL = "(CURRENT_TIMESTAMP AT TIME ZONE 'America/Chicago')::date"
+
+
+def deadline_condition(value: str) -> str:
+    conditions = {
+        "": "TRUE",
+        "overdue": DUE_SQL + " < " + TODAY_SQL,
+        "today": DUE_SQL + " = " + TODAY_SQL,
+        "missing": DUE_SQL + " IS NULL",
+    }
+    if value not in conditions:
+        raise WorkManagementError("Unknown due-date filter.")
+    if not value:
+        return "TRUE"
+    return "t.type='WORK_ORDER' AND t.active AND t.done_at IS NULL AND " + conditions[value]
+
+
 def ledger_select() -> str:
     """Reuse the already documented DB-owned ledger rather than a second model."""
     sql = LEDGER_PATH.read_text(encoding="utf-8").strip().rstrip(";")
@@ -290,7 +310,7 @@ class WorkManagementRepository:
     def tickets(
         self, *, actor: dict[str, Any], scope: str, person_id: int | None,
         show_completed: bool, search: str, task_type_id: int | None = None, sort: str = "priority",
-        include_planning: bool = True, limit: int = 80,
+        include_planning: bool = True, limit: int = 80, due_filter: str = "",
     ) -> list[dict[str, Any]]:
         manager_scopes = ("all", "tickets", "person", "repairs", "testing",
                           "intake", "feedback", "unassigned", "critical")
@@ -301,6 +321,8 @@ class WorkManagementRepository:
         if scope == "person" and (person_id is None or person_id < 1):
             raise WorkManagementError("Select a valid assignee.")
         sort_modes = {
+            "due_asc": DUE_SQL + " ASC NULLS LAST",
+            "due_desc": DUE_SQL + " DESC NULLS LAST",
             "priority": "t.urgency ASC NULLS LAST, COALESCE(t.wo_id, t.in_id) DESC",
             "priority_desc": "t.urgency DESC NULLS LAST, COALESCE(t.wo_id, t.in_id) DESC",
             "number_asc": "COALESCE(t.wo_id, t.in_id) ASC",
@@ -314,7 +336,7 @@ class WorkManagementRepository:
         limit = max(1, min(int(limit), 100))
         user = int(actor["person_id"])
         selected = user if scope == "mine" else person_id
-        conditions: list[str] = []
+        conditions: list[str] = [deadline_condition(due_filter)]
         params: list[Any] = []
         if not show_completed:
             conditions.append("t.done_at IS NULL AND t.active")
@@ -402,7 +424,7 @@ class WorkManagementRepository:
 
     def aging_report(self, *, actor: dict[str, Any],
                      sort: str = "created_asc",
-                     include_planning: bool = True) -> list[dict[str, Any]]:
+                     include_planning: bool = True, due_filter: str = "") -> list[dict[str, Any]]:
         """ALL recorded-open Work Orders, including inactive exceptions.
 
         Use native created_at, not last activity or assignment date. No
@@ -412,6 +434,8 @@ class WorkManagementRepository:
         if not actor["can_manage"]:
             raise WorkManagementError("Manager aging report is not authorized.", 403)
         sorts = {
+            "due_asc": DUE_SQL + " ASC NULLS LAST, t.wo_id",
+            "due_desc": DUE_SQL + " DESC NULLS LAST, t.wo_id",
             "created_asc": "t.opened_at ASC NULLS LAST, t.wo_id ASC",
             "created_desc": "t.opened_at DESC NULLS LAST, t.wo_id DESC",
             "priority": "t.urgency ASC NULLS LAST, t.opened_at ASC NULLS LAST, t.wo_id",
@@ -431,6 +455,7 @@ class WorkManagementRepository:
             "WHERE t.type = 'WORK_ORDER' AND t.done_at IS NULL "
             + ("" if include_planning else
                "AND t.urgency IS DISTINCT FROM 5 ")
+            + "AND (" + deadline_condition(due_filter) + ") "
             + "ORDER BY " + sorts[sort]
         )
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:

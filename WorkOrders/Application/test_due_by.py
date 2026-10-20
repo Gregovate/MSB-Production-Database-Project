@@ -1,5 +1,7 @@
 """Due-date visibility: no invented deadline and no overdue closed work."""
 from repository import WorkManagementRepository
+from repository import WorkManagementError
+import pytest
 
 
 class Cursor:
@@ -27,3 +29,35 @@ def test_legacy_today_overdue_completed_and_canceled():
     assert not rows[2]['overdue']  # Due today remains on time.
     assert not rows[3]['overdue']  # Completed is not outstanding work.
     assert not rows[4]['overdue']  # Canceled is not outstanding work.
+
+
+@pytest.mark.parametrize('direction', ['asc', 'desc'])
+@pytest.mark.parametrize('due_filter,operator', [('overdue', ' < '), ('today', ' = '), ('missing', ' IS NULL')])
+def test_deadline_selection_is_applied_before_limit(direction, due_filter, operator):
+    class Connection:
+        queries = []
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def cursor(self, **kwargs): return self
+        def execute(self, sql, params=None): self.queries.append(sql)
+        def fetchall(self): return []
+    connection = Connection()
+    repo = WorkManagementRepository.__new__(WorkManagementRepository)
+    repo.connect = lambda: connection
+    repo.tickets(actor={'can_manage': False, 'person_id': 17}, scope='mine',
+                 person_id=None, show_completed=True, search='',
+                 sort='due_' + direction, due_filter=due_filter)
+    sql = connection.queries[0]
+    assert 't.active AND t.done_at IS NULL' in sql
+    assert "->>'due_by')::date" + ' FROM' in sql
+    assert operator in sql.split('ORDER BY')[-2]
+    assert direction.upper() + ' NULLS LAST' in sql
+    assert sql.rindex('ORDER BY') < sql.index('LIMIT %s')
+    if due_filter != 'missing':
+        assert "AT TIME ZONE 'America/Chicago'" in sql
+
+
+def test_untrusted_deadline_filter_is_rejected():
+    from repository import deadline_condition
+    with pytest.raises(WorkManagementError):
+        deadline_condition('today; DROP TABLE ops.work_order')

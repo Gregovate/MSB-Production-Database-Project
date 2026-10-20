@@ -1439,3 +1439,11 @@ def test_production_valid_token_still_requires_directus_user(production_client, 
         headers=production_headers(), environ_overrides={"REMOTE_ADDR": "192.168.5.4"})
     assert response.status_code == 403
 
+
+
+def test_due_filter_is_forwarded_to_authorized_ticket_query(client):
+    FakeRepo.calls.clear()
+    response = client.get('/api/work-orders/tickets?sort=due_asc&due=overdue', headers=identity())
+    assert response.status_code == 200
+    assert any(call[0] == 'tickets' and call[1].get('due_filter') == 'overdue'
+               and call[1].get('sort') == 'due_asc' for call in FakeRepo.calls)

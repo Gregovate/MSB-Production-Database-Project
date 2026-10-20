@@ -39,7 +39,7 @@
   const knownScopes = new Set(["mine", "my-created", "my-feedback", "all",
     "tickets", "aging", "person", "critical", "unassigned", "repairs",
     "testing", "intake", "feedback"]);
-  const knownSorts = new Set(["priority", "priority_desc", "number_asc",
+  const knownSorts = new Set(["due_asc", "due_desc", "priority", "priority_desc", "number_asc",
     "number_desc", "created_asc", "created_desc"]);
 
   function effectiveScope() {
@@ -54,7 +54,7 @@
       showCompleted: $("show-completed").checked,
       includePlanning: $("include-planning").checked,
       search: $("ticket-search").value,
-      taskType: $("task-type-filter").value,
+      taskType: $("task-type-filter").value, due: $("due-filter").value,
       ticket: state.selected,
       mode: state.createMode ? "create" : "view",
       listScroll: $("ticket-list").scrollTop,
@@ -74,7 +74,7 @@
       show_completed: next.showCompleted ? "1" : "0",
       include_planning: next.includePlanning ? "1" : "0",
       q: next.search, person_id: next.person,
-      task_type_id: next.taskType,
+      task_type_id: next.taskType, due: next.due,
       ticket: next.ticket || "", mode: next.mode === "create" ? "create" : "",
     };
     Object.entries(values).forEach(([key, value]) => {
@@ -95,6 +95,7 @@
       !["mine","my-created","my-feedback"].includes(displayed) ? "mine" : displayed;
     $("ticket-sort").value = knownSorts.has(snapshot.sort) ? snapshot.sort : "priority";
     $("task-type-filter").value = snapshot.taskType || "";
+    $("due-filter").value = ["overdue", "today", "missing"].includes(snapshot.due) ? snapshot.due : "";
     $("show-completed").checked = Boolean(snapshot.showCompleted);
     $("include-planning").checked = Boolean(snapshot.includePlanning);
     $("ticket-search").value = String(snapshot.search || "").slice(0, 120);
@@ -137,6 +138,7 @@
     restoreControls({
       scope: qs.get("scope") || "mine", sort: qs.get("sort") || "priority",
       person: qs.get("person_id") || "",
+      due: qs.get("due") || "", taskType: qs.get("task_type_id") || "",
       showCompleted: qs.get("show_completed") === "1",
       includePlanning: qs.get("include_planning") === "1",
       search: qs.get("q") || "",
@@ -276,6 +278,7 @@
     state.managerQueue = scope;
     $("ticket-search").value = "";
     $("task-type-filter").value = "";
+    $("due-filter").value = "";
     resetDetail();
     writeNavigation("push");
     loadTickets();
@@ -388,7 +391,7 @@
     const sort = $("ticket-sort").value;
     try {
       const response = await getJson("/api/work-orders/aging?sort=" +
-        encodeURIComponent(sort) + "&include_planning=" +
+        encodeURIComponent(sort) + "&due=" + encodeURIComponent($("due-filter").value) + "&include_planning=" +
         ($("include-planning").checked ? "1" : "0"));
       if (serial !== state.agingFetchId || $("scope").value !== "aging") return;
       state.agingRows = response.rows || [];
@@ -426,7 +429,7 @@
     }
     const params = new URLSearchParams({
       scope, q: $("ticket-search").value.trim(),
-      task_type_id: $("task-type-filter").value,
+      task_type_id: $("task-type-filter").value, due: $("due-filter").value,
       show_completed: $("show-completed").checked ? "1" : "0",
       sort: $("ticket-sort").value,
       include_planning: $("include-planning").checked ? "1" : "0",
@@ -783,6 +786,10 @@
   $("refresh").addEventListener("click", () =>
     Promise.all([loadTickets(), loadManagerInbox()]));
   $("task-type-filter").addEventListener("change", () => {
+    writeNavigation("replace");
+    loadTickets();
+  });
+  $("due-filter").addEventListener("change", () => {
     writeNavigation("replace");
     loadTickets();
   });
