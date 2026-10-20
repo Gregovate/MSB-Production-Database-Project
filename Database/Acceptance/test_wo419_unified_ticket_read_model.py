@@ -104,7 +104,7 @@ def test_419_scope_uses_real_person_ids_not_display_names():
     for token in (
         "### Work Order landing view — default My Work",
         "All Work Orders",
-        "Show completed",
+        "Include completed / cancelled / inactive",
         "ref.person.person_id",
         "server-side",
     ):
