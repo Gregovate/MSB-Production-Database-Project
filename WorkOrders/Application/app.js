@@ -707,6 +707,12 @@
     }
     await Promise.all([selectTicket(saved.ticket), loadManagerInbox()]);
   });
+  document.addEventListener("wo419:cancel-create", () => {
+    // Cancel is local UI state only; it must never issue a Work Order command.
+    resetDetail();
+    renderList();
+    writeNavigation("push");
+  });
   document.addEventListener("wo419:open-create", () => {
     if (!state.actor?.can_create) return;
     writeNavigation("replace");
