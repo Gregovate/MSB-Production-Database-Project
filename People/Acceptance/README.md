@@ -5,13 +5,23 @@ People Manager has completed current-Production disposable acceptance, governed 
 Current status:
 
 ```text
-current-Production disposable acceptance       PASS
-pre-Production browser operator review          ACCEPTED
-Production database/backend deployment          PASS
-Production protected /people/ route             PASS
-Cloudflare-authenticated live browser            PASS
-Production GA4 page view                         PASS
-Production intranet/index integration            NEXT — BACKBONE #16
+People Manager original Production acceptance   PASS
+Identity reconciliation V0.2.2 disposable        PASS
+Identity reconciliation V0.2.2 Production        PASS
+Identity bootstrap V0.2.3 disposable              PASS — #395
+Identity bootstrap browser/application review     NEXT — #395 / Backbone #24
+Production protected /people/ route              PASS
+Cloudflare-authenticated live browser             PASS
+Production GA4 page view                          PASS
+Production intranet/index integration             NEXT — BACKBONE #16
+```
+
+Current Production People/Identity release:
+
+```text
+version              V0.2.2
+deployed main SHA    bb8dfa498c5b4bbecfc3693f68c4066c1e08242e
+migration            People/Database/005_reconcile_directus_person_identity.sql
 ```
 
 ## Governing Runtime Authority
@@ -143,6 +153,75 @@ Production rollback artifacts:
 Durable evidence:
 
 `People_Manager_Production_Acceptance_2026-09-09.md`
+
+## Identity Reconciliation V0.2.2 — PASS
+
+Issue #385 / PR #386 installed the durable exact-email self-reconciliation boundary for recurring Directus↔Person link failures.
+
+Accepted runtime candidate:
+
+```text
+2c9a2937079f817dafd5119584aaffc77b51357d
+```
+
+Merged/deployed main:
+
+```text
+bb8dfa498c5b4bbecfc3693f68c4066c1e08242e
+```
+
+Migration:
+
+```text
+People/Database/005_reconcile_directus_person_identity.sql
+blob 88442b8f4150513fd6af581e2ea90004c6f27658
+```
+
+Disposable current-Production acceptance proved exact safe self-reconciliation across protected actor paths, idempotence, role preservation, audit attribution, fail-closed mismatch/conflict behavior, and explicit rejection of tablet/device/service identities.
+
+Production deployment completed successfully under the Server Management Issue #37 maintenance controller.
+
+Rollback/evidence:
+
+```text
+/home/msbadmin/backups/postgres/msb-pre-people-identity-reconcile-20261013T183854.dump
+/tmp/MSB_People_Identity_Reconcile_Production_Deploy_20261013T183854.txt
+```
+
+Durable acceptance:
+
+`People_Identity_Reconciliation_Production_Acceptance_2026-10-13.md`
+
+## Silent Human Identity Bootstrap V0.2.3 — DISPOSABLE PASS
+
+Issue #395 candidate:
+
+```text
+dcc8f25f07a74e19ce3de3aae2d9d137b5411815
+```
+
+Governed current-Production disposable acceptance passed with a separate PostgreSQL clone and disposable Directus 11.17.1 runtime.
+
+Production invariants remained unchanged:
+
+```text
+ref.person       4157a1c63a88bc900d566f6eb094f1c4 -> same
+directus_users   3170a3a5b5860bed1c293f2ee6b50131 -> same
+```
+
+Retained report:
+
+```text
+/tmp/MSB_People_Identity_Bootstrap_Disposable_20261015T200047.txt
+```
+
+Durable evidence:
+
+```text
+People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md
+```
+
+This evidence does not authorize Production deployment. The next gate is exact-candidate browser/application integration review with the `my.sheboyganlights.org/apps/` workflow. Don Martens remains the preserved Production acceptance fixture and has not been consumed.
 
 ## Google Analytics — PASS
 

@@ -49,10 +49,16 @@ def resolve_symbol_library() -> Path:
         return chosen
     # Before migration, maintain the working source; after migration, use new.
     # If both exist, stop rather than silently split reads and writes.
-    if OLD_LIBRARY.exists() and NEW_LIBRARY.exists():
+    try:
+        old_exists, new_exists = OLD_LIBRARY.exists(), NEW_LIBRARY.exists()
+    except OSError:
+        # A disconnected/denied shared drive must not prevent the GUI opening.
+        # Operations still perform their own source preflight before any write.
+        return NEW_LIBRARY
+    if old_exists and new_exists:
         raise RuntimeError("Both old Symbols and new Symbol Library folders exist. "
                         "Finish reviewed cutover before running tools.")
-    return NEW_LIBRARY if NEW_LIBRARY.exists() else OLD_LIBRARY
+    return NEW_LIBRARY if new_exists or not old_exists else OLD_LIBRARY
 
 
 PARK = resolve_symbol_library()

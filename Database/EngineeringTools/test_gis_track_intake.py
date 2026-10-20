@@ -55,5 +55,101 @@ class IntakeTests(unittest.TestCase):
 
     def test_unknown_type_not_forced(self):
         self.assertEqual(type_hint("2026-10-20 08:00"),"Unknown")
+        self.assertEqual(type_hint("2026-10-14 11:19:07 Hvfe00 tfe04&02"),"HV")
+        self.assertEqual(type_hint("2026-10-14 11:26:10 Netfe00tfe15"),"NET")
+        self.assertEqual(type_hint("New run 2026 lpfc01"),"Unknown")
+
+    def test_source_and_master_change_block_review_before_archive(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d); source=root/'raw.gpx'; master=root/'master.gpx'
+            source.write_text(GPX); master.write_text(GPX)
+            digest=source_digest(source); md=source_digest(master)
+            source.write_text(GPX.replace('NET','HV'))
+            with self.assertRaisesRegex(ValueError,'Recording changed'):
+                save(root/'intake',source,1,'route','NET','A','B',expected_digest=digest)
+            self.assertFalse((root/'intake').exists())
+            source.write_text(GPX); master.write_text(GPX.replace('FE-00','FE-01'))
+            with self.assertRaisesRegex(ValueError,'Master changed'):
+                save(root/'intake',source,1,'route','NET','A','B',expected_digest=digest,
+                     master=master,master_digest=md)
+            self.assertFalse((root/'intake').exists())
+
+    def test_segment_gaps_are_preserved_and_bad_coordinates_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            source=Path(d)/'raw.gpx'
+            source.write_text(GPX.replace('<trkpt lat="43.101"', '</trkseg><trkseg><trkpt lat="43.101"'))
+            tracks,_=parse(source)
+            self.assertEqual([len(s) for s in tracks[0][2].segments],[1,1])
+            source.write_text(GPX.replace('43.101','nan'))
+            with self.assertRaisesRegex(ValueError,'Invalid GPX'):
+                parse(source)
+
+    def test_uneven_sampling_does_not_clip_extreme_endpoint(self):
+        import io
+        from PIL import Image
+        points=[(43.778,-87.742)]*100+[(43.779,-87.743)]
+        width,height=550,290
+        zoom=fit_zoom(points,width,height)
+        tile=io.BytesIO(); Image.new('RGB',(256,256)).save(tile,format='JPEG')
+        _,(ox,oy)=aerial_image(points,width,height,zoom,fetch=lambda _:tile.getvalue())
+        for lat,lon in points:
+            x,y=mercator(lat,lon,zoom)
+            self.assertTrue(0 <= x-ox <= width)
+            self.assertTrue(0 <= y-oy <= height)
+
+    def test_unrenderable_extent_stops_instead_of_clipping(self):
+        with self.assertRaisesRegex(ValueError,'extends beyond'):
+            fit_zoom([(0,0),(45,45)],550,290)
+
+    def test_tk_read_save_next_and_reopen(self):
+        import tkinter as tk
+        import time
+        from tkinter import ttk
+        from unittest.mock import patch
+        from PIL import Image
+        from gis_track_intake import open_intake
+        def walk(w):
+            yield w
+            for child in w.winfo_children():
+                yield from walk(child)
+        with tempfile.TemporaryDirectory() as d:
+            rootdir=Path(d); raw=rootdir/'Garmin'; raw.mkdir()
+            master=rootdir/'master.gpx'; master.write_text(GPX)
+            source=raw/'raw.gpx'; source.write_text(GPX)
+            intake=rootdir/'Field-Recordings'; intake.mkdir()
+            before=(source.read_bytes(), master.read_bytes())
+            root=tk.Tk(); root.withdraw()
+            self.addCleanup(root.destroy)
+            errors=[]
+            with patch('gis_track_intake.find_garmin_gpx_dirs',return_value=[]), \
+                 patch('gis_track_intake.aerial_image',return_value=(Image.new('RGB',(550,290)),(0,0))), \
+                 patch('gis_track_intake.messagebox.showerror',side_effect=lambda *a,**k:errors.append(a)):
+                win=open_intake(root); root.update()
+                entries=[w for w in walk(win) if type(w) is ttk.Entry]
+                for entry,value in zip(entries,[str(raw),str(master),str(intake)]):
+                    entry.delete(0,'end'); entry.insert(0,value)
+                buttons={w.cget('text'):w for w in walk(win) if isinstance(w,ttk.Button)}
+                for label in ['Read Garmin tracks (read only)','Save & Next']:
+                    button=buttons[label]
+                    self.assertTrue(button.winfo_ismapped(),label)
+                    self.assertLessEqual(button.winfo_rooty()+button.winfo_height(),
+                                         win.winfo_rooty()+win.winfo_height(),label)
+                buttons['Read Garmin tracks (read only)'].invoke()
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update(); time.sleep(.02)
+                    if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):
+                        break
+                entries[-1].delete(0,'end');entries[-1].insert(0,'Operator corrected name')
+                buttons['Save & Next'].invoke();root.update()
+                self.assertFalse(errors)
+                receipt=next((intake/'Reviews').glob('*.json'))
+                import json
+                saved=json.loads(receipt.read_text())
+                self.assertEqual(saved['working_name'],'Operator corrected name')
+                self.assertEqual(saved['master_sha256'],source_digest(master))
+                buttons['Read Garmin tracks (read only)'].invoke();root.update()
+                self.assertEqual(entries[-1].get(),'Operator corrected name')
+                self.assertEqual((source.read_bytes(),master.read_bytes()),before)
 
 if __name__=="__main__":unittest.main()

@@ -8,12 +8,14 @@ import json
 import math
 import re
 import shutil
+import threading
+import queue as thread_queue
 from datetime import datetime, timezone
 from pathlib import Path
 import xml.etree.ElementTree as ET
 import tkinter as tk
 from io import BytesIO
-from urllib.request import urlopen
+from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 from PIL import Image, ImageTk
 from sync_gis_icons import PARK
@@ -25,16 +27,31 @@ KINDS = ("Unknown", "HV", "NET", "PRI")
 AERIAL_URL = "https://webassets.sheboyganlights.org/maps/evergreen-2019-v1/{z}/{x}/{y}.jpg"
 
 
+class TrackPoints(list):
+    """Keep GPX segment boundaries; flatten only for endpoint/distance queries."""
+    def __init__(self, segments):
+        self.segments = segments
+        super().__init__(p for segment in segments for p in segment)
+
+
+def coordinate(node):
+    lat, lon = float(node.get("lat")), float(node.get("lon"))
+    if not (math.isfinite(lat) and math.isfinite(lon) and -90 <= lat <= 90 and -180 <= lon <= 180):
+        raise ValueError("Invalid GPX latitude/longitude")
+    return lat, lon
+
+
 def parse(path):
     root = ET.fromstring(Path(path).read_bytes())
     if root.tag != GPX + "gpx":
         raise ValueError("Only GPX 1.1 is supported")
     tracks = []
     for i, node in enumerate(root.findall(GPX + "trk"), 1):
-        pts = [(float(p.get("lat")), float(p.get("lon"))) for p in node.iter(GPX + "trkpt")]
+        pts = TrackPoints([[coordinate(p) for p in seg.findall(GPX + "trkpt")]
+                           for seg in node.findall(GPX + "trkseg")])
         if len(pts) > 1:
             tracks.append((i, node.findtext(GPX + "name") or "", pts))
-    points = [(w.findtext(GPX + "name") or "(unnamed)", float(w.get("lat")), float(w.get("lon")))
+    points = [(w.findtext(GPX + "name") or "(unnamed)", *coordinate(w))
               for w in root.findall(GPX + "wpt")]
     return tracks, points
 
@@ -49,7 +66,10 @@ def nearest(point, waypoints, count=5):
 
 def type_hint(text):
     parts = re.findall(r"[A-Z]+", text.upper())
-    return next((x for x in ("HV", "NET", "PRI") if x in parts), "Unknown")
+    for kind in ("HV", "NET", "PRI"):
+        if kind in parts or re.search(r"(?<![A-Z])"+kind+r"[A-Z]{1,3}\d", text.upper()):
+            return kind
+    return "Unknown"
 
 def propose(kind, start, end):
     return ((kind+" ") if kind != "Unknown" else "") + start + " to " + end
@@ -60,7 +80,7 @@ def source_digest(path):
 def reviewed_path(intake, digest, index):
     return Path(intake) / "Reviews" / (digest + "_" + str(index) + ".json")
 
-def save(intake, source, index, name, kind, start, end):
+def save(intake, source, index, name, kind, start, end, expected_digest=None, master=None, master_digest=None):
     """Create review receipt, keeping Garmin, original GPX and master unchanged."""
     if not name.strip() or kind not in KINDS:
         raise ValueError("Name and temporary classification are required")
@@ -68,6 +88,12 @@ def save(intake, source, index, name, kind, start, end):
         raise ValueError("Review starting and ending waypoints")
     source = Path(source)
     digest = source_digest(source)
+    if expected_digest is not None and digest != expected_digest:
+        raise ValueError("Recording changed since display; read tracks again")
+    if master is not None and source_digest(master) != master_digest:
+        raise ValueError("Master changed since display; read tracks again")
+    if index not in [t[0] for t in parse(source)[0]]:
+        raise ValueError("Selected track no longer exists")
     day = datetime.fromtimestamp(source.stat().st_mtime).strftime("%Y-%m-%d")
     originals = Path(intake) / day / "Originals"
     archive = originals / (digest[:16] + "_" + re.sub(r"[^A-Za-z0-9_.-]", "_", source.name))
@@ -87,6 +113,9 @@ def save(intake, source, index, name, kind, start, end):
                 temporary_type=kind, start_waypoint=start, end_waypoint=end,
                 status="Identified (not merged)",
                 reviewed_utc=datetime.now(timezone.utc).isoformat())
+    if master is not None:
+        data.update(master_path=str(master), master_sha256=master_digest,
+                    aerial_layer=AERIAL_URL)
     if previous is not None:
         data["previous_review"] = previous
     temp = destination.with_suffix(".json.tmp")
@@ -111,7 +140,7 @@ def fit_zoom(track, width, height, max_zoom=20, min_zoom=14):
         span_y = max(p[1] for p in xy) - min(p[1] for p in xy)
         if span_x <= width * 0.82 and span_y <= height * 0.82:
             return zoom
-    return min_zoom
+    raise ValueError("Track extends beyond the available park aerial viewport")
 
 def aerial_image(track, width, height, zoom=19, fetch=None):
     """Compose the existing MSB published orthophoto tiles around a track.
@@ -119,10 +148,13 @@ def aerial_image(track, width, height, zoom=19, fetch=None):
     """
     if fetch is None:
         def fetch(url):
-            with urlopen(url, timeout=4) as response:
+            request = Request(url, headers={"User-Agent": "Mozilla/5.0 MSB-GIS-Manager/0.4.6",
+                                            "Referer": "https://my.sheboyganlights.org/"})
+            with urlopen(request, timeout=10) as response:
                 return response.read()
-    center = mercator(sum(p[0] for p in track)/len(track),
-                      sum(p[1] for p in track)/len(track), zoom)
+    projected = [mercator(*p, zoom) for p in track]
+    center = ((min(p[0] for p in projected)+max(p[0] for p in projected))/2,
+              (min(p[1] for p in projected)+max(p[1] for p in projected))/2)
     ox, oy = center[0]-width/2, center[1]-height/2
     output = Image.new("RGB", (width,height))
     for tx in range(math.floor(ox/256), math.floor((ox+width-1)/256)+1):
@@ -176,52 +208,96 @@ def open_intake(parent):
     queue = tk.Listbox(row, width=34, exportselection=False); queue.pack(side="left",fill="y")
     panel = ttk.Frame(row, padding=8); panel.pack(side="left",fill="both",expand=True)
     ttk.Label(panel, text="Selected track and waypoint suggestions").pack(anchor="w")
+    editor = ttk.Frame(panel)
+    editor.pack(side="bottom",fill="x")
     drawing = tk.Canvas(panel,bg="#f0f2ed",height=290); drawing.pack(fill="both",expand=True)
     aerial_status = tk.StringVar(value="2019 aerial loads when you select a track.")
-    ttk.Label(panel, textvariable=aerial_status, wraplength=620).pack(anchor="w")
+    ttk.Label(panel, textvariable=aerial_status, wraplength=620).pack(side="bottom",anchor="w",before=drawing)
     start, end, name, kind = tk.StringVar(),tk.StringVar(),tk.StringVar(),tk.StringVar(value="Unknown")
     for label,var in [("Start waypoint",start),("End waypoint",end),("Working name",name)]:
-        r=ttk.Frame(panel);r.pack(fill="x",pady=3)
+        r=ttk.Frame(editor);r.pack(fill="x",pady=3)
         ttk.Label(r,text=label,width=19).pack(side="left")
         ttk.Entry(r,textvariable=var).pack(side="left",fill="x",expand=True)
-    r=ttk.Frame(panel);r.pack(fill="x",pady=3)
+    r=ttk.Frame(editor);r.pack(fill="x",pady=3)
     ttk.Label(r,text="Temporary type",width=19).pack(side="left")
     ttk.Combobox(r,textvariable=kind,values=KINDS,state="readonly").pack(side="left",fill="x",expand=True)
     status=tk.StringVar(value="Garmin GPX detected — verify paths and click Read." if len(found_devices)==1 else
                        "Select mounted Garmin GPX folder, current master and intake root.")
-    ttk.Label(base,textvariable=status,wraplength=900).pack(anchor="w")
-    state={"items":[],"waypoints":[],"aerial_ready":False}
+    ttk.Label(base,textvariable=status,wraplength=900).pack(anchor="w",before=row)
+    state={"items":[],"waypoints":[],"aerial_ready":False,"generation":0}
+    results = thread_queue.Queue()
     def select(event=None):
+        state["generation"] += 1
         state["aerial_ready"]=False
         selection=queue.curselection()
         if not selection:return
         source,(idx,original,points)=state["items"][selection[0]]
-        digest=source_digest(source)
+        digest=state["digests"][source]
         a,b=nearest(points[0],state["waypoints"]),nearest(points[-1],state["waypoints"])
         start.set(a[0][0] if a else "Unknown");end.set(b[0][0] if b else "Unknown")
         kind.set(type_hint(original+" "+source.stem))
         name.set(propose(kind.get(),start.get(),end.get()))
         receipt=reviewed_path(intake.get(),digest,idx)
-        if receipt.exists():
-            prior=json.loads(receipt.read_text(encoding="utf8"))
-            name.set(prior.get("working_name",name.get()))
-            kind.set(prior.get("temporary_type",kind.get()))
-            start.set(prior.get("start_waypoint",start.get()))
-            end.set(prior.get("end_waypoint",end.get()))
+        try:
+            if receipt.exists():
+                prior=json.loads(receipt.read_text(encoding="utf8"))
+                name.set(prior.get("working_name",name.get()))
+                kind.set(prior.get("temporary_type",kind.get()))
+                start.set(prior.get("start_waypoint",start.get()))
+                end.set(prior.get("end_waypoint",end.get()))
+        except (OSError, ValueError) as error:
+            status.set(f"Cannot read saved review: {error}")
+            return
         drawing.delete("all")
         width=max(drawing.winfo_width(),550); height=max(drawing.winfo_height(),290)
         nearby=[w for w in state["waypoints"] if min(dist_ft((w[1],w[2]),p) for p in points)<250]
+        aerial_status.set("Loading published 2019 aerial…")
+        generation = state["generation"]
+        def fetch_map():
+            try:
+                zoom=fit_zoom(points,width,height)
+                tile, offset = aerial_image(points,width,height,zoom=zoom)
+                results.put((generation, (tile, offset, zoom, points, nearby), None))
+            except Exception as error:
+                results.put((generation, None, str(error)))
+        threading.Thread(target=fetch_map, daemon=True).start()
+        status.set(f"{source.name} — {len(points)} vertices; start: {a[:3]}, end: {b[:3]}. Distances are suggestions only.")
+
+    def poll_map():
         try:
-            zoom=fit_zoom(points,width,height)
-            tile, (ox,oy) = aerial_image(points,width,height,zoom=zoom)
+            while True:
+                generation, result, error = results.get_nowait()
+                if generation != state["generation"]:
+                    continue
+                drawing.delete("all")
+                if error:
+                    drawing.create_text(20,20,anchor="nw",text="Aerial unavailable; no map review possible.",fill="#ad1e1e")
+                    aerial_status.set(f"AERIAL STOP — {error}. No calibrated map displayed.")
+                    continue
+                render_map(*result)
+        except thread_queue.Empty:
+            pass
+        if win.winfo_exists():
+            win.after(100, poll_map)
+
+    def render_map(tile, offset, zoom, points, nearby):
+        ox,oy = offset
+        try:
             photo=ImageTk.PhotoImage(tile, master=win)
             drawing.image_ref=photo
             drawing.create_image(0,0,image=photo,anchor="nw")
             def xy(p):
                 x,y=mercator(p[0],p[1],zoom)
                 return x-ox,y-oy
-            flat=[c for p in points for c in xy(p)]
-            drawing.create_line(*flat,fill="#176bb5",width=4)
+            for segment in getattr(points, "segments", [points]):
+                if len(segment) > 1:
+                    drawing.create_line(*[c for p in segment for c in xy(p)],fill="#176bb5",width=4)
+                elif segment:
+                    x,y=xy(segment[0])
+                    drawing.create_oval(x-3,y-3,x+3,y+3,fill="#176bb5")
+            for label,p in [("START",points[0]),("END",points[-1])]:
+                x,y=xy(p)
+                drawing.create_text(x,y+12,text=label,fill="#000000",font=("Segoe UI",10,"bold"))
             for w in nearby:
                 x,y=xy((w[1],w[2]))
                 drawing.create_oval(x-4,y-4,x+4,y+4,fill="#b53d22",outline="white")
@@ -235,22 +311,41 @@ def open_intake(parent):
             drawing.create_text(20,20,anchor="nw",text="Aerial unavailable; no map review possible.",
                                 fill="#ad1e1e")
             aerial_status.set(f"AERIAL STOP — {error}. No calibrated map displayed.")
-        status.set(f"{source.name} — {len(points)} vertices; start: {a[:3]}, end: {b[:3]}. Distances are suggestions only.")
     def load():
+        state["generation"] += 1
+        state["aerial_ready"] = False
+        state["items"] = []
+        queue.delete(0,"end")
         try:
             if not Path(master.get()).is_file() or not Path(src.get()).is_dir() or not Path(intake.get()).is_dir():
                 raise ValueError("Select existing Garmin folder, current master and intake directory")
-            state["waypoints"]=parse(master.get())[1]
-            state["items"]=[]
+            source_root = Path(src.get()).resolve()
+            intake_root = Path(intake.get()).resolve()
+            if intake_root == source_root or source_root in intake_root.parents:
+                raise ValueError("Intake destination must be outside the Garmin source folder")
+            state["master"]=Path(master.get()).resolve()
+            state["master_digest"]=source_digest(state["master"])
+            state["waypoints"]=parse(state["master"])[1]
+            if not state["waypoints"]:
+                raise ValueError("The current master has no waypoint identities")
+            state["intake"] = str(intake_root)
+            state["digests"] = {}
             for file in sorted(Path(src.get()).rglob("*")):
                 if file.is_file() and file.suffix.lower()==".gpx":
-                    for trk in parse(file)[0]:state["items"].append((file,trk))
+                    digest = source_digest(file)
+                    tracks = parse(file)[0]
+                    if source_digest(file) != digest:
+                        raise ValueError("Recording changed while reading; try again")
+                    state["digests"][file] = digest
+                    for trk in tracks:state["items"].append((file,trk))
             queue.delete(0,"end")
             for file,(idx,title,pts) in state["items"]:
                 queue.insert("end",title or file.name)
             status.set(f"{len(state['items'])} tracks; {len(state['waypoints'])} master waypoints.")
             if state["items"]: queue.selection_set(0); select()
-        except (OSError, ValueError, ET.ParseError) as e:
+        except (OSError, ValueError, TypeError, ET.ParseError) as e:
+            state["items"] = []
+            queue.delete(0,"end")
             messagebox.showerror("Intake stopped",str(e),parent=win)
     def next_item():
         try:
@@ -259,7 +354,11 @@ def open_intake(parent):
             if not state["aerial_ready"]:
                 raise ValueError("Calibrated aerial is unavailable; do not approve track identification")
             file,(idx,_,_)=state["items"][selected[0]]
-            path=save(intake.get(),file,idx,name.get(),kind.get(),start.get(),end.get())
+            if intake.get() != state["intake"] and str(Path(intake.get()).resolve()) != state["intake"]:
+                raise ValueError("Destination changed; read tracks again")
+            path=save(state["intake"],file,idx,name.get(),kind.get(),start.get(),end.get(),
+                      expected_digest=state["digests"][file], master=state["master"],
+                      master_digest=state["master_digest"])
             old=selected[0]
             queue.delete(old);queue.insert(old,name.get())
             if old+1 < len(state["items"]):
@@ -268,10 +367,11 @@ def open_intake(parent):
         except (OSError, ValueError) as e:messagebox.showerror("Save stopped",str(e),parent=win)
     def suggest(*_):
         if start.get() and end.get():name.set(propose(kind.get(),start.get(),end.get()))
-    ttk.Button(base,text="Read Garmin tracks (read only)",command=load).pack(anchor="w",pady=4)
+    ttk.Button(base,text="Read Garmin tracks (read only)",command=load).pack(anchor="w",pady=4,before=row)
     queue.bind("<<ListboxSelect>>",select)
     start.trace_add("write",lambda *_:None);end.trace_add("write",lambda *_:None)
-    controls=ttk.Frame(panel);controls.pack(fill="x")
+    controls=ttk.Frame(editor);controls.pack(fill="x")
     ttk.Button(controls,text="Suggest name from selected endpoints",command=suggest).pack(side="left")
     ttk.Button(controls,text="Save & Next",command=next_item).pack(side="right")
+    win.after(100, poll_map)
     return win

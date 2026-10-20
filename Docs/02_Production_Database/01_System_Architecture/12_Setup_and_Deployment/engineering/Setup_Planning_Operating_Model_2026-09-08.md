@@ -172,6 +172,46 @@ Rules:
 4. Crew-size history should be used to improve a **normal/candidate range**, not to manufacture precision the notes do not support.
 5. Capability/qualification information may later help explain why two crews of the same numeric size are not operationally equivalent.
 
+### Mutable daily crew plan versus recorded actual work (2026-10-16 operator confirmation)
+
+**Planned shift staffing is an operational forecast, not historical evidence of who worked.** Crew A/B/etc. `ops.setup_work_day_crew.am_planned_crew_count` and `pm_planned_crew_count` must remain editable by an authorized Manager even when earlier assignments for that crew have actual work/progress records. Changing the planned count is common as volunteers arrive, leave, or shift among tasks. Neither a changed plan nor its mismatch with reported work is itself an error.
+
+**Actual task history is independently authoritative.** `ops.setup_work_day_task.actual_crew_count`, recorded duration/progress, actual completion, historical assignment identity and Captain/work evidence must **not** be modified by a planned crew-size correction. Report Work remains the route to record actual staffing; corrections to actual reports use the governed historical-correction workflow. A planned count edit does not mean someone worked, does not backfill actual crew sizes, and does not reopen completed assignments.
+
+Changing a crew Captain after actual work is **not** made permissible by this staffing-count decision; preserve existing Captain history protection and deliberate Manager-only corrections. Distinguish planning-count edits from historical assignment moves and from actual report corrections. Display a failed persistence response clearly; do not show Saved until the database confirmed it, and prove readback after reload.
+
+### Shift staffing count, task duration, and Captain availability (2026-10-16 clarification)
+
+**Field rule:** Recording actual crew size and elapsed work belongs to each individual Report Work entry. The Scheduling Board's AM/PM crew count is a **revisable planning indication**, not actual task attendance. Newly created day crews frequently have blank **AM/PM planned headcounts**; that fact does not remove the separate mandatory task-estimate gate.
+
+For each named crew and shift:
+
+- **1** means the Captain alone is the planned crew; it is not zero or a blank. More than one includes the Captain.
+- **NULL / blank** means no confirmed Captain-led crew for that shift. The named Captain may be unavailable in that role or may have joined a different crew as an individual. Do **not** count the named Captain as available, assume one person, invent labor, or silently substitute another crew because a name remains attached to a row.
+- A missing count is not evidence that an assigned task has zero required effort or zero expected duration. Preserve its task identity, estimated elapsed duration if known, and unstaffed/unknown scheduling status. An unplanned count never erases a reported actual crew or hours.
+- **Do not relax existing task-estimate gates.** Scheduling a new task still requires its reviewed expected duration, normal task crew minimum and effort classification through the existing Planning Info workflow. These are *task planning estimates*, not the AM/PM volunteer headcount entered on a day crew. An unconfirmed/blank AM/PM crew count must remain editable and visible but does not grant an exception to task-estimate validation. Preserve the existing historical-continuation exception for estimates locked by real progress. Do not invent estimates or actual attendance.
+- Actual `crew_count` / duration in a Report Work record is always specific to that task/period; it must not be inferred from an earlier planned crew count and must never be recalculated because that plan changes.
+
+**Three separate measures:** (1) planned linear task-hours from independently reviewed `expected_duration_minutes`, regardless of planned staffing count; (2) planned person-hours only when both a positive crew count and positive task duration are known, otherwise `TBD` (never a fabricated zero); and (3) reported actual person-hours from individual Report Work records. A subtotal of known planning hours must be explicitly labeled **partial** whenever some tasks have unknown estimates. These measures must not be presented interchangeably or called a verified remaining-effort forecast.
+
+An existing crew row with `NULL` staffing is still a schedulable plan/history record, not proof that its Captain actually worked that shift. The Manager can update AM/PM planning counts on the Scheduling Board without modifying historical task reports.
+
+
+### 2026 temporary TWO-WAY Catalog / annual planning synchronization — operator-confirmed during launch
+
+**Authority: operator's previously discussed 2026 launch rule, reaffirmed October 16.** While MSB is actively building and testing the 2026 Setup system, the live 2026 annual task and its linked reusable Task Catalog entry must be synchronized **in BOTH directions** for reviewed task-level planning guidance. The annual 2026 scheduling experience is being used to discover realistic planning numbers; improvements made in either place must update the linked counterpart in the **same governed transaction**, not rely on a second UI save. Earlier documentation that described only 2026 annual-to-Catalog "promotion" omitted the required reverse direction and is superseded by this section.
+
+**In-scope linked reusable planning estimates:** normal minimum/maximum task crew (`normal_crew_min`, `normal_crew_max`), expected task duration (`expected_duration_minutes`) and task effort classification (`effort_level`). The existing Catalog task fields and annual snapshot fields remain independently identifiable; preserve all established task identity/name, ordering, readiness, material, and other field-specific ownership. Do not assume this instruction authorizes bulk synchronization of unrelated task fields. For 2026 reusable-origin tasks:
+- **Edit through 2026 Scheduling Board Planning Info →** update the 2026 annual task and its reusable Catalog record together (already supported by existing `ops.update_setup_scheduling_task_planning_info`, migration 050).
+- **Edit through the reusable Catalog editor →** update that reusable task and its linked 2026 annual task's planning estimates together. Reuse the actual governed Catalog edit and effort commands; protect against partial saves and stale annual snapshots. The existing migration 059 only synchronizes task *names*, not all planning estimates, so this reverse direction needs separate explicit implementation and tests.
+- The mandatory task-estimate gate still applies before scheduling new work (expected duration, normal task crew minimum, effort classification), including its existing locked-history continuation exception. Do not relax it. Separate **day crew AM/PM staffing** remains editable and may be NULL (Captain not confirmed for that shift) or 1 (Captain only); it must never automatically become a reusable task's normal crew size.
+- Actual volunteers, actual duration, task progress, recorded work dates and audit identity live in Report Work / historical event evidence. Never rewrite them or convert an actual task report into a reusable estimate. If a guarded annual task has already been reported and cannot safely accept a planning edit, require explicit governed reconciliation/feedback rather than silently leaving Catalog and annual values inconsistent or removing history locks.
+
+**2027 decision gate:** The automatic two-way synchronization is a **2026 launch rule only**. Review actual 2026 schedule/work evidence during 2027 and decide the future Catalog update policy then; do not silently carry this temporary bidirectional synchronization into later annual seasons. Season-only tasks have no reusable link and stay annual-only.
+
+**Implementation and acceptance:** Keep one logical Manager action atomic and actor-attributed, validate 2026 annual-to-Catalog and Catalog-to-annual changes, reject unauthorized/stale/historically unsafe updates without partial commits, prove 2027 does not inherit the 2026 sync, and preserve other Catalog/annual protections. This is a persistent engineering design decision, not a request to copy data blindly or to mutate Production without #122 approval. No application candidate is accepted merely because this contract exists.
+
+
 ## Hours / Duration Interpretation
 
 Rick's recorded hours are useful evidence, but a person's total hours for a day are **not automatically the duration of a Setup task**.
@@ -466,3 +506,13 @@ Future Setup engineering must preserve these rules:
 - GitHub issue #122
 - GitHub PR #125
 - Global People / Capability / Qualification work: issue #130
+
+### 2026 bidirectional Catalog and annual-task synchronization — governing operator correction
+
+**Operator states this was explicitly agreed in an earlier discussion and should already have been recorded here. The precise original chat wording has not been independently recovered. This paragraph records the operator's current clarification, not an invented quotation from that chat.**
+
+**For the 2026 launch season, changes on EITHER side — the reusable task Catalog or the corresponding 2026 annual Setup task — must synchronize to the other side.** This is a temporary 2026 operational arrangement for bringing the newly launched reusable Catalog into alignment with reality using the actual 2026 Setup schedule. It is **bidirectional**, not just annual Planning Info -> Catalog. The required task planning values include normal minimum/maximum task crew guidance, expected duration, and effort classification. Treat the linked task identities as authoritative; never copy day-crew AM/PM planned volunteer counts into normal reusable task estimates.
+
+**Safety and exclusions:** Preserve Manager authorization, existing historical actual-work/report locks and audit attribution. Do not overwrite any actual task-level crew count, elapsed labor, work reports or historical completed-task evidence. Any synchronous update must be transactionally safe, must not create loops or uncontrolled updates, and must not claim success if one side failed. Season-only annual tasks have no reusable Catalog counterpart. Do not silently backfill data or assume a Catalog edit may alter history where existing protections disallow it; reconcile exact field scope and locked-history handling before implementation.
+
+**2027 boundary:** Review 2026 evidence and deliberately decide the long-term Catalog updating rules in 2027. Do not extrapolate the 2026 bidirectional exception indefinitely or impose an unapproved one-way future rule. **The currently proposed migration 076 handles annual-to-Catalog estimates but does not prove the required Catalog-to-annual direction; it is incomplete and NOT accepted or deployable.** Before completing PR #394, inspect existing reusable edit commands/triggers and annual projection for both directions, update the design/code together, regression-test both paths plus history protection, and perform the governed single disposable browser acceptance. No Production mutation is authorized by this document.

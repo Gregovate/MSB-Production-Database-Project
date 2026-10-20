@@ -46,8 +46,8 @@ from gis_workstation_map_source import (inspect_office_map, save_office_map_sour
 BACKGROUND = "#f5f8fb"
 # Source-only candidate identity, separate from approved GIS profile releases
 # or the Production Setup application version. Never guess a successful SHA.
-APP_VERSION = "V0.4.5-office-test-map-repair"
-APP_PHASE = "PR #378 CANDIDATE"
+APP_VERSION = "V0.4.7-garmin-track-intake"
+APP_PHASE = "PR #378 CANDIDATE • Updated 2026-10-20"
 
 
 def source_build_identity():
@@ -56,6 +56,13 @@ def source_build_identity():
     Uses the repository containing this checked-in script, never the PowerShell
     current directory or the independently approved GIS profile release ID.
     """
+    if getattr(sys, "frozen", False):
+        import json
+        try:
+            manifest = json.loads(Path(__file__).with_name("source_build.json").read_text(encoding="utf8"))
+            return manifest["source_commit"][:8]
+        except (OSError, ValueError, KeyError):
+            return "unverified"
     repo = Path(__file__).resolve().parents[2]
     try:
         kwargs = {"capture_output": True, "text": True, "check": True,
@@ -333,13 +340,16 @@ class Manager:
             import string
             for drive in string.ascii_uppercase:
                 folder = Path(f"{drive}:/Garmin/CustomSymbols")
-                if folder.is_dir():
-                    connected.append(folder)
+                try:
+                    if folder.is_dir():
+                        connected.append(folder)
+                except OSError:
+                    continue
         if connected:
             states.append(("Garmin device", "Connected",
                            f"{len(connected)} symbol folder(s) detected; review before updating or importing"))
         else:
-            states.append(("Garmin device", "Not connected", "Connect a Garmin when ready"))
+            states.append(("Garmin device", "Not detected", "No accessible Garmin folder. Check USB or choose its GPX folder in Track Intake."))
         states.append(("Workstation configuration", "Approval pending",
                        "Exact ExpertGPS Type, reverse mapping and maps require an approved release comparison"))
         return states

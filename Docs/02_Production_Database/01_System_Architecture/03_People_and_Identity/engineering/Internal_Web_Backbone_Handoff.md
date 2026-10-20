@@ -8,7 +8,7 @@
 | Status | READY FOR BACKBONE INTEGRATION |
 | Last Reviewed | 2026-09-09 |
 | Source Issue | Production Database #130 |
-| Backbone Issue | `Gregovate/MSB-Internal-Web-Backbone` #16 |
+| Backbone Issue | `Gregovate/MSB-Internal-Web-Backbone` #16 (People Manager link); #24 (#395 identity bootstrap from Apps) |
 | Live People URL | `https://my.sheboyganlights.org/people/` |
 
 ## Purpose
@@ -144,6 +144,44 @@ Backbone integration is `VERIFIED` only when all of the following are true:
 [ ] Backbone issue records PR/commit/deployment evidence and is marked VERIFIED
 [ ] this source handoff is updated from READY to VERIFIED as the return handoff
 ```
+
+## Issue #395 — Apps Identity Bootstrap Handoff
+
+Production Database issue #395 adds a separate cross-repository requirement to the existing People Manager navigation handoff.
+
+The normal operator entry is:
+
+```text
+https://my.sheboyganlights.org/apps/
+```
+
+The Apps launcher must remain a task/navigation surface. It must **not** own Directus credentials or implement Directus user creation in browser JavaScript.
+
+Once the People/Identity bootstrap endpoint is accepted, Backbone issue #24 should make a same-origin request to the source-owned endpoint when the Apps page loads:
+
+```text
+POST /people/api/identity/bootstrap
+X-MSB-Identity-Bootstrap: 1
+Content-Type: application/json
+{}
+```
+
+The People/Identity backend, not Backbone, owns all of the following:
+
+- Cloudflare email normalization;
+- exact active Person validation;
+- non-human tablet/device/service exclusion;
+- Directus user existence/conflict checks;
+- baseline MSB Browser initialization;
+- exact Person↔Directus reconciliation;
+- preservation of existing Directus roles; and
+- fail-closed error semantics.
+
+Backbone JavaScript must never receive or expose the server-side Directus bootstrap credential.
+
+The Apps page may display a concise initialization message when the endpoint fails closed, but must not expose Directus implementation details or send the user to Directus Data Studio.
+
+Issue #395 / Backbone #24 acceptance must preserve every existing Apps link and visible version indicator.
 
 ## Return Handoff
 

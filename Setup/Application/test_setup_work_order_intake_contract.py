@@ -121,7 +121,7 @@ def test_172_field_ui_is_low_friction_and_uses_exact_assignment() -> None:
     ui = read_app("setup_next_pass.js")
 
     for token in (
-        "Report Correction",
+        "Task Feedback",
         "What did you find?",
         "Suggested correction / evidence",
         "Work Order Intake for Manager triage",
@@ -130,7 +130,7 @@ def test_172_field_ui_is_low_friction_and_uses_exact_assignment() -> None:
         "suggested_correction_evidence",
         "Submitted to Work Order Intake",
         "next-report-correction-submit",
-        ">Report Correction</button>",
+        ">Task Feedback</button>",
     ):
         assert token in ui
 
@@ -246,7 +246,7 @@ def test_172_report_correction_uses_work_order_call_to_action_color() -> None:
     ui = read_app("setup_next_pass.js")
     css = read_app("setup_next_pass.css")
 
-    assert 'class="next-report-correction-submit">Report Correction</button>' in ui
+    assert 'class="next-report-correction-submit">Task Feedback</button>' in ui
     assert 'class="small next-report-problem next-report-correction-action"' in ui
     assert "small secondary next-report-problem" not in ui
     assert "Send to Manager Triage</button>" not in ui

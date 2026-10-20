@@ -146,6 +146,31 @@ Existing `SUPPORT` and `REQUIRED_CONTAINER` relationships keep their prior logis
 
 #141 establishes the assignment foundation only. #167 owns expected contents, Extra Materials, source quantities/specifications, and the distinction between expected source and actual physical inventory.
 
+## Direct Required Containers — October 14 candidate (#122 DBG-2026-013)
+
+A reusable task may require an existing physical Container directly, independently of
+its Container Type, material catalog entries, contents or quantities. The Manager
+**Required Containers** editor searches by C-number/name and saves each selection
+immediately. C106 Who Ville Panel Stands is the operator acceptance case.
+
+Authority remains `ref.setup_task_container_support`, using the existing
+`REQUIRED_CONTAINER` relationship. Migration 073 adds the narrow authenticated,
+audited `ref.set_setup_task_required_container` command; it creates no new tables.
+It permits active reusable tasks including site-wide work. Repeated saves are
+idempotent; sharing across tasks is permitted. Existing KIT/SUPPORT relationships
+cannot be relabelled or removed by this editor. Kit Box type restrictions remain.
+
+The existing material-readiness projection consumes these links: an included annual
+unscheduled task exposes its Container in Manager Material Status for manual Pick
+List selection; scheduled demand reaches the ordinary Pick List. Existing downstream
+readiness, completion, Workshop, already-moved and override rules remain authoritative.
+A reusable task outside the selected annual season does not create annual demand.
+No material item, expected-content row, inventory count or movement event is created
+by selecting a Container. Detailed Extra Material requirements remain separate.
+
+Candidate only; current-Production clone/browser acceptance and Production deployment
+remain pending. See `Setup/Acceptance/Setup_Required_Containers_Candidate.md`.
+
 ## Requirement vs Source vs Actual Inventory
 
 Keep these separate:
