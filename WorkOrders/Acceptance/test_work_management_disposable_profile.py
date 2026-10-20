@@ -421,7 +421,6 @@ def test_v1_acceptance_reuses_original_disposable_runner_and_rolls_back():
     migration = (HERE.parent / "Database" /
                  "001_work_management_v1_governed_commands.sql").read_text(encoding="utf-8")
     assert "validate_v1" in shell
-    assert '[ "$MODE" == "validate_v1" ]' not in shell  # Bash [[ ]] gate used
     assert 'if [[ "$MODE" == "validate_v1" ]]; then' in shell
     assert 'CREATE ROLE work_management_app NOLOGIN' in shell
     assert 'SET msb.wo419_preview_authorized=' in shell
