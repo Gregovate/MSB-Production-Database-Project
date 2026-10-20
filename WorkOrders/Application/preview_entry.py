@@ -25,7 +25,11 @@ def approved_preview_identity() -> str:
     if not PERSONAL_EMAIL.fullmatch(email):
         raise RuntimeError("A named approved MSB preview reviewer is required.")
     # Validate DB name and active Person/Directus policy before accepting review.
-    WorkManagementRepository().access(email)
+    if os.environ.get("WORK_MGMT_RUNTIME_MODE") == "v1_disposable":
+        from v1_runtime import V1Repository
+        V1Repository().access(email)
+    else:
+        WorkManagementRepository().access(email)
     return email
 
 
