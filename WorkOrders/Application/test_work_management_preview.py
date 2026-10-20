@@ -1291,3 +1291,19 @@ def test_oct20_focus_layout_for_all_work_actions_and_theme_token_buttons():
     assert 'background:var(--action-primary)' in css
     assert '.review-action-button.primary-action' in css
     assert 'html[data-theme="dark"]' in css
+
+
+def test_oct20_manager_feedback_buttons_use_independent_scope_not_removed_select_option():
+    """Intake/Feedback buttons must never clear select.value and send scope=''."""
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    js = (HERE / "app.js").read_text(encoding="utf-8")
+    assert 'id="go-intake"' in html and 'id="go-feedback"' in html
+    assert 'value="intake" data-manager-only' not in html
+    assert 'value="feedback" data-manager-only' not in html
+    assert 'function effectiveScope()' in js
+    assert 'state.managerQueue = scope;' in js
+    assert 'const scope = effectiveScope();' in js
+    assert 'scope: effectiveScope()' in js
+    assert 'state.managerQueue = null;' in js
+    assert '$("scope").value = scope;' not in js
+    assert 'state.managerQueue = manager && ["intake", "feedback"].includes(requested)' in js
