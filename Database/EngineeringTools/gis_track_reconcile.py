@@ -120,7 +120,8 @@ def tracks(path):
                            description=node.findtext(G+"desc") or "",
                            metadata="\n".join(ET.tostring(c,encoding="unicode") for c in node
                                               if c.tag != G+"trkseg"),
-                           segments=segments,points=[p for s in segments for p in s]))
+                           segments=segments,points=[p for s in segments for p in s],
+                           times=[p.findtext(G+"time") or "" for s in node.findall(G+"trkseg") for p in s.findall(G+"trkpt")]))
     return result
 
 
@@ -405,3 +406,62 @@ def export_candidate(intake,master,master_sha,output,*,selected_run=None):
                        status="Working GPX only; PostgreSQL reconciliation/release pending"),
                   stream,indent=2)
     return output
+
+
+def _recording_time(value):
+    try:
+        stamp=datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+        return stamp.astimezone(timezone.utc).isoformat() if stamp.tzinfo else None
+    except (ValueError, AttributeError):
+        return None
+
+
+def prior_master_evidence(points, times, master_tracks):
+    """Suggest prior processing across split/edited tracks; never accept a run.
+
+    Time matches survive ExpertGPS vertex moves. Spatial corroboration rejects
+    reused timestamps far away. Geometry alone is only a possible match because
+    parallel cables and repeated walks can share a corridor.
+    """
+    raw_times=[_recording_time(t) for t in times]
+    matched=set(); candidates=[]
+    def feet(a,b):
+        return 20925524.9*math.hypot(math.radians(a[0]-b[0]),
+            math.radians(a[1]-b[1])*math.cos(math.radians((a[0]+b[0])/2)))
+    for track in master_tracks:
+        tp=track['points']; tt=track.get('times',[])
+        by_time={}
+        for p,t in zip(tp,tt):
+            key=_recording_time(t)
+            if key:by_time.setdefault(key,[]).append(p)
+        hits={i for i,(p,t) in enumerate(zip(points,raw_times))
+              if t and any(feet(p,q)<=100 for q in by_time.get(t,[]))}
+        if len(hits)>=3:
+            matched.update(hits)
+            candidates.append(dict(name=track['name'],index=track['index'],
+                method='recording times',matched_points=sorted(i+1 for i in hits)))
+            continue
+        # Only exact/near-exact recorded vertices count here, not nearby lines.
+        spatial={i for i,p in enumerate(points) if any(feet(p,q)<=2 for q in tp)}
+        if len(spatial)>=3 and len(spatial)>=min(len(points),len(tp))*.6:
+            candidates.append(dict(name=track['name'],index=track['index'],
+                method='geometry only',matched_points=sorted(i+1 for i in spatial)))
+    total=len(points)
+    status=('likely' if total and len(matched)/total>=.8 else 'partial') if matched else ('possible' if candidates else 'none')
+    return dict(status=status,matched=len(matched),total=total,matches=candidates,
+                unmatched_points=[i+1 for i in range(total) if i not in matched])
+
+
+def evidence_label(evidence):
+    status=evidence['status']
+    if status=='none':return ''
+    if status=='possible':return '? '
+    return '✓? ' if status=='likely' else '◐ '
+
+
+def evidence_summary(evidence):
+    if not evidence['matches']:
+        return 'No prior-processing evidence found in this master. This does not prove the recording is new.'
+    names='; '.join(f"{m['name']} ({len(m['matched_points'])} points, {m['method']})" for m in evidence['matches'])
+    label={'likely':'Likely already in master','partial':'Partly in master / possibly split','possible':'Possible geometry match'}[evidence['status']]
+    return f"{label}: {evidence['matched']}/{evidence['total']} recording points linked by time — "+names+' — Review before repeating work.'

@@ -58,6 +58,7 @@ class TrackPoints(list):
     def __init__(self, segments):
         self.segments = segments
         super().__init__(p for segment in segments for p in segment)
+        self.times = []
 
 
 def coordinate(node):
@@ -101,6 +102,7 @@ def parse(path, exclude_stages=False, infrastructure_only=False):
     for i, node in enumerate(root.findall(GPX + "trk"), 1):
         pts = TrackPoints([[coordinate(p) for p in seg.findall(GPX + "trkpt")]
                            for seg in node.findall(GPX + "trkseg")])
+        pts.times = [p.findtext(GPX+"time") or "" for seg in node.findall(GPX+"trkseg") for p in seg.findall(GPX+"trkpt")]
         if len(pts) > 1:
             tracks.append((i, node.findtext(GPX + "name") or "", pts))
     points = [(reconcile.map_label(w), *coordinate(w))
@@ -310,6 +312,8 @@ def open_intake(parent):
     status=tk.StringVar(value="Garmin GPX detected — verify paths and click Read." if len(found_devices)==1 else
                        "Select mounted Garmin GPX folder, current master and intake root.")
     ttk.Label(base,textvariable=status,wraplength=900).pack(anchor="w",before=row)
+    prior_status=tk.StringVar(value="Read tracks to check prior work against the current master.")
+    ttk.Label(base,textvariable=prior_status,wraplength=1400,foreground="#164a72").pack(anchor="w",before=row)
     state={"items":[],"waypoints":[],"aerial_ready":False,"generation":0}
     results = thread_queue.Queue()
     def select(event=None):
@@ -331,6 +335,7 @@ def open_intake(parent):
         state["active_recording"]=active
         state["comparison_points"]=[state["items"][i][1][2] for i in selection if i!=active]
         source,(idx,original,points)=state["items"][active]
+        prior_status.set(reconcile.evidence_summary(state["prior_evidence"][active]))
         digest=state["digests"][source]
         a,b=nearest(points[0],state["waypoints"]),nearest(points[-1],state["waypoints"])
         start.set(a[0][0] if a else "Unknown");end.set(b[0][0] if b else "Unknown")
@@ -576,10 +581,12 @@ def open_intake(parent):
             queue.delete(0,"end")
             reviewed={(d["source_sha256"],d["raw_index"]):d
                       for d in reconcile.decisions(state["intake"],state["master_digest"])}
-            for file,(idx,title,pts) in state["items"]:
+            state["prior_evidence"]=[reconcile.prior_master_evidence(pts,pts.times,state["master_tracks"])
+                                     for file,(idx,title,pts) in state["items"]]
+            for item_number,(file,(idx,title,pts)) in enumerate(state["items"]):
                 decision=reviewed.get((state["digests"][file],idx))
                 queue.insert("end",({"keep":"✓ Keep: ","add":"✓ New: ","replace":"✓ Replace: "}.get(decision.get("action"),"✓ Replace: ")+decision["master_name"])
-                             if decision else title or file.name)
+                             if decision else reconcile.evidence_label(state["prior_evidence"][item_number])+(title or file.name))
             status.set(f"{len(state['items'])} tracks; {len(state['waypoints'])} master waypoints.")
             if state["items"]: queue.selection_set(0); select()
         except (OSError, ValueError, TypeError, ET.ParseError) as e:
@@ -599,7 +606,7 @@ def open_intake(parent):
                       expected_digest=state["digests"][file], master=state["master"],
                       master_digest=state["master_digest"])
             old=selected[0]
-            queue.delete(old);queue.insert(old,name.get())
+            queue.delete(old);queue.insert(old,reconcile.evidence_label(state["prior_evidence"][old])+name.get())
             if old+1 < len(state["items"]):
                 queue.selection_clear(0,"end");queue.selection_set(old+1);queue.see(old+1);select()
             else:
