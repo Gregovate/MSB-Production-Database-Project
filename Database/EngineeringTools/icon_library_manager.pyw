@@ -103,6 +103,7 @@ class Manager:
         station_menu.add_command(label="Check this computer", command=self.open_workstation_workspace)
         main_menu.add_cascade(label="Workstation Management", menu=station_menu)
         data_menu = tk.Menu(main_menu, tearoff=False)
+        data_menu.add_command(label="Garmin Track Intake (#428)", command=self.open_gis_track_intake)
         data_menu.add_command(label="Review GPX changes", command=self.open_gis_source_review)
         main_menu.add_cascade(label="GIS Data Management", menu=data_menu)
         utility_menu = tk.Menu(main_menu, tearoff=False)
@@ -380,6 +381,7 @@ class Manager:
                 ("Review artwork updates", self.show_symbol_page),
                 ("Garmin symbols / recordings", self.open_garmin_review),
                 ("Review GPX source changes", self.open_gis_source_review),
+                ("Garmin Track Intake (#428)", self.open_gis_track_intake),
             )
             for index, (label, callback) in enumerate(actions):
                 ttk.Button(choices, text=label, command=callback, width=34).grid(
@@ -422,6 +424,11 @@ class Manager:
     def show_symbol_page(self):
         if hasattr(self, "_home_overlay"):
             self._home_overlay.place_forget()
+
+    def open_gis_track_intake(self):
+        """#428: intake in the established Windows GIS Manager, not a second app."""
+        from gis_track_intake import open_intake
+        open_intake(self.root)
 
     def open_gis_source_review(self):
         from gis_source_review_dialog import open_review
