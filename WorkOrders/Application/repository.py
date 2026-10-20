@@ -450,7 +450,14 @@ class WorkManagementRepository:
                 cur.execute(
                     """
                     SELECT i.stage_id, i.work_area_id, i.problem_raw, i.notes_raw,
-                           i.source_form_name, i.source_payload
+                           i.source_form_name, i.source_payload,
+                           to_jsonb(i)->>'priority_raw' AS priority_raw,
+                           to_jsonb(i)->>'task_type_raw' AS task_type_raw,
+                           to_jsonb(i)->>'stage_raw' AS stage_raw,
+                           to_jsonb(i)->>'work_area_raw' AS work_area_raw,
+                           to_jsonb(i)->>'task_type_id' AS task_type_id,
+                           to_jsonb(i)->>'urgency_id' AS urgency_id,
+                           to_jsonb(i)->>'target_year' AS target_year
                     FROM stage.work_order_intake i WHERE i.intake_id = %s
                     """,
                     (row["in_id"],),
