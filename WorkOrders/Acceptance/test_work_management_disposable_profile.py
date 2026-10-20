@@ -411,3 +411,47 @@ def test_wo419_cleanup_uses_real_listener_and_preserves_unknown_owners(tmp_path)
                     os.kill(pid, signal.SIGTERM)
                 except ProcessLookupError:
                     pass
+
+
+def test_v1_acceptance_reuses_original_disposable_runner_and_rolls_back():
+    """V1 is validated inside the existing 8898 clone; no new runner/port."""
+    shell = RUNNER.read_text(encoding="utf-8")
+    wrapper = WRAPPER.read_text(encoding="utf-8")
+    acceptance = (HERE / "wo419_v1_disposable_validation.sql").read_text(encoding="utf-8")
+    migration = (HERE.parent / "Database" /
+                 "001_work_management_v1_governed_commands.sql").read_text(encoding="utf-8")
+    assert "validate_v1" in shell
+    assert '[ "$MODE" == "validate_v1" ]' not in shell  # Bash [[ ]] gate used
+    assert 'if [[ "$MODE" == "validate_v1" ]]; then' in shell
+    assert 'CREATE ROLE work_management_app NOLOGIN' in shell
+    assert 'SET msb.wo419_preview_authorized=' in shell
+    assert 'WorkOrders/Database/001_work_management_v1_governed_commands.sql' in shell
+    assert 'WorkOrders/Acceptance/wo419_v1_disposable_validation.sql' in shell
+    assert 'WO419 V1 DISPOSABLE SQL VALIDATION PASS' in shell
+    assert shell.index('pg_restore -U') < shell.index('CREATE ROLE work_management_app NOLOGIN')
+    assert shell.index('WO419 V1 DISPOSABLE SQL VALIDATION PASS') < shell.index(
+        'Start pinned Work Management reviewer'
+    )
+    assert "  exit 0\nfi\n\necho \"--- Start pinned Work Management reviewer" in shell
+    assert '[switch]$V1Validation' in wrapper
+    assert '$ValidationCommand' in wrapper
+    assert 'validate_v1; ' in wrapper
+    assert 'if ($V1Validation)' in wrapper
+    assert 'WO419 V1 disposable SQL validation: CLEAN EXIT' in wrapper
+    assert 'do not start a browser' in wrapper.lower()
+    assert "current_database() NOT IN ('msb', 'msb_wo419_preview')" in migration
+    assert "msb.wo419_preview_authorized" in migration
+    assert "work_management_app" in migration
+    assert "BEGIN;\nDO $v1test$" in acceptance
+    assert acceptance.rstrip().endswith(
+        "-- survives even inside this disposable database."
+    )
+    assert "\nROLLBACK;" in acceptance
+    assert "native Manager Create" in acceptance
+    assert "non-Manager native create accepted" in acceptance
+    assert "actual progress notes" in acceptance or "progress unexpectedly closed" in acceptance
+    assert "Intake provenance not retained" in acceptance
+    assert "unsanctioned mail SENT state" in acceptance
+    assert "DELETE FROM ops.work_order" not in acceptance
+    assert "UPDATE stage.work_order_intake" not in acceptance
+    assert "TRUNCATE" not in acceptance
