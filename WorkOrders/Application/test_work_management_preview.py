@@ -1135,3 +1135,15 @@ def test_v1_browser_clone_exact_db_role_and_ip_required():
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = value
+
+
+def test_native_v1_browser_announces_disposable_sql_and_hides_unsupported_setup_link():
+    app_js = (HERE / "app.js").read_text(encoding="utf-8")
+    actions = (HERE / "review_actions.js").read_text(encoding="utf-8")
+    assert 'state.actor.runtime_mode === "v1_disposable"' in app_js
+    assert "Work Orders V1 NATIVE · Disposable database · No emails sent" in app_js
+    assert "V1 PostgreSQL commands on an isolated clone" in app_js
+    assert 'model.runtime === "disposable"' in actions
+    assert 'result.push("link_setup");' in actions
+    assert 'model.runtime === "production"' in actions
+    assert 'X-MSB-Work-Order-Command' in actions
