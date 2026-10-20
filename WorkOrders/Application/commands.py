@@ -526,9 +526,13 @@ class CloneCommands:
                 # Correction decisions are additional attributed activity on
                 # retained Intake, never a fake Work Order.
                 result_ticket = ticket
-                if action in ("correction_owner", "clarify", "resolve") and \
+                if action == "correction_owner" and \
                         intake["source_form_name"] != "SETUP_CORRECTION":
-                    raise WorkManagementError("Use public Intake triage for public requests.")
+                    raise WorkManagementError("Correction owner applies to Setup feedback.")
+                if action in ("clarify", "resolve"):
+                    cur.execute("SELECT 1 FROM ops.work_order WHERE source_intake_id=%s", (number,))
+                    if cur.fetchone():
+                        raise WorkManagementError("Linked Work Order owns this outcome.", 409)
                 if action == "correction_owner":
                     if len(selected) != 1:
                         raise WorkManagementError("Choose one responsible correction owner.")
