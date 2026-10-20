@@ -560,6 +560,10 @@ GRANT SELECT ON ref.person,ref.stage,ref.work_area,ref.task_type,ref.container,
 TO work_management_app;
 GRANT EXECUTE ON FUNCTION ref.setup_browser_capabilities(text)
 TO work_management_app;
+-- The existing V1 unified read model consumes durable correction activity
+-- for Manager Intake counts and Task Feedback state. Only SELECT is allowed;
+-- activity/outbox mutations remain inside guarded SECURITY DEFINER commands.
+GRANT SELECT ON ops.work_management_activity TO work_management_app;
 COMMIT;
 
 -- No INSERT into ops.work_management_permission: operator explicitly approves
