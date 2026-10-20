@@ -175,7 +175,7 @@ class IntakeTests(unittest.TestCase):
                 for entry,value in zip(entries,[str(raw),str(master),str(intake)]):
                     entry.delete(0,'end'); entry.insert(0,value)
                 buttons={w.cget('text'):w for w in walk(win) if isinstance(w,ttk.Button)}
-                for label in ['Read Garmin tracks (read only)','Save & Next']:
+                for label in ['Read Garmin tracks (read only)','Save identification only']:
                     button=buttons[label]
                     self.assertTrue(button.winfo_ismapped(),label)
                     self.assertLessEqual(button.winfo_rooty()+button.winfo_height(),
@@ -222,7 +222,7 @@ class IntakeTests(unittest.TestCase):
                 self.assertEqual(map_fetch.call_args.kwargs['zoom'],24)
                 self.assertEqual(map_fetch.call_args.kwargs['center'],prior_call.kwargs['center'])
                 self.assertEqual(entries[-1].get(),'Operator corrected name')
-                buttons['Save & Next'].invoke();root.update()
+                buttons['Save identification only'].invoke();root.update()
                 self.assertFalse(errors)
                 receipt=next((intake/'Reviews').glob('*.json'))
                 import json
@@ -239,8 +239,9 @@ class IntakeTests(unittest.TestCase):
                         break
                 self.assertFalse(errors)
                 self.assertTrue(next(w for w in walk(win) if isinstance(w,tk.Listbox)).curselection())
-                buttons['Match / polish / replace master track'].invoke();root.update()
+                buttons['Match and name from master'].invoke();root.update()
                 review=next(w for w in walk(win) if isinstance(w,tk.Toplevel) and w is not win)
+                self.assertFalse(any(isinstance(w,ttk.Treeview) for w in walk(review)))
                 combo=next(w for w in walk(review) if isinstance(w,ttk.Combobox))
                 combo.current(0);combo.event_generate('<<ComboboxSelected>>');root.update()
                 deadline=time.monotonic()+3
@@ -251,10 +252,16 @@ class IntakeTests(unittest.TestCase):
                 note=next(w for w in walk(review) if isinstance(w,tk.Text) and str(w.cget('state'))=='normal')
                 note.insert('1.0','Disposable fixture: verified matching track')
                 next(w for w in walk(review) if isinstance(w,ttk.Checkbutton)).invoke()
-                next(w for w in walk(review) if isinstance(w,ttk.Button) and w.cget('text')=='Accept replacement & Next').invoke()
+                next(w for w in walk(review) if isinstance(w,ttk.Button) and w.cget('text')=='Save match & Next').invoke()
                 root.update()
                 import gis_track_reconcile as reconcile
                 self.assertEqual(len(reconcile.decisions(intake,source_digest(master))),1)
+                output=rootdir/'ExpertGPS-working.gpx'
+                with patch('gis_track_intake.filedialog.asksaveasfilename',return_value=str(output)):
+                    buttons['Export GPX for ExpertGPS'].invoke();root.update()
+                self.assertTrue(output.is_file())
+                self.assertEqual(parse(output),parse(master))
+                self.assertTrue(output.with_suffix('.gpx.review.json').is_file())
                 self.assertFalse(errors)
                 self.assertEqual((source.read_bytes(),master.read_bytes()),before)
 

@@ -541,7 +541,7 @@ def open_intake(parent):
         file,(raw_index,raw_name,raw_points)=state["items"][selected[0]]
         review=tk.Toplevel(win);state["review_window"]=review
         review.title("Match master track • Polish recording • Accept replacement")
-        review.geometry("1050x760")
+        review.geometry("1050x600")
         frame=ttk.Frame(review,padding=10);frame.pack(fill="both",expand=True)
         ttk.Label(frame,text="Current ExpertGPS master → reviewed replacement",font=("Segoe UI",13,"bold")).pack(anchor="w")
         ttk.Label(frame,text="Choose the SAME physical track. Purple dashed = old master; blue = proposed recording.\n"
@@ -553,28 +553,13 @@ def open_intake(parent):
                             values=[f'{m["track"]["name"]} | route {m["route_ft"]} ft; endpoints {m["endpoint_ft"]} ft'
                                     for m in matches])
         choices.pack(fill="x",pady=5)
-        metadata=tk.Text(frame,height=8,wrap="word");metadata.pack(fill="x")
+        metadata=tk.Text(frame,height=12,wrap="word");metadata.pack(fill="both",expand=True)
         verts=reconcile.recording_vertices(file,raw_index)
         draft=[dict(v) for v in verts]
-        ttk.Label(frame,text="Polish the new recording: select vertices to remove a tail/outlier, or edit one coordinate. Originals are retained.").pack(anchor="w")
-        point_frame=ttk.Frame(frame);point_frame.pack(fill="both",expand=True)
-        table=ttk.Treeview(point_frame,columns=("vertex","segment","lat","lon"),show="headings",height=9,selectmode="extended")
-        for col,label in [("vertex","Raw vertex"),("segment","Segment"),("lat","Latitude"),("lon","Longitude")]:
-            table.heading(col,text=label);table.column(col,width=130)
-        table.pack(side="left",fill="both",expand=True)
-        scroll=ttk.Scrollbar(point_frame,command=table.yview);scroll.pack(side="right",fill="y");table.configure(yscrollcommand=scroll.set)
-        def refresh_points():
-            table.delete(*table.get_children())
-            for v in draft:table.insert("","end",iid=str(v["source_index"]),values=(v["source_index"]+1,v["segment"]+1,v["lat"],v["lon"]))
+        ttk.Label(frame,text="The complete Garmin recording will use the selected master name and metadata. Trim or reshape it later in ExpertGPS.").pack(anchor="w")
         def preview():
             confirmed.set(False)
-            reconcile.validate_vertices(draft)
-            segments=[]
-            previous=None
-            for v in draft:
-                if previous!=v["segment"]:segments.append([]);previous=v["segment"]
-                segments[-1].append((v["lat"],v["lon"]))
-            state["points"]=TrackPoints(segments)
+            state["points"]=raw_points
             request_map()
         def choose(event=None):
             i=choices.current()
@@ -585,44 +570,14 @@ def open_intake(parent):
             metadata.insert("end",f'Master track #{track["index"]}: {track["name"]}\nType: {track["type"]}\n'
                             f'Years mentioned in notes: {", ".join(str(y["year"]) for y in reconcile.annual_history_evidence(track)) or "Not specified"}\n'
                             f'Comments:\n{track["comments"] or "(none)"}\nInstallation/description:\n{track["description"] or "(none)"}'
-                            "\n\nAll original track-level XML retained:\n"+track["metadata"])
+                            "\n\nAll master extensions and original metadata are retained in the exported GPX.")
             metadata.configure(state="disabled");preview()
             near=matches[i]
             message.set("Very close to existing master geometry — this may already be processed. Compare the notes before replacing."
                         if near["route_ft"]<3 and near["endpoint_ft"]<3 else
-                        "Verify physical identity, polish the blue recording, then confirm the replacement.")
+                        "Verify the match, then save. Finish geometry edits in ExpertGPS.")
         choices.bind("<<ComboboxSelected>>",choose)
-        actions=ttk.Frame(frame);actions.pack(fill="x",pady=5)
-        def remove():
-            selected_ids={int(v) for v in table.selection()}
-            remaining=[v for v in draft if v["source_index"] not in selected_ids]
-            if len(remaining)<2:
-                messagebox.showerror("Keep track","Keep at least two vertices.",parent=review);return
-            draft[:]=remaining;refresh_points();preview()
-        def reset():
-            draft[:]=[dict(v) for v in verts];refresh_points();preview()
-        ttk.Button(actions,text="Remove selected vertices",command=remove).pack(side="left")
-        ttk.Button(actions,text="Reset to raw recording",command=reset).pack(side="left")
-        lat_var,lon_var=tk.StringVar(),tk.StringVar()
-        ttk.Label(actions,text="Lat").pack(side="left");ttk.Entry(actions,textvariable=lat_var,width=13).pack(side="left")
-        ttk.Label(actions,text="Lon").pack(side="left");ttk.Entry(actions,textvariable=lon_var,width=13).pack(side="left")
-        def point_selected(event=None):
-            ids=table.selection()
-            if len(ids)==1:
-                v=next(v for v in draft if str(v["source_index"])==ids[0])
-                lat_var.set(str(v["lat"]));lon_var.set(str(v["lon"]))
-        table.bind("<<TreeviewSelect>>",point_selected)
-        def edit():
-            try:
-                ids=table.selection()
-                if len(ids)!=1:raise ValueError("Select one vertex to edit")
-                changed=[dict(v) for v in draft]
-                v=next(v for v in changed if str(v["source_index"])==ids[0])
-                v.update(lat=float(lat_var.get()),lon=float(lon_var.get()))
-                reconcile.validate_vertices(changed);draft[:]=changed;refresh_points();preview()
-            except ValueError as error:messagebox.showerror("Coordinate",str(error),parent=review)
-        ttk.Button(actions,text="Apply coordinate",command=edit).pack(side="left")
-        ttk.Label(frame,text="Replacement reason / field evidence (required; historical notes remain unchanged):").pack(anchor="w")
+        ttk.Label(frame,text="Match note (optional; existing master notes remain unchanged):").pack(anchor="w")
         note=tk.Text(frame,height=3,wrap="word");note.pack(fill="x")
         confirmed=tk.BooleanVar(value=False)
         ttk.Checkbutton(frame,text="I verified this recording matches the selected physical master track.",variable=confirmed).pack(anchor="w")
@@ -634,41 +589,40 @@ def open_intake(parent):
                 if not state.get("aerial_ready"):raise ValueError("Wait for the calibrated preview before acceptance")
                 track=matches[choices.current()]["track"]
                 path=reconcile.accept_replacement(state["intake"],state["master"],state["master_digest"],file,
-                      state["digests"][file],raw_index,track["index"],draft,note.get("1.0","end").strip(),action=action)
+                      state["digests"][file],raw_index,track["index"],draft,note.get("1.0","end").strip() or "Operator matched Garmin recording to master for editing in ExpertGPS.",action=action)
                 old=selected[0]
                 queue.delete(old);queue.insert(old,("✓ Replace: " if action=="replace" else "✓ Keep: ")+track["name"])
                 review.destroy()
                 if old+1<len(state["items"]):
                     queue.selection_clear(0,"end");queue.selection_set(old+1);queue.see(old+1);select()
-                status.set(("Replacement accepted for working GPX: " if action=="replace" else "Existing master route retained: ")
+                status.set(("Match saved for ExpertGPS: " if action=="replace" else "Existing master route retained: ")
                            +track["name"]+". Shared master and PostgreSQL unchanged.")
             except (ValueError,OSError) as error:messagebox.showerror("Replacement stopped",str(error),parent=review)
-        ttk.Button(frame,text="Accept replacement & Next",command=accept).pack(side="right",pady=6)
+        ttk.Button(frame,text="Save match & Next",command=accept).pack(side="right",pady=6)
         ttk.Button(frame,text="Keep existing & Next",command=lambda:accept("keep")).pack(side="right",pady=6)
         def cancel():
             state["points"]=raw_points;state.pop("matched_track",None)
             review.destroy();request_map()
         ttk.Button(frame,text="Close without accepting",command=cancel).pack(side="left",pady=6)
         review.protocol("WM_DELETE_WINDOW",cancel)
-        refresh_points()
     def export_reviewed():
         if not state.get("master"):return
-        output=filedialog.asksaveasfilename(parent=win,title="Save reviewed working master GPX (separate candidate)",
+        output=filedialog.asksaveasfilename(parent=win,title="Export working GPX for ExpertGPS",
                   initialdir=state["intake"],initialfile="MSB-Park-Infrastructure-reviewed-"+datetime.now().strftime("%Y%m%d-%H%M%S")+".gpx",
                   defaultextension=".gpx",filetypes=[("GPX","*.gpx")])
         if not output:return
         try:
             reconcile.export_candidate(state["intake"],state["master"],state["master_digest"],output)
-            status.set("Reviewed working master saved: "+output+". PostgreSQL comparison/release is still pending.")
+            status.set("Open this working GPX in ExpertGPS: "+output+". PostgreSQL comparison/release is still pending.")
         except (ValueError,OSError,ET.ParseError) as error:messagebox.showerror("Export stopped",str(error),parent=win)
     review_controls=ttk.Frame(editor);review_controls.pack(fill="x",pady=4)
-    ttk.Button(review_controls,text="Match / polish / replace master track",command=review_replacement).pack(side="left")
-    ttk.Button(review_controls,text="Export reviewed working master",command=export_reviewed).pack(side="right")
+    ttk.Button(review_controls,text="Match and name from master",command=review_replacement).pack(side="left")
+    ttk.Button(review_controls,text="Export GPX for ExpertGPS",command=export_reviewed).pack(side="right")
     ttk.Button(base,text="Read Garmin tracks (read only)",command=load).pack(anchor="w",pady=4,before=row)
     queue.bind("<<ListboxSelect>>",select)
     start.trace_add("write",lambda *_:None);end.trace_add("write",lambda *_:None)
     controls=ttk.Frame(editor);controls.pack(fill="x")
     ttk.Button(controls,text="Suggest name from selected endpoints",command=suggest).pack(side="left")
-    ttk.Button(controls,text="Save & Next",command=next_item).pack(side="right")
+    ttk.Button(controls,text="Save identification only",command=next_item).pack(side="right")
     win.after(100, poll_map)
     return win
