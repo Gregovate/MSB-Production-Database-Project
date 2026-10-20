@@ -833,7 +833,8 @@ def open_intake(parent):
                 queue.selection_set(old)
                 if not advance:
                     confirmed.set(False)
-                    message.set("Saved: "+track["name"]+". Choose another run for this same walk.")
+                    message.set("Saved: "+track["name"]+". Ready to export GPX.")
+                    messagebox.showinfo("Run saved",track["name"]+"\n\nReview saved to:\n"+str(path)+"\n\nNext: Export GPX for ExpertGPS to create your editable GPX file.",parent=win)
                     return
                 review.destroy()
                 if old+1<len(state["items"]):
@@ -860,6 +861,14 @@ def open_intake(parent):
         else:
             metadata.insert("end","No nearby master cable runs found for this recording.")
             metadata.configure(state="disabled")
+    def expertgps_help():
+        messagebox.showinfo("ExpertGPS workflow help",
+            "1. Save run stores your reviewed name, type, installation year, cable selections and track points in Field-Recordings/Reconciliation. It does not create a GPX yet.\n\n"
+            "2. Export GPX for ExpertGPS lets you choose the file name and folder. The export contains only the accepted route you select, with its reviewed track name and installation details. Unrelated tracks and waypoints are excluded.\n\n"
+            "3. In ExpertGPS, OPEN the exported GPX as a separate document. For a NEW route, bring the edited route into your master once. For a REPLACEMENT, replace the corresponding old track rather than keeping both.\n\n"
+            "4. Add waypoints, split tracks and finish geometry edits in ExpertGPS. Save your edited working GPX.\n\n"
+            "The Garmin originals and current master stay unchanged. Export does not publish to PostgreSQL.",parent=win)
+
     def export_reviewed():
         if not state.get("master"):return
         approved=[d for d in reconcile.decisions(state["intake"],state["master_digest"])
@@ -867,25 +876,45 @@ def open_intake(parent):
         if not approved:
             messagebox.showerror("Nothing approved","Review a replacement or a new run first. Naming receipts alone are not exported.",parent=win)
             return
-        summary="\n".join(("NEW: " if d["action"]=="add" else "REPLACE: ")+d["master_name"]+
-                          f' (points {d["vertices"][0]["source_index"]+1}–{d["vertices"][-1]["source_index"]+1})'
-                          for d in approved)
-        if not messagebox.askyesno("Review GPX export",
-            summary+"\n\nThe output is a complete working master with ONLY these approved changes. "
-            "Open it as a separate file in ExpertGPS; importing it into the existing master can duplicate records. "
-            "Unapproved Garmin recordings are excluded. Continue?",parent=win):return
-        output=filedialog.asksaveasfilename(parent=win,title="Export working GPX for ExpertGPS",
-                  initialdir=state["intake"],initialfile="MSB-Park-Infrastructure-reviewed-"+datetime.now().strftime("%Y%m%d-%H%M%S")+".gpx",
+        selected=queue.curselection()
+        if not selected:
+            messagebox.showerror("Select a recording","Select the recording whose reviewed run you want to export.",parent=win);return
+        active=state.get("active_recording",selected[0])
+        file,(raw_index,_,_)=state["items"][active]
+        approved=[d for d in approved if d["source_sha256"]==state["digests"][file] and d["raw_index"]==raw_index]
+        if not approved:
+            messagebox.showerror("Run not saved","Save the reviewed run for this recording before exporting.",parent=win);return
+        chosen=approved[0]
+        if len(approved)>1:
+            picker=tk.Toplevel(win);picker.title("Choose saved run to export");picker.transient(win)
+            ttk.Label(picker,text="Export one reviewed run from this recording:").pack(padx=12,pady=8)
+            runs=tk.Listbox(picker,width=70,height=min(10,len(approved)),exportselection=False)
+            runs.pack(fill="both",expand=True,padx=12)
+            for d in approved:runs.insert("end",d["master_name"])
+            result=[]
+            def choose_export():
+                if runs.curselection():result.append(approved[runs.curselection()[0]]);picker.destroy()
+            ttk.Button(picker,text="Export selected run",command=choose_export).pack(pady=8)
+            ttk.Button(picker,text="Cancel",command=picker.destroy).pack(pady=4)
+            picker.grab_set();win.wait_window(picker)
+            if not result:return
+            chosen=result[0]
+        filename="".join("_" if c in '<>:"/\\|?*' or ord(c)<32 else c for c in chosen["master_name"]).strip(" .") or "Reviewed route"
+        if filename.upper().split(".")[0] in {"CON","PRN","AUX","NUL",*[f"COM{i}" for i in range(1,10)],*[f"LPT{i}" for i in range(1,10)]}:filename="Route "+filename
+        output=filedialog.asksaveasfilename(parent=win,title="Export named route for ExpertGPS",
+                  initialdir=state["intake"],initialfile=filename+".gpx",
                   defaultextension=".gpx",filetypes=[("GPX","*.gpx")])
         if not output:return
         try:
-            reconcile.export_candidate(state["intake"],state["master"],state["master_digest"],output)
-            status.set("Open this working GPX in ExpertGPS: "+output+". PostgreSQL comparison/release is still pending.")
+            reconcile.export_candidate(state["intake"],state["master"],state["master_digest"],output,selected_run=chosen)
+            status.set("GPX exported: "+output)
+            messagebox.showinfo("GPX exported", "Saved GPX to:\n"+output+"\n\nNext: open this file as a separate document in ExpertGPS.\nSee ExpertGPS Help for editing and splitting instructions.",parent=win)
         except (ValueError,OSError,ET.ParseError) as error:messagebox.showerror("Export stopped",str(error),parent=win)
     review_controls=ttk.Frame(editor);review_controls.pack(fill="x",pady=4)
     ttk.Button(review_controls,text="Match and name from master",command=review_replacement).pack(side="left")
     ttk.Button(review_controls,text="Review as new run",command=lambda:review_replacement(new_run=True)).pack(side="left",padx=6)
     ttk.Button(review_controls,text="Export GPX for ExpertGPS",command=export_reviewed).pack(side="right")
+    ttk.Button(review_controls,text="ExpertGPS Help",command=expertgps_help).pack(side="right",padx=6)
     ttk.Button(base,text="Read Garmin tracks (read only)",command=load).pack(anchor="w",pady=4,before=row)
     queue.bind("<<ListboxSelect>>",select)
     def clicked_recording(event):

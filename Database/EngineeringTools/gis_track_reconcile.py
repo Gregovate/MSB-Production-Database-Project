@@ -288,12 +288,15 @@ def children(node,name):
             and c.namespaceURI==NS and c.localName==name]
 
 
-def export_candidate(intake,master,master_sha,output):
+def export_candidate(intake,master,master_sha,output,*,selected_run=None):
     """Replace only trkseg nodes in a new GPX; all master metadata is retained."""
     if digest(master)!=master_sha:raise ValueError("Current master changed; reload and reconcile")
     reviewed=decisions(intake,master_sha)
     accepted=[d for d in reviewed if d.get("action","replace") in ("replace","add")]
     if not accepted:raise ValueError("No accepted runs for this master revision")
+    if selected_run is not None:
+        if selected_run not in accepted:raise ValueError("Selected run is not an accepted decision")
+        accepted=[selected_run]
     targets=[d["master_index"] for d in accepted if d.get("action")!="add"]
     if len(set(targets))!=len(targets):
         raise ValueError("Two recordings target the same master track; resolve the match before export")
@@ -304,6 +307,7 @@ def export_candidate(intake,master,master_sha,output):
     if output.resolve()==Path(master).resolve():raise ValueError("Cannot overwrite the shared master")
     doc=minidom.parse(str(master))
     master_nodes=children(doc.documentElement,"trk")
+    exported_nodes=[]
     for d in accepted:
         if d["master_sha256"]!=master_sha or digest(d["master_snapshot"])!=master_sha:
             raise ValueError("Accepted master snapshot changed")
@@ -323,6 +327,7 @@ def export_candidate(intake,master,master_sha,output):
             doc.documentElement.insertBefore(target,root_extensions[0] if root_extensions else None)
         else:
             target=master_nodes[d["master_index"]-1]
+        exported_nodes.append(target)
         names=children(target,"name")
         original_name="".join(c.data for c in names[0].childNodes if c.nodeType==c.TEXT_NODE) if names else "(unnamed)"
         if d.get("action")!="add" and d["master_name"] not in (
@@ -375,6 +380,11 @@ def export_candidate(intake,master,master_sha,output):
                         point.setAttribute(attr.name,attr.value)
             point.setAttribute("lat",str(v["lat"]));point.setAttribute("lon",str(v["lon"]))
             segment.appendChild(point)
+    if selected_run is not None:
+        # A route handoff must not re-import unrelated master tracks or waypoints.
+        for node in list(doc.documentElement.childNodes):
+            if node.nodeType==node.ELEMENT_NODE and node not in exported_nodes:
+                doc.documentElement.removeChild(node)
     # Namespace-qualified Garmin points also need any default GPX prefix.
     rawbytes=doc.toxml(encoding="utf-8")
     ET.fromstring(rawbytes)  # Reject malformed namespace output before creating it.
@@ -382,7 +392,7 @@ def export_candidate(intake,master,master_sha,output):
     with output.open("xb") as stream:stream.write(rawbytes)
     manifest=output.with_suffix(output.suffix+".review.json")
     with manifest.open("x",encoding="utf8") as stream:
-        json.dump(dict(schema="msb.gis.reviewed-master-candidate.v1",
+        json.dump(dict(schema="msb.gis.reviewed-route-handoff.v1" if selected_run is not None else "msb.gis.reviewed-master-candidate.v1",
                        base_master_sha256=master_sha,candidate_sha256=digest(output),
                        replacements=accepted,review_decisions=reviewed,
                        annual_history_policy=dict(record_grain="one version per physical track per year",

@@ -105,6 +105,26 @@ class ReconcileTests(unittest.TestCase):
         manifest=json.loads(out.with_suffix(".gpx.review.json").read_text())
         self.assertEqual(manifest["replacements"][0]["installation"],data)
         self.assertEqual(r.tracks(self.master),exported[:2])
+        decision=r.decisions(self.intake,r.digest(self.master))[0]
+        route=r.export_candidate(self.intake,self.master,r.digest(self.master),self.root/"NET shared route.gpx",selected_run=decision)
+        self.assertEqual(len(r.tracks(route)),1)
+        self.assertEqual(r.tracks(route)[0]["name"],"NET shared route")
+        self.assertEqual(r.tracks(route)[0]["description"],"Year installed: 2026\nNetworks: "+labels)
+        self.assertEqual(parse(route)[1],[])
+        self.assertEqual(len(ET.parse(route).getroot().findall(".//{"+r.ROUTE_NS+"}designation")),8)
+
+    def test_route_handoff_excludes_unrelated_records_and_preserves_history(self):
+        self.accept()
+        decision=r.decisions(self.intake,r.digest(self.master))[0]
+        before=self.master.read_bytes()
+        out=r.export_candidate(self.intake,self.master,r.digest(self.master),self.root/"route.gpx",selected_run=decision)
+        exported=r.tracks(out)
+        self.assertEqual(len(exported),1)
+        self.assertEqual(exported[0]["metadata"],r.tracks(self.master)[0]["metadata"])
+        self.assertEqual(parse(out)[1],[])
+        self.assertEqual(self.master.read_bytes(),before)
+        with self.assertRaisesRegex(ValueError,"not an accepted"):
+            r.export_candidate(self.intake,self.master,r.digest(self.master),self.root/"bad.gpx",selected_run=dict(decision,master_name="wrong"))
 
     def test_installation_preserves_old_notes_and_extensions_on_replacement(self):
         data=r.route_installation("High Voltage","2026")

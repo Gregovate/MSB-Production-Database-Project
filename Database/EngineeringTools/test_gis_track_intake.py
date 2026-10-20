@@ -169,6 +169,7 @@ class IntakeTests(unittest.TestCase):
             errors=[]
             with patch('gis_track_intake.find_garmin_gpx_dirs',return_value=[]), \
                  patch('gis_track_intake.aerial_image',side_effect=fake_map) as map_fetch, \
+                 patch('gis_track_intake.messagebox.showinfo') as notices, \
                  patch('gis_track_intake.messagebox.showerror',side_effect=lambda *a,**k:errors.append(a)):
                 win=open_intake(root); root.update()
                 self.assertEqual(next(w for w in walk(win) if isinstance(w,tk.Listbox)).cget("selectmode"),"extended")
@@ -289,7 +290,9 @@ class IntakeTests(unittest.TestCase):
                 with patch('gis_track_intake.filedialog.asksaveasfilename',return_value=str(output)), patch('gis_track_intake.messagebox.askyesno',return_value=True):
                     buttons['Export GPX for ExpertGPS'].invoke();root.update()
                 self.assertTrue(output.is_file())
-                self.assertEqual(parse(output),parse(master))
+                self.assertEqual(parse(output)[0],parse(master)[0])
+                self.assertEqual(parse(output)[1],[])
+                self.assertTrue(any(call.args[0]=="GPX exported" for call in notices.call_args_list))
                 self.assertTrue(output.with_suffix('.gpx.review.json').is_file())
                 deadline=time.monotonic()+3
                 while time.monotonic()<deadline:
