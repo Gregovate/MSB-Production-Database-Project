@@ -156,8 +156,9 @@ def open_intake(parent):
     ttk.Combobox(r,textvariable=kind,values=KINDS,state="readonly").pack(side="left",fill="x",expand=True)
     status=tk.StringVar(value="Choose a mounted Garmin GPX folder, master and intake root.")
     ttk.Label(base,textvariable=status,wraplength=900).pack(anchor="w")
-    state={"items":[],"waypoints":[]}
+    state={"items":[],"waypoints":[],"aerial_ready":False}
     def select(event=None):
+        state["aerial_ready"]=False
         selection=queue.curselection()
         if not selection:return
         source,(idx,original,points)=state["items"][selection[0]]
@@ -194,6 +195,7 @@ def open_intake(parent):
                                     font=("Segoe UI",10,"bold"))
                 drawing.create_text(x+5,y-9,text=w[0],anchor="sw",fill="#202020",
                                     font=("Segoe UI",10,"bold"))
+            state["aerial_ready"]=True
             aerial_status.set("2019 MSB aerial (existing published XYZ tile layer), zoom 19")
         except (OSError, ValueError, TimeoutError) as error:
             drawing.create_text(20,20,anchor="nw",text="Aerial unavailable; no map review possible.",
@@ -220,6 +222,8 @@ def open_intake(parent):
         try:
             selected=queue.curselection()
             if not selected: return
+            if not state["aerial_ready"]:
+                raise ValueError("Calibrated aerial is unavailable; do not approve track identification")
             file,(idx,_,_)=state["items"][selected[0]]
             path=save(intake.get(),file,idx,name.get(),kind.get(),start.get(),end.get())
             old=selected[0]
