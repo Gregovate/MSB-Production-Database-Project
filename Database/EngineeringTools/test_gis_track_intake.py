@@ -2,7 +2,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from gis_track_intake import parse, nearest, type_hint, propose, save, source_digest, mercator, aerial_image, AERIAL_URL
+from gis_track_intake import parse, nearest, type_hint, propose, save, source_digest, mercator, aerial_image, AERIAL_URL, fit_zoom
 
 GPX = '<gpx xmlns="http://www.topografix.com/GPX/1/1"><wpt lat="43.1" lon="-87.1"><name>FE-00</name></wpt><wpt lat="43.101" lon="-87.102"><name>FE-07</name></wpt><trk><name>2026-10-20 NET</name><trkseg><trkpt lat="43.1" lon="-87.1"/><trkpt lat="43.101" lon="-87.102"/></trkseg></trk></gpx>'
 
@@ -44,6 +44,15 @@ class IntakeTests(unittest.TestCase):
         self.assertEqual(rendered.size,(256,256))
         self.assertTrue(called)
         self.assertTrue(all("/maps/evergreen-2019-v1/19/" in u for u in called))
+    def test_fit_zoom_keeps_full_track_visible(self):
+        pts=[(43.778,-87.742),(43.779,-87.743)]
+        z=fit_zoom(pts,550,290)
+        self.assertGreaterEqual(z,14)
+        self.assertLessEqual(z,20)
+        xy=[mercator(*p,z) for p in pts]
+        self.assertLessEqual(abs(xy[0][0]-xy[1][0]),550*0.82)
+        self.assertLessEqual(abs(xy[0][1]-xy[1][1]),290*0.82)
+
     def test_unknown_type_not_forced(self):
         self.assertEqual(type_hint("2026-10-20 08:00"),"Unknown")
 
