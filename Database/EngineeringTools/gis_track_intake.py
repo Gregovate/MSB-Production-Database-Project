@@ -16,6 +16,7 @@ from io import BytesIO
 from urllib.request import urlopen
 from urllib.error import URLError, HTTPError
 from PIL import Image, ImageTk
+from sync_gis_icons import PARK
 from tkinter import ttk, filedialog, messagebox
 
 GPX = "{http://www.topografix.com/GPX/1/1}"
@@ -152,7 +153,10 @@ def open_intake(parent):
     ttk.Label(base, text="Garmin Track Intake", font=("Segoe UI",16,"bold")).pack(anchor="w")
     ttk.Label(base, text="Read track → identify on aerial → suggest name/type → correct → Save & Next. Originals stay unchanged.").pack(anchor="w")
     found_devices = find_garmin_gpx_dirs()
-    src, master, intake = tk.StringVar(value=str(found_devices[0]) if len(found_devices)==1 else ""), tk.StringVar(), tk.StringVar()
+    gis_root = PARK.parent
+    src = tk.StringVar(value=str(found_devices[0]) if len(found_devices)==1 else "")
+    master = tk.StringVar(value=str(gis_root / "MSB-Park-Infrastructure.gpx"))
+    intake = tk.StringVar(value=str(gis_root / "Field-Recordings"))
     fields = [("Garmin GPX folder", src, True), ("Current master GPX", master, False),
               ("Existing Field-Recordings folder", intake, True)]
     for label, variable, isdir in fields:
