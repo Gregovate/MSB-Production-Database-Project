@@ -709,6 +709,16 @@
   document.addEventListener("wo419:saved", async (event) => {
     const saved = event.detail || {};
     if (!saved.ticket) return;
+    // Intake/feedback is a distinct Manager queue. After saving, return
+    // to that queue rather than leaving the reviewer inside the detail form.
+    if (["intake", "feedback"].includes(state.managerQueue) &&
+        saved.action !== "create") {
+      resetDetail();
+      await Promise.all([loadTickets(), loadManagerInbox()]);
+      renderList();
+      writeNavigation("push");
+      return;
+    }
     // Crew-created native WOs are intentionally unassigned. Show the
     // creator their new order without misrepresenting it as My Assigned Work.
     if (saved.action === "create" && !state.actor?.can_manage) {
