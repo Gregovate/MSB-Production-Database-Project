@@ -286,8 +286,8 @@ class WorkManagementRepository:
             "priority_desc": "t.urgency DESC NULLS LAST, COALESCE(t.wo_id, t.in_id) DESC",
             "number_asc": "COALESCE(t.wo_id, t.in_id) ASC",
             "number_desc": "COALESCE(t.wo_id, t.in_id) DESC",
-            "created_asc": "t.opened_at ASC NULLS LAST, COALESCE(t.wo_id, t.in_id) ASC",
-            "created_desc": "t.opened_at DESC NULLS LAST, COALESCE(t.wo_id, t.in_id) DESC",
+            "created_asc": "COALESCE(t.opened_at,t.last_at) ASC NULLS LAST, COALESCE(t.wo_id, t.in_id) ASC",
+            "created_desc": "COALESCE(t.opened_at,t.last_at) DESC NULLS LAST, COALESCE(t.wo_id, t.in_id) DESC",
         }
         if sort not in sort_modes:
             raise WorkManagementError("Unknown Work Order sort.")
