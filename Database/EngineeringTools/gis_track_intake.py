@@ -544,7 +544,15 @@ def open_intake(parent):
             request_map()
         state["resize_job"]=win.after(250,redraw)
     drawing.bind("<Configure>",resized)
+    show_processed=tk.BooleanVar(value=False)
     def load():
+        old_items=state.get("items",[])
+        editing=state.get("editing_recording")
+        if editing is not None and editing < len(old_items):
+            state.setdefault("draft_fields",{})[editing]=(name.get(),kind.get(),start.get(),end.get())
+        saved_fields={(str(old_items[i][0]),old_items[i][1][0]):values for i,values in state.get("draft_fields",{}).items() if i<len(old_items)}
+        active_before=state.get("active_recording",0)
+        active_key=(str(old_items[active_before][0]),old_items[active_before][1][0]) if active_before<len(old_items) else None
         state.pop("editing_recording",None)
         state.pop("draft_fields",None)
         state["generation"] += 1
@@ -578,6 +586,11 @@ def open_intake(parent):
                         raise ValueError("Recording changed while reading; try again")
                     state["digests"][file] = digest
                     for trk in tracks:state["items"].append((file,trk))
+            coverage=reconcile.processing_coverage(state["intake"])
+            all_items=state["items"]
+            is_done=lambda item: set(range(len(item[1][2]))) <= coverage.get((state["digests"][item[0]],item[1][0]),set())
+            completed=sum(is_done(item) for item in all_items)
+            state["items"]=[item for item in all_items if show_processed.get() or not is_done(item)]
             queue.delete(0,"end")
             reviewed={(d["source_sha256"],d["raw_index"]):d
                       for d in reconcile.decisions(state["intake"],state["master_digest"])}
@@ -586,13 +599,31 @@ def open_intake(parent):
             for item_number,(file,(idx,title,pts)) in enumerate(state["items"]):
                 decision=reviewed.get((state["digests"][file],idx))
                 queue.insert("end",({"keep":"✓ Keep: ","add":"✓ New: ","replace":"✓ Replace: "}.get(decision.get("action"),"✓ Replace: ")+decision["master_name"])
-                             if decision else reconcile.evidence_label(state["prior_evidence"][item_number])+(title or file.name))
-            status.set(f"{len(state['items'])} tracks; {len(state['waypoints'])} master waypoints.")
-            if state["items"]: queue.selection_set(0); select()
+                             if decision else ("✓ Processed: " if is_done((file,(idx,title,pts))) else reconcile.evidence_label(state["prior_evidence"][item_number]))+(title or file.name))
+            status.set(f"{len(state['items'])} recordings shown; {completed} processed ({'shown' if show_processed.get() else 'hidden'}).")
+            state["draft_fields"]={i:saved_fields[(str(file),trk[0])] for i,(file,trk) in enumerate(state["items"]) if (str(file),trk[0]) in saved_fields}
+            if state["items"]:
+                selected=next((i for i,(file,trk) in enumerate(state["items"]) if (str(file),trk[0])==active_key),min(active_before,len(state["items"])-1))
+                state["active_recording"]=selected
+                queue.selection_set(selected);queue.see(selected);select()
+            else:
+                prior_status.set("No pending recordings. Use Show processed to review saved work.")
+                drawing.delete("all")
         except (OSError, ValueError, TypeError, ET.ParseError) as e:
             state["items"] = []
             queue.delete(0,"end")
             messagebox.showerror("Intake stopped",str(e),parent=win)
+    def mark_current_processed():
+        selected=queue.curselection()
+        if not selected:return
+        active=state.get("active_recording",selected[0])
+        file,(idx,title,points)=state["items"][active]
+        try:
+            reconcile.mark_processed(state["intake"],state["digests"][file],idx,len(points),state["master_digest"])
+            load()
+        except (OSError,ValueError) as error:messagebox.showerror("Not marked processed",str(error),parent=win)
+    ttk.Checkbutton(map_controls,text="Show processed",variable=show_processed,command=load).pack(side="left")
+    ttk.Button(map_controls,text="Already done — hide recording",command=mark_current_processed).pack(side="left")
     def next_item():
         try:
             selected=queue.curselection()
@@ -844,8 +875,7 @@ def open_intake(parent):
                     messagebox.showinfo("Run saved",track["name"]+"\n\nReview saved to:\n"+str(path)+"\n\nNext: Export GPX for ExpertGPS to create your editable GPX file.",parent=win)
                     return
                 review.destroy()
-                if old+1<len(state["items"]):
-                    queue.selection_clear(0,"end");queue.selection_set(old+1);queue.see(old+1);select()
+                load()
                 status.set(({"replace":"Match saved for ExpertGPS: ","add":"New route saved for ExpertGPS: ","keep":"Existing master route retained: "}[action])
                            +track["name"]+". Shared master and PostgreSQL unchanged.")
             except (ValueError,OSError) as error:messagebox.showerror("Replacement stopped",str(error),parent=review)
@@ -885,7 +915,7 @@ def open_intake(parent):
             return
         selected=queue.curselection()
         if not selected:
-            messagebox.showerror("Select a recording","Select the recording whose reviewed run you want to export.",parent=win);return
+            messagebox.showerror("Select a recording","Enable Show processed and select the saved recording whose run you want to export.",parent=win);return
         active=state.get("active_recording",selected[0])
         file,(raw_index,_,_)=state["items"][active]
         approved=[d for d in approved if d["source_sha256"]==state["digests"][file] and d["raw_index"]==raw_index]

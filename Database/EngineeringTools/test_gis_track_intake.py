@@ -286,6 +286,11 @@ class IntakeTests(unittest.TestCase):
                 root.update()
                 import gis_track_reconcile as reconcile
                 self.assertEqual(len(reconcile.decisions(intake,source_digest(master))),1)
+                self.assertEqual(recording_list.size(),0)  # accepted recording leaves pending queue
+                buttons['Read Garmin tracks (read only)'].invoke();root.update()
+                self.assertEqual(recording_list.size(),0)
+                next(w for w in walk(win) if isinstance(w,ttk.Checkbutton) and w.cget('text')=='Show processed').invoke();root.update()
+                self.assertEqual(recording_list.size(),1)
                 output=rootdir/'ExpertGPS-working.gpx'
                 with patch('gis_track_intake.filedialog.asksaveasfilename',return_value=str(output)), patch('gis_track_intake.messagebox.askyesno',return_value=True):
                     buttons['Export GPX for ExpertGPS'].invoke();root.update()

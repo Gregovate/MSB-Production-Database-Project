@@ -34,4 +34,20 @@ class PriorWorkTests(unittest.TestCase):
   t=self.track(range(19));t['times']=[v.replace('T12:','T07:').replace('Z','-05:00') for v in t['times']]
   self.assertEqual(prior_master_evidence(self.points,self.times,[t])['matched'],19)
 
+class ProcessingReceiptTests(unittest.TestCase):
+ def test_old_master_receipts_survive_and_partial_is_not_complete(self):
+  import tempfile,json
+  from pathlib import Path
+  from gis_track_reconcile import processing_coverage,mark_processed
+  with tempfile.TemporaryDirectory() as folder:
+   p=Path(folder)/'Reconciliation'/'old-master';p.mkdir(parents=True)
+   (p/'review.json').write_text(json.dumps(dict(schema='msb.gis.track-replacement.v1',source_sha256='source',raw_index=1,vertices=[dict(source_index=i) for i in range(7)])))
+   c=processing_coverage(folder)
+   self.assertEqual(c[('source',1)],set(range(7)))
+   self.assertFalse(set(range(19))<=c[('source',1)])
+   mark_processed(folder,'source',1,19,'new-master')
+   self.assertEqual(processing_coverage(folder)[('source',1)],set(range(19)))
+   self.assertEqual(len(list((Path(folder)/'Processed').glob('*.json'))),1)
+
 if __name__=='__main__':unittest.main()
+

@@ -465,3 +465,28 @@ def evidence_summary(evidence):
     names='; '.join(f"{m['name']} ({len(m['matched_points'])} points, {m['method']})" for m in evidence['matches'])
     label={'likely':'Likely already in master','partial':'Partly in master / possibly split','possible':'Possible geometry match'}[evidence['status']]
     return f"{label}: {evidence['matched']}/{evidence['total']} recording points linked by time — "+names+' — Review before repeating work.'
+
+
+def processing_coverage(intake):
+    """Prior workflow receipts survive master revisions; never authorize export."""
+    coverage={}
+    for path in (Path(intake)/'Reconciliation').glob('*/*.json'):
+        d=json.loads(path.read_text(encoding='utf8'))
+        if d.get('schema')!='msb.gis.track-replacement.v1':continue
+        key=(d['source_sha256'],d['raw_index'])
+        coverage.setdefault(key,set()).update(v['source_index'] for v in d['vertices'])
+    for path in (Path(intake)/'Processed').glob('*.json'):
+        d=json.loads(path.read_text(encoding='utf8'))
+        if d.get('schema')=='msb.gis.processed-recording.v1':
+            coverage.setdefault((d['source_sha256'],d['raw_index']),set()).update(range(d['point_count']))
+    return coverage
+
+
+def mark_processed(intake,source_sha,raw_index,point_count,master_sha):
+    folder=Path(intake)/'Processed';folder.mkdir(parents=True,exist_ok=True)
+    target=folder/(source_sha+'-'+str(raw_index)+'.json')
+    data=dict(schema='msb.gis.processed-recording.v1',source_sha256=source_sha,
+              raw_index=raw_index,point_count=point_count,reviewed_master_sha256=master_sha,
+              confirmed_utc=datetime.now(timezone.utc).isoformat())
+    temp=target.with_suffix('.tmp');temp.write_text(json.dumps(data,indent=2),encoding='utf8');temp.replace(target)
+    return target
