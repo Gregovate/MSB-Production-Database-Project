@@ -809,3 +809,45 @@ Preserve that established protected-header boundary and exact linked Person
 mapping. No Directus session sharing, new login flow or separate role directory
 is required. Verify ingress header protection during ordinary release acceptance.
 The staged V1.0.1 candidate is superseded and must not be installed.
+
+
+## October 20 — signed Cloudflare identity correction (#419 / Server Management #81)
+
+Status: design for V1.0.3-signed-access; not installed. Database provisioning
+already passed WO81-database-20261020T192926Z. Do not reapply its migration.
+
+Read-only direct-Synology People access returned HTTP 200 with only a supplied
+email header; public Cloudflare access returned 302. This proves the tested
+origin path accepts an asserted identity, not an Internet write exploit. LAN
+administration remains explicitly required. Do not block LAN, SSH, DSM or Directus
+as a substitute for verifying application identity.
+
+Work Management Production must verify Cf-Access-Jwt-Assertion with RS256 and
+the HTTPS JWKS at the fixed configured team issuer's /cdn-cgi/access/certs.
+Require signature, exact issuer, application audience, expiration, issued-at,
+subject and a human email; enforce nbf when supplied. Reject unsigned, expired,
+wrong-audience/issuer, malformed, machine/service and missing tokens. Never select
+a key URL from token claims. Bound fetch time and cache lifetime; key-fetch failure
+fails closed without exposing tokens in logs. Derive the existing email header
+from the verified claim, replacing any caller-supplied email before backend
+authorization. Preserve socket-peer/Host/HTTPS checks, fixed /workorder prefix,
+CSRF, native commands and current Directus checks on every operation. A valid
+Cloudflare identity never grants Manager rights or creates a Directus user.
+
+Operator supplied issuer https://sheboyganlights.cloudflareaccess.com and My MSB
+audience d1ceb76902c00398d70cd07e004bf4c49fdc41f6a00da4f41afb304e637e2dd4.
+These are public identifiers, not credentials. No new Cloudflare policy, separate
+role store, Directus login flow or session-duration change is part of this fix.
+
+Regression uses generated RSA keys and fake JWKS transport with no Production
+contact. Test signed success, forged email replacement, all rejection cases,
+key rotation/outage, and continued Directus denial. Production acceptance still
+requires real Cloudflare login and Manager/Crew authorization via the existing
+Synology route. Existing People/Setup/FieldWiring are not fixed by changing this
+entry point; their corresponding boundary follow-up remains under #81.
+
+Server Management must document source-only reconciliation of the clean
+uninstalled worktree and isolated runtime dependency installation before service
+startup. Preserve shared /opt/fieldwiring and completed SQL/credentials/maintenance
+inventory. No database apply retry or shared-environment pip upgrade is authorized
+by this source change.
