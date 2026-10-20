@@ -175,6 +175,16 @@
         <p>Save work notes or completion to the <strong>disposable database only</strong>. Changes are discarded at cleanup; no emails sent.</p>
       </div>
       <div class="review-inner">
+        <!-- Original Intake evidence must be visible BEFORE a decision is chosen.
+             It must remain visible during Promote, Clarify and Disposition. -->
+        <section id="review-source-evidence" class="review-source-evidence" hidden aria-label="Original submitted Intake evidence">
+          <h4>Original submitted finding and notes</h4>
+          <p><strong>Finding</strong></p>
+          <p id="review-source-finding"></p>
+          <p><strong>Submitted notes / Setup context</strong></p>
+          <div id="review-source-notes" class="multiline-note"></div>
+          <p id="review-source-provenance" class="subtle"></p>
+        </section>
         <div id="review-action-buttons" class="review-action-buttons" role="group" aria-label="Available actions for selected ticket"></div>
         <label for="review-action" class="visually-hidden">Selected ticket action</label>
         <select id="review-action" hidden disabled aria-hidden="true" tabindex="-1"><option value="">Choose a ticket or sign in</option></select>
@@ -207,7 +217,7 @@
             <p id="intake-mapping-status" class="subtle" role="status"></p>
           </fieldset>
           <fieldset id="review-create-fields" hidden>
-            <legend>New internal Work Order</legend>
+            <legend id="review-work-order-legend">New internal Work Order</legend>
             <label for="review-problem">Describe the work</label>
             <textarea id="review-problem" rows="3" placeholder="What needs to be done?"></textarea>
             <label for="review-task-type">Task type</label>
