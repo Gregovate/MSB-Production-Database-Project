@@ -491,3 +491,35 @@ def test_v1_sql_quoted_literals_and_function_structure():
     assert "WHERE item.value ~ '^[1-9][0-9]{0,9}$';" in migration
     for line_number, line in enumerate(migration.splitlines(), 1):
         assert line.split("--", 1)[0].count("'") % 2 == 0, line_number
+
+
+def test_v1_browser_reuses_same_preview_runner_with_native_sql_not_clonecommands():
+    runner = RUNNER.read_text(encoding="utf-8")
+    wrapper = WRAPPER.read_text(encoding="utf-8")
+    entry = ENTRY.read_text(encoding="utf-8")
+    backend = (APP / "backend.py").read_text(encoding="utf-8")
+    assert 'start_v1_manager' in runner
+    assert 'start_v1_crew' in runner
+    assert 'CREATE ROLE work_management_app LOGIN PASSWORD' in runner
+    assert 'WORK_MGMT_RUNTIME_MODE="$APP_RUNTIME"' in runner
+    assert 'WORK_MGMT_V1_CLONE_DSN="$V1_DSN"' in runner
+    assert 'WORK_MGMT_V1_CLONE_IP="$HOST_IP"' in runner
+    assert 'WORK_MGMT_V1_CLONE_WRITE_GATE="approved_private_clone"' in runner
+    assert 'WO419 V1 NATIVE BROWSER REVIEW READY' in runner
+    assert "PASS: exact reviewer temporarily receives V1 Manager permission in clone" in runner
+    assert "PASS: V1 Crew review retains no Manager permissions in clone" in runner
+    assert 'WO419 BROWSER REVIEW READY' in runner
+    assert "if [[ \"$MODE\" == \"validate_v1\" ]]; then" in runner
+    assert 'printf \'%s\\n\' "SET msb.wo419_preview_authorized=' in runner
+    assert '[switch]$V1Browser' in wrapper
+    assert "$V1RoleMode" in wrapper
+    assert "$V1BrowserCommand" in wrapper
+    assert "WO419 V1 native browser tunnel: CLEAN EXIT" in wrapper
+    assert "WORK_MGMT_RUNTIME_MODE" in backend
+    assert '("production", "v1_disposable")' in backend
+    assert 'from v1_runtime import V1Repository' in backend
+    assert 'from v1_runtime import V1Commands' in backend
+    assert 'V1Repository().access(email)' in entry
+    assert runner.index('echo "PASS: V1 native SQL installed') < runner.index(
+        '--- Start pinned Work Management reviewer'
+    )
