@@ -621,7 +621,7 @@
         detail: { ...state.actor, csrf_token: access.csrf_token,
                   runtime_mode: state.actor.runtime_mode }
       }));
-      document.querySelectorAll("#scope option[data-manager-only]").forEach((option) => {
+      document.querySelectorAll("#scope option[data-manager-only], #scope optgroup[data-manager-only]").forEach((option) => {
         option.disabled = !state.actor.can_manage;
         option.hidden = !state.actor.can_manage;
       });
