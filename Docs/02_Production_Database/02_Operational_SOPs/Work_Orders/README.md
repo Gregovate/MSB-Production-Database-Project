@@ -4,14 +4,18 @@ Use this page to go directly to the Work Order task you are doing now.
 
 ## Work Management launch notifications
 
-[Phase 1 Intake Manager emails and Phase 2 reporter follow-up procedure](Phase_1_and_Phase_2_Notification_Procedure.md) explains which notifications remain active, how to respond to reporter questions, and when final-outcome email delivery may be activated. Phase 2 reporter email is not live until independently authorized.
+[Phase 1 Intake Manager emails and Phase 2 reporter follow-up procedure](Phase_1_and_Phase_2_Notification_Procedure.md) explains which notifications remain active, how to respond to reporter questions, and when final-outcome email delivery may be activated. Phase 2 implementation is authorized but delivery is not yet installed or verified. Required Due by dates are also a pending candidate. Until cutover, do not assume app saves send email.
 
 ## Work Order Flow
 
-A Work Order can enter the system in either of two ways:
+Open [Work Orders](https://my.sheboyganlights.org/workorder/) for Manager and Crew work. Directus continues to manage users and permissions. The existing Apps-page button cutover remains pending.
+
+A Work Order can enter the system through these paths:
 
 1. **Work Order Request Form** -> manager triage -> active Work Order
 2. **Automatically from a Test Session** -> active Work Order
+3. **Manager Create Work Order** -> active internal Work Order, without fake Intake
+4. **Setup Task Feedback** -> retained correction finding -> optional explicit promotion when repair work is needed
 
 A Work Order created automatically from a Test Session does **not** go through Work Order Intake triage.
 
@@ -51,6 +55,7 @@ The MSB Backbone repository should link to the authoritative public procedure ra
 | Assign a Work Order to one or more volunteers | [Assign a Work Order](Assign_a_Work_Order.md) |
 | Find and work an assigned Work Order | [Work an Assigned Work Order](Work_an_Assigned_Work_Order.md) |
 | Complete a Work Order | [Complete a Work Order](Complete_a_Work_Order.md) |
+| Create internal work, correct or cancel it | [Manage an Internal Work Order](Manage_an_Internal_Work_Order.md) |
 | Choose urgency or target year | [Urgency and Target Year Reference](Urgency_and_Target_Year_Reference.md) |
 
 The task-sized procedures above are **CURRENT** and are the released procedures for the current Work Order workflow.

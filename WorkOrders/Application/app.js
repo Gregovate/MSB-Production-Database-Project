@@ -226,6 +226,9 @@
         escapeHtml(categoryLabel(row)) + '</span><span class="ticket-id">' +
         escapeHtml(row.ticket) + '</span></div>' +
         '<h4>' + escapeHtml(row.title || "Untitled item") + '</h4>' +
+        (row.type === 'WORK_ORDER' ? '<p class="card-meta">' + escapeHtml(
+          row.due_by ? 'Due by ' + row.due_by + (row.overdue ? ' · OVERDUE' : '') :
+          (row.due_date_required ? 'Due date required' : 'No due date recorded')) + '</p>' : '') +
         '<p class="card-meta">' + escapeHtml(loc) +
         (row.urgency ? ' · <strong>Urgency ' + escapeHtml(row.urgency) +
           (row.urgency === 1 ? ' · CRITICAL' : '') + '</strong>' : ' · Urgency not recorded') +
@@ -471,6 +474,8 @@
     setText("detail-title", row.title || "Untitled item");
     setText("detail-status", statusLabel(row));
     setText("detail-location", (row.location || "Location not recorded") +
+      (row.type === "WORK_ORDER" ? " · " + (row.due_by ? "Due by " + row.due_by +
+        (row.overdue ? " · OVERDUE" : "") : row.due_date_required ? "Due date required" : "No due date recorded") : "") +
       (row.urgency ? " · Urgency " + row.urgency : " · Urgency not recorded"));
     setText("detail-owner", row.owners || "Unassigned");
     setText("detail-reporter", row.reported_by || "Not recorded");
@@ -799,4 +804,5 @@
   $("related-information").addEventListener("toggle", loadRelated);
   initialize();
 })();
+
 

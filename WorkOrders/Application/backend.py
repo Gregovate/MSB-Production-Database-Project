@@ -18,7 +18,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 from repository import WorkManagementError, WorkManagementRepository
 from commands import CloneCommands
 
-APP_VERSION = "V1.0.3-signed-access"
+APP_VERSION = "V1.1.0-email-due-date"
 BASE_DIR = Path(__file__).resolve().parent
 CLOUDFLARE_HEADER = "Cf-Access-Authenticated-User-Email"
 TICKET_KEY = re.compile(r"^(?:WO|INTAKE)-[1-9][0-9]{0,12}$")
@@ -313,4 +313,5 @@ if __name__ == "__main__":
         "Work Management browser must be started by an approved disposable "
         "Server Management launcher, not by running backend.py directly."
     )
+
 

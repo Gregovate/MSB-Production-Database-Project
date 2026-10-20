@@ -10,7 +10,7 @@
 | Audience | Volunteers |
 | Status | CURRENT |
 | Owner | Production Database Manager |
-| Last Reviewed | 2026-08-09 |
+| Last Reviewed | 2026-10-20 |
 | Keywords | assigned work order, my work orders, volunteer, repair, notes |
 
 ## Purpose
@@ -19,7 +19,7 @@ Use this procedure when a Work Order has been assigned to you and you are ready 
 
 ## Procedure
 
-1. Open **My Assigned Work Orders** in the Production Database.
+1. Open [Work Orders](https://my.sheboyganlights.org/workorder/) and choose **My Assigned Work Orders**. The existing Apps-page button is still awaiting its navigation cutover.
 2. Find the Work Order you are working on.
 3. Open the Work Order and review:
    - the problem description;
@@ -29,8 +29,8 @@ Use this procedure when a Work Order has been assigned to you and you are ready 
    - any other information needed to understand the task.
 4. Perform the work described.
 5. Test or verify the result when appropriate.
-6. Add useful notes when work is still in progress or information should be preserved for the next person.
-7. Save the Work Order.
+6. Choose **Add Work Note** at the top of the ticket when work is still in progress or information should be preserved for the next person.
+7. Save the note and confirm it appears in the ticket history. A work note does not complete the Work Order.
 
 Useful notes are brief but specific. Examples include a part that was replaced, a fault that was found, or a part that still needs to be obtained.
 

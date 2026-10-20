@@ -253,6 +253,7 @@
     byId("review-problem").value =
       model.ticket?.detail?.problem_raw || model.ticket?.detail?.problem ||
       model.ticket?.title || "";
+    byId("review-due-by").value = model.ticket?.due_by || "";
     byId("review-target-year").value = model.ticket?.urgency == 5 ? (model.ticket?.yr || "") : "";
     byId("review-urgency").value = String(model.ticket?.urgency || 3);
     planningChanged();
@@ -333,6 +334,7 @@
                           "review-setup-season", "review-setup-name")) {
         byId(name).value = "";
       }
+      byId("review-due-by").value = "";
       byId("review-urgency").value = "3";
       byId("review-setup-mode").value = "none";
     } else {
@@ -415,6 +417,8 @@
     const source = model.ticket?.ticket || "NEW INTERNAL WORK ORDER";
     const note = byId("review-response").value.trim();
     if (["create", "promote", "edit"].includes(kind)) {
+      if (!byId("review-due-by").value || !byId("review-due-by").checkValidity())
+        throw new Error("Choose a valid Due by date.");
       const problem = byId("review-problem").value.trim();
       if (problem.length < 10) throw new Error("Describe the actual job (at least 10 characters).");
       if (!byId("review-task-type").value)
@@ -497,6 +501,7 @@
       problem: byId("review-problem").value.trim(),
       task_type_id: byId("review-task-type").value,
       urgency: byId("review-urgency").value,
+      due_by: byId("review-due-by").value || null,
       target_year: ["create", "promote", "edit"].includes(kind) &&
         byId("review-urgency").value === "5"
         ? byId("review-target-year").value : null,
@@ -690,3 +695,4 @@
     }
   });
 })();
+

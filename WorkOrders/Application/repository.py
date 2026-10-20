@@ -222,6 +222,25 @@ class WorkManagementRepository:
             "ORDER BY ticket_key,activity_id DESC", (keys,)
         )
         canceled = {r["ticket_key"]: dict(r) for r in cur.fetchall()}
+        # One bounded lookup enriches list/detail without a per-row query.
+        # to_jsonb permits read-only inspection before migration; writes still
+        # require migration 002 and exact-candidate acceptance before deployment.
+        cur.execute(
+            "SELECT 'WO-' || w.work_order_id AS ticket, "
+            "to_jsonb(w)->>'due_by' AS due_by, "
+            "(CURRENT_TIMESTAMP AT TIME ZONE 'America/Chicago')::date::text AS today "
+            "FROM ops.work_order w WHERE ('WO-' || w.work_order_id)=ANY(%s)", (keys,)
+        )
+        deadlines = {r['ticket']: dict(r) for r in cur.fetchall()}
+        for row in rows:
+            if row['type'] != 'WORK_ORDER':
+                continue
+            deadline = deadlines.get(row['ticket'], {})
+            row['due_by'] = deadline.get('due_by')
+            open_work = bool(row.get('active')) and row.get('done_at') is None
+            row['due_date_required'] = open_work and not row['due_by']
+            row['overdue'] = bool(open_work and row['due_by'] and
+                                  row['due_by'] < deadline['today'])
         for row in rows:
             finding = canceled.get(row["ticket"])
             if finding:
@@ -657,3 +676,4 @@ class WorkManagementRepository:
             "groups": values,
             "notice": "Stage candidates are not confirmed task assignments.",
         }
+
