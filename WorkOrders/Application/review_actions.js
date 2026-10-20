@@ -43,7 +43,12 @@
       if (actor.can_manage) result.push("create");
       return result;
     }
-    if (actor.can_manage && ticket.type === "WORK_ORDER" &&
+    // The accepted V1 native command contract does not yet include the
+    // optional seasonal Setup link. Do not render a button that would 409.
+    // Preserve the existing clone-only link test until the governed native
+    // cross-subsystem command is implemented and accepted.
+    if (model.runtime === "disposable" &&
+        actor.can_manage && ticket.type === "WORK_ORDER" &&
         (ticket.detail?.stage_id || ticket.setup_context?.stage_id)) {
       result.push("link_setup");
     }
