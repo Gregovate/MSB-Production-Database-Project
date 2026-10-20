@@ -79,6 +79,8 @@ def save(intake, source, index, name, kind, start, end):
         raise ValueError("Archive hash mismatch — review not saved")
     destination = reviewed_path(intake, digest, index)
     destination.parent.mkdir(parents=True, exist_ok=True)
+    if source_digest(source) != digest:
+        raise ValueError("Recording changed during intake; review again")
     previous = json.loads(destination.read_text(encoding="utf8")) if destination.exists() else None
     data = dict(schema="msb.gis.intake.v1", source_sha256=digest,
                 source_path=str(source), archived_original=str(archive), track_index=index, working_name=name.strip(),
