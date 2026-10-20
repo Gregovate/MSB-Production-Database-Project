@@ -222,6 +222,7 @@
               <label for="review-target-year">Planning target year</label>
               <input id="review-target-year" type="number" min="2020" max="2100" placeholder="Target year for Planning only">
             </div>
+            <div id="review-setup-choice">
             <label for="review-setup-mode">Does this repair affect seasonal Setup?</label>
             <select id="review-setup-mode">
               <option value="none">No · Work Order only</option>
@@ -229,6 +230,7 @@
               <option value="create" data-manager-only>Manager · Create linked season-only Setup task now</option>
             </select>
             <p class="subtle">A seasonal task is not a reusable Catalog task. Crew may flag it; Managers can create the linked Setup gate in the same save.</p>
+            </div>
             <div id="review-setup-fields" hidden>
               <label for="review-setup-season">Open seasonal Setup session</label>
               <select id="review-setup-season"><option value="">Choose a current season</option></select>
