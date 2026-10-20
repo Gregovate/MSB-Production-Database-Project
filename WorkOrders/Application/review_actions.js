@@ -55,7 +55,7 @@
         (ticket.detail?.stage_id || ticket.setup_context?.stage_id)) {
       result.push("link_setup");
     }
-    if (ticket.type === "WORK_ORDER" && !ticket.done_at) {
+    if (ticket.type === "WORK_ORDER" && !ticket.done_at && ticket.active) {
       if (actor.can_manage) result.push("assign", "edit", "cancel");
       if (actor.can_manage ||
           (ticket.assignee_ids || []).some((id) => Number(id) === Number(actor.person_id))) {
