@@ -1172,7 +1172,8 @@ def test_oct20_task_type_search_and_nondestructive_public_intake_review_contract
     assert 'id="intake-mapping-status"' in html
     assert "uniqueCatalogMatch" in actions
     assert 'result.push("promote", "resolve")' in actions
-    assert 'if (ticket.reporter_id) result.push("clarify")' in actions
+    assert 'result.push("clarify");' in actions
+    assert "MISSING_RECIPIENT" in sql
     assert "p_action='correction_owner' AND" in sql
     assert "p_action IN ('clarify','resolve') AND EXISTS" in sql
     assert "('promoted_source','resolve')" in repository_source
@@ -1198,10 +1199,7 @@ def test_task_type_filter_reads_catalog_and_rejects_invalid_identifiers(client, 
             headers=identity(),
         )
         assert blocked.status_code == 400
-    assert client.get(
-        "/api/work-orders/tickets?scope=critical", headers=identity()
-    ).status_code == 403 or (
-        # FakeRepo fixture is a read stub; source SQL role gate is tested separately.
-        "Manager view requires Manager permission" in
-        (HERE / "repository.py").read_text(encoding="utf-8")
-    )
+    # The fake service does not impose SQL scope gates; actual repo must.
+    assert "Manager view requires Manager permission" in (
+        HERE / "repository.py"
+    ).read_text(encoding="utf-8")
