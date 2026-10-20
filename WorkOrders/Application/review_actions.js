@@ -92,6 +92,19 @@
     else if (creating && available.includes("create")) picker.value = "create";
 
     const ticket = model.ticket;
+    const sourceEvidence = byId("review-source-evidence");
+    const intake = ticket && ["INTAKE_REQUEST", "TASK_FEEDBACK"].includes(ticket.type);
+    sourceEvidence.hidden = !intake;
+    if (intake) {
+      const detail = ticket.detail || {};
+      byId("review-source-finding").textContent =
+        detail.problem_raw || detail.problem || ticket.title || "Not recorded";
+      byId("review-source-notes").textContent =
+        detail.notes_raw || "No additional submitted notes.";
+      byId("review-source-provenance").textContent =
+        ticket.ticket + " · " + (ticket.reported_by || "Reporter not recorded") +
+        " · " + (ticket.source || "Source not recorded");
+    }
     const title = byId("review-panel-title");
     const buttons = byId("review-action-buttons");
     const guidance = byId("review-action-guidance");
@@ -342,6 +355,9 @@
     const form = byId("review-action-form");
     form.hidden = !kind;
     byId("review-create-fields").hidden = !["create", "promote", "edit"].includes(kind);
+    byId("review-work-order-legend").textContent =
+      kind === "promote" ? "Proposed Work Order · Review before promotion" :
+      kind === "edit" ? "Correct existing Work Order" : "New internal Work Order";
     byId("review-edit-reason-fields").hidden = kind !== "edit";
     byId("review-setup-choice").hidden = !["create", "promote"].includes(kind);
     byId("review-cancel-fields").hidden = kind !== "cancel";
