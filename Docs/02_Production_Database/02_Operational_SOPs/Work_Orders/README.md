@@ -2,6 +2,10 @@
 
 Use this page to go directly to the Work Order task you are doing now.
 
+## Work Management launch notifications
+
+[Phase 1 Intake Manager emails and Phase 2 reporter follow-up procedure](Phase_1_and_Phase_2_Notification_Procedure.md) explains which notifications remain active, how to respond to reporter questions, and when final-outcome email delivery may be activated. Phase 2 reporter email is not live until independently authorized.
+
 ## Work Order Flow
 
 A Work Order can enter the system in either of two ways:
