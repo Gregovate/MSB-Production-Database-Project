@@ -30,27 +30,27 @@ app.logger.setLevel(logging.INFO)
 def runtime_mode() -> str:
     """Never select Production merely because someone supplies a database DSN."""
     mode = os.environ.get("WORK_MGMT_RUNTIME_MODE", "disposable")
-    if mode not in ("disposable", "production"):
+    if mode not in ("disposable", "v1_disposable", "production"):
         raise WorkManagementError("Unapproved Work Orders runtime mode.", 503)
     return mode
 
 
 def store():
-    if runtime_mode() == "production":
+    if runtime_mode() in ("production", "v1_disposable"):
         from v1_runtime import V1Repository
         return V1Repository()
     return WorkManagementRepository()
 
 
 def command_store():
-    if runtime_mode() == "production":
+    if runtime_mode() in ("production", "v1_disposable"):
         from v1_runtime import V1Commands
         return V1Commands()
     return CloneCommands()
 
 
 def command_token(current: dict) -> str:
-    if runtime_mode() == "disposable":
+    if runtime_mode() in ("disposable", "v1_disposable"):
         return os.environ.get("WORK_MGMT_PREVIEW_CSRF_TOKEN", "")
     from v1_runtime import require_v1_production_configuration
     require_v1_production_configuration()
@@ -70,6 +70,9 @@ def runtime_response() -> dict:
     if runtime_mode() == "production":
         return {"runtime_mode": "production", "disposable_only": False,
                 "notifications": "PENDING_CUTOVER"}
+    if runtime_mode() == "v1_disposable":
+        return {"runtime_mode": "v1_disposable", "disposable_only": True,
+                "notifications": "NO_SEND_V1"}
     return {"runtime_mode": "disposable", "disposable_only": True,
             "notifications": "NO_SEND"}
 
@@ -158,7 +161,7 @@ def require_command_safety() -> dict:
     allowed_length = 64 if runtime_mode() == "production" else 48
     if not re.fullmatch("[a-f0-9]{" + str(allowed_length) + "}", token) or not hmac.compare_digest(token, provided):
         raise WorkManagementError("Approved Work Orders session key required.", 403)
-    if runtime_mode() == "production" and request.headers.get("X-MSB-Work-Order-Command") != "1":
+    if runtime_mode() in ("production", "v1_disposable") and request.headers.get("X-MSB-Work-Order-Command") != "1":
         raise WorkManagementError("Protected Work Order command header missing.", 403)
     origin = request.headers.get("Origin", "")
     if origin and origin.rstrip("/") != request.host_url.rstrip("/"):
