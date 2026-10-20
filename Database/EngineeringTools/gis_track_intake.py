@@ -64,6 +64,8 @@ def save(intake, source, index, name, kind, start, end):
     """Create review receipt, keeping Garmin, original GPX and master unchanged."""
     if not name.strip() or kind not in KINDS:
         raise ValueError("Name and temporary classification are required")
+    if not start.strip() or not end.strip():
+        raise ValueError("Review starting and ending waypoints")
     source = Path(source)
     digest = source_digest(source)
     day = datetime.fromtimestamp(source.stat().st_mtime).strftime("%Y-%m-%d")
