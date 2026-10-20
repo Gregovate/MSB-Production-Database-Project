@@ -986,3 +986,8 @@ Add Due by sorting (earliest/latest, missing dates last) and Work Order deadline
 ### Phase 2 source-specific Intake email — October 20 operator correction
 
 New Intake notices must distinguish Setup Task Feedback (source_form_name=SETUP_CORRECTION) from work requests. Feedback subject names source_payload.task_name and asks for review; it must not call the feedback a Work Order request or imply approval/denial is the only response. Work requests retain received-from wording. Both use the permanent same-ticket Work Management URL. Keep the interim Manager recipient list unchanged. Store source classification and task name in the event snapshot, with a truthful missing-task-name fallback. Maintain a separate editable formatted/plain-text feedback template and include it in offline previews. This replaces wording only after Phase 2 activation; the live Directus Flow is unchanged.
+
+
+### Manager email-preview utility — October 20 operator direction
+
+Expose the formatted email previews on the Manager Work Orders page as a utility. Enforce existing Directus-derived Manager authorization on the read endpoint as well as hiding the UI for Crew. Render current installed templates with fictional sample data, including Setup feedback and work requests; show subject, formatted body and plain text. Preview must not queue mail, claim deliveries, send SMTP, mutate templates, or grant roles. Isolate preview HTML from the application. Keep the offline preview command using the same rendering function so it cannot drift from the Manager utility.
