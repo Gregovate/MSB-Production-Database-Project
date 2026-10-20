@@ -313,6 +313,11 @@ BEGIN
         RAISE EXCEPTION 'Work Orders: Intake already promoted'
           USING ERRCODE='23505';
       END IF;
+      IF EXISTS (SELECT 1 FROM ops.work_management_activity
+                 WHERE ticket_key=p_ticket AND event_kind='resolve') THEN
+        RAISE EXCEPTION 'Work Orders: disposed Intake must not be promoted'
+          USING ERRCODE='23505';
+      END IF;
     END IF;
     INSERT INTO ops.work_order(
       problem,task_type_id,urgency_id,target_year,stage_id,work_area_id,
