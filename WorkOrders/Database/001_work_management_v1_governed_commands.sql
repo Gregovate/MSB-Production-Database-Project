@@ -349,6 +349,10 @@ BEGIN
     IF v_wo.date_completed IS NOT NULL THEN
       RAISE EXCEPTION 'Work Orders: completed WO is immutable' USING ERRCODE='23514';
     END IF;
+    IF NOT v_wo.is_active THEN
+      RAISE EXCEPTION 'Work Orders: inactive/cancelled WO cannot be worked'
+        USING ERRCODE='23514';
+    END IF;
     IF p_action IN ('edit','cancel') AND
        (NOT v_wo.is_active OR v_wo.display_test_session_id IS NOT NULL) THEN
       RAISE EXCEPTION 'Work Orders: inactive/Testing Work Order requires separate governed review'
@@ -528,8 +532,8 @@ BEGIN
       FROM ref.person p WHERE p.person_id=v_person
       ON CONFLICT(event_key) DO NOTHING;
     END LOOP;
-  ELSIF p_action IN ('clarify','resolve','complete') THEN
-    v_person:=CASE WHEN p_action='complete' THEN v_wo.submitted_by_person_id
+  ELSIF p_action IN ('clarify','resolve','complete','cancel') THEN
+    v_person:=CASE WHEN p_action IN ('complete','cancel') THEN v_wo.submitted_by_person_id
                    ELSE v_intake.submitter_person_id END;
     IF v_person IS NOT NULL AND
        (p_action<>'complete' OR v_wo.display_test_session_id IS NULL) THEN
