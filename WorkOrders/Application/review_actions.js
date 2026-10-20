@@ -14,6 +14,7 @@
     progress: "Record Work Note · Keep open",
     complete: "Complete · Required verified work notes",
     promote: "Public Intake · Promote & Assign",
+    // Public Intake also supports non-destructive clarification/disposition.
     correction_owner: "Task Feedback · Choose correction owner",
     clarify: "Task Feedback · Request clarification",
     resolve: "Task Feedback · Verified disposition",
@@ -59,7 +60,8 @@
         result.push("progress", "complete");
       }
     } else if (actor.can_manage && ticket.type === "INTAKE_REQUEST") {
-      result.push("promote");
+      result.push("promote", "resolve");
+      if (ticket.reporter_id) result.push("clarify");
     } else if (ticket.type === "TASK_FEEDBACK") {
       if (actor.can_manage) result.push("correction_owner", "clarify", "resolve", "promote");
       if (Number(ticket.reporter_id) === Number(actor.person_id)) result.push("reply");
@@ -104,7 +106,7 @@
       correction_owner: "Assign correction owner",
       clarify: "Ask reporter for details",
       reply: "Reply to clarification",
-      resolve: "Record resolution",
+      resolve: "Record disposition / No Work Order",
     };
     // Assignment is a distinct Manager maintenance action in the
     // Work Order heading, not mixed with crew work/complete buttons.
@@ -180,6 +182,49 @@
     if (!matching.length) container.textContent = "No matching active linked People.";
   }
 
+  function uniqueCatalogMatch(selectId, raw, expected) {
+    const needle = String(raw || "").trim().toLowerCase();
+    if (!needle) return "";
+    const entries = Array.from(byId(selectId).options).filter((item) => item.value);
+    let matches = entries.filter((item) => item.textContent.trim().toLowerCase() === needle);
+    if (expected === "stage" && !matches.length) {
+      // Stage key prefix is a stable identity, unlike a free-form Stage name.
+      const prefix = /^([0-9]{1,3})[-\\s]/.exec(needle);
+      if (prefix) {
+        matches = entries.filter((item) =>
+          item.textContent.toLowerCase().startsWith("stage " + prefix[1] + " "));
+      }
+    }
+    return matches.length === 1 ? matches[0].value : "";
+  }
+
+  function updateIntakeComparison() {
+    const d = model.ticket?.detail || {};
+    const intake = model.ticket?.type === "INTAKE_REQUEST";
+    if (!intake) return;
+    const values = {
+      "intake-original-urgency": d.priority_raw || d.urgency_id || "Not submitted",
+      "intake-original-type": d.task_type_raw || "Not submitted",
+      "intake-original-location": d.stage_raw || d.work_area_raw || "Not submitted",
+      "intake-mapped-urgency": byId("review-urgency").selectedOptions[0]?.textContent || "Select urgency",
+      "intake-mapped-type": byId("review-task-type").selectedOptions[0]?.textContent || "Choose Task Type",
+      "intake-mapped-location": byId("review-location-type").value === "stage"
+        ? byId("review-stage").selectedOptions[0]?.textContent
+        : byId("review-location-type").value === "area"
+          ? byId("review-area").selectedOptions[0]?.textContent : "Choose Stage or Work Area",
+    };
+    Object.entries(values).forEach(([id, value]) => { byId(id).textContent = String(value || "Not selected"); });
+    const missing = [];
+    if (!byId("review-task-type").value) missing.push("Task Type");
+    if (!byId("review-location-type").value ||
+        !(byId("review-location-type").value === "stage"
+          ? byId("review-stage").value : byId("review-area").value))
+      missing.push("Stage / Work Area");
+    byId("intake-mapping-status").textContent = missing.length
+      ? "Manager confirmation required: " + missing.join(", ") + "."
+      : "Catalog selections populated. Review and correct before promoting.";
+  }
+
   function setSelectionFromTicket() {
     model.selected = new Set((model.ticket?.assignee_ids || []).map(Number));
     drawPeople();
@@ -194,7 +239,31 @@
     byId("review-location-type").value = kind;
     byId("review-stage").value = detail.stage_id || "";
     byId("review-area").value = detail.work_area_id || "";
+    // Public-form values may be plain text; resolve only unique catalog hits.
+    if (model.ticket?.type === "INTAKE_REQUEST") {
+      const submittedPriority = String(detail.priority_raw || detail.urgency_id || model.ticket?.urgency || "");
+      if (/^[1-5]$/.test(submittedPriority)) byId("review-urgency").value = submittedPriority;
+      const existingType = String(detail.task_type_id || "");
+      if (existingType && Array.from(byId("review-task-type").options).some(o => o.value === existingType))
+        byId("review-task-type").value = existingType;
+      else byId("review-task-type").value = uniqueCatalogMatch("review-task-type", detail.task_type_raw);
+      if (!kind && detail.stage_raw) {
+        const matched = uniqueCatalogMatch("review-stage", detail.stage_raw, "stage");
+        if (matched) {
+          byId("review-location-type").value = "stage";
+          byId("review-stage").value = matched;
+        }
+      } else if (!kind && detail.work_area_raw) {
+        const matched = uniqueCatalogMatch("review-area", detail.work_area_raw);
+        if (matched) {
+          byId("review-location-type").value = "area";
+          byId("review-area").value = matched;
+        }
+      }
+    }
     locationChanged();
+    planningChanged();
+    updateIntakeComparison();
   }
 
   function planningChanged() {
@@ -208,6 +277,7 @@
     byId("review-stage-wrap").hidden = byId("review-location-type").value !== "stage";
     byId("review-area-wrap").hidden = byId("review-location-type").value !== "area";
     setupModeChanged();
+    updateIntakeComparison();
   }
 
   function setupModeChanged() {
@@ -257,6 +327,7 @@
     const form = byId("review-action-form");
     form.hidden = !kind;
     byId("review-create-fields").hidden = !["create", "promote"].includes(kind);
+    byId("review-intake-comparison").hidden = !(kind === "promote" && model.ticket?.type === "INTAKE_REQUEST");
     byId("review-link-setup-fields").hidden = kind !== "link_setup";
     byId("review-person-fields").hidden =
       !model.actor?.can_manage ||
@@ -502,7 +573,10 @@
   byId("manager-assign-button").addEventListener("click", openManagerAssignment);
   document.addEventListener("wo419:history-create", openCreate);
   byId("review-location-type").addEventListener("change", locationChanged);
-  byId("review-urgency").addEventListener("change", planningChanged);
+  byId("review-task-type").addEventListener("change", updateIntakeComparison);
+  byId("review-stage").addEventListener("change", updateIntakeComparison);
+  byId("review-area").addEventListener("change", updateIntakeComparison);
+  byId("review-urgency").addEventListener("change", () => { planningChanged(); updateIntakeComparison(); });
   byId("review-setup-mode").addEventListener("change", setupModeChanged);
   byId("review-person-filter").addEventListener("input", drawPeople);
   byId("review-action-form").addEventListener("submit", async (event) => {
