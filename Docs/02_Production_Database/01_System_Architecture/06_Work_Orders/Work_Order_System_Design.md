@@ -851,3 +851,56 @@ uninstalled worktree and isolated runtime dependency installation before service
 startup. Preserve shared /opt/fieldwiring and completed SQL/credentials/maintenance
 inventory. No database apply retry or shared-environment pip upgrade is authorized
 by this source change.
+
+
+## October 20 — Phase 2 email templates and required Due by (#419)
+
+Operator authorized implementation of four notification types: new Intake to
+the existing test Manager mailing list; assignment to the actual assignee;
+done/cancelled outcome to the original reporter; and a request for more
+information to the original reporter with same-ticket response. Keep
+ref.person.is_manager=true, active_flag=true and available email as the interim
+Intake mailing-list selector. This is a recipient rule, not an application
+permission. Directus remains the sole user/role/policy authority. Do not redesign
+Person or change the test recipients during this work.
+
+Email wording must be editable outside Python sending code. Store four reviewed
+templates under WorkOrders/Application/email_templates, with subject, HTML and
+plain-text alternatives. Use a small documented placeholder vocabulary and
+escape inserted ticket values in HTML. Template files cannot set recipients,
+credentials, transport or permissions. Validate every template and render no-send
+previews before activation. Freeze rendered content and template digest with each
+queued delivery so retries do not silently change an already-attempted message.
+An invalid template stops enqueue/send visibly; no fallback to misleading mail.
+This initial file-based editor is available through GitHub file editing; a
+browser rich-text editor is not part of the initial implementation.
+
+Due by is required on Manager Create and Intake Promote, editable by Managers,
+visible in work lists/detail and assignment email. Check current native schema
+before choosing a new column. Existing undated open work is flagged Due date
+required; never manufacture dates or rewrite history. Overdue means active,
+unfinished work with a due date before the current America/Chicago calendar date.
+Due today is not overdue. Do not block legitimate completion of historical work
+merely because it lacks a date. Automatically generated Testing repair work must
+remain creatable and show missing-date follow-up for a Manager.
+
+Observed live email Flow inventory:
+- ebcde355-32c5-4826-b6fa-360621d0d357: WOI Request Triage Email,
+  active, work_order_intake items.create; reads the interim Person list,
+  builds an email array, sends Manager triage notice.
+- 9a7fb87b-d78e-492b-b2c5-ac3b521b5cf7: Work Order Email Assignees,
+  active, work_order_assignment items.create; active assignment, nonempty
+  assignee email and unfinished Work Order required.
+- 78e3fac3-a616-4c30-a6d8-a7cde33cefbb: Create Repair Work Order,
+  retain non-email creation behavior.
+- 09276ca9-3409-4f1c-95fe-df5b3edb8eef: Work Order Complete-Update
+  Display Test Session, retain non-email Testing completion behavior.
+The two inactive Flows stay inactive. Event-hook mail does not cover native SQL
+writes; replacement capture must cover both native application actions and
+existing public/Setup Intake entry paths. Activation must not flush historical
+PENDING_CUTOVER rows indiscriminately. Establish a reviewed event boundary and
+explicit backlog disposition, then disable only the two replaced email Flows.
+
+Status: implementation in progress, no Phase 2 sender or due-date migration
+installed. Server Management #81 owns mail transport reconnaissance, runtime,
+cutover and rollback. Do not infer delivery from a queued database row.
