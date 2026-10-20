@@ -2,6 +2,37 @@
 
 **Status: V0.3 source-only candidate; new disposable-write validation and browser review still pending. V0.2 operator review was CHANGES REQUIRED.** Work Management is the existing MSB Database Work Orders subsystem.
 
+## October 20, 01:09 server report — V1 native PostgreSQL clone SQL PASS
+
+**Operator validated** the accepted V1 SQL migration and real native command functions on the restored **private current-Production disposable database**. Retained evidence: `/home/msbadmin/setup-acceptance-reports/WO419_Disposable_Browser_Preview_20261020T010953.txt`.
+
+Observed terminal:
+
+```text
+PASS: V1 proposed native schema/functions installed on disposable clone
+NOTICE: WO419 V1 disposable validation: Manager Create, native assignee Progress/Complete, non-Manager denial, Intake promotion, and no-send intent PASS
+ROLLBACK
+WO419 V1 DISPOSABLE SQL VALIDATION PASS
+No browser listener started; clone-only validation transaction rolled back
+WO419 preview cleanup, initial status=0
+PASS: verified Work Orders listener stopped; disposable teardown permitted
+PASS: owned disposable clone removed
+PASS: disposable candidate worktree unregistered
+PASS: Production Work Order/Intake fingerprint unchanged
+PASS: shared checkout HEAD unchanged
+PASS: preview port no longer listening
+WO419 DISPOSABLE BROWSER REVIEW: CLEAN EXIT
+WO419 V1 disposable SQL validation: CLEAN EXIT
+```
+
+**Accepted gate:** real PostgreSQL DDL applied and functional SQL checks passed inside disposable clone. Transactional sample records/grants rolled back; clone/port cleaned; no Production write or email. **NOT YET browser acceptance or V1 Production deployment approval.**
+
+**Next gate: native V1 browser, not the old CloneCommands.** The existing #419 runner has separate `start_v1_manager` and `start_v1_crew` operator modes exposed by the original PowerShell wrapper's `-V1Browser -V1ReviewerRole Manager|Crew`, and reuses port 8898 sequentially. The V1 browser must use a private clone-local `work_management_app` LOGIN (never `fieldwiring_app` for V1 saves), source-pinned `v1_runtime.V1Repository/V1Commands` and `ops.work_management_v1_command`; no native Work Order table DML grant to that LOGIN. Manager grant is temporary **in the clone** for the one verified reviewer identity; Crew mode grants no Manager rights. The entire clone, its work, and temporary credentials must be destroyed on complete CLEAN EXIT. The original 8898 browser/resume process ownership checks remain controlling. Do not run simultaneously with Setup/#88/#171 previews.
+
+**V1 browser acceptance still CHANGES REQUIRED** until actual Manager Create and Intake promotion, multi-person assignment, assigned Crew Progress/Complete, denied Crew Create, Task Feedback and Testing read state, and clean-exit reports are observed. In particular, existing Production cases WO-372 and WO-402 are not automatically completed by clone acceptance. Mail remains no-send/pending cutover.
+
+---
+
 ## October 20, 00:57 server report — V1 migration parse HOLD; exact source corruption corrected
 
 **Operator pasted only the relevant tail**, which is sufficient for diagnosis. Existing Work Orders disposable read acceptance completed `PASS` including Intake #60. Then the V1 SQL migration began creating the isolated clone's proposed tables/functions and failed during `ops.work_management_v1_command` creation:
