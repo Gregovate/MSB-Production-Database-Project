@@ -381,3 +381,11 @@ html[data-theme="dark"] .review-action-button.primary-action:hover {
 #detail-content.create-mode .detail-manager-maintenance { display:none !important; }
 .planning-control { padding:0 4px; }
 .review-workbench .review-action-guidance { max-width:800px; }
+
+/* #419 Intake triage: submitted provenance vs. proposed catalog selections. */
+.intake-comparison { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 16px; }
+.intake-comparison > div { border:1px solid var(--border); border-radius:8px; padding:10px; min-width:0; }
+.intake-comparison strong { display:block; color:var(--muted); font-size:12px; }
+.intake-comparison p { margin:6px 0 0; overflow-wrap:anywhere; }
+.public-request-link.quiet-button { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; }
+@media(max-width:650px) { .intake-comparison { grid-template-columns:1fr; } }
