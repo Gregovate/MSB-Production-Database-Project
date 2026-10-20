@@ -200,7 +200,7 @@ class WorkManagementRepository:
 
     def enrich_feedback(self, cur: Any, rows: list[dict[str, Any]]) -> None:
         """Overlay clone-only correction decisions without rewriting Intake truth."""
-        intake = [r["ticket"] for r in rows if r["type"] == "TASK_FEEDBACK"]
+        intake = [r["ticket"] for r in rows if r["type"] in ("TASK_FEEDBACK", "INTAKE_REQUEST")]
         if not intake:
             return
         cur.execute(
@@ -220,7 +220,7 @@ class WorkManagementRepository:
         for item in cur.fetchall():
             owners.setdefault(item["ticket_key"], item["owner"])
         for row in rows:
-            if row["type"] != "TASK_FEEDBACK":
+            if row["type"] not in ("TASK_FEEDBACK", "INTAKE_REQUEST"):
                 continue
             if row["ticket"] in owners:
                 row["owners"] = owners[row["ticket"]]
@@ -298,7 +298,8 @@ class WorkManagementRepository:
             conditions.append(
                 "t.type = 'INTAKE_REQUEST' AND NOT EXISTS ("
                 "SELECT 1 FROM " + self.activity_table + " a "
-                "WHERE a.ticket_key=t.ticket AND a.event_kind='promoted_source')"
+                "WHERE a.ticket_key=t.ticket AND a.event_kind IN "
+                "('promoted_source','resolve'))"
             )
         elif scope == "feedback":
             # Resolved/promoted correction history remains searchable in All,
@@ -423,7 +424,7 @@ class WorkManagementRepository:
             if row is None:
                 raise WorkManagementError("Ticket not found.", 404)
             row = dict(row)
-            if row["type"] == "TASK_FEEDBACK":
+            if row["type"] in ("TASK_FEEDBACK", "INTAKE_REQUEST"):
                 self.enrich_feedback(cur, [row])
             if row["type"] != "WORK_ORDER" and not (
                 actor["can_manage"] or row["reporter_id"] == actor["person_id"]
