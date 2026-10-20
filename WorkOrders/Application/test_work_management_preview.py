@@ -1260,3 +1260,19 @@ def test_oct20_edit_does_not_enter_create_insert_branch():
 
     assert sql.index("ELSIF p_action='edit' THEN") > sql.index("INSERT INTO ops.work_order(")
     assert "WHERE work_order_id=v_wo_id AND is_active AND date_completed IS NULL" in sql
+
+
+def test_oct20_manager_edit_uses_focus_workspace_without_changing_browse_layout():
+    """Editing hides list; save/cancel restores it without a database UI command."""
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    css = (HERE / "app.css").read_text(encoding="utf-8")
+    app = (HERE / "app.js").read_text(encoding="utf-8")
+    actions = (HERE / "review_actions.js").read_text(encoding="utf-8")
+    assert 'id="work-ticket-workspace"' in html
+    assert 'id="review-cancel-edit"' in html
+    assert ".workspace.edit-focused" in css
+    assert ".workspace.edit-focused .ticket-column { display:none; }" in css
+    assert 'wo419:edit-mode' in app and 'wo419:edit-mode' in actions
+    assert 'kind === "edit"' in actions
+    assert 'byId("review-cancel-edit").addEventListener("click"' in actions
+    assert 'byId("review-action").value = "";' in actions
