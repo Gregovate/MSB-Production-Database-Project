@@ -46,6 +46,23 @@ def require_v1_production_configuration(*, writes: bool = False) -> str:
     return dsn
 
 
+def require_v1_disposable_configuration(*, writes: bool = False) -> str:
+    """Only the existing Server Management clone runner can authorize this mode.
+
+    A Production database name, missing private clone IP, or a released
+    Production DSN cannot accidentally become a V1 browser acceptance target.
+    """
+    if os.environ.get(WORK_ORDER_RUNTIME_ENV) != "v1_disposable":
+        raise WorkManagementError("Work Orders V1 clone review is not enabled.", 503)
+    dsn = os.environ.get("WORK_MGMT_V1_CLONE_DSN", "").strip()
+    ip = os.environ.get("WORK_MGMT_V1_CLONE_IP", "").strip()
+    if not dsn or not ip or os.environ.get("WORK_MGMT_PREVIEW_MODE") != "disposable":
+        raise WorkManagementError("Approved V1 disposable clone configuration missing.", 503)
+    if writes and os.environ.get("WORK_MGMT_V1_CLONE_WRITE_GATE") != "approved_private_clone":
+        raise WorkManagementError("V1 disposable writes not authorized.", 503)
+    return dsn
+
+
 def require_native_database(cur: Any) -> None:
     """Prevent accidental use of the privileged runtime against a disposable DB.
 
@@ -58,10 +75,19 @@ def require_native_database(cur: Any) -> None:
         "current_setting('transaction_read_only') AS read_only"
     )
     row = cur.fetchone()
-    if (row["db_name"] != PROD_DB or row["login_name"] != SERVICE_ROLE):
+    mode = os.environ.get(WORK_ORDER_RUNTIME_ENV)
+    expected_db = "msb_wo419_preview" if mode == "v1_disposable" else PROD_DB
+    if mode not in ("production", "v1_disposable") or (
+        row["db_name"] != expected_db or row["login_name"] != SERVICE_ROLE
+    ):
         raise WorkManagementError(
-            "Work Orders V1 requires the dedicated native database and application role.", 503
+            "Work Orders V1 requires the exact dedicated database and application role.", 503
         )
+    if mode == "v1_disposable":
+        cur.execute("SELECT host(inet_server_addr()) AS host_ip")
+        found = cur.fetchone()
+        if found["host_ip"] != os.environ.get("WORK_MGMT_V1_CLONE_IP"):
+            raise WorkManagementError("Work Orders V1 clone server IP does not match.", 503)
 
 
 class V1Repository(WorkManagementRepository):
@@ -70,7 +96,12 @@ class V1Repository(WorkManagementRepository):
     activity_table = "ops.work_management_activity"
 
     def __init__(self) -> None:
-        self.dsn = require_v1_production_configuration()
+        mode = os.environ.get(WORK_ORDER_RUNTIME_ENV)
+        self.dsn = (
+            require_v1_disposable_configuration()
+            if mode == "v1_disposable"
+            else require_v1_production_configuration()
+        )
 
     @contextmanager
     def connect(self) -> Iterator[Any]:
@@ -113,11 +144,19 @@ class V1Commands:
     """Production actions through a narrow SQL command, never broad DML."""
 
     def __init__(self) -> None:
-        self.dsn = require_v1_production_configuration()
+        mode = os.environ.get(WORK_ORDER_RUNTIME_ENV)
+        self.dsn = (
+            require_v1_disposable_configuration()
+            if mode == "v1_disposable"
+            else require_v1_production_configuration()
+        )
 
     def perform(self, actor: dict, action: str, ticket: str | None,
                 body: dict) -> dict:
-        require_v1_production_configuration(writes=True)
+        if os.environ.get(WORK_ORDER_RUNTIME_ENV) == "v1_disposable":
+            require_v1_disposable_configuration(writes=True)
+        else:
+            require_v1_production_configuration(writes=True)
         if not isinstance(body, dict):
             raise WorkManagementError("Work Order command body must be an object.")
         if action not in {
@@ -157,7 +196,10 @@ class V1Commands:
             conn.close()
 
     def activity(self, actor: dict, ticket: str) -> list[dict]:
-        require_v1_production_configuration()
+        if os.environ.get(WORK_ORDER_RUNTIME_ENV) == "v1_disposable":
+            require_v1_disposable_configuration()
+        else:
+            require_v1_production_configuration()
         if not re.fullmatch(r"(?:WO|INTAKE)-[1-9][0-9]{0,12}", ticket):
             raise WorkManagementError("Invalid ticket identity.")
         conn = psycopg2.connect(self.dsn)
