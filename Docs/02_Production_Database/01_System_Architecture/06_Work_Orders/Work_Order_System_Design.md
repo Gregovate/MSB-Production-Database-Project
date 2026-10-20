@@ -803,11 +803,9 @@ isolated clone with rollback. The browser reviewer must use actual cloned
 Directus permissions, without silently elevating the reviewer. Keep narrow
 application SQL EXECUTE privileges and existing Person audit linkage.
 
-Authentication remains a distinct release gate: Greg identifies Directus Google
-SSO as the intended login authority. Existing Controller/Setup documentation
-instead specifies Cloudflare Access authenticated email at the protected proxy.
-Do not claim that header authenticates a Directus session or silently substitute
-one authority for the other. Confirm the deployed Directus Google/session handoff
-and reconcile this conflict before Production installation. No new Google client,
-second user directory, or client-supplied email/role authentication is authorized.
-The old staged V1.0.1 candidate is superseded and must not be installed.
+Operator clarified the authentication chain: Cloudflare Access authenticates the
+Google @sheboyganlights.org account; Directus owns users, roles and policies.
+Preserve that established protected-header boundary and exact linked Person
+mapping. No Directus session sharing, new login flow or separate role directory
+is required. Verify ingress header protection during ordinary release acceptance.
+The staged V1.0.1 candidate is superseded and must not be installed.

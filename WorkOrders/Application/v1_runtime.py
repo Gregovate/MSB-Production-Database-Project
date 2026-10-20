@@ -115,10 +115,10 @@ class V1Repository(WorkManagementRepository):
             conn.close()
 
     def access(self, email: str) -> dict:
-        """Use the exact active linked Person and dedicated Work Order grant.
+        """Resolve current Directus roles and exact active linked Person.
 
-        setup_browser_capabilities gates existing read access, but can_manage
-        MUST NOT come from a broad Setup/Directus Manager role in V1.
+        The native actor repeats the Directus-backed capability lookup used by
+        read access. There is no separate Work Management Manager grant.
         """
         current = super().access(email)
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -215,3 +215,4 @@ class V1Commands:
                 return [dict(row) for row in cur.fetchall()]
         finally:
             conn.close()
+

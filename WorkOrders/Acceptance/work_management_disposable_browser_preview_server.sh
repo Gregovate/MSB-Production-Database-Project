@@ -552,29 +552,15 @@ if [[ "$MODE" == "start_v1_manager" || "$MODE" == "start_v1_crew" ]]; then
     cat "$WORKTREE/WorkOrders/Database/001_work_management_v1_governed_commands.sql"
   } | psql_clone
   echo "PASS: V1 native SQL installed inside private restored clone only"
-  # Inside CLONE only: a Manager review temporarily approves exactly the
-  # validated pinned reviewer identity. Crew gets NO Manager grant.
-  if [[ "$MODE" == "start_v1_manager" ]]; then
-    granted="$(
-      psql_clone -qAt -c "
-      INSERT INTO ops.work_management_permission
-        (person_id,can_manage,approved_by_person_id)
-      SELECT p.person_id,true,p.person_id FROM ref.person p
-      JOIN public.directus_users u ON u.id=p.directus_user_id
-      WHERE lower(p.email)='$PREVIEW_EMAIL'
-        AND p.active_flag AND u.status='active'
-        AND lower(u.email)='$PREVIEW_EMAIL'
-      RETURNING person_id;
-      "
-    )"
-    [[ "$granted" =~ ^[0-9]+$ ]] || {
-      echo "HOLD: V1 private Manager review Person grant was not unique"
-      exit 15
-    }
-    echo "PASS: exact reviewer temporarily receives V1 Manager permission in clone"
-  else
-    echo "PASS: V1 Crew review retains no Manager permissions in clone"
-  fi
+  # Review actual cloned Directus rights; never elevate the pinned reviewer.
+  reviewer_manager="$(psql_clone -qAt -c "SELECT can_manage FROM ops.work_management_v1_actor('$PREVIEW_EMAIL');")"
+  expected_manager=f
+  [[ "$MODE" != "start_v1_manager" ]] || expected_manager=t
+  [[ "$reviewer_manager" == "$expected_manager" ]] || {
+    echo "HOLD: reviewer Directus role does not match requested Manager/Crew review"
+    exit 15
+  }
+  echo "PASS: reviewer has the expected current Directus role in clone"
   V1_DSN="host=$HOST_IP port=5432 dbname=$CLONE_DATABASE user=work_management_app password=$V1_APP_PASSWORD"
   APP_RUNTIME="v1_disposable"
   echo "PASS: disposable V1 browser uses dedicated role and native commands"
@@ -659,3 +645,4 @@ if ! read -r -p "After reviewing the browser, press ENTER here for controlled te
   exit 75
 fi
 echo "Operator browser review window ended; performing controlled teardown"
+

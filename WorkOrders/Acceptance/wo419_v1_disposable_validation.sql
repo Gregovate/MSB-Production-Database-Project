@@ -50,15 +50,11 @@ BEGIN
     RAISE EXCEPTION 'WO419 V1 VALIDATION HOLD: stage/task-type catalog unavailable';
   END IF;
 
-  -- The reviewer receives a temporary Manager grant ONLY in the clone.
-  -- This grant is rolled back before the disposable DB is discarded.
-  INSERT INTO ops.work_management_permission
-    (person_id,can_manage,approved_by_person_id)
-  VALUES (v_actor,true,v_actor);
+  -- Require the actual cloned Directus Manager role, without an app grant.
   SELECT * INTO v_persona FROM ops.work_management_v1_actor(v_email);
   IF v_persona.person_id IS DISTINCT FROM v_actor OR
      v_persona.can_manage IS DISTINCT FROM true THEN
-    RAISE EXCEPTION 'WO419 V1 VALIDATION HOLD: Manager identity grant failed';
+    RAISE EXCEPTION 'WO419 V1 VALIDATION HOLD: Directus Manager identity resolution failed';
   END IF;
 
   -- Actual native Manager Create, idempotency and Priority 3/NULL year.
@@ -148,10 +144,18 @@ BEGIN
     RAISE NOTICE 'WO419 V1 Manager correction/Cancel-No-Action audit and noncompletion PASS';
   END;
 
-  -- A Manager with an explicitly revoked grant CANNOT create Work Orders,
-  -- even with full form data; this proves native authorization, not UI hiding.
-  UPDATE ops.work_management_permission SET can_manage=false
-  WHERE person_id=v_actor;
+  -- Change Directus fixtures ONLY in the isolated clone. The subtransaction
+  -- rolls back role/access changes and Crew command fixtures together.
+  BEGIN
+  UPDATE public.directus_users SET role=(
+    SELECT id FROM public.directus_roles WHERE name='Production Crew'
+  ) WHERE id=(SELECT directus_user_id FROM ref.person WHERE person_id=v_actor);
+  DELETE FROM public.directus_access
+  WHERE "user"=(SELECT directus_user_id FROM ref.person WHERE person_id=v_actor);
+  SELECT * INTO v_persona FROM ops.work_management_v1_actor(v_email);
+  IF v_persona.can_manage IS DISTINCT FROM false THEN
+    RAISE EXCEPTION 'WO419 V1 VALIDATION HOLD: Directus role revocation failed';
+  END IF;
   BEGIN
     PERFORM ops.work_management_v1_command(
       v_email,'create',NULL,
@@ -166,7 +170,7 @@ BEGIN
   END IF;
 
   -- Active assigned Crew retains authenticated Progress and Complete rights.
-  -- Permission toggle does not affect previously authorized assignment.
+  -- Directus role change does not remove the existing work assignment.
   PERFORM ops.work_management_v1_command(
     v_email,'progress','WO-'||v_wo,
     jsonb_build_object('progress_note','Inspected power and repaired one damaged connection'),
@@ -187,10 +191,30 @@ BEGIN
     RAISE EXCEPTION 'WO419 V1 VALIDATION HOLD: completion audit/date/notes missing';
   END IF;
 
-  -- Native public Intake promotion retains original identity and creates a
-  -- single linked WO. No assignment ever occurs on the Intake item.
-  UPDATE ops.work_management_permission SET can_manage=true
-  WHERE person_id=v_actor;
+  RAISE EXCEPTION 'WO419_ROLE_FIXTURE_ROLLBACK' USING ERRCODE='P0002';
+  EXCEPTION WHEN SQLSTATE 'P0002' THEN
+    RAISE NOTICE 'WO419 Directus Manager revocation / Crew assignment rights PASS';
+  END;
+
+  -- Suspended Directus users lose access immediately, even if still Managers.
+  BEGIN
+    UPDATE public.directus_users SET status='suspended'
+    WHERE id=(SELECT directus_user_id FROM ref.person WHERE person_id=v_actor);
+    v_forbidden := false;
+    BEGIN
+      PERFORM ops.work_management_v1_actor(v_email);
+    EXCEPTION WHEN insufficient_privilege THEN
+      v_forbidden := true;
+    END;
+    IF NOT v_forbidden THEN
+      RAISE EXCEPTION 'WO419 V1 VALIDATION HOLD: suspended Directus user accepted';
+    END IF;
+    RAISE EXCEPTION 'WO419_SUSPEND_FIXTURE_ROLLBACK' USING ERRCODE='P0002';
+  EXCEPTION WHEN SQLSTATE 'P0002' THEN
+    RAISE NOTICE 'WO419 suspended Directus user denied PASS';
+  END;
+
+  -- Native public Intake promotion uses restored Directus Manager rights.
   SELECT i.intake_id INTO v_intake FROM stage.work_order_intake i
   WHERE i.source_form_name IS DISTINCT FROM 'SETUP_CORRECTION'
     AND NOT EXISTS (SELECT 1 FROM ops.work_order w
@@ -268,3 +292,4 @@ END $v1test$;
 ROLLBACK;
 -- Rollback is intentional; no fixture Work Order, Manager grant or activity
 -- survives even inside this disposable database.
+

@@ -509,8 +509,8 @@ def test_v1_browser_reuses_same_preview_runner_with_native_sql_not_clonecommands
     assert 'WORK_MGMT_V1_CLONE_IP="$HOST_IP"' in runner
     assert 'WORK_MGMT_V1_CLONE_WRITE_GATE="approved_private_clone"' in runner
     assert 'WO419 V1 NATIVE BROWSER REVIEW READY' in runner
-    assert "PASS: exact reviewer temporarily receives V1 Manager permission in clone" in runner
-    assert "PASS: V1 Crew review retains no Manager permissions in clone" in runner
+    assert "reviewer Directus role does not match requested Manager/Crew review" in runner
+    assert "INSERT INTO ops.work_management_permission" not in runner
     assert 'WO419 BROWSER REVIEW READY' in runner
     assert "if [[ \"$MODE\" == \"validate_v1\" ]]; then" in runner
     assert 'printf \'%s\\n\' "SET msb.wo419_preview_authorized=' in runner
@@ -526,3 +526,4 @@ def test_v1_browser_reuses_same_preview_runner_with_native_sql_not_clonecommands
     assert runner.index('echo "PASS: V1 native SQL installed') < runner.index(
         '--- Start pinned Work Management reviewer'
     )
+

@@ -186,7 +186,7 @@ def test_production_mount_assets_access_and_https_command(production_client, mon
     access = production_client.get("/api/work-orders/access", headers=headers,
         environ_overrides=peer)
     assert access.status_code == 200
-    assert access.json["version"] == "V1.0.1-production-route"
+    assert access.json["version"] == "V1.0.2-directus-roles"
     calls = []
     class Commands:
         def perform(self, actor, action, ticket, body):
@@ -1081,7 +1081,7 @@ def test_v1_backend_uses_distinct_command_path_and_protected_proxy():
     runtime = (HERE / "v1_runtime.py").read_text(encoding="utf-8")
     js = (HERE / "review_actions.js").read_text(encoding="utf-8")
     app_js = (HERE / "app.js").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "V1.0.1-production-route"' in source
+    assert 'APP_VERSION = "V1.0.2-directus-roles"' in source
     assert 'from v1_runtime import V1Repository' in source
     assert 'from v1_runtime import V1Commands' in source
     assert 'return CloneCommands()' in source
@@ -1130,7 +1130,7 @@ def test_v1_sql_uses_native_tables_and_narrow_executor_not_browser_dml():
         "SET search_path = pg_catalog,ops,ref",
         "pg_advisory_xact_lock",
         "app.directus_user_uuid",
-        "work_management_permission",
+        "cap.can_manage_setup",
         "PENDING_CUTOVER",
         "MISSING_RECIPIENT",
         "No email is sent",
@@ -1161,8 +1161,8 @@ def test_v1_no_unapproved_live_role_grants_or_notification_send():
     assert "No email is sent" in sql or "NO email is sent" in sql
     assert "ops.work_management_outbox" in sql
     assert "PENDING_CUTOVER" in sql
-    assert "work_management_permission" in sql
-    assert "approved_by_person_id" in sql
+    assert "work_management_permission" not in sql
+    assert "cap.can_manage_setup" in sql
     assert "UPDATE ops.work_management_permission SET can_manage=true" not in sql
     assert "import smtplib" not in source.lower()
     assert "smtplib." not in source.lower()

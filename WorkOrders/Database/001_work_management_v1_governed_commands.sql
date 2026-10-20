@@ -70,18 +70,7 @@ BEGIN
   END IF;
 END $preflight$;
 
--- A small Work Order CAPABILITY grant: never infer authority from the legacy
--- ref.person.is_manager flag, a UI checkbox or general Setup Manager privileges.
--- Entries are intentionally EMPTY until named grants receive operator approval.
-CREATE TABLE IF NOT EXISTS ops.work_management_permission (
-  person_id integer PRIMARY KEY REFERENCES ref.person(person_id),
-  can_manage boolean NOT NULL DEFAULT false,
-  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
-  approved_by_person_id integer REFERENCES ref.person(person_id)
-);
-COMMENT ON TABLE ops.work_management_permission IS
-  '#419 Work Order-specific Manager approval; no automatic grant or role inheritance';
-
+-- Directus is the sole user/role/policy authority. No app-specific grants.
 -- Durable activity and intentional notification records; not a second ticket.
 CREATE TABLE IF NOT EXISTS ops.work_management_activity (
   activity_id bigserial PRIMARY KEY,
@@ -143,9 +132,9 @@ BEGIN
   END IF;
   RETURN QUERY
   SELECT p.person_id,p.directus_user_id,
-         coalesce(perm.can_manage,false)
+         coalesce(cap.can_manage_setup,false)
   FROM ref.person p
-  LEFT JOIN ops.work_management_permission perm ON perm.person_id=p.person_id
+  CROSS JOIN ref.setup_browser_capabilities(v_email) cap
   WHERE lower(p.email)=v_email AND p.active_flag
     AND p.directus_user_id IS NOT NULL;
 END
@@ -664,8 +653,7 @@ BEGIN
 END
 $activity$;
 
-REVOKE ALL ON TABLE ops.work_management_permission,
-  ops.work_management_activity, ops.work_management_outbox FROM PUBLIC;
+REVOKE ALL ON TABLE ops.work_management_activity, ops.work_management_outbox FROM PUBLIC;
 REVOKE ALL ON FUNCTION ops.work_management_v1_actor(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION ops.work_management_v1_command(text,text,text,jsonb,uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION ops.work_management_v1_activity(text,text) FROM PUBLIC;
@@ -692,6 +680,7 @@ TO work_management_app;
 GRANT SELECT ON ops.work_management_activity TO work_management_app;
 COMMIT;
 
--- No INSERT into ops.work_management_permission: operator explicitly approves
--- the initial Work Order Managers in a separate governed authorization step.
+-- Manager/Administrator and Crew authorization remains managed in Directus.
+-- Every native command resolves current capabilities again; no cached grants.
 -- No email sender / no Directus Flow change / no Production deployment here.
+
