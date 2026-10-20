@@ -479,3 +479,15 @@ def test_oct19_v1_clone_preflight_respects_tom_approved_year_and_intake_rules():
     assert 'if urgency == 5:' in source
     assert 'Target year applies only to Planning (urgency 5).' in source
     assert 'return {"can_manage": can_manage, "can_create": can_manage' in repository
+
+
+def test_v1_sql_quoted_literals_and_function_structure():
+    migration = (HERE.parent / "Database" / "001_work_management_v1_governed_commands.sql").read_text(encoding="utf-8")
+    assert migration.count("CREATE OR REPLACE FUNCTION ops.work_management_v1_command(") == 1
+    assert migration.count("CREATE OR REPLACE FUNCTION ops.work_management_v1_activity(") == 1
+    assert migration.count("COMMIT;") == 1
+    for tag in ("$preflight$", "$func$", "$cmd$", "$activity$"):
+        assert migration.count(tag) == 2
+    assert "WHERE item.value ~ '^[1-9][0-9]{0,9}$';" in migration
+    for line_number, line in enumerate(migration.splitlines(), 1):
+        assert line.split("--", 1)[0].count("'") % 2 == 0, line_number
