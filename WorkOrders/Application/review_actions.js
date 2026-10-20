@@ -356,6 +356,7 @@
     byId("review-disposition").disabled = kind !== "resolve";
     byId("review-result").textContent = "";
     byId("review-cancel-create").hidden = kind !== "create";
+    byId("review-cancel-edit").hidden = kind !== "edit";
     // A selected Edit is a separate workspace, not another browsing column.
     document.dispatchEvent(new CustomEvent("wo419:edit-mode", {
       detail: {editing: kind === "edit"}
@@ -604,6 +605,14 @@
   byId("review-action").addEventListener("change", actionChanged);
   byId("create-work-order").addEventListener("click", openCreate);
   byId("manager-assign-button").addEventListener("click", openManagerAssignment);
+  byId("review-cancel-edit").addEventListener("click", () => {
+    if (byId("review-action").value !== "edit") return;
+    const dirty = byId("review-edit-reason").value.trim() ||
+      byId("review-problem").value !== (model.ticket?.detail?.problem || model.ticket?.title || "");
+    if (dirty && !window.confirm("Discard unsaved Work Order corrections?")) return;
+    byId("review-action").value = "";
+    drawActions();
+  });
   byId("review-cancel-create").addEventListener("click", () => {
     if (!byId("detail-content").classList.contains("create-mode")) return;
     const entered = byId("review-problem").value.trim();
