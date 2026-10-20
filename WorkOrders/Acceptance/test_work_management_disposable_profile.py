@@ -454,3 +454,28 @@ def test_v1_acceptance_reuses_original_disposable_runner_and_rolls_back():
     assert "DELETE FROM ops.work_order" not in acceptance
     assert "UPDATE stage.work_order_intake" not in acceptance
     assert "TRUNCATE" not in acceptance
+
+
+def test_oct19_v1_clone_preflight_respects_tom_approved_year_and_intake_rules():
+    """Prevent V1 SQL validation being blocked by outdated clone fixtures.
+
+    Regression for retained report:
+    WO419_Disposable_Browser_Preview_20261020T004438.txt
+    phase=clone_write_transaction_rollback; non-Planning target year rejected.
+    """
+    validator = CLONE_CHECK.read_text(encoding="utf-8")
+    source = (APP / "commands.py").read_text(encoding="utf-8")
+    repository = (APP / "repository.py").read_text(encoding="utf-8")
+    assert 'phase("clone_write_transaction_rollback")' in validator
+    assert '"urgency": 3,' in validator
+    assert '"target_year": None,  # Priority 3: Tom-approved Planning-only year' in validator
+    assert '"target_year": 2026' not in validator
+    assert 'phase("crew_direct_create_denied")' in validator
+    assert 'phase("crew_direct_create_rollback")' not in validator
+    assert 'writer.perform(access, "create", None' in validator
+    assert 'if denied.status != 403' in validator
+    assert 'Crew direct native Create denied before write PASS' in validator
+    assert 'Crew direct-create preflight' not in validator
+    assert 'if urgency == 5:' in source
+    assert 'Target year applies only to Planning (urgency 5).' in source
+    assert 'return {"can_manage": can_manage, "can_create": can_manage' in repository
