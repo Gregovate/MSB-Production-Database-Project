@@ -15,7 +15,7 @@ import re
 TEMPLATE_ROOT = Path(__file__).with_name('email_templates')
 FIELDS = frozenset({'ticket', 'title', 'reporter', 'assignees', 'due_by',
                     'question', 'outcome', 'reason', 'ticket_url', 'task_name'})
-KINDS = frozenset({'new_request', 'assignment', 'outcome', 'more_info'})
+KINDS = frozenset({'new_request', 'assignment', 'outcome', 'more_info', 'reporter_reply'})
 
 
 @dataclass(frozen=True)

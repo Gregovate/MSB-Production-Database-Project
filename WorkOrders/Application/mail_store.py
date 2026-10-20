@@ -33,6 +33,10 @@ class PostgresDeliveryStore:
             (delivery.key, delivery.event_key, delivery.recipient,
              Json(asdict(delivery.content)))))
 
+    def render_failure(self, event_key: str) -> None:
+        """Persist only a fixed diagnostic, never raw ticket content or exceptions."""
+        self._call('SELECT ops.work_management_mail_render_failure(%s)', (event_key,))
+
     def finish(self, key: str, status: str, evidence: str) -> None:
         self._call('SELECT ops.work_management_mail_finish(%s,%s,%s)',
                    (key, status, evidence))

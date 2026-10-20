@@ -276,6 +276,7 @@ class WorkManagementRepository:
         cur.execute(
             "SELECT DISTINCT ON (ticket_key) ticket_key,event_kind,details "
             "FROM " + self.activity_table + " WHERE ticket_key = ANY(%s) "
+            "AND event_kind IN ('clarify','reply','resolve','promoted_source') "
             "ORDER BY ticket_key,activity_id DESC", (intake,))
         latest = {r["ticket_key"]: r for r in cur.fetchall()}
         cur.execute(
@@ -287,13 +288,16 @@ class WorkManagementRepository:
             "WHERE a.event_kind='correction_owner' AND a.ticket_key=ANY(%s) "
             "ORDER BY a.activity_id DESC", (intake,))
         owners: dict[str, str] = {}
+        owner_ids: dict[str, int] = {}
         for item in cur.fetchall():
             owners.setdefault(item["ticket_key"], item["owner"])
+            owner_ids.setdefault(item["ticket_key"], item["target_person_id"])
         for row in rows:
             if row["type"] not in ("TASK_FEEDBACK", "INTAKE_REQUEST"):
                 continue
             if row["ticket"] in owners:
                 row["owners"] = owners[row["ticket"]]
+                row["correction_owner_id"] = owner_ids[row["ticket"]]
             info = latest.get(row["ticket"])
             if info and info["event_kind"] == "resolve":
                 row["state"] = str(info["details"].get("disposition", "resolved")).upper()
@@ -304,6 +308,8 @@ class WorkManagementRepository:
                     if info["details"].get("communication") == "MISSING_RECIPIENT"
                     else "WAITING_ON_REPORTER"
                 )
+            elif info and info["event_kind"] == "reply":
+                row["state"] = "RESPONSE_RECEIVED"
             elif info and info["event_kind"] == "promoted_source":
                 row["state"] = "PROMOTED_TO_WO"
 
@@ -450,7 +456,12 @@ class WorkManagementRepository:
             "GREATEST(0, FLOOR(EXTRACT(EPOCH FROM "
             "(CURRENT_TIMESTAMP - t.opened_at)) / 86400))::integer AS days_open, "
             "t.urgency, t.owners, t.assigned_n, t.location, t.yr, "
-            "t.active, t.test_id, t.state, t.review_flag "
+            "t.active, t.test_id, t.state, t.review_flag, "
+            + DUE_SQL + "::text AS due_by, "
+            + "(t.active AND " + DUE_SQL + " < " + TODAY_SQL + ") AS overdue, "
+            + "(t.active AND " + DUE_SQL + " = " + TODAY_SQL + ") AS due_today, "
+            + "(t.active AND " + DUE_SQL + " IS NULL) AS due_date_required "
+            +
             "FROM (" + ledger_select() + ") t "
             "WHERE t.type = 'WORK_ORDER' AND t.done_at IS NULL "
             + ("" if include_planning else
@@ -510,6 +521,7 @@ class WorkManagementRepository:
                 self.enrich_work_order(cur, [row])
             if row["type"] != "WORK_ORDER" and not (
                 actor["can_manage"] or row["reporter_id"] == actor["person_id"]
+                or row.get("correction_owner_id") == actor["person_id"]
             ):
                 raise WorkManagementError("Ticket is not authorized.", 403)
             if row["type"] == "WORK_ORDER" and not actor["can_manage"] and (

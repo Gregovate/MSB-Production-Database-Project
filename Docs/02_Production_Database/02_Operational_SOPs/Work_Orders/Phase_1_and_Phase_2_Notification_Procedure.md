@@ -1,6 +1,6 @@
 # Work Management — Phase 1 Intake Notification and Phase 2 Reporter Follow-up
 
-**Status:** Controlled launch procedure under Issue #419 and draft PR #420. Phase 1 installation and Phase 2 email delivery are NOT yet activated by this document.
+**Status:** Phase 1 application is live at https://my.sheboyganlights.org/workorder/. Phase 2 in draft PR #435 is NOT installed or sending. Existing Directus emails remain active.
 
 **Engineering authority:** [Work Order System Design](../../01_System_Architecture/06_Work_Orders/Work_Order_System_Design.md). Existing released task SOPs, Production Directus Flow behavior, and Server Management deployment runbooks govern until explicit cutover.
 
@@ -21,9 +21,9 @@ An authorized operator submits a controlled real-shape request through the exist
 
 ### Requesting more information
 
-1. Manager or assigned correction owner opens the **original** Intake/Task Feedback record and reads the finding/notes.
+1. Manager opens the **original** Intake/Task Feedback record and reads the finding/notes.
 2. Choose **Ask reporter for details**, enter a specific question, confirm the actual original reporter/contact, and submit once. The question is saved as an attributable event on the same ticket; the owner remains responsible.
-3. After the Phase 2 sender is approved/activated, verify the notification was actually delivered or audibly flagged FAILED/MISSING_RECIPIENT. The email must include a limited-scope protected response link. It must **not** disclose unrelated reports.
+3. After the Phase 2 sender is approved/activated, verify the notification was SMTP accepted or visibly flagged FAILED/MISSING_RECIPIENT; confirm Inbox receipt separately. The email must include a limited-scope protected response link. It must **not** disclose unrelated reports.
 4. Reporter submits an answer against the same record. The responsible owner sees it in activity and receives the approved response notification. Manager updates next action rather than creating a second Intake.
 
 ### Completing, deferring, rejecting or cancelling
@@ -43,3 +43,24 @@ An authorized operator submits a controlled real-shape request through the exist
 Before telling staff that reporter emails are active, review the current Directus mail Flows and Google Workspace server delivery contract; approve message templates, recipient mapping, access links, no-send previews, delivery receipts, retry/idempotency, absent-contact behavior and rollback. Enable only one sender for each event and disable only an exact proven duplicate mail Flow; keep non-mail side effects. Test request→reply→resolution, deferred, reject, cancel, later linked Work Order completion, no-address, failed delivery and repeat/retry. Document the Phase 2 activation date and recipients in the owning operations record.
 
 **Production change authority:** These instructions do not authorize SQL migration, proxy/service publication, Flow disablement or a live mail cutover.
+
+## Phase 2 Manager utilities (candidate, not yet installed)
+
+- **Email template previews** shows fictional examples with subject, formatted
+  body and plain text. It never sends, queues or edits mail.
+- On a selected ticket, **Email delivery status** distinguishes held, queued,
+  missing contact, failed, in-progress/uncertain and SMTP-accepted messages.
+  Missing contact includes reporters who cannot use the protected response link.
+  Arrange manual contact; do not create another account or forward a private link
+  as an access workaround. Report failed/uncertain attempts to the operator.
+  Do not repeat the business action to resend an email.
+- A reporter follows the email link, signs in with their existing authorized
+  account and chooses **Reply to clarification** on that same Intake. The answer
+  alerts its correction owner, or the Manager who asked when no owner was chosen.
+  Replies sent back by email are not ingested. A new reply requires an outstanding
+  question; promoted and resolved requests cannot accept an old answer.
+- Managers use **Set Due by** for active Testing-linked work. Enter the date and
+  a reason; Testing and repair status stay unchanged. General Edit/Cancel remains
+  unavailable for those records. Old undated records can still be completed.
+- The aging report and exported CSV include Due by and deadline status alongside
+  creation age. Due today is not overdue; inactive records are not overdue.

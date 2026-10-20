@@ -22,9 +22,11 @@ def sample_messages() -> dict:
     rendered = {}
     for kind in sorted(KINDS):
         sample = dict(values)
-        if kind == 'new_request':
+        if kind in {'new_request', 'more_info', 'reporter_reply'}:
             sample.update(ticket='INTAKE-123',
                           ticket_url='https://my.sheboyganlights.org/workorder/?ticket=INTAKE-123')
+        if kind == 'reporter_reply':
+            sample['question'] = 'The connector on the left side is damaged.'
         rendered[kind] = render_email(kind, sample)
     # Feedback is a source variant of the same new-request event, not another send.
     rendered['task_feedback'] = render_email('new_request', dict(values,

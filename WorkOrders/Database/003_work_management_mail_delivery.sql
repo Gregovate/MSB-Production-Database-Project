@@ -147,8 +147,9 @@ GRANT EXECUTE ON FUNCTION ops.work_management_mail_claim(text,text,text,jsonb),
 -- No historic PENDING_CUTOVER intent is automatically queued.
 ALTER TABLE ops.work_management_outbox ALTER COLUMN activity_id DROP NOT NULL;
 ALTER TABLE ops.work_management_outbox ADD COLUMN message_kind text
-  CHECK (message_kind IN ('new_request','assignment','outcome','more_info'));
+  CHECK (message_kind IN ('new_request','assignment','outcome','more_info','reporter_reply'));
 ALTER TABLE ops.work_management_outbox ADD COLUMN payload jsonb;
+ALTER TABLE ops.work_management_outbox ADD COLUMN failure_reason text;
 CREATE TABLE ops.work_management_mail_control (
   singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton),
   capture_enabled boolean NOT NULL DEFAULT false
@@ -160,7 +161,7 @@ CREATE FUNCTION ops.work_management_capture_mail() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ops,ref,stage AS $capture$
 DECLARE
   v_ticket text; v_kind text; v_event text; v_title text;
-  v_reporter integer; v_recipients integer[]; v_person integer;
+  v_reporter integer; v_access boolean; v_recipients integer[]; v_person integer;
   v_email text; v_name text; v_reporter_name text; v_payload jsonb; v_wo ops.work_order%ROWTYPE;
   v_intake stage.work_order_intake%ROWTYPE;
 BEGIN
@@ -173,7 +174,7 @@ BEGIN
     v_kind := 'new_request'; v_title := NEW.problem_raw;
     v_reporter := NEW.submitter_person_id;
     SELECT array_agg(person_id) INTO v_recipients FROM ref.person
-      WHERE is_manager AND active_flag AND email IS NOT NULL;
+      WHERE is_manager AND active_flag AND nullif(btrim(email),'') IS NOT NULL;
     SELECT coalesce(nullif(btrim(concat_ws(' ',coalesce(nullif(preferred_name,''),first_name),last_name)),''),'Reporter')
       INTO v_reporter_name FROM ref.person WHERE person_id=v_reporter;
     v_payload := jsonb_build_object('reporter',coalesce(v_reporter_name,
@@ -191,7 +192,7 @@ BEGIN
     v_recipients := ARRAY[NEW.person_id::integer];
     v_payload := jsonb_build_object('due_by',coalesce(v_wo.due_by::text,'Due date required'));
   ELSIF TG_TABLE_NAME='work_management_activity' THEN
-    IF NEW.event_kind NOT IN ('clarify','resolve','complete','cancel') THEN RETURN NEW; END IF;
+    IF NEW.event_kind NOT IN ('clarify','reply','resolve','complete','cancel') THEN RETURN NEW; END IF;
     v_ticket := NEW.ticket_key;
     v_event := 'phase2:activity:' || NEW.activity_id;
     IF v_ticket LIKE 'INTAKE-%' THEN
@@ -206,8 +207,19 @@ BEGIN
         WHERE intake_id=v_wo.source_intake_id;
       v_reporter := coalesce(v_reporter,v_wo.submitted_by_person_id);
     END IF;
+    IF NEW.event_kind='reply' THEN
+      -- The explicit owner remains responsible; otherwise notify the question author.
+      SELECT target_person_id INTO v_reporter FROM ops.work_management_activity
+        WHERE ticket_key=v_ticket AND event_kind='correction_owner'
+        ORDER BY activity_id DESC LIMIT 1;
+      IF v_reporter IS NULL THEN
+        SELECT actor_person_id INTO v_reporter FROM ops.work_management_activity
+          WHERE ticket_key=v_ticket AND event_kind='clarify'
+          ORDER BY activity_id DESC LIMIT 1;
+      END IF;
+    END IF;
     v_recipients := ARRAY[v_reporter];
-    v_kind := CASE WHEN NEW.event_kind='clarify' THEN 'more_info' ELSE 'outcome' END;
+    v_kind := CASE NEW.event_kind WHEN 'clarify' THEN 'more_info' WHEN 'reply' THEN 'reporter_reply' ELSE 'outcome' END;
     v_payload := jsonb_build_object('question',NEW.note,'reason',NEW.note,
       'outcome',CASE NEW.event_kind WHEN 'complete' THEN 'Done'
          WHEN 'cancel' THEN 'Canceled — no work performed'
@@ -220,10 +232,23 @@ BEGIN
   FOREACH v_person IN ARRAY v_recipients LOOP
     SELECT email,coalesce(nullif(btrim(concat_ws(' ',coalesce(nullif(preferred_name,''),first_name),last_name)),''),'Volunteer')
       INTO v_email,v_name FROM ref.person WHERE person_id=v_person;
+    -- Protected response links are useful only to an existing authorized identity.
+    -- Authorization failure becomes a manual-contact exception, never a new role.
+    v_access := true;
+    IF v_kind='more_info' THEN
+      BEGIN
+        SELECT EXISTS(SELECT 1 FROM ops.work_management_v1_actor(v_email)
+          WHERE person_id=v_person) INTO v_access;
+      EXCEPTION WHEN insufficient_privilege THEN v_access := false;
+      END;
+    END IF;
+    IF NOT EXISTS(SELECT 1 FROM ref.person WHERE person_id=v_person AND active_flag) THEN
+      v_access := false;
+    END IF;
     INSERT INTO ops.work_management_outbox
       (event_key,ticket_key,recipient_person_id,recipient_email,delivery_status,message_kind,payload)
     VALUES (v_event || ':' || coalesce(v_person::text,'missing'),v_ticket,v_person,v_email,
-      CASE WHEN nullif(btrim(v_email),'') IS NULL THEN 'MISSING_RECIPIENT' ELSE 'QUEUED' END,
+      CASE WHEN nullif(btrim(v_email),'') IS NULL OR NOT v_access THEN 'MISSING_RECIPIENT' ELSE 'QUEUED' END,
       v_kind,coalesce(v_payload,'{}'::jsonb) || jsonb_build_object('ticket',v_ticket,
          'title',coalesce(nullif(v_title,''),'Description not recorded'),
          'assignees',coalesce(v_name,'No contact recorded'),
@@ -280,7 +305,8 @@ BEGIN
           AND a.active_flag
       ) AND NOT EXISTS (
         SELECT 1 FROM ops.work_order w WHERE w.work_order_id=v_id
-          AND w.submitted_by_person_id=v_actor.person_id
+          AND coalesce((SELECT i.submitter_person_id FROM stage.work_order_intake i
+            WHERE i.intake_id=w.source_intake_id),w.submitted_by_person_id)=v_actor.person_id
       ) THEN
         RAISE EXCEPTION 'Work Orders: ticket activity not assigned'
           USING ERRCODE='42501';
@@ -289,7 +315,9 @@ BEGIN
       IF NOT EXISTS (
         SELECT 1 FROM stage.work_order_intake i
         WHERE i.intake_id=v_id AND i.submitter_person_id=v_actor.person_id
-      ) THEN
+      ) AND (SELECT a.target_person_id FROM ops.work_management_activity a
+        WHERE a.ticket_key=p_ticket AND a.event_kind='correction_owner'
+        ORDER BY a.activity_id DESC LIMIT 1) IS DISTINCT FROM v_actor.person_id THEN
         RAISE EXCEPTION 'Work Orders: not original reporter' USING ERRCODE='42501';
       END IF;
     END IF;
@@ -300,4 +328,34 @@ BEGIN
   ORDER BY a.activity_id;
 END
 $activity$;
+-- A malformed template/envelope is provably unsent and remains visible for repair.
+CREATE FUNCTION ops.work_management_mail_render_failure(p_event text)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ops AS $renderfail$
+BEGIN
+  UPDATE ops.work_management_outbox o SET delivery_status='FAILED',
+    failure_reason='template_or_envelope_invalid_no_send'
+    WHERE o.event_key=p_event AND o.delivery_status='QUEUED' AND o.message_kind IS NOT NULL
+      AND NOT EXISTS(SELECT 1 FROM ops.work_management_mail_delivery d WHERE d.event_key=p_event);
+  RETURN FOUND;
+END $renderfail$;
+REVOKE ALL ON FUNCTION ops.work_management_mail_render_failure(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ops.work_management_mail_render_failure(text) TO work_management_mail;
+
+-- Manager-only receipt inspection; no recipient address or frozen message body exposed.
+CREATE FUNCTION ops.work_management_mail_status(p_email text,p_ticket text)
+RETURNS TABLE(event_key text,message_kind text,status text,evidence text,
+  claimed_at timestamptz,finished_at timestamptz)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,ops AS $status$
+BEGIN
+  IF NOT EXISTS(SELECT 1 FROM ops.work_management_v1_actor(p_email) WHERE can_manage)
+    OR p_ticket !~ '^(WO|INTAKE)-[1-9][0-9]*$' THEN
+    RAISE EXCEPTION 'Manager notification review required' USING ERRCODE='42501';
+  END IF;
+  RETURN QUERY SELECT o.event_key,o.message_kind,coalesce(d.status,o.delivery_status),
+    coalesce(d.evidence,o.failure_reason),d.claimed_at,d.finished_at
+    FROM ops.work_management_outbox o LEFT JOIN ops.work_management_mail_delivery d USING(event_key)
+    WHERE o.ticket_key=p_ticket ORDER BY o.outbox_id DESC;
+END $status$;
+REVOKE ALL ON FUNCTION ops.work_management_mail_status(text,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ops.work_management_mail_status(text,text) TO work_management_app;
 COMMIT;

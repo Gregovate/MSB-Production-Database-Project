@@ -86,3 +86,16 @@ def test_failure_stops_remaining_batch(database, monkeypatch, status):
     result = worker.run_batch('unused', send=True)
     assert len(attempts) == 1
     assert [row['status'] for row in result] == [status]
+
+
+def test_invalid_template_is_visible_and_stops_before_any_send(database, monkeypatch):
+    database.rows = [candidate(1), candidate(2)]
+    database.rows[1]['payload']['ticket_url'] = 'https://untrusted.example/'
+    monkeypatch.setenv('WORK_MGMT_MAIL_SEND_ENABLED', '1')
+    recorded = []
+    monkeypatch.setattr(worker.PostgresDeliveryStore, 'render_failure',
+                        lambda self, event: recorded.append(event))
+    monkeypatch.setattr(worker, 'dispatch', lambda *a, **kw: pytest.fail('sent'))
+    with pytest.raises(ValueError):
+        worker.run_batch('unused', send=True)
+    assert recorded == ['assignment:2']

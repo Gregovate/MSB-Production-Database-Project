@@ -295,7 +295,9 @@
     if (!state.actor?.can_manage || !state.agingRows.length) return;
     const columns = [
       ["WO Number", "ticket"], ["Created", "opened_at"],
-      ["Days Open", "days_open"], ["Priority", "urgency"],
+      ["Days Open", "days_open"], ["Due by", "due_by"],
+      ["Overdue", "overdue"], ["Due today", "due_today"],
+      ["Missing due date", "due_date_required"], ["Priority", "urgency"],
       ["Description", "title"], ["Location", "location"],
       ["Assigned To", "owners"], ["Assignee Count", "assigned_n"],
       ["Active Record", "active"], ["Testing Repair ID", "test_id"],
@@ -309,7 +311,7 @@
     const url = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"}));
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = "MSB_Open_Work_Order_Aging_Disposable.csv";
+    anchor.download = "MSB_Open_Work_Order_Aging.csv";
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
@@ -345,6 +347,9 @@
         null,
         row.opened_at ? new Date(row.opened_at).toLocaleDateString() : "Not recorded",
         row.days_open ?? "Unknown",
+        row.due_by || "Not recorded",
+        row.overdue ? "Overdue" : row.due_today ? "Due today" :
+          row.due_date_required ? "Missing due date" : row.active ? "Upcoming" : "Inactive",
         row.urgency == null ? "Not set" : String(row.urgency),
         (row.title || "Untitled") + " · " + (row.location || "Location not recorded"),
         row.owners || "Unassigned",
@@ -522,6 +527,29 @@
     }
   }
 
+  async function loadNotifications(key) {
+    const panel = $("notification-review");
+    panel.hidden = !state.actor?.can_manage;
+    const entries = $("notification-entries");
+    entries.replaceChildren();
+    if (panel.hidden) return;
+    entries.textContent = "Loading delivery receipts…";
+    try {
+      const data = await getJson("/api/work-orders/tickets/" + encodeURIComponent(key) + "/notifications");
+      if (state.selected !== key) return;
+      entries.replaceChildren();
+      for (const receipt of data.notifications || []) {
+        const line = document.createElement("p");
+        line.textContent = (receipt.message_kind || "Historical held notification") +
+          " · " + receipt.status + (receipt.evidence ? " · " + receipt.evidence : "");
+        entries.appendChild(line);
+      }
+      if (!entries.childNodes.length) entries.textContent = data.notice || "No notification recorded.";
+    } catch (exc) {
+      if (state.selected === key) entries.textContent = "Delivery status unavailable. Do not assume email was sent.";
+    }
+  }
+
   async function selectTicket(key, options = {}) {
     if (!/^(WO|INTAKE)-[1-9]\d{0,12}$/.test(key || "")) return;
     if (!options.noHistory) writeNavigation("replace");
@@ -536,6 +564,7 @@
       showDetail(data.ticket);
       if (!options.noHistory) writeNavigation("push");
       loadActivity(key);
+      loadNotifications(key);
     } catch (exc) {
       if (serial === state.fetchId) error(exc.message);
     }

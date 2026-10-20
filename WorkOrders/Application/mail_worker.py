@@ -12,7 +12,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 from email_templates import render_email
-from mail_delivery import Delivery, dispatch
+from mail_delivery import Delivery, dispatch, message_for
 from mail_store import PostgresDeliveryStore
 
 
@@ -32,9 +32,18 @@ def run_batch(dsn: str, *, send: bool = False) -> list[dict]:
     finally:
         conn.close()
     # Validate/render the entire bounded batch before the first SMTP attempt.
-    deliveries = [Delivery(row['event_key'], row['recipient_email'],
-        render_email(row['message_kind'], row['payload'])) for row in candidates]
     store = PostgresDeliveryStore(dsn)
+    deliveries = []
+    for row in candidates:
+        try:
+            delivery = Delivery(row['event_key'], row['recipient_email'],
+                                render_email(row['message_kind'], row['payload']))
+            message_for(delivery)  # Validate every envelope before the first send.
+            deliveries.append(delivery)
+        except (ValueError, TypeError, KeyError, OSError):
+            if send:
+                store.render_failure(row['event_key'])
+            raise
     outcomes = []
     for delivery in deliveries:
         status = dispatch(delivery, store, enabled=send)

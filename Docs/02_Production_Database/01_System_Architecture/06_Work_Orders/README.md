@@ -1,5 +1,15 @@
 # Work Orders
 
+## Current operator entry — October 20
+
+Open [Work Orders](https://my.sheboyganlights.org/workorder/). The standalone
+Phase 1 application is installed. Phase 2 email/deadline work remains a draft,
+not deployed; existing Directus mail remains active. See the
+[current application handoff](../../../../WorkOrders/Application/README.md)
+and [acceptance checkpoint](../../../../WorkOrders/Acceptance/Phase_2_Completion_Checkpoint.md).
+The older source/preview-only descriptions below record prior development.
+
+
 This subsystem documents the Production Database work-order system, including intake, triage, assignment, notification, repair integration, completion, and the database relationships that make work orders part of the larger production system.
 
 ## Current State

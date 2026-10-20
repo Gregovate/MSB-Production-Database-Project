@@ -1,5 +1,12 @@
 # Work Management #419 — disposable clone and browser review
 
+## Current Phase 2 acceptance
+
+See [Phase 2 completion checkpoint](Phase_2_Completion_Checkpoint.md) for the
+current draft candidate and exact remaining gates. Phase 1 is installed;
+Phase 2 is not. Older dated evidence below must not be applied to newer code.
+
+
 ## Current release preparation — October 20, V1.0.1-production-route
 
 Phase 1 functional approval and Production authorization are recorded in #419/#81.

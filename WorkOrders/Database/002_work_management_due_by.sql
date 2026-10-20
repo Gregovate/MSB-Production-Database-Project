@@ -66,6 +66,12 @@ ALTER TABLE ops.work_order ADD COLUMN due_by date;
 COMMENT ON COLUMN ops.work_order.due_by IS
   'Manager-selected calendar deadline in America/Chicago; NULL legacy work requires Manager follow-up';
 
+-- Extend the existing audit vocabulary for the deadline-only Manager command.
+ALTER TABLE ops.work_management_activity DROP CONSTRAINT work_management_activity_event_kind_check;
+ALTER TABLE ops.work_management_activity ADD CONSTRAINT work_management_activity_event_kind_check
+  CHECK(event_kind IN ('create','assign','progress','complete','promote','promoted_source',
+    'correction_owner','clarify','reply','resolve','edit','cancel','due_date'));
+
 CREATE OR REPLACE FUNCTION ops.work_management_v1_command(
   p_email text, p_action text, p_ticket text, p_body jsonb, p_request_key uuid
 ) RETURNS jsonb
@@ -101,14 +107,14 @@ BEGIN
   IF p_body IS NULL OR jsonb_typeof(p_body) <> 'object' OR
      p_request_key IS NULL OR p_action IS NULL OR
      p_action NOT IN ('create','assign','progress','complete','promote',
-                      'correction_owner','clarify','reply','resolve','edit','cancel') THEN
+                      'correction_owner','clarify','reply','resolve','edit','cancel','due_date') THEN
     RAISE EXCEPTION 'Work Orders: invalid command/request key' USING ERRCODE='22023';
   END IF;
   SELECT a.* INTO v_actor FROM ops.work_management_v1_actor(p_email) a;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Work Orders: actor not verified' USING ERRCODE='42501';
   END IF;
-  IF p_action IN ('create','assign','promote','correction_owner','clarify','resolve','edit','cancel')
+  IF p_action IN ('create','assign','promote','correction_owner','clarify','resolve','edit','cancel','due_date')
      AND NOT v_actor.can_manage THEN
     RAISE EXCEPTION 'Work Orders: Manager authorization required'
       USING ERRCODE='42501';
@@ -141,7 +147,7 @@ BEGIN
 
   -- Manager-entered calendar deadline; never invent dates for legacy work.
   -- Existing request-key replay above preserves the original committed result.
-  IF p_action IN ('create','promote','edit') THEN
+  IF p_action IN ('create','promote','edit','due_date') THEN
     IF coalesce(p_body->>'due_by','') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' THEN
       RAISE EXCEPTION 'Work Orders: Due by date is required' USING ERRCODE='22023';
     END IF;
@@ -269,7 +275,7 @@ BEGIN
     RETURNING work_order_id INTO v_wo_id;
     v_ticket:='WO-'||v_wo_id;
     v_details:=jsonb_build_object('source_intake_id',v_intake_id,'due_by',v_due);
-  ELSIF p_action IN ('assign','progress','complete','edit','cancel') THEN
+  ELSIF p_action IN ('assign','progress','complete','edit','cancel','due_date') THEN
     IF p_ticket !~ '^WO-[1-9][0-9]*$' THEN
       RAISE EXCEPTION 'Work Orders: active native WO required' USING ERRCODE='22023';
     END IF;
@@ -311,6 +317,15 @@ BEGIN
        v_intake.submitter_person_id IS DISTINCT FROM v_actor.person_id THEN
       RAISE EXCEPTION 'Work Orders: only original reporter may reply'
         USING ERRCODE='42501';
+    END IF;
+    -- A reply answers an outstanding question on this exact unpromoted Intake.
+    IF p_action='reply' AND (EXISTS (
+      SELECT 1 FROM ops.work_order WHERE source_intake_id=v_intake_id
+    ) OR (SELECT event_kind FROM ops.work_management_activity
+      WHERE ticket_key=p_ticket AND event_kind IN ('clarify','reply','resolve')
+      ORDER BY activity_id DESC LIMIT 1) IS DISTINCT FROM 'clarify') THEN
+      RAISE EXCEPTION 'Work Orders: no outstanding clarification on this Intake'
+        USING ERRCODE='23514';
     END IF;
     -- Public Intake may be clarified or disposed of without promotion.
     -- Correction-owner assignment remains specific to Setup feedback.
@@ -417,6 +432,16 @@ BEGIN
       RAISE EXCEPTION 'Work Orders: edit target changed concurrently'
         USING ERRCODE='23514';
     END IF;
+  ELSIF p_action='due_date' THEN
+    -- Deadline-only correction preserves Testing ownership and repair semantics.
+    v_note:=btrim(coalesce(p_body->>'edit_reason',''));
+    IF length(v_note)<10 OR length(v_note)>5000 THEN
+      RAISE EXCEPTION 'Work Orders: deadline change reason required' USING ERRCODE='22023';
+    END IF;
+    v_details:=jsonb_build_object('before',jsonb_build_object('due_by',v_wo.due_by),
+      'after',jsonb_build_object('due_by',v_due));
+    UPDATE ops.work_order SET due_by=v_due,updated_by_person_id=v_actor.person_id
+      WHERE work_order_id=v_wo_id;
   ELSIF p_action='cancel' THEN
     v_note:=btrim(coalesce(p_body->>'cancel_reason',''));
     IF length(v_note)<10 OR length(v_note)>5000 THEN

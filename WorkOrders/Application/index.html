@@ -152,6 +152,8 @@
             <th scope="col">Work Order #</th>
             <th scope="col">Created</th>
             <th scope="col">Days open</th>
+            <th scope="col">Due by</th>
+            <th scope="col">Deadline status</th>
             <th scope="col">Priority</th>
             <th scope="col">Work / location</th>
             <th scope="col">Assigned to</th>
@@ -215,6 +217,12 @@
         <p id="review-action-guidance" class="review-action-guidance" role="status"></p>
         <p id="review-context" class="subtle">Select a Work Order or Intake item to review the available actions.</p>
         <form id="review-action-form" hidden>
+          <fieldset id="review-deadline-fields" hidden>
+            <legend>Manager · Set Due by</legend>
+            <label for="review-deadline">Due by</label>
+            <input id="review-deadline" type="date" min="2020-01-01" max="2100-12-31">
+            <p>Only the deadline changes. Testing and repair status remain unchanged.</p>
+          </fieldset>
           <fieldset id="review-edit-reason-fields" hidden>
             <legend>Manager · Correct an existing Work Order</legend>
             <label for="review-edit-reason">Required reason for changing the authoritative Work Order</label>
@@ -316,6 +324,11 @@
         </form>
       </div>
     </section>
+            <section id="notification-review" hidden>
+              <h4>Email delivery status</h4>
+              <p>SMTP accepted does not prove Inbox delivery. Missing contact needs manual follow-up. Failed or uncertain attempts require operator review; they are not retried automatically.</p>
+              <div id="notification-entries" role="status"></div>
+            </section>
             <div class="detail-fields">
               <div><span class="tiny-label">Assigned to</span><p id="detail-owner"></p></div>
               <div><span class="tiny-label">Reported by</span><p id="detail-reporter"></p></div>
@@ -355,7 +368,7 @@
         </div>
       </section>
     </div>
-    <p class="footer-note">Work Management V1.1.0-email-due-date · Updated 2026-10-20 · Connecting to verified runtime</p>
+    <p class="footer-note">Work Management V1.1.1-phase2-followup · Updated 2026-10-20 · Connecting to verified runtime</p>
   </main>
 </body>
 </html>

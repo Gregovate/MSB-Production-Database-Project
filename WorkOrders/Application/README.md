@@ -1,5 +1,28 @@
 # MSB Work Management — Phase 1 release preparation
 
+## Current Phase 2 checkpoint — October 20, 2026
+
+Phase 1 is installed at `/workorder/` as `V1.0.3-signed-access`, application
+`ac46c560da412610f90eba3611c259a10c01b267`; Server Management #81 owns its runtime.
+Greg, Tom and Paul have accessed it. **Phase 2 is not installed.** Existing
+Directus mail Flows remain active. Earlier not-installed Phase 1 statements
+below are historical and superseded by this checkpoint.
+
+PR #435 / `issue-419-phase2-email-due-date` continues as a draft candidate,
+`V1.1.1-phase2-followup`. Candidate changes cover source-specific editable email,
+fictional Manager previews, same-ticket reporter replies and owner notification,
+Manager receipt visibility, deadline-only Testing edits and aging deadlines/CSV.
+Directus remains the only authorization authority; the interim Manager email
+list is unchanged. Invalid templates/envelopes are recorded as failed without
+sending; uncertain claims are never automatically retried.
+
+Regression and release gates are tracked in
+[Phase 2 acceptance checkpoint](../Acceptance/Phase_2_Completion_Checkpoint.md).
+The earlier e3f2d245 disposable PASS does not cover this candidate. Do not
+install or activate it from source tests alone. Existing Phase 1 installer
+requires an absent service and must not be reused for this upgrade.
+
+
 ## Current checkpoint — V1.0.1-production-route, October 20
 
 Operator accepted Phase 1 business workflows and authorized release. Not installed.

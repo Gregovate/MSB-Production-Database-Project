@@ -4,6 +4,7 @@ BEGIN;
 DO $test$
 DECLARE
   v_email text := current_setting('msb.wo419_v1_reviewer_email');
+  v_intake bigint; v_testing bigint; v_before jsonb; v_after jsonb;
   v_actor record; v_body jsonb; v_result jsonb; v_ticket text;
   v_event text; v_recipient text; v_key text := repeat('a',64);
 BEGIN
@@ -73,6 +74,68 @@ BEGIN
     AND message_kind='outcome' AND payload->>'outcome'='Canceled — no work performed') THEN
     RAISE EXCEPTION 'Cancellation notification is missing or misleading';
   END IF;
+  -- Use actual Testing-shaped work in the restored clone; preserve every business field.
+  SELECT work_order_id INTO v_testing FROM ops.work_order
+    WHERE display_test_session_id IS NOT NULL AND is_active AND date_completed IS NULL
+    ORDER BY work_order_id LIMIT 1;
+  IF v_testing IS NULL THEN RAISE EXCEPTION 'Testing deadline fixture absent'; END IF;
+  SELECT to_jsonb(w)-ARRAY['due_by','updated_by_person_id','updated_at','updated_by']
+    INTO v_before FROM ops.work_order w WHERE work_order_id=v_testing;
+  PERFORM ops.work_management_v1_command(v_email,'due_date','WO-'||v_testing,
+    '{"due_by":"2026-10-26","edit_reason":"Manager selected a Testing repair deadline"}',gen_random_uuid());
+  SELECT to_jsonb(w)-ARRAY['due_by','updated_by_person_id','updated_at','updated_by']
+    INTO v_after FROM ops.work_order w WHERE work_order_id=v_testing;
+  IF v_before IS DISTINCT FROM v_after OR NOT EXISTS (
+    SELECT 1 FROM ops.work_order WHERE work_order_id=v_testing AND due_by=DATE '2026-10-26') THEN
+    RAISE EXCEPTION 'Testing deadline update changed unrelated work fields';
+  END IF;
+  IF NOT EXISTS(SELECT 1 FROM ops.work_management_mail_status(v_email,v_ticket) WHERE status='UNKNOWN') THEN
+    RAISE EXCEPTION 'Manager cannot see uncertain delivery';
+  END IF;
+
+  SELECT i.intake_id INTO v_intake FROM stage.work_order_intake i
+    WHERE NOT EXISTS(SELECT 1 FROM ops.work_order WHERE source_intake_id=i.intake_id)
+      AND NOT EXISTS(SELECT 1 FROM ops.work_management_activity WHERE ticket_key='INTAKE-'||i.intake_id)
+    ORDER BY i.intake_id LIMIT 1;
+  IF v_intake IS NULL THEN RAISE EXCEPTION 'Unpromoted clarification fixture absent'; END IF;
+  -- Change reporter identity in the clone only; outer ROLLBACK restores all evidence.
+  UPDATE stage.work_order_intake SET submitter_person_id=v_actor.person_id WHERE intake_id=v_intake;
+  BEGIN
+    PERFORM ops.work_management_v1_command(v_email,'reply','INTAKE-'||v_intake,
+      '{"response":"Unsolicited reply must not be accepted"}',gen_random_uuid());
+    RAISE EXCEPTION 'Unsolicited reply accepted';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  PERFORM ops.work_management_v1_command(v_email,'clarify','INTAKE-'||v_intake,
+    '{"response":"Which connector needs replacement on this display?"}',gen_random_uuid());
+  PERFORM ops.work_management_v1_command(v_email,'reply','INTAKE-'||v_intake,
+    '{"response":"The left connector has the damaged cable"}',gen_random_uuid());
+  IF NOT EXISTS(SELECT 1 FROM ops.work_management_outbox WHERE ticket_key='INTAKE-'||v_intake
+    AND message_kind='reporter_reply' AND recipient_person_id=v_actor.person_id AND delivery_status='QUEUED') THEN
+    RAISE EXCEPTION 'Reporter answer did not notify question owner';
+  END IF;
+  BEGIN
+    PERFORM ops.work_management_v1_command(v_email,'reply','INTAKE-'||v_intake,
+      '{"response":"Second reply without another question must fail"}',gen_random_uuid());
+    RAISE EXCEPTION 'Repeated answer accepted';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  -- Existing Directus role simulation proves the endpoint's database authorization.
+  UPDATE public.directus_users SET role=(SELECT id FROM public.directus_roles WHERE name='Production Crew')
+    WHERE id=v_actor.directus_user_id;
+  DELETE FROM public.directus_access WHERE "user"=v_actor.directus_user_id;
+  BEGIN
+    PERFORM ops.work_management_mail_status(v_email,v_ticket);
+    RAISE EXCEPTION 'Crew read Manager notification receipts';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    PERFORM ops.work_management_v1_command(v_email,'due_date','WO-'||v_testing,
+      '{"due_by":"2026-10-27","edit_reason":"Crew deadline must remain unauthorized"}',gen_random_uuid());
+    RAISE EXCEPTION 'Crew changed Testing deadline';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RAISE NOTICE 'Phase 2 Testing preservation, reporter reply and receipt authorization PASS';
   RAISE NOTICE 'Phase 2 due date, capture, cutover gate, deduplication and uncertainty checks PASS; NO SMTP';
 END $test$;
 ROLLBACK;

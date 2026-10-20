@@ -14,6 +14,7 @@ and configuration deployment process; editing GitHub does not change Production.
 | task_feedback.json | Setup task feedback notice; selected by SETUP_CORRECTION source, names the original task |
 | assignment.json | Assignment notice, including Due by |
 | outcome.json | Original reporter's done/canceled/disposition notice |
+| reporter_reply.json | Reporter answer to the accountable correction owner or question author |
 | more_info.json | Original reporter's clarification question and response link |
 
 Available placeholders: `$ticket`, `$title`, `$reporter`, `$assignees`, `$due_by`,

@@ -13,6 +13,7 @@
     link_setup: "Manager · Add this Work Order to seasonal Setup",
     assign: "Assign / Reassign · Multiple volunteers",
     edit: "Manager · Edit existing Work Order",
+    due_date: "Manager · Set Due by",
     cancel: "Manager · Cancel / No Action",
     progress: "Record Work Note · Keep open",
     complete: "Complete · Required verified work notes",
@@ -57,7 +58,12 @@
       result.push("link_setup");
     }
     if (ticket.type === "WORK_ORDER" && !ticket.done_at && ticket.active) {
-      if (actor.can_manage) result.push("assign", "edit", "cancel");
+      if (actor.can_manage) {
+        result.push("assign");
+        if (ticket.test_id || ticket.detail?.display_test_session_id) {
+          if (model.runtime !== "disposable") result.push("due_date");
+        } else result.push("edit", "cancel");
+      }
       if (actor.can_manage ||
           (ticket.assignee_ids || []).some((id) => Number(id) === Number(actor.person_id))) {
         result.push("progress", "complete");
@@ -67,11 +73,13 @@
         result.push("promote", "resolve");
         result.push("clarify");
       }
-      if (Number(ticket.reporter_id) === Number(actor.person_id))
+      if (["WAITING_ON_REPORTER", "REPORTER_CONTACT_NEEDED"].includes(ticket.state) &&
+          Number(ticket.reporter_id) === Number(actor.person_id))
         result.push("reply");
     } else if (ticket.type === "TASK_FEEDBACK") {
       if (actor.can_manage) result.push("correction_owner", "clarify", "resolve", "promote");
-      if (Number(ticket.reporter_id) === Number(actor.person_id)) result.push("reply");
+      if (["WAITING_ON_REPORTER", "REPORTER_CONTACT_NEEDED"].includes(ticket.state) &&
+          Number(ticket.reporter_id) === Number(actor.person_id)) result.push("reply");
     }
     return result;
   }
@@ -122,6 +130,7 @@
       complete: "Complete Work Order",
       assign: "Assign / Reassign",
       edit: "Edit Work Order",
+      due_date: "Set Due by",
       cancel: "Cancel / No Action",
       link_setup: "Link to seasonal Setup",
       promote: "Promote & Assign",
@@ -254,6 +263,7 @@
       model.ticket?.detail?.problem_raw || model.ticket?.detail?.problem ||
       model.ticket?.title || "";
     byId("review-due-by").value = model.ticket?.due_by || "";
+    byId("review-deadline").value = model.ticket?.due_by || "";
     byId("review-target-year").value = model.ticket?.urgency == 5 ? (model.ticket?.yr || "") : "";
     byId("review-urgency").value = String(model.ticket?.urgency || 3);
     planningChanged();
@@ -361,7 +371,8 @@
     byId("review-work-order-legend").textContent =
       kind === "promote" ? "Proposed Work Order · Review before promotion" :
       kind === "edit" ? "Correct existing Work Order" : "New internal Work Order";
-    byId("review-edit-reason-fields").hidden = kind !== "edit";
+    byId("review-edit-reason-fields").hidden = !["edit", "due_date"].includes(kind);
+    byId("review-deadline-fields").hidden = kind !== "due_date";
     byId("review-setup-choice").hidden = !["create", "promote"].includes(kind);
     byId("review-cancel-fields").hidden = kind !== "cancel";
     byId("review-intake-comparison").hidden = !(kind === "promote" && model.ticket?.type === "INTAKE_REQUEST");
@@ -388,6 +399,7 @@
     const submitNames = {
       create: "Create Work Order",
       edit: "Save Work Order Corrections",
+      due_date: "Save Due by",
       cancel: "Cancel Work Order · Do Not Mark Complete",
       assign: "Save assignments",
       progress: "Save Work Note · Keep open",
@@ -395,9 +407,9 @@
       link_setup: "Link Work Order to Setup",
       promote: "Promote & Assign",
       correction_owner: "Save correction owner",
-      clarify: "Save clarification request · No email sent",
+      clarify: "Save clarification request",
       reply: "Save reporter reply",
-      resolve: "Save feedback resolution · No email sent",
+      resolve: "Save feedback resolution",
     };
     submit.textContent = submitNames[kind] ||
       (isLive() ? "Save authoritative Work Order" : "Save to disposable database");
@@ -445,8 +457,10 @@
           throw new Error("Choose an existing open seasonal Setup session.");
       }
     }
-    if (kind === "edit" && byId("review-edit-reason").value.trim().length < 10)
+    if (["edit", "due_date"].includes(kind) && byId("review-edit-reason").value.trim().length < 10)
       throw new Error("An accountable correction reason (at least 10 characters) is required.");
+    if (kind === "due_date" && !byId("review-deadline").value)
+      throw new Error("Due by is required.");
     if (kind === "cancel" && byId("review-cancel-reason").value.trim().length < 10)
       throw new Error("Cancel / No Action requires an explanation (at least 10 characters).");
     if (kind === "link_setup") {
@@ -489,7 +503,7 @@
     if (!window.confirm(
       summary + (isLive()
         ? "\n\nSave this change to the PRODUCTION Work Orders database?\n" +
-          "This change is permanent. Notifications are held pending release; not sent."
+          "This change is permanent. Saving does not prove email delivery; check delivery status."
         : "\n\nSave this change in the TEMPORARY disposable database?\n" +
           "It will be discarded when the browser review ends. No emails will be sent.")
     )) return null;
@@ -501,7 +515,7 @@
       problem: byId("review-problem").value.trim(),
       task_type_id: byId("review-task-type").value,
       urgency: byId("review-urgency").value,
-      due_by: byId("review-due-by").value || null,
+      due_by: (kind === "due_date" ? byId("review-deadline").value : byId("review-due-by").value) || null,
       target_year: ["create", "promote", "edit"].includes(kind) &&
         byId("review-urgency").value === "5"
         ? byId("review-target-year").value : null,
@@ -683,7 +697,7 @@
             : "") +
           (saved.notifications === "MISSING_RECIPIENT"
             ? ". REPORTER CONTACT MISSING — Manager follow-up required. No email sent."
-            : isLive() ? ". Notifications: PENDING CUTOVER; no send yet."
+            : isLive() ? ". Saved. Check Email delivery status; saving does not prove delivery."
             : ". Notification: NO SEND. This change disappears at cleanup.");
         box.dataset.valid = "true";
       }
