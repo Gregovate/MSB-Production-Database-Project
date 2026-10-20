@@ -208,8 +208,15 @@ def test_review_api_uses_signed_in_manager_and_requires_command_guard(monkeypatc
 
 
 def test_live_host_serves_only_review_assets():
-    from production_backend import app
-    client=app.test_client()
-    assert client.get('/container-exceptions/').status_code==200
-    assert client.get('/container-exceptions/assets/setup_container_review.js').status_code==200
-    assert client.get('/container-exceptions/assets/setup_container_review.py').status_code==404
+    # Host imports install repository layers globally. Keep that effect out of
+    # projection tests, even when this file is selected before them.
+    import subprocess
+    source = """from production_backend import app
+client=app.test_client()
+assert client.get('/container-exceptions/').status_code==200
+assert client.get('/container-exceptions/assets/setup_container_review.js').status_code==200
+assert client.get('/container-exceptions/assets/setup_container_review.py').status_code==404
+"""
+    result=subprocess.run([sys.executable,'-c',source],cwd=Path(__file__).parent,
+                          text=True,capture_output=True,timeout=20)
+    assert result.returncode==0,result.stdout+result.stderr

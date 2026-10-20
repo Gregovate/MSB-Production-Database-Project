@@ -35,12 +35,13 @@ from setup_work_order_intake_api import setup_work_order_intake_api
 from setup_material_readiness_api import setup_material_readiness_api
 from setup_movement_api import setup_movement_api
 from setup_container_review_api import setup_container_review_api
+from setup_manager_mail_admin_api import setup_manager_mail_admin_api
 from setup_material_resolution import install_setup_material_resolution
 from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.85-container-review"
+PRODUCTION_VERSION = "V0.3.86-container-review-actions"
 
 # #222 lightweight Production request instrumentation.
 #
@@ -202,6 +203,7 @@ app.register_blueprint(setup_work_order_intake_api)
 app.register_blueprint(setup_material_readiness_api)
 app.register_blueprint(setup_movement_api)
 app.register_blueprint(setup_container_review_api)
+app.register_blueprint(setup_manager_mail_admin_api)
 
 
 def _setup_perf_is_traced_request() -> bool:

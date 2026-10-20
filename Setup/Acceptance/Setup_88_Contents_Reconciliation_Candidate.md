@@ -2,15 +2,101 @@
 
 | Document control | Value |
 |---|---|
-| Status | October 8 candidate history; guided behavior/070 subsequently integrated and deployed October 10; October 17 recovery findings below remain open |
+| Status | October20 integrated #418/#413 source candidate; Production and operator acceptance pending; earlier sections retained as history |
 | Owner | #88; commanding #122 / DBG-2026-007, 009, 010 |
-| Reviewed | 2026-10-18 (Chicago; operator confirmations and prior-location rule) |
-| Baseline main | `3ddda03221ae475ffec5399ea4955e9c1e728419` |
-| Branch | `fix/88-container-contents-reconciliation` |
-| Release | `V0.3.49-guided-container-stop` |
-| Exact application candidate | `fe801e18f58acc58c0d4d6798d9ab6c334648b2e` |
-| Migration | `070_reconcile_setup_container_contents.sql` — functions only |
+| Reviewed | 2026-10-20 (Chicago; current review/Manager mail integration) |
+| Baseline main | `a770e755dc4ce59873a004b3d92368c4c4cf7eae` |
+| Branch | `fix/88-empty-recording` / PR418 including PR413 |
+| Release | `V0.3.86-container-review-actions` |
+| Exact application candidate | Immutable SHA recorded in PR418 handoff |
+| Migration | New077 review ledger/commands only;070 already deployed |
 | Preview allocation | Setup `8898` |
+
+## October 20 integrated current candidate — #418 with #413
+
+This section supersedes the old executable handoffs and V0.3.85 identity below.
+The prior sections remain incident/design history, not instructions to replay070.
+Current baseline main is `a770e755dc4ce59873a004b3d92368c4c4cf7eae`.
+Review branch: `fix/88-empty-recording`; release **V0.3.86-container-review-actions**,
+visible date **2026-10-20**. The PR records the exact immutable review SHA.
+#418 deliberately incorporates #413 mail history through `3e1eb3981a49cdf052fc40044df887b8d39eebb3`;
+#413 remains the mail ownership record until integration ancestry and acceptance
+are complete. Neither draft has been installed by this work.
+
+### Manager email and actionable review
+
+The existing Manager digest now reads the same current review lifecycle as
+Container Exceptions, in the same read-only repeatable-read snapshot as Container
+movement evidence. It reports outstanding Containers, open contents flags and
+pending field checks, with at most five priority cases, reasons, next actions,
+Display Names and exact protected case links. Explicitly resolved flags no longer
+inflate the next digest. A partial review or requested field check stays open.
+Missing077 stops rendering/sending rather than reverting to historical flag counts.
+The existing roster, bounded schedule, SMTP controls and send receipts are retained.
+
+The existing Admin-only `/notifications/` preview renders that same digest without
+SMTP. Its case links outside the sandboxed email iframe open this disposable Setup
+instance. Production email URLs remain visible in the formatted email. Following a
+link only opens the case; a correction still requires explicit selections, evidence,
+review and Record. Web preview uses the app's complete configured clone DSN; the
+SMTP CLI retains its strict Production identity check. Host timer status is labelled
+not queried, rather than falsely stating that the already activated mail is OFF.
+
+### Verification and remaining gates
+
+- Full Setup: **1050 passed, 5 skipped**. Application alone: **918 passed, 3 skipped**.
+  Optional native PostgreSQL tests skip under this root engineering environment.
+- Historical V0.3.50 deployment tests now consume the exact archived source blob
+  they are pinned to, instead of today's report. Its Git blob is asserted; no old
+  deployment script, SHA, SQL guard or Production authority was changed.
+- Actual070 reconciliation and070+077 review SQL both pass PostgreSQL/WASM,
+  including real rollback-only host validator execution on synthetic fixtures.
+- Actual review HTML/JS passes Chromium desktop/tablet interaction with synthetic
+  API, including no-write cancellation and protected choices. Email-to-case GET,
+  save and refreshed digest lifecycle are checked separately using actual templates.
+- FieldWiring/Application and Procedures/Application: **263 passed**.
+
+These are engineering proofs, not current-Production clone, protected browser or
+operator acceptance. Tom's Empty-button incident remains separate and unproven.
+The C134 Stage shortcut fix and cached-context transport guards from current #418
+are retained. Multi-Display integral show-base protection (#429/#430), C131 location
+recovery and January loading are not claimed by this candidate.
+
+### Existing-runbook disposable handoff
+
+Use only `run_setup_disposable_browser_preview.ps1`, exact published #418 SHA,
+TargetRef `fix/88-empty-recording`, ExpectedVersion
+`V0.3.86-container-review-actions`, registered sequential port8898, existing
+reviewer `gliebig@sheboyganlights.org` and `-AllowConcurrentProductionWrites`.
+Only migration `Setup/Database/077_add_setup_container_contents_review.sql` and
+validation `Setup/Acceptance/setup_88_container_review_disposable_validation.sql`
+are needed. Do not replay070/071/072/075/076. The existing runner owns one current-
+Production clone, actual read-role boundary, foreground SSH, real mapped identity,
+listener ownership, Production/source checks and CLEAN EXIT. No Node installation
+is needed on the operator workstation. Do not overlap another8898 review.
+
+After BROWSER REVIEW READY, open `/notifications/` as Administrator. Inspect the
+actual report/recipient preview, follow one of its same-instance case links, cancel
+once, then record an evidence-backed scoped review. Refresh both report and queue:
+resolved scope clears, partial work and field checks persist. Verify C052/C053's
+prior-park corrections preserve Home returns and newer independent observations.
+Inspect a protected attachment repair and manual C216 lookup without writing an
+unsupported claim. End the runner with CLEAN EXIT and retain its report.
+
+### Production promotion is a separate governed step
+
+After operator acceptance,077 and Setup source use **one maintenance-controller
+window**, under the existing Production Database Change Deployment Runbook. No
+operator pause, alternate migration runner or source-only077 installation.
+
+The active Manager sender loads its script/templates from
+`/opt/msb-setup-manager-pilot`, not the Setup checkout. Setup promotion alone will
+not update the daily email. Its exact four files must also be staged/verified using
+the existing #205 private-pilot procedure, after the review route and077 are live,
+with a no-send preview before leaving the window. Preserve the approved timer,
+units, environment, Manager audience and delivery receipts; do not rerun the old
+Oct17/Oct18 activation, send catch-up mail or delete receipts. No such Production
+promotion or mail send is authorized or claimed by this disposable handoff.
 
 ## October 17 current field picture — event 494
 

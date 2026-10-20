@@ -364,3 +364,15 @@ wrapper is not a #205 release command. Operator acceptance and CLEAN EXIT are
 already approved. Production runner PASS and initial operator spot-check PASS
 were received October 16; the linked record contains the transcript and retained
 report directory. Do not rerun the completed release for documentation.
+
+## October20 #88/#205 integrated browser review
+
+The current #418 candidate includes #413's governed Manager email renderer and
+Admin-only no-send preview. Use the existing reusable browser runner, branch
+`fix/88-empty-recording`, exact published SHA, version
+`V0.3.86-container-review-actions`, port8898, migration077 and its rollback-only
+review validation. Follow the [current candidate handoff](Setup_88_Contents_Reconciliation_Candidate.md#october-20-integrated-current-candidate--418-with-413).
+Open `/notifications/` after READY; follow a same-instance Container case link,
+record an evidence-backed review, refresh the queue and email, then CLEAN EXIT.
+The scheduled sender's private source is a separate promotion dependency; this
+preview sends no mail and does not deploy Production.

@@ -58,7 +58,7 @@
     data = await json(`../api/setup/container-exceptions?season_year=${year}`);
     el('status').className = '';
     el('status').textContent =
-      `As of ${data.generated} · through event ${data.through_event_id} · V0.3.85-container-review`;
+      `As of ${data.generated} · through event ${data.through_event_id} · V0.3.86-container-review-actions`;
     el('counts').replaceChildren(...[
       ['Outstanding Containers', data.counts.open],
       ['Needs field check', data.counts.field_check],
@@ -325,5 +325,20 @@
   el('print').addEventListener('click', () => window.print());
   el('back').href += `?season_year=${year}`;
   el('trail').href = `../api/setup/material-status/report?season_year=${year}`;
-  load().catch(error);
+  async function initialize() {
+    await load();
+    const raw = new URLSearchParams(location.search).get('container_id');
+    if (!raw) return;
+    const id = Number(raw);
+    if (!/^\d+$/.test(raw) || !Number.isSafeInteger(id) || id < 1) throw new Error('Invalid Container link.');
+    const item = data.cases.find(c => c.container_id === id);
+    if (item) openCase(item);
+    else {
+      const result = await json(`../api/setup/container-exceptions?season_year=${year}&container_id=${id}`);
+      const target = result.cases.find(c => c.container_id === id);
+      if (!target) throw new Error('Container not found.');
+      openCase(target);
+    }
+  }
+  initialize().catch(error);
 })();

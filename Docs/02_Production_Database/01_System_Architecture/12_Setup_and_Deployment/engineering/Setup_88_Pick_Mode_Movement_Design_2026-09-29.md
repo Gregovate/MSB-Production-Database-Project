@@ -1295,3 +1295,37 @@ validation and protected disposable browser/operator acceptance precede Producti
 Reuse the established disposable browser runner on8898; no new host deployment
 mechanism or Node dependency on Greg's workstation. No Production change is
 performed or authorized by this design record.
+
+## October 20 — one review candidate and actionable Manager report
+
+Greg reports neither the promised review tool nor Manager-report actions reached
+Production. PR418 and PR413 remain drafts. The earlier ec624871/V0.3.85 handoff is
+obsolete after subsequent C134/cache fixes. Reconcile current418 head5002922c and
+mail head3e1eb398 into the existing418 integration path, preserving current main
+and all later field/reference decisions. PR413 remains the mail ownership record;
+its final accepted history must be proved in the integrated release before closing.
+Use a new visible identity V0.3.86-container-review-actions and refreshed asset/cache
+pins, then validate one exact combined disposable candidate via the existing8898
+runner. No new preview or deployment infrastructure.
+
+The Manager email must expose the same current queue as the review screen: counts
+of outstanding Containers, unresolved original flags and pending field checks,
+plus bounded readable cases with reason/next action, Display Names and direct
+protected case links. Historical flags stay informational. Read queue, movement
+picture and review state in one read-only snapshot; do not duplicate lifecycle or
+close flags in mail. A case link opens the intended case, never writes or resolves
+on GET. Preserve partial work, later valid placements, provenance, Manager-only
+commands and non-account helper reports. The existing Administrator email preview
+renders the same content, with no-send capability. Do not claim the running mail
+service/timer state from a static source label.
+
+Migration077 and the Setup source are one maintenance-controlled release after
+operator browser acceptance. The already-running private Manager sender is a
+separate source installation under Server Management's existing mail runbook;
+advancing Setup alone does not update it. Preserve approved audience, finite timer,
+all SMTP enabling/date/receipt guards and every prior attempt receipt. No sending,
+timer restart, catch-up or new recipient action is authorized by this source work.
+The mail action links may be installed only once the real protected review route
+and077 are live and verified. Existing #429 integral-role/#430 cargo semantics,
+C131 field debug and future installation/takedown design remain their own acceptance
+boundaries; this integration does not claim them delivered.

@@ -96,6 +96,10 @@ def exception_context(picture, reviews, snapshots, container_id=None):
 
 class SetupContainerReviewRepository(SetupMovementRepository):
     def exceptions(self, session_id, container_id=None):
+        return self.review_snapshot(session_id, container_id=container_id)[1]
+
+    def review_snapshot(self, session_id, container_id=None, *, include_preconditions=True):
+        """Shared read-only evidence for the review screen and Manager digest."""
         # Evidence, review lifecycle and write preconditions share one snapshot.
         with self.connect() as conn:
             picture = movement_picture(self, session_id, connection=conn, include_unobserved=True)
@@ -105,12 +109,14 @@ class SetupContainerReviewRepository(SetupMovementRepository):
                 context = exception_context(picture, reviews, {}, container_id)
                 # Only actionable/reviewed Containers need write preconditions;
                 # avoid rebuilding snapshots for every healthy reference asset.
-                cur.execute('SELECT c.container_id, ops.setup_container_review_snapshot(%s,c.container_id) AS snapshot FROM ref.container c WHERE c.container_id=ANY(%s)',
-                            (session_id,[c['container_id'] for c in context['cases']]))
-                snapshots = {r['container_id']:r['snapshot'] for r in cur.fetchall()}
+                snapshots = {}
+                if include_preconditions:
+                    cur.execute('SELECT c.container_id, ops.setup_container_review_snapshot(%s,c.container_id) AS snapshot FROM ref.container c WHERE c.container_id=ANY(%s)',
+                                (session_id,[c['container_id'] for c in context['cases']]))
+                    snapshots = {r['container_id']:r['snapshot'] for r in cur.fetchall()}
         for case in context['cases']:
             case['snapshot'] = snapshots.get(case['container_id'])
-        return context
+        return picture, context
 
     def record_review(self, *, email, season_year, container_id, client_event_id, snapshot, command):
         with self.write_connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
