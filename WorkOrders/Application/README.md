@@ -221,3 +221,19 @@ and inactive users are covered by isolated-clone acceptance. Existing staged
 V1.0.1 is superseded. Cloudflare Access authenticates the Google
 @sheboyganlights.org account; Directus owns users, roles and policies. Preserve
 the existing protected identity-header boundary; no second login is introduced.
+
+
+## V1.0.3 signed Access identity — candidate, not deployed
+
+Production now requires WORK_MGMT_ACCESS_ISSUER and WORK_MGMT_ACCESS_AUDIENCE
+and verifies Cf-Access-Jwt-Assertion before all routes. A supplied email alone
+cannot authenticate. Signed identity still requires current Directus authorization;
+roles, native SQL and Phase 1 email behavior are unchanged. See the October 20
+signed identity section in the owning Work Order System Design.
+
+Install requirements-auth.txt only into the independent Work Management runtime
+under the Server Management #81 procedure. Do not pip-upgrade the shared runtime.
+Source regression uses generated local RSA keys and fake JWKS; no real tokens,
+Cloudflare session changes or Production contact. Real protected-route acceptance
+and service installation remain pending. Completed database provisioning is not
+repeated for this application-only correction.

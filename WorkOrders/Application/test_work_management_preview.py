@@ -124,6 +124,11 @@ def identity():
 def production_client(monkeypatch):
     """Exercise the actual Production WSGI edge without a database or network."""
     import importlib
+    from test_access_identity import ISSUER, AUDIENCE, jwks
+    from jwt import PyJWKClient
+    monkeypatch.setenv("WORK_MGMT_ACCESS_ISSUER", ISSUER)
+    monkeypatch.setenv("WORK_MGMT_ACCESS_AUDIENCE", AUDIENCE)
+    monkeypatch.setattr(PyJWKClient, "fetch_data", lambda self: jwks())
     from werkzeug.test import Client
     from werkzeug.wrappers import Response
     monkeypatch.setenv("WORK_MGMT_RUNTIME_MODE", "production")
@@ -140,7 +145,8 @@ def production_client(monkeypatch):
 
 
 def production_headers():
-    return {**identity(), "Host": "my.sheboyganlights.org",
+    from test_access_identity import signed_token
+    return {**identity(), "Cf-Access-Jwt-Assertion": signed_token(), "Host": "my.sheboyganlights.org",
             "X-Forwarded-Proto": "https"}
 
 
@@ -160,7 +166,7 @@ def test_production_perimeter_denies_spoofed_peer_host_and_scheme(production_cli
 
 def test_production_missing_identity_is_denied(production_client):
     headers = production_headers()
-    del headers["Cf-Access-Authenticated-User-Email"]
+    del headers["Cf-Access-Jwt-Assertion"]
     response = production_client.get("/api/work-orders/access", headers=headers,
         environ_overrides={"REMOTE_ADDR": "192.168.5.4"})
     assert response.status_code == 401
@@ -186,7 +192,7 @@ def test_production_mount_assets_access_and_https_command(production_client, mon
     access = production_client.get("/api/work-orders/access", headers=headers,
         environ_overrides=peer)
     assert access.status_code == 200
-    assert access.json["version"] == "V1.0.2-directus-roles"
+    assert access.json["version"] == "V1.0.3-signed-access"
     calls = []
     class Commands:
         def perform(self, actor, action, ticket, body):
@@ -1081,7 +1087,7 @@ def test_v1_backend_uses_distinct_command_path_and_protected_proxy():
     runtime = (HERE / "v1_runtime.py").read_text(encoding="utf-8")
     js = (HERE / "review_actions.js").read_text(encoding="utf-8")
     app_js = (HERE / "app.js").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "V1.0.2-directus-roles"' in source
+    assert 'APP_VERSION = "V1.0.3-signed-access"' in source
     assert 'from v1_runtime import V1Repository' in source
     assert 'from v1_runtime import V1Commands' in source
     assert 'return CloneCommands()' in source
@@ -1414,3 +1420,21 @@ def test_oct20_intake_evidence_is_visible_before_any_triage_decision():
     assert 'kind === "promote" ? "Proposed Work Order' in js
     assert '.review-source-evidence' in css
 
+
+
+def test_production_signed_identity_replaces_forged_email(production_client):
+    headers = {**production_headers(), "Cf-Access-Authenticated-User-Email": "manager@sheboyganlights.org"}
+    response = production_client.get("/api/work-orders/access", headers=headers,
+        environ_overrides={"REMOTE_ADDR": "192.168.5.4"})
+    assert response.status_code == 200
+    assert ("access", "crew@sheboyganlights.org") in FakeRepo.calls
+    assert ("access", "manager@sheboyganlights.org") not in FakeRepo.calls
+
+
+def test_production_valid_token_still_requires_directus_user(production_client, monkeypatch):
+    def denied(self, email):
+        raise repository.WorkManagementError("Directus user inactive or unknown", 403)
+    monkeypatch.setattr(FakeRepo, "access", denied)
+    response = production_client.get("/api/work-orders/access",
+        headers=production_headers(), environ_overrides={"REMOTE_ADDR": "192.168.5.4"})
+    assert response.status_code == 403

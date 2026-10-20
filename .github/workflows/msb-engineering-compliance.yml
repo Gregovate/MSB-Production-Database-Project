@@ -50,9 +50,9 @@ jobs:
         shell: bash
         run: |
           if grep -Eq '^(WorkOrders/|Database/Acceptance/test_wo419_)' /tmp/msb_changed_paths; then
-            python -m pip install pytest flask psycopg2-binary
+            python -m pip install pytest flask psycopg2-binary -r WorkOrders/Application/requirements-auth.txt
             python -m pytest -q -p no:cacheprovider \
-              WorkOrders/Application/test_work_management_preview.py \
+              WorkOrders/Application \
               WorkOrders/Acceptance/test_work_management_disposable_profile.py \
               Database/Acceptance/test_wo419_unified_ticket_read_model.py
           else
