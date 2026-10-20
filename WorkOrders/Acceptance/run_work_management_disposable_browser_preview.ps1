@@ -6,7 +6,8 @@ param(
     [Parameter(Mandatory=$true)][string]$CandidateSha,
     [Parameter(Mandatory=$true)][int]$PreviewPort,
     [Parameter(Mandatory=$true)][string]$PreviewEmail,
-    [switch]$ApprovedReviewProfile
+    [switch]$ApprovedReviewProfile,
+    [switch]$V1Validation
 )
 $ErrorActionPreference = 'Stop'
 $Ref = 'issue-419-unified-ticket-read-model-20261018'
@@ -54,6 +55,13 @@ try {
         'timeout --foreground --signal=TERM 28800s bash "{0}" "{1}" "{2}" "{3}" "{4}" start; ' +
         'rc=$?; if [ "$rc" -eq 0 ]; then rm -f "{0}"; fi; exit "$rc"'
     ) -f $Remote, $CandidateSha, $PreviewPort, $PreviewEmail, $Ref)
+    # Same exact runner, clone, port and pinned SHA. The V1 validation option
+    # executes the candidate SQL on an ephemeral restored database, never
+    # starts a Flask listener and finishes with normal owner-verified teardown.
+    $ValidationCommand = $RemotePrefix + ((
+        'timeout --foreground --signal=TERM 28800s bash "{0}" "{1}" "{2}" "{3}" "{4}" validate_v1; ' +
+        'rc=$?; if [ "$rc" -eq 0 ]; then rm -f "{0}"; fi; exit "$rc"'
+    ) -f $Remote, $CandidateSha, $PreviewPort, $PreviewEmail, $Ref)
     $ResumeCommand = $RemotePrefix + ((
         'timeout --foreground --signal=TERM 28800s bash "{0}" "{1}" "{2}" "{3}" "{4}" resume; ' +
         'rc=$?; if [ "$rc" -eq 0 ]; then rm -f "{0}"; fi; exit "$rc"'
@@ -63,12 +71,19 @@ try {
     $reconnectAttempts = 0
     $maxReconnectAttempts = 12
     while ($true) {
-        $RemoteCommand = if ($mode -eq 'start') { $StartCommand } else { $ResumeCommand }
+        $RemoteCommand = if ($V1Validation) { $ValidationCommand } elseif ($mode -eq 'start') { $StartCommand } else { $ResumeCommand }
         & ssh -tt -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -L $Tunnel $Server $RemoteCommand
         $remoteExit = $LASTEXITCODE
         if ($remoteExit -eq 0) {
-            Write-Host 'WO419 workstation browser tunnel: CLEAN EXIT'
+            if ($V1Validation) {
+                Write-Host 'WO419 V1 disposable SQL validation: CLEAN EXIT' -ForegroundColor Green
+            } else {
+                Write-Host 'WO419 workstation browser tunnel: CLEAN EXIT'
+            }
             break
+        }
+        if ($V1Validation) {
+            throw "HOLD: V1 SQL validation returned $remoteExit. Preserve report. Do not start a browser or silently retry."
         }
         if ($remoteExit -notin @(75, 255)) {
             throw "HOLD: remote $mode returned $remoteExit. Preserve original report/clone and inspect exact ownership before another preview."
