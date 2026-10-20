@@ -1042,6 +1042,10 @@ def test_v1_sql_uses_native_tables_and_narrow_executor_not_browser_dml():
         assert gate in sql, gate
     assert "GRANT EXECUTE ON FUNCTION ops.work_management_v1_actor" in sql
     assert "GRANT SELECT ON ref.person" in sql
+    assert "GRANT SELECT ON ops.work_management_activity TO work_management_app;" in sql
+    assert "GRANT INSERT ON ops.work_management_activity TO work_management_app" not in sql
+    assert "GRANT UPDATE ON ops.work_management_activity TO work_management_app" not in sql
+    assert "GRANT SELECT ON ops.work_management_outbox TO work_management_app" not in sql
     assert "TO work_management_app" in sql
     assert "GRANT INSERT ON ops.work_order TO work_management_app" not in sql
     assert "GRANT UPDATE ON ops.work_order TO work_management_app" not in sql
