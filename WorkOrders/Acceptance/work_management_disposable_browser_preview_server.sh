@@ -27,8 +27,8 @@ fi
 if [[ "$CANDIDATE_REF" != "issue-419-unified-ticket-read-model-20261018" ]]; then
   echo "HOLD: #419 source branch changed; review target ancestry first"; exit 2
 fi
-if [[ "$MODE" != "start" && "$MODE" != "resume" ]]; then
-  echo "HOLD: browser preview mode must be start or resume"; exit 2
+if [[ "$MODE" != "start" && "$MODE" != "resume" && "$MODE" != "validate_v1" ]]; then
+  echo "HOLD: approved mode must be start, resume, or validate_v1"; exit 2
 fi
 STATE_FILE="/tmp/msb-wo419-preview-state-${PREVIEW_PORT}.env"
 PRESERVE_FOR_RECONNECT=0
@@ -515,6 +515,29 @@ sudo -u fieldwiring -H env WORK_MGMT_PREVIEW_MODE=disposable \
   WORK_MGMT_VERIFIED_CANDIDATE_SHA="$VERIFIED_WORKTREE_SHA" PYTHONDONTWRITEBYTECODE=1 \
   "$PYTHON" "$WORKTREE/WorkOrders/Acceptance/validate_work_management_clone.py" \
     --candidate-sha "$CANDIDATE_SHA" --preview-email "$PREVIEW_EMAIL"
+
+if [[ "$MODE" == "validate_v1" ]]; then
+  echo "--- Work Orders V1: execute new guarded native SQL only on disposable PostgreSQL clone ---"
+  # This role is deliberately NOLOGIN inside the disposable clone; it is not
+  # created on the Production database or assigned to any live service.
+  psql_clone -c "CREATE ROLE work_management_app NOLOGIN;"
+  {
+    printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
+    cat "$WORKTREE/WorkOrders/Database/001_work_management_v1_governed_commands.sql"
+  } | psql_clone
+  echo "PASS: V1 proposed native schema/functions installed on disposable clone"
+  # The fixture tests real manager-only Create, idempotency, Crew Progress +
+  # Complete, public Intake Promote, true native actor, and held notifications.
+  # All sample data is ROLLED BACK, then the entire clone is torn down.
+  {
+    printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
+    printf '%s\n' "SET msb.wo419_v1_reviewer_email='$PREVIEW_EMAIL';"
+    cat "$WORKTREE/WorkOrders/Acceptance/wo419_v1_disposable_validation.sql"
+  } | psql_clone
+  echo "WO419 V1 DISPOSABLE SQL VALIDATION PASS"
+  echo "No browser listener started; clone-only validation transaction rolled back"
+  exit 0
+fi
 
 echo "--- Start pinned Work Management reviewer (no client-supplied identity) ---"
 LAUNCH_PID="$(
