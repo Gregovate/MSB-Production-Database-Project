@@ -431,7 +431,10 @@ def test_v1_acceptance_reuses_original_disposable_runner_and_rolls_back():
     assert shell.index('WO419 V1 DISPOSABLE SQL VALIDATION PASS') < shell.index(
         'Start pinned Work Management reviewer'
     )
-    assert "  exit 0\nfi\n\necho \"--- Start pinned Work Management reviewer" in shell
+    assert "  exit 0\nfi\n\n# The real V1 browser" in shell
+    assert shell.index("WO419 V1 DISPOSABLE SQL VALIDATION PASS") < shell.index(
+        'if [[ "$MODE" == "start_v1_manager"'
+    )
     assert '[switch]$V1Validation' in wrapper
     assert '$ValidationCommand' in wrapper
     assert 'validate_v1; ' in wrapper
