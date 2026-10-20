@@ -598,8 +598,10 @@
           (saved.linked_setup_session_task_id
             ? " · linked Setup season-only task #" + saved.linked_setup_session_task_id
             : "") +
-          (isLive() ? ". Notifications: PENDING CUTOVER; no send yet." :
-            ". Notification: NO SEND. This change disappears at cleanup.");
+          (saved.notifications === "MISSING_RECIPIENT"
+            ? ". REPORTER CONTACT MISSING — Manager follow-up required. No email sent."
+            : isLive() ? ". Notifications: PENDING CUTOVER; no send yet."
+            : ". Notification: NO SEND. This change disappears at cleanup.");
         box.dataset.valid = "true";
       }
     } catch (error) {
