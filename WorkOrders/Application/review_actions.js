@@ -343,6 +343,7 @@
     form.hidden = !kind;
     byId("review-create-fields").hidden = !["create", "promote", "edit"].includes(kind);
     byId("review-edit-reason-fields").hidden = kind !== "edit";
+    byId("review-setup-choice").hidden = !["create", "promote"].includes(kind);
     byId("review-cancel-fields").hidden = kind !== "cancel";
     byId("review-intake-comparison").hidden = !(kind === "promote" && model.ticket?.type === "INTAKE_REQUEST");
     byId("review-link-setup-fields").hidden = kind !== "link_setup";
