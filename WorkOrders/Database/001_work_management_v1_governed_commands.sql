@@ -231,8 +231,7 @@ BEGIN
     INTO v_people
     FROM jsonb_array_elements_text(coalesce(p_body->'person_ids','[]'::jsonb))
          AS item(value)
-    WHERE item.value ~ '^[1-9][0-9]{0,9}
-    IF jsonb_array_length(coalesce(p_body->'person_ids','[]'::jsonb))>50 OR
+    WHERE item.value ~ '^[1-9][0-9]{0,9}    IF jsonb_array_length(coalesce(p_body->'person_ids','[]'::jsonb))>50 OR
        cardinality(v_people)<>jsonb_array_length(
            coalesce(p_body->'person_ids','[]'::jsonb)) THEN
       RAISE EXCEPTION 'Work Orders: invalid or duplicate Person IDs'
@@ -898,6 +897,10 @@ GRANT SELECT ON ref.person,ref.stage,ref.work_area,ref.task_type,ref.container,
 TO work_management_app;
 GRANT EXECUTE ON FUNCTION ref.setup_browser_capabilities(text)
 TO work_management_app;
+-- The existing V1 unified read model consumes durable correction activity
+-- for Manager Intake counts and Task Feedback state. Only SELECT is allowed;
+-- activity/outbox mutations remain inside guarded SECURITY DEFINER commands.
+GRANT SELECT ON ops.work_management_activity TO work_management_app;
 COMMIT;
 
 -- No INSERT into ops.work_management_permission: operator explicitly approves
