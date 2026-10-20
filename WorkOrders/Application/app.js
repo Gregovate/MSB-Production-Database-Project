@@ -643,6 +643,7 @@
         $("review-workbench").querySelector(".section-header p").textContent =
           "V1 PostgreSQL commands on an isolated clone. Test edits are discarded at cleanup.";
       }
+      $("manager-email-utility").hidden = !state.actor.can_manage;
       $("home-heading").textContent = state.actor.can_manage
         ? "Work Management · Manager" : "My Work Orders";
       $("home-description").textContent = state.actor.can_manage
@@ -792,6 +793,37 @@
   $("due-filter").addEventListener("change", () => {
     writeNavigation("replace");
     loadTickets();
+  });
+  // Render sample HTML in an isolated frame: no scripts, forms, or navigation.
+  let emailPreviews = [];
+  function showEmailPreview() {
+    const message = emailPreviews.find(item => item.kind === $("email-preview-kind").value);
+    if (!message) return;
+    $("email-preview-subject").textContent = message.subject;
+    $("email-preview-text").textContent = message.text;
+    $("email-preview-body").srcdoc = '<meta http-equiv="Content-Security-Policy" ' +
+      `content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; form-action 'none'">` + message.html;
+  }
+  $("email-preview-kind").addEventListener("change", showEmailPreview);
+  $("manager-email-utility").addEventListener("toggle", async () => {
+    if (!$("manager-email-utility").open || !state.actor?.can_manage) return;
+    $("email-preview-status").textContent = "Loading previews…";
+    try {
+      const result = await getJson("/api/work-orders/email-previews");
+      emailPreviews = result.previews || [];
+      const labels = {new_request: "Work request", task_feedback: "Setup task feedback",
+        assignment: "Assignment", outcome: "Done / canceled", more_info: "More information"};
+      $("email-preview-kind").replaceChildren(...emailPreviews.map(message => {
+        const option = document.createElement("option");
+        option.value = message.kind;
+        option.textContent = labels[message.kind] || message.kind;
+        return option;
+      }));
+      showEmailPreview();
+      $("email-preview-status").textContent = "Sample data only · No emails sent";
+    } catch (exc) {
+      $("email-preview-status").textContent = exc.message;
+    }
   });
   $("ticket-sort").addEventListener("change", () => {
     writeNavigation("replace");

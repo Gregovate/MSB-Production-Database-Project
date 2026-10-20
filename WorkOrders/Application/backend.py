@@ -318,3 +318,15 @@ if __name__ == "__main__":
     )
 
 
+
+
+@app.get("/api/work-orders/email-previews")
+def email_previews() -> Response:
+    """Manager-only sample rendering; never invoke queue or delivery code."""
+    who = actor()
+    if not who.get("can_manage"):
+        raise WorkManagementError("Manager permission required.", 403)
+    from dataclasses import asdict
+    from preview_email_templates import sample_messages
+    return jsonify(previews=[dict(kind=kind, **asdict(message))
+                             for kind, message in sample_messages().items()])

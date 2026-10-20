@@ -11,7 +11,8 @@ from pathlib import Path
 from email_templates import KINDS, render_email
 
 
-def preview(output_dir: Path) -> None:
+def sample_messages() -> dict:
+    """Shared fictional examples for offline and Manager previews; no side effects."""
     values = dict(ticket='WO-123', title='Replace damaged light strand',
                   reporter='Example Reporter', assignees='Example Volunteer',
                   due_by='2026-10-25', question='Which side of the display needs repair?',
@@ -31,6 +32,11 @@ def preview(output_dir: Path) -> None:
         task_name='Example Setup task',
         title='Need a place to store the stakes for the UTV garage.',
         ticket_url='https://my.sheboyganlights.org/workorder/?ticket=INTAKE-66'))
+    return rendered
+
+
+def preview(output_dir: Path) -> None:
+    rendered = sample_messages()
     output_dir.mkdir(parents=True, exist_ok=True)
     links = []
     for kind, message in rendered.items():

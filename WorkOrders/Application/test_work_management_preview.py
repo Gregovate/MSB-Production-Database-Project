@@ -1447,3 +1447,22 @@ def test_due_filter_is_forwarded_to_authorized_ticket_query(client):
     assert response.status_code == 200
     assert any(call[0] == 'tickets' and call[1].get('due_filter') == 'overdue'
                and call[1].get('sort') == 'due_asc' for call in FakeRepo.calls)
+
+
+def test_manager_can_preview_templates_without_ticket_or_mail_actions(client):
+    FakeRepo.calls.clear()
+    response = client.get('/api/work-orders/email-previews', headers=identity())
+    assert response.status_code == 200
+    previews = response.json['previews']
+    assert {item['kind'] for item in previews} == {
+        'new_request', 'task_feedback', 'assignment', 'outcome', 'more_info'}
+    assert all(item['html'] and item['text'] and item['subject'] for item in previews)
+    assert all(call[0] == 'access' for call in FakeRepo.calls)
+    assert response.headers['Cache-Control'] == 'no-store'
+
+
+def test_crew_cannot_read_manager_email_previews(client, monkeypatch):
+    monkeypatch.setattr(FakeRepo, 'access', lambda self, email:
+                        {'can_manage': False, 'can_read': True, 'person_id': 202})
+    assert client.get('/api/work-orders/email-previews', headers=identity()).status_code == 403
+    assert client.get('/api/work-orders/email-previews').status_code == 401

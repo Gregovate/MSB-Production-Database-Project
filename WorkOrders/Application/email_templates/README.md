@@ -52,3 +52,14 @@ Production delivery remains OFF. Disposable SQL acceptance, reporter access,
 operator preview approval, governed deployment and the exact two-Flow cutover
 remain release gates. Preserve existing Setup daily report mail and non-mail
 Directus Flows throughout.
+
+## Manager utility
+
+After this candidate is deployed, Managers can expand **Email template previews**
+on the Work Orders home page. Select Work request, Setup task feedback,
+Assignment, Done / canceled, or More information. The utility shows the subject,
+formatted body and plain-text alternative using fictional examples. It shares
+the offline renderer and cannot send mail or change templates. Existing
+Directus-derived Manager authorization protects the endpoint. Preview HTML is
+sandboxed separately from the application. Source-template editing still uses
+the reviewed files described above; the utility is a viewer.

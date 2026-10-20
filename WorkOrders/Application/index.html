@@ -47,6 +47,18 @@
       </div>
     </section>
 
+    <details id="manager-email-utility" class="controls" hidden>
+      <summary>Email template previews · Manager utility</summary>
+      <p>Review the current email layouts using fictional examples. Nothing is sent.</p>
+      <p id="email-preview-status" role="status"></p>
+      <label for="email-preview-kind">Message</label>
+      <select id="email-preview-kind"></select>
+      <h3 id="email-preview-subject"></h3>
+      <iframe id="email-preview-body" title="Formatted email preview" sandbox="" referrerpolicy="no-referrer"
+              style="width:100%;height:420px;border:1px solid #ccd3da;background:white"></iframe>
+      <details><summary>Plain-text version</summary><pre id="email-preview-text" style="white-space:pre-wrap"></pre></details>
+    </details>
+
     <section class="controls" aria-label="Work Order filters">
       <div class="control-filters">
       <div class="field">
