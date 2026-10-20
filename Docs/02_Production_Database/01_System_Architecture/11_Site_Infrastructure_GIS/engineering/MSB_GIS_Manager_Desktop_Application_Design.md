@@ -247,3 +247,33 @@ Operator sequence extends bounded identification: rank similar existing master t
 The operator rejects bulk Receive from GPS as the reconciliation workflow: it can introduce uncontrolled names and duplicates. Existing #428 intake must distinguish read-only device enumeration from accepted GPX changes. Add an explicit reviewed NEW run path with operator name/type and original point range, separate from replacement of a chosen master run. Export one complete working master containing only accepted additions/replacements; clearly require opening it separately in ExpertGPS rather than merging the complete master into itself. Preserve originals, unrelated master features, existing run metadata and source receipts. Reject duplicate names/exact route replay and unknown new-run classification; proximity alone cannot prove a duplicate or cable identity.
 Use ExpertGPS Label on Map (extension label_text) for maintained waypoint/track display and matching, with GPX name fallback; preserve distinct GPS names as source provenance. The operator will add the combo outlet box at the indicated intermediate point in ExpertGPS. No guessed waypoint/circuit coordinates or topology are approved.
 The #319 current contract still documents missing recurring populated-database promotion. This desktop correction does not establish live PostgreSQL contents or update Production.
+
+
+### V0.5.7 route installation intake — October 20, 2026
+
+One reviewed Network route retains one geometry and multiple cable designations.
+The operator explicitly supplies installation year (2026 for the current new
+FE-02/LPFC-01 installation); unknown historical HV years remain unknown.
+Network, HV, Primary and geometry-only road/trail workflows remain distinct.
+HV circuit and Primary transformer/panel relationship editors remain unfinished.
+
+The existing governed network authority is ref.site_network in #319. Intake can
+read the existing site-reference snapshot format (format_version=1,
+data_mode=postgres, revision, networks with site_network_id/network_code).
+Multi-selection retains table identities plus snapshot revision/SHA. Without
+that snapshot, operator-entered labels are explicitly pending identity evidence;
+no network table or database identities are created. SPARE designations remain
+separate from network membership. No live catalog connection or Production
+reference-editor deployment has been verified in this Windows candidate.
+
+Working GPX exports include msb.gis.route-installation.v1 evidence in the review
+manifest and urn:msb:gis:route-installation:1 GPX extensions. New routes also get
+a consistent human-readable description with Year installed and Networks.
+Replacement comments, descriptions and existing extensions remain intact.
+These intake fields are staged evidence for #319, not a claim that its importer
+already promotes this new extension or converts a year into an exact date.
+ExpertGPS extension round-trip remains to be verified. FLW remains read-only.
+
+Save draft preserves installation fields and review notes without acceptance.
+The current user's eight designations are REG, E1.31, INET, AUX-E, AUX-F, AUX-G,
+AUX-H and SPARE-1. Geometry splits and new FE-02B placement remain ExpertGPS work.

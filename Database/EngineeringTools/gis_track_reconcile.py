@@ -17,6 +17,61 @@ import xml.etree.ElementTree as ET
 NS = "http://www.topografix.com/GPX/1/1"
 G = "{"+NS+"}"
 
+ROUTE_NS = "urn:msb:gis:route-installation:1"
+
+
+def read_network_catalog(path):
+    data=json.loads(Path(path).read_text(encoding="utf8"))
+    if data.get("data_mode")!="postgres" or data.get("format_version")!=1 or "revision" not in data:
+        raise ValueError("Choose a PostgreSQL site reference snapshot with its revision")
+    rows=data.get("networks")
+    if not isinstance(rows,list):raise ValueError("Network table rows are missing")
+    ids=set();codes=set()
+    for row in rows:
+        ident=row.get("site_network_id");code=row.get("network_code")
+        if type(ident)!=int or ident<=0 or not isinstance(code,str) or not code.strip():
+            raise ValueError("Invalid network table identity")
+        if ident in ids or code.casefold() in codes:raise ValueError("Duplicate network table identity")
+        ids.add(ident);codes.add(code.casefold())
+    return dict(source_table="ref.site_network",revision=data["revision"],snapshot_sha256=digest(path),networks=rows)
+
+
+def route_installation(kind, year="", designations="", catalog=None):
+    """Explicit operator evidence, not inferred cable identities or test dates."""
+    year=str(year or "").strip()
+    if year and (not re.fullmatch(r"(?:19|20)\d{2}",year)):
+        raise ValueError("Installation year must be four digits, or blank if unknown")
+    labels=[v.strip().upper() for v in re.split(r"[,;\n]",designations) if v.strip()]
+    if len(labels)!=len(set(labels)):
+        raise ValueError("Each cable designation must occur only once on this route")
+    if any(not re.fullmatch(r"[A-Z0-9][A-Z0-9_.-]*",v) for v in labels):
+        raise ValueError("Use comma-separated cable designations, for example REG, E1.31, INET")
+    if labels and kind.casefold()!="network":
+        raise ValueError("Cable designations in this workflow apply only to Network routes")
+    links=[]
+    for label in labels:
+        spare=bool(re.fullmatch(r"SPARE(?:[- ]\d+)?",label))
+        row=next((r for r in (catalog or {}).get("networks",[]) if r["network_code"].casefold()==label.casefold()),None) if not spare else None
+        links.append(dict(designation=label,site_network_id=row["site_network_id"] if row else None,
+                          network_code=row["network_code"] if row else None,spare_designation=label if spare else None))
+    return dict(schema="msb.gis.route-installation.v1",route_type=kind,
+                year_installed=int(year) if year else None,cable_designations=labels,cable_assignments=links,network_catalog=catalog,
+                evidence_source="operator",physical_cable_identity_status="pending reviewed reconciliation")
+
+
+def validate_installation(kind,data):
+    if data is None:return
+    checked=route_installation(kind,data.get("year_installed"),", ".join(data.get("cable_designations",[])),data.get("network_catalog"))
+    if checked!=data:raise ValueError("Installation metadata does not match the selected route type")
+
+
+def installation_summary(data):
+    parts=["Year installed: "+str(data.get("year_installed") or "Unknown")]
+    if data["route_type"].casefold()=="network":
+        parts.append("Networks: "+(", ".join(data["cable_designations"]) or "Unspecified"))
+    return "\n".join(parts)
+
+
 def map_label(node):
     """ExpertGPS Label on Map is the reviewed identity; GPS name is provenance."""
     extensions=node.find(G+"extensions")
@@ -130,7 +185,7 @@ def retain(path,folder):
 
 
 def accept_replacement(intake,master,master_sha,source,source_sha,raw_index,
-                       master_index,vertices,review_note,action="replace"):
+                       master_index,vertices,review_note,action="replace",installation=None):
     if action not in ("replace","keep"):raise ValueError("Unknown review action")
     validate_vertices(vertices)
     if not review_note.strip():raise ValueError("Record the reason/evidence for this replacement")
@@ -143,6 +198,7 @@ def accept_replacement(intake,master,master_sha,source,source_sha,raw_index,
             raise ValueError("Recording vertex lineage mismatch")
     chosen=next((t for t in tracks(master) if t["index"]==master_index),None)
     if chosen is None:raise ValueError("Chosen master track is unavailable")
+    validate_installation(chosen["type"],installation)
     for existing in decisions(intake,master_sha):
         if (action=="replace" and existing.get("action","replace")=="replace" and existing["master_index"]==master_index
                 and (existing["source_sha256"],existing["raw_index"])!=(source_sha,raw_index)):
@@ -158,7 +214,7 @@ def accept_replacement(intake,master,master_sha,source,source_sha,raw_index,
                   master_snapshot=str(master_copy),source_sha256=source_sha,
                   source_snapshot=str(raw_copy),source_path=str(source),raw_index=raw_index,
                   master_index=master_index,master_name=chosen["name"],vertices=vertices,
-                  action=action,
+                  action=action,installation=installation,
                   review_note=review_note.strip(),accepted_utc=datetime.now(timezone.utc).isoformat(),
                   status="Accepted for working GPX candidate; not released to PostgreSQL")
     target=folder/(datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")+"-"+uuid.uuid4().hex+".json")
@@ -178,9 +234,10 @@ def decisions(intake,master_sha):
 
 
 def accept_new_run(intake,master,master_sha,source,source_sha,raw_index,
-                   vertices,name,kind,review_note):
+                   vertices,name,kind,review_note,installation=None):
     """Accept one explicitly reviewed new run, never the entire device."""
     name=name.strip();kind=kind.strip()
+    validate_installation(kind,installation)
     if not name or not kind or kind=="Unknown":
         raise ValueError("Give this new run a name and a known type before accepting")
     if not review_note.strip():raise ValueError("Record the evidence for this new run")
@@ -215,7 +272,7 @@ def accept_new_run(intake,master,master_sha,source,source_sha,raw_index,
               master_name=name,new_type=kind,master_sha256=master_sha,
               master_snapshot=str(master_copy),source_sha256=source_sha,
               source_snapshot=str(raw_copy),source_path=str(source),raw_index=raw_index,
-              vertices=vertices,review_note=review_note.strip(),
+              vertices=vertices,installation=installation,review_note=review_note.strip(),
               accepted_utc=datetime.now(timezone.utc).isoformat(),
               status="Accepted new run for working GPX only")
     path=folder/(datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")+"-"+uuid.uuid4().hex+".json")
@@ -256,7 +313,7 @@ def export_candidate(intake,master,master_sha,output):
         if d.get("action")=="add":
             target=doc.createElementNS(NS,"trk")
             target.setAttribute("xmlns",NS)
-            for tag,value in (("name",d["master_name"]),("cmt",d["review_note"]),("type",d["new_type"])):
+            for tag,value in (("name",d["master_name"]),("cmt",d["review_note"]),("desc",installation_summary(d["installation"]) if d.get("installation") else ""),("type",d["new_type"])):
                 element=doc.createElementNS(NS,tag)
                 element.appendChild(doc.createTextNode(value));target.appendChild(element)
             root_extensions=children(doc.documentElement,"extensions")
@@ -270,6 +327,30 @@ def export_candidate(intake,master,master_sha,output):
             # Parse through the full document so inherited namespace bindings remain available.
             actual=tracks(master)[d["master_index"]-1]["name"]
             if actual!=d["master_name"]:raise ValueError("Accepted master track identity mismatch")
+        if d.get("installation"):
+            data=d["installation"]
+            expected_kind=d["new_type"] if d.get("action")=="add" else tracks(master)[d["master_index"]-1]["type"]
+            checked=route_installation(expected_kind,data.get("year_installed"),", ".join(data.get("cable_designations",[])),data.get("network_catalog"))
+            if checked!=data:raise ValueError("Installation metadata does not match the reviewed route type")
+            extensions=children(target,"extensions")
+            if extensions:extension=extensions[0]
+            else:
+                extension=doc.createElementNS(NS,(target.prefix+":" if target.prefix else "")+"extensions")
+                old_segments=children(target,"trkseg")
+                target.insertBefore(extension,old_segments[0] if old_segments else None)
+            # Append reviewed evidence; retain all historical notes and extensions.
+            evidence=doc.createElementNS(ROUTE_NS,"msbr:installation")
+            evidence.setAttribute("xmlns:msbr",ROUTE_NS)
+            evidence.setAttribute("year",str(data["year_installed"] or "unknown"))
+            evidence.setAttribute("routeType",data["route_type"])
+            evidence.setAttribute("source","operator")
+            for label in data["cable_designations"]:
+                cable=doc.createElementNS(ROUTE_NS,"msbr:designation")
+                assignment=next(a for a in data["cable_assignments"] if a["designation"]==label)
+                if assignment["site_network_id"] is not None:cable.setAttribute("siteNetworkId",str(assignment["site_network_id"]))
+                cable.setAttribute("kind","spare" if assignment["spare_designation"] else "network")
+                cable.appendChild(doc.createTextNode(label));evidence.appendChild(cable)
+            extension.appendChild(evidence)
         for old in children(target,"trkseg"):target.removeChild(old)
         segment=None;previous=None
         for v in d["vertices"]:

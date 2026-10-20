@@ -234,7 +234,18 @@ class IntakeTests(unittest.TestCase):
                 self.assertEqual(map_fetch.call_args.kwargs['zoom'],24)
                 self.assertEqual(map_fetch.call_args.kwargs['center'],prior_call.kwargs['center'])
                 self.assertEqual(entries[-1].get(),'Operator corrected name')
+                type_control=next(w for w in walk(win) if isinstance(w,ttk.Combobox))
+                type_control.set('Network')
+                recording_list=next(w for w in walk(win) if isinstance(w,tk.Listbox))
+                recording_list.event_generate('<<ListboxSelect>>');root.update()
+                self.assertEqual(type_control.get(),'Network')
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):break
                 buttons['Save identification only'].invoke();root.update()
+                self.assertTrue(recording_list.curselection())
+                self.assertEqual(type_control.get(),'Network')
                 self.assertFalse(errors)
                 receipt=next((intake/'Reviews').glob('*.json'))
                 import json
@@ -277,6 +288,34 @@ class IntakeTests(unittest.TestCase):
                 self.assertTrue(output.is_file())
                 self.assertEqual(parse(output),parse(master))
                 self.assertTrue(output.with_suffix('.gpx.review.json').is_file())
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):break
+                buttons['Review as new run'].invoke();root.update()
+                review=next(w for w in walk(win) if w.winfo_name()=="run_review")
+                install=next(w for w in walk(review) if isinstance(w,ttk.LabelFrame))
+                evidence_entries=[w for w in walk(install) if type(w) is ttk.Entry]
+                evidence_entries[0].insert(0,'2026');evidence_entries[1].insert(0,'REG, E1.31, SPARE-1')
+                next(w for w in walk(review) if isinstance(w,ttk.Button) and w.cget('text')=='Save draft (no acceptance)').invoke()
+                draft_file=next((intake/'Drafts').glob('*.json'))
+                self.assertEqual(json.loads(draft_file.read_text())['year'],'2026')
+                next(w for w in walk(review) if isinstance(w,ttk.Button) and w.cget('text')=='Close review').invoke();root.update()
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):break
+                buttons['Review as new run'].invoke();root.update()
+                review=next(w for w in walk(win) if w.winfo_name()=="run_review")
+                install=next(w for w in walk(review) if isinstance(w,ttk.LabelFrame))
+                evidence_entries=[w for w in walk(install) if type(w) is ttk.Entry]
+                self.assertEqual(evidence_entries[0].get(),'2026')
+                self.assertEqual(evidence_entries[1].get(),'REG, E1.31, SPARE-1')
+                type_control.set('High Voltage');root.update()
+                self.assertFalse(evidence_entries[1].winfo_ismapped())
+                type_control.set('Network');root.update()
+                self.assertTrue(evidence_entries[1].winfo_ismapped())
+                self.assertEqual(len(reconcile.decisions(intake,source_digest(master))),1)
                 self.assertFalse(errors)
                 self.assertEqual((source.read_bytes(),master.read_bytes()),before)
 

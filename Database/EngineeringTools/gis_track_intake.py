@@ -24,7 +24,7 @@ import gis_track_reconcile as reconcile
 
 GPX = "{http://www.topografix.com/GPX/1/1}"
 KINDS = ("Unknown", "High Voltage", "High Voltage 12-2", "High Voltage 12-3",
-         "Maybe Abandoned/Dead", "Network", "Primary")
+         "Maybe Abandoned/Dead", "Network", "Primary", "Road", "Trail")
 TYPE_NAMES = {"HV": "High Voltage", "NET": "Network", "PRI": "Primary"}
 
 
@@ -312,6 +312,11 @@ def open_intake(parent):
     state={"items":[],"waypoints":[],"aerial_ready":False,"generation":0}
     results = thread_queue.Queue()
     def select(event=None):
+        selection=queue.curselection()
+        if not selection:return
+        previous=state.get("editing_recording")
+        if previous is not None:
+            state.setdefault("draft_fields",{})[previous]=(name.get(),kind.get(),start.get(),end.get())
         if state.get("review_window") and state["review_window"].winfo_exists():
             state["review_window"].destroy()
         state.pop("matched_track",None)
@@ -342,6 +347,10 @@ def open_intake(parent):
         except (OSError, ValueError) as error:
             status.set(f"Cannot read saved review: {error}")
             return
+        draft_fields=state.get("draft_fields",{}).get(active)
+        if draft_fields is not None:
+            for variable,value in zip((name,kind,start,end),draft_fields):variable.set(value)
+        state["editing_recording"]=active
         state["points"] = points
         comparison=TrackPoints([*points.segments,*[seg for p in state["comparison_points"] for seg in p.segments]])
         state["nearby_runs"]=nearby_runs(comparison,state["master_tracks"])
@@ -530,6 +539,8 @@ def open_intake(parent):
         state["resize_job"]=win.after(250,redraw)
     drawing.bind("<Configure>",resized)
     def load():
+        state.pop("editing_recording",None)
+        state.pop("draft_fields",None)
         state["generation"] += 1
         state["aerial_ready"] = False
         state["items"] = []
@@ -590,13 +601,18 @@ def open_intake(parent):
             queue.delete(old);queue.insert(old,name.get())
             if old+1 < len(state["items"]):
                 queue.selection_clear(0,"end");queue.selection_set(old+1);queue.see(old+1);select()
-            else:status.set("Saved: "+str(path)+" — last recording reviewed.")
+            else:
+                queue.selection_set(old)
+                status.set("Saved: "+str(path)+" — last recording reviewed.")
         except (OSError, ValueError) as e:messagebox.showerror("Save stopped",str(e),parent=win)
     def suggest(*_):
         if start.get() and end.get():name.set(propose(kind.get(),start.get(),end.get()))
     def review_replacement(master_index=None,new_run=False):
         selected=queue.curselection()
-        if not selected or not state.get("aerial_ready"):return
+        if not selected:
+            status.set("Select a Garmin recording to review.");return
+        if not state.get("aerial_ready"):
+            status.set("The map is loading. Review will be available when the aerial is ready.");return
         if state.get("review_window") and state["review_window"].winfo_exists():
             if master_index is not None:state["choose_master"](master_index)
             return
@@ -614,10 +630,10 @@ def open_intake(parent):
                          points=list(raw_points)),route_ft=999,endpoint_ft=999)]
             ttk.Label(frame,text="Edit Working name and Temporary type below the map before saving. "
                       "Check nearby master tracks to avoid adding an already processed run.",wraplength=560).pack(anchor="w")
-        choices=tk.Listbox(frame,exportselection=False,height=7)
+        choices=tk.Listbox(frame,exportselection=False,height=3)
         for m in matches:choices.insert("end",m["track"]["name"])
         choices.pack(fill="x",pady=5)
-        metadata=tk.Text(frame,height=8,width=35,wrap="word");metadata.pack(fill="both",expand=True)
+        metadata=tk.Text(frame,height=4,width=35,wrap="word");metadata.pack(fill="both",expand=True)
         verts=reconcile.recording_vertices(file,raw_index)
         draft=[dict(v) for v in verts]
         state["raw_preview"]=raw_points
@@ -669,8 +685,98 @@ def open_intake(parent):
             if i is not None:
                 choices.selection_clear(0,"end");choices.selection_set(i);choices.see(i);choose()
         state["choose_master"]=choose_master
+        confirmed=tk.BooleanVar(value=False)
+        installation_box=ttk.LabelFrame(frame,text="Installation evidence — this route",padding=5)
+        installation_box.pack(fill="x",pady=5)
+        installed_year=tk.StringVar()
+        cable_labels=tk.StringVar()
+        ttk.Label(installation_box,text="Year installed (blank = unknown)").pack(anchor="w")
+        year_entry=ttk.Entry(installation_box,textvariable=installed_year);year_entry.pack(fill="x")
+        network_fields=ttk.Frame(installation_box)
+        ttk.Label(network_fields,text="Cable designations on this one route").pack(anchor="w")
+        ttk.Entry(network_fields,textvariable=cable_labels).pack(fill="x")
+        catalog_message=tk.StringVar(value="Network table not loaded; entered labels remain pending identity review.")
+        ttk.Label(network_fields,textvariable=catalog_message,wraplength=540).pack(anchor="w")
+        network_options=tk.Listbox(network_fields,height=3,selectmode="multiple",exportselection=False)
+        network_options.pack(fill="x")
+        def use_networks(event=None):
+            catalog=state.get("network_catalog",{})
+            spares=[v.strip() for v in cable_labels.get().split(",") if v.strip().upper().startswith("SPARE")]
+            cable_labels.set(", ".join([catalog["networks"][i]["network_code"] for i in network_options.curselection()]+spares))
+        network_options.bind("<<ListboxSelect>>",use_networks)
+        def show_catalog():
+            catalog=state.get("network_catalog")
+            if not catalog:return
+            network_options.delete(0,"end")
+            for item in catalog["networks"]:network_options.insert("end",item["network_code"])
+            catalog_message.set("ref.site_network — saved revision "+str(catalog["revision"])+". Select all networks carried by this route.")
+        def load_catalog():
+            path=filedialog.askopenfilename(parent=win,title="Open PostgreSQL site reference snapshot",filetypes=[("Site reference JSON","*.json")])
+            if not path:return
+            try:
+                state["network_catalog"]=reconcile.read_network_catalog(path);show_catalog()
+            except (ValueError,OSError) as error:messagebox.showerror("Network table unavailable",str(error),parent=win)
+        ttk.Button(network_fields,text="Load existing network table snapshot",command=load_catalog).pack(fill="x")
+        show_catalog()
+        ttk.Label(network_fields,text="Comma-separated reviewed evidence. Network table identity links remain pending; SPARE is separate from network membership.",wraplength=540).pack(anchor="w")
+        workflow_status=tk.StringVar()
+        ttk.Label(installation_box,textvariable=workflow_status,wraplength=540).pack(anchor="w")
+        def installation_type():
+            if new_run:return kind.get()
+            selected=choices.curselection()
+            return matches[selected[0]]["track"]["type"] if selected else "Unknown"
+        def refresh_installation(*_):
+            confirmed.set(False)
+            k=installation_type().casefold()
+            network_fields.pack_forget()
+            year_entry.configure(state="normal" if k in ("network","primary") or k.startswith("high voltage") else "disabled")
+            if k=="network":
+                network_fields.pack(fill="x")
+                workflow_status.set("One route; multiple cable designations. No duplicate geometry is created.")
+            elif k.startswith("high voltage"):
+                workflow_status.set("HV: preserve conductor/circuit notes. Structured circuit relationships are not edited here.")
+            elif k=="primary":
+                workflow_status.set("Primary: preserve transformer/panel notes. Structured equipment relationships are not edited here.")
+            else:
+                workflow_status.set("Geometry-only route; no cable structure will be added.")
+        def installation_data():
+            k=installation_type()
+            if k.casefold() not in ("network","primary") and not k.casefold().startswith("high voltage"):return None
+            if not installed_year.get().strip() and not (k.casefold()=="network" and cable_labels.get().strip()):return None
+            return reconcile.route_installation(k,installed_year.get(),cable_labels.get() if k.casefold()=="network" else "",state.get("network_catalog"))
+        # Keep unsaved installation edits when the same recording is reopened.
+        draft_key=(state["master_digest"],state["digests"][file],raw_index,new_run)
+        draft_path=Path(state["intake"])/"Drafts"/(state["master_digest"]+"_"+state["digests"][file]+"_"+str(raw_index)+("_new" if new_run else "_match")+".json")
+        prior_fields=state.setdefault("installation_drafts",{}).get(draft_key,{})
+        if not prior_fields and draft_path.exists():
+            try:prior_fields=json.loads(draft_path.read_text(encoding="utf8"))
+            except (ValueError,OSError):pass
+        installed_year.set(prior_fields.get("year",""));cable_labels.set(prior_fields.get("cables",""))
+        def remember_installation(*_):
+            state["installation_drafts"].setdefault(draft_key,{}).update(year=installed_year.get(),cables=cable_labels.get())
+            confirmed.set(False)
+        installed_year.trace_add("write",remember_installation)
+        cable_labels.trace_add("write",remember_installation)
+        kind_trace=kind.trace_add("write",refresh_installation)
+        review.bind("<Destroy>",lambda event:kind.trace_remove("write",kind_trace) if event.widget==review else None)
+        choices.bind("<<ListboxSelect>>",lambda event:(choose(event),refresh_installation()))
+        refresh_installation()
         ttk.Label(frame,text="Optional match note:").pack(anchor="w")
         note=tk.Text(frame,height=2,width=35,wrap="word");note.pack(fill="x")
+        note.insert("1.0",prior_fields.get("note",""))
+        def save_draft():
+            try:
+                data=dict(year=installed_year.get(),cables=cable_labels.get(),note=note.get("1.0","end").strip(),
+                          first=first.get(),last=last.get(),working_name=name.get(),temporary_type=kind.get(),
+                          start_waypoint=start.get(),end_waypoint=end.get())
+                draft_path.parent.mkdir(parents=True,exist_ok=True)
+                temp=draft_path.with_suffix(".tmp");temp.write_text(json.dumps(data,indent=2),encoding="utf8");temp.replace(draft_path)
+                state["installation_drafts"][draft_key]=data
+                message.set("Draft saved. This route has not been accepted or exported.")
+                return True
+            except (ValueError,OSError,tk.TclError) as error:
+                messagebox.showerror("Draft not saved",str(error),parent=win);return False
+        ttk.Button(frame,text="Save draft (no acceptance)",command=save_draft).pack(fill="x",pady=2)
         confirmed=tk.BooleanVar(value=False)
         ttk.Checkbutton(frame,text="I verified this run and point range.",variable=confirmed).pack(anchor="w")
         message=tk.StringVar(value="Select a candidate; proximity is only a suggestion.")
@@ -685,13 +791,14 @@ def open_intake(parent):
                 if new_run:
                     path=reconcile.accept_new_run(state["intake"],state["master"],state["master_digest"],file,
                           state["digests"][file],raw_index,draft,name.get(),kind.get(),
-                          note.get("1.0","end").strip() or "Operator reviewed new run for editing in ExpertGPS.")
+                          note.get("1.0","end").strip() or "Operator reviewed new run for editing in ExpertGPS.",installation=installation_data())
                     track=dict(track,name=name.get());action="add"
                 else:
                     path=reconcile.accept_replacement(state["intake"],state["master"],state["master_digest"],file,
-                          state["digests"][file],raw_index,track["index"],draft,note.get("1.0","end").strip() or "Operator matched Garmin recording to master for editing in ExpertGPS.",action=action)
+                          state["digests"][file],raw_index,track["index"],draft,note.get("1.0","end").strip() or "Operator matched Garmin recording to master for editing in ExpertGPS.",action=action,installation=installation_data())
                 old=active
                 queue.delete(old);queue.insert(old,{"replace":"✓ Replace: ","keep":"✓ Keep: ","add":"✓ New: "}[action]+track["name"])
+                queue.selection_set(old)
                 if not advance:
                     confirmed.set(False)
                     message.set("Saved: "+track["name"]+". Choose another run for this same walk.")
@@ -699,7 +806,7 @@ def open_intake(parent):
                 review.destroy()
                 if old+1<len(state["items"]):
                     queue.selection_clear(0,"end");queue.selection_set(old+1);queue.see(old+1);select()
-                status.set(("Match saved for ExpertGPS: " if action=="replace" else "Existing master route retained: ")
+                status.set(({"replace":"Match saved for ExpertGPS: ","add":"New route saved for ExpertGPS: ","keep":"Existing master route retained: "}[action])
                            +track["name"]+". Shared master and PostgreSQL unchanged.")
             except (ValueError,OSError) as error:messagebox.showerror("Replacement stopped",str(error),parent=review)
         ttk.Button(frame,text="Save run; choose another",command=lambda:accept(advance=False)).pack(fill="x",pady=2)
@@ -707,11 +814,17 @@ def open_intake(parent):
         if not new_run:
             ttk.Button(frame,text="Keep existing & Next",command=lambda:accept("keep")).pack(fill="x",pady=2)
         def cancel():
+            if not save_draft():return
             state["points"]=raw_points;state.pop("matched_track",None)
             review.destroy();request_map()
         ttk.Button(frame,text="Close review",command=cancel).pack(fill="x",pady=2)
         if matches:
             choose_master(master_index if master_index is not None else matches[0]["track"]["index"])
+            if new_run and prior_fields:
+                for variable,key in ((name,"working_name"),(kind,"temporary_type"),(start,"start_waypoint"),(end,"end_waypoint")):
+                    if key in prior_fields:variable.set(prior_fields[key])
+                first.set(prior_fields.get("first",1));last.set(prior_fields.get("last",len(verts)));preview()
+            refresh_installation()
         else:
             metadata.insert("end","No nearby master cable runs found for this recording.")
             metadata.configure(state="disabled")

@@ -85,6 +85,52 @@ class ReconcileTests(unittest.TestCase):
         self.assertEqual(len(history[1]["evidence"]),2)
         self.assertTrue(all(h["needs_review"] for h in history))
         self.assertEqual(r.annual_history_evidence(dict(description="Installation year unknown")),[])
+    def test_shared_network_route_export_and_year_without_invented_date(self):
+        labels="REG, E1.31, INET, AUX-E, AUX-F, AUX-G, AUX-H, SPARE-1"
+        data=r.route_installation("Network","2026",labels)
+        self.assertEqual(data["year_installed"],2026)
+        self.assertEqual(len(data["cable_assignments"]),8)
+        self.assertEqual(data["cable_assignments"][-1]["spare_designation"],"SPARE-1")
+        self.assertIsNone(data["cable_assignments"][-1]["site_network_id"])
+        r.accept_new_run(self.intake,self.master,r.digest(self.master),self.raw,r.digest(self.raw),1,
+                         r.recording_vertices(self.raw,1),"NET shared route","Network","Install notes retained",installation=data)
+        out=r.export_candidate(self.intake,self.master,r.digest(self.master),self.root/"shared.gpx")
+        exported=r.tracks(out)
+        self.assertEqual(len(exported),3)  # two originals, exactly one added route
+        self.assertEqual(exported[-1]["comments"],"Install notes retained")
+        self.assertEqual(exported[-1]["description"],"Year installed: 2026\nNetworks: "+labels)
+        node=ET.parse(out).getroot().findall(r.G+"trk")[-1]
+        self.assertEqual(len(node.findall(".//{"+r.ROUTE_NS+"}designation")),8)
+        manifest=json.loads(out.with_suffix(".gpx.review.json").read_text())
+        self.assertEqual(manifest["replacements"][0]["installation"],data)
+        self.assertEqual(r.tracks(self.master),exported[:2])
+
+    def test_installation_preserves_old_notes_and_extensions_on_replacement(self):
+        data=r.route_installation("High Voltage","2026")
+        r.accept_replacement(self.intake,self.master,r.digest(self.master),self.raw,r.digest(self.raw),1,1,
+                             r.recording_vertices(self.raw,1),"New evidence",installation=data)
+        out=r.export_candidate(self.intake,self.master,r.digest(self.master),self.root/"history.gpx")
+        old,new=r.tracks(self.master)[0],r.tracks(out)[0]
+        self.assertEqual(old["comments"],new["comments"])
+        self.assertEqual(old["description"],new["description"])
+        self.assertEqual(ET.parse(out).getroot().findtext(".//{urn:expert}year"),"2017")
+        self.assertIsNone(r.route_installation("High Voltage")["year_installed"])
+        with self.assertRaises(ValueError):r.route_installation("High Voltage","2026","REG")
+        with self.assertRaises(ValueError):r.route_installation("Network","26","REG")
+        with self.assertRaises(ValueError):r.route_installation("Network","2026","REG, reg")
+
+    def test_network_table_identity_and_spare_remain_distinct(self):
+        snapshot=self.root/"catalog.json"
+        snapshot.write_text(json.dumps(dict(data_mode="postgres",format_version=1,revision=7,
+            networks=[dict(site_network_id=42,network_code="REG",network_kind="LOR")])))
+        catalog=r.read_network_catalog(snapshot)
+        data=r.route_installation("Network","2026","REG, SPARE-1",catalog)
+        self.assertEqual(data["cable_assignments"][0]["site_network_id"],42)
+        self.assertIsNone(data["cable_assignments"][1]["site_network_id"])
+        self.assertEqual(data["network_catalog"]["revision"],7)
+        snapshot.write_text('{}')
+        with self.assertRaises(ValueError):r.read_network_catalog(snapshot)
+
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name)
