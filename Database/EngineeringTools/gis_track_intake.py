@@ -601,11 +601,11 @@ def open_intake(parent):
             return
         active=state.get("active_recording",selected[0])
         file,(raw_index,raw_name,raw_points)=state["items"][active]
-        review=ttk.Frame(row,name="run_review",width=410);state["review_window"]=review
-        review.pack(side="right",fill="y");review.pack_propagate(False)
+        review=ttk.Frame(row,name="run_review",width=620);state["review_window"]=review
+        review.pack(side="right",fill="y",before=panel);review.pack_propagate(False)
         frame=ttk.Frame(review,padding=10);frame.pack(fill="both",expand=True)
-        ttk.Label(frame,text="Current ExpertGPS master → reviewed replacement",font=("Segoe UI",11,"bold"),wraplength=375).pack(anchor="w")
-        ttk.Label(frame,text="Choose a cable run, review its notes, and select the part of this walk to use. Save each run separately.\nMaster: network blue / power red / primary orange. Garmin recording: yellow.",wraplength=375).pack(anchor="w")
+        ttk.Label(frame,text="Current ExpertGPS master → reviewed replacement",font=("Segoe UI",11,"bold"),wraplength=560).pack(anchor="w")
+        ttk.Label(frame,text="Choose a cable run, review its notes, and select the part of this walk to use. Save each run separately.\nMaster: network blue / power red / primary orange. Garmin recording: yellow.",wraplength=560).pack(anchor="w")
         matches=reconcile.rank_matches(raw_points,state["nearby_runs"],limit=None)
         choices=tk.Listbox(frame,exportselection=False,height=7)
         for m in matches:choices.insert("end",m["track"]["name"])
@@ -632,7 +632,7 @@ def open_intake(parent):
                     segments[-1].append((v["lat"],v["lon"]))
                 state["points"]=TrackPoints(segments);request_map()
             except (ValueError,tk.TclError) as e:message.set(str(e))
-        ttk.Button(range_row,text="Preview range",command=preview).pack(side="left")
+        ttk.Button(frame,text="Preview selected point range",command=preview).pack(fill="x")
         first.trace_add("write",lambda *_:confirmed.set(False))
         last.trace_add("write",lambda *_:confirmed.set(False))
         def choose(event=None):
@@ -663,7 +663,7 @@ def open_intake(parent):
         confirmed=tk.BooleanVar(value=False)
         ttk.Checkbutton(frame,text="I verified this run and point range.",variable=confirmed).pack(anchor="w")
         message=tk.StringVar(value="Select a candidate; proximity is only a suggestion.")
-        ttk.Label(frame,textvariable=message,wraplength=375).pack(anchor="w")
+        ttk.Label(frame,textvariable=message,wraplength=560).pack(anchor="w")
         def accept(action="replace",advance=True):
             try:
                 if (choices.curselection()[0] if choices.curselection() else -1)<0 or not confirmed.get():raise ValueError("Select and verify the matching master track")
