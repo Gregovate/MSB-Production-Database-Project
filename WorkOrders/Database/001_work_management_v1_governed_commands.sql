@@ -174,6 +174,7 @@ DECLARE
   v_note text;
   v_status text;
   v_disposition text;
+  v_delivery text := 'PENDING_CUTOVER';
   v_people integer[];
   v_person integer;
   v_event bigint;
@@ -438,8 +439,8 @@ BEGIN
         USING ERRCODE='22023';
     END IF;
     IF p_action='clarify' AND v_intake.submitter_person_id IS NULL THEN
-      RAISE EXCEPTION 'Work Orders: cannot contact unidentified reporter'
-        USING ERRCODE='23514';
+      v_details:=jsonb_build_object('communication','MISSING_RECIPIENT');
+      v_delivery:='MISSING_RECIPIENT';
     END IF;
     IF p_action='resolve' THEN
       v_disposition:=coalesce(p_body->>'disposition','');
@@ -498,10 +499,26 @@ BEGIN
                   THEN 'MISSING_RECIPIENT' ELSE 'PENDING_CUTOVER' END
       FROM ref.person p WHERE p.person_id=v_person
       ON CONFLICT(event_key) DO NOTHING;
+    ELSIF v_person IS NULL AND
+          (p_action<>'complete' OR v_wo.display_test_session_id IS NULL) THEN
+      -- Preserve visible communication exception even without a linked Person.
+      INSERT INTO ops.work_management_outbox(
+        event_key,ticket_key,activity_id,recipient_person_id,recipient_email,
+        delivery_status)
+      VALUES (v_ticket||':'||p_action||':'||v_event||':missing',
+              v_ticket,v_event,NULL,NULL,'MISSING_RECIPIENT')
+      ON CONFLICT(event_key) DO NOTHING;
+      v_delivery:='MISSING_RECIPIENT';
+    END IF;
+    IF v_person IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM ref.person p WHERE p.person_id=v_person
+        AND nullif(btrim(p.email),'') IS NOT NULL
+    ) THEN
+      v_delivery:='MISSING_RECIPIENT';
     END IF;
   END IF;
   RETURN jsonb_build_object('ticket',v_ticket,'saved',true,'repeat',false,
-                            'activity_id',v_event,'notifications','PENDING_CUTOVER');
+                            'activity_id',v_event,'notifications',v_delivery);
 END
 $cmd$;
 
