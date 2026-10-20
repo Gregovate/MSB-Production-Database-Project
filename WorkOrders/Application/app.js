@@ -708,6 +708,10 @@
     }
     await Promise.all([selectTicket(saved.ticket), loadManagerInbox()]);
   });
+  document.addEventListener("wo419:edit-mode", (event) => {
+    $("work-ticket-workspace").classList.toggle("edit-focused",
+      Boolean(event.detail?.editing));
+  });
   document.addEventListener("wo419:cancel-create", () => {
     // Cancel is local UI state only; it must never issue a Work Order command.
     resetDetail();
