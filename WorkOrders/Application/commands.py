@@ -126,11 +126,12 @@ class CloneCommands:
 
     @staticmethod
     def capture(cur: Any, activity: int, ticket: str, kind: str, recipient: int | None) -> None:
-        if recipient is None:
-            return
-        cur.execute("SELECT email FROM ref.person WHERE person_id=%s", (recipient,))
-        record = cur.fetchone()
-        email = (record["email"] if record else None) or None
+        if recipient is not None:
+            cur.execute("SELECT email FROM ref.person WHERE person_id=%s", (recipient,))
+            record = cur.fetchone()
+            email = (record["email"] if record else None) or None
+        else:
+            email = None
         cur.execute(
             "INSERT INTO wo419_preview.outbox "
             "(event_key,ticket_key,activity_id,recipient_person_id,recipient_email,delivery_status) "
@@ -548,10 +549,11 @@ class CloneCommands:
                 elif action == "clarify":
                     note = substantive(body.get("response"), "Clarification question")
                     recipient = intake["submitter_person_id"]
-                    if recipient is None:
-                        raise WorkManagementError("Reporter identity is not verified.", 409)
-                    event = self.persist_event(cur, request_key, ticket, action, actor, note)
-                    self.capture(cur, event, ticket, "clarification", int(recipient))
+                    event = self.persist_event(
+                        cur, request_key, ticket, action, actor, note,
+                        details={"communication": "MISSING_RECIPIENT"} if recipient is None else {})
+                    self.capture(cur, event, ticket, "clarification",
+                                 int(recipient) if recipient is not None else None)
                 elif action == "reply":
                     if intake["submitter_person_id"] != actor["person_id"]:
                         raise WorkManagementError("Only original reporter can reply.", 403)
