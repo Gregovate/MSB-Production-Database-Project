@@ -2,6 +2,22 @@
 
 **Status: V0.3 source-only candidate; new disposable-write validation and browser review still pending. V0.2 operator review was CHANGES REQUIRED.** Work Management is the existing MSB Database Work Orders subsystem.
 
+## October 20 — V1 native Manager/Crew browser candidate, source regression PASS; live browser pending
+
+**Why:** The operator's current-Production disposable SQL evidence for native V1 migration and Create/Assign/Progress/Complete/Intake promotion is PASS. The prior generic `start` browser still calls the old CloneCommands and cannot substitute for a native V1 UI acceptance. This change extends the **existing** #419 PowerShell wrapper/remote runner to start the same UI against native `ops.work_management_v1_command` instead.
+
+**Mode:** `-V1Browser -V1ReviewerRole Manager` or `-V1Browser -V1ReviewerRole Crew` on original `run_work_management_disposable_browser_preview.ps1`. Remote modes `start_v1_manager` or `start_v1_crew` share the same registered sequential `8898` and existing start/resume/reconnect + exact-bound-PID cleanup. The server still performs full Setup/FieldWiring/#419 regressions, Production before/after WO+Intake fingerprints, restores private PostGIS clone, validates source SHA, read projection and clone write preflight **before** V1 browser launch.
+
+**Native commands:** Inside **private clone only** the runner creates a separate `work_management_app LOGIN` with temporary private password, executes the already-validated guarded V1 migration and grants **only that role** its narrow native command EXECUTE + read-only projections. For Manager review, a single temporary `ops.work_management_permission` row is granted **in the clone** for the exact pinned reviewer email; for Crew review there is **no** Manager grant. The existing protected `preview_entry.py` replaces client identity with the pinned reviewer on every request. `WORK_MGMT_RUNTIME_MODE=v1_disposable` is a distinct runtime that verifies database name `msb_wo419_preview`, role `work_management_app`, and the exact Docker-private host IP before native commands. It requires explicit `WORK_MGMT_V1_CLONE_WRITE_GATE=approved_private_clone` and 48-character preview CSRF plus protected JSON command header. The normal `production` startup/write gate and Production DSN remain separate and cannot be enabled by this source mode.
+
+**UI:** Banner says `Work Orders V1 NATIVE · Disposable database · No emails sent`; actions save to disposable native SQL and are discarded at teardown, not Production. Existing Work Order-specific Manager vs Crew rights are reflected in native queries. One prior clone-only `Link to seasonal Setup` button is hidden in this native mode because V1 native SQL does **not** yet support the composed Setup link command; never offer a misleading 409 button. This remains a governed integration follow-up and release blocker where relevant.
+
+**Test status:** Source Work Management and Engineering Compliance CI PASS, including clone-mode role/IP negative tests and original runner/wrapper source assertions. **No real V1 browser launch or end-to-end UI save has yet passed**; these cannot be reported as accepted. First session is Manager to prove Create, actual Intake Promote/Assign, Progress, Complete, Task Feedback and queues. Second **sequential** session is Crew with a distinct approved active Person email to prove no native Create/Intake triage/Manager assignment, proper assigned-work update, and absence of unauthorized tickets. Both sessions require full server `WO419 DISPOSABLE BROWSER REVIEW: CLEAN EXIT`, workstation `WO419 V1 native browser tunnel: CLEAN EXIT`, no residual port 8898/clone/worktree/state, and unchanged Production fingerprint. Stop at first HOLD and preserve exact server report; **no manual cleanup as routine**.
+
+**Operator launch gating:** Use the latest exact PR #420 SHA and clean BLUE laptop worktree. Do not start if another Setup/#88/#171 review occupies 8898. This is a **V1 browser test only**, not permission to merge/deploy, assign Work Order Manager rights in Production, start a permanent service, or enable email/Flows.
+
+---
+
 ## October 20, 01:09 server report — V1 native PostgreSQL clone SQL PASS
 
 **Operator validated** the accepted V1 SQL migration and real native command functions on the restored **private current-Production disposable database**. Retained evidence: `/home/msbadmin/setup-acceptance-reports/WO419_Disposable_Browser_Preview_20261020T010953.txt`.
