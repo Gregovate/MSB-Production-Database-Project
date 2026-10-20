@@ -548,7 +548,7 @@ if [[ "$MODE" == "start_v1_manager" || "$MODE" == "start_v1_crew" ]]; then
   echo "--- Work Orders V1 native SQL browser acceptance: exact private clone ---"
   psql_clone -c "CREATE ROLE work_management_app LOGIN PASSWORD '$V1_APP_PASSWORD';"
   {
-    printf '%s\\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
+    printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
     cat "$WORKTREE/WorkOrders/Database/001_work_management_v1_governed_commands.sql"
   } | psql_clone
   echo "PASS: V1 native SQL installed inside private restored clone only"
