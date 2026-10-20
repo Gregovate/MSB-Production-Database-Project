@@ -142,7 +142,14 @@ def fit_zoom(track, width, height, max_zoom=20, min_zoom=14):
             return zoom
     raise ValueError("Track extends beyond the available park aerial viewport")
 
-def aerial_image(track, width, height, zoom=19, fetch=None):
+def unproject(x, y, zoom):
+    scale = 256 * 2 ** zoom
+    return math.degrees(math.atan(math.sinh(math.pi * (1-2*y/scale)))), x/scale*360-180
+
+def inches_per_pixel(lat, zoom):
+    return 40075016.68557849 * math.cos(math.radians(lat)) / (256*2**zoom) / .0254
+
+def aerial_image(track, width, height, zoom=19, fetch=None, center=None):
     """Compose the existing MSB published orthophoto tiles around a track.
     No fallback fake aerial; callers must visibly report unavailable imagery.
     """
@@ -152,8 +159,17 @@ def aerial_image(track, width, height, zoom=19, fetch=None):
                                             "Referer": "https://my.sheboyganlights.org/"})
             with urlopen(request, timeout=10) as response:
                 return response.read()
+    # Published imagery ends at z20. Higher display zoom enlarges those same
+    # pixels, preserving registration without implying additional detail.
+    if zoom > 20:
+        factor = 2 ** (zoom-20)
+        image, offset = aerial_image(track, math.ceil(width/factor), math.ceil(height/factor),
+                                     20, fetch, center)
+        return image.resize((image.width*factor,image.height*factor),
+                            Image.Resampling.NEAREST).crop((0,0,width,height)), tuple(v*factor for v in offset)
     projected = [mercator(*p, zoom) for p in track]
-    center = ((min(p[0] for p in projected)+max(p[0] for p in projected))/2,
+    center = mercator(*center, zoom) if center is not None else (
+              (min(p[0] for p in projected)+max(p[0] for p in projected))/2,
               (min(p[1] for p in projected)+max(p[1] for p in projected))/2)
     ox, oy = center[0]-width/2, center[1]-height/2
     output = Image.new("RGB", (width,height))
@@ -208,6 +224,7 @@ def open_intake(parent):
     queue = tk.Listbox(row, width=34, exportselection=False); queue.pack(side="left",fill="y")
     panel = ttk.Frame(row, padding=8); panel.pack(side="left",fill="both",expand=True)
     ttk.Label(panel, text="Selected track and waypoint suggestions").pack(anchor="w")
+    map_controls = ttk.Frame(panel); map_controls.pack(fill="x")
     editor = ttk.Frame(panel)
     editor.pack(side="bottom",fill="x")
     drawing = tk.Canvas(panel,bg="#f0f2ed",height=290); drawing.pack(fill="both",expand=True)
@@ -248,20 +265,30 @@ def open_intake(parent):
         except (OSError, ValueError) as error:
             status.set(f"Cannot read saved review: {error}")
             return
-        drawing.delete("all")
+        state["points"] = points
+        state["nearby"] = [w for w in state["waypoints"] if min(dist_ft((w[1],w[2]),p) for p in points)<250]
+        state["center"] = None
+        state["zoom"] = None
+        request_map()
+        status.set(f"{source.name} — {len(points)} vertices; start: {a[:3]}, end: {b[:3]}. Distances are suggestions only.")
+
+    def request_map():
+        if not state.get("points"): return
+        state["generation"] += 1
+        state["aerial_ready"] = False
+        points, nearby = state["points"], state["nearby"]
         width=max(drawing.winfo_width(),550); height=max(drawing.winfo_height(),290)
-        nearby=[w for w in state["waypoints"] if min(dist_ft((w[1],w[2]),p) for p in points)<250]
+        zoom, center = state.get("zoom"), state.get("center")
         aerial_status.set("Loading published 2019 aerial…")
         generation = state["generation"]
         def fetch_map():
             try:
-                zoom=fit_zoom(points,width,height)
-                tile, offset = aerial_image(points,width,height,zoom=zoom)
-                results.put((generation, (tile, offset, zoom, points, nearby), None))
+                z = zoom if zoom is not None else fit_zoom(points,width,height)
+                tile, offset = aerial_image(points,width,height,zoom=z,center=center)
+                results.put((generation, (tile, offset, z, points, nearby), None))
             except Exception as error:
                 results.put((generation, None, str(error)))
         threading.Thread(target=fetch_map, daemon=True).start()
-        status.set(f"{source.name} — {len(points)} vertices; start: {a[:3]}, end: {b[:3]}. Distances are suggestions only.")
 
     def poll_map():
         try:
@@ -306,15 +333,56 @@ def open_intake(parent):
                 drawing.create_text(x+5,y-9,text=w[0],anchor="sw",fill="#202020",
                                     font=("Segoe UI",10,"bold"))
             state["aerial_ready"]=True
-            aerial_status.set(f"2019 MSB aerial (existing published XYZ tile layer), zoom {zoom}")
+            state.update(zoom=zoom, offset=offset, center=unproject(ox+tile.width/2,oy+tile.height/2,zoom))
+            scale = inches_per_pixel(state["center"][0],zoom)
+            bar_inches = 6 if zoom >= 22 else 120
+            length = bar_inches/scale
+            drawing.create_rectangle(12,12,220,58,fill="white",outline="")
+            drawing.create_line(22,44,22+length,44,fill="black",width=3)
+            drawing.create_text(22,22,anchor="nw",text=f'{bar_inches} inches — {scale:.2f} in/pixel')
+            aerial_status.set(f"2019 MSB aerial • zoom {zoom} • {scale:.2f} inches/pixel"
+                              + (" • enlarged z20 imagery" if zoom>20 else "")
+                              + " • Display scale is not GPS accuracy.")
         except (OSError, ValueError, TimeoutError, RuntimeError, URLError, HTTPError) as error:
             drawing.create_text(20,20,anchor="nw",text="Aerial unavailable; no map review possible.",
                                 fill="#ad1e1e")
             aerial_status.set(f"AERIAL STOP — {error}. No calibrated map displayed.")
+    def change_zoom(delta=0, event=None, target=None):
+        if not state.get("aerial_ready"): return
+        old = state["zoom"]
+        new = max(14,min(24,target if target is not None else old+delta))
+        x = event.x if event is not None else drawing.winfo_width()/2
+        y = event.y if event is not None else drawing.winfo_height()/2
+        ox,oy = state["offset"]
+        factor = 2**(new-old)
+        state["center"] = unproject((ox+x)*factor-x+drawing.winfo_width()/2,
+                                   (oy+y)*factor-y+drawing.winfo_height()/2,new)
+        state["zoom"] = new
+        request_map()
+    def fit_track():
+        state["center"] = None; state["zoom"] = None
+        request_map()
+    def pan_start(event):
+        if state.get("aerial_ready"): state["drag"] = (event.x,event.y)
+    def pan_end(event):
+        anchor = state.pop("drag",None)
+        if anchor is None or not state.get("aerial_ready"): return
+        x,y=mercator(*state["center"],state["zoom"])
+        state["center"]=unproject(x-(event.x-anchor[0]),y-(event.y-anchor[1]),state["zoom"])
+        request_map()
+    ttk.Button(map_controls,text="−",command=lambda:change_zoom(-1),width=3).pack(side="left")
+    ttk.Button(map_controls,text="+",command=lambda:change_zoom(1),width=3).pack(side="left")
+    ttk.Button(map_controls,text="6-inch detail",command=lambda:change_zoom(target=24)).pack(side="left")
+    ttk.Button(map_controls,text="Fit track",command=fit_track).pack(side="left")
+    ttk.Label(map_controls,text="Wheel to zoom • Drag to pan").pack(side="left")
+    drawing.bind("<MouseWheel>",lambda e:change_zoom(1 if e.delta>0 else -1,e))
+    drawing.bind("<ButtonPress-1>",pan_start)
+    drawing.bind("<ButtonRelease-1>",pan_end)
     def load():
         state["generation"] += 1
         state["aerial_ready"] = False
         state["items"] = []
+        state.pop("points",None)
         queue.delete(0,"end")
         try:
             if not Path(master.get()).is_file() or not Path(src.get()).is_dir() or not Path(intake.get()).is_dir():

@@ -7,6 +7,26 @@ from gis_track_intake import parse, nearest, type_hint, propose, save, source_di
 GPX = '<gpx xmlns="http://www.topografix.com/GPX/1/1"><wpt lat="43.1" lon="-87.1"><name>FE-00</name></wpt><wpt lat="43.101" lon="-87.102"><name>FE-07</name></wpt><trk><name>2026-10-20 NET</name><trkseg><trkpt lat="43.1" lon="-87.1"/><trkpt lat="43.101" lon="-87.102"/></trkseg></trk></gpx>'
 
 class IntakeTests(unittest.TestCase):
+    def test_close_zoom_preserves_registration_and_published_tile_limit(self):
+        import io
+        from PIL import Image
+        from gis_track_intake import unproject, inches_per_pixel
+        point=(43.778,-87.742)
+        x,y=mercator(*point,24)
+        lat,lon=unproject(x,y,24)
+        self.assertAlmostEqual(lat,point[0])
+        self.assertAlmostEqual(lon,point[1])
+        self.assertLess(inches_per_pixel(point[0],24),.3)
+        tile=io.BytesIO();Image.new("RGB",(256,256)).save(tile,format="PNG")
+        calls=[]
+        def fetch(url):
+            calls.append(url);return tile.getvalue()
+        image,(ox,oy)=aerial_image([point],560,320,24,fetch,center=point)
+        self.assertEqual(image.size,(560,320))
+        self.assertAlmostEqual(x-ox,280)
+        self.assertAlmostEqual(y-oy,160)
+        self.assertTrue(all("/20/" in url for url in calls))
+
     def test_waypoint_suggestion_and_type(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/"raw.gpx";p.write_text(GPX)
@@ -141,6 +161,14 @@ class IntakeTests(unittest.TestCase):
                     if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):
                         break
                 entries[-1].delete(0,'end');entries[-1].insert(0,'Operator corrected name')
+                buttons['6-inch detail'].invoke()
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if any('zoom 24' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):
+                        break
+                self.assertEqual(entries[-1].get(),'Operator corrected name')
+                self.assertTrue(any('zoom 24' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)))
                 buttons['Save & Next'].invoke();root.update()
                 self.assertFalse(errors)
                 receipt=next((intake/'Reviews').glob('*.json'))
