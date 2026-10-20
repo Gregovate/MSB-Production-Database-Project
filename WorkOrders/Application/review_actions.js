@@ -341,6 +341,7 @@
     byId("review-feedback-fields").hidden = !["clarify", "resolve", "reply"].includes(kind);
     byId("review-disposition").disabled = kind !== "resolve";
     byId("review-result").textContent = "";
+    byId("review-cancel-create").hidden = kind !== "create";
     const submit = byId("review-submit");
     const submitNames = {
       create: "Create Work Order",
@@ -577,6 +578,15 @@
   byId("review-action").addEventListener("change", actionChanged);
   byId("create-work-order").addEventListener("click", openCreate);
   byId("manager-assign-button").addEventListener("click", openManagerAssignment);
+  byId("review-cancel-create").addEventListener("click", () => {
+    if (!byId("detail-content").classList.contains("create-mode")) return;
+    const entered = byId("review-problem").value.trim();
+    if (entered && !window.confirm("Discard this unsaved Work Order? No record will be created.")) return;
+    model.pendingSignature = null;
+    model.pendingKey = null;
+    model.selected.clear();
+    document.dispatchEvent(new CustomEvent("wo419:cancel-create"));
+  });
   document.addEventListener("wo419:history-create", openCreate);
   byId("review-location-type").addEventListener("change", locationChanged);
   byId("review-task-type").addEventListener("change", updateIntakeComparison);
