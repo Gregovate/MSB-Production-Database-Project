@@ -14,6 +14,7 @@ import xml.etree.ElementTree as ET
 import tkinter as tk
 from io import BytesIO
 from urllib.request import urlopen
+from urllib.error import URLError, HTTPError
 from PIL import Image, ImageTk
 from tkinter import ttk, filedialog, messagebox
 
@@ -97,6 +98,16 @@ def mercator(lat, lon, zoom):
     y = (0.5 - math.log((1 + sine) / (1 - sine)) / (4 * math.pi)) * scale
     return x, y
 
+def fit_zoom(track, width, height, max_zoom=20, min_zoom=14):
+    """Highest XYZ zoom fitting all raw vertices with a visible margin."""
+    for zoom in range(max_zoom, min_zoom - 1, -1):
+        xy = [mercator(lat, lon, zoom) for lat, lon in track]
+        span_x = max(p[0] for p in xy) - min(p[0] for p in xy)
+        span_y = max(p[1] for p in xy) - min(p[1] for p in xy)
+        if span_x <= width * 0.82 and span_y <= height * 0.82:
+            return zoom
+    return min_zoom
+
 def aerial_image(track, width, height, zoom=19, fetch=None):
     """Compose the existing MSB published orthophoto tiles around a track.
     No fallback fake aerial; callers must visibly report unavailable imagery.
@@ -178,7 +189,7 @@ def open_intake(parent):
         width=max(drawing.winfo_width(),550); height=max(drawing.winfo_height(),290)
         nearby=[w for w in state["waypoints"] if min(dist_ft((w[1],w[2]),p) for p in points)<250]
         try:
-            zoom=19
+            zoom=fit_zoom(points,width,height)
             tile, (ox,oy) = aerial_image(points,width,height,zoom=zoom)
             photo=ImageTk.PhotoImage(tile, master=win)
             drawing.image_ref=photo
@@ -196,8 +207,8 @@ def open_intake(parent):
                 drawing.create_text(x+5,y-9,text=w[0],anchor="sw",fill="#202020",
                                     font=("Segoe UI",10,"bold"))
             state["aerial_ready"]=True
-            aerial_status.set("2019 MSB aerial (existing published XYZ tile layer), zoom 19")
-        except (OSError, ValueError, TimeoutError) as error:
+            aerial_status.set(f"2019 MSB aerial (existing published XYZ tile layer), zoom {zoom}")
+        except (OSError, ValueError, TimeoutError, RuntimeError, URLError, HTTPError) as error:
             drawing.create_text(20,20,anchor="nw",text="Aerial unavailable; no map review possible.",
                                 fill="#ad1e1e")
             aerial_status.set(f"AERIAL STOP — {error}. No calibrated map displayed.")
