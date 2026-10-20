@@ -17,6 +17,15 @@ import xml.etree.ElementTree as ET
 NS = "http://www.topografix.com/GPX/1/1"
 G = "{"+NS+"}"
 
+def map_label(node):
+    """ExpertGPS Label on Map is the reviewed identity; GPS name is provenance."""
+    extensions=node.find(G+"extensions")
+    if extensions is not None:
+        for child in extensions.iter():
+            if child.tag.rsplit("}",1)[-1]=="label_text" and (child.text or "").strip():
+                return child.text.strip()
+    return node.findtext(G+"name") or "(unnamed)"
+
 def annual_history_evidence(track):
     """Group note-year references without inventing dated geometry.
 
@@ -47,7 +56,7 @@ def tracks(path):
     for ordinal,node in enumerate(root.findall(G+"trk"),1):
         segments = [[(float(p.get("lat")),float(p.get("lon")))
                      for p in s.findall(G+"trkpt")] for s in node.findall(G+"trkseg")]
-        result.append(dict(index=ordinal,name=node.findtext(G+"name") or "(unnamed)",
+        result.append(dict(index=ordinal,name=map_label(node),gps_name=node.findtext(G+"name") or "",
                            type=node.findtext(G+"type") or "",
                            comments=node.findtext(G+"cmt") or "",
                            description=node.findtext(G+"desc") or "",
@@ -163,8 +172,55 @@ def decisions(intake,master_sha):
     for path in sorted(folder.glob("*.json")):
         d=json.loads(path.read_text(encoding="utf8"))
         if d.get("schema")!="msb.gis.track-replacement.v1":continue
-        latest[(d["source_sha256"],d["raw_index"],d["master_index"])]=d
+        latest[(d["source_sha256"],d["raw_index"],d["master_index"],
+                tuple(v["source_index"] for v in d["vertices"]) if d.get("action")=="add" else ())]=d
     return list(latest.values())
+
+
+def accept_new_run(intake,master,master_sha,source,source_sha,raw_index,
+                   vertices,name,kind,review_note):
+    """Accept one explicitly reviewed new run, never the entire device."""
+    name=name.strip();kind=kind.strip()
+    if not name or not kind or kind=="Unknown":
+        raise ValueError("Give this new run a name and a known type before accepting")
+    if not review_note.strip():raise ValueError("Record the evidence for this new run")
+    validate_vertices(vertices)
+    if digest(master)!=master_sha or digest(source)!=source_sha:
+        raise ValueError("Source or master changed; reload before accepting")
+    original=recording_vertices(source,raw_index)
+    for v in vertices:
+        i=v["source_index"]
+        if not 0<=i<len(original) or v!=original[i]:
+            raise ValueError("New-run points must come from the selected recording")
+    points=[(v["lat"],v["lon"]) for v in vertices]
+    prior=decisions(intake,master_sha)
+    same=lambda d: (d["source_sha256"]==source_sha and d["raw_index"]==raw_index
+                    and [v["source_index"] for v in d["vertices"]]==[v["source_index"] for v in vertices])
+    for track in tracks(master):
+        if name.casefold() in (track["name"].strip().casefold(),track["gps_name"].strip().casefold()):
+            raise ValueError("That name already exists in the master. Review it as a replacement.")
+        if track["points"]==points or track["points"]==points[::-1]:
+            raise ValueError("This geometry already exists in the master. Review it before adding.")
+    for d in prior:
+        if d.get("action")=="add" and same(d):continue  # revise this same proposed segment
+        if d.get("action")=="add" and d["master_name"].casefold()==name.casefold():
+            raise ValueError("Another accepted new run already uses that name")
+        if same(d) and d.get("action")=="replace":
+            raise ValueError("This range already replaces a master run. Review that decision first.")
+    folder=Path(intake)/"Reconciliation"/master_sha
+    master_copy=retain(master,folder/"Sources");raw_copy=retain(source,folder/"Sources")
+    if digest(master_copy)!=master_sha or digest(raw_copy)!=source_sha:
+        raise ValueError("Source changed during acceptance")
+    data=dict(schema="msb.gis.track-replacement.v1",action="add",master_index=0,
+              master_name=name,new_type=kind,master_sha256=master_sha,
+              master_snapshot=str(master_copy),source_sha256=source_sha,
+              source_snapshot=str(raw_copy),source_path=str(source),raw_index=raw_index,
+              vertices=vertices,review_note=review_note.strip(),
+              accepted_utc=datetime.now(timezone.utc).isoformat(),
+              status="Accepted new run for working GPX only")
+    path=folder/(datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")+"-"+uuid.uuid4().hex+".json")
+    with path.open("x",encoding="utf8") as stream:json.dump(data,stream,indent=2)
+    return path
 
 
 def children(node,name):
@@ -176,9 +232,9 @@ def export_candidate(intake,master,master_sha,output):
     """Replace only trkseg nodes in a new GPX; all master metadata is retained."""
     if digest(master)!=master_sha:raise ValueError("Current master changed; reload and reconcile")
     reviewed=decisions(intake,master_sha)
-    accepted=[d for d in reviewed if d.get("action","replace")=="replace"]
-    if not accepted:raise ValueError("No accepted replacements for this master revision")
-    targets=[d["master_index"] for d in accepted]
+    accepted=[d for d in reviewed if d.get("action","replace") in ("replace","add")]
+    if not accepted:raise ValueError("No accepted runs for this master revision")
+    targets=[d["master_index"] for d in accepted if d.get("action")!="add"]
     if len(set(targets))!=len(targets):
         raise ValueError("Two recordings target the same master track; resolve the match before export")
     output=Path(output)
@@ -197,10 +253,23 @@ def export_candidate(intake,master,master_sha,output):
         rawdoc=minidom.parse(d["source_snapshot"])
         raw=children(rawdoc.documentElement,"trk")[d["raw_index"]-1]
         rawpoints=[p for s in children(raw,"trkseg") for p in children(s,"trkpt")]
-        target=master_nodes[d["master_index"]-1]
+        if d.get("action")=="add":
+            target=doc.createElementNS(NS,"trk")
+            target.setAttribute("xmlns",NS)
+            for tag,value in (("name",d["master_name"]),("cmt",d["review_note"]),("type",d["new_type"])):
+                element=doc.createElementNS(NS,tag)
+                element.appendChild(doc.createTextNode(value));target.appendChild(element)
+            root_extensions=children(doc.documentElement,"extensions")
+            doc.documentElement.insertBefore(target,root_extensions[0] if root_extensions else None)
+        else:
+            target=master_nodes[d["master_index"]-1]
         names=children(target,"name")
         original_name="".join(c.data for c in names[0].childNodes if c.nodeType==c.TEXT_NODE) if names else "(unnamed)"
-        if original_name!=d["master_name"]:raise ValueError("Accepted master track identity mismatch")
+        if d.get("action")!="add" and d["master_name"] not in (
+                original_name,tracks(master)[d["master_index"]-1]["name"]):
+            # Parse through the full document so inherited namespace bindings remain available.
+            actual=tracks(master)[d["master_index"]-1]["name"]
+            if actual!=d["master_name"]:raise ValueError("Accepted master track identity mismatch")
         for old in children(target,"trkseg"):target.removeChild(old)
         segment=None;previous=None
         for v in d["vertices"]:

@@ -102,7 +102,7 @@ def parse(path, exclude_stages=False, infrastructure_only=False):
                            for seg in node.findall(GPX + "trkseg")])
         if len(pts) > 1:
             tracks.append((i, node.findtext(GPX + "name") or "", pts))
-    points = [(w.findtext(GPX + "name") or "(unnamed)", *coordinate(w))
+    points = [(reconcile.map_label(w), *coordinate(w))
               for w in root.findall(GPX + "wpt")
               if not infrastructure_only or infrastructure_waypoint(w)
               if not exclude_stages or (w.findtext(GPX+"type") or "").strip().casefold() not in ("stage","stages")]
@@ -565,7 +565,7 @@ def open_intake(parent):
                       for d in reconcile.decisions(state["intake"],state["master_digest"])}
             for file,(idx,title,pts) in state["items"]:
                 decision=reviewed.get((state["digests"][file],idx))
-                queue.insert("end",(("✓ Keep: " if decision.get("action")=="keep" else "✓ Replace: ")+decision["master_name"])
+                queue.insert("end",({"keep":"✓ Keep: ","add":"✓ New: ","replace":"✓ Replace: "}.get(decision.get("action"),"✓ Replace: ")+decision["master_name"])
                              if decision else title or file.name)
             status.set(f"{len(state['items'])} tracks; {len(state['waypoints'])} master waypoints.")
             if state["items"]: queue.selection_set(0); select()
@@ -593,7 +593,7 @@ def open_intake(parent):
         except (OSError, ValueError) as e:messagebox.showerror("Save stopped",str(e),parent=win)
     def suggest(*_):
         if start.get() and end.get():name.set(propose(kind.get(),start.get(),end.get()))
-    def review_replacement(master_index=None):
+    def review_replacement(master_index=None,new_run=False):
         selected=queue.curselection()
         if not selected or not state.get("aerial_ready"):return
         if state.get("review_window") and state["review_window"].winfo_exists():
@@ -604,9 +604,15 @@ def open_intake(parent):
         review=ttk.Frame(row,name="run_review",width=620);state["review_window"]=review
         review.pack(side="right",fill="y",before=panel);review.pack_propagate(False)
         frame=ttk.Frame(review,padding=10);frame.pack(fill="both",expand=True)
-        ttk.Label(frame,text="Current ExpertGPS master → reviewed replacement",font=("Segoe UI",11,"bold"),wraplength=560).pack(anchor="w")
+        ttk.Label(frame,text="Review a new run" if new_run else "Current ExpertGPS master → reviewed replacement",font=("Segoe UI",11,"bold"),wraplength=560).pack(anchor="w")
         ttk.Label(frame,text="Choose a cable run, review its notes, and select the part of this walk to use. Save each run separately.\nMaster: network blue / power red / primary orange. Garmin recording: yellow.",wraplength=560).pack(anchor="w")
         matches=reconcile.rank_matches(raw_points,state["nearby_runs"],limit=None)
+        if new_run:
+            matches=[dict(track=dict(index=0,name=name.get(),type=kind.get(),comments="",
+                         description="New run: no existing master track will be replaced.",
+                         points=list(raw_points)),route_ft=999,endpoint_ft=999)]
+            ttk.Label(frame,text="Edit Working name and Temporary type below the map before saving. "
+                      "Check nearby master tracks to avoid adding an already processed run.",wraplength=560).pack(anchor="w")
         choices=tk.Listbox(frame,exportselection=False,height=7)
         for m in matches:choices.insert("end",m["track"]["name"])
         choices.pack(fill="x",pady=5)
@@ -639,15 +645,19 @@ def open_intake(parent):
             i=(choices.curselection()[0] if choices.curselection() else -1)
             if i<0:return
             track=matches[i]["track"]
-            state["matched_track"]=track
-            show_all_runs.set(False)
+            if new_run:
+                state.pop("matched_track",None);show_all_runs.set(True)
+            else:
+                state["matched_track"]=track
+                show_all_runs.set(False)
             metadata.configure(state="normal");metadata.delete("1.0","end")
             metadata.insert("end",f'Master track #{track["index"]}: {track["name"]}\nType: {track["type"]}\n'
                             f'Years mentioned in notes: {", ".join(str(y["year"]) for y in reconcile.annual_history_evidence(track)) or "Not specified"}\n'
                             f'Comments:\n{track["comments"] or "(none)"}\nInstallation/description:\n{track["description"] or "(none)"}'
                             "\n\nAll master extensions and original metadata are retained in the exported GPX.")
             metadata.configure(state="disabled")
-            a,b=suggested_range(raw_points,track);first.set(a);last.set(b);preview()
+            a,b=(1,len(verts)) if new_run else suggested_range(raw_points,track)
+            first.set(a);last.set(b);preview()
             near=matches[i]
             message.set("Very close to existing master geometry — this may already be processed. Compare the notes before replacing."
                         if near["route_ft"]<3 and near["endpoint_ft"]<3 else
@@ -671,10 +681,16 @@ def open_intake(parent):
                 a,b=first.get(),last.get()
                 if [v["source_index"] for v in draft]!=list(range(a-1,b)):raise ValueError("Preview the selected range before saving")
                 track=matches[(choices.curselection()[0] if choices.curselection() else -1)]["track"]
-                path=reconcile.accept_replacement(state["intake"],state["master"],state["master_digest"],file,
-                      state["digests"][file],raw_index,track["index"],draft,note.get("1.0","end").strip() or "Operator matched Garmin recording to master for editing in ExpertGPS.",action=action)
+                if new_run:
+                    path=reconcile.accept_new_run(state["intake"],state["master"],state["master_digest"],file,
+                          state["digests"][file],raw_index,draft,name.get(),kind.get(),
+                          note.get("1.0","end").strip() or "Operator reviewed new run for editing in ExpertGPS.")
+                    track=dict(track,name=name.get());action="add"
+                else:
+                    path=reconcile.accept_replacement(state["intake"],state["master"],state["master_digest"],file,
+                          state["digests"][file],raw_index,track["index"],draft,note.get("1.0","end").strip() or "Operator matched Garmin recording to master for editing in ExpertGPS.",action=action)
                 old=active
-                queue.delete(old);queue.insert(old,("✓ Replace: " if action=="replace" else "✓ Keep: ")+track["name"])
+                queue.delete(old);queue.insert(old,{"replace":"✓ Replace: ","keep":"✓ Keep: ","add":"✓ New: "}[action]+track["name"])
                 if not advance:
                     confirmed.set(False)
                     message.set("Saved: "+track["name"]+". Choose another run for this same walk.")
@@ -687,7 +703,8 @@ def open_intake(parent):
             except (ValueError,OSError) as error:messagebox.showerror("Replacement stopped",str(error),parent=review)
         ttk.Button(frame,text="Save run; choose another",command=lambda:accept(advance=False)).pack(fill="x",pady=2)
         ttk.Button(frame,text="Save match & Next",command=accept).pack(fill="x",pady=2)
-        ttk.Button(frame,text="Keep existing & Next",command=lambda:accept("keep")).pack(fill="x",pady=2)
+        if not new_run:
+            ttk.Button(frame,text="Keep existing & Next",command=lambda:accept("keep")).pack(fill="x",pady=2)
         def cancel():
             state["points"]=raw_points;state.pop("matched_track",None)
             review.destroy();request_map()
@@ -699,6 +716,18 @@ def open_intake(parent):
             metadata.configure(state="disabled")
     def export_reviewed():
         if not state.get("master"):return
+        approved=[d for d in reconcile.decisions(state["intake"],state["master_digest"])
+                  if d.get("action") in ("replace","add")]
+        if not approved:
+            messagebox.showerror("Nothing approved","Review a replacement or a new run first. Naming receipts alone are not exported.",parent=win)
+            return
+        summary="\n".join(("NEW: " if d["action"]=="add" else "REPLACE: ")+d["master_name"]+
+                          f' (points {d["vertices"][0]["source_index"]+1}–{d["vertices"][-1]["source_index"]+1})'
+                          for d in approved)
+        if not messagebox.askyesno("Review GPX export",
+            summary+"\n\nThe output is a complete working master with ONLY these approved changes. "
+            "Open it as a separate file in ExpertGPS; importing it into the existing master can duplicate records. "
+            "Unapproved Garmin recordings are excluded. Continue?",parent=win):return
         output=filedialog.asksaveasfilename(parent=win,title="Export working GPX for ExpertGPS",
                   initialdir=state["intake"],initialfile="MSB-Park-Infrastructure-reviewed-"+datetime.now().strftime("%Y%m%d-%H%M%S")+".gpx",
                   defaultextension=".gpx",filetypes=[("GPX","*.gpx")])
@@ -709,6 +738,7 @@ def open_intake(parent):
         except (ValueError,OSError,ET.ParseError) as error:messagebox.showerror("Export stopped",str(error),parent=win)
     review_controls=ttk.Frame(editor);review_controls.pack(fill="x",pady=4)
     ttk.Button(review_controls,text="Match and name from master",command=review_replacement).pack(side="left")
+    ttk.Button(review_controls,text="Review as new run",command=lambda:review_replacement(new_run=True)).pack(side="left",padx=6)
     ttk.Button(review_controls,text="Export GPX for ExpertGPS",command=export_reviewed).pack(side="right")
     ttk.Button(base,text="Read Garmin tracks (read only)",command=load).pack(anchor="w",pady=4,before=row)
     queue.bind("<<ListboxSelect>>",select)

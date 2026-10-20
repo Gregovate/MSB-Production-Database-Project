@@ -21,6 +21,38 @@ RAW='''<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:g="urn:garmin" versi
 
 
 class ReconcileTests(unittest.TestCase):
+    def test_map_label_wins_without_rewriting_gps_name(self):
+        self.master.write_text(MASTER.replace('<name>FE-10</name>', '<name>OLD-GPS</name><extensions><x:label_text>FE-10</x:label_text></extensions>').replace('<x:label>Historical label</x:label>', '<x:label_text>Reviewed HV label</x:label_text>'))
+        self.assertEqual(parse(self.master)[1][1][0], 'FE-10')
+        self.assertEqual(r.tracks(self.master)[0]['name'], 'Reviewed HV label')
+        self.accept()
+        out=r.export_candidate(self.intake,self.master,r.digest(self.master),self.root/'labels.gpx')
+        self.assertEqual(r.tracks(out)[0]['gps_name'], 'HV FE-10 to FE-02')
+        self.assertEqual(r.tracks(out)[0]['name'], 'Reviewed HV label')
+
+    def test_new_run_is_named_selected_idempotent_and_preserves_master(self):
+        original=self.master.read_bytes()
+        vertices=r.recording_vertices(self.raw,1)[:3]
+        def accept(name='NET new segment'):
+            return r.accept_new_run(self.intake,self.master,r.digest(self.master),self.raw,r.digest(self.raw),
+                                    1,vertices,name,'Network','Reviewed new physical run')
+        accept();accept('NET corrected segment')
+        self.assertEqual(len(r.decisions(self.intake,r.digest(self.master))),1)
+        out=r.export_candidate(self.intake,self.master,r.digest(self.master),self.root/'new.gpx')
+        old=r.tracks(self.master);new=r.tracks(out)
+        self.assertEqual(new[:2],old)
+        self.assertEqual(len(new),3)
+        self.assertEqual(new[-1]['name'],'NET corrected segment')
+        self.assertEqual(new[-1]['type'],'Network')
+        self.assertEqual(len(new[-1]['points']),3)
+        self.assertEqual(parse(out)[1],parse(self.master)[1])
+        self.assertEqual(self.master.read_bytes(),original)
+        with self.assertRaisesRegex(ValueError,'already exists'):
+            accept('HV FE-10 to FE-02')
+        with self.assertRaisesRegex(ValueError,'known type'):
+            r.accept_new_run(self.intake,self.master,r.digest(self.master),self.raw,r.digest(self.raw),
+                            1,vertices,'Unnamed type','Unknown','reviewed')
+
     def test_one_walk_updates_two_runs_with_separate_ranges_and_history(self):
         vertices=r.recording_vertices(self.raw,1)
         self.accept(vertices[:3])

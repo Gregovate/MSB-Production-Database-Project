@@ -272,7 +272,7 @@ class IntakeTests(unittest.TestCase):
                 import gis_track_reconcile as reconcile
                 self.assertEqual(len(reconcile.decisions(intake,source_digest(master))),1)
                 output=rootdir/'ExpertGPS-working.gpx'
-                with patch('gis_track_intake.filedialog.asksaveasfilename',return_value=str(output)):
+                with patch('gis_track_intake.filedialog.asksaveasfilename',return_value=str(output)), patch('gis_track_intake.messagebox.askyesno',return_value=True):
                     buttons['Export GPX for ExpertGPS'].invoke();root.update()
                 self.assertTrue(output.is_file())
                 self.assertEqual(parse(output),parse(master))

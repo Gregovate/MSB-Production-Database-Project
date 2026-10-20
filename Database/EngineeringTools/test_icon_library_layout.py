@@ -78,7 +78,7 @@ class SmallScreenLayoutTests(unittest.TestCase):
             manager = Manager(root)
             root.update_idletasks()
             title = root.title()
-            self.assertIn("V0.5.5-map-and-naming", title)
+            self.assertIn("V0.5.6-reviewed-new-runs", title)
             self.assertIn(manager.build_identity, title)
             labels = [
                 str(w.cget("text")) for w in walk(root)
