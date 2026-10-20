@@ -149,7 +149,7 @@ def validate(preview_email: str) -> None:
                 "problem": "WO419 disposable preflight only; deliberately rolled back",
                 "task_type_id": catalogs["task_types"][0]["id"],
                 "urgency": 3,
-                "target_year": 2026,
+                "target_year": None,  # Priority 3: Tom-approved Planning-only year
                 "stage_id": catalogs["stages"][0]["id"],
                 "work_area_id": None,
             })
@@ -230,32 +230,30 @@ def validate(preview_email: str) -> None:
         except WorkManagementError as denied:
             if denied.status != 403:
                 raise RuntimeError("Unexpected aging-report rejection.")
-        phase("crew_direct_create_rollback")
+        phase("crew_direct_create_denied")
+        # Tom's October 19 decision supersedes Crew native Create.
+        # Everyone outside Work Order Manager submits the EXISTING public
+        # Park/Workshop Intake request for investigation and promotion.
+        if access.get("can_manage") or access.get("can_create"):
+            raise RuntimeError("Crew reviewer incorrectly has native Create capability.")
         writer = CloneCommands()
-        # Crew Create is an unassigned native WO, never a false My Work assignment.
-        with writer.transaction(access) as cur:
-            cur.execute("SAVEPOINT wo419_crew_preflight")
-            wo = writer.new_work_order(cur, access, {
-                "problem": "WO419 Crew direct-create preflight, disposable and rolled back",
-                "task_type_id": catalogs["task_types"][0]["id"],
-                "urgency": 3, "target_year": 2026,
-                "stage_id": catalogs["stages"][0]["id"],
-                "work_area_id": None,
-            })
-            cur.execute(
-                "SELECT submitted_by_person_id FROM ops.work_order WHERE work_order_id=%s",
-                (wo,))
-            row = cur.fetchone()
-            if not row or row["submitted_by_person_id"] != access["person_id"]:
-                raise RuntimeError("Crew Create did not attribute original reporter.")
-            cur.execute(
-                "SELECT count(*) AS count FROM ops.work_order_assignment "
-                "WHERE work_order_id=%s AND active_flag", (wo,))
-            if cur.fetchone()["count"] != 0:
-                raise RuntimeError("Crew direct Create unexpectedly assigned volunteers.")
-            cur.execute("ROLLBACK TO SAVEPOINT wo419_crew_preflight")
-        print("CHECK: Crew native Create, attribution and unassigned rollback PASS;"
-              " Manager Intake fixture not applicable.")
+        from uuid import uuid4
+        for assignment in ([], [int(access["person_id"])]):
+            try:
+                writer.perform(access, "create", None, {
+                    "request_key": str(uuid4()),
+                    "person_ids": assignment,
+                    "problem": "Crew may not bypass Work Order Intake",
+                    "urgency": 3,
+                    "target_year": None,
+                })
+            except WorkManagementError as denied:
+                if denied.status != 403:
+                    raise RuntimeError("Crew native Create denial status differs.")
+            else:
+                raise RuntimeError("Crew illegally created a native Work Order.")
+        print("CHECK: Crew direct native Create denied before write PASS; "
+              "Crew uses existing public Work Order Request/Intake.")
 
     print("WORK MANAGEMENT #419 DISPOSABLE READ ACCEPTANCE PASS"
           " (not browser or P0 acceptance)")
