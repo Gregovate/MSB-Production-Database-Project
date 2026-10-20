@@ -161,6 +161,21 @@ class IntakeTests(unittest.TestCase):
                     if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):
                         break
                 entries[-1].delete(0,'end');entries[-1].insert(0,'Operator corrected name')
+                canvas=next(w for w in walk(win) if isinstance(w,tk.Canvas))
+                plates=canvas.find_withtag('label-background')
+                self.assertTrue(plates)
+                self.assertEqual(canvas.itemcget(plates[0],'fill'),'#ffffff')
+                image_item=canvas.find_withtag('map-content')[0]
+                position=canvas.coords(image_item)
+                canvas.event_generate('<ButtonPress-1>',x=150,y=150)
+                canvas.event_generate('<B1-Motion>',x=200,y=175)
+                self.assertEqual(canvas.coords(image_item),[position[0]+50,position[1]+25])
+                canvas.event_generate('<ButtonRelease-1>',x=200,y=175)
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):
+                        break
                 buttons['6-inch detail'].invoke()
                 deadline=time.monotonic()+3
                 while time.monotonic()<deadline:

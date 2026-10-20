@@ -316,6 +316,15 @@ def open_intake(parent):
             def xy(p):
                 x,y=mercator(p[0],p[1],zoom)
                 return x-ox,y-oy
+            def map_label(x,y,text):
+                label = drawing.create_text(x,y,text=text,anchor="sw",fill="#111111",
+                                            font=("Segoe UI",11,"bold"),tags=("map-label",))
+                bounds = drawing.bbox(label)
+                if bounds:
+                    a,b,c,d=bounds
+                    plate=drawing.create_rectangle(a-4,b-2,c+4,d+2,fill="#ffffff",
+                                                   outline="#111111",tags=("label-background",))
+                    drawing.tag_lower(plate,label)
             for segment in getattr(points, "segments", [points]):
                 if len(segment) > 1:
                     drawing.create_line(*[c for p in segment for c in xy(p)],fill="#176bb5",width=4)
@@ -324,14 +333,12 @@ def open_intake(parent):
                     drawing.create_oval(x-3,y-3,x+3,y+3,fill="#176bb5")
             for label,p in [("START",points[0]),("END",points[-1])]:
                 x,y=xy(p)
-                drawing.create_text(x,y+12,text=label,fill="#000000",font=("Segoe UI",10,"bold"))
+                map_label(x,y+24,label)
             for w in nearby:
                 x,y=xy((w[1],w[2]))
-                drawing.create_oval(x-4,y-4,x+4,y+4,fill="#b53d22",outline="white")
-                drawing.create_text(x+6,y-8,text=w[0],anchor="sw",fill="#ffffff",
-                                    font=("Segoe UI",10,"bold"))
-                drawing.create_text(x+5,y-9,text=w[0],anchor="sw",fill="#202020",
-                                    font=("Segoe UI",10,"bold"))
+                drawing.create_oval(x-5,y-5,x+5,y+5,fill="#ffdf00",outline="#111111",width=2)
+                map_label(x+9,y-9,w[0])
+            drawing.addtag_all("map-content")
             state["aerial_ready"]=True
             state.update(zoom=zoom, offset=offset, center=unproject(ox+tile.width/2,oy+tile.height/2,zoom))
             scale = inches_per_pixel(state["center"][0],zoom)
@@ -363,9 +370,19 @@ def open_intake(parent):
         state["center"] = None; state["zoom"] = None
         request_map()
     def pan_start(event):
-        if state.get("aerial_ready"): state["drag"] = (event.x,event.y)
+        if state.get("aerial_ready"):
+            state["drag"] = (event.x,event.y)
+            state["drag_last"] = (event.x,event.y)
+            drawing.configure(cursor="fleur")
+    def pan_move(event):
+        previous=state.get("drag_last")
+        if previous is None:return
+        drawing.move("map-content",event.x-previous[0],event.y-previous[1])
+        state["drag_last"]=(event.x,event.y)
     def pan_end(event):
         anchor = state.pop("drag",None)
+        state.pop("drag_last",None)
+        drawing.configure(cursor="hand2")
         if anchor is None or not state.get("aerial_ready"): return
         x,y=mercator(*state["center"],state["zoom"])
         state["center"]=unproject(x-(event.x-anchor[0]),y-(event.y-anchor[1]),state["zoom"])
@@ -377,7 +394,9 @@ def open_intake(parent):
     ttk.Label(map_controls,text="Wheel to zoom • Drag to pan").pack(side="left")
     drawing.bind("<MouseWheel>",lambda e:change_zoom(1 if e.delta>0 else -1,e))
     drawing.bind("<ButtonPress-1>",pan_start)
+    drawing.bind("<B1-Motion>",pan_move)
     drawing.bind("<ButtonRelease-1>",pan_end)
+    drawing.configure(cursor="hand2")
     def load():
         state["generation"] += 1
         state["aerial_ready"] = False

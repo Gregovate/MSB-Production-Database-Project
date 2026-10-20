@@ -46,7 +46,7 @@ from gis_workstation_map_source import (inspect_office_map, save_office_map_sour
 BACKGROUND = "#f5f8fb"
 # Source-only candidate identity, separate from approved GIS profile releases
 # or the Production Setup application version. Never guess a successful SHA.
-APP_VERSION = "V0.4.8-garmin-track-intake"
+APP_VERSION = "V0.4.9-garmin-track-intake"
 APP_PHASE = "PR #378 CANDIDATE • Updated 2026-10-20"
 
 
