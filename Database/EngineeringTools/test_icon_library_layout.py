@@ -78,7 +78,7 @@ class SmallScreenLayoutTests(unittest.TestCase):
             manager = Manager(root)
             root.update_idletasks()
             title = root.title()
-            self.assertIn("V0.4.10-garmin-track-intake", title)
+            self.assertIn("V0.5.1-garmin-track-review", title)
             self.assertIn(manager.build_identity, title)
             labels = [
                 str(w.cget("text")) for w in walk(root)

@@ -4,9 +4,32 @@ import unittest
 from pathlib import Path
 from gis_track_intake import parse, nearest, type_hint, propose, save, source_digest, mercator, aerial_image, AERIAL_URL, fit_zoom
 
-GPX = '<gpx xmlns="http://www.topografix.com/GPX/1/1"><wpt lat="43.1" lon="-87.1"><name>FE-00</name></wpt><wpt lat="43.101" lon="-87.102"><name>FE-07</name></wpt><trk><name>2026-10-20 NET</name><trkseg><trkpt lat="43.1" lon="-87.1"/><trkpt lat="43.101" lon="-87.102"/></trkseg></trk></gpx>'
+GPX = '<gpx xmlns="http://www.topografix.com/GPX/1/1"><wpt lat="43.1" lon="-87.1"><name>FE-00</name><type>Panel</type></wpt><wpt lat="43.101" lon="-87.102"><name>FE-07</name><type>OUT-Combo</type></wpt><trk><name>2026-10-20 NET</name><type>Network</type><trkseg><trkpt lat="43.1" lon="-87.1"/><trkpt lat="43.101" lon="-87.102"/></trkseg></trk></gpx>'
 
 class IntakeTests(unittest.TestCase):
+    def test_infrastructure_reference_filter_and_voltage_variants(self):
+        import xml.etree.ElementTree as ET
+        from gis_track_intake import infrastructure_waypoint, reference_track, road_or_trail
+        for kind in ("Display Anchor","Light Pole","LP-Combo","LP_Power","Out-Combo",
+                     "Outlet Power","Panel","Panel Auxiliary","WiFi AP","Transformer"):
+            node=ET.fromstring('<wpt xmlns="http://www.topografix.com/GPX/1/1"><type>'+kind+'</type></wpt>')
+            self.assertTrue(infrastructure_waypoint(node),kind)
+        for kind in ("Stage","Camera","Hydrant","Trailhead","Waypoint","Building"):
+            node=ET.fromstring('<wpt xmlns="http://www.topografix.com/GPX/1/1"><type>'+kind+'</type></wpt>')
+            self.assertFalse(infrastructure_waypoint(node),kind)
+        stage=ET.fromstring('<wpt xmlns="http://www.topografix.com/GPX/1/1"><name>Panel stage</name><type>Stage</type></wpt>')
+        self.assertFalse(infrastructure_waypoint(stage))
+        for kind in ("High Voltage","High Voltage 12-2","High Voltage 12-3","High Voltage Custom",
+                     "Network","Primary","Abandoned","Road","Trail"):
+            self.assertTrue(reference_track({"type":kind}),kind)
+        self.assertFalse(reference_track({"type":"GPS Tracklog"}))
+        self.assertTrue(road_or_trail({"type":"Road"}))
+        self.assertTrue(road_or_trail({"type":"Trails"}))
+        self.assertFalse(road_or_trail({"type":"Network"}))
+        self.assertEqual(type_hint("High Voltage 12-2"),"High Voltage 12-2")
+        self.assertEqual(type_hint("HV 12-3"),"High Voltage 12-3")
+        self.assertEqual(type_hint("Maybe Abandoned/Dead"),"Maybe Abandoned/Dead")
+
     def test_close_zoom_preserves_registration_and_published_tile_limit(self):
         import io
         from PIL import Image
@@ -34,7 +57,7 @@ class IntakeTests(unittest.TestCase):
             self.assertEqual(len(tracks),1)
             self.assertEqual(nearest(tracks[0][2][0],waypoints)[0][0],"FE-00")
             self.assertEqual(nearest(tracks[0][2][-1],waypoints)[0][0],"FE-07")
-            self.assertEqual(type_hint(tracks[0][1]),"NET")
+            self.assertEqual(type_hint(tracks[0][1]),"Network")
             self.assertEqual(propose("NET","FE-00","FE-07"),"NET FE-00 to FE-07")
     def test_save_archives_original_and_preserves_bytes(self):
         with tempfile.TemporaryDirectory() as d:
@@ -75,8 +98,8 @@ class IntakeTests(unittest.TestCase):
 
     def test_unknown_type_not_forced(self):
         self.assertEqual(type_hint("2026-10-20 08:00"),"Unknown")
-        self.assertEqual(type_hint("2026-10-14 11:19:07 Hvfe00 tfe04&02"),"HV")
-        self.assertEqual(type_hint("2026-10-14 11:26:10 Netfe00tfe15"),"NET")
+        self.assertEqual(type_hint("2026-10-14 11:19:07 Hvfe00 tfe04&02"),"High Voltage")
+        self.assertEqual(type_hint("2026-10-14 11:26:10 Netfe00tfe15"),"Network")
         self.assertEqual(type_hint("New run 2026 lpfc01"),"Unknown")
 
     def test_source_and_master_change_block_review_before_archive(self):
@@ -208,6 +231,31 @@ class IntakeTests(unittest.TestCase):
                 self.assertEqual(saved['master_sha256'],source_digest(master))
                 buttons['Read Garmin tracks (read only)'].invoke();root.update()
                 self.assertEqual(entries[-1].get(),'Operator corrected name')
+                self.assertEqual((source.read_bytes(),master.read_bytes()),before)
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):
+                        break
+                self.assertFalse(errors)
+                self.assertTrue(next(w for w in walk(win) if isinstance(w,tk.Listbox)).curselection())
+                buttons['Match / polish / replace master track'].invoke();root.update()
+                review=next(w for w in walk(win) if isinstance(w,tk.Toplevel) and w is not win)
+                combo=next(w for w in walk(review) if isinstance(w,ttk.Combobox))
+                combo.current(0);combo.event_generate('<<ComboboxSelected>>');root.update()
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):
+                        break
+                note=next(w for w in walk(review) if isinstance(w,tk.Text) and str(w.cget('state'))=='normal')
+                note.insert('1.0','Disposable fixture: verified matching track')
+                next(w for w in walk(review) if isinstance(w,ttk.Checkbutton)).invoke()
+                next(w for w in walk(review) if isinstance(w,ttk.Button) and w.cget('text')=='Accept replacement & Next').invoke()
+                root.update()
+                import gis_track_reconcile as reconcile
+                self.assertEqual(len(reconcile.decisions(intake,source_digest(master))),1)
+                self.assertFalse(errors)
                 self.assertEqual((source.read_bytes(),master.read_bytes()),before)
 
 if __name__=="__main__":unittest.main()

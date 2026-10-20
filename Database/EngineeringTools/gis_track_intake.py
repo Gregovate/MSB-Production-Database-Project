@@ -20,9 +20,34 @@ from urllib.error import URLError, HTTPError
 from PIL import Image, ImageTk
 from sync_gis_icons import PARK
 from tkinter import ttk, filedialog, messagebox
+import gis_track_reconcile as reconcile
 
 GPX = "{http://www.topografix.com/GPX/1/1}"
-KINDS = ("Unknown", "HV", "NET", "PRI")
+KINDS = ("Unknown", "High Voltage", "High Voltage 12-2", "High Voltage 12-3",
+         "Maybe Abandoned/Dead", "Network", "Primary")
+TYPE_NAMES = {"HV": "High Voltage", "NET": "Network", "PRI": "Primary"}
+
+
+def infrastructure_waypoint(node):
+    """Use the master's infrastructure types, with known name-prefix fallback."""
+    kind = (node.findtext(GPX+"type") or "").strip().casefold()
+    name = (node.findtext(GPX+"name") or "").strip().casefold()
+    if kind in ("stage", "stages"):
+        return False
+    return (kind in ("display anchor", "light pole", "transformer", "outlet power")
+            or kind.startswith(("lp-", "lp_", "out-", "panel", "wifi"))
+            or name.startswith(("lp-", "lp_", "out-", "panel", "wifi")))
+
+
+def road_or_trail(track):
+    return bool(re.match(r"^(road|trail)(?:s|\b)", track["type"].strip(), re.I))
+
+
+def reference_track(track):
+    value = track["type"].strip().casefold()
+    return (value.startswith("high voltage")
+            or value in ("network", "primary", "abandoned", "dead", "maybe abandoned/dead")
+            or road_or_trail(track))
 # Existing calibrated 2019 orthophoto tile layer from Setup/Application/locate_preview.html.
 AERIAL_URL = "https://webassets.sheboyganlights.org/maps/evergreen-2019-v1/{z}/{x}/{y}.jpg"
 
@@ -41,7 +66,7 @@ def coordinate(node):
     return lat, lon
 
 
-def parse(path):
+def parse(path, exclude_stages=False, infrastructure_only=False):
     root = ET.fromstring(Path(path).read_bytes())
     if root.tag != GPX + "gpx":
         raise ValueError("Only GPX 1.1 is supported")
@@ -52,7 +77,9 @@ def parse(path):
         if len(pts) > 1:
             tracks.append((i, node.findtext(GPX + "name") or "", pts))
     points = [(w.findtext(GPX + "name") or "(unnamed)", *coordinate(w))
-              for w in root.findall(GPX + "wpt")]
+              for w in root.findall(GPX + "wpt")
+              if not infrastructure_only or infrastructure_waypoint(w)
+              if not exclude_stages or (w.findtext(GPX+"type") or "").strip().casefold() not in ("stage","stages")]
     return tracks, points
 
 def dist_ft(a, b):
@@ -65,13 +92,19 @@ def nearest(point, waypoints, count=5):
                    for w in waypoints], key=lambda x: x[1])[:count]
 
 def type_hint(text):
+    voltage = re.search(r"\b(?:HIGH\s*VOLTAGE|HV)\s*(12[- ](?:2|3))?\b",text,re.I)
+    if voltage:
+        return "High Voltage"+(" "+voltage[1].replace(" ","-") if voltage[1] else "")
+    if re.search(r"\b(?:ABANDONED|DEAD)\b",text,re.I):
+        return "Maybe Abandoned/Dead"
     parts = re.findall(r"[A-Z]+", text.upper())
     for kind in ("HV", "NET", "PRI"):
         if kind in parts or re.search(r"(?<![A-Z])"+kind+r"[A-Z]{1,3}\d", text.upper()):
-            return kind
+            return TYPE_NAMES[kind]
     return "Unknown"
 
 def propose(kind, start, end):
+    kind = {"High Voltage":"HV", "Network":"NET", "Primary":"PRI"}.get(kind,kind)
     return ((kind+" ") if kind != "Unknown" else "") + start + " to " + end
 
 def source_digest(path):
@@ -82,7 +115,8 @@ def reviewed_path(intake, digest, index):
 
 def save(intake, source, index, name, kind, start, end, expected_digest=None, master=None, master_digest=None):
     """Create review receipt, keeping Garmin, original GPX and master unchanged."""
-    if not name.strip() or kind not in KINDS:
+    kind = TYPE_NAMES.get(kind,kind)
+    if not name.strip() or not (kind in KINDS or kind.casefold().startswith("high voltage")):
         raise ValueError("Name and temporary classification are required")
     if not start.strip() or not end.strip():
         raise ValueError("Review starting and ending waypoints")
@@ -237,13 +271,18 @@ def open_intake(parent):
         ttk.Entry(r,textvariable=var).pack(side="left",fill="x",expand=True)
     r=ttk.Frame(editor);r.pack(fill="x",pady=3)
     ttk.Label(r,text="Temporary type",width=19).pack(side="left")
-    ttk.Combobox(r,textvariable=kind,values=KINDS,state="readonly").pack(side="left",fill="x",expand=True)
+    type_choice=ttk.Combobox(r,textvariable=kind,values=KINDS,state="readonly")
+    type_choice.pack(side="left",fill="x",expand=True)
+    show_roads=tk.BooleanVar(value=False)
     status=tk.StringVar(value="Garmin GPX detected — verify paths and click Read." if len(found_devices)==1 else
                        "Select mounted Garmin GPX folder, current master and intake root.")
     ttk.Label(base,textvariable=status,wraplength=900).pack(anchor="w",before=row)
     state={"items":[],"waypoints":[],"aerial_ready":False,"generation":0}
     results = thread_queue.Queue()
     def select(event=None):
+        if state.get("review_window") and state["review_window"].winfo_exists():
+            state["review_window"].destroy()
+        state.pop("matched_track",None)
         state["generation"] += 1
         state["aerial_ready"]=False
         selection=queue.curselection()
@@ -259,7 +298,8 @@ def open_intake(parent):
             if receipt.exists():
                 prior=json.loads(receipt.read_text(encoding="utf8"))
                 name.set(prior.get("working_name",name.get()))
-                kind.set(prior.get("temporary_type",kind.get()))
+                saved_kind=prior.get("temporary_type",kind.get())
+                kind.set(TYPE_NAMES.get(saved_kind,saved_kind))
                 start.set(prior.get("start_waypoint",start.get()))
                 end.set(prior.get("end_waypoint",end.get()))
         except (OSError, ValueError) as error:
@@ -326,6 +366,19 @@ def open_intake(parent):
                     plate=drawing.create_rectangle(a-4,b-2,c+4,d+2,fill="#ffffff",
                                                    outline="#111111",tags=("label-background",))
                     drawing.tag_lower(plate,label)
+            # Existing master route is context, never modified by preview.
+            if show_roads.get():
+                for track in state.get("master_tracks",[]):
+                    if not road_or_trail(track):continue
+                    for segment in track["segments"]:
+                        if len(segment)>1:
+                            coords=[c for p in segment for c in xy(p)]
+                            drawing.create_line(*coords,fill="#111111",width=5,tags=("road-trail",))
+                            drawing.create_line(*coords,fill="#ffffff",width=2,dash=(6,4),tags=("road-trail",))
+            for segment in state.get("matched_track",{}).get("segments",[]):
+                if len(segment)>1:
+                    drawing.create_line(*[c for p in segment for c in xy(p)],
+                                        fill="#b000c8",width=5,dash=(7,5))
             for segment in getattr(points, "segments", [points]):
                 if len(segment) > 1:
                     drawing.create_line(*[c for p in segment for c in xy(p)],fill="#176bb5",width=4)
@@ -392,6 +445,8 @@ def open_intake(parent):
     ttk.Button(map_controls,text="+",command=lambda:change_zoom(1),width=3).pack(side="left")
     ttk.Button(map_controls,text="6-inch detail",command=lambda:change_zoom(target=24)).pack(side="left")
     ttk.Button(map_controls,text="Fit track",command=fit_track).pack(side="left")
+    ttk.Checkbutton(map_controls,text="Roads / trails",variable=show_roads,
+                    command=request_map).pack(side="left")
     ttk.Label(map_controls,text="Wheel to zoom • Drag to pan").pack(side="left")
     drawing.bind("<MouseWheel>",lambda e:change_zoom(1 if e.delta>0 else -1,e))
     drawing.bind("<ButtonPress-1>",pan_start)
@@ -405,6 +460,7 @@ def open_intake(parent):
         # settle. Keep the geographic center, zoom and operator edits.
         state["generation"] += 1
         state["aerial_ready"] = False
+        aerial_status.set("Resizing 2019 aerial…")
         pending=state.pop("resize_job",None)
         if pending is not None: win.after_cancel(pending)
         def redraw():
@@ -427,7 +483,11 @@ def open_intake(parent):
                 raise ValueError("Intake destination must be outside the Garmin source folder")
             state["master"]=Path(master.get()).resolve()
             state["master_digest"]=source_digest(state["master"])
-            state["waypoints"]=parse(state["master"])[1]
+            state["waypoints"]=parse(state["master"],infrastructure_only=True)[1]
+            state["master_tracks"]=reconcile.tracks(state["master"])
+            type_choice.configure(values=tuple(dict.fromkeys((*KINDS,*sorted({
+                t["type"] for t in state["master_tracks"]
+                if t["type"].strip().casefold().startswith("high voltage")})))))
             if not state["waypoints"]:
                 raise ValueError("The current master has no waypoint identities")
             state["intake"] = str(intake_root)
@@ -441,8 +501,12 @@ def open_intake(parent):
                     state["digests"][file] = digest
                     for trk in tracks:state["items"].append((file,trk))
             queue.delete(0,"end")
+            reviewed={(d["source_sha256"],d["raw_index"]):d
+                      for d in reconcile.decisions(state["intake"],state["master_digest"])}
             for file,(idx,title,pts) in state["items"]:
-                queue.insert("end",title or file.name)
+                decision=reviewed.get((state["digests"][file],idx))
+                queue.insert("end",(("✓ Keep: " if decision.get("action")=="keep" else "✓ Replace: ")+decision["master_name"])
+                             if decision else title or file.name)
             status.set(f"{len(state['items'])} tracks; {len(state['waypoints'])} master waypoints.")
             if state["items"]: queue.selection_set(0); select()
         except (OSError, ValueError, TypeError, ET.ParseError) as e:
@@ -469,6 +533,137 @@ def open_intake(parent):
         except (OSError, ValueError) as e:messagebox.showerror("Save stopped",str(e),parent=win)
     def suggest(*_):
         if start.get() and end.get():name.set(propose(kind.get(),start.get(),end.get()))
+    def review_replacement():
+        selected=queue.curselection()
+        if not selected or not state.get("aerial_ready"):return
+        if state.get("review_window") and state["review_window"].winfo_exists():
+            state["review_window"].lift();return
+        file,(raw_index,raw_name,raw_points)=state["items"][selected[0]]
+        review=tk.Toplevel(win);state["review_window"]=review
+        review.title("Match master track • Polish recording • Accept replacement")
+        review.geometry("1050x760")
+        frame=ttk.Frame(review,padding=10);frame.pack(fill="both",expand=True)
+        ttk.Label(frame,text="Current ExpertGPS master → reviewed replacement",font=("Segoe UI",13,"bold")).pack(anchor="w")
+        ttk.Label(frame,text="Choose the SAME physical track. Purple dashed = old master; blue = proposed recording.\n"
+                  "Master name, type, comments, installation notes, years and extensions remain attached to the chosen track.").pack(anchor="w")
+        matches=reconcile.rank_matches(raw_points,
+                    [t for t in state["master_tracks"] if reference_track(t)
+                     and (show_roads.get() or not road_or_trail(t))],limit=None)
+        choices=ttk.Combobox(frame,state="readonly",width=110,
+                            values=[f'{m["track"]["name"]} | route {m["route_ft"]} ft; endpoints {m["endpoint_ft"]} ft'
+                                    for m in matches])
+        choices.pack(fill="x",pady=5)
+        metadata=tk.Text(frame,height=8,wrap="word");metadata.pack(fill="x")
+        verts=reconcile.recording_vertices(file,raw_index)
+        draft=[dict(v) for v in verts]
+        ttk.Label(frame,text="Polish the new recording: select vertices to remove a tail/outlier, or edit one coordinate. Originals are retained.").pack(anchor="w")
+        point_frame=ttk.Frame(frame);point_frame.pack(fill="both",expand=True)
+        table=ttk.Treeview(point_frame,columns=("vertex","segment","lat","lon"),show="headings",height=9,selectmode="extended")
+        for col,label in [("vertex","Raw vertex"),("segment","Segment"),("lat","Latitude"),("lon","Longitude")]:
+            table.heading(col,text=label);table.column(col,width=130)
+        table.pack(side="left",fill="both",expand=True)
+        scroll=ttk.Scrollbar(point_frame,command=table.yview);scroll.pack(side="right",fill="y");table.configure(yscrollcommand=scroll.set)
+        def refresh_points():
+            table.delete(*table.get_children())
+            for v in draft:table.insert("","end",iid=str(v["source_index"]),values=(v["source_index"]+1,v["segment"]+1,v["lat"],v["lon"]))
+        def preview():
+            confirmed.set(False)
+            reconcile.validate_vertices(draft)
+            segments=[]
+            previous=None
+            for v in draft:
+                if previous!=v["segment"]:segments.append([]);previous=v["segment"]
+                segments[-1].append((v["lat"],v["lon"]))
+            state["points"]=TrackPoints(segments)
+            request_map()
+        def choose(event=None):
+            i=choices.current()
+            if i<0:return
+            track=matches[i]["track"]
+            state["matched_track"]=track
+            metadata.configure(state="normal");metadata.delete("1.0","end")
+            metadata.insert("end",f'Master track #{track["index"]}: {track["name"]}\nType: {track["type"]}\n'
+                            f'Years mentioned in notes: {", ".join(str(y["year"]) for y in reconcile.annual_history_evidence(track)) or "Not specified"}\n'
+                            f'Comments:\n{track["comments"] or "(none)"}\nInstallation/description:\n{track["description"] or "(none)"}'
+                            "\n\nAll original track-level XML retained:\n"+track["metadata"])
+            metadata.configure(state="disabled");preview()
+            near=matches[i]
+            message.set("Very close to existing master geometry — this may already be processed. Compare the notes before replacing."
+                        if near["route_ft"]<3 and near["endpoint_ft"]<3 else
+                        "Verify physical identity, polish the blue recording, then confirm the replacement.")
+        choices.bind("<<ComboboxSelected>>",choose)
+        actions=ttk.Frame(frame);actions.pack(fill="x",pady=5)
+        def remove():
+            selected_ids={int(v) for v in table.selection()}
+            remaining=[v for v in draft if v["source_index"] not in selected_ids]
+            if len(remaining)<2:
+                messagebox.showerror("Keep track","Keep at least two vertices.",parent=review);return
+            draft[:]=remaining;refresh_points();preview()
+        def reset():
+            draft[:]=[dict(v) for v in verts];refresh_points();preview()
+        ttk.Button(actions,text="Remove selected vertices",command=remove).pack(side="left")
+        ttk.Button(actions,text="Reset to raw recording",command=reset).pack(side="left")
+        lat_var,lon_var=tk.StringVar(),tk.StringVar()
+        ttk.Label(actions,text="Lat").pack(side="left");ttk.Entry(actions,textvariable=lat_var,width=13).pack(side="left")
+        ttk.Label(actions,text="Lon").pack(side="left");ttk.Entry(actions,textvariable=lon_var,width=13).pack(side="left")
+        def point_selected(event=None):
+            ids=table.selection()
+            if len(ids)==1:
+                v=next(v for v in draft if str(v["source_index"])==ids[0])
+                lat_var.set(str(v["lat"]));lon_var.set(str(v["lon"]))
+        table.bind("<<TreeviewSelect>>",point_selected)
+        def edit():
+            try:
+                ids=table.selection()
+                if len(ids)!=1:raise ValueError("Select one vertex to edit")
+                changed=[dict(v) for v in draft]
+                v=next(v for v in changed if str(v["source_index"])==ids[0])
+                v.update(lat=float(lat_var.get()),lon=float(lon_var.get()))
+                reconcile.validate_vertices(changed);draft[:]=changed;refresh_points();preview()
+            except ValueError as error:messagebox.showerror("Coordinate",str(error),parent=review)
+        ttk.Button(actions,text="Apply coordinate",command=edit).pack(side="left")
+        ttk.Label(frame,text="Replacement reason / field evidence (required; historical notes remain unchanged):").pack(anchor="w")
+        note=tk.Text(frame,height=3,wrap="word");note.pack(fill="x")
+        confirmed=tk.BooleanVar(value=False)
+        ttk.Checkbutton(frame,text="I verified this recording matches the selected physical master track.",variable=confirmed).pack(anchor="w")
+        message=tk.StringVar(value="Select a candidate; proximity is only a suggestion.")
+        ttk.Label(frame,textvariable=message,wraplength=1000).pack(anchor="w")
+        def accept(action="replace"):
+            try:
+                if choices.current()<0 or not confirmed.get():raise ValueError("Select and verify the matching master track")
+                if not state.get("aerial_ready"):raise ValueError("Wait for the calibrated preview before acceptance")
+                track=matches[choices.current()]["track"]
+                path=reconcile.accept_replacement(state["intake"],state["master"],state["master_digest"],file,
+                      state["digests"][file],raw_index,track["index"],draft,note.get("1.0","end").strip(),action=action)
+                old=selected[0]
+                queue.delete(old);queue.insert(old,("✓ Replace: " if action=="replace" else "✓ Keep: ")+track["name"])
+                review.destroy()
+                if old+1<len(state["items"]):
+                    queue.selection_clear(0,"end");queue.selection_set(old+1);queue.see(old+1);select()
+                status.set(("Replacement accepted for working GPX: " if action=="replace" else "Existing master route retained: ")
+                           +track["name"]+". Shared master and PostgreSQL unchanged.")
+            except (ValueError,OSError) as error:messagebox.showerror("Replacement stopped",str(error),parent=review)
+        ttk.Button(frame,text="Accept replacement & Next",command=accept).pack(side="right",pady=6)
+        ttk.Button(frame,text="Keep existing & Next",command=lambda:accept("keep")).pack(side="right",pady=6)
+        def cancel():
+            state["points"]=raw_points;state.pop("matched_track",None)
+            review.destroy();request_map()
+        ttk.Button(frame,text="Close without accepting",command=cancel).pack(side="left",pady=6)
+        review.protocol("WM_DELETE_WINDOW",cancel)
+        refresh_points()
+    def export_reviewed():
+        if not state.get("master"):return
+        output=filedialog.asksaveasfilename(parent=win,title="Save reviewed working master GPX (separate candidate)",
+                  initialdir=state["intake"],initialfile="MSB-Park-Infrastructure-reviewed-"+datetime.now().strftime("%Y%m%d-%H%M%S")+".gpx",
+                  defaultextension=".gpx",filetypes=[("GPX","*.gpx")])
+        if not output:return
+        try:
+            reconcile.export_candidate(state["intake"],state["master"],state["master_digest"],output)
+            status.set("Reviewed working master saved: "+output+". PostgreSQL comparison/release is still pending.")
+        except (ValueError,OSError,ET.ParseError) as error:messagebox.showerror("Export stopped",str(error),parent=win)
+    review_controls=ttk.Frame(editor);review_controls.pack(fill="x",pady=4)
+    ttk.Button(review_controls,text="Match / polish / replace master track",command=review_replacement).pack(side="left")
+    ttk.Button(review_controls,text="Export reviewed working master",command=export_reviewed).pack(side="right")
     ttk.Button(base,text="Read Garmin tracks (read only)",command=load).pack(anchor="w",pady=4,before=row)
     queue.bind("<<ListboxSelect>>",select)
     start.trace_add("write",lambda *_:None);end.trace_add("write",lambda *_:None)
