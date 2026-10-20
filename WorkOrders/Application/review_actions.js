@@ -11,6 +11,8 @@
     create: "Create · New Internal Work Order",
     link_setup: "Manager · Add this Work Order to seasonal Setup",
     assign: "Assign / Reassign · Multiple volunteers",
+    edit: "Manager · Edit existing Work Order",
+    cancel: "Manager · Cancel / No Action",
     progress: "Record Work Note · Keep open",
     complete: "Complete · Required verified work notes",
     promote: "Public Intake · Promote & Assign",
@@ -54,7 +56,7 @@
       result.push("link_setup");
     }
     if (ticket.type === "WORK_ORDER" && !ticket.done_at) {
-      if (actor.can_manage) result.push("assign");
+      if (actor.can_manage) result.push("assign", "edit", "cancel");
       if (actor.can_manage ||
           (ticket.assignee_ids || []).some((id) => Number(id) === Number(actor.person_id))) {
         result.push("progress", "complete");
@@ -105,6 +107,8 @@
       progress: "Add Work Note",
       complete: "Complete Work Order",
       assign: "Assign / Reassign",
+      edit: "Edit Work Order",
+      cancel: "Cancel / No Action",
       link_setup: "Link to seasonal Setup",
       promote: "Promote & Assign",
       correction_owner: "Assign correction owner",
@@ -121,7 +125,7 @@
       button.type = "button";
       button.className = "review-action-button" +
         (kind === "complete" || kind === "promote" ? " primary-action" : "") +
-        (["assign", "link_setup", "correction_owner", "clarify", "resolve"].includes(kind)
+        (["assign", "edit", "cancel", "link_setup", "correction_owner", "clarify", "resolve"].includes(kind)
           ? " manager-action" : "");
       button.dataset.action = kind;
       button.textContent = labels[kind] || actions[kind];
@@ -243,6 +247,11 @@
     byId("review-location-type").value = kind;
     byId("review-stage").value = detail.stage_id || "";
     byId("review-area").value = detail.work_area_id || "";
+    if (model.ticket?.type === "WORK_ORDER") {
+      byId("review-task-type").value = detail.task_type_id || "";
+      byId("review-urgency").value = detail.urgency_id || "";
+      byId("review-target-year").value = detail.target_year || "";
+    }
     // Public-form values may be plain text; resolve only unique catalog hits.
     if (model.ticket?.type === "INTAKE_REQUEST") {
       const submittedPriority = String(detail.priority_raw || detail.urgency_id || model.ticket?.urgency || "");
@@ -321,6 +330,8 @@
     byId("review-progress-note").value = "";
     byId("review-completion-notes").value = "";
     byId("review-response").value = "";
+    byId("review-edit-reason").value = "";
+    byId("review-cancel-reason").value = "";
     byId("review-disposition").value = "";
     planningChanged();
     showForm();
@@ -330,7 +341,9 @@
     const kind = byId("review-action").value;
     const form = byId("review-action-form");
     form.hidden = !kind;
-    byId("review-create-fields").hidden = !["create", "promote"].includes(kind);
+    byId("review-create-fields").hidden = !["create", "promote", "edit"].includes(kind);
+    byId("review-edit-reason-fields").hidden = kind !== "edit";
+    byId("review-cancel-fields").hidden = kind !== "cancel";
     byId("review-intake-comparison").hidden = !(kind === "promote" && model.ticket?.type === "INTAKE_REQUEST");
     byId("review-link-setup-fields").hidden = kind !== "link_setup";
     byId("review-person-fields").hidden =
@@ -345,6 +358,8 @@
     const submit = byId("review-submit");
     const submitNames = {
       create: "Create Work Order",
+      edit: "Save Work Order Corrections",
+      cancel: "Cancel Work Order · Do Not Mark Complete",
       assign: "Save assignments",
       progress: "Save Work Note · Keep open",
       complete: "Confirm and Save Completion",
@@ -357,7 +372,7 @@
     };
     submit.textContent = submitNames[kind] ||
       (isLive() ? "Save authoritative Work Order" : "Save to disposable database");
-    if (kind && ["create", "promote"].includes(kind)) {
+    if (kind && ["create", "promote", "edit"].includes(kind)) {
       locationChanged();
       planningChanged();
     } else {
@@ -372,7 +387,7 @@
     if (!permitted().includes(kind)) throw new Error("This action is not available to your identity.");
     const source = model.ticket?.ticket || "NEW INTERNAL WORK ORDER";
     const note = byId("review-response").value.trim();
-    if (["create", "promote"].includes(kind)) {
+    if (["create", "promote", "edit"].includes(kind)) {
       const problem = byId("review-problem").value.trim();
       if (problem.length < 10) throw new Error("Describe the actual job (at least 10 characters).");
       if (!byId("review-task-type").value)
@@ -399,6 +414,10 @@
           throw new Error("Choose an existing open seasonal Setup session.");
       }
     }
+    if (kind === "edit" && byId("review-edit-reason").value.trim().length < 10)
+      throw new Error("An accountable correction reason (at least 10 characters) is required.");
+    if (kind === "cancel" && byId("review-cancel-reason").value.trim().length < 10)
+      throw new Error("Cancel / No Action requires an explanation (at least 10 characters).");
     if (kind === "link_setup") {
       if (!model.actor?.can_manage) throw new Error("Only a Manager may link Setup work.");
       if (!model.ticket?.detail?.stage_id)
@@ -451,7 +470,7 @@
       problem: byId("review-problem").value.trim(),
       task_type_id: byId("review-task-type").value,
       urgency: byId("review-urgency").value,
-      target_year: ["create", "promote"].includes(kind) &&
+      target_year: ["create", "promote", "edit"].includes(kind) &&
         byId("review-urgency").value === "5"
         ? byId("review-target-year").value : null,
       setup_mode: kind === "link_setup" ? "create" : byId("review-setup-mode").value,
@@ -464,6 +483,8 @@
       progress_note: byId("review-progress-note").value.trim(),
       completion_notes: byId("review-completion-notes").value.trim(),
       response: byId("review-response").value.trim(),
+      edit_reason: byId("review-edit-reason").value.trim(),
+      cancel_reason: byId("review-cancel-reason").value.trim(),
       disposition: byId("review-disposition").value,
     };
     const signature = JSON.stringify(body);
