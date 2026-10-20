@@ -1276,3 +1276,18 @@ def test_oct20_manager_edit_uses_focus_workspace_without_changing_browse_layout(
     assert 'kind === "edit"' in actions
     assert 'byId("review-cancel-edit").addEventListener("click"' in actions
     assert 'byId("review-action").value = "";' in actions
+
+
+def test_oct20_focus_layout_for_all_work_actions_and_theme_token_buttons():
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    css = (HERE / "app.css").read_text(encoding="utf-8")
+    actions = (HERE / "review_actions.js").read_text(encoding="utf-8")
+    assert 'id="review-cancel-action"' in html
+    assert 'detail: {editing: Boolean(kind && !form.hidden)}' in actions
+    assert 'byId("review-cancel-action").addEventListener("click"' in actions
+    assert 'byId("review-action").value = "";' in actions
+    assert '.workspace.edit-focused .ticket-column { display:none; }' in css
+    assert '--action-primary:' in css
+    assert 'background:var(--action-primary)' in css
+    assert '.review-action-button.primary-action' in css
+    assert 'html[data-theme="dark"]' in css
