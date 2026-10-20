@@ -1308,3 +1308,18 @@ def test_oct20_manager_feedback_buttons_use_independent_scope_not_removed_select
     assert 'state.managerQueue = null;' in js
     assert '$("scope").value = scope;' not in js
     assert 'state.managerQueue = manager && ["intake", "feedback"].includes(requested)' in js
+
+
+def test_oct20_intake_evidence_is_visible_before_any_triage_decision():
+    """Raw finding and notes stay visible for Promote, Clarify or Disposition."""
+    html = (HERE / "index.html").read_text(encoding="utf-8")
+    js = (HERE / "review_actions.js").read_text(encoding="utf-8")
+    css = (HERE / "app.css").read_text(encoding="utf-8")
+    assert html.index('id="review-source-evidence"') < html.index('id="review-action-buttons"')
+    for marker in ('id="review-source-finding"', 'id="review-source-notes"',
+                   'id="review-source-provenance"'):
+        assert marker in html
+    assert 'detail.notes_raw || "No additional submitted notes."' in js
+    assert 'sourceEvidence.hidden = !intake' in js
+    assert 'kind === "promote" ? "Proposed Work Order' in js
+    assert '.review-source-evidence' in css
