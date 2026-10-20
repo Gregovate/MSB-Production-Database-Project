@@ -394,3 +394,46 @@ html[data-theme="dark"] .review-action-button.primary-action:hover {
 .workspace.edit-focused { grid-template-columns:minmax(0, 1fr); }
 .workspace.edit-focused .ticket-column { display:none; }
 .workspace.edit-focused .detail-column { width:100%; }
+
+/* #419: shared Work Management button tokens, from the existing MSB light/dark theme.
+ * Avoid separate hard-coded blue shades for individual action groups. */
+:root {
+  --action-primary:#0f5f8f;
+  --action-primary-hover:#0b4e75;
+  --action-primary-text:#ffffff;
+}
+html[data-theme="dark"] {
+  --action-primary:#318cff;
+  --action-primary-hover:#2477da;
+  --action-primary-text:#081529;
+}
+.primary-button, .review-action-button.primary-action {
+  background:var(--action-primary);
+  color:var(--action-primary-text);
+  border:1px solid var(--action-primary);
+  border-radius:8px;
+}
+.primary-button:hover, .review-action-button.primary-action:hover {
+  background:var(--action-primary-hover);
+  border-color:var(--action-primary-hover);
+}
+html[data-theme="dark"] .review-action-button.primary-action {
+  background:var(--action-primary);
+  color:var(--action-primary-text);
+  border-color:var(--action-primary);
+}
+html[data-theme="dark"] .review-action-button.primary-action:hover {
+  background:var(--action-primary-hover);
+  border-color:var(--action-primary-hover);
+}
+.quiet-button, .review-action-button:not(.primary-action) {
+  background:var(--surface);
+  color:var(--button);
+  border:1px solid var(--border);
+  border-radius:8px;
+}
+.quiet-button:hover, .review-action-button:not(.primary-action):hover {
+  background:var(--accent-faint);
+}
+/* Selected actions use a neutral outline, never a different button palette. */
+.review-action-button[aria-pressed="true"] { outline:2px solid var(--accent); outline-offset:2px; }
