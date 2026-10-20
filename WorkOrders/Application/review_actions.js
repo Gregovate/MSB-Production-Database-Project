@@ -356,6 +356,10 @@
     byId("review-disposition").disabled = kind !== "resolve";
     byId("review-result").textContent = "";
     byId("review-cancel-create").hidden = kind !== "create";
+    // A selected Edit is a separate workspace, not another browsing column.
+    document.dispatchEvent(new CustomEvent("wo419:edit-mode", {
+      detail: {editing: kind === "edit"}
+    }));
     const submit = byId("review-submit");
     const submitNames = {
       create: "Create Work Order",
@@ -625,6 +629,10 @@
     try {
       const saved = await saveAction();
       if (saved) {
+        if (kind === "edit") {
+          byId("review-action").value = "";
+          drawActions();
+        }
         box.textContent = (isLive() ? "SAVED to Work Orders: " :
           "SAVED on disposable clone: ") + saved.ticket +
           (saved.linked_setup_session_task_id
