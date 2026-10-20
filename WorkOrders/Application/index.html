@@ -184,6 +184,19 @@
         <p id="review-action-guidance" class="review-action-guidance" role="status"></p>
         <p id="review-context" class="subtle">Select a Work Order or Intake item to review the available actions.</p>
         <form id="review-action-form" hidden>
+          <fieldset id="review-intake-comparison" hidden>
+            <legend>Original Intake · Compare before promotion</legend>
+            <p class="subtle">Original submitted values are read-only. Confirm or correct the catalog-backed Work Order fields below. Unmatched entries require explicit Manager selection.</p>
+            <div class="intake-comparison">
+              <div><strong>Submitted urgency</strong><p id="intake-original-urgency"></p></div>
+              <div><strong>Proposed urgency</strong><p id="intake-mapped-urgency"></p></div>
+              <div><strong>Submitted task type</strong><p id="intake-original-type"></p></div>
+              <div><strong>Proposed task type</strong><p id="intake-mapped-type"></p></div>
+              <div><strong>Submitted Stage / Work Area</strong><p id="intake-original-location"></p></div>
+              <div><strong>Proposed Stage / Work Area</strong><p id="intake-mapped-location"></p></div>
+            </div>
+            <p id="intake-mapping-status" class="subtle" role="status"></p>
+          </fieldset>
           <fieldset id="review-create-fields" hidden>
             <legend>New internal Work Order</legend>
             <label for="review-problem">Describe the work</label>
