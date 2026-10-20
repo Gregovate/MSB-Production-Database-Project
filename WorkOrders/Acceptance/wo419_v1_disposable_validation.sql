@@ -145,6 +145,47 @@ BEGIN
   IF v_intake IS NULL THEN
     RAISE EXCEPTION 'WO419 V1 VALIDATION HOLD: no current unpromoted public Intake fixture';
   END IF;
+  -- Exercise nonpromotion disposition on this same real-shape Intake in a
+  -- PL/pgSQL subtransaction, then deliberately discard only that fixture
+  -- so the established promotion assertion can still run afterward.
+  BEGIN
+    v_result := ops.work_management_v1_command(
+      v_email,'resolve','INTAKE-'||v_intake,
+      jsonb_build_object('response',
+          'Request reviewed; no work order required because issue is not a repair',
+          'disposition','rejected'),
+      gen_random_uuid());
+    IF v_result->>'saved' <> 'true' OR
+       NOT EXISTS (
+         SELECT 1 FROM ops.work_management_activity a
+         WHERE a.ticket_key='INTAKE-'||v_intake
+           AND a.event_kind='resolve'
+           AND a.details->>'disposition'='rejected'
+       ) OR
+       NOT EXISTS (
+         SELECT 1 FROM stage.work_order_intake i WHERE i.intake_id=v_intake
+       ) THEN
+      RAISE EXCEPTION 'WO419 V1 VALIDATION HOLD: non-destructive Intake rejection failed';
+    END IF;
+    v_forbidden:=false;
+    BEGIN
+      PERFORM ops.work_management_v1_command(
+        v_email,'promote','INTAKE-'||v_intake,
+        jsonb_build_object('problem','Rejected Intake must never be promoted',
+          'task_type_id',v_task_type,'stage_id',v_stage,
+          'urgency','3','person_ids',jsonb_build_array(v_actor)),
+        gen_random_uuid());
+    EXCEPTION WHEN unique_violation THEN
+      v_forbidden:=true;
+    END;
+    IF NOT v_forbidden THEN
+      RAISE EXCEPTION 'WO419 V1 VALIDATION HOLD: rejected Intake was promoted';
+    END IF;
+    RAISE EXCEPTION 'WO419_DISPOSITION_FIXTURE_ROLLBACK' USING ERRCODE='P0002';
+  EXCEPTION WHEN SQLSTATE 'P0002' THEN
+    RAISE NOTICE 'WO419 V1 non-destructive public Intake disposition/deny-promote PASS';
+  END;
+
   v_result := ops.work_management_v1_command(
     v_email,'promote','INTAKE-'||v_intake,
     jsonb_build_object('problem','Disposable public Intake promotion test and assign',
@@ -168,7 +209,7 @@ BEGIN
     RAISE EXCEPTION 'WO419 V1 VALIDATION HOLD: unsanctioned mail SENT state';
   END IF;
 
-  RAISE NOTICE 'WO419 V1 disposable validation: Manager Create, native assignee Progress/Complete, non-Manager denial, Intake promotion, and no-send intent PASS';
+  RAISE NOTICE 'WO419 V1 disposable validation: Manager Create, native assignee Progress/Complete, non-Manager denial, Intake nonpromotion disposition, Intake promotion, and no-send intent PASS';
 END $v1test$;
 ROLLBACK;
 -- Rollback is intentional; no fixture Work Order, Manager grant or activity
