@@ -31,8 +31,23 @@ that route before enabling reporter mail. Email replies are not ingested.
 
 Run `python -m pytest WorkOrders/Application/test_email_templates.py` before
 review. The renderer returns both alternatives, subject and the source digest.
-The pending delivery integration must store these immutable values with the
-event/recipient delivery record before any attempt, and reuse them on retries.
-Do not mark SENT from rendering or a database enqueue. No live sender is wired
-to these files yet; transport, durable capture/delivery, response access, due-date
-migration/UI, preview approval and controlled Flow cutover remain release gates.
+The candidate worker stores these immutable values with the event/recipient
+delivery record before any attempt. Existing claims are never retried
+automatically. Do not mark SENT from rendering or a database enqueue.
+SMTP_ACCEPTED records relay acceptance, not Inbox delivery.
+
+For a formatted preview without a database, credentials, or email delivery:
+
+```powershell
+python WorkOrders/Application/preview_email_templates.py --output-dir "$env:TEMP\WO419-mail-preview"
+Start-Process "$env:TEMP\WO419-mail-preview\index.html"
+```
+
+Edit a JSON template and run the command again to see the result. Examples are
+fictional. The outcome sample deliberately demonstrates cancellation without
+claiming completion. Preview does not install anything or activate the worker.
+
+Production delivery remains OFF. Disposable SQL acceptance, reporter access,
+operator preview approval, governed deployment and the exact two-Flow cutover
+remain release gates. Preserve existing Setup daily report mail and non-mail
+Directus Flows throughout.
