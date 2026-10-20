@@ -782,3 +782,32 @@ Shared checkout observed clean at 17c522c4f8ec06549bf7a6d9e8530c61276203f7.
 Do not advance it merely to install this app. Server Management must use an exact,
 persistent independent application checkout with the established runtime account
 and Python environment, and maintain the existing #37 database mutation boundary.
+
+
+## October 20 — correction: Directus is the sole user and role authority
+
+Operator correction supersedes all earlier references to Work Order-specific
+Manager grants, named capability rows, or separate Manager approval tables.
+Do not create or consume ops.work_management_permission. Work Management must
+resolve current active Directus users, roles and policies on every request and
+again within each native SQL command. Reuse the existing Directus-backed
+ref.setup_browser_capabilities lookup for its role/policy resolution; it does
+not depend on a seasonal Setup session. can_manage_setup represents the existing
+Directus Manager/Administrator capability and supplies Work Management Manager
+rights. Production Crew retains only assigned-work rights. Inactive, missing,
+unlinked and ambiguous identities fail closed. Role changes and revocation in
+Directus require no app-specific grant, restart or mirrored user list.
+
+Disposable acceptance may change Directus role/policy fixtures only inside the
+isolated clone with rollback. The browser reviewer must use actual cloned
+Directus permissions, without silently elevating the reviewer. Keep narrow
+application SQL EXECUTE privileges and existing Person audit linkage.
+
+Authentication remains a distinct release gate: Greg identifies Directus Google
+SSO as the intended login authority. Existing Controller/Setup documentation
+instead specifies Cloudflare Access authenticated email at the protected proxy.
+Do not claim that header authenticates a Directus session or silently substitute
+one authority for the other. Confirm the deployed Directus Google/session handoff
+and reconcile this conflict before Production installation. No new Google client,
+second user directory, or client-supplied email/role authentication is authorized.
+The old staged V1.0.1 candidate is superseded and must not be installed.
