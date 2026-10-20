@@ -640,8 +640,8 @@
       });
       // Reuse the existing authorized Task Type catalog; do not create raw IDs.
       try {
-        const typeResponse = await getJson("/api/work-orders/reviewer-options");
-        const types = typeResponse.options?.task_types || [];
+        const typeResponse = await getJson("/api/work-orders/task-types");
+        const types = typeResponse.task_types || [];
         const picker = $("task-type-filter");
         types.forEach((type) => {
           const option = document.createElement("option");
