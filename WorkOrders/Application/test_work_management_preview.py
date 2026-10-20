@@ -1283,7 +1283,8 @@ def test_oct20_focus_layout_for_all_work_actions_and_theme_token_buttons():
     css = (HERE / "app.css").read_text(encoding="utf-8")
     actions = (HERE / "review_actions.js").read_text(encoding="utf-8")
     assert 'id="review-cancel-action"' in html
-    assert 'detail: {editing: Boolean(kind && !form.hidden)}' in actions
+    assert 'detail: {editing: Boolean((kind && !form.hidden) ||' in actions
+    assert '["INTAKE_REQUEST", "TASK_FEEDBACK"].includes(model.ticket.type)' in actions
     assert 'byId("review-cancel-action").addEventListener("click"' in actions
     assert 'byId("review-action").value = "";' in actions
     assert '.workspace.edit-focused .ticket-column { display:none; }' in css
