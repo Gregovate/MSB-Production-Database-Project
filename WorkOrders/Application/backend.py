@@ -145,6 +145,13 @@ def assignees() -> Response:
     return jsonify(assignees=store().assignees())
 
 
+@app.get("/api/work-orders/task-types")
+def task_types() -> Response:
+    """Read-only catalog search filter for authorized Crew and Managers."""
+    who = actor()
+    return jsonify(task_types=store().task_types(who), **runtime_response())
+
+
 @app.get("/api/work-orders/reviewer-options")
 def reviewer_options() -> Response:
     """Manager-only existing catalogs for no-save UX rehearsal."""
