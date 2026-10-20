@@ -398,6 +398,8 @@ class CloneCommands:
                 work_order = cur.fetchone()
                 if not work_order:
                     raise WorkManagementError("Work Order not found.", 404)
+                if not work_order["is_active"]:
+                    raise WorkManagementError("Inactive or cancelled Work Order cannot be worked.", 409)
             else:
                 work_order = None
             if kind == "INTAKE":
