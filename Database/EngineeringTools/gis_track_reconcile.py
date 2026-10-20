@@ -33,7 +33,9 @@ def read_network_catalog(path):
             raise ValueError("Invalid network table identity")
         if ident in ids or code.casefold() in codes:raise ValueError("Duplicate network table identity")
         ids.add(ident);codes.add(code.casefold())
-    return dict(source_table="ref.site_network",revision=data["revision"],snapshot_sha256=digest(path),networks=rows)
+    return dict(source_table="ref.site_network",revision=data["revision"],snapshot_sha256=digest(path),
+                fetched_at=data.get("fetched_at"),source_host=data.get("source_host"),
+                database=data.get("database"),networks=rows)
 
 
 def route_installation(kind, year="", designations="", catalog=None):
@@ -50,10 +52,11 @@ def route_installation(kind, year="", designations="", catalog=None):
         raise ValueError("Cable designations in this workflow apply only to Network routes")
     links=[]
     for label in labels:
-        spare=bool(re.fullmatch(r"SPARE(?:[- ]\d+)?",label))
-        row=next((r for r in (catalog or {}).get("networks",[]) if r["network_code"].casefold()==label.casefold()),None) if not spare else None
-        links.append(dict(designation=label,site_network_id=row["site_network_id"] if row else None,
-                          network_code=row["network_code"] if row else None,spare_designation=label if spare else None))
+        row=next((r for r in (catalog or {}).get("networks",[]) if r["network_code"].casefold()==label.casefold()),None)
+        if row is None:
+            raise ValueError("Choose each designation from ref.site_network; unknown designation: "+label)
+        links.append(dict(designation=label,site_network_id=row["site_network_id"],
+                          network_code=row["network_code"],spare_designation=None))
     return dict(schema="msb.gis.route-installation.v1",route_type=kind,
                 year_installed=int(year) if year else None,cable_designations=labels,cable_assignments=links,network_catalog=catalog,
                 evidence_source="operator",physical_cable_identity_status="pending reviewed reconciliation")

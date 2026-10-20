@@ -30,6 +30,7 @@ def main():
                '--icon', str(here / 'assets' / 'MSB-Icon-Library-Manager.ico'),
                '--add-data', str(here / 'assets') + ';assets',
                '--add-data', str(here / 'garmin_symbol_registry.json') + ';.',
+               '--add-data', str(here / 'site_network_catalog.json') + ';.',
                '--add-data', str(build_manifest) + ';.', str(here / 'icon_library_manager.pyw')]
     subprocess.run(command, check=True)
     executable = output / 'MSB-GIS-Manager.exe'

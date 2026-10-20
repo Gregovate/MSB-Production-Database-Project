@@ -87,11 +87,12 @@ class ReconcileTests(unittest.TestCase):
         self.assertEqual(r.annual_history_evidence(dict(description="Installation year unknown")),[])
     def test_shared_network_route_export_and_year_without_invented_date(self):
         labels="REG, E1.31, INET, AUX-E, AUX-F, AUX-G, AUX-H, SPARE-1"
-        data=r.route_installation("Network","2026",labels)
+        catalog=dict(source_table="ref.site_network",revision=1,networks=[dict(site_network_id=i+1,network_code=label) for i,label in enumerate(labels.split(", "))])
+        data=r.route_installation("Network","2026",labels,catalog)
         self.assertEqual(data["year_installed"],2026)
         self.assertEqual(len(data["cable_assignments"]),8)
-        self.assertEqual(data["cable_assignments"][-1]["spare_designation"],"SPARE-1")
-        self.assertIsNone(data["cable_assignments"][-1]["site_network_id"])
+        self.assertIsNone(data["cable_assignments"][-1]["spare_designation"])
+        self.assertEqual(data["cable_assignments"][-1]["site_network_id"],8)
         r.accept_new_run(self.intake,self.master,r.digest(self.master),self.raw,r.digest(self.raw),1,
                          r.recording_vertices(self.raw,1),"NET shared route","Network","Install notes retained",installation=data)
         out=r.export_candidate(self.intake,self.master,r.digest(self.master),self.root/"shared.gpx")
@@ -122,11 +123,15 @@ class ReconcileTests(unittest.TestCase):
     def test_network_table_identity_and_spare_remain_distinct(self):
         snapshot=self.root/"catalog.json"
         snapshot.write_text(json.dumps(dict(data_mode="postgres",format_version=1,revision=7,
-            networks=[dict(site_network_id=42,network_code="REG",network_kind="LOR")])))
+            networks=[dict(site_network_id=42,network_code="REG",network_kind="LOR"),dict(site_network_id=19,network_code="SPARE-1",network_kind="OTHER")])))
         catalog=r.read_network_catalog(snapshot)
         data=r.route_installation("Network","2026","REG, SPARE-1",catalog)
         self.assertEqual(data["cable_assignments"][0]["site_network_id"],42)
-        self.assertIsNone(data["cable_assignments"][1]["site_network_id"])
+        self.assertEqual(data["cable_assignments"][1]["site_network_id"],19)
+        with self.assertRaisesRegex(ValueError,"ref.site_network"):
+            r.route_installation("Network","2026","TYPO",catalog)
+        with self.assertRaisesRegex(ValueError,"ref.site_network"):
+            r.route_installation("Network","2026","REG")
         self.assertEqual(data["network_catalog"]["revision"],7)
         snapshot.write_text('{}')
         with self.assertRaises(ValueError):r.read_network_catalog(snapshot)

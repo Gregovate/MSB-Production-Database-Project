@@ -277,3 +277,29 @@ ExpertGPS extension round-trip remains to be verified. FLW remains read-only.
 Save draft preserves installation fields and review notes without acceptance.
 The current user's eight designations are REG, E1.31, INET, AUX-E, AUX-F, AUX-G,
 AUX-H and SPARE-1. Geometry splits and new FE-02B placement remain ExpertGPS work.
+
+
+### October 20 correction — existing maintained network table (V0.5.8)
+
+Operator confirmed ref.site_network is already populated. A read-only query of
+msb-prod-db / msb confirmed the table exists; the subsequent verified snapshot
+contains 27 entries, including newly added SPARE-1 through SPARE-9. PR #319 being
+unmerged does not establish that its table is absent from the live database.
+
+Intake uses the actual site_network_id/network_code rows for multiple selection.
+Freeform network entry is removed and unknown labels block acceptance. SPARE
+entries are selected by their existing table IDs, like other maintained rows;
+no additional spare identity or network row is inferred or created. One selected
+route still produces one GPX track, with multiple selected designations.
+
+The packaged table snapshot records host, database, retrieval time and row hash.
+Refresh uses the existing workstation SSH identity to msbadmin@192.168.5.9,
+Docker msb-postgres, database msb, with BEGIN READ ONLY / SELECT / ROLLBACK.
+No password prompt, background tunnel, database write or runtime deployment is
+introduced. Failed refresh leaves the dated verified snapshot available.
+The UI shows the retrieval time; this is not represented as a continuous live
+connection. Original user drafts are restored and mapped against table codes.
+
+This completes table-backed selection only. Reviewed route/cable promotion into
+PostgreSQL and Field Wiring consumption still require #319 integration and its
+acceptance gates. A local GPX export is not a PostgreSQL release.

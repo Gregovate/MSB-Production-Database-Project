@@ -277,6 +277,9 @@ class IntakeTests(unittest.TestCase):
                         break
                 note=next(w for w in walk(review) if isinstance(w,tk.Text) and str(w.cget('state'))=='normal')
                 note.insert('1.0','Disposable fixture: verified matching track')
+                networks=[w for w in walk(review) if isinstance(w,tk.Listbox)][-1]
+                reg=list(networks.get(0,'end')).index('REG')
+                networks.selection_set(reg);networks.event_generate('<<ListboxSelect>>');root.update()
                 next(w for w in walk(review) if isinstance(w,ttk.Checkbutton)).invoke()
                 next(w for w in walk(review) if isinstance(w,ttk.Button) and w.cget('text')=='Save match & Next').invoke()
                 root.update()
@@ -296,7 +299,12 @@ class IntakeTests(unittest.TestCase):
                 review=next(w for w in walk(win) if w.winfo_name()=="run_review")
                 install=next(w for w in walk(review) if isinstance(w,ttk.LabelFrame))
                 evidence_entries=[w for w in walk(install) if type(w) is ttk.Entry]
-                evidence_entries[0].insert(0,'2026');evidence_entries[1].insert(0,'REG, E1.31, SPARE-1')
+                self.assertEqual(len(evidence_entries),1)  # year only; no freeform network field
+                evidence_entries[0].insert(0,'2026')
+                networks=next(w for w in walk(install) if isinstance(w,tk.Listbox))
+                for code in ('REG','E1.31','SPARE-1'):
+                    networks.selection_set(list(networks.get(0,'end')).index(code))
+                networks.event_generate('<<ListboxSelect>>');root.update()
                 next(w for w in walk(review) if isinstance(w,ttk.Button) and w.cget('text')=='Save draft (no acceptance)').invoke()
                 draft_file=next((intake/'Drafts').glob('*.json'))
                 self.assertEqual(json.loads(draft_file.read_text())['year'],'2026')
@@ -310,11 +318,12 @@ class IntakeTests(unittest.TestCase):
                 install=next(w for w in walk(review) if isinstance(w,ttk.LabelFrame))
                 evidence_entries=[w for w in walk(install) if type(w) is ttk.Entry]
                 self.assertEqual(evidence_entries[0].get(),'2026')
-                self.assertEqual(evidence_entries[1].get(),'REG, E1.31, SPARE-1')
+                networks=next(w for w in walk(install) if isinstance(w,tk.Listbox))
+                self.assertEqual({networks.get(i) for i in networks.curselection()},{'REG','E1.31','SPARE-1'})
                 type_control.set('High Voltage');root.update()
-                self.assertFalse(evidence_entries[1].winfo_ismapped())
+                self.assertFalse(networks.winfo_ismapped())
                 type_control.set('Network');root.update()
-                self.assertTrue(evidence_entries[1].winfo_ismapped())
+                self.assertTrue(networks.winfo_ismapped())
                 self.assertEqual(len(reconcile.decisions(intake,source_digest(master))),1)
                 self.assertFalse(errors)
                 self.assertEqual((source.read_bytes(),master.read_bytes()),before)

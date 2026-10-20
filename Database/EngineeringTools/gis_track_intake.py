@@ -21,6 +21,7 @@ from PIL import Image, ImageTk
 from sync_gis_icons import PARK
 from tkinter import ttk, filedialog, messagebox
 import gis_track_reconcile as reconcile
+import gis_network_catalog
 
 GPX = "{http://www.topografix.com/GPX/1/1}"
 KINDS = ("Unknown", "High Voltage", "High Voltage 12-2", "High Voltage 12-3",
@@ -620,7 +621,15 @@ def open_intake(parent):
         file,(raw_index,raw_name,raw_points)=state["items"][active]
         review=ttk.Frame(row,name="run_review",width=620);state["review_window"]=review
         review.pack(side="right",fill="y",before=panel);review.pack_propagate(False)
-        frame=ttk.Frame(review,padding=10);frame.pack(fill="both",expand=True)
+        review_scroll=ttk.Scrollbar(review,orient="vertical")
+        review_scroll.pack(side="right",fill="y")
+        review_canvas=tk.Canvas(review,highlightthickness=0,yscrollcommand=review_scroll.set)
+        review_canvas.pack(side="left",fill="both",expand=True)
+        review_scroll.configure(command=review_canvas.yview)
+        frame=ttk.Frame(review_canvas,padding=10)
+        content=review_canvas.create_window(0,0,window=frame,anchor="nw")
+        frame.bind("<Configure>",lambda e:review_canvas.configure(scrollregion=review_canvas.bbox("all")))
+        review_canvas.bind("<Configure>",lambda e:review_canvas.itemconfigure(content,width=e.width))
         ttk.Label(frame,text="Review a new run" if new_run else "Current ExpertGPS master → reviewed replacement",font=("Segoe UI",11,"bold"),wraplength=560).pack(anchor="w")
         ttk.Label(frame,text="Choose a cable run, review its notes, and select the part of this walk to use. Save each run separately.\nMaster: network blue / power red / primary orange. Garmin recording: yellow.",wraplength=560).pack(anchor="w")
         matches=reconcile.rank_matches(raw_points,state["nearby_runs"],limit=None)
@@ -628,12 +637,11 @@ def open_intake(parent):
             matches=[dict(track=dict(index=0,name=name.get(),type=kind.get(),comments="",
                          description="New run: no existing master track will be replaced.",
                          points=list(raw_points)),route_ft=999,endpoint_ft=999)]
-            ttk.Label(frame,text="Edit Working name and Temporary type below the map before saving. "
-                      "Check nearby master tracks to avoid adding an already processed run.",wraplength=560).pack(anchor="w")
+            ttk.Label(frame,text="Name and type remain editable below the map.",wraplength=560).pack(anchor="w")
         choices=tk.Listbox(frame,exportselection=False,height=3)
         for m in matches:choices.insert("end",m["track"]["name"])
         choices.pack(fill="x",pady=5)
-        metadata=tk.Text(frame,height=4,width=35,wrap="word");metadata.pack(fill="both",expand=True)
+        metadata=tk.Text(frame,height=4,width=35,wrap="word");metadata.pack(fill="x")
         verts=reconcile.recording_vertices(file,raw_index)
         draft=[dict(v) for v in verts]
         state["raw_preview"]=raw_points
@@ -668,7 +676,7 @@ def open_intake(parent):
                 state["matched_track"]=track
                 show_all_runs.set(False)
             metadata.configure(state="normal");metadata.delete("1.0","end")
-            metadata.insert("end",f'Master track #{track["index"]}: {track["name"]}\nType: {track["type"]}\n'
+            metadata.insert("end",f'{"New recording" if new_run else "Master track #"+str(track["index"])}: {track["name"]}\nType: {track["type"]}\n'
                             f'Years mentioned in notes: {", ".join(str(y["year"]) for y in reconcile.annual_history_evidence(track)) or "Not specified"}\n'
                             f'Comments:\n{track["comments"] or "(none)"}\nInstallation/description:\n{track["description"] or "(none)"}'
                             "\n\nAll master extensions and original metadata are retained in the exported GPX.")
@@ -693,32 +701,54 @@ def open_intake(parent):
         ttk.Label(installation_box,text="Year installed (blank = unknown)").pack(anchor="w")
         year_entry=ttk.Entry(installation_box,textvariable=installed_year);year_entry.pack(fill="x")
         network_fields=ttk.Frame(installation_box)
-        ttk.Label(network_fields,text="Cable designations on this one route").pack(anchor="w")
-        ttk.Entry(network_fields,textvariable=cable_labels).pack(fill="x")
-        catalog_message=tk.StringVar(value="Network table not loaded; entered labels remain pending identity review.")
-        ttk.Label(network_fields,textvariable=catalog_message,wraplength=540).pack(anchor="w")
-        network_options=tk.Listbox(network_fields,height=3,selectmode="multiple",exportselection=False)
-        network_options.pack(fill="x")
+        ttk.Label(network_fields,text="Select networks carried by this route").pack(anchor="w")
+        ttk.Label(network_fields,textvariable=cable_labels,wraplength=520).pack(anchor="w")
+        catalog_message=tk.StringVar()
+        ttk.Label(network_fields,textvariable=catalog_message,wraplength=520).pack(anchor="w")
+        options_frame=ttk.Frame(network_fields);options_frame.pack(fill="x")
+        network_options=tk.Listbox(options_frame,height=5,selectmode="multiple",exportselection=False)
+        network_scroll=ttk.Scrollbar(options_frame,orient="vertical",command=network_options.yview)
+        network_scroll.pack(side="right",fill="y")
+        network_options.configure(yscrollcommand=network_scroll.set)
+        network_options.pack(side="left",fill="x",expand=True)
         def use_networks(event=None):
             catalog=state.get("network_catalog",{})
-            spares=[v.strip() for v in cable_labels.get().split(",") if v.strip().upper().startswith("SPARE")]
-            cable_labels.set(", ".join([catalog["networks"][i]["network_code"] for i in network_options.curselection()]+spares))
+            cable_labels.set(", ".join(catalog["networks"][i]["network_code"] for i in network_options.curselection()))
         network_options.bind("<<ListboxSelect>>",use_networks)
         def show_catalog():
             catalog=state.get("network_catalog")
-            if not catalog:return
             network_options.delete(0,"end")
-            for item in catalog["networks"]:network_options.insert("end",item["network_code"])
-            catalog_message.set("ref.site_network — saved revision "+str(catalog["revision"])+". Select all networks carried by this route.")
-        def load_catalog():
-            path=filedialog.askopenfilename(parent=win,title="Open PostgreSQL site reference snapshot",filetypes=[("Site reference JSON","*.json")])
-            if not path:return
-            try:
-                state["network_catalog"]=reconcile.read_network_catalog(path);show_catalog()
-            except (ValueError,OSError) as error:messagebox.showerror("Network table unavailable",str(error),parent=win)
-        ttk.Button(network_fields,text="Load existing network table snapshot",command=load_catalog).pack(fill="x")
+            if not catalog:
+                catalog_message.set("Network table unavailable. Refresh before accepting a Network route.")
+                return
+            selected={v.strip().casefold() for v in cable_labels.get().split(",") if v.strip()}
+            for i,item in enumerate(catalog["networks"]):
+                network_options.insert("end",item["network_code"])
+                if item["network_code"].casefold() in selected:network_options.selection_set(i)
+            catalog_message.set("ref.site_network: "+str(len(catalog["networks"]))+" entries. Read "+str(catalog.get("fetched_at") or "from saved table")+".")
+        def refresh_catalog():
+            catalog_message.set("Reading PostgreSQL network table…")
+            refresh_button.configure(state="disabled")
+            outcome=thread_queue.Queue()
+            def worker():
+                try:outcome.put((gis_network_catalog.refresh(),None))
+                except Exception as error:outcome.put((None,str(error)))
+            def finish():
+                if not review.winfo_exists():return
+                try:catalog,error=outcome.get_nowait()
+                except thread_queue.Empty:
+                    win.after(100,finish);return
+                refresh_button.configure(state="normal")
+                if error:catalog_message.set(error);return
+                state["network_catalog"]=catalog;show_catalog();confirmed.set(False)
+            threading.Thread(target=worker,daemon=True).start()
+            win.after(100,finish)
+        refresh_button=ttk.Button(network_fields,text="Refresh networks from PostgreSQL",command=refresh_catalog)
+        refresh_button.pack(fill="x")
+        if not state.get("network_catalog"):
+            try:state["network_catalog"]=gis_network_catalog.load()
+            except (OSError,ValueError):pass
         show_catalog()
-        ttk.Label(network_fields,text="Comma-separated reviewed evidence. Network table identity links remain pending; SPARE is separate from network membership.",wraplength=540).pack(anchor="w")
         workflow_status=tk.StringVar()
         ttk.Label(installation_box,textvariable=workflow_status,wraplength=540).pack(anchor="w")
         def installation_type():
@@ -742,7 +772,9 @@ def open_intake(parent):
         def installation_data():
             k=installation_type()
             if k.casefold() not in ("network","primary") and not k.casefold().startswith("high voltage"):return None
-            if not installed_year.get().strip() and not (k.casefold()=="network" and cable_labels.get().strip()):return None
+            if k.casefold()=="network" and not cable_labels.get().strip():
+                raise ValueError("Select at least one designation from ref.site_network")
+            if not installed_year.get().strip() and k.casefold()!="network":return None
             return reconcile.route_installation(k,installed_year.get(),cable_labels.get() if k.casefold()=="network" else "",state.get("network_catalog"))
         # Keep unsaved installation edits when the same recording is reopened.
         draft_key=(state["master_digest"],state["digests"][file],raw_index,new_run)
@@ -751,7 +783,7 @@ def open_intake(parent):
         if not prior_fields and draft_path.exists():
             try:prior_fields=json.loads(draft_path.read_text(encoding="utf8"))
             except (ValueError,OSError):pass
-        installed_year.set(prior_fields.get("year",""));cable_labels.set(prior_fields.get("cables",""))
+        installed_year.set(prior_fields.get("year",""));cable_labels.set(prior_fields.get("cables",""));show_catalog()
         def remember_installation(*_):
             state["installation_drafts"].setdefault(draft_key,{}).update(year=installed_year.get(),cables=cable_labels.get())
             confirmed.set(False)
