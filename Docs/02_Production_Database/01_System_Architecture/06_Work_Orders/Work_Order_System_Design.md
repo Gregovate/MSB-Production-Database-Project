@@ -951,3 +951,28 @@ before activation; do not substitute the home page or invent public access.
 The initial SMTP adapter and delivery-claim migration are source candidates only;
 event capture, worker activation, live SQL acceptance and Flow cutover are not
 established by offline tests.
+
+
+### Candidate capture and disposable acceptance
+
+Capture is a disabled-by-default database trigger on new Intake, new active
+assignment, and the existing native clarification/outcome activity events. It
+writes a snapshot payload to the existing outbox using phase2-prefixed stable
+event/recipient keys. Original V1 PENDING_CUTOVER entries remain held and excluded.
+The outbox activity link becomes optional for direct Intake/assignment events;
+there is no second ticket table. Capture activation and retiring the two exact
+mail Flows require one governed cutover boundary; neither migration activates it.
+
+Original reporters may read their own Work Order and activity, without receiving
+Manager or assignment/write rights. My Submitted Feedback includes their public
+Intake as well as Setup feedback. Existing active Directus linkage remains
+required; external/unlinked reporter handling still needs a manual-contact
+exception before activation. No public authentication bypass is introduced.
+
+The established WO419 disposable runner applies migrations 001/002/003 only
+inside its private restored clone. Its worker role is NOLOGIN; it never starts
+the SMTP worker. Reuse the installed independent Work Management Python runtime
+documented in Server Management, preserving shared FieldWiring dependencies.
+Clone-only tests temporarily enable capture/disable the two cloned Flows and
+roll back all data and simulated receipts. Source regression is not SQL proof.
+No Production or live-email activation follows automatically from clone PASS.

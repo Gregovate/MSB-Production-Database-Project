@@ -143,4 +143,157 @@ REVOKE ALL ON FUNCTION ops.work_management_mail_finish(text,text,text) FROM PUBL
 GRANT USAGE ON SCHEMA ops TO work_management_mail;
 GRANT EXECUTE ON FUNCTION ops.work_management_mail_claim(text,text,text,jsonb),
   ops.work_management_mail_finish(text,text,text) TO work_management_mail;
+-- New-event capture is OFF until a separately governed atomic cutover.
+-- No historic PENDING_CUTOVER intent is automatically queued.
+ALTER TABLE ops.work_management_outbox ALTER COLUMN activity_id DROP NOT NULL;
+ALTER TABLE ops.work_management_outbox ADD COLUMN message_kind text
+  CHECK (message_kind IN ('new_request','assignment','outcome','more_info'));
+ALTER TABLE ops.work_management_outbox ADD COLUMN payload jsonb;
+CREATE TABLE ops.work_management_mail_control (
+  singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton),
+  capture_enabled boolean NOT NULL DEFAULT false
+);
+INSERT INTO ops.work_management_mail_control(singleton) VALUES(true);
+REVOKE ALL ON ops.work_management_mail_control FROM PUBLIC;
+
+CREATE FUNCTION ops.work_management_capture_mail() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,ops,ref,stage AS $capture$
+DECLARE
+  v_ticket text; v_kind text; v_event text; v_title text;
+  v_reporter integer; v_recipients integer[]; v_person integer;
+  v_email text; v_name text; v_reporter_name text; v_payload jsonb; v_wo ops.work_order%ROWTYPE;
+  v_intake stage.work_order_intake%ROWTYPE;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM ops.work_management_mail_control WHERE capture_enabled) THEN
+    RETURN NEW;
+  END IF;
+  IF TG_TABLE_NAME='work_order_intake' THEN
+    v_ticket := 'INTAKE-' || NEW.intake_id;
+    v_event := 'phase2:intake:' || NEW.intake_id;
+    v_kind := 'new_request'; v_title := NEW.problem_raw;
+    v_reporter := NEW.submitter_person_id;
+    SELECT array_agg(person_id) INTO v_recipients FROM ref.person
+      WHERE is_manager AND active_flag AND email IS NOT NULL;
+    SELECT coalesce(nullif(btrim(concat_ws(' ',preferred_name,first_name,last_name)),''),'Reporter')
+      INTO v_reporter_name FROM ref.person WHERE person_id=v_reporter;
+    v_payload := jsonb_build_object('reporter',coalesce(v_reporter_name,'Not recorded'));
+  ELSIF TG_TABLE_NAME='work_order_assignment' THEN
+    IF NOT NEW.active_flag THEN RETURN NEW; END IF;
+    SELECT * INTO STRICT v_wo FROM ops.work_order WHERE work_order_id=NEW.work_order_id;
+    IF v_wo.date_completed IS NOT NULL OR NOT v_wo.is_active THEN RETURN NEW; END IF;
+    v_ticket := 'WO-' || NEW.work_order_id;
+    v_event := 'phase2:assignment:' || NEW.work_order_assignment_id;
+    v_kind := 'assignment'; v_title := v_wo.problem;
+    v_recipients := ARRAY[NEW.person_id::integer];
+    v_payload := jsonb_build_object('due_by',coalesce(v_wo.due_by::text,'Due date required'));
+  ELSIF TG_TABLE_NAME='work_management_activity' THEN
+    IF NEW.event_kind NOT IN ('clarify','resolve','complete','cancel') THEN RETURN NEW; END IF;
+    v_ticket := NEW.ticket_key;
+    v_event := 'phase2:activity:' || NEW.activity_id;
+    IF v_ticket LIKE 'INTAKE-%' THEN
+      SELECT * INTO STRICT v_intake FROM stage.work_order_intake
+        WHERE intake_id=split_part(v_ticket,'-',2)::bigint;
+      v_title := v_intake.problem_raw; v_reporter := v_intake.submitter_person_id;
+    ELSE
+      SELECT * INTO STRICT v_wo FROM ops.work_order
+        WHERE work_order_id=split_part(v_ticket,'-',2)::bigint;
+      v_title := v_wo.problem;
+      SELECT submitter_person_id INTO v_reporter FROM stage.work_order_intake
+        WHERE intake_id=v_wo.source_intake_id;
+      v_reporter := coalesce(v_reporter,v_wo.submitted_by_person_id);
+    END IF;
+    v_recipients := ARRAY[v_reporter];
+    v_kind := CASE WHEN NEW.event_kind='clarify' THEN 'more_info' ELSE 'outcome' END;
+    v_payload := jsonb_build_object('question',NEW.note,'reason',NEW.note,
+      'outcome',CASE NEW.event_kind WHEN 'complete' THEN 'Done'
+         WHEN 'cancel' THEN 'Canceled — no work performed'
+         ELSE coalesce(NEW.details->>'disposition','Decision recorded') END);
+  ELSE
+    RAISE EXCEPTION 'Unrecognized mail capture source';
+  END IF;
+  -- Retain an actionable missing-recipient record instead of silently dropping it.
+  IF coalesce(cardinality(v_recipients),0)=0 THEN v_recipients:=ARRAY[NULL::integer]; END IF;
+  FOREACH v_person IN ARRAY v_recipients LOOP
+    SELECT email,coalesce(nullif(btrim(concat_ws(' ',coalesce(nullif(preferred_name,''),first_name),last_name)),''),'Volunteer')
+      INTO v_email,v_name FROM ref.person WHERE person_id=v_person;
+    INSERT INTO ops.work_management_outbox
+      (event_key,ticket_key,recipient_person_id,recipient_email,delivery_status,message_kind,payload)
+    VALUES (v_event || ':' || coalesce(v_person::text,'missing'),v_ticket,v_person,v_email,
+      CASE WHEN nullif(btrim(v_email),'') IS NULL THEN 'MISSING_RECIPIENT' ELSE 'QUEUED' END,
+      v_kind,coalesce(v_payload,'{}'::jsonb) || jsonb_build_object('ticket',v_ticket,
+         'title',coalesce(nullif(v_title,''),'Description not recorded'),
+         'assignees',coalesce(v_name,'No contact recorded'),
+         'ticket_url','https://my.sheboyganlights.org/workorder/?ticket=' || v_ticket))
+    ON CONFLICT(event_key) DO NOTHING;
+  END LOOP;
+  RETURN NEW;
+END $capture$;
+REVOKE ALL ON FUNCTION ops.work_management_capture_mail() FROM PUBLIC;
+CREATE TRIGGER work_management_intake_mail AFTER INSERT ON stage.work_order_intake
+  FOR EACH ROW EXECUTE FUNCTION ops.work_management_capture_mail();
+CREATE TRIGGER work_management_assignment_mail AFTER INSERT ON ops.work_order_assignment
+  FOR EACH ROW EXECUTE FUNCTION ops.work_management_capture_mail();
+CREATE TRIGGER work_management_activity_mail AFTER INSERT ON ops.work_management_activity
+  FOR EACH ROW EXECUTE FUNCTION ops.work_management_capture_mail();
+
+CREATE FUNCTION ops.work_management_mail_candidates()
+RETURNS TABLE(event_key text,recipient_email text,message_kind text,payload jsonb)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,ops AS $candidates$
+  SELECT o.event_key,o.recipient_email,o.message_kind,o.payload
+  FROM ops.work_management_outbox o
+  WHERE o.delivery_status='QUEUED' AND o.message_kind IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM ops.work_management_mail_delivery d WHERE d.event_key=o.event_key)
+  ORDER BY o.outbox_id LIMIT 50
+$candidates$;
+REVOKE ALL ON FUNCTION ops.work_management_mail_candidates() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ops.work_management_mail_candidates() TO work_management_mail;
+
+
+-- Reporter read access is scoped to their own native Work Order.
+CREATE OR REPLACE FUNCTION ops.work_management_v1_activity(
+  p_email text,p_ticket text
+) RETURNS TABLE (
+  event_kind text, actor_person_id integer,target_person_id integer,
+  note text,details jsonb,created_at timestamptz
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER
+SET search_path=pg_catalog,ops,ref,stage
+AS $activity$
+DECLARE
+  v_actor record;
+  v_id integer;
+BEGIN
+  SELECT a.* INTO v_actor FROM ops.work_management_v1_actor(p_email) a;
+  IF NOT FOUND OR p_ticket !~ '^(WO|INTAKE)-[1-9][0-9]*$' THEN
+    RAISE EXCEPTION 'Work Orders: ticket activity unauthorized' USING ERRCODE='42501';
+  END IF;
+  v_id:=split_part(p_ticket,'-',2)::integer;
+  IF NOT v_actor.can_manage THEN
+    IF p_ticket LIKE 'WO-%' THEN
+      IF NOT EXISTS (
+        SELECT 1 FROM ops.work_order_assignment a
+        WHERE a.work_order_id=v_id AND a.person_id=v_actor.person_id
+          AND a.active_flag
+      ) AND NOT EXISTS (
+        SELECT 1 FROM ops.work_order w WHERE w.work_order_id=v_id
+          AND w.submitted_by_person_id=v_actor.person_id
+      ) THEN
+        RAISE EXCEPTION 'Work Orders: ticket activity not assigned'
+          USING ERRCODE='42501';
+      END IF;
+    ELSE
+      IF NOT EXISTS (
+        SELECT 1 FROM stage.work_order_intake i
+        WHERE i.intake_id=v_id AND i.submitter_person_id=v_actor.person_id
+      ) THEN
+        RAISE EXCEPTION 'Work Orders: not original reporter' USING ERRCODE='42501';
+      END IF;
+    END IF;
+  END IF;
+  RETURN QUERY SELECT a.event_kind,a.actor_person_id,a.target_person_id,
+    a.note,a.details,a.created_at
+  FROM ops.work_management_activity a WHERE a.ticket_key=p_ticket
+  ORDER BY a.activity_id;
+END
+$activity$;
 COMMIT;

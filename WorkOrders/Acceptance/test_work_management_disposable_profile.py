@@ -225,7 +225,7 @@ def test_wo419_resume_state_is_valid_private_bash_and_has_no_credentials(tmp_pat
         "set -euo pipefail",
         "STATE_FILE=$1",
         "CANDIDATE_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "CANDIDATE_REF=issue-419-unified-ticket-read-model-20261018",
+        "CANDIDATE_REF=issue-419-phase2-email-due-date",
         "PREVIEW_EMAIL=reviewer@sheboyganlights.org",
         "PREVIEW_PORT=8898",
         "CLONE_CONTAINER=msb-wo419-preview-77",
@@ -277,9 +277,9 @@ def test_wo419_runner_start_resume_argument_gate_before_any_server_actions():
     for args, expected in (
         (["short"], "optional start/resume mode required"),
         (["badsha", "8898", "reviewer@sheboyganlights.org",
-          "issue-419-unified-ticket-read-model-20261018", "resume"], "exact 40-hex"),
+          "issue-419-phase2-email-due-date", "resume"], "exact 40-hex"),
         (["badsha", "8898", "reviewer@sheboyganlights.org",
-          "issue-419-unified-ticket-read-model-20261018", "resume", "extra"],
+          "issue-419-phase2-email-due-date", "resume", "extra"],
          "optional start/resume mode required"),
     ):
         result = subprocess.run(["bash", str(RUNNER), *args],

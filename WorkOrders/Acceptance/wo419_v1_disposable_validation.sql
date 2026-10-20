@@ -61,7 +61,7 @@ BEGIN
   v_key := gen_random_uuid();
   v_result := ops.work_management_v1_command(
     v_email,'create',NULL,
-    jsonb_build_object('problem','Disposable V1 regression: inspect and repair light strand',
+    jsonb_build_object('due_by','2026-10-25','problem','Disposable V1 regression: inspect and repair light strand',
                        'task_type_id',v_task_type,'stage_id',v_stage,
                        'urgency','3','person_ids',jsonb_build_array(v_actor)),
     v_key);
@@ -82,7 +82,7 @@ BEGIN
   END IF;
   v_result := ops.work_management_v1_command(
     v_email,'create',NULL,
-    jsonb_build_object('problem','Disposable V1 regression: inspect and repair light strand',
+    jsonb_build_object('due_by','2026-10-25','problem','Disposable V1 regression: inspect and repair light strand',
                        'task_type_id',v_task_type,'stage_id',v_stage,
                        'urgency','3','person_ids',jsonb_build_array(v_actor)),v_key);
   IF v_result->>'repeat' <> 'true' OR
@@ -93,7 +93,7 @@ BEGIN
   -- Manager correction must preserve identity and record before/after fields.
   v_result := ops.work_management_v1_command(
     v_email,'edit','WO-'||v_wo,
-    jsonb_build_object(
+    jsonb_build_object('due_by','2026-10-25',
       'problem','Disposable V1 corrected light strand planning scope',
       'task_type_id',v_task_type,'stage_id',v_stage,
       'urgency','5','target_year','2027',
@@ -114,7 +114,7 @@ BEGIN
   -- remain independent of this new correction fixture.
   PERFORM ops.work_management_v1_command(
     v_email,'edit','WO-'||v_wo,
-    jsonb_build_object(
+    jsonb_build_object('due_by','2026-10-25',
       'problem','Disposable V1 corrected light strand routine repair',
       'task_type_id',v_task_type,'stage_id',v_stage,
       'urgency','3',
@@ -126,7 +126,7 @@ BEGIN
   BEGIN
     PERFORM ops.work_management_v1_command(
       v_email,'cancel','WO-'||v_wo,
-      jsonb_build_object('cancel_reason',
+      jsonb_build_object('due_by','2026-10-25','cancel_reason',
         'Safety review: this procedure would damage frozen wiring; no physical work approved'),
       gen_random_uuid());
     IF NOT EXISTS (
@@ -159,7 +159,7 @@ BEGIN
   BEGIN
     PERFORM ops.work_management_v1_command(
       v_email,'create',NULL,
-      jsonb_build_object('problem','Unauthorized V1 create must be rejected',
+      jsonb_build_object('due_by','2026-10-25','problem','Unauthorized V1 create must be rejected',
                          'task_type_id',v_task_type,'stage_id',v_stage,
                          'urgency','3','person_ids','[]'::jsonb),gen_random_uuid());
   EXCEPTION WHEN insufficient_privilege THEN
@@ -173,7 +173,7 @@ BEGIN
   -- Directus role change does not remove the existing work assignment.
   PERFORM ops.work_management_v1_command(
     v_email,'progress','WO-'||v_wo,
-    jsonb_build_object('progress_note','Inspected power and repaired one damaged connection'),
+    jsonb_build_object('due_by','2026-10-25','progress_note','Inspected power and repaired one damaged connection'),
     gen_random_uuid());
   IF NOT EXISTS (SELECT 1 FROM ops.work_order w
                  WHERE w.work_order_id=v_wo AND w.date_completed IS NULL
@@ -182,7 +182,7 @@ BEGIN
   END IF;
   PERFORM ops.work_management_v1_command(
     v_email,'complete','WO-'||v_wo,
-    jsonb_build_object('completion_notes','Verified repaired connection and test illumination'),
+    jsonb_build_object('due_by','2026-10-25','completion_notes','Verified repaired connection and test illumination'),
     gen_random_uuid());
   IF NOT EXISTS (SELECT 1 FROM ops.work_order w
                  WHERE w.work_order_id=v_wo AND w.date_completed IS NOT NULL
@@ -229,7 +229,7 @@ BEGIN
   BEGIN
     v_result := ops.work_management_v1_command(
       v_email,'resolve','INTAKE-'||v_intake,
-      jsonb_build_object('response',
+      jsonb_build_object('due_by','2026-10-25','response',
           'Request reviewed; no work order required because issue is not a repair',
           'disposition','rejected'),
       gen_random_uuid());
@@ -249,7 +249,7 @@ BEGIN
     BEGIN
       PERFORM ops.work_management_v1_command(
         v_email,'promote','INTAKE-'||v_intake,
-        jsonb_build_object('problem','Rejected Intake must never be promoted',
+        jsonb_build_object('due_by','2026-10-25','problem','Rejected Intake must never be promoted',
           'task_type_id',v_task_type,'stage_id',v_stage,
           'urgency','3','person_ids',jsonb_build_array(v_actor)),
         gen_random_uuid());
@@ -266,7 +266,7 @@ BEGIN
 
   v_result := ops.work_management_v1_command(
     v_email,'promote','INTAKE-'||v_intake,
-    jsonb_build_object('problem','Disposable public Intake promotion test and assign',
+    jsonb_build_object('due_by','2026-10-25','problem','Disposable public Intake promotion test and assign',
                        'task_type_id',v_task_type,'stage_id',v_stage,
                        'urgency','3','person_ids',jsonb_build_array(v_actor)),
     gen_random_uuid());

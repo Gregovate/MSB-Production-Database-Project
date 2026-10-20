@@ -336,7 +336,7 @@ class WorkManagementRepository:
             conditions.append("t.type = 'WORK_ORDER' AND t.reporter_id = %s")
             params.append(user)
         elif scope == "my-feedback":
-            conditions.append("t.type = 'TASK_FEEDBACK' AND t.reporter_id = %s")
+            conditions.append("t.type IN ('TASK_FEEDBACK','INTAKE_REQUEST') AND t.reporter_id = %s")
             params.append(user)
         elif scope == "unassigned":
             conditions.append("t.type = 'WORK_ORDER' AND COALESCE(t.assigned_n, 0) = 0")
@@ -490,6 +490,7 @@ class WorkManagementRepository:
             if row["type"] == "WORK_ORDER" and not actor["can_manage"] and (
                 int(actor["person_id"]) not in
                 [int(person) for person in (row.get("assignee_ids") or [])]
+                and row.get("reporter_id") != actor["person_id"]
             ):
                 raise WorkManagementError("Work Order is not assigned to this Person.", 403)
             if row["type"] == "WORK_ORDER":
