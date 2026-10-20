@@ -576,7 +576,11 @@ class CloneCommands:
                 else:
                     raise WorkManagementError("Unsupported correction command.")
             return {"ticket": result_ticket, "saved": True, "repeat": False,
-                    "notifications": "NO_SEND", "activity_id": event,
+                    "notifications": (
+                        "MISSING_RECIPIENT" if action in ("clarify", "resolve")
+                        and intake is not None and intake["submitter_person_id"] is None
+                        else "NO_SEND"
+                    ), "activity_id": event,
                     "linked_setup_session_task_id": (
                         linked_setup_task_id if action in ("create", "promote", "link_setup") else None
                     )}
