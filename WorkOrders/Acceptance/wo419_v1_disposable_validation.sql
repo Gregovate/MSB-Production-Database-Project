@@ -94,6 +94,60 @@ BEGIN
     RAISE EXCEPTION 'WO419 V1 VALIDATION HOLD: request-key duplicate created second WO';
   END IF;
 
+  -- Manager correction must preserve identity and record before/after fields.
+  v_result := ops.work_management_v1_command(
+    v_email,'edit','WO-'||v_wo,
+    jsonb_build_object(
+      'problem','Disposable V1 corrected light strand planning scope',
+      'task_type_id',v_task_type,'stage_id',v_stage,
+      'urgency','5','target_year','2027',
+      'edit_reason','Manager corrected this job to a future Planning priority'),
+    gen_random_uuid());
+  IF v_result->>'saved' <> 'true' OR NOT EXISTS (
+    SELECT 1 FROM ops.work_order
+    WHERE work_order_id=v_wo AND urgency_id=5 AND target_year=2027
+  ) OR NOT EXISTS (
+    SELECT 1 FROM ops.work_management_activity
+    WHERE ticket_key='WO-'||v_wo AND event_kind='edit'
+      AND details->'before'->>'urgency_id'='3'
+      AND details->'after'->>'urgency_id'='5'
+  ) THEN
+    RAISE EXCEPTION 'WO419 V1 VALIDATION HOLD: Manager edit audit and Planning fields failed';
+  END IF;
+  -- Return the same test WO to Routine so existing Progress/Complete tests
+  -- remain independent of this new correction fixture.
+  PERFORM ops.work_management_v1_command(
+    v_email,'edit','WO-'||v_wo,
+    jsonb_build_object(
+      'problem','Disposable V1 corrected light strand routine repair',
+      'task_type_id',v_task_type,'stage_id',v_stage,
+      'urgency','3',
+      'edit_reason','Manager returned job to current routine scope for repair'),
+    gen_random_uuid());
+
+  -- Cancellation must not masquerade as physical completion or permit new work.
+  -- Roll back this nested fixture to keep the existing Progress/Complete gate.
+  BEGIN
+    PERFORM ops.work_management_v1_command(
+      v_email,'cancel','WO-'||v_wo,
+      jsonb_build_object('cancel_reason',
+        'Safety review: this procedure would damage frozen wiring; no physical work approved'),
+      gen_random_uuid());
+    IF NOT EXISTS (
+      SELECT 1 FROM ops.work_order
+      WHERE work_order_id=v_wo AND NOT is_active AND date_completed IS NULL
+    ) OR NOT EXISTS (
+      SELECT 1 FROM ops.work_management_activity
+      WHERE ticket_key='WO-'||v_wo AND event_kind='cancel'
+        AND details->>'physical_work_completed'='false'
+    ) THEN
+      RAISE EXCEPTION 'WO419 V1 VALIDATION HOLD: cancellation did not preserve noncompletion';
+    END IF;
+    RAISE EXCEPTION 'WO419_CANCEL_FIXTURE_ROLLBACK' USING ERRCODE='P0002';
+  EXCEPTION WHEN SQLSTATE 'P0002' THEN
+    RAISE NOTICE 'WO419 V1 Manager correction/Cancel-No-Action audit and noncompletion PASS';
+  END;
+
   -- A Manager with an explicitly revoked grant CANNOT create Work Orders,
   -- even with full form data; this proves native authorization, not UI hiding.
   UPDATE ops.work_management_permission SET can_manage=false
