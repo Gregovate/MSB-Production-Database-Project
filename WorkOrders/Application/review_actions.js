@@ -59,9 +59,13 @@
           (ticket.assignee_ids || []).some((id) => Number(id) === Number(actor.person_id))) {
         result.push("progress", "complete");
       }
-    } else if (actor.can_manage && ticket.type === "INTAKE_REQUEST") {
-      result.push("promote", "resolve");
-      if (ticket.reporter_id) result.push("clarify");
+    } else if (ticket.type === "INTAKE_REQUEST") {
+      if (actor.can_manage) {
+        result.push("promote", "resolve");
+        if (ticket.reporter_id) result.push("clarify");
+      }
+      if (Number(ticket.reporter_id) === Number(actor.person_id))
+        result.push("reply");
     } else if (ticket.type === "TASK_FEEDBACK") {
       if (actor.can_manage) result.push("correction_owner", "clarify", "resolve", "promote");
       if (Number(ticket.reporter_id) === Number(actor.person_id)) result.push("reply");
