@@ -437,3 +437,15 @@ html[data-theme="dark"] .review-action-button.primary-action:hover {
 }
 /* Selected actions use a neutral outline, never a different button palette. */
 .review-action-button[aria-pressed="true"] { outline:2px solid var(--accent); outline-offset:2px; }
+
+/* Intake decisions start with immutable submitted evidence, not Promote fields. */
+.review-source-evidence {
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--accent-faint);
+  padding:14px 16px;
+  margin-bottom:17px;
+}
+.review-source-evidence h4 { margin:0 0 12px; }
+.review-source-evidence p { margin:7px 0; }
+.review-source-evidence .multiline-note { white-space:pre-wrap; overflow-wrap:anywhere; }
