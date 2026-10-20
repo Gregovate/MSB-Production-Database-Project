@@ -396,6 +396,7 @@ sudo -u fieldwiring -H env PYTHONDONTWRITEBYTECODE=1 bash -c "
   '$PYTHON' -m pytest -q -p no:cacheprovider \
     WorkOrders/Application/test_work_management_preview.py \
     WorkOrders/Application/test_email_templates.py \
+    WorkOrders/Application/test_mail_worker.py \
     WorkOrders/Application/test_mail_delivery.py \
     WorkOrders/Application/test_due_by.py \
     WorkOrders/Acceptance/test_work_management_disposable_profile.py \

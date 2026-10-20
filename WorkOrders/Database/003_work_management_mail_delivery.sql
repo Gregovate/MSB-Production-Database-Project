@@ -174,7 +174,7 @@ BEGIN
     v_reporter := NEW.submitter_person_id;
     SELECT array_agg(person_id) INTO v_recipients FROM ref.person
       WHERE is_manager AND active_flag AND email IS NOT NULL;
-    SELECT coalesce(nullif(btrim(concat_ws(' ',preferred_name,first_name,last_name)),''),'Reporter')
+    SELECT coalesce(nullif(btrim(concat_ws(' ',coalesce(nullif(preferred_name,''),first_name),last_name)),''),'Reporter')
       INTO v_reporter_name FROM ref.person WHERE person_id=v_reporter;
     v_payload := jsonb_build_object('reporter',coalesce(v_reporter_name,'Not recorded'));
   ELSIF TG_TABLE_NAME='work_order_assignment' THEN
