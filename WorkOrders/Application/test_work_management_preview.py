@@ -452,7 +452,7 @@ def test_crew_direct_create_fails_before_any_disposable_write():
 def test_manager_intake_count_excludes_promoted_and_closed_history():
     source = (HERE / "repository.py").read_text(encoding="utf-8")
     assert "def manager_inbox(" in source
-    assert "a.event_kind = 'promoted_source'" in source
+    assert "a.event_kind IN ('promoted_source','resolve')" in source
     assert "a.event_kind IN ('resolve','promoted_source')" in source
     assert 'scope == "intake"' in source
     assert 'scope == "feedback"' in source
