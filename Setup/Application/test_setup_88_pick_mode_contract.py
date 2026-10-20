@@ -425,8 +425,8 @@ def test_release_identity_and_offline_shells_are_synchronized():
     location_sw = read("setup_record_location_sw.js")
     location_html = read("record_location.html")
 
-    assert 'PRODUCTION_VERSION = "V0.3.84-direct-crew-cells"' in backend
-    assert "const CLIENT_BUILD = 'V0.3.84-direct-crew-cells';" in guard
+    assert 'PRODUCTION_VERSION = "V0.3.86-container-review-actions"' in backend
+    assert "const CLIENT_BUILD = 'V0.3.86-container-review-actions';" in guard
     assert "msb-setup-pick-mode-v18" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_sw
     assert "setup_pick_mode.css?v=2026-10-01.5" in pick_html
@@ -434,11 +434,11 @@ def test_release_identity_and_offline_shells_are_synchronized():
     assert "setup_pick_list.js?v=2026-10-05.1" in pick_html
     assert "setup_pick_mode.js?v=2026-10-06.1" in pick_sw
     assert "setup_pick_mode.js?v=2026-10-06.1" in pick_html
-    assert "msb-setup-record-location-v22" in location_sw
-    assert "setup_record_location.css?v=2026-10-10.62" in location_sw
-    assert "setup_record_location.css?v=2026-10-10.62" in location_html
-    assert "setup_record_location.js?v=2026-10-10.62" in location_sw
-    assert "setup_record_location.js?v=2026-10-10.62" in location_html
+    assert "msb-setup-record-location-v23" in location_sw
+    assert "setup_record_location.css?v=2026-10-20.86" in location_sw
+    assert "setup_record_location.css?v=2026-10-20.86" in location_html
+    assert "setup_record_location.js?v=2026-10-20.86" in location_sw
+    assert "setup_record_location.js?v=2026-10-20.86" in location_html
 
 
 def test_movement_state_upserts_use_named_constraints_to_avoid_plpgsql_output_ambiguity():
@@ -542,3 +542,24 @@ def test_record_location_requires_visible_location_review_before_record_action()
     assert "Manager correction required before return" in ui
     assert "Returned " in ui
     assert "home_location_code" in ui
+
+
+def test_record_location_search_links_container_to_display_names_without_master_mutation():
+    """#88: finding GingerbreadHouse must reveal linked C009 without Directus."""
+    repository = read("setup_movement_repository.py")
+    ui = read("setup_record_location.js")
+    search = repository.split("    def search_assets(", 1)[1].split(
+        "    def current_state(", 1
+    )[0]
+    # A known Display Name must discover its assigned Container even when
+    # the Container description is legacy or misleading.
+    assert "linked.container_id = c.container_id" in search
+    assert "linked.display_name ILIKE %s" in search
+    assert "d.container_id::bigint AS assigned_container_id" in search
+    assert "SELECT asset_type, asset_id, identity, label, assigned_container_id" in search
+    assert "like,  # Container lookup through assigned Display Name." in search
+    assert "assigned CONT:" in ui
+    assert "row.asset_type === 'DISPLAY' && row.assigned_container_id != null" in ui
+    # The added path is read-only and must not create/rename Container identity.
+    assert "UPDATE ref.container" not in search
+    assert "INSERT INTO ref.container" not in search

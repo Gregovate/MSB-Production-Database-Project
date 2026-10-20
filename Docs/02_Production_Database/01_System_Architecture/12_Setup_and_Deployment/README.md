@@ -7,7 +7,7 @@
 | Audience | MSB reviewers, managers, and Setup operators |
 | Status | CURRENT |
 | Owner | MSB Production Database / Setup administrator |
-| Last Reviewed | 2026-10-04 |
+| Last Reviewed | 2026-10-16 |
 | Keywords | Setup, 2026 Setup, Scheduling Board, Perform Work, Report Work, Report Correction, Rolling Pick List, Pick Delay, reusable task, verification, Display Ownership, Kit, Extra Materials, T-Post, prerequisites |
 
 Use this page to decide **what you are trying to do in Setup** and where to go next.
@@ -39,6 +39,7 @@ If a screen appears old after an update, refresh it and check the Client version
 | Pull the next physical material / review delayed picks | [Rolling Pick List and Pick Delay](operatorSOP/Rolling_Pick_List_and_Pick_Delay.md) |
 | Add one or more 2026 Work Days | In **Plan / Schedule**, click **+ Add Work Days**, tap/click the dates, then add the selected dates |
 | Review historical 2025 verification evidence | [Review and Correct the 2025 Setup History](operatorSOP/Review_2025_Setup_History.md) |
+| Review proposed daily Manager email / reporting exceptions | [Review the Manager Email — operator procedure](operatorSOP/Review_Setup_Manager_Email.md) (candidate, **not yet active**) |
 | Learn the Setup Manager controls | [Setup Manager Review Guide](../../02_Operational_SOPs/Setup/Setup_Session_Manager_Review_Guide.md) |
 | Review what should be in a Kit | [Extra Materials and Kit Inventory](operatorSOP/Extra_Materials_and_Kit_Inventory.md) |
 | Count or correct T-Post stock | [Open the T-Post Inventory instructions](#t-post-inventory) |

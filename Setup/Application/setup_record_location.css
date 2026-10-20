@@ -101,6 +101,8 @@ body.training-mode .reference-data-details{display:block}
 .reference-status{margin-top:.5rem;color:var(--muted);font-size:.85rem}
 .pending-panel{border-width:3px}.pending-panel h2{margin:.25rem 0}
 .unload-groups{margin-top:.8rem}.group-heading{display:grid;gap:.15rem;margin-bottom:.55rem}
+/* #88: mixed-Stage unload action must be obvious before lengthy contents controls. */
+.unload-entry-primary{display:block;width:100%;min-height:56px;margin:0 0 .8rem;padding:.7rem .85rem;border:2px solid #6bcf8b;border-radius:9px;background:#12341e;color:#fff;font-weight:850;text-align:left}
 .placement-stage{display:block;font-weight:750;margin-top:.75rem}.placement-stage select{display:block;width:100%;max-width:100%;margin-top:.35rem}
 .unload-group{display:flex;align-items:flex-start;gap:.65rem;padding:.65rem;margin:.35rem 0;border:2px solid var(--line);border-radius:9px}
 .unload-group input{width:24px;height:24px;margin:.1rem 0 0}.group-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem}

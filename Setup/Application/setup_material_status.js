@@ -556,6 +556,10 @@
     // Report covers the whole season, including unresolved rows hidden by filters.
     window.open(`../api/setup/material-status/report?season_year=${encodeURIComponent(seasonSelect.value)}`, '_blank', 'noopener');
   });
+  document.getElementById('container-exceptions-link').addEventListener('click', event => {
+    event.preventDefault();
+    location.href = `../container-exceptions/?season_year=${encodeURIComponent(seasonSelect.value)}`;
+  });
 
   load().catch(showError);
 })();

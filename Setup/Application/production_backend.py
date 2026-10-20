@@ -34,12 +34,14 @@ from setup_scheduling_board_api import setup_scheduling_board_api
 from setup_work_order_intake_api import setup_work_order_intake_api
 from setup_material_readiness_api import setup_material_readiness_api
 from setup_movement_api import setup_movement_api
+from setup_container_review_api import setup_container_review_api
+from setup_manager_mail_admin_api import setup_manager_mail_admin_api
 from setup_material_resolution import install_setup_material_resolution
 from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.84-direct-crew-cells"
+PRODUCTION_VERSION = "V0.3.86-container-review-actions"
 
 # #222 lightweight Production request instrumentation.
 #
@@ -200,6 +202,8 @@ app.register_blueprint(setup_scheduling_board_api)
 app.register_blueprint(setup_work_order_intake_api)
 app.register_blueprint(setup_material_readiness_api)
 app.register_blueprint(setup_movement_api)
+app.register_blueprint(setup_container_review_api)
+app.register_blueprint(setup_manager_mail_admin_api)
 
 
 def _setup_perf_is_traced_request() -> bool:
@@ -441,6 +445,18 @@ def material_audit_asset(name: str):
 def material_status():
     """Manager-facing live annual material oversight and Pick List control."""
     return _no_store(send_from_directory(BASE_DIR, "material_status.html"))
+
+
+@app.get("/container-exceptions/")
+def container_exceptions():
+    return _no_store(send_from_directory(BASE_DIR, "container_exceptions.html"))
+
+
+@app.get("/container-exceptions/assets/<path:name>")
+def container_exceptions_asset(name: str):
+    if name not in {"setup_container_review.js", "setup_container_review.css"}:
+        abort(404)
+    return _no_store(send_from_directory(BASE_DIR, name))
 
 
 @app.get("/material-status/assets/<path:name>")

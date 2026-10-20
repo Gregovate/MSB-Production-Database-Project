@@ -14,6 +14,26 @@ Preserve the operator-confirmed execution model for shared/mixed-Stage Container
 
 This contract applies generally to any Container whose current authoritative contents span more than one Setup Stage/scope. Known examples include Container 34 / Arch Trailer and the Antenna Trailer.
 
+## October 19 — some unloaded Containers remain physical show structures
+
+### Confirmed C009 mixed Display-Pallet acceptance case — October 19
+
+C009 **Ginger Bread House** is a real multi-Display pallet with **13 permanently assigned Displays**, of which **Display 909 / CL-GingerbreadHouse is an integral part of the C009 physical show base**, while the other 12 assigned Displays are removable cargo. 2026 event #551 (`CONTAINER_MOVE`) with `contents_decision=EMPTY` created **13 inferred `TASK_UNLOAD` events #538–550** using **prior Container event #250** as the location source; DBeaver current-state readback shows **all 13 DETACHED**, including incorrectly detached **909 event #544**. The shared timestamp and GPS are not thirteen individual installation scans.
+
+The future correct contents model must **exclude physical integral Display 909 from removable-cargo "Empty" decisions and counts** without removing its permanent Container assignment or requiring a second physical item to be scanned. It must still unload each of the other 12 when physically removed, retain C009 in the park as a show structure, and allow a truthful cargo-empty + show-base-present state (not `PARTIAL` simply because an integral Display remains). The current single-assigned-Display Pallet guard does not cover mixed pallets. Reference-data role of the integral Display must be explicitly governed under #230; guessing based on `Display Pallet` type or the Container's `display_pallet` boolean alone is insufficient.
+
+C034 Arch Trailer distributes components along an approximately one-mile loop, intentionally stopping at many Stage locations hundreds of feet apart. Distances between successive unloads are **expected**, not grounds for a blanket movement rejection. Apply original HERE/PRIOR provenance and actual selected Stage only.
+
+See [#88 governing current-state evidence](Setup_88_Pick_Mode_Movement_Design_2026-09-29.md#october-19-follow-up--c009-current-state-readback-resolves-prior-inference-and-exposes-mixed-show-base-problem). The historic #544 must remain auditable through an authorized targeted correction; never rewrite the original GPS/effect or mass reattach all assigned Displays.
+
+
+
+**Operator-confirmed physical exception:** Certain Display Containers/Pallets carry several separable Displays that are unloaded at Setup, but the **pallet/base/container itself stays in the park at that Stage and becomes part of the installed display/show**. Such a Container can be `cargo empty` while still **present, in use and at its show location**. Do not mislabel it `Returned Home` or automatically route it to Workshop when all child Displays detach. Preserve its permanent Home rack for later takedown only, and retain its actual current park position as a Container observation. The carried Displays have separate installed-position evidence, linked to their applicable Setup installation tasks.
+
+This differs from (a) transport-only pallets eligible for return only after an actual empty/receipt decision, (b) synthetic Standalone Display testing wrappers representing **one** physical unit under linked Display/Container IDs, and (c) single integral Display-Pallets whose Display can never detach. The governed current-type/flag matrix (`container_type_name`, `display_pallet`, active content count and source relationships) must be audited before an automated return recommendation or type-specific status rule; multi-Display count by itself does not establish whether the remaining base is part of the show. More details, label variance and scan reasonableness are owned by [#88 movement engineering contract](Setup_88_Pick_Mode_Movement_Design_2026-09-29.md#october-19-follow-up--verified-2026-recovery-scans-and-physical-container-role-boundaries).
+
+**Required Stage unload UI acceptance:** Unload physically removed cargo with Stage group confirmation, leave other cargo attached and the show-base Container anchored in the park; independently verify each installed Display at actual position during its Setup task (2026 voluntarily, 2027 required by the [Crew Work Reporting contract](Setup_Crew_Work_Reporting_Contract_2026-09-08.md)). A zero-onboard-Displays total is **not** an automatic trigger to return Home. Takedown can repack that same physical base using fast scan-each confirmation under #423. This is design/acceptance scope; no present production records were changed.
+
 ## Core Rule
 
 A mixed-Stage Container is handled at **Container + unload-scope** level, not Display-by-Display.
@@ -49,6 +69,16 @@ Stage 25 material is still loaded
 The system must not collapse those into one `container_mobilized = all contents available` assumption.
 
 A later scheduled task for another Stage on that same Container must **not** request that the Container be pulled from the workshop again. Instead, the Pick List should surface the still-loaded Stage scope as the work that now needs unloading.
+
+## October 19, 2026 — active 2026 field regression: Stage unload must be immediately accessible
+
+**Operator report:** During C134 Container unloading on October 19, the "Unload by Stage" action was buried at the **bottom** of the Container's controls on Tom's tablet. Inspection of current `Setup/Application/setup_record_location.js::renderContentsDecision()` confirms the action `Displays were physically removed HERE — select Stage groups` is appended after the Empty / Not Empty / Not Sure questions, remaining-content selections and longer lists. Its Stage-ordering/access regression is source-proven; no device screenshot is required to reproduce the specific DOM ordering. Actual C134 scan/event outcome, tablet layout dimensions and operator screenshots have **not** been independently inspected.
+
+**Controlled interaction correction:** On scanning an ordinary multi-Stage Container with at least one still-attached bulk-selectable Stage group, put the **Unload by Stage** entry **before** the physical-contents question and its potentially long submenus. Keep physical confirmation, one/multiple/all remaining Stage choices, HERE location evidence, explicit operator review, selection-preserving compact rows and all protected-Container/offline/reconciliation guards intact. **This is navigation order only, not permission to unload contents automatically.** Empty / Not Empty / Not Sure stays directly available without scrolling; don't remove the existing required stop/evidence rule. If the Container has no selectable Stage group, omit the shortcut. The initial list/recording state must still be source-driven.
+
+**Separate LIVE location integrity incident:** Several Containers were previously unloaded incorrectly. Displays can be marked detached at the Container drop GPS instead of their actual installation positions. The user requires the **latest valid, independently captured or authorized corrected location for each physical Display** to win over older, wrong inferred/detach positions, with historical events retained. Last capture precedence must respect the event's actual capture time, reliable idempotency, offline queue chronology, and existing last-movement guard; never substitute the most recent Container scan for an already-detached Display. A mass Stage correction may capture **Stage-level confirmed placement**, but without verified per-Display coordinates it must **not manufacture exact Display GPS pins**. Preserve later genuine individual Display scans and the possibility that a Display is not yet physically installed. A scoped, Manager-audited correction of erroneous unload/attachment and affected Display locations belongs to the existing #88 Container Exceptions and Manager contents review in PR #418, **not** a direct SQL rewrite or another map GIS authority.
+
+**Acceptance:** C134 mixed-Stage and C034/C131 trailer behavior; Stage action top-of-controls on 600px tablet; actual previously erroneous detach, later independent Display scan, offline replay, stale last-event guard, protected Standalone/Pallet and grouped HERE/PRIOR provenance. Confirm correct current records using read-only latest Production event trail before any correction. Operator screenshots in "Field Issues / Tablet 2" are not available in the current repository/chat evidence; obtain actual files before asserting full UI regression or proposing physical corrections. No Production mutation or scan-history rewrite authorized here.
 
 ## Required Tablet Interaction
 

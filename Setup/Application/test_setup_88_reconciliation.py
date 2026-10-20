@@ -119,9 +119,14 @@ def test_actual_record_location_decisions_review_and_payload():
     const groups=[{label:'15 — Church-ParkingLot',bulk_selectable:true,display_ids:[900,902],displays:[contents.displays[0],third]},
       {label:'01 — Front Entrance',bulk_selectable:true,display_ids:[901],displays:[contents.displays[1]]}];
     const grouped={...contents,displays:[...contents.displays,third],groups};
-    // Every ordinary stop leads with the contents question. No default drop bypass.
+    // Stage-scoped unload must be the first control at a mixed-Stage stop,
+    // ahead of potentially long contents lists; its click never auto-unloads.
     const root=elements['movement-unload-groups'];
-    w.select(grouped,34);w.renderContentsDecision();
+    w.select(grouped,134);w.renderContentsDecision();
+    assert.equal(root.children[0].tag,'button');
+    assert.equal(root.children[0].textContent,'Unload by Stage — select Displays physically removed HERE');
+    assert.equal(root.children[0].className,'unload-entry-primary');
+    assert.ok(root.children.some(child=>child.textContent==='Is this Container empty?'));
     let intentButtons=root.querySelectorAll('button');
     assert.ok(intentButtons.some(button=>button.textContent==='Empty'));
     assert.ok(intentButtons.some(button=>button.textContent==='Not Empty'));
@@ -332,3 +337,88 @@ def test_c095_latest_gps_keeps_prior_named_context_without_history_update():
         assert repo.field_context(task_id=1,season_year=2026)['displays'][0]['current_location_note'] is None
     finally:
         generator.close();monkeypatch.undo()
+
+
+def test_offline_transport_and_uncached_display_fail_closed():
+    """Use real Record Location functions under Node to reproduce DISP:88 screenshot."""
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node unavailable; CI runs offline context regression")
+    source = (APP / "setup_record_location.js").read_text(encoding="utf-8")
+
+    def section(start, end):
+        assert start in source and end in source
+        return start + source.split(start, 1)[1].split(end, 1)[0]
+
+    js = "\n".join([
+        section("  function updateNetwork() {", "  // No HTTP response"),
+        section("  function transportFailed(error) {", "  function applyTrainingMode()"),
+        section("  async function apiJson(url, options) {", "  async function loadAccess()"),
+        section("  async function fetchState(identity) {", "  function applyQueuedContainerContext("),
+        section("  async function fetchContainerContents(containerId) {", "  function clearPending()"),
+    ])
+    harness = r"""
+const assert = require('node:assert/strict');
+const storage = new Map();
+globalThis.localStorage = {
+  getItem: (key) => storage.has(key) ? storage.get(key) : null,
+  setItem: (key, value) => storage.set(key, value)
+};
+Object.defineProperty(globalThis, 'navigator', {value:{onLine:true}, configurable:true});
+let setupApiReachability = 'UNVERIFIED';
+let trainingMode = false;
+const networkState = {textContent: ''};
+function seasonYear() { return 2026; }
+async function queueRows() { return []; }
+function applyQueuedContainerContext(value, rows, id) { return value; }
+"""
+    checks = r"""
+(async () => {
+  const display = {asset_type:'DISPLAY', asset_id:88, label:'CL-Installed-Display',
+    position_mode:'WITH_CONTAINER', placement_stages:[{stage_id:17,stage_key:'17'}]};
+  const container = {container_id:9, label:'Candy Land panels',
+    reconciliation_allowed:true, displays:[{display_id:909, display_name:'CL-GingerbreadHouse'}]};
+  storage.set('msb.setup.display-context.2026.88', JSON.stringify(display));
+  storage.set('msb.setup.container-context.2026.9', JSON.stringify(container));
+
+  // Chrome claims ONLINE while API fetch fails: reuse only the right existing context.
+  globalThis.fetch = async () => { throw new TypeError('Failed to fetch'); };
+  const cached = await fetchState({asset_type:'DISPLAY', asset_id:88, identity:'DISP:88'});
+  assert.equal(cached.asset_id,88);
+  assert.equal(cached.label,'CL-Installed-Display');
+  assert.equal(setupApiReachability,'UNREACHABLE');
+  assert.match(networkState.textContent,/API UNREACHABLE/);
+
+  const cachedContainer = await fetchContainerContents(9);
+  assert.equal(cachedContainer.container_id,9);
+
+  await assert.rejects(() => fetchState({
+    asset_type:'DISPLAY', asset_id:89, identity:'DISP:89'
+  }),/NO CACHED DISPLAY CONTEXT.*No observation saved/);
+  await assert.rejects(() => fetchContainerContents(10),/NO CACHED CONTAINER CONTENTS/);
+
+  storage.set('msb.setup.display-context.2026.89', JSON.stringify(display));
+  await assert.rejects(() => fetchState({
+    asset_type:'DISPLAY', asset_id:89, identity:'DISP:89'
+  }),/Cached identity mismatch/);
+
+  // A real HTTP authorization refusal is NOT a transport failure, even if cached.
+  globalThis.fetch = async () => ({ok:false,status:401,json:async()=>({error:'Sign-in required'})});
+  await assert.rejects(() => fetchState({
+    asset_type:'DISPLAY', asset_id:88, identity:'DISP:88'
+  }), err => err.httpStatus === 401);
+  assert.equal(setupApiReachability,'REACHABLE');
+  assert.match(networkState.textContent,/API REACHABLE/);
+
+  // Successful API response supersedes cached context with correct authoritative data.
+  globalThis.fetch = async () => ({ok:true,status:200,
+    json:async()=>({state:{...display,label:'Updated current context'}})});
+  const live = await fetchState({asset_type:'DISPLAY',asset_id:88,identity:'DISP:88'});
+  assert.equal(live.label,'Updated current context');
+  assert.equal(JSON.parse(storage.get('msb.setup.display-context.2026.88')).label,'Updated current context');
+  console.log('offline cached-context and auth denial PASS');
+})().catch(e => { console.error(e); process.exit(1); });
+"""
+    result = subprocess.run([node, "-"], input=harness + js + checks,
+                            encoding="utf-8", capture_output=True)
+    assert result.returncode == 0, result.stdout + result.stderr

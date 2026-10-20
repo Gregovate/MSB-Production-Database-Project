@@ -351,10 +351,18 @@ class SetupMovementRepository:
                         CASE
                             WHEN %s::bigint IS NOT NULL AND c.container_id = %s::bigint THEN 0
                             ELSE 2
-                        END AS rank_order
+                        END AS rank_order,
+                        NULL::bigint AS assigned_container_id
                     FROM ref.container AS c
                     WHERE (%s::bigint IS NOT NULL AND c.container_id = %s::bigint)
                        OR c.description ILIKE %s
+                       -- Discover containers through their assigned Display Names,
+                       -- without changing permanent relationships or object identity.
+                       OR EXISTS (
+                           SELECT 1 FROM ref.display AS linked
+                           WHERE linked.container_id = c.container_id
+                             AND linked.display_name ILIKE %s
+                       )
 
                     UNION ALL
 
@@ -366,12 +374,13 @@ class SetupMovementRepository:
                         CASE
                             WHEN %s::bigint IS NOT NULL AND d.display_id = %s::bigint THEN 0
                             ELSE 1
-                        END AS rank_order
+                        END AS rank_order,
+                        d.container_id::bigint AS assigned_container_id
                     FROM ref.display AS d
                     WHERE (%s::bigint IS NOT NULL AND d.display_id = %s::bigint)
                        OR d.display_name ILIKE %s
                 )
-                SELECT asset_type, asset_id, identity, label
+                SELECT asset_type, asset_id, identity, label, assigned_container_id
                 FROM matches
                 ORDER BY rank_order, label, asset_id
                 LIMIT %s
@@ -382,6 +391,7 @@ class SetupMovementRepository:
                     numeric_id,
                     numeric_id,
                     like,
+                    like,  # Container lookup through assigned Display Name.
                     numeric_id,
                     numeric_id,
                     numeric_id,

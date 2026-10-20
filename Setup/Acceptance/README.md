@@ -10,12 +10,20 @@ Current integrated #122 candidate: [field release checkpoint and review](Setup_1
 
 ## #88 current contents recovery
 
+[PR #418 Container Exceptions / Contents Review source candidate and disposable checklist](Setup_88_Contents_Reconciliation_Candidate.md#october-18-container-exceptions--contents-review--pr-418-source-candidate): focused outstanding list, Manager confirm/correct/field-check/resolve, V0.3.85 and migration077. Source-tested; actual current-clone/operator acceptance pending. Reuse8898 with only077, not the historical070 launch below.
+
 [October 17 event494 field-picture findings and recovery order](Setup_88_Contents_Reconciliation_Candidate.md#october-17-current-field-picture--event-494)
 distinguish coherent C154/C155 returns, still-old C216 detachments, protected
 Standalone violations, C052/C053 returned-but-attached wraps, missing C131
 Display location, historical review flags and source-proven report gaps.
+Greg confirmed October18 that the wraps are installed; preserve their pallet
+returns while preparing the separate attachment correction. The same record
+tracks Tom's **Empty selected / Record button disabled** incident. Normal online
+fixture behavior passes; the affected blocked Container/device context is still
+needed before a cause or fix can be claimed.
 Guided behavior/070 shipped via #318 on October10 despite the old #309 draft
-remaining open. Manager resolve/correct and Containers to Move remain unfinished.
+remaining open. Manager resolve/correct now has the source candidate above;
+Production installation and Containers to Move remain unfinished.
 The PDF analysis performed no Production mutation; the October8 source pins and
 handoffs below are historical release evidence, not current deployment advice.
 
@@ -356,3 +364,15 @@ wrapper is not a #205 release command. Operator acceptance and CLEAN EXIT are
 already approved. Production runner PASS and initial operator spot-check PASS
 were received October 16; the linked record contains the transcript and retained
 report directory. Do not rerun the completed release for documentation.
+
+## October20 #88/#205 integrated browser review
+
+The current #418 candidate includes #413's governed Manager email renderer and
+Admin-only no-send preview. Use the existing reusable browser runner, branch
+`fix/88-empty-recording`, exact published SHA, version
+`V0.3.86-container-review-actions`, port8898, migration077 and its rollback-only
+review validation. Follow the [current candidate handoff](Setup_88_Contents_Reconciliation_Candidate.md#october-20-integrated-current-candidate--418-with-413).
+Open `/notifications/` after READY; follow a same-instance Container case link,
+record an evidence-backed review, refresh the queue and email, then CLEAN EXIT.
+The scheduled sender's private source is a separate promotion dependency; this
+preview sends no mail and does not deploy Production.

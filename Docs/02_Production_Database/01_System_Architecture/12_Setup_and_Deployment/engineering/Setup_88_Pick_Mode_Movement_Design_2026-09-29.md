@@ -9,6 +9,169 @@
 | Production Setup runtime | `6f53d7f0c4b15f7175e773a2069595eef3f0e698` / `V0.3.22-pick-list-delay` |
 | Owner | Setup movement / Labeling and Scanning integration |
 
+## October 19 Setup closeout logistics — truthful empty/return eligibility (small operational slice)
+
+**Current #429 permanent relationship decision:** KEEP existing Container IDs (real transport and historic synthetic Testing wrappers); LOR Display ID is the show identity. #230 is proposing a **Display-side permanent ATTACHED TO CONTAINER Boolean** so all other permanent Display↔Container assignments are **removable cargo by default**. #88 shall protect TRUE attachments from unload, count only removable items for Empty and retain the Container in Park if it is a show unit. This permanent default must NOT overwrite currently recorded annual DETACHED/WITH_CONTAINER movement states or historic events. [#230 controlled design](https://github.com/Gregovate/MSB-Production-Database-Project/blob/docs/230-integral-show-container-label-inventory-20261019/Docs/02_Production_Database/01_System_Architecture/04_Containers_and_Storage/engineering/Reference_Data_Manager_Physical_Identity_and_Labelability_Contract.md#october-19-clarified-429-rule--preserve-container-numbers-removable-by-default-explicit-display-side-attachment). No new DDL or Production repair here.
+
+**Focused implementation issue:** [#430 — actual removable-cargo Empty, show-base stay versus return-ready, physical receipt](https://github.com/Gregovate/MSB-Production-Database-Project/issues/430). Permanent physical/synthetic role comes from [#429](https://github.com/Gregovate/MSB-Production-Database-Project/issues/429); no duplicate #230 editing here. Final installed/ready-for-wiring is independent [#431](https://github.com/Gregovate/MSB-Production-Database-Project/issues/431).
+
+**Operator requirement:** a volunteer who scans a physical Container or selects it in Setup must be able to see **whether its removable cargo is actually accounted for**, whether its physical base remains a show Display, and whether it can **actually go back to the Workshop**. This is a focused #88 operational completion deliverable, not the whole #230 editor or #231 Testing overhaul.
+
+For each real Container in the active annual Session, show readable name/C-number, permanent cargo expectations and *current recorded* assignments, optional verified integral LOR Display, latest valid park location/source/time/accuracy and explicit one of:
+- **Cargo remains / partial unload** — name exactly which removable Displays still recorded onboard; allow actual selected Stage removals as documented, retain previously unloaded items.
+- **Empty of removable cargo — return eligible** — confirmed physical Empty for a transport-only Container, no still-required cargo/task work. It is a **proposal to return**, not a RETURNED event.
+- **Empty of removable cargo — show base stays** — physical Container is an integral Display/carrier now installed at its show position (Ginger Bread House, Peanuts/Thank You, U.S. Flag etc), **not** due to Workshop even if its cargo count is zero.
+- **Empty status uncertain / field check required** — contradictory current association, old inferred contents state, missing scan or unresolved review; do not silently declare Empty/Returned.
+- **Actually Returned to Workshop/Home** — only with actual physical return receipt/scan; show canonical Home rack separately from last park observation.
+
+Do not infer Empty from task 100% or a null cargo list, and do not treat permanently assigned integral Display as missing removable cargo. Do not call a synthetic Testing wrapper a physical Container awaiting pickup. The existing #418 Manager Contents Review/Resolution must handle historical errors with before/after scope, evidence, actor and last-event guard, preserving valid later independent scans. The ordinary volunteer's immediate field view must be short, prominent, searchable by C-number and human Display Names, support partial unload, and distinguish operator confirmed, inferred prior, and no verification. A captain need not use raw Directus, SQL, GIS editor or Testing UI to make a physical return decision.
+
+**Acceptance cases:** C009 one integral 909 plus twelve detachable; Traditional Christmas/Peanuts Thank You sign; U.S. Flag show base; C131 Antenna Trailer recorded empty/park with previous DBG-2026-012 missing named Command Center picker; C034 multi-stop mile loop; C052/C053 RETURNED but recorded-attached 32 already-installed wraps; C216 genuine newer Display observation; historical synthetic Standalone never becomes a Return Empty suggestion. No bulk movement or DML against live Production based on these examples.
+
+**Boundary:** #230 governs permanent reference integral/synthetic/physical role; #88 governs current physical cargo and actual return event; #132 owns installed-Setup-task closeout and wiring readiness; #231 Testing uses confirmed physical assets and eventual returned receipts. No new invented movement ledger or automatic stage/position GPS.
+
+## October 19 operator scope correction — repeated Containers that become Displays; Antenna Trailer independent regression
+
+**The C009 identity defect is a repeatable MSB pattern, not a rare single-Container exception.** Greg confirms the **Traditional Christmas / Peanuts Container** transports contents and becomes the **Thank You for Visiting** sign in the show, and the **U.S. Flag Container** similarly becomes the physical U.S. Flag Display. **Both were moved into show position October 19**. The exact Container/Display IDs and current event chronology for these two cases are not yet read back and must not be guessed from labels/descriptions. A normal Setup unloading action must remove only *removable cargo*, preserve the integral physical show/display identity, and keep the base present at its confirmed park location. The actual per-Display physical role is reference authority owned by #230, not a hardcoded C009 special case or a child-count heuristic.
+
+**Physical serialization/labels matter:** Candy Cane Rows and Tumbling Gingerbread have permanent Display records but many lacked practical label placement; Greg requests a **24mm Display QR label option** where physically possible, with Labeling/Scanning owner verifying QR/readability/media and #230 tracking true affixed/missing/unlabelable state. Some shapes (e.g. Church Bells) remain truly physically unlabelable. Do not equate a Display database ID with an affixed scan tag or fabricate scan records; task-scoped visual confirmation remains valid when authorized.
+
+**C131 Antenna Trailer must be investigated separately:** Greg reports a bug during this multi-Display unload. Existing #122 **DBG-2026-012** specifically documents a missing Command Center location in the Setup drop picker and GPS unavailable at a separate stop despite hotspot connectivity; operator previously confirmed C131 recorded empty and remained physically in the park. Do not infer a C009-style physical integral child or a new erroneous unload from the generic report. Read existing C131 event/child state and reference-picker snapshot before any repair; preserve actual valid Stage partial unload and truthful park position. #88 owns movement and #171/#230 the named drop-location reference consumer.
+
+**The single owning permanent classification contract is the #230 [Reference Data Manager Physical Identity/Labelability contract (DRAFT)](https://github.com/Gregovate/MSB-Production-Database-Project/blob/docs/230-integral-show-container-label-inventory-20261019/Docs/02_Production_Database/01_System_Architecture/04_Containers_and_Storage/engineering/Reference_Data_Manager_Physical_Identity_and_Labelability_Contract.md).** This #88 document consumes that reference classification to guard Setup event writing and current projections; it is not a duplicate `ref.*` editor design. Both proposed changes remain unaccepted; no Production DML or redeployment from this documentation.
+
+## October 19 follow-up — C009 current-state readback resolves PRIOR inference and exposes mixed show-base problem
+
+**Observed user-supplied Production SQL result** (current 2026 Setup Session per the query, no write): C009 Description **Ginger Bread House**, `container_type_name='Display Pallet'`, `home_location='Z-BLDG-A-EAST'`; 13 assigned `ref.display` IDs all `position_mode='DETACHED'` with last movement IDs **538–550**, all `TASK_UNLOAD`, all timestamp **2026-10-19 13:53:03.728 America/Chicago**. Their actual notes include `reconciliation_parent=359c7891-15bc-480a-98b5-b46e0105deec; inferred_unload=true; prior_event_id=250; contents_decision=EMPTY`. This now definitively establishes the **PRIOR** location source for these 13 inferred removals; there is no longer any need to call HERE vs PRIOR ambiguous for C009. Current C009 `display_pallet` field rendered **blank** in this readback despite Greg's separate report that he checked it in Directus; this discrepancy is still open until a direct `display_pallet IS TRUE` readback (the query may predate the edit; do not claim it saved or failed without proof).
+
+**Specific physical identity exception:** C009 is a **mixed-use Display Pallet**: Display **909 / CL-GingerbreadHouse is the integral Ginger Bread House carried by the physical C009 base**. The other **12** permanently assigned Displays are removable items, including six Candy Cane Rows, three Tumbling Gingerbread, Welcome to Candyland, ElfOnShelf-03 and SW-WorkshopSign. Greg confirms C009's physical base **remains at the Candyland Stage** as part of the show after those additional contents are unloaded. Do not reattach all 13 or mark the Container Returned Home. Preserve the true unload evidence/history of the 12 separately removable Displays while **scoping a guarded historical state correction** to the erroneous inference for Display 909. Avoid overwriting any later independently scanned observation (check current last-event guard at correction time).
+
+**Data model/rule defect:** Existing `Display Pallet` protection checks **one ACTIVE assigned Display**. C009 has 13 permanent assignments, so the guard permits `EMPTY` reconciliation to detach even the **integral base Display 909**. This is an invalid assumption: physical integral status cannot be derived solely from the count of assigned Displays, and a `display_pallet=true` flag on a *Container* does not itself identify which of its children is the inseparable integral Display. A mixed pallet may have zero *removable cargo* aboard while **its integral Display remains physically with it**. If 909 is corrected to `WITH_CONTAINER`, current load-state `1 WITH_CONTAINER + 12 DETACHED = PARTIAL` would still misrepresent **cargo empty**. The #88 effective load projection and guarded contents reconciler need a verified integral-versus-cargo classification from the existing #230 authoritative reference model (or minimal reviewed data addition only if no existing attribute/relationship expresses it). Do not add an unreviewed duplicate master field/table, blindly toggle type/flag, or leave the physical integral Display vulnerable to a future "Empty" scan. Owner: #230 permanent integral relationship; #88 seasonal movement/contents/effective status; #231 Testing synthetic/integral physical identity; #171 read-only map presentation.
+
+**Trailer distance correction:** C034 is physically the **Arch Trailer** that completes roughly a **one-mile circuit** to distribute Displays at many separate Stage locations. Hundreds of feet between legitimate successive unload stops are expected field geometry, **not** a GPS/reconciliation anomaly. Preserve per-Stage `HERE` observations and their historical `PRIOR` source rules; classify discrepancies only using exact event provenance, not a simplistic distance threshold. This supersedes any earlier preliminary distance-anomaly implication for C034.
+
+**Recovery sequence (no direct Production DML):** verify C009 integral linkage and 12 removable cargo by read-only current-master and #250/#551 receipt audit; confirm saved `display_pallet` flag explicitly; document field-confirmed C009/909 physical unity; implement minimal source-consistent #88/#230 guard so future `EMPTY` cannot detach 909 while permitting mixed-cargo unload; use existing #418 Manager authorized, audited, exact-current-state-guarded correction to repair 909 **only**, preserving original #544 and any later real scans. Distinguish cargo-empty/in-park show base from `RETURNED`. Full disposable/browser/tablet acceptance and separate Production authority apply. This document records design/factual evidence, not authorization to update Production rows.
+
+## October 19 DBeaver Production evidence — movement event 520–654 audit
+
+**Read-only operator-supplied DBeaver SELECT result, not a direct server session by engineering.** This is only the **first** exported query result; 250 rows represent **135 unique movement events (#520–#654)** in 2026. The export does not contain `ref.container` master details or current `ops.setup_display_state` readback, so it cannot certify C009's post-edit description/display_pallet flag, present Container physical role, or which derived location currently wins for every item. Preserve time-of-export and rerun targeted current-state SELECT when needed.
+
+- **Event-type census:** 87 unique `TASK_UNLOAD`, 21 `CONTAINER_MOVE`, 21 individual `DISPLAY_MOVE`, four `RETURNED`, two `PICKED`. The 250 result rows include *multiple Display effect rows per one `CONTAINER_MOVE` event*, so counting rows as individual scans is incorrect. `capture_method` on derived `TASK_UNLOAD` events is NOT proof of a separately observed physical Display QR/camera scan.
+- **Actual operator individual Candyland evidence:** Greg's account recorded **16 separate Candyland Tree Bench `DISPLAY_MOVE`** events (#553–#604, 13:54–13:58 Chicago), with device-reported uncertainty from ±6 to ±30 ft; one Potter's Pole Base individual Display #537 (13:51:38, ±10 ft). GG individual direct scans visible at #520, #521, #522, #525 with `rneerhof@sheboyganlights.org` captured email. These are direct observed movement events, not retrospective `installed=true` certification. Do not infer all Candyland/GG scans from this limited event-window result.
+- **C009 unload:** #551 `CONTAINER_MOVE` at 13:53:03.728 Chicago, coordinate 43.776682/-87.746585, source CAMERA_SCAN, recorded under Greg. At the *exact same captured timestamp*, **13 separate `TASK_UNLOAD` events #538–550** were created for the permanently assigned C009 Displays (including `CL-GingerbreadHouse`, three `CL-TumbleGinger-*`, six `CL-CandyCaneRow-*`, `CL-WelcomeTo-CandylandCandyLand`, and two additional names `SW-WorkshopSign`, `ElfOnShelf-03`). All 13 child events share 43.776756/-87.746535 (reported ±17 ft), **about 30 ft from parent C009's (reported ±9 ft)**. This is **bulk contents inference / detachment evidence**, *not* 13 independently scanned as-built installed GPS points. Whether their source was the documented `PRIOR` versus `HERE` location needs read-only `notes`/event provenance from full current DB. Those two non-CL names in C009 demand manifest/physical review before any Stage-wide verification shortcut; do not assume they're incorrect solely from names.
+- **Distances between parent/child observations can be larger:** C010 #622 at 14:01:38 is ~736 ft from concurrent same-timestamp 17 `TASK_UNLOAD` child events #605–621; C141 #628 is ~756 ft from five child unload locations #623–627; C186 #651 is ~394 ft from concurrent child events #648–650. This is **not inherently a calculation defect**: governed unloading uses prior recorded Container stop for `PRIOR` inference and a new location for `HERE`. Display and Container events sharing capture timestamp can legitimately have different coordinates. However, map must clearly identify provenance; never represent these child coordinates as independently GPS-scanned final Display position.
+- **Non-monotonic capture chronology:** movement **#530 `PICKED`** has `occurred_at` 09:16:56, while lower-ID **#529 `CONTAINER_MOVE`** has 10:27:19. Highest server event ID does **not** always mean newest field capture. Use verified per-asset observation `occurred_at` plus source/current-state guards and stable idempotency; never last-ID-wins for a direct Display position. The export does not include `received_at` or `offline_captured`, so this alone does NOT prove offline replay was the cause.
+
+**Required implementation/acceptance:** read-only current C009 `ref.container` and `ops.setup_container_state`, attached/detached last-event source per permanent `ref.display`, #538–551 raw notes/source mode, #537 Potter source, and today’s later individual Display scans. Then classify as `DIRECT_DISPLAY_OBSERVATION`, `CONTAINER_HERE_UNLOAD`, `INFERRED_PRIOR_UNLOAD`, `WITH_CONTAINER`, `UNVERIFIED`, `INDEPENDENTLY_INSTALLED_CONFIRMED` (where actual proof exists) for Manager report and #171 read-only map. Do not rewrite original event/GPS or mark group unload as task completion. No Production mutation or deployment authorized by this evidence.
+
+## October 19 actual Candyland field failure — DISP:88, disconnected Setup API and no-label physical evidence
+
+**Field observations (operator-supplied images, not independently live-host probed):** Tablet Chrome at approximately 2:07 PM CDT displays **`DISP:88 — Failed to fetch`**, **`ONLINE`**, **`Offline queue: 0`**, **`GPS STALE — waiting for current fix`**, signed in as Greg (Administrator). The browser shows cellular signal. No successful asset context, movement/installation acknowledgement or queued observation is visible. Screenshot SHA-256 `120daf6c64a701cb0b0753ed57c4576be1711f5ecae05a243beb936251682724`. This is **not** proof of a saved Display movement and not proof of a particular network/Cloudflare/server failure cause. Preserve tablet site cache and failed queue evidence; do not advise clearing site data.
+
+Two physical Candyland photos document **the Gingerbread House with candy cane structures** and **three Tumbling Gingerbread panels** at the show site; Greg confirms some cannot have physically practical labels. SHA-256: `7515207b6a35a7355b909b91ffc2f1c83b9b0d61f591fbe89e301dd335f4c773` and `6a8679cebc1535d4694fb9b8b4c03b2735b753ba29e8d7fa614f1c95c4d05f9b`. Do not infer exact SQL Display IDs, GPS positions, or installed-scan receipts from these pictures. Retain them as task/Scene-scoped **visually verified / cannot label** candidates under the Crew Work Reporting design.
+
+### Verified existing source failure and bounded correction
+
+- Current `setup_record_location.js` status uses only `navigator.onLine`, which means network hardware/browser connectivity **not** authenticated Setup API reachability. The exact combination browser `ONLINE` and API `Failed to fetch` is therefore possible and misleading.
+- `fetchState()` / `fetchContainerContents()` save per-asset localStorage only **after a successful previous API read**, then on error try cached state **only if `navigator.onLine` is false**. An API transport error while Chrome still reports online skips cached fallback and surfaces `Failed to fetch`; no Record action/IndexedDB queue is reached. This source failure matches the symptom. Authentication/server HTTP errors remain distinct, and must **not** be hidden by stale cached authority.
+- The Record Location service worker caches its navigation shell and location-reference assets; it **does not prepackage all current Display/Container state or Stage membership**. A previously unseen `DISP:88` cannot be presumed field-ready offline. The existing broad catch in `selectIdentity()` can invent `OFFLINE — CURRENT CONTEXT UNAVAILABLE` as a pseudo state; this must **fail closed** for a Display/Container with no authorized cached context rather than proceed with a false movement/placement claim.
+- Source-only correction scope: distinguish **browser network indicator** from observed Setup API reachability, use previously verified per-asset offline context on genuine transport failures irrespective of `navigator.onLine`, explicitly block uncached asset with **No cached context / No observation saved** and retain visible queue, preserve 401/403/4xx authorization denial, no dummy offline movement state. Existing `sendOrQueue` will continue queueing genuine network-failed **POST** only after a valid asset and location review.
+- **Full offline field readiness is a separate unfinished requirement:** choose a governed authorized Setup task/Stage/context preflight while connected, bulk/versioned **read-only** cache of the specifically required canonical Display/Container identities and relevant current state, visible count/fingerprint/age with refresh and fail closed on stale/conflicting data, existing IndexedDB event queue for actual writes, and exactly-once replay proof. Do not quietly preload all `ref.display` objects or make an unrestricted public static asset dump. Real LTE/no Wi-Fi and absent LTE/tablet field tests are required. Until such a candidate passes, an unseen Display may not be scanned offline safely.
+- Offline queue state is not the same as installed/on-server. A valid local queued observation is pending; only accepted idempotent server receipt makes it synced. Expired/unauthorized cached access must not silently grant movement rights while online. Existing no-GPS named location can be used only when actually confirmed, not by manufactured coordinates.
+
+**Incident ownership:** #122 active DBG-2026-016; #88 movement scan offline correction and current state; #113 hardware/browser connectivity; #132/#175 actual task completion verification; #171 map read consumer; #230 identity/type. PR #418 is existing implementation vehicle for narrow source correction, with full disposable/browser and real tablet field acceptance still pending. Production data, runtime, Cloudflare Access and Setup schema are unchanged by this design.
+
+## October 19 operator simplification — final-position Yes/No, GG existing scans, C009 identity and unlabelable Displays
+
+**Operator-confirmed facts and evidence, not Production row verification:**
+
+- For a normal scanned Display, the operator wants **one obvious question** using the actual human Display Name: **"Is [Display Name] in its final show position?" — Yes / No.** Yes is adequate to attest physical installed position at the observed GPS / confirmed named location, with operator, time, and source; don't require a series of redundant separate checks just because a Display was already `DETACHED`. No must **not** record installation or detach a protected unit. Distinguish the movement's basic location observation from final-installation attestation; don't silently reinterpret all old `DISPLAY_MOVE` rows as installed.
+- Greg confirms **all GG Displays are physically in their final positions**; Rich made individual GG scans October 19 (example GG-Elden-20-02 event525). **Do not create new fake Rich scans or require every GG Display to be rescanned just to annotate intent** if valid individual event/source identity is already on file. Instead provide a Manager/authorized-crew scoped **review of actual GG Display scans**, comparing current latest event/real actor/GPS uncertainty/season/name and any newer records, then an separately attributed **final-position attestation of those particular actual events**, subject to field confirmation. Unseen/unsynced/no-event GG Displays remain unverified; a statement about the whole set is not permission to synthesize per-Display GPS.
+- **Some Church Bells Displays physically cannot carry QR labels because of their geometry.** For genuine physically unlabelable pieces, a phone lookup per Display is not practical, so a future task/Scene-scoped **visual verification workflow** must show the known required human Display Names and allow compact scoped crew confirmation/exception reporting without searching each ID. This must be recorded as **visual confirmation, QR unavailable**, not as an individual QR scan, with responsible actor, dated physical scope, actual Stage and source. Do not automatically confirm pieces outside that scoped task, and don't invent a precise coordinate for each grouped piece. Keep known-but-unlabeled groups out of false 'missing label = not installed' failure states and provide a future field acceptance test using Church Bells.
+- **Actual supplied Directus screenshot:** Display `909` `CL-GingerbreadHouse` has `container_id = 9`, while the Container selection text is `9 - Candy Land panels - Z-BLDG-A-EA...` (name truncated). Greg identifies the physical Gingerbread House as **CONT:9**. This is **proven DB assignment + user-reported physical identity**, not proof that Container 9 has no other assigned Displays or is a synthetic testing wrapper. Reconcile current type/flags, all active child Display Names, physical show-base role, the real Container description and labels before any master-data rename or detachment.
+- The existing `setup_movement_repository.search_assets()` searches Container **ID/description** and Display **ID/name** as independent results. It does **not** search Containers by the Names of their assigned Displays, so looking for `GingerbreadHouse` may find `DISP:909` but not immediately reveal its linked `CONT:9`. **Required existing-app read-only UX:** Display-to-Container and Container-to-Display cross-lookup with both canonical IDs, readable linked Names and physical type; direct navigation to the correct existing Record Location/Manager Container view without Directus or DBeaver. This must never infer a second physical item merely from separate database IDs.
+
+**Yes/No acceptance and safety:** Scanning a normal Display, whether currently `WITH_CONTAINER` or `DETACHED`, visibly prompts final position. A Yes can be recorded as a distinct confirmation with actual location and actor, optionally using a known assigned Stage only if the user **explicitly sees and confirms that actual Stage**. No does not mark installed; if the user is merely recording an interim location, preserve the accepted separate location-only action. For protected Standalone/single-Display-Pallet, resolve the linked Container action without false detachment and offer the same Yes/No physical-unit confirmation. If a prior independently observed location is newer, or current GPS is stale/poor, warn and require deliberate review; no blind overlay update or hard distance rejection. Treat a repeated confirmation of the **same physical Display** as verification/update history rather than two separate installed counts.
+
+**2026 behavior:** optional final-position confirmation and scoped post-scan attestation only; do **not** add a hard Report Work task-completion gate this year. 2027 task-linked mandatory verification remains governed by [Crew Work Reporting](Setup_Crew_Work_Reporting_Contract_2026-09-08.md), including approved actual no-label exceptions. #230 owns permanent C009 description/type/manifest reconciliation; #231 owns synthetic Test Session wrappers; #88 owns current movement observations and correction; #171 map consumes only reviewed outcomes.
+
+## October 19 follow-up — verified 2026 recovery scans and physical Container role boundaries
+
+**Status: design clarification for review; implementation/field acceptance not yet completed.** The actual issue is not simply repeated scanning: 2026 Container-drop/unload observations have been confused with installed Display location, and Container/Display IDs have distinct physical interpretations. Recovery must **permit valid newer field evidence** without creating duplicate current-state items or silently corrupting valid later observations. #122 commands acceptance, #88 owns movement/event truth, #132/#175 owns task-specific installed-Display verification, #230 permanent relationships, #231 testing identity and #423 fast takedown. This subsection governs the #88 field intake and read-projection behavior; it does not create a second persisted ledger or change 2026 completion requirements.
+
+### Display rescans: reasonableness review, not a new guessed-location gate
+
+A crew may visit installed Displays now and record actual position evidence **without reopening previously completed 2026 Setup tasks**. Classify each candidate from its immutable canonical Display ID plus current season and real #88 movement/attachment history:
+
+1. **Canonical physical identity:** resolve `DISP:` to the exact `ref.display.display_id`; resolve `CONT:` separately. A duplicate receipt/client UUID is an idempotent retry, not a second movement. A later intentional scan of the same Display is a new observation, but must **not increment a once-per-Display installation checklist count twice**. Recheck any locally queued earlier scan before submitting an additional one.
+2. **Current evidence:** compare the latest *valid* independent Display observation, Container inherited location if still attached, unloaded/prior-location inference and any newer guarded Manager corrections. Preserve earlier original events and actor/time; a later Container scan may move only still-attached Displays. A later scanned Display position can supersede old inferred unloaded-at-Container GPS for that Display **when it is a valid direct field observation**, but must never roll back newer valid evidence. Offline receipt ordering, capture time and current-state guards remain authoritative; do not choose by database receive time alone.
+3. **Spatial sanity, not rigid radius:** show prior point/source/time, candidate fix age, reported accuracy **in feet**, selected actual Stage and any known LOR/Setup expected Stage, then compare distance between them with both uncertainty estimates and location context. If a large apparent displacement arises from old incorrect Container-drop evidence, label it a **possible correction**, not a rejection. No arbitrary fixed 10/25/50-foot acceptance threshold, no nearest-GIS-marker auto-selection, no snapped coordinates, and no survey-accuracy claim.
+4. **Review conditions:** stale/no GPS, poor device accuracy, assigned-Stage mismatch, surprising movement, wrong identity/container type, earlier offline queue, and conflicting newer observations require clear operator confirmation or Manager review. Preserve the difference between a confirmed named Stage and an actual device point. Location-only evidence must not silently become task installation-complete. Allow a truthful field correction with an explicit small reason such as **Correct earlier Container unload position** and optional note, linked to the original event when known.
+5. **Fast repeated scanning:** same Display at the same place should be reported as **already recorded / verify again** rather than counted as a newly installed second Display. An intentional new check must remain possible and auditable. A GPS fix with overlapping uncertainty is only an observation-level possible repeat, **not** proof that the two physical placements are equal. Never silently discard a real user-confirmed current observation as a duplicate because it is near another point or another Display.
+6. **Source integrity:** no bulk changing every Display on a Stage to the Container/Stage waypoint; no DBeaver, Production SQL, synthetic GIS geometry or automatic task-completion changes. If current exact position cannot be verified, preserve named Stage, uncertainty and **Location not independently verified**; route unresolved data to the existing #88 Manager review.
+
+**Acceptance matrix:** prior wrong C216 detach vs newer PeaceOnEarth event226, C052/C053 installed wraps, later GG individual scans, same-device repeat, stale captured older offline event received later, two different Displays scanned within one accuracy circle, distant legitimate repair move, Stage mismatch, poor/no GPS, and protected Standalone/Display-Pallet. Confirm latest 2026 movement state before correction; current October17 snapshot through event494 is insufficient now.
+
+### Physical Container/Display identity — do not equate IDs with separate objects
+
+The following are **different operational classes requiring source-driven, per-Container review**. Existing `ref.display.container_id`, `ref.container.container_type_id`, `ref.container.display_pallet`, test identity and annual #88 modes are candidate evidence, **not** a guaranteed approved role classification by themselves. Read current Production cardinality and confirm which physical structures remain in the park; do not infer from labels alone.
+
+| Physical reality | Scan/Setup identity contract | Movement and installation effect |
+| --- | --- | --- |
+| **Synthetic Standalone Display for testing** | One actual Display with a separate **synthetic** Container identity to support Container-based testing. Some objects carry a `CONT:` label, a `DISP:` label, both, or the operator may have only one usable label. | Scanning either verified existing identity should resolve the **same** linked physical unit and show both IDs, with one current physical location/installation confirmation. **No detachment, fake Empty unload, two location pins or separate twice-counted installation**. Existing protected Controller/Testing/Scan routes retain their meanings. If a label is missing, use authorized canonical lookup instead of inventing an ID or demanding unnecessary new tags. |
+| **Singular physical Display-Pallet** | One integral Display physically remains with its supporting pallet/Container. | Treat as a combined physical show unit; preserve `WITH_CONTAINER`, move/verify the Container at its show position, no physical-contents removal. Unlike the synthetic Standalone, the pallet can be a real physical object. |
+| **Normal transport-only Container / multi-Display load** | One Container carries separable Displays; not necessarily itself a show component. | Unload only actual selected Stage/Display cargo. Detached items subsequently have separate installed-position scans. Once empty, a physical Workshop return may be appropriate, but **Empty does not prove Returned**. |
+| **Multi-Display Pallet/Container that BECOMES part of the show** | One physical Container carries multiple separable Displays, then the base/frame/pallet **stays at the Stage and is used in the installed show**. Both its Container identity and the carried Display identities are meaningful. | Remove/independently locate its cargo, keep the remaining physical Container anchored at its confirmed **show/base position**, and explicitly confirm its in-show disposition. It may have **zero cargo left but is NOT Returned Home**. It must stay visible on the park map and in pickup/return readiness as `in park / show structure`, not as an empty transport pallet due back at Workshop. At takedown it can again be the target carrier for scanned Displays; only confirmed contents and an actual Workshop receipt change its return status. |
+
+**Important existing implementation limitation:** `setup_movement_repository.py` uses type name `Standalone Display` or a `Display Pallet` with *exactly one active attached Display* to block removals; `070_reconcile_setup_container_contents.sql` has matching protection. **A multi-Display Pallet is otherwise allowed to unload, but the code does not explicitly distinguish “cargo removed, base remains deployed in show” from “empty transport Container due Home.”** The existing `display_pallet` flag may help classify the physical base, but cannot be equated blindly to an accepted show-component status without verifying affected records and the governed meaning of the flag.
+
+**Acceptable label handling:** A physical Standalone with both `CONT:` and `DISP:` labels must not create duplicate physically located objects, and one with only one label must remain operable. Preserve both permanent IDs and existing testing relationships; link them through the existing canonical `ref.display.container_id`. Do not hard-code a new `CONT:` alias to arbitrary Displays or auto-rewrite labels. In January packing, a synthetic Standalone is one object, not a Container that must be filled with another copy of itself.
+
+**Required downstream semantics:** Distinguish `contents empty`, `physical show base still in park`, `workshop return eligible`, `actually returned`, `physically installed` and `January packed/ready-to-transfer`. These are not synonyms. The annual movement/disposition representation, whether existing attributes/events suffice, and role-gated Manager correction must be proven before proposing new schema/columns. The Show PC is not a development workstation and needs no DBeaver.
+
+## October 19, 2026 — explicit installed-Display verification and January 2027 takedown
+
+**Current operator direction — #88 / commanding #122, with #423 owning January takedown readiness.** This section supersedes the **October 7 proposed takedown shortcut** where it says that expected contents can be loaded without individual Display scans. The newer [#423 takedown requirements](https://github.com/Gregovate/MSB-Production-Database-Project/issues/423) require a fast **scan each actual Display** confirmation, not a group-wide assertion of physical presence. Historical sections remain evidence of the earlier design, not currently approved January loading behavior. This is a design/acceptance checkpoint, **not an installed function or permission to mutate 2026 Production rows**.
+
+### October 19 clarification — the Setup *work-completion* gate is the owner, not a standalone location button
+
+Greg's later operator clarification establishes that **unloading only delivers Displays to the park for Setup; the installing task must require scanning each Display as installed before declaring that task verified complete**. A generic optional "At Show Position" button in Record Location alone would still leave installation tasks reporting 100% without verification and would **not** solve the systemic issue. The [controlled Setup Crew Work Reporting contract — October 19](Setup_Crew_Work_Reporting_Contract_2026-09-08.md#october-19-2026--display-installation-is-part-of-setup-task-completion-not-container-unloading) now owns the end-to-end 2026 learning exception, 2027 required task-linked Display confirmation, partial progress and later-verification distinction. It supersedes any suggestion immediately below that fixing the Record Location button alone is sufficient.
+
+The #88 scan/movement application supplies **real per-Display installation-position observations and guarded current location evidence** consumed by #132/#175 task completion; it must not create a second task-completion ledger. A newer valid Display scan supersedes old unload-derived GPS for that Display, but no automatic completion promotion or invented coordinates. **Do not impose required scans retrospectively on 2026**; identify unverified current installations for voluntary real-position field review and preserve all accepted 2026 work reports.
+
+### 2026 Setup sequence and missing final-placement confirmation
+
+The required physical workflow is:
+
+1. **Pick** Container or independent Display at Workshop when it is taken from inventory; do not fabricate a pick if the actual field movement occurred without one.
+2. **Move / Drop**: scan the Container when it stops (including intermediate staging); record that location and current physical contents, without interpreting its removal from a truck as removal of Displays from the Container.
+3. **Physically unload by Stage or selected Display scope**: choose one/multiple/all Stage groups actually removed HERE. These Displays stop inheriting subsequent Container moves, but being unloaded **does not establish installation at a show position**. Keep other groups attached and handle C034/C131 mixed stops normally.
+4. **Container disposition**: ordinary emptied transport/storage Containers return to their governed Workshop/Home rack only after physically received; Standalone/singular Display-Pallet Containers remain as the combined Display object, move to their actual show position, and are **never falsely emptied/detached**.
+5. **Installed / at actual show position**: scan each physically placed Display at an appropriate point in Setup, including those already `DETACHED`, and confirm that it is **installed now**, actual Stage/site position and the observation source/accuracy. The last *valid* Display-specific placement or authorized correction becomes its current Display location evidence; a later Container scan cannot move that detached Display. This final-setup confirmation must be visible as a distinct annual operational fact, **not** inferred from `PICKED`, `UNLOADED`, `DETACHED`, task 100% or any generic location scan.
+   
+   **Current implementation gap:** `setup_record_location.js::needsDisplayPlacement()` asks "Is this Display at its setup location now?" for an **attached** ordinary Display; `DETACHED` skips that question and sees only general "Recording its current location moves only this Display." `DISPLAY_MOVE` does not universally distinguish final installation from interim re-location. Standalone directs the user to its Container without a separate explicit show-position acknowledgement. This fails the intended proof across all Display states. Extend the existing #88 event/current-state/field interface deliberately; do not invent a competing Scan application or new physical QR payload.
+
+**Fast operator UI direction:** After scanning a Display, make **At Show Position / Location Only** meaningful explicit choices in the established Record Location workflow for eligible normal Displays, irrespective of whether already detached. For Standalone/singular-Pallet objects, offer an equivalent **At Show Position** confirmation on the actual Container scan instead of violating its protection. Require a quick final review and confirmed actual Stage or trustworthy location evidence; do not automatically choose the assigned LOR Stage or nearest GIS marker. Use reusable field context and large buttons to reduce taps. If GPS is poor/unavailable, preserve the named Stage or location evidence with honest approximate/unresolved positioning, not a fabricated per-Display coordinate. Remember GPS accuracy in feet and operator attribution. Field capture must not require a developer, a DBeaver connection, or a Show PC.
+
+**Present recovery:** Some 2026 Displays currently show Container-drop coordinates after erroneous bulk unloads. Resolve by read-only event chronology (older unload/inference vs later individual scans), preserve genuine later observations, then record verified actual installation/current location through the existing #88 movement path or scoped, role-gated and audited Manager correction in **draft #418**. When a precise Display coordinate was never observed, do not make one up or bulk stamp a Stage anchor into every Display. The corrected park map consumes resulting #88 state under #171; it does not perform movement repairs.
+
+### January 2027 takedown: fast Container-first return-to-home loop (#423)
+
+**Deadline:** operational, tablet/Zebra and offline acceptance *before January 1, 2027*. Takedown of the 2026 show is the first physical preparation for 2027 Setup/testing, but must keep season identity explicit.
+
+1. **Select/scan a Container once** using the current canonical `CONT:` identity. Persist the current Container context on the tablet, showing actual Container number/name, expected human Display Names, and expected / scanned / missing / exception counts. Do not navigate to unrelated scan destinations on each read.
+2. **Rapidly scan every actual `DISP:` as loaded** using continuous Zebra/HID scans with immediate distinctive success/error signal and almost no touchscreen interaction for correct items. Each unique accepted scan confirms that actual Display was observed at the **selected correct Container**, with captured actor/time, device, current session and idempotency. A duplicate is visible but cannot increment totals twice. Container context must survive rapid successive scans, poor connectivity, tablet sleep/reload and queue replay; the scan itself must not silently rewrite permanent `ref.display.container_id`.
+3. **Mismatch/exception**: wrong Container, damaged/unscannable tag, extra unknown item, missing expected Display, uncertain physical load, or interrupted session must produce a safe actionable exception with minimum taps. Warn clearly and do not count a mismatched Display as verified loaded or silently reassign it to the current Container. An authorized later reconciliation can close a verified exception without rewriting its initial evidence.
+4. **Container full / Ready to Transfer** is a distinct explicit, guarded operator decision after all expected contents are scanned or the remaining differences are individually accounted for and confirmed. A count of expected items is not itself proof of loading; partial Containers remain IN PROGRESS. Ready to Transfer does **not** mean already Returned Home.
+5. **Return Loaded / Home**: once transported, scan the Container upon Workshop receipt, confirm the canonical `ref.container.location_code` destination and recorded contents/exception status; only then update physical return/receipt evidence. Do not force the 2026 Setup `Return Empty` behavior. Expected Home is not proof that the Container physically arrived.
+6. **January testing**: preserve condition/repair findings and hand off to #231 Container-based Test Sessions and the existing #419 Work Order system; `PACKED`/`RETURNED` never means `TESTED` or `REPAIRED`. Do not change permanent membership or annual status merely to complete tests.
+
+**Field practicality:** crew may work in snow, cold, rain, gloves and intermittent/no park network. Large readable status, audible/haptic where supported, one-scan-per-Display happy path, rapid scan debounce without lost events, clear next-Container action, resumable/locally durable queue, deterministic replay and visible unresolved status are mandatory. A timed real rugged-tablet + Zebra session with ordinary volunteers and realistic Containers/labels is an acceptance gate. Do not build a slow per-Display confirmation page. Design a safe fallback for damaged/unreadable labels without pretending a missing scan occurred. Physical correctness outranks artificial throughput.
+
+**Takedown status:** #423 requirements captured; implementation and governed acceptance pending. Historical `DISPLAY_REATTACH` / `REATTACHED` names in constraints are not evidence that the current movement command/API/UI supports packing. Source, migration and workflow shape require fresh schema/repository reconnaissance and existing #88/#113/#230/#231 boundaries before coding; avoid a new duplicate ledger.
+
+**Owner & operational boundaries:** #88 maintains movement/Display-Container annual associations; #423 owns January implementation/field rehearsal under #122; #113 owns scanner provisioning; #230 owns permanent storage relationships; #171 consumes spatial observations; #231 owns testing; #419 owns Work Orders. Every saved action must retain its original event and operator history. None of these changes requires DBeaver or development tools on the Show PC.
+
 ## 2026-10-07 contents reconciliation successor — candidate
 
 The DBG-2026-007/009/010 physical decision model adds missed-unload reconciliation
@@ -1051,3 +1214,118 @@ for current-Production-clone/audit/privilege/operator/tablet acceptance. Reusabl
 **Owner directive:** Greg spoke with Tom and reports additional problems using Container Locate / Record Location / Container Empty. This must be managed as a **separate #122 launch debug**, implemented and tested under existing **#88**, not absorbed into #205 KPI/Manager-email PR #394. The specific problems Tom found are **not yet described**; do not speculate, assume the current candidate is installed, or change movement data or business rules until observations and current Production identity are verified.
 
 **Next reconnaissance:** capture Tom's actual screen/scan sequence, the expected versus observed result, affected Containers, empty/partial/uncertain choices, connectivity/device and displayed app version where available. Compare installed Record Location behavior with existing #88 engineering/acceptance sources and the controlled movement/event model. Retain original events, source identities and operator audit. Derive an isolated debug correction and browser/tablet acceptance under #122; no Production changes authorized by this intake note.
+
+## October 18 — actionable Container Exceptions and Manager review
+
+Owner #88 under #122; implementation continues in existing PR #418, based on
+main `a770e755` after reconciling the governance change. This supersedes prior
+statements that a historical review flag alone is an operational review tool.
+
+**Entry and scope.** Material Status and the Setup Manager navigation expose
+Container Exceptions. Default list contains current contradictions and unresolved
+contents reviews only, one compact card per Container. Filter by reason/status
+and search Container number/name or Display Name. Full Container Movement remains
+supporting evidence, linked directly to the selected Container. A separate desk
+entry can open any Container number for a known concern such as C216; healthy
+inventory is not automatically added to the exception list. Show recorded
+location and calculated nearest reference separately, last activity, outstanding
+Display Names, original flagged event/operator and the next action. Do not mix
+material-source audit requirements, task completion, or every GPS-only stop into
+this queue. No automatic physical placement from nearest-reference calculations.
+
+**Rules preserved.** Ordinary/interim stops can retain the complete load. Explicit
+HERE/group unloading for trailers remains unchanged. Setup Containers return Home
+empty: remaining Displays stay at the prior reported park location, with inference
+and its source event shown. C052/C053's installed Festive Trees wraps use prior
+park events145/143; keep valid returns183/182 and later valid Display observations.
+No Workshop GPS, repeated field scan, or exact historical unload time is required
+for that inference. Food Collection interim staging alone does not prove unload.
+Standalone/single-Display Pallets stay attached; repairs of erroneous detachments
+restore that relationship rather than physically unloading the wrapper.
+
+**Review actions.** An authorized Manager can record Needs field check, confirm
+selected current records, correct selected Displays to an explicitly chosen Stage
+or recorded prior-park anchor, and restore selected erroneous detachments to their
+assigned Container. Show a review summary before saving. Require evidence/source,
+observation time and reason; the recording time and signed-in reviewer are server
+controlled. Helpers supplying facts need no account. Select exact Display Names;
+never silently select every current assignment. Explicitly resolve selected
+original review flags only when their complete captured scope has been accounted
+for. Unknown/missing legacy scope requires explicit whole-case attestation; partial
+work leaves the flag open. Current contradictions cannot be dismissed by a note.
+Needs field check stays visible; later flags are new cases even after an earlier
+review. Historical resolved flags remain available in the case timeline.
+
+**Model inventory and minimal schema necessity.** Existing
+`ops.setup_movement_event` stores immutable destination-bearing movement events;
+its allowed event types and destination constraint cannot represent a review,
+field-check disposition, or resolution without fabricating movement. Its notes
+contain capture snapshots but no linked resolution state. No general Setup
+management-event ledger exists. The existing
+`ref.setup_container_extra_material_review` is a permanent per-Container free-text
+extra-material note, without Session, flagged-event scope or resolution history;
+`ops.setup_schedule_event` is schedule-specific. Neither can serve this lifecycle
+without changing its established meaning. Therefore add one append-only
+`ops.setup_container_review_event` ledger, not a competing movement/location
+model. Store source flag IDs, selected Display IDs, evidence/observed time,
+reviewer/receipt time, request UUID, guarded snapshot and resulting movement IDs.
+No rewrite of original flags, movement history or permanent assignments. Grant
+SELECT plus one Manager-only SECURITY DEFINER command; no app table DML grants.
+
+**Concurrency and correction.** Reuse permanent parent locking and current
+Container/Display state from #88. A server-generated snapshot includes current
+master membership/type, Container/Display state/event IDs, movement history receipt
+watermark and review watermark. Reject changed snapshots and mismatched retry UUIDs.
+Execute corrections atomically using existing movement events/effects/current-state
+projection; location corrections reuse `record_setup_movement_event`. An explicitly
+guarded attachment correction uses existing DISPLAY_REATTACH / REATTACHED model
+values, clears independent location and keeps permanent ownership. Reject attachment
+to a returned Container, and reject unloading protected identities. Prior-park
+inference requires a returned ordinary Container and the last eligible observation
+before that return within the same trip. Copy source GPS with provenance, never
+claim it was measured at correction time. Review/correction is recorded now with
+separate supplied evidence time; no fabricated historical scan.
+
+**Acceptance boundary.** GET never writes. Manager authorization and the existing
+same-origin JSON command guard apply. Tests must cover old flags, absent snapshots,
+partial resolution, later valid Display placement/stale submission, idempotency,
+protected identities, returned-with-attached cases, prior-park inference, review
+history, XSS and tablet layout. Full Setup tests, exact current-Production-clone SQL
+validation and protected disposable browser/operator acceptance precede Production.
+Reuse the established disposable browser runner on8898; no new host deployment
+mechanism or Node dependency on Greg's workstation. No Production change is
+performed or authorized by this design record.
+
+## October 20 — one review candidate and actionable Manager report
+
+Greg reports neither the promised review tool nor Manager-report actions reached
+Production. PR418 and PR413 remain drafts. The earlier ec624871/V0.3.85 handoff is
+obsolete after subsequent C134/cache fixes. Reconcile current418 head5002922c and
+mail head3e1eb398 into the existing418 integration path, preserving current main
+and all later field/reference decisions. PR413 remains the mail ownership record;
+its final accepted history must be proved in the integrated release before closing.
+Use a new visible identity V0.3.86-container-review-actions and refreshed asset/cache
+pins, then validate one exact combined disposable candidate via the existing8898
+runner. No new preview or deployment infrastructure.
+
+The Manager email must expose the same current queue as the review screen: counts
+of outstanding Containers, unresolved original flags and pending field checks,
+plus bounded readable cases with reason/next action, Display Names and direct
+protected case links. Historical flags stay informational. Read queue, movement
+picture and review state in one read-only snapshot; do not duplicate lifecycle or
+close flags in mail. A case link opens the intended case, never writes or resolves
+on GET. Preserve partial work, later valid placements, provenance, Manager-only
+commands and non-account helper reports. The existing Administrator email preview
+renders the same content, with no-send capability. Do not claim the running mail
+service/timer state from a static source label.
+
+Migration077 and the Setup source are one maintenance-controlled release after
+operator browser acceptance. The already-running private Manager sender is a
+separate source installation under Server Management's existing mail runbook;
+advancing Setup alone does not update it. Preserve approved audience, finite timer,
+all SMTP enabling/date/receipt guards and every prior attempt receipt. No sending,
+timer restart, catch-up or new recipient action is authorized by this source work.
+The mail action links may be installed only once the real protected review route
+and077 are live and verified. Existing #429 integral-role/#430 cargo semantics,
+C131 field debug and future installation/takedown design remain their own acceptance
+boundaries; this integration does not claim them delivered.

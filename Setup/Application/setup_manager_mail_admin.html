@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSB Setup · Email Notifications Review</title>
+  <style>
+    :root { font: 15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif; color-scheme:light; color:#182b3b; background:#edf2f6 }
+    * { box-sizing:border-box } body { margin:0 } header { background:#123b57; color:white; padding:17px max(20px,calc((100vw - 1080px)/2)) }
+    header h1 { margin:2px 0; font-size:1.42rem; font-weight:700 } header p { margin:0; font-size:.93rem;color:#d4e3ef }
+    main { max-width:1080px; margin:20px auto; padding:0 20px 42px }
+    .topline { display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between;align-items:center;margin-bottom:16px }
+    a { color:#164d74 } .link { color:#fff } button { background:#176394;color:white;border:0;border-radius:6px;padding:10px 16px;font-size:1rem;cursor:pointer }
+    button:focus-visible,a:focus-visible {outline:3px solid #ffad45;outline-offset:3px}
+    button:disabled {opacity:.65;cursor:wait}
+    .card { border:1px solid #d3dfe7;background:#fff;border-radius:10px;padding:20px;margin:14px 0;box-shadow:0 1px 4px #142d4412 }
+    h2 { margin:0 0 10px;font-size:1.12rem } h3 {margin:6px 0;font-size:1rem}
+    p {margin:7px 0}.muted {color:#51687a}
+    .statusbar {display:flex; flex-wrap:wrap;gap:14px;border-bottom:1px solid #e3ebf0;padding:4px 0 15px;margin-bottom:16px}
+    .statusbar strong {color:#234b64}
+    .metrics {display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px}
+    .metric {border:1px solid #dde7ef;border-radius:8px;padding:10px}
+    .metric span {display:block;font-size:.81rem;color:#51687a}
+    .metric strong {display:block;font-size:1.38rem;letter-spacing:.01em}
+    table {width:100%;border-collapse:collapse;text-align:left}
+    th,td {border-bottom:1px solid #e5ebef;padding:10px 9px;vertical-align:top}
+    th {font-size:.87rem;color:#36546b;background:#f4f8fb}
+    .scroll {overflow-x:auto}
+    pre {white-space:pre-wrap;overflow-wrap:anywhere;background:#f7fafc;border:1px solid #e5edf2;padding:16px;border-radius:8px;font:14px/1.55 ui-monospace,Consolas,monospace}
+    .error {border-left:5px solid #b44343;color:#832b2b;background:#fff4f3;padding:12px 15px}
+    [hidden] {display:none!important}
+    .small {font-size:.88rem}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Email Notifications · Recipient Review</h1>
+    <p>MSB Setup · Administrator · Live People and 2026 Setup data · Read-only</p>
+  </header>
+  <main>
+    <div class="topline">
+      <a href="../?view=action-center">← Back to Manager Action Center</a>
+      <button id="refresh" type="button">Refresh actual data</button>
+    </div>
+    <p id="message" role="status" aria-live="polite">Loading authenticated Manager recipients and Setup report…</p>
+    <div id="stop" class="error" role="alert" hidden></div>
+    <div id="content" hidden>
+      <section class="card" aria-label="Mail status">
+        <h2>Proposed Manager email · No messages sent</h2>
+        <div class="statusbar">
+          <div><strong>Host mail runtime:</strong> <span id="auto-status"></span></div>
+          <div><strong>Captain reminders:</strong> <span id="captain-status"></span></div>
+          <div><strong>Audience:</strong> <span id="recipient-count"></span> eligible Managers</div><div><strong>Held for review:</strong> <span id="held-count"></span></div>
+        </div>
+        <p><strong>From:</strong> <span id="sender"></span></p>
+        <p><strong>Recorded bounded schedule:</strong> <span id="schedule"></span></p>
+        <p class="muted small">This page only previews the audience and message. It has no Send, Enable, or Schedule action.</p>
+      </section>
+      <section class="card">
+        <h2>Managers who would receive this email</h2>
+        <p class="muted">Starting from active <strong>People</strong> records: Manager designation and existing protected Setup access are checked separately. Eligible addresses would receive the Manager email; HELD records are visible for correction, not silently included.</p>
+        <div class="scroll">
+          <table aria-label="Current authorized Manager email recipients">
+            <thead><tr><th>Person</th><th>People email</th><th>Email decision / reason</th></tr></thead>
+            <tbody id="recipients"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Current Setup and Container figures</h2>
+        <p class="muted">Calculated from the live 2026 Setup Session; not from the previous screenshot.</p>
+        <div class="metrics" id="metrics"></div>
+        <p class="small muted">Report generated: <span id="generated"></span></p>
+      </section>
+      <section class="card">
+        <h2>Exact formatted Gmail preview — eligible Manager</h2>
+        <p><strong>Subject:</strong> <span id="subject"></span></p>
+        <p><strong>Greeting for:</strong> <span id="preview-person"></span></p>
+        <p class="small muted">Review links below open the same Container cases in this Setup instance. The email preview retains the real protected email URLs.</p>
+        <div id="review-links"></div>
+        <iframe id="formatted-email" title="Formatted HTML email preview" sandbox="" style="width:100%;min-height:950px;border:1px solid #dde6ee;border-radius:8px;background:#fff;" loading="lazy"></iframe>
+        <details style="margin-top:12px;"><summary>View complete plain-text alternative</summary><pre id="body"></pre></details>
+        <p class="small muted">Different recipients receive their own names. Review only; the message has not been submitted to SMTP.</p>
+      </section>
+    </div>
+  </main>
+  <script>
+    'use strict';
+    const $ = id => document.getElementById(id);
+    const labels = [
+      ['Total', 'total_tasks'], ['Completed','completed_tasks'],
+      ['Remaining','remaining_tasks'], ['Blocked / NOT READY','blocked_tasks'],
+      ['Past reports to verify','missing_report_occurrences'],
+      ['Started needing continuation','continuation_needed'],
+      ['Upcoming readiness','readiness_exceptions'],
+      ['Future Captain TBD','captain_tbd_count'],
+      ['Actual tasks/day','actual_pace'], ['Required tasks/day','required_pace'],
+      ['Task-based projected finish','projected_finish'],
+      ['Containers: Park stop recorded','containers_park_recorded'],
+      ['Containers: Picked / en route','containers_outbound'],
+      ['Containers: Empty at park (derived)','containers_empty_at_park'],
+      ['Containers: Partly unloaded at park','containers_partial_at_park'],
+      ['Containers: Returned Home','containers_returned'],
+      ['Containers: No movement','containers_no_movement'],
+      ['Containers: Location needs review','containers_location_review'],
+      ['Containers: Open review','containers_open_review'],
+      ['Open contents flags','contents_open_flags'],
+      ['Containers: Field check pending','containers_pending_field_check']
+    ];
+    const cell = (row,value) => {
+      const td=document.createElement('td');td.textContent=String(value??'');row.appendChild(td);
+    };
+    const show = async () => {
+      $('stop').hidden=true;$('content').hidden=true;
+      $('refresh').disabled=true;$('message').textContent='Reading current Manager permissions and 2026 report…';
+      try {
+        const response=await fetch('../api/setup/notifications/manager-preview',{cache:'no-store',credentials:'same-origin'});
+        const result=await response.json();
+        if(!response.ok)throw Error(result.error||('Preview stopped (HTTP '+response.status+')'));
+        if(result.mode!=='READ_ONLY_NO_SEND'||!Array.isArray(result.recipients)||!result.recipient_count||
+           result.recipients.length!==result.reviewed_count)throw Error('Recipient validation failed — STOP');
+        $('auto-status').textContent=result.automatic_status;
+        const reviewLinks=$('review-links');
+        reviewLinks.replaceChildren();
+        for (const item of result.review_cases || []) {
+          const id=Number(item.container_id);
+          if (!Number.isSafeInteger(id) || id<1) continue;
+          const link=document.createElement('a');
+          link.textContent='Review '+item.label;
+          link.href='../container-exceptions/?season_year=2026&container_id='+id;
+          link.target='_blank'; link.rel='noopener'; link.style.marginRight='16px';
+          reviewLinks.append(link);
+        }
+        $('captain-status').textContent=result.captain_status;
+        $('recipient-count').textContent=String(result.recipient_count);
+        $('held-count').textContent=String(result.held_count);
+        $('sender').textContent=result.sender;
+        $('schedule').textContent=result.intended_schedule;
+        $('generated').textContent=result.generated_at_chicago;
+        $('subject').textContent=result.subject;
+        $('preview-person').textContent=result.preview_for;
+        $('body').textContent=result.body_text;
+        if(typeof result.body_html !== 'string' || !result.body_html.includes('Containers · Field movement'))
+          throw Error('Formatted email/Container section unavailable — STOP');
+        $('formatted-email').srcdoc=result.body_html;
+        const tbody=$('recipients');tbody.replaceChildren();
+        for(const p of result.recipients) {
+          const row=document.createElement('tr');
+          cell(row,p.name);cell(row,p.email);cell(row,p.status+' — '+p.reason);
+          tbody.appendChild(row);
+        }
+        const list=$('metrics');list.replaceChildren();
+        for(const [label,key] of labels){
+          const box=document.createElement('div');box.className='metric';
+          const l=document.createElement('span');l.textContent=label;
+          const value=document.createElement('strong');value.textContent=String(result.metrics?.[key]??'Unavailable');
+          box.append(l,value);list.appendChild(box);
+        }
+        $('content').hidden=false;$('message').textContent='Actual live-data preview loaded. No emails sent.';
+      } catch(e) {
+        $('stop').textContent='STOP — '+String(e.message||e);
+        $('stop').hidden=false;$('message').textContent='Preview unavailable. No emails sent.';
+      } finally {$('refresh').disabled=false;}
+    };
+    $('refresh').addEventListener('click',show);
+    show();
+  </script>
+</body>
+</html>

@@ -982,6 +982,10 @@ el('manager-material-status-link')?.addEventListener('click', () => {
     : '?season_year=' + encodeURIComponent(appState.seasonYear);
   window.location.href = 'material-status/' + query;
 });
+el('manager-container-exceptions-link')?.addEventListener('click', (event) => {
+  event.preventDefault();
+  window.location.href = 'container-exceptions/?season_year=' + encodeURIComponent(appState.seasonYear);
+});
 // Keep unsaved Setup work in its tab and use the shared map's Setup defaults.
 el('park-map-link')?.addEventListener('click', () => {
   window.open('locate/', '_blank', 'noopener');
