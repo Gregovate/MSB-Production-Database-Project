@@ -389,3 +389,8 @@ html[data-theme="dark"] .review-action-button.primary-action:hover {
 .intake-comparison p { margin:6px 0 0; overflow-wrap:anywhere; }
 .public-request-link.quiet-button { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; }
 @media(max-width:650px) { .intake-comparison { grid-template-columns:1fr; } }
+
+/* #419 editing is a focused workspace; browsing keeps the two-column layout. */
+.workspace.edit-focused { grid-template-columns:minmax(0, 1fr); }
+.workspace.edit-focused .ticket-column { display:none; }
+.workspace.edit-focused .detail-column { width:100%; }
