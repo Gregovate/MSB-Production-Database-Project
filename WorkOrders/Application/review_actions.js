@@ -362,7 +362,8 @@
     // Browse is two-column; any open work form uses the full workspace.
     // Assignments remain in the same layout to avoid special-case navigation.
     document.dispatchEvent(new CustomEvent("wo419:edit-mode", {
-      detail: {editing: Boolean(kind && !form.hidden)}
+      detail: {editing: Boolean((kind && !form.hidden) ||
+        (model.ticket && ["INTAKE_REQUEST", "TASK_FEEDBACK"].includes(model.ticket.type)))}
     }));
     const submit = byId("review-submit");
     const submitNames = {
