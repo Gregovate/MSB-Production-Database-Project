@@ -365,10 +365,18 @@ BEGIN
       RAISE EXCEPTION 'Work Orders: only original reporter may reply'
         USING ERRCODE='42501';
     END IF;
-    IF p_action IN ('correction_owner','clarify','resolve') AND
+    -- Public Intake may be clarified or disposed of without promotion.
+    -- Correction-owner assignment remains specific to Setup feedback.
+    IF p_action='correction_owner' AND
        v_intake.source_form_name IS DISTINCT FROM 'SETUP_CORRECTION' THEN
-      RAISE EXCEPTION 'Work Orders: use existing Manager public Intake triage'
+      RAISE EXCEPTION 'Work Orders: correction owner applies to Setup feedback'
         USING ERRCODE='22023';
+    END IF;
+    IF p_action IN ('clarify','resolve') AND EXISTS (
+      SELECT 1 FROM ops.work_order WHERE source_intake_id=v_intake_id
+    ) THEN
+      RAISE EXCEPTION 'Work Orders: linked Work Order owns the outcome'
+        USING ERRCODE='23505';
     END IF;
     v_ticket:=p_ticket;
   END IF;
