@@ -606,6 +606,11 @@
           "Work Orders V1 · Production records · Notifications pending controlled cutover";
         $("review-workbench").querySelector(".section-header p").textContent =
           "Actions save to the authoritative Work Orders database. Notifications are not yet enabled.";
+      } else if (state.actor.runtime_mode === "v1_disposable") {
+        $("preview-tag").textContent =
+          "Work Orders V1 NATIVE · Disposable database · No emails sent";
+        $("review-workbench").querySelector(".section-header p").textContent =
+          "V1 PostgreSQL commands on an isolated clone. Test edits are discarded at cleanup.";
       }
       $("home-heading").textContent = state.actor.can_manage
         ? "Work Management · Manager" : "My Work Orders";
