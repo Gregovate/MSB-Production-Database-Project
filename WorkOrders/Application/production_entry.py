@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import os
 
+from access_identity import AccessIdentity, IdentityDenied
+
 from v1_runtime import require_v1_production_configuration
 
 if os.environ.get("WORK_MGMT_RUNTIME_MODE") != "production":
@@ -25,6 +27,10 @@ if len(os.environ.get("WORK_MGMT_PRODUCTION_COMMAND_SECRET", "")) < 48:
     raise RuntimeError("Work Orders V1 requires a private same-origin command secret.")
 require_v1_production_configuration(writes=True)
 
+identity = AccessIdentity(
+    os.environ.get("WORK_MGMT_ACCESS_ISSUER", ""),
+    os.environ.get("WORK_MGMT_ACCESS_AUDIENCE", ""))
+
 from backend import app  # noqa: E402
 
 
@@ -33,7 +39,7 @@ def application(environ, start_response):
 
     Synology strips /workorder/ and supplies Host and X-Forwarded-Proto. The
     actual socket peer must match before either header is used. Cloudflare
-    identity integrity/direct-origin restrictions remain an infrastructure gate.
+    identity is verified cryptographically before any application route is called.
     """
     if (environ.get("REMOTE_ADDR") != "192.168.5.4"
             or environ.get("HTTP_HOST") != "my.sheboyganlights.org"
@@ -43,6 +49,16 @@ def application(environ, start_response):
             ("Content-Type", "application/json"),
             ("Content-Length", str(len(body))), ("Cache-Control", "no-store")])
         return [body]
+    try:
+        email = identity.email(environ.get("HTTP_CF_ACCESS_JWT_ASSERTION", ""))
+    except IdentityDenied:
+        body = b'{"error":"Verified Cloudflare login required"}'
+        start_response("401 Unauthorized", [
+            ("Content-Type", "application/json"),
+            ("Content-Length", str(len(body))), ("Cache-Control", "no-store")])
+        return [body]
+    # Overwrite an asserted header; downstream Directus checks use signed identity.
+    environ["HTTP_CF_ACCESS_AUTHENTICATED_USER_EMAIL"] = email
     # Fixed deployment values: do not use client X-Forwarded-Prefix/For/Host.
     environ["SCRIPT_NAME"] = "/workorder"
     environ["wsgi.url_scheme"] = "https"
