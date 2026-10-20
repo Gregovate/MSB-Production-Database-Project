@@ -493,7 +493,7 @@ def test_manager_all_work_orders_is_not_the_intake_queue():
     assert 'value="tickets" data-manager-only' in html
     assert 'value="all" data-manager-only' in html
     assert 'value="intake" data-manager-only' in html
-    assert "Ticket number" in html
+    assert "Work Order / Intake number" in html
 
 
 def test_assigned_crew_progress_is_distinct_from_completion():
