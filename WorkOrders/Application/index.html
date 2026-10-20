@@ -180,6 +180,18 @@
         <p id="review-action-guidance" class="review-action-guidance" role="status"></p>
         <p id="review-context" class="subtle">Select a Work Order or Intake item to review the available actions.</p>
         <form id="review-action-form" hidden>
+          <fieldset id="review-edit-reason-fields" hidden>
+            <legend>Manager · Correct an existing Work Order</legend>
+            <label for="review-edit-reason">Required reason for changing the authoritative Work Order</label>
+            <textarea id="review-edit-reason" rows="3" placeholder="Explain the correction, including any priority or location change"></textarea>
+            <p class="subtle">The original and corrected values, author and time are retained in Work Order activity.</p>
+          </fieldset>
+          <fieldset id="review-cancel-fields" hidden>
+            <legend>Manager · Cancel / No Action</legend>
+            <label for="review-cancel-reason">Required reason why this Work Order must not proceed</label>
+            <textarea id="review-cancel-reason" rows="3" placeholder="Explain safety concern, invalid request, duplication or no-action decision"></textarea>
+            <p class="subtle">Cancellation is not completion. Original record and audit history are preserved.</p>
+          </fieldset>
           <fieldset id="review-intake-comparison" hidden>
             <legend>Original Intake · Compare before promotion</legend>
             <p class="subtle">Original submitted values are read-only. Confirm or correct the catalog-backed Work Order fields below. Unmatched entries require explicit Manager selection.</p>
@@ -204,7 +216,7 @@
             <div id="review-stage-wrap" hidden><label for="review-stage">Stage</label><select id="review-stage"><option value="">Choose Stage</option></select></div>
             <div id="review-area-wrap" hidden><label for="review-area">Work Area</label><select id="review-area"><option value="">Choose Work Area</option></select></div>
             <label for="review-urgency">Urgency (existing catalog)</label>
-            <select id="review-urgency"><option value="1">1 · Immediate / Critical</option><option value="2">2 · High</option><option value="3" selected>3 · Normal</option><option value="4">4 · Low</option><option value="5">5 · Planning</option></select>
+            <select id="review-urgency"><option value="">Choose priority</option><option value="1">1 · Immediate / Critical</option><option value="2">2 · High</option><option value="3" selected>3 · Normal</option><option value="4">4 · Low</option><option value="5">5 · Planning</option></select>
             <div id="review-year-wrap" hidden>
               <label for="review-target-year">Planning target year</label>
               <input id="review-target-year" type="number" min="2020" max="2100" placeholder="Target year for Planning only">
