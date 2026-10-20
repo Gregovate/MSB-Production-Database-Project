@@ -163,7 +163,7 @@ def decisions(intake,master_sha):
     for path in sorted(folder.glob("*.json")):
         d=json.loads(path.read_text(encoding="utf8"))
         if d.get("schema")!="msb.gis.track-replacement.v1":continue
-        latest[(d["source_sha256"],d["raw_index"])]=d
+        latest[(d["source_sha256"],d["raw_index"],d["master_index"])]=d
     return list(latest.values())
 
 

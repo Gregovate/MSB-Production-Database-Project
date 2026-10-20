@@ -66,6 +66,32 @@ def coordinate(node):
     return lat, lon
 
 
+def run_color(track):
+    kind=track["type"].strip().casefold()
+    if kind=="network":return "#0066ff"
+    if kind.startswith("high voltage"):return "#ff2020"
+    if kind=="primary":return "#ff8c00"
+    return "#888888"
+
+
+def nearby_runs(points, tracks, radius=100):
+    walked=dict(segments=getattr(points,"segments",[points]),points=points)
+    found=[]
+    for track in tracks:
+        if not reference_track(track) or road_or_trail(track) or len(track["points"])<2:continue
+        match=reconcile.rank_matches(track["points"],[walked],limit=1)
+        if match and match[0]["route_ft"]<=radius:found.append(track)
+    return found
+
+
+def suggested_range(points, track):
+    ends=[min(range(len(points)),key=lambda i:dist_ft(points[i],p))
+          for p in (track["points"][0],track["points"][-1])]
+    a,b=sorted(ends)
+    if a==b:return 1,len(points)
+    return a+1,b+1
+
+
 def parse(path, exclude_stages=False, infrastructure_only=False):
     root = ET.fromstring(Path(path).read_bytes())
     if root.tag != GPX + "gpx":
@@ -306,6 +332,7 @@ def open_intake(parent):
             status.set(f"Cannot read saved review: {error}")
             return
         state["points"] = points
+        state["nearby_runs"]=nearby_runs(points,state["master_tracks"])
         state["nearby"] = [w for w in state["waypoints"] if min(dist_ft((w[1],w[2]),p) for p in points)<250]
         state["center"] = None
         state["zoom"] = None
@@ -375,16 +402,24 @@ def open_intake(parent):
                             coords=[c for p in segment for c in xy(p)]
                             drawing.create_line(*coords,fill="#111111",width=5,tags=("road-trail",))
                             drawing.create_line(*coords,fill="#ffffff",width=2,dash=(6,4),tags=("road-trail",))
-            for segment in state.get("matched_track",{}).get("segments",[]):
-                if len(segment)>1:
-                    drawing.create_line(*[c for p in segment for c in xy(p)],
-                                        fill="#b000c8",width=5,dash=(7,5))
+            for track in state.get("nearby_runs",[]):
+                selected=track["index"]==state.get("matched_track",{}).get("index")
+                for segment in track["segments"]:
+                    if len(segment)>1:
+                        coords=[c for p in segment for c in xy(p)]
+                        drawing.create_line(*coords,fill="white",width=8 if selected else 5,tags=("master-run",))
+                        drawing.create_line(*coords,fill=run_color(track),width=5 if selected else 3,tags=("master-run",))
+            if state.get("review_window") and state["review_window"].winfo_exists():
+                for i,p in enumerate(state.get("raw_preview",points),1):
+                    x,y=xy(p)
+                    drawing.create_oval(x-3,y-3,x+3,y+3,fill="#ff00cc",outline="black")
+                    drawing.create_text(x+6,y+6,text=str(i),anchor="nw",fill="white",font=("Segoe UI",9,"bold"))
             for segment in getattr(points, "segments", [points]):
                 if len(segment) > 1:
-                    drawing.create_line(*[c for p in segment for c in xy(p)],fill="#176bb5",width=4)
+                    drawing.create_line(*[c for p in segment for c in xy(p)],fill="#ff00cc",width=4,dash=(8,4))
                 elif segment:
                     x,y=xy(segment[0])
-                    drawing.create_oval(x-3,y-3,x+3,y+3,fill="#176bb5")
+                    drawing.create_oval(x-3,y-3,x+3,y+3,fill="#ff00cc")
             for label,p in [("START",points[0]),("END",points[-1])]:
                 x,y=xy(p)
                 map_label(x,y+24,label)
@@ -447,7 +482,7 @@ def open_intake(parent):
     ttk.Button(map_controls,text="Fit track",command=fit_track).pack(side="left")
     ttk.Checkbutton(map_controls,text="Roads / trails",variable=show_roads,
                     command=request_map).pack(side="left")
-    ttk.Label(map_controls,text="Wheel to zoom • Drag to pan").pack(side="left")
+    ttk.Label(map_controls,text="Master: blue network / red power / orange primary. Pink = Garmin. Wheel to zoom • Drag to pan").pack(side="left")
     drawing.bind("<MouseWheel>",lambda e:change_zoom(1 if e.delta>0 else -1,e))
     drawing.bind("<ButtonPress-1>",pan_start)
     drawing.bind("<B1-Motion>",pan_move)
@@ -540,15 +575,12 @@ def open_intake(parent):
             state["review_window"].lift();return
         file,(raw_index,raw_name,raw_points)=state["items"][selected[0]]
         review=tk.Toplevel(win);state["review_window"]=review
-        review.title("Match master track • Polish recording • Accept replacement")
-        review.geometry("1050x600")
+        review.title("Choose cable runs to update from this Garmin walk")
+        review.geometry("1050x680")
         frame=ttk.Frame(review,padding=10);frame.pack(fill="both",expand=True)
         ttk.Label(frame,text="Current ExpertGPS master → reviewed replacement",font=("Segoe UI",13,"bold")).pack(anchor="w")
-        ttk.Label(frame,text="Choose the SAME physical track. Purple dashed = old master; blue = proposed recording.\n"
-                  "Master name, type, comments, installation notes, years and extensions remain attached to the chosen track.").pack(anchor="w")
-        matches=reconcile.rank_matches(raw_points,
-                    [t for t in state["master_tracks"] if reference_track(t)
-                     and (show_roads.get() or not road_or_trail(t))],limit=None)
+        ttk.Label(frame,text="Choose a cable run, review its notes, and select the part of this walk to use. Save each run separately.\nMaster: network blue / power red / primary orange. Garmin recording: dashed pink.").pack(anchor="w")
+        matches=reconcile.rank_matches(raw_points,state["nearby_runs"],limit=None)
         choices=ttk.Combobox(frame,state="readonly",width=110,
                             values=[f'{m["track"]["name"]} | route {m["route_ft"]} ft; endpoints {m["endpoint_ft"]} ft'
                                     for m in matches])
@@ -556,11 +588,28 @@ def open_intake(parent):
         metadata=tk.Text(frame,height=12,wrap="word");metadata.pack(fill="both",expand=True)
         verts=reconcile.recording_vertices(file,raw_index)
         draft=[dict(v) for v in verts]
-        ttk.Label(frame,text="The complete Garmin recording will use the selected master name and metadata. Trim or reshape it later in ExpertGPS.").pack(anchor="w")
+        state["raw_preview"]=raw_points
+        range_row=ttk.Frame(frame);range_row.pack(fill="x")
+        ttk.Label(range_row,text="Garmin point range (suggested endpoints; verify on map): From").pack(side="left")
+        first,last=tk.IntVar(value=1),tk.IntVar(value=len(verts))
+        ttk.Spinbox(range_row,from_=1,to=len(verts),textvariable=first,width=7).pack(side="left")
+        ttk.Label(range_row,text="through").pack(side="left")
+        ttk.Spinbox(range_row,from_=1,to=len(verts),textvariable=last,width=7).pack(side="left")
         def preview():
             confirmed.set(False)
-            state["points"]=raw_points
-            request_map()
+            try:
+                a,b=first.get(),last.get()
+                if not 1<=a<b<=len(verts):raise ValueError("Choose at least two consecutive Garmin points")
+                draft[:]=[dict(v) for v in verts[a-1:b]]
+                segments=[];previous=None
+                for v in draft:
+                    if v["segment"]!=previous:segments.append([]);previous=v["segment"]
+                    segments[-1].append((v["lat"],v["lon"]))
+                state["points"]=TrackPoints(segments);request_map()
+            except (ValueError,tk.TclError) as e:message.set(str(e))
+        ttk.Button(range_row,text="Preview range",command=preview).pack(side="left")
+        first.trace_add("write",lambda *_:confirmed.set(False))
+        last.trace_add("write",lambda *_:confirmed.set(False))
         def choose(event=None):
             i=choices.current()
             if i<0:return
@@ -571,7 +620,8 @@ def open_intake(parent):
                             f'Years mentioned in notes: {", ".join(str(y["year"]) for y in reconcile.annual_history_evidence(track)) or "Not specified"}\n'
                             f'Comments:\n{track["comments"] or "(none)"}\nInstallation/description:\n{track["description"] or "(none)"}'
                             "\n\nAll master extensions and original metadata are retained in the exported GPX.")
-            metadata.configure(state="disabled");preview()
+            metadata.configure(state="disabled")
+            a,b=suggested_range(raw_points,track);first.set(a);last.set(b);preview()
             near=matches[i]
             message.set("Very close to existing master geometry — this may already be processed. Compare the notes before replacing."
                         if near["route_ft"]<3 and near["endpoint_ft"]<3 else
@@ -583,21 +633,28 @@ def open_intake(parent):
         ttk.Checkbutton(frame,text="I verified this recording matches the selected physical master track.",variable=confirmed).pack(anchor="w")
         message=tk.StringVar(value="Select a candidate; proximity is only a suggestion.")
         ttk.Label(frame,textvariable=message,wraplength=1000).pack(anchor="w")
-        def accept(action="replace"):
+        def accept(action="replace",advance=True):
             try:
                 if choices.current()<0 or not confirmed.get():raise ValueError("Select and verify the matching master track")
                 if not state.get("aerial_ready"):raise ValueError("Wait for the calibrated preview before acceptance")
+                a,b=first.get(),last.get()
+                if [v["source_index"] for v in draft]!=list(range(a-1,b)):raise ValueError("Preview the selected range before saving")
                 track=matches[choices.current()]["track"]
                 path=reconcile.accept_replacement(state["intake"],state["master"],state["master_digest"],file,
                       state["digests"][file],raw_index,track["index"],draft,note.get("1.0","end").strip() or "Operator matched Garmin recording to master for editing in ExpertGPS.",action=action)
                 old=selected[0]
                 queue.delete(old);queue.insert(old,("✓ Replace: " if action=="replace" else "✓ Keep: ")+track["name"])
+                if not advance:
+                    confirmed.set(False)
+                    message.set("Saved: "+track["name"]+". Choose another run for this same walk.")
+                    return
                 review.destroy()
                 if old+1<len(state["items"]):
                     queue.selection_clear(0,"end");queue.selection_set(old+1);queue.see(old+1);select()
                 status.set(("Match saved for ExpertGPS: " if action=="replace" else "Existing master route retained: ")
                            +track["name"]+". Shared master and PostgreSQL unchanged.")
             except (ValueError,OSError) as error:messagebox.showerror("Replacement stopped",str(error),parent=review)
+        ttk.Button(frame,text="Save run; choose another",command=lambda:accept(advance=False)).pack(side="right",pady=6)
         ttk.Button(frame,text="Save match & Next",command=accept).pack(side="right",pady=6)
         ttk.Button(frame,text="Keep existing & Next",command=lambda:accept("keep")).pack(side="right",pady=6)
         def cancel():

@@ -21,6 +21,31 @@ RAW='''<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:g="urn:garmin" versi
 
 
 class ReconcileTests(unittest.TestCase):
+    def test_one_walk_updates_two_runs_with_separate_ranges_and_history(self):
+        vertices=r.recording_vertices(self.raw,1)
+        self.accept(vertices[:3])
+        r.accept_replacement(self.intake,self.master,r.digest(self.master),self.raw,r.digest(self.raw),
+                             1,2,vertices[3:],"Second run on the same walk")
+        self.assertEqual(len(r.decisions(self.intake,r.digest(self.master))),2)
+        out=r.export_candidate(self.intake,self.master,r.digest(self.master),self.root/"multi.gpx")
+        old=r.tracks(self.master);new=r.tracks(out)
+        for a,b in zip(old,new):
+            self.assertEqual(a["metadata"],b["metadata"])
+        self.assertEqual([len(t["points"]) for t in new],[3,2])
+        self.assertEqual(new[1]["points"][0],(vertices[3]["lat"],vertices[3]["lon"]))
+        # Correcting the first run must not discard the second run.
+        self.accept(vertices[:2])
+        self.assertEqual(len(r.decisions(self.intake,r.digest(self.master))),2)
+
+    def test_nearby_overlays_do_not_depend_on_raw_name_or_type(self):
+        from gis_track_intake import nearby_runs,run_color,suggested_range
+        points=parse(self.raw)[0][0][2]
+        nearby=nearby_runs(points,r.tracks(self.master))
+        self.assertEqual([t["index"] for t in nearby],[1])
+        self.assertEqual(suggested_range(points,nearby[0]),(1,3))
+        for kind,color in (("Network","#0066ff"),("High Voltage 12-3","#ff2020"),("Primary","#ff8c00")):
+            self.assertEqual(run_color({"type":kind}),color)
+
     def test_annual_history_groups_notes_not_individual_edits(self):
         history=r.annual_history_evidence(dict(comments="2014 installed\n2014 corrected",
                                               description="2012 survey\nUpdated 2026, repaired 2026"))
