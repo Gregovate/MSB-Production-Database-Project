@@ -18,7 +18,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 from repository import WorkManagementError, WorkManagementRepository
 from commands import CloneCommands
 
-APP_VERSION = "V1.0.0-work-orders-release-candidate"
+APP_VERSION = "V1.0.1-production-route"
 BASE_DIR = Path(__file__).resolve().parent
 CLOUDFLARE_HEADER = "Cf-Access-Authenticated-User-Email"
 TICKET_KEY = re.compile(r"^(?:WO|INTAKE)-[1-9][0-9]{0,12}$")
@@ -79,9 +79,10 @@ def runtime_response() -> dict:
 
 def actor() -> dict:
     """The trusted perimeter must remove client-supplied identity headers."""
-    # BOTH preview and Production bind to loopback behind the existing trusted
-    # server reverse proxy. An external request must never supply CF identity.
-    if request.remote_addr not in ("127.0.0.1", "::1"):
+    # Authorize the socket peer, never X-Forwarded-For. Production uses the
+    # existing Synology-only firewall/proxy boundary; previews remain loopback.
+    peers = ("192.168.5.4",) if runtime_mode() == "production" else ("127.0.0.1", "::1")
+    if request.remote_addr not in peers:
         raise WorkManagementError("Work Orders is restricted to the approved local proxy.", 403)
     email = request.headers.get(CLOUDFLARE_HEADER, "").strip().lower()
     if not email or len(email) > 254 or "@" not in email:
@@ -108,7 +109,12 @@ def no_cache(response: Response) -> Response:
 @app.get("/work-orders/")
 def work_management() -> Response:
     actor()  # An unauthenticated user cannot receive the ticket application.
-    return send_from_directory(BASE_DIR, "index.html")
+    # SCRIPT_NAME is set by the fixed Production WSGI entry, not a client header.
+    prefix = "/workorder" if runtime_mode() == "production" else ""
+    page = (BASE_DIR / "index.html").read_text(encoding="utf-8")
+    page = page.replace('content="__WORK_MGMT_BASE__"', 'content="' + prefix + '"')
+    page = page.replace('="/work-orders/assets/', '="' + prefix + '/work-orders/assets/')
+    return Response(page, mimetype="text/html")
 
 
 @app.get("/work-orders/assets/<name>")
@@ -307,3 +313,4 @@ if __name__ == "__main__":
         "Work Management browser must be started by an approved disposable "
         "Server Management launcher, not by running backend.py directly."
     )
+

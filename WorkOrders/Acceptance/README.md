@@ -1,5 +1,17 @@
 # Work Management #419 — disposable clone and browser review
 
+## Current release preparation — October 20, V1.0.1-production-route
+
+Phase 1 functional approval and Production authorization are recorded in #419/#81.
+The Production route correction follows the existing Synology perimeter and mounts
+the same application at /workorder/. Local app/read-model regression: 86 PASS.
+Existing acceptance-profile regression: 17 PASS, one local netlink restriction;
+the original cleanup test is retained unchanged for CI/host execution.
+No SQL changes or sender activation. Exact-candidate CI and actual protected
+Manager/Crew route acceptance remain required; source tests do not establish
+Cloudflare identity integrity or direct-origin bypass protection.
+Earlier CHANGES REQUIRED entries below describe earlier candidates.
+
 **Status: V0.3 source-only candidate; new disposable-write validation and browser review still pending. V0.2 operator review was CHANGES REQUIRED.** Work Management is the existing MSB Database Work Orders subsystem.
 
 ## October 20 — V1 native Manager/Crew browser candidate, source regression PASS; live browser pending
@@ -1122,3 +1134,4 @@ Operator selected current-Production-clone Public Intake #57 and Setup Task Feed
 **Safety / separate HOLD:** The operator's original server report `/home/msbadmin/setup-acceptance-reports/WO419_Disposable_Browser_Preview_20261020T143949.txt` reported cleanup status 81 because whole-table Production WO/assignment/Intake fingerprint differed between session start and end. Owned listener, disposable clone, candidate worktree, port cleanup and shared HEAD checks passed. A concurrent legitimate live change could explain a whole-table difference, but it is NOT proven; the report remains **HOLD, not CLEAN EXIT**. The current runner fingerprints complete `ops.work_order`, `ops.work_order_assignment`, and `stage.work_order_intake` contents, so ordinary concurrent Production writes are indistinguishable from unauthorized preview writes. The governing MSB Server Management disposable standard requires a Production no-unauthorized-write proof; do not delete/disable this check or reclassify the HOLD by fiat. Inspect report, attribution, authorized change logs and Server Management runbook; establish a documented concurrent-safe proof before claiming final acceptance. No Production work paused or rolled back by this test, and no Production data write is authorized here.
 
 The latest source candidate is NOT yet operator accepted or installable. Keep PR draft, no Production deploy or mail/Flow cutover. Avoid asking the operator to repeat a long browser review until the fingerprint acceptance mechanism is reconciled.
+

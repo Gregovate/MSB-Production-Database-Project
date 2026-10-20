@@ -2,6 +2,8 @@
 (() => {
   "use strict";
   const $ = (id) => document.getElementById(id);
+  // Server-rendered fixed mount; previews use the empty prefix.
+  const appBase = document.querySelector('meta[name="work-management-base"]').content;
   const state = {
     actor: null, tickets: [], assignees: [], selected: null,
     detail: null, relatedLoadedFor: null, fetchId: 0, listFetchId: 0,
@@ -20,7 +22,7 @@
   }
 
   async function getJson(url) {
-    const result = await fetch(url, {
+    const result = await fetch(appBase + url, {
       credentials: "same-origin",
       headers: { "Accept": "application/json" },
       cache: "no-store",
@@ -797,3 +799,4 @@
   $("related-information").addEventListener("toggle", loadRelated);
   initialize();
 })();
+

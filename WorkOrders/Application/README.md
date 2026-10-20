@@ -1,4 +1,26 @@
-# MSB Work Management — V0.3.2 disposable browser candidate
+# MSB Work Management — Phase 1 release preparation
+
+## Current checkpoint — V1.0.1-production-route, October 20
+
+Operator accepted Phase 1 business workflows and authorized release. Not installed.
+PR #420 reconciled main a770e755 at bad1b591; the six missing governance commits
+are retained. Prior dated review states below are historical, not current approval.
+
+The permanent public mount is /workorder/. Production WSGI validates actual
+Synology socket peer 192.168.5.4, exact public Host and forwarded HTTPS before
+serving the application. Client forwarding headers cannot grant peer trust.
+All assets and API calls stay beneath the mount; same-origin CSRF remains active.
+Preview behavior remains loopback-only. See the [owning design](../../Docs/02_Production_Database/01_System_Architecture/06_Work_Orders/Work_Order_System_Design.md#october-20--phase-1-permanent-route-deployment-contract-81).
+
+Local fake-repository app/read-model tests: 86 PASS. Acceptance-profile tests:
+17 PASS; one existing process-cleanup test cannot complete here because netlink
+access is prohibited. CI on Linux remains required; this is not live acceptance.
+SQL/business commands and Phase 1 Directus mail ownership are unchanged.
+Server Management #81 owns allocation, independent pinned checkout, service,
+protected environment, database window, external identity verification and cutover.
+No root /api route or new local proxy daemon is required.
+
+## Historical source and review checkpoints
 
 **Status: DRAFT PR #420 / V0.3.2 SOURCE CANDIDATE; new disposable functional browser acceptance pending.** The previous Manager disposable browser ran and ended workstation tunnel CLEAN EXIT, but the operator reported CHANGES REQUIRED for navigation, work/complete, assignment, Create, planning ideas and readability. No Production deployment or notifications.
 
@@ -188,3 +210,4 @@ The Work Orders subsystem now contains [WorkOrders/Acceptance](../Acceptance/REA
 Run Python/JavaScript source tests and the amended ledger SQL against the approved current-Production clone. Inspect actual My Work/All/person scope, Intake #60/#40/#57, WO372, Testing repairs, no-Person/unauthorized paths, and the collapsed Related Information panel for tasks with and without direct Kit assignments. Correct any discovered SQL or navigation drift before operator browser acceptance. **No executable test or browser PASS is asserted from this source-only commit.**
 
 After the initial browser shell is reviewed, implement and test **all P0 actions** against clone-only commands and captured no-send email, without touching Production or disabling any current Directus Flow. Record source SHA, actual validation evidence and resume point in this application README and governing subsystem design.
+

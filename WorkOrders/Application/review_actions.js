@@ -5,6 +5,7 @@
 (() => {
   "use strict";
   const byId = (id) => document.getElementById(id);
+  const appBase = document.querySelector('meta[name="work-management-base"]').content;
   const model = { actor: null, ticket: null, options: null, selected: new Set(), csrf: "", runtime: "disposable", pendingSignature: null, pendingKey: null };
   const isLive = () => model.runtime === "production";
   const actions = {
@@ -519,7 +520,7 @@
       model.pendingKey = crypto.randomUUID();
     }
     body.request_key = model.pendingKey;
-    const response = await fetch("/api/work-orders/commands", {
+    const response = await fetch(appBase + "/api/work-orders/commands", {
       method: "POST", credentials: "same-origin", cache: "no-store",
       headers: { "Content-Type": "application/json", "Accept": "application/json",
                  "X-WO419-CSRF": model.csrf,
@@ -572,7 +573,7 @@
   async function initializeReviewerOptions() {
     if (!model.actor?.can_create) return;
     try {
-      const result = await fetch("/api/work-orders/reviewer-options", {
+      const result = await fetch(appBase + "/api/work-orders/reviewer-options", {
         credentials: "same-origin", cache: "no-store",
         headers: { "Accept": "application/json" },
       });

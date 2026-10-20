@@ -120,6 +120,96 @@ def identity():
     return {"Cf-Access-Authenticated-User-Email": "crew@sheboyganlights.org"}
 
 
+@pytest.fixture
+def production_client(monkeypatch):
+    """Exercise the actual Production WSGI edge without a database or network."""
+    import importlib
+    from werkzeug.test import Client
+    from werkzeug.wrappers import Response
+    monkeypatch.setenv("WORK_MGMT_RUNTIME_MODE", "production")
+    monkeypatch.setenv("WORK_MGMT_V1_WRITE_GATE", "authorized_v1_release_only")
+    monkeypatch.setenv("WORK_MGMT_PRODUCTION_PROXY_APPROVED", "verified_synology_access")
+    monkeypatch.setenv("WORK_MGMT_PRODUCTION_COMMAND_SECRET", "a" * 64)
+    monkeypatch.setenv("WORK_MGMT_PRODUCTION_DSN", "dbname=msb user=work_management_app")
+    monkeypatch.setattr(backend, "store", lambda: FakeRepo())
+    FakeRepo.calls.clear()
+    sys.modules.pop("production_entry", None)
+    entry = importlib.import_module("production_entry")
+    yield Client(entry.application, Response)
+    sys.modules.pop("production_entry", None)
+
+
+def production_headers():
+    return {**identity(), "Host": "my.sheboyganlights.org",
+            "X-Forwarded-Proto": "https"}
+
+
+def test_production_perimeter_denies_spoofed_peer_host_and_scheme(production_client):
+    for peer, override in [
+        ("192.0.2.20", {"X-Forwarded-For": "192.168.5.4"}),
+        ("127.0.0.1", {}),
+        ("192.168.5.4", {"Host": "attacker.example"}),
+        ("192.168.5.4", {"X-Forwarded-Proto": "http"}),
+    ]:
+        response = production_client.get("/api/work-orders/access",
+            headers={**production_headers(), **override},
+            environ_overrides={"REMOTE_ADDR": peer})
+        assert response.status_code == 403
+    assert FakeRepo.calls == []
+
+
+def test_production_missing_identity_is_denied(production_client):
+    headers = production_headers()
+    del headers["Cf-Access-Authenticated-User-Email"]
+    response = production_client.get("/api/work-orders/access", headers=headers,
+        environ_overrides={"REMOTE_ADDR": "192.168.5.4"})
+    assert response.status_code == 401
+    assert FakeRepo.calls == []
+
+
+def test_production_mount_assets_access_and_https_command(production_client, monkeypatch):
+    import re
+    peer = {"REMOTE_ADDR": "192.168.5.4"}
+    headers = {**production_headers(), "X-Forwarded-Prefix": "/attacker",
+               "X-Forwarded-Host": "attacker.example"}
+    page = production_client.get("/", headers=headers, environ_overrides=peer)
+    assert page.status_code == 200
+    html = page.get_data(as_text=True)
+    assert 'content="/workorder"' in html
+    assets = re.findall(r'(?:src|href)="(/workorder/work-orders/assets/[^"]+)"', html)
+    assert len(assets) == 3
+    for asset in assets:
+        # Synology strips exactly the registered public prefix.
+        response = production_client.get(asset.removeprefix("/workorder"),
+            headers=headers, environ_overrides=peer)
+        assert response.status_code == 200
+    access = production_client.get("/api/work-orders/access", headers=headers,
+        environ_overrides=peer)
+    assert access.status_code == 200
+    assert access.json["version"] == "V1.0.1-production-route"
+    calls = []
+    class Commands:
+        def perform(self, actor, action, ticket, body):
+            calls.append(action)
+            return {"saved": True}
+    monkeypatch.setattr(backend, "command_store", Commands)
+    command_headers = {**headers, "Origin": "https://my.sheboyganlights.org",
+        "X-WO419-CSRF": access.json["csrf_token"], "X-MSB-Work-Order-Command": "1"}
+    response = production_client.post("/api/work-orders/commands",
+        headers=command_headers, environ_overrides=peer,
+        json={"action": "progress", "ticket": "WO-1"})
+    assert response.status_code == 200
+    response = production_client.post("/api/work-orders/commands",
+        headers={**command_headers, "Origin": "https://attacker.example"},
+        environ_overrides=peer, json={"action": "progress"})
+    assert response.status_code == 403
+    response = production_client.post("/api/work-orders/commands",
+        headers={**command_headers, "X-WO419-CSRF": "invalid"},
+        environ_overrides=peer, json={"action": "progress"})
+    assert response.status_code == 403
+    assert calls == ["progress"]
+
+
 def test_missing_identity_denied_without_db_access(client):
     response = client.get("/api/work-orders/tickets")
     assert response.status_code == 401
@@ -991,7 +1081,7 @@ def test_v1_backend_uses_distinct_command_path_and_protected_proxy():
     runtime = (HERE / "v1_runtime.py").read_text(encoding="utf-8")
     js = (HERE / "review_actions.js").read_text(encoding="utf-8")
     app_js = (HERE / "app.js").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "V1.0.0-work-orders-release-candidate"' in source
+    assert 'APP_VERSION = "V1.0.1-production-route"' in source
     assert 'from v1_runtime import V1Repository' in source
     assert 'from v1_runtime import V1Commands' in source
     assert 'return CloneCommands()' in source
@@ -1323,3 +1413,4 @@ def test_oct20_intake_evidence_is_visible_before_any_triage_decision():
     assert 'sourceEvidence.hidden = !intake' in js
     assert 'kind === "promote" ? "Proposed Work Order' in js
     assert '.review-source-evidence' in css
+
