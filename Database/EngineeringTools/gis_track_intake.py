@@ -317,6 +317,12 @@ def open_intake(parent):
     state={"items":[],"waypoints":[],"aerial_ready":False,"generation":0}
     results = thread_queue.Queue()
     def select(event=None):
+        if state.get("review_window") and state["review_window"].winfo_exists():
+            queue.selection_clear(0,"end")
+            for i in state.get("review_selection",()):queue.selection_set(i)
+            state["active_recording"]=state["editing_recording"]
+            status.set("Review stays on this recording. Save or Close review before choosing another.")
+            return
         selection=queue.curselection()
         if not selection:return
         previous=state.get("editing_recording")
@@ -546,6 +552,9 @@ def open_intake(parent):
     drawing.bind("<Configure>",resized)
     show_processed=tk.BooleanVar(value=False)
     def load():
+        if state.get("review_window") and state["review_window"].winfo_exists():
+            if not state["save_review_draft"]():return
+            state["review_window"].destroy()
         old_items=state.get("items",[])
         editing=state.get("editing_recording")
         if editing is not None and editing < len(old_items):
@@ -646,6 +655,32 @@ def open_intake(parent):
         except (OSError, ValueError) as e:messagebox.showerror("Save stopped",str(e),parent=win)
     def suggest(*_):
         if start.get() and end.get():name.set(propose(kind.get(),start.get(),end.get()))
+    def reload_master():
+        if not state.get("master"):
+            status.set("Read Garmin tracks first, then reload the saved master here.");return
+        try:
+            path=Path(master.get()).resolve()
+            digest=source_digest(path)
+            waypoints=parse(path,infrastructure_only=True)[1]
+            tracks=reconcile.tracks(path)
+            if not waypoints:raise ValueError("The saved master has no infrastructure waypoints")
+            if source_digest(path)!=digest:raise ValueError("Master is still being saved. Try again after ExpertGPS finishes.")
+            review_open=state.get("review_window") and state["review_window"].winfo_exists()
+            if review_open and not state["save_review_draft"]():return
+            state.update(master=path,master_digest=digest,waypoints=waypoints,master_tracks=tracks)
+            raw=state.get("raw_preview") if review_open else state.get("points")
+            if raw:
+                state["nearby_runs"]=nearby_runs(raw,tracks)
+                state["nearby"]=[w for w in waypoints if min(dist_ft((w[1],w[2]),p) for p in raw)<250]
+            state["prior_evidence"]=[reconcile.prior_master_evidence(p,p.times,tracks) for _,(_,_,p) in state["items"]]
+            active=state.get("editing_recording")
+            if active is not None:prior_status.set(reconcile.evidence_summary(state["prior_evidence"][active]))
+            if review_open:state["refresh_review_master"]()
+            request_map()
+            status.set("Saved master reloaded. Your recording and edits are retained; verify the refreshed match before saving.")
+        except (OSError,ValueError,ET.ParseError) as error:
+            messagebox.showerror("Master not reloaded",str(error),parent=win)
+
     def review_replacement(master_index=None,new_run=False):
         selected=queue.curselection()
         if not selected:
@@ -658,6 +693,7 @@ def open_intake(parent):
         active=state.get("editing_recording")
         if active not in selected:
             status.set("Recording selection changed. Select the intended recording again before review.");return
+        state["review_selection"]=tuple(selected)
         file,(raw_index,raw_name,raw_points)=state["items"][active]
         review=ttk.Frame(row,name="run_review",width=620);state["review_window"]=review
         review.pack(side="right",fill="y",before=panel);review.pack_propagate(False)
@@ -713,11 +749,12 @@ def open_intake(parent):
             if i<0:return
             track=matches[i]["track"]
             previous=chosen_index[0]
+            if previous==track["index"]:return
             if previous is not None:
                 chosen_fields[previous]=dict(year=installed_year.get(),cables=cable_labels.get())
             defaults=chosen_fields.get(track["index"],reconcile.installation_defaults(track))
             if previous is None and prior_fields:
-                defaults=dict(defaults,**{k:prior_fields[k] for k in ("year","cables") if prior_fields.get(k)})
+                defaults=dict(defaults,**{k:prior_fields[k] for k in ("year","cables") if k in prior_fields})
             installed_year.set(defaults["year"]);cable_labels.set(defaults["cables"]);show_catalog()
             chosen_index[0]=track["index"]
             if new_run:
@@ -827,11 +864,14 @@ def open_intake(parent):
             if not installed_year.get().strip() and k.casefold()!="network":return None
             return reconcile.route_installation(k,installed_year.get(),cable_labels.get() if k.casefold()=="network" else "",state.get("network_catalog"))
         # Keep unsaved installation edits when the same recording is reopened.
-        draft_key=(state["master_digest"],state["digests"][file],raw_index,new_run)
-        draft_path=Path(state["intake"])/"Drafts"/(state["master_digest"]+"_"+state["digests"][file]+"_"+str(raw_index)+("_new" if new_run else "_match")+".json")
+        draft_key=(state["digests"][file],raw_index,new_run)
+        draft_suffix=state["digests"][file]+"_"+str(raw_index)+("_new" if new_run else "_match")+".json"
+        draft_path=Path(state["intake"])/"Drafts"/draft_suffix
         prior_fields=state.setdefault("installation_drafts",{}).get(draft_key,{})
-        if not prior_fields and draft_path.exists():
-            try:prior_fields=json.loads(draft_path.read_text(encoding="utf8"))
+        legacy=sorted(draft_path.parent.glob("*_"+draft_suffix),key=lambda p:p.stat().st_mtime,reverse=True)
+        restore_path=draft_path if draft_path.exists() else (legacy[0] if legacy else draft_path)
+        if not prior_fields and restore_path.exists():
+            try:prior_fields=json.loads(restore_path.read_text(encoding="utf8"))
             except (ValueError,OSError):pass
         installed_year.set(prior_fields.get("year",""));cable_labels.set(prior_fields.get("cables",""));show_catalog()
         def remember_installation(*_):
@@ -850,7 +890,9 @@ def open_intake(parent):
             try:
                 data=dict(year=installed_year.get(),cables=cable_labels.get(),note=note.get("1.0","end").strip(),
                           first=first.get(),last=last.get(),working_name=name.get(),temporary_type=kind.get(),
-                          start_waypoint=start.get(),end_waypoint=end.get())
+                          start_waypoint=start.get(),end_waypoint=end.get(),master_sha256=state["master_digest"],
+                          match_name=state.get("matched_track",{}).get("name"),
+                          match_gps_name=state.get("matched_track",{}).get("gps_name"))
                 draft_path.parent.mkdir(parents=True,exist_ok=True)
                 temp=draft_path.with_suffix(".tmp");temp.write_text(json.dumps(data,indent=2),encoding="utf8");temp.replace(draft_path)
                 state["installation_drafts"][draft_key]=data
@@ -858,11 +900,40 @@ def open_intake(parent):
                 return True
             except (ValueError,OSError,tk.TclError) as error:
                 messagebox.showerror("Draft not saved",str(error),parent=win);return False
+        state["save_review_draft"]=save_draft
         ttk.Button(frame,text="Save draft (no acceptance)",command=save_draft).pack(fill="x",pady=2)
         confirmed=tk.BooleanVar(value=False)
         ttk.Checkbutton(frame,text="I verified this run and point range.",variable=confirmed).pack(anchor="w")
         message=tk.StringVar(value="Select a candidate; proximity is only a suggestion.")
         ttk.Label(frame,textvariable=message,wraplength=560).pack(anchor="w")
+        def refresh_review_master():
+            # Keep every operator field and range intact. Ordinals may have moved.
+            previous=state.get("matched_track")
+            confirmed.set(False)
+            if new_run:
+                message.set("Master refreshed. Your new-run edits are retained. Verify and save.")
+                return
+            candidates=nearby_runs(raw_points,state["master_tracks"])
+            same=[t for t in state["master_tracks"] if previous and t["gps_name"]==previous.get("gps_name") and t["name"]==previous["name"]]
+            exact=[t for t in same if t["segments"]==previous["segments"] and t["metadata"]==previous["metadata"]]
+            target=exact[0] if len(exact)==1 else (same[0] if len(same)==1 else None)
+            if target and target not in candidates:candidates.append(target)
+            matches[:]=reconcile.rank_matches(raw_points,candidates,limit=None)
+            choices.delete(0,"end")
+            for item in matches:choices.insert("end",item["track"]["name"])
+            state.pop("matched_track",None)
+            chosen_index[0]=None
+            metadata.configure(state="normal");metadata.delete("1.0","end")
+            if target:
+                i=next(i for i,m in enumerate(matches) if m["track"]["index"]==target["index"])
+                choices.selection_set(i);state["matched_track"]=target;chosen_index[0]=target["index"]
+                metadata.insert("end",f'{target["name"]}\nType: {target["type"]}\nComments: {target["comments"]}\nDescription: {target["description"]}')
+                message.set("Master refreshed; edits retained. "+("Matched run is unchanged." if len(exact)==1 else "This master run changed in ExpertGPS; inspect it before replacing.")+" Verify again before saving.")
+            else:
+                metadata.insert("end","Previous match is missing or ambiguous. Choose the intended master run; your edits are retained.")
+                message.set("Choose the matching master run again. No replacement has been accepted.")
+            metadata.configure(state="disabled")
+        state["refresh_review_master"]=refresh_review_master
         def accept(action="replace",advance=True):
             try:
                 if (choices.curselection()[0] if choices.curselection() else -1)<0 or not confirmed.get():raise ValueError("Select and verify the matching master track")
@@ -890,7 +961,12 @@ def open_intake(parent):
                 load()
                 status.set(({"replace":"Match saved for ExpertGPS: ","add":"New route saved for ExpertGPS: ","keep":"Existing master route retained: "}[action])
                            +track["name"]+". Shared master and PostgreSQL unchanged.")
-            except (ValueError,OSError) as error:messagebox.showerror("Replacement stopped",str(error),parent=review)
+            except (ValueError,OSError) as error:
+                save_draft()
+                detail=str(error)
+                if "Source or master changed" in detail:
+                    detail="Your edits are saved as a draft. Click Reload saved master after saving in ExpertGPS, then verify this run again. If the Garmin file changed, close this review and Read Garmin tracks."
+                messagebox.showerror("Run not saved",detail,parent=review)
         ttk.Button(frame,text="Save run; choose another",command=lambda:accept(advance=False)).pack(fill="x",pady=2)
         ttk.Button(frame,text="Save match & Next",command=accept).pack(fill="x",pady=2)
         if not new_run:
@@ -901,6 +977,8 @@ def open_intake(parent):
             review.destroy();request_map()
         ttk.Button(frame,text="Close review",command=cancel).pack(fill="x",pady=2)
         if matches:
+            restored=[m["track"] for m in matches if prior_fields.get("match_name")==m["track"].get("name") and prior_fields.get("match_gps_name")==m["track"].get("gps_name")]
+            if master_index is None and len(restored)==1:master_index=restored[0]["index"]
             choose_master(master_index if master_index is not None else matches[0]["track"]["index"])
             if prior_fields:
                 for variable,key in ((name,"working_name"),(kind,"temporary_type"),(start,"start_waypoint"),(end,"end_waypoint")):
@@ -966,9 +1044,17 @@ def open_intake(parent):
     ttk.Button(review_controls,text="Review as new run",command=lambda:review_replacement(new_run=True)).pack(side="left",padx=6)
     ttk.Button(review_controls,text="Export GPX for ExpertGPS",command=export_reviewed).pack(side="right")
     ttk.Button(review_controls,text="ExpertGPS Help",command=expertgps_help).pack(side="right",padx=6)
-    ttk.Button(base,text="Read Garmin tracks (read only)",command=load).pack(anchor="w",pady=4,before=row)
+    read_controls=ttk.Frame(base);read_controls.pack(fill="x",pady=4,before=row)
+    ttk.Button(read_controls,text="Read Garmin tracks (read only)",command=load).pack(side="left")
+    ttk.Button(read_controls,text="Reload saved master",command=reload_master).pack(side="left",padx=8)
+    def close_intake():
+        if state.get("review_window") and state["review_window"].winfo_exists():
+            if not state["save_review_draft"]():return
+        win.destroy()
+    win.protocol("WM_DELETE_WINDOW",close_intake)
     queue.bind("<<ListboxSelect>>",select)
     def clicked_recording(event):
+        if state.get("review_window") and state["review_window"].winfo_exists():return
         # nearest() clamps clicks below the rows to the final recording.
         # A release outside a row must never change the working recording.
         if not (0 <= event.x < queue.winfo_width() and 0 <= event.y < queue.winfo_height()):return

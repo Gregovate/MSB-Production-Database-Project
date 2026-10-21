@@ -379,4 +379,88 @@ class IntakeTests(unittest.TestCase):
                 self.assertEqual(queue.curselection(),(0,1))
                 self.assertTrue(any(str(w.cget('text')).startswith('first.gpx —') for w in walk(win) if isinstance(w,ttk.Label)))
 
+
+    def test_reload_master_preserves_review_and_rebinds_reordered_match(self):
+        import tkinter as tk
+        import time, json
+        from tkinter import ttk
+        from unittest.mock import patch
+        from PIL import Image
+        import gis_track_reconcile as reconcile
+        from gis_track_intake import open_intake
+        def walk(w):
+            yield w
+            for child in w.winfo_children():yield from walk(child)
+        def fake_map(points,width,height,zoom,center=None):
+            x,y=mercator(*(center or points[0]),zoom)
+            return Image.new('RGB',(width,height)),(x-width/2,y-height/2)
+        with tempfile.TemporaryDirectory() as d:
+            folder=Path(d);raw=folder/'Garmin';raw.mkdir()
+            source=raw/'first.gpx';source.write_text(GPX)
+            (raw/'second.gpx').write_text(GPX)
+            master=folder/'master.gpx';master.write_text(GPX)
+            intake=folder/'Intake';intake.mkdir()
+            root=tk.Tk();root.withdraw();self.addCleanup(root.destroy)
+            errors=[]
+            with patch('gis_track_intake.find_garmin_gpx_dirs',return_value=[]), patch('gis_track_intake.aerial_image',side_effect=fake_map), patch('gis_track_intake.messagebox.showerror',side_effect=lambda *a,**k:errors.append(a)), patch('gis_track_intake.messagebox.showinfo'):
+                win=open_intake(root);root.update()
+                def button(text):return next(w for w in walk(win) if isinstance(w,ttk.Button) and w.cget('text')==text)
+                def wait_map():
+                    deadline=time.monotonic()+3
+                    while time.monotonic()<deadline:
+                        root.update();time.sleep(.02)
+                        if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):return
+                    self.fail('Map did not finish')
+                entries=[w for w in walk(win) if type(w) is ttk.Entry]
+                for entry,value in zip(entries,[raw,master,intake]):
+                    entry.delete(0,'end');entry.insert(0,str(value))
+                button('Read Garmin tracks (read only)').invoke();wait_map()
+                button('Match and name from master').invoke();wait_map()
+                review=next(w for w in walk(win) if w.winfo_name()=='run_review')
+                year=next(w for w in walk(review) if type(w) is ttk.Entry)
+                year.insert(0,'2026')
+                networks=[w for w in walk(review) if isinstance(w,tk.Listbox)][-1]
+                for code in ('REG','E1.31','SPARE-1'):
+                    networks.selection_set(list(networks.get(0,'end')).index(code))
+                networks.event_generate('<<ListboxSelect>>');root.update()
+                note=next(w for w in walk(review) if isinstance(w,tk.Text) and str(w.cget('state'))=='normal')
+                note.insert('1.0','Keep this field note')
+                entries[-1].delete(0,'end');entries[-1].insert(0,'Reviewed route')
+                queue=next(w for w in walk(win) if isinstance(w,tk.Listbox))
+                queue.selection_clear(0,'end');queue.selection_set(1);queue.event_generate('<<ListboxSelect>>');root.update()
+                self.assertTrue(review.winfo_exists());self.assertEqual(queue.curselection(),(0,))
+                self.assertEqual(year.get(),'2026');self.assertEqual(entries[-1].get(),'Reviewed route')
+                # Another track is inserted before our match, as an ExpertGPS save can do.
+                added='<trk><name>Unrelated route</name><type>Network</type><trkseg><trkpt lat="44" lon="-88"/><trkpt lat="44.1" lon="-88.1"/></trkseg></trk>'
+                master.write_text(GPX.replace('<trk>',added+'<trk>',1).replace('FE-07','FE-07-CORRECTED'))
+                button('Reload saved master').invoke();wait_map()
+                self.assertTrue(review.winfo_exists());self.assertEqual(year.get(),'2026')
+                self.assertEqual(note.get('1.0','end').strip(),'Keep this field note')
+                self.assertEqual(entries[-1].get(),'Reviewed route')
+                self.assertEqual({networks.get(i) for i in networks.curselection()},{'REG','E1.31','SPARE-1'})
+                next(w for w in walk(review) if isinstance(w,ttk.Checkbutton)).invoke()
+                button('Save run; choose another').invoke();root.update()
+                self.assertFalse(errors)
+                decisions=reconcile.decisions(intake,source_digest(master))
+                self.assertEqual(len(decisions),1)
+                output=folder/'reviewed.gpx'
+                reconcile.export_candidate(intake,master,source_digest(master),output,selected_run=decisions[0])
+                exported=reconcile.tracks(output)[0]
+                self.assertEqual(exported['name'],'Reviewed route')
+                self.assertEqual(exported['points'],parse(source)[0][0][2])
+                self.assertIn('Networks: E1.31, REG, SPARE-1',exported['description'])
+                button('Close review').invoke();wait_map()
+                button('Review as new run').invoke();wait_map()
+                review=next(w for w in walk(win) if w.winfo_name()=='run_review')
+                year=next(w for w in walk(review) if type(w) is ttk.Entry);year.insert(0,'2025')
+                master.write_text(master.read_text().replace('FE-07-CORRECTED','FE-07-NEW'))
+                button('Reload saved master').invoke();wait_map()
+                self.assertEqual(year.get(),'2025');self.assertTrue(review.winfo_exists())
+                self.assertFalse(errors)
+                # Invalid master must not destroy current review or edited values.
+                master.write_text('<broken')
+                button('Reload saved master').invoke();root.update()
+                self.assertEqual(errors[-1][0],'Master not reloaded')
+                self.assertEqual(year.get(),'2025');self.assertTrue(review.winfo_exists())
+
 if __name__=="__main__":unittest.main()
