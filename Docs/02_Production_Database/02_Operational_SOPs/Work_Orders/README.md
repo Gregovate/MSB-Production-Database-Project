@@ -34,7 +34,7 @@ The live Production application is **Work Management V1.1.2-manager-utilities**.
 A ticket enters Work Management through one of these governed paths:
 
 1. **Public Work Order Request** → Work Order Intake → Manager review.
-2. **Authorized internal Create Work Order** → native active Work Order.
+2. **Manager Create Work Order** → native active Work Order.
 3. **Test Session repair** → native active repair Work Order; no Intake triage.
 4. **Setup Report Correction / Task Feedback** → retained correction Intake for Manager review; promote only when actual repair/work is required.
 
@@ -46,7 +46,7 @@ Production Crew can use Work Management, subject to their current Directus role/
 
 - open **My Assigned Work Orders**;
 - review Work Orders they created;
-- create internal Work Orders where authorized;
+- submit new requests through Intake for Manager triage;
 - add a **Work Note** without closing the Work Order;
 - complete assigned work with substantive Completion Notes; and
 - review submitted feedback where available.

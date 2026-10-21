@@ -1,41 +1,34 @@
 # Work Orders
 
-## Current operator entry — October 20
+## Current release and source handoff — 2026-10-21
 
-Open [Work Orders](https://my.sheboyganlights.org/workorder/). The standalone
-Phase 1 application is installed. Phase 2 email/deadline work remains a draft,
-not deployed; existing Directus mail remains active. See the
-[current application handoff](../../../../WorkOrders/Application/README.md)
-and [acceptance checkpoint](../../../../WorkOrders/Acceptance/Phase_2_Completion_Checkpoint.md).
-The older source/preview-only descriptions below record prior development.
+Work Management **V1.1.2-manager-utilities** is installed at
+https://my.sheboyganlights.org/workorder/ with Phase 2 migrations 002/003 and
+scheduled mail enabled. Last evidenced installed source:
+`24c0c8e526e032f4a7202a77ed14ab9a30b2459b`. This documentation reconciliation
+is not a new runtime deployment or a fresh live-host inspection.
 
+Create, Promote, Assign, Edit, Cancel, Set Due by, delivery status and Utilities
+require Manager authority. Crew can work assigned orders and submit Intake;
+original linked, authorized reporters can reply to an unanswered clarification
+on their unpromoted Intake. No new account/role is created by a notification.
 
-This subsystem documents the Production Database work-order system, including intake, triage, assignment, notification, repair integration, completion, and the database relationships that make work orders part of the larger production system.
+The release proved SQL acceptance, 193 server regression tests, installation,
+first SMTP acceptance and Greg's Inbox confirmation, and scheduled mail enable.
+It does not prove every notification scenario or continued overnight operation.
+The retained reports and follow-up boundary are recorded in
+[Phase 2 checkpoint](../../../../WorkOrders/Acceptance/Phase_2_Completion_Checkpoint.md).
 
-## Current State
-
-**Engineering lineage:** Work Orders were designed and implemented well before #419. The [Work Order System Design](Work_Order_System_Design.md#existing-work-order-engineering-to-preserve--pre-419-authority-reconciliation) identifies the prior approved v1.1 database design and v3 operational model, the current task-sized SOPs, existing Directus navigation/Flows, Testing repair loop and #172 free-form correction integration. **Read those existing records before adding structures or changing behavior.** #419 is a usability/accountability improvement to that subsystem, not a new Work Order system or new repository.
-
-Work Orders and Setup Task Feedback are implemented on the existing PostgreSQL Production Database. The public Google Form and accepted #172 free-form Task Feedback enter governed Work Order Intake; Test Session failures can create active repair Work Orders directly. Directus currently presents Intake triage, assignment and completion and runs selected notification/testing Flows.
-
-**Next engineering priority — #419 unified MSB Work Management:** one ticket-style protected application for all Work Orders and Task Feedback, preserving each database identity and business lifecycle rather than creating a competing ticket table. The **original** read-only ledger SELECT was **successfully run against Production via authorized DBeaver on October 18**; the **revised assignee-scope and Testing-origin query has not been re-run** and neither revision has protected app/browser acceptance. New internal Manager Work Order creation, one-step Triage→Assign→Release, correction owners/replies, reporter clarification and outcome emails, and controlled mail-flow replacement remain **unimplemented**. **Launch blocker:** the [governing per-event Directus Flow retirement and one-authority cutover](Work_Order_System_Design.md#directus-flow-retirement-and-one-authority-production-cutover--mandatory-release-gate) must prevent duplicate Work Orders/emails and preserve Testing repair creation/completion. The four currently active Work Order-related Flows remain untouched until a separately approved cutover. Draft PR #420 is **source-only and unmerged**, not a Production application.
-
-The [Work Order System Design](Work_Order_System_Design.md) is the **governing engineering authority** for #419 and the accepted underlying Work Order/Intake system. [GitHub issue #419](https://github.com/Gregovate/MSB-Production-Database-Project/issues/419) tracks unfinished work; [draft PR #420](https://github.com/Gregovate/MSB-Production-Database-Project/pull/420) protects candidate implementation and tests. Neither issue commentary nor the PR substitutes for the design.
-
-**#419 P0 first-release acceptance:** The unified Work Management screen must support (1) **Request More Information** from the original reporter by a one-button question action, a verified outbound email, and a safe on-ticket reply; (2) a truthful **completion or final disposition email back to the original reporter** with durable audit and no false sent status; and (3) **triage → Promote & Assign together in one Manager screen and one guarded commit**, with real assignees, preserved source evidence and no half-promoted/doubled Work Orders. All three must pass the **disposable-clone/browser acceptance** before a Production cutover. The existing [engineering design](Work_Order_System_Design.md#p0-first-release-gate--reporter-clarification-outcome-email-and-one-step-triage) controls exact workflow, reasons, event ownership, no-send test cases, and failures. **None of these P0 actions has been implemented or browser-accepted yet.**
-
-**#419 Setup Task Feedback consumer (P0):** Work Management must **consume the already-accepted #172 `SETUP_CORRECTION` Work Order Intake records** and provide a distinct **Setup correction/review workflow** when the finding belongs to Procedure, Kit/material, Setup data, Catalog, GIS or another accountable subsystem—not automatically a repair Work Order. Managers can assign a correction owner, ask the original reporter for clarification, record an evidenced/verified outcome, and send the reporter the disposition email. Genuine physical jobs use the existing **Triage → Promote & Assign** Work Order branch, preserving the originating Setup context. Neither branch may delete unresolved reporter evidence or fabricate Report Work. The [governing consumption/alternate-workflow contract](Work_Order_System_Design.md#setup-task-feedback-consumption--alternate-correction-workflow-p0) includes Intake #60 and disposable acceptance cases. **The Setup submission is deployed; the Work Management consumer and alternate correction workflow are not.**
-
-**#419 correction categories and source links (P0):** **Repair / Work Order** and **Correction / Task Feedback** are separate operational categories in the existing unified Work Management subsystem. Corrections also identify their subject (e.g., **Kit Inventory** or **Procedure**) and preserve clickable, typed source references: actual **Kit Box / Container ID**, any other Container, real **Display ID/name**, and the original/current **Procedure context** when known. A Kit Box is already a Container in Setup (`ref.container.container_type_id=2`); don't invent a second Kit identity. Source #172 already supplies Setup task and Procedure context; additional Kit/Container/Display references are a **P0 consumer/capture improvement**, not yet implemented. Keep volunteer entry simple and let the Manager confirm missing links. See the [controlling engineering contract](Work_Order_System_Design.md#correction-category-and-linked-references--p0) for actual source identities, preservation, correction routing, security and disposable/browser acceptance.
-
-**#419 Stage-first relevant resources (P0):** Feedback already has real Stage/Scene/annual-task context from accepted #172. Work Management presents an optional **Related Information** expandable section, **collapsed by default**, that loads relevant existing Stage/Scene/Task resources only if needed—without requiring the reporter to know Kit, Container, Display or Procedure IDs. Use existing Setup task-support, Kit Inventory, LOR Scene/Stage Display membership, Extra Materials and Procedure context/read APIs. Present **Directly linked to this task**, **Related to this Scene/Stage (not confirmed for the task)**, and **Confirmed for this correction** as different states, with human names, real IDs and protected **Open** links. A shared Kit linked to another task in the same Stage may be a valid candidate, not an existing link to the reporting task. Read-only discovery **never mutates Kit contents, Display ownership or Setup assignments**. The [governing Stage-first context contract](Work_Order_System_Design.md#stage-first-relevant-resources--no-scavenger-hunt-p0) specifies relevance, provenance, user review and disposable/browser acceptance. **A read-only Stage resource aggregation and collapsed Related Information UI are now committed as an untested V0.1 source candidate; actual browser acceptance, deep-link coverage, and confirmed-case persistence remain undone.**
+Current navigation handoff: [Internal Web Backbone handoff](Internal_Web_Backbone_Handoff.md).
+Backbone PR #27 owns publication of one recolored Work Orders button; the latest
+operator direction supersedes the old instruction to retain a second Testing
+Work Orders shortcut. Testing data/integration remain unchanged.
 
 ## Start Here
 
-- [Work Management disposable/preview acceptance profile](../../../../WorkOrders/Acceptance/README.md) — prepared exact-SHA Windows and remote clone-only launcher, SQL read validation and teardown; **not run**. Server Management [PR #80](https://github.com/Gregovate/MSB-Server-Management/pull/80) **merged** and authorized sequential pre-Production 8898 use; current listener availability and browser readiness still require live checks.
-- [Work Management V0.1 application source](../../../../WorkOrders/Application/README.md) — **source-only read-only candidate**, My Work/All and ticket detail with lazy Related Information. Not clone/browser accepted. The full P0 triage/feedback/email workflow is not implemented yet.
-- [Work Order System Design](Work_Order_System_Design.md) — **authoritative** existing-system contract, including [why the Directus operator experience needs improvement](Work_Order_System_Design.md#why-work-management-must-improve-the-existing-directus-experience), #419 design decisions, real schema/Flow evidence, acceptance requirements and resume point.
-- [Work Order Operational SOPs](../../02_Operational_SOPs/Work_Orders/README.md) — current operator procedures.
+- [Current operator procedures](../../02_Operational_SOPs/Work_Orders/README.md)
+- [Engineering design](Work_Order_System_Design.md)
+- [Backbone handoff](Internal_Web_Backbone_Handoff.md)
 
 ## System Boundary
 
@@ -180,3 +173,44 @@ The first disposable review confirmed the application is **not yet an operationa
 ### Manager Intake triage and public form source — October 18
 
 Public Work Order Request submissions use the existing [Google Form SOP](../../02_Operational_SOPs/Work_Orders/Submit_a_Work_Order_Request.md), with **Park** and **Workshop/general work** branches. Both create Intake for **separate Manager review/triage**, not active Work Orders. Testing repair WOs are already active and do not go through Intake; Setup Task Feedback is another distinct Intake-origin correction route. The [governing design](Work_Order_System_Design.md#419-manager-only-intake-triage-and-existing-public-google-form-boundary-october-18) requires manager-only review, governed Promote & Assign, preserved source provenance and distinct filters. The SOP mentions an attached public Google Forms Apps Script, but no version-controlled public form script export was established in the repository tree; live source reconnaissance remains mandatory before changing form fields or processing. The separately documented #172 Setup Intake API is not that public Apps Script.
+
+## Historical development checkpoints — superseded status
+
+The following text records prior preparation, not the deployed state.
+
+## Current operator entry — October 20
+
+Open [Work Orders](https://my.sheboyganlights.org/workorder/). The standalone
+Phase 1 application is installed. Phase 2 email/deadline work remains a draft,
+not deployed; existing Directus mail remains active. See the
+[current application handoff](../../../../WorkOrders/Application/README.md)
+and [acceptance checkpoint](../../../../WorkOrders/Acceptance/Phase_2_Completion_Checkpoint.md).
+The older source/preview-only descriptions below record prior development.
+
+
+This subsystem documents the Production Database work-order system, including intake, triage, assignment, notification, repair integration, completion, and the database relationships that make work orders part of the larger production system.
+
+## Current State
+
+**Engineering lineage:** Work Orders were designed and implemented well before #419. The [Work Order System Design](Work_Order_System_Design.md#existing-work-order-engineering-to-preserve--pre-419-authority-reconciliation) identifies the prior approved v1.1 database design and v3 operational model, the current task-sized SOPs, existing Directus navigation/Flows, Testing repair loop and #172 free-form correction integration. **Read those existing records before adding structures or changing behavior.** #419 is a usability/accountability improvement to that subsystem, not a new Work Order system or new repository.
+
+Work Orders and Setup Task Feedback are implemented on the existing PostgreSQL Production Database. The public Google Form and accepted #172 free-form Task Feedback enter governed Work Order Intake; Test Session failures can create active repair Work Orders directly. Directus currently presents Intake triage, assignment and completion and runs selected notification/testing Flows.
+
+**Next engineering priority — #419 unified MSB Work Management:** one ticket-style protected application for all Work Orders and Task Feedback, preserving each database identity and business lifecycle rather than creating a competing ticket table. The **original** read-only ledger SELECT was **successfully run against Production via authorized DBeaver on October 18**; the **revised assignee-scope and Testing-origin query has not been re-run** and neither revision has protected app/browser acceptance. New internal Manager Work Order creation, one-step Triage→Assign→Release, correction owners/replies, reporter clarification and outcome emails, and controlled mail-flow replacement remain **unimplemented**. **Launch blocker:** the [governing per-event Directus Flow retirement and one-authority cutover](Work_Order_System_Design.md#directus-flow-retirement-and-one-authority-production-cutover--mandatory-release-gate) must prevent duplicate Work Orders/emails and preserve Testing repair creation/completion. The four currently active Work Order-related Flows remain untouched until a separately approved cutover. Draft PR #420 is **source-only and unmerged**, not a Production application.
+
+The [Work Order System Design](Work_Order_System_Design.md) is the **governing engineering authority** for #419 and the accepted underlying Work Order/Intake system. [GitHub issue #419](https://github.com/Gregovate/MSB-Production-Database-Project/issues/419) tracks unfinished work; [draft PR #420](https://github.com/Gregovate/MSB-Production-Database-Project/pull/420) protects candidate implementation and tests. Neither issue commentary nor the PR substitutes for the design.
+
+**#419 P0 first-release acceptance:** The unified Work Management screen must support (1) **Request More Information** from the original reporter by a one-button question action, a verified outbound email, and a safe on-ticket reply; (2) a truthful **completion or final disposition email back to the original reporter** with durable audit and no false sent status; and (3) **triage → Promote & Assign together in one Manager screen and one guarded commit**, with real assignees, preserved source evidence and no half-promoted/doubled Work Orders. All three must pass the **disposable-clone/browser acceptance** before a Production cutover. The existing [engineering design](Work_Order_System_Design.md#p0-first-release-gate--reporter-clarification-outcome-email-and-one-step-triage) controls exact workflow, reasons, event ownership, no-send test cases, and failures. **None of these P0 actions has been implemented or browser-accepted yet.**
+
+**#419 Setup Task Feedback consumer (P0):** Work Management must **consume the already-accepted #172 `SETUP_CORRECTION` Work Order Intake records** and provide a distinct **Setup correction/review workflow** when the finding belongs to Procedure, Kit/material, Setup data, Catalog, GIS or another accountable subsystem—not automatically a repair Work Order. Managers can assign a correction owner, ask the original reporter for clarification, record an evidenced/verified outcome, and send the reporter the disposition email. Genuine physical jobs use the existing **Triage → Promote & Assign** Work Order branch, preserving the originating Setup context. Neither branch may delete unresolved reporter evidence or fabricate Report Work. The [governing consumption/alternate-workflow contract](Work_Order_System_Design.md#setup-task-feedback-consumption--alternate-correction-workflow-p0) includes Intake #60 and disposable acceptance cases. **The Setup submission is deployed; the Work Management consumer and alternate correction workflow are not.**
+
+**#419 correction categories and source links (P0):** **Repair / Work Order** and **Correction / Task Feedback** are separate operational categories in the existing unified Work Management subsystem. Corrections also identify their subject (e.g., **Kit Inventory** or **Procedure**) and preserve clickable, typed source references: actual **Kit Box / Container ID**, any other Container, real **Display ID/name**, and the original/current **Procedure context** when known. A Kit Box is already a Container in Setup (`ref.container.container_type_id=2`); don't invent a second Kit identity. Source #172 already supplies Setup task and Procedure context; additional Kit/Container/Display references are a **P0 consumer/capture improvement**, not yet implemented. Keep volunteer entry simple and let the Manager confirm missing links. See the [controlling engineering contract](Work_Order_System_Design.md#correction-category-and-linked-references--p0) for actual source identities, preservation, correction routing, security and disposable/browser acceptance.
+
+**#419 Stage-first relevant resources (P0):** Feedback already has real Stage/Scene/annual-task context from accepted #172. Work Management presents an optional **Related Information** expandable section, **collapsed by default**, that loads relevant existing Stage/Scene/Task resources only if needed—without requiring the reporter to know Kit, Container, Display or Procedure IDs. Use existing Setup task-support, Kit Inventory, LOR Scene/Stage Display membership, Extra Materials and Procedure context/read APIs. Present **Directly linked to this task**, **Related to this Scene/Stage (not confirmed for the task)**, and **Confirmed for this correction** as different states, with human names, real IDs and protected **Open** links. A shared Kit linked to another task in the same Stage may be a valid candidate, not an existing link to the reporting task. Read-only discovery **never mutates Kit contents, Display ownership or Setup assignments**. The [governing Stage-first context contract](Work_Order_System_Design.md#stage-first-relevant-resources--no-scavenger-hunt-p0) specifies relevance, provenance, user review and disposable/browser acceptance. **A read-only Stage resource aggregation and collapsed Related Information UI are now committed as an untested V0.1 source candidate; actual browser acceptance, deep-link coverage, and confirmed-case persistence remain undone.**
+
+## Start Here
+
+- [Work Management disposable/preview acceptance profile](../../../../WorkOrders/Acceptance/README.md) — prepared exact-SHA Windows and remote clone-only launcher, SQL read validation and teardown; **not run**. Server Management [PR #80](https://github.com/Gregovate/MSB-Server-Management/pull/80) **merged** and authorized sequential pre-Production 8898 use; current listener availability and browser readiness still require live checks.
+- [Work Management V0.1 application source](../../../../WorkOrders/Application/README.md) — **source-only read-only candidate**, My Work/All and ticket detail with lazy Related Information. Not clone/browser accepted. The full P0 triage/feedback/email workflow is not implemented yet.
+- [Work Order System Design](Work_Order_System_Design.md) — **authoritative** existing-system contract, including [why the Directus operator experience needs improvement](Work_Order_System_Design.md#why-work-management-must-improve-the-existing-directus-experience), #419 design decisions, real schema/Flow evidence, acceptance requirements and resume point.
+- [Work Order Operational SOPs](../../02_Operational_SOPs/Work_Orders/README.md) — current operator procedures.

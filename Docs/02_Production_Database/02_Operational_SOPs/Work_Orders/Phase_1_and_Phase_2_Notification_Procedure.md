@@ -14,6 +14,8 @@
 
 Work Management Phase 2 notification delivery is live in Production as part of **V1.1.2-manager-utilities**.
 
+The governed mail worker runs approximately every minute, with at most 50 events per batch. Historical pending notifications remain held. It is separate from the Setup daily schedule.
+
 The governed mail worker is enabled. The deployment recorded SMTP acceptance and confirmed Inbox receipt during release validation. The two legacy duplicate email Flows retired by the cutover remain inactive; unrelated non-mail Directus operations and the separate Setup daily email schedule remain preserved.
 
 This does **not** mean every event has an eligible recipient or that SMTP acceptance proves Inbox delivery for every message.
@@ -29,6 +31,8 @@ Current Work Management templates cover:
 - **Reporter Reply** → accountable correction owner or question author.
 - **Done / Canceled / Disposition Outcome** → original reporter.
 
+Manager Intake recipients remain active People with `is_manager=true` and an email address. This is a mailing-list selector, not application authorization.
+
 ## Request More Information
 
 1. Open the original Intake/Task Feedback ticket.
@@ -37,6 +41,8 @@ Current Work Management templates cover:
 4. Review **Email delivery status**.
 5. The eligible reporter opens the protected link and uses **Reply to clarification** on that same Intake.
 6. Review the reply in ticket activity and continue triage.
+
+The reporter must be the original linked Person with an active authorized Directus identity. A reply is allowed only to an unanswered clarification on an Intake that has not been promoted or resolved. A link does not grant access to other tickets or Manager actions. External, unlinked, or inactive reporters need Manager manual contact; do not promise them portal access.
 
 Email replies sent back to the mailbox are not ingested as ticket replies.
 

@@ -18,7 +18,11 @@ Each file contains `subject`, `html` (formatted message), and `text` (plain-text
 Available placeholders: `$ticket`, `$title`, `$reporter`, `$assignees`, `$due_by`,
 `$task_name`, `$question`, `$outcome`, `$reason`, `$ticket_url`.
 
-Recipients and credentials are not editable in templates. Directus remains the authorization authority.
+Recipients and credentials are not editable in templates. The interim Manager Intake mailing list remains active People with `is_manager=true` and an email; that flag grants no application authority. Directus remains the authorization authority.
+
+A literal dollar sign is `$$`. Unknown, blank, or missing placeholders fail validation; ticket values are HTML-escaped. Only literal placeholders are supported, with no executable template expressions. Email replies are not ingested.
+
+Run `python -m pytest WorkOrders/Application/test_email_templates.py` and use `python WorkOrders/Application/preview_email_templates.py --output-dir <review-directory>` for offline fictional previews.
 
 `outcome` must state the real business result: cancellation is not completion.
 

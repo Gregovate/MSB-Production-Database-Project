@@ -7,7 +7,7 @@
 | Document Type | Operational SOP |
 | System | Production Database — Work Orders |
 | Task | Create, edit, schedule, or cancel native Work Orders |
-| Audience | Production Crew / Managers as authorized |
+| Audience | Managers |
 | Status | CURRENT |
 | Owner | Production Database Manager |
 | Last Reviewed | 2026-10-21 |
@@ -15,7 +15,7 @@
 
 ## Create an Internal Work Order
 
-Authorized users open [Work Orders](https://my.sheboyganlights.org/workorder/) and choose **Create Work Order**.
+Managers open [Work Orders](https://my.sheboyganlights.org/workorder/) and choose **Create Work Order**.
 
 Enter the real known work. Do not create fake Intake for work that is already known to be an approved native Work Order.
 
@@ -28,7 +28,7 @@ Current creation requires:
 - **Due by**; and
 - Target Year when Priority 5 **Planning** requires it.
 
-Crew-created Work Orders may remain unassigned. Managers own dispatch/assignment.
+Managers may leave a Work Order unassigned for follow-up. Crew submit requests through Intake; internal Create and dispatch/assignment require Manager authorization.
 
 ## Manager Edit
 
@@ -44,7 +44,9 @@ Use the separate **Assign / Reassign** action for People assignments. Assignment
 
 Managers may maintain **Due by** through the governed Work Management action where allowed.
 
-The application shows missing-date and deadline status. **Due today is not overdue.**
+Create, Promote, Edit, and Set Due by require a valid date. Existing undated historical records remain readable and completable; dates are not invented for them.
+
+Use **Overdue**, **Due today**, and **Missing due date** filters, or sort by earliest/latest Due by. Missing dates sort last in either direction. Filters apply before list limits. **Due today is not overdue.**
 
 Testing-linked Work Orders use the narrower deadline action; general Testing edit/cancel remains restricted by its governed boundary.
 

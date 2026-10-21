@@ -17,7 +17,7 @@
 
 Use the public **Work Order Request** when you are reporting a problem and are not creating a native internal Work Order in Work Management.
 
-Authorized internal Production Crew and Managers may instead open [Work Orders](https://my.sheboyganlights.org/workorder/) and use **Create Work Order** when the work is already known to be a legitimate internal Work Order.
+Managers may instead open [Work Orders](https://my.sheboyganlights.org/workorder/) and use **Create Work Order** when the work is already known to be a legitimate internal Work Order.
 
 The public request creates **Work Order Intake** for Manager review. It does not immediately create an active Work Order.
 
