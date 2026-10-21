@@ -189,7 +189,7 @@ def retain(path,folder):
 
 
 def accept_replacement(intake,master,master_sha,source,source_sha,raw_index,
-                       master_index,vertices,review_note,action="replace",installation=None):
+                       master_index,vertices,review_note,action="replace",installation=None,working_name=None):
     if action not in ("replace","keep"):raise ValueError("Unknown review action")
     validate_vertices(vertices)
     if not review_note.strip():raise ValueError("Record the reason/evidence for this replacement")
@@ -218,7 +218,7 @@ def accept_replacement(intake,master,master_sha,source,source_sha,raw_index,
                   master_snapshot=str(master_copy),source_sha256=source_sha,
                   source_snapshot=str(raw_copy),source_path=str(source),raw_index=raw_index,
                   master_index=master_index,master_name=chosen["name"],vertices=vertices,
-                  action=action,installation=installation,
+                  action=action,installation=installation,working_name=(working_name.strip() if working_name else None),
                   review_note=review_note.strip(),accepted_utc=datetime.now(timezone.utc).isoformat(),
                   status="Accepted for working GPX candidate; not released to PostgreSQL")
     target=folder/(datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")+"-"+uuid.uuid4().hex+".json")
@@ -289,7 +289,7 @@ def children(node,name):
             and c.namespaceURI==NS and c.localName==name]
 
 
-def export_candidate(intake,master,master_sha,output,*,selected_run=None):
+def export_candidate(intake,master,master_sha,output,*,selected_run=None,replace_existing=False):
     """Replace only trkseg nodes in a new GPX; all master metadata is retained."""
     if digest(master)!=master_sha:raise ValueError("Current master changed; reload and reconcile")
     reviewed=decisions(intake,master_sha)
@@ -302,6 +302,29 @@ def export_candidate(intake,master,master_sha,output,*,selected_run=None):
     if len(set(targets))!=len(targets):
         raise ValueError("Two recordings target the same master track; resolve the match before export")
     output=Path(output)
+    protected={Path(master).resolve()}
+    for decision in reviewed:
+        protected.update(Path(decision[key]).resolve() for key in ("source_path","source_snapshot","master_snapshot") if decision.get(key))
+    if output.resolve() in protected:raise ValueError("Cannot overwrite the master or original source files")
+    if replace_existing and (output.exists() or output.with_suffix(output.suffix+".review.json").exists()):
+        # Build and validate both files before touching the previous export.
+        temporary=output.with_name("."+uuid.uuid4().hex+".gpx")
+        sidecar=output.with_suffix(output.suffix+".review.json")
+        temporary_sidecar=temporary.with_suffix(".gpx.review.json")
+        try:
+            export_candidate(intake,master,master_sha,temporary,selected_run=selected_run)
+            backups={}
+            for original in (output,sidecar):
+                if original.exists():backups[original]=retain(original,output.parent/"Export-Backups")
+            try:
+                temporary.replace(output)
+                temporary_sidecar.replace(sidecar)
+            except OSError:
+                for original,backup in backups.items():original.write_bytes(backup.read_bytes())
+                raise
+        finally:
+            temporary.unlink(missing_ok=True);temporary_sidecar.unlink(missing_ok=True)
+        return output
     if output.exists():raise ValueError("Choose a new output filename; existing files are never overwritten")
     if output.with_suffix(output.suffix+".review.json").exists():
         raise ValueError("A review manifest already exists for that filename")
@@ -336,6 +359,16 @@ def export_candidate(intake,master,master_sha,output,*,selected_run=None):
             # Parse through the full document so inherited namespace bindings remain available.
             actual=tracks(master)[d["master_index"]-1]["name"]
             if actual!=d["master_name"]:raise ValueError("Accepted master track identity mismatch")
+        if d.get("action")!="add" and d.get("working_name"):
+            corrected=d["working_name"]
+            name_nodes=children(target,"name")
+            if not name_nodes:
+                named=doc.createElementNS(NS,"name");target.insertBefore(named,target.firstChild)
+                name_nodes=[named]
+            label_nodes=[n for n in target.getElementsByTagName("*") if n.localName=="label_text"]
+            for named in name_nodes+label_nodes:
+                for child in list(named.childNodes):named.removeChild(child)
+                named.appendChild(doc.createTextNode(corrected))
         if d.get("installation"):
             data=d["installation"]
             expected_kind=d["new_type"] if d.get("action")=="add" else tracks(master)[d["master_index"]-1]["type"]

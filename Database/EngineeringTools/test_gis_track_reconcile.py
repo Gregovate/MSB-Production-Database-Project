@@ -231,4 +231,26 @@ class ReconcileTests(unittest.TestCase):
         self.assertEqual(root.findtext(".//{urn:expert}year"),"2017")
 
 
+    def test_replace_export_backup_corrected_name_and_source_protection(self):
+        self.master.write_text(MASTER.replace('<x:label>Historical label</x:label>','<x:label_text>Planned route</x:label_text>'))
+        before=self.master.read_bytes()
+        r.accept_replacement(self.intake,self.master,r.digest(self.master),self.raw,r.digest(self.raw),
+            1,1,r.recording_vertices(self.raw,1),'Installed route replaces plan',working_name='HV actual route')
+        decision=r.decisions(self.intake,r.digest(self.master))[0]
+        out=self.root/'route.gpx';out.write_text('previous export')
+        side=out.with_suffix('.gpx.review.json');side.write_text('previous manifest')
+        with self.assertRaises(ValueError):r.export_candidate(self.intake,self.master,r.digest(self.master),out,selected_run=decision)
+        r.export_candidate(self.intake,self.master,r.digest(self.master),out,selected_run=decision,replace_existing=True)
+        exported=r.tracks(out)[0]
+        self.assertEqual(exported['name'],'HV actual route')
+        self.assertEqual(exported['gps_name'],'HV actual route')
+        self.assertEqual(exported['comments'],'Repaired 2026')
+        self.assertEqual(exported['description'],'Installed 2017; spare conduit')
+        saved=[p.read_bytes() for p in (self.root/'Export-Backups').iterdir()]
+        self.assertIn(b'previous export',saved);self.assertIn(b'previous manifest',saved)
+        for protected in (self.master,self.raw,Path(decision['master_snapshot'])):
+            with self.assertRaisesRegex(ValueError,'Cannot overwrite'):
+                r.export_candidate(self.intake,self.master,r.digest(self.master),protected,selected_run=decision,replace_existing=True)
+        self.assertEqual(self.master.read_bytes(),before)
+
 if __name__=="__main__":unittest.main()

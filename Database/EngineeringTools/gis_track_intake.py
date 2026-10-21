@@ -867,7 +867,7 @@ def open_intake(parent):
                     track=dict(track,name=name.get());action="add"
                 else:
                     path=reconcile.accept_replacement(state["intake"],state["master"],state["master_digest"],file,
-                          state["digests"][file],raw_index,track["index"],draft,note.get("1.0","end").strip() or "Operator matched Garmin recording to master for editing in ExpertGPS.",action=action,installation=installation_data())
+                          state["digests"][file],raw_index,track["index"],draft,note.get("1.0","end").strip() or "Operator matched Garmin recording to master for editing in ExpertGPS.",action=action,installation=installation_data(),working_name=name.get())
                 old=active
                 queue.delete(old);queue.insert(old,{"replace":"✓ Replace: ","keep":"✓ Keep: ","add":"✓ New: "}[action]+track["name"])
                 queue.selection_set(old)
@@ -892,7 +892,7 @@ def open_intake(parent):
         ttk.Button(frame,text="Close review",command=cancel).pack(fill="x",pady=2)
         if matches:
             choose_master(master_index if master_index is not None else matches[0]["track"]["index"])
-            if new_run and prior_fields:
+            if prior_fields:
                 for variable,key in ((name,"working_name"),(kind,"temporary_type"),(start,"start_waypoint"),(end,"end_waypoint")):
                     if key in prior_fields:variable.set(prior_fields[key])
                 first.set(prior_fields.get("first",1));last.set(prior_fields.get("last",len(verts)));preview()
@@ -929,7 +929,7 @@ def open_intake(parent):
             ttk.Label(picker,text="Export one reviewed run from this recording:").pack(padx=12,pady=8)
             runs=tk.Listbox(picker,width=70,height=min(10,len(approved)),exportselection=False)
             runs.pack(fill="both",expand=True,padx=12)
-            for d in approved:runs.insert("end",d["master_name"])
+            for d in approved:runs.insert("end",d.get("working_name") or d["master_name"])
             result=[]
             def choose_export():
                 if runs.curselection():result.append(approved[runs.curselection()[0]]);picker.destroy()
@@ -938,14 +938,16 @@ def open_intake(parent):
             picker.grab_set();win.wait_window(picker)
             if not result:return
             chosen=result[0]
-        filename="".join("_" if c in '<>:"/\\|?*' or ord(c)<32 else c for c in chosen["master_name"]).strip(" .") or "Reviewed route"
+        filename="".join("_" if c in '<>:"/\\|?*' or ord(c)<32 else c for c in (chosen.get("working_name") or chosen["master_name"])).strip(" .") or "Reviewed route"
         if filename.upper().split(".")[0] in {"CON","PRN","AUX","NUL",*[f"COM{i}" for i in range(1,10)],*[f"LPT{i}" for i in range(1,10)]}:filename="Route "+filename
         output=filedialog.asksaveasfilename(parent=win,title="Export named route for ExpertGPS",
                   initialdir=state["intake"],initialfile=filename+".gpx",
                   defaultextension=".gpx",filetypes=[("GPX","*.gpx")])
         if not output:return
+        replace_existing=Path(output).exists() or Path(output+".review.json").exists()
+        if replace_existing and not messagebox.askyesno("Replace previous export?", "Replace this export with the reviewed route?\n\n"+output+"\n\nThe previous export will be retained in Export-Backups.",parent=win):return
         try:
-            reconcile.export_candidate(state["intake"],state["master"],state["master_digest"],output,selected_run=chosen)
+            reconcile.export_candidate(state["intake"],state["master"],state["master_digest"],output,selected_run=chosen,replace_existing=replace_existing)
             status.set("GPX exported: "+output)
             messagebox.showinfo("GPX exported", "Saved GPX to:\n"+output+"\n\nNext: open this file as a separate document in ExpertGPS.\nSee ExpertGPS Help for editing and splitting instructions.",parent=win)
         except (ValueError,OSError,ET.ParseError) as error:messagebox.showerror("Export stopped",str(error),parent=win)

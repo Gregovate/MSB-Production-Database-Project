@@ -295,7 +295,8 @@ class IntakeTests(unittest.TestCase):
                 with patch('gis_track_intake.filedialog.asksaveasfilename',return_value=str(output)), patch('gis_track_intake.messagebox.askyesno',return_value=True):
                     buttons['Export GPX for ExpertGPS'].invoke();root.update()
                 self.assertTrue(output.is_file())
-                self.assertEqual(parse(output)[0],parse(master)[0])
+                self.assertEqual(parse(output)[0][0][1],"Operator corrected name")
+                self.assertEqual(parse(output)[0][0][2],parse(master)[0][0][2])
                 self.assertEqual(parse(output)[1],[])
                 self.assertTrue(any(call.args[0]=="GPX exported" for call in notices.call_args_list))
                 self.assertTrue(output.with_suffix('.gpx.review.json').is_file())
