@@ -205,3 +205,16 @@ Catalog task drag must scroll the actual page/panel owner at both visible edges,
 including a stationary dragged pointer and filtered search results. This remains
 independent of Scheduling Board pane scrolling and must stop on drop/drag end or
 leaving the Catalog. Preserve existing scope/order and Shift-prerequisite drops.
+
+
+### Approved Catalog release promotion — 2026-10-21
+
+Greg accepted revision 3 filtered/unfiltered Catalog drag scrolling and CLEAN
+EXIT, then explicitly approved merging and deploying. Reuse ScheduledSearchDeploy
+from setup_required_container_deploy.py as a pinned source-only release profile:
+existing lock, ONLINE checks, detached regression, controller ON/freeze,
+full ref/ops preservation, Setup-only promotion, controller OFF/health, retained
+report and fail-closed journal. No new deployment mechanism or SQL migration.
+The operator specifically requests the existing maintenance boundary even for
+this source-only release. Preserve the shared runtime checkout and current data;
+source rollback identity is the observed validated pre-deployment Setup SHA.

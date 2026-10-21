@@ -358,3 +358,5 @@ were received October 16; the linked record contains the transcript and retained
 report directory. Do not rerun the completed release for documentation.
 
 - [Catalog Scene placement refresh candidate](Setup_122_Catalog_Scene_Refresh_Candidate.md) — Copy/Add/Move refresh correction; operator browser acceptance pending.
+
+- Catalog approved source promotion: `run_setup_catalog_scope_deploy.ps1` reuses the established maintenance-controlled source profile; accepted app remains pinned to PR440 revision3.
