@@ -32,7 +32,15 @@ BEGIN
        'ref.reconcile_directus_person_identity(text)','EXECUTE') OR
      NOT has_function_privilege('work_management_app',
        'ops.work_management_reconcile_actor(text)','EXECUTE') THEN
-    RAISE EXCEPTION 'WO447: narrow entry privilege boundary violated';
+    RAISE EXCEPTION 'WO447: narrow entry privilege boundary violated'
+      USING DETAIL = format(
+        'app_ref_person_update=%s; app_directus_users_update=%s; app_shared_reconciler_execute=%s; app_entry_execute=%s',
+        has_table_privilege('work_management_app','ref.person','UPDATE'),
+        has_table_privilege('work_management_app','public.directus_users','UPDATE'),
+        has_function_privilege('work_management_app',
+          'ref.reconcile_directus_person_identity(text)','EXECUTE'),
+        has_function_privilege('work_management_app',
+          'ops.work_management_reconcile_actor(text)','EXECUTE'));
   END IF;
 
   -- Use the existing reviewer only inside rollback subtransactions. Nothing
