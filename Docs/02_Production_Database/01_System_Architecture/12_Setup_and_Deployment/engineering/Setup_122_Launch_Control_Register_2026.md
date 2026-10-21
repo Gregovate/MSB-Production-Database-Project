@@ -41,7 +41,7 @@ Use `REPORTED`, `RECON`, `IMPLEMENTING`, `CANDIDATE`, `SOURCE-TESTED`, `DISPOSAB
 
 ## Update and recovery policy
 
-1. First read the current [project rules](../../../../System_Documentation/Project_Rules/README.md), current #122, and the appropriate owning engineering authority. This file is an index, not permission to skip that step.
+1. First read the current [project rules](../../../../../System_Documentation/Project_Rules/README.md), current #122, and the appropriate owning engineering authority. This file is an index, not permission to skip that step.
 2. An implementing conversation owns its branch, tests and child issue. It checkpoints before reaching an unsafe context size, at every significant transition, and **before** a user archives its predecessor. Never rely on token-capacity warnings.
 3. The launch coordination conversation consumes those checkpoints and updates **this register via reviewed repository change**, with concise #122 status comments when needed. It does not execute unrelated implementation in the control thread.
 4. New field findings are reconciled into an existing issue before creating another. No new control application, role model, synchronization engine or deployment procedure without approved design.
