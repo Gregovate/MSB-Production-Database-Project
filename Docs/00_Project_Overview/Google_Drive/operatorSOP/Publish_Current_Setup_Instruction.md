@@ -1,21 +1,23 @@
-# Publish a Current Setup Instruction
+# Update or Publish a Current Setup Instruction
 
 | Document Control | Value |
 |---|---|
 | Document Type | Operational SOP |
 | System | Google Shared Drive — Display Folders / Procedures |
-| Task | Publish a current Stage or Scene Setup instruction |
+| Task | Update or publish a current Stage or Scene Setup instruction |
 | Audience | Production documentation maintainers and Setup-document contributors |
 | Status | CURRENT |
 | Owner | Production documentation owner / administrator |
-| Last Reviewed | 2026-09-10 |
-| Keywords | Setup, publish PDF, Procedures, Google Drive, Stage Setup, SourceDocs, Archive |
+| Last Reviewed | 2026-10-21 |
+| Keywords | Setup, update procedure, edit procedure, publish PDF, Procedures, Google Drive, Stage Setup, SourceDocs, Archive |
 
 [↑ Google Drive / Display Folder Operations](../README.md)
 
 ## Purpose
 
-Use this procedure after a Setup instruction has been reviewed and is ready for field use.
+If you are asking **“How do I update a Setup procedure?”**, start here.
+
+Use this procedure to update the authoritative editable Setup instruction and publish the reviewed field PDF. It also applies when a new Setup instruction has been reviewed and is ready for field use.
 
 The current field document must be placed where the **Procedures** system expects current Setup material. Working files and older source material stay separate.
 
