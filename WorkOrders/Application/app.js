@@ -514,15 +514,16 @@
     const list = $("ticket-activity-entries");
     const status = $("ticket-activity-status");
     list.replaceChildren();
-    status.textContent = "Loading retained clone events…";
+    status.textContent = "Loading recorded activity…";
     try {
       const result = await getJson("/api/work-orders/tickets/" +
         encodeURIComponent(key) + "/activity");
       if (state.selected !== key) return;
       const events = result.activity || [];
       status.textContent = events.length ?
-        events.length + " attributed event(s) · mail disabled / no send" :
-        "No new clone action events recorded. Earlier Directus history is unchanged.";
+        events.length + " attributed event(s)" +
+          (state.actor.runtime_mode === "production" ? "" : " · Disposable review · No emails sent") :
+        "No recorded activity for this ticket.";
       events.forEach((event) => {
         const box = document.createElement("div");
         box.className = "activity-entry";
@@ -677,15 +678,18 @@
       state.actor.runtime_mode = access.runtime_mode || "disposable";
       if (state.actor.runtime_mode === "production") {
         $("preview-tag").textContent =
-          "Work Orders V1 · Production records · Notifications pending controlled cutover";
+          "Work Orders · Production records";
         $("review-workbench").querySelector(".section-header p").textContent =
-          "Actions save to the authoritative Work Orders database. Notifications are not yet enabled.";
+          "Actions save to the authoritative Work Orders database. Managers can review notification outcomes under Email delivery status.";
       } else if (state.actor.runtime_mode === "v1_disposable") {
         $("preview-tag").textContent =
           "Work Orders V1 NATIVE · Disposable database · No emails sent";
         $("review-workbench").querySelector(".section-header p").textContent =
           "V1 PostgreSQL commands on an isolated clone. Test edits are discarded at cleanup.";
       }
+      $("follow-up-runtime-note").textContent = state.actor.runtime_mode === "production"
+        ? "Available actions save to this ticket. Managers can review notification outcomes under Email delivery status. Email replies are not captured."
+        : "Disposable review: actions affect only the isolated clone. No emails are sent and Production Flows are unchanged.";
       $("manager-utilities-button").hidden = !state.actor.can_manage;
       $("home-heading").textContent = state.actor.can_manage
         ? "Work Management · Manager" : "My Work Orders";
