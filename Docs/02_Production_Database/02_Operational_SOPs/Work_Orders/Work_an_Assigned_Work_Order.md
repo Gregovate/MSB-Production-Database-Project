@@ -6,48 +6,45 @@
 |---|---|
 | Document Type | Operational SOP |
 | System | Production Database — Work Orders |
-| Task | Find and work an assigned Work Order |
-| Audience | Volunteers |
+| Task | Perform assigned work and preserve progress |
+| Audience | Production Crew / assigned volunteers |
 | Status | CURRENT |
 | Owner | Production Database Manager |
-| Last Reviewed | 2026-10-20 |
-| Keywords | assigned work order, my work orders, volunteer, repair, notes |
-
-## Purpose
-
-Use this procedure when a Work Order has been assigned to you and you are ready to perform the work.
+| Last Reviewed | 2026-10-21 |
+| Keywords | my assigned work orders, work note, crew, due by, complete |
 
 ## Procedure
 
-1. Open [Work Orders](https://my.sheboyganlights.org/workorder/) and choose **My Assigned Work Orders**. The existing Apps-page button is still awaiting its navigation cutover.
-2. Find the Work Order you are working on.
-3. Open the Work Order and review:
-   - the problem description;
+1. Open [Work Orders](https://my.sheboyganlights.org/workorder/).
+2. Use **My Assigned Work Orders**.
+3. Open the Work Order.
+4. Review:
+   - original problem;
    - location;
-   - supporting notes;
-   - related Display, if applicable; and
-   - any other information needed to understand the task.
-4. Perform the work described.
-5. Test or verify the result when appropriate.
-6. Choose **Add Work Note** at the top of the ticket when work is still in progress or information should be preserved for the next person.
-7. Save the note and confirm it appears in the ticket history. A work note does not complete the Work Order.
+   - urgency and **Due by**;
+   - assigned People;
+   - existing notes/activity; and
+   - related Testing/Setup/asset information where shown.
+5. Perform the work.
+6. If the job is not finished, choose **Add Work Note**.
+7. Record a useful progress note and save.
+8. Confirm the note appears in activity/history.
 
-Useful notes are brief but specific. Examples include a part that was replaced, a fault that was found, or a part that still needs to be obtained.
+A Work Note preserves progress. It does **not** complete the Work Order.
 
-## Expected Result
+## Good Work Notes
 
-The Work Order accurately reflects the work that has been performed and any remaining work is understandable to another volunteer or manager.
+Record facts another person can act on: what was checked, what failed, what was repaired, what part/material is still needed, or what remains.
 
-When the work is completely finished, use [Complete a Work Order](Complete_a_Work_Order.md).
+## When Finished
 
-## If Something Is Wrong
+Use [Complete a Work Order](Complete_a_Work_Order.md).
 
-If you cannot find an assigned Work Order, ask a manager to confirm that the Work Order is still open and assigned to you. Do not create a duplicate Work Order just because the original is difficult to find.
+If the work is complete but the Complete action is unavailable, ask a Manager rather than leaving the physical job undocumented or creating another Work Order.
 
-## Related Documents
+## If You Cannot Find It
 
-- [Complete a Work Order](Complete_a_Work_Order.md)
-- [Test Session Operational SOPs](../Test_Sessions/README.md)
+Do not create a duplicate. Ask a Manager to verify assignment, status, or queue.
 
 ---
 
