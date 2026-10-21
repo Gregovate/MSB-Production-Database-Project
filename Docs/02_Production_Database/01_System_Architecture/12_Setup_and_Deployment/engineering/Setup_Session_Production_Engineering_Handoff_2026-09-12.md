@@ -200,3 +200,8 @@ by the client fix. Production acceptance remains pending.
 
 Scene normalization must defer until Stage bootstrap metadata is available.
 An empty not-yet-loaded Stage list must never erase cached Scene identities.
+
+Catalog task drag must scroll the actual page/panel owner at both visible edges,
+including a stationary dragged pointer and filtered search results. This remains
+independent of Scheduling Board pane scrolling and must stop on drop/drag end or
+leaving the Catalog. Preserve existing scope/order and Shift-prerequisite drops.

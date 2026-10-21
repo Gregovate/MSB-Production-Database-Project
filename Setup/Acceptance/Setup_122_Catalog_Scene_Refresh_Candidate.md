@@ -1,6 +1,6 @@
 # #122 Catalog Scene placement refresh candidate
 
-Date: 2026-10-21. Candidate: V0.3.87-catalog-scene-refresh-r2.
+Date: 2026-10-21. Candidate: V0.3.87-catalog-scene-refresh-r3.
 Base main: 180841d5c0c4b3f91ac8a2774af690256900e116.
 Status: local regression PASS; disposable/operator acceptance PENDING.
 
@@ -51,3 +51,19 @@ now uses the real classification/normalization functions instead of a stub and
 covers organization-before-Stages startup, all Stage/Scene move directions,
 Stage-to-Stage Copy/Move and ordinary caching. Drag edge-scroll remains an
 explicit operator browser acceptance requirement, not an automated PASS claim.
+
+
+## Second operator preview — movement PASS, edge-scroll FAIL
+
+First preview CLEAN EXIT confirmed. Greg reports Scenes restored and moving the
+Snowballs task PASS at 3442dfe908f5b15a7f7ab19fb2de9602f6793da0. Catalog drag
+edge-scroll FAIL with search `polar` and after clearing search. Overall
+acceptance CHANGES REQUIRED; second preview CLEAN EXIT not yet confirmed.
+
+Revision 3 adds Catalog-only animation-frame edge-scroll for the actual nearest
+scrollable ancestor or document scroll owner, accounting for the sticky header.
+Continues with a stationary pointer; stops on drop, drag end, leaving Catalog or
+window blur. It does not change drop targets, move commands, scheduler scrolling,
+search visibility or prerequisite behavior. Node scroll-loop tests cover page and
+panel up/down, stationary pointer, center, cleanup and unrelated drags. Actual
+browser search-filtered and unfiltered scroll acceptance remains pending.
