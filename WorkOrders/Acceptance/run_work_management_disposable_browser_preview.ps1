@@ -59,7 +59,9 @@ try {
     # A resume must prove the exact saved SHA, owner, port, clone, worktree
     # and healthy application before it can reconnect; it never restores
     # a second database or changes the application candidate.
-    $RemotePrefix = ('chmod 700 "{0}"; hash=$(sha256sum "{0}" | cut -d " " -f1); ' +
+    # Bash syntax must survive PowerShell -> ssh -> remote shell quoting.
+    # Avoid cut -d ' ' quoting: sha256sum's 64 leading hex bytes are stable.
+    $RemotePrefix = ('chmod 700 "{0}"; hash=$(sha256sum "{0}"); hash="${{hash:0:64}}"; ' +
         'if [ "$hash" != "{1}" ]; then echo "HOLD: runner digest mismatch"; exit 50; fi; ') -f $Remote, $Hash
     $StartCommand = $RemotePrefix + ((
         'timeout --foreground --signal=TERM 28800s bash "{0}" "{1}" "{2}" "{3}" "{4}" start; ' +
