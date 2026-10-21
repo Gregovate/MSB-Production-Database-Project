@@ -1,5 +1,5 @@
 <# #447 isolated reviewer launcher. Source only; no Production mutation.
-Invoked from ANY clean primary repository checkout. Creates one owned temporary
+Invoked from ANY clean primary repository checkout. Creates one owned temporary detached
 local worktree for the exact reviewed feature branch, then invokes the EXISTING
 Work Orders disposable preview and removes only that worktree on clean exit.
 Never opens VS Code, never switches the caller's branch.
@@ -21,35 +21,21 @@ $startingHead=(& git -C $root rev-parse HEAD).Trim()
 $startingBranch=(& git -C $root branch --show-current).Trim()
 & git -C $root fetch origin $branch
 if ($LASTEXITCODE -ne 0) { throw 'STOP: remote feature branch fetch failed.' }
-$remoteHead=(& git -C $root rev-parse "refs/remotes/origin/$branch").Trim()
-if ($LASTEXITCODE -ne 0 -or $remoteHead -ne $CandidateSha) {
-    throw "STOP: origin/$branch is $remoteHead, not authorized candidate $CandidateSha."
+# Fetch an exact feature head without creating or moving any local branch.
+$remoteHead=(& git -C $root ls-remote origin "refs/heads/$branch")
+if ($LASTEXITCODE -ne 0 -or -not $remoteHead) { throw 'STOP: cannot verify remote candidate ref.' }
+$remoteSha=($remoteHead -split '\s+')[0]
+if ($remoteSha -ne $CandidateSha) {
+    throw "STOP: remote candidate $remoteSha differs from reviewed $CandidateSha."
 }
-# Never take an existing branch away from another checkout, including another workstation worktree.
-$registered=& git -C $root worktree list --porcelain
-if ($LASTEXITCODE -ne 0) { throw 'STOP: cannot inspect worktree ownership.' }
-if (@($registered | Where-Object { $_ -eq "branch refs/heads/$branch" }).Count -gt 0) {
-    throw "STOP: branch $branch is already checked out in a worktree. Reuse or finish that owner; do not duplicate."
-}
-# Only create local branch if it is not already present; do not reset/rebase it.
-& git -C $root show-ref --verify --quiet "refs/heads/$branch"
-$existsLocal=($LASTEXITCODE -eq 0)
-if ($existsLocal) {
-    $localHead=(& git -C $root rev-parse "refs/heads/$branch").Trim()
-    if ($LASTEXITCODE -ne 0 -or $localHead -ne $CandidateSha) {
-        throw 'STOP: existing local feature branch has different history; do not move it.'
-    }
-}
+& git -C $root cat-file -e "$CandidateSha^{commit}"
+if ($LASTEXITCODE -ne 0) { throw 'STOP: exact candidate object unavailable locally.' }
 $stamp=[DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfff')
 $dir=Join-Path ([IO.Path]::GetTempPath()) "msb-447-review-$stamp-$PID"
 $created=$false
 try {
-    if ($existsLocal) {
-        & git -C $root worktree add -- $dir $branch
-    } else {
-        & git -C $root worktree add -b $branch -- $dir "refs/remotes/origin/$branch"
-    }
-    if ($LASTEXITCODE -ne 0) { throw 'STOP: isolated review worktree could not be created.' }
+    & git -C $root worktree add --detach -- $dir $CandidateSha
+    if ($LASTEXITCODE -ne 0) { throw 'STOP: isolated detached review worktree could not be created.' }
     $created=$true
     $actual=(& git -C $dir rev-parse HEAD).Trim()
     if ($LASTEXITCODE -ne 0 -or $actual -ne $CandidateSha) {
@@ -64,7 +50,7 @@ try {
           -CandidateSha $CandidateSha -PreviewPort $PreviewPort `
           -PreviewEmail $PreviewEmail -ApprovedReviewProfile -V1Browser `
           -V1ReviewerRole $V1ReviewerRole
-        if ($LASTEXITCODE -ne 0) { throw 'STOP: existing Work Orders disposable review failed.' }
+        if (-not $?) { throw 'STOP: existing Work Orders disposable review failed.' }
     } finally { Pop-Location }
 } finally {
     if ($created) {
