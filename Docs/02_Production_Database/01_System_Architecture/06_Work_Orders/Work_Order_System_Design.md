@@ -1093,3 +1093,15 @@ previews belong on that page, with no permanent full-width home-page bar.
 This is also the intended home for future Work Order reference-table tools; do
 not imply those editors are implemented or grant new authority. Preserve the
 existing no-send renderer and Directus Manager authorization.
+
+
+### October 21 — runtime wording correction
+
+Production ticket controls and activity must not claim disposable-only writes,
+mail disabled, or pending cutover. Select Production versus disposable wording
+from the existing access runtime_mode; preserve explicit no-send warnings in
+disposable review. Activity count proves recorded actions only, not delivery.
+Production wording directs Managers to Email delivery status without promising
+mail is enabled or received. Preserve historical PENDING_CUTOVER entries as held;
+they are real historical records, not stale UI text. No commands, capture, worker,
+Flow status, authorization or Setup completion semantics change in this fix.
