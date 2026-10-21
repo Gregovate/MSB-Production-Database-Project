@@ -18,7 +18,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 from repository import WorkManagementError, WorkManagementRepository
 from commands import CloneCommands
 
-APP_VERSION = "V1.0.3-signed-access"
+APP_VERSION = "V1.1.2-manager-utilities"
 BASE_DIR = Path(__file__).resolve().parent
 CLOUDFLARE_HEADER = "Cf-Access-Authenticated-User-Email"
 TICKET_KEY = re.compile(r"^(?:WO|INTAKE)-[1-9][0-9]{0,12}$")
@@ -203,6 +203,16 @@ def ticket_activity(key: str) -> Response:
     return jsonify(activity=result, **runtime_response())
 
 
+@app.get("/api/work-orders/tickets/<key>/notifications")
+def ticket_notifications(key: str) -> Response:
+    current = actor()
+    if not current.get("can_manage"):
+        raise WorkManagementError("Manager notification review required.", 403)
+    if runtime_mode() == "disposable":
+        return jsonify(notifications=[], notice="Legacy preview has no delivery worker.")
+    return jsonify(notifications=command_store().notification_status(current, ticket_key(key)))
+
+
 @app.get("/api/work-orders/aging")
 def open_work_order_aging() -> Response:
     """Full manager aging report; all undated WOs, including inactive exceptions."""
@@ -210,7 +220,8 @@ def open_work_order_aging() -> Response:
     order = request.args.get("sort", "created_asc").strip().lower()
     include_planning = request.args.get("include_planning", "1") == "1"
     rows = store().aging_report(
-        actor=who, sort=order, include_planning=include_planning)
+        actor=who, sort=order, include_planning=include_planning,
+        **({"due_filter": request.args["due"]} if request.args.get("due") else {}))
     return jsonify(
         rows=rows,
         count=len(rows),
@@ -226,6 +237,7 @@ def open_work_order_aging() -> Response:
         read_only=True,
         all_open_work_orders=True,
         include_planning=include_planning,
+        due_filter=request.args.get("due", ""),
     )
 
 
@@ -259,6 +271,7 @@ def tickets() -> Response:
         actor=who, scope=scope, person_id=person_id,
         show_completed=show_completed, search=search, task_type_id=task_type_id, sort=sort,
         include_planning=include_planning,
+        **({"due_filter": request.args["due"]} if request.args.get("due") else {}),
     )
     for row in rows:
         row["category"] = (
@@ -314,3 +327,16 @@ if __name__ == "__main__":
         "Server Management launcher, not by running backend.py directly."
     )
 
+
+
+
+@app.get("/api/work-orders/email-previews")
+def email_previews() -> Response:
+    """Manager-only sample rendering; never invoke queue or delivery code."""
+    who = actor()
+    if not who.get("can_manage"):
+        raise WorkManagementError("Manager permission required.", 403)
+    from dataclasses import asdict
+    from preview_email_templates import sample_messages
+    return jsonify(previews=[dict(kind=kind, **asdict(message))
+                             for kind, message in sample_messages().items()])

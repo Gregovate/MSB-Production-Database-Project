@@ -10,8 +10,8 @@
 | Audience | Managers |
 | Status | CURRENT |
 | Owner | Production Database Manager |
-| Last Reviewed | 2026-09-26 |
-| Keywords | work order intake, triage, promote, submitted, delete |
+| Last Reviewed | 2026-10-20 |
+| Keywords | work order intake, triage, promote, submitted, disposition |
 
 ## Purpose
 
@@ -21,23 +21,15 @@ Work Orders created automatically by a Test Session are already active Work Orde
 
 ## Procedure
 
-1. Open **Work Order Intake**.
-2. Open the request that needs review.
-3. Confirm the request is valid and actionable.
-4. Review the submitted source context and correct the information needed for the Work Order, including when applicable:
-   - Stage or Work Area;
-   - related Display;
-   - Task Type;
-   - problem description;
-   - supporting notes;
-   - Urgency; and
-   - Target Year.
-5. For a request that may be promoted, review the submitted Priority and assign the correct Work Order Urgency using [Urgency and Target Year Reference](Urgency_and_Target_Year_Reference.md). Setup Report Correction records may instead be resolved through the responsible Setup/data/Procedure/GIS/engineering surface without promotion.
-6. Choose the appropriate triage outcome:
-   - **Delete** — no Work Order or retained Intake action is required;
-   - **Submitted** — keep the request in intake for later review; or
-   - **Promote** — create an active Work Order.
-7. Save the record.
+1. Open [Work Orders](https://my.sheboyganlights.org/workorder/) with your Manager account.
+2. Choose **Public Intake** for public requests or **Task Feedback** for Setup corrections.
+3. Read the original finding, notes, reporter and source context before deciding.
+4. If information is missing, record a clarification question on the same item. Phase 2 reporter email is pending; arrange contact directly until delivery is verified.
+5. For actual repair work, choose Promote, review the description, Task Type, Urgency and Stage or Work Area, select assignees and save once. Preserve original Intake evidence.
+6. For a correction that does not need a Work Order, record the appropriate disposition and a substantive reason. Do not delete the original report.
+7. Review the saved result and its activity. Promotion creates linked work; it does not mean the problem has been fixed.
+
+**Pending Phase 2:** Manager Create/Promote will require Due by, and clarification/final-outcome email will notify the original reporter. These features are not yet activated.
 
 ## Location Rule
 
@@ -45,13 +37,11 @@ A Work Order uses one operational location: **Stage** or **Work Area**, as appro
 
 ## Expected Result
 
-- **Delete** removes a request that should not become work.
-- **Submitted** leaves the request in the intake queue.
-- **Promote** creates the operational Work Order that can be assigned, worked, and completed.
+The original report and decision remain traceable. Promoted work has its own native Work Order identity linked to the Intake. Nonpromoted correction findings retain their reason and follow-up.
 
 ## If Something Is Wrong
 
-If the request does not contain enough information to make a safe decision, leave it **Submitted** until the missing information is resolved.
+Leave undecided work pending and ask for the missing information. Do not promote merely to clear the queue, mark it completed without actual work, or delete a report to remove it from view.
 
 ## Related Documents
 

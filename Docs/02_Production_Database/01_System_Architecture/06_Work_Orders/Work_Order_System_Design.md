@@ -851,3 +851,181 @@ uninstalled worktree and isolated runtime dependency installation before service
 startup. Preserve shared /opt/fieldwiring and completed SQL/credentials/maintenance
 inventory. No database apply retry or shared-environment pip upgrade is authorized
 by this source change.
+
+
+## October 20 — Phase 2 email templates and required Due by (#419)
+
+Operator authorized implementation of four notification types: new Intake to
+the existing test Manager mailing list; assignment to the actual assignee;
+done/cancelled outcome to the original reporter; and a request for more
+information to the original reporter with same-ticket response. Keep
+ref.person.is_manager=true, active_flag=true and available email as the interim
+Intake mailing-list selector. This is a recipient rule, not an application
+permission. Directus remains the sole user/role/policy authority. Do not redesign
+Person or change the test recipients during this work.
+
+Email wording must be editable outside Python sending code. Store four reviewed
+templates under WorkOrders/Application/email_templates, with subject, HTML and
+plain-text alternatives. Use a small documented placeholder vocabulary and
+escape inserted ticket values in HTML. Template files cannot set recipients,
+credentials, transport or permissions. Validate every template and render no-send
+previews before activation. Freeze rendered content and template digest with each
+queued delivery so retries do not silently change an already-attempted message.
+An invalid template stops enqueue/send visibly; no fallback to misleading mail.
+This initial file-based editor is available through GitHub file editing; a
+browser rich-text editor is not part of the initial implementation.
+
+Due by is required on Manager Create and Intake Promote, editable by Managers,
+visible in work lists/detail and assignment email. Check current native schema
+before choosing a new column. Existing undated open work is flagged Due date
+required; never manufacture dates or rewrite history. Overdue means active,
+unfinished work with a due date before the current America/Chicago calendar date.
+Due today is not overdue. Do not block legitimate completion of historical work
+merely because it lacks a date. Automatically generated Testing repair work must
+remain creatable and show missing-date follow-up for a Manager.
+
+Observed live email Flow inventory:
+- ebcde355-32c5-4826-b6fa-360621d0d357: WOI Request Triage Email,
+  active, work_order_intake items.create; reads the interim Person list,
+  builds an email array, sends Manager triage notice.
+- 9a7fb87b-d78e-492b-b2c5-ac3b521b5cf7: Work Order Email Assignees,
+  active, work_order_assignment items.create; active assignment, nonempty
+  assignee email and unfinished Work Order required.
+- 78e3fac3-a616-4c30-a6d8-a7cde33cefbb: Create Repair Work Order,
+  retain non-email creation behavior.
+- 09276ca9-3409-4f1c-95fe-df5b3edb8eef: Work Order Complete-Update
+  Display Test Session, retain non-email Testing completion behavior.
+The two inactive Flows stay inactive. Event-hook mail does not cover native SQL
+writes; replacement capture must cover both native application actions and
+existing public/Setup Intake entry paths. Activation must not flush historical
+PENDING_CUTOVER rows indiscriminately. Establish a reviewed event boundary and
+explicit backlog disposition, then disable only the two replaced email Flows.
+
+Status: implementation in progress, no Phase 2 sender or due-date migration
+installed. Server Management #81 owns mail transport reconnaissance, runtime,
+cutover and rollback. Do not infer delivery from a queued database row.
+
+
+### Confirmed existing SMTP authority — correction to Phase 2 reconnaissance
+
+The October 18 deployed Manager digest already establishes the mail transport.
+See [actual activation evidence](https://github.com/Gregovate/MSB-Production-Database-Project/issues/205#issuecomment-6248399405),
+application PR #413 (deployed source e53c31069b7354ad7fda78665d6666145942a70d),
+and Server Management PR #79, specifically
+docs/server/Setup_205_Bounded_Manager_Daily_Mail_2026-10-18.md.
+These documents exist on their open PR branches; absence from main does not mean
+the installed transport is undocumented or unproven.
+
+Reuse Google Workspace IP-authorized smtp-relay.gmail.com on port 587 with
+required STARTTLS and certificate verification, no SMTP password. Reuse the
+established sender identity and multipart HTML/plain-text pattern after reading
+the exact accepted implementation. Seven Manager messages were SMTP accepted
+October 18; this is not proof of Inbox delivery or Work Order sender activation.
+Preserve the existing Setup timer, environment and protected attempt receipts.
+Work Orders needs its own event delivery records and activation boundary, not
+reuse or rerun of the Setup digest's seven-recipient/day-specific send guards.
+
+The earlier request to rediscover transport through Directus environment was
+unnecessary. No further Directus SMTP inspection is needed for this design.
+Live Work Order schema readback also confirms 31 columns and no due-date field.
+
+
+### Phase 2 delivery implementation contract
+
+The worker uses a separate restricted work_management_mail database identity.
+Each delivery claim must commit immutable subject/text/HTML/template digest and
+event/recipient identity before SMTP. A unique event key excludes concurrent or
+repeated attempts. Store SMTP_ACCEPTED separately from Inbox delivery evidence.
+Keep FAILED_BEFORE_DATA, REJECTED and UNKNOWN distinct. A crash or failed receipt
+write leaves IN_PROGRESS for investigation; never automatically reclaim it.
+SMTP cannot promise exactly-once delivery after an uncertain DATA response.
+
+The new mail claim functions must refuse dispatch while either exact replaced
+Directus email Flow is active or missing. This gate does not itself disable a
+Flow or authorize cutover. Existing PENDING_CUTOVER records are never implicitly
+promoted to QUEUED. Stop the worker before any rollback/re-enabling old Flows.
+
+Every rendered ticket URL must identify the same WO/INTAKE record via the
+existing /workorder/?ticket=... navigation. Verify reporter read/reply scope
+before activation; do not substitute the home page or invent public access.
+The initial SMTP adapter and delivery-claim migration are source candidates only;
+event capture, worker activation, live SQL acceptance and Flow cutover are not
+established by offline tests.
+
+
+### Candidate capture and disposable acceptance
+
+Capture is a disabled-by-default database trigger on new Intake, new active
+assignment, and the existing native clarification/outcome activity events. It
+writes a snapshot payload to the existing outbox using phase2-prefixed stable
+event/recipient keys. Original V1 PENDING_CUTOVER entries remain held and excluded.
+The outbox activity link becomes optional for direct Intake/assignment events;
+there is no second ticket table. Capture activation and retiring the two exact
+mail Flows require one governed cutover boundary; neither migration activates it.
+
+Original reporters may read their own Work Order and activity, without receiving
+Manager or assignment/write rights. My Submitted Feedback includes their public
+Intake as well as Setup feedback. Existing active Directus linkage remains
+required; external/unlinked reporter handling still needs a manual-contact
+exception before activation. No public authentication bypass is introduced.
+
+The established WO419 disposable runner applies migrations 001/002/003 only
+inside its private restored clone. Its worker role is NOLOGIN; it never starts
+the SMTP worker. Reuse the installed independent Work Management Python runtime
+documented in Server Management, preserving shared FieldWiring dependencies.
+Clone-only tests temporarily enable capture/disable the two cloned Flows and
+roll back all data and simulated receipts. Source regression is not SQL proof.
+No Production or live-email activation follows automatically from clone PASS.
+
+
+### Phase 2 deadline navigation — October 20 operator direction
+
+Add Due by sorting (earliest/latest, missing dates last) and Work Order deadline filters: All, Overdue, Due today, Missing due date. Apply database filtering and ordering before the normal list limit; preserve existing actor permissions and other filters. Overdue means active, unfinished, due before today's America/Chicago date; due today is not overdue. Missing-date filter selects active unfinished Work Orders without inventing deadlines. Include the Manager aging report and preserve selections through URL/back navigation. This is candidate behavior pending the Phase 2 migration and acceptance.
+
+
+### Phase 2 source-specific Intake email — October 20 operator correction
+
+New Intake notices must distinguish Setup Task Feedback (source_form_name=SETUP_CORRECTION) from work requests. Feedback subject names source_payload.task_name and asks for review; it must not call the feedback a Work Order request or imply approval/denial is the only response. Work requests retain received-from wording. Both use the permanent same-ticket Work Management URL. Keep the interim Manager recipient list unchanged. Store source classification and task name in the event snapshot, with a truthful missing-task-name fallback. Maintain a separate editable formatted/plain-text feedback template and include it in offline previews. This replaces wording only after Phase 2 activation; the live Directus Flow is unchanged.
+
+
+### Manager email-preview utility — October 20 operator direction
+
+Expose the formatted email previews on the Manager Work Orders page as a utility. Enforce existing Directus-derived Manager authorization on the read endpoint as well as hiding the UI for Crew. Render current installed templates with fictional sample data, including Setup feedback and work requests; show subject, formatted body and plain text. Preview must not queue mail, claim deliveries, send SMTP, mutate templates, or grant roles. Isolate preview HTML from the application. Keep the offline preview command using the same rendering function so it cannot drift from the Manager utility.
+
+### Phase 2 completion contract — reporter, deadlines and delivery visibility
+
+Reporter replies remain on the original Intake. Permit a reply only while its
+latest clarification/reply/resolution state is an unanswered clarification and
+it has not been promoted. Notify the latest explicitly assigned correction owner,
+or the Manager who asked the question when no correction owner exists. Keep
+recipient identity in the event snapshot. External/unlinked or inactive reporters
+must receive a visible manual-contact exception; do not email an unusable protected
+response link or invent application access. Email replies are not ingested.
+
+For active Testing-linked Work Orders provide a separate Manager **Set Due by**
+command. It changes only the deadline and native audit actor, requires a reason,
+and records before/after dates. Keep general Edit/Cancel prohibited for these
+records; never change Testing identity, repair completion or status to set a date.
+Undated historical work remains completable. The aging report and CSV show Due by
+and deadline status independently from creation age; inactive records are never
+classified overdue.
+
+Managers can inspect per-ticket notification outcomes through a read-only,
+Directus-authorized function. Show queued, held, missing contact, failed,
+uncertain/in-progress and SMTP-accepted distinctly. SMTP acceptance does not prove
+Inbox delivery. Never expose immutable message bodies or recipient addresses to
+other reporters/Crew. No retry or send button is included. Saving an action must
+not promise delivery; consult the durable status after the worker runs.
+
+These changes are candidate work in PR #435. They require fresh exact-candidate
+CI, disposable SQL and protected browser acceptance. Phase 1 remains installed;
+Phase 2 remains off until the separate governed migration and mail cutover.
+
+### Manager Utilities placement — October 20 browser feedback
+
+Keep the Work Order list focused on daily work. A compact Manager-only Utilities
+button beside the header controls opens a separate Utilities page with Back to Work Orders. Email template
+previews belong on that page, with no permanent full-width home-page bar.
+This is also the intended home for future Work Order reference-table tools; do
+not imply those editors are implemented or grant new authority. Preserve the
+existing no-send renderer and Directus Manager authorization.

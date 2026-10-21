@@ -20,6 +20,7 @@
         </div>
       </div>
       <div class="header-right">
+        <button id="manager-utilities-button" type="button" class="theme-toggle" hidden>Utilities</button>
         <button id="theme-toggle" type="button" class="theme-toggle">Dark mode</button>
         <span id="preview-tag" class="preview-tag">Disposable clone · Saved changes are discarded at cleanup · No emails sent</span>
         <span id="user-identity" class="signed-in" aria-live="polite">Verifying access…</span>
@@ -27,7 +28,7 @@
     </div>
   </header>
 
-  <main class="app-shell">
+  <main id="work-orders-page" class="app-shell">
     <div class="page-intro">
       <div>
         <h2 id="home-heading">My Work Orders</h2>
@@ -46,6 +47,7 @@
         <button id="go-feedback" type="button" class="quiet-button">Review Task Feedback</button>
       </div>
     </section>
+
 
     <section class="controls" aria-label="Work Order filters">
       <div class="control-filters">
@@ -87,9 +89,20 @@
         </select>
       </div>
       <div class="field">
+        <label for="due-filter">Due date (open Work Orders)</label>
+        <select id="due-filter">
+          <option value="">All due dates</option>
+          <option value="overdue">Overdue</option>
+          <option value="today">Due today</option>
+          <option value="missing">Missing due date</option>
+        </select>
+      </div>
+      <div class="field">
         <label for="ticket-sort">Sort by</label>
         <select id="ticket-sort">
-          <option value="priority">Priority · Most urgent first (1 → 5)</option>
+          <option value="due_asc">Due date · Earliest first</option>
+          <option value="due_desc">Due date · Latest first</option>
+          <option value="priority" selected>Priority · Most urgent first (1 → 5)</option>
           <option value="priority_desc">Priority · Least urgent first (5 → 1)</option>
           <option value="number_desc">Work Order / Intake number · Highest first</option>
           <option value="number_asc">Work Order / Intake number · Lowest first</option>
@@ -129,6 +142,8 @@
             <th scope="col">Work Order #</th>
             <th scope="col">Created</th>
             <th scope="col">Days open</th>
+            <th scope="col">Due by</th>
+            <th scope="col">Deadline status</th>
             <th scope="col">Priority</th>
             <th scope="col">Work / location</th>
             <th scope="col">Assigned to</th>
@@ -192,6 +207,12 @@
         <p id="review-action-guidance" class="review-action-guidance" role="status"></p>
         <p id="review-context" class="subtle">Select a Work Order or Intake item to review the available actions.</p>
         <form id="review-action-form" hidden>
+          <fieldset id="review-deadline-fields" hidden>
+            <legend>Manager · Set Due by</legend>
+            <label for="review-deadline">Due by</label>
+            <input id="review-deadline" type="date" min="2020-01-01" max="2100-12-31">
+            <p>Only the deadline changes. Testing and repair status remain unchanged.</p>
+          </fieldset>
           <fieldset id="review-edit-reason-fields" hidden>
             <legend>Manager · Correct an existing Work Order</legend>
             <label for="review-edit-reason">Required reason for changing the authoritative Work Order</label>
@@ -221,6 +242,8 @@
             <legend id="review-work-order-legend">New internal Work Order</legend>
             <label for="review-problem">Describe the work</label>
             <textarea id="review-problem" rows="3" placeholder="What needs to be done?"></textarea>
+            <label for="review-due-by">Due by (required)</label>
+            <input id="review-due-by" type="date" min="2020-01-01" max="2100-12-31">
             <label for="review-task-type">Task type</label>
             <select id="review-task-type"><option value="">Choose existing type</option></select>
             <label for="review-location-type">Operational location</label>
@@ -291,6 +314,11 @@
         </form>
       </div>
     </section>
+            <section id="notification-review" hidden>
+              <h4>Email delivery status</h4>
+              <p>SMTP accepted does not prove Inbox delivery. Missing contact needs manual follow-up. Failed or uncertain attempts require operator review; they are not retried automatically.</p>
+              <div id="notification-entries" role="status"></div>
+            </section>
             <div class="detail-fields">
               <div><span class="tiny-label">Assigned to</span><p id="detail-owner"></p></div>
               <div><span class="tiny-label">Reported by</span><p id="detail-reporter"></p></div>
@@ -330,8 +358,27 @@
         </div>
       </section>
     </div>
-    <p class="footer-note">Work Management V1.0.3-signed-access · Updated 2026-10-20 · Connecting to verified runtime</p>
+    <p class="footer-note">Work Management V1.1.2-manager-utilities · Updated 2026-10-20 · Connecting to verified runtime</p>
   </main>
+  <section id="manager-utilities-page" class="app-shell" aria-labelledby="utilities-title" hidden>
+    <div class="utilities-heading">
+      <h2 id="utilities-title">Utilities</h2>
+      <button id="utilities-back" type="button" class="quiet-button">Back to Work Orders</button>
+    </div>
+    <details id="manager-email-utility">
+      <summary>Email template previews</summary>
+      <p>Review the current email layouts using fictional examples. Nothing is sent.</p>
+      <p id="email-preview-status" role="status"></p>
+      <label for="email-preview-kind">Message</label>
+      <select id="email-preview-kind"></select>
+      <h3 id="email-preview-subject"></h3>
+      <iframe id="email-preview-body" title="Formatted email preview" sandbox="" referrerpolicy="no-referrer"
+              style="width:100%;height:420px;border:1px solid #ccd3da;background:white"></iframe>
+      <details><summary>Plain-text version</summary><pre id="email-preview-text" style="white-space:pre-wrap"></pre></details>
+    </details>
+
+  </section>
 </body>
 </html>
+
 

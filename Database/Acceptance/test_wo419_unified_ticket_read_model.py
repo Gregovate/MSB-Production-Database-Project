@@ -122,7 +122,7 @@ def test_419_testing_origin_is_explicit_and_not_a_fake_intake():
         "NULL::bigint AS display_id",
         "test_detail_id AS test_id",
         "display_id AS disp_id",
-        "w.submitted_by_person_id AS reporter_person_id",
+        "COALESCE(source_intake.submitter_person_id,w.submitted_by_person_id) AS reporter_person_id",
         "i.submitter_person_id AS reporter_person_id",
     ):
         assert token in sql, token

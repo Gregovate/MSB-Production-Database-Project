@@ -1,0 +1,5 @@
+{
+  "subject": "$task_name has feedback that needs review \u2014 $ticket",
+  "text": "Setup task: $task_name\n\nFeedback was received from $reporter.\n\nFeedback: $title\n\nReview feedback and respond: $ticket_url\n\nMaking Spirits Bright\nPlease respond in Work Orders; email replies are not captured.",
+  "html": "<!doctype html><html><body style=\"font-family:Arial,sans-serif;color:#202830;line-height:1.5\"><h2>Setup task feedback</h2><p><strong>$task_name</strong> has feedback that needs review.</p><p>Received from: $reporter</p><p><strong>Feedback</strong><br>$title</p><p><a href=\"$ticket_url\">Review feedback and respond</a></p><p>Making Spirits Bright</p><p>Please respond in Work Orders; email replies are not captured.</p></body></html>"
+}

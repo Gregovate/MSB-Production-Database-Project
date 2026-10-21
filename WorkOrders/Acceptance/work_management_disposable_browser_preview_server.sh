@@ -24,7 +24,7 @@ fi
 if [[ ! "$PREVIEW_EMAIL" =~ ^[a-zA-Z0-9._%+-]+@sheboyganlights[.]org$ ]]; then
   echo "HOLD: approved MSB human reviewer email required"; exit 2
 fi
-if [[ "$CANDIDATE_REF" != "issue-419-unified-ticket-read-model-20261018" ]]; then
+if [[ "$CANDIDATE_REF" != "issue-419-phase2-email-due-date" ]]; then
   echo "HOLD: #419 source branch changed; review target ancestry first"; exit 2
 fi
 if [[ "$MODE" != "start" && "$MODE" != "resume" && "$MODE" != "validate_v1" &&
@@ -40,7 +40,7 @@ PRODUCTION_CONTAINER="msb-postgres"
 PG_ACTOR="msbadmin"
 IMAGE="postgis/postgis:16-3.5"
 NETWORK="msb-stack_default"
-PYTHON="/opt/fieldwiring/.venv/bin/python"
+PYTHON="/opt/msb-work-management-runtime/bin/python"
 STAMP="$(date +%Y%m%dT%H%M%S)"
 CLONE_CONTAINER="msb-wo419-preview-$$"
 CLONE_DATABASE="msb_wo419_preview"
@@ -389,11 +389,16 @@ echo "--- Exact candidate full application regression (no database) ---"
 # Match the established Setup disposable acceptance regression, then
 # exercise the #419 feature-owned tests. No partial-suite substitution.
 sudo -u fieldwiring -H env PYTHONDONTWRITEBYTECODE=1 bash -c "
+  set -e
   cd '$WORKTREE'
   '$PYTHON' -m pytest -q -p no:cacheprovider Setup/Application Setup/Acceptance/test_setup_gis_preview.py
   '$PYTHON' -m pytest -q -p no:cacheprovider FieldWiring/Application
   '$PYTHON' -m pytest -q -p no:cacheprovider \
     WorkOrders/Application/test_work_management_preview.py \
+    WorkOrders/Application/test_email_templates.py \
+    WorkOrders/Application/test_mail_worker.py \
+    WorkOrders/Application/test_mail_delivery.py \
+    WorkOrders/Application/test_due_by.py \
     WorkOrders/Acceptance/test_work_management_disposable_profile.py \
     Database/Acceptance/test_wo419_unified_ticket_read_model.py
 "
@@ -523,9 +528,12 @@ if [[ "$MODE" == "validate_v1" ]]; then
   # This role is deliberately NOLOGIN inside the disposable clone; it is not
   # created on the Production database or assigned to any live service.
   psql_clone -c "CREATE ROLE work_management_app NOLOGIN;"
+  psql_clone -c "CREATE ROLE work_management_mail NOLOGIN;"
   {
     printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
     cat "$WORKTREE/WorkOrders/Database/001_work_management_v1_governed_commands.sql"
+    cat "$WORKTREE/WorkOrders/Database/002_work_management_due_by.sql"
+    cat "$WORKTREE/WorkOrders/Database/003_work_management_mail_delivery.sql"
   } | psql_clone
   echo "PASS: V1 proposed native schema/functions installed on disposable clone"
   # The fixture tests real manager-only Create, idempotency, Crew Progress +
@@ -535,6 +543,7 @@ if [[ "$MODE" == "validate_v1" ]]; then
     printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
     printf '%s\n' "SET msb.wo419_v1_reviewer_email='$PREVIEW_EMAIL';"
     cat "$WORKTREE/WorkOrders/Acceptance/wo419_v1_disposable_validation.sql"
+    cat "$WORKTREE/WorkOrders/Acceptance/wo419_phase2_disposable_validation.sql"
   } | psql_clone
   echo "WO419 V1 DISPOSABLE SQL VALIDATION PASS"
   echo "No browser listener started; clone-only validation transaction rolled back"
@@ -546,10 +555,13 @@ fi
 # Both distinct roles are tested in separate original-runner sessions.
 if [[ "$MODE" == "start_v1_manager" || "$MODE" == "start_v1_crew" ]]; then
   echo "--- Work Orders V1 native SQL browser acceptance: exact private clone ---"
+  psql_clone -c "CREATE ROLE work_management_mail NOLOGIN;"
   psql_clone -c "CREATE ROLE work_management_app LOGIN PASSWORD '$V1_APP_PASSWORD';"
   {
     printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
     cat "$WORKTREE/WorkOrders/Database/001_work_management_v1_governed_commands.sql"
+    cat "$WORKTREE/WorkOrders/Database/002_work_management_due_by.sql"
+    cat "$WORKTREE/WorkOrders/Database/003_work_management_mail_delivery.sql"
   } | psql_clone
   echo "PASS: V1 native SQL installed inside private restored clone only"
   # Review actual cloned Directus rights; never elevate the pinned reviewer.

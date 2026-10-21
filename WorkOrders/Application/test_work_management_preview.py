@@ -192,7 +192,7 @@ def test_production_mount_assets_access_and_https_command(production_client, mon
     access = production_client.get("/api/work-orders/access", headers=headers,
         environ_overrides=peer)
     assert access.status_code == 200
-    assert access.json["version"] == "V1.0.3-signed-access"
+    assert access.json["version"] == "V1.1.2-manager-utilities"
     calls = []
     class Commands:
         def perform(self, actor, action, ticket, body):
@@ -1087,7 +1087,7 @@ def test_v1_backend_uses_distinct_command_path_and_protected_proxy():
     runtime = (HERE / "v1_runtime.py").read_text(encoding="utf-8")
     js = (HERE / "review_actions.js").read_text(encoding="utf-8")
     app_js = (HERE / "app.js").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "V1.0.3-signed-access"' in source
+    assert 'APP_VERSION = "V1.1.2-manager-utilities"' in source
     assert 'from v1_runtime import V1Repository' in source
     assert 'from v1_runtime import V1Commands' in source
     assert 'return CloneCommands()' in source
@@ -1106,7 +1106,7 @@ def test_v1_backend_uses_distinct_command_path_and_protected_proxy():
     assert 'SELECT ops.work_management_v1_command(' in runtime
     assert 'SELECT event_kind,actor_person_id' in runtime
     assert 'PRODUCTION Work Orders database?' in js
-    assert 'Notifications are held pending release; not sent.' in js
+    assert 'Saving does not prove email delivery; check delivery status.' in js
     assert 'Work Orders V1 · Production records' in app_js
 
 
@@ -1315,7 +1315,8 @@ def test_oct20_second_review_edit_cancel_and_manager_buttons_contract():
     assert 'value="intake" data-manager-only' not in html
     assert 'value="feedback" data-manager-only' not in html
     assert 'id="go-intake"' in html and 'id="go-feedback"' in html
-    assert 'result.push("assign", "edit", "cancel")' in js
+    assert 'result.push("assign")' in js
+    assert 'else result.push("edit", "cancel")' in js
     assert 'review-edit-reason' in js and 'review-cancel-reason' in js
     assert 'wo419:cancel-create' in js and 'wo419:cancel-create' in app
     assert 'CANCELLED_NO_ACTION' in app and 'CANCELLED_NO_ACTION' in db
@@ -1438,3 +1439,51 @@ def test_production_valid_token_still_requires_directus_user(production_client, 
     response = production_client.get("/api/work-orders/access",
         headers=production_headers(), environ_overrides={"REMOTE_ADDR": "192.168.5.4"})
     assert response.status_code == 403
+
+
+
+def test_due_filter_is_forwarded_to_authorized_ticket_query(client):
+    FakeRepo.calls.clear()
+    response = client.get('/api/work-orders/tickets?sort=due_asc&due=overdue', headers=identity())
+    assert response.status_code == 200
+    assert any(call[0] == 'tickets' and call[1].get('due_filter') == 'overdue'
+               and call[1].get('sort') == 'due_asc' for call in FakeRepo.calls)
+
+
+def test_manager_can_preview_templates_without_ticket_or_mail_actions(client):
+    FakeRepo.calls.clear()
+    response = client.get('/api/work-orders/email-previews', headers=identity())
+    assert response.status_code == 200
+    previews = response.json['previews']
+    assert {item['kind'] for item in previews} == {
+        'new_request', 'task_feedback', 'assignment', 'outcome', 'more_info', 'reporter_reply'}
+    assert all(item['html'] and item['text'] and item['subject'] for item in previews)
+    assert all(call[0] == 'access' for call in FakeRepo.calls)
+    assert response.headers['Cache-Control'] == 'no-store'
+
+
+def test_crew_cannot_read_manager_email_previews(client, monkeypatch):
+    monkeypatch.setattr(FakeRepo, 'access', lambda self, email:
+                        {'can_manage': False, 'can_read': True, 'person_id': 202})
+    assert client.get('/api/work-orders/email-previews', headers=identity()).status_code == 403
+    assert client.get('/api/work-orders/email-previews').status_code == 401
+
+
+def test_delivery_status_denies_crew_before_store_access(client, monkeypatch):
+    monkeypatch.setattr(backend, 'actor', lambda: {'can_manage': False})
+    monkeypatch.setattr(backend, 'command_store', lambda: pytest.fail('unauthorized receipt access'))
+    result = client.get('/api/work-orders/tickets/WO-123/notifications', headers=identity())
+    assert result.status_code == 403
+
+
+def test_delivery_status_returns_uncertainty_without_claiming_delivery(client, monkeypatch):
+    monkeypatch.setattr(backend, 'runtime_mode', lambda: 'production')
+    monkeypatch.setattr(backend, 'actor', lambda: {'can_manage': True, 'person_id': 101})
+    class Receipts:
+        def notification_status(self, actor, ticket):
+            assert ticket == 'WO-123'
+            return [{'status': 'UNKNOWN', 'evidence': 'delivery_outcome_uncertain'}]
+    monkeypatch.setattr(backend, 'command_store', lambda: Receipts())
+    result = client.get('/api/work-orders/tickets/WO-123/notifications', headers=identity())
+    assert result.status_code == 200
+    assert result.json['notifications'][0]['status'] == 'UNKNOWN'

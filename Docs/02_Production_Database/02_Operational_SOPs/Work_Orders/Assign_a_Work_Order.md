@@ -10,7 +10,7 @@
 | Audience | Managers |
 | Status | CURRENT |
 | Owner | Production Database Manager |
-| Last Reviewed | 2026-08-09 |
+| Last Reviewed | 2026-10-20 |
 | Keywords | work order, assignment, assignee, volunteer, notification |
 
 ## Purpose
@@ -23,9 +23,9 @@ Confirm the Work Order has been reviewed and contains enough information for the
 
 ## Procedure
 
-1. Open the Work Order.
+1. Open [Work Orders](https://my.sheboyganlights.org/workorder/), then open the Work Order.
 2. Review the problem, location, urgency, notes, and any related Display information.
-3. Assign the appropriate volunteer or volunteers.
+3. Choose **Assign / Reassign** and select the appropriate volunteer or volunteers.
 4. Save the Work Order.
 
 Choose assignees based on the needs of the work, including skill, availability, urgency, dependencies, safety, and required tools or materials.
@@ -36,7 +36,9 @@ More than one volunteer may be assigned when appropriate.
 
 The Work Order is linked to the assigned volunteer or volunteers.
 
-The current Directus assignment flow sends assignment notification email to the assigned person or people. The notification includes a direct link to the Work Order.
+Native Work Management assignments are saved in PostgreSQL. Phase 1 records notification intent but does not send assignment email from this app. Until the Phase 2 delivery cutover is verified, contact the assignee directly; do not assume a saved assignment generated email. The old Directus email Flow only covers its Directus item-create path.
+
+**Pending Phase 2:** required Due by dates and assignment email containing that date. These are not installed by this documentation update.
 
 ## If Something Is Wrong
 

@@ -80,7 +80,7 @@ all_tickets AS (
         w.source_intake_id AS intake_id,
         w.display_test_session_id AS test_detail_id,
         w.display_id AS display_id,
-        w.submitted_by_person_id AS reporter_person_id,
+        COALESCE(source_intake.submitter_person_id,w.submitted_by_person_id) AS reporter_person_id,
         w.problem::text AS summary,
         COALESCE(w.source_form_name, w.source_system,
                  'NOT_RECORDED')::text AS source_name,
@@ -137,7 +137,8 @@ all_tickets AS (
     FROM ops.work_order w
     LEFT JOIN ref.stage s ON s.stage_id = w.stage_id
     LEFT JOIN ref.work_area wa ON wa.work_area_id = w.work_area_id
-    LEFT JOIN ref.person sub ON sub.person_id = w.submitted_by_person_id
+    LEFT JOIN stage.work_order_intake source_intake ON source_intake.intake_id=w.source_intake_id
+    LEFT JOIN ref.person sub ON sub.person_id = COALESCE(source_intake.submitter_person_id,w.submitted_by_person_id)
     LEFT JOIN assignment_rollup ar ON ar.work_order_id = w.work_order_id
     LEFT JOIN latest_wo_status st ON st.work_order_id = w.work_order_id
 

@@ -28,6 +28,26 @@ class WorkManagementError(RuntimeError):
         self.status = status
 
 
+# Native date expression stays compatible with a pre-migration read-only clone.
+# SQL performs deadline selection before LIMIT, never on a truncated browser list.
+DUE_SQL = "(SELECT (to_jsonb(dw)->>'due_by')::date FROM ops.work_order dw WHERE dw.work_order_id=t.wo_id)"
+TODAY_SQL = "(CURRENT_TIMESTAMP AT TIME ZONE 'America/Chicago')::date"
+
+
+def deadline_condition(value: str) -> str:
+    conditions = {
+        "": "TRUE",
+        "overdue": DUE_SQL + " < " + TODAY_SQL,
+        "today": DUE_SQL + " = " + TODAY_SQL,
+        "missing": DUE_SQL + " IS NULL",
+    }
+    if value not in conditions:
+        raise WorkManagementError("Unknown due-date filter.")
+    if not value:
+        return "TRUE"
+    return "t.type='WORK_ORDER' AND t.active AND t.done_at IS NULL AND " + conditions[value]
+
+
 def ledger_select() -> str:
     """Reuse the already documented DB-owned ledger rather than a second model."""
     sql = LEDGER_PATH.read_text(encoding="utf-8").strip().rstrip(";")
@@ -222,6 +242,25 @@ class WorkManagementRepository:
             "ORDER BY ticket_key,activity_id DESC", (keys,)
         )
         canceled = {r["ticket_key"]: dict(r) for r in cur.fetchall()}
+        # One bounded lookup enriches list/detail without a per-row query.
+        # to_jsonb permits read-only inspection before migration; writes still
+        # require migration 002 and exact-candidate acceptance before deployment.
+        cur.execute(
+            "SELECT 'WO-' || w.work_order_id AS ticket, "
+            "to_jsonb(w)->>'due_by' AS due_by, "
+            "(CURRENT_TIMESTAMP AT TIME ZONE 'America/Chicago')::date::text AS today "
+            "FROM ops.work_order w WHERE ('WO-' || w.work_order_id)=ANY(%s)", (keys,)
+        )
+        deadlines = {r['ticket']: dict(r) for r in cur.fetchall()}
+        for row in rows:
+            if row['type'] != 'WORK_ORDER':
+                continue
+            deadline = deadlines.get(row['ticket'], {})
+            row['due_by'] = deadline.get('due_by')
+            open_work = bool(row.get('active')) and row.get('done_at') is None
+            row['due_date_required'] = open_work and not row['due_by']
+            row['overdue'] = bool(open_work and row['due_by'] and
+                                  row['due_by'] < deadline['today'])
         for row in rows:
             finding = canceled.get(row["ticket"])
             if finding:
@@ -237,6 +276,7 @@ class WorkManagementRepository:
         cur.execute(
             "SELECT DISTINCT ON (ticket_key) ticket_key,event_kind,details "
             "FROM " + self.activity_table + " WHERE ticket_key = ANY(%s) "
+            "AND event_kind IN ('clarify','reply','resolve','promoted_source') "
             "ORDER BY ticket_key,activity_id DESC", (intake,))
         latest = {r["ticket_key"]: r for r in cur.fetchall()}
         cur.execute(
@@ -248,13 +288,16 @@ class WorkManagementRepository:
             "WHERE a.event_kind='correction_owner' AND a.ticket_key=ANY(%s) "
             "ORDER BY a.activity_id DESC", (intake,))
         owners: dict[str, str] = {}
+        owner_ids: dict[str, int] = {}
         for item in cur.fetchall():
             owners.setdefault(item["ticket_key"], item["owner"])
+            owner_ids.setdefault(item["ticket_key"], item["target_person_id"])
         for row in rows:
             if row["type"] not in ("TASK_FEEDBACK", "INTAKE_REQUEST"):
                 continue
             if row["ticket"] in owners:
                 row["owners"] = owners[row["ticket"]]
+                row["correction_owner_id"] = owner_ids[row["ticket"]]
             info = latest.get(row["ticket"])
             if info and info["event_kind"] == "resolve":
                 row["state"] = str(info["details"].get("disposition", "resolved")).upper()
@@ -265,13 +308,15 @@ class WorkManagementRepository:
                     if info["details"].get("communication") == "MISSING_RECIPIENT"
                     else "WAITING_ON_REPORTER"
                 )
+            elif info and info["event_kind"] == "reply":
+                row["state"] = "RESPONSE_RECEIVED"
             elif info and info["event_kind"] == "promoted_source":
                 row["state"] = "PROMOTED_TO_WO"
 
     def tickets(
         self, *, actor: dict[str, Any], scope: str, person_id: int | None,
         show_completed: bool, search: str, task_type_id: int | None = None, sort: str = "priority",
-        include_planning: bool = True, limit: int = 80,
+        include_planning: bool = True, limit: int = 80, due_filter: str = "",
     ) -> list[dict[str, Any]]:
         manager_scopes = ("all", "tickets", "person", "repairs", "testing",
                           "intake", "feedback", "unassigned", "critical")
@@ -282,6 +327,8 @@ class WorkManagementRepository:
         if scope == "person" and (person_id is None or person_id < 1):
             raise WorkManagementError("Select a valid assignee.")
         sort_modes = {
+            "due_asc": DUE_SQL + " ASC NULLS LAST",
+            "due_desc": DUE_SQL + " DESC NULLS LAST",
             "priority": "t.urgency ASC NULLS LAST, COALESCE(t.wo_id, t.in_id) DESC",
             "priority_desc": "t.urgency DESC NULLS LAST, COALESCE(t.wo_id, t.in_id) DESC",
             "number_asc": "COALESCE(t.wo_id, t.in_id) ASC",
@@ -295,7 +342,7 @@ class WorkManagementRepository:
         limit = max(1, min(int(limit), 100))
         user = int(actor["person_id"])
         selected = user if scope == "mine" else person_id
-        conditions: list[str] = []
+        conditions: list[str] = [deadline_condition(due_filter)]
         params: list[Any] = []
         if not show_completed:
             conditions.append("t.done_at IS NULL AND t.active")
@@ -317,7 +364,7 @@ class WorkManagementRepository:
             conditions.append("t.type = 'WORK_ORDER' AND t.reporter_id = %s")
             params.append(user)
         elif scope == "my-feedback":
-            conditions.append("t.type = 'TASK_FEEDBACK' AND t.reporter_id = %s")
+            conditions.append("t.type IN ('TASK_FEEDBACK','INTAKE_REQUEST') AND t.reporter_id = %s")
             params.append(user)
         elif scope == "unassigned":
             conditions.append("t.type = 'WORK_ORDER' AND COALESCE(t.assigned_n, 0) = 0")
@@ -383,7 +430,7 @@ class WorkManagementRepository:
 
     def aging_report(self, *, actor: dict[str, Any],
                      sort: str = "created_asc",
-                     include_planning: bool = True) -> list[dict[str, Any]]:
+                     include_planning: bool = True, due_filter: str = "") -> list[dict[str, Any]]:
         """ALL recorded-open Work Orders, including inactive exceptions.
 
         Use native created_at, not last activity or assignment date. No
@@ -393,6 +440,8 @@ class WorkManagementRepository:
         if not actor["can_manage"]:
             raise WorkManagementError("Manager aging report is not authorized.", 403)
         sorts = {
+            "due_asc": DUE_SQL + " ASC NULLS LAST, t.wo_id",
+            "due_desc": DUE_SQL + " DESC NULLS LAST, t.wo_id",
             "created_asc": "t.opened_at ASC NULLS LAST, t.wo_id ASC",
             "created_desc": "t.opened_at DESC NULLS LAST, t.wo_id DESC",
             "priority": "t.urgency ASC NULLS LAST, t.opened_at ASC NULLS LAST, t.wo_id",
@@ -407,11 +456,17 @@ class WorkManagementRepository:
             "GREATEST(0, FLOOR(EXTRACT(EPOCH FROM "
             "(CURRENT_TIMESTAMP - t.opened_at)) / 86400))::integer AS days_open, "
             "t.urgency, t.owners, t.assigned_n, t.location, t.yr, "
-            "t.active, t.test_id, t.state, t.review_flag "
+            "t.active, t.test_id, t.state, t.review_flag, "
+            + DUE_SQL + "::text AS due_by, "
+            + "(t.active AND " + DUE_SQL + " < " + TODAY_SQL + ") AS overdue, "
+            + "(t.active AND " + DUE_SQL + " = " + TODAY_SQL + ") AS due_today, "
+            + "(t.active AND " + DUE_SQL + " IS NULL) AS due_date_required "
+            +
             "FROM (" + ledger_select() + ") t "
             "WHERE t.type = 'WORK_ORDER' AND t.done_at IS NULL "
             + ("" if include_planning else
                "AND t.urgency IS DISTINCT FROM 5 ")
+            + "AND (" + deadline_condition(due_filter) + ") "
             + "ORDER BY " + sorts[sort]
         )
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -466,11 +521,13 @@ class WorkManagementRepository:
                 self.enrich_work_order(cur, [row])
             if row["type"] != "WORK_ORDER" and not (
                 actor["can_manage"] or row["reporter_id"] == actor["person_id"]
+                or row.get("correction_owner_id") == actor["person_id"]
             ):
                 raise WorkManagementError("Ticket is not authorized.", 403)
             if row["type"] == "WORK_ORDER" and not actor["can_manage"] and (
                 int(actor["person_id"]) not in
                 [int(person) for person in (row.get("assignee_ids") or [])]
+                and row.get("reporter_id") != actor["person_id"]
             ):
                 raise WorkManagementError("Work Order is not assigned to this Person.", 403)
             if row["type"] == "WORK_ORDER":
@@ -657,3 +714,4 @@ class WorkManagementRepository:
             "groups": values,
             "notice": "Stage candidates are not confirmed task assignments.",
         }
+

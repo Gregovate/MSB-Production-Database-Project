@@ -12,7 +12,7 @@ param(
     [ValidateSet('Manager','Crew')][string]$V1ReviewerRole = 'Manager'
 )
 $ErrorActionPreference = 'Stop'
-$Ref = 'issue-419-unified-ticket-read-model-20261018'
+$Ref = 'issue-419-phase2-email-due-date'
 if (-not $ApprovedReviewProfile) { throw 'HOLD: #419 Server Management review profile not approved.' }
 if ($V1Validation -and $V1Browser) { throw 'HOLD: choose V1 SQL validation OR native V1 browser review, not both.' }
 if ($CandidateSha -cnotmatch '^[a-f0-9]{40}$') { throw 'HOLD: exact 40-hex SHA required.' }
@@ -114,3 +114,4 @@ try {
     }
 }
 finally { Remove-Item -LiteralPath $Local -Force -ErrorAction SilentlyContinue }
+

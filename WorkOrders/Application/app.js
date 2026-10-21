@@ -39,7 +39,7 @@
   const knownScopes = new Set(["mine", "my-created", "my-feedback", "all",
     "tickets", "aging", "person", "critical", "unassigned", "repairs",
     "testing", "intake", "feedback"]);
-  const knownSorts = new Set(["priority", "priority_desc", "number_asc",
+  const knownSorts = new Set(["due_asc", "due_desc", "priority", "priority_desc", "number_asc",
     "number_desc", "created_asc", "created_desc"]);
 
   function effectiveScope() {
@@ -54,7 +54,7 @@
       showCompleted: $("show-completed").checked,
       includePlanning: $("include-planning").checked,
       search: $("ticket-search").value,
-      taskType: $("task-type-filter").value,
+      taskType: $("task-type-filter").value, due: $("due-filter").value,
       ticket: state.selected,
       mode: state.createMode ? "create" : "view",
       listScroll: $("ticket-list").scrollTop,
@@ -74,7 +74,7 @@
       show_completed: next.showCompleted ? "1" : "0",
       include_planning: next.includePlanning ? "1" : "0",
       q: next.search, person_id: next.person,
-      task_type_id: next.taskType,
+      task_type_id: next.taskType, due: next.due,
       ticket: next.ticket || "", mode: next.mode === "create" ? "create" : "",
     };
     Object.entries(values).forEach(([key, value]) => {
@@ -95,6 +95,7 @@
       !["mine","my-created","my-feedback"].includes(displayed) ? "mine" : displayed;
     $("ticket-sort").value = knownSorts.has(snapshot.sort) ? snapshot.sort : "priority";
     $("task-type-filter").value = snapshot.taskType || "";
+    $("due-filter").value = ["overdue", "today", "missing"].includes(snapshot.due) ? snapshot.due : "";
     $("show-completed").checked = Boolean(snapshot.showCompleted);
     $("include-planning").checked = Boolean(snapshot.includePlanning);
     $("ticket-search").value = String(snapshot.search || "").slice(0, 120);
@@ -137,6 +138,7 @@
     restoreControls({
       scope: qs.get("scope") || "mine", sort: qs.get("sort") || "priority",
       person: qs.get("person_id") || "",
+      due: qs.get("due") || "", taskType: qs.get("task_type_id") || "",
       showCompleted: qs.get("show_completed") === "1",
       includePlanning: qs.get("include_planning") === "1",
       search: qs.get("q") || "",
@@ -226,6 +228,9 @@
         escapeHtml(categoryLabel(row)) + '</span><span class="ticket-id">' +
         escapeHtml(row.ticket) + '</span></div>' +
         '<h4>' + escapeHtml(row.title || "Untitled item") + '</h4>' +
+        (row.type === 'WORK_ORDER' ? '<p class="card-meta">' + escapeHtml(
+          row.due_by ? 'Due by ' + row.due_by + (row.overdue ? ' · OVERDUE' : '') :
+          (row.due_date_required ? 'Due date required' : 'No due date recorded')) + '</p>' : '') +
         '<p class="card-meta">' + escapeHtml(loc) +
         (row.urgency ? ' · <strong>Urgency ' + escapeHtml(row.urgency) +
           (row.urgency === 1 ? ' · CRITICAL' : '') + '</strong>' : ' · Urgency not recorded') +
@@ -273,6 +278,7 @@
     state.managerQueue = scope;
     $("ticket-search").value = "";
     $("task-type-filter").value = "";
+    $("due-filter").value = "";
     resetDetail();
     writeNavigation("push");
     loadTickets();
@@ -289,7 +295,9 @@
     if (!state.actor?.can_manage || !state.agingRows.length) return;
     const columns = [
       ["WO Number", "ticket"], ["Created", "opened_at"],
-      ["Days Open", "days_open"], ["Priority", "urgency"],
+      ["Days Open", "days_open"], ["Due by", "due_by"],
+      ["Overdue", "overdue"], ["Due today", "due_today"],
+      ["Missing due date", "due_date_required"], ["Priority", "urgency"],
       ["Description", "title"], ["Location", "location"],
       ["Assigned To", "owners"], ["Assignee Count", "assigned_n"],
       ["Active Record", "active"], ["Testing Repair ID", "test_id"],
@@ -303,7 +311,7 @@
     const url = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"}));
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = "MSB_Open_Work_Order_Aging_Disposable.csv";
+    anchor.download = "MSB_Open_Work_Order_Aging.csv";
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
@@ -339,6 +347,9 @@
         null,
         row.opened_at ? new Date(row.opened_at).toLocaleDateString() : "Not recorded",
         row.days_open ?? "Unknown",
+        row.due_by || "Not recorded",
+        row.overdue ? "Overdue" : row.due_today ? "Due today" :
+          row.due_date_required ? "Missing due date" : row.active ? "Upcoming" : "Inactive",
         row.urgency == null ? "Not set" : String(row.urgency),
         (row.title || "Untitled") + " · " + (row.location || "Location not recorded"),
         row.owners || "Unassigned",
@@ -385,7 +396,7 @@
     const sort = $("ticket-sort").value;
     try {
       const response = await getJson("/api/work-orders/aging?sort=" +
-        encodeURIComponent(sort) + "&include_planning=" +
+        encodeURIComponent(sort) + "&due=" + encodeURIComponent($("due-filter").value) + "&include_planning=" +
         ($("include-planning").checked ? "1" : "0"));
       if (serial !== state.agingFetchId || $("scope").value !== "aging") return;
       state.agingRows = response.rows || [];
@@ -423,7 +434,7 @@
     }
     const params = new URLSearchParams({
       scope, q: $("ticket-search").value.trim(),
-      task_type_id: $("task-type-filter").value,
+      task_type_id: $("task-type-filter").value, due: $("due-filter").value,
       show_completed: $("show-completed").checked ? "1" : "0",
       sort: $("ticket-sort").value,
       include_planning: $("include-planning").checked ? "1" : "0",
@@ -471,6 +482,8 @@
     setText("detail-title", row.title || "Untitled item");
     setText("detail-status", statusLabel(row));
     setText("detail-location", (row.location || "Location not recorded") +
+      (row.type === "WORK_ORDER" ? " · " + (row.due_by ? "Due by " + row.due_by +
+        (row.overdue ? " · OVERDUE" : "") : row.due_date_required ? "Due date required" : "No due date recorded") : "") +
       (row.urgency ? " · Urgency " + row.urgency : " · Urgency not recorded"));
     setText("detail-owner", row.owners || "Unassigned");
     setText("detail-reporter", row.reported_by || "Not recorded");
@@ -514,6 +527,29 @@
     }
   }
 
+  async function loadNotifications(key) {
+    const panel = $("notification-review");
+    panel.hidden = !state.actor?.can_manage;
+    const entries = $("notification-entries");
+    entries.replaceChildren();
+    if (panel.hidden) return;
+    entries.textContent = "Loading delivery receipts…";
+    try {
+      const data = await getJson("/api/work-orders/tickets/" + encodeURIComponent(key) + "/notifications");
+      if (state.selected !== key) return;
+      entries.replaceChildren();
+      for (const receipt of data.notifications || []) {
+        const line = document.createElement("p");
+        line.textContent = (receipt.message_kind || "Historical held notification") +
+          " · " + receipt.status + (receipt.evidence ? " · " + receipt.evidence : "");
+        entries.appendChild(line);
+      }
+      if (!entries.childNodes.length) entries.textContent = data.notice || "No notification recorded.";
+    } catch (exc) {
+      if (state.selected === key) entries.textContent = "Delivery status unavailable. Do not assume email was sent.";
+    }
+  }
+
   async function selectTicket(key, options = {}) {
     if (!/^(WO|INTAKE)-[1-9]\d{0,12}$/.test(key || "")) return;
     if (!options.noHistory) writeNavigation("replace");
@@ -528,6 +564,7 @@
       showDetail(data.ticket);
       if (!options.noHistory) writeNavigation("push");
       loadActivity(key);
+      loadNotifications(key);
     } catch (exc) {
       if (serial === state.fetchId) error(exc.message);
     }
@@ -635,6 +672,7 @@
         $("review-workbench").querySelector(".section-header p").textContent =
           "V1 PostgreSQL commands on an isolated clone. Test edits are discarded at cleanup.";
       }
+      $("manager-utilities-button").hidden = !state.actor.can_manage;
       $("home-heading").textContent = state.actor.can_manage
         ? "Work Management · Manager" : "My Work Orders";
       $("home-description").textContent = state.actor.can_manage
@@ -781,6 +819,50 @@
     writeNavigation("replace");
     loadTickets();
   });
+  $("due-filter").addEventListener("change", () => {
+    writeNavigation("replace");
+    loadTickets();
+  });
+  // Utilities has its own page surface so occasional tools never displace work.
+  function showUtilities(open) {
+    if (open && !state.actor?.can_manage) return;
+    $("work-orders-page").hidden = open;
+    $("manager-utilities-page").hidden = !open;
+    (open ? $("utilities-back") : $("manager-utilities-button")).focus();
+  }
+  $("manager-utilities-button").addEventListener("click", () => showUtilities(true));
+  $("utilities-back").addEventListener("click", () => showUtilities(false));
+  // Render sample HTML in an isolated frame: no scripts, forms, or navigation.
+  let emailPreviews = [];
+  function showEmailPreview() {
+    const message = emailPreviews.find(item => item.kind === $("email-preview-kind").value);
+    if (!message) return;
+    $("email-preview-subject").textContent = message.subject;
+    $("email-preview-text").textContent = message.text;
+    $("email-preview-body").srcdoc = '<meta http-equiv="Content-Security-Policy" ' +
+      `content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; form-action 'none'">` + message.html;
+  }
+  $("email-preview-kind").addEventListener("change", showEmailPreview);
+  $("manager-email-utility").addEventListener("toggle", async () => {
+    if (!$("manager-email-utility").open || !state.actor?.can_manage) return;
+    $("email-preview-status").textContent = "Loading previews…";
+    try {
+      const result = await getJson("/api/work-orders/email-previews");
+      emailPreviews = result.previews || [];
+      const labels = {new_request: "Work request", task_feedback: "Setup task feedback",
+        assignment: "Assignment", outcome: "Done / canceled", more_info: "More information"};
+      $("email-preview-kind").replaceChildren(...emailPreviews.map(message => {
+        const option = document.createElement("option");
+        option.value = message.kind;
+        option.textContent = labels[message.kind] || message.kind;
+        return option;
+      }));
+      showEmailPreview();
+      $("email-preview-status").textContent = "Sample data only · No emails sent";
+    } catch (exc) {
+      $("email-preview-status").textContent = exc.message;
+    }
+  });
   $("ticket-sort").addEventListener("change", () => {
     writeNavigation("replace");
     loadTickets();
@@ -799,4 +881,5 @@
   $("related-information").addEventListener("toggle", loadRelated);
   initialize();
 })();
+
 

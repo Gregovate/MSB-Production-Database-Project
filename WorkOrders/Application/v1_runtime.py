@@ -161,7 +161,7 @@ class V1Commands:
             raise WorkManagementError("Work Order command body must be an object.")
         if action not in {
             "create", "promote", "assign", "progress", "complete",
-            "correction_owner", "clarify", "reply", "resolve", "edit", "cancel",
+            "correction_owner", "clarify", "reply", "resolve", "edit", "cancel", "due_date",
         }:
             raise WorkManagementError(
                 "This Work Orders V1 operation is not yet approved for release.", 409
@@ -194,6 +194,22 @@ class V1Commands:
             raise
         finally:
             conn.close()
+
+    def notification_status(self, actor: dict, ticket: str) -> list[dict]:
+        """Inspect receipts through the database Manager gate; never retry mail."""
+        if not actor.get("can_manage"):
+            raise WorkManagementError("Manager notification review required.", 403)
+        conn = psycopg2.connect(self.dsn)
+        try:
+            conn.set_session(readonly=True)
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                require_native_database(cur)
+                cur.execute("SELECT * FROM ops.work_management_mail_status(%s,%s)",
+                            (actor["email"], ticket))
+                return [dict(row) for row in cur.fetchall()]
+        finally:
+            conn.close()
+
 
     def activity(self, actor: dict, ticket: str) -> list[dict]:
         if os.environ.get(WORK_ORDER_RUNTIME_ENV) == "v1_disposable":
