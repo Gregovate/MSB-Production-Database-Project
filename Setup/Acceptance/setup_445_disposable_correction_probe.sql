@@ -14,6 +14,23 @@ BEGIN
  IF (SELECT count(*) FROM ref.setup_task WHERE setup_task_id IN (17,20,32,126,306) AND active_flag) <> 5 THEN
    RAISE EXCEPTION '#445 STOP: five redundant Catalog tasks must still be active';
  END IF;
+ IF (SELECT count(*) FROM ops.setup_session_task st
+     JOIN ops.setup_session ss ON ss.setup_session_id=st.setup_session_id
+     JOIN (VALUES (17::bigint,258::bigint),(20,318),(32,320),(126,331),(306,301),(122,512))
+       AS expected(catalog_id,annual_id)
+       ON expected.catalog_id=st.setup_task_id
+      AND expected.annual_id=st.setup_session_task_id
+     WHERE ss.season_year=2026) <> 6 THEN
+   RAISE EXCEPTION '#445 STOP: known 2026 annual identities differ from operator evidence';
+ END IF;
+ IF EXISTS (SELECT 1 FROM ref.setup_task_container_support
+            WHERE setup_task_id IN (17,126,306))
+ OR EXISTS (SELECT 1 FROM ref.setup_task_display
+            WHERE setup_task_id IN (17,20,126,306))
+ OR EXISTS (SELECT 1 FROM ref.setup_task_extra_material
+            WHERE setup_task_id IN (17,20,32,126,306)) THEN
+   RAISE EXCEPTION '#445 STOP: additional Catalog material requires separate ownership review';
+ END IF;
  IF NOT EXISTS (SELECT 1 FROM ref.setup_task WHERE setup_task_id=122 AND active_flag
                 AND task_name='Unload Arch Trailer') THEN
    RAISE EXCEPTION '#445 STOP: shared Arch trailer task #122 mismatch';
