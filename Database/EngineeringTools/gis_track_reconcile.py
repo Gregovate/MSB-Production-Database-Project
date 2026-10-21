@@ -75,6 +75,25 @@ def installation_summary(data):
     return "\n".join(parts)
 
 
+def installation_defaults(track):
+    """Read explicit installation evidence, not arbitrary years in notes."""
+    text=track.get("description", "")
+    years=re.findall(r"(?im)\b(?:year installed\s*:|installed(?: in)?\s*)\s*((?:19|20)\d{2})\b", text)
+    networks=re.findall(r"(?im)^Networks:\s*([^\r\n]*)", text)
+    year=years[-1] if years else ""
+    cables=networks[-1].strip() if networks else ""
+    for evidence in track.get("installations",[]):
+        if evidence.get("year") and evidence["year"]!="unknown":year=evidence["year"]
+        if evidence.get("networks"):cables=", ".join(evidence["networks"])
+    return dict(year=year,cables=cables)
+
+
+def description_with_installation(existing, data):
+    summary=installation_summary(data)
+    if summary in existing:return existing
+    return existing + ("\n\n" if existing else "") + summary
+
+
 def map_label(node):
     """ExpertGPS Label on Map is the reviewed identity; GPS name is provenance."""
     extensions=node.find(G+"extensions")
@@ -120,6 +139,8 @@ def tracks(path):
                            description=node.findtext(G+"desc") or "",
                            metadata="\n".join(ET.tostring(c,encoding="unicode") for c in node
                                               if c.tag != G+"trkseg"),
+                           installations=[dict(year=e.get("year"),networks=[c.text or "" for c in e.findall("{"+ROUTE_NS+"}designation")])
+                                          for e in node.findall(".//{"+ROUTE_NS+"}installation")],
                            segments=segments,points=[p for s in segments for p in s],
                            times=[p.findtext(G+"time") or "" for s in node.findall(G+"trkseg") for p in s.findall(G+"trkpt")]))
     return result
@@ -374,6 +395,16 @@ def export_candidate(intake,master,master_sha,output,*,selected_run=None,replace
             expected_kind=d["new_type"] if d.get("action")=="add" else tracks(master)[d["master_index"]-1]["type"]
             checked=route_installation(expected_kind,data.get("year_installed"),", ".join(data.get("cable_designations",[])),data.get("network_catalog"))
             if checked!=data:raise ValueError("Installation metadata does not match the reviewed route type")
+            descriptions=children(target,"desc")
+            existing="".join(c.data for c in descriptions[0].childNodes if c.nodeType in (c.TEXT_NODE,c.CDATA_SECTION_NODE)) if descriptions else ""
+            description=description_with_installation(existing,data)
+            if descriptions:desc=descriptions[0]
+            else:
+                desc=doc.createElementNS(NS,(target.prefix+":" if target.prefix else "")+"desc")
+                following=[c for c in target.childNodes if c.nodeType==c.ELEMENT_NODE and c.localName not in ("name","cmt")]
+                target.insertBefore(desc,following[0] if following else None)
+            for child in list(desc.childNodes):desc.removeChild(child)
+            desc.appendChild(doc.createTextNode(description))
             extensions=children(target,"extensions")
             if extensions:extension=extensions[0]
             else:

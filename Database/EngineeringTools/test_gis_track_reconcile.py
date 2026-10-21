@@ -133,7 +133,8 @@ class ReconcileTests(unittest.TestCase):
         out=r.export_candidate(self.intake,self.master,r.digest(self.master),self.root/"history.gpx")
         old,new=r.tracks(self.master)[0],r.tracks(out)[0]
         self.assertEqual(old["comments"],new["comments"])
-        self.assertEqual(old["description"],new["description"])
+        self.assertTrue(new["description"].startswith(old["description"]))
+        self.assertIn("Year installed: 2026",new["description"])
         self.assertEqual(ET.parse(out).getroot().findtext(".//{urn:expert}year"),"2017")
         self.assertIsNone(r.route_installation("High Voltage")["year_installed"])
         with self.assertRaises(ValueError):r.route_installation("High Voltage","2026","REG")
@@ -252,5 +253,24 @@ class ReconcileTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'Cannot overwrite'):
                 r.export_candidate(self.intake,self.master,r.digest(self.master),protected,selected_run=decision,replace_existing=True)
         self.assertEqual(self.master.read_bytes(),before)
+
+
+    def test_replacement_network_description_visible_and_year_preserved(self):
+        self.master.write_text(MASTER.replace("High Voltage", "Network"))
+        catalog=dict(networks=[dict(site_network_id=i+1,network_code=c) for i,c in enumerate(["AUX-J","AUX-K","REG","SPARE-1"])])
+        old=r.tracks(self.master)[0]
+        defaults=r.installation_defaults(old)
+        self.assertEqual(defaults["year"],"2017")
+        data=r.route_installation("Network",defaults["year"],"AUX-J, AUX-K, REG, SPARE-1",catalog)
+        r.accept_replacement(self.intake,self.master,r.digest(self.master),self.raw,r.digest(self.raw),1,1,
+            r.recording_vertices(self.raw,1),"Replace plan",installation=data,working_name="NET WW-13 to WW-05")
+        decision=r.decisions(self.intake,r.digest(self.master))[0]
+        out=r.export_candidate(self.intake,self.master,r.digest(self.master),self.root/"network.gpx",selected_run=decision)
+        exported=r.tracks(out)[0]
+        self.assertEqual(exported["description"],old["description"]+"\n\nYear installed: 2017\nNetworks: AUX-J, AUX-K, REG, SPARE-1")
+        self.assertEqual(exported["comments"],old["comments"])
+        self.assertEqual(r.installation_defaults(exported),dict(year="2017",cables="AUX-J, AUX-K, REG, SPARE-1"))
+        self.assertEqual(r.description_with_installation(exported["description"],data),exported["description"])
+        self.assertEqual(r.installation_defaults(dict(description="Repaired 2026"))["year"],"")
 
 if __name__=="__main__":unittest.main()

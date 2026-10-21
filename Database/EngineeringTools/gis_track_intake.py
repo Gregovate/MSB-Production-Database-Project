@@ -706,10 +706,20 @@ def open_intake(parent):
         ttk.Button(frame,text="Preview selected point range",command=preview).pack(fill="x")
         first.trace_add("write",lambda *_:confirmed.set(False))
         last.trace_add("write",lambda *_:confirmed.set(False))
+        chosen_fields={}
+        chosen_index=[None]
         def choose(event=None):
             i=(choices.curselection()[0] if choices.curselection() else -1)
             if i<0:return
             track=matches[i]["track"]
+            previous=chosen_index[0]
+            if previous is not None:
+                chosen_fields[previous]=dict(year=installed_year.get(),cables=cable_labels.get())
+            defaults=chosen_fields.get(track["index"],reconcile.installation_defaults(track))
+            if previous is None and prior_fields:
+                defaults=dict(defaults,**{k:prior_fields[k] for k in ("year","cables") if prior_fields.get(k)})
+            installed_year.set(defaults["year"]);cable_labels.set(defaults["cables"]);show_catalog()
+            chosen_index[0]=track["index"]
             if new_run:
                 state.pop("matched_track",None);show_all_runs.set(True)
             else:
