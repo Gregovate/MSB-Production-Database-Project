@@ -532,8 +532,24 @@ if [[ "$MODE" == "validate_v1" ]]; then
   {
     printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
     cat "$WORKTREE/WorkOrders/Database/001_work_management_v1_governed_commands.sql"
-    cat "$WORKTREE/WorkOrders/Database/002_work_management_due_by.sql"
-    cat "$WORKTREE/WorkOrders/Database/003_work_management_mail_delivery.sql"
+    # Phase 2 is installed in the Production-derived clone. Do not replay
+    # non-idempotent migrations 002/003 or overwrite installed mail policy.
+    cat <<'WO447_INSTALLED_PHASE2'
+DO $wo447$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='ops' AND table_name='work_order'
+      AND column_name='due_by'
+  ) OR to_regclass('ops.work_management_mail_delivery') IS NULL
+    OR to_regclass('ops.work_management_mail_control') IS NULL
+    OR to_regprocedure('ops.work_management_v1_command(text,text,text,jsonb,uuid)') IS NULL
+  THEN
+    RAISE EXCEPTION 'WO447 HOLD: installed Phase 2 prerequisites absent; no replay of migrations 002/003';
+  END IF;
+END
+$wo447$;
+WO447_INSTALLED_PHASE2
     cat "$WORKTREE/WorkOrders/Database/004_work_management_identity_reconciliation.sql"
   } | psql_clone
   echo "PASS: V1 proposed native schema/functions installed on disposable clone"
@@ -562,8 +578,24 @@ if [[ "$MODE" == "start_v1_manager" || "$MODE" == "start_v1_crew" ]]; then
   {
     printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
     cat "$WORKTREE/WorkOrders/Database/001_work_management_v1_governed_commands.sql"
-    cat "$WORKTREE/WorkOrders/Database/002_work_management_due_by.sql"
-    cat "$WORKTREE/WorkOrders/Database/003_work_management_mail_delivery.sql"
+    # Phase 2 is installed in the Production-derived clone. Do not replay
+    # non-idempotent migrations 002/003 or overwrite installed mail policy.
+    cat <<'WO447_INSTALLED_PHASE2'
+DO $wo447$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='ops' AND table_name='work_order'
+      AND column_name='due_by'
+  ) OR to_regclass('ops.work_management_mail_delivery') IS NULL
+    OR to_regclass('ops.work_management_mail_control') IS NULL
+    OR to_regprocedure('ops.work_management_v1_command(text,text,text,jsonb,uuid)') IS NULL
+  THEN
+    RAISE EXCEPTION 'WO447 HOLD: installed Phase 2 prerequisites absent; no replay of migrations 002/003';
+  END IF;
+END
+$wo447$;
+WO447_INSTALLED_PHASE2
     cat "$WORKTREE/WorkOrders/Database/004_work_management_identity_reconciliation.sql"
   } | psql_clone
   echo "PASS: V1 native SQL installed inside private restored clone only"
