@@ -86,6 +86,16 @@ BEGIN
  END IF;
 END $verify$;
 
+-- Relinquish redundant Catalog ownership only after verified destination coverage.
+-- Original changes remain in database audit trail; annual 2026 work/report identities remain.
+DELETE FROM ref.setup_task_display WHERE setup_task_id=32
+  AND EXISTS (SELECT 1 FROM ref.setup_task_display d
+              WHERE d.setup_task_id=34 AND d.display_id=ref.setup_task_display.display_id);
+DELETE FROM ref.setup_task_container_support WHERE setup_task_id IN (20,32)
+  AND EXISTS (SELECT 1 FROM ref.setup_task_container_support dst
+              WHERE dst.setup_task_id=CASE WHEN ref.setup_task_container_support.setup_task_id=20 THEN 21 ELSE 34 END
+              AND dst.container_id=ref.setup_task_container_support.container_id
+              AND dst.relationship_type=ref.setup_task_container_support.relationship_type);
 -- One reusable Antenna unload, deliberately separate from #86 setup and #387 drop-off.
 CREATE TEMP TABLE msb445_new_task (id bigint) ON COMMIT DROP;
 WITH inserted AS (
