@@ -1,5 +1,19 @@
 # Work Order System Design
 
+## 2026-10-21 — compact landing-page presentation (#419)
+
+Operator reported that the header and controls occupy most of the initial viewport.
+Keep queue and search immediately available, place secondary filters/sorting in a
+collapsed native disclosure, and display applied secondary selections in its summary.
+Preserve current filter values, URLs, permissions and business actions. Compact the
+branding, redundant introduction and Manager Intake notice without hiding failures.
+Utilities must be immediately left of Dark/Light mode on the same row, including
+on narrow screens. Retain readable text and touch targets. This presentation-only
+candidate retains V1.1.2-manager-utilities and updates the visible date to 2026-10-21.
+It requires browser layout verification and governed source deployment; no schema,
+mail activation, identity changes, or new disposable database dump is required.
+
+
 ## 2026-10-21 — documentation verification and Backbone ownership
 
 The executable application, SQL migrations and acceptance sources in PR #438

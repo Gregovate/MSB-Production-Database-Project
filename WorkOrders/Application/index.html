@@ -20,8 +20,10 @@
         </div>
       </div>
       <div class="header-right">
+        <div class="header-buttons">
         <button id="manager-utilities-button" type="button" class="theme-toggle" hidden>Utilities</button>
         <button id="theme-toggle" type="button" class="theme-toggle">Dark mode</button>
+        </div>
         <span id="preview-tag" class="preview-tag">Disposable clone · Saved changes are discarded at cleanup · No emails sent</span>
         <span id="user-identity" class="signed-in" aria-live="polite">Verifying access…</span>
       </div>
@@ -38,9 +40,7 @@
     <div id="page-error" class="error-box" role="alert" hidden></div>
     <section id="manager-inbox-banner" class="manager-inbox-banner" aria-label="Manager Intake requiring review" hidden>
       <div>
-        <strong>Manager attention · New requests awaiting triage</strong>
         <p id="manager-inbox-message" aria-live="polite">Checking Public Intake and Task Feedback…</p>
-        <p class="subtle">Submitted requests remain in Public Intake until promoted. They do not appear in All Work Orders.</p>
       </div>
       <div class="inbox-actions">
         <button id="go-intake" type="button" class="quiet-button">Review Public Intake</button>
@@ -50,7 +50,7 @@
 
 
     <section class="controls" aria-label="Work Order filters">
-      <div class="control-filters">
+      <div class="control-filters primary-filters">
       <div class="field">
         <label for="scope">Show work for</label>
         <select id="scope">
@@ -82,6 +82,10 @@
         <input id="ticket-search" type="search" autocomplete="off"
                placeholder="Work Order number, finding, Stage, volunteer…">
       </div>
+      </div>
+      <details id="more-filters" class="more-filters">
+        <summary id="filter-summary">Filters &amp; sorting</summary>
+        <div class="control-filters">
       <div class="field">
         <label for="task-type-filter">Task Type (Work Orders)</label>
         <select id="task-type-filter">
@@ -120,6 +124,9 @@
         <input id="include-planning" type="checkbox">
         <span>Show planning work (Priority 5)</span>
       </label>
+      </div>
+      </details>
+      <div class="control-actions main-actions">
       <button id="refresh" type="button" class="quiet-button">Refresh</button>
       <button id="create-work-order" type="button" class="primary-button" aria-controls="review-action-form" aria-expanded="false" hidden>+ Create Work Order</button>
       <a class="public-request-link quiet-button" href="https://forms.gle/Gve4ZbXHDWxs43yh6" target="_blank" rel="noopener noreferrer" title="Submit to the existing Park/Workshop Work Order Intake form; Manager review required">Submit Work Order Request ↗</a>
@@ -358,7 +365,7 @@
         </div>
       </section>
     </div>
-    <p class="footer-note">Work Management V1.1.2-manager-utilities · Updated 2026-10-20 · Connecting to verified runtime</p>
+    <p class="footer-note">Work Management V1.1.2-manager-utilities · Updated 2026-10-21 · Connecting to verified runtime</p>
   </main>
   <section id="manager-utilities-page" class="app-shell" aria-labelledby="utilities-title" hidden>
     <div class="utilities-heading">
