@@ -856,6 +856,8 @@ function installNextTabs() {
   management.innerHTML = '<div class="card">' +
     '<div class="section-title"><div><div class="eyebrow">Management · 2026 Setup</div>' +
     '<h2>Setup Action Center</h2></div>' +
+    (appState.access?.can_admin_setup
+      ? '<a class="small secondary" href="notifications/" id="setup205-email-admin-link">Email recipients &amp; preview</a>' : '') +
     '<button type="button" class="secondary" id="setup205-actions-refresh">Refresh current actions</button></div>' +
     '<p class="muted">Review original missing reports, unfinished work, and upcoming scheduling risks. ' +
     'Use the actions to open the exact work or crew. Planning and actual work stay separate.</p>' +
