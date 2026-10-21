@@ -226,8 +226,9 @@ async function nextMoveTask(taskId, stageId, sceneId, beforeTaskId = null) {
         lor_scene_id: normalizedSceneId
       })
     );
+    // Refresh saved scope before cached scope can overwrite the reloaded row.
+    await loadNextOrganization(false, { force: true });
     await reloadTasks(null);
-    await loadNextOrganization(false);
     const destination = nextTasksForScope(normalizedStageId, normalizedSceneId);
     const sourceIndex = destination.findIndex((item) => Number(item.setup_task_id) === Number(taskId));
     if (sourceIndex >= 0) destination.splice(sourceIndex, 1);
@@ -541,7 +542,9 @@ async function submitNextCopy(event) {
       }));
     }
     el('next-copy-dialog').close();
-    await reloadTasks(null); await loadNextOrganization(false);
+    // New tasks need their saved Scene scope before destination ordering.
+    await loadNextOrganization(false, { force: true });
+    await reloadTasks(null);
     setupNextState.closedStages.delete(stageId == null ? 'site-wide' : String(stageId));
     setupNextState.closedScopes.delete(nextScopeKey(stageId, sceneId));
     const destination = nextTasksForScope(stageId, sceneId);

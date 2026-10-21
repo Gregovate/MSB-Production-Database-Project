@@ -356,3 +356,5 @@ wrapper is not a #205 release command. Operator acceptance and CLEAN EXIT are
 already approved. Production runner PASS and initial operator spot-check PASS
 were received October 16; the linked record contains the transcript and retained
 report directory. Do not rerun the completed release for documentation.
+
+- [Catalog Scene placement refresh candidate](Setup_122_Catalog_Scene_Refresh_Candidate.md) — Copy/Add/Move refresh correction; operator browser acceptance pending.

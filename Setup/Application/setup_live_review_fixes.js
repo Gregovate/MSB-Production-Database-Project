@@ -86,8 +86,8 @@
 
   if (typeof loadNextOrganization === 'function') {
     const priorLoadNextOrganization = loadNextOrganization;
-    loadNextOrganization = async function loadNextOrganizationWithTrueScenes(render = true) {
-      const result = await priorLoadNextOrganization(false);
+    loadNextOrganization = async function loadNextOrganizationWithTrueScenes(render = true, options = {}) {
+      const result = await priorLoadNextOrganization(false, options);
       normalizeCurrentSetupOrganization();
       if (render && appState.tasks?.length) renderLibrary();
       return result;

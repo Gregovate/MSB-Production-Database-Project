@@ -117,8 +117,9 @@ async function acceptanceCreateReusableTask(event) {
     else el('add-task-form').hidden = true;
     el('add-task-form').reset();
     el('add-display-order').value = '100';
+    // Refresh the newly saved Scene scope before rendering the created task.
+    await loadNextOrganization(false, { force: true });
     await reloadTasks(newId);
-    await loadNextOrganization(false);
     renderLibrary();
     setAlert(`Reusable task ${newId} created in ${nextTaskScopeLabel(taskById(newId))}.`, 'ok');
     requestAnimationFrame(() => document.querySelector(`[data-task-id="${newId}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
