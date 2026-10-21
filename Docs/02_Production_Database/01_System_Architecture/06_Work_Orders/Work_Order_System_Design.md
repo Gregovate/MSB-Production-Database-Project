@@ -858,8 +858,8 @@ again within each native SQL command. Reuse the existing Directus-backed
 ref.setup_browser_capabilities lookup for its role/policy resolution; it does
 not depend on a seasonal Setup session. can_manage_setup represents the existing
 Directus Manager/Administrator capability and supplies Work Management Manager
-rights. Production Crew retains only assigned-work rights. Inactive, missing,
-unlinked and ambiguous identities fail closed. Role changes and revocation in
+rights. Production Crew retains only assigned-work rights. Inactive, missing and ambiguous identities fail closed. Safe NULL Person links
+use the shared reconciliation contract described in the October 21 correction below. Role changes and revocation in
 Directus require no app-specific grant, restart or mirrored user list.
 
 Disposable acceptance may change Directus role/policy fixtures only inside the
@@ -1105,3 +1105,50 @@ Production wording directs Managers to Email delivery status without promising
 mail is enabled or received. Preserve historical PENDING_CUTOVER entries as held;
 they are real historical records, not stale UI text. No commands, capture, worker,
 Flow status, authorization or Setup completion semantics change in this fix.
+
+
+## October 21 — #447 authorized entry reconciles existing human identity
+
+Status: design for candidate V1.1.3-identity-reconciliation; NOT DEPLOYED.
+Owner #447 under #419/#122; People #385 owns identity matching. Current main
+at reconnaissance: 2d65781d73c761f0320eefd35fc06a5bf7b7dfa9. Existing wording-only
+PR #444 and People bootstrap PR #403 remain separate; neither fixes this path.
+
+Steve (Person 26) could browse Setup after the administrator assigned Production
+Crew but Work Orders rejected the NULL Person UUID. The shared #385 helper
+repaired it and operator confirmed Work Orders success. Three additional safe
+unlinked people (18 Manager, 3/13 Crew) were manually repaired by the operator.
+These are workarounds, not acceptance of a permanent application change.
+
+The native application must perform a bounded writable identity transaction
+before the legacy read-only linked-Person check. New migration 004 introduces
+`ops.work_management_reconcile_actor(text)`, a VOLATILE SECURITY DEFINER wrapper:
+validate organizational human identity, require current Directus-backed browse
+capability, require exactly one exact-email Person, call the existing
+`ref.reconcile_directus_person_identity`, then return the existing native actor.
+Commit only after successful actor resolution; roll back any failure. Recheck
+native role/Person authority in the normal read path and every command. Keep
+`ops.work_management_v1_actor` STABLE/read-only for mail/status and other readers.
+Never change those readers into unexpected writers.
+
+Only work_management_app receives EXECUTE on the wrapper. No direct Person or
+Directus UPDATE grant and no direct shared-helper grant. No permission table,
+identity creation, role assignment, mail, historical repair or new login flow.
+Use the existing production/disposable write gates and dedicated-role/database
+checks for the bounded transaction. Signed server-verified email remains the only
+input. All ordinary repository reads stay read-only. Missing migration fails
+closed; deploy migration 004 before the matching app under Server Management #81.
+
+Acceptance must cover first entry with a NULL link for Crew and Manager, committed
+repair and target-Person audit, repeat no-op, role preservation and revocation,
+missing/inactive/duplicate/conflicting Person, inactive/missing Directus,
+provider/external-ID mismatch, nonhuman account denial, and rollback on failure.
+The existing #419 runner applies migration 004 in both native SQL and browser
+modes, then executes rollback-only identity SQL assertions on the same clone.
+Source tests verify application transaction order, commit/rollback, write gates
+and preserved privilege checks. Existing SQL fixture and runner are extended;
+no new runner, port or Production dump mechanism. Actual current-Production-clone
+and browser acceptance remain mandatory; local source tests cannot replace them.
+
+#395 missing-Directus bootstrap is still not deployed. This correction repairs
+existing authorized identities and does not claim to finish that separate scope.
