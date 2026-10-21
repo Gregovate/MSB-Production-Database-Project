@@ -955,7 +955,9 @@ def open_intake(parent):
                 if not advance:
                     confirmed.set(False)
                     message.set("Saved: "+track["name"]+". Ready to export GPX.")
-                    messagebox.showinfo("Run saved",track["name"]+"\n\nReview saved to:\n"+str(path)+"\n\nNext: Export GPX for ExpertGPS to create your editable GPX file.",parent=win)
+                    messagebox.showinfo("Run saved",track["name"]+"\n\nReview saved to:\n"+str(path)+"\n\nNext: Export GPX for ExpertGPS, or select another recording.",parent=win)
+                    review.destroy()
+                    status.set("Saved: "+track["name"]+". Export this run or select another recording.")
                     return
                 review.destroy()
                 load()
