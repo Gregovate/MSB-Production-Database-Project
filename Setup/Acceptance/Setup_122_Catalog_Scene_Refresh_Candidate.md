@@ -67,3 +67,18 @@ window blur. It does not change drop targets, move commands, scheduler scrolling
 search visibility or prerequisite behavior. Node scroll-loop tests cover page and
 panel up/down, stationary pointer, center, cleanup and unrelated drags. Actual
 browser search-filtered and unfiltered scroll acceptance remains pending.
+
+
+## Operator approval and source integration
+
+Revision3 filtered/unfiltered drag scrolling PASS and CLEAN EXIT reported.
+Greg explicitly approved merge and maintenance-controlled deployment. PR440
+merged as 91f638b72bccda01b2b9c6b7b4678c5263bd41a6. Accepted application stays
+pinned to e3c39f2781b5a97648dce1f00965110becd2edd6; deployment tooling and later
+documentation do not advance the application target. Source promotion uses
+run_setup_catalog_scope_deploy.ps1 from merged clean main. Current expected
+baseline is the recorded V0.3.84 deployment target
+7740498e6602f36c8cdfd384791bbafaab71ee9e; any actual drift stops preflight.
+Existing maintenance controller owns ON/freeze/promotion/OFF and preserved data.
+No migrations or database rollback dump. 31 deployment orchestration tests PASS.
+Production receipt/protected browser acceptance and local cleanup remain pending.
