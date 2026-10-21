@@ -38,3 +38,14 @@ def test_catalog_failure_never_reopens_or_applies_sql(tmp_path, failure):
         assert not d.migration_started
     finally:
         d.log.close()
+
+
+def test_unexpected_source_still_stops_before_maintenance(tmp_path):
+    d = FakeCatalog(tmp_path/'report')
+    try:
+        d.head = 'unreviewed-source'
+        with pytest.raises(Stop, match='Setup baseline drift'):
+            d.baseline()
+        assert 'on' not in d.calls
+    finally:
+        d.log.close()

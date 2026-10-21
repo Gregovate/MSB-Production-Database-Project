@@ -78,7 +78,21 @@ pinned to e3c39f2781b5a97648dce1f00965110becd2edd6; deployment tooling and later
 documentation do not advance the application target. Source promotion uses
 run_setup_catalog_scope_deploy.ps1 from merged clean main. Current expected
 baseline is the recorded V0.3.84 deployment target
-7740498e6602f36c8cdfd384791bbafaab71ee9e; any actual drift stops preflight.
+ec6d3f0e6a6a1cd69dd60256dcb7f76699e07910; any actual drift stops preflight.
 Existing maintenance controller owns ON/freeze/promotion/OFF and preserved data.
 No migrations or database rollback dump. 31 deployment orchestration tests PASS.
 Production receipt/protected browser acceptance and local cleanup remain pending.
+
+
+## Production preflight stop — baseline correction
+
+Operator report PR440-Source-20261021T102931Z stopped ONLINE with
+maintenance_started=false, migration_started=false and Setup baseline drift.
+Observed actual Setup HEAD: ec6d3f0e6a6a1cd69dd60256dcb7f76699e07910
+(PR414 accepted source); shared HEAD: 17c522c4f8ec06549bf7a6d9e8530c61276203f7.
+Installer had incorrectly pinned the earlier 7740498 source. No source
+promotion or maintenance entry occurred. Correct the expected baseline only;
+keep accepted target e3c39f2781b5a97648dce1f00965110becd2edd6 unchanged.
+Both observed heads are proven ancestors of the accepted target; Setup/Database
+has no delta between actual Setup source and target. Existing clean/detached,
+version, service and frozen preservation checks remain mandatory.
