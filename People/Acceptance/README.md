@@ -9,7 +9,9 @@ People Manager original Production acceptance   PASS
 Identity reconciliation V0.2.2 disposable        PASS
 Identity reconciliation V0.2.2 Production        PASS
 Identity bootstrap V0.2.3 disposable              PASS — #395
-Identity bootstrap browser/application review     NEXT — #395 / Backbone #24
+Identity bootstrap browser/application review     PASS — historical exact candidate only
+Identity bootstrap Production                    NOT DEPLOYED — #395 / draft #403
+Work Orders existing-user reconciliation           SOURCE-TESTED — #447; clone/browser pending
 Production protected /people/ route              PASS
 Cloudflare-authenticated live browser             PASS
 Production GA4 page view                          PASS
@@ -17,6 +19,11 @@ Production intranet/index integration             NEXT — BACKBONE #16
 ```
 
 Current Production People/Identity release:
+
+Read the [October 21 identity checkpoint](../../Docs/02_Production_Database/01_System_Architecture/03_People_and_Identity/engineering/Directus_User_Onboarding_Identity_Contract_2026-09-09.md#october-21--launch-control-reconciliation)
+before using historical fixture or deployment instructions. Steve's access is
+confirmed repaired; Don is no longer a missing-account fixture. #403's later
+architecture pause supersedes its older instruction to retry the scope probe.
 
 ```text
 version              V0.2.2

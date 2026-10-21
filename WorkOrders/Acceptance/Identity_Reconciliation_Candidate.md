@@ -21,6 +21,23 @@ role changes, Directus user creation, mail operation or bulk repair.
 
 ## Verification and remaining acceptance
 
+October 21 continuation rechecked current main (unchanged at the baseline above)
+and implementation `c8a4af578bc8a1d941ff60fd6c2658075fcdc2d6`: application/read-model
+suite again **184 passed**. [People owning checkpoint](../../Docs/02_Production_Database/01_System_Architecture/03_People_and_Identity/engineering/Directus_User_Onboarding_Identity_Contract_2026-09-09.md#october-21--launch-control-reconciliation)
+reconciles #395/#403 and consumed real-user fixtures. Draft #403 at
+`4d5b61cbfb114c35aebf8b582dba797134d21127` passed 58 local People tests;
+its scoped credential experiment remains paused and must not block acceptance
+of this existing-user correction.
+
+Publication remains blocked: automatic approval review rejected the earlier
+GitHub branch push as an external source upload lacking explicit publication
+authorization. No remote #447 branch/PR or exact-head CI exists yet. Preserve
+this local candidate; do not route the same upload through another tool to
+bypass that rejection. After explicit publication approval, publish the candidate
+for required CI and existing current-Production-clone acceptance; this does not
+authorize deployment. This environment has no PostgreSQL/Docker for executable
+clone acceptance.
+
 Local application/read-model tests: **184 passed**. Setup/GIS: **841 passed**;
 FieldWiring: **209 passed**, run in separate processes as in CI. The combined
 Work Orders/profile run before the last added runner assertion had 200 passed

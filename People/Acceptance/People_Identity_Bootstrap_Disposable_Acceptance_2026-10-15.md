@@ -406,7 +406,7 @@ Backbone source is merged but the approved, allowlisted source-to-live **Apps pa
 
 **Next governed engineering step:** reconcile exact Production live checkout, controller status, service environment credential presence (no secrets displayed), migration 006 absence/presence, and Backbone static publication tooling using read-only checks; prepare/review and contract-test the #395 installation tooling on a separate branch from merged main. No additional disposable Apps browser test is required solely because the release runner is new. Only after those gates can the already authorized operator execute an approved bounded Production migration window. Don's real first-login fixture remains unconsumed until final live acceptance.
 
-## Disposition
+## Historical October 15 disposition
 
 ```text
 DISPOSABLE RUNTIME ACCEPTANCE: PASS
@@ -418,3 +418,18 @@ NEXT: separate governed release review/authorization
 ```
 
 That isolated Apps+People browser integration gate has passed. A separate governed Production deployment and subsequent real-user verification require explicit authorization and the responsible Server Management and Internal Web Backbone runbooks; neither is implied by this acceptance.
+
+## Current disposition — October 21
+
+#395 is **not deployed**, irrespective of issue closure. The later draft #403
+record at `4d5b61cbfb114c35aebf8b582dba797134d21127` establishes the credential
+STOP `TOKEN_NOT_CONFIGURED`, unsuccessful scoped permission proof, and subsequent
+architecture pause. Do not follow the older next-step directions above to repeat
+preflight, provision a token or consume Don's fixture. Don now has an existing
+Manager identity and his link was manually repaired; Steve's repaired Work Orders
+access is confirmed. The remaining existing-user consumer defect is #447.
+
+The [current owning identity checkpoint](../../Docs/02_Production_Database/01_System_Architecture/03_People_and_Identity/engineering/Directus_User_Onboarding_Identity_Contract_2026-09-09.md#october-21--launch-control-reconciliation)
+records exact candidates, installed evidence and separate acceptance gates under
+#122. Apps bootstrap invocation was removed by Backbone PR #29 pending accepted
+People deployment. No new Production acceptance or authorization is recorded here.
