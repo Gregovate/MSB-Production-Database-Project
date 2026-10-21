@@ -11,7 +11,7 @@ from setup_required_container_deploy import ScheduledSearchDeploy
 class CatalogScopeDeploy(ScheduledSearchDeploy):
     target = 'e3c39f2781b5a97648dce1f00965110becd2edd6'
     tree = '878fd6161c6cd29886a825070af6193fa04af85a'
-    old_setup = '7740498e6602f36c8cdfd384791bbafaab71ee9e'
+    old_setup = 'ec6d3f0e6a6a1cd69dd60256dcb7f76699e07910'
     old_version = 'V0.3.84-direct-crew-cells'
     version = 'V0.3.87-catalog-scene-refresh-r3'
     profile = 'catalog-scope-source'
