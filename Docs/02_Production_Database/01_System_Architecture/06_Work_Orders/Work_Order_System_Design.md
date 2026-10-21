@@ -1020,3 +1020,12 @@ not promise delivery; consult the durable status after the worker runs.
 These changes are candidate work in PR #435. They require fresh exact-candidate
 CI, disposable SQL and protected browser acceptance. Phase 1 remains installed;
 Phase 2 remains off until the separate governed migration and mail cutover.
+
+### Manager Utilities placement — October 20 browser feedback
+
+Keep the Work Order list focused on daily work. A compact Manager-only Utilities
+button beside the header controls opens a separate Utilities page with Back to Work Orders. Email template
+previews belong on that page, with no permanent full-width home-page bar.
+This is also the intended home for future Work Order reference-table tools; do
+not imply those editors are implemented or grant new authority. Preserve the
+existing no-send renderer and Directus Manager authorization.

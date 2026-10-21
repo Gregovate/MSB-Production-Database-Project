@@ -449,3 +449,8 @@ html[data-theme="dark"] .review-action-button.primary-action:hover {
 .review-source-evidence h4 { margin:0 0 12px; }
 .review-source-evidence p { margin:7px 0; }
 .review-source-evidence .multiline-note { white-space:pre-wrap; overflow-wrap:anywhere; }
+
+/* Utilities uses a separate page surface, leaving the work list undisturbed. */
+.utilities-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; }
+.utilities-heading h2 { margin:0; }
+#manager-utilities-page summary { cursor:pointer; padding:12px 0; }

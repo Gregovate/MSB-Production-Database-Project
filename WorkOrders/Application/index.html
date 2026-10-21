@@ -20,6 +20,7 @@
         </div>
       </div>
       <div class="header-right">
+        <button id="manager-utilities-button" type="button" class="theme-toggle" hidden>Utilities</button>
         <button id="theme-toggle" type="button" class="theme-toggle">Dark mode</button>
         <span id="preview-tag" class="preview-tag">Disposable clone · Saved changes are discarded at cleanup · No emails sent</span>
         <span id="user-identity" class="signed-in" aria-live="polite">Verifying access…</span>
@@ -27,7 +28,7 @@
     </div>
   </header>
 
-  <main class="app-shell">
+  <main id="work-orders-page" class="app-shell">
     <div class="page-intro">
       <div>
         <h2 id="home-heading">My Work Orders</h2>
@@ -47,17 +48,6 @@
       </div>
     </section>
 
-    <details id="manager-email-utility" class="controls" hidden>
-      <summary>Email template previews · Manager utility</summary>
-      <p>Review the current email layouts using fictional examples. Nothing is sent.</p>
-      <p id="email-preview-status" role="status"></p>
-      <label for="email-preview-kind">Message</label>
-      <select id="email-preview-kind"></select>
-      <h3 id="email-preview-subject"></h3>
-      <iframe id="email-preview-body" title="Formatted email preview" sandbox="" referrerpolicy="no-referrer"
-              style="width:100%;height:420px;border:1px solid #ccd3da;background:white"></iframe>
-      <details><summary>Plain-text version</summary><pre id="email-preview-text" style="white-space:pre-wrap"></pre></details>
-    </details>
 
     <section class="controls" aria-label="Work Order filters">
       <div class="control-filters">
@@ -368,8 +358,26 @@
         </div>
       </section>
     </div>
-    <p class="footer-note">Work Management V1.1.1-phase2-followup · Updated 2026-10-20 · Connecting to verified runtime</p>
+    <p class="footer-note">Work Management V1.1.2-manager-utilities · Updated 2026-10-20 · Connecting to verified runtime</p>
   </main>
+  <section id="manager-utilities-page" class="app-shell" aria-labelledby="utilities-title" hidden>
+    <div class="utilities-heading">
+      <h2 id="utilities-title">Utilities</h2>
+      <button id="utilities-back" type="button" class="quiet-button">Back to Work Orders</button>
+    </div>
+    <details id="manager-email-utility">
+      <summary>Email template previews</summary>
+      <p>Review the current email layouts using fictional examples. Nothing is sent.</p>
+      <p id="email-preview-status" role="status"></p>
+      <label for="email-preview-kind">Message</label>
+      <select id="email-preview-kind"></select>
+      <h3 id="email-preview-subject"></h3>
+      <iframe id="email-preview-body" title="Formatted email preview" sandbox="" referrerpolicy="no-referrer"
+              style="width:100%;height:420px;border:1px solid #ccd3da;background:white"></iframe>
+      <details><summary>Plain-text version</summary><pre id="email-preview-text" style="white-space:pre-wrap"></pre></details>
+    </details>
+
+  </section>
 </body>
 </html>
 

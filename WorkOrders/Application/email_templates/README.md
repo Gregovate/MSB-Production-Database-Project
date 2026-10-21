@@ -56,8 +56,8 @@ Directus Flows throughout.
 
 ## Manager utility
 
-After this candidate is deployed, Managers can expand **Email template previews**
-on the Work Orders home page. Select Work request, Setup task feedback,
+After this candidate is deployed, Managers open **Utilities** in the header, then
+expand **Email template previews** on the Utilities page. Select Work request, Setup task feedback,
 Assignment, Done / canceled, or More information. The utility shows the subject,
 formatted body and plain-text alternative using fictional examples. It shares
 the offline renderer and cannot send mail or change templates. Existing

@@ -672,7 +672,7 @@
         $("review-workbench").querySelector(".section-header p").textContent =
           "V1 PostgreSQL commands on an isolated clone. Test edits are discarded at cleanup.";
       }
-      $("manager-email-utility").hidden = !state.actor.can_manage;
+      $("manager-utilities-button").hidden = !state.actor.can_manage;
       $("home-heading").textContent = state.actor.can_manage
         ? "Work Management · Manager" : "My Work Orders";
       $("home-description").textContent = state.actor.can_manage
@@ -823,6 +823,15 @@
     writeNavigation("replace");
     loadTickets();
   });
+  // Utilities has its own page surface so occasional tools never displace work.
+  function showUtilities(open) {
+    if (open && !state.actor?.can_manage) return;
+    $("work-orders-page").hidden = open;
+    $("manager-utilities-page").hidden = !open;
+    (open ? $("utilities-back") : $("manager-utilities-button")).focus();
+  }
+  $("manager-utilities-button").addEventListener("click", () => showUtilities(true));
+  $("utilities-back").addEventListener("click", () => showUtilities(false));
   // Render sample HTML in an isolated frame: no scripts, forms, or navigation.
   let emailPreviews = [];
   function showEmailPreview() {
