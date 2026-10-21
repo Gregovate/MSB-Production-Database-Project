@@ -179,3 +179,29 @@ Before changing Setup:
 - `Setup/Acceptance/Setup_Resource_Upsert_Repair_Production_Acceptance_2026-09-13.md`
 - `Setup/Acceptance/Setup_Assignment_Layer_V0313_Production_Acceptance_2026-09-12.md`
 - `Setup_Task_Supporting_Information_Contract_2026-09-11.md`
+
+
+## Catalog Scene placement refresh — #122, 2026-10-21 candidate
+
+Copy, Add Task Here and Move must render the authoritative Stage/Scene scope
+immediately after the existing governed scope command succeeds. Cached
+organization data must not overwrite that result. Organization decorators must
+forward refresh options; scope-changing actions explicitly refresh organization
+before reloading task rows or computing destination order. Ordinary reads retain
+the existing cache. Scene classification, material ownership and annual work
+history remain unchanged.
+
+Acceptance case: add/copy/move Setup Snowballs into Scene 21-SnowballBears,
+verify immediate placement and placement after full reload, with no extra create
+request on refresh. Existing tasks 395/396 are operator-reported duplicate
+attempts: inspect saved scope and all references before selecting the survivor.
+No automated deletion, merge, movement or historical data repair is authorized
+by the client fix. Production acceptance remains pending.
+
+Scene normalization must defer until Stage bootstrap metadata is available.
+An empty not-yet-loaded Stage list must never erase cached Scene identities.
+
+Catalog task drag must scroll the actual page/panel owner at both visible edges,
+including a stationary dragged pointer and filtered search results. This remains
+independent of Scheduling Board pane scrolling and must stop on drop/drag end or
+leaving the Catalog. Preserve existing scope/order and Shift-prerequisite drops.
