@@ -197,3 +197,6 @@ request on refresh. Existing tasks 395/396 are operator-reported duplicate
 attempts: inspect saved scope and all references before selecting the survivor.
 No automated deletion, merge, movement or historical data repair is authorized
 by the client fix. Production acceptance remains pending.
+
+Scene normalization must defer until Stage bootstrap metadata is available.
+An empty not-yet-loaded Stage list must never erase cached Scene identities.

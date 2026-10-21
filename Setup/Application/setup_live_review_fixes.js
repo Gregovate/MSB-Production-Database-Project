@@ -74,6 +74,9 @@
 
   function normalizeCurrentSetupOrganization() {
     if (typeof setupNextState === 'undefined') return;
+    // Organization can finish before the separate Stage bootstrap request.
+    // Missing Stage metadata is not evidence that every Scene is invalid.
+    if (!(appState.stages || []).length) return;
     setupNextState.scenes = (setupNextState.scenes || []).filter(isTrueSetupScene);
     setupNextState.taskScopes = new Map(
       [...(setupNextState.taskScopes || new Map()).entries()].map(([taskId, scope]) => [

@@ -1,6 +1,6 @@
 # #122 Catalog Scene placement refresh candidate
 
-Date: 2026-10-21. Candidate: V0.3.87-catalog-scene-refresh.
+Date: 2026-10-21. Candidate: V0.3.87-catalog-scene-refresh-r2.
 Base main: 180841d5c0c4b3f91ac8a2774af690256900e116.
 Status: local regression PASS; disposable/operator acceptance PENDING.
 
@@ -36,3 +36,18 @@ protected browser acceptance and repository closeout remain pending.
 
 The duplicate-late Report Work finding remains separate under #205 and is not
 changed by this candidate.
+
+
+## First operator preview — FAIL
+
+Greg reports all Scene groups disappeared; screenshot shows their tasks grouped
+under Stage-level. Initial candidate a5ed4df00f1a4f5bf5b191862e9d74cf872bd01d
+is rejected. Do not deploy it. Preview CLEAN EXIT receipt remains pending.
+
+The true-Scene normalizer ran before the asynchronous Stage bootstrap, classified
+all Scenes as invalid, then destructively cached that empty result. The revised
+normalizer defers classification until Stage metadata is available. Regression
+now uses the real classification/normalization functions instead of a stub and
+covers organization-before-Stages startup, all Stage/Scene move directions,
+Stage-to-Stage Copy/Move and ordinary caching. Drag edge-scroll remains an
+explicit operator browser acceptance requirement, not an automated PASS claim.
