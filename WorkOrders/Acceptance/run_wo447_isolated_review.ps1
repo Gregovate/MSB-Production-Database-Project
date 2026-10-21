@@ -8,7 +8,8 @@ param(
     [Parameter(Mandatory=$true)][string]$CandidateSha,
     [Parameter(Mandatory=$true)][string]$PreviewEmail,
     [ValidateSet('Manager','Crew')][string]$V1ReviewerRole='Manager',
-    [int]$PreviewPort=8898
+    [int]$PreviewPort=8898,
+    [switch]$ValidationOnly
 )
 $ErrorActionPreference='Stop'
 $branch='fix/work-orders-identity-reconciliation'
@@ -48,10 +49,15 @@ try {
     Write-Host 'No VS Code window or primary branch switch was made.'
     Push-Location $dir
     try {
-        & (Join-Path $dir 'WorkOrders/Acceptance/run_work_management_disposable_browser_preview.ps1') `
-          -CandidateSha $CandidateSha -PreviewPort $PreviewPort `
-          -PreviewEmail $PreviewEmail -ApprovedReviewProfile -V1Browser `
-          -V1ReviewerRole $V1ReviewerRole
+        $runner = Join-Path $dir 'WorkOrders/Acceptance/run_work_management_disposable_browser_preview.ps1'
+        if ($ValidationOnly) {
+            & $runner -CandidateSha $CandidateSha -PreviewPort $PreviewPort `
+              -PreviewEmail $PreviewEmail -ApprovedReviewProfile -V1Validation
+        } else {
+            & $runner -CandidateSha $CandidateSha -PreviewPort $PreviewPort `
+              -PreviewEmail $PreviewEmail -ApprovedReviewProfile -V1Browser `
+              -V1ReviewerRole $V1ReviewerRole
+        }
         if (-not $?) { throw 'STOP: existing Work Orders disposable review failed.' }
     } finally { Pop-Location }
 } finally {
