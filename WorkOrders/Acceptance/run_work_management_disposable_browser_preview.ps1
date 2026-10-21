@@ -21,8 +21,15 @@ if ($PreviewEmail -notmatch '^[A-Za-z0-9._%+\-]+@sheboyganlights\.org$') { throw
 if ($Server -ne 'msbadmin@192.168.5.9') { throw 'HOLD: unexpected SSH host.' }
 $Repo = (& git rev-parse --show-toplevel).Trim()
 if ($LASTEXITCODE -ne 0 -or -not $Repo) { throw 'HOLD: MSB repository checkout required.' }
-$Branch = (& git -C $Repo branch --show-current).Trim()
-if ($LASTEXITCODE -ne 0 -or $Branch -ne $Ref) { throw "HOLD: branch $Ref required." }
+# Isolated #447 launcher uses a detached exact-SHA worktree. In Windows
+# PowerShell, an empty native-command result is $null, so never call .Trim()
+# on git branch --show-current without checking the result first.
+$BranchOutput = & git -C $Repo branch --show-current
+if ($LASTEXITCODE -ne 0) { throw 'HOLD: unable to resolve candidate branch.' }
+$Branch = if ($null -eq $BranchOutput) { '' } else { ([string]$BranchOutput).Trim() }
+if ($Branch -ne '' -and $Branch -ne $Ref) {
+    throw "HOLD: expected branch $Ref or detached exact-SHA review, got '$Branch'."
+}
 $Head = (& git -C $Repo rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or $Head -ne $CandidateSha) { throw "HOLD: candidate SHA mismatch: $Head." }
 $Dirty = & git -C $Repo status --porcelain
