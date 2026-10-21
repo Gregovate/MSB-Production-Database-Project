@@ -16,7 +16,9 @@ $root=(& git rev-parse --show-toplevel).Trim()
 if ($LASTEXITCODE -ne 0 -or -not $root) { throw 'STOP: invoke inside an MSB repository checkout.' }
 if ($CandidateSha -cnotmatch '^[a-f0-9]{40}$') { throw 'STOP: exact candidate SHA required.' }
 if ($PreviewPort -ne 8898) { throw 'STOP: only existing approved port 8898 permitted.' }
-if (git -C $root status --porcelain) { throw 'STOP: calling checkout has uncommitted changes.' }
+$originalStatus = @(& git -C $root status --porcelain)
+if ($LASTEXITCODE -ne 0) { throw 'STOP: unable to inspect calling checkout.' }
+# The caller is never edited: an unrelated untracked file is not a blocker.
 $startingHead=(& git -C $root rev-parse HEAD).Trim()
 $startingBranch=(& git -C $root branch --show-current).Trim()
 & git -C $root fetch origin $branch
@@ -68,7 +70,8 @@ try {
     }
     $endHead=(& git -C $root rev-parse HEAD).Trim()
     $endBranch=(& git -C $root branch --show-current).Trim()
-    if ($endHead -ne $startingHead -or $endBranch -ne $startingBranch) {
+    $endStatus = @(& git -C $root status --porcelain)
+    if ($LASTEXITCODE -ne 0 -or $endHead -ne $startingHead -or $endBranch -ne $startingBranch -or (($endStatus -join "`n") -cne ($originalStatus -join "`n"))) {
         Write-Warning 'STOP: caller checkout changed unexpectedly; investigate before next task.'
     } else {
         Write-Host "PASS: calling checkout unchanged ($startingBranch $startingHead)"
