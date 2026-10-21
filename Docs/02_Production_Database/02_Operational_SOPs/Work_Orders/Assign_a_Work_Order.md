@@ -6,50 +6,38 @@
 |---|---|
 | Document Type | Operational SOP |
 | System | Production Database — Work Orders |
-| Task | Assign a Work Order to volunteers |
+| Task | Assign or reassign an active Work Order |
 | Audience | Managers |
 | Status | CURRENT |
 | Owner | Production Database Manager |
-| Last Reviewed | 2026-10-20 |
-| Keywords | work order, assignment, assignee, volunteer, notification |
-
-## Purpose
-
-Use this procedure when an active Work Order is ready to be assigned to one or more volunteers.
-
-## Before You Start
-
-Confirm the Work Order has been reviewed and contains enough information for the assigned volunteer to understand the task.
+| Last Reviewed | 2026-10-21 |
+| Keywords | assign, reassign, assignee, due by, assignment email, delivery status |
 
 ## Procedure
 
-1. Open [Work Orders](https://my.sheboyganlights.org/workorder/), then open the Work Order.
-2. Review the problem, location, urgency, notes, and any related Display information.
-3. Choose **Assign / Reassign** and select the appropriate volunteer or volunteers.
-4. Save the Work Order.
+1. Open [Work Orders](https://my.sheboyganlights.org/workorder/).
+2. Open the Work Order.
+3. Review the problem, location, urgency, **Due by**, existing work/activity, and any Testing/Setup context.
+4. Choose **Assign / Reassign**.
+5. Select the appropriate Person or People.
+6. Save once.
+7. Confirm the current assignees on the Work Order.
 
-Choose assignees based on the needs of the work, including skill, availability, urgency, dependencies, safety, and required tools or materials.
+More than one Person may be assigned. Reassignment does not erase historical assignment/activity.
 
-More than one volunteer may be assigned when appropriate.
+## Assignment Email
 
-## Expected Result
+Assignment notification is part of the live Work Management mail system and includes the current **Due by** date when applicable.
 
-The Work Order is linked to the assigned volunteer or volunteers.
+Review **Email delivery status** when notification matters. Missing recipient, failed, queued, or uncertain/in-progress state is not successful delivery.
 
-Native Work Management assignments are saved in PostgreSQL. Phase 1 records notification intent but does not send assignment email from this app. Until the Phase 2 delivery cutover is verified, contact the assignee directly; do not assume a saved assignment generated email. The old Directus email Flow only covers its Directus item-create path.
+Do not reassign the Work Order merely to force another email.
 
-**Pending Phase 2:** required Due by dates and assignment email containing that date. These are not installed by this documentation update.
+## Choosing Assignees
 
-## If Something Is Wrong
+Consider skill, availability, urgency, dependencies, safety, required tools/material, and location.
 
-If the Work Order is already complete, do not add an assignment simply to trigger another notification.
-
-If the task description or location is unclear, correct the Work Order before assigning it.
-
-## Related Documents
-
-- [Work an Assigned Work Order](Work_an_Assigned_Work_Order.md)
-- [Urgency and Target Year Reference](Urgency_and_Target_Year_Reference.md)
+If the description or location is unclear, correct the Work Order before dispatching it.
 
 ---
 
