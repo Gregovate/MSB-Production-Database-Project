@@ -29,14 +29,17 @@ reconciles #395/#403 and consumed real-user fixtures. Draft #403 at
 its scoped credential experiment remains paused and must not block acceptance
 of this existing-user correction.
 
-Publication remains blocked: automatic approval review rejected the earlier
-GitHub branch push as an external source upload lacking explicit publication
-authorization. No remote #447 branch/PR or exact-head CI exists yet. Preserve
-this local candidate; do not route the same upload through another tool to
-bypass that rejection. After explicit publication approval, publish the candidate
-for required CI and existing current-Production-clone acceptance; this does not
-authorize deployment. This environment has no PostgreSQL/Docker for executable
-clone acceptance.
+Publication authorization received October 21: Greg explicitly approved pushing
+this existing correction to a feature branch, opening a draft PR under #447/#419
+and running engineering tests. This supersedes the earlier source-upload approval
+block only. Refreshed origin/main remains `2d65781d73c761f0320eefd35fc06a5bf7b7dfa9`;
+no concurrent main changes require integration. No merge, migration execution,
+Production mutation or deployment is authorized. Exact published SHA and CI
+results are checkpointed in the draft PR, #447 and #122.
+
+This environment has no PostgreSQL/Docker for executable clone acceptance.
+Current-clone and browser gates below remain pending; source publication does
+not establish acceptance.
 
 Local application/read-model tests: **184 passed**. Setup/GIS: **841 passed**;
 FieldWiring: **209 passed**, run in separate processes as in CI. The combined
