@@ -7,6 +7,7 @@ These procedures are for people performing day-to-day production database tasks.
 | I want to... | Go to |
 |---|---|
 | Review/maintain Setup tasks, Display ownership, Kit assignments, Extra Materials, Kit Inventory, or T-Post stock | [Setup](Setup/README.md) |
+| Update or publish a current Setup procedure | [Update or Publish a Current Setup Instruction](../../00_Project_Overview/Google_Drive/operatorSOP/Publish_Current_Setup_Instruction.md) |
 | Find or maintain a volunteer/contact, capability, qualification, or Setup/Takedown eligibility | [People](People/README.md) |
 | Scan a Display, Container, or other MSB code and choose the next action | [Scanning](Scanning/README.md) |
 | Find and use current field wiring by Display, Stage, Sub-stage, or Scene | [FieldWiring](FieldWiring/README.md) |

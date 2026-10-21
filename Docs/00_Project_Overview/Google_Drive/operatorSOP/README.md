@@ -6,12 +6,15 @@ Use this page when you already know you need to maintain the Google Shared Drive
 
 ## Procedures
 
+**Updating a Setup procedure?** Use [Update or Publish a Current Setup Instruction](Publish_Current_Setup_Instruction.md).
+
+
 - [Repair or Organize an Existing Stage / Scene](Repair_Existing_Stage_Scene.md)
 - [Add and Verify MSB Display Folder Marker Files](Add_Verify_Marker_Files.md)
 - [Create a New Stage / Sub-stage / Scene Documentation Folder](Create_Stage_Substage_Scene_Folder.md)
 - [Create the `41 Park Infrastructure-PI` Procedure Folder](Create_Site_Infrastructure_Procedure_Folder.md)
 - [Align a Legacy Setup Document](Align_Legacy_Setup_Documents.md)
-- [Publish a Current Setup Instruction](Publish_Current_Setup_Instruction.md)
+- [Update or Publish a Current Setup Instruction](Publish_Current_Setup_Instruction.md)
 - [Run Folder Alignment](../../../01_LOR_System/02_Data_Extraction/Folder_Alignment/operatorSOP/Run_Folder_Alignment.md)
 - [Review the Folder Alignment Worklist](../../../01_LOR_System/02_Data_Extraction/Folder_Alignment/operatorSOP/Review_Folder_Alignment_Worklist.md)
 - [Create and Publish a Field Wiring Diagram](../../../01_LOR_System/01_Preview_Authoring/D_Create_Wiring_Backgrounds..md)
