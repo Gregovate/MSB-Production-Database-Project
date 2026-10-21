@@ -1152,3 +1152,18 @@ and browser acceptance remain mandatory; local source tests cannot replace them.
 
 #395 missing-Directus bootstrap is still not deployed. This correction repairs
 existing authorized identities and does not claim to finish that separate scope.
+
+
+### #447 release coordination and real entry acceptance
+
+October 21 operator direction: hold this candidate for one coordinated release
+with other compatible, independently accepted staged database repairs. #122 owns
+the combined manifest and single #37 maintenance window. Source-only repairs do
+not acquire a database-maintenance requirement merely because this candidate has
+one. No production release approval is implied by finishing this source candidate.
+
+Native browser mode must run the identity SQL fixture on its existing clone,
+clear only the clone reviewer's link, then prove real HTTP entry commits the
+repair and repeat entry does not update audit. This avoids another clone/dump
+solely for identity SQL assertions. A discovered old runner bug required Manager
+scope=all even for Crew: use scope=mine and assert all returns 403 for Crew.

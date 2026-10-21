@@ -24,7 +24,7 @@ fi
 if [[ ! "$PREVIEW_EMAIL" =~ ^[a-zA-Z0-9._%+-]+@sheboyganlights[.]org$ ]]; then
   echo "HOLD: approved MSB human reviewer email required"; exit 2
 fi
-if [[ "$CANDIDATE_REF" != "issue-419-phase2-email-due-date" ]]; then
+if [[ "$CANDIDATE_REF" != "fix/work-orders-identity-reconciliation" ]]; then
   echo "HOLD: #419 source branch changed; review target ancestry first"; exit 2
 fi
 if [[ "$MODE" != "start" && "$MODE" != "resume" && "$MODE" != "validate_v1" &&
@@ -534,6 +534,7 @@ if [[ "$MODE" == "validate_v1" ]]; then
     cat "$WORKTREE/WorkOrders/Database/001_work_management_v1_governed_commands.sql"
     cat "$WORKTREE/WorkOrders/Database/002_work_management_due_by.sql"
     cat "$WORKTREE/WorkOrders/Database/003_work_management_mail_delivery.sql"
+    cat "$WORKTREE/WorkOrders/Database/004_work_management_identity_reconciliation.sql"
   } | psql_clone
   echo "PASS: V1 proposed native schema/functions installed on disposable clone"
   # The fixture tests real manager-only Create, idempotency, Crew Progress +
@@ -542,6 +543,7 @@ if [[ "$MODE" == "validate_v1" ]]; then
   {
     printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
     printf '%s\n' "SET msb.wo419_v1_reviewer_email='$PREVIEW_EMAIL';"
+    cat "$WORKTREE/WorkOrders/Acceptance/wo447_identity_disposable_validation.sql"
     cat "$WORKTREE/WorkOrders/Acceptance/wo419_v1_disposable_validation.sql"
     cat "$WORKTREE/WorkOrders/Acceptance/wo419_phase2_disposable_validation.sql"
   } | psql_clone
@@ -562,8 +564,14 @@ if [[ "$MODE" == "start_v1_manager" || "$MODE" == "start_v1_crew" ]]; then
     cat "$WORKTREE/WorkOrders/Database/001_work_management_v1_governed_commands.sql"
     cat "$WORKTREE/WorkOrders/Database/002_work_management_due_by.sql"
     cat "$WORKTREE/WorkOrders/Database/003_work_management_mail_delivery.sql"
+    cat "$WORKTREE/WorkOrders/Database/004_work_management_identity_reconciliation.sql"
   } | psql_clone
   echo "PASS: V1 native SQL installed inside private restored clone only"
+  {
+    printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
+    printf '%s\n' "SET msb.wo419_v1_reviewer_email='$PREVIEW_EMAIL';"
+    cat "$WORKTREE/WorkOrders/Acceptance/wo447_identity_disposable_validation.sql"
+  } | psql_clone
   # Review actual cloned Directus rights; never elevate the pinned reviewer.
   reviewer_manager="$(psql_clone -qAt -c "SELECT can_manage FROM ops.work_management_v1_actor('$PREVIEW_EMAIL');")"
   expected_manager=f
@@ -573,6 +581,10 @@ if [[ "$MODE" == "start_v1_manager" || "$MODE" == "start_v1_crew" ]]; then
     exit 15
   }
   echo "PASS: reviewer has the expected current Directus role in clone"
+  # #447: recreate the reported NULL link only in the owned disposable clone.
+  # The first real HTTP health/access request must commit the application's repair.
+  psql_clone -c "DO \$fixture\$ BEGIN IF current_database()<>'msb_wo419_preview' THEN RAISE EXCEPTION 'private clone required'; END IF; END \$fixture\$; UPDATE ref.person SET directus_user_id=NULL WHERE lower(email)=lower('$PREVIEW_EMAIL');"
+
   V1_DSN="host=$HOST_IP port=5432 dbname=$CLONE_DATABASE user=work_management_app password=$V1_APP_PASSWORD"
   APP_RUNTIME="v1_disposable"
   echo "PASS: disposable V1 browser uses dedicated role and native commands"
@@ -621,8 +633,25 @@ if ! wo419_verified_listener "$PREVIEW_PID"; then
   exit 13
 fi
 echo "PASS: actual port $PREVIEW_PORT listener PID $PREVIEW_PID verified"
-# Real authorized browser routes and explicit negative write path.
-curl -fsS --max-time 10 "http://127.0.0.1:$PREVIEW_PORT/api/work-orders/tickets?scope=all" >/dev/null
+# #447 prove the HTTP entry committed its repair (separate DB connection),
+# then refresh and prove the Person/audit row remains byte-for-byte unchanged.
+if [[ "$APP_RUNTIME" == "v1_disposable" ]]; then
+  repaired="$(psql_clone -qAt -c "SELECT count(*) FROM ref.person p JOIN public.directus_users u ON u.id=p.directus_user_id WHERE lower(p.email)=lower('$PREVIEW_EMAIL') AND lower(u.email)=lower('$PREVIEW_EMAIL') AND p.updated_by_person_id=p.person_id;")"
+  [[ "$repaired" == 1 ]] || { echo "HOLD: HTTP entry did not persist audited Person repair"; exit 15; }
+  identity_before="$(psql_clone -qAt -c "SELECT md5(row_to_json(p)::text) FROM ref.person p WHERE lower(p.email)=lower('$PREVIEW_EMAIL');")"
+  curl -fsS --max-time 10 "http://127.0.0.1:$PREVIEW_PORT/api/work-orders/access" >/dev/null
+  identity_after="$(psql_clone -qAt -c "SELECT md5(row_to_json(p)::text) FROM ref.person p WHERE lower(p.email)=lower('$PREVIEW_EMAIL');")"
+  [[ "$identity_before" == "$identity_after" ]] || { echo "HOLD: repeat entry changed identity/audit"; exit 15; }
+  echo "PASS: real HTTP entry committed identity repair; repeat entry no-op"
+fi
+# Crew cannot access the Manager all-work queue. Test the actual role boundary.
+if [[ "$MODE" == "start_v1_crew" ]]; then
+  all_status="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://127.0.0.1:$PREVIEW_PORT/api/work-orders/tickets?scope=all")"
+  [[ "$all_status" == 403 ]] || { echo "HOLD: Crew Manager-queue denial failed"; exit 15; }
+  curl -fsS --max-time 10 "http://127.0.0.1:$PREVIEW_PORT/api/work-orders/tickets?scope=mine" >/dev/null
+else
+  curl -fsS --max-time 10 "http://127.0.0.1:$PREVIEW_PORT/api/work-orders/tickets?scope=all" >/dev/null
+fi
 # A reporter-facing personal queue is read-only; Manager queues are gated
 # by the approved identity, not by a client-controlled preview flag.
 curl -fsS --max-time 10 "http://127.0.0.1:$PREVIEW_PORT/api/work-orders/tickets?scope=my-feedback" >/dev/null

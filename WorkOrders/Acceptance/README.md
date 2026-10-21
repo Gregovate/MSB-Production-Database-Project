@@ -1,5 +1,7 @@
 # Work Management #419 — disposable clone and browser review
 
+Current #447 identity correction: [candidate and coordinated release hold](Identity_Reconciliation_Candidate.md). V1.1.3 source candidate only; no Production deployment.
+
 ## Current Phase 2 acceptance
 
 See [Phase 2 completion checkpoint](Phase_2_Completion_Checkpoint.md) for the

@@ -1,5 +1,7 @@
 # MSB Work Management
 
+Current #447 identity correction: [candidate and coordinated release hold](../Acceptance/Identity_Reconciliation_Candidate.md). V1.1.3 source candidate only; no Production deployment.
+
 Phase 2 **V1.1.2-manager-utilities** is installed at `/workorder/`; migrations
 002/003 and scheduled mail are enabled. Last evidenced source is
 `24c0c8e526e032f4a7202a77ed14ab9a30b2459b`. See the
