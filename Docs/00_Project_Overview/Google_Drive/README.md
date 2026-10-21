@@ -28,6 +28,9 @@ Do not use this folder merely because a Stage has no wired inventory. For exampl
 
 ## What Do You Need To Do?
 
+**Need to update a Setup procedure?** Go directly to [Update or Publish a Current Setup Instruction](operatorSOP/Publish_Current_Setup_Instruction.md).
+
+
 - [Run Folder Alignment](../../01_LOR_System/02_Data_Extraction/Folder_Alignment/operatorSOP/Run_Folder_Alignment.md)
 - [Review the Folder Alignment Worklist](../../01_LOR_System/02_Data_Extraction/Folder_Alignment/operatorSOP/Review_Folder_Alignment_Worklist.md)
 - [Repair or organize an existing Stage / Scene](operatorSOP/Repair_Existing_Stage_Scene.md)
@@ -35,7 +38,7 @@ Do not use this folder merely because a Stage has no wired inventory. For exampl
 - [Create a new Stage / Sub-stage / Scene documentation folder](operatorSOP/Create_Stage_Substage_Scene_Folder.md)
 - [Create the `41 Park Infrastructure-PI` non-LOR Procedure folder](operatorSOP/Create_Site_Infrastructure_Procedure_Folder.md)
 - [Align a legacy Setup document to the correct Stage / Scene](operatorSOP/Align_Legacy_Setup_Documents.md)
-- [Publish a current Setup instruction](operatorSOP/Publish_Current_Setup_Instruction.md)
+- [Update or publish a current Setup instruction](operatorSOP/Publish_Current_Setup_Instruction.md)
 - [Create or update a field wiring diagram](../../01_LOR_System/01_Preview_Authoring/D_Create_Wiring_Backgrounds..md)
 
 For the procedure index, see [Google Drive Operator Procedures](operatorSOP/README.md).
