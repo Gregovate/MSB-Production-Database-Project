@@ -678,7 +678,7 @@
       state.actor.runtime_mode = access.runtime_mode || "disposable";
       if (state.actor.runtime_mode === "production") {
         $("preview-tag").textContent =
-          "Work Orders · Production records";
+          "Work Orders V1 · Production records";
         $("review-workbench").querySelector(".section-header p").textContent =
           "Actions save to the authoritative Work Orders database. Managers can review notification outcomes under Email delivery status.";
       } else if (state.actor.runtime_mode === "v1_disposable") {
