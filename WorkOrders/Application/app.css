@@ -454,3 +454,37 @@ html[data-theme="dark"] .review-action-button.primary-action:hover {
 .utilities-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; }
 .utilities-heading h2 { margin:0; }
 #manager-utilities-page summary { cursor:pointer; padding:12px 0; }
+
+/* Keep daily work above the fold. Secondary filters remain keyboard accessible
+   in a native disclosure; header actions stay together in operator order. */
+.head-inner { padding:10px 20px; min-height:68px; gap:12px; }
+.header-buttons { display:flex; flex-wrap:nowrap; align-items:center; gap:8px; }
+.header-right { gap:3px; }
+.screen-logo { width:60px; }
+.identity p { display:none; }
+.app-shell { padding:12px 20px; }
+.page-intro { margin-bottom:8px; }
+.page-intro h2 { font-size:20px; }
+#home-description { display:none; }
+.controls { padding:10px 12px; margin-bottom:10px; }
+.primary-filters { grid-template-columns:minmax(220px,1fr) minmax(240px,2fr); gap:10px; }
+.primary-filters:has(#person-field:not([hidden])) { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.more-filters { margin-top:8px; }
+.more-filters > summary { cursor:pointer; color:var(--button); font-weight:600; padding:9px 0; min-height:44px; }
+.more-filters[open] > .control-filters { margin-top:8px; }
+.control-actions { margin-top:6px; gap:6px 12px; }
+.manager-inbox-banner { padding:7px 12px; margin-bottom:8px; gap:5px 12px; border-width:1px; border-left-width:4px; }
+.manager-inbox-banner p { margin:0; font-size:14px; }
+.inbox-actions { gap:6px; }
+.ticket-column > .section-header { padding:10px 16px; }
+@media (max-width:650px) {
+  .head-inner { padding:8px 12px; flex-wrap:wrap; }
+  .identity { gap:8px; }
+  h1 { font-size:20px; }
+  .header-right { max-width:none; margin-left:auto; }
+  .app-shell { padding:10px 12px; }
+  .primary-filters, .primary-filters:has(#person-field:not([hidden])) { grid-template-columns:minmax(0,1fr); }
+  .inbox-actions { width:auto; }
+  .inbox-actions button { width:auto; }
+  .main-actions { gap:6px; }
+}

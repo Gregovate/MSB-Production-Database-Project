@@ -413,7 +413,21 @@
     }
   }
 
+  // Keep applied secondary filters visible even when the disclosure is closed.
+  function updateFilterSummary() {
+    const selected = (id) => $(id).selectedOptions[0]?.textContent || "";
+    const labels = [];
+    if ($("task-type-filter").value) labels.push(selected("task-type-filter"));
+    if ($("due-filter").value) labels.push(selected("due-filter"));
+    if ($("show-completed").checked) labels.push("Including completed / inactive");
+    if ($("include-planning").checked) labels.push("Including planning");
+    if ($("ticket-sort").value !== "priority") labels.push(selected("ticket-sort"));
+    $("filter-summary").textContent = labels.length
+      ? "Filters & sorting · " + labels.join(" · ") : "Filters & sorting";
+  }
+
   async function loadTickets() {
+    updateFilterSummary();
     const serial = ++state.listFetchId;
     const scope = effectiveScope();
     const aging = scope === "aging";
