@@ -1,4 +1,16 @@
-# MSB Work Management — Phase 1 release preparation
+# MSB Work Management
+
+Phase 2 **V1.1.2-manager-utilities** is installed at `/workorder/`; migrations
+002/003 and scheduled mail are enabled. Last evidenced source is
+`24c0c8e526e032f4a7202a77ed14ab9a30b2459b`. See the
+[current release checkpoint](../Acceptance/Phase_2_Completion_Checkpoint.md)
+and [operator procedures](../../Docs/02_Production_Database/02_Operational_SOPs/Work_Orders/README.md).
+
+The following preparation checkpoints are historical and superseded by those
+release receipts; they do not describe current mail activation.
+
+## Historical preparation checkpoints
+
 
 ## Current Phase 2 checkpoint — October 20, 2026
 

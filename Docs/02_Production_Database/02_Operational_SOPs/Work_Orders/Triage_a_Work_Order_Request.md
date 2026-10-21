@@ -6,48 +6,65 @@
 |---|---|
 | Document Type | Operational SOP |
 | System | Production Database — Work Orders |
-| Task | Review and triage a submitted Work Order Request |
+| Task | Review Public Intake or Setup Task Feedback |
 | Audience | Managers |
 | Status | CURRENT |
 | Owner | Production Database Manager |
-| Last Reviewed | 2026-10-20 |
-| Keywords | work order intake, triage, promote, submitted, disposition |
+| Last Reviewed | 2026-10-21 |
+| Keywords | public intake, task feedback, triage, promote, assign, clarification, reporter reply, disposition |
 
 ## Purpose
 
-Use this procedure to review a human-reported Work Order Intake record, including the public Work Order Request Form and authenticated Setup **Report Correction**, and decide whether it should become an active Work Order or remain an Intake-only correction finding.
+Use Work Management to decide what should happen to a submitted **Public Intake** request or **Task Feedback** correction.
 
-Work Orders created automatically by a Test Session are already active Work Orders and do **not** go through this triage process.
+Test Session repair Work Orders are already active Work Orders and do not use Intake triage.
 
-## Procedure
+## Public Intake
 
-1. Open [Work Orders](https://my.sheboyganlights.org/workorder/) with your Manager account.
-2. Choose **Public Intake** for public requests or **Task Feedback** for Setup corrections.
-3. Read the original finding, notes, reporter and source context before deciding.
-4. If information is missing, record a clarification question on the same item. Phase 2 reporter email is pending; arrange contact directly until delivery is verified.
-5. For actual repair work, choose Promote, review the description, Task Type, Urgency and Stage or Work Area, select assignees and save once. Preserve original Intake evidence.
-6. For a correction that does not need a Work Order, record the appropriate disposition and a substantive reason. Do not delete the original report.
-7. Review the saved result and its activity. Promotion creates linked work; it does not mean the problem has been fixed.
+1. Open [Work Orders](https://my.sheboyganlights.org/workorder/) as a Manager.
+2. Open **Public Intake**.
+3. Select the request and read the original finding, submitted notes, reporter, and location/context.
+4. If information is missing, use the clarification action and ask one specific question.
+5. Review **Email delivery status**. Do not assume the question was delivered merely because it was saved.
+6. The reporter can follow the protected response link and use **Reply to clarification** on the same Intake when eligible.
+7. When actual work is needed, use the Promote/Assign workflow.
+8. Review the proposed Work Order fields, including Task Type, Urgency, location, **Due by**, and assignee(s).
+9. Save once and confirm the linked native Work Order/activity.
 
-**Pending Phase 2:** Manager Create/Promote will require Due by, and clarification/final-outcome email will notify the original reporter. These features are not yet activated.
+## Setup Task Feedback
 
-## Location Rule
+Open **Task Feedback** separately from Public Intake.
 
-A Work Order uses one operational location: **Stage** or **Work Area**, as appropriate to the task.
+A Setup correction does not automatically mean “create a repair Work Order.” Decide whether the finding belongs to:
+
+- Procedure/documentation correction;
+- Kit/material or Setup data correction;
+- GIS/reference correction;
+- another accountable correction; or
+- genuine physical repair/work.
+
+For correction-only work, preserve the original finding and record the responsible outcome/owner. Promote only when a native Work Order is actually needed.
+
+## Reporter Communication
+
+The Phase 2 reporter notification system is live.
+
+- Clarification stays on the same Intake.
+- Reporter replies stay on the same Intake.
+- The accountable owner/question author is notified by the governed mail path when applicable.
+- Final disposition/outcome notification goes to the original reporter when eligible.
+- Missing recipient, failed, queued, or uncertain/in-progress delivery is not successful delivery.
+- Do not create a second Intake to work around a communication problem.
+
+## Disposition
+
+Use the result that describes what actually happened. Promotion to a Work Order is **not** resolution.
+
+Cancellation / No Action, rejected/no-action, deferred, or other final dispositions require a substantive reason. Preserve the original reporter evidence.
 
 ## Expected Result
 
-The original report and decision remain traceable. Promoted work has its own native Work Order identity linked to the Intake. Nonpromoted correction findings retain their reason and follow-up.
-
-## If Something Is Wrong
-
-Leave undecided work pending and ask for the missing information. Do not promote merely to clear the queue, mark it completed without actual work, or delete a report to remove it from view.
-
-## Related Documents
-
-- [Assign a Work Order](Assign_a_Work_Order.md)
-- [Urgency and Target Year Reference](Urgency_and_Target_Year_Reference.md)
-- [Test Session Operational SOPs](../Test_Sessions/README.md)
+The submission remains traceable; actual work becomes a linked native Work Order; correction-only findings keep an accountable disposition; reporter communication remains tied to the same ticket.
 
 ---
 

@@ -1,66 +1,44 @@
 # Work Order email templates
 
-Status: Phase 2 candidate under #419. These files do not activate delivery.
+Status: **PRODUCTION — Work Management V1.1.2-manager-utilities**
 
-Edit the JSON files here using GitHub's file editor. Each file contains
-`subject`, `html` (formatted message), and `text` (plain-text alternative).
-Keep both bodies equivalent. JSON newlines are written as `\n`; quotation marks
-inside HTML attributes are escaped as `\"`. Review changes through the normal PR
-and configuration deployment process; editing GitHub does not change Production.
+These reviewed JSON templates are used by the current Work Management Phase 2 notification system. Editing the repository does not directly change Production; template changes follow the normal reviewed configuration/deployment process.
+
+Each file contains `subject`, `html` (formatted message), and `text` (plain-text alternative). Keep both bodies equivalent.
 
 | File | Purpose |
 | --- | --- |
-| new_request.json | New Intake notice to the existing interim Manager mailing list |
-| task_feedback.json | Setup task feedback notice; selected by SETUP_CORRECTION source, names the original task |
+| new_request.json | New Intake notice to Manager recipients |
+| task_feedback.json | Setup Task Feedback notice with original task context |
 | assignment.json | Assignment notice, including Due by |
 | outcome.json | Original reporter's done/canceled/disposition notice |
 | reporter_reply.json | Reporter answer to the accountable correction owner or question author |
-| more_info.json | Original reporter's clarification question and response link |
+| more_info.json | Original reporter's clarification question and protected response link |
 
 Available placeholders: `$ticket`, `$title`, `$reporter`, `$assignees`, `$due_by`,
-`$task_name`, `$question`, `$outcome`, `$reason`, `$ticket_url`. A literal dollar sign is `$$`.
-No Python, JavaScript, expressions or template includes are executed. Unknown,
-blank or missing values fail validation. Ticket values are HTML-escaped.
+`$task_name`, `$question`, `$outcome`, `$reason`, `$ticket_url`.
 
-Recipients and credentials are not editable in templates. The current Intake
-test mailing list remains active People with `is_manager=true` and an email;
-this flag confers no application rights. Directus owns those rights.
+Recipients and credentials are not editable in templates. The interim Manager Intake mailing list remains active People with `is_manager=true` and an email; that flag grants no application authority. Directus remains the authorization authority.
 
-`outcome` must state the actual business result: cancellation is not completion.
-The sender must supply a validated same-ticket URL; the site home alone is not
-acceptable for final delivery acceptance. Verify original-reporter access to
-that route before enabling reporter mail. Email replies are not ingested.
+A literal dollar sign is `$$`. Unknown, blank, or missing placeholders fail validation; ticket values are HTML-escaped. Only literal placeholders are supported, with no executable template expressions. Email replies are not ingested.
 
-Run `python -m pytest WorkOrders/Application/test_email_templates.py` before
-review. The renderer returns both alternatives, subject and the source digest.
-The candidate worker stores these immutable values with the event/recipient
-delivery record before any attempt. Existing claims are never retried
-automatically. Do not mark SENT from rendering or a database enqueue.
-SMTP_ACCEPTED records relay acceptance, not Inbox delivery.
+Run `python -m pytest WorkOrders/Application/test_email_templates.py` and use `python WorkOrders/Application/preview_email_templates.py --output-dir <review-directory>` for offline fictional previews.
 
-For a formatted preview without a database, credentials, or email delivery:
+`outcome` must state the real business result: cancellation is not completion.
 
-```powershell
-python WorkOrders/Application/preview_email_templates.py --output-dir "$env:TEMP\WO419-mail-preview"
-Start-Process "$env:TEMP\WO419-mail-preview\index.html"
-```
+The sender records immutable rendered content and event/recipient delivery state before attempts. Existing uncertain claims are not blindly retried. **SMTP_ACCEPTED** means the relay accepted the message; it does not by itself prove Inbox delivery.
 
-Edit a JSON template and run the command again to see the result. Examples are
-fictional. The outcome sample deliberately demonstrates cancellation without
-claiming completion. Preview does not install anything or activate the worker.
+## Manager Utility
 
-Production delivery remains OFF. Disposable SQL acceptance, reporter access,
-operator preview approval, governed deployment and the exact two-Flow cutover
-remain release gates. Preserve existing Setup daily report mail and non-mail
-Directus Flows throughout.
+Managers can open **Utilities → Email template previews** to view fictional no-send examples of the current templates. The utility does not send mail and cannot edit templates.
 
-## Manager utility
+## Editing Templates
 
-After this candidate is deployed, Managers open **Utilities** in the header, then
-expand **Email template previews** on the Utilities page. Select Work request, Setup task feedback,
-Assignment, Done / canceled, or More information. The utility shows the subject,
-formatted body and plain-text alternative using fictional examples. It shares
-the offline renderer and cannot send mail or change templates. Existing
-Directus-derived Manager authorization protects the endpoint. Preview HTML is
-sandboxed separately from the application. Source-template editing still uses
-the reviewed files described above; the utility is a viewer.
+1. Edit the appropriate JSON source file through the normal repository workflow.
+2. Keep HTML and plain-text bodies equivalent.
+3. Preserve only the documented placeholders.
+4. Run the template tests before review.
+5. Review the rendered fictional preview.
+6. Deploy the reviewed configuration through the governed Work Management release process.
+
+Do not change recipients, credentials, authorization, or transport behavior by embedding logic in a template.

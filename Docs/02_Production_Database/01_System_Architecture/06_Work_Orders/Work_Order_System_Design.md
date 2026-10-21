@@ -1,5 +1,36 @@
 # Work Order System Design
 
+## 2026-10-21 — documentation verification and Backbone ownership
+
+The executable application, SQL migrations and acceptance sources in PR #438
+match the installed `24c0c8e526e032f4a7202a77ed14ab9a30b2459b` release; the changes
+are documentation only. Source review corrected inaccurate Crew Create claims:
+Create is Manager-only in the installed UI, API and SQL. Reporter replies require
+an authorized original linked Person, an unanswered clarification, and unpromoted
+Intake. Due by is required on Create/Promote/Edit/Set Due by; legacy undated records
+remain completable. Sorting, filters and aging are distinct from creation age.
+
+The October 20 receipts below establish deployment and the first actual delivery.
+No fresh host inspection or all-event Inbox verification was performed during this
+review. Remaining operational evidence is per-event recipient coverage and worker
+observation; source checks do not fill that gap. Search performance remains with
+the separate performance workstream.
+
+GitHub #419 and Server Management #81 were found closed, despite earlier prose
+saying to keep them open. Their closure is not evidence that the remaining
+operational checks or portal publication happened. No milestone is assigned to
+either issue. Record outstanding operational acceptance under #419; do not label
+all Phase 2 acceptance complete solely because the implementation issue closed.
+
+Backbone owns the portal and PR #27. Latest operator direction is **one recolored
+Work Orders button**, removing both old Work Order shortcuts and targeting
+`/workorder/`. This supersedes the historical instruction to retain Testing's
+shortcut; it does not change Testing behavior. Source handoff:
+[Internal Web Backbone handoff](Internal_Web_Backbone_Handoff.md).
+PR #437 owns Setup-procedure discoverability; PR #438 owns these corrected Work
+Order SOPs. Backbone publication and protected live verification are separate.
+
+
 ## 2026-10-20 — #419 Phase 2 Work Orders and email — Production PASS
 
 - Installed application: **V1.1.2-manager-utilities**, source `24c0c8e526e032f4a7202a77ed14ab9a30b2459b`; PR #435 merged as `7f88be7d9a6b476fa60688e775b1e044140f5c28`. Infrastructure: Server Management #81, merged PRs #87 and #88.
@@ -11,7 +42,7 @@
 - Greg confirmed the live application working. Utilities is a separate Manager page for fictional no-send email previews. Source templates remain reviewed editable files; this utility does not edit or send them.
 - Disposable SQL PASS/CLEAN EXIT at `61b73293f32ca9b49f3be863e3d9da89095db7a0`: `/home/msbadmin/setup-acceptance-reports/WO419_Disposable_Browser_Preview_20261020T234604.txt`. Later Utilities change was presentation-only; no repeat database dump was required.
 - Snapshot path/hash and full preservation evidence reside in retained private server journals; their literal values were not supplied in the abbreviated receipt and are not invented here.
-- **Follow-ups, not deployment failures:** Apps tile publication remains outstanding; all-event recipient coverage and longer-running worker observation are not claimed. Greg's 3–4-second typed-search delay is assigned to his separate performance thread; no performance investigation or change is part of this closeout. Keep #419/#81 open for remaining scope. These documentation commits do not change the installed application SHA.
+- **Follow-ups, not deployment failures:** Apps tile publication remains outstanding; all-event recipient coverage and longer-running worker observation are not claimed. Greg's 3–4-second typed-search delay is assigned to his separate performance thread; no performance investigation or change is part of this closeout. Issue-state reconciliation and remaining evidence are recorded above. These documentation commits do not change the installed application SHA.
 
 
 ## Historical preparation record
