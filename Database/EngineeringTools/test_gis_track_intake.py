@@ -336,4 +336,46 @@ class IntakeTests(unittest.TestCase):
                 self.assertFalse(errors)
                 self.assertEqual((source.read_bytes(),master.read_bytes()),before)
 
+
+    def test_review_retains_displayed_recording_after_release_below_rows(self):
+        import tkinter as tk
+        import time
+        from tkinter import ttk
+        from unittest.mock import patch
+        from PIL import Image
+        from gis_track_intake import open_intake
+        def walk(w):
+            yield w
+            for child in w.winfo_children():yield from walk(child)
+        def fake_map(points,width,height,zoom,center=None):
+            x,y=mercator(*(center or points[0]),zoom)
+            return Image.new('RGB',(width,height)),(x-width/2,y-height/2)
+        with tempfile.TemporaryDirectory() as d:
+            folder=Path(d); raw=folder/'Garmin';raw.mkdir()
+            (raw/'first.gpx').write_text(GPX)
+            (raw/'last.gpx').write_text(GPX)
+            master=folder/'master.gpx';master.write_text(GPX)
+            intake=folder/'Intake';intake.mkdir()
+            root=tk.Tk();root.withdraw();self.addCleanup(root.destroy)
+            with patch('gis_track_intake.find_garmin_gpx_dirs',return_value=[]), patch('gis_track_intake.aerial_image',side_effect=fake_map):
+                win=open_intake(root);root.update()
+                entries=[w for w in walk(win) if type(w) is ttk.Entry]
+                for entry,value in zip(entries,[raw,master,intake]):
+                    entry.delete(0,'end');entry.insert(0,str(value))
+                buttons={w.cget('text'):w for w in walk(win) if isinstance(w,ttk.Button)}
+                buttons['Read Garmin tracks (read only)'].invoke();root.update()
+                queue=next(w for w in walk(win) if isinstance(w,tk.Listbox))
+                queue.selection_set(0,1)
+                queue.event_generate('<<ListboxSelect>>');root.update()
+                queue.event_generate('<ButtonRelease-1>',x=10,y=queue.winfo_height()-5);root.update()
+                deadline=time.monotonic()+3
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.02)
+                    if any('2019 MSB aerial' in str(w.cget('text')) for w in walk(win) if isinstance(w,ttk.Label)):break
+                self.assertTrue(any(str(w.cget('text')).startswith('first.gpx —') for w in walk(win) if isinstance(w,ttk.Label)))
+                buttons['Match and name from master'].invoke();root.update()
+                self.assertTrue(any(w.winfo_name()=='run_review' for w in walk(win)))
+                self.assertEqual(queue.curselection(),(0,1))
+                self.assertTrue(any(str(w.cget('text')).startswith('first.gpx —') for w in walk(win) if isinstance(w,ttk.Label)))
+
 if __name__=="__main__":unittest.main()

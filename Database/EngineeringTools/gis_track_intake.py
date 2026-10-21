@@ -655,7 +655,9 @@ def open_intake(parent):
         if state.get("review_window") and state["review_window"].winfo_exists():
             if master_index is not None:state["choose_master"](master_index)
             return
-        active=state.get("active_recording",selected[0])
+        active=state.get("editing_recording")
+        if active not in selected:
+            status.set("Recording selection changed. Select the intended recording again before review.");return
         file,(raw_index,raw_name,raw_points)=state["items"][active]
         review=ttk.Frame(row,name="run_review",width=620);state["review_window"]=review
         review.pack(side="right",fill="y",before=panel);review.pack_propagate(False)
@@ -955,8 +957,13 @@ def open_intake(parent):
     ttk.Button(base,text="Read Garmin tracks (read only)",command=load).pack(anchor="w",pady=4,before=row)
     queue.bind("<<ListboxSelect>>",select)
     def clicked_recording(event):
+        # nearest() clamps clicks below the rows to the final recording.
+        # A release outside a row must never change the working recording.
+        if not (0 <= event.x < queue.winfo_width() and 0 <= event.y < queue.winfo_height()):return
         index=queue.nearest(event.y)
-        if index in queue.curselection():
+        bounds=queue.bbox(index)
+        if bounds is None or not bounds[1] <= event.y < bounds[1]+bounds[3]:return
+        if index in queue.curselection() and index != state.get("editing_recording"):
             state["active_recording"]=index;select()
     queue.bind("<ButtonRelease-1>",clicked_recording)
     def focus_map():
