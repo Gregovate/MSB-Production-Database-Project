@@ -86,3 +86,21 @@ runs stopped before sending. Keep ordinary preview behavior unchanged.
 Installer v3 must pass this gated preview before source promotion and inherit
 the scheduled service's existing approval values, never invent or override
 an OFF approval. Preserve every prior receipt, original units and templates.
+
+## Received digest defect — completed Work Order gate in past assignments
+
+Production v3 recovery PASS: Oct22-ebe1463123504afdab3e353fe2326469.
+Six SMTP accepted receipts, prior uncertain receipt retained. Operator confirms
+received digest. WO-416 was completed October21; prior SQL proves its linked
+Setup gate effectively complete although stored_status remains PLANNED.
+The October22 digest incorrectly lists its October20 assignment because
+summarize checks only work_report_count, not completed linked-gate status.
+
+Exclude completed linked Work Order gates from missing-report/past-assignment
+counts and both text/HTML rows, using the board's authoritative effective_complete
+and linked_work_order_gate fields. Do not rewrite stored status or manufacture
+a Setup report. Preserve incomplete gates and ordinary missing-report audit.
+Regression must reproduce PLANNED + linked gate + effective_complete=true with
+zero Setup reports, and retain incomplete gate and ordinary reporting cases.
+This correction is source-only; deployment remains separate and must preserve
+the repaired SMTP transport, audience guards, original receipts and timer.

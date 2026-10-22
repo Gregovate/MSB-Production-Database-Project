@@ -257,7 +257,10 @@ def summarize(board: dict, today: date) -> dict:
             "captain":str(crew.get("captain_display_name") or "Captain TBD"),
             "id":int(a["setup_work_day_task_id"]),
         }
-        if work_day < today and not int(a.get("work_report_count") or 0):
+        # A completed Work Order satisfies its Setup gate without a second
+        # Setup report; stored execution_status may correctly remain PLANNED.
+        completed_gate = task.get("linked_work_order_gate") and task.get("effective_complete")
+        if work_day < today and not completed_gate and not int(a.get("work_report_count") or 0):
             past.append(row)
         if today <= work_day <= today + timedelta(days=7) and not task.get("effective_complete") and (
             task.get("prerequisites_complete") is False or
