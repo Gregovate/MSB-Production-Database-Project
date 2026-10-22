@@ -1,10 +1,13 @@
 # Work Management #419 — disposable clone and browser review
 
+Current #447 identity correction: [candidate and coordinated release hold](Identity_Reconciliation_Candidate.md). V1.1.3 source candidate only; no Production deployment.
+
 ## Current Phase 2 acceptance
 
 See [Phase 2 completion checkpoint](Phase_2_Completion_Checkpoint.md) for the
-current draft candidate and exact remaining gates. Phase 1 is installed;
-Phase 2 is not. Older dated evidence below must not be applied to newer code.
+installed Phase 2 receipts and exact remaining operational gates. Phase 2
+V1.1.2-manager-utilities and scheduled mail are installed; #447 V1.1.3 is not.
+Older dated evidence below must not be applied to newer code.
 
 
 ## Current release preparation — October 20, V1.0.1-production-route

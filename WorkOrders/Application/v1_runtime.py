@@ -114,12 +114,51 @@ class V1Repository(WorkManagementRepository):
         finally:
             conn.close()
 
+    def reconcile_identity(self, email: str) -> None:
+        """Commit only the authorized shared identity repair before read access.
+
+        The SQL entry wrapper checks current Directus rights before calling the
+        People resolver. Keep normal reads read-only and never grant table DML.
+        """
+        if os.environ.get(WORK_ORDER_RUNTIME_ENV) == "v1_disposable":
+            require_v1_disposable_configuration(writes=True)
+        else:
+            require_v1_production_configuration(writes=True)
+        conn = psycopg2.connect(self.dsn)
+        try:
+            conn.set_session(readonly=False, autocommit=False)
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                require_native_database(cur)
+                cur.execute(
+                    "SELECT person_id FROM ops.work_management_reconcile_actor(%s)",
+                    (email,),
+                )
+                if cur.fetchone() is None:
+                    raise WorkManagementError("Work Order identity could not be resolved.", 403)
+            conn.commit()
+        except psycopg2.Error as exc:
+            conn.rollback()
+            # Preserve fail-closed identity errors without exposing database SQL.
+            if exc.pgcode in {"42501", "23505", "40001"}:
+                raise WorkManagementError(
+                    "Work Order access could not be verified. Contact an MSB administrator.",
+                    403,
+                ) from exc
+            raise
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
     def access(self, email: str) -> dict:
         """Resolve current Directus roles and exact active linked Person.
 
         The native actor repeats the Directus-backed capability lookup used by
         read access. There is no separate Work Management Manager grant.
         """
+        email = email.strip().lower()
+        self.reconcile_identity(email)
         current = super().access(email)
         with self.connect() as conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(

@@ -140,7 +140,7 @@ Person directus_user_id = NULL
 exact-email Directus user = NONE
 ```
 
-Steve is therefore not currently a stale-link reconciliation case.
+At that October 13 snapshot, Steve was not a stale-link reconciliation case.
 
 He requires Directus provisioning before a UUID link can exist.
 
@@ -225,3 +225,17 @@ Governed Production deployment then passed under the Server Management Issue #37
 Durable acceptance evidence:
 
 `People/Acceptance/People_Identity_Reconciliation_Production_Acceptance_2026-10-13.md`
+
+
+## October 21 — Work Orders consumer gap (#447)
+
+The October 13 Steve snapshot is historical: his Google Directus user now exists.
+On October 21 his active Person 26 still had a NULL link. Administrator role
+assignment to Production Crew enabled Setup reads but Work Orders rejected entry.
+Operator called the existing reconciler, confirmed `link_reconciled=true` and
+successful Work Orders entry, then repaired three additional safe unlinked people.
+
+Work Orders omitted the shared reconciliation boundary. Its proposed narrow
+wrapper consumes this helper after current Directus authorization and commits
+before read-only access. See the [Work Order design](../../06_Work_Orders/Work_Order_System_Design.md#october-21--447-authorized-entry-reconciles-existing-human-identity).
+Candidate is not deployed; #395 account provisioning remains a separate gate.

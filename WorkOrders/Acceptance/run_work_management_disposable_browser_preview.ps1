@@ -12,7 +12,7 @@ param(
     [ValidateSet('Manager','Crew')][string]$V1ReviewerRole = 'Manager'
 )
 $ErrorActionPreference = 'Stop'
-$Ref = 'issue-419-phase2-email-due-date'
+$Ref = 'fix/work-orders-identity-reconciliation'
 if (-not $ApprovedReviewProfile) { throw 'HOLD: #419 Server Management review profile not approved.' }
 if ($V1Validation -and $V1Browser) { throw 'HOLD: choose V1 SQL validation OR native V1 browser review, not both.' }
 if ($CandidateSha -cnotmatch '^[a-f0-9]{40}$') { throw 'HOLD: exact 40-hex SHA required.' }
@@ -21,8 +21,15 @@ if ($PreviewEmail -notmatch '^[A-Za-z0-9._%+\-]+@sheboyganlights\.org$') { throw
 if ($Server -ne 'msbadmin@192.168.5.9') { throw 'HOLD: unexpected SSH host.' }
 $Repo = (& git rev-parse --show-toplevel).Trim()
 if ($LASTEXITCODE -ne 0 -or -not $Repo) { throw 'HOLD: MSB repository checkout required.' }
-$Branch = (& git -C $Repo branch --show-current).Trim()
-if ($LASTEXITCODE -ne 0 -or $Branch -ne $Ref) { throw "HOLD: branch $Ref required." }
+# Isolated #447 launcher uses a detached exact-SHA worktree. In Windows
+# PowerShell, an empty native-command result is $null, so never call .Trim()
+# on git branch --show-current without checking the result first.
+$BranchOutput = & git -C $Repo branch --show-current
+if ($LASTEXITCODE -ne 0) { throw 'HOLD: unable to resolve candidate branch.' }
+$Branch = if ($null -eq $BranchOutput) { '' } else { ([string]$BranchOutput).Trim() }
+if ($Branch -ne '' -and $Branch -ne $Ref) {
+    throw "HOLD: expected branch $Ref or detached exact-SHA review, got '$Branch'."
+}
 $Head = (& git -C $Repo rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0 -or $Head -ne $CandidateSha) { throw "HOLD: candidate SHA mismatch: $Head." }
 $Dirty = & git -C $Repo status --porcelain
@@ -52,7 +59,9 @@ try {
     # A resume must prove the exact saved SHA, owner, port, clone, worktree
     # and healthy application before it can reconnect; it never restores
     # a second database or changes the application candidate.
-    $RemotePrefix = ('chmod 700 "{0}"; hash=$(sha256sum "{0}" | cut -d " " -f1); ' +
+    # Bash syntax must survive PowerShell -> ssh -> remote shell quoting.
+    # Avoid cut -d ' ' quoting: sha256sum's 64 leading hex bytes are stable.
+    $RemotePrefix = ('chmod 700 "{0}"; hash=$(sha256sum "{0}"); hash="${{hash:0:64}}"; ' +
         'if [ "$hash" != "{1}" ]; then echo "HOLD: runner digest mismatch"; exit 50; fi; ') -f $Remote, $Hash
     $StartCommand = $RemotePrefix + ((
         'timeout --foreground --signal=TERM 28800s bash "{0}" "{1}" "{2}" "{3}" "{4}" start; ' +

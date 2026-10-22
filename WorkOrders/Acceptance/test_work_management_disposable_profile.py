@@ -19,6 +19,24 @@ CLONE_CHECK = HERE / "validate_work_management_clone.py"
 ENTRY = APP / "preview_entry.py"
 
 
+def test_acl_free_restore_reconstructs_private_identity_helper_before_app_checks():
+    """An ACL-free restore must not turn the shared definer helper PUBLIC."""
+    runner = RUNNER.read_text(encoding="utf-8")
+    grants = GRANTS.read_text(encoding="utf-8")
+    people = (HERE.parents[1] / "People/Database/005_reconcile_directus_person_identity.sql").read_text()
+    revoke = "REVOKE ALL ON FUNCTION ref.reconcile_directus_person_identity(text) FROM PUBLIC;"
+    assert "--no-acl" in runner
+    assert revoke in people and revoke in grants
+    assert grants.index("current_database() = 'msb'") < grants.index(revoke)
+    assert grants.index(revoke) < grants.index("COMMIT;")
+    assert runner.index('cat "$WORKTREE/WorkOrders/Acceptance/wo419_preview_clone_read_grants.sql"') < runner.index('"$WORKTREE/WorkOrders/Acceptance/validate_work_management_clone.py"')
+    validation = (HERE / "wo447_identity_disposable_validation.sql").read_text()
+    for boundary in ("app_ref_person_update", "app_directus_users_update",
+                     "app_shared_reconciler_execute", "app_entry_execute"):
+        assert boundary in validation
+    assert "narrow entry privilege boundary violated" in validation
+
+
 def test_server_runner_bash_parses_without_running():
     if not shutil.which("bash"):
         pytest.skip("Bash is only present on Linux/server or WSL")
@@ -225,7 +243,7 @@ def test_wo419_resume_state_is_valid_private_bash_and_has_no_credentials(tmp_pat
         "set -euo pipefail",
         "STATE_FILE=$1",
         "CANDIDATE_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "CANDIDATE_REF=issue-419-phase2-email-due-date",
+        "CANDIDATE_REF=fix/work-orders-identity-reconciliation",
         "PREVIEW_EMAIL=reviewer@sheboyganlights.org",
         "PREVIEW_PORT=8898",
         "CLONE_CONTAINER=msb-wo419-preview-77",
@@ -277,9 +295,9 @@ def test_wo419_runner_start_resume_argument_gate_before_any_server_actions():
     for args, expected in (
         (["short"], "optional start/resume mode required"),
         (["badsha", "8898", "reviewer@sheboyganlights.org",
-          "issue-419-phase2-email-due-date", "resume"], "exact 40-hex"),
+          "fix/work-orders-identity-reconciliation", "resume"], "exact 40-hex"),
         (["badsha", "8898", "reviewer@sheboyganlights.org",
-          "issue-419-phase2-email-due-date", "resume", "extra"],
+          "fix/work-orders-identity-reconciliation", "resume", "extra"],
          "optional start/resume mode required"),
     ):
         result = subprocess.run(["bash", str(RUNNER), *args],
@@ -424,8 +442,10 @@ def test_v1_acceptance_reuses_original_disposable_runner_and_rolls_back():
     assert 'if [[ "$MODE" == "validate_v1" ]]; then' in shell
     assert 'CREATE ROLE work_management_app NOLOGIN' in shell
     assert 'SET msb.wo419_preview_authorized=' in shell
-    assert 'WorkOrders/Database/001_work_management_v1_governed_commands.sql' in shell
-    assert 'WorkOrders/Acceptance/wo419_v1_disposable_validation.sql' in shell
+    assert 'WorkOrders/Database/001_work_management_v1_governed_commands.sql' not in shell
+    assert 'WorkOrders/Acceptance/wo447_installed_clone_grants.sql' in shell
+    assert 'for validation in wo419_v1_disposable_validation.sql wo419_phase2_disposable_validation.sql' in shell
+    assert 'cat "$WORKTREE/WorkOrders/Acceptance/$validation"' in shell
     assert 'WO419 V1 DISPOSABLE SQL VALIDATION PASS' in shell
     assert shell.index('pg_restore -U') < shell.index('CREATE ROLE work_management_app NOLOGIN')
     assert shell.index('WO419 V1 DISPOSABLE SQL VALIDATION PASS') < shell.index(
@@ -527,3 +547,18 @@ def test_v1_browser_reuses_same_preview_runner_with_native_sql_not_clonecommands
         '--- Start pinned Work Management reviewer'
     )
 
+
+
+def test_current_clone_preserves_sent_history_and_installed_phase2_functions():
+    sql = (HERE / 'wo419_v1_disposable_validation.sql').read_text()
+    assert sql.index('INTO v_sent_before') < sql.index("capture_enabled=false")
+    assert 'v_sent_after IS DISTINCT FROM v_sent_before' in sql
+    assert sql.count("jsonb_agg(to_jsonb(o) ORDER BY o.outbox_id)") == 2
+    grants = (HERE / 'wo447_installed_clone_grants.sql').read_text()
+    assert "current_database()<>'msb_wo419_preview'" in grants
+    assert 'CREATE FUNCTION' not in grants and 'CREATE OR REPLACE' not in grants
+    runner = RUNNER.read_text()
+    assert runner.count('cat "$WORKTREE/WorkOrders/Acceptance/wo447_installed_clone_grants.sql"') == 2
+    for marker in ('BEGIN WO447 RESULT', 'END WO447 RESULT', 'Validation exit:',
+                   'Production fingerprint:', 'Shared checkout:'):
+        assert marker in runner

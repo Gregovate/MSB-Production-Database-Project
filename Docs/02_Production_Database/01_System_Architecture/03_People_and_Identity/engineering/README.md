@@ -4,6 +4,8 @@ This is the engineering starting point for Production Database work involving pe
 
 ## Current Authority
 
+**October 21 reconciliation:** [current onboarding and consumer checkpoint](Directus_User_Onboarding_Identity_Contract_2026-09-09.md#october-21--launch-control-reconciliation) supersedes historical first-login fixtures and release next steps below. Steve's Work Orders access is repaired and confirmed. Don now has an existing Manager identity and was manually linked; he is no longer a missing-account fixture. #395 remains undeployed; draft #403 is not deployment evidence. #447 owns the missing Work Orders consumer call to the existing #385 reconciler.
+
 - [`../README.md`](../README.md) — subsystem overview
 - [`Directus_User_Onboarding_Identity_Contract_2026-09-09.md`](Directus_User_Onboarding_Identity_Contract_2026-09-09.md) — current Production Directus onboarding behavior and People identity lifecycle
 - [`Directus_Person_Identity_Reconciliation_Contract_2026-10-13.md`](Directus_Person_Identity_Reconciliation_Contract_2026-10-13.md) — Issue #385 durable exact-email self-reconciliation contract for recurring Directus↔Person link failures

@@ -33,6 +33,49 @@ def phase(name: str) -> None:
 
 
 
+def check_privileged_reads(repo, access) -> dict | None:
+    """Check existing Manager reads and require Crew denial, without elevation."""
+    if not access["can_manage"]:
+        for name, operation in (
+            ("crew_all_tickets_denied", lambda: repo.tickets(
+                actor=access, scope="all", person_id=None,
+                show_completed=True, search="", limit=100)),
+            ("crew_create_catalogs_denied", lambda: repo.reviewer_options(access)),
+        ):
+            phase(name)
+            try:
+                operation()
+            except WorkManagementError as denied:
+                if denied.status != 403:
+                    raise RuntimeError(f"Unexpected rejection at {name}.") from denied
+            else:
+                raise RuntimeError(f"Crew obtained privileged read at {name}.")
+        print("CHECK: Crew All Work Orders and Create catalogs denied PASS")
+        return
+
+    phase("all_tickets_query")
+    all_rows = repo.tickets(
+        actor=access, scope="all", person_id=None,
+        show_completed=True, search="", limit=100,
+    )
+    print(f"CHECK: authorized All Work Orders read PASS; sampled_rows={len(all_rows)}")
+
+    phase("assignee_selector_query")
+    names = repo.assignees()
+    if any(row["person_id"] < 1 for row in names):
+        raise RuntimeError("Assignee list contains an invalid permanent Person ID.")
+    print(f"CHECK: assignee Person selector PASS; choices={len(names)}")
+
+    phase("direct_create_catalogs")
+    catalogs = repo.reviewer_options(access)
+    if not catalogs["task_types"] or not catalogs["stages"] or not catalogs["work_areas"]:
+        raise RuntimeError("Internal creation requires current Task Type/Stage/Work Area.")
+    print("CHECK: authorized internal Create catalogs PASS")
+    # The subsequent Manager write rehearsal consumes these validated catalogs.
+    return catalogs
+
+
+
 def checked_sha(expected_sha: str) -> None:
     if not HEX40.fullmatch(expected_sha):
         raise ValueError("Expected pinned candidate must be an exact 40-character SHA.")
@@ -92,24 +135,7 @@ def validate(preview_email: str) -> None:
         raise RuntimeError("Default My Work included dated-completed Work Orders.")
     print(f"CHECK: My Work identity/person scope PASS; rows={len(scope)}")
 
-    phase("all_tickets_query")
-    all_rows = repo.tickets(
-        actor=access, scope="all", person_id=None,
-        show_completed=True, search="", limit=100,
-    )
-    print(f"CHECK: authorized All Work Orders read PASS; sampled_rows={len(all_rows)}")
-
-    phase("assignee_selector_query")
-    names = repo.assignees()
-    if any(row["person_id"] < 1 for row in names):
-        raise RuntimeError("Assignee list contains an invalid permanent Person ID.")
-    print(f"CHECK: assignee Person selector PASS; choices={len(names)}")
-
-    phase("direct_create_catalogs")
-    catalogs = repo.reviewer_options(access)
-    if not catalogs["task_types"] or not catalogs["stages"] or not catalogs["work_areas"]:
-        raise RuntimeError("Internal creation requires current Task Type/Stage/Work Area.")
-    print("CHECK: authorized internal Create catalogs PASS")
+    catalogs = check_privileged_reads(repo, access)
 
     if access["can_manage"]:
         phase("manager_aging_all_open_work_orders")
