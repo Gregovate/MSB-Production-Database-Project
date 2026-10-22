@@ -1,5 +1,9 @@
 # Work Order System Design
 
+## Shared email ownership — 2026-10-22
+
+[Email System Integration](../Email_System_Integration.md) links the single Server Management delivery authority, [#97](https://github.com/Gregovate/MSB-Server-Management/issues/97). #419 retains ticket events, recipient eligibility, templates, business history and delivery-status UI; #81 retains Work Management runtime. Current mail source remains in this repository until reviewed consolidation. Earlier transport implementation records remain evidence, not independent ownership of the shared email system.
+
 ## 2026-10-21 — compact landing-page presentation (#419)
 
 Operator reported that the header and controls occupy most of the initial viewport.
