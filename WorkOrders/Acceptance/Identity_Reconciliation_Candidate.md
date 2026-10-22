@@ -10,6 +10,32 @@
 | Migration | 004_work_management_identity_reconciliation.sql |
 | Design | [Work Order System Design](../../Docs/02_Production_Database/01_System_Architecture/06_Work_Orders/Work_Order_System_Design.md#october-21--447-authorized-entry-reconciles-existing-human-identity) |
 
+## October 22 — disposable privilege failure correction
+
+Current main reviewed at `1f2a43a85c798aa32acacec94cb298e6b424c0c1`;
+its concurrent changes are Setup mail recovery only and do not overlap these files.
+PR449 head at review: `66dbeb5996efcbf551b3890d49372a485a8a1447`.
+
+The failed clone was removed and Production fingerprint remained unchanged.
+The four-operand identity privilege assertion remains authoritative; do not weaken
+it or grant the application direct execution of the shared helper.
+
+Source establishes a clone ACL reconstruction defect: the existing restore uses
+`--no-acl`, which omits People005's `REVOKE ALL ... FROM PUBLIC` on
+`ref.reconcile_directus_person_identity(text)`. A restored function consequently
+has PostgreSQL's default PUBLIC EXECUTE. Migration004 restricts its own wrapper,
+but does not reconstruct this restored helper ACL. That makes the helper-execute
+operand true on the clone even though the production contract makes it private.
+The original failed report did not identify its operand; this source finding is
+not a claim that the diagnostic rerun has passed or that Production grants drifted.
+
+Correction uses the existing guarded clone-grant fixture to reinstate the exact
+People005 PUBLIC revocation before any app validation. This is clone-only ACL
+reconstruction, not a new Production permission system or migration change.
+Keep all four privilege checks and their diagnostic DETAIL. Revalidate using the
+existing SQL-only profile before another browser setup. Executable current-clone
+PASS and subsequent Manager/Crew browser acceptance remain required.
+
 ## Confirmed defect and correction
 
 Operator confirmed Steve could enter after the shared reconciler repaired Person
