@@ -577,6 +577,10 @@ BEGIN
 END
 $wo447$;
 WO447_INSTALLED_PHASE2
+    # #447 final release gate: actual Server PR99 transaction, rollback and
+    # committed-object recovery only on this owned clone; baseline restored
+    # before the existing identity installation and functional validation.
+    cat "$WORKTREE/WorkOrders/Acceptance/wo447_release_transaction_rehearsal.sql"
     cat "$WORKTREE/WorkOrders/Database/004_work_management_identity_reconciliation.sql"
   } | psql_clone
   echo "PASS: V1 proposed native schema/functions installed on disposable clone"

@@ -159,3 +159,16 @@ observations remain unconfirmed. No merge or deployment authorized.
 See [the #122 manifest, final gates and rollback plan](Combined_122_Release_Preparation.md).
 Component browser acceptance is complete; combined release tooling and #445 repair
 remain explicit gates. No Production authorization or final integrated SHA claimed.
+
+## Approved release — final transaction rehearsal
+
+Greg approved #447 release October22. Server99 preflight passed at live180841d5
+and shared17c522c4. Approval persists; no repeated permission request for same scope.
+Before merge/execution, existing validate_v1 now runs Server99 d81f0da9's exact
+transaction envelope on its owned clone, proves uncommitted rollback, committed
+installation and clone-only removal of the newly installed entry. It restores
+absence before existing004 installation and identity/V1/Phase2 regression. No
+Production inverse/restore is supplied. This does not rehearse controller entry
+on Production;85 offline tooling tests cover orchestration/containment.
+Application/Database payload remains byte-identical to accepted d72789bf. No
+repeat visual review requested. Retain exact rehearsal SHA/report and CLEAN EXIT.
