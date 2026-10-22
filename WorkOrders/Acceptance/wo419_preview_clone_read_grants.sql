@@ -25,6 +25,13 @@ BEGIN
 END
 $$;
 
+-- #447: --no-acl restore omits People005's PUBLIC revocation. PostgreSQL
+-- otherwise restores this function with default PUBLIC EXECUTE, exposing the
+-- private helper to every newly created clone role. Reconstruct the existing
+-- authority before any app checks; do not weaken the four-part identity gate.
+-- The SECURITY DEFINER entry wrapper still invokes the helper as its owner.
+REVOKE ALL ON FUNCTION ref.reconcile_directus_person_identity(text) FROM PUBLIC;
+
 GRANT USAGE ON SCHEMA ref, ops, stage TO fieldwiring_app;
 
 GRANT SELECT ON

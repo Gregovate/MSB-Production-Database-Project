@@ -19,6 +19,24 @@ CLONE_CHECK = HERE / "validate_work_management_clone.py"
 ENTRY = APP / "preview_entry.py"
 
 
+def test_acl_free_restore_reconstructs_private_identity_helper_before_app_checks():
+    """An ACL-free restore must not turn the shared definer helper PUBLIC."""
+    runner = RUNNER.read_text(encoding="utf-8")
+    grants = GRANTS.read_text(encoding="utf-8")
+    people = (HERE.parents[1] / "People/Database/005_reconcile_directus_person_identity.sql").read_text()
+    revoke = "REVOKE ALL ON FUNCTION ref.reconcile_directus_person_identity(text) FROM PUBLIC;"
+    assert "--no-acl" in runner
+    assert revoke in people and revoke in grants
+    assert grants.index("current_database() = 'msb'") < grants.index(revoke)
+    assert grants.index(revoke) < grants.index("COMMIT;")
+    assert runner.index('cat "$WORKTREE/WorkOrders/Acceptance/wo419_preview_clone_read_grants.sql"') < runner.index('"$WORKTREE/WorkOrders/Acceptance/validate_work_management_clone.py"')
+    validation = (HERE / "wo447_identity_disposable_validation.sql").read_text()
+    for boundary in ("app_ref_person_update", "app_directus_users_update",
+                     "app_shared_reconciler_execute", "app_entry_execute"):
+        assert boundary in validation
+    assert "narrow entry privilege boundary violated" in validation
+
+
 def test_server_runner_bash_parses_without_running():
     if not shutil.which("bash"):
         pytest.skip("Bash is only present on Linux/server or WSL")
