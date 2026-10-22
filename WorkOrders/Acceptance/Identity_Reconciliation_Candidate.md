@@ -133,3 +133,23 @@ instead of replaying001. Existing Phase1 fixture deliberately disables capture i
 its rollback transaction; Phase2 fixture enables it independently. Emit a bounded
 BEGIN/END WO447 RESULT block with candidate, phase results, cleanup/preservation
 status and report. No new runner, sender, role model or Production mutation.
+
+## October 22 — Crew preflight authorization correction
+
+Reviewed current main `395b8e9651f4da0d06bfccaff9be189e00a0541a`.
+Concurrent shared email authority and Setup documentation changes do not alter
+these acceptance files; preserve them at integration. No email behavior changes.
+
+Candidate `8797f32df557ec25f2cf911410467a3da1766901` passed disposable
+identity/V1/Phase2 SQL and Manager automated preview with clean teardown. Crew
+report `WO419_Disposable_Browser_Preview_20261022T155217.txt` proves personal
+identity scope PASS (5 rows), then correct 403 at `all_tickets_query`. The validator
+incorrectly required Manager reads from Crew before the identity suite.
+
+Acceptance must require Manager All Work Orders and Create catalog reads, and
+require 403 for both from Crew. Unexpected success or another error fails. Keep
+existing Crew aging/Create denials and native HTTP identity/refresh checks.
+No role, identity, application or SQL authority changes. New candidate needs
+disposable Crew acceptance; previous receipts remain attached to their exact SHA.
+Production and caller checkout were unchanged; cleanup passed. Browser visual
+observations remain unconfirmed. No merge or deployment authorized.
