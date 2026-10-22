@@ -67,3 +67,22 @@ Installation/recovery requires the Server Management procedure, exact deployed
 hash guard, private backup, preserved templates/env/timer/ledger, no-send
 preflight and runtime receipt. No Production installation or email occurred
 during engineering. Library packages or chat commands are not deployment proof.
+
+## Recovery v3 — approval parity and gated no-send preview
+
+The v2 operator report Oct22-fd5e4f4ed8a14b43a42bcad822087c29 proves the
+reliability sender was installed (SHA256
+889113a72f39aefdfff3391edec2db9f959f0ed41cda0ac5d584e0bb3f880e44).
+Recovery then stopped at the seasonal SMTP approval check before claims or
+SMTP; today's only reported receipt remains UNKNOWN_NO_AUTORETRY.
+This is not successful recovery or proof of tomorrow's delivery.
+
+Add --preview-recovery: execute the same date, seasonal approval, exact approved
+live Manager audience and rendering checks as --recover-unattempted, but return
+before creating any receipt or contacting SMTP. Require the original ledger
+path for both modes. Include recover in enforce_approved_manager_audience;
+the initial recovery implementation omitted it, although all actual recovery
+runs stopped before sending. Keep ordinary preview behavior unchanged.
+Installer v3 must pass this gated preview before source promotion and inherit
+the scheduled service's existing approval values, never invent or override
+an OFF approval. Preserve every prior receipt, original units and templates.
