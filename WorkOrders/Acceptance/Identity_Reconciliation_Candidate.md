@@ -153,3 +153,9 @@ No role, identity, application or SQL authority changes. New candidate needs
 disposable Crew acceptance; previous receipts remain attached to their exact SHA.
 Production and caller checkout were unchanged; cleanup passed. Browser visual
 observations remain unconfirmed. No merge or deployment authorized.
+
+## Combined release preparation
+
+See [the #122 manifest, final gates and rollback plan](Combined_122_Release_Preparation.md).
+Component browser acceptance is complete; combined release tooling and #445 repair
+remain explicit gates. No Production authorization or final integrated SHA claimed.
