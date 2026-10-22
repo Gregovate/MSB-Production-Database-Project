@@ -1,8 +1,12 @@
 # Setup Manager mail disconnect recovery — 2026-10-22
 
+## Shared delivery ownership — 2026-10-22
+
+[Email System Integration](../../Email_System_Integration.md) records Server Management engineering as the single shared delivery owner under [#97](https://github.com/Gregovate/MSB-Server-Management/issues/97). This document owns Setup incident/application evidence; #205 retains report and recipient business rules. Existing source and receipts remain unchanged pending reviewed consolidation.
+
 | Document control | Value |
 | --- | --- |
-| Owner | Setup #205 under #122; Server Management owns installation |
+| Owner | Setup #205 for application evidence; Server Management #97 for shared email delivery |
 | Status | Engineering candidate; not deployed |
 | Verified installed sender SHA256 | 8aaa6b56f5e53e461863a9843af68ca5cc8c163c06b25a6c2693d691e9faf5ad |
 | Verified source | b46ee9a02f8385ddf6c3071ff0374f2618b48a15 |

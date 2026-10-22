@@ -1,5 +1,9 @@
 # #205 Setup Schedule Performance and Daily Manager Accountability — Engineering Contract
 
+## Shared email ownership — 2026-10-22
+
+[Email System Integration](../../Email_System_Integration.md) links the single Server Management delivery authority, [#97](https://github.com/Gregovate/MSB-Server-Management/issues/97). #205 retains Setup digest/report meaning, audience rules and content; #122 coordinates Setup releases. The later Manager SMTP sender and [October22 recovery evidence](Setup_205_Manager_Mail_Recovery_2026-10-22.md) supersede the earlier paused Directus transport proposal as the recorded implementation. Do not revive that proposal or fork another sender. Runtime consolidation is pending; historical business requirements and acceptance remain preserved.
+
 | Document Control | Value |
 |---|---|
 | System | Production Database — Setup / Plan Schedule / Perform Work |
