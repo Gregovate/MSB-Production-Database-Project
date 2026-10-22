@@ -60,3 +60,36 @@ def test_release_rehearsal_pins_actual_server_envelope_and_restores_clone_baseli
     runner = (here / 'work_management_disposable_browser_preview_server.sh').read_text()
     block = runner.split('if [[ "$MODE" == "validate_v1" ]]', 1)[1]
     assert block.index('wo447_release_transaction_rehearsal.sql') < block.index('004_work_management_identity_reconciliation.sql')
+
+
+def test_manager_validate_reaches_writer_with_returned_catalogs(monkeypatch):
+    """Exercise the caller path that formerly lost catalogs across helper scope."""
+    import validate_work_management_clone as validator
+    from contextlib import nullcontext
+
+    class Cursor:
+        def execute(self, sql, *args):
+            self.sql = sql
+        def fetchone(self):
+            if self.sql.startswith('SHOW'): return ('on',)
+            if 'current_database()' in self.sql: return ('msb_wo419_preview', '172.18.0.5')
+            return (0, 0)
+        def fetchall(self):
+            return [('WO-1', 'WORK_ORDER', 'OPEN', None, 'Reviewer')]
+
+    catalogs = {'task_types': [{'id': 2}], 'stages': [{'id': 3}],
+                'work_areas': [{'id': 4}], 'people': [{'person_id': 17}]}
+    cur = Cursor()
+    conn = SimpleNamespace(cursor=lambda: nullcontext(cur))
+    repo = SimpleNamespace(connect=lambda: nullcontext(conn),
+        access=lambda email: {'person_id': 17, 'can_manage': True},
+        tickets=lambda **kwargs: [], assignees=lambda: [{'person_id': 17}],
+        reviewer_options=lambda actor: catalogs, aging_report=lambda **kwargs: [])
+    monkeypatch.setattr(validator, 'WorkManagementRepository', lambda: repo)
+    class WriterReached(Exception): pass
+    def writer():
+        assert validator.CURRENT_PHASE == 'clone_write_transaction_rollback'
+        raise WriterReached()
+    monkeypatch.setattr(validator, 'CloneCommands', writer)
+    with pytest.raises(WriterReached):
+        validator.validate('gliebig@sheboyganlights.org')

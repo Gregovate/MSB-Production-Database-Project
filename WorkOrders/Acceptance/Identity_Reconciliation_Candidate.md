@@ -172,3 +172,11 @@ Production inverse/restore is supplied. This does not rehearse controller entry
 on Production;85 offline tooling tests cover orchestration/containment.
 Application/Database payload remains byte-identical to accepted d72789bf. No
 repeat visual review requested. Retain exact rehearsal SHA/report and CLEAN EXIT.
+
+## Final rehearsal Manager scope correction
+
+Report20261022T213558 proves Manager reads/aging PASS then NameError at
+manager_rehearsal_catalogs. The prior Crew-check extraction made catalogs local
+to check_privileged_reads without returning them to validate. Corrected return
+and caller assignment; regression exercises validate through the write-rehearsal
+boundary. No runtime, migration or release-envelope changes. Approval retained.

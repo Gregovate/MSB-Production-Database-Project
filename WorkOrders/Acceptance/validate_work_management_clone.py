@@ -33,7 +33,7 @@ def phase(name: str) -> None:
 
 
 
-def check_privileged_reads(repo, access) -> None:
+def check_privileged_reads(repo, access) -> dict | None:
     """Check existing Manager reads and require Crew denial, without elevation."""
     if not access["can_manage"]:
         for name, operation in (
@@ -71,6 +71,8 @@ def check_privileged_reads(repo, access) -> None:
     if not catalogs["task_types"] or not catalogs["stages"] or not catalogs["work_areas"]:
         raise RuntimeError("Internal creation requires current Task Type/Stage/Work Area.")
     print("CHECK: authorized internal Create catalogs PASS")
+    # The subsequent Manager write rehearsal consumes these validated catalogs.
+    return catalogs
 
 
 
@@ -133,7 +135,7 @@ def validate(preview_email: str) -> None:
         raise RuntimeError("Default My Work included dated-completed Work Orders.")
     print(f"CHECK: My Work identity/person scope PASS; rows={len(scope)}")
 
-    check_privileged_reads(repo, access)
+    catalogs = check_privileged_reads(repo, access)
 
     if access["can_manage"]:
         phase("manager_aging_all_open_work_orders")
