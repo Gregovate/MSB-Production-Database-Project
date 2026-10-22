@@ -150,3 +150,36 @@ def test_recovery_rejects_other_date_or_missing_authority(monkeypatch,tmp_path,d
         mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,
                   datetime(2026,10,day,10,0,tzinfo=CHI),"recover",None)
     assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_recovery_rejects_changed_audience(monkeypatch,tmp_path,dry_run):
+    enable(monkeypatch)
+    monkeypatch.setenv("MSB_SETUP_MANAGER_PILOT_APPROVED_ROSTER", "other@sheboyganlights.org")
+    monkeypatch.setattr(mail,"deliver",lambda *a:pytest.fail("SMTP called"))
+    with pytest.raises(mail.PilotStop):
+        mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,datetime(2026,10,22,10,tzinfo=CHI),"recover",None,dry_run=dry_run)
+    assert not list(tmp_path.iterdir())
+
+
+def test_recovery_preview_checks_approval_and_never_sends(monkeypatch,tmp_path):
+    enable(monkeypatch)
+    monkeypatch.setattr(mail,"deliver",lambda *a:pytest.fail("SMTP called"))
+    now=datetime(2026,10,22,10,tzinfo=CHI)
+    result=mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,now,"recover",None,dry_run=True)
+    assert result == {"status":"PREVIEW_ONLY","sent":0}
+    assert not list(tmp_path.iterdir())
+    monkeypatch.setenv("SETUP_NOTIFICATION_SMTP_SEND_ENABLED","0")
+    with pytest.raises(mail.PilotStop,match="approval is OFF"):
+        mail.send("fixture",mail.DEFAULT_TEMPLATE,tmp_path,now,"recover",None,dry_run=True)
+    assert not list(tmp_path.iterdir())
+
+
+def test_preview_recovery_cli_uses_full_guards_and_original_ledger(monkeypatch,tmp_path):
+    monkeypatch.setattr(mail,"accepted_setup_dsn",lambda:"fixture")
+    calls=[]
+    monkeypatch.setattr(mail,"send",lambda *args,**kwargs:calls.append((args,kwargs)) or {})
+    assert mail.main(["--preview-recovery"]) == 0
+    assert calls[0][0][4] == "recover" and calls[0][1] == {"dry_run":True}
+    assert mail.main(["--preview-recovery","--ledger",str(tmp_path)]) == 2
+    assert len(calls)==1

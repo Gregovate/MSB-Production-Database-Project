@@ -458,7 +458,7 @@ def enforce_approved_manager_audience(managers: list[dict], roster: list[dict]) 
     # blanket SMTP disqualifiers. No silent privilege changes are performed.
 
 
-def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: str | None) -> dict:
+def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: str | None, *, dry_run: bool = False) -> dict:
     """Every send must pass a second dispatch-time Manager lookup and guards."""
     local = now.astimezone(CHICAGO)
     today = local.date()
@@ -512,7 +512,7 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
     managers = [p for p in roster if p["send_eligible"]]
     if not managers:
         raise PilotStop("No eligible Manager recipients; review People and Setup permissions")
-    if mode in ("live", "today", "daily"):
+    if mode in ("live", "today", "daily", "recover"):
         enforce_approved_manager_audience(managers, roster)
     board = SetupSchedulingBoardRepository(dsn).board(2026)
     report = summarize(board, today)
@@ -541,7 +541,9 @@ def send(dsn: str, path: Path, ledger: Path, now: datetime, mode: str, test_to: 
         subject = "FORMATTED TEST — " + subject
     elif mode == "logo_test":
         subject = "FINAL LOGO TEST — " + subject
-    if mode == "preview":
+    if dry_run and not ledger.is_dir():
+        raise PilotStop("Protected SMTP attempt directory unavailable")
+    if mode == "preview" or dry_run:
         print(json.dumps({
             "mode":"NO_SEND_PREVIEW", "chicago_date":str(today),
             "eligible_managers":[
@@ -657,6 +659,7 @@ def main(argv=None) -> int:
     parser=argparse.ArgumentParser(description="Manager-only single-day 2026 Setup mail pilot")
     mode=parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--preview",action="store_true",help="Read-only, sends nothing")
+    mode.add_argument("--preview-recovery", action="store_true", help="Validate all recovery guards and rendering; no SMTP or receipts")
     mode.add_argument("--live",action="store_true",help="Historic Oct 17 one-day Manager only")
     mode.add_argument("--send-today",action="store_true",help="One immediate Oct 18 Manager digest only")
     mode.add_argument("--recover-unattempted",action="store_true",help="Explicit October 22 recovery; preserve and skip all existing receipts")
@@ -667,17 +670,18 @@ def main(argv=None) -> int:
     parser.add_argument("--template",type=Path,default=DEFAULT_TEMPLATE)
     parser.add_argument("--ledger",type=Path,default=Path("/var/lib/msb-setup-manager-mail-pilot"))
     args=parser.parse_args(argv)
-    if (args.recover_unattempted or args.send_today or args.daily or args.html_test_to or args.logo_test_to) and args.ledger != Path("/var/lib/msb-setup-manager-mail-pilot"):
+    if (args.preview_recovery or args.recover_unattempted or args.send_today or args.daily or args.html_test_to or args.logo_test_to) and args.ledger != Path("/var/lib/msb-setup-manager-mail-pilot"):
         print("STOP: Review must use the same protected Production receipt directory")
         return 2
     try:
         dsn = accepted_setup_dsn()
         result=send(dsn,args.template,args.ledger,chicago_now(),
                     "preview" if args.preview else "today" if args.send_today
-                    else "recover" if args.recover_unattempted else "daily" if args.daily else "logo_test" if args.logo_test_to
+                    else "recover" if (args.preview_recovery or args.recover_unattempted) else "daily" if args.daily else "logo_test" if args.logo_test_to
                     else "html_test" if args.html_test_to
                     else "test" if args.test_to else "live",
-                    args.logo_test_to or args.html_test_to or args.test_to)
+                    args.logo_test_to or args.html_test_to or args.test_to,
+                    dry_run=args.preview_recovery)
         print(json.dumps(result))
     except (PilotStop,ValueError,OSError) as exc:
         print("STOP:",str(exc))
