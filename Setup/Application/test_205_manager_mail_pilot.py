@@ -531,3 +531,17 @@ def test_final_logo_review_cli_cannot_redirect_protected_receipts(monkeypatch,tm
 def test_no_sender_header_from_operator_content():
     assert mail.FROM == "no-reply@sheboyganlights.org"
     assert not hasattr(mail,"captain_email")
+
+
+@pytest.mark.parametrize("gate,complete,expected", [(True,True,0),(True,False,1),(False,True,1)])
+def test_completed_work_order_gate_needs_no_duplicate_setup_report(gate,complete,expected):
+    board=fixture_board()
+    task=board["tasks"][1]
+    task.update(task_name="Replace Light Pole 8 Outlet Box",execution_status="PLANNED",
+                linked_work_order_gate=gate,linked_work_order_id=416,effective_complete=complete)
+    report=mail.summarize(board,date(2026,10,17))
+    report.update(fixture_containers())
+    assert report["missing_report_occurrences"]==expected
+    assert (task["task_name"] in report["overdue_lines"]) == bool(expected)
+    html=mail.render_html(mail.DEFAULT_HTML_TEMPLATE.read_text(),{"display_name":"Fixture"},report)
+    assert (task["task_name"] in html) == bool(expected)
