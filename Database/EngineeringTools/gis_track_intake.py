@@ -22,6 +22,7 @@ from sync_gis_icons import PARK
 from tkinter import ttk, filedialog, messagebox
 import gis_track_reconcile as reconcile
 import gis_network_catalog
+import gis_garmin_downloads as downloads
 
 GPX = "{http://www.topografix.com/GPX/1/1}"
 KINDS = ("Unknown", "High Voltage", "High Voltage 12-2", "High Voltage 12-3",
@@ -570,8 +571,8 @@ def open_intake(parent):
         state.pop("points",None)
         queue.delete(0,"end")
         try:
-            if not Path(master.get()).is_file() or not Path(src.get()).is_dir() or not Path(intake.get()).is_dir():
-                raise ValueError("Select existing Garmin folder, current master and intake directory")
+            if not Path(master.get()).is_file() or not Path(intake.get()).is_dir():
+                raise ValueError("Select current master and intake directory")
             source_root = Path(src.get()).resolve()
             intake_root = Path(intake.get()).resolve()
             if intake_root == source_root or source_root in intake_root.parents:
@@ -587,7 +588,10 @@ def open_intake(parent):
                 raise ValueError("The current master has no waypoint identities")
             state["intake"] = str(intake_root)
             state["digests"] = {}
-            for file in sorted(Path(src.get()).rglob("*")):
+            files = downloads.retained(intake_root)
+            if not files:
+                raise ValueError("No retained recordings yet. Use Download / manage Garmin files first. After downloading, the Garmin can be disconnected.")
+            for file in files:
                 if file.is_file() and file.suffix.lower()==".gpx":
                     digest = source_digest(file)
                     tracks = parse(file)[0]
@@ -695,6 +699,15 @@ def open_intake(parent):
             status.set("Recording selection changed. Select the intended recording again before review.");return
         state["review_selection"]=tuple(selected)
         file,(raw_index,raw_name,raw_points)=state["items"][active]
+        try:
+            if source_digest(file)!=state["digests"][file]:
+                raise ValueError("Recording changed. Read Garmin tracks again before reviewing.")
+            verts=reconcile.recording_vertices(file,raw_index)
+            if len(verts)<2:raise ValueError("Recording has fewer than two points")
+        except (OSError,ValueError,IndexError,ET.ParseError) as error:
+            messagebox.showerror("Recording unavailable",
+                "Cannot open this recording:\n"+str(file)+"\n\nThe retained copy is unavailable. Check the Field-Recordings folder or download this file again. Your completed work remains saved.\n\n"+str(error),parent=win)
+            return
         review=ttk.Frame(row,name="run_review",width=620);state["review_window"]=review
         review.pack(side="right",fill="y",before=panel);review.pack_propagate(False)
         review_scroll=ttk.Scrollbar(review,orient="vertical")
@@ -718,7 +731,6 @@ def open_intake(parent):
         for m in matches:choices.insert("end",m["track"]["name"])
         choices.pack(fill="x",pady=5)
         metadata=tk.Text(frame,height=4,width=35,wrap="word");metadata.pack(fill="x")
-        verts=reconcile.recording_vertices(file,raw_index)
         draft=[dict(v) for v in verts]
         state["raw_preview"]=raw_points
         range_row=ttk.Frame(frame);range_row.pack(fill="x")
@@ -1047,7 +1059,46 @@ def open_intake(parent):
     ttk.Button(review_controls,text="Export GPX for ExpertGPS",command=export_reviewed).pack(side="right")
     ttk.Button(review_controls,text="ExpertGPS Help",command=expertgps_help).pack(side="right",padx=6)
     read_controls=ttk.Frame(base);read_controls.pack(fill="x",pady=4,before=row)
-    ttk.Button(read_controls,text="Read Garmin tracks (read only)",command=load).pack(side="left")
+    def manage_downloads():
+        dialog=tk.Toplevel(win)
+        dialog.title("Download / manage Garmin GPX files")
+        dialog.geometry("1000x600")
+        ttk.Label(dialog,text="Select files to download. Tracks and waypoint files are retained together. Ctrl+click changes the selection.\nExpertGPS-created files are unselected initially. Removal is optional and requires a verified retained copy.").pack(anchor="w",padx=8,pady=8)
+        listing=tk.Listbox(dialog,selectmode="extended",exportselection=False)
+        listing.pack(fill="both",expand=True,padx=8)
+        rows=[]
+        def refresh():
+            try:
+                fresh=downloads.inventory(src.get(),intake.get())
+                rows[:]=fresh
+                listing.delete(0,"end")
+                for i,row in enumerate(rows):
+                    label="Downloaded" if row['downloaded'] else "New / changed"
+                    if row['uploaded']:label+="; ExpertGPS-created"
+                    listing.insert("end",f"{label} | {row['relative']} | {row['tracks']} tracks, {row['waypoints']} waypoints")
+                    if not row['downloaded'] and not row['uploaded']:listing.selection_set(i)
+            except (OSError,ValueError,ET.ParseError) as error:
+                messagebox.showerror("Garmin unavailable",str(error),parent=dialog)
+        def act(remove=False):
+            selected=[rows[i] for i in listing.curselection()]
+            if not selected:return
+            try:
+                if remove:
+                    names="\n".join(row['relative'] for row in selected)
+                    if not messagebox.askyesno("Remove selected device files?",f"Remove these {len(selected)} files from the Garmin? Verified retained copies will remain.\n\n{names}",parent=dialog):return
+                    downloads.remove_verified(src.get(),intake.get(),selected)
+                else:
+                    downloads.download(src.get(),intake.get(),selected)
+                messagebox.showinfo("Files removed" if remove else "Download verified",f"{len(selected)} files {'removed from Garmin' if remove else 'retained and verified'}.\nRetained copies: {downloads.archive(intake.get())}\nYou can disconnect the Garmin and use Read downloaded tracks.",parent=dialog)
+                refresh()
+            except (OSError,ValueError) as error:messagebox.showerror("Operation stopped",str(error),parent=dialog)
+        buttons=ttk.Frame(dialog);buttons.pack(fill="x",padx=8,pady=8)
+        ttk.Button(buttons,text="Refresh device list",command=refresh).pack(side="left")
+        ttk.Button(buttons,text="Download selected",command=act).pack(side="left")
+        ttk.Button(buttons,text="Remove selected from Garmin…",command=lambda:act(True)).pack(side="right")
+        refresh()
+    ttk.Button(read_controls,text="Download / manage Garmin files",command=manage_downloads).pack(side="left")
+    ttk.Button(read_controls,text="Read downloaded tracks",command=load).pack(side="left")
     ttk.Button(read_controls,text="Reload saved master",command=reload_master).pack(side="left",padx=8)
     def close_intake():
         if state.get("review_window") and state["review_window"].winfo_exists():

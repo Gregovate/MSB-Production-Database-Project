@@ -163,6 +163,10 @@ class IntakeTests(unittest.TestCase):
             master=rootdir/'master.gpx'; master.write_text(GPX)
             source=raw/'raw.gpx'; source.write_text(GPX)
             intake=rootdir/'Field-Recordings'; intake.mkdir()
+            from gis_garmin_downloads import download, inventory
+            download(raw,intake,inventory(raw,intake))
+            detached=raw.rename(rootdir/'Disconnected-Garmin')
+            source=detached/'raw.gpx'
             before=(source.read_bytes(), master.read_bytes())
             root=tk.Tk(); root.withdraw()
             self.addCleanup(root.destroy)
@@ -177,7 +181,7 @@ class IntakeTests(unittest.TestCase):
                 for entry,value in zip(entries,[str(raw),str(master),str(intake)]):
                     entry.delete(0,'end'); entry.insert(0,value)
                 buttons={w.cget('text'):w for w in walk(win) if isinstance(w,ttk.Button)}
-                for label in ['Read Garmin tracks (read only)','Save identification only']:
+                for label in ['Read downloaded tracks','Save identification only']:
                     button=buttons[label]
                     self.assertTrue(button.winfo_ismapped(),label)
                     self.assertLessEqual(button.winfo_rooty()+button.winfo_height(),
@@ -193,7 +197,7 @@ class IntakeTests(unittest.TestCase):
                 buttons['Show folders'].invoke(); root.update()
                 self.assertTrue(entries[0].winfo_ismapped())
                 buttons['Hide folders'].invoke(); root.update()
-                buttons['Read Garmin tracks (read only)'].invoke()
+                buttons['Read downloaded tracks'].invoke()
                 deadline=time.monotonic()+3
                 while time.monotonic()<deadline:
                     root.update(); time.sleep(.02)
@@ -253,7 +257,7 @@ class IntakeTests(unittest.TestCase):
                 saved=json.loads(receipt.read_text())
                 self.assertEqual(saved['working_name'],'Operator corrected name')
                 self.assertEqual(saved['master_sha256'],source_digest(master))
-                buttons['Read Garmin tracks (read only)'].invoke();root.update()
+                buttons['Read downloaded tracks'].invoke();root.update()
                 self.assertEqual(entries[-1].get(),'Operator corrected name')
                 self.assertEqual((source.read_bytes(),master.read_bytes()),before)
                 deadline=time.monotonic()+3
@@ -287,7 +291,7 @@ class IntakeTests(unittest.TestCase):
                 import gis_track_reconcile as reconcile
                 self.assertEqual(len(reconcile.decisions(intake,source_digest(master))),1)
                 self.assertEqual(recording_list.size(),0)  # accepted recording leaves pending queue
-                buttons['Read Garmin tracks (read only)'].invoke();root.update()
+                buttons['Read downloaded tracks'].invoke();root.update()
                 self.assertEqual(recording_list.size(),0)
                 next(w for w in walk(win) if isinstance(w,ttk.Checkbutton) and w.cget('text')=='Show processed').invoke();root.update()
                 self.assertEqual(recording_list.size(),1)
@@ -345,6 +349,8 @@ class IntakeTests(unittest.TestCase):
         from unittest.mock import patch
         from PIL import Image
         from gis_track_intake import open_intake
+        retention = patch('gis_track_intake.downloads.retained', side_effect=lambda root: sorted(raw.glob('*.gpx')))
+        retention.start(); self.addCleanup(retention.stop)
         def walk(w):
             yield w
             for child in w.winfo_children():yield from walk(child)
@@ -364,7 +370,7 @@ class IntakeTests(unittest.TestCase):
                 for entry,value in zip(entries,[raw,master,intake]):
                     entry.delete(0,'end');entry.insert(0,str(value))
                 buttons={w.cget('text'):w for w in walk(win) if isinstance(w,ttk.Button)}
-                buttons['Read Garmin tracks (read only)'].invoke();root.update()
+                buttons['Read downloaded tracks'].invoke();root.update()
                 queue=next(w for w in walk(win) if isinstance(w,tk.Listbox))
                 queue.selection_set(0,1)
                 queue.event_generate('<<ListboxSelect>>');root.update()
@@ -388,6 +394,8 @@ class IntakeTests(unittest.TestCase):
         from PIL import Image
         import gis_track_reconcile as reconcile
         from gis_track_intake import open_intake
+        retention = patch('gis_track_intake.downloads.retained', side_effect=lambda root: sorted(raw.glob('*.gpx')))
+        retention.start(); self.addCleanup(retention.stop)
         def walk(w):
             yield w
             for child in w.winfo_children():yield from walk(child)
@@ -414,7 +422,13 @@ class IntakeTests(unittest.TestCase):
                 entries=[w for w in walk(win) if type(w) is ttk.Entry]
                 for entry,value in zip(entries,[raw,master,intake]):
                     entry.delete(0,'end');entry.insert(0,str(value))
-                button('Read Garmin tracks (read only)').invoke();wait_map()
+                button('Read downloaded tracks').invoke();wait_map()
+                source.rename(raw/'temporarily-disconnected.gpx')
+                button('Review as new run').invoke();root.update()
+                self.assertEqual(errors[-1][0],'Recording unavailable')
+                self.assertFalse(any(w.winfo_name()=='run_review' for w in walk(win)))
+                errors.clear()
+                (raw/'temporarily-disconnected.gpx').rename(source)
                 button('Match and name from master').invoke();wait_map()
                 review=next(w for w in walk(win) if w.winfo_name()=='run_review')
                 year=next(w for w in walk(review) if type(w) is ttk.Entry)
