@@ -1069,6 +1069,10 @@ def open_intake(parent):
         rows=[]
         def refresh():
             try:
+                if not src.get().strip() or not Path(src.get()).is_dir():
+                    devices=find_garmin_gpx_dirs()
+                    if len(devices)==1:src.set(str(devices[0]))
+                    else:raise ValueError("Connect the Garmin, then select its GPX folder using Show folders / Browse.")
                 fresh=downloads.inventory(src.get(),intake.get())
                 rows[:]=fresh
                 listing.delete(0,"end")
