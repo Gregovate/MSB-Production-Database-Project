@@ -17,6 +17,8 @@ DECLARE
   v_promoted bigint;
   v_result jsonb;
   v_key uuid;
+  v_sent_before jsonb;
+  v_sent_after jsonb;
   v_persona record;
   v_worecord record;
   v_forbidden boolean := false;
@@ -56,6 +58,12 @@ BEGIN
      v_persona.can_manage IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'WO419 V1 VALIDATION HOLD: Directus Manager identity resolution failed';
   END IF;
+
+  -- Production mail is live: retain historical receipts and test only changes.
+  SELECT coalesce(jsonb_agg(to_jsonb(o) ORDER BY o.outbox_id),'[]'::jsonb)
+    INTO v_sent_before FROM ops.work_management_outbox o WHERE delivery_status='SENT';
+  -- This legacy no-send fixture runs with capture OFF, rolled back below.
+  UPDATE ops.work_management_mail_control SET capture_enabled=false;
 
   -- Actual native Manager Create, idempotency and Priority 3/NULL year.
   v_key := gen_random_uuid();
@@ -282,8 +290,9 @@ BEGIN
                    AND delivery_status='PENDING_CUTOVER') THEN
     RAISE EXCEPTION 'WO419 V1 VALIDATION HOLD: missing durable no-send notification intent';
   END IF;
-  IF EXISTS (SELECT 1 FROM ops.work_management_outbox
-             WHERE delivery_status='SENT') THEN
+  SELECT coalesce(jsonb_agg(to_jsonb(o) ORDER BY o.outbox_id),'[]'::jsonb)
+    INTO v_sent_after FROM ops.work_management_outbox o WHERE delivery_status='SENT';
+  IF v_sent_after IS DISTINCT FROM v_sent_before THEN
     RAISE EXCEPTION 'WO419 V1 VALIDATION HOLD: unsanctioned mail SENT state';
   END IF;
 

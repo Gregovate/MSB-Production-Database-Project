@@ -442,8 +442,10 @@ def test_v1_acceptance_reuses_original_disposable_runner_and_rolls_back():
     assert 'if [[ "$MODE" == "validate_v1" ]]; then' in shell
     assert 'CREATE ROLE work_management_app NOLOGIN' in shell
     assert 'SET msb.wo419_preview_authorized=' in shell
-    assert 'WorkOrders/Database/001_work_management_v1_governed_commands.sql' in shell
-    assert 'WorkOrders/Acceptance/wo419_v1_disposable_validation.sql' in shell
+    assert 'WorkOrders/Database/001_work_management_v1_governed_commands.sql' not in shell
+    assert 'WorkOrders/Acceptance/wo447_installed_clone_grants.sql' in shell
+    assert 'for validation in wo419_v1_disposable_validation.sql wo419_phase2_disposable_validation.sql' in shell
+    assert 'cat "$WORKTREE/WorkOrders/Acceptance/$validation"' in shell
     assert 'WO419 V1 DISPOSABLE SQL VALIDATION PASS' in shell
     assert shell.index('pg_restore -U') < shell.index('CREATE ROLE work_management_app NOLOGIN')
     assert shell.index('WO419 V1 DISPOSABLE SQL VALIDATION PASS') < shell.index(
@@ -545,3 +547,18 @@ def test_v1_browser_reuses_same_preview_runner_with_native_sql_not_clonecommands
         '--- Start pinned Work Management reviewer'
     )
 
+
+
+def test_current_clone_preserves_sent_history_and_installed_phase2_functions():
+    sql = (HERE / 'wo419_v1_disposable_validation.sql').read_text()
+    assert sql.index('INTO v_sent_before') < sql.index("capture_enabled=false")
+    assert 'v_sent_after IS DISTINCT FROM v_sent_before' in sql
+    assert sql.count("jsonb_agg(to_jsonb(o) ORDER BY o.outbox_id)") == 2
+    grants = (HERE / 'wo447_installed_clone_grants.sql').read_text()
+    assert "current_database()<>'msb_wo419_preview'" in grants
+    assert 'CREATE FUNCTION' not in grants and 'CREATE OR REPLACE' not in grants
+    runner = RUNNER.read_text()
+    assert runner.count('cat "$WORKTREE/WorkOrders/Acceptance/wo447_installed_clone_grants.sql"') == 2
+    for marker in ('BEGIN WO447 RESULT', 'END WO447 RESULT', 'Validation exit:',
+                   'Production fingerprint:', 'Shared checkout:'):
+        assert marker in runner

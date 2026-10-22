@@ -58,6 +58,9 @@ PREVIEW_PID=""
 PROD_BEFORE=""
 LIVE_HEAD=""
 CLONE_OWNED=0
+IDENTITY_RESULT="NOT_RUN"
+V1_RESULT="NOT_RUN"
+PHASE2_RESULT="NOT_RUN"
 
 mkdir -p "$REPORT_DIR"
 exec > >(tee "$REPORT") 2>&1
@@ -117,6 +120,8 @@ wo419_verified_listener() {
 
 cleanup() {
   local status=$?
+  local validation_status=$status
+  local production_result="NOT_CHECKED" checkout_result="NOT_CHECKED" cleanup_result="PASS"
   trap - EXIT HUP INT TERM
   set +e
   if [[ "$PRESERVE_FOR_RECONNECT" == 1 ]]; then
@@ -168,7 +173,9 @@ cleanup() {
     sudo docker rm -f "$CLONE_CONTAINER" >/dev/null 2>&1 || true
     if sudo docker container inspect "$CLONE_CONTAINER" >/dev/null 2>&1; then
       echo "HOLD: owned disposable clone still exists after teardown"
-      status=84
+      cleanup_result="FAILED"
+      cleanup_result="FAILED"
+    status=84
     else
       echo "PASS: owned disposable clone removed"
     fi
@@ -179,7 +186,9 @@ cleanup() {
     fi
     if sudo git -C "$REPO_ROOT" worktree list --porcelain 2>/dev/null | grep -Fxq "worktree $WORKTREE"; then
       echo "HOLD: disposable candidate worktree still registered"
-      status=85
+      cleanup_result="FAILED"
+      cleanup_result="FAILED"
+    status=85
     else
       echo "PASS: disposable candidate worktree unregistered"
     fi
@@ -188,6 +197,7 @@ cleanup() {
   rm -f "$STATE_FILE"
   if [[ -e "$STATE_FILE" || -L "$STATE_FILE" ]]; then
     echo "HOLD: private preview resume state remained after teardown"
+    cleanup_result="FAILED"
     status=86
   fi
   if [[ -n "$PROD_BEFORE" ]]; then
@@ -195,8 +205,10 @@ cleanup() {
     after="$(fingerprint 2>/dev/null)"
     if [[ "$after" != "$PROD_BEFORE" ]]; then
       echo "HOLD: production Work Order/Intake fingerprint changed; investigate external writes"
+      production_result="CHANGED"
       status=81
     else
+      production_result="UNCHANGED"
       echo "PASS: Production Work Order/Intake fingerprint unchanged"
     fi
   fi
@@ -205,8 +217,10 @@ cleanup() {
     now="$(sudo git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null)"
     if [[ "$now" != "$LIVE_HEAD" ]]; then
       echo "HOLD: live repository checkout HEAD changed"
+      checkout_result="CHANGED"
       status=82
     else
+      checkout_result="UNCHANGED"
       echo "PASS: shared checkout HEAD unchanged"
     fi
   fi
@@ -214,6 +228,7 @@ cleanup() {
     echo "PASS: preview port no longer listening"
   else
     echo "HOLD: preview listener remains after cleanup; inspect exact PID before retry"
+    cleanup_result="FAILED"
     status=83
   fi
   if [[ "$status" -eq 0 ]]; then
@@ -221,6 +236,18 @@ cleanup() {
   else
     echo "WO419 DISPOSABLE BROWSER REVIEW: HOLD (status $status)"
   fi
+  echo "========== BEGIN WO447 RESULT — COPY THIS BLOCK =========="
+  echo "Candidate: ${CANDIDATE_SHA:-unknown}"
+  echo "Mode: ${MODE:-unknown}"
+  echo "Identity: ${IDENTITY_RESULT:-NOT_RUN}"
+  echo "V1 regression: ${V1_RESULT:-NOT_RUN}"
+  echo "Phase2 regression: ${PHASE2_RESULT:-NOT_RUN}"
+  echo "Validation exit: $validation_status; final exit: $status"
+  echo "Cleanup: $cleanup_result"
+  echo "Production fingerprint: $production_result"
+  echo "Shared checkout: $checkout_result"
+  echo "Report: $REPORT"
+  echo "========== END WO447 RESULT =========="
   echo "Retained report: $REPORT"
   exit "$status"
 }
@@ -531,7 +558,7 @@ if [[ "$MODE" == "validate_v1" ]]; then
   psql_clone -c "CREATE ROLE work_management_mail NOLOGIN;"
   {
     printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
-    cat "$WORKTREE/WorkOrders/Database/001_work_management_v1_governed_commands.sql"
+    cat "$WORKTREE/WorkOrders/Acceptance/wo447_installed_clone_grants.sql"
     # Phase 2 is installed in the Production-derived clone. Do not replay
     # non-idempotent migrations 002/003 or overwrite installed mail policy.
     cat <<'WO447_INSTALLED_PHASE2'
@@ -560,9 +587,21 @@ WO447_INSTALLED_PHASE2
     printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
     printf '%s\n' "SET msb.wo419_v1_reviewer_email='$PREVIEW_EMAIL';"
     cat "$WORKTREE/WorkOrders/Acceptance/wo447_identity_disposable_validation.sql"
-    cat "$WORKTREE/WorkOrders/Acceptance/wo419_v1_disposable_validation.sql"
-    cat "$WORKTREE/WorkOrders/Acceptance/wo419_phase2_disposable_validation.sql"
   } | psql_clone
+  IDENTITY_RESULT="PASS"
+  for validation in wo419_v1_disposable_validation.sql wo419_phase2_disposable_validation.sql; do
+    if [[ "$validation" == wo419_v1_disposable_validation.sql ]]; then V1_RESULT="FAILED"; else PHASE2_RESULT="FAILED"; fi
+    {
+      printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
+      printf '%s\n' "SET msb.wo419_v1_reviewer_email='$PREVIEW_EMAIL';"
+      cat "$WORKTREE/WorkOrders/Acceptance/$validation"
+    } | psql_clone
+    if [[ "$validation" == wo419_v1_disposable_validation.sql ]]; then
+      V1_RESULT="PASS"
+    else
+      PHASE2_RESULT="PASS"
+    fi
+  done
   echo "WO419 V1 DISPOSABLE SQL VALIDATION PASS"
   echo "No browser listener started; clone-only validation transaction rolled back"
   exit 0
@@ -577,7 +616,7 @@ if [[ "$MODE" == "start_v1_manager" || "$MODE" == "start_v1_crew" ]]; then
   psql_clone -c "CREATE ROLE work_management_app LOGIN PASSWORD '$V1_APP_PASSWORD';"
   {
     printf '%s\n' "SET msb.wo419_preview_authorized='approved_disposable_clone';"
-    cat "$WORKTREE/WorkOrders/Database/001_work_management_v1_governed_commands.sql"
+    cat "$WORKTREE/WorkOrders/Acceptance/wo447_installed_clone_grants.sql"
     # Phase 2 is installed in the Production-derived clone. Do not replay
     # non-idempotent migrations 002/003 or overwrite installed mail policy.
     cat <<'WO447_INSTALLED_PHASE2'
@@ -604,6 +643,7 @@ WO447_INSTALLED_PHASE2
     printf '%s\n' "SET msb.wo419_v1_reviewer_email='$PREVIEW_EMAIL';"
     cat "$WORKTREE/WorkOrders/Acceptance/wo447_identity_disposable_validation.sql"
   } | psql_clone
+  IDENTITY_RESULT="PASS"
   # Review actual cloned Directus rights; never elevate the pinned reviewer.
   reviewer_manager="$(psql_clone -qAt -c "SELECT can_manage FROM ops.work_management_v1_actor('$PREVIEW_EMAIL');")"
   expected_manager=f
