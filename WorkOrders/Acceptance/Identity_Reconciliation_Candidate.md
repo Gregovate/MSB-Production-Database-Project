@@ -117,3 +117,19 @@ Server Management #81 upgrade mechanism needs its approved migration manifest
 extended to 004 for the eventual combined release. No deployment tooling or
 Production host changes were made here. Keep #447 open until actual deployment
 and protected first-entry proof, not merely source merge.
+
+## October 22 — confirmed identity PASS; stale mail fixture HOLD
+
+Operator report `WO419_Disposable_Browser_Preview_20261022T144821.txt` at
+4325f095 proves Crew/Manager unlinked repair, audit, idempotence, revocation and
+negative identity cases PASS. Later V1 validation rejected pre-existing SENT mail
+copied from Production. Clone/worktree/listener cleanup and Production fingerprint
+and shared-checkout preservation PASS. This is not full acceptance.
+
+Correction contract: compare complete SENT-row snapshots before/after the rollback
+fixture, rejecting additions, deletion or modification without erasing historical
+mail. Preserve installed Phase2 function definitions: reconstruct only clone ACLs
+instead of replaying001. Existing Phase1 fixture deliberately disables capture in
+its rollback transaction; Phase2 fixture enables it independently. Emit a bounded
+BEGIN/END WO447 RESULT block with candidate, phase results, cleanup/preservation
+status and report. No new runner, sender, role model or Production mutation.
