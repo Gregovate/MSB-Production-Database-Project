@@ -37,6 +37,19 @@ Do not create another device catalog or use site_power_device as asset inventory
 Work Orders continue to own failures/repairs linked to controller_id. Unknown PSU
 models and the reported failures require identified assets; no invented records.
 
+Controllers can also plug into an outlet at either a Power or OUT-Combo waypoint.
+This is independent of network-box installation: ref.site_controller_power_connection
+links an existing controller ID, outlet waypoint and explicitly selected circuit leg.
+No inference from physical placement, waypoint name or two-pole grouping. Multiple
+controllers can use an outlet. A controller has at most one active recorded plug-in
+connection in this candidate; multi-input hardware requires a later explicit input
+model, not ambiguous duplicate connections. Require an active recorded feed path
+from the selected circuit to that waypoint, including intermediate devices. Reject
+retiring/changing that supply while an active controller connection depends on it.
+Moving a connection retires the old row then creates another; retain audit/history.
+Both associations enter the GPX dependency fingerprint. The ordinary Power view
+shows supplying circuits and plugged-in controllers, with no network-box fields.
+
 Reuse site_power_snapshot/site_power_command, Directus authorization, atomic API
 batches and exact-retry handling. Include installation relationships in the GPX
 dependency fingerprint. Existing controller/model tables are deployment dependencies;
