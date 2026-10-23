@@ -6,6 +6,63 @@
 | Owner | #171 / #230, commanding #122; FieldWiring |
 | Reviewed | 2026-10-23 |
 
+## October 23 operator review — one breaker workflow (supersedes generic entry)
+
+Disposition: CHANGES REQUIRED at candidate 99198bbd. Operator confirmed successful
+preview CLEAN EXIT and independent free port/source-lock check. Cleanup is not
+feature acceptance. Screenshots show duplicated circuit entry, silent Save failure,
+no light-mode control, and irrelevant equipment/network detail on the breaker page.
+
+Primary workflow is Panel -> meter -> main or branch -> positions/circuit legs ->
+whole-number amps -> show ON/OFF/UNKNOWN -> feeds per leg -> one Save. Common amp
+suggestions are 15,20,30,40,50,90,100,200; allow other positive whole-number ratings,
+never fractional spinner precision or summed pole ratings. Accept slash or comma
+position separators; hide/ignore branch positions for MAIN. Source/evidence notes
+remain optional in the simple UI with explicit unverified operator-entry provenance;
+verification must not be silently asserted. Validation errors stay visible inside
+the dialog, retain input, focus the error, and never fail as unhandled exceptions.
+Use the existing FieldWiring theme preference and CSS variables, including dialogs.
+
+One atomic backend compound command reuses existing named commands/Directus/audit/
+revision locking and retry identity to save the breaker, its circuit legs and direct
+waypoint feeds. No separate circuit form is required for normal breaker entry.
+Retain permanent circuit IDs on edits; never infer pole membership from GPX names.
+The explicit entered positions provide initial circuit designations; existing
+circuit designations are retained. Each leg selects its actual supplied waypoints;
+A5-18/20 can appear on both legs, with 18 and 20 shown separately. Additional
+waypoints on either leg are supported. Indirect feed paths are retained; their
+correction is separate from replacing the explicitly displayed direct selections.
+Existing unusual/unknown circuit records remain available for reconciliation.
+
+Show/restoration desired states belong to the breaker interaction; historical
+circuit values must be reconciled rather than silently discarded. Meter identity
+remains panel-owned and editable beside the main/supply area, not duplicated on
+each breaker. A panel may have a local main or a reviewed upstream breaker in a
+different defined panel. Record remote supply by breaker ID, including FE-00 from
+Panel 15 only when its actual supplying breaker is selected; do not invent that
+breaker or rating from the example. Reject supply cycles and contradictory active
+local-main/remote-main definitions. Recorded impact includes downstream supplied
+panels, without claiming verified isolation or complete installed topology.
+
+An OUT-Combo waypoint must never have active supplies from different breakers.
+Enforce this across direct and intermediate-device paths and after circuit,
+breaker, feed or equipment corrections, using permanent breaker identities.
+Two circuit legs from the SAME breaker are allowed. Unknown membership is not
+permission to accept competing supplies; unresolved multiple supplies must HOLD.
+Retain contradictory historical evidence without publishing it as an accepted
+active relationship. Database command validation remains authoritative.
+
+Equipment, network switches, PoE supplies, network assignments and conductor
+engineering are waypoint/OUT-Combo detail, not required breaker fields. Keep the
+underlying records and access available in a clearly separate detail area while
+the breaker schedule remains compact. Do not invent new equipment inventory.
+
+Acceptance: simple branch save/edit/retry atomicity, whole-amp validation, slash
+positions and malformed-input message, main hidden positions/meter, upstream panel
+supply and cycle denial, same-breaker two-leg OUT-Combo acceptance, different-breaker
+rejection including indirect paths, retained IDs/history, both themes and mobile.
+One combined candidate/current-Production-clone review remains required.
+
 ## Evidence and integration contract
 
 The operator supplied a complete read-only catalog inventory from `msb`, captured
