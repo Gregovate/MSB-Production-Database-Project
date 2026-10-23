@@ -1,5 +1,39 @@
 # MSB #171 / #319 / #230 — Site-source synchronization implementation contract
 
+## October 22 — recurring-source preview implementation boundary
+
+Current-main reconciliation uses `e3590c264da048bdd8ffb5f368fd3f928e15d71a`
+and preserves both parents of existing #319. Priority 0 is current approved
+ExpertGPS master to maintained PostgreSQL, consumed by FieldWiring. Garmin
+calibration observations are explicitly excluded; preserve 2019 calibration.
+
+The existing extractor must hash the exact bytes it parses and retain symbol,
+marker and extension evidence. Recurring preview must require the incoming SHA,
+accepted baseline SHA, database revision and explicit per-source-row permanent
+identity decisions. Source ordinals identify observations within one SHA only;
+they are never identities across exports. Names/proximity are not authorization.
+Compare each resolved item against its accepted baseline and current maintained
+record. Preserve database-only edits; report divergent edits as conflicts. Renames
+must preview retained aliases and reject collisions. Unmapped, missing and split
+items require review; absence is never an automatic deletion or retirement.
+Track geometry replacement retains source snapshots and permanent track identity;
+physical cable topology/route associations cannot be inferred from that geometry.
+
+This iteration supplies read-only deterministic preview logic in the EXISTING
+source synchronization module. A preview hash binds the complete decision inputs
+and output but is NOT an approval token or a permission to write. Atomic governed
+promotion, saved review UI, current-clone schema inventory and FieldWiring picker
+integration remain required before operational acceptance. Do not expose an apply
+command until those write-path gates are implemented and tested. Existing bootstrap
+must continue refusing changed sources in populated references.
+
+Newest Library filename located during reconnaissance is
+`MSB-Park-Infrastructure-2026-10-19.gpx` (uploaded October 20). That filename and
+upload date do not establish current Shared Drive bytes or operator approval.
+The attached repository text file contains only the GitHub URL. Current master
+fingerprint and live database binding remain unverified; older 236-point snapshots
+must not be promoted as current by default.
+
 ## #171 source-parity dependency for ongoing #319 reconciliation — October 13
 
 The #171 engineering operator has prioritized verification of the same scanned-map raster/calibration on authorized workstations, exact YOGA-GREG ExpertGPS Type/marker/GPS-symbol/reverse-map/PNG synchronization to Office and Show, and disposable GPX icon/extension-preserving round trips BEFORE declaring continuing master GPX sources safe for recurring #319 intake. The Office same-image map correction was operator-accepted, but the reverse Office working-map distribution and icon sync are still unaccepted. Recent network repair surveys and new Garmin tracks make the source continuously changing. Do not treat one-time imported snapshots as authoritative current revisions.
