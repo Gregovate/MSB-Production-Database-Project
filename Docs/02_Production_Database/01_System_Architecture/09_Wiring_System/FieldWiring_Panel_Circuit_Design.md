@@ -86,6 +86,30 @@ meter/upstream-main relationship and waypoint-focused equipment UI are NOT yet
 implemented. Earlier generic forms remain rejected; these fixes alone do not
 satisfy the requested workflow or justify another operator test handoff.
 
+### Compound command and remote-supply implementation contract
+
+The existing `site_power_command` gains `breaker_schedule`, with one request UUID,
+revision, breaker ID (null for new), and fields `breaker`, `legs`,
+`show_desired_state`, `restoration_desired_state`. Each explicit leg contains
+`pole`, `circuit_code`, and `waypoint_ids`. Existing active legs are matched by pole
+and retain IDs; omitted existing legs are rejected, not silently retired. Direct
+feeds removed by the operator are retired; indirect equipment paths are retained.
+The command recursively invokes the same audited named commands under the existing
+revision lock. Deterministic child UUIDs and a final compound receipt provide exact
+retry identity. Every child and receipt rolls back if any validation fails.
+
+Breaker desired states are persisted on the breaker, including mains; the combined
+form explicitly reconciles active leg states to the selected breaker states. When
+changing grouped legacy states, audited UNKNOWN transitions and final states occur
+inside the same transaction and are never externally visible as partial saves.
+Generic legacy circuit editing remains a reconciliation surface, not normal entry.
+
+`site_panel.supply_breaker_id` references the actual upstream breaker. The existing
+panel command edits meter and supply together; active remote supplies require an
+active different panel/breaker, reject cycles and local-main conflicts, and block
+retirement of referenced supplies. Impact walks descendant panels through recorded
+supply breaker identities, retaining the recorded-coverage qualification.
+
 ## Evidence and integration contract
 
 The operator supplied a complete read-only catalog inventory from `msb`, captured
