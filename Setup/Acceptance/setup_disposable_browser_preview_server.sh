@@ -550,10 +550,11 @@ prune_gis_source_cache() {
         echo "CACHE RETENTION SKIP: no exclusive GIS source-cache lock"
         return 0
     fi
-    # Validate BOTH retained files before considering removal of anything.
+    # Validate each selected source before pruning; leave unselected FLW untouched.
     for source_ext in gpx flw; do
         if [[ "$source_ext" == gpx ]]; then expected="$GIS_GPX_SHA"
         else expected="$GIS_FLW_SHA"; fi
+        [[ "$source_ext" == flw && -z "$expected" ]] && continue
         [[ "$expected" =~ ^[a-f0-9]{64}$ ]] || {
             echo "CACHE RETENTION SKIP: unverified $source_ext source identity"
             return 0
@@ -590,6 +591,7 @@ prune_gis_source_cache() {
     for source_ext in gpx flw; do
         if [[ "$source_ext" == gpx ]]; then expected="$GIS_GPX_SHA"
         else expected="$GIS_FLW_SHA"; fi
+        [[ "$source_ext" == flw && -z "$expected" ]] && continue
         for candidate in "$source_cache"/*."$source_ext"; do
             [[ -e "$candidate" ]] || continue
             [[ -f "$candidate" && ! -L "$candidate" ]] || continue
@@ -609,7 +611,7 @@ prune_gis_source_cache() {
             fi
         done
     done
-    echo "CACHE RETENTION PASS: kept current GPX + FLW; removed $removed superseded verified-name cached files ($total_bytes bytes)"
+    echo "CACHE RETENTION PASS: kept selected current sources; removed $removed superseded verified-name cached files ($total_bytes bytes)"
 }
 
 # Content-addressed transport copies are retained only while useful.
@@ -647,7 +649,7 @@ resolve_gis_source() {
 }
 
 if [[ -n "$GIS_GPX_SHA$GIS_FLW_SHA$GIS_ACTOR" ]]; then
-    [[ "$GIS_GPX_SHA" =~ ^[a-f0-9]{64}$ && "$GIS_FLW_SHA" =~ ^[a-f0-9]{64}$ && -n "$GIS_ACTOR" ]] || { echo "FAIL: incomplete GIS source manifest"; exit 16; }
+    [[ "$GIS_GPX_SHA" =~ ^[a-f0-9]{64}$ && ( -z "$GIS_FLW_SHA" || "$GIS_FLW_SHA" =~ ^[a-f0-9]{64}$ ) && -n "$GIS_ACTOR" ]] || { echo "FAIL: incomplete GIS source manifest"; exit 16; }
     [[ " ${MIGRATIONS[*]} " == *" Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql "* && " ${VALIDATIONS[*]} " == *" Database/Acceptance/171_site_infrastructure_disposable_validation.sql "* ]] || { echo "FAIL: GIS schema and validation required"; exit 16; }
     mkdir -p "$HOME/setup-source-cache"
     chmod 700 "$HOME/setup-source-cache"
@@ -659,7 +661,11 @@ if [[ -n "$GIS_GPX_SHA$GIS_FLW_SHA$GIS_ACTOR" ]]; then
     GIS_CACHE_LOCKED=1
     echo "Exclusive GIS source cache lock: acquired"
     GIS_GPX_SOURCE="$(resolve_gis_source "$GIS_GPX_SHA" gpx "$SCRIPT_DIR/source.gpx")"
-    GIS_FLW_SOURCE="$(resolve_gis_source "$GIS_FLW_SHA" flw "$SCRIPT_DIR/source.flw")"
+    GIS_FLW_ARGS=()
+    if [[ -n "$GIS_FLW_SHA" ]]; then
+        GIS_FLW_SOURCE="$(resolve_gis_source "$GIS_FLW_SHA" flw "$SCRIPT_DIR/source.flw")"
+        GIS_FLW_ARGS=(--flw "$GIS_FLW_SOURCE" --flw-sha "$GIS_FLW_SHA")
+    fi
     echo "Verified persistent GIS sources: $GIS_GPX_SHA / $GIS_FLW_SHA"
     sudo "$PYTHON" -c 'import psycopg2'
 fi
@@ -911,8 +917,8 @@ for rel in "${MIGRATIONS[@]}"; do
     fi
 done
 if [[ "$GIS_EDITOR_PREVIEW" == "1" ]]; then
-    [[ -n "$GIS_GPX_SHA" && -n "$GIS_FLW_SHA" ]] || {
-        echo "FAIL: GIS editor browser review requires exact approved GPX + FLW intake on this clone"
+    [[ -n "$GIS_GPX_SHA" ]] || {
+        echo "FAIL: GIS editor browser review requires exact approved GPX intake on this clone"
         exit 20
     }
     echo "--- Provision disposable-only GIS Manager/crew editor review grant ---"
@@ -951,14 +957,14 @@ if [[ -z "$TEST_IP" ]]; then
     exit 21
 fi
 if [[ -n "$GIS_GPX_SHA" ]]; then
-    echo "--- Actual GPX + read-only FLW import, replay, and exports ---"
+    echo "--- Actual GPX and optional read-only FLW import, replay, and exports ---"
     TEST_IP="$(sudo docker inspect "$TEST_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')"
     [[ -n "$TEST_IP" ]] || { echo "FAIL: no disposable container address"; exit 17; }
     sudo env PGHOST="$TEST_IP" PGPORT=5432 PGDATABASE="$TEST_DB" PGUSER="$DB_ACTOR" PGPASSWORD="$TEST_PASSWORD" \
         PYTHONPYCACHEPREFIX="$PYCACHE" "$PYTHON" \
         "$CANDIDATE_WORKTREE/Database/EngineeringTools/accept_site_sources.py" \
-        --gpx "$GIS_GPX_SOURCE" --flw "$GIS_FLW_SOURCE" \
-        --gpx-sha "$GIS_GPX_SHA" --flw-sha "$GIS_FLW_SHA" --actor "$GIS_ACTOR" \
+        --gpx "$GIS_GPX_SOURCE" "${GIS_FLW_ARGS[@]}" \
+        --gpx-sha "$GIS_GPX_SHA" --actor "$GIS_ACTOR" \
         --output "$REPORT_DIR/GIS_Source_Acceptance_${STAMP}"
     GIS_CACHE_ACCEPTED=1
 fi

@@ -59,7 +59,7 @@ def test_corrupt_upload_is_not_published(tmp_path):
 
 
 def _run_retention(tmp_path, *, other_state=False, other_bundle=False, missing_current=False,
-                   corrupted_current=False, no_lock=False):
+                   corrupted_current=False, no_lock=False, gpx_only=False):
     """Run the checked-in bash retention helper in isolated temp directories."""
     import os
     cache = tmp_path / 'cache'
@@ -100,7 +100,7 @@ def _run_retention(tmp_path, *, other_state=False, other_bundle=False, missing_c
     script = 'set -euo pipefail\n'
     script += 'GIS_CACHE_LOCKED=' + ('0' if no_lock else '1') + '\n'
     script += 'GIS_GPX_SHA=' + known['gpx']['sha'] + '\n'
-    script += 'GIS_FLW_SHA=' + known['flw']['sha'] + '\n'
+    script += 'GIS_FLW_SHA=' + ('' if gpx_only else known['flw']['sha']) + '\n'
     script += 'STATE_FILE=' + shlex.quote(str(state)) + '\n'
     script += 'SCRIPT_DIR=' + shlex.quote(str(preview_root / 'current-bundle')) + '\n'
     script += 'prune_gis_source_cache() {' + function + '\n}\n'
@@ -154,3 +154,13 @@ def test_runner_prunes_only_after_clean_browser_review_and_accepted_source():
     assert 'GIS_CACHE_ACCEPTED=1' in source
     assert source.index('accept_site_sources.py') < source.index('GIS_CACHE_ACCEPTED=1')
     assert 'SETUP_BROWSER_PREVIEW_TRANSPORT_LOST' in source
+
+
+def test_gpx_only_retention_never_removes_flw_cache(tmp_path):
+    result, files, unrelated = _run_retention(tmp_path, gpx_only=True)
+    assert result.returncode == 0, result.stderr
+    assert 'CACHE RETENTION PASS' in result.stdout
+    assert not files['gpx']['old'].exists()
+    assert files['gpx']['cur'].exists()
+    assert files['flw']['old'].exists() and files['flw']['cur'].exists()
+    assert unrelated.exists()

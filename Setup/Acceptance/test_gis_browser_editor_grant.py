@@ -14,7 +14,7 @@ def test_manager_editor_grant_is_disposable_and_guarded_by_real_source_intake():
     end = text.index('TEST_IP=', start)
     block = text[start:end]
     assert 'if [[ "$GIS_EDITOR_PREVIEW" == "1" ]]' in block
-    assert '[[ -n "$GIS_GPX_SHA" && -n "$GIS_FLW_SHA" ]]' in block
+    assert '[[ -n "$GIS_GPX_SHA" ]]' in block
     assert '171_site_reference_operations_candidate.sql' in block
     assert 'MANAGE_OK=' in text[:start]
     assert 'psql_test -v preview_email="$PREVIEW_EMAIL" <<\'SQL\'' in block

@@ -17,13 +17,17 @@ def require(condition, message):
 def main():
     from site_db_connection import connect
     p = argparse.ArgumentParser(__doc__)
-    for name in ('gpx', 'flw', 'output'):
+    for name in ('gpx', 'output'):
         p.add_argument('--' + name, type=Path, required=True)
-    for name in ('gpx-sha', 'flw-sha', 'actor'):
+    for name in ('gpx-sha', 'actor'):
         p.add_argument('--' + name, required=True)
+    p.add_argument('--flw', type=Path)
+    p.add_argument('--flw-sha')
     args = p.parse_args()
+    require(bool(args.flw) == bool(args.flw_sha), 'FLW path and hash must be supplied together')
     require(sha256(args.gpx) == args.gpx_sha, 'GPX hash mismatch')
-    require(sha256(args.flw) == args.flw_sha, 'FLW hash mismatch')
+    if args.flw:
+        require(sha256(args.flw) == args.flw_sha, 'FLW hash mismatch')
     baseline = extract_gpx(args.gpx)
     args.output.mkdir(parents=True, exist_ok=False)
     with connect('') as conn:
@@ -32,20 +36,22 @@ def main():
         accepted = bootstrap_expertgps(conn, args.gpx, args.actor, args.gpx_sha)
         replay = bootstrap_expertgps(conn, args.gpx, args.actor, args.gpx_sha)
         require(replay['status'] == 'ALREADY_ACCEPTED', 'GPX replay failed')
-        first = ingest_linkiq(conn, args.flw, args.actor)
-        with conn.cursor() as cur:
-            cur.execute('SELECT test_uuid::text, original_result, physical_site_cable_id FROM ops.linkiq_test ORDER BY test_uuid')
-            before = cur.fetchall()
-        second = ingest_linkiq(conn, args.flw, args.actor)
-        require(second['counts']['new_tests'] == 0 and second['counts']['new_appearances'] == 0,
-                'FLW replay duplicated evidence')
-        with conn.cursor() as cur:
-            cur.execute('SELECT test_uuid::text, original_result, physical_site_cable_id FROM ops.linkiq_test ORDER BY test_uuid')
-            require(cur.fetchall() == before, 'Replay changed original evidence or cable identities')
-            cur.execute('SELECT count(*) FROM ops.linkiq_test_appearance WHERE source_sha256=%s', (args.flw_sha,))
-            require(cur.fetchone()[0] == first['source_rows'], 'Source appearances lost')
-            cur.execute('SELECT count(*) FROM ops.linkiq_intake_review WHERE source_sha256=%s', (args.flw_sha,))
-            require(cur.fetchone()[0] == first['unique_uuid_tests'], 'Reconciliation proposal missing')
+        first = second = {'status': 'NOT_REQUESTED', 'counts': {}}
+        if args.flw:
+            first = ingest_linkiq(conn, args.flw, args.actor)
+            with conn.cursor() as cur:
+                cur.execute('SELECT test_uuid::text, original_result, physical_site_cable_id FROM ops.linkiq_test ORDER BY test_uuid')
+                before = cur.fetchall()
+            second = ingest_linkiq(conn, args.flw, args.actor)
+            require(second['counts']['new_tests'] == 0 and second['counts']['new_appearances'] == 0,
+                    'FLW replay duplicated evidence')
+            with conn.cursor() as cur:
+                cur.execute('SELECT test_uuid::text, original_result, physical_site_cable_id FROM ops.linkiq_test ORDER BY test_uuid')
+                require(cur.fetchall() == before, 'Replay changed original evidence or cable identities')
+                cur.execute('SELECT count(*) FROM ops.linkiq_test_appearance WHERE source_sha256=%s', (args.flw_sha,))
+                require(cur.fetchone()[0] == first['source_rows'], 'Source appearances lost')
+                cur.execute('SELECT count(*) FROM ops.linkiq_intake_review WHERE source_sha256=%s', (args.flw_sha,))
+                require(cur.fetchone()[0] == first['unique_uuid_tests'], 'Reconciliation proposal missing')
         dataset = export_map_projection(conn)
         for kind, source_key in [('waypoint', 'waypoints'), ('source_track', 'tracks')]:
             require(sum(f['properties']['kind'] == kind for f in dataset['features']) == len(baseline[source_key]),
@@ -57,7 +63,8 @@ def main():
                       map_revision=dataset['revision'])
         (args.output / 'acceptance.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
         (args.output / 'map.geojson').write_text(json.dumps(dataset), encoding='utf-8')
-    require(sha256(args.gpx) == args.gpx_sha and sha256(args.flw) == args.flw_sha,
+    require(sha256(args.gpx) == args.gpx_sha and
+            (not args.flw or sha256(args.flw) == args.flw_sha),
             'Original source bytes changed')
     print(json.dumps(dict(gpx=accepted, first_import=first['counts'], replay=second['counts'])))
     print(f'GIS_SOURCE_ACCEPTANCE_PASS: {args.output}')
