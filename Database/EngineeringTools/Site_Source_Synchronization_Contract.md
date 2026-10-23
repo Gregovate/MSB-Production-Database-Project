@@ -1,5 +1,55 @@
 # MSB #171 / #319 / #230 — Site-source synchronization implementation contract
 
+## October 23 — PC intake ownership and dependency capture contract
+
+The existing GIS Manager PC application (#378) owns two operator workflows:
+Master GPX reference intake and read-only LinkIQ FLW operational test intake.
+#319 retains schema, backend synchronization, shared contracts and integrated
+acceptance under #122/#171/#230. No second importer, reference store or test
+store is authorized. PC UI implementation does not independently authorize
+Production writes; Directus remains identity/role authority.
+
+The operator-reconciled GPX–FLW associations are protected baseline evidence.
+A rename must retain permanent waypoint IDs, reviewed cable/test associations,
+original tester names and dated retests. Never reconstruct reviewed associations
+by matching the latest strings. Test content changes under an existing UUID
+require evidence review; another test date/UUID is additional history.
+
+Next backend increment: a read-only dependency capture in existing
+`site_source_db.py`, taking explicit waypoint/track IDs, reads all known GIS,
+power and LinkIQ relationship tables plus both reference revision counters in
+one SQL statement/MVCC snapshot. Its digest includes all captured rows, revisions
+and FK definitions so inserts, removals, rebindings and manual edits which bypass
+a revision counter still invalidate the captured evidence. No row lock, mutation,
+new service or migration is needed for this report.
+
+Dependency traversal follows actual declared FK values within the bounded GIS/
+power/LinkIQ inventory, in both directions, to produce a conservative related
+component. This can include sibling circuits on a panel or cables on a shared
+network. It is a review scope, not electrical reachability, verified topology or
+proof of isolation. Report relationship paths and original rows, including
+inactive/history records. No edge is inferred from names, coordinates, GPX
+appearance or a shared test label. A source track without an explicit route
+binding has no inferred cable/test relationship.
+
+Missing requested identities or unrecognized incoming FK consumers cause HOLD.
+The known inventory must be visible and deterministic. Missing relations or read
+permission failures raise an error, never an empty-impact report. FK discovery
+cannot establish completeness for JSON/name references, picker caches, external
+consumers or action prerequisite arrays: report those coverage gaps explicitly
+and keep promotion_ready=false. This is dependency evidence, not approval.
+Approval/apply must ultimately recapture and compare this digest inside its
+serialized transaction, alongside source/baseline/decisions and authorization.
+The report's freshness check alone cannot authorize or make a write race-safe.
+
+Acceptance for this increment: retained waypoint/cable/test identities across
+rename; two circuits at one waypoint and a shared breaker both visible; different
+dated tests retained; raw unbound tracks do not gain topology; missing IDs and
+unknown FK consumers HOLD; changed binding/evidence/revision invalidates digest;
+unchanged capture is deterministic. Run existing ephemeral PostGIS acceptance
+for real query execution. Persisted review/apply, non-FK consumer coverage and
+current-Production-clone/operator validation remain required release gates.
+
 ## October 23 — operator-controlled living-master snapshot intake
 
 Greg controls the source and timing of each intake from the Shared Drive master.
