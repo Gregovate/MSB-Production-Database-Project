@@ -1262,3 +1262,128 @@ The second cable-vs-reviewed-GPX-route validation and visible map exception
 workflow remain unimplemented. Acceptance needs mismatched endpoint, broken
 route, missing association, parallel cables, and later changed test evidence.
 
+
+## October 23 — #378 PC intake consumer contract (integration specification)
+
+Owner: #378 PC interaction, under #122; #319 owns schema, migration, capture/
+comparison/reconciliation backend and integrated acceptance. Coordinate #171
+workstation/source controls, #230 reference maintenance and #428 track history.
+This section defines required consumer behavior, not implemented HTTP endpoints.
+Inspected #378 head 3b58fbf936536cc38da57f05651adca1ff6dab2d and #319 head
+fcdc7e53b9d2aa30cad8b52ba4e505ce3f26063a against main
+e3590c264da048bdd8ffb5f368fd3f928e15d71a. No independent deployment.
+
+### Two operator entry points in the existing GIS Manager
+
+**Master GPX reference intake:** Select revision -> Capture -> explicitly Compare
+-> Review changes and dependencies -> Resolve/defer -> Review final summary ->
+explicitly Approve/Finish -> show durable result. Selection alone never imports
+or approves. Display accepted source, captured incoming source and maintained
+database revision together. Backend supplies three-way categories/counts, exact
+old/new field values, permanent identities, aliases/conflicts and impacts.
+Missing features remain retained pending explicit reviewed disposition.
+Show map labels separately from GPS names; preserve source styles/extensions
+and #428 original/current/proposed geometry and source-point lineage.
+Changing the selected file starts a new capture, never replaces an open review.
+
+**LinkIQ FLW operational intake:** Select read-only source -> Capture -> explicitly
+Compare evidence -> inspect new/changed/unchanged appearances and dated retests
+-> review associations to existing reference/cable identities -> explicit
+approval of supported evidence/association actions -> show durable result.
+Test UUID identifies test evidence, not cable identity. Show each original
+tester result/time separately from corrected display name, source appearance/
+project and current reviewed association. Same-name later tests remain separate
+dated evidence; duplicate project appearances of a UUID are not new cables.
+Changed original payload for an existing UUID is a backend conflict to review,
+never an overwrite. Deleted source appearances do not erase historical evidence.
+No FLW writeback, guessed cable creation, automatic endpoint association,
+reference geometry change or latest-result overwrite is an intake side effect.
+
+### Required backend boundary; wire names/routes require #319 implementation
+
+Use the existing protected application/API and Directus authority. Do not create
+a desktop role store, database connection, embedded service credential, trusted
+actor-email header or new import service. The existing read-only network-catalog
+SSH helper is not authority for writes. #319 must define the supported desktop
+authentication/session handoff and CSRF behavior before network mutation wiring.
+A logged-in Windows account or successful source capture never confers approval.
+
+The following are semantic operations, not invented live route paths:
+
+| Operation | PC supplies | Backend returns/owns |
+| --- | --- | --- |
+| Capture selected source | Kind GPX/FLW, immutable byte stream and source metadata | Source identity/hash/size, capture receipt/time, verification status |
+| Open comparison | Captured source identity; explicit operator request | Accepted baseline, coherent maintained revision, persisted review identity/revision and existing comparator output |
+| Read review | Review identity; paging/filter cursor | Complete counts, stable item identities, before/after/evidence, conflicts, dependency completeness and affected identities |
+| Record decision | Review/item identity, expected review revision, supported action and evidence | Validated saved decision, new revision, remaining conflicts and invalidated approval |
+| Request final summary | Review identity and expected revision | Frozen decisions/preview hash, source/baseline/database bindings, impact completeness, server permissions and blockers |
+| Approve/Finish | Explicit confirmation of exact returned bindings/hash and idempotency identity | Transactional result/receipt or stale/denied/blocked response; no client-side apply |
+| Reopen/status/cancel/defer | Existing review/operation identity and expected revision as required | Durable status/history; no maintained-reference change for cancel/defer |
+
+The server owns accepted-baseline selection; latest upload/stage is not a
+baseline. Capture must verify bytes and reject unstable/inconsistent reads.
+Reuse existing #319 preservation/parser/source-ledger implementation; do not
+copy parsers or compare logic into #378. Large FLW transfer must use the existing
+approved transport with visible progress/cancel and content-addressed reuse;
+do not upload unchanged large files repeatedly or invent a second cache service.
+
+Minimum review envelope: source kind and immutable identity/hash, accepted
+baseline identity/hash (or explicit initial-intake status), maintained revision,
+review identity/revision, preview hash, comparison schema version, current
+permissions, counts, paginated items, conflicts, dependency status/impacts,
+allowed decisions, blocking reasons and durable result/status when applicable.
+Backend field names and serialization must be published/tested by #319 before
+the adapter is connected; these names describe semantics rather than a new
+schema. A missing/null dependency result displays **Not evaluated**, never zero.
+Zero impact is only valid when the backend explicitly reports analysis complete.
+Paging/filtering must not hide unresolved items from the final approval gate.
+
+### Desktop state and failure behavior
+
+States: No source selected; Capturing; Captured; Comparing; Review required;
+Blocked; Ready for explicit approval; Applying; Result verified; Deferred;
+Cancelled; Unavailable. Status wording must distinguish staged evidence, accepted
+source, applied maintained change and consumer validation; never call capture
+or bootstrap completion recurring synchronization acceptance.
+
+Disable Finish unless backend capability exists, authentication is current,
+all decision/source/baseline/database bindings are current, required conflicts
+are resolved, dependency analysis is complete and server says approval allowed.
+Changing decisions, selected capture, baseline or maintained revision invalidates
+the displayed approval. Server repeats every guard transactionally. On stale
+response retain operator work for review and require fresh comparison; never
+resubmit changed data automatically. On timeout after Finish display outcome
+unknown and query the same operation identity; no new blind apply request.
+Offline/cached views are labelled historical/read-only and cannot queue edits.
+Reconnection requires fresh authentication and review state, not cached grants.
+Cancel does not erase source evidence, audit or completed transactions.
+
+Preserve existing symbol-library distribution, host-specific shared-drive paths,
+ExpertGPS profile/type/reverse mapping, approved 2019 aerial/calibration,
+Garmin observations, per-PC backups and saved track drafts. Intake is a new
+workflow inside the same Manager, not permission to repair workstation settings
+or overwrite the shared master. Existing two-local-file GPX comparison is only
+a local inspection utility; its name-based diff cannot populate this review or
+be treated as accepted source/database reconciliation.
+
+### Single integrated acceptance and current blockers
+
+Use the #319 integrated GIS/circuit/FieldWiring candidate and existing single
+disposable clone/review path. No independent #378 Production release.
+Acceptance must include: source edited after capture; server baseline differing
+from latest upload; database change after comparison; unknown dependency
+analysis; rename/alias ambiguity; missing feature retention; track replacement
+with history; same-name dated FLW retests; repeated UUID/project appearances;
+changed payload conflicts; corrected display name with original result intact;
+association correction with prior binding; authorization revocation; offline
+denial; timeout/status recovery; both PC workflows reopening durable reviews.
+Verify affected map/picker/circuit/FieldWiring identities after approval and
+preserve the existing workstation controls in regression.
+
+Current #319 API offers reference snapshot and named maintenance commands,
+not the lifecycle above. Current comparator returns no-write/not-ready output.
+Persisted capture/review/decision/apply APIs, dependency analysis, desktop
+authenticated transport and integrated Windows/operator acceptance therefore
+remain OPEN. No endpoint, approval or release capability is claimed by this
+specification. #378 UI implementation must consume the agreed #319 contract;
+do not work around missing backend capabilities with local reconciliation.
