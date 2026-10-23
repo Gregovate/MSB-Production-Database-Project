@@ -4,7 +4,7 @@
 |---|---|
 | Status | Implementation candidate; not deployed or operator accepted |
 | Owner | #171 / #230, commanding #122; FieldWiring |
-| Reviewed | 2026-10-22 |
+| Reviewed | 2026-10-23 |
 
 ## Evidence and integration contract
 
@@ -41,6 +41,103 @@ waypoint relationships are derived only by traversing these recorded edges.
 Networks remain independent many-to-many waypoint relationships. Multi-select
 circuit assignment edits direct edges; intermediate paths remain visible and are
 corrected in the feed editor. Retire relationships rather than deleting history.
+
+## Breaker grouping and shared-neutral design — October 23
+
+**DRAFT extension; SQL/API/UI implementation and acceptance remain pending.**
+The current candidate's circuit-level `poles`, `breaker_rating_amps` and
+free-text `ganged_device` do not implement this model. Do not call that candidate
+ready for installation on the strength of its earlier tests.
+
+Greg requires one combined GIS/circuit database release. Retain the existing
+#319 foundation and #454 identities, commands, audit and UI; extend them within
+the ordered migration set, with one exact-candidate disposable acceptance and
+one approved Production maintenance window. No separate electrical map store.
+
+### Records and ownership
+
+| Record | Required meaning and relationships |
+|---|---|
+| Panel | Existing permanent panel ID; geographic location is optional. |
+| Breaker | New permanent breaker ID, parent panel ID, observed designation, rated amperes, pole count, evidence and verification. Unknown ratings/pole counts remain null. |
+| Breaker pole | Explicit pole position within its breaker; panel slot designation is independent text, not an inferred ID. |
+| Circuit membership | A retained, evidence-backed association between an existing circuit ID and a breaker pole. Each active circuit has at most one supplying pole in this model. Multiple circuits on a pole or alternative supplies require explicit engineering reconciliation, not silent acceptance. |
+| Receptacle | Reuse the existing power-device identity, with an OUTLET device per independently supplied receptacle and a readable position within the waypoint's box. A quad box may therefore contain two devices at one waypoint. Do not assume each socket is independently supplied. |
+| Feed | Existing circuit/device feed edges remain the source of recorded connectivity. A waypoint-only feed is allowed when the particular receptacle is unknown; it must not imply all receptacles are supplied. |
+| Cable and conductors | Extend the existing physical site-cable identity with recorded cable specification and conductor identities/roles. Circuit-to-conductor membership records hot and neutral usage; a neutral shared by two circuits is one conductor with two memberships. Keep unknown conductor details null. GIS track geometry is optional evidence, never proof of connectivity. |
+
+Breaker ratings have one authoritative value on the breaker. Pole/circuit
+projections display that rating without adding poles together. Retire the
+uninstalled draft's competing circuit-owned breaker rating/pole fields when
+implementing the extension; preserve any encountered candidate evidence through
+an explicit migration mapping, never guess groups from equal ratings or names.
+A circuit-specific rating field, if retained, must have a separately defined
+meaning and cannot silently compete with the protective-device rating.
+
+Breaker membership, feed edges and conductor membership retain evidence,
+verification, before/after audit and retirement history. Shared-neutral membership
+is scoped to physical cable/conductor segments: it is not a boolean applying to
+every downstream cable of both circuits. Changing a breaker or cable does not
+replace the permanent circuit or waypoint IDs.
+
+For Greg's reported example, `A5-18/20` stays one waypoint label. Capture two
+circuit IDs, two receptacle devices, one two-pole 20 A breaker, and the reported
+12-3 shared-neutral cable configuration only from supplied evidence. Do not
+parse the label into verified panel slots, infer voltage/phase/conductor colors,
+or present this as a single 40 A circuit. Each circuit can independently continue
+to additional waypoint/device destinations.
+
+### Shutoff impact and operator behavior
+
+Add a read-only breaker-impact projection to the existing governed reference API.
+Starting with every active circuit membership on that breaker, traverse recorded
+active feed edges through intermediate devices to all reachable destinations.
+Return breaker ID, rating/poles, circuit IDs, receptacle/device IDs, waypoint IDs
+and current names, supporting edge IDs, and verification/conflict state per path.
+Deduplicate waypoint display while retaining all supplying circuits and paths.
+Do not collapse two circuits at the same waypoint into one electrical connection.
+
+Display verified affected locations separately from recorded unverified or
+conflicting paths. Missing pole assignments, unknown downstream connectivity,
+alternative recorded supplies or cycles make the result explicitly incomplete;
+an empty result must not be described as proof that nothing is affected.
+The UI says "recorded affected endpoints", not "all endpoints verified".
+Known alternate feeds must remain visible: this projection reports the effect of
+removing the selected supply and does not claim a destination is de-energized.
+
+Breaker OFF/ON is one grouped operation affecting every attached pole. Extend
+existing power actions to target exactly one breaker, circuit or device. A
+circuit-specific operation must identify the actual switching device; it cannot
+record independent switching of one pole of a grouped breaker. Contradictory
+desired states on its legs produce a conflict requiring review, not last-write-wins.
+
+Before recording a breaker action, show the grouped impact for the current
+reference revision. A changed topology/revision invalidates the preview and
+requires review again. Store the breaker/circuit/path snapshot, uncertainties,
+actor and season with the existing append-only activity event. Later wiring
+corrections must not rewrite an earlier action's recorded impact.
+No application entry switches hardware or verifies absence of voltage.
+
+### Integrity and acceptance gates
+
+- Reject cross-panel breaker/circuit membership, duplicate active pole assignment,
+  out-of-range pole positions, nonpositive known ratings, stale edits and feed
+  cycles. Unknown data remains explicitly incomplete rather than fabricated.
+- Keep unverified/conflicting source observations even when promotion into an
+  active relationship fails. Report exact conflicting IDs and corrective action.
+- Confirm one single-pole breaker and one two-pole breaker retain correct ratings.
+- Confirm two circuits feed separate receptacles at the same waypoint, each also
+  feeds additional destinations, and the breaker preview includes both legs and
+  all recorded downstream paths without losing duplicate-waypoint provenance.
+- Confirm shared-neutral segment membership survives asymmetric downstream
+  branching, corrections and retirement; no name or track auto-creates membership.
+- Confirm unknown receptacles, missing pole members and alternative supplies are
+  visible as incomplete/conflicting, not accepted as verified shutoff coverage.
+- Confirm grouped action snapshots, contradictory desired states, stale-preview
+  rejection, Directus permissions and audit attribution through SQL/API/browser.
+- Confirm GPX rename/replay changes display names without altering circuit,
+  breaker, receptacle or cable identity. Include this in the existing exact
+  combined current-Production-clone acceptance before operator approval.
 
 ## Commands and authorization
 
