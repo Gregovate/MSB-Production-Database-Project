@@ -132,7 +132,7 @@ try {
     .click();
   await page.getByText("Reconcile circuits with unknown breaker membership",{exact:true}).click();
   await page.getByRole("button", { name: "Reconcile legacy circuit", exact: true }).click();
-  await dialog.locator("[name=circuit_code]").fill("7");
+  await dialog.locator("[name=circuit_code]").fill("legacy7");
   await evidence();
   await save();
   await page.getByText("Reconcile circuits with unknown breaker membership",{exact:true}).click();
@@ -204,6 +204,7 @@ try {
       .rows[0].n,
     2,
   );
+  await page.locator("#seasonal-activities > summary").click();
   await page
     .getByRole("button", { name: "Define activity", exact: true })
     .click();
@@ -245,21 +246,27 @@ try {
   assert.equal(await dialog.locator("[name=breaker_name]").inputValue(), "18/20 grouped");
   await dialog.locator("[name=panel_positions]").fill("18/20");
   await dialog.locator("[name=panel_positions]").blur();
-  await dialog.locator('[name=leg_1_waypoint][value="12"]').check();
-  await dialog.locator('[name=leg_2_waypoint][value="12"]').check();
+
   await dialog.locator("[name=show_desired_state]").selectOption("ON");
   assert.equal(await dialog.locator("[name=rated_amps]").getAttribute("step"), "1");
   await save();
   const breakerId=(await db.query("SELECT site_power_breaker_id FROM ref.site_power_breaker WHERE breaker_name='18/20 grouped'")).rows[0].site_power_breaker_id;
   const groupedRow=page.locator("#panel-detail .power-record").filter({has:page.getByRole("heading",{name:"Breaker 18/20 grouped",exact:true})});
+  for (const leg of ["18","20"]) {
+    await groupedRow.getByRole("button",{name:`Circuit ${leg} — Assign waypoints`,exact:true}).click();
+    await dialog.locator('input[name=waypoint][value="12"]').check();
+    await evidence(); await save();
+  }
   await groupedRow.locator("summary").click();
   assert.match(await groupedRow.innerText(),/20 A · 2 poles/);
   assert.match(await groupedRow.innerText(),/A5 panel \/ 18/);
   assert.match(await groupedRow.innerText(),/A5 panel \/ 20/);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_circuit WHERE site_power_breaker_id=$1",[breakerId])).rows[0].n,2);
-  assert.equal(await page.locator(".power-slot").count(),20);
+  assert.equal(await page.locator(".power-slot").count(),35);
+  assert.equal(await groupedRow.locator("..").evaluate(e=>e.style.gridRow),"9 / span 2");
+  assert.equal(await groupedRow.locator("..").evaluate(e=>e.style.gridColumn),"2");
   const savedIds=(await db.query("SELECT site_power_circuit_id FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 ORDER BY breaker_pole",[breakerId])).rows;
-  await groupedRow.getByRole("button",{name:"Edit / correct",exact:true}).click();
+  await groupedRow.getByRole("button",{name:"Breaker settings",exact:true}).click();
   await dialog.locator("[name=show_desired_state]").selectOption("OFF");
   failNext=true;
   await dialog.locator("#save").click();
@@ -281,10 +288,46 @@ try {
   await page.getByRole("button",{name:"Record main breaker",exact:true}).click();
   assert.equal(await dialog.locator("[name=panel_positions]").isVisible(), false);
   await dialog.locator("[name=breaker_name]").fill("Main disconnect");
-  await dialog.locator("[name=rated_amps]").fill("100");
+  await dialog.locator("[name=rated_amps]").fill("200");
   await dialog.locator("[name=pole_count]").fill("2");
   await evidence(); await save();
-  assert.match(await page.locator(".power-main").innerText(),/100 A · 2 poles · MAIN/);
+  assert.match(await page.locator(".power-main").innerText(),/200 A · 2 poles · MAIN/);
+  // Fill remaining A5 positions through the same diagram entry used by the operator.
+  for (const start of [1,2,5,6,9,10,13,14,17,21,22,25,26,29,30,33,34]) {
+    await page.getByRole("button",{name:`Position ${start} · Add breaker`,exact:true}).click();
+    await dialog.locator("[name=pole_count]").fill("2");
+    await dialog.locator("[name=pole_count]").blur();
+    assert.equal(await dialog.locator("[name=panel_positions]").inputValue(),`${start}/${start+2}`);
+    await dialog.locator("[name=rated_amps]").fill("20");
+    await save();
+  }
+  assert.equal(await page.locator(".power-slot-grid .power-breaker").count(),18);
+  const positions=await page.locator(".power-slot-grid .power-slot").evaluateAll(nodes=>nodes.map(n=>[n.style.gridColumn,n.style.gridRow]));
+  assert.equal(positions.filter(x=>x[0]==="1").length,9);
+  assert.equal(positions.filter(x=>x[0]==="2").length,9);
+  assert.ok(positions.every(x=>x[1].endsWith("span 2")));
+  // Power-only outlet has circuit and plug-in controls, no network enclosure form.
+  await page.locator("#detail-waypoint").selectOption("13");
+  assert.equal(await page.locator("#combo-network-box").isVisible(),false);
+  assert.equal(await page.locator("#connect-controller").isVisible(),true);
+  const firstCircuit=(await db.query("SELECT site_power_circuit_id FROM ref.site_power_circuit WHERE circuit_code='1'")).rows[0].site_power_circuit_id;
+  await page.locator("#waypoint-supply select").selectOption(String(firstCircuit));
+  await dialog.locator('input[name=waypoint][value="13"]').check();
+  await evidence(); await save();
+  await page.getByRole("button",{name:"Connect controller to outlet",exact:true}).click();
+  await dialog.locator("[name=controller_id]").selectOption("101");
+  await dialog.locator("[name=site_power_circuit_id]").selectOption(String(firstCircuit));
+  await evidence();await save();
+  assert.match(await page.locator("#plugged-controllers").innerText(),/Controller 101/);
+  await page.locator("#detail-waypoint").selectOption("12");
+  for(const id of ["101","102"]) {
+    await page.getByRole("button",{name:"Install inventory item",exact:true}).click();
+    await dialog.locator("[name=controller_id]").selectOption(id);
+    await evidence();await save();
+  }
+  assert.equal(await page.locator("#equipment .power-record").count(),2);
+  assert.equal((await db.query("SELECT count(*)::int n FROM ref.controller")).rows[0].n,3);
+  await page.screenshot({path:"/tmp/power-panel-desktop.png",fullPage:true});
   await page.getByRole("button", {name:/Light mode|Dark mode/}).click();
   const changedTheme = await page.locator("html").getAttribute("data-theme");
   await page.reload();

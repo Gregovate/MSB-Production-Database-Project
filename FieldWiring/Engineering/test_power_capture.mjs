@@ -410,6 +410,43 @@ await denied(()=>cmd("panel",{...base,supply_breaker_id:downstream.target_id},sc
 await denied(()=>cmd("panel",{...base,supply_breaker_id:downstream.target_id},remote.target_id),"23514");
 await denied(()=>cmd("breaker",{...base,site_panel_id:remote.target_id,breaker_name:"Conflicting main",breaker_role:"MAIN"}),"23514");
 await denied(()=>cmd("breaker",{...base,active:false},schedule.target_id),"23514");
+// Inventory identity is reused for enclosure placement AND independent plug-in supply.
+const install=await cmd("controller_installation",{...base,controller_id:101,site_waypoint_id:11});
+await cmd("controller_installation",{...base,controller_id:102,site_waypoint_id:11});
+await denied(()=>cmd("controller_installation",{...base,controller_id:101,site_waypoint_id:12}),"23505");
+await denied(()=>cmd("controller_installation",{...base,controller_id:103,site_waypoint_id:13}),"22023");
+await denied(()=>cmd("controller_installation",{...base,site_waypoint_id:12},install.target_id),"22023");
+await cmd("controller_installation",{...base,active:false},install.target_id);
+await cmd("controller_installation",{...base,controller_id:101,site_waypoint_id:12});
+const supply=await cmd("feed",{...base,source_circuit_id:downstreamCircuit,destination_waypoint_id:13});
+const plugFields={...base,controller_id:101,site_waypoint_id:13,site_power_circuit_id:downstreamCircuit};
+const plugRequest=crypto.randomUUID(), plugRevision=revision;
+const plug=await cmd("controller_power_connection",plugFields,null,"crew@example.test",revision,plugRequest);
+assert.equal((await cmd("controller_power_connection",plugFields,null,"crew@example.test",plugRevision,plugRequest)).replayed,true);
+await denied(()=>cmd("controller_power_connection",plugFields),"23505");
+await denied(()=>cmd("controller_power_connection",{...plugFields,controller_id:102,site_waypoint_id:12}),"23514");
+await denied(()=>cmd("controller_power_connection",{...plugFields,controller_id:102},null,"volunteer@example.test"),"42501");
+await denied(()=>cmd("feed",{...base,active:false},supply.target_id),"23514");
+await denied(()=>cmd("controller_power_connection",{...base,site_waypoint_id:12},plug.target_id),"22023");
+await cmd("controller_power_connection",{...base,active:false},plug.target_id);
+await cmd("feed",{...base,active:false},supply.target_id);
+await cmd("feed",{...base,source_circuit_id:downstreamCircuit,destination_waypoint_id:13});
+await cmd("controller_power_connection",plugFields);
+const plugImpact=(await db.query("SELECT ref.site_power_breaker_impact('crew@example.test',$1) x",[downstream.target_id])).rows[0].x;
+assert.ok(plugImpact.controller_connections.some(x=>x.controller_id===101 && x.site_waypoint_id===13));
+// An indirect electrical path supports a plug without equating inventory placement with power.
+await db.exec("INSERT INTO ref.site_waypoint VALUES(14,'Indirect outlet','Power')");
+const intermediate=await cmd("device",{...base,device_name:"Fixture outlet feed",device_kind:"OUTLET",site_waypoint_id:14});
+await cmd("feed",{...base,source_circuit_id:downstreamCircuit,destination_device_id:intermediate.target_id});
+await cmd("controller_power_connection",{...plugFields,controller_id:103,site_waypoint_id:14});
+await denied(()=>cmd("controller_power_connection",{...plugFields,controller_id:999999}),"23503");
+const inventorySnapshot=(await db.query("SELECT ref.site_power_snapshot('crew@example.test') AS x")).rows[0].x;
+assert.equal(inventorySnapshot.controller_options.length,3);
+assert.equal(inventorySnapshot.controller_installations.filter(x=>x.controller_id===101).length,2);
+assert.equal(inventorySnapshot.controller_power_connections.filter(x=>x.controller_id===101).length,2);
+assert.ok(inventorySnapshot.history.some(x=>x.command==='controller_power_connection' && x.before_data?.active===true && x.after_data?.active===false));
+await denied(()=>db.exec("SET ROLE fieldwiring_app; DELETE FROM ref.site_controller_installation"),"42501");
+await db.exec("RESET ROLE");
 console.log(
   `PASS: ${n} SQL command/denial checks plus snapshot, audit, seasonal and rollback assertions (isolated PGlite PostgreSQL; no Production connection).`,
 );

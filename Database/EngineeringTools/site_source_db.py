@@ -539,7 +539,7 @@ _GPX_DEPENDENCY_TABLES = (
     'ref.site_panel', 'ref.site_power_breaker', 'ref.site_power_circuit',
     'ref.site_power_device', 'ref.site_power_feed', 'ref.site_power_cable_spec',
     'ref.site_power_conductor', 'ref.site_power_conductor_circuit',
-    'ref.site_waypoint_network', 'ref.site_power_action',
+    'ref.site_waypoint_network', 'ref.site_power_action', 'ref.site_controller_installation', 'ref.site_controller_power_connection',
     'ops.setup_power_activity_event', 'ops.linkiq_test',
     'ops.linkiq_test_appearance', 'ops.linkiq_intake_review',
     'ops.linkiq_identity_decision',

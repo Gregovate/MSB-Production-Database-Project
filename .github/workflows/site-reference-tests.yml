@@ -80,6 +80,8 @@ jobs:
           # Synthetic installed dependencies only in this ephemeral CI database.
           docker exec -i "$container" psql -U postgres -d site_acceptance -v ON_ERROR_STOP=1 <<'SQL'
           CREATE TABLE ref.person(person_id integer PRIMARY KEY);
+          CREATE TABLE ref.controller_model(controller_model_id bigint PRIMARY KEY,model_code text);
+          CREATE TABLE ref.controller(controller_id bigint PRIMARY KEY,controller_model_id bigint REFERENCES ref.controller_model,serial_number text);
           CREATE TABLE ref.season(season_year integer PRIMARY KEY);
           INSERT INTO ref.person VALUES(1);
           CREATE FUNCTION ref.setup_browser_capabilities(text)

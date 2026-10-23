@@ -117,3 +117,15 @@ button {
 dialog { background: var(--panel); color: var(--ink); }
 #save-status { color: #b42318; }
 html[data-theme="dark"] #save-status { color: #ffaaa5; }
+
+/* One physical breaker spans adjacent rows on the same side of the panel. */
+.power-slot-grid { align-items: stretch; grid-auto-rows: minmax(48px, auto); gap: .4rem; }
+.power-slot { min-width: 0; padding: .4rem; }
+.power-breaker { margin: 0; padding: .35rem; height: 100%; box-sizing: border-box; }
+.power-breaker h3 { font-size: 1rem; margin: .2rem 0; }
+.power-breaker p { margin: .25rem 0; font-size: .85rem; }
+.power-circuit-leg { display: block; width: 100%; text-align: left; margin: .25rem 0; overflow-wrap: anywhere; }
+.power-choices label { display: flex; align-items: center; gap: .4rem; }
+.power-choices label[hidden], [hidden] { display: none !important; }
+.power-choices input[type=checkbox] { width: auto; flex: 0 0 auto; }
+@media (max-width: 600px) { .power-slot-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } .power-slot button { font-size: .8rem; padding: .3rem; } }

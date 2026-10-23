@@ -8,8 +8,9 @@ The urgent #171/#230 capture workflow has a source candidate under #122.
 [Panel circuit checkpoint](FieldWiring_Panel_Circuit_Capture_Checkpoint.md) records
 the live catalog evidence, GIS dependencies and remaining acceptance gates.
 [Panel Circuit Design](FieldWiring_Panel_Circuit_Design.md) controls the candidate.
-V0.4.8-breaker-schedule combines breaker, circuit legs and waypoint feeds in one
-Save, with panel meter/remote supply and separate waypoint equipment details.
+V0.4.9-panel-diagram uses same-side spanning breaker blocks and circuit-click
+waypoint assignment, with panel meter/remote supply. Existing controller IDs link
+independently to outlet circuit connections and OUT-Combo network-box installations.
 The editor is not deployed or operator accepted.
 
 ## Current State

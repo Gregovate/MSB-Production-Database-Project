@@ -6,6 +6,30 @@
 | Owner | #171 / #230 under #122 |
 | Reviewed | 2026-10-22 |
 
+## October 23 panel-diagram candidate — supersedes V0.4.8
+
+V0.4.8 operator review is CHANGES REQUIRED. V0.4.9-panel-diagram remains in #319:
+compact same-side spanning breakers, circuit-click waypoint assignments, existing
+controller inventory linked to network-box placement and independent outlet plugs.
+The two association tables preserve retired rows and audit history; controller IDs
+and catalogs are reused. Power-only waypoints expose circuit/plug controls without
+network-box fields. A5 is disposable validation evidence, not a Production seed.
+
+Main baseline remains e3590c264da048bdd8ffb5f368fd3f928e15d71a; parent candidate
+1197f4f19fc32d61ebae5e6db5db7cbef3c919ad. Design commits precede implementation.
+Exact published SHA and CI results belong in #319 before the unchanged cached-path
+preview handoff is enabled. Current-clone/operator acceptance and Production remain
+open. No new importer, inventory service, workflow or test procedure is introduced.
+
+Local validation: FieldWiring 220 PASS; Setup 901 PASS; source/allowlist 44 PASS
+and one real-PostGIS test reserved for existing CI; PGlite 130 command/denial checks
+PASS. Actual Chromium page PASS includes 18 two-pole A5 blocks (nine each side),
+200 A fixture main, per-leg waypoint assignment, retained IDs/exact retry, Power
+outlet controller connection, two Combo inventory installations, light/dark, mobile
+width and read-only policy. No Production connection was used for these checks.
+The browser runtime was installed only in the engineering environment; operator
+PC prerequisites and the existing PowerShell preview procedure are unchanged.
+
 ## October 23 integrated continuation (supersedes branch/gap status below)
 
 Work is integrated in existing PR #319, `feature/171-cableiq-import-validation`;

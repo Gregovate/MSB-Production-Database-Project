@@ -4,6 +4,7 @@
 BEGIN;
 DO $gate$ BEGIN
  IF to_regclass('ref.site_waypoint') IS NULL OR to_regclass('ref.site_waypoint_alias') IS NULL
+ OR to_regclass('ref.controller') IS NULL OR to_regclass('ref.controller_model') IS NULL
  OR to_regprocedure('ref.setup_inventory_actor(text,boolean)') IS NULL THEN
   RAISE EXCEPTION 'Accepted GIS waypoint/alias foundation and existing Directus actor resolver required';
  END IF;
@@ -11,6 +12,19 @@ DO $gate$ BEGIN
   RAISE EXCEPTION 'Power schema already exists; reconcile installed migration, do not replay';
  END IF;
 END $gate$;
+-- Existing controller inventory owns assets; this table owns only placement history.
+CREATE TABLE ref.site_controller_installation (
+ site_controller_installation_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ controller_id bigint NOT NULL REFERENCES ref.controller(controller_id),
+ site_waypoint_id bigint NOT NULL REFERENCES ref.site_waypoint(site_waypoint_id),
+ active boolean NOT NULL DEFAULT true,
+ source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
+ verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
+ updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ CHECK ((verification_status='VERIFIED')=(verified_by_person_id IS NOT NULL AND verified_at IS NOT NULL))
+);
+CREATE UNIQUE INDEX site_controller_one_installation ON ref.site_controller_installation(controller_id) WHERE active;
 CREATE TABLE ref.site_power_revision (
  singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton), revision bigint NOT NULL DEFAULT 0);
 INSERT INTO ref.site_power_revision DEFAULT VALUES;
@@ -105,6 +119,19 @@ CREATE TABLE ref.site_power_conductor_circuit (
 );
 CREATE UNIQUE INDEX site_power_conductor_label_uq ON ref.site_power_conductor(site_cable_id,lower(btrim(conductor_label))) WHERE active;
 CREATE UNIQUE INDEX site_power_conductor_membership_uq ON ref.site_power_conductor_circuit(site_power_conductor_id,site_power_circuit_id) WHERE active;
+CREATE TABLE ref.site_controller_power_connection (
+ site_controller_power_connection_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ controller_id bigint NOT NULL REFERENCES ref.controller(controller_id),
+ site_waypoint_id bigint NOT NULL REFERENCES ref.site_waypoint(site_waypoint_id),
+ site_power_circuit_id bigint NOT NULL REFERENCES ref.site_power_circuit(site_power_circuit_id),
+ active boolean NOT NULL DEFAULT true,
+ source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
+ verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
+ verified_by_person_id integer REFERENCES ref.person(person_id), verified_at timestamptz,
+ updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ CHECK ((verification_status='VERIFIED')=(verified_by_person_id IS NOT NULL AND verified_at IS NOT NULL))
+);
+CREATE UNIQUE INDEX site_controller_one_power_connection ON ref.site_controller_power_connection(controller_id) WHERE active;
 CREATE TABLE ref.site_power_device (
  site_power_device_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
  device_name text NOT NULL CHECK (btrim(device_name)<>''),
@@ -233,6 +260,7 @@ BEGIN
  RETURN jsonb_build_object('breaker',to_jsonb(b),'revision',(SELECT revision FROM ref.site_power_revision),
   'affected_panel_ids',to_jsonb(affected_panels),'paths',result,'coverage','RECORDED_ONLY_NOT_PROOF_OF_ISOLATION',
   'missing_pole_membership',EXISTS(SELECT 1 FROM ref.site_power_circuit WHERE site_panel_id=ANY(affected_panels) AND active AND site_power_breaker_id IS NULL) OR CASE WHEN b.breaker_role='MAIN' THEN false ELSE b.pole_count IS NULL OR b.pole_count<>(SELECT count(*) FROM ref.site_power_circuit WHERE site_power_breaker_id=p_breaker AND active) END,
+  'controller_connections',coalesce((SELECT jsonb_agg(to_jsonb(cp)) FROM ref.site_controller_power_connection cp JOIN ref.site_power_circuit c USING(site_power_circuit_id) WHERE cp.active AND c.active AND (c.site_power_breaker_id=p_breaker OR c.site_panel_id=ANY(affected_panels))),'[]'::jsonb),
   'circuits',coalesce((SELECT jsonb_agg(site_power_circuit_id) FROM ref.site_power_circuit WHERE (site_power_breaker_id=p_breaker OR site_panel_id=ANY(affected_panels)) AND active),'[]'::jsonb));
 END $f$;
 REVOKE ALL ON FUNCTION ref.site_power_breaker_impact(text,bigint) FROM PUBLIC;
@@ -251,6 +279,9 @@ BEGIN
  result:=result||jsonb_build_object('breakers',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_power_breaker t),'[]'::jsonb));
  result:=result||jsonb_build_object('breaker_impacts',coalesce((SELECT jsonb_agg(ref.site_power_breaker_impact(p_email,t.site_power_breaker_id)) FROM ref.site_power_breaker t WHERE active),'[]'::jsonb));
  result:=result||jsonb_build_object('circuits',coalesce((SELECT jsonb_agg(to_jsonb(t) ORDER BY 1) FROM ref.site_power_circuit t),'[]'::jsonb));
+ result:=result||jsonb_build_object('controller_power_connections',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_controller_power_connection t),'[]'::jsonb));
+ result:=result||jsonb_build_object('controller_installations',coalesce((SELECT jsonb_agg(to_jsonb(t)) FROM ref.site_controller_installation t),'[]'::jsonb));
+ result:=result||jsonb_build_object('controller_options',coalesce((SELECT jsonb_agg(jsonb_build_object('id',c.controller_id,'model',m.model_code,'serial',c.serial_number) ORDER BY c.controller_id) FROM ref.controller c JOIN ref.controller_model m USING(controller_model_id)),'[]'::jsonb));
  result:=result||jsonb_build_object('devices',coalesce((SELECT jsonb_agg(to_jsonb(t) ORDER BY 1) FROM ref.site_power_device t),'[]'::jsonb));
  result:=result||jsonb_build_object('feeds',coalesce((SELECT jsonb_agg(to_jsonb(t) ORDER BY 1) FROM ref.site_power_feed t),'[]'::jsonb));
  result:=result||jsonb_build_object('networks',coalesce((SELECT jsonb_agg(to_jsonb(t) ORDER BY 1) FROM ref.site_waypoint_network t),'[]'::jsonb));
@@ -368,6 +399,8 @@ BEGIN
   WHEN 'circuit' THEN table_name:='site_power_circuit'; key_name:='site_power_circuit_id'; allowed:=ARRAY['site_panel_id','circuit_code','description','voltage','site_power_breaker_id','breaker_pole','show_desired_state','restoration_desired_state','active','source_evidence','verification_status'];
   WHEN 'device' THEN table_name:='site_power_device'; key_name:='site_power_device_id'; allowed:=ARRAY['device_name','device_kind','site_waypoint_id','owner_name','utility_asset_id','rating','description','active','source_evidence','verification_status'];
   WHEN 'feed' THEN table_name:='site_power_feed'; key_name:='site_power_feed_id'; allowed:=ARRAY['source_circuit_id','source_device_id','destination_waypoint_id','destination_device_id','active','source_evidence','verification_status'];
+  WHEN 'controller_power_connection' THEN table_name:='site_controller_power_connection'; key_name:='site_controller_power_connection_id'; allowed:=ARRAY['controller_id','site_waypoint_id','site_power_circuit_id','active','source_evidence','verification_status'];
+  WHEN 'controller_installation' THEN table_name:='site_controller_installation'; key_name:='site_controller_installation_id'; allowed:=ARRAY['controller_id','site_waypoint_id','active','source_evidence','verification_status'];
   WHEN 'network' THEN table_name:='site_waypoint_network'; key_name:='site_waypoint_network_id'; allowed:=ARRAY['site_waypoint_id','site_network_id','active','source_evidence','verification_status'];
   WHEN 'action' THEN table_name:='site_power_action'; key_name:='site_power_action_id'; allowed:=ARRAY['action_name','site_power_breaker_id','site_power_circuit_id','site_power_device_id','phase','action_kind','desired_state','responsible_party','instructions','prerequisite_action_ids','active','source_evidence','verification_status'];
   ELSE RAISE EXCEPTION 'Unknown circuit command' USING ERRCODE='22023'; END CASE;
@@ -423,6 +456,21 @@ BEGIN
   -- retain prior values on corrections; inserts receive explicit safe defaults.
   IF p_id IS NULL THEN expected:=jsonb_build_object('active',true,'breaker_role','UNKNOWN','show_desired_state','UNKNOWN',
    'restoration_desired_state','UNKNOWN','desired_state','UNKNOWN','prerequisite_action_ids','[]'::jsonb)||expected; END IF;
+  IF p_kind='controller_power_connection' AND p_id IS NOT NULL AND (
+    expected->'controller_id' IS DISTINCT FROM before_row->'controller_id'
+    OR expected->'site_waypoint_id' IS DISTINCT FROM before_row->'site_waypoint_id'
+    OR expected->'site_power_circuit_id' IS DISTINCT FROM before_row->'site_power_circuit_id') THEN
+   RAISE EXCEPTION 'Retire the previous outlet connection and create a new one to move a controller' USING ERRCODE='22023';
+  END IF;
+  IF p_kind='controller_installation' THEN
+   IF p_id IS NOT NULL AND (expected->'controller_id' IS DISTINCT FROM before_row->'controller_id'
+      OR expected->'site_waypoint_id' IS DISTINCT FROM before_row->'site_waypoint_id') THEN
+    RAISE EXCEPTION 'Retire the previous installation and create a new one to move equipment' USING ERRCODE='22023';
+   END IF;
+   IF (expected->>'active')::boolean AND NOT EXISTS(SELECT 1 FROM ref.site_waypoint WHERE site_waypoint_id=(expected->>'site_waypoint_id')::bigint AND lower(btrim(waypoint_type))='out-combo') THEN
+    RAISE EXCEPTION 'Network-box equipment requires an OUT-Combo waypoint' USING ERRCODE='22023';
+   END IF;
+  END IF;
   allowed:=allowed||ARRAY['verified_by_person_id','verified_at','updated_at'];
   SELECT string_agg(format('%I',k),','),string_agg(format('r.%I',k),','),string_agg(format('%I=r.%I',k,k),',')
    INTO columns_sql,values_sql,updates_sql FROM unnest(allowed) k;
@@ -436,6 +484,22 @@ BEGIN
    EXECUTE format('UPDATE ref.%I t SET %s FROM jsonb_populate_record(NULL::ref.%I,$1) r WHERE t.%I=$2 RETURNING t.%I,to_jsonb(t)',
     table_name,updates_sql,table_name,key_name,key_name) INTO target,after_row USING expected,p_id;
   END IF;
+  IF EXISTS (
+   WITH RECURSIVE supplied(circuit_id,waypoint_id,device_id,visited) AS (
+    SELECT f.source_circuit_id,f.destination_waypoint_id,f.destination_device_id,ARRAY[f.site_power_feed_id]
+    FROM ref.site_power_feed f JOIN ref.site_power_circuit c ON c.site_power_circuit_id=f.source_circuit_id
+    WHERE f.active AND c.active
+    UNION ALL
+    SELECT s.circuit_id,f.destination_waypoint_id,f.destination_device_id,s.visited||f.site_power_feed_id
+    FROM supplied s JOIN ref.site_power_feed f ON f.source_device_id=s.device_id
+    JOIN ref.site_power_device d ON d.site_power_device_id=s.device_id AND d.active
+    WHERE f.active AND NOT f.site_power_feed_id=ANY(s.visited)
+   )
+   SELECT 1 FROM ref.site_controller_power_connection cp JOIN ref.site_waypoint w USING(site_waypoint_id)
+   WHERE cp.active AND (lower(btrim(w.waypoint_type)) NOT IN ('power','out-power','out-combo') OR NOT EXISTS(
+    SELECT 1 FROM supplied s LEFT JOIN ref.site_power_device d ON d.site_power_device_id=s.device_id AND d.active
+    WHERE s.circuit_id=cp.site_power_circuit_id AND (s.waypoint_id=cp.site_waypoint_id OR d.site_waypoint_id=cp.site_waypoint_id)))
+  ) THEN RAISE EXCEPTION 'Controller outlet connection requires an active circuit feed to a Power or OUT-Combo waypoint; retire dependent connections before changing supply' USING ERRCODE='23514'; END IF;
   IF EXISTS(SELECT 1 FROM ref.site_panel p JOIN ref.site_power_breaker b ON b.site_power_breaker_id=p.supply_breaker_id
     JOIN ref.site_panel upstream ON upstream.site_panel_id=b.site_panel_id
     WHERE p.active AND (NOT b.active OR NOT upstream.active OR b.site_panel_id=p.site_panel_id
@@ -543,7 +607,7 @@ END $f$;
 REVOKE ALL ON FUNCTION ref.site_power_access(text),ref.site_power_snapshot(text),ref.site_power_command(text,uuid,bigint,text,bigint,jsonb) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ref.site_power_access(text),ref.site_power_snapshot(text),ref.site_power_command(text,uuid,bigint,text,bigint,jsonb) TO fieldwiring_app;
 -- Override any ambient default privileges; all runtime access uses functions.
-REVOKE ALL ON ref.site_power_cable_spec,ref.site_power_breaker,ref.site_panel,ref.site_power_circuit,ref.site_power_device,
+REVOKE ALL ON ref.site_controller_power_connection,ref.site_controller_installation,ref.site_power_cable_spec,ref.site_power_breaker,ref.site_panel,ref.site_power_circuit,ref.site_power_device,
  ref.site_power_feed,ref.site_waypoint_network,ref.site_power_action,ref.site_power_revision,
  ops.site_power_edit_log,ops.setup_power_activity_event FROM PUBLIC,fieldwiring_app;
 -- No table/sequence writes, direct actor-function access, or Directus grants.

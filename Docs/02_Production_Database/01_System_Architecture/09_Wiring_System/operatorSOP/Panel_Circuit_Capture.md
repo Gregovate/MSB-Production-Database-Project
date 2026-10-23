@@ -5,42 +5,53 @@ Crew can maintain these records. Managers maintain waypoint names and positions.
 
 ## Define the panel and breaker
 
-1. Open **Panel Circuits** from Field Wiring and select the existing panel. Use
-   **Add panel** only when the panel is not already recorded.
-2. Beside **Main disconnect**, use **Meter / upstream supply** to enter known meter
-   information. For a remote main, select the actual supplying breaker in another
-   defined panel. A panel name alone does not identify that breaker. Leave an
-   unknown supply blank; do not guess the FE-00 / Panel 15 relationship.
-3. Use **Record main breaker** for a local main, or **Add branch breaker** for an
-   individual breaker. Enter known positions, such as `18/20` or `18,20`; the form
-   creates one circuit-leg section per position. If positions are unknown, enter
-   the pole count and explicit circuit designations. Existing designations and
-   permanent circuit IDs are retained on edits.
-4. Enter whole-number amps, breaker notes if useful, and **Show ON / OFF** and
-   restoration state. A two-pole 20 A breaker is 20 A per pole, not 40 A.
-5. For each circuit leg, search current waypoint names or retained aliases and
-   check what it feeds. Both legs of one breaker may supply the same quad box,
-   such as A5-18/20, and either may supply additional waypoints. An OUT-Combo
-   cannot have supplies from two different breakers.
-6. **Save** once. The breaker, circuit legs and direct waypoint assignments commit
-   together or all roll back. Entry remains UNVERIFIED pending field review.
-   Existing IDs, indirect equipment paths and correction history are retained.
-7. Use the breaker's **Edit / correct** to change these records together. Clearing
-   a waypoint retires that direct relationship. Reducing pole count cannot silently
-   remove existing legs; reconcile their dependent records first.
+1. Open **Panel Circuits** and select the existing panel. Use **Add panel** only
+   for an unrecorded panel. Its record owns the GPX waypoint, owner and meter.
+2. Use **Meter / upstream supply** beside the main for meter changes or an actual
+   supplying breaker in another panel. Use **Record main breaker** for a local main.
+3. Select an unrecorded position in the diagram to add a breaker. Set poles and
+   whole-number amps; a two-pole selection proposes same-side positions such as
+   18/20. Verify these against the installed panel before saving. Enter seasonal
+   and non-seasonal desired ON/OFF on the breaker. Unknown remains UNKNOWN.
+4. Save the breaker, then select **Circuit 18** (for example) on that breaker to
+   check the waypoint(s) it supplies. Select Circuit 20 independently. Both can
+   supply the same quad outlet; either can also supply additional waypoints.
+5. **Breaker settings** changes amps/states without re-entering circuit names or
+   waypoint selections. Existing circuit IDs and indirect feed paths remain intact.
+   Unchecking a directly supplied waypoint retires its relationship with history.
 
-The schedule uses conventional odd-left / even-right positions; verify installed
-numbering. Unknown positions do not prove empty slots. For older records without
-breaker membership, expand **Reconcile circuits with unknown breaker membership**.
-That exception workflow is separate from normal combined breaker entry.
+One physical breaker spans vertically adjacent positions on one side. Unrecorded
+positions are entry controls, not confirmation of empty installed slots. Unknown
+or nonstandard positions remain in the reconciliation section. Legacy circuits
+without breaker membership have a separate collapsed reconciliation workflow.
+A5 fixture dimensions do not automatically create Production breaker records.
 
-## Waypoint equipment and networks
+## Outlet power and controller connections
 
-Expand **Waypoint / OUT-Combo equipment and networks** and select the waypoint.
-Use **Add equipment**, **Add feed relationship** or **Assign network** for known
-intermediate equipment and networks. Cable/conductor engineering is separately
-collapsed there. These are not required breaker-entry fields. Controller channels
-and network assignments remain independent of electrical circuit identity.
+Expand **Waypoint supply / OUT-Combo network box** and select a waypoint. Its
+**Outlet circuits** show the recorded supplies; select one to correct assignments.
+Use **Connect controller to outlet** to choose an existing inventory ID and the
+actual supplying circuit leg. At a two-circuit outlet, choose the leg the plug uses;
+do not select one merely because its name resembles the controller or waypoint.
+A recorded feed to this outlet must exist first. Several controllers may plug into
+one outlet. Breaker settings remain the owner of seasonal switching.
+
+To move a controller connection, edit the old connection, clear **Active record**,
+record the reason and save; then create its new connection. Retired rows and audit
+history remain visible. Supply changes are rejected while a controller connection
+still depends on that supply; reconcile the plug-in record first.
+
+## OUT-Combo network-box inventory
+
+The receptacle and larger network box share one OUT-Combo waypoint. The network
+box section appears only for Combo waypoints. **Install inventory item** selects
+an existing Controller Inventory ID; several repeaters, switches, adapters or power
+supplies can be installed. Use the existing Controller Inventory screen to maintain
+asset/model records. This screen does not create another equipment inventory.
+Network-box placement and the controller's outlet connection are separate facts.
+To move equipment, retire the old installation and install that same ID at the new
+box. Record failures and repairs in existing Work Orders against that controller ID.
+Network assignments and advanced intermediate electrical feeds remain separate.
 
 Correct conflicting evidence without publishing competing active breaker supplies.
 The database rejects such relationships even when they pass through equipment.
