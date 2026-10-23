@@ -1,5 +1,28 @@
 # MSB #171 / #319 / #230 — Site-source synchronization implementation contract
 
+## October 23 — ExpertGPS track label and presentation correction
+
+The operator's timestamp track has GPS name `10/14/2026 12:17:44 PM`, map label
+`HV PANEL 09 to LPFC-01`, and ExpertGPS line color `fc180d`, width `1.0417` mm,
+opacity 1 and white casing. Prior extraction archived the XML but failed to
+project map labels/style. Track display identity must use overlay label_text
+when present, with GPX name retained separately. Project existing GPX line
+color/opacity/width/pattern/casing; convert millimeters to CSS pixels at 96 dpi.
+Width units follow the [TopoGrafix style schema](https://www.topografix.com/gpx/gpx_style/0/2/).
+Keep original XML/bytes unchanged. Display-label exports edit overlay label_text,
+never overwrite the GPS name; legacy tracks lacking map labels retain explicit
+name-edit compatibility. No inferred network assignment or geometry shifts.
+
+Local correction verification: 14 of the supplied 220 tracks have different map
+and GPS names; 218 use Solid and two use Dot. Regression: 167 engineering/shared-host
+checks passed, two explicit PostGIS skips locally, six subtests; Setup application
+901 and FieldWiring 220 passed in separate processes (their legacy module names
+collide if collected together). Existing PGlite command suite: 82 checks passed.
+Existing Chromium panel workflow passed for main 100 A, branch positions 18/20,
+two circuits, mobile width and read-only denial. Local actual-map HTML with an API
+fixture from the supplied GPX shows the correct HV label, color #fc180d and width
+3.937 CSS px; wrong source still blocks. This is not server/operator acceptance.
+
 ## October 23 — operator review rejected; shared-host correction
 
 Greg reports nonfunctional circuit buttons, absent preloaded panels and a map

@@ -26,6 +26,27 @@ It must not be applied alongside this migration. No independent role grant store
 is introduced. This integration remains a release gate, not an assertion that
 #319 has been accepted.
 
+## October 23 operator panel-board correction
+
+Review remains failed. Screenshots show generic forms rather than a panel board.
+The existing panel owns meter information; show it beside a top-center main
+breaker area. Add explicit breaker role UNKNOWN / MAIN / BRANCH and ordered
+physical panel positions (one position per pole). These are independent of
+circuit designation and pole ordinal. Positions are operator-entered, never
+parsed from waypoint/circuit names. One active main per panel; main has no branch
+positions. Reject duplicate occupied positions in one panel, malformed positions,
+and positions inconsistent with pole count. Unpositioned records remain visible.
+
+The branch schedule displays odd positions on the left, even on the right, with
+an explicit conventional-layout / verify-installed-numbering caption. Connected
+positions of one multipole breaker share its permanent identity and rating;
+show its circuits and endpoints beneath that breaker. Main impact includes all
+recorded circuits in that panel; it remains incomplete recorded coverage, not
+proof of isolation. Do not seed main ratings, positions, circuits or meter IDs.
+Add-circuit from a breaker carries that breaker and panel, with pole selection
+limited to its known poles. Unknown breaker membership remains possible and
+visible separately. Keep existing command/audit/Directus and migration authority.
+
 ## Maintained records
 
 Permanent panel ID is independent of optional geographic waypoint, readable panel
