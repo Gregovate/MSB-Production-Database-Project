@@ -1,5 +1,53 @@
 # MSB #171 / #319 / #230 — Site-source synchronization implementation contract
 
+## October 23 — operator-controlled living-master snapshot intake
+
+Greg controls the source and timing of each intake from the Shared Drive master.
+The master is expected to change. A historical upload digest is not a permanent
+allowlist. The existing runner calculates a digest of the selected revision;
+that digest pins the captured bytes, transfer and review, not future master edits.
+No watcher, scheduled import or save-triggered Production write is authorized.
+
+Reuse the control pattern in [LOR promotion design](../../LOR2DB/02_Reconciliation/01_LOR_Production_Promotion_Pipeline_Design.md)
+and [operator workflow](../../LOR2DB/02_Reconciliation/00_LOR_Production_Import_and_Reconciliation_Procedure.md):
+Capture selected source -> inspect snapshot -> explicitly start comparison ->
+resolve/review exceptions -> explicitly Finish/apply -> validate/report.
+This is an extension of the existing GIS importer/Manager, not a second importer
+or an instruction to run GIS through the LOR data model/Windows listener.
+
+Comparison uses last accepted source, selected incoming source and current
+maintained database state. Latest staged or most recently uploaded is not the
+accepted baseline. An open review retains its captured source even while Greg
+continues editing the master. Any later source selection or changed database
+revision invalidates earlier apply approval and requires fresh comparison.
+
+Every waypoint map-name or GPS-name change is a review item, regardless of count.
+Report additions, missing records, symbol/type changes, coordinates, descriptions,
+track labels/geometry/style and database-only corrections. Show old/new values,
+counts and stable identity. Missing features are retained, not automatically
+deleted. A rename preserves permanent waypoint ID and retains the old map label
+as an alias; aliases, GPS/PANEL lookup ambiguity, splits/merges and duplicate
+identity claims must be resolved. Track replacement retains old geometry/history.
+No arbitrary percentage threshold makes a rename or a deletion safe.
+
+Before promotion, the existing reference model must enumerate affected panels,
+breaker/circuit feeds, receptacles, reviewed cable/track/route associations,
+network assignments, FieldWiring picker and LinkIQ evidence matches. Unavailable
+or incomplete dependency analysis blocks apply; it must not be reported as zero
+impact. GPX changes never rewrite circuit definitions or electrical topology.
+Finish must revalidate source/baseline/database revision, permissions and frozen
+decisions; apply one approved change set transactionally, preserve history and
+aliases, validate consumers, and publish a durable result. No-op does not update
+reference audit fields. Cancel/defer leaves maintained references unchanged.
+
+Implementation status: pure three-way comparison/identity/alias conflict checks
+exist. This continuation adds per-kind counts and explicit review categories,
+including GPS names/symbols that must not be silently omitted. Its output always
+states no writes and not ready for promotion. Coherent database dependency
+capture, persisted operator decisions, Manager review UI, recurring transactional
+apply, stale-approval enforcement and operator acceptance remain release gates.
+The current disposable bootstrap is not recurring synchronization acceptance.
+
 ## October 23 — ExpertGPS track label and presentation correction
 
 The operator's timestamp track has GPS name `10/14/2026 12:17:44 PM`, map label
