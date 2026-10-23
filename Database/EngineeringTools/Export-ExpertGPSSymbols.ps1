@@ -10,11 +10,11 @@
 .EXAMPLE
   .\Export-ExpertGPSSymbols.ps1
 .EXAMPLE
-  .\Export-ExpertGPSSymbols.ps1 -PlainSvgDirectory 'G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Plain'
+  .\Export-ExpertGPSSymbols.ps1 -PlainSvgDirectory 'G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbol Library\Plain'
 #>
 [CmdletBinding()]
 param(
-    [string]$PlainSvgDirectory = 'G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Plain',
+    [string]$PlainSvgDirectory = 'G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbol Library\Plain',
     [string]$ReadmePath = (Join-Path $env:LOCALAPPDATA 'TopoGrafix\Symbols\msb\readme.txt'),
     [string]$OutputDirectory = (Join-Path $env:USERPROFILE ('Downloads\MSB-ExpertGPS-PNGs-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))),
     [string]$InkscapeExecutable = 'C:\Program Files\Inkscape\bin\inkscape.com'
