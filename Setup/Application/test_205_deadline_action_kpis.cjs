@@ -25,7 +25,7 @@ const base = {
     {setup_session_task_id:5, task_name:'No date', effective_complete:true, execution_status:'COMPLETE', actual_completed_at:null, completion_work_date:null, completion_date_source:'UNVERIFIED'},
   ],
   assignments: [
-    {setup_session_task_id:2, setup_work_day_task_id:11, setup_work_day_id:10, work_report_count:0},
+    {setup_session_task_id:2, setup_work_day_task_id:11, setup_work_day_id:10, work_report_count:0,shift_code:'MORNING'},
     {setup_session_task_id:2, setup_work_day_task_id:12, setup_work_day_id:11, work_report_count:1},
     {setup_session_task_id:3, setup_work_day_task_id:13, setup_work_day_id:12, work_report_count:0}
   ],
@@ -96,6 +96,21 @@ const managerHtml=ctx.setup205ActionCenterHtml(base);
 for(const key of ['Manager Setup Action Center','Past occurrences awaiting reports','Incomplete tasks needing continuation','Scheduled assignments without Captain']) {
   assert(managerHtml.includes(key), 'missing Manager action group: '+key);
 }
+assert(managerHtml.includes('data-205-action="review-reschedule"'), 'eligible missing report must allow Manager to review and use audited no-work reschedule');
+assert(managerHtml.includes('Manager review needed:'), 'missing-report row must not imply automatic Captain mail');
+assert(managerHtml.includes('Request Report after review'), 'manual Captain reminder needs explicit field-work review');
+const historyLocked = structuredClone(base);
+historyLocked.assignments[0].historical_locked = true;
+assert(!ctx.setup205ActionCenterHtml(historyLocked).includes('data-205-action="review-reschedule"'),
+  'never offer to move a progress/history-locked assignment');
+const reported = structuredClone(base);
+reported.assignments[0].work_report_count = 1;
+assert(!ctx.setup205ActionCenterHtml(reported).includes('data-205-action="review-reschedule"'),
+  'saved partial or full report blocks misleading no-work move');
+assert(!ctx.setup205ActionCenterHtml(reported).includes('data-205-action="request-report"'),
+  'reported original occurrence must not be treated as missing report');
+assert(source.includes("nextOpenRescheduleNoWorkDialog(id);"),
+  'Action Center no-work route must consume guarded existing Perform Work reschedule');
 assert(managerHtml.includes('data-205-action="report"'), 'original report navigation must be exact-assignment');
 assert(managerHtml.includes('data-205-action="schedule"'), 'continuation must use existing scheduler');
 assert(ctx.setup205ManagementReportHtml(base,2026).includes('data-205-action="planning"'),
@@ -103,16 +118,16 @@ assert(ctx.setup205ManagementReportHtml(base,2026).includes('data-205-action="pl
 ctx.appState.access.can_manage_setup=false;
 assert.equal(ctx.setup205ActionCenterHtml(base),'','Manager-only worklist must not leak');
 assert(!ctx.setup205DeadlineKpiHtml(base,2026).includes('Manager Action Center →'), 'Manager-only navigation must not leak');
-assert(!managerHtml.includes('setup205-email-preview'), 'mail must remain parked');
-assert(!managerHtml.includes('data-205-action="request-report"'), 'no notification action on production candidate');
+assert(!managerHtml.includes('mailto:'), 'no unguarded direct browser mail link');
+assert(managerHtml.includes('data-205-action="request-report"'), 'only Manager worklist shows guarded Request Report action');
 
 assert(managerHtml.includes('data-205-action="report"'), 'unreported original must be directly reachable');
 assert(managerHtml.includes('data-205-action="schedule"'), 'unfinished continuation must open scheduling');
-assert(!managerHtml.includes('mailto:'), 'no email controls in the launch candidate');
+assert(!managerHtml.includes('mailto:'), 'outbound mail must pass guarded server API');
 const hidden = ctx.setup205ManagementReportHtml(base,2026);
 assert(!hidden.includes('Inspect blocker'), 'unprivileged staff must not see Manager task details');
 assert(!hidden.includes('Open original work report'), 'unprivileged staff must not see history-specific Manager links');
-console.log('PASS #205 Manager Action Center, actionable drilldowns, access and paused mail');
+console.log('PASS #205 Manager Action Center, actionable drilldowns, access and guarded email integration');
 
 ctx.appState.access.can_manage_setup=true;
 const overload={

@@ -859,10 +859,49 @@ function installNextTabs() {
     '<button type="button" class="secondary" id="setup205-actions-refresh">Refresh current actions</button></div>' +
     '<p class="muted">Review original missing reports, unfinished work, and upcoming scheduling risks. ' +
     'Use the actions to open the exact work or crew. Planning and actual work stay separate.</p>' +
+    '<div class="setup205-email-tools" aria-label="Manager Setup email controls">' +
+    '<button type="button" class="secondary" id="setup205-preview-email">Preview daily email</button> ' +
+    '<button type="button" class="secondary" id="setup205-email-myself">Email report to myself</button>' +
+    '<p class="muted">Preview does not send. A self-email requires verified Manager access and separately enabled controlled testing; neither sends Captain reminders.</p>' +
+    '<pre id="setup205-email-preview-text" hidden style="white-space:pre-wrap;max-height:360px;overflow:auto"></pre>' +
+    '<p id="setup205-email-result" role="status" aria-live="polite"></p></div>' +
     '<div id="setup205-manager-report" aria-live="polite"></div></div>';
   main.appendChild(management);
   management.querySelector('#setup205-actions-refresh').addEventListener('click', () => {
     void loadSetup205ActionCenter();
+  });
+  management.querySelector('#setup205-preview-email').addEventListener('click', async () => {
+    const output = management.querySelector('#setup205-email-preview-text');
+    const status = management.querySelector('#setup205-email-result');
+    if (!appState.access?.can_manage_setup) return;
+    try {
+      const preview = await api('api/setup/notifications/preview');
+      output.textContent = preview.subject + '\n\n' + preview.body_text;
+      output.hidden = false;
+      status.textContent = 'Read-only preview. No email sent.';
+    } catch (error) {
+      status.textContent = 'Preview unavailable: ' + (error.message || String(error));
+    }
+  });
+  management.querySelector('#setup205-email-myself').addEventListener('click', async () => {
+    const status = management.querySelector('#setup205-email-result');
+    if (!appState.access?.can_manage_setup) return;
+    const email = String(appState.access?.authenticated_email || '').trim().toLowerCase();
+    if (!email.endsWith('@sheboyganlights.org')) {
+      status.textContent = 'Signed-in Manager must have a verified organizational mailbox.';
+      return;
+    }
+    if (!window.confirm('Request one test copy of the current Manager digest to your verified organizational mailbox? No Captain reminders will be sent.')) return;
+    const button = management.querySelector('#setup205-email-myself');
+    button.disabled = true;
+    try {
+      const receipt = await api('api/setup/notifications/email-myself', commandOptions('POST', {}));
+      status.textContent = 'Queued test copy for ' + email + '. Directus acceptance is not proof of inbox delivery; verify the actual message.';
+    } catch (error) {
+      status.textContent = 'No confirmed email: ' + (error.message || String(error));
+    } finally {
+      button.disabled = false;
+    }
   });
 
   const perform = document.createElement('section');
@@ -2179,7 +2218,7 @@ function setup205WireManagementNavigation(root) {
 }
 
 // Manager-only #205 Action Center: one source classifier shared by both pages.
-// No email or history writes happen from this read-only worklist.
+// Email actions are explicitly authorized, confirmed, and revalidated server-side.
 function setup205ActionCenterHtml(board, model) {
   if (!appState.access?.can_manage_setup) return '';
   const k = model || setup205DeadlineKpiModel(board, appState.seasonYear);
@@ -2211,11 +2250,23 @@ function setup205ActionCenterHtml(board, model) {
     safe(title) + ' (' + rows.length + ')</summary><p class="muted">' + safe(explanatory) +
     '</p><ul>' + (rows.length ? rows.map(x => '<li>' + x + '</li>').join('') : '<li>None</li>') +
     '</ul></details>';
-  const missed = k.overdue.map(a => '<span>' + assignmentLabel(a) +
-    ' — No matched report for this original occurrence. ' +
-    button('report',a.setup_work_day_task_id,
-      taskById.get(Number(a.setup_session_task_id))?.effective_complete
-        ? 'Review original / Correct report' : 'Review original / Report Work') + '</span>');
+  const missed = k.overdue.map(a => {
+    const t = taskById.get(Number(a.setup_session_task_id));
+    // Only an eligible, unreported AM/PM occurrence offers the existing
+    // audited no-work reschedule. The guarded server command rechecks state.
+    const canReviewNoWorkMove = !a.historical_locked && !t?.effective_complete &&
+      Number(a.work_report_count || 0) === 0 &&
+      ['MORNING', 'AFTERNOON'].includes(a.shift_code);
+    return '<span>' + assignmentLabel(a) +
+      ' — Manager review needed: confirm whether actual work happened before sending a Captain reminder. ' +
+      button('report',a.setup_work_day_task_id,
+        t?.effective_complete ? 'Review original / Correct report' : 'Review original / Report Work') +
+      (canReviewNoWorkMove
+        ? ' ' + button('review-reschedule',a.setup_work_day_task_id,'No work? Reschedule')
+        : '') +
+      ' ' + button('request-report', a.setup_work_day_task_id, 'Request Report after review') +
+      '</span>';
+  });
   const continuations = k.needsRescheduling.map(t => '<strong>' + safe(t.task_name) +
     '</strong> · ' + safe(context(t)) + ' · ' + safe(t.percent_complete ?? 0) +
     '% reported; no current/future continuation. ' +
@@ -2309,7 +2360,9 @@ function setup205ActionCenterHtml(board, model) {
     '</details>' +
     '<p class="muted">Choose a task below to report actual work, move an assignment where no work happened, ' +
     'or plan unfinished work. Reported history is protected; a confirmed no-work reschedule preserves the original schedule in the audit. ' +
-    'No email is sent from this screen.</p>' +
+    'A Captain reminder is appropriate only after a Manager confirms work happened and the original report is still missing. ' +
+    'Use No work? Reschedule for a confirmed unworked assignment, or Plan continuation for already reported partial work. ' +
+    'Automatic Captain emails must remain held pending Manager review; the draft notification service is not enabled.</p>' +
     section('Past occurrences awaiting reports',missed,'Includes unresolved older work periods, even if the annual task later completed or moved.') +
     section('Incomplete tasks needing continuation',continuations,'A reported partial work period is not the same as a future assignment.') +
     section('Upcoming scheduled readiness exceptions (7 days)',imminent,'Hard prerequisite/Work Order gates and independent NOT READY conditions can overlap.') +
@@ -2332,7 +2385,25 @@ function setup205WireActionCenter(root) {
     const id = Number(button.dataset.id);
     if (!Number.isSafeInteger(id) || id < 1) return;
     try {
-      if (button.dataset['205Action'] === 'report') {
+      if (button.dataset['205Action'] === 'request-report') {
+        const preview = await api('api/setup/notifications/request-report/' + id + '/preview');
+        const prompt = 'Manager review: did actual work happen on this original assignment, but the Captain still has not reported it?\n\n' +
+          'If NO WORK happened, CANCEL and use No work? Reschedule.\n' +
+          'If you do not know, CANCEL and investigate before emailing.\n\n' +
+          'Send one Request Report reminder to ' + preview.recipient_name +
+          ' (' + preview.recipient_email + ')?\n\n' + preview.task_name +
+          '\n' + preview.work_date + ' · Crew ' + preview.crew + ' · ' + preview.shift;
+        if (!window.confirm(prompt)) return;
+        button.disabled = true;
+        try {
+          await api('api/setup/notifications/request-report/' + id, commandOptions('POST', {}));
+          setAlert('Request queued through Directus; inbox delivery not confirmed.', 'success');
+          await loadSetup205ActionCenter();
+        } finally {
+          button.disabled = false;
+        }
+      } else if (button.dataset['205Action'] === 'report' ||
+                 button.dataset['205Action'] === 'review-reschedule') {
         if (await navigateSetupView('perform') === false) return;
         // A Manager may see all Captains and historic reported occurrences.
         setupNextState.performCaptainFilter = 'ALL';
@@ -2351,8 +2422,14 @@ function setup205WireActionCenter(root) {
         }
         details.open = true;
         details.scrollIntoView({block:'center',behavior:'auto'});
-        await loadNextTaskExecution(details,false);
-        details.querySelector('.next-performed-on')?.focus();
+        if (button.dataset['205Action'] === 'review-reschedule') {
+          // Use the existing no-work move dialog and guarded audited command.
+          // Never fabricate a report or clear historical work evidence.
+          nextOpenRescheduleNoWorkDialog(id);
+        } else {
+          await loadNextTaskExecution(details,false);
+          details.querySelector('.next-performed-on')?.focus();
+        }
       } else if (button.dataset['205Action'] === 'schedule' ||
                  button.dataset['205Action'] === 'planning') {
         if (await navigateSetupView('schedule') === false) return;
