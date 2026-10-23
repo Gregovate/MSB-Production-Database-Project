@@ -529,9 +529,170 @@ def export_schematic_projection(conn, drawing_name: str, source_sha: str) -> dic
     return {'base_source_sha256':source_sha,'cables':cables}
 
 
+# Bounded engineering inventory, not a generic database crawler. Source documents
+# and people are deliberately not graph hubs: a shared import/user is not topology.
+_GPX_DEPENDENCY_TABLES = (
+    'ref.site_waypoint', 'ref.site_waypoint_alias', 'ref.site_waypoint_source_binding',
+    'ref.site_track', 'ref.site_track_source_binding', 'ref.site_network',
+    'ref.site_cable', 'ref.site_schematic_binding', 'ref.site_route_segment',
+    'ref.site_route_source_track', 'ref.site_cable_route_segment',
+    'ref.site_panel', 'ref.site_power_breaker', 'ref.site_power_circuit',
+    'ref.site_power_device', 'ref.site_power_feed', 'ref.site_power_cable_spec',
+    'ref.site_power_conductor', 'ref.site_power_conductor_circuit',
+    'ref.site_waypoint_network', 'ref.site_power_action',
+    'ops.setup_power_activity_event', 'ops.linkiq_test',
+    'ops.linkiq_test_appearance', 'ops.linkiq_intake_review',
+    'ops.linkiq_identity_decision',
+)
+
+
+def _dependency_json(value):
+    """Canonical JSON binds row content, independent of SQL result ordering."""
+    return json.dumps(value, sort_keys=True, ensure_ascii=False,
+                      separators=(',', ':'), allow_nan=False)
+
+
+def _dependency_ids(values):
+    values = list(values)
+    if any(type(value) is not int or value <= 0 for value in values):
+        raise ValueError('Dependency targets must be positive permanent integer IDs')
+    return sorted(set(values))
+
+
+def capture_gpx_dependencies(conn, waypoint_ids=(), track_ids=()) -> dict:
+    """Capture recorded dependencies in one read-only MVCC statement.
+
+    Engineering backend only; the caller must enforce Directus authorization
+    before exposing test evidence. This is not an approval or apply endpoint.
+    Missing tables/permissions raise; never turn failed capture into zero impact.
+    """
+    waypoint_ids, track_ids = _dependency_ids(waypoint_ids), _dependency_ids(track_ids)
+    if not waypoint_ids and not track_ids:
+        raise ValueError('Select at least one permanent waypoint or track ID')
+    # Identifiers below are internal constants, never operator-provided SQL.
+    tables = ','.join("'%s',COALESCE((SELECT jsonb_agg(to_jsonb(r)) FROM %s r),'[]'::jsonb)"
+                      % (table, table) for table in _GPX_DEPENDENCY_TABLES)
+    regclasses = ','.join("'%s'::regclass" % table for table in _GPX_DEPENDENCY_TABLES)
+    query = '''SELECT jsonb_build_object(
+        'tables',jsonb_build_object(''' + tables + '''),
+        'reference_revision',(SELECT revision FROM ref.site_reference_revision WHERE singleton),
+        'power_revision',(SELECT revision FROM ref.site_power_revision WHERE singleton),
+        'rls_tables',COALESCE((SELECT jsonb_agg(n.nspname||'.'||c.relname)
+            FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+            WHERE c.oid=ANY(ARRAY[''' + regclasses + ''']) AND c.relrowsecurity),'[]'::jsonb),
+        'foreign_keys',COALESCE((SELECT jsonb_agg(jsonb_build_object(
+            'name',fk.conname,'child',cn.nspname||'.'||cc.relname,
+            'parent',pn.nspname||'.'||pc.relname,'validated',fk.convalidated,
+            'child_columns',(SELECT jsonb_agg(a.attname ORDER BY k.ord)
+                FROM unnest(fk.conkey) WITH ORDINALITY k(num,ord)
+                JOIN pg_attribute a ON a.attrelid=fk.conrelid AND a.attnum=k.num),
+            'parent_columns',(SELECT jsonb_agg(a.attname ORDER BY k.ord)
+                FROM unnest(fk.confkey) WITH ORDINALITY k(num,ord)
+                JOIN pg_attribute a ON a.attrelid=fk.confrelid AND a.attnum=k.num)))
+            FROM pg_constraint fk JOIN pg_class cc ON cc.oid=fk.conrelid
+            JOIN pg_namespace cn ON cn.oid=cc.relnamespace
+            JOIN pg_class pc ON pc.oid=fk.confrelid
+            JOIN pg_namespace pn ON pn.oid=pc.relnamespace
+            WHERE fk.contype='f' AND fk.confrelid=ANY(ARRAY[''' + regclasses + '''])), '[]'::jsonb))'''
+    with conn.cursor() as cursor:
+        cursor.execute(query)
+        snapshot = cursor.fetchone()[0]
+    return _gpx_dependency_report(snapshot, waypoint_ids, track_ids)
+
+
+def _gpx_dependency_report(snapshot, waypoint_ids, track_ids):
+    """Conservative FK component: related evidence, NOT electrical reachability."""
+    from collections import defaultdict, deque
+    from copy import deepcopy
+
+    snapshot = deepcopy(snapshot)
+    if set(snapshot['tables']) != set(_GPX_DEPENDENCY_TABLES):
+        raise ValueError('Incomplete dependency table inventory')
+    for name in ('reference_revision', 'power_revision'):
+        if type(snapshot[name]) is not int or snapshot[name] < 0:
+            raise ValueError('Missing or invalid dependency revision')
+    for table, rows in snapshot['tables'].items():
+        snapshot['tables'][table] = sorted(rows, key=_dependency_json)
+    snapshot['foreign_keys'].sort(key=_dependency_json)
+    snapshot['rls_tables'].sort()
+    nodes = {(table, index): row for table, rows in snapshot['tables'].items()
+             for index, row in enumerate(rows)}
+    edges = defaultdict(list)
+    holds = []
+    for table in snapshot['rls_tables']:
+        holds.append({'reason': 'ROW_SECURITY_COVERAGE_UNPROVEN', 'table': table})
+    for fk in snapshot['foreign_keys']:
+        if fk['child'] not in snapshot['tables']:
+            holds.append({'reason': 'UNINVENTORIED_FK_CONSUMER', 'foreign_key': fk})
+            continue
+        if not fk['validated']:
+            holds.append({'reason': 'UNVALIDATED_FOREIGN_KEY', 'foreign_key': fk})
+        parents = defaultdict(list)
+        for index, row in enumerate(snapshot['tables'][fk['parent']]):
+            parents[tuple(row[c] for c in fk['parent_columns'])].append((fk['parent'], index))
+        for index, row in enumerate(snapshot['tables'][fk['child']]):
+            key = tuple(row[c] for c in fk['child_columns'])
+            if any(value is None for value in key):
+                continue
+            child = (fk['child'], index)
+            if len(parents[key]) != 1:
+                holds.append({'reason': 'MISSING_OR_AMBIGUOUS_FK_TARGET',
+                              'table': fk['child'], 'row': row, 'foreign_key': fk})
+                continue
+            parent = parents[key][0]
+            # Two directions deliberately include a circuit's breaker/panel and
+            # siblings; never present this as the breaker's shutdown impact.
+            edges[child].append((parent, fk['name']))
+            edges[parent].append((child, fk['name']))
+    roots = []
+    for table, column, ids in (
+        ('ref.site_waypoint', 'site_waypoint_id', waypoint_ids),
+        ('ref.site_track', 'site_track_id', track_ids),
+    ):
+        for identity in ids:
+            matches = [node for node, row in nodes.items()
+                       if node[0] == table and row[column] == identity]
+            if len(matches) != 1:
+                holds.append({'reason': 'MISSING_OR_AMBIGUOUS_REQUESTED_ID',
+                              'table': table, 'id': identity})
+            else:
+                roots.extend(matches)
+    queue, paths = deque(roots), {node: [] for node in roots}
+    while queue:
+        node = queue.popleft()
+        for neighbor, constraint in sorted(edges[node]):
+            if neighbor not in paths:
+                paths[neighbor] = paths[node] + [constraint]
+                queue.append(neighbor)
+    related = [{'table': node[0], 'row': nodes[node], 'via_constraints': paths[node]}
+               for node in sorted(paths)]
+    targets = {'waypoint_ids': waypoint_ids, 'track_ids': track_ids}
+    digest = hashlib.sha256(_dependency_json(
+        {'contract_version': 1, 'targets': targets, 'snapshot': snapshot}).encode('utf-8')).hexdigest()
+    return {'contract_version': 1, 'status': 'HOLD' if holds else 'RECORDED_DEPENDENCIES_CAPTURED',
+            'targets': targets, 'dependency_sha256': digest,
+            'reference_revision': snapshot['reference_revision'],
+            'power_revision': snapshot['power_revision'], 'related_records': related,
+            'counts': {table: sum(r['table'] == table for r in related)
+                       for table in _GPX_DEPENDENCY_TABLES},
+            'captured_tables': list(_GPX_DEPENDENCY_TABLES), 'holds': holds,
+            'coverage_gaps': ['NON_FK_JSON_AND_NAME_REFERENCES', 'ACTION_PREREQUISITE_ARRAYS',
+                              'PICKER_CACHE_AND_EXTERNAL_CONSUMERS'],
+            'promotion_ready': False, 'writes_performed': False,
+            'scope': 'Conservative recorded FK component; not verified topology or isolation proof.'}
+
+
+def require_gpx_dependency_freshness(report, expected_sha):
+    """Reject stale review evidence; successful comparison does NOT approve apply."""
+    if not expected_sha or report['dependency_sha256'] != expected_sha:
+        raise ValueError('Dependency state changed; refresh comparison and operator review')
+    if report['holds']:
+        raise ValueError('Dependency capture HOLD; resolve reported coverage or identity failures')
+
+
 def main() -> int:
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=('stage-gpx','bootstrap-gpx','import-flw','export-map','export-gpx-projection','export-schematic-projection','review-linkiq'))
+    parser.add_argument('mode', choices=('stage-gpx','bootstrap-gpx','import-flw','export-map','export-gpx-projection','export-schematic-projection','review-linkiq','gpx-dependencies'))
     parser.add_argument('--dsn', required=True, help='Governed disposable database DSN')
     parser.add_argument('--source', type=Path)
     parser.add_argument('--actor')
@@ -541,13 +702,19 @@ def main() -> int:
     parser.add_argument('--cable-id', type=int)
     parser.add_argument('--expected-cable-id', type=int)
     parser.add_argument('--review-notes')
+    parser.add_argument('--waypoint-id', type=int, action='append', default=[])
+    parser.add_argument('--track-id', type=int, action='append', default=[])
     parser.add_argument('--output', type=Path)
     args=parser.parse_args()
     if not args.output:
         parser.error('--output is required to write local receipt/projection')
+    if args.mode == 'gpx-dependencies' and args.output.exists():
+        parser.error('Dependency report output must be a new file')
     from site_db_connection import connect
     with connect(args.dsn) as conn:
-        if args.mode=='stage-gpx':
+        if args.mode=='gpx-dependencies':
+            result=capture_gpx_dependencies(conn,args.waypoint_id,args.track_id)
+        elif args.mode=='stage-gpx':
             if not args.actor or not args.source: parser.error('Source and actor required')
             result=stage_expertgps(conn,args.source,args.actor)
         elif args.mode=='bootstrap-gpx':
@@ -571,7 +738,11 @@ def main() -> int:
             if not args.baseline_sha or not args.drawing_name:
                 parser.error('--baseline-sha and --drawing-name required')
             result=export_schematic_projection(conn,args.drawing_name,args.baseline_sha)
-    args.output.write_text(json.dumps(result,indent=2),encoding='utf-8')
+    if args.mode == 'gpx-dependencies':
+        with args.output.open('x', encoding='utf-8') as output:
+            json.dump(result, output, indent=2)
+    else:
+        args.output.write_text(json.dumps(result,indent=2),encoding='utf-8')
     return 0
 
 

@@ -184,3 +184,146 @@ def test_ephemeral_postgis_document_restore_and_replay(sample_gpx, tmp_path):
             cur.execute("SELECT p.panel_name,p.verification_status,w.canonical_label FROM ref.site_panel p JOIN ref.site_waypoint w USING(site_waypoint_id)")
             name,status,current=cur.fetchone()
             assert name==current and status=='UNVERIFIED'
+        # The real catalog/data query runs against the same disposable PostGIS
+        # schema. Failure must not be hidden by synthetic connection fixtures.
+        from site_source_db import capture_gpx_dependencies, require_gpx_dependency_freshness
+        with conn.cursor() as cur:
+            cur.execute('SELECT site_waypoint_id FROM ref.site_waypoint ORDER BY site_waypoint_id')
+            waypoint_id = cur.fetchone()[0]
+        report = capture_gpx_dependencies(conn, [waypoint_id])
+        assert report['status'] == 'RECORDED_DEPENDENCIES_CAPTURED', report['holds']
+        assert report['counts']['ref.site_panel'] == 1
+        assert capture_gpx_dependencies(conn, [waypoint_id]) == report
+        with conn.cursor() as cur:
+            cur.execute('BEGIN')
+            try:
+                cur.execute("UPDATE ref.site_waypoint SET canonical_label='changed after review' WHERE site_waypoint_id=%s", (waypoint_id,))
+                changed = capture_gpx_dependencies(conn, [waypoint_id])
+                with pytest.raises(ValueError, match='Dependency state changed'):
+                    require_gpx_dependency_freshness(changed, report['dependency_sha256'])
+                cur.execute('CREATE TABLE ops.ci_unknown_gis_consumer(point_id bigint REFERENCES ref.site_waypoint(site_waypoint_id))')
+                unknown = capture_gpx_dependencies(conn, [waypoint_id])
+                assert unknown['status'] == 'HOLD'
+                assert any(h['reason'] == 'UNINVENTORIED_FK_CONSUMER' for h in unknown['holds'])
+            finally:
+                cur.execute('ROLLBACK')
+        assert capture_gpx_dependencies(conn, [waypoint_id]) == report
+
+
+
+@pytest.fixture
+def dependency_snapshot():
+    from site_source_db import _GPX_DEPENDENCY_TABLES
+    data = {'tables': {t: [] for t in _GPX_DEPENDENCY_TABLES},
+            'foreign_keys': [], 'rls_tables': [], 'reference_revision': 4, 'power_revision': 9}
+    tables = data['tables']
+    tables['ref.site_waypoint'] = [dict(site_waypoint_id=1, canonical_label='A5-18/20')]
+    tables['ref.site_track'] = [dict(site_track_id=5, track_label='A5-18/20')]
+    tables['ref.site_cable'] = [dict(site_cable_id=10, endpoint_a_waypoint_id=1)]
+    tables['ref.site_panel'] = [dict(site_panel_id=20, panel_name='PANEL A5')]
+    tables['ref.site_power_breaker'] = [dict(site_power_breaker_id=21, site_panel_id=20,
+                                           rated_amps=20, pole_count=2)]
+    tables['ref.site_power_circuit'] = [dict(site_power_circuit_id=i, site_power_breaker_id=21,
+                                           circuit_code=code) for i, code in [(22, '18'), (23, '20')]]
+    tables['ref.site_power_feed'] = [dict(site_power_feed_id=i, source_circuit_id=c,
+                                        destination_waypoint_id=1) for i, c in [(24, 22), (25, 23)]]
+    tables['ops.linkiq_test'] = [dict(test_uuid=uuid, physical_site_cable_id=10,
+                                     tester_original_name='A5-18/20', test_time_local=date)
+                                for uuid, date in [('uuid-first', '2026-10-20'), ('uuid-retest', '2026-10-23')]]
+    def fk(child, column, parent, key):
+        data['foreign_keys'].append(dict(name=child+'_'+column+'_fk', child=child,
+            child_columns=[column], parent=parent, parent_columns=[key], validated=True))
+    fk('ref.site_cable', 'endpoint_a_waypoint_id', 'ref.site_waypoint', 'site_waypoint_id')
+    fk('ops.linkiq_test', 'physical_site_cable_id', 'ref.site_cable', 'site_cable_id')
+    fk('ref.site_power_feed', 'destination_waypoint_id', 'ref.site_waypoint', 'site_waypoint_id')
+    fk('ref.site_power_feed', 'source_circuit_id', 'ref.site_power_circuit', 'site_power_circuit_id')
+    fk('ref.site_power_circuit', 'site_power_breaker_id', 'ref.site_power_breaker', 'site_power_breaker_id')
+    fk('ref.site_power_breaker', 'site_panel_id', 'ref.site_panel', 'site_panel_id')
+    return data
+
+
+def test_dependency_rename_preserves_bindings_and_both_dated_retests(dependency_snapshot):
+    from site_source_db import _gpx_dependency_report, require_gpx_dependency_freshness
+    before = deepcopy(dependency_snapshot)
+    report = _gpx_dependency_report(before, [1], [])
+    assert report['counts']['ref.site_power_circuit'] == 2
+    assert report['counts']['ref.site_power_breaker'] == 1
+    assert report['counts']['ops.linkiq_test'] == 2
+    assert report['counts']['ref.site_track'] == 0  # Same label does not imply topology.
+    dependency_snapshot['tables']['ref.site_waypoint'][0]['canonical_label'] = 'A5 corrected'
+    after = _gpx_dependency_report(dependency_snapshot, [1], [])
+    tests = lambda r: [x for x in r['related_records'] if x['table'] == 'ops.linkiq_test']
+    assert tests(after) == tests(report)
+    assert not after['promotion_ready'] and not after['writes_performed']
+    with pytest.raises(ValueError, match='Dependency state changed'):
+        require_gpx_dependency_freshness(after, report['dependency_sha256'])
+    assert before['tables']['ref.site_waypoint'][0]['canonical_label'] == 'A5-18/20'
+
+
+def test_unbound_track_cannot_acquire_cable_or_test_relationship(dependency_snapshot):
+    from site_source_db import _gpx_dependency_report
+    report = _gpx_dependency_report(dependency_snapshot, [], [5])
+    assert len(report['related_records']) == 1
+    assert report['counts']['ops.linkiq_test'] == 0
+    assert report['coverage_gaps'] and not report['promotion_ready']
+
+
+@pytest.mark.parametrize('mutation', ['binding', 'test_content', 'new_test', 'power_revision', 'reference_revision'])
+def test_dependency_digest_detects_changes_even_without_revision_increment(dependency_snapshot, mutation):
+    from site_source_db import _gpx_dependency_report, require_gpx_dependency_freshness
+    prior = _gpx_dependency_report(dependency_snapshot, [1], [])
+    if mutation == 'binding':
+        dependency_snapshot['tables']['ops.linkiq_test'][0]['physical_site_cable_id'] = None
+    elif mutation == 'test_content':
+        dependency_snapshot['tables']['ops.linkiq_test'][0]['tester_original_name'] = 'corrected in LinkWare'
+    elif mutation == 'new_test':
+        dependency_snapshot['tables']['ops.linkiq_test'].append(dict(test_uuid='third', physical_site_cable_id=10))
+    else:
+        dependency_snapshot[mutation] += 1
+    current = _gpx_dependency_report(dependency_snapshot, [1], [])
+    with pytest.raises(ValueError, match='refresh comparison'):
+        require_gpx_dependency_freshness(current, prior['dependency_sha256'])
+
+
+def test_dependency_order_independent_and_capture_is_one_read(dependency_snapshot):
+    from site_source_db import capture_gpx_dependencies
+    before = deepcopy(dependency_snapshot)
+    conn = RecordingConnection([(dependency_snapshot,)])
+    first = capture_gpx_dependencies(conn, [1, 1], [])
+    assert len(conn.statements) == 1 and conn.statements[0][0].startswith('SELECT ')
+    for rows in dependency_snapshot['tables'].values():
+        rows.reverse()
+    dependency_snapshot['foreign_keys'].reverse()
+    second = capture_gpx_dependencies(RecordingConnection([(dependency_snapshot,)]), [1], [])
+    assert first == second
+    assert before['tables']['ops.linkiq_test'][0]['test_uuid'] == 'uuid-first'
+
+
+@pytest.mark.parametrize('problem', ['unknown_consumer', 'missing_root', 'rls', 'unvalidated_fk', 'broken_fk'])
+def test_dependency_incomplete_coverage_holds(dependency_snapshot, problem):
+    from site_source_db import _gpx_dependency_report, require_gpx_dependency_freshness
+    ids = [1]
+    if problem == 'unknown_consumer':
+        dependency_snapshot['foreign_keys'].append(dict(name='future_fk', child='ops.future_consumer',
+            child_columns=['point_id'], parent='ref.site_waypoint', parent_columns=['site_waypoint_id'], validated=True))
+    elif problem == 'missing_root':
+        ids = [999]
+    elif problem == 'rls':
+        dependency_snapshot['rls_tables'] = ['ops.linkiq_test']
+    elif problem == 'unvalidated_fk':
+        dependency_snapshot['foreign_keys'][0]['validated'] = False
+    else:
+        dependency_snapshot['tables']['ref.site_cable'][0]['endpoint_a_waypoint_id'] = 999
+    result = _gpx_dependency_report(dependency_snapshot, ids, [])
+    assert result['status'] == 'HOLD' and result['holds']
+    with pytest.raises(ValueError, match='capture HOLD'):
+        require_gpx_dependency_freshness(result, result['dependency_sha256'])
+
+
+@pytest.mark.parametrize('ids', [[], [True], ['1'], [0], [-1]])
+def test_dependency_invalid_targets_never_query_database(ids):
+    from site_source_db import capture_gpx_dependencies
+    conn = RecordingConnection([])
+    with pytest.raises(ValueError):
+        capture_gpx_dependencies(conn, ids, [])
+    assert conn.statements == []

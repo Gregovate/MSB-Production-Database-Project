@@ -578,3 +578,26 @@ def test_revision_report_track_geometry_is_explicit_not_topology(revision_case):
     assert report['review_items'][0]['reasons']==['TRACK_GEOMETRY_CHANGE']
     assert report['changes'][1]['target_id']==51
     assert report['promotion_ready'] is False
+
+
+def test_preview_binds_dependency_evidence_and_holds_incomplete_coverage(revision_case):
+    from copy import deepcopy
+    from site_source_sync import preview_gpx_revision
+    report = dict(contract_version=1, reference_revision=12, power_revision=9,
+                  targets={'waypoint_ids': [41], 'track_ids': [51]},
+                  dependency_sha256='a' * 64, holds=[],
+                  coverage_gaps=['NON_FK_JSON_AND_NAME_REFERENCES'], promotion_ready=False)
+    before = deepcopy(report)
+    first = preview_gpx_revision(*revision_case, expected_sha='f' * 64, dependency_report=report)
+    assert first['status'] == 'HOLD' and not first['promotion_ready']
+    assert report == before
+    report['dependency_sha256'] = 'b' * 64
+    second = preview_gpx_revision(*revision_case, expected_sha='f' * 64, dependency_report=report)
+    assert first['preview_sha256'] != second['preview_sha256']
+    report['reference_revision'] += 1
+    with pytest.raises(ValueError, match='revisions differ'):
+        preview_gpx_revision(*revision_case, expected_sha='f' * 64, dependency_report=report)
+    report['reference_revision'] = 12
+    report['targets']['track_ids'] = []
+    with pytest.raises(ValueError, match='omits maintained identities'):
+        preview_gpx_revision(*revision_case, expected_sha='f' * 64, dependency_report=report)

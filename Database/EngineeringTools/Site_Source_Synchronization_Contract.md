@@ -1,5 +1,37 @@
 # MSB #171 / #319 / #230 — Site-source synchronization implementation contract
 
+## October 23 — recorded dependency report implementation checkpoint
+
+Implemented in the existing backend: `capture_gpx_dependencies` reads the 26
+bounded GIS/power/LinkIQ tables, both revision counters and incoming FK catalog
+in one SQL statement. The report includes permanent records and relationship
+paths, conservative connected scope, missing-ID/unknown-consumer/RLS/invalid-FK
+holds, coverage gaps and a deterministic full-snapshot digest. No database writes.
+`require_gpx_dependency_freshness` rejects changed evidence but is not approval.
+Existing engineering CLI mode `gpx-dependencies` accepts repeated `--waypoint-id`
+and `--track-id`, requires a new report output and reuses the existing connection.
+This is an engineering entry point, not an operator Production instruction.
+
+Existing `gpx-preview --dependencies` binds the backend report into its preview
+hash, requires matching reference revision and coverage of maintained IDs, and
+returns HOLD while non-FK coverage is incomplete. Reports loaded from files are
+not trusted authorization: the eventual protected server lifecycle must recapture
+and own all review inputs. Do not connect a PC Finish action to these functions.
+
+Local regression: 120 PASS, two real-PostGIS tests skipped because no local
+PostGIS service is available. Python compilation and whitespace checks pass.
+The existing ephemeral PostGIS acceptance test now exercises the real catalog/
+row query, deterministic replay, a manual rename with unchanged revision, an
+unknown FK consumer and rollback restoration. Its CI outcome must be recorded
+separately; local synthetic tests are not PostgreSQL execution evidence.
+
+Outstanding: coherent maintained-field/source-binding extraction, accepted
+baseline lifecycle, complete non-FK consumer coverage, persisted review/decision
+and approval state, authenticated desktop transport, transactional apply/history,
+current-Production-clone/operator acceptance and reusable preview-controller
+clean-exit correction. No new operator candidate or Production readiness claim.
+The concurrent #378 PC consumer contract below is preserved in full.
+
 ## October 23 — PC intake ownership and dependency capture contract
 
 The existing GIS Manager PC application (#378) owns two operator workflows:

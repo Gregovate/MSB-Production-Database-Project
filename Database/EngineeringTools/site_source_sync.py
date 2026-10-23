@@ -379,18 +379,20 @@ def main() -> int:
     preview.add_argument('--baseline', type=Path, required=True)
     preview.add_argument('--maintained', type=Path, required=True)
     preview.add_argument('--decisions', type=Path, required=True)
+    preview.add_argument('--dependencies', type=Path, help='Read-only backend dependency capture; never approval')
     preview.add_argument('--expected-sha', required=True)
     preview.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     if args.command == 'gpx-preview':
-        inputs = (args.source, args.baseline, args.maintained, args.decisions)
+        inputs = (args.source, args.baseline, args.maintained, args.decisions) + ((args.dependencies,) if args.dependencies else ())
         if args.output.exists() or args.output.resolve() in {p.resolve() for p in inputs}:
             raise ValueError('Preview output must be a new file, never a source overwrite')
         value = preview_gpx_revision(
             extract_gpx(args.baseline), extract_gpx(args.source),
             json.loads(args.maintained.read_text(encoding='utf-8')),
             json.loads(args.decisions.read_text(encoding='utf-8')),
-            expected_sha=args.expected_sha)
+            expected_sha=args.expected_sha, dependency_report=(
+                json.loads(args.dependencies.read_text(encoding='utf-8')) if args.dependencies else None))
         with args.output.open('x', encoding='utf-8') as output:
             json.dump(value, output, indent=2, ensure_ascii=False)
         return 2 if value['status'] == 'HOLD' else 0
@@ -443,7 +445,8 @@ def compare_three_way(base: dict, from_gpx: dict, from_database: dict,
 
 
 def preview_gpx_revision(baseline: dict, incoming: dict, maintained: dict,
-                         decisions: dict, *, expected_sha: str) -> dict:
+                         decisions: dict, *, expected_sha: str,
+                         dependency_report: dict | None = None) -> dict:
     """Review a recurring source against explicitly bound permanent identities.
 
     Pure comparison only: no file/database writes and no automatic identity
@@ -564,6 +567,25 @@ def preview_gpx_revision(baseline: dict, incoming: dict, maintained: dict,
               'promotion_ready': False,
               'dependency_analysis': {'status': 'NOT_IMPLEMENTED',
                   'message': 'Consumer dependency capture is required before approval/apply; no impact-free claim.'}}
+
+    if dependency_report is not None:
+        # This input is evidence from the governed backend, not a client-issued
+        # approval token. Persisted server review must independently recapture it.
+        if dependency_report.get('contract_version') != 1:
+            raise ValueError('Unsupported dependency capture contract')
+        if dependency_report.get('reference_revision') != revision:
+            raise ValueError('Dependency and maintained reference revisions differ')
+        for kind, target_key in (('waypoints', 'waypoint_ids'), ('tracks', 'track_ids')):
+            expected = {item['id'] for item in maintained[kind]}
+            if not expected.issubset(set(dependency_report['targets'][target_key])):
+                raise ValueError('Dependency capture omits maintained identities')
+        if not dependency_report.get('dependency_sha256'):
+            raise ValueError('Dependency capture digest required')
+        result['dependency_analysis'] = deepcopy(dependency_report)
+        # Current capture exposes non-FK coverage gaps; a recorded relationship
+        # component must never be mistaken for complete impact analysis.
+        if dependency_report.get('holds') or dependency_report.get('coverage_gaps'):
+            result['status'] = 'HOLD'
 
     # Bind source, DB snapshot and decisions; never accept this digest as approval.
     bound = {'preview': result, 'maintained': maintained, 'decisions': decisions}
