@@ -542,3 +542,39 @@ def test_db_track_map_label_projection_never_renames_gps_name():
     projection=export_waypoint_projection(db,'9'*64)
     assert projection['approved_track_edits']==[{'source_ordinal':1,
         'previous_track_map_label':'HV original','track_map_label':'HV corrected'}]
+
+
+def test_revision_report_categorizes_single_rename_without_replacing_id(revision_case):
+    revision_case[1]['waypoints'][0]['map_label']='Reviewed new name'
+    report=run_preview(revision_case)
+    assert report['summary']['waypoints']['updated']==1
+    assert report['review_items']==[dict(kind='waypoints',target_id=41,source_ordinal=1,
+        changed_fields=['map_label'],reasons=['WAYPOINT_MAP_RENAME'],explicit_review_required=True)]
+    assert report['changes'][0]['retain_alias']=='A5-07/09'
+    assert report['promotion_ready'] is False
+    assert report['dependency_analysis']['status']=='NOT_IMPLEMENTED'
+
+
+def test_revision_report_includes_gps_name_and_symbol_changes(revision_case):
+    revision_case[1]['waypoints'][0].update(garmin_name='GPS new',symbol='New symbol')
+    report=run_preview(revision_case)
+    assert report['review_items'][0]['reasons']==['GPS_NAME_CHANGE','SYMBOL_CHANGE']
+    assert report['changes'][0]['after']['garmin_name']=='GPS new'
+    assert report['changes'][0]['target_id']==41
+
+
+def test_revision_report_noop_and_new_database_revision_are_distinct(revision_case):
+    first=run_preview(revision_case)
+    assert first['summary']['waypoints']['unchanged']==1
+    assert first['review_items']==[]
+    assert first['writes_performed'] is False
+    revision_case[2]['revision']+=1
+    assert run_preview(revision_case)['preview_sha256']!=first['preview_sha256']
+
+
+def test_revision_report_track_geometry_is_explicit_not_topology(revision_case):
+    revision_case[1]['tracks'][0]['segments'][0][0]['lon']='-87.11'
+    report=run_preview(revision_case)
+    assert report['review_items'][0]['reasons']==['TRACK_GEOMETRY_CHANGE']
+    assert report['changes'][1]['target_id']==51
+    assert report['promotion_ready'] is False

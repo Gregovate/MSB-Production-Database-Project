@@ -462,7 +462,7 @@ def preview_gpx_revision(baseline: dict, incoming: dict, maintained: dict,
         raise ValueError('Unknown identity decision kind')
     changes, conflicts, retained = [], [], []
     for kind, fields in (
-        ('waypoints', ('map_label', 'latitude', 'longitude', 'type',
+        ('waypoints', ('map_label', 'garmin_name', 'symbol', 'latitude', 'longitude', 'type',
                        'description', 'comment', 'source_time')),
         ('tracks', ('name', 'map_label', 'style', 'type', 'description', 'segments')),
     ):
@@ -528,10 +528,43 @@ def preview_gpx_revision(baseline: dict, incoming: dict, maintained: dict,
         labels.setdefault(label, set()).add(owner)
         if item['action'] == 'UPDATE' and item['before']['map_label'] != item['after']['map_label']:
             item['retain_alias'] = item['before']['map_label']
+    # Operator review categories are descriptive, never automatic write approval.
+    # Keep old/new values in changes; summaries must not conceal a single rename.
+    review_items = []
+    categories = {
+        'waypoints': {'map_label': 'WAYPOINT_MAP_RENAME', 'garmin_name': 'GPS_NAME_CHANGE',
+                      'symbol': 'SYMBOL_CHANGE', 'type': 'WAYPOINT_TYPE_CHANGE',
+                      'latitude': 'WAYPOINT_COORDINATES_CHANGE', 'longitude': 'WAYPOINT_COORDINATES_CHANGE'},
+        'tracks': {'name': 'TRACK_GPS_NAME_CHANGE', 'map_label': 'TRACK_MAP_RENAME',
+                   'segments': 'TRACK_GEOMETRY_CHANGE', 'style': 'TRACK_STYLE_CHANGE',
+                   'type': 'TRACK_TYPE_CHANGE'},
+    }
+    summary = {}
+    for kind in ('waypoints', 'tracks'):
+        actions = Counter(c['action'] for c in changes if c['kind'] == kind)
+        summary[kind] = dict(baseline=len(baseline[kind]), incoming=len(incoming[kind]),
+            maintained=len(maintained[kind]), added=actions['ADD'], updated=actions['UPDATE'],
+            unchanged=actions['UNCHANGED'], retained=sum(r['kind'] == kind for r in retained),
+            conflicts=sum(c['kind'] == kind for c in conflicts))
+    for change in changes:
+        if change['action'] == 'UNCHANGED':
+            continue
+        fields = sorted(k for k in change['after'] if change['action'] == 'UPDATE'
+                        and change['before'].get(k) != change['after'][k])
+        reasons = (['NEW_IDENTITY'] if change['action'] == 'ADD' else
+                   sorted({categories[change['kind']].get(k, 'SOURCE_METADATA_CHANGE') for k in fields}))
+        review_items.append(dict(kind=change['kind'], target_id=change['target_id'],
+            source_ordinal=change['source_ordinal'], changed_fields=fields,
+            reasons=reasons, explicit_review_required=True))
     result = {'status': 'HOLD' if conflicts or retained else 'REVIEW_REQUIRED',
               'baseline_sha256': baseline['sha256'], 'incoming_sha256': incoming['sha256'],
               'expected_revision': revision, 'changes': changes, 'conflicts': conflicts,
-              'retained': retained, 'writes_performed': False}
+              'retained': retained, 'writes_performed': False,
+              'summary': summary, 'review_items': review_items,
+              'promotion_ready': False,
+              'dependency_analysis': {'status': 'NOT_IMPLEMENTED',
+                  'message': 'Consumer dependency capture is required before approval/apply; no impact-free claim.'}}
+
     # Bind source, DB snapshot and decisions; never accept this digest as approval.
     bound = {'preview': result, 'maintained': maintained, 'decisions': decisions}
     result['preview_sha256'] = hashlib.sha256(json.dumps(
