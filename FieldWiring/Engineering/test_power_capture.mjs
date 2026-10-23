@@ -306,6 +306,7 @@ assert.equal(
 // Grouped breaker regression: two receptacles at one waypoint, asymmetric
 // onward paths, shared neutral, immutable event evidence and no name-based joins.
 revision = (await db.query("SELECT revision FROM ref.site_power_revision")).rows[0].revision;
+await db.exec("INSERT INTO ref.site_waypoint VALUES (21,'Quad fixture','OUT-Combo'),(22,'Continuation fixture','OUT-Combo')");
 const groupedPanel = await cmd("panel", {...base,panel_name:"Grouped fixture"});
 const breaker = await cmd("breaker", {...base,site_panel_id:groupedPanel.target_id,breaker_name:"18/20",rated_amps:20,pole_count:2});
 const legA = await cmd("circuit", {...base,site_panel_id:groupedPanel.target_id,circuit_code:"18",site_power_breaker_id:breaker.target_id,breaker_pole:1});
@@ -313,16 +314,27 @@ const legB = await cmd("circuit", {...base,site_panel_id:groupedPanel.target_id,
 await denied(() => cmd("circuit", {...base,site_panel_id:groupedPanel.target_id,circuit_code:"duplicate",site_power_breaker_id:breaker.target_id,breaker_pole:2}),"23505");
 await denied(() => cmd("circuit", {...base,site_panel_id:p.target_id,circuit_code:"cross-panel",site_power_breaker_id:breaker.target_id,breaker_pole:3}),"23514");
 await denied(() => cmd("breaker", {...base,pole_count:1},breaker.target_id),"23514");
-const socketA = await cmd("device", {...base,device_name:"Quad receptacle A",device_kind:"OUTLET",site_waypoint_id:11});
-const socketB = await cmd("device", {...base,device_name:"Quad receptacle B",device_kind:"OUTLET",site_waypoint_id:11});
+const socketA = await cmd("device", {...base,device_name:"Quad receptacle A",device_kind:"OUTLET",site_waypoint_id:21});
+const socketB = await cmd("device", {...base,device_name:"Quad receptacle B",device_kind:"OUTLET",site_waypoint_id:21});
 await cmd("feed", {...base,source_circuit_id:legA.target_id,destination_device_id:socketA.target_id});
 await cmd("feed", {...base,source_circuit_id:legB.target_id,destination_device_id:socketB.target_id});
-await cmd("feed", {...base,source_device_id:socketA.target_id,destination_waypoint_id:12});
+await cmd("feed", {...base,source_device_id:socketA.target_id,destination_waypoint_id:22});
+// Two same-breaker legs above are allowed; an independent breaker is not.
+const competing = await cmd("breaker", {...base,site_panel_id:groupedPanel.target_id,breaker_name:"Other supply",rated_amps:15,pole_count:1});
+const competingLeg = await cmd("circuit", {...base,site_panel_id:groupedPanel.target_id,circuit_code:"Other supply",site_power_breaker_id:competing.target_id,breaker_pole:1});
+await denied(()=>cmd("feed",{...base,source_circuit_id:competingLeg.target_id,destination_waypoint_id:21}),"23514");
+await denied(()=>cmd("feed",{...base,source_circuit_id:competingLeg.target_id,destination_device_id:socketA.target_id}),"23514");
+await denied(()=>cmd("circuit",{...base,site_power_breaker_id:competing.target_id,breaker_pole:1},legB.target_id),"23505");
+await denied(()=>cmd("breaker",{...base,rated_amps:20.000001},breaker.target_id),"23514");
+const spareBreaker=await cmd("breaker",{...base,site_panel_id:groupedPanel.target_id,breaker_name:"Unoccupied independent breaker",rated_amps:30,pole_count:1});
+await denied(()=>cmd("circuit",{...base,site_power_breaker_id:spareBreaker.target_id,breaker_pole:1},legB.target_id),"23514");
+await denied(()=>cmd("circuit",{...base,site_power_breaker_id:null,breaker_pole:null},legB.target_id),"23514");
+
 let impact = (await db.query("SELECT ref.site_power_breaker_impact('crew@example.test',$1) AS x",[breaker.target_id])).rows[0].x;
 assert.equal(impact.breaker.rated_amps,20);
 assert.equal(impact.missing_pole_membership,false);
-assert.equal(impact.paths.filter(x => x.waypoint_id===11).length,2);
-assert.equal(impact.paths.filter(x => x.waypoint_id===12).length,1);
+assert.equal(impact.paths.filter(x => x.waypoint_id===21).length,2);
+assert.equal(impact.paths.filter(x => x.waypoint_id===22).length,1);
 assert.equal(impact.coverage,"RECORDED_ONLY_NOT_PROOF_OF_ISOLATION");
 await cmd("cable_spec", {...base,site_cable_id:1,cable_specification:"12-3 operator observation"});
 const neutral = await cmd("conductor", {...base,site_cable_id:1,conductor_label:"Recorded neutral",conductor_role:"NEUTRAL"});
@@ -335,11 +347,11 @@ const oldRevision=revision;
 await cmd("breaker", {...base,breaker_name:"Corrected breaker label"},breaker.target_id);
 await denied(() => cmd("event",{impact_reviewed:true,site_power_action_id:action.target_id,season_year:2026,event_kind:"REPORTED",condition:"OFF",observed_at:new Date().toISOString(),evidence:"Fixture observation"},null,"crew@example.test",oldRevision),"40001");
 const groupedEvent=await cmd("event",{impact_reviewed:true,site_power_action_id:action.target_id,season_year:2026,event_kind:"REPORTED",condition:"OFF",observed_at:new Date().toISOString(),evidence:"Fixture observation"});
-await db.exec("UPDATE ref.site_waypoint SET canonical_label='Corrected quad name' WHERE site_waypoint_id=11");
+await db.exec("UPDATE ref.site_waypoint SET canonical_label='Corrected quad name' WHERE site_waypoint_id=21");
 impact = (await db.query("SELECT ref.site_power_breaker_impact('crew@example.test',$1) AS x",[breaker.target_id])).rows[0].x;
-assert.equal(impact.paths.find(x=>x.waypoint_id===11).waypoint_name,"Corrected quad name");
+assert.equal(impact.paths.find(x=>x.waypoint_id===21).waypoint_name,"Corrected quad name");
 const eventSnapshot = (await db.query("SELECT definition_snapshot FROM ops.setup_power_activity_event WHERE event_id=$1",[groupedEvent.target_id])).rows[0].definition_snapshot;
-assert.notEqual(eventSnapshot.impact.paths.find(x=>x.waypoint_id===11).waypoint_name,"Corrected quad name");
+assert.notEqual(eventSnapshot.impact.paths.find(x=>x.waypoint_id===21).waypoint_name,"Corrected quad name");
 await denied(() => cmd("action", {...base,action_name:"Invalid leg switch",site_power_circuit_id:legA.target_id,phase:"SETUP",action_kind:"OTHER",desired_state:"OFF"}),"23514");
 await cmd("circuit", {...base,show_desired_state:"OFF"},legA.target_id);
 await denied(() => cmd("circuit", {...base,show_desired_state:"ON"},legB.target_id),"23514");

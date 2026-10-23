@@ -63,6 +63,29 @@ supply and cycle denial, same-breaker two-leg OUT-Combo acceptance, different-br
 rejection including indirect paths, retained IDs/history, both themes and mobile.
 One combined candidate/current-Production-clone review remains required.
 
+### Implemented defect correction checkpoint — not a new operator handoff
+
+V0.4.7-breaker-review fixes uncaught position-parser errors before Save handling,
+accepts slash/comma integer positions, hides/clears branch positions for MAIN,
+uses positive whole-number amps with common suggestions, and adds a persistent
+FieldWiring light/dark control with themed dialogs. The same governed database
+command now rejects fractional ratings and competing active supplies to an
+OUT-Combo, including device paths, circuit rebindings and unresolved competing
+memberships. Two same-breaker circuit legs remain allowed. IDs/history are retained.
+
+Local verification: 220 FieldWiring application tests, 91 isolated PostgreSQL
+command/denial checks, and actual Chromium workflow PASS. Browser coverage includes
+malformed positions with visible retained-input error, slash entry, main positions
+hidden, whole-number step, theme toggle/reload, save/retry, mobile and read-only.
+Tests now use separate synthetic boxes for independent fixture supplies instead
+of treating unrelated breakers on one combo box as valid. Real PostGIS CI and
+current-clone/operator acceptance remain separate gates.
+
+The single atomic breaker/circuit/feed form, breaker-level show-state entry,
+meter/upstream-main relationship and waypoint-focused equipment UI are NOT yet
+implemented. Earlier generic forms remain rejected; these fixes alone do not
+satisfy the requested workflow or justify another operator test handoff.
+
 ## Evidence and integration contract
 
 The operator supplied a complete read-only catalog inventory from `msb`, captured

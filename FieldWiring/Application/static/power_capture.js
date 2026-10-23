@@ -3,6 +3,17 @@
 "use strict";
 (() => {
   const $ = (id) => document.getElementById(id);
+  // Reuse the FieldWiring preference; no separate theme authority for this page.
+  function setTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    $("theme-toggle").textContent = theme === "dark" ? "Light mode" : "Dark mode";
+    try { localStorage.setItem("msb-theme", theme); } catch (_) { /* Theme still works without storage. */ }
+  }
+  let savedTheme;
+  try { savedTheme = localStorage.getItem("msb-theme"); } catch (_) { /* Use OS preference. */ }
+  setTheme(["light", "dark"].includes(savedTheme) ? savedTheme :
+    (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  $("theme-toggle").onclick = () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
   const keys = {
     panel: "site_panel_id",
     breaker: "site_power_breaker_id",
@@ -456,7 +467,7 @@
         select("site_panel_id", "Panel", options(data.panels.map(p => [p.site_panel_id,p.panel_name])), true),
         text("breaker_name", "Breaker designation", true),
         choose("breaker_role", "Main or branch breaker", ["UNKNOWN","MAIN","BRANCH"]),
-        text("panel_positions", "Branch panel positions in pole order (for example 18,20; blank if unknown)"),
+        text("panel_positions", "Branch panel positions in pole order (for example 18/20 or 18,20; blank if unknown)"),
         {...text("rated_amps", "Breaker rating (A; do not add poles together)"), type: "number"},
         {...text("pole_count", "Pole count"), type: "number"},
       ],
@@ -653,8 +664,9 @@
       if (spec.type === "checkbox") n.checked = value !== false;
       else n.value = Array.isArray(value) ? value.join(",") : value ?? "";
       if (spec.type === "number") {
-        n.min = ["breaker_pole","pole_count"].includes(spec.key) ? "1" : "0.000001";
-        n.step = ["breaker_pole","pole_count"].includes(spec.key) ? "1" : "any";
+        n.min = ["breaker_pole","pole_count","rated_amps"].includes(spec.key) ? "1" : "0.000001";
+        n.step = ["breaker_pole","pole_count","rated_amps"].includes(spec.key) ? "1" : "any";
+        if (spec.key === "rated_amps") n.setAttribute("list", "breaker-amp-options");
       }
     }
     return n;
@@ -679,6 +691,15 @@
               (s.key.includes("desired_state") ? "UNKNOWN" : undefined)),
       ),
     );
+    if (kind === "breaker") {
+      const form = $("edit-form"), role = form.elements.breaker_role, positions = form.elements.panel_positions;
+      const updateRole = () => {
+        positions.closest("label").hidden = role.value === "MAIN";
+        positions.disabled = role.value === "MAIN";
+        if (role.value === "MAIN") positions.value = "";
+      };
+      role.addEventListener("change", updateRole); updateRole();
+    }
     if (kind === "circuit") {
       const form=$("edit-form"), panelSelect=form.elements.site_panel_id,
         breakerSelect=form.elements.site_power_breaker_id, pole=form.elements.breaker_pole;
@@ -797,8 +818,8 @@
         else if (s.type === "datetime-local") v = new Date(v).toISOString();
       }
       if (s.key === "panel_positions" && v !== null) {
-        if (!/^\d+(\s*,\s*\d+)*$/.test(v)) throw new Error("Enter numbered panel positions separated by commas.");
-        v=v.split(",").map(Number);
+        if (!/^\d+(\s*[,/]\s*\d+)*$/.test(v)) throw new Error("Enter panel positions such as 1/3 or 18,20; use numbers only.");
+        v=v.split(/[,/]/).map(Number);
         if (v.some(x=>!Number.isSafeInteger(x)||x<1||x>200)) throw new Error("Panel positions must be integers from 1 to 200.");
       }
       result[s.key] = v;
@@ -811,6 +832,7 @@
   }
   $("edit-form").onsubmit = async (event) => {
     event.preventDefault();
+    try {
     if (!pending) {
       let commands;
       if (edit.kind === "assignments") {
@@ -859,7 +881,6 @@
     }
     $("save").disabled = true;
     $("save-status").textContent = "Saving…";
-    try {
       await api("api/power/commands", {
         method: "POST",
         headers: {
@@ -873,7 +894,9 @@
       await load();
     } catch (e) {
       $("save-status").textContent = e.message;
-      if (e.status && e.status < 500) {
+      $("save-status").focus();
+      $("save-status").scrollIntoView({block:"nearest"});
+      if (!pending || (e.status && e.status < 500)) {
         pending = null;
       } else {
         $("save-status").textContent +=

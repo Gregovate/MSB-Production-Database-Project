@@ -112,3 +112,8 @@ button {
 .power-slot-grid {display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
 .power-slot {min-width:0;border:1px solid #667788;padding:.5rem;overflow-wrap:anywhere}
 .power-slot button {max-width:100%}
+
+/* Native dialogs must follow the same explicit theme as the page. */
+dialog { background: var(--panel); color: var(--ink); }
+#save-status { color: #b42318; }
+html[data-theme="dark"] #save-status { color: #ffaaa5; }

@@ -37,7 +37,7 @@ CREATE TABLE ref.site_power_breaker (
  CHECK (panel_positions IS NULL OR (breaker_role='BRANCH' AND pole_count IS NOT NULL
    AND cardinality(panel_positions)=pole_count AND array_ndims(panel_positions)=1
    AND array_position(panel_positions,NULL) IS NULL AND 0<ALL(panel_positions) AND 200>=ALL(panel_positions))),
- rated_amps numeric CHECK (rated_amps>0),
+ rated_amps numeric CHECK (rated_amps>0 AND rated_amps<'Infinity'::numeric AND rated_amps=trunc(rated_amps)),
  pole_count integer CHECK (pole_count>0),
  active boolean NOT NULL DEFAULT true,
  source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
@@ -405,6 +405,35 @@ BEGIN
    walk(a,b,path,cycle) AS (SELECT a,b,ARRAY[a,b],a=b FROM edges UNION ALL
     SELECT w.a,e.b,w.path||e.b,e.b=ANY(w.path) FROM walk w JOIN edges e ON e.a=w.b WHERE NOT w.cycle)
    SELECT 1 FROM walk WHERE cycle) THEN RAISE EXCEPTION 'Documented feed would form a cycle' USING ERRCODE='23514'; END IF;
+  -- A combo box may contain two legs of ONE breaker, never competing
+  -- breakers. Follow actual active device/feed edges; names prove nothing.
+  IF EXISTS (
+   WITH RECURSIVE supplied AS (
+    SELECT c.site_power_circuit_id,c.site_power_breaker_id,
+      f.destination_waypoint_id,f.destination_device_id,
+      ARRAY[coalesce(f.destination_device_id,0)] visited
+    FROM ref.site_power_circuit c JOIN ref.site_power_feed f
+      ON f.source_circuit_id=c.site_power_circuit_id AND f.active
+    WHERE c.active
+    UNION ALL
+    SELECT w.site_power_circuit_id,w.site_power_breaker_id,
+      f.destination_waypoint_id,f.destination_device_id,
+      w.visited||coalesce(f.destination_device_id,0)
+    FROM supplied w JOIN ref.site_power_feed f
+      ON f.source_device_id=w.destination_device_id AND f.active
+    WHERE NOT coalesce(f.destination_device_id=ANY(w.visited),false)
+   ), endpoints AS (
+    SELECT s.site_power_circuit_id,s.site_power_breaker_id,
+      coalesce(s.destination_waypoint_id,d.site_waypoint_id) waypoint_id
+    FROM supplied s LEFT JOIN ref.site_power_device d
+      ON d.site_power_device_id=s.destination_device_id
+   ) SELECT 1 FROM endpoints e JOIN ref.site_waypoint w
+     ON w.site_waypoint_id=e.waypoint_id
+    WHERE lower(btrim(w.waypoint_type))='out-combo'
+    GROUP BY e.waypoint_id HAVING count(DISTINCT
+      CASE WHEN e.site_power_breaker_id IS NOT NULL THEN 'B:'||e.site_power_breaker_id
+           ELSE 'UNKNOWN-C:'||e.site_power_circuit_id END)>1
+  ) THEN RAISE EXCEPTION 'OUT-Combo box cannot be supplied by different breakers or unresolved competing circuits; review its direct and equipment feeds' USING ERRCODE='23514'; END IF;
   IF p_kind='action' THEN
    IF EXISTS(SELECT 1 FROM ref.site_power_action a,unnest(a.prerequisite_action_ids) x
       WHERE NOT EXISTS(SELECT 1 FROM ref.site_power_action b WHERE b.site_power_action_id=x)) THEN
