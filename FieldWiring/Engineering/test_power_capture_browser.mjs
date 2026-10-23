@@ -113,7 +113,8 @@ async function evidence() {
 }
 async function save() {
   await dialog.locator("#save").click();
-  await dialog.waitFor({ state: "hidden" });
+  try { await dialog.waitFor({ state: "hidden", timeout: 10000 }); }
+  catch (e) { throw new Error((await dialog.innerText()) + "\n" + e.message); }
   await page.getByText(/Revision \d+/).waitFor();
 }
 try {
@@ -224,6 +225,29 @@ try {
     ).rows[0].n,
     0,
   );
+  // The grouped schema must also be operable through the actual page.
+  await page.locator("#panels").getByRole("button", {name:"A5 panel",exact:true}).click();
+  await page.getByRole("button", {name:"Add breaker",exact:true}).click();
+  await dialog.locator("[name=breaker_name]").fill("18/20 grouped");
+  await dialog.locator("[name=rated_amps]").fill("20");
+  await dialog.locator("[name=pole_count]").fill("2");
+  await evidence(); await save();
+  const breakerId=(await db.query("SELECT site_power_breaker_id FROM ref.site_power_breaker WHERE breaker_name='18/20 grouped'")).rows[0].site_power_breaker_id;
+  for (const [code,pole] of [["18",1],["20",2]]) {
+    await page.getByRole("button", {name:"Add circuit",exact:true}).click();
+    await dialog.locator("[name=circuit_code]").fill(code);
+    await dialog.locator("[name=site_power_breaker_id]").selectOption(String(breakerId));
+    await dialog.locator("[name=breaker_pole]").fill(String(pole));
+    await evidence(); await save();
+    await page.locator("#panel-detail .power-record").filter({has:page.getByRole("heading",{name:`Circuit ${code} — No description`,exact:true})}).getByRole("button",{name:"Assign multiple waypoints"}).click();
+    await dialog.locator('input[name=waypoint][value="11"]').check();
+    await evidence(); await save();
+  }
+  const groupedRow=page.locator("#panel-detail .power-record").filter({has:page.getByRole("heading",{name:"Breaker 18/20 grouped",exact:true})});
+  assert.match(await groupedRow.innerText(),/20 A · 2 poles/);
+  assert.match(await groupedRow.innerText(),/A5 panel \/ 18/);
+  assert.match(await groupedRow.innerText(),/A5 panel \/ 20/);
+  assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_circuit WHERE site_power_breaker_id=$1",[breakerId])).rows[0].n,2);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({
     path: process.env.POWER_TEST_SCREENSHOT || "/tmp/power-mobile.png",
@@ -250,6 +274,7 @@ try {
   );
 } finally {
   await browser.close();
+  server.closeAllConnections();
   await new Promise((resolve) => server.close(resolve));
   await db.close();
 }

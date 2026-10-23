@@ -613,7 +613,7 @@
       if (spec.type === "checkbox") n.checked = value !== false;
       else n.value = value ?? "";
       if (spec.type === "number") {
-        n.min = "0.000001";
+        n.min = ["breaker_pole","pole_count"].includes(spec.key) ? "1" : "0.000001";
         n.step = ["breaker_pole","pole_count"].includes(spec.key) ? "1" : "any";
       }
     }
