@@ -9,6 +9,8 @@ import argparse
 from collections import Counter, defaultdict
 import hashlib
 import json
+import math
+from copy import deepcopy
 from pathlib import Path
 import sqlite3
 import xml.etree.ElementTree as ET
@@ -32,7 +34,17 @@ def local_name(tag: str) -> str:
 
 def extract_gpx(path: Path) -> dict:
     """Do not treat legacy Garmin names as the user-facing waypoint name."""
-    root = ET.parse(path).getroot()
+    # Parse and fingerprint one immutable read; a second filesystem read could
+    # otherwise attach the hash of a newer export to older parsed geometry.
+    raw = path.read_bytes()
+    root = ET.fromstring(raw)
+    if root.tag != GPX + 'gpx':
+        raise ValueError('Expected GPX 1.1 document')
+    for point in list(root.findall(GPX + 'wpt')) + list(root.iter(GPX + 'trkpt')):
+        for name, limit in (('lat', 90), ('lon', 180)):
+            value = float(point.attrib[name])
+            if not math.isfinite(value) or abs(value) > limit:
+                raise ValueError('GPX coordinate outside WGS84 bounds')
     waypoints = []
     for ordinal, point in enumerate(root.findall(GPX + 'wpt'), 1):
         label_node = point.find(GPX + 'extensions/' + OVERLAY + 'label/' + OVERLAY + 'label_text')
@@ -43,6 +55,8 @@ def extract_gpx(path: Path) -> dict:
             'ordinal': ordinal,
             'map_label': label_node.text.strip(),
             'garmin_name': garmin_name,
+            'symbol': point.findtext(GPX + 'sym', default=''),
+            'source_xml': ET.tostring(point, encoding='unicode'),
             'latitude': point.attrib['lat'],
             'longitude': point.attrib['lon'],
             'type': point.findtext(GPX + 'type', default=''),
@@ -62,11 +76,12 @@ def extract_gpx(path: Path) -> dict:
         tracks.append({
             'ordinal': ordinal,
             'name': track.findtext(GPX + 'name', default=''),
+            'source_xml': ET.tostring(track, encoding='unicode'),
             'type': track.findtext(GPX + 'type', default=''),
             'description': track.findtext(GPX + 'desc', default=''),
             'segments': segments,
         })
-    return {'kind': 'EXPERTGPS_GPX', 'sha256': sha256(path),
+    return {'kind': 'EXPERTGPS_GPX', 'sha256': hashlib.sha256(raw).hexdigest(),
             'waypoints': waypoints, 'tracks': tracks}
 
 
@@ -232,6 +247,9 @@ def gpx_roundtrip(source_path: Path, projection: dict, output_path: Path) -> dic
     expected_tracks = [dict(track) for track in before['tracks']]
     for ordinal, name in edits_by_ordinal.items():
         expected_tracks[ordinal - 1]['name'] = name
+        expected_xml = ET.fromstring(expected_tracks[ordinal - 1]['source_xml'])
+        expected_xml.find(GPX + 'name').text = name
+        expected_tracks[ordinal - 1]['source_xml'] = ET.tostring(expected_xml, encoding='unicode')
     if (len(after['waypoints']) != len(before['waypoints'])
             or after['tracks'] != expected_tracks):
         output_path.unlink(missing_ok=True)
@@ -292,7 +310,26 @@ def main() -> int:
         s.add_argument('source', type=Path)
         s.add_argument('approved_projection', type=Path)
         s.add_argument('--output', type=Path, required=True)
+    preview = sub.add_parser('gpx-preview')
+    preview.add_argument('source', type=Path)
+    preview.add_argument('--baseline', type=Path, required=True)
+    preview.add_argument('--maintained', type=Path, required=True)
+    preview.add_argument('--decisions', type=Path, required=True)
+    preview.add_argument('--expected-sha', required=True)
+    preview.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
+    if args.command == 'gpx-preview':
+        inputs = (args.source, args.baseline, args.maintained, args.decisions)
+        if args.output.exists() or args.output.resolve() in {p.resolve() for p in inputs}:
+            raise ValueError('Preview output must be a new file, never a source overwrite')
+        value = preview_gpx_revision(
+            extract_gpx(args.baseline), extract_gpx(args.source),
+            json.loads(args.maintained.read_text(encoding='utf-8')),
+            json.loads(args.decisions.read_text(encoding='utf-8')),
+            expected_sha=args.expected_sha)
+        with args.output.open('x', encoding='utf-8') as output:
+            json.dump(value, output, indent=2, ensure_ascii=False)
+        return 2 if value['status'] == 'HOLD' else 0
     if args.command == 'gpx-inspect':
         value = extract_gpx(args.source)
     elif args.command == 'flw-inspect':
@@ -311,9 +348,6 @@ def main() -> int:
         print(json.dumps(value, indent=2))
     return 0
 
-
-if __name__ == '__main__':
-    raise SystemExit(main())
 
 
 def compare_three_way(base: dict, from_gpx: dict, from_database: dict,
@@ -342,3 +376,104 @@ def compare_three_way(base: dict, from_gpx: dict, from_database: dict,
             'merged': merged if not conflicts else None,
             'conflicts': conflicts, 'gpx_only': from_gpx_only,
             'db_only': from_db_only}
+
+
+def preview_gpx_revision(baseline: dict, incoming: dict, maintained: dict,
+                         decisions: dict, *, expected_sha: str) -> dict:
+    """Review a recurring source against explicitly bound permanent identities.
+
+    Pure comparison only: no file/database writes and no automatic identity
+    matching. Each maintained item has id, baseline_ordinal and current fields.
+    decisions[kind][incoming ordinal] is a permanent ID or the literal NEW.
+    The caller obtains maintained rows and revision from one coherent DB read.
+    """
+    if incoming['sha256'] != expected_sha:
+        raise ValueError('Incoming master differs from expected SHA256')
+    if maintained.get('baseline_sha256') != baseline['sha256']:
+        raise ValueError('Accepted baseline binding differs from supplied source')
+    revision = maintained.get('revision')
+    if type(revision) is not int or revision < 0:
+        raise ValueError('Expected database revision required')
+    if set(decisions) - {'waypoints', 'tracks'}:
+        raise ValueError('Unknown identity decision kind')
+    changes, conflicts, retained = [], [], []
+    for kind, fields in (
+        ('waypoints', ('map_label', 'latitude', 'longitude', 'type',
+                       'description', 'comment', 'source_time')),
+        ('tracks', ('name', 'type', 'description', 'segments')),
+    ):
+        old = {x['ordinal']: x for x in baseline[kind]}
+        current = {x['id']: x for x in maintained[kind]}
+        if len(old) != len(baseline[kind]) or len(current) != len(maintained[kind]):
+            raise ValueError('Duplicate baseline ordinal or maintained identity')
+        bindings = [x['baseline_ordinal'] for x in current.values()]
+        if len(set(bindings)) != len(bindings) or any(x not in old for x in bindings):
+            raise ValueError('Ambiguous or missing accepted source binding')
+        incoming_rows = {str(x['ordinal']): x for x in incoming[kind]}
+        if len(incoming_rows) != len(incoming[kind]):
+            raise ValueError('Duplicate incoming source ordinal')
+        selected = decisions.get(kind, {})
+        if set(selected) - set(incoming_rows):
+            raise ValueError('Decision refers to absent incoming source row')
+        used = set()
+        for row, source in incoming_rows.items():
+            target = selected.get(row)
+            entry = {'kind': kind, 'source_ordinal': source['ordinal'], 'target_id': target}
+            if target is None:
+                conflicts.append(dict(entry, reason='IDENTITY_REVIEW_REQUIRED'))
+                continue
+            if target == 'NEW':
+                changes.append(dict(entry, action='ADD', after=deepcopy(source)))
+                continue
+            if type(target) is not int or target not in current or target in used:
+                conflicts.append(dict(entry, reason='UNKNOWN_OR_REUSED_IDENTITY'))
+                continue
+            used.add(target)
+            before = current[target]
+            base = old[before['baseline_ordinal']]
+            # Missing fields in a DB snapshot must never be filled from the GPX
+            # silently: that would conceal maintained corrections from review.
+            if any(f not in before for f in fields):
+                raise ValueError('Incomplete maintained snapshot')
+            comparison = compare_three_way(base, source, before, fields)
+            if comparison['conflicts']:
+                conflicts.append(dict(entry, reason='CONCURRENT_EDIT', details=comparison['conflicts']))
+                continue
+            after = comparison['merged']
+            changed = any(after[f] != before[f] for f in fields)
+            changes.append(dict(entry, action='UPDATE' if changed else 'UNCHANGED',
+                                before={f: deepcopy(before[f]) for f in fields},
+                                after=deepcopy(after), preserved_database_fields=comparison['db_only']))
+        # Removed/split features cannot silently delete or retire reference data.
+        retained.extend({'kind': kind, 'id': i, 'reason': 'UNMAPPED_EXISTING_RETAINED'}
+                        for i in current if i not in used)
+    # Canonical labels and retained aliases share an identity namespace. Include
+    # unchanged/unmapped DB rows, so NEW cannot steal an existing spelling.
+    labels = {}
+    for item in maintained['waypoints']:
+        for label in [item['map_label']] + item.get('aliases', []):
+            labels.setdefault(label.strip().casefold(), set()).add(item['id'])
+    for index, item in enumerate(changes):
+        if item['kind'] != 'waypoints':
+            continue
+        label = item['after']['map_label'].strip().casefold()
+        owner = ('NEW', index) if item['target_id'] == 'NEW' else item['target_id']
+        if not label or labels.get(label, set()) - {owner}:
+            conflicts.append(dict(kind='waypoints', source_ordinal=item['source_ordinal'],
+                                  reason='LABEL_OR_ALIAS_COLLISION', label=label))
+        labels.setdefault(label, set()).add(owner)
+        if item['action'] == 'UPDATE' and item['before']['map_label'] != item['after']['map_label']:
+            item['retain_alias'] = item['before']['map_label']
+    result = {'status': 'HOLD' if conflicts or retained else 'REVIEW_REQUIRED',
+              'baseline_sha256': baseline['sha256'], 'incoming_sha256': incoming['sha256'],
+              'expected_revision': revision, 'changes': changes, 'conflicts': conflicts,
+              'retained': retained, 'writes_performed': False}
+    # Bind source, DB snapshot and decisions; never accept this digest as approval.
+    bound = {'preview': result, 'maintained': maintained, 'decisions': decisions}
+    result['preview_sha256'] = hashlib.sha256(json.dumps(
+        bound, sort_keys=True, ensure_ascii=False, separators=(',', ':')).encode()).hexdigest()
+    return result
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

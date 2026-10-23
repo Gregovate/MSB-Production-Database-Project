@@ -348,3 +348,120 @@ CREATE TABLE RecordData (Hash INT, BinRec BLOB);''')
     assert result['counts']['new_appearances']==2
     assert not any('UPDATE ops.linkiq_test' in s or 'UPDATE ref.site_cable' in s for s in statements)
     assert sha256(db)==original_sha
+
+
+@pytest.fixture
+def revision_case(sample_gpx):
+    from copy import deepcopy
+    base = extract_gpx(sample_gpx)
+    incoming = deepcopy(base)
+    incoming['sha256'] = 'f' * 64
+    maintained = {'baseline_sha256': base['sha256'], 'revision': 12,
+                  'waypoints': [dict(base['waypoints'][0], id=41, baseline_ordinal=1, aliases=[])],
+                  'tracks': [dict(base['tracks'][0], id=51, baseline_ordinal=1)]}
+    return base, incoming, maintained, {'waypoints': {'1': 41}, 'tracks': {'1': 51}}
+
+
+def run_preview(case):
+    from site_source_sync import preview_gpx_revision
+    return preview_gpx_revision(*case, expected_sha='f' * 64)
+
+
+def test_revision_preview_preserves_db_edits_and_retains_rename_alias(revision_case):
+    base, incoming, db, decisions = revision_case
+    incoming['waypoints'][0]['map_label'] = 'Corrected label'
+    db['waypoints'][0]['comment'] = 'Reviewed in database'
+    result = run_preview(revision_case)
+    point = result['changes'][0]
+    assert result['status'] == 'REVIEW_REQUIRED'
+    assert point['retain_alias'] == 'A5-07/09'
+    assert point['after']['comment'] == 'Reviewed in database'
+    assert point['after']['map_label'] == 'Corrected label'
+    assert point['preserved_database_fields'] == ['comment']
+    assert result == run_preview(revision_case)
+    assert db['waypoints'][0]['map_label'] == 'A5-07/09'
+
+
+def test_revision_preview_reports_concurrent_coordinates(revision_case):
+    revision_case[1]['waypoints'][0]['latitude'] = '43.3'
+    revision_case[2]['waypoints'][0]['latitude'] = '43.4'
+    result = run_preview(revision_case)
+    assert result['status'] == 'HOLD'
+    assert result['conflicts'][0]['details']['latitude']['database'] == '43.4'
+
+
+def test_track_replacement_keeps_identity_and_before_geometry(revision_case):
+    from copy import deepcopy
+    original = deepcopy(revision_case[0]['tracks'][0]['segments'])
+    revision_case[1]['tracks'][0]['segments'][0][0]['lat'] = '43.11'
+    result = run_preview(revision_case)
+    track = result['changes'][1]
+    assert track['target_id'] == 51
+    assert track['action'] == 'UPDATE'
+    assert track['before']['segments'] == original
+    assert track['after']['segments'] != original
+    assert revision_case[0]['tracks'][0]['segments'] == original
+
+
+def test_missing_track_retained_never_deleted(revision_case):
+    revision_case[1]['tracks'] = []
+    revision_case[3]['tracks'] = {}
+    result = run_preview(revision_case)
+    assert result['status'] == 'HOLD'
+    assert result['retained'] == [{'kind': 'tracks', 'id': 51, 'reason': 'UNMAPPED_EXISTING_RETAINED'}]
+
+
+def test_new_waypoint_collides_with_historical_alias(revision_case):
+    from copy import deepcopy
+    new = deepcopy(revision_case[1]['waypoints'][0])
+    new.update(ordinal=2, map_label='old label')
+    revision_case[1]['waypoints'].append(new)
+    revision_case[2]['waypoints'][0]['aliases'] = ['Old Label']
+    revision_case[3]['waypoints']['2'] = 'NEW'
+    result = run_preview(revision_case)
+    assert result['status'] == 'HOLD'
+    assert result['conflicts'][0]['reason'] == 'LABEL_OR_ALIAS_COLLISION'
+
+
+def test_source_reorder_without_decisions_never_guesses_identity(revision_case):
+    revision_case[1]['waypoints'][0]['ordinal'] = 9
+    revision_case[3]['waypoints'] = {}
+    result = run_preview(revision_case)
+    assert result['conflicts'][0]['reason'] == 'IDENTITY_REVIEW_REQUIRED'
+    assert result['retained'][0]['id'] == 41
+
+
+def test_repeated_preview_unchanged_and_revision_bound(revision_case):
+    first = run_preview(revision_case)
+    assert all(c['action'] == 'UNCHANGED' for c in first['changes'])
+    revision_case[2]['revision'] += 1
+    assert run_preview(revision_case)['preview_sha256'] != first['preview_sha256']
+
+
+def test_wrong_approved_hash_rejected(revision_case):
+    revision_case[1]['sha256'] = 'a' * 64
+    with pytest.raises(ValueError, match='expected SHA256'):
+        run_preview(revision_case)
+
+
+def test_extractor_retains_symbols_and_unknown_extensions(sample_gpx):
+    sample_gpx.write_text(sample_gpx.read_text().replace('<type>OUT-Combo</type>',
+                         '<type>OUT-Combo</type><sym>msb/outlet</sym>'))
+    point = extract_gpx(sample_gpx)['waypoints'][0]
+    assert point['symbol'] == 'msb/outlet'
+    assert 'urn:expertgps-specific' in point['source_xml']
+    assert 'keep' in point['source_xml']
+
+
+def test_extractor_hash_is_of_parsed_bytes(sample_gpx, monkeypatch):
+    import site_source_sync
+    expected = hashlib.sha256(sample_gpx.read_bytes()).hexdigest()
+    monkeypatch.setattr(site_source_sync, 'sha256', lambda p: 'wrong second read')
+    assert extract_gpx(sample_gpx)['sha256'] == expected
+
+
+@pytest.mark.parametrize('value', ['nan', '91', '-91', 'inf'])
+def test_extractor_rejects_invalid_waypoints(sample_gpx, value):
+    sample_gpx.write_text(sample_gpx.read_text().replace('lat="43.1"', f'lat="{value}"'))
+    with pytest.raises(ValueError, match='WGS84'):
+        extract_gpx(sample_gpx)
