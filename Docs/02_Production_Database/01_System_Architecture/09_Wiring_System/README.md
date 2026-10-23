@@ -2,6 +2,13 @@
 
 This subsystem documents how MSB presents, enriches, and operationally uses wiring information derived from LOR-authoritative show topology.
 
+## Panel circuit capture — October 22
+
+The urgent #171/#230 capture workflow is in reconnaissance under #122.
+[Panel circuit checkpoint](FieldWiring_Panel_Circuit_Capture_Checkpoint.md) records
+current main, reusable draft #319 objects, confirmed gaps and the read-only live
+schema prerequisite. No panel editor or Production deployment is claimed.
+
 ## Current State
 
 **FieldWiring and Controller Inventory V0.4.0 are production-operational.**
