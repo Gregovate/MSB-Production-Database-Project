@@ -954,6 +954,7 @@ APP_DIR="$CANDIDATE_WORKTREE/Setup/Application"
 echo
 echo "--- Start exact candidate on temporary preview port ---"
 PREVIEW_PGID="$(sudo -u fieldwiring -H env \
+    MSB_GIS_REQUIRED_SOURCE_SHA="$GIS_GPX_SHA" \
     SETUP_DATABASE_DSN="$DSN" \
     FIELDWIRING_DATABASE_DSN="$DSN" \
     PROCEDURE_DATABASE_DSN="$DSN" \

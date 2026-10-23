@@ -3,7 +3,7 @@
 ## October 23 — operator review rejected; shared-host correction
 
 Greg reports nonfunctional circuit buttons, absent preloaded panels and a map
-that appears to show an older GPX. Treat the prior candidate as REVIEW FAILED,
+that displays older GPX data. Treat the prior candidate as REVIEW FAILED,
 not accepted. The shared host must serve FieldWiring static resources using its
 explicit application root and resolve its repository from the owning Flask app,
 not the already-loaded Setup backend module. Shared-host tests must GET the
@@ -14,9 +14,33 @@ explicitly typed Panel, retaining the waypoint IDs and source SHA. Use the exist
 power command for role enforcement and audit. Preserve existing/retired records
 on replay; do not infer breaker numbers, amps, circuits or topology from labels.
 The map's About source label must reflect the successfully rendered database GPX
-hash and counts; the embedded older GPX remains visibly fallback-only. The actual
+hash and counts. Exact-source disposable review must remove the embedded older
+GPX before rendering and reject any database source hash mismatch. API failure
+must visibly block the map, without historical or offline fallback. The actual
 operator map mismatch still requires the failed preview status/report evidence;
 correcting the misleading source label alone does not prove its root cause.
+
+### Exact-source review and clean exit evidence
+
+The operator subsequently confirmed actual old map data and reported
+`Setup REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT`. This is teardown evidence,
+not browser acceptance or proof of import success. Keep operator review FAILED
+until corrected behavior is demonstrated in the current-Production clone.
+
+The existing runner now passes its selected GPX hash to the existing map host.
+Strict review strips old embedded features on the server and the client requires
+the same accepted database source fingerprint before rendering. A changed HTML
+bootstrap boundary also fails closed. Normal governed offline behavior outside
+this exact-source preview is unchanged.
+
+Local Chromium verification used actual host-rendered strict HTML and a reference
+API fixture derived from the approved GPX
+`87b195845a0334769334be9e22d056c3061feaa5f5a2d9dae127db975ce8bc24`:
+240 current waypoint markers and 220 tracks rendered; replacing the API source
+hash blocked the map and left zero waypoint markers, with no old-data fallback.
+This is browser regression evidence, not a current-Production clone result.
+Setup regression: 902 tests passed. The actual shared-host test verifies the
+strict HTML and FieldWiring assets/read/write routing. No Production mutation.
 
 ## October 23 — combined implementation test checkpoint
 

@@ -627,6 +627,9 @@
     const snapshot = await response.json();
     if (snapshot.format_version !== 1 || snapshot.data_mode !== 'postgres')
       throw new Error('Unknown maintained reference format');
+    const required = window.MSBRequiredGpxSha;
+    if (required && snapshot.sources?.gpx?.sha256 !== required)
+      throw new Error("Required GPX " + required + " does not match database source " + snapshot.sources?.gpx?.sha256);
     current = snapshot;
     const accepted = snapshot.sources?.gpx?.sha256 || '';
     const staged = snapshot.sources?.gpx_latest_staged?.sha256 || '';
@@ -644,6 +647,13 @@
     return snapshot;
   }
   window.siteReferenceReady = refresh().catch(async error => {
+    if (window.MSBRequiredGpxSha) {
+      // Exact-source acceptance cannot fall back to older static/offline data.
+      status.style.color = '#923b15';
+      status.textContent = 'GIS REVIEW BLOCKED — required GPX ' + window.MSBRequiredGpxSha + ' · ' + error.message;
+      document.getElementById('network-status').textContent = 'Current GIS unavailable; historical fallback disabled for this review.';
+      return null;
+    }
     // A successfully prepared, versioned offline package can show dated
     // reference relationships. Offline grants MUST NOT expose editing.
     let saved = null;

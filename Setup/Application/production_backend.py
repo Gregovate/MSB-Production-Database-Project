@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import gzip
 import logging
+import re
 import os
 import threading
 import time
 import uuid
 
-from flask import Flask, abort, g, jsonify, redirect, request, send_from_directory
+from flask import Flask, Response, abort, g, jsonify, redirect, request, send_from_directory
 
 from backend import BASE_DIR
 from setup_api import setup_api
@@ -40,7 +41,7 @@ from setup_display_ownership import install_setup_display_ownership
 from setup_assignment_layer import install_setup_assignment_layer
 from setup_kit_box_catalog_fix import install_setup_kit_box_catalog_fix
 
-PRODUCTION_VERSION = "V0.3.88-gis-circuit-candidate"
+PRODUCTION_VERSION = "V0.3.89-gis-source-required"
 
 # #222 lightweight Production request instrumentation.
 #
@@ -544,6 +545,22 @@ def locate_preview():
     """Serve the current reviewed GIS reference snapshot inside the protected Setup app."""
     if not request.path.endswith("/"):
         return redirect(request.path + "/", code=308)
+    required = os.environ.get("MSB_GIS_REQUIRED_SOURCE_SHA", "")
+    if required:
+        if not re.fullmatch(r"[0-9a-f]{64}", required):
+            raise RuntimeError("Invalid required GIS source fingerprint")
+        # Exact-source review must never draw the older embedded GPX, even when
+        # JavaScript or the API fails. Offline/static behavior outside this gate
+        # remains governed by the existing explicit offline package workflow.
+        html = (BASE_DIR / "locate_preview.html").read_text(encoding="utf-8")
+        html, count = re.subn(r'const data=\{.*?\};data.features.push\(\);',
+            'window.MSBRequiredGpxSha="'+required+'";const data={"type":"FeatureCollection","features":[]};data.features.push();',
+            html, count=1, flags=re.DOTALL)
+        if count != 1:
+            raise RuntimeError("GIS bootstrap source boundary changed; review required")
+        html = re.sub(r'(<p[^>]*id="gis-source-identity"[^>]*>).*?(</p>)',
+            r'\g<1>Awaiting required GPX SHA256 '+required+r'\g<2>', html, count=1)
+        return _no_store(Response(html, mimetype="text/html"))
     return _no_store(send_from_directory(BASE_DIR, "locate_preview.html"))
 
 @app.get("/record-location")

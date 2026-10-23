@@ -85,6 +85,14 @@ response=client.post('/fieldwiring/api/power/commands',headers={
 assert response.status_code==200, (response.status_code,response.text)
 conn.commit.assert_called_once()
 assert client.post('/setup/locate/').status_code == 405
+required='87b195845a0334769334be9e22d056c3061feaa5f5a2d9dae127db975ce8bc24'
+os.environ['MSB_GIS_REQUIRED_SOURCE_SHA']=required
+strict_map=client.get('/setup/locate/')
+assert strict_map.status_code==200
+assert 'window.MSBRequiredGpxSha="'+required+'"' in strict_map.text
+assert 'const data={"type":"FeatureCollection","features":[]};' in strict_map.text
+assert 'GPX candidate SHA 3272269d493131f0' not in strict_map.text
+os.environ.pop('MSB_GIS_REQUIRED_SOURCE_SHA')
 '''
     result = subprocess.run([sys.executable, '-c', program], cwd=ROOT, capture_output=True, text=True)
     assert result.returncode == 0, f'GIS preview subprocess failed:\nstdout={result.stdout}\nstderr={result.stderr}'
