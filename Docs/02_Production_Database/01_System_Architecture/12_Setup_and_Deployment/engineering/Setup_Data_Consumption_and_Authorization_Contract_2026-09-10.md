@@ -48,13 +48,20 @@ That is a People/Identity mapping failure, not evidence that broad Setup table p
 
 Current intent:
 
-| Authority | Read Setup | Maintain reusable/annual Setup | Create annual Setup Session | Promote annual order to reusable baseline |
+| Authority | Read Setup | Physical movement/scanning | Maintain reusable/annual Setup | Create annual Setup Session |
 |---|---:|---:|---:|---:|
-| Production Crew / accepted field user | Yes | No | No | No |
-| Manager | Yes | Yes | No | No |
+| **MSB Browser** | **Yes — intended, currently defective** | **No** | **No** | **No** |
+| Production Crew / accepted field user | Yes | Yes (governed movement only) | No | No |
+| Manager | Yes | Yes | Yes | No |
 | Administrator | Yes | Yes | Yes | Yes |
 
-Captain/Alternate execution authority is a separate governed exception for task progress. `ADVISOR` alone does not grant progress-write authority.
+The additional Administrator-only reusable-baseline promotion remains unchanged. Captain/Alternate task-progress exceptions remain separate from baseline Browser read access.
+
+**Known Production authorization defect (operator confirmed 2026-10-15):** the source definition at `Setup/Database/002_create_setup_browser_authorization_contract.sql` currently returns `can_read_setup = can_field` and `can_move_setup_assets = can_field`. Since `can_field` does not admit `MSB Browser`, **Browser read fails today**. Do not treat this table as evidence the correction is deployed. Any fix must calculate `can_read_setup` independently for active Browser users and preserve the existing privileged field movement and manager/admin gates without broader table DML or new identity bootstrap.
+
+Required disposable regression cases: active MSB Browser can GET `/api/setup/access` and a protected read endpoint (for example `/api/setup/uoms`) but cannot post/PATCH/DELETE tasks, scans/movement, inventory, labels or other writes; Production Crew retains its existing narrow movement and no Manager write; Manager and Administrator retain all currently authorized capabilities; inactive/unknown/nonhuman identities fail closed. Field Wiring read-only behavior is separately preserved and checked against its own guarded Controller mutation paths.
+
+`ADVISOR` alone does not grant progress-write authority.
 
 ## Actor Identity Requirement
 

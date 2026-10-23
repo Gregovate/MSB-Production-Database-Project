@@ -114,6 +114,9 @@ Cloudflare Access authenticated email
 
 Directus is **not** the Controller operational editor and no Directus login/session bridge is required.
 
+**MSB Browser read-only contract (2026-10-15):** an active Google-backed MSB Browser user may view Field Wiring's Display, Stage, wiring and Controller Inventory information after Cloudflare authentication. Browser **must not** be able to add/edit Controllers, change assignments or request printing merely because viewing succeeds. Current `FieldWiring/Application/backend.py` separates normal read-only GET routes (`/api/displays`, `/api/stages`, `/api/wiring`, `/api/controllers`) from Controller command endpoints that require explicit command authorization. Preserve this split; verify Browser read-only UX and the absence of write authority before claiming final acceptance. This does not authorize new Controller grants or loosening existing command security.
+
+
 The deployed Manager/Administrator workflow is:
 
 ```text

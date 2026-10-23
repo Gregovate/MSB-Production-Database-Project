@@ -15,6 +15,9 @@ from setup_api import (
 from setup_next_repository import SetupNextRepository, SetupNextRepositoryError
 
 
+from setup_required_containers import required_containers, set_required_container
+
+
 setup_assignment_api = Blueprint("setup_assignment_api", __name__)
 
 
@@ -50,6 +53,25 @@ def api_set_setup_task_kit_box(setup_task_id: int, container_id: int) -> Respons
         notes=notes,
     )
     return jsonify(kit_boxes=rows)
+
+
+@setup_assignment_api.get("/api/setup/tasks/<int:setup_task_id>/required-containers")
+def api_required_containers(setup_task_id: int) -> Response:
+    require_manager()
+    return jsonify(containers=required_containers(repo(), setup_task_id))
+
+
+@setup_assignment_api.patch("/api/setup/tasks/<int:setup_task_id>/required-containers/<int:container_id>")
+def api_set_required_container(setup_task_id: int, container_id: int) -> Response:
+    require_setup_command()
+    _base_repo, email, _access = require_manager()
+    assigned = json_body().get("assigned")
+    if not isinstance(assigned, bool):
+        raise SetupCommandError("assigned must be true or false")
+    return jsonify(containers=set_required_container(
+        repo(), email=email, task_id=setup_task_id,
+        container_id=container_id, assigned=assigned,
+    ))
 
 
 @setup_assignment_api.errorhandler(SetupAuthenticationError)

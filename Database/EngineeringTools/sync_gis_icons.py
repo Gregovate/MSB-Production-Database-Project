@@ -180,6 +180,16 @@ def staged_record(srcname: str, original: tuple, png_data: bytes) -> dict:
     return dict(zip(COLUMNS, (p.name, source_sha, out_name, width, height, sha(png_data))))
 
 
+def preview_readme_bytes() -> bytes:
+    """Portable staged-ZIP metadata; never depends on a PC's ExpertGPS install.
+
+    This is not a local ExpertGPS installer. Distribution to an existing
+    current-user TopoGrafix folder must still separately verify its actual
+    readme.txt byte-for-byte before any write.
+    """
+    return (README_URL + "\n").encode("utf-8")
+
+
 def readme_bytes(readme_path: Path) -> bytes:
     if not readme_path.is_file():
         raise IconError(f"Existing ExpertGPS readme.txt unavailable: {readme_path}")
@@ -265,8 +275,13 @@ def write_preview_cache(stage: Path, records: list[dict]):
             temporary.unlink()
 
 
-def prepare_run(plain: Path, stage: Path, inkscape: str, readme: bytes, progress=None):
-    """Report phase/completed/total/filename to an optional UI callback."""
+def prepare_run(plain: Path, stage: Path, inkscape: str | None, readme: bytes, progress=None):
+    """Validate all Plain SVGs and prefer fully verified cache before CLI use.
+
+    Inkscape is an authoring/rendering dependency only for a cache miss. A
+    field PC with the existing G: verified cache can inspect/install the
+    current approved PNGs without needing Inkscape installed.
+    """
     if progress:
         progress("validate", 0, None, "Validating current Plain SVG sources")
     sources = canonical_sources(plain)  # ALL source validation before any rendering.
@@ -275,8 +290,11 @@ def prepare_run(plain: Path, stage: Path, inkscape: str, readme: bytes, progress
     records = []
     cache = load_preview_cache(stage)
     hits, rendered = 0, 0
+    renderer = None
     log = stage / "Inkscape-export.log"
-    log.write_text(f"MSB #171 Inkscape export; source={plain}; executable={inkscape}\n", encoding="utf-8")
+    log.write_text(
+        f"MSB #171 verified icon preview; source={plain}; "
+        "Inkscape required only for cache misses\n", encoding="utf-8")
     for completed, item in enumerate(sources.values(), 1):
         p, expected_hash, width, height = item
         if progress:
@@ -289,7 +307,23 @@ def prepare_run(plain: Path, stage: Path, inkscape: str, readme: bytes, progress
             with log.open("a", encoding="utf-8") as fp:
                 fp.write(f"\nCACHE HIT {p.name}: source and PNG SHA256 and canvas verified\n")
         else:
-            args = [inkscape, str(p), "--export-type=png", f"--export-filename={out}"]
+            if renderer is None:
+                # Do not eagerly discover a rendering executable. The cache
+                # is shared through approved G: release-history and is checked
+                # against current source/PNG hashes and native dimensions.
+                try:
+                    renderer = choose_inkscape(inkscape)
+                except IconError as exc:
+                    raise IconError(
+                        f"{p.name}: no current SHA-256-verified preview cache. "
+                        "Rendering this changed/missing icon requires Inkscape "
+                        "CLI (inkscape.com) on this PC. Existing cache was "
+                        "not trusted or not available; no canonical PNG or "
+                        "ExpertGPS files were changed. " + str(exc)
+                    ) from exc
+                with log.open("a", encoding="utf-8") as fp:
+                    fp.write(f"Renderer needed for cache miss: {renderer}\n")
+            args = [renderer, str(p), "--export-type=png", f"--export-filename={out}"]
             kwargs = {"capture_output": True, "text": True, "errors": "replace", "check": False}
             if os.name == "nt":
                 # Prevent a transient Windows console from flashing for every icon.
@@ -418,9 +452,9 @@ def run(args):
     base.mkdir(parents=True, exist_ok=True)
     stage = make_stage(base)
     try:
-        readme = readme_bytes(Path(args.readme))
-        inkscape = choose_inkscape(args.inkscape)
-        sources, records, zip_path = prepare_run(plain, stage, inkscape, readme)
+        # Preview/canonical G: PNG work is portable to PCs without ExpertGPS.
+        readme = preview_readme_bytes()
+        sources, records, zip_path = prepare_run(plain, stage, args.inkscape, readme)
         # All sources & PNGs are now complete before checking destination.
         plan = destination_preflight(destination, records)
         summary = {"status": "staged", "max_canvas_px": MAX_PX,
@@ -449,7 +483,7 @@ def cli(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--plain", default=str(PARK / "Plain"))
     parser.add_argument("--canonical-png", default=str(PARK / "png"))
-    parser.add_argument("--readme", default=str(Path(os.getenv("LOCALAPPDATA", str(Path.home()))) / "TopoGrafix" / "Symbols" / "msb" / "readme.txt"))
+    parser.add_argument("--readme", default=None, help="Deprecated compatibility option; preview ZIP uses canonical README_URL, not local ExpertGPS")
     parser.add_argument("--inkscape", default=None, help="Windows uses inkscape.com by default")
     parser.add_argument("--report-parent", default=str(PARK / "release-history"))
     parser.add_argument("--apply", action="store_true", help="update canonical PNGs after validated export; backs up changed originals")

@@ -1,9 +1,25 @@
 # Setup Acceptance Tooling
 
+## #205 current non-mail KPI and Report Work candidate
+
+[V0.3.79 source-tested #205 review: shared sticky current Setup Day beside Find Scheduled Task; full integrated six-defect/cross-Catalog corrections, migration 075/076 and both rollback checks, one disposable browser clone; operator acceptance pending](Setup_205_KPI_Action_Center_Disposable_Candidate_2026-10-15.md). Daily email/Directus integration is parked separately and excluded. Not a Production deployment or browser acceptance.
+
+
 Current integrated #122 candidate: [field release checkpoint and review](Setup_122_Integrated_Field_Release.md). This supersedes separate preview handoffs for the included PR308/309/318/321 changes.
 
 
-## #88 report-only Production release
+## #88 current contents recovery
+
+[October 17 event494 field-picture findings and recovery order](Setup_88_Contents_Reconciliation_Candidate.md#october-17-current-field-picture--event-494)
+distinguish coherent C154/C155 returns, still-old C216 detachments, protected
+Standalone violations, C052/C053 returned-but-attached wraps, missing C131
+Display location, historical review flags and source-proven report gaps.
+Guided behavior/070 shipped via #318 on October10 despite the old #309 draft
+remaining open. Manager resolve/correct and Containers to Move remain unfinished.
+The PDF analysis performed no Production mutation; the October8 source pins and
+handoffs below are historical release evidence, not current deployment advice.
+
+## #88 October 8 report-only Production release — historical
 
 [Approved Container Movement source-only release and pinned install handoff](Setup_88_Container_Movement_Report_Deployment.md)
 uses V0.3.50 / exact application 6c44a082dd520b75881c50ad2ce78feb029ff87d.
@@ -17,8 +33,8 @@ snapshot path/hash transcription remain pending. **Do not rerun deployment.**
 
 [Read prerequisite, failure history and actual server receipt](Setup_88_Report_Read_Prerequisite.md)
 retain earlier transport/backup/stdin STOPs and their corrections. Execution used
-merged tooling main `cc93378f`; deployed application remains `6c44a082` / V0.3.50.
-Guided #309, migration 070 and historical movement repair remain separate. No
+merged tooling main `cc93378f`; that run deployed `6c44a082` / V0.3.50.
+Guided #309, migration 070 and historical movement repair were separate then. No
 operator pause or new workstation dependency was needed.
 
 ## #88 contents reconciliation browser candidate
@@ -287,6 +303,26 @@ The browser launcher preserves the same disposable-clone/Production-after safety
 
 When the terminal prints `SETUP REUSABLE DISPOSABLE BROWSER REVIEW READY`, perform the feature-specific operator checklist. Press ENTER only after the review is complete so the same bounded process performs cleanup and Production-after proof.
 
+### People #395: exact external Apps source in reusable browser bundle
+
+`-PreviewProfile PeopleIdentityBootstrap` uses the existing reusable launcher and registered `-PreviewPort 8898`. Unlike the default Setup profile, it also needs one exact HTML asset from `Gregovate/MSB-Internal-Web-Backbone`. Both `-ExternalAppsSha` (commit) and `-ExternalAppsBlob` (`my/apps/index.html` Git blob) are mandatory and independently checked.
+
+The initial October 15 preview attempt with tooling SHA `5865beae...` stopped **before pg_dump/disposable clone creation**: the server's anonymous `raw.githubusercontent.com` download of the valid draft Backbone commit returned HTTP 404; exit 22. Existing Production identity fingerprints, People service, checkout and port 8898 passed cleanup/after-check. Do not retry that anonymous URL, change pins, or bypass blob verification.
+
+The corrected reusable People profile obtains the exact external commit using **authenticated Git in a temporary workstation clone** (outside the Production Database checkout and SCP bundle), detaches at the requested SHA with `core.autocrlf=false`, verifies the committed path blob and actual HTML bytes, then copies the byte-identical file into the already-established SCP bundle. The server independently checks the bundled file's Git blob and expected visible Apps/endpoint markers **before** the Production dump. The temporary workstation source clone is removed on success/failure. This extends only the People profile; default Setup behavior and the existing SSH/reconnect/cleanup model remain unchanged.
+
+#### People #395 operator browser checklist — only the local Apps page
+
+The `http://127.0.0.1:8898/` screen is the **isolated Apps shell**, not a disposable copy of every linked Production application. Its buttons retain real `https://my.sheboyganlights.org/...` destinations; following one leaves the preview and **does not test the clone-only identity bootstrap**. Do not click those buttons during this review or make changes in Production. This distinction confused the operator during the October 15 review and must be explicit in future acceptance instructions.
+
+The operator needs only to view the local Apps screen, scroll to the version footer (`MSB Apps v0.2 — Updated 2026-10-15`), verify that no Directus/Google account chooser or identity-bootstrap error banner appears, refresh the same **localhost** tab once, and verify the page remains normal. Then return to the original foreground PowerShell session and press Enter. **The server runner**, not navigation to Production Setup, checks the disposable Directus identity, Browser-only role, exact Person link, repeat/idempotence, cleanup, and Production preservation. The final PowerShell result footer is a transport/runner summary; distinguish `CLEAN EXIT` from actual operator acceptance and preserve any server report.
+
+The repaired profile subsequently passed local Setup regression (770 passed, 5 skipped), both PowerShell and Git Bash syntax checks, and the integrated localhost Apps+People disposable browser gate on October 15, 2026. The foreground remote runner returned `PeopleIdentityBootstrap REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT` / exit 0. Production `ref.person`, `directus_users`, shared Git checkout and People service preservation checks all passed; port 8898 was released. The final report is `/tmp/MSB_People_Identity_Bootstrap_Browser_Preview_20261015T215102.txt`. This is a **completed test**, not a command to rerun. Don's preserved real first-login fixture remains unconsumed and no Production deployment was authorized.
+
+The workstation-only result-summary example issued separately in chat was broken when its `finally` was pasted as a standalone PowerShell statement after the launcher returned. That parser error does **not** invalidate the server PASS, but must not be repeated in operator handoffs. Print a bounded final results summary through one syntactically complete script/invocation; do not ask the operator to append a separate `finally` block or pipe foreground SSH through a capture pipeline.
+
+Detailed initial failure, corrected acquisition contract, exact source pins and final browser acceptance evidence belong in [People #395 disposable/bootstrap acceptance](../../People/Acceptance/People_Identity_Bootstrap_Disposable_Acceptance_2026-10-15.md). Both governing Server Management runbooks still apply to future reviews and release work.
+
 ## Legacy feature-specific wrappers
 
 Older Setup acceptance files remain historical evidence for the feature that created them. They contain hard-coded candidate SHAs, migration sets, or feature checks and must not be copied or patched for new work when the reusable launchers above can express the candidate.
@@ -338,3 +374,57 @@ Package accepted cross-repository artifacts with their owning source/merge and e
 [All three #205/#122 tablet launch corrections](Setup_205_Tablet_Launch_Debug_Candidate.md) are a source-only candidate. Local regression passes; disposable/browser/operator acceptance remains pending. Production is unchanged.
 
 - [#206 live Pick demand correction candidate](Setup_206_Live_Pick_Demand_Candidate.md) — reconciles focused validation misses with visible live physical demand and refreshes stale online scan data.
+
+## Direct required Containers — C106
+
+[Candidate and single-clone browser checklist](Setup_Required_Containers_Candidate.md)
+adds a searchable direct physical Container requirement without material/contents
+records. Migration 073 is candidate-only; no Production deployment yet.
+
+C106 direct requirement browser save/refresh and CLEAN EXIT accepted October 14;
+Greg authorized migration 073 deployment. Feature PR #389 is merged. Use
+`run_setup_required_container_deploy.ps1` from updated primary main; the existing
+controller maintenance runner profile and committed-byte transport own the short
+freeze/snapshot/install/validate/ONLINE window. No Production test assignment,
+manual operator pause or repeated disposable clone. Actual installation pending.
+
+## Scheduled search and collapsed days — DBG-2026-014
+
+[Candidate and browser checks](Setup_205_Scheduled_Search_Focus_Candidate.md):
+selecting a scheduled search result expands its day before scrolling/focusing the
+assignment. V0.3.65 source candidate; no migration or Production change. Reconcile
+with concurrent #205 workload/KPI changes; #389 deployment remains separate.
+
+PR391 scheduled-search browser acceptance and CLEAN EXIT passed October14; Greg
+approved merge and maintenance-mode deployment. Use the existing wrapper
+`run_setup_required_container_deploy.ps1 -Release ScheduledSearch` from clean
+updated main. The source-only profile requires proven prior V0.3.64/073 and
+applies no migrations; same controller/lock/committed transport, no new clone.
+Exact app86341d49, V0.3.65; actual Production install/closeout pending receipt.
+
+### October 14 search deployment server PASS
+
+Operator supplied `/home/msbadmin/setup-deployment-reports/PR391-Source-20261014T185934Z`:
+exact86341d49 / V0.3.65 installed with controller ONLINE and preservation gates
+PASS. No migration replay/archive for the source-only change. Prior V0.3.64/073
+prerequisite verified; original C106 report still unprovided. Protected Production
+search and local cleanup pending. See candidate receipt and deployment change log.
+
+Greg confirmed protected Production search works October14 at14:02 CDT.
+DBG-2026-014 server/browser acceptance is complete; Office cleanup remains
+operator-side and unverified. Day View wording remains separate #205 work.
+
+## #205 V0.3.84 / migrations 075 and 076 release
+
+[Governed release profile and execution record](Setup_205_075_076_Release.md)
+uses the existing maintenance orchestrator with ordered migration and final
+validation hooks. The dedicated `run_setup_205_estimates_deploy.ps1` packages
+committed bytes from merged main. The older RequiredContainers/ScheduledSearch
+wrapper is not a #205 release command. Operator acceptance and CLEAN EXIT are
+already approved. Production runner PASS and initial operator spot-check PASS
+were received October 16; the linked record contains the transcript and retained
+report directory. Do not rerun the completed release for documentation.
+
+- [Catalog Scene placement refresh candidate](Setup_122_Catalog_Scene_Refresh_Candidate.md) — Copy/Add/Move refresh correction; operator browser acceptance pending.
+
+- Catalog approved source promotion: `run_setup_catalog_scope_deploy.ps1` reuses the established maintenance-controlled source profile; accepted app remains pinned to PR440 revision3.

@@ -184,7 +184,11 @@ function sortedTasks(tasks = appState.tasks) {
 function showView(name) {
   document.body.classList.toggle('setup-schedule-view', name === 'schedule');
   document.querySelectorAll('.tab').forEach((button) => {
-    button.classList.toggle('active', button.dataset.view === name);
+    const selected = button.dataset.view === name;
+    button.classList.toggle('active', selected);
+    // Keep visual selection and assistive navigation in sync.
+    button.setAttribute('aria-pressed', String(selected));
+    if (!selected) button.blur();
   });
   document.querySelectorAll('.view').forEach((view) => view.classList.remove('active-view'));
   const target = el(`${name}-view`);
@@ -212,6 +216,7 @@ function setupNavigationActionLabel(route) {
   if (view === 'review') return 'opening reusable task detail';
   if (view === 'library') return 'opening the Reusable Task Catalog';
   if (view === 'perform') return 'opening Perform Work';
+  if (view === 'action-center') return 'opening Manager Setup Action Center';
   if (view === 'extra-materials') return 'opening Extra Materials / Inventory';
   return 'continuing';
 }
@@ -263,7 +268,10 @@ function setupSetFinderReturnVisible(visible) {
 
 async function setupRestoreRoute(route) {
   const requested = route && typeof route === 'object' ? route : { view: 'review' };
-  const view = String(requested.view || 'review');
+  const requestedView = String(requested.view || 'review');
+  // Never expose the Manager-only page via a bookmarked URL to a Captain.
+  const view = requestedView === 'action-center' && !appState.access?.can_manage_setup
+    ? 'perform' : requestedView;
 
   setupSetFinderReturnVisible(false);
   showView(view);
@@ -281,6 +289,8 @@ async function setupRestoreRoute(route) {
     }
   } else if (view === 'perform' && typeof loadNextExecution === 'function') {
     await loadNextExecution();
+  } else if (view === 'action-center' && typeof loadSetup205ActionCenter === 'function') {
+    await loadSetup205ActionCenter();
   }
 
   if (view === 'review' && requested.taskId != null && taskById(requested.taskId)) {
@@ -290,6 +300,7 @@ async function setupRestoreRoute(route) {
 }
 
 async function navigateSetupView(name) {
+  if (name === 'action-center' && !appState.access?.can_manage_setup) return false;
   const route = { view: String(name || 'review') };
   if (!await setupMayLeaveCurrentView(setupNavigationActionLabel(route))) return false;
 
@@ -587,19 +598,15 @@ async function saveReusableTask() {
     completion_point: el('edit-completion').value.trim(),
     readiness_note: el('edit-readiness').value.trim(),
     weather_note: el('edit-weather').value.trim(),
-    reusable_notes: el('edit-reusable-notes').value.trim()
+    reusable_notes: el('edit-reusable-notes').value.trim(),
+    effort_level: el('edit-effort-level')?.value || null
   };
-  const effort = el('edit-effort-level')?.value || null;
 
   try {
     setBusy(true);
+    // One guarded HTTP command, one SQL transaction. Both the reusable task
+    // estimates and effort (and the linked 2026 annual mirror) commit together.
     await api(`api/setup/tasks/${task.setup_task_id}`, commandOptions('PATCH', payload));
-    if ((task.effort_level || null) !== effort) {
-      await api(
-        `api/setup/tasks/${task.setup_task_id}/effort`,
-        commandOptions('PATCH', { effort_level: effort })
-      );
-    }
     setAlert(`Reusable task ${task.setup_task_id} saved to Production.`, 'ok');
     await reloadTasks(task.setup_task_id);
   } catch (error) {

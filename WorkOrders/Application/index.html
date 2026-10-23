@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="work-management-base" content="__WORK_MGMT_BASE__">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MSB Work Management — Candidate</title>
+  <link rel="stylesheet" href="/work-orders/assets/app.css">
+  <script src="/work-orders/assets/app.js" defer></script>
+  <script src="/work-orders/assets/review_actions.js" defer></script>
+</head>
+<body>
+  <header class="app-header">
+    <div class="head-inner">
+      <div class="identity">
+        <img id="screen-logo" class="screen-logo" src="https://webassets.sheboyganlights.org/images/branding/msb-blue-logo-600-plain.svg" alt="Making Spirits Bright">
+        <div>
+          <h1>Work Management</h1>
+          <p>Work Orders and Task Feedback</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="header-buttons">
+        <button id="manager-utilities-button" type="button" class="theme-toggle" hidden>Utilities</button>
+        <button id="theme-toggle" type="button" class="theme-toggle">Dark mode</button>
+        </div>
+        <span id="preview-tag" class="preview-tag">Disposable clone · Saved changes are discarded at cleanup · No emails sent</span>
+        <span id="user-identity" class="signed-in" aria-live="polite">Verifying access…</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="work-orders-page" class="app-shell">
+    <div class="page-intro">
+      <div>
+        <h2 id="home-heading">My Work Orders</h2>
+        <p id="home-description" class="subtle">Find your assigned Work Orders, perform repairs, and record completed work.</p>
+      </div>
+    </div>
+    <div id="page-error" class="error-box" role="alert" hidden></div>
+    <section id="manager-inbox-banner" class="manager-inbox-banner" aria-label="Manager Intake requiring review" hidden>
+      <div>
+        <p id="manager-inbox-message" aria-live="polite">Checking Public Intake and Task Feedback…</p>
+      </div>
+      <div class="inbox-actions">
+        <button id="go-intake" type="button" class="quiet-button">Review Public Intake</button>
+        <button id="go-feedback" type="button" class="quiet-button">Review Task Feedback</button>
+      </div>
+    </section>
+
+
+    <section class="controls" aria-label="Work Order filters">
+      <div class="control-filters primary-filters">
+      <div class="field">
+        <label for="scope">Show work for</label>
+        <select id="scope">
+          <optgroup label="My Work">
+            <option value="mine">My Assigned Work Orders</option>
+            <option value="my-created">Work Orders I Created</option>
+            <option value="my-feedback">My Submitted Feedback</option>
+          </optgroup>
+          <optgroup label="Find Work">
+            <option value="all" data-manager-only>All Work Orders</option>
+            <option value="tickets" data-manager-only>Search All Work Orders and Feedback</option>
+          </optgroup>
+          <optgroup label="Manager · Work Order Queues" data-manager-only>
+            <option value="critical" data-manager-only>Immediate / Critical</option>
+            <option value="repairs" data-manager-only>Park / Routine Repairs</option>
+            <option value="testing" data-manager-only>Testing Repairs</option>
+            <option value="unassigned" data-manager-only>Unassigned Work Orders</option>
+            <option value="aging" data-manager-only>Open Work Order Aging Report</option>
+            <option value="person" data-manager-only>Another Volunteer's Work</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field" id="person-field" hidden>
+        <label for="assignee">Assigned volunteer</label>
+        <select id="assignee"><option value="">Choose a volunteer</option></select>
+      </div>
+      <div class="field search-field">
+        <label for="ticket-search">Search work</label>
+        <input id="ticket-search" type="search" autocomplete="off"
+               placeholder="Work Order number, finding, Stage, volunteer…">
+      </div>
+      </div>
+      <details id="more-filters" class="more-filters">
+        <summary id="filter-summary">Filters &amp; sorting</summary>
+        <div class="control-filters">
+      <div class="field">
+        <label for="task-type-filter">Task Type (Work Orders)</label>
+        <select id="task-type-filter">
+          <option value="">All Task Types</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="due-filter">Due date (open Work Orders)</label>
+        <select id="due-filter">
+          <option value="">All due dates</option>
+          <option value="overdue">Overdue</option>
+          <option value="today">Due today</option>
+          <option value="missing">Missing due date</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="ticket-sort">Sort by</label>
+        <select id="ticket-sort">
+          <option value="due_asc">Due date · Earliest first</option>
+          <option value="due_desc">Due date · Latest first</option>
+          <option value="priority" selected>Priority · Most urgent first (1 → 5)</option>
+          <option value="priority_desc">Priority · Least urgent first (5 → 1)</option>
+          <option value="number_desc">Work Order / Intake number · Highest first</option>
+          <option value="number_asc">Work Order / Intake number · Lowest first</option>
+          <option value="created_asc">Created date · Oldest first</option>
+          <option value="created_desc">Created date · Newest first</option>
+        </select>
+      </div>
+      </div>
+      <div class="control-actions">
+      <label class="check-field">
+        <input id="show-completed" type="checkbox">
+        <span>Include completed / cancelled / inactive</span>
+      </label>
+      <label class="check-field planning-control" for="include-planning">
+        <input id="include-planning" type="checkbox">
+        <span>Show planning work (Priority 5)</span>
+      </label>
+      </div>
+      </details>
+      <div class="control-actions main-actions">
+      <button id="refresh" type="button" class="quiet-button">Refresh</button>
+      <button id="create-work-order" type="button" class="primary-button" aria-controls="review-action-form" aria-expanded="false" hidden>+ Create Work Order</button>
+      <a class="public-request-link quiet-button" href="https://forms.gle/Gve4ZbXHDWxs43yh6" target="_blank" rel="noopener noreferrer" title="Submit to the existing Park/Workshop Work Order Intake form; Manager review required">Submit Work Order Request ↗</a>
+      </div>
+    </section>
+
+    <section id="aging-report" class="aging-report" aria-label="Open Work Order Aging Report" hidden>
+      <div class="aging-heading">
+        <div>
+          <h3>Open Work Order Aging Report</h3>
+          <p>All Work Orders without a recorded completion date, including inactive exceptions. Age is measured from original Work Order creation, not last update or assignment.</p>
+        </div>
+        <button id="aging-export" type="button" class="quiet-button" disabled>Export all open Work Orders · CSV</button>
+      </div>
+      <p id="aging-status" role="status" aria-live="polite">Select the report to load every recorded-open Work Order.</p>
+      <div id="aging-metrics" class="aging-metrics" hidden></div>
+      <div class="aging-table-scroll">
+        <table class="aging-table">
+          <thead><tr>
+            <th scope="col">Work Order #</th>
+            <th scope="col">Created</th>
+            <th scope="col">Days open</th>
+            <th scope="col">Due by</th>
+            <th scope="col">Deadline status</th>
+            <th scope="col">Priority</th>
+            <th scope="col">Work / location</th>
+            <th scope="col">Assigned to</th>
+            <th scope="col">Record state</th>
+          </tr></thead>
+          <tbody id="aging-rows"></tbody>
+        </table>
+      </div>
+    </section>
+    <div id="work-ticket-workspace" class="workspace">
+      <section class="ticket-column" aria-label="Ticket list">
+        <div class="section-header">
+          <div>
+            <h3 id="list-heading">My Work</h3>
+            <p id="list-count" aria-live="polite">Loading your assignments…</p>
+          </div>
+        </div>
+        <div id="ticket-list" class="ticket-list" role="list" aria-live="polite"></div>
+      </section>
+
+      <section class="detail-column" aria-label="Selected ticket">
+        <div id="detail-empty" class="empty-panel">
+          <div class="empty-icon" aria-hidden="true">↗</div>
+          <h3>Choose a Work Order or correction</h3>
+          <p>Open a ticket to see the original finding and the information relevant to it.</p>
+        </div>
+        <div id="detail-content" hidden>
+          <div class="detail-heading">
+            <button id="back-to-work-list" type="button" class="detail-back-button">← Back to Work Order list</button>
+            <div id="detail-manager-maintenance" class="detail-manager-maintenance" hidden>
+              <button id="manager-assign-button" type="button" class="quiet-button">Manager · Assign / Reassign</button>
+            </div>
+            <span id="detail-category" class="type-label"></span>
+            <span id="detail-ticket-id" class="ticket-id"></span>
+            <h3 id="detail-title"></h3>
+            <div class="detail-meta">
+              <span id="detail-status"></span>
+              <span id="detail-location"></span>
+            </div>
+          </div>
+          <div class="detail-body">
+    <section id="review-workbench" class="review-workbench" aria-label="Ticket actions">
+      <div class="section-header">
+        <h3 id="review-panel-title">Work Order actions</h3>
+        <p>Save work notes or completion to the <strong>disposable database only</strong>. Changes are discarded at cleanup; no emails sent.</p>
+      </div>
+      <div class="review-inner">
+        <!-- Original Intake evidence must be visible BEFORE a decision is chosen.
+             It must remain visible during Promote, Clarify and Disposition. -->
+        <section id="review-source-evidence" class="review-source-evidence" hidden aria-label="Original submitted Intake evidence">
+          <h4>Original submitted finding and notes</h4>
+          <p><strong>Finding</strong></p>
+          <p id="review-source-finding"></p>
+          <p><strong>Submitted notes / Setup context</strong></p>
+          <div id="review-source-notes" class="multiline-note"></div>
+          <p id="review-source-provenance" class="subtle"></p>
+        </section>
+        <div id="review-action-buttons" class="review-action-buttons" role="group" aria-label="Available actions for selected ticket"></div>
+        <label for="review-action" class="visually-hidden">Selected ticket action</label>
+        <select id="review-action" hidden disabled aria-hidden="true" tabindex="-1"><option value="">Choose a ticket or sign in</option></select>
+        <p id="review-action-guidance" class="review-action-guidance" role="status"></p>
+        <p id="review-context" class="subtle">Select a Work Order or Intake item to review the available actions.</p>
+        <form id="review-action-form" hidden>
+          <fieldset id="review-deadline-fields" hidden>
+            <legend>Manager · Set Due by</legend>
+            <label for="review-deadline">Due by</label>
+            <input id="review-deadline" type="date" min="2020-01-01" max="2100-12-31">
+            <p>Only the deadline changes. Testing and repair status remain unchanged.</p>
+          </fieldset>
+          <fieldset id="review-edit-reason-fields" hidden>
+            <legend>Manager · Correct an existing Work Order</legend>
+            <label for="review-edit-reason">Required reason for changing the authoritative Work Order</label>
+            <textarea id="review-edit-reason" rows="3" placeholder="Explain the correction, including any priority or location change"></textarea>
+            <p class="subtle">The original and corrected values, author and time are retained in Work Order activity.</p>
+          </fieldset>
+          <fieldset id="review-cancel-fields" hidden>
+            <legend>Manager · Cancel / No Action</legend>
+            <label for="review-cancel-reason">Required reason why this Work Order must not proceed</label>
+            <textarea id="review-cancel-reason" rows="3" placeholder="Explain safety concern, invalid request, duplication or no-action decision"></textarea>
+            <p class="subtle">Cancellation is not completion. Original record and audit history are preserved.</p>
+          </fieldset>
+          <fieldset id="review-intake-comparison" hidden>
+            <legend>Original Intake · Compare before promotion</legend>
+            <p class="subtle">Original submitted values are read-only. Confirm or correct the catalog-backed Work Order fields below. Unmatched entries require explicit Manager selection.</p>
+            <div class="intake-comparison">
+              <div><strong>Submitted urgency</strong><p id="intake-original-urgency"></p></div>
+              <div><strong>Proposed urgency</strong><p id="intake-mapped-urgency"></p></div>
+              <div><strong>Submitted task type</strong><p id="intake-original-type"></p></div>
+              <div><strong>Proposed task type</strong><p id="intake-mapped-type"></p></div>
+              <div><strong>Submitted Stage / Work Area</strong><p id="intake-original-location"></p></div>
+              <div><strong>Proposed Stage / Work Area</strong><p id="intake-mapped-location"></p></div>
+            </div>
+            <p id="intake-mapping-status" class="subtle" role="status"></p>
+          </fieldset>
+          <fieldset id="review-create-fields" hidden>
+            <legend id="review-work-order-legend">New internal Work Order</legend>
+            <label for="review-problem">Describe the work</label>
+            <textarea id="review-problem" rows="3" placeholder="What needs to be done?"></textarea>
+            <label for="review-due-by">Due by (required)</label>
+            <input id="review-due-by" type="date" min="2020-01-01" max="2100-12-31">
+            <label for="review-task-type">Task type</label>
+            <select id="review-task-type"><option value="">Choose existing type</option></select>
+            <label for="review-location-type">Operational location</label>
+            <select id="review-location-type"><option value="">Select Stage or Work Area</option><option value="stage">Park / Stage</option><option value="area">Workshop / Work Area</option></select>
+            <div id="review-stage-wrap" hidden><label for="review-stage">Stage</label><select id="review-stage"><option value="">Choose Stage</option></select></div>
+            <div id="review-area-wrap" hidden><label for="review-area">Work Area</label><select id="review-area"><option value="">Choose Work Area</option></select></div>
+            <label for="review-urgency">Urgency (existing catalog)</label>
+            <select id="review-urgency"><option value="">Choose priority</option><option value="1">1 · Immediate / Critical</option><option value="2">2 · High</option><option value="3" selected>3 · Normal</option><option value="4">4 · Low</option><option value="5">5 · Planning</option></select>
+            <div id="review-year-wrap" hidden>
+              <label for="review-target-year">Planning target year</label>
+              <input id="review-target-year" type="number" min="2020" max="2100" placeholder="Target year for Planning only">
+            </div>
+            <div id="review-setup-choice">
+            <label for="review-setup-mode">Does this repair affect seasonal Setup?</label>
+            <select id="review-setup-mode">
+              <option value="none">No · Work Order only</option>
+              <option value="request">Yes · Flag for Manager Setup review</option>
+              <option value="create" data-manager-only>Manager · Create linked season-only Setup task now</option>
+            </select>
+            <p class="subtle">A seasonal task is not a reusable Catalog task. Crew may flag it; Managers can create the linked Setup gate in the same save.</p>
+            </div>
+            <div id="review-setup-fields" hidden>
+              <label for="review-setup-season">Open seasonal Setup session</label>
+              <select id="review-setup-season"><option value="">Choose a current season</option></select>
+              <label for="review-setup-name">Season-only task name (optional)</label>
+              <input id="review-setup-name" type="text" maxlength="160" placeholder="Defaults to the repair description">
+              <p class="subtle">Setup will show Waiting on Work Order until the repair is recorded complete. No duplicate Report Work required.</p>
+            </div>
+          </fieldset>
+          <fieldset id="review-link-setup-fields" hidden>
+            <legend>Manager · Add existing Work Order to seasonal Setup</legend>
+            <p class="subtle">The existing repair remains the Work Order. Create exactly one season-only Setup GATE, completed when that same Work Order is completed. No reusable task or second Work Order.</p>
+            <label for="review-link-setup-season">Open Setup season</label>
+            <select id="review-link-setup-season"><option value="">Choose an active season</option></select>
+            <label for="review-link-setup-name">Season-only task name (optional)</label>
+            <input id="review-link-setup-name" type="text" maxlength="160" placeholder="Defaults to Work Order problem">
+          </fieldset>
+          <fieldset id="review-person-fields" hidden>
+            <legend>Manager · Assign one or more existing volunteers</legend>
+            <label for="review-person-filter">Find volunteers</label>
+            <input id="review-person-filter" type="search" placeholder="Filter existing People">
+            <div id="review-people" class="review-people" role="group" aria-label="Volunteers"></div>
+            <p class="subtle">Managers only. Newly created Crew Work Orders enter the Manager unassigned queue.</p>
+          </fieldset>
+          <fieldset id="review-progress-fields" hidden>
+            <legend>Record Work Note · Work remains open</legend>
+            <label for="review-progress-note">What work was done, found, or remains?</label>
+            <textarea id="review-progress-note" rows="3" placeholder="Describe what was checked, repaired, found or still needed."></textarea>
+            <p class="subtle">Saves an attributed note to this Work Order without marking it complete.</p>
+          </fieldset>
+          <fieldset id="review-complete-fields" hidden>
+            <legend>Authenticated completion</legend>
+            <label for="review-completion-notes">Required actual work performed / verification notes</label>
+            <textarea id="review-completion-notes" rows="3" placeholder="Describe what was actually done, not what should be done."></textarea>
+          </fieldset>
+          <fieldset id="review-feedback-fields" hidden>
+            <legend>Reporter follow-up</legend>
+            <label for="review-response">Clarification question or disposition reason</label>
+            <textarea id="review-response" rows="3" placeholder="Specific question or substantive resolution reason"></textarea>
+            <label for="review-disposition">Outcome (only for closing feedback)</label>
+            <select id="review-disposition"><option value="">Choose outcome</option><option value="resolved">Resolved / Verified</option><option value="deferred">Deferred</option><option value="rejected">Rejected / No Action</option><option value="duplicate">Duplicate / Linked</option></select>
+          </fieldset>
+          <button id="review-submit" type="submit" class="primary-button">Save to disposable database</button>
+          <button id="review-cancel-create" type="button" class="quiet-button" hidden>Cancel · Discard unsaved Work Order</button>
+          <button id="review-cancel-edit" type="button" class="quiet-button" hidden>Cancel Edit · Return to Work Order</button>
+          <button id="review-cancel-action" type="button" class="quiet-button" hidden>Cancel · Return to Work Order</button>
+          <div id="review-result" class="review-result" role="status" aria-live="polite"></div>
+        </form>
+      </div>
+    </section>
+            <section id="notification-review" hidden>
+              <h4>Email delivery status</h4>
+              <p>SMTP accepted does not prove Inbox delivery. Missing contact needs manual follow-up. Failed or uncertain attempts require operator review; they are not retried automatically.</p>
+              <div id="notification-entries" role="status"></div>
+            </section>
+            <div class="detail-fields">
+              <div><span class="tiny-label">Assigned to</span><p id="detail-owner"></p></div>
+              <div><span class="tiny-label">Reported by</span><p id="detail-reporter"></p></div>
+              <div><span class="tiny-label">Source</span><p id="detail-source"></p></div>
+            </div>
+            <div class="detail-notes">
+              <h4>Original finding / Work Order</h4>
+              <p id="detail-description"></p>
+              <div id="detail-extra-note" class="multiline-note" hidden></div>
+            </div>
+
+            <section id="ticket-activity" class="ticket-activity" aria-label="Recorded ticket activity">
+              <h4>Recorded activity and reporter communication</h4>
+              <p id="ticket-activity-status" class="subtle">Loading retained clone events…</p>
+              <div id="ticket-activity-entries"></div>
+            </section>
+            <details id="related-information" class="related-information">
+              <summary>
+                <span class="related-title">
+                  <span class="fold-icon" aria-hidden="true">⌄</span>
+                  <strong>Related Information</strong>
+                </span>
+                <span class="related-hint">Stage Kits, Containers, Displays, materials and Procedures · Expand if needed</span>
+              </summary>
+              <div class="related-inner">
+                <p class="related-help">These are existing MSB references that may be useful. Stage-related does not mean assigned to this task.</p>
+                <div id="related-status" role="status" aria-live="polite">Expand to load related information.</div>
+                <div id="related-items"></div>
+              </div>
+            </details>
+
+            <div class="next-actions">
+              <h4>Follow-up actions</h4>
+              <p>Managers can use <strong>Request More Information</strong> or <strong>Promote &amp; Assign</strong> when available for this ticket.</p>
+              <p id="follow-up-runtime-note">Loading action information…</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <p class="footer-note">Work Management V1.1.2-manager-utilities · Updated 2026-10-21 · Connecting to verified runtime</p>
+  </main>
+  <section id="manager-utilities-page" class="app-shell" aria-labelledby="utilities-title" hidden>
+    <div class="utilities-heading">
+      <h2 id="utilities-title">Utilities</h2>
+      <button id="utilities-back" type="button" class="quiet-button">Back to Work Orders</button>
+    </div>
+    <details id="manager-email-utility">
+      <summary>Email template previews</summary>
+      <p>Review the current email layouts using fictional examples. Nothing is sent.</p>
+      <p id="email-preview-status" role="status"></p>
+      <label for="email-preview-kind">Message</label>
+      <select id="email-preview-kind"></select>
+      <h3 id="email-preview-subject"></h3>
+      <iframe id="email-preview-body" title="Formatted email preview" sandbox="" referrerpolicy="no-referrer"
+              style="width:100%;height:420px;border:1px solid #ccd3da;background:white"></iframe>
+      <details><summary>Plain-text version</summary><pre id="email-preview-text" style="white-space:pre-wrap"></pre></details>
+    </details>
+
+  </section>
+</body>
+</html>
+
+

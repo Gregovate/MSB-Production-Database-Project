@@ -16,7 +16,7 @@ def read_db(name: str) -> str:
 
 def test_training_ux_assets_are_loaded_after_live_review_fixes():
     html = read("production.html")
-    live_index = html.index("setup_live_review_fixes.js?v=2026-10-02.1")
+    live_index = html.index("setup_live_review_fixes.js?v=2026-10-21.87r3")
     training_index = html.index("setup_training_ux.js?v=2026-09-24.2")
     assigned_index = html.index("setup_assigned_review.js?v=2026-09-08.2")
     refinement_index = html.index("setup_training_review_refinement.js?v=2026-09-24.4")
@@ -76,8 +76,8 @@ def test_effort_uses_single_reusable_task_save_action():
     assert 'id="save-task-effort"' not in html
     assert "saveSelectedSetupEffort" not in effort_js
     assert "placeSetupEffortSaveControl" not in effort_js
-    assert "const effort = el('edit-effort-level')?.value || null;" in production_js
-    assert "api/setup/tasks/${task.setup_task_id}/effort" in production_js
+    assert "effort_level: el('edit-effort-level')?.value || null" in production_js
+    assert "api/setup/tasks/${task.setup_task_id}/effort" not in production_js
 
 
 def test_catalog_delete_reuses_existing_back_control_position():

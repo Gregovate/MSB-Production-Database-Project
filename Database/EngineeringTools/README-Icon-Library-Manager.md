@@ -1,63 +1,44 @@
-# MSB Icon Library Manager — one-time setup and normal use (Issue #171)
+# MSB Icon Library Manager — engineering handoff and document pointers
 
-**Purpose:** stop generating temporary ZIPs in Downloads or remembering PowerShell commands for each new icon. The manager is a versioned GitHub tool, reads the authoritative Google Shared Drive files directly, and keeps one controlled audit/release history in the Shared Drive.
-
-## Install once on a Windows workstation
-
-1. Update your normal local Git checkout when repository code changes (the laptop primary checkout is `C:\lor\ImportExport\VSCode`). Do not use a disposable review worktree or overwrite unrelated changes.
-2. In Windows File Explorer, open the repository's `Database\EngineeringTools` folder.
-3. **Double-click `Install-MSB-Icon-Library-Shortcut.cmd` ONCE.** This creates the desktop shortcut **MSB Icon Library Manager**. It does not copy assets, create PNGs or run any release.
-4. Use that desktop shortcut for every subsequent icon update. If you move the repository checkout, repeat the shortcut installer. The launcher uses the checked-out `.venv` Python or a discovered Windows Python installation with Tkinter. Inkscape must be installed with Windows `inkscape.com` available.
-
-## First Windows operator review — performance and source-freshness correction (October 11)
-
-The first real laptop preview successfully exposed an error: **`car-r.svg` was visually the same as `car-l.svg`**. Operator corrected the editable `car-r-inkscape.svg` master, but the PNG preview did not change because the tool intentionally renders **`Symbols\Plain\car-r.svg`, not editable `Masters`**. Saving a master does not update its Plain derivative. **In Inkscape, also Save a Copy as *Plain SVG* to `Symbols\Plain\car-r.svg`**, replacing the incorrect previous Plain file (choose correct layer visibility before saving). Rerun the preview: corrected `car-r.png` should be **UPDATE (backup)** if it differs from the canonical PNG, or **NEW** if the folder was not yet populated. This manual source-to-Plain decision is necessary for layered variants; the manager must not guess it silently.
-
-Other reported usability failures during first Windows run: Inkscape spawned a visible Windows command window once **per rendered icon**, full library rendering was slow, and a large modal listed eight `master newer than Plain` timestamps (antenna-r, car-r, LP Combo/network/outlet, MSB splitter/combiner, splitter, panel). **Freshness timestamps alone are not artwork-content differences**; LP Combo is intentionally one editable master driving multiple different layer-selected Plain exports.
-
-The follow-up manager correction:
-
-- Launch Inkscape with Windows `CREATE_NO_WINDOW` while retaining its stdout/stderr and exit status in `Inkscape-export.log`, so no console window flashes once per icon.
-- Cache **only validated stage PNGs** under canonical `Symbols\release-history`, with an atomic `MSB_GIS_Preview_Cache.json` index. For each icon, always reread and XML-validate the current Plain SVG; reuse its staged PNG only if **current exact Plain SVG SHA-256**, PNG SHA-256, and width/height match. Otherwise **re-render that icon only**. Corrupted or missing cache falls back to Inkscape; staging ZIP, readme, source hashes and canonical PNG destination checks remain unchanged. The index is an optimization, not approval or a source of authority.
-- Replace the auto-opening wall of timestamp warnings with a persistent **Source review (N)** control and on-demand scrollable detailed list. Warning count stays visible in the main window. The second approval confirmation still flags unresolved warnings if user actually saves changed PNGs.
-- A corrected **master only** does not invalidate cache (correct: Plain artwork remains unchanged); saving corrected **Plain** SVG changes its source hash and triggers fresh rendering. No silent Master→Plain propagation or LP Combo layer guessing.
-
-The existing `MSB Icon Library Manager` Desktop shortcut continues to work after updating the normal Git checkout to a version containing these changes. **First Windows follow-up validation still required**: run **Check and preview icons** twice (second unchanged run should be much quicker and without per-icon console windows), then save the corrected Plain `car-r.svg` and verify the next preview marks only intended icon changes; inspect warnings using **Source review**. Do not run the historical manual 32-icon ZIP promoter.
-
-## Scan and save progress indication — October 11
-
-The operator requested a **persistent progress meter and working/activity indicator** because long icon scans otherwise appear frozen. The manager now displays a progress bar, completed-file count/percentage, and **the name of the icon currently being processed** for both **Check and preview icons** and **Save approved PNG changes**.
-
-- During discovery/validation, source rechecks, backup creation and package verification, work cannot be expressed as a reliable number of files completed; the bar runs in **indeterminate (activity) mode**, explicitly marked "Working…", without an invented ETA.
-- During icon rendering, cache reuse and canonical PNG copying, the bar becomes **determinate** with real completed/total icon counts and the current filename (for example `car-r.svg: rendered — 12 / 34 (35%)`). Every icon advances only **after its PNG and source hashes have been verified**.
-- On completion, the bar reads **Complete**; on error it reads **Stopped**, and the error dialog/log explains why. No operation claims 100% while a save is still running.
-- Background threads send progress events through a thread-safe queue polled by the Tk main window. Long Inkscape subprocesses remain off the UI thread, so the indicator continues to animate while working. The manager does not estimate time remaining.
-- Progress callbacks are optional on the Python engine, so the existing headless command and independent consumers retain their previous behavior. No changes to symbol identity, map data, ExpertGPS installed library, webassets or GPX.
-- Disposable tests verify every icon's completion event and that save progress reaches its full count only after verified receipt rows. **Windows GUI progress animation and actual G: runtime remain for operator acceptance**; static checks are not a Windows UI test.
-
-The existing desktop shortcut is unchanged. After updating the normal Git checkout, relaunch **MSB Icon Library Manager**, select **Check and preview icons**, and watch the new meter. The first scan can still take time while rendering; a second scan should be substantially faster because its previous unchanged previews are cached.
-
-## Weekly workflow (no PowerShell, no Downloads)
-
-1. Edit an Inkscape file in `G:\Shared drives\Display Folders\Park Drawings\MSB GIS\Symbols\Masters`; save the correct **Plain SVG** in sibling `Plain`. Layered masters (such as LP-Combo) can intentionally produce multiple Plain outputs: choose layer visibility inside Inkscape; **the manager does not guess or rewrite layer configurations**.
-2. Open **MSB Icon Library Manager** from the Desktop, choose **1. Check and preview icons**.
-3. It discovers **every current** lower-case/hyphenated Plain SVG (no fixed count), rejects invalid SVG, mm/inches/canvas sizes above **32 px on either axis**, Inkscape editing metadata still present in Plain files, external linked assets, failed Inkscape conversion, wrong PNG dimensions/format, and changes made to a source during generation.
-4. The preview shows **NEW**, **UPDATE (backup)** or **Unchanged** for every icon, and lets you inspect PNG artwork. It also reports any editable master modified later than its associated Plain SVG, including recognized LP-Combo derived variants. Such warnings require review and an additional confirmation rather than assuming every newer master is visibly different. It **does not** write to the canonical PNG folder yet.
-5. Choose **2. Save approved PNG changes** and confirm. The manager checks source hashes again, retains identical files, creates missing PNGs, backs up changed files and replaces them, verifies SHA256 after each write, and writes a per-run CSV receipt. If it encounters a case conflict or other error, it stops with diagnostics and **does not claim complete success**.
-
-**Canonical sources and outputs:**
-
-| Folder | Role |
+| Document control | Value |
 | --- | --- |
-| `Symbols\Masters` | Editable Inkscape SVG artwork (operator controlled) |
-| `Symbols\Plain` | Approved per-variant Plain SVG inputs (read-only to this tool) |
-| `Symbols\png` | Canonical generated PNG library; updates only on confirmed action |
-| `Symbols\release-history\MSB-GIS-Icon-Sync-*` | Versioned source/PNG manifests, exact release ZIP, logs, backup PNGs, receipts, or error details; **never Downloads** |
+| Purpose | README handoff/navigation for the installed desktop icon-maintenance tool |
+| Owning issue | [#171 — Site Infrastructure / GIS](https://github.com/Gregovate/MSB-Production-Database-Project/issues/171), coordinated with #230/#122 |
+| Current handoff | October 12, 2026 |
+| Authority | [GIS Symbol Management — CURRENT engineering contract](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/engineering/GIS_Symbol_Management.md) |
 
-**Icon rules:** each image canvas is at least **1 px** and at most **32 × 32 px**. Unequal widths/heights are valid (e.g., 32×18, 16×32). Accept only true pixel dimensions. Do not silently rescale source SVGs.
+## Current State
 
-**Scope boundary:** This manager does **not** publish to Synology/webassets, install to `%LOCALAPPDATA%\TopoGrafix\Symbols\msb`, edit ExpertGPS or GPX type names/URLs, modify GIS database, or change the draw.io library/embedded schematic. Those remain separately controlled releases. It also does not automatically export plain derivatives from editable multi-layer Masters: correct layer selection is a meaningful operator choice.
+The desktop manager is the **existing Git-controlled tool**, run from an authorized Windows checkout through a one-time-installed Desktop shortcut; it does **not** update itself or carry separate login permissions. Step 1 now validates independently of local ExpertGPS, while Step 5 can provision a missing current-user `msb` folder, canonical `readme.txt` and current PNGs after review. This code is merged to `main`; actual Windows/GPX compatibility remains a separate acceptance gate. The launcher/GUI use a dedicated checked-in ICO; **rerun the shortcut installer once after updating main** to refresh the old generic shortcut icon. See the controlling engineering document for acceptance status. The approved source is Shared Drive `Symbols\Plain`, derived from editable `Masters`; canonical ExpertGPS PNGs are in sibling `png`. Source rules, five independent operations, safety gates, backup/receipt contract and permission matrix are controlled in [GIS Symbol Management](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/engineering/GIS_Symbol_Management.md), **not in this README or a PR description**.
 
-**Recovery:** On a failure, open the **release history / logs** folder in the app and inspect `ERROR.txt` or `Inkscape-export.log`. Modified destination PNGs have copies in the run's `backups-before-replacement` folder, and the receipt lists every completed action. Do not discard them before identifying any partial promotion failure.
+**Accepted October 12 release:** the administrator published and SHA-256 verified **37 Plain SVG entries on the Synology SMB `msb-svg` share**, while the current Windows user's **37 ExpertGPS PNGs matched canonical hashes**. Public HTTPS appearance/Stage symbol validation, draft #319 Park Map/offline field acceptance, ExpertGPS GPX round-trip and web PNG case compatibility remain separate open gates. Exact release evidence and history are in the engineering authority.
 
-**Validation:** `python -m unittest -v Database/EngineeringTools/test_sync_gis_icons.py` is the disposable suite; the original 12 checks passed in the earlier PR, and two additional cache-regression tests now cover unchanged PNG reuse and corrupted-cache fallback (**new tests require execution before runtime acceptance**). A real disposable Inkscape integration test of a 24×32 SVG was previously executed outside Windows. The operator has now confirmed Windows first launch and preview functionality, including discovery of an incorrect `car-r`; quiet/fast repeat scan and actual Google Shared Drive PNG synchronization **still require operator acceptance**.
+**Latest engineering handoff (October 12):** Read-only registry evidence from **laptop, Show PC and Office PC** confirms independent current-user ExpertGPS waypoint Type/style catalogs (**57 / 37 / 28 Types** respectively), including distinct `GPS Symbol`, `Bitmap Symbol URL`, and `Common\Settings\SymbolToType` associations. The `Flag, Blue` reverse assignment differs across **all three**. Vendor-supported settings transfer uses `HKCU\Software\TopoGrafix\ExpertGPS` and `Common`, but no selective import or GPX-import precedence has been accepted. **Do not import full registry files blindly, overwrite legacy mixed-case symbol URLs, or hardcode Type-to-SVG mappings.** The [engineering authority](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/engineering/GIS_Symbol_Management.md) governs evidence and unresolved design; the [ExpertGPS operator SOP](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/operatorSOP/Review_MSB_Icons_and_Update_Local_ExpertGPS.md) governs local install and safe comparison.
+
+**Critical current handoff:** A Windows profile without the local MSB custom-symbol folder is **not ready to open MSB GPX data in ExpertGPS**. MSB field testing showed that missing symbols can change map-marker associations to `GPS Symbol` even without an intentional GPX Save. Install and verify Step 5 first. Preserve authoritative GPX and use only disposable copies for post-install recovery checks. The [GIS engineering authority](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/engineering/GIS_Symbol_Management.md) defines the precise risk and acceptance gate; [local ExpertGPS SOP](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/operatorSOP/Review_MSB_Icons_and_Update_Local_ExpertGPS.md) has the operator steps.
+
+## What Do You Need To Do?
+
+Use the [GIS icon operator procedure portal](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/operatorSOP/README.md):
+
+- [Install the Desktop shortcut or update its Git checkout](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/operatorSOP/Install_or_Update_MSB_Icon_Library_Manager.md)
+- [Preview approved icons and update your own ExpertGPS PNGs](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/operatorSOP/Review_MSB_Icons_and_Update_Local_ExpertGPS.md)
+- [Publish approved Plain SVGs — Synology administrator **only**](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/operatorSOP/Publish_Approved_MSB_SVGs_to_Web.md)
+
+The manager has **no application login**. Only the Synology administrator has write permission to `\\192.168.5.4\webassets`. Do not delegate public SVG or PNG publication or embed server credentials. Non-admin authorized users may perform only the operations their normal filesystem permissions permit.
+
+## Implementation Entry Points
+
+- [One-time Desktop shortcut installer](Install-MSB-Icon-Library-Shortcut.cmd)
+- [Desktop shortcut target / launcher](Launch-MSB-Icon-Library.cmd)
+- [Windows GUI](icon_library_manager.pyw)
+- [Canonical Plain SVG/PNG source validator](sync_gis_icons.py)
+- [SVG website publisher](publish_gis_svgs.py)
+- [PNG/ExpertGPS distributor](distribute_gis_pngs.py)
+- [Engineering tool index](README.md)
+
+## Resume / Open Acceptance
+
+Read the **current engineering contract** first. The app still lacks a visible source/version SHA, and the web publication review has exhibited blank action-button labels. The web PNG `IP-camera.png` case conflict is unresolved. The draft #319 map must confirm all approved SVG types and missing-symbol fallback (including eight prior Anchor/Waypoint markers) and pass genuine Android offline acceptance. No icon success implies Production map release.
+
+[↑ Engineering tools](README.md) | [↑ GIS subsystem](../../Docs/02_Production_Database/01_System_Architecture/11_Site_Infrastructure_GIS/README.md)

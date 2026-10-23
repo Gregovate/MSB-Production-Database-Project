@@ -1,5 +1,9 @@
 # Production Database System Architecture
 
+## Shared email delivery
+
+[Email System Integration](Email_System_Integration.md) defines this repository's consumer/data responsibilities. **MSB Server Management engineering is the single email-system owner**, under [Server #97](https://github.com/Gregovate/MSB-Server-Management/issues/97); Setup and Work Orders retain business notification rules.
+
 This area contains the engineering design for the PostgreSQL Production Database and the operational systems built on it or consuming it.
 
 The numbered subsystem tree follows the logical data/dependency flow of the current Production Database. It is not a chronology of old documents and does not preserve obsolete systems merely because they existed during development.

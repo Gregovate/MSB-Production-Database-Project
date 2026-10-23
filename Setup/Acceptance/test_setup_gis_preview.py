@@ -17,7 +17,7 @@ from werkzeug.wrappers import Response
 root = Path.cwd()
 sys.path.insert(0, str(root / 'Setup' / 'Application'))
 sys.path.insert(0, str(root / 'Setup' / 'Acceptance'))
-from production_backend import app
+from production_backend import app, PRODUCTION_VERSION
 from setup_gis_preview import mount_fieldwiring_preview
 original = app.wsgi_app
 os.environ['SETUP_DATABASE_DSN'] = 'disposable-clone-test'
@@ -46,8 +46,22 @@ for url in ['/fieldwiring/fieldwiring.css','/fieldwiring/fieldwiring.js',
             '/setup/locate/assets/setup_locate_networks.json',
             '/setup/locate/assets/setup_locate_assets.js','/locate/']:
     assert client.get(url).status_code == 200, url
-assert client.get('/fieldwiring/api/health').json['version'] == 'V0.4.1-gis-entry'
-assert client.get('/setup/api/health').json['version'] == 'V0.3.63-site-reference'
+field_health = client.get('/fieldwiring/api/health')
+assert field_health.status_code == 200, (field_health.status_code, field_health.text)
+# Compare mounted runtime with the exact checked-out FieldWiring release,
+# including when main integrates a newer FieldWiring version.
+import ast
+field_source = ast.parse((root / 'FieldWiring' / 'Application' / 'backend.py').read_text(encoding='utf-8'))
+field_version = next(
+    statement.value.value
+    for statement in field_source.body
+    if isinstance(statement, ast.Assign)
+    and any(isinstance(target, ast.Name) and target.id == 'APP_VERSION' for target in statement.targets)
+    and isinstance(statement.value, ast.Constant)
+)
+assert field_health.json['version'] == field_version, (field_health.json, field_version)
+assert client.get('/setup/api/health').json['version'] == PRODUCTION_VERSION
 assert client.post('/setup/locate/').status_code == 405
 '''
-    subprocess.run([sys.executable, '-c', program], cwd=ROOT, check=True, capture_output=True, text=True)
+    result = subprocess.run([sys.executable, '-c', program], cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 0, f'GIS preview subprocess failed:\nstdout={result.stdout}\nstderr={result.stderr}'

@@ -14,8 +14,8 @@ def _read(name: str) -> str:
 
 def test_changed_scheduling_scripts_have_fresh_browser_asset_pins():
     html = _read("production.html")
-    assert "setup_next_pass.js?v=2026-10-10.62" in html
-    assert "setup_scheduling_board.js?v=2026-10-09.324.5" in html
+    assert "setup_next_pass.js?v=2026-10-21.87r3" in html
+    assert "setup_scheduling_board.js?v=2026-10-21.87r3" in html
 
 
 def test_board_workload_banner_stays_inside_shift_cell():
@@ -23,7 +23,7 @@ def test_board_workload_banner_stays_inside_shift_cell():
     start = js.index("function board205Cell(")
     end = js.index("function board205CanRemoveWorkDay(", start)
     cell = js[start:end]
-    assert "${board205WorkloadBanner(crew.setup_work_day_crew_id, shift)}" in cell
+    assert "${showWorkload ? board205WorkloadBanner(crew.setup_work_day_crew_id, shift) : ''}" in cell
     start = js.index("function board205Day(")
     end = js.index("function board205RenderBoard(", start)
     day = js[start:end]
@@ -44,7 +44,8 @@ def test_multi_selection_and_drag_drop_handlers_are_preserved():
         "board205DraggedAssignmentItems(",
     ):
         assert expected in js
-    assert "pointer-events:none;position:relative" in js
+    assert 'class="setup-board205-workload-banner"' in js
+    assert "pointer-events:none" in js
 
 
 def test_perform_work_navigation_uses_existing_router_and_day_focus():
@@ -73,7 +74,7 @@ def test_locked_cards_are_explicit_and_unlocked_cards_are_keyboard_selectable():
 def test_annual_continuation_is_distinct_from_historical_assignment():
     js = _read("setup_scheduling_board.js")
     assert "function board205NeedsContinuation(task)" in js
-    assert "Number(task.unworked_assignment_count || 0) === 0" in js
+    assert "Number(task.future_assignment_count || 0) === 0" in js
     assert "function board205ContinuationScheduled(task)" in js
     assert "function board205ReschedulingLabel(task)" in js
     assert "PRIORITY CONTINUATION" not in js

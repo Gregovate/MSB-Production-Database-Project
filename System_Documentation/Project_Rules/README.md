@@ -1,5 +1,9 @@
 # Project Rules
 
+## Shared email-system boundary
+
+[Email System Integration](../../Docs/02_Production_Database/01_System_Architecture/Email_System_Integration.md) records the single Server Management email owner. Changes to shared sender/relay/queue/retry/recovery mechanisms must follow [the canonical email authority](https://github.com/Gregovate/MSB-Server-Management/blob/main/docs/server/MSB_Email_System_Engineering.md) under [Server #97](https://github.com/Gregovate/MSB-Server-Management/issues/97); application issues retain business events, recipients and content. Do not introduce another independent mail platform.
+
 This folder contains documentation and governance rules that are specific to the MSB Production Database Project.
 
 When Greg says **read the project instructions**, read this README and every linked rule relevant to the requested work before proposing changes.

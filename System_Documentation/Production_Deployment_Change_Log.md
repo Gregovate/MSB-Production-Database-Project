@@ -9,6 +9,75 @@
 | Established | 2026-10-01 |
 | Ordering | Reverse chronological — newest deployment first |
 
+## 2026-10-20 — #419 Phase 2 Work Orders and email — Production PASS
+
+- Installed application: **V1.1.2-manager-utilities**, source `24c0c8e526e032f4a7202a77ed14ab9a30b2459b`; PR #435 merged as `7f88be7d9a6b476fa60688e775b1e044140f5c28`. Infrastructure: Server Management #81, merged PRs #87 and #88.
+- Migrations `002_work_management_due_by.sql` and `003_work_management_mail_delivery.sql` applied through existing #37 maintenance, validated rollback snapshot, independent source promotion and return ONLINE. Server regression: **193 passed**. Shared checkout `17c522c4f8ec06549bf7a6d9e8530c61276203f7` preserved.
+- Upgrade receipt: `/home/msbadmin/work-management-deployment-reports/WO81-service-a6601b10c3e340b7b3e044c1639aee02.txt`.
+- Bounded first delivery: SMTP accepted; Greg explicitly confirmed Inbox receipt. Receipt: `/home/msbadmin/work-management-deployment-reports/WO81-service-2788a2d26bc247e48196e29feae8d0be.txt`.
+- Scheduled mail enabled; Setup timer remained active. Receipt: `/home/msbadmin/work-management-deployment-reports/WO81-service-947799d704a94744a7c95c5e2ee73188.txt`.
+- Capture ON; only legacy email Flows `ebcde355-32c5-4826-b6fa-360621d0d357` and `9a7fb87b-d78e-492b-b2c5-ac3b521b5cf7` inactive, verified by activation gates. Non-mail Flows/operations and historical pending notifications preserved. Worker runs about every minute, bounded to 50 events; uncertain claimed sends are not automatically retried. Setup daily email schedule is separate and unchanged.
+- Greg confirmed the live application working. Utilities is a separate Manager page for fictional no-send email previews. Source templates remain reviewed editable files; this utility does not edit or send them.
+- Disposable SQL PASS/CLEAN EXIT at `61b73293f32ca9b49f3be863e3d9da89095db7a0`: `/home/msbadmin/setup-acceptance-reports/WO419_Disposable_Browser_Preview_20261020T234604.txt`. Later Utilities change was presentation-only; no repeat database dump was required.
+- Snapshot path/hash and full preservation evidence reside in retained private server journals; their literal values were not supplied in the abbreviated receipt and are not invented here.
+- **Follow-ups, not deployment failures:** Apps tile publication remains outstanding; all-event recipient coverage and longer-running worker observation are not claimed. Greg's 3–4-second typed-search delay is assigned to his separate performance thread; no performance investigation or change is part of this closeout. Keep #419/#81 open for remaining scope. These documentation commits do not change the installed application SHA.
+
+## 2026-10-17 — #205 Scheduling Board drag-scroll and Crew Captain labels — Production PASS
+
+- Emergency source-only correction under #205/#122: PR [#414](https://github.com/Gregovate/MSB-Production-Database-Project/pull/414) merged at `bcebcedde6c8043d00e26d1c3f72a244a338f76f`. Final source-only release PR [#415](https://github.com/Gregovate/MSB-Production-Database-Project/pull/415) merged at `65ea23dbfa474d50b9ffe8c23f101dbb76f9951c`; exact deployed application target `ec6d3f0e6a6a1cd69dd60256dcb7f76699e07910`, version remains `V0.3.84-direct-crew-cells` with October 17 UI footer/cache pins.
+- Corrects drag-edge auto-scrolling to use the actual right Scheduling Board scroll owner `.setup-board205-right`, after #205 had changed the inner `.setup-board205-board` to non-scrolling overflow. Preserves established crew colors, scheduling and Report Work history. Schedule Annual Task/Move Crew choices now display Captain names, consistent with Perform Work.
+- Greg explicitly reported disposable browser PASS for restored drag-and-drop and Captain names across both screens, then `Setup REUSABLE DISPOSABLE BROWSER PREVIEW: CLEAN EXIT`. Candidate browser SHA `86d9983d1ba2dff8b9c03b24e25cf6420985143b`; subsequent source-only release updated only browser cache/date and associated source contracts. Setup/FieldWiring and source-release safety/Windows transport GitHub CI PASS prior to merge.
+- Operator reported `PASS: PR414 source-only deployment completed` and `#414 SOURCE-ONLY DEPLOYMENT PASS`, followed by **confirmed PASS in the protected Production browser**. Deployment used the established Setup source-only runner; no schema/data migrations, no #37 database maintenance entry or PostgreSQL rollback archive. Only Setup source/service is intended to be promoted. Exact server report path/fingerprint, old source SHA, and tested counts from the Production run were not supplied in the abbreviated output; do not invent them. Retain the runner report as controlling detail.
+- #205 accepted functional behavior restored. Do not redeploy migrations 075/076 for this repair. This documentation-only closeout commit is not the installed application SHA.
+
+## 2026-10-16 — Setup V0.3.84 direct crew cells / 2026 estimates — Production PASS
+
+- Owner #205 under #122. Accepted application `723a733ffbea516519c6dd7a20ec75faca10a9c4`; feature PR #394; exact deployed Setup target `7740498e6602f36c8cdfd384791bbafaab71ee9e`, `V0.3.84-direct-crew-cells`. Tooling PR #409 merged at `b3cf229ccde4bcdfda9c27acedebb16ee5a61cda`; tooling/documentation SHAs are distinct from deployed source.
+- Operator-visible release includes direct planned AM/PM crew-count editing independent of actual work, 2026 reusable/annual task estimate synchronization, and accepted Scheduling Board/Perform Work/Action Center corrections. Actual work and Captain history protections remain.
+- Installed only `075_allow_setup_planned_crew_count_corrections.sql` then `076_capture_2026_reusable_task_estimates.sql`, in one existing #37 maintenance window. No backfill or Production test assignments. Shared Controller/FieldWiring/People checkout preserved; accepted GIS source retained.
+- Greg supplied the complete runner PASS transcript and confirmed initial Production spot checks found no problems at approximately 17:05 CDT. Current freeze, validated snapshot/hash, ordered migration commits, database security/preservation validation, exact source promotion and return ONLINE/health/live checks passed per the reviewed runner's success contract. No independent host probe or exhaustive operator acceptance is claimed.
+- Retained report: `/home/msbadmin/setup-deployment-reports/Setup205-075-076-20261016T215912Z`. Rollback archive path/hash/size and validation are retained in its `snapshot.json`; literal archive metadata and numerical fingerprints were not supplied in the terminal excerpt and have not been independently read here.
+- Prior clean Setup rollback source: `86341d49dc8ccf290575f9d2b418c235094a1377` / `V0.3.65-scheduled-search-focus`.
+- Engineering verification: 49 deployment/PostgreSQL16 tests, 840 Setup tests, Windows parser and committed-byte transport PASS. Detailed [release and Production receipt](../Setup/Acceptance/Setup_205_075_076_Release.md). Do not rerun the successful installer for documentation; #205/#122 remain open for remaining scope.
+
+## 2026-10-16 — FieldWiring V0.4.2 Controller Network UID Explorer — Source-only Production PASS (operator-reported)
+
+- Controller Inventory owner #110 / original #111, launch governance #122; implementation PR #406 merged as `b3acf960c9db5ee493f5b14759459315db79be8a`; regression contract follow-up PR #407 merged as `17c522c4f8ec06549bf7a6d9e8530c61276203f7`.
+- Exact Production checkout after installation: `17c522c4f8ec06549bf7a6d9e8530c61276203f7`; previous clean live checkout `bb8dfa498c5b4bbecfc3693f68c4066c1e08242e`.
+- Visible FieldWiring version: `V0.4.2-controller-uid-explorer`. Operator-reported health `{"data_mode":"postgres","status":"ok","version":"V0.4.2-controller-uid-explorer"}`; Procedures remained `V0.1.0`, healthy.
+- Changes: selectable Network-wide 01–F0 UID inventory and search; case-insensitive `Regular` identity; removal of DMX/E1.31 universe contamination from LOR UID occupancy; physical Controller overlay; optional model-width contiguous UID search; improved one-UID and grouped-range presentations. Operator confirmed Regular/39 false Mega Tree attribution corrected in disposable browser. Post-season PixCon16 dual LOR/E1.31 IP/universe planning deferred in Controller engineering contract.
+- **Source-only:** no database migrations executed, no PostgreSQL maintenance window. The checkout advance included `Setup/Database/073_add_setup_required_container_command.sql` as a source file, **not** as an executed migration. No evidence of any DB schema/data mutation in this release.
+- Acceptance: prior exact-candidate disposable browser `1944af4140fda651eda173f06dec907c7aa448d6` reported BROWSER REVIEW READY, cleanup CLEAN EXIT, identical Controller fingerprints `0dd5493c19451711c4bf8af0a5960f72`. Full merged Controller/FieldWiring/Procedures regression after test-contract reconciliation: **263 passed in 4.08s**, operator transcript. Final operator-reported source installation: `SOURCE DEPLOYMENT HEALTH PASS` with exact deployed SHA and both services healthy. No post-deploy database fingerprint or full live regression output was supplied; do not claim either.
+- Runtime deployment report/archive: none supplied for source-only direct command sequence. Operator output is current evidence; rollback source is the recorded prior checkout SHA above. Follow-up: verify protected browser Controller UI, perform post-deploy smoke / negative authorization check and document final evidence, then close issue/PR ownership under #122.
+
+## 2026-10-14 — Setup V0.3.65 scheduled search reveal — Production PASS
+
+- Owner #205 / #122 DBG-2026-014; feature PR #391 merge `4819959be8bdad3d002623775b83ebe876a417e5`; tooling PR #392 merge `f312a12b30e75f8bb5cc7733620ff1f301a54138`.
+- Exact deployed application: `86341d49dc8ccf290575f9d2b418c235094a1377`, `V0.3.65-scheduled-search-focus`, footer Updated 2026-10-14. Tooling/main SHAs are not the live application pin.
+- Clicking a scheduled search result expands the matching collapsed day, updates its arrow/accessibility state, and scrolls/highlights/focuses the task. Other days remain collapsed. Separate Day View terminology is unchanged.
+- Exact-candidate engineering: 764 Setup/shared-preview checks and actual-handler DOM tests PASS. Greg confirmed disposable browser behavior and CLEAN EXIT, then authorized deployment.
+- Operator-reported server PASS: `/home/msbadmin/setup-deployment-reports/PR391-Source-20261014T185934Z` (October 14 UTC). Source-only release used the installed maintenance controller at Greg's request: freeze and complete ref/ops preservation, exact Setup promotion, return ONLINE, exact health and live regression passed per runner receipt. Numerical fingerprints and observed shared SHA remain in the retained report/journal, not transcribed or independently inspected here.
+- Prior Setup/rollback source: `efb7f26fd0d4e1275daa509e2ade62bc291b1d8f` / V0.3.64. The runner's mandatory preflight also proved the exact migration 073 command/security was already installed. No migrations replayed; no PostgreSQL rollback archive created for this source-only release. Separate PR389 installation report/archive receipt remains unprovided.
+- Protected Production browser: Greg confirmed working October 14 at14:02 CDT. Local Office-worktree cleanup was supplied but execution remains unverified. Do not rerun the completed installer for documentation.
+- Detailed evidence: [Scheduled Search Focus candidate/receipt](../Setup/Acceptance/Setup_205_Scheduled_Search_Focus_Candidate.md).
+
+## 2026-10-13 — People V0.2.2 Directus-to-Person identity reconciliation — PASS
+
+- Owning issue #385; implementation PR #386.
+- Visible Production version: `V0.2.2`.
+- Accepted runtime candidate: `2c9a2937079f817dafd5119584aaffc77b51357d`.
+- Merged/deployed main SHA: `bb8dfa498c5b4bbecfc3693f68c4066c1e08242e`.
+- Migration: `People/Database/005_reconcile_directus_person_identity.sql`, blob `88442b8f4150513fd6af581e2ea90004c6f27658`.
+- Behavior: protected application actor paths now safely self-reconcile an existing active human Person to the matching active Google-backed Directus UUID by exact Sheboygan Lights email. Directus role/policy state remains unchanged and continues to authorize access.
+- Explicit non-human exclusions: `tablet-*@sheboyganlights.org`, `printservice@sheboyganlights.org`, and `production-1@sheboyganlights.org` cannot reconcile to a Person.
+- Current-Production disposable acceptance PASS: 26 exact-candidate tests; movement/management/execution/inventory/People/Controller actor paths self-reconciled; idempotence, role preservation, audit attribution, conflict/missing-state fail-closed behavior, and reconciliation report all passed.
+- Production `ref.person` fingerprint remained `9dca556251712a3824cda436b0300fc8` during disposable acceptance and was the frozen Production fingerprint at deployment.
+- Governed database-changing Production deployment PASS under Server Management Issue #37 maintenance control.
+- Frozen Directus identity fingerprint: `1333a30c3f2f35fa1864e979c200c177`.
+- Validated rollback snapshot: `/home/msbadmin/backups/postgres/msb-pre-people-identity-reconcile-20261013T183854.dump`.
+- Deployment report: `/tmp/MSB_People_Identity_Reconcile_Production_Deploy_20261013T183854.txt`.
+- Durable acceptance: [People Identity Reconciliation Production Acceptance](../People/Acceptance/People_Identity_Reconciliation_Production_Acceptance_2026-10-13.md).
+
 ## 2026-10-11 — Corrected Park Map waypoint and LinkIQ source — PASS
 
 - Governing #122; GIS #171; permanent editor #230 remains unfinished.

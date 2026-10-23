@@ -313,3 +313,96 @@ Current priority becomes:
 7. then final acceptance of Add/Edit/Assign/Reassign/Unassign workflows.
 
 Do not proceed to production acceptance of the simplified assignment UI until this planning context is available or the remaining gaps are explicitly accepted.
+
+## 2026-10-16 — Network-first UID explorer correction (draft candidate)
+
+Operator-accepted correction under #110/#111, governed by #122. This is a proposed
+application change, **not** Production acceptance or deployment.
+
+- Select a Network and inspect the complete hexadecimal 01–F0 UID inventory,
+  regardless of Controller model. Search a UID or filter the inventory without
+  changing the underlying Network-wide occupancy calculation.
+- Show current LOR/V7 usage and Display names separately from recorded physical
+  Controller programming and status. "Unused by LOR" is not proof an address
+  has no physical programming conflict.
+- The optional Controller model only determines contiguous-block width through
+  governed `lor_uid_capacity`; it must not filter the base UID inventory.
+  List all conflict-free candidate ranges instead of silently truncating at 24.
+- Normalize Network **identity** case-insensitively throughout the planner:
+  `Regular` and `regular` refer to one address space, displayed as `Regular`.
+  Preserve raw source spelling and do not silently rewrite LOR/V7 or database
+  rows. A separate read-only source audit is still needed to determine whether
+  reference data contains inconsistent spellings.
+- The Stage panel remains separate. The earlier limits on physical spare
+  attribution, reachability, and LOR/physical authority remain unchanged.
+
+Implementation checkpoint: isolated draft branch
+`fix/controller-network-uid-explorer-20261016` from
+`main` `b2d5f8c2f202b228a180bd950187718937c41019`.
+No Production mutation, schema change or deployment. Executable regression,
+disposable-browser acceptance, concurrent-main reconciliation and Greg's
+operator review are still required.
+
+## 2026-10-16 — E1.31/DMX boundary correction in draft PR #406
+
+The operator reproduced a false Regular/39 entry for `TR-MegaTreeRGBTree`
+alongside `WW-ClarkGriswold`, while permanent CTRL 1177 legitimately
+records only `WW-ClarkGriswold` assigned at Regular/39. The accepted
+FieldWiring dense RGB contract states that `device_type=DMX` may represent
+E1.31 universes in the legacy compatibility wiring view; that `controller`
+value is **not** an LOR UID.
+
+The read-only Controller planner's network-wide UID and explicit Stage SPARE
+queries must exclude `device_type=DMX` compatibility rows from LOR UID
+occupancy, regardless of whether the controller value resembles a hex UID.
+Do not modify the FieldWiring viewer, LOR/V7 snapshots, Controller assignment,
+or E1.31/DMX physical wiring presentation. Mixed/unknown device semantics
+remain a review concern, not grounds for guessing a free UID.
+
+This correction is committed to draft PR #406 but has not passed actual
+current-production-clone/browser acceptance. Previously running disposable
+browser sessions remain pinned to their earlier SHA and will **not**
+automatically reflect these changes.
+
+## 2026-10-16 — Pixie contiguous-range visibility in draft #406
+
+Operator browser finding: selecting Pixie4D did not visibly expose candidate
+four-UID ranges because the planner rendered the full 240-UID inventory first.
+The draft now renders the optional model-aware contiguous block results **above**
+the inventory, includes the number of candidate starting addresses and bounds
+its block list with independent scrolling. The Network inventory remains
+model-independent. Requires fresh exact-candidate browser acceptance; do not
+interpret source correction as deployed or accepted behavior.
+
+## 2026-10-16 — Individual vs contiguous UID presentation
+
+Operator screenshots of the Controller planner showed that PixCon16 was listed as
+one UID in the governed model metadata, while Pixie2D/4D/8D use multi-UID
+blocks. Physical output/channel count must not be confused with LOR UID width.
+The draft #406 browser now labels one-UID choices as **Available individual UIDs**
+in a compact grid; models with width greater than one retain contiguous block
+ranges. The UID availability rules and model metadata were not changed.
+Exact-candidate regression/browser acceptance of this presentation is pending.
+
+## Post-2026 Season — PixCon16 Dual Addressing / E1.31 Capacity (DEFERRED)
+
+Operator-confirmed engineering requirement (2026-10-16): a PixCon16 may legitimately
+operate on a traditional **LOR Network** or by **IP address on E1.31**. Neither
+mode should be globally inferred from the model name alone. The observed
+`lor_uid_capacity=1` entry is not a universal definition of the model's
+E1.31 addressing or its 16 physical outputs.
+
+For post-season planning, investigate a separate E1.31/IP capacity view that
+shows each actual physical Controller, IP address, recorded addressing mode,
+and the DMX universes/ranges it consumes. Identify overlaps and free universe
+capacity without translating universes into traditional LOR Unit IDs. Anticipate
+potential addition of **three more E1.31 addresses/controllers**, but do not
+allocate IP addresses or universe ranges without current network design evidence.
+Reconcile physical inventory/programmed facts with the authoritative LOR/V7
+DMX/universe topology and the existing FieldWiring dense-RGB interpretation.
+
+This is **deferred work, not an unfinished gate for the 2026 Network UID
+planner correction**. Keep the current FieldWiring Viewer behavior, existing
+Controller identities, physical assignments and LOR/V7 source data unchanged.
+Revisit after the 2026 season under the existing Controller Inventory issue
+authority, with a separate accepted design and testing gate before implementation.

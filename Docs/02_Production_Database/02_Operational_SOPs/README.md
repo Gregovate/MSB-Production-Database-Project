@@ -7,6 +7,7 @@ These procedures are for people performing day-to-day production database tasks.
 | I want to... | Go to |
 |---|---|
 | Review/maintain Setup tasks, Display ownership, Kit assignments, Extra Materials, Kit Inventory, or T-Post stock | [Setup](Setup/README.md) |
+| Update or publish a current Setup procedure | [Update or Publish a Current Setup Instruction](../../00_Project_Overview/Google_Drive/operatorSOP/Publish_Current_Setup_Instruction.md) |
 | Find or maintain a volunteer/contact, capability, qualification, or Setup/Takedown eligibility | [People](People/README.md) |
 | Scan a Display, Container, or other MSB code and choose the next action | [Scanning](Scanning/README.md) |
 | Find and use current field wiring by Display, Stage, Sub-stage, or Scene | [FieldWiring](FieldWiring/README.md) |
@@ -15,6 +16,7 @@ These procedures are for people performing day-to-day production database tasks.
 | Complete or maintain Production Database information about displays | [Displays](Displays/README.md) |
 | Run the LOR parser, ingest, and reconciliation workflow | [LOR2DB](LOR2DB/README.md) |
 | Print display or container labels | [Label Printing](Label_Printing/README.md) |
+| Install/update GIS icon software, maintain local ExpertGPS symbols, or publish approved web SVGs | [Site Infrastructure / GIS icon procedures](../01_System_Architecture/11_Site_Infrastructure_GIS/operatorSOP/README.md) |
 | Test displays and record repairs | [Test Sessions](Test_Sessions/README.md) |
 | Create, review, assign, work, or complete Work Orders | [Work Orders](Work_Orders/README.md) |
 
@@ -33,5 +35,7 @@ These procedures are for people performing day-to-day production database tasks.
 | [Label_Printing](Label_Printing/README.md) | Procedures for requesting display/container labels and first-line printing checks |
 | [Test_Sessions](Test_Sessions/README.md) | Container/display testing procedures and manager testing procedures |
 | [Work_Orders](Work_Orders/README.md) | Work-order request, triage, assignment, work, and completion procedures |
+
+**Web publication is restricted to the authorized Synology administrator.** Ordinary icon/ExpertGPS users can install and preview without receiving web publishing privileges. The controlling symbol design and accepted release status are in the [GIS engineering authority](../01_System_Architecture/11_Site_Infrastructure_GIS/engineering/README.md).
 
 For technical design and database behavior, use the [System Architecture portal](../01_System_Architecture/README.md).
