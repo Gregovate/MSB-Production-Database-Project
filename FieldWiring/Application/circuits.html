@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel Circuits — MSB Field Wiring</title><link rel="stylesheet" href="fieldwiring.css?v=2026-10-22"><link rel="stylesheet" href="static/power_capture.css?v=2026-10-22">
+<script src="static/analytics.js?v=2026-08-31.1"></script></head>
+<body><header class="site-header"><div class="brand"><h1>Panel Circuits</h1><a href="./">Field Wiring</a><a href="/setup/locate/?view=fieldwiring">Park Map</a></div></header>
+<main><p id="status" role="status" aria-live="polite">Loading current circuit records…</p>
+<p class="hint">Desired state, reported condition and field verification are separate records. A saved state or completed action is not proof of de-energization.</p>
+<div class="power-toolbar"><button id="reload" type="button">Reload current records</button><label>Find panel or waypoint <input id="find" type="search" placeholder="Current name or retained alias"></label></div>
+<div class="power-layout"><aside class="card"><h2>Panels</h2><button id="add-panel" type="button">Add panel</button><div id="panels"></div></aside>
+<section class="card"><div id="panel-detail"><p>Select a panel to retrieve its circuits and assignments.</p></div></section></div>
+<section class="card"><h2>Equipment and documented feeds</h2><p>Record fuses, disconnects and other equipment, then connect the documented upstream and downstream records.</p>
+<button id="add-device" type="button">Add equipment</button> <button id="add-feed" type="button">Add feed relationship</button><div id="equipment"></div><div id="feeds"></div></section>
+<section class="card"><h2>Waypoint networks</h2><p>Network assignments are independent of electrical circuits. Multiple networks may serve one waypoint.</p><button id="add-network" type="button">Assign network</button><div id="networks"></div></section>
+<section class="card"><h2>Seasonal power activities</h2><div class="power-toolbar"><button id="add-action" type="button">Define activity</button><label>Season <select id="season"></select></label><label>Filter activity, panel, waypoint or responsible party <input id="action-search" type="search"></label></div><div id="actions"></div></section>
+<section class="card"><h2>Correction history</h2><div id="history"></div></section>
+<dialog id="editor"><form id="edit-form"><h2 id="edit-title"></h2><div id="edit-fields"></div><p id="save-status" role="alert"></p><div class="power-toolbar"><button id="save" type="submit">Save</button><button id="cancel" type="button">Cancel</button></div></form></dialog>
+<footer>Field Wiring V0.4.3-panel-circuit-capture · Updated 2026-10-22</footer></main><script src="static/power_capture.js?v=2026-10-22"></script></body></html>

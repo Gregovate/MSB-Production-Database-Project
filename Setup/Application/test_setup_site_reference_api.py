@@ -79,7 +79,7 @@ def setup(monkeypatch):
     return app.test_client(), conn, access
 
 
-def _post(client, command="crew_set_meter", *, header=True, revision=3):
+def _post(client, command="manager_add_alias", *, header=True, revision=3):
     headers = {"Content-Type": "application/json"}
     if header:
         headers["X-MSB-Setup-Command"] = "1"
@@ -117,23 +117,20 @@ def test_write_requires_setup_command_guard_and_evidence(setup):
     conn.permissions["operations"] = True
     assert _post(client, header=False).status_code == 400
     assert client.post("/api/setup/locate/references/command",
-        json={"command": "crew_set_meter", "expected_revision": 3,
+        json={"command": "manager_add_alias", "expected_revision": 3,
               "fields": {"waypoint_id": 17}},
         headers={"X-MSB-Setup-Command": "1"}).status_code == 400
     assert _post(client, command="arbitrary_sql").status_code == 400
     assert not conn.committed
 
 
-def test_explicit_operations_grant_allows_meter_without_manager(setup):
+def test_legacy_power_commands_rejected_even_for_manager(setup):
     client, conn, access = setup
-    conn.permissions["operations"] = True
-    result = _post(client)
-    assert result.status_code == 200
-    assert result.json["revision"] == 4
-    assert conn.write_session and conn.committed and conn.closed
-    sql, args = [q for q in conn.queries if "site_reference_command(" in q[0]][0]
-    assert args[:3] == ("volunteer@example.test", "crew_set_meter", 3)
-    assert json.loads(args[3])["meter_identifier"] == "TEST ONLY"
+    conn.permissions.update(identity=True, operations=True)
+    access['can_manage_setup'] = True
+    assert _post(client, command='crew_set_meter').status_code == 400
+    assert _post(client, command='manager_set_panel_owner').status_code == 400
+    assert not conn.committed
 
 
 def test_identity_grant_also_requires_setup_manager(setup):
@@ -154,6 +151,6 @@ def test_stale_or_noninteger_revision_rejected_before_sql(setup):
     assert not conn.write_session
     response = client.post("/api/setup/locate/references/command",
         headers={"X-MSB-Setup-Command": "1"},
-        json={"command": "crew_set_meter", "expected_revision": True,
+        json={"command": "manager_add_alias", "expected_revision": True,
               "fields": {"evidence_notes": "proof"}})
     assert response.status_code == 400

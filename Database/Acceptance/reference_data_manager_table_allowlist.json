@@ -144,73 +144,132 @@
     {
       "table": "ref.site_panel",
       "owner": "#171 / #230",
-      "stage": "CANDIDATE_PR_319_NOT_DEPLOYED",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
       "planned_actions": [
         "browse",
-        "manager_set_panel_owner",
-        "crew_set_meter"
+        "governed_power_command"
       ],
       "protected_columns": [
-        "site_waypoint_id"
+        "site_panel_id"
       ],
-      "notes": "UNKNOWN/CITY/MSB owner explicitly maintained by Manager; Production crew may update evidenced meter ID."
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
+    },
+    {
+      "table": "ref.site_power_breaker",
+      "owner": "#171 / #230",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "governed_power_command"
+      ],
+      "protected_columns": [
+        "site_power_breaker_id"
+      ],
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
     },
     {
       "table": "ref.site_power_circuit",
       "owner": "#171 / #230",
-      "stage": "CANDIDATE_PR_319_NOT_DEPLOYED",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
       "planned_actions": [
         "browse",
-        "crew_upsert_circuit",
-        "manager_set_circuit_owner"
+        "governed_power_command"
       ],
       "protected_columns": [
-        "site_power_circuit_id",
-        "panel_waypoint_id"
+        "site_power_circuit_id"
       ],
-      "notes": "Unique breaker/circuit number per existing panel; panel owner and circuit owner intentionally separate."
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
     },
     {
-      "table": "ref.site_circuit_destination",
+      "table": "ref.site_power_device",
       "owner": "#171 / #230",
-      "stage": "CANDIDATE_PR_319_NOT_DEPLOYED",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
       "planned_actions": [
         "browse",
-        "crew_link_destination"
+        "governed_power_command"
       ],
       "protected_columns": [
-        "site_power_circuit_id",
-        "site_waypoint_id"
+        "site_power_device_id"
       ],
-      "notes": "Connect reviewed circuit to existing waypoints only; do not infer from coordinates."
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
+    },
+    {
+      "table": "ref.site_power_feed",
+      "owner": "#171 / #230",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "governed_power_command"
+      ],
+      "protected_columns": [
+        "site_power_feed_id"
+      ],
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
     },
     {
       "table": "ref.site_waypoint_network",
       "owner": "#171 / #230",
-      "stage": "CANDIDATE_PR_319_NOT_DEPLOYED",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
       "planned_actions": [
         "browse",
-        "crew_assign_network"
+        "governed_power_command"
       ],
       "protected_columns": [
-        "site_waypoint_id",
-        "site_network_id"
+        "site_waypoint_network_id"
       ],
-      "notes": "Many-to-many membership in maintained actual networks, independent of GPX route labels."
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
     },
     {
-      "table": "ref.site_seasonal_switch_instruction",
+      "table": "ref.site_power_action",
       "owner": "#171 / #230",
-      "stage": "CANDIDATE_PR_319_NOT_DEPLOYED",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
       "planned_actions": [
         "browse",
-        "crew_set_switching"
+        "governed_power_command"
       ],
       "protected_columns": [
-        "site_power_circuit_id",
-        "season_year"
+        "site_power_action_id"
       ],
-      "notes": "Planned ON/OFF instructions by season, NOT an observed power state."
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
+    },
+    {
+      "table": "ref.site_power_cable_spec",
+      "owner": "#171 / #230",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "governed_power_command"
+      ],
+      "protected_columns": [
+        "site_power_cable_spec_id"
+      ],
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
+    },
+    {
+      "table": "ref.site_power_conductor",
+      "owner": "#171 / #230",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "governed_power_command"
+      ],
+      "protected_columns": [
+        "site_power_conductor_id"
+      ],
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
+    },
+    {
+      "table": "ref.site_power_conductor_circuit",
+      "owner": "#171 / #230",
+      "stage": "COMBINED_CANDIDATE_NOT_DEPLOYED",
+      "planned_actions": [
+        "browse",
+        "governed_power_command"
+      ],
+      "protected_columns": [
+        "site_power_conductor_circuit_id"
+      ],
+      "notes": "Existing FieldWiring power command boundary; Directus authority, source evidence, revision and append-only audit."
     }
   ],
   "internal_only": [
@@ -220,8 +279,10 @@
     "ops.linkiq_test",
     "ops.linkiq_test_appearance",
     "ref.site_reference_revision",
-    "ref.site_editor_grant",
-    "ops.site_reference_edit_log"
+    "ops.site_reference_edit_log",
+    "ref.site_power_revision",
+    "ops.site_power_edit_log",
+    "ops.setup_power_activity_event"
   ],
   "excluded_owners": [
     {
@@ -266,7 +327,7 @@
     "read": "ref.site_reference_snapshot()",
     "permissions": "ref.site_reference_permissions(email)",
     "commands": "ref.site_reference_command(email, command, expected_revision, jsonb)",
-    "scope": "Positive, independently provisioned grants; Manager identity requires Setup manager; crew operations do not grant coordinate edits. Source evidence remains immutable.",
+    "scope": "Installed Directus Manager capability and actor resolver; no independent GIS grant store. Power writes use FieldWiring commands.",
     "track_name_edit": "manager_update_track_label verifies stable ref.site_track ID, accepted source binding, expected prior label, attribution and revision; exports to ExpertGPS by original GPX source ordinal, no FLW writeback."
   }
 }

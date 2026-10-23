@@ -7,6 +7,7 @@ Uses the existing governed psycopg2 runtime through site_db_connection.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 from pathlib import Path
 from typing import Any
@@ -49,7 +50,9 @@ def ingest_linkiq(conn, source: Path, actor: str) -> dict:
             waypoints = cursor.fetchall()
             cursor.execute('''SELECT site_waypoint_id, alias_text FROM ref.site_waypoint_alias
                               WHERE accepted_by IS NOT NULL AND accepted_at IS NOT NULL''')
-            lookup = waypoint_lookup(waypoints, cursor.fetchall())
+            aliases = cursor.fetchall()
+            cursor.execute('SELECT site_waypoint_id, source_garmin_name FROM ref.site_waypoint')
+            lookup = waypoint_lookup(waypoints, aliases, cursor.fetchall())
             cursor.execute('''SELECT c.site_cable_id,c.endpoint_a_waypoint_id,
                 c.endpoint_b_waypoint_id,COALESCE(c.spare_designation,n.network_code),
                 (c.reviewed_by IS NOT NULL AND c.reviewed_at IS NOT NULL)
@@ -191,6 +194,13 @@ def stage_expertgps(conn, source: Path, actor: str) -> dict:
             ''', (extracted['sha256'], source.name, actor,
                   _jsonb({'waypoints':len(extracted['waypoints']),
                           'tracks':len(extracted['tracks'])})))
+            # Complete document evidence includes root metadata/routes/unknown XML;
+            # feature projections alone are not sufficient for GPX restoration.
+            cursor.execute('''INSERT INTO ops.site_source_observation
+                (source_sha256,source_row,item_kind,source_document)
+                VALUES (%s,'document','DOCUMENT',%s::jsonb)
+                ON CONFLICT (source_sha256,source_row,item_kind) DO NOTHING''',
+                (extracted['sha256'], _jsonb(extracted['document'])))
             for kind, items in [('WAYPOINT',extracted['waypoints']), ('TRACK',extracted['tracks'])]:
                 for obj in items:
                     cursor.execute('''
@@ -208,6 +218,24 @@ def _coordinate(value, limit: int) -> float:
     if not math.isfinite(result) or abs(result) > limit:
         raise ValueError('GPX coordinate outside WGS84 bounds')
     return result
+
+
+def restore_gpx_source(conn, source_sha: str, output: Path) -> dict:
+    """Restore exact archived GPX bytes; never reconstruct from projected fields."""
+    with conn.cursor() as cursor:
+        cursor.execute("""SELECT source_document FROM ops.site_source_observation
+            WHERE source_sha256=%s AND source_row='document' AND item_kind='DOCUMENT'""",
+            (source_sha,))
+        row = cursor.fetchone()
+    if row is None or row[0].get('encoding') != 'base64':
+        raise ValueError('Complete GPX document evidence is unavailable')
+    raw = base64.b64decode(row[0]['bytes'], validate=True)
+    if hashlib.sha256(raw).hexdigest() != source_sha:
+        raise ValueError('Archived GPX bytes differ from source SHA256')
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open('xb') as handle:
+        handle.write(raw)
+    return {'source_sha256': source_sha, 'bytes': len(raw)}
 
 
 def _track_geometry(track: dict) -> dict:
@@ -265,6 +293,13 @@ def bootstrap_expertgps(conn, source: Path, actor: str, expected_sha: str) -> di
                 ON CONFLICT (source_sha256) DO NOTHING''',
                 (expected_sha, source.name, actor,
                  _jsonb({'waypoints': len(points), 'tracks': len(lines)})))
+            # Complete document evidence includes root metadata/routes/unknown XML;
+            # feature projections alone are not sufficient for GPX restoration.
+            cursor.execute('''INSERT INTO ops.site_source_observation
+                (source_sha256,source_row,item_kind,source_document)
+                VALUES (%s,'document','DOCUMENT',%s::jsonb)
+                ON CONFLICT (source_sha256,source_row,item_kind) DO NOTHING''',
+                (extracted['sha256'], _jsonb(extracted['document'])))
             for kind, items in [('WAYPOINT', extracted['waypoints']), ('TRACK', extracted['tracks'])]:
                 for item in items:
                     cursor.execute('''INSERT INTO ops.site_source_observation
@@ -275,12 +310,12 @@ def bootstrap_expertgps(conn, source: Path, actor: str, expected_sha: str) -> di
             for w, (lon, lat) in zip(extracted['waypoints'], points):
                 cursor.execute('''INSERT INTO ref.site_waypoint
                     (canonical_label,source_garmin_name,waypoint_type,current_point,
-                     source_wgs84,source_comment,source_description,source_time,verified_by,verified_at)
+                     source_wgs84,source_comment,source_description,source_time)
                     VALUES (%s,%s,%s,ST_Transform(ST_SetSRID(ST_MakePoint(%s,%s),4326),8158),
-                            ST_SetSRID(ST_MakePoint(%s,%s),4326),%s,%s,%s,%s,clock_timestamp())
+                            ST_SetSRID(ST_MakePoint(%s,%s),4326),%s,%s,%s)
                     RETURNING site_waypoint_id''',
                     (w['map_label'], w['garmin_name'], w['type'], lon, lat, lon, lat,
-                     w['comment'], w['description'], w['source_time'], actor))
+                     w['comment'], w['description'], w['source_time']))
                 waypoint_id = cursor.fetchone()[0]
                 cursor.execute('''INSERT INTO ref.site_waypoint_source_binding
                     (site_waypoint_id,source_sha256,baseline_map_label,baseline_latitude,

@@ -285,9 +285,16 @@ if ($gisIntake) {
     foreach ($source in $gisSourcePaths) {
         if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Missing GIS source: $source" }
     }
-    if ($MigrationPaths -cnotcontains 'Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql' -or
-        $ValidationPaths -cnotcontains 'Database/Acceptance/171_site_infrastructure_disposable_validation.sql') {
-        throw 'GIS intake requires the #171 schema and validation in this same run.'
+    # One combined GIS/power release; preserve the reviewed dependency order.
+    $combinedMigrations = @(
+        'Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql',
+        'Database/EngineeringTools/sql/171_panel_circuit_capture_candidate.sql',
+        'Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql'
+    )
+    if (($MigrationPaths -join '|') -cne ($combinedMigrations -join '|') -or
+        $ValidationPaths -cnotcontains 'Database/Acceptance/171_site_infrastructure_disposable_validation.sql' -or
+        $ValidationPaths -cnotcontains 'Database/Acceptance/171_site_reference_operations_disposable_validation.sql') {
+        throw 'GIS intake requires the complete ordered GIS/circuit migration set and both validations in this same run.'
     }
 }
 

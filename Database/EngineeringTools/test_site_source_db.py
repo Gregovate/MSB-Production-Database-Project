@@ -97,3 +97,54 @@ def test_map_shared_route_single_feature_and_other_gpx_tracks_preserved():
     assert traces['track:23']['properties']['geometry_status'] == 'INCOMPLETE'
     assert export()['revision'] == data['revision']
     assert export('Corrected A')['revision'] != data['revision']
+
+
+def test_bootstrap_archives_complete_document_without_claiming_field_verification(sample_gpx, tmp_path):
+    import json
+    from site_source_db import restore_gpx_source
+    conn = RecordingConnection([(0, 0, 0, 0), (51,), (61,)])
+    bootstrap_expertgps(conn, sample_gpx, 'source-reviewer', sha256(sample_gpx))
+    archived = [p for sql, p in conn.statements if "'DOCUMENT'" in sql]
+    assert len(archived) == 1
+    output = tmp_path / 'restored.gpx'
+    restore_gpx_source(RecordingConnection([(json.loads(archived[0][1]),)]), sha256(sample_gpx), output)
+    assert output.read_bytes() == sample_gpx.read_bytes()
+    sql = next(sql for sql, p in conn.statements if 'INSERT INTO ref.site_waypoint\n' in sql)
+    assert 'verified_by' not in sql and 'verified_at' not in sql
+
+
+def test_corrupt_archived_document_cannot_be_exported(tmp_path):
+    from site_source_db import restore_gpx_source
+    conn = RecordingConnection([({'encoding': 'base64', 'bytes': 'YmFk'},)])
+    with pytest.raises(ValueError, match='SHA256'):
+        restore_gpx_source(conn, '0' * 64, tmp_path / 'bad.gpx')
+    assert not (tmp_path / 'bad.gpx').exists()
+
+
+def test_ephemeral_postgis_document_restore_and_replay(sample_gpx, tmp_path):
+    """Opt-in existing CI PostGIS service; never a Production/current-clone test."""
+    import os
+    from site_db_connection import connect
+    from site_source_db import restore_gpx_source, export_waypoint_projection
+    from site_source_sync import gpx_roundtrip
+    dsn = os.environ.get('MSB_GIS_EPHEMERAL_TEST_DSN')
+    if not dsn:
+        pytest.skip('existing ephemeral PostGIS service not selected')
+    with connect(dsn) as conn:
+        assert conn.info.dbname == 'site_acceptance', 'Only isolated CI database permitted'
+        digest = sha256(sample_gpx)
+        assert bootstrap_expertgps(conn, sample_gpx, 'ci-source-reviewer', digest)['status'] == 'ACCEPTED'
+        assert bootstrap_expertgps(conn, sample_gpx, 'ci-source-reviewer', digest)['status'] == 'ALREADY_ACCEPTED'
+        original = tmp_path / 'archived.gpx'
+        restore_gpx_source(conn, digest, original)
+        assert original.read_bytes() == sample_gpx.read_bytes()
+        with conn.cursor() as cur:
+            cur.execute('SELECT verified_by,verified_at FROM ref.site_waypoint')
+            assert all(row == (None, None) for row in cur.fetchall())
+            # Disposable correction proves identity-bound export, not just no-op.
+            cur.execute("UPDATE ref.site_waypoint SET canonical_label='CI corrected map label'")
+        projection = export_waypoint_projection(conn, digest)
+        output = tmp_path / 'corrected.gpx'
+        assert gpx_roundtrip(original, projection, output)['updated'] == 1
+        assert bootstrap_expertgps(conn, sample_gpx, 'ci-source-reviewer', digest)['status'] == 'ALREADY_ACCEPTED'
+        assert export_waypoint_projection(conn, digest) == projection

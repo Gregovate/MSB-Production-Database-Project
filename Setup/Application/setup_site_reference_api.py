@@ -1,7 +1,7 @@
 """#171/#230: protected SAME-map PostgreSQL reference read and named writes.
 
 No GPX/FLW edits, no new movement projection, no arbitrary table CRUD.
-Cloudflare identity + Directus Setup read gate + explicit site-editor grants
+Cloudflare identity + Directus Setup read gate + installed Directus capabilities
 are evaluated on the SERVER; client-side controls are only a convenience.
 """
 from __future__ import annotations
@@ -25,16 +25,11 @@ from setup_repository import SetupRepositoryError
 site_reference_api = Blueprint("site_reference_api", __name__)
 
 MANAGER_COMMANDS = frozenset({
-    "manager_update_waypoint", "manager_set_panel_owner",
-    "manager_set_circuit_owner", "manager_add_network",
+    "manager_update_waypoint", "manager_add_network",
     "manager_create_cable", "manager_link_test", "manager_add_alias",
     "manager_retire_cable", "manager_update_track_label",
 })
-CREW_COMMANDS = frozenset({
-    "crew_set_meter", "crew_upsert_circuit", "crew_link_destination",
-    "crew_assign_network", "crew_set_switching", "crew_unlink_destination",
-    "crew_remove_network", "crew_clear_switching",
-})
+CREW_COMMANDS = frozenset()  # Power writes use the existing FieldWiring API.
 
 
 def _no_store(response: Response) -> Response:

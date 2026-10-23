@@ -189,6 +189,10 @@
     heading(body, w.label + ' · ' + w.type);
     if (lastEditMessage) line(body, lastEditMessage);
     const panel = byId(current.panels, id, 'site_waypoint_id');
+    const powerLink = append(body, document.createElement('a'));
+    powerLink.href = '/fieldwiring/circuits';
+    powerLink.textContent = 'View or maintain panel circuits in FieldWiring';
+
     const ownCircuits = (current.circuits || []).filter(c => Number(c.panel_waypoint_id) === Number(id));
     const supplies = matchingCircuits(id);
     line(body, 'Verified panel owner: ' + (panel?.owner_code || 'UNKNOWN — unreviewed'));

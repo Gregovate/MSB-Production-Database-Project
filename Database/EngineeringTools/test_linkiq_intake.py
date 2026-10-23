@@ -159,3 +159,15 @@ def test_review_rejects_stale_binding_or_unreviewed_target(responses,error):
     with pytest.raises(ValueError,match=error):
         review_linkiq_identity(conn,'a'*64,UID,7,'manager','review')
     assert not any('INSERT' in sql or ' SET ' in sql for sql,_ in conn.statements)
+
+
+def test_panel_shorthand_gps_names_and_collisions_preserve_identity():
+    keys = waypoint_lookup([(1, 'PANEL A5-00'), (2, 'PANEL 10 WV-00'),
+                            (3, 'Different map name'), (4, 'A5-00')],
+                           [], [(3, 'GPS-NAME'), (1, '')])
+    assert keys['A5-00'] == {1, 4}  # Never prefer inferred alias over real point.
+    assert keys['WV-00'] == {2}
+    assert keys['GPS-NAME'] == {3}
+    assert keys['DIFFERENT MAP NAME'] == {3}
+    assert '' not in keys
+    assert 'COMMAND CENTER' not in keys  # Trailer is not an area-name alias.

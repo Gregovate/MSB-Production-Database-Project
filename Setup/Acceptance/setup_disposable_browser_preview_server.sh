@@ -906,10 +906,7 @@ if [[ "$MANAGE_OK" != "t" ]]; then
     exit 20
 fi
 
-# #171/#230: candidate schema correctly starts with ZERO editor grants.
-# Only a governed, SOURCE-INTAKE disposable browser review receives a temporary
-# positive grant for its selected existing Setup Manager. This is strictly
-# psql_test (the disposable clone), NEVER psql on the Production container.
+# Combined GIS/power review uses existing Directus roles; never provision a second grant store.
 GIS_EDITOR_PREVIEW=0
 for rel in "${MIGRATIONS[@]}"; do
     if [[ "$rel" == "Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql" ]]; then
@@ -921,31 +918,13 @@ if [[ "$GIS_EDITOR_PREVIEW" == "1" ]]; then
         echo "FAIL: GIS editor browser review requires exact approved GPX intake on this clone"
         exit 20
     }
-    echo "--- Provision disposable-only GIS Manager/crew editor review grant ---"
-    psql_test -v preview_email="$PREVIEW_EMAIL" <<'SQL'
-INSERT INTO ref.site_editor_grant
-    (operator_email, can_manage_identity, can_maintain_operations, active,
-     granted_by, evidence_notes)
-VALUES (
-    lower(:'preview_email'), true, true, true,
-    'msb-disposable-browser-preview',
-    'Temporary #171/#230 browser review. Disposable clone ONLY; do not promote to Production.'
-)
-ON CONFLICT (operator_email) DO UPDATE
-  SET can_manage_identity=EXCLUDED.can_manage_identity,
-      can_maintain_operations=EXCLUDED.can_maintain_operations,
-      active=EXCLUDED.active,
-      granted_by=EXCLUDED.granted_by,
-      evidence_notes=EXCLUDED.evidence_notes,
-      granted_at=clock_timestamp();
-SQL
     GIS_GRANT_VERIFIED="$(psql_test -qAt -F '|' -v preview_email="$PREVIEW_EMAIL" <<'SQL'
 SELECT (ref.site_reference_permissions(:'preview_email')->>'identity')::boolean,
-       (ref.site_reference_permissions(:'preview_email')->>'operations')::boolean;
+       (ref.site_power_access(:'preview_email')->>'can_edit')::boolean;
 SQL
 )"
     if [[ "$GIS_GRANT_VERIFIED" != 't|t' ]]; then
-        echo "FAIL: disposable GIS editor grant/permissions did not verify"
+        echo "FAIL: Directus GIS/power permissions did not verify"
         exit 20
     fi
     echo "PASS: clone-only GIS editor rights for selected preview Manager; Production grants unchanged"
@@ -964,7 +943,7 @@ if [[ -n "$GIS_GPX_SHA" ]]; then
         PYTHONPYCACHEPREFIX="$PYCACHE" "$PYTHON" \
         "$CANDIDATE_WORKTREE/Database/EngineeringTools/accept_site_sources.py" \
         --gpx "$GIS_GPX_SOURCE" "${GIS_FLW_ARGS[@]}" \
-        --gpx-sha "$GIS_GPX_SHA" --actor "$GIS_ACTOR" \
+        --gpx-sha "$GIS_GPX_SHA" --actor "$GIS_ACTOR" --operator-email "$PREVIEW_EMAIL" \
         --output "$REPORT_DIR/GIS_Source_Acceptance_${STAMP}"
     GIS_CACHE_ACCEPTED=1
 fi
@@ -1035,8 +1014,8 @@ assert len(snapshot.get("waypoints") or []) > 0, "No imported GPX waypoints"
 assert len(snapshot.get("tracks") or []) > 0, "No imported GPX tracks"
 assert snapshot.get("sources", {}).get("gpx", {}).get("sha256"), "No accepted GPX binding"
 assert snapshot.get("permissions", {}).get("identity") is True, "Manager cannot edit GIS reference"
-assert snapshot.get("permissions", {}).get("operations") is True, "Crew editor grant unavailable"
-print("PASS: live PostGIS references: {} waypoints, {} tracks, revision {}; Manager+crew editor grants active only in disposable".format(
+assert snapshot.get("power_editor_url") == "/fieldwiring/circuits", "Combined circuit reader unavailable"
+print("PASS: live PostGIS references: {} waypoints, {} tracks, revision {}; Directus GIS authorization and shared circuit model".format(
     len(snapshot["waypoints"]), len(snapshot["tracks"]), snapshot["revision"]))
     ')"
     echo "$GIS_HTTP_CHECK"

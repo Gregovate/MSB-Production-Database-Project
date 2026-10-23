@@ -2,6 +2,14 @@
 
 This subsystem documents how MSB presents, enriches, and operationally uses wiring information derived from LOR-authoritative show topology.
 
+## Panel circuit capture — October 22
+
+The urgent #171/#230 capture workflow has a source candidate under #122.
+[Panel circuit checkpoint](FieldWiring_Panel_Circuit_Capture_Checkpoint.md) records
+the live catalog evidence, GIS dependencies and remaining acceptance gates.
+[Panel Circuit Design](FieldWiring_Panel_Circuit_Design.md) controls the candidate.
+The editor is not deployed or operator accepted.
+
 ## Current State
 
 **FieldWiring and Controller Inventory V0.4.0 are production-operational.**
@@ -384,3 +392,8 @@ Every deployed change affecting FieldWiring or shared resolver code must preserv
 - [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md)
 - [MSB-Server-Management](https://github.com/Gregovate/MSB-Server-Management)
 - [System Boundary and Repository Ownership Standard](../../../../System_Documentation/Standards/System_Boundary_and_Repository_Ownership_Standard.md)
+
+## Circuit capture operator procedure
+
+[FieldWiring operator procedures](operatorSOP/README.md) includes the candidate
+panel/circuit workflow; it is not a claim that the release is installed.

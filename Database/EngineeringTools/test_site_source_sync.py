@@ -320,7 +320,7 @@ def test_gpx_writer_stages_without_mutating_reference(sample_gpx):
     assert result['waypoints']==1 and result['tracks']==1
     assert conn.transactions==1
     statements=[s for s,_ in conn.cursor_object.executions]
-    assert len(statements)==3
+    assert len(statements)==4
     assert all('ON CONFLICT' in s for s in statements)
     assert not any('UPDATE ref.site_waypoint' in s for s in statements)
 
@@ -465,3 +465,50 @@ def test_extractor_rejects_invalid_waypoints(sample_gpx, value):
     sample_gpx.write_text(sample_gpx.read_text().replace('lat="43.1"', f'lat="{value}"'))
     with pytest.raises(ValueError, match='WGS84'):
         extract_gpx(sample_gpx)
+
+
+def test_complete_document_roundtrip_including_unprojected_content(sample_gpx, tmp_path):
+    """Routes, root metadata, namespace-valued attrs, comments and PIs survive."""
+    raw = sample_gpx.read_text().replace('<wpt ', '''<!--source comment--><?expertgps preserve?>
+ <metadata><link href="https://example.test/a"><text>metadata</text></link></metadata>
+ <rte><name>unprojected route</name><rtept lat="43" lon="-87"><ele>123</ele></rtept></rte>
+ <extensions><x:unknown xmlns:q="urn:custom" kind="q:Thing"><![CDATA[raw <value>]]></x:unknown></extensions>
+ <wpt ''')
+    sample_gpx.write_text(raw)
+    no_op = tmp_path / 'unchanged.gpx'
+    receipt = gpx_roundtrip(sample_gpx, {'base_source_sha256': sha256(sample_gpx)}, no_op)
+    assert receipt['byte_identical'] and no_op.read_bytes() == sample_gpx.read_bytes()
+    out = tmp_path / 'edited.gpx'
+    receipt = gpx_roundtrip(sample_gpx, {
+        'base_source_sha256': sha256(sample_gpx),
+        'approved_edits': [{'previous_map_label': 'A5-07/09', 'previous_latitude': '43.1',
+                            'previous_longitude': '-87.1', 'map_label': 'Corrected'}]}, out)
+    from xml.dom import minidom
+    from site_source_sync import _dom_signature
+    expected = minidom.parseString(raw)
+    label = expected.getElementsByTagNameNS(OVERLAY[1:-1], 'label_text')[0]
+    label.firstChild.data = 'Corrected'
+    assert _dom_signature(expected) == _dom_signature(minidom.parseString(out.read_bytes()))
+    assert receipt['whole_document_preserved']
+    assert sample_gpx.read_text() == raw
+
+
+def test_export_refuses_existing_output_and_unsupported_edit(sample_gpx, tmp_path):
+    out = tmp_path / 'reviewed.gpx'; out.write_bytes(b'keep reviewed result')
+    projection = {'base_source_sha256': sha256(sample_gpx)}
+    with pytest.raises(ValueError, match='existing GPX output'):
+        gpx_roundtrip(sample_gpx, projection, out)
+    assert out.read_bytes() == b'keep reviewed result'
+    projection['approved_track_edits'] = [{'segments': []}]
+    with pytest.raises(ValueError, match='Unsupported GPX track'):
+        gpx_roundtrip(sample_gpx, projection, tmp_path / 'bad.gpx')
+    assert not (tmp_path / 'bad.gpx').exists()
+
+
+def test_invalid_export_coordinate_does_not_leave_output(sample_gpx, tmp_path):
+    output = tmp_path / 'invalid.gpx'
+    with pytest.raises(ValueError, match='WGS84'):
+        gpx_roundtrip(sample_gpx, {'base_source_sha256': sha256(sample_gpx),
+            'approved_edits': [{'previous_map_label': 'A5-07/09', 'previous_latitude': '43.1',
+                               'previous_longitude': '-87.1', 'latitude': 'nan'}]}, output)
+    assert not output.exists()

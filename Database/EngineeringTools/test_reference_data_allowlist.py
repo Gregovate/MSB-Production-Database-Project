@@ -82,6 +82,7 @@ def test_site_reference_sql_and_editor_paths_are_exact_and_ordered():
         encoding="utf-8"))
     assert policy["approved_migration_paths"] == [
         "Database/EngineeringTools/sql/171_site_infrastructure_schema_candidate.sql",
+        "Database/EngineeringTools/sql/171_panel_circuit_capture_candidate.sql",
         "Database/EngineeringTools/sql/171_site_reference_operations_candidate.sql",
     ]
     assert policy["approved_validation_paths"] == [
@@ -92,26 +93,25 @@ def test_site_reference_sql_and_editor_paths_are_exact_and_ordered():
         encoding="utf-8"))
     assert editor["status"] == "DESIGN_ONLY_NOT_ENFORCED"
     assert editor["gis_candidate_editor"]["status"] == "CANDIDATE_ONLY_NOT_DEPLOYED_NOT_ROLE_GRANTED"
-    assert {"ref.site_editor_grant", "ref.site_reference_revision",
+    assert {"ref.site_power_revision", "ref.site_reference_revision",
             "ops.site_reference_edit_log"} <= set(editor["internal_only"])
     tables = {c["table"] for c in editor["collections"]}
-    assert {"ref.site_panel", "ref.site_power_circuit", "ref.site_circuit_destination",
-            "ref.site_waypoint_network", "ref.site_seasonal_switch_instruction"} <= tables
+    assert {"ref.site_panel", "ref.site_power_circuit", "ref.site_power_feed",
+            "ref.site_waypoint_network", "ref.site_power_action"} <= tables
 
 
 def test_site_reference_writes_are_explicit_and_audited():
     sql = (ROOT / "Database" / "EngineeringTools" / "sql"
            / "171_site_reference_operations_candidate.sql").read_text(encoding="utf-8")
-    assert "CREATE TABLE IF NOT EXISTS ref.site_editor_grant" in sql
-    assert "can_manage_identity boolean NOT NULL DEFAULT false" in sql
-    assert "can_maintain_operations boolean NOT NULL DEFAULT false" in sql
-    assert "active boolean NOT NULL DEFAULT false" in sql
+    assert "CREATE TABLE IF NOT EXISTS ref.site_editor_grant" not in sql
+    assert "ref.setup_browser_capabilities(p_email)" in sql
+    assert "ref.setup_inventory_actor(p_email,true)" in sql
     assert "ref.site_reference_command(" in sql
     assert "ref.site_reference_revision" in sql and "FOR UPDATE" in sql
     assert "ops.site_reference_edit_log" in sql
     assert "REVOKE ALL ON FUNCTION ref.site_reference_command" in sql
     assert "measured_link_speed_mbps',NULL" in sql
-    assert "turn_on_instruction" in sql and "turn_off_instruction" in sql
+    assert "ref.site_power_feed" in sql and "ref.site_power_action" in sql
     assert "UNREVIEWED" in sql or "UNKNOWN" in sql
     assert "ALTER TABLE ref.display" not in sql
     assert "GRANT UPDATE ON ALL TABLES" not in sql

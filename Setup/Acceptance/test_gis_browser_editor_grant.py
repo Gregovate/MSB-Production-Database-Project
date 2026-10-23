@@ -10,19 +10,15 @@ RUNNER = Path(__file__).with_name("setup_disposable_browser_preview_server.sh")
 
 def test_manager_editor_grant_is_disposable_and_guarded_by_real_source_intake():
     text = RUNNER.read_text(encoding="utf-8")
-    start = text.index('# #171/#230: candidate schema correctly starts with ZERO editor grants.')
+    start = text.index('# Combined GIS/power review uses existing Directus roles;')
     end = text.index('TEST_IP=', start)
     block = text[start:end]
     assert 'if [[ "$GIS_EDITOR_PREVIEW" == "1" ]]' in block
     assert '[[ -n "$GIS_GPX_SHA" ]]' in block
     assert '171_site_reference_operations_candidate.sql' in block
     assert 'MANAGE_OK=' in text[:start]
-    assert 'psql_test -v preview_email="$PREVIEW_EMAIL" <<\'SQL\'' in block
-    assert 'INSERT INTO ref.site_editor_grant' in block
-    assert 'lower(:\'preview_email\')' in block
-    assert 'can_manage_identity=EXCLUDED.can_manage_identity' in block
-    assert 'can_maintain_operations=EXCLUDED.can_maintain_operations' in block
-    assert 'Temporary #171/#230 browser review. Disposable clone ONLY' in block
+    assert 'INSERT INTO ref.site_editor_grant' not in text
+    assert 'ref.site_power_access' in block
     assert 'psql_test -qAt -F \'|\' -v preview_email=' in block
     assert 'if [[ "$GIS_GRANT_VERIFIED" != \'t|t\' ]]' in block
     # No Production SQL commands in the grant block; not a grant on live login.
@@ -40,7 +36,7 @@ def test_reference_preflight_verifies_actual_authenticated_http_snapshot():
     assert 'snapshot.get("data_mode") == "postgres"' in section
     assert 'snapshot.get("sources", {}).get("gpx", {}).get("sha256")' in section
     assert 'snapshot.get("permissions", {}).get("identity") is True' in section
-    assert 'snapshot.get("permissions", {}).get("operations") is True' in section
+    assert 'snapshot.get("power_editor_url") == "/fieldwiring/circuits"' in section
     assert 'len(snapshot.get("waypoints") or []) > 0' in section
     assert 'len(snapshot.get("tracks") or []) > 0' in section
     assert text.index('--- Verify real-source PostGIS reference map') < text.index(

@@ -6,6 +6,8 @@ GPX display identity is ExpertGPS Label on Map, NOT Garmin <name>.
 from __future__ import annotations
 
 import argparse
+import base64
+from xml.dom import minidom, Node
 from collections import Counter, defaultdict
 import hashlib
 import json
@@ -37,6 +39,8 @@ def extract_gpx(path: Path) -> dict:
     # Parse and fingerprint one immutable read; a second filesystem read could
     # otherwise attach the hash of a newer export to older parsed geometry.
     raw = path.read_bytes()
+    if b'<!DOCTYPE' in raw.upper() or b'<!ENTITY' in raw.upper():
+        raise ValueError('GPX DTD/entity declarations are not supported')
     root = ET.fromstring(raw)
     if root.tag != GPX + 'gpx':
         raise ValueError('Expected GPX 1.1 document')
@@ -82,7 +86,8 @@ def extract_gpx(path: Path) -> dict:
             'segments': segments,
         })
     return {'kind': 'EXPERTGPS_GPX', 'sha256': hashlib.sha256(raw).hexdigest(),
-            'waypoints': waypoints, 'tracks': tracks}
+            'waypoints': waypoints, 'tracks': tracks,
+            'document': {'encoding': 'base64', 'bytes': base64.b64encode(raw).decode('ascii')}}
 
 
 def _open_flw(path: Path) -> sqlite3.Connection:
@@ -180,82 +185,122 @@ def extract_flw(path: Path, *, include_raw_json: bool = False) -> dict:
         conn.close()
 
 
-def gpx_roundtrip(source_path: Path, projection: dict, output_path: Path) -> dict:
-    """Export reviewed waypoint AND track-label changes, fail-closed on drift.
+def _dom_children(node, namespace, local):
+    """Direct children only: unknown nested extensions must never be edited."""
+    return [c for c in node.childNodes if c.nodeType == Node.ELEMENT_NODE
+            and c.namespaceURI == namespace and c.localName == local]
 
-    Waypoints use ExpertGPS map-label/lat/lon baseline identity; tracks use the
-    accepted GPX source ordinal and exact original name, NOT a guessed label
-    match. Surveyed track points, types, descriptions and GPX extensions stay
-    untouched. Never overwrite the baseline. ExpertGPS review remains required.
+
+def _dom_signature(node):
+    """Whole-document equality including namespace bindings, comments and PIs."""
+    attrs = tuple(sorted((node.attributes.item(i).name, node.attributes.item(i).value)
+                         for i in range(node.attributes.length))) if node.attributes else ()
+    return (node.nodeType, node.nodeName, node.nodeValue, attrs,
+            tuple(_dom_signature(c) for c in node.childNodes))
+
+
+def _set_dom_text(node, value):
+    if any(c.nodeType == Node.ELEMENT_NODE for c in node.childNodes):
+        raise ValueError('Reviewed text field contains unexpected nested XML')
+    # Retain comments/PIs embedded in an edited text node.
+    for child in list(node.childNodes):
+        if child.nodeType in (Node.TEXT_NODE, Node.CDATA_SECTION_NODE):
+            node.removeChild(child)
+    node.appendChild(node.ownerDocument.createTextNode(value))
+
+
+def gpx_roundtrip(source_path: Path, projection: dict, output_path: Path) -> dict:
+    """Patch only reviewed fields; retain complete GPX and refuse output clobber.
+
+    Original bytes are read once. No-op is byte-identical; edited output keeps
+    source prefixes/unknown XML and must pass whole-document comparison before
+    exclusive creation. GPX application acceptance remains a separate gate.
     """
     if source_path.resolve() == output_path.resolve():
         raise ValueError('Refusing to overwrite original GPX')
-    current_hash = sha256(source_path)
+    if output_path.exists():
+        raise ValueError('Refusing to overwrite existing GPX output')
+    if set(projection) - {'base_source_sha256', 'approved_edits', 'approved_track_edits'}:
+        raise ValueError('Unsupported GPX projection field')
+    raw = source_path.read_bytes()
+    current_hash = hashlib.sha256(raw).hexdigest()
     if projection.get('base_source_sha256') != current_hash:
         raise ValueError('GPX changed after DB baseline: conflict review required')
-    root = ET.parse(source_path).getroot()
+    # Use a single captured document for fingerprint, validation and edits.
+    if b'<!DOCTYPE' in raw.upper() or b'<!ENTITY' in raw.upper():
+        raise ValueError('GPX DTD/entity declarations are not supported')
+    doc = minidom.parseString(raw)
+    if doc.doctype is not None:
+        raise ValueError('GPX DTD/entity declarations are not supported')
+    root = doc.documentElement
+    namespace, overlay = GPX[1:-1], OVERLAY[1:-1]
+    if root.namespaceURI != namespace or root.localName != 'gpx':
+        raise ValueError('Expected GPX 1.1 document')
     nodes = {}
-    for wpt in root.findall(GPX + 'wpt'):
-        label = wpt.find(GPX + 'extensions/' + OVERLAY + 'label/' + OVERLAY + 'label_text')
-        if label is None or not (label.text or '').strip():
-            raise ValueError('GPX has waypoint lacking Label on Map')
-        key = (label.text.strip(), wpt.get('lat'), wpt.get('lon'))
-        if key in nodes:
+    for wpt in _dom_children(root, namespace, 'wpt'):
+        labels = [text for ext in _dom_children(wpt, namespace, 'extensions')
+                  for label in _dom_children(ext, overlay, 'label')
+                  for text in _dom_children(label, overlay, 'label_text')]
+        if len(labels) != 1:
+            raise ValueError('GPX has waypoint lacking unambiguous Label on Map')
+        label = labels[0]
+        text = ''.join(c.data for c in label.childNodes
+                       if c.nodeType in (Node.TEXT_NODE, Node.CDATA_SECTION_NODE))
+        key = (text.strip(), wpt.getAttribute('lat'), wpt.getAttribute('lon'))
+        if not key[0] or key in nodes:
             raise ValueError(f'Nonunique GPX waypoint lookup: {key}')
         nodes[key] = (wpt, label)
-    updated = 0
-    for entry in projection.get('approved_edits', []):
+    edits = projection.get('approved_edits', [])
+    for entry in edits:
+        if set(entry) - {'previous_map_label', 'previous_latitude', 'previous_longitude',
+                         'map_label', 'latitude', 'longitude'}:
+            raise ValueError('Unsupported GPX waypoint edit field')
         key = (entry['previous_map_label'], entry['previous_latitude'], entry['previous_longitude'])
         if key not in nodes:
             raise ValueError(f'No unambiguous source waypoint: {key}')
         node, label = nodes.pop(key)
         if 'map_label' in entry:
-            label.text = entry['map_label']
-        if 'latitude' in entry:
-            node.set('lat', str(entry['latitude']))
-        if 'longitude' in entry:
-            node.set('lon', str(entry['longitude']))
-        updated += 1
-    # Position is stable within the SHA-pinned source. Never locate a track
-    # solely by its wrong/historical label: duplicates and renames are allowed.
-    source_tracks = root.findall(GPX + 'trk')
-    edits_by_ordinal = {}
-    for entry in projection.get('approved_track_edits', []):
-        ordinal = entry.get('source_ordinal')
-        old_name = entry.get('previous_track_name')
-        new_name = entry.get('track_name')
-        if (isinstance(ordinal, bool) or not isinstance(ordinal, int)
-                or not 1 <= ordinal <= len(source_tracks)
-                or ordinal in edits_by_ordinal):
+            if not isinstance(entry['map_label'], str) or not entry['map_label'].strip():
+                raise ValueError('Reviewed map label must be nonblank text')
+            _set_dom_text(label, entry['map_label'])
+        for field, attribute, limit in [('latitude', 'lat', 90), ('longitude', 'lon', 180)]:
+            if field in entry:
+                value = float(entry[field])
+                if not math.isfinite(value) or abs(value) > limit:
+                    raise ValueError('GPX coordinate outside WGS84 bounds')
+                node.setAttribute(attribute, str(entry[field]))
+    tracks = _dom_children(root, namespace, 'trk')
+    track_edits = projection.get('approved_track_edits', [])
+    used = set()
+    for entry in track_edits:
+        if set(entry) - {'source_ordinal', 'previous_track_name', 'track_name'}:
+            raise ValueError('Unsupported GPX track edit field')
+        ordinal, old, new = entry.get('source_ordinal'), entry.get('previous_track_name'), entry.get('track_name')
+        if type(ordinal) is not int or not 1 <= ordinal <= len(tracks) or ordinal in used:
             raise ValueError('Track source ordinal missing, duplicate or outside accepted GPX')
-        if (not isinstance(old_name, str) or not isinstance(new_name, str)
-                or not new_name.strip() or old_name == new_name.strip()):
+        if not isinstance(old, str) or not isinstance(new, str) or not new.strip() or old == new.strip():
             raise ValueError('Track edit requires a changed, nonblank reviewed label')
-        name_node = source_tracks[ordinal - 1].find(GPX + 'name')
-        if name_node is None or (name_node.text or '') != old_name:
+        names = _dom_children(tracks[ordinal - 1], namespace, 'name')
+        if len(names) != 1 or ''.join(c.data for c in names[0].childNodes
+                if c.nodeType in (Node.TEXT_NODE, Node.CDATA_SECTION_NODE)) != old:
             raise ValueError('GPX source track name changed: conflict review required')
-        edits_by_ordinal[ordinal] = new_name.strip()
-        name_node.text = new_name.strip()
-
+        used.add(ordinal)
+        _set_dom_text(names[0], new.strip())
+    output = doc.toxml(encoding='utf-8') if edits or track_edits else raw
+    if _dom_signature(doc) != _dom_signature(minidom.parseString(output)):
+        raise ValueError('GPX whole-document conservation validation failed')
+    # Reuse the full extractor validation without publishing an invalid file.
+    import tempfile
+    with tempfile.TemporaryDirectory() as directory:
+        check = Path(directory) / 'check.gpx'
+        check.write_bytes(output)
+        extract_gpx(check)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    tree = ET.ElementTree(root)
-    tree.write(output_path, encoding='utf-8', xml_declaration=True)
-    # Verify all non-edited tracks, track geometry/types/descriptions and
-    # waypoint identities are conserved. Source extensions stay in the XML.
-    after = extract_gpx(output_path)
-    before = extract_gpx(source_path)
-    expected_tracks = [dict(track) for track in before['tracks']]
-    for ordinal, name in edits_by_ordinal.items():
-        expected_tracks[ordinal - 1]['name'] = name
-        expected_xml = ET.fromstring(expected_tracks[ordinal - 1]['source_xml'])
-        expected_xml.find(GPX + 'name').text = name
-        expected_tracks[ordinal - 1]['source_xml'] = ET.tostring(expected_xml, encoding='unicode')
-    if (len(after['waypoints']) != len(before['waypoints'])
-            or after['tracks'] != expected_tracks):
-        output_path.unlink(missing_ok=True)
-        raise ValueError('GPX waypoint/track conservation validation failed')
-    return {'updated': updated, 'updated_tracks': len(edits_by_ordinal),
-            'source_sha256': current_hash, 'output_sha256': after['sha256']}
+    with output_path.open('xb') as handle:
+        handle.write(output)
+    return {'updated': len(edits), 'updated_tracks': len(track_edits),
+            'source_sha256': current_hash, 'output_sha256': hashlib.sha256(output).hexdigest(),
+            'whole_document_preserved': True, 'byte_identical': output == raw}
 
 
 def drawio_from_database(template: Path, bindings: dict, output_path: Path) -> dict:

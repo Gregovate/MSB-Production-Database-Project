@@ -191,7 +191,7 @@ def test_production_entry_point_serves_shared_ui_and_blocks_prototype_routes() -
     assert health.status_code == 200
     payload = health.get_json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "V0.3.87-catalog-scene-refresh-r3"
+    assert payload["version"] == "V0.3.88-gis-circuit-candidate"
     assert health.headers["Cache-Control"] == "no-store, max-age=0"
 
     for asset in (

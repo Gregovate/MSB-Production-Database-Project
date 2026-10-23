@@ -161,17 +161,18 @@ preview is pinned to its own exact candidate SHA and will not adopt newer
 runner changes retroactively.
 
 
-For the integrated #171/#230 candidate **V0.3.63-site-reference**, pass BOTH
-exact allowlisted GIS migrations and both rollback-only SQL validations through
-that ONE reusable browser runner. After the disposable schema and validation
-pass, the runner confirms the selected preview identity is an existing Setup
-Manager; it creates a separately audited, **temporary GIS editor permission
-grant in the disposable clone only**. It never creates or changes any Production
-ref.site_editor_grant. The HTTP preflight then verifies a real PostGIS reference
-snapshot, imported GPX waypoints/tracks, and permitted Manager + crew controls
-before reporting BROWSER REVIEW READY. Without the temporary grant, the
-default-deny candidate only supports read-only map review and cannot establish
-Manager editing acceptance.
+For the combined #171/#230 GIS/circuit candidate, use the ONE reusable browser
+runner with all three allowlisted migrations in order: infrastructure foundation,
+panel circuit capture, GIS operations; include both rollback-only validations.
+Supply the selected Master GPX and optionally LinkIQ FLW. Both applications use
+one disposable clone and one listener. The selected operator must already have
+Directus Manager authority. No synthetic user or separate GIS grant is created.
+The candidate rejects an incomplete migration set before server contact.
+FieldWiring's /fieldwiring/circuits consumes the same imported waypoint IDs and
+current names as /setup/locate/. Its tests and cable evidence remain consumers of
+that source; there is no competing waypoint store or LinkIQ upload facility.
+Production installation and recurring GPX revision promotion remain separate
+acceptance gates, not implied by successful initial-load browser review.
 
 During browser review test the existing /setup/locate/ track-name correction
 from historical NET FT-SS Reg/Spare/Aux to reviewed NET LP-08 to CL-00, reload

@@ -14,10 +14,19 @@ def label_key(value):
     return ' '.join((value or '').upper().split())
 
 
-def waypoint_lookup(waypoints, aliases):
+def waypoint_lookup(waypoints, aliases, gps_names=()):
     lookup = defaultdict(set)
-    for waypoint_id, label in [*waypoints, *aliases]:
-        lookup[label_key(label)].add(waypoint_id)
+    # Name on GPS is retained separately, never substituted for Name on Map.
+    # Operator-approved panel shorthand yields candidates, not cable approval.
+    for waypoint_id, label in [*waypoints, *aliases, *gps_names]:
+        key = label_key(label)
+        if not key:
+            continue
+        lookup[key].add(waypoint_id)
+        if key.startswith('PANEL ') and key[6:]:
+            lookup[key[6:]].add(waypoint_id)
+        if key == 'PANEL 10 WV-00':
+            lookup['WV-00'].add(waypoint_id)
     return lookup
 
 

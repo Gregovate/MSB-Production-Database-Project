@@ -17,9 +17,10 @@ def setup_gate(monkeypatch, sample_gpx, tmp_path, dbname='msb_setup_browser_prev
     output = tmp_path / 'receipt'
     digest = gate.sha256(sample_gpx)
     monkeypatch.setattr(sys, 'argv', ['accept_site_sources', '--gpx', str(sample_gpx),
-        '--gpx-sha', digest, '--actor', 'fixture-reviewer', '--output', str(output)])
+        '--gpx-sha', digest, '--operator-email', 'fixture@example.invalid', '--actor', 'fixture-reviewer', '--output', str(output)])
     conn = SimpleNamespace(info=SimpleNamespace(dbname=dbname))
     monkeypatch.setattr(site_db_connection, 'connect', lambda dsn: nullcontext(conn))
+    monkeypatch.setattr(gate, 'validate_shared_consumers', lambda c, e: {'status': 'PASS'})
     calls = []
     def bootstrap(*args):
         calls.append(args)
@@ -33,6 +34,10 @@ def setup_gate(monkeypatch, sample_gpx, tmp_path, dbname='msb_setup_browser_prev
             {'properties': {'kind': k}} for k in ('waypoint', 'source_track')]})
     monkeypatch.setattr(gate, 'export_waypoint_projection', lambda c, sha: {
         'base_source_sha256': sha, 'approved_edits': []})
+    def restore(conn, sha, path):
+        path.write_bytes(sample_gpx.read_bytes())
+        return {'source_sha256': sha, 'bytes': path.stat().st_size}
+    monkeypatch.setattr(gate, 'restore_gpx_source', restore)
     return output, calls
 
 

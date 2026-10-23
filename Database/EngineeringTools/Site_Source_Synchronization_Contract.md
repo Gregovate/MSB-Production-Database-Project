@@ -1,5 +1,87 @@
 # MSB #171 / #319 / #230 — Site-source synchronization implementation contract
 
+## October 23 — combined implementation test checkpoint
+
+One candidate combines #319 and #454. The existing power schema now owns breaker
+identity/rating/poles, circuit pole membership, receptacle devices, and cable
+conductor/shared-neutral associations. Existing GIS physical cable IDs and
+waypoint IDs are reused. The old competing power tables and email grant store
+are removed from the uninstalled GIS operations draft. Directus remains authority.
+The existing browser runner requires all three migrations in dependency order;
+one clone and listener serve Setup GIS and FieldWiring. The real-source gate
+compares both consumers' waypoint IDs/names and exercises two circuit legs and
+two receptacles at an imported waypoint, then rolls back only those fixtures.
+
+Source preservation/replay and first-load acceptance are implemented. Recurring
+reviewed promotion of subsequent GPX geometry revisions remains unfinished and
+is not represented as operational by this candidate. Initial source acceptance
+does not verify field topology; A5 verification is still pending. No Production
+installation, operator acceptance or current-clone PASS is claimed here.
+
+## October 23 — one GIS and circuit database release (operator direction)
+
+Greg requires one coordinated schema change, including circuit identities. The
+commanding integration remains PR #319, incorporating PR #454 head
+`57174f1066ebf3c1f994d54208028f260bb2ccb0` with its history. There is one planned
+current-Production clone, exact combined candidate and operator review, followed
+by one explicitly approved #37 maintenance/snapshot/deployment window. No interim
+GIS-only Production installation. SQL dependency files may remain separate for
+review but are one ordered migration set: infrastructure foundation, PR #454 power
+capture, then GIS operations/read projection. Existing network identities remain.
+
+Remove the uninstalled legacy power definitions and commands from GIS operations.
+PR #454 owns panel/circuit/device/feed/network/action IDs, desired states, seasonal
+events, actor attribution and correction history. The existing Park Map consumes
+that model through a read-only projection, including indirect device feed paths;
+power editing links to FieldWiring's circuit editor. Do not adapt old writes to
+silently discard the new evidence/verification/idempotency requirements.
+
+GIS identity writes must use installed Directus capability/actor authority, not
+an independent email grant table. Existing positive-grant test tooling becomes
+obsolete and must not run in the combined candidate. The same reusable disposable
+runner and exact-path allowlist gain the power migration and combined assertions;
+no new deployment service, runner or port. Synthetic CI fixtures of installed
+actor dependencies are NOT live role provisioning or current-clone evidence.
+
+## October 23 — complete GPX evidence and source-name rules
+
+Current supplied master is `MSB-Park-Infrastructure(20261023-074556).gpx`,
+SHA256 `87b195845a0334769334be9e22d056c3061feaa5f5a2d9dae127db975ce8bc24`,
+240 waypoints and 220 tracks. It supersedes the October 22 source selection
+below. A5 field verification remains pending. Initial source acceptance is not
+physical verification; bootstrap must leave verified_by/verified_at unset.
+Latest supplied FLW `LinkIQ Data Import for DB with corrected names(20261023-075657).flw`
+has SHA256 `de23ad7a096e8118366d82d0524879372a9780834d8c3ce8d5ec91628317403e`.
+Its 510 active records have no unmatched park waypoint references under the
+operator's panel abbreviation rule; one `E1 .31` suffix remains. Retests are
+history, never duplicate-name errors. Deleted appearances remain evidence.
+
+Store the entire original GPX bytes as a base64 DOCUMENT observation within the
+existing source ledger, in the same transaction as staging/bootstrap. Feature
+JSON/XML alone omits root metadata, routes, namespace bindings, comments and
+other document-level evidence. The original-byte SHA is authoritative. A
+no-edit export must be byte-identical. Edited exports patch only the explicitly
+supported reviewed fields in a DOM preserving namespace declarations, unknown
+extensions, comments and processing instructions; compare the entire resulting
+XML document before publishing. Never overwrite an existing output or original.
+Unsupported edit fields must fail instead of being silently ignored. Reject DTD
+input rather than expanding external/entity content. Reuse site_source_sync.py,
+site_source_db.py and existing ops.site_source_observation, not another importer.
+
+ExpertGPS Name on Map and Name on GPS are independent source values. Lookup may
+use either, retaining collisions as ambiguous. Approved programming convention:
+PANEL-prefixed labels may resolve their suffix, and PANEL 10 WV-00 also resolves
+WV-00. This creates lookup candidates, not physical cable identity approval.
+Command Center is the plugged-in trailer, not automatically the park area label.
+MSB OFFICE/FOOD BANK are outside park reconciliation. Preserve all raw text.
+
+Current #171/#230 handoff from PR #454 supplies the live catalog inventory and
+confirms the existing site_network shape. PR #454 owns the new circuit model;
+its power migration and the older uninstalled #319 power definitions must NOT
+be installed together. Combined consumer/schema acceptance remains unfinished.
+This preservation increment does not authorize Production or establish recurring
+promotion, Windows ExpertGPS acceptance, or current-clone acceptance.
+
 ## October 22 — supplied current master and initial-load correction
 
 Greg confirms no waypoint/track reference tables have yet been created in
