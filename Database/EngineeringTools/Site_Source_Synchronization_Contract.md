@@ -1,5 +1,34 @@
 # MSB #171 / #319 / #230 — Site-source synchronization implementation contract
 
+## October 22 — supplied current master and initial-load correction
+
+Greg confirms no waypoint/track reference tables have yet been created in
+Production. Treat this as operator-reported state, to be checked by the existing
+current-clone schema gate, not as an already-populated synchronization deployment.
+The immediate delivery is the existing #319 schema/bootstrap and current waypoint
+reference lookup for FieldWiring circuits. Recurring revisions remain required
+but must not be confused with the first load.
+
+Supplied source `MSB-Park-Infrastructure(8).gpx` is the current input for this
+acceptance candidate: 462701 bytes; SHA256
+`286d449e0e02446d0377915ef6bd015c3ad75a7b98c2bcd2bc332a13874a8462`;
+240 uniquely labeled waypoints, 211 source tracks, 17 Panel-type waypoints.
+All 240 waypoint symbols are present. Preserve source Type spellings, including
+`OUT-Combo` and `Outlet_Combo`, without inventing a normalization/icon mapping.
+Three incomplete source tracks (ordinals 5,150,185) retain source evidence and
+empty geometry; duplicate track names do not identify the same physical cable.
+No separate Garmin calibration observations were supplied for this intake.
+
+LinkIQ/FLW intake is one-way evidence. Database waypoints can help resolve test
+endpoint labels after file import; there is no supported MSB waypoint-upload
+workflow to the LinkIQ tester. Tester upload and FLW availability are not gates
+for waypoint/circuit lookup. Extend the EXISTING reusable disposable acceptance
+runner to allow GPX-only intake, explicitly reporting FLW NOT_REQUESTED while
+preserving combined GPX+FLW tests when selected. Keep the same single clone,
+source SHA validation, replay, conservation, source cache and cleanup controls.
+A GPX-only run must not prune unrelated cached FLW inputs. This is no permission
+for Production installation or creation of circuit definitions.
+
 ## October 22 — recurring-source preview implementation boundary
 
 Current-main reconciliation uses `e3590c264da048bdd8ffb5f368fd3f928e15d71a`
