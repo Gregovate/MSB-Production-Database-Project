@@ -67,8 +67,8 @@ def test_release_version_and_assets_are_exact():
     backend = read(APP / "production_backend.py")
     client = read(APP / "setup_catalog_dirty_guard.js")
     html = read(APP / "production.html")
-    assert 'PRODUCTION_VERSION = "V0.3.89-gis-source-required"' in backend
-    assert "CLIENT_BUILD = 'V0.3.89-gis-source-required'" in client
+    assert 'PRODUCTION_VERSION = "V0.3.90-expertgps-tracks"' in backend
+    assert "CLIENT_BUILD = 'V0.3.90-expertgps-tracks'" in client
     for filename in ("setup_scheduling_board.js","setup_scheduling_board.css",
                      "setup_next_pass.js","setup_next_pass.css"):
         assert filename + "?v=2026-10-21.87r3" in html

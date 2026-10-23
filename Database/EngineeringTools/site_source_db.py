@@ -328,7 +328,7 @@ def bootstrap_expertgps(conn, source: Path, actor: str, expected_sha: str) -> di
                     VALUES (%s,%s,ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(%s),4326),8158),
                             ST_SetSRID(ST_GeomFromGeoJSON(%s),4326),%s)
                     RETURNING site_track_id''',
-                    (track['name'], track['type'], _jsonb(geometry), _jsonb(geometry), track['description']))
+                    (track.get('map_label') or track['name'], track['type'], _jsonb(geometry), _jsonb(geometry), track['description']))
                 track_id = cursor.fetchone()[0]
                 cursor.execute('''INSERT INTO ref.site_track_source_binding
                     (site_track_id,source_sha256,source_ordinal,accepted_by)
@@ -404,7 +404,8 @@ def export_waypoint_projection(conn, baseline_source_sha: str) -> dict:
     # against the stale label or a guessed map feature/database primary key.
     with conn.cursor() as cursor:
         cursor.execute('''
-            SELECT b.source_ordinal, obs.source_document->>'name', t.track_label
+            SELECT b.source_ordinal, obs.source_document->>'name', t.track_label,
+                   obs.source_document->>'map_label'
               FROM ref.site_track_source_binding b
               JOIN ref.site_track t USING (site_track_id)
               LEFT JOIN ops.site_source_observation obs
@@ -416,13 +417,14 @@ def export_waypoint_projection(conn, baseline_source_sha: str) -> dict:
         ''', (baseline_source_sha,))
         bound_tracks = cursor.fetchall()
     track_edits = []
-    for ordinal, source_name, approved_name in bound_tracks:
+    for ordinal, source_name, approved_name, source_map_label in bound_tracks:
         if source_name is None:
             raise ValueError(f'Accepted track {ordinal} lacks its original GPX source observation')
-        if approved_name != source_name:
+        baseline = source_map_label or source_name
+        if approved_name != baseline:
+            field = 'track_map_label' if source_map_label else 'track_name'
             track_edits.append({'source_ordinal': ordinal,
-                                'previous_track_name': source_name,
-                                'track_name': approved_name})
+                                'previous_' + field: baseline, field: approved_name})
     return {'base_source_sha256':baseline_source_sha, 'approved_edits':edits,
             'approved_track_edits':track_edits}
 

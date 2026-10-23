@@ -261,8 +261,8 @@ def test_db_gpx_projection_does_not_reserialize_unchanged_coordinates():
 def test_db_track_name_projection_uses_original_ordinal_and_preserves_source_text():
     baseline='9'*64
     old='NET FT-SS Reg, Spare, Aux-A, Aux-B, '
-    db=FakeConnection([], track_rows=[(102, 'NET same label', 'NET same label'),
-                                      (103, old, 'NET LP-08 to CL-00')])
+    db=FakeConnection([], track_rows=[(102, 'NET same label', 'NET same label', None),
+                                      (103, old, 'NET LP-08 to CL-00', None)])
     result=export_waypoint_projection(db,baseline)
     assert result['approved_edits'] == []
     assert result['approved_track_edits'] == [{
@@ -276,7 +276,7 @@ def test_db_track_name_projection_uses_original_ordinal_and_preserves_source_tex
 
 
 def test_db_track_export_refuses_missing_original_observation():
-    db=FakeConnection([],track_rows=[(103,None,'NET LP-08 to CL-00')])
+    db=FakeConnection([],track_rows=[(103,None,'NET LP-08 to CL-00',None)])
     with pytest.raises(ValueError, match='lacks its original GPX source observation'):
         export_waypoint_projection(db,'9'*64)
 
@@ -512,3 +512,33 @@ def test_invalid_export_coordinate_does_not_leave_output(sample_gpx, tmp_path):
             'approved_edits': [{'previous_map_label': 'A5-07/09', 'previous_latitude': '43.1',
                                'previous_longitude': '-87.1', 'latitude': 'nan'}]}, output)
     assert not output.exists()
+
+
+def test_track_map_label_style_and_roundtrip_keep_gps_name(sample_gpx, tmp_path):
+    xml = sample_gpx.read_text().replace('<trkseg>', '''<extensions>
+      <o:label><o:label_text>HV PANEL 09 to LPFC-01</o:label_text></o:label>
+      <line xmlns="http://www.topografix.com/GPX/gpx_style/0/2">
+        <color>fc180d</color><opacity>1.00</opacity><width>1.0417</width><pattern>Solid</pattern>
+        <extensions><cased xmlns="http://www.topografix.com/GPX/Private/TopoGrafix/0/5">true</cased></extensions>
+      </line></extensions><trkseg>''')
+    sample_gpx.write_text(xml)
+    before = extract_gpx(sample_gpx)['tracks'][0]
+    assert before['map_label'] == 'HV PANEL 09 to LPFC-01'
+    assert before['name'] == 'NET Example'
+    assert before['style'] == dict(color='fc180d',opacity='1.00',width='1.0417',pattern='Solid',cased='true')
+    out = tmp_path / 'track-label.gpx'
+    gpx_roundtrip(sample_gpx, {'base_source_sha256':sha256(sample_gpx),
+        'approved_track_edits':[{'source_ordinal':1,
+          'previous_track_map_label':before['map_label'], 'track_map_label':'HV corrected'}]}, out)
+    after = extract_gpx(out)['tracks'][0]
+    assert after['map_label'] == 'HV corrected'
+    assert after['name'] == before['name']
+    assert after['style'] == before['style']
+    assert after['segments'] == before['segments']
+
+
+def test_db_track_map_label_projection_never_renames_gps_name():
+    db=FakeConnection([],track_rows=[(1,'timestamp','HV corrected','HV original')])
+    projection=export_waypoint_projection(db,'9'*64)
+    assert projection['approved_track_edits']==[{'source_ordinal':1,
+        'previous_track_map_label':'HV original','track_map_label':'HV corrected'}]

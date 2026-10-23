@@ -105,3 +105,10 @@ button {
     padding: 1rem;
   }
 }
+
+/* Panel schedule follows physical positions; repeated cells share one breaker ID. */
+.power-panelboard {border:2px solid #667788;padding:1rem;border-radius:.5rem}
+.power-main {max-width:34rem;margin:0 auto 1rem;border:2px solid #667788;padding:.75rem}
+.power-slot-grid {display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.power-slot {min-width:0;border:1px solid #667788;padding:.5rem;overflow-wrap:anywhere}
+.power-slot button {max-width:100%}

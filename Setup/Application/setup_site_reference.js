@@ -479,7 +479,7 @@
     for (const [layerName, group] of Object.entries(layers)) {
       if (['containers','displays'].includes(layerName)) continue;
       const stale = [];
-      group.eachLayer(marker => { if (marker._searchFeature) stale.push(marker); });
+      group.eachLayer(marker => { if (marker._searchFeature || marker._gisCasing) stale.push(marker); });
       for (const marker of stale) group.removeLayer(marker);
     }
     names.clear();
@@ -500,22 +500,41 @@
     }
     for (const t of snapshot.tracks) {
       if (!t.geometry) continue; // Retain incomplete GPX trace in the DB, no invented line.
-      const cls = /^(NET|HV|PRI)(?=\W|$)/i.exec(t.label || '')?.[1]?.toUpperCase() || 'Other';
+      const cls = /^(NET|HV|PRI)(?=\W|$)/i.exec(t.label || '')?.[1]?.toUpperCase() ||
+        ({'High Voltage':'HV','Network':'NET','Primary':'PRI'}[t.type] || 'Other');
+      // ExpertGPS styling is source presentation, not verified electrical topology.
+      const source = t.style || {}, style = {...trackStyles[cls], opacity: 0.85};
+      if (/^[0-9a-f]{6}$/i.test(source.color || '')) style.color = '#' + source.color;
+      if (source.opacity !== '' && Number.isFinite(Number(source.opacity)) && Number(source.opacity) >= 0 && Number(source.opacity) <= 1)
+        style.opacity = Number(source.opacity);
+      if (Number.isFinite(Number(source.width)) && Number(source.width) > 0)
+        style.weight = Math.min(40, Number(source.width) * 96 / 25.4);
+      const patterns = {Solid:null, Dash:'8 5', Dot:'2 5', DashDot:'8 4 2 4'};
+      if (Object.hasOwn(patterns, source.pattern)) style.dashArray = patterns[source.pattern];
       const segmentList = t.geometry.type === 'LineString' ? [t.geometry.coordinates] :
                           t.geometry.coordinates || [];
       const feature = {type:'Feature',geometry:t.geometry,
         properties:{id:'track:'+t.id,name:t.label,type:t.type,source_description:t.description}};
       for (const coords of segmentList) {
         if (!coords.length) continue;
+        if (coords.length > 1 && source.cased === 'true') {
+          const casing = L.polyline(coords.map(x=>[x[1],x[0]]),
+            {...style,color:'#ffffff',weight:(style.weight || 3)+3,interactive:false});
+          casing._gisCasing = true;
+          casing.addTo(layers[cls]);
+        }
         const marker = coords.length === 1 ?
-          L.circleMarker([coords[0][1],coords[0][0]],{radius:4,color:trackStyles[cls].color}) :
-          L.polyline(coords.map(x=>[x[1],x[0]]),{...trackStyles[cls],opacity:0.85});
+          L.circleMarker([coords[0][1],coords[0][0]],{radius:4,color:style.color}) :
+          L.polyline(coords.map(x=>[x[1],x[0]]),style);
         markerFeature(feature,cls,marker);
         const popup = document.createElement('div');
         heading(popup,t.label);
+        // textContent keeps imported labels from being interpreted as HTML.
+        const label = document.createElement('span'); label.textContent = t.label;
+        marker.bindTooltip(label,{permanent:true,direction:'center',className:'gis-track-label'});
         line(popup, 'GPX source track · ' + t.type + ' · lifecycle ' + t.lifecycle);
-        line(popup, 'Original GPX name: ' + textValue(t.source_label));
-        line(popup, 'Historical note (unverified cable count): ' + textValue(t.description));
+        line(popup, 'Original GPS name: ' + textValue(t.source_label));
+        line(popup, 'Source description (unverified): ' + textValue(t.description));
         line(popup, 'Network/circuit assignment requires separate reviewed records');
         const review = document.createElement('button');
         review.type = 'button';

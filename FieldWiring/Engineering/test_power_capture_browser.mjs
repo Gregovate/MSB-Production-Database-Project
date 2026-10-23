@@ -227,10 +227,11 @@ try {
   );
   // The grouped schema must also be operable through the actual page.
   await page.locator("#panels").getByRole("button", {name:"A5 panel",exact:true}).click();
-  await page.getByRole("button", {name:"Add breaker",exact:true}).click();
+  await page.getByRole("button", {name:"Add branch breaker",exact:true}).click();
   await dialog.locator("[name=breaker_name]").fill("18/20 grouped");
   await dialog.locator("[name=rated_amps]").fill("20");
   await dialog.locator("[name=pole_count]").fill("2");
+  await dialog.locator("[name=panel_positions]").fill("18,20");
   await evidence(); await save();
   const breakerId=(await db.query("SELECT site_power_breaker_id FROM ref.site_power_breaker WHERE breaker_name='18/20 grouped'")).rows[0].site_power_breaker_id;
   for (const [code,pole] of [["18",1],["20",2]]) {
@@ -244,10 +245,18 @@ try {
     await evidence(); await save();
   }
   const groupedRow=page.locator("#panel-detail .power-record").filter({has:page.getByRole("heading",{name:"Breaker 18/20 grouped",exact:true})});
+  await groupedRow.locator("summary").click();
   assert.match(await groupedRow.innerText(),/20 A · 2 poles/);
   assert.match(await groupedRow.innerText(),/A5 panel \/ 18/);
   assert.match(await groupedRow.innerText(),/A5 panel \/ 20/);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_circuit WHERE site_power_breaker_id=$1",[breakerId])).rows[0].n,2);
+  assert.equal(await page.locator(".power-slot").count(),20);
+  await page.getByRole("button",{name:"Record main breaker",exact:true}).click();
+  await dialog.locator("[name=breaker_name]").fill("Main disconnect");
+  await dialog.locator("[name=rated_amps]").fill("100");
+  await dialog.locator("[name=pole_count]").fill("2");
+  await evidence(); await save();
+  assert.match(await page.locator(".power-main").innerText(),/100 A · 2 poles · MAIN/);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({
     path: process.env.POWER_TEST_SCREENSHOT || "/tmp/power-mobile.png",

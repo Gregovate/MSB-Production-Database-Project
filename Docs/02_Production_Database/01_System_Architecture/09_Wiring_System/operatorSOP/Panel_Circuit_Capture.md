@@ -9,10 +9,21 @@ Crew can maintain these records. Managers maintain waypoint names and positions.
 2. Select the existing panel. Use **Add panel** only if it is not already recorded.
 3. Record the readable panel identification and any known owner, meter or waypoint
    information. Leave unknown fields empty.
-4. Select **Add circuit** and enter the breaker/circuit designation as marked at
-   that panel. Record known ratings and descriptions; do not guess.
-5. Record the desired show and restoration states separately. These are plans.
-6. Enter the source/evidence and select its verification status, then **Save**.
+4. Use **Record main breaker** for the panel's main disconnect. Record its marked
+   amperage and pole count when known. Main ratings are not branch circuit ratings.
+5. Use **Add branch breaker** and enter its marked rating, pole count and known
+   panel positions in pole order, for example `18,20`. The conventional display
+   puts odd positions left and even positions right; verify the installed numbering.
+   Leave unknown positions blank. An unrecorded position does not prove an empty slot.
+6. From that breaker use **Add circuit to breaker**. Enter the circuit designation,
+   description and pole within the breaker (1 or 2 for a two-pole breaker).
+   Pole ordinal is not the physical panel position. Both legs share one breaker
+   identity/rating. A two-pole 20 A breaker is not recorded as 40 A.
+7. **Add circuit** remains available when its breaker is unknown. These records
+   stay visible separately until their supplying breaker is established.
+8. Record desired show/restoration states separately. Enter source/evidence and
+   verification status for each saved record. These are plans and recorded facts,
+   not proof of current physical condition.
 
 ## Assign or correct waypoints
 

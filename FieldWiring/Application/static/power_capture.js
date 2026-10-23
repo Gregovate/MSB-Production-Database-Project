@@ -192,15 +192,53 @@
         box,
         true,
       );
-      button("Add breaker", () => open("breaker", {site_panel_id: panelId}), box, true);
-      (data.breakers || []).filter(b => b.site_panel_id === panelId).forEach(b => {
-        const row = record(detail, `Breaker ${b.breaker_name}`, b, "breaker");
-        el("p", `${b.rated_amps ?? "Unknown"} A · ${b.pole_count ?? "Unknown"} poles`, row);
+      const board = el("section", undefined, detail); board.className = "power-panelboard";
+      el("h3", "Panel schedule", board);
+      el("p", "Conventional layout: odd positions left, even positions right. Verify installed numbering; no positions are inferred from names.", board);
+      const main = el("div", undefined, board); main.className = "power-main";
+      el("h4", "Main disconnect", main);
+      const breakers = (data.breakers || []).filter(b => b.site_panel_id === panelId && b.active);
+      const drawBreaker = (b, parent) => {
+        const row = record(parent, `Breaker ${b.breaker_name}`, b, "breaker");
+        el("p", `${b.rated_amps ?? "Unknown"} A · ${b.pole_count ?? "Unknown"} poles · ${b.breaker_role || "UNKNOWN"}`, row);
+        if (b.panel_positions?.length) el("p", `Panel positions: ${b.panel_positions.join(" / ")}`, row);
+        const circuits = data.circuits.filter(c => c.active && c.site_power_breaker_id === b.site_power_breaker_id);
+        circuits.forEach(c => el("p", `Pole ${c.breaker_pole}: ${c.circuit_code} — ${c.description || "No description"}`, row));
+        if (b.breaker_role !== "MAIN") button("Add circuit to breaker", () => open("circuit", {
+          site_panel_id: panelId, site_power_breaker_id:b.site_power_breaker_id,
+          breaker_pole: Array.from({length:b.pole_count || 0},(_,i)=>i+1).find(p=>!circuits.some(c=>c.breaker_pole===p))
+        }), row, true);
         const impact = (data.breaker_impacts || []).find(x => x.breaker.site_power_breaker_id === b.site_power_breaker_id);
-        el("p", "Recorded affected endpoints — coverage is not verified isolation.", row);
-        if (impact?.missing_pole_membership) el("p", "Incomplete pole assignments", row);
-        (impact?.paths || []).forEach(x => el("p", `${circuitName(x.site_power_circuit_id)} · ${x.waypoint_name || "Unknown waypoint"} · ${x.destination_device_id ? deviceName(x.destination_device_id) : "Receptacle unspecified"} · ${x.verification_states.join(" / ")}`, row));
-      });
+        const details = el("details", undefined, row);
+        el("summary", "Recorded affected endpoints — not verified isolation", details);
+        if (impact?.missing_pole_membership) el("p", "Incomplete breaker/circuit membership", details);
+        (impact?.paths || []).forEach(x => el("p", `${circuitName(x.site_power_circuit_id)} · ${x.waypoint_name || "Unknown waypoint"} · ${x.destination_device_id ? deviceName(x.destination_device_id) : "Receptacle unspecified"}`, details));
+        return row;
+      };
+      const mains = breakers.filter(b => b.breaker_role === "MAIN");
+      mains.forEach(b => drawBreaker(b,main));
+      if (!mains.length) {
+        el("p", "Main breaker not recorded; rating unknown", main);
+        button("Record main breaker",()=>open("breaker",{site_panel_id:panelId,breaker_role:"MAIN"}),main,true);
+      }
+      button("Add branch breaker",()=>open("breaker",{site_panel_id:panelId,breaker_role:"BRANCH"}),board,true);
+      const schedule = el("div",undefined,board); schedule.className="power-slot-grid";
+      const positioned = breakers.filter(b=>b.panel_positions?.length);
+      const last = Math.max(0,...positioned.flatMap(b=>b.panel_positions));
+      for (let pos=1;pos<=last+(last%2);pos++) {
+        const cell=el("div",undefined,schedule); cell.className="power-slot";
+        el("strong",`Position ${pos}`,cell);
+        const breaker=positioned.find(b=>b.panel_positions.includes(pos));
+        if (!breaker) el("p","Not recorded (not proof of an empty slot)",cell);
+        else if (breaker.panel_positions[0]===pos) drawBreaker(breaker,cell);
+        else {
+          el("p",`Same breaker ${breaker.breaker_name} · ${breaker.rated_amps ?? "Unknown"} A · positions ${breaker.panel_positions.join(" / ")}`,cell);
+          button("View / correct shared breaker",()=>open("breaker",breaker),cell,true);
+        }
+      }
+      const unplaced=el("section",undefined,board);
+      el("h4","Breakers with unknown positions",unplaced);
+      breakers.filter(b=>b.breaker_role!=="MAIN" && !b.panel_positions?.length).forEach(b=>drawBreaker(b,unplaced));
       data.circuits
         .filter((c) => c.site_panel_id === panelId)
         .forEach((c) => {
@@ -417,7 +455,9 @@
       breaker: [
         select("site_panel_id", "Panel", options(data.panels.map(p => [p.site_panel_id,p.panel_name])), true),
         text("breaker_name", "Breaker designation", true),
-        {...text("rated_amps", "Rated amperes per pole"), type: "number"},
+        choose("breaker_role", "Main or branch breaker", ["UNKNOWN","MAIN","BRANCH"]),
+        text("panel_positions", "Branch panel positions in pole order (for example 18,20; blank if unknown)"),
+        {...text("rated_amps", "Breaker rating (A; do not add poles together)"), type: "number"},
         {...text("pole_count", "Pole count"), type: "number"},
       ],
       circuit: [
@@ -430,7 +470,7 @@
         text("circuit_code", "Circuit designation", true),
         text("description", "Description"),
         select("site_power_breaker_id", "Supplying breaker (unknown allowed)", options((data.breakers || []).map(b => [b.site_power_breaker_id,b.breaker_name]))),
-        {...text("breaker_pole", "Pole position within breaker"), type: "number"},
+        {...text("breaker_pole", "Pole within breaker (1, 2…; not panel position)"), type: "number"},
         { ...text("voltage", "Voltage"), type: "number" },
         choose("show_desired_state", "Show season desired state", [
           "UNKNOWN",
@@ -611,7 +651,7 @@
     } else {
       n.type = spec.type;
       if (spec.type === "checkbox") n.checked = value !== false;
-      else n.value = value ?? "";
+      else n.value = Array.isArray(value) ? value.join(",") : value ?? "";
       if (spec.type === "number") {
         n.min = ["breaker_pole","pole_count"].includes(spec.key) ? "1" : "0.000001";
         n.step = ["breaker_pole","pole_count"].includes(spec.key) ? "1" : "any";
@@ -639,6 +679,25 @@
               (s.key.includes("desired_state") ? "UNKNOWN" : undefined)),
       ),
     );
+    if (kind === "circuit") {
+      const form=$("edit-form"), panelSelect=form.elements.site_panel_id,
+        breakerSelect=form.elements.site_power_breaker_id, pole=form.elements.breaker_pole;
+      const updatePoles=()=>{
+        const breaker=data.breakers.find(b=>String(b.site_power_breaker_id)===breakerSelect.value);
+        pole.max=breaker?.pole_count || ""; pole.required=!!breaker;
+        if (!breaker) pole.value="";
+      };
+      const updateBreakers=()=>{
+        const prior=breakerSelect.value; breakerSelect.replaceChildren();
+        const empty=el("option","Unknown / not specified",breakerSelect); empty.value="";
+        data.breakers.filter(b=>b.active && b.breaker_role!=="MAIN" && String(b.site_panel_id)===panelSelect.value).forEach(b=>{
+          const option=el("option",`${b.breaker_name} (${b.rated_amps ?? "?"} A; ${b.pole_count ?? "?"} poles)`,breakerSelect);
+          option.value=b.site_power_breaker_id; option.selected=String(b.site_power_breaker_id)===prior;
+        }); updatePoles();
+      };
+      panelSelect.addEventListener("change",updateBreakers);
+      breakerSelect.addEventListener("change",updatePoles); updateBreakers();
+    }
     if (kind === "event") {
       const actionSelect = $("edit-form").elements.site_power_action_id;
       const preview = el("div", undefined, $("edit-fields"));
@@ -736,6 +795,11 @@
         )
           v = Number(v);
         else if (s.type === "datetime-local") v = new Date(v).toISOString();
+      }
+      if (s.key === "panel_positions" && v !== null) {
+        if (!/^\d+(\s*,\s*\d+)*$/.test(v)) throw new Error("Enter numbered panel positions separated by commas.");
+        v=v.split(",").map(Number);
+        if (v.some(x=>!Number.isSafeInteger(x)||x<1||x>200)) throw new Error("Panel positions must be integers from 1 to 200.");
       }
       result[s.key] = v;
     }

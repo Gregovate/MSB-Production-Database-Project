@@ -83,6 +83,8 @@ AS $snapshot$
        'source_ordinal',sb.source_ordinal,
        'source_sha256',sb.source_sha256,
        'source_label',obs.source_document->>'name',
+       'source_map_label',obs.source_document->>'map_label',
+       'style',obs.source_document->'style',
        'verified_by',t.verified_by,'verified_at',t.verified_at)
        ORDER BY t.site_track_id)
        FROM ref.site_track t LEFT JOIN LATERAL (

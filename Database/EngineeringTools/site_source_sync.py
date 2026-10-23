@@ -19,6 +19,8 @@ import xml.etree.ElementTree as ET
 
 GPX = '{http://www.topografix.com/GPX/1/1}'
 OVERLAY = '{http://www.topografix.com/GPX/gpx_overlay/0/5}'
+STYLE = '{http://www.topografix.com/GPX/gpx_style/0/2}'
+PRIVATE = '{http://www.topografix.com/GPX/Private/TopoGrafix/0/5}'
 
 
 def sha256(path: Path) -> str:
@@ -77,7 +79,16 @@ def extract_gpx(path: Path) -> dict:
                       'ele': p.findtext(GPX + 'ele', default='')}
                      for p in seg.findall(GPX + 'trkpt')]
                     for seg in track.findall(GPX + 'trkseg')]
+        map_label = track.findtext(GPX + 'extensions/' + OVERLAY + 'label/' + OVERLAY + 'label_text', default='').strip()
+        line = track.find(GPX + 'extensions/' + STYLE + 'line')
+        # Preserve source strings; the renderer validates before interpreting them.
+        style = {} if line is None else {key: line.findtext(STYLE + key, default='')
+                                         for key in ('color', 'opacity', 'width', 'pattern')}
+        if line is not None:
+            style['cased'] = line.findtext(STYLE + 'extensions/' + PRIVATE + 'cased', default='false')
         tracks.append({
+            'map_label': map_label,
+            'style': style,
             'ordinal': ordinal,
             'name': track.findtext(GPX + 'name', default=''),
             'source_xml': ET.tostring(track, encoding='unicode'),
@@ -273,14 +284,22 @@ def gpx_roundtrip(source_path: Path, projection: dict, output_path: Path) -> dic
     track_edits = projection.get('approved_track_edits', [])
     used = set()
     for entry in track_edits:
-        if set(entry) - {'source_ordinal', 'previous_track_name', 'track_name'}:
+        if set(entry) - {'source_ordinal', 'previous_track_name', 'track_name', 'previous_track_map_label', 'track_map_label'}:
             raise ValueError('Unsupported GPX track edit field')
-        ordinal, old, new = entry.get('source_ordinal'), entry.get('previous_track_name'), entry.get('track_name')
+        is_map = 'track_map_label' in entry
+        if is_map and ('track_name' in entry or 'previous_track_name' in entry):
+            raise ValueError('Track name and map-label edits must be separate')
+        ordinal = entry.get('source_ordinal')
+        old = entry.get('previous_track_map_label' if is_map else 'previous_track_name')
+        new = entry.get('track_map_label' if is_map else 'track_name')
         if type(ordinal) is not int or not 1 <= ordinal <= len(tracks) or ordinal in used:
             raise ValueError('Track source ordinal missing, duplicate or outside accepted GPX')
         if not isinstance(old, str) or not isinstance(new, str) or not new.strip() or old == new.strip():
             raise ValueError('Track edit requires a changed, nonblank reviewed label')
-        names = _dom_children(tracks[ordinal - 1], namespace, 'name')
+        names = ([text for ext in _dom_children(tracks[ordinal - 1], namespace, 'extensions')
+                  for label in _dom_children(ext, overlay, 'label')
+                  for text in _dom_children(label, overlay, 'label_text')] if is_map
+                 else _dom_children(tracks[ordinal - 1], namespace, 'name'))
         if len(names) != 1 or ''.join(c.data for c in names[0].childNodes
                 if c.nodeType in (Node.TEXT_NODE, Node.CDATA_SECTION_NODE)) != old:
             raise ValueError('GPX source track name changed: conflict review required')
@@ -445,7 +464,7 @@ def preview_gpx_revision(baseline: dict, incoming: dict, maintained: dict,
     for kind, fields in (
         ('waypoints', ('map_label', 'latitude', 'longitude', 'type',
                        'description', 'comment', 'source_time')),
-        ('tracks', ('name', 'type', 'description', 'segments')),
+        ('tracks', ('name', 'map_label', 'style', 'type', 'description', 'segments')),
     ):
         old = {x['ordinal']: x for x in baseline[kind]}
         current = {x['id']: x for x in maintained[kind]}

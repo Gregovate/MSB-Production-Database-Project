@@ -346,6 +346,26 @@ await denied(() => cmd("circuit", {...base,show_desired_state:"ON"},legB.target_
 const single=await cmd("breaker", {...base,site_panel_id:groupedPanel.target_id,breaker_name:"Single",rated_amps:15,pole_count:1});
 await cmd("circuit", {...base,site_panel_id:groupedPanel.target_id,circuit_code:"Single",site_power_breaker_id:single.target_id,breaker_pole:1});
 await denied(() => db.query("SELECT ref.site_power_breaker_impact('inactive@example.test',$1)",[breaker.target_id]),"42501");
+// Panel-board positions and main disconnect are independently audited facts.
+await cmd("breaker", {...base,breaker_role:"BRANCH",panel_positions:[18,20]}, breaker.target_id);
+for (const positions of [[18],[1,1],[0],[201],[2,4]]) {
+  await denied(()=>cmd("breaker",{...base,site_panel_id:groupedPanel.target_id,
+    breaker_name:"Invalid position",breaker_role:"BRANCH",pole_count:positions.join(",")==="2,4"?1:positions.length,
+    panel_positions:positions}),"23514");
+}
+await cmd("breaker",{...base,breaker_role:"BRANCH",panel_positions:[1]},single.target_id);
+const main=await cmd("breaker",{...base,site_panel_id:groupedPanel.target_id,
+  breaker_name:"Main",breaker_role:"MAIN",rated_amps:100,pole_count:2});
+await denied(()=>cmd("breaker",{...base,site_panel_id:groupedPanel.target_id,
+  breaker_name:"Duplicate main",breaker_role:"MAIN"}),"23505");
+await denied(()=>cmd("breaker",{...base,panel_positions:[3,5]},main.target_id),"23514");
+await denied(()=>cmd("circuit",{...base,site_panel_id:groupedPanel.target_id,
+  circuit_code:"Invalid main pole",site_power_breaker_id:main.target_id,breaker_pole:1}),"23514");
+const mainImpact=(await db.query("SELECT ref.site_power_breaker_impact('crew@example.test',$1) AS x",[main.target_id])).rows[0].x;
+assert.ok(mainImpact.circuits.includes(legA.target_id));
+assert.ok(mainImpact.circuits.includes(legB.target_id));
+assert.equal(mainImpact.breaker.rated_amps,100);
+assert.equal(mainImpact.coverage,"RECORDED_ONLY_NOT_PROOF_OF_ISOLATION");
 console.log(
   `PASS: ${n} SQL command/denial checks plus snapshot, audit, seasonal and rollback assertions (isolated PGlite PostgreSQL; no Production connection).`,
 );

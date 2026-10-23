@@ -130,6 +130,12 @@ def test_ephemeral_postgis_document_restore_and_replay(sample_gpx, tmp_path):
     dsn = os.environ.get('MSB_GIS_EPHEMERAL_TEST_DSN')
     if not dsn:
         pytest.skip('existing ephemeral PostGIS service not selected')
+    # Real import/projection must retain independent GPS and map names/styles.
+    sample_gpx.write_text(sample_gpx.read_text().replace('<trkseg>', '''<extensions>
+      <o:label><o:label_text>HV display label</o:label_text></o:label>
+      <line xmlns="http://www.topografix.com/GPX/gpx_style/0/2"><color>fc180d</color>
+        <width>1.0417</width><opacity>1</opacity><pattern>Solid</pattern></line>
+      </extensions><trkseg>'''))
     with connect(dsn) as conn:
         assert conn.info.dbname == 'site_acceptance', 'Only isolated CI database permitted'
         digest = sha256(sample_gpx)
@@ -143,9 +149,21 @@ def test_ephemeral_postgis_document_restore_and_replay(sample_gpx, tmp_path):
             assert all(row == (None, None) for row in cur.fetchall())
             # Disposable correction proves identity-bound export, not just no-op.
             cur.execute("UPDATE ref.site_waypoint SET canonical_label='CI corrected map label'")
+        with conn.cursor() as cur:
+            cur.execute('SELECT ref.site_reference_snapshot()')
+            track=cur.fetchone()[0]['tracks'][0]
+            assert track['label']=='HV display label'
+            assert track['source_label']=='NET Example'
+            assert track['style']['color']=='fc180d'
+            cur.execute("UPDATE ref.site_track SET track_label='HV reviewed display label'")
         projection = export_waypoint_projection(conn, digest)
         output = tmp_path / 'corrected.gpx'
         assert gpx_roundtrip(original, projection, output)['updated'] == 1
+        from site_source_sync import extract_gpx
+        exported_track=extract_gpx(output)['tracks'][0]
+        assert exported_track['name']=='NET Example'
+        assert exported_track['map_label']=='HV reviewed display label'
+        assert exported_track['style']['color']=='fc180d'
         assert bootstrap_expertgps(conn, sample_gpx, 'ci-source-reviewer', digest)['status'] == 'ALREADY_ACCEPTED'
         assert export_waypoint_projection(conn, digest) == projection
 
