@@ -2,12 +2,14 @@
 
 This subsystem documents how MSB presents, enriches, and operationally uses wiring information derived from LOR-authoritative show topology.
 
-## Panel circuit capture — October 22
+## Panel circuit capture — October 23
 
 The urgent #171/#230 capture workflow has a source candidate under #122.
 [Panel circuit checkpoint](FieldWiring_Panel_Circuit_Capture_Checkpoint.md) records
 the live catalog evidence, GIS dependencies and remaining acceptance gates.
 [Panel Circuit Design](FieldWiring_Panel_Circuit_Design.md) controls the candidate.
+V0.4.8-breaker-schedule combines breaker, circuit legs and waypoint feeds in one
+Save, with panel meter/remote supply and separate waypoint equipment details.
 The editor is not deployed or operator accepted.
 
 ## Current State

@@ -6,6 +6,21 @@
 | Owner | #171 / #230 under #122 |
 | Reviewed | 2026-10-22 |
 
+## October 23 integrated continuation (supersedes branch/gap status below)
+
+Work is integrated in existing PR #319, `feature/171-cableiq-import-validation`;
+there is one GIS/power schema candidate and one reusable disposable preview.
+V0.4.8-breaker-schedule implements the operator's combined breaker entry, whole
+amps, show/restoration state, same-breaker multiple outlets, exclusive OUT-Combo
+supply, panel meter/remote-main relationship and separate waypoint equipment view.
+The [controlled design](FieldWiring_Panel_Circuit_Design.md) records the command
+contract and tests; the [candidate SOP](operatorSOP/Panel_Circuit_Capture.md) matches
+this workflow. Earlier branch/gap and test entries below are historical evidence.
+
+Current-clone/operator review and Production approval remain open. The supplied
+CLEAN EXIT confirms port/source-lock release only. Recurring GPX review/apply and
+PC ingestion contracts retain their existing #319/#378 ownership and open gates.
+
 ## Controlling requirements
 
 Use [Site Infrastructure / GIS](../11_Site_Infrastructure_GIS/README.md), particularly

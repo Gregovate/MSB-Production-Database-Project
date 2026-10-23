@@ -18,7 +18,7 @@ CREATE TABLE ref.site_panel (
  site_panel_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
  panel_name text NOT NULL CHECK (btrim(panel_name)<>''),
  site_waypoint_id bigint REFERENCES ref.site_waypoint(site_waypoint_id),
- owner_name text, panel_identification text, meter_information text,
+ owner_name text, panel_identification text, meter_information text, supply_breaker_id bigint,
  active boolean NOT NULL DEFAULT true,
  source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
@@ -39,6 +39,8 @@ CREATE TABLE ref.site_power_breaker (
    AND array_position(panel_positions,NULL) IS NULL AND 0<ALL(panel_positions) AND 200>=ALL(panel_positions))),
  rated_amps numeric CHECK (rated_amps>0 AND rated_amps<'Infinity'::numeric AND rated_amps=trunc(rated_amps)),
  pole_count integer CHECK (pole_count>0),
+ show_desired_state text NOT NULL DEFAULT 'UNKNOWN' CHECK(show_desired_state IN ('UNKNOWN','ON','OFF')),
+ restoration_desired_state text NOT NULL DEFAULT 'UNKNOWN' CHECK(restoration_desired_state IN ('UNKNOWN','ON','OFF')),
  active boolean NOT NULL DEFAULT true,
  source_evidence text NOT NULL CHECK (btrim(source_evidence)<>''),
  verification_status text NOT NULL DEFAULT 'UNVERIFIED' CHECK (verification_status IN ('UNKNOWN','UNVERIFIED','VERIFIED','CONFLICTING')),
@@ -46,6 +48,7 @@ CREATE TABLE ref.site_power_breaker (
  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
  CHECK ((verification_status='VERIFIED')=(verified_by_person_id IS NOT NULL AND verified_at IS NOT NULL))
 );
+ALTER TABLE ref.site_panel ADD CONSTRAINT site_panel_supply_breaker_fk FOREIGN KEY(supply_breaker_id) REFERENCES ref.site_power_breaker(site_power_breaker_id);
 CREATE UNIQUE INDEX site_power_one_main_uq ON ref.site_power_breaker(site_panel_id) WHERE active AND breaker_role='MAIN';
 CREATE TABLE ref.site_power_circuit (
  site_power_circuit_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -199,18 +202,24 @@ $f$;
 -- Recorded reachability is not proof of de-energization or complete topology.
 CREATE FUNCTION ref.site_power_breaker_impact(p_email text,p_breaker bigint) RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,ref AS $f$
-DECLARE result jsonb; b ref.site_power_breaker%ROWTYPE;
+DECLARE result jsonb; b ref.site_power_breaker%ROWTYPE; affected_panels bigint[];
 BEGIN
  IF NOT coalesce((ref.site_power_access(p_email)->>'can_read')::boolean,false) THEN
   RAISE EXCEPTION 'FieldWiring circuit access denied' USING ERRCODE='42501'; END IF;
  SELECT * INTO b FROM ref.site_power_breaker WHERE site_power_breaker_id=p_breaker;
  IF NOT FOUND THEN RAISE EXCEPTION 'Breaker not found' USING ERRCODE='P0002'; END IF;
+ WITH RECURSIVE supplied_panels(id) AS (
+  SELECT site_panel_id FROM ref.site_panel WHERE active AND
+   (supply_breaker_id=p_breaker OR (b.breaker_role='MAIN' AND site_panel_id=b.site_panel_id))
+  UNION SELECT p.site_panel_id FROM supplied_panels s JOIN ref.site_power_breaker upstream ON upstream.site_panel_id=s.id AND upstream.active
+   JOIN ref.site_panel p ON p.supply_breaker_id=upstream.site_power_breaker_id AND p.active
+ ) SELECT coalesce(array_agg(id),ARRAY[]::bigint[]) INTO affected_panels FROM supplied_panels;
  WITH RECURSIVE walk AS (
   SELECT c.site_power_circuit_id,c.breaker_pole,f.destination_waypoint_id,f.destination_device_id,
    ARRAY[f.site_power_feed_id] edge_ids,ARRAY[coalesce(f.destination_device_id,0)] device_ids,
    ARRAY[b.verification_status,c.verification_status,f.verification_status] verification_states
   FROM ref.site_power_circuit c JOIN ref.site_power_feed f ON f.source_circuit_id=c.site_power_circuit_id AND f.active
-  WHERE (c.site_power_breaker_id=p_breaker OR (b.breaker_role='MAIN' AND c.site_panel_id=b.site_panel_id)) AND c.active
+  WHERE (c.site_power_breaker_id=p_breaker OR c.site_panel_id=ANY(affected_panels)) AND c.active
   UNION ALL
   SELECT w.site_power_circuit_id,w.breaker_pole,f.destination_waypoint_id,f.destination_device_id,
    w.edge_ids||f.site_power_feed_id,w.device_ids||coalesce(f.destination_device_id,0),w.verification_states||f.verification_status
@@ -222,9 +231,9 @@ BEGIN
  ) SELECT coalesce(jsonb_agg(to_jsonb(e)||jsonb_build_object('waypoint_name',w.canonical_label)),'[]'::jsonb)
  INTO result FROM endpoints e LEFT JOIN ref.site_waypoint w ON w.site_waypoint_id=e.waypoint_id;
  RETURN jsonb_build_object('breaker',to_jsonb(b),'revision',(SELECT revision FROM ref.site_power_revision),
-  'paths',result,'coverage','RECORDED_ONLY_NOT_PROOF_OF_ISOLATION',
-  'missing_pole_membership',CASE WHEN b.breaker_role='MAIN' THEN EXISTS(SELECT 1 FROM ref.site_power_circuit WHERE site_panel_id=b.site_panel_id AND active AND site_power_breaker_id IS NULL) ELSE b.pole_count IS NULL OR b.pole_count<>(SELECT count(*) FROM ref.site_power_circuit WHERE site_power_breaker_id=p_breaker AND active) END,
-  'circuits',coalesce((SELECT jsonb_agg(site_power_circuit_id) FROM ref.site_power_circuit WHERE (site_power_breaker_id=p_breaker OR (b.breaker_role='MAIN' AND site_panel_id=b.site_panel_id)) AND active),'[]'::jsonb));
+  'affected_panel_ids',to_jsonb(affected_panels),'paths',result,'coverage','RECORDED_ONLY_NOT_PROOF_OF_ISOLATION',
+  'missing_pole_membership',EXISTS(SELECT 1 FROM ref.site_power_circuit WHERE site_panel_id=ANY(affected_panels) AND active AND site_power_breaker_id IS NULL) OR CASE WHEN b.breaker_role='MAIN' THEN false ELSE b.pole_count IS NULL OR b.pole_count<>(SELECT count(*) FROM ref.site_power_circuit WHERE site_power_breaker_id=p_breaker AND active) END,
+  'circuits',coalesce((SELECT jsonb_agg(site_power_circuit_id) FROM ref.site_power_circuit WHERE (site_power_breaker_id=p_breaker OR site_panel_id=ANY(affected_panels)) AND active),'[]'::jsonb));
 END $f$;
 REVOKE ALL ON FUNCTION ref.site_power_breaker_impact(text,bigint) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION ref.site_power_breaker_impact(text,bigint) TO fieldwiring_app;
@@ -261,6 +270,9 @@ DECLARE actor record; rev bigint; before_row jsonb; after_row jsonb; prior ops.s
  allowed text[]; expected jsonb; verified integer; verified_time timestamptz; target bigint;
  table_name text; key_name text; columns_sql text; values_sql text; updates_sql text;
  action_row ref.site_power_action%ROWTYPE; event_target bigint;
+ child jsonb; evidence jsonb; leg jsonb; old_leg ref.site_power_circuit%ROWTYPE;
+ old_feed ref.site_power_feed%ROWTYPE; breaker_data jsonb; circuit_id bigint; waypoint_id bigint;
+ child_no integer:=0;
 BEGIN
  -- Fail closed even if a legacy actor resolver returns NULL for an unassigned role.
  IF NOT coalesce((ref.site_power_access(p_email)->>'can_edit')::boolean,false) THEN
@@ -278,15 +290,81 @@ BEGIN
   RETURN jsonb_build_object('revision',prior.revision,'target_id',prior.target_id,'replayed',true);
  END IF;
  IF rev<>p_revision THEN RAISE EXCEPTION 'Another edit was saved. Reload before saving your changes.' USING ERRCODE='40001'; END IF;
+ IF p_kind='breaker_schedule' THEN
+  IF (SELECT count(*) FROM jsonb_object_keys(p_data))<>4 OR NOT p_data ?& ARRAY['breaker','legs','show_desired_state','restoration_desired_state']
+    OR jsonb_typeof(p_data->'breaker')<>'object' OR jsonb_typeof(p_data->'legs')<>'array'
+    OR jsonb_array_length(p_data->'legs')>200
+    OR coalesce(p_data->>'show_desired_state','') NOT IN ('UNKNOWN','ON','OFF')
+    OR coalesce(p_data->>'restoration_desired_state','') NOT IN ('UNKNOWN','ON','OFF') THEN
+   RAISE EXCEPTION 'Invalid breaker schedule fields' USING ERRCODE='22023'; END IF;
+  breaker_data:=p_data->'breaker';
+  evidence:=jsonb_build_object('source_evidence',breaker_data->>'source_evidence','verification_status',breaker_data->>'verification_status');
+  SELECT to_jsonb(b) INTO before_row FROM ref.site_power_breaker b WHERE site_power_breaker_id=p_id;
+  IF p_id IS NOT NULL AND (before_row IS NULL OR NOT (before_row->>'active')::boolean) THEN
+   RAISE EXCEPTION 'Active breaker not found' USING ERRCODE='P0002'; END IF;
+  -- Reject omitted existing legs or malformed/duplicate explicit memberships.
+  IF EXISTS(SELECT 1 FROM jsonb_array_elements(p_data->'legs') l WHERE jsonb_typeof(l)<>'object'
+     OR NOT l ?& ARRAY['pole','circuit_code','waypoint_ids'] OR (SELECT count(*) FROM jsonb_object_keys(l))<>3
+     OR jsonb_typeof(l->'waypoint_ids')<>'array' OR jsonb_typeof(l->'pole')<>'number')
+   OR EXISTS(SELECT 1 FROM jsonb_array_elements(p_data->'legs') l GROUP BY l->>'pole' HAVING count(*)>1) THEN
+   RAISE EXCEPTION 'Each circuit leg requires a unique pole, circuit designation and waypoint list' USING ERRCODE='22023'; END IF;
+  IF EXISTS(SELECT 1 FROM ref.site_power_circuit c WHERE c.site_power_breaker_id=p_id AND c.active
+     AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(p_data->'legs') l WHERE (l->>'pole')::integer=c.breaker_pole)) THEN
+   RAISE EXCEPTION 'Existing circuit legs cannot be omitted; reconcile their relationships before changing pole count' USING ERRCODE='23514'; END IF;
+  IF (breaker_data->>'breaker_role'='MAIN' AND jsonb_array_length(p_data->'legs')<>0)
+   OR (breaker_data->>'breaker_role'<>'MAIN' AND
+      (jsonb_array_length(p_data->'legs')<>coalesce((breaker_data->>'pole_count')::integer,0)
+       OR jsonb_array_length(p_data->'legs')=0)) THEN
+   RAISE EXCEPTION 'Record one circuit leg per branch pole; mains have no branch circuit legs' USING ERRCODE='23514'; END IF;
+  child_no:=child_no+1;
+  child:=ref.site_power_command(p_email,md5(p_request::text||':'||child_no)::uuid,rev,'breaker',p_id,
+    breaker_data||jsonb_build_object('show_desired_state',p_data->>'show_desired_state','restoration_desired_state',p_data->>'restoration_desired_state'));
+  target:=(child->>'target_id')::bigint; rev:=(child->>'revision')::bigint;
+  -- All legacy desired-state transitions are audited within this transaction.
+  FOR old_leg IN SELECT * FROM ref.site_power_circuit WHERE site_power_breaker_id=target AND active ORDER BY breaker_pole LOOP
+   child_no:=child_no+1;
+   child:=ref.site_power_command(p_email,md5(p_request::text||':'||child_no)::uuid,rev,'circuit',old_leg.site_power_circuit_id,
+     evidence||jsonb_build_object('show_desired_state','UNKNOWN','restoration_desired_state','UNKNOWN'));
+   rev:=(child->>'revision')::bigint;
+  END LOOP;
+  FOR leg IN SELECT value FROM jsonb_array_elements(p_data->'legs') ORDER BY (value->>'pole')::integer LOOP
+   SELECT * INTO old_leg FROM ref.site_power_circuit WHERE site_power_breaker_id=target AND active AND breaker_pole=(leg->>'pole')::integer;
+   child_no:=child_no+1;
+   child:=ref.site_power_command(p_email,md5(p_request::text||':'||child_no)::uuid,rev,'circuit',old_leg.site_power_circuit_id,
+    evidence||jsonb_build_object('site_panel_id',(breaker_data->>'site_panel_id')::bigint,'site_power_breaker_id',target,
+     'breaker_pole',(leg->>'pole')::integer,'circuit_code',leg->>'circuit_code',
+     'show_desired_state',p_data->>'show_desired_state','restoration_desired_state',p_data->>'restoration_desired_state'));
+   circuit_id:=(child->>'target_id')::bigint; rev:=(child->>'revision')::bigint;
+   FOR old_feed IN SELECT * FROM ref.site_power_feed WHERE active AND source_circuit_id=circuit_id AND destination_waypoint_id IS NOT NULL
+     AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements_text(leg->'waypoint_ids') x WHERE x::bigint=destination_waypoint_id) LOOP
+    child_no:=child_no+1;
+    child:=ref.site_power_command(p_email,md5(p_request::text||':'||child_no)::uuid,rev,'feed',old_feed.site_power_feed_id,evidence||'{"active":false}'::jsonb);
+    rev:=(child->>'revision')::bigint;
+   END LOOP;
+   FOR waypoint_id IN SELECT DISTINCT value::bigint FROM jsonb_array_elements_text(leg->'waypoint_ids') LOOP
+    IF NOT EXISTS(SELECT 1 FROM ref.site_power_feed WHERE active AND source_circuit_id=circuit_id AND destination_waypoint_id=waypoint_id) THEN
+     child_no:=child_no+1;
+     child:=ref.site_power_command(p_email,md5(p_request::text||':'||child_no)::uuid,rev,'feed',NULL,
+       evidence||jsonb_build_object('source_circuit_id',circuit_id,'destination_waypoint_id',waypoint_id));
+     rev:=(child->>'revision')::bigint;
+    END IF;
+   END LOOP;
+  END LOOP;
+  SELECT to_jsonb(b) INTO after_row FROM ref.site_power_breaker b WHERE site_power_breaker_id=target;
+  UPDATE ref.site_power_revision SET revision=revision+1 WHERE singleton RETURNING revision INTO rev;
+  INSERT INTO ops.site_power_edit_log(revision,request_id,command,target_id,payload,before_data,after_data,directus_user_id,person_id,operator_email)
+  VALUES(rev,p_request,p_kind,target,jsonb_build_object('id',p_id,'fields',p_data),before_row,after_row,actor.directus_user_id,actor.person_id,lower(btrim(p_email)));
+  RETURN jsonb_build_object('revision',rev,'target_id',target,'replayed',false);
+ END IF;
  IF p_kind='event' THEN
   allowed:=ARRAY['impact_reviewed','site_power_action_id','season_year','event_kind','condition','observed_at','evidence','corrects_event_id'];
  ELSE
   CASE p_kind
-  WHEN 'panel' THEN table_name:='site_panel'; key_name:='site_panel_id'; allowed:=ARRAY['panel_name','site_waypoint_id','owner_name','panel_identification','meter_information','active','source_evidence','verification_status'];
+  WHEN 'panel' THEN table_name:='site_panel'; key_name:='site_panel_id'; allowed:=ARRAY['panel_name','site_waypoint_id','owner_name','panel_identification','meter_information','supply_breaker_id','active','source_evidence','verification_status'];
   WHEN 'cable_spec' THEN table_name:='site_power_cable_spec'; key_name:='site_power_cable_spec_id'; allowed:=ARRAY['site_cable_id','cable_specification','active','source_evidence','verification_status'];
   WHEN 'conductor' THEN table_name:='site_power_conductor'; key_name:='site_power_conductor_id'; allowed:=ARRAY['site_cable_id','conductor_label','conductor_role','active','source_evidence','verification_status'];
   WHEN 'conductor_circuit' THEN table_name:='site_power_conductor_circuit'; key_name:='site_power_conductor_circuit_id'; allowed:=ARRAY['site_power_conductor_id','site_power_circuit_id','active','source_evidence','verification_status'];
-  WHEN 'breaker' THEN table_name:='site_power_breaker'; key_name:='site_power_breaker_id'; allowed:=ARRAY['site_panel_id','breaker_name','breaker_role','panel_positions','rated_amps','pole_count','active','source_evidence','verification_status'];
+  WHEN 'breaker' THEN table_name:='site_power_breaker'; key_name:='site_power_breaker_id'; allowed:=ARRAY['site_panel_id','breaker_name','breaker_role','panel_positions','rated_amps','pole_count','show_desired_state','restoration_desired_state','active','source_evidence','verification_status'];
   WHEN 'circuit' THEN table_name:='site_power_circuit'; key_name:='site_power_circuit_id'; allowed:=ARRAY['site_panel_id','circuit_code','description','voltage','site_power_breaker_id','breaker_pole','show_desired_state','restoration_desired_state','active','source_evidence','verification_status'];
   WHEN 'device' THEN table_name:='site_power_device'; key_name:='site_power_device_id'; allowed:=ARRAY['device_name','device_kind','site_waypoint_id','owner_name','utility_asset_id','rating','description','active','source_evidence','verification_status'];
   WHEN 'feed' THEN table_name:='site_power_feed'; key_name:='site_power_feed_id'; allowed:=ARRAY['source_circuit_id','source_device_id','destination_waypoint_id','destination_device_id','active','source_evidence','verification_status'];
@@ -358,6 +436,18 @@ BEGIN
    EXECUTE format('UPDATE ref.%I t SET %s FROM jsonb_populate_record(NULL::ref.%I,$1) r WHERE t.%I=$2 RETURNING t.%I,to_jsonb(t)',
     table_name,updates_sql,table_name,key_name,key_name) INTO target,after_row USING expected,p_id;
   END IF;
+  IF EXISTS(SELECT 1 FROM ref.site_panel p JOIN ref.site_power_breaker b ON b.site_power_breaker_id=p.supply_breaker_id
+    JOIN ref.site_panel upstream ON upstream.site_panel_id=b.site_panel_id
+    WHERE p.active AND (NOT b.active OR NOT upstream.active OR b.site_panel_id=p.site_panel_id
+      OR EXISTS(SELECT 1 FROM ref.site_power_breaker m WHERE m.site_panel_id=p.site_panel_id AND m.active AND m.breaker_role='MAIN'))) THEN
+   RAISE EXCEPTION 'Remote supply requires an active breaker in another active panel and no conflicting local main' USING ERRCODE='23514'; END IF;
+  IF EXISTS(WITH RECURSIVE supply(id,path,cycle) AS (
+    SELECT site_panel_id,ARRAY[site_panel_id],false FROM ref.site_panel WHERE active
+    UNION ALL SELECT b.site_panel_id,s.path||b.site_panel_id,b.site_panel_id=ANY(s.path)
+    FROM supply s JOIN ref.site_panel p ON p.site_panel_id=s.id
+    JOIN ref.site_power_breaker b ON b.site_power_breaker_id=p.supply_breaker_id WHERE NOT s.cycle AND p.active)
+    SELECT 1 FROM supply WHERE cycle) THEN
+   RAISE EXCEPTION 'Panel supply relationships form a cycle' USING ERRCODE='23514'; END IF;
   -- Revision locking serializes commands; reject overlapping occupied slots.
   IF EXISTS(SELECT 1 FROM ref.site_power_breaker b CROSS JOIN LATERAL unnest(b.panel_positions) pos
     WHERE b.active GROUP BY b.site_panel_id,pos HAVING count(*)>1) THEN

@@ -44,11 +44,32 @@ def validate_shared_consumers(conn, email):
                 revision = result['revision']
                 return result['target_id']
             panel = command('panel', dict(panel_name='DISPOSABLE '+str(uuid.uuid4())))
-            breaker = command('breaker', dict(site_panel_id=panel,breaker_name='DISPOSABLE 18/20',rated_amps=20,pole_count=2))
-            circuits = []
-            for pole in (1, 2):
-                circuit = command('circuit',dict(site_panel_id=panel,circuit_code=str(pole),site_power_breaker_id=breaker,breaker_pole=pole))
-                circuits.append(circuit)
+            schedule = dict(
+                breaker=dict(site_panel_id=panel, breaker_name='DISPOSABLE 18/20',
+                             breaker_role='BRANCH', panel_positions=[18,20],
+                             rated_amps=20, pole_count=2,
+                             source_evidence='Disposable combined acceptance fixture',
+                             verification_status='UNVERIFIED'),
+                show_desired_state='ON', restoration_desired_state='OFF',
+                legs=[dict(pole=pole, circuit_code=str(position), waypoint_ids=[])
+                      for pole, position in ((1,18),(2,20))])
+            request_id = str(uuid.uuid4())
+            initial_revision = revision
+            params = (email, request_id, initial_revision, json.dumps(schedule))
+            sql = "SELECT ref.site_power_command(%s,%s::uuid,%s,'breaker_schedule',NULL,%s::jsonb)"
+            cur.execute(sql, params)
+            saved = cur.fetchone()[0]
+            breaker, revision = saved['target_id'], saved['revision']
+            cur.execute(sql, params)
+            replay = cur.fetchone()[0]
+            require(replay['replayed'] and replay['target_id'] == breaker and replay['revision'] == revision,
+                    'Atomic breaker schedule retry was not idempotent')
+            cur.execute('SELECT site_power_circuit_id,breaker_pole FROM ref.site_power_circuit '
+                        'WHERE site_power_breaker_id=%s AND active ORDER BY breaker_pole', (breaker,))
+            legs = cur.fetchall()
+            require(len(legs) == 2, 'Atomic schedule did not create both legs')
+            circuits = [row[0] for row in legs]
+            for circuit, pole in legs:
                 device = command('device',dict(device_name='DISPOSABLE receptacle '+str(pole),device_kind='OUTLET',site_waypoint_id=waypoint))
                 command('feed',dict(source_circuit_id=circuit,destination_device_id=device))
             cur.execute('SELECT ref.site_power_breaker_impact(%s,%s)', (email,breaker))

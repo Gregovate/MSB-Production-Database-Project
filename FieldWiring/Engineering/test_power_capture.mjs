@@ -378,6 +378,38 @@ assert.ok(mainImpact.circuits.includes(legA.target_id));
 assert.ok(mainImpact.circuits.includes(legB.target_id));
 assert.equal(mainImpact.breaker.rated_amps,100);
 assert.equal(mainImpact.coverage,"RECORDED_ONLY_NOT_PROOF_OF_ISOLATION");
+// One schedule Save owns the breaker, both legs and direct endpoints atomically.
+const schedulePanel=await cmd("panel",{...base,panel_name:"Schedule fixture"});
+const scheduleFields={breaker:{...base,site_panel_id:schedulePanel.target_id,breaker_name:"31/33",breaker_role:"BRANCH",panel_positions:[31,33],pole_count:2,rated_amps:20},
+  show_desired_state:"ON",restoration_desired_state:"OFF",
+  legs:[{pole:1,circuit_code:"31",waypoint_ids:[]},{pole:2,circuit_code:"33",waypoint_ids:[]}]};
+const request=crypto.randomUUID(), initialRevision=revision;
+const schedule=await cmd("breaker_schedule",scheduleFields,null,"crew@example.test",revision,request);
+const savedLegs=(await db.query("SELECT site_power_circuit_id FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 ORDER BY breaker_pole",[schedule.target_id])).rows;
+const receipt=await cmd("breaker_schedule",scheduleFields,null,"crew@example.test",initialRevision,request);
+assert.equal(receipt.replayed,true); assert.equal(receipt.target_id,schedule.target_id);
+await denied(()=>cmd("breaker_schedule",{...scheduleFields,show_desired_state:"OFF"},null,"crew@example.test",revision,request),"22023");
+await cmd("breaker_schedule",{...scheduleFields,show_desired_state:"OFF"},schedule.target_id);
+assert.deepEqual((await db.query("SELECT site_power_circuit_id FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 ORDER BY breaker_pole",[schedule.target_id])).rows,savedLegs);
+assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 AND show_desired_state='OFF'",[schedule.target_id])).rows[0].n,2);
+const beforeFailure=(await db.query("SELECT revision FROM ref.site_power_revision")).rows[0].revision;
+await denied(()=>cmd("breaker_schedule",{...scheduleFields,breaker:{...scheduleFields.breaker,breaker_name:"Should roll back"},legs:[scheduleFields.legs[0],{pole:2,circuit_code:"33",waypoint_ids:[999999]}]},schedule.target_id),"23503");
+assert.equal((await db.query("SELECT revision FROM ref.site_power_revision")).rows[0].revision,beforeFailure);
+assert.equal((await db.query("SELECT breaker_name FROM ref.site_power_breaker WHERE site_power_breaker_id=$1",[schedule.target_id])).rows[0].breaker_name,"31/33");
+await denied(()=>cmd("breaker_schedule",{...scheduleFields,legs:[scheduleFields.legs[0]]},schedule.target_id),"23514");
+await denied(()=>cmd("breaker_schedule",scheduleFields,null,"volunteer@example.test"),"42501");
+await denied(()=>cmd("breaker_schedule",scheduleFields,null,"crew@example.test",0),"40001");
+// Remote panel points to an actual breaker, never a guessed panel-name relationship.
+const remote=await cmd("panel",{...base,panel_name:"Remote fixture",meter_information:"Meter fixture",supply_breaker_id:schedule.target_id});
+const downstream=await cmd("breaker_schedule",{...scheduleFields,breaker:{...scheduleFields.breaker,site_panel_id:remote.target_id}},null);
+const downstreamCircuit=(await db.query("SELECT site_power_circuit_id FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 LIMIT 1",[downstream.target_id])).rows[0].site_power_circuit_id;
+const impactRemote=(await db.query("SELECT ref.site_power_breaker_impact('crew@example.test',$1) x",[schedule.target_id])).rows[0].x;
+assert.ok(impactRemote.affected_panel_ids.includes(remote.target_id));
+assert.ok(impactRemote.circuits.includes(downstreamCircuit));
+await denied(()=>cmd("panel",{...base,supply_breaker_id:downstream.target_id},schedulePanel.target_id),"23514");
+await denied(()=>cmd("panel",{...base,supply_breaker_id:downstream.target_id},remote.target_id),"23514");
+await denied(()=>cmd("breaker",{...base,site_panel_id:remote.target_id,breaker_name:"Conflicting main",breaker_role:"MAIN"}),"23514");
+await denied(()=>cmd("breaker",{...base,active:false},schedule.target_id),"23514");
 console.log(
   `PASS: ${n} SQL command/denial checks plus snapshot, audit, seasonal and rollback assertions (isolated PGlite PostgreSQL; no Production connection).`,
 );

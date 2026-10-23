@@ -3,50 +3,53 @@
 **Candidate procedure — not yet released to Production.** Authorized Production
 Crew can maintain these records. Managers maintain waypoint names and positions.
 
-## Define the panel and circuit
+## Define the panel and breaker
 
-1. Open **Panel Circuits** from Field Wiring.
-2. Select the existing panel. Use **Add panel** only if it is not already recorded.
-3. Record the readable panel identification and any known owner, meter or waypoint
-   information. Leave unknown fields empty.
-4. Use **Record main breaker** for the panel's main disconnect. Record its marked
-   amperage and pole count when known. Main ratings are not branch circuit ratings.
-5. Use **Add branch breaker** and enter its marked rating, pole count and known
-   panel positions in pole order, for example `18,20`. The conventional display
-   puts odd positions left and even positions right; verify the installed numbering.
-   Leave unknown positions blank. An unrecorded position does not prove an empty slot.
-6. From that breaker use **Add circuit to breaker**. Enter the circuit designation,
-   description and pole within the breaker (1 or 2 for a two-pole breaker).
-   Pole ordinal is not the physical panel position. Both legs share one breaker
-   identity/rating. A two-pole 20 A breaker is not recorded as 40 A.
-7. **Add circuit** remains available when its breaker is unknown. These records
-   stay visible separately until their supplying breaker is established.
-8. Record desired show/restoration states separately. Enter source/evidence and
-   verification status for each saved record. These are plans and recorded facts,
-   not proof of current physical condition.
+1. Open **Panel Circuits** from Field Wiring and select the existing panel. Use
+   **Add panel** only when the panel is not already recorded.
+2. Beside **Main disconnect**, use **Meter / upstream supply** to enter known meter
+   information. For a remote main, select the actual supplying breaker in another
+   defined panel. A panel name alone does not identify that breaker. Leave an
+   unknown supply blank; do not guess the FE-00 / Panel 15 relationship.
+3. Use **Record main breaker** for a local main, or **Add branch breaker** for an
+   individual breaker. Enter known positions, such as `18/20` or `18,20`; the form
+   creates one circuit-leg section per position. If positions are unknown, enter
+   the pole count and explicit circuit designations. Existing designations and
+   permanent circuit IDs are retained on edits.
+4. Enter whole-number amps, breaker notes if useful, and **Show ON / OFF** and
+   restoration state. A two-pole 20 A breaker is 20 A per pole, not 40 A.
+5. For each circuit leg, search current waypoint names or retained aliases and
+   check what it feeds. Both legs of one breaker may supply the same quad box,
+   such as A5-18/20, and either may supply additional waypoints. An OUT-Combo
+   cannot have supplies from two different breakers.
+6. **Save** once. The breaker, circuit legs and direct waypoint assignments commit
+   together or all roll back. Entry remains UNVERIFIED pending field review.
+   Existing IDs, indirect equipment paths and correction history are retained.
+7. Use the breaker's **Edit / correct** to change these records together. Clearing
+   a waypoint retires that direct relationship. Reducing pole count cannot silently
+   remove existing legs; reconcile their dependent records first.
 
-## Assign or correct waypoints
+The schedule uses conventional odd-left / even-right positions; verify installed
+numbering. Unknown positions do not prove empty slots. For older records without
+breaker membership, expand **Reconcile circuits with unknown breaker membership**.
+That exception workflow is separate from normal combined breaker entry.
 
-1. Open the circuit and select **Assign multiple waypoints**.
-2. Search using the current waypoint name or an old retained alias.
-3. Check all waypoints supplied directly by the circuit. Clear an incorrect
-   direct assignment to retire it while retaining its history.
-4. Record supporting evidence and verification status, then **Save**.
-5. Return to the panel to retrieve the saved assignments.
+## Waypoint equipment and networks
 
-For a fuse, disconnect or other intermediate device, use **Add equipment** and
-**Add feed relationship** to record each known connection. Choose one source and
-one destination per connection. Multiple documented feeds are allowed. A
-conflicting relationship should be marked **CONFLICTING**, not guessed away.
+Expand **Waypoint / OUT-Combo equipment and networks** and select the waypoint.
+Use **Add equipment**, **Add feed relationship** or **Assign network** for known
+intermediate equipment and networks. Cable/conductor engineering is separately
+collapsed there. These are not required breaker-entry fields. Controller channels
+and network assignments remain independent of electrical circuit identity.
 
-Use **Assign network** for each network carried by a waypoint. Network assignment
-is independent of its supplying electrical circuit; OUT-Combo can have both and
-several networks. Controller channels are not panel circuits.
+Correct conflicting evidence without publishing competing active breaker supplies.
+The database rejects such relationships even when they pass through equipment.
+Retain the evidence for review; do not guess a valid assignment to bypass a denial.
+Generic correction dialogs require evidence; verification defaults to UNVERIFIED.
+Only assert VERIFIED when supported by reviewed evidence.
 
-Use **Edit / correct** with evidence for corrections. Clear **Active record** to
-retire a mistaken relationship. When editing verified reference information,
-verification defaults to **UNVERIFIED**; explicitly select **VERIFIED** only when
-supported by your evidence. The correction history retains previous values.
+Use the header **Light mode / Dark mode** button; it shares the FieldWiring theme
+preference and persists across reloads.
 
 ## Seasonal activity
 

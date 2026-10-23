@@ -130,10 +130,12 @@ try {
     .locator("#panels")
     .getByRole("button", { name: "A5 panel", exact: true })
     .click();
-  await page.getByRole("button", { name: "Add circuit", exact: true }).click();
+  await page.getByText("Reconcile circuits with unknown breaker membership",{exact:true}).click();
+  await page.getByRole("button", { name: "Reconcile legacy circuit", exact: true }).click();
   await dialog.locator("[name=circuit_code]").fill("7");
   await evidence();
   await save();
+  await page.getByText("Reconcile circuits with unknown breaker membership",{exact:true}).click();
   await page.getByRole("button", { name: "Assign multiple waypoints" }).click();
   await dialog.locator("[name=waypoint_search]").fill("Old Outlet A");
   assert.equal(await dialog.locator(".power-choices label:visible").count(), 1);
@@ -150,6 +152,7 @@ try {
     ).rows[0].n,
     2,
   );
+  await page.getByText("Reconcile circuits with unknown breaker membership",{exact:true}).click();
   await page.getByRole("button", { name: "Assign multiple waypoints" }).click();
   await dialog.locator('input[name=waypoint][value="12"]').uncheck();
   await evidence();
@@ -185,6 +188,8 @@ try {
     ).rows[0].n,
     1,
   );
+  await page.locator("#waypoint-detail > summary").click();
+  await page.locator("#detail-waypoint").selectOption("11");
   for (const network of ["1", "2"]) {
     await page
       .getByRole("button", { name: "Assign network", exact: true })
@@ -232,25 +237,20 @@ try {
   await dialog.locator("[name=rated_amps]").fill("20");
   await dialog.locator("[name=pole_count]").fill("2");
   await dialog.locator("[name=panel_positions]").fill("18,20");
+  await dialog.locator("[name=panel_positions]").blur();
   await evidence();
   await dialog.locator("[name=panel_positions]").fill("1/3 or 1,3?");
   await dialog.locator("#save").click();
   await dialog.getByText(/Enter panel positions such as/).waitFor();
   assert.equal(await dialog.locator("[name=breaker_name]").inputValue(), "18/20 grouped");
   await dialog.locator("[name=panel_positions]").fill("18/20");
+  await dialog.locator("[name=panel_positions]").blur();
+  await dialog.locator('[name=leg_1_waypoint][value="12"]').check();
+  await dialog.locator('[name=leg_2_waypoint][value="12"]').check();
+  await dialog.locator("[name=show_desired_state]").selectOption("ON");
   assert.equal(await dialog.locator("[name=rated_amps]").getAttribute("step"), "1");
   await save();
   const breakerId=(await db.query("SELECT site_power_breaker_id FROM ref.site_power_breaker WHERE breaker_name='18/20 grouped'")).rows[0].site_power_breaker_id;
-  for (const [code,pole] of [["18",1],["20",2]]) {
-    await page.getByRole("button", {name:"Add circuit",exact:true}).click();
-    await dialog.locator("[name=circuit_code]").fill(code);
-    await dialog.locator("[name=site_power_breaker_id]").selectOption(String(breakerId));
-    await dialog.locator("[name=breaker_pole]").fill(String(pole));
-    await evidence(); await save();
-    await page.locator("#panel-detail .power-record").filter({has:page.getByRole("heading",{name:`Circuit ${code} — No description`,exact:true})}).getByRole("button",{name:"Assign multiple waypoints"}).click();
-    await dialog.locator('input[name=waypoint][value="12"]').check();
-    await evidence(); await save();
-  }
   const groupedRow=page.locator("#panel-detail .power-record").filter({has:page.getByRole("heading",{name:"Breaker 18/20 grouped",exact:true})});
   await groupedRow.locator("summary").click();
   assert.match(await groupedRow.innerText(),/20 A · 2 poles/);
@@ -258,6 +258,26 @@ try {
   assert.match(await groupedRow.innerText(),/A5 panel \/ 20/);
   assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_circuit WHERE site_power_breaker_id=$1",[breakerId])).rows[0].n,2);
   assert.equal(await page.locator(".power-slot").count(),20);
+  const savedIds=(await db.query("SELECT site_power_circuit_id FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 ORDER BY breaker_pole",[breakerId])).rows;
+  await groupedRow.getByRole("button",{name:"Edit / correct",exact:true}).click();
+  await dialog.locator("[name=show_desired_state]").selectOption("OFF");
+  failNext=true;
+  await dialog.locator("#save").click();
+  await dialog.getByText(/Retry Save resends/).waitFor();
+  await save();
+  assert.deepEqual((await db.query("SELECT site_power_circuit_id FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 ORDER BY breaker_pole",[breakerId])).rows,savedIds);
+  assert.equal((await db.query("SELECT count(*)::int n FROM ref.site_power_circuit WHERE site_power_breaker_id=$1 AND show_desired_state='OFF'",[breakerId])).rows[0].n,2);
+  await page.getByRole("button",{name:"Meter / upstream supply",exact:true}).click();
+  await dialog.locator("[name=meter_information]").fill("TEST-METER-100");
+  await evidence();await save();
+  assert.match(await page.locator(".power-main").innerText(),/TEST-METER-100/);
+  await page.locator("#panels").getByRole("button",{name:"Retry panel",exact:true}).click();
+  await page.getByRole("button",{name:"Meter / upstream supply",exact:true}).click();
+  await dialog.locator("[name=supply_breaker_id]").selectOption(String(breakerId));
+  await evidence();await save();
+  assert.match(await page.locator(".power-main").innerText(),/Remote main \/ supply: A5 panel — 18\/20 grouped/);
+  assert.equal(await page.getByRole("button",{name:"Record main breaker",exact:true}).count(),0);
+  await page.locator("#panels").getByRole("button",{name:"A5 panel",exact:true}).click();
   await page.getByRole("button",{name:"Record main breaker",exact:true}).click();
   assert.equal(await dialog.locator("[name=panel_positions]").isVisible(), false);
   await dialog.locator("[name=breaker_name]").fill("Main disconnect");

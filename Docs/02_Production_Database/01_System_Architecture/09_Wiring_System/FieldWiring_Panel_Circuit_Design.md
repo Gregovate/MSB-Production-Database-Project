@@ -81,10 +81,23 @@ Tests now use separate synthetic boxes for independent fixture supplies instead
 of treating unrelated breakers on one combo box as valid. Real PostGIS CI and
 current-clone/operator acceptance remain separate gates.
 
-The single atomic breaker/circuit/feed form, breaker-level show-state entry,
-meter/upstream-main relationship and waypoint-focused equipment UI are NOT yet
-implemented. Earlier generic forms remain rejected; these fixes alone do not
-satisfy the requested workflow or justify another operator test handoff.
+### Integrated workflow candidate — V0.4.8-breaker-schedule
+
+The single atomic breaker/circuit/feed form, breaker-level show/restoration state,
+panel-owned meter/remote-supply editing and waypoint-focused equipment area are
+now implemented in the existing #319 candidate. Generic circuit entry is confined
+to the collapsed unknown-membership reconciliation area. The same SQL command
+boundary, Directus authority, revision lock and audit store remain authoritative.
+
+Local regression: 220 FieldWiring and 901 Setup application tests; 106 isolated
+PostgreSQL command/denial checks; actual Chromium combined-save/edit/retry workflow
+PASS, including retained leg IDs, same-box two-leg supplies, meter editing, remote
+supply selection, themes and mobile width. Source/allowlist tests: 44 PASS, one
+real-PostGIS-only test skipped locally. The existing real-source acceptance helper
+now exercises the compound schedule and exact replay with imported waypoint IDs;
+its disposable changes still roll back. No new acceptance runner or auth bypass.
+Exact-head CI, current-Production-clone and operator acceptance remain required.
+Production is unchanged. Prior successful CLEAN EXIT is cleanup evidence only.
 
 ### Compound command and remote-supply implementation contract
 
