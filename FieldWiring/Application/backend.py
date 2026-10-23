@@ -1,4 +1,4 @@
-"""MSB FieldWiring browser API and static application host — V0.4.4-gis-breaker-candidate."""
+"""MSB FieldWiring browser API and static application host — V0.4.5-gis-review-correction."""
 
 from __future__ import annotations
 
@@ -42,10 +42,12 @@ from field_context_hierarchy import build_field_hierarchy
 from repository import ConfigError, PostgresRepository, Repository, SQLiteSnapshotRepository
 from wiring import WiringError, build_wiring_package, safe_image_path
 
-APP_VERSION = "V0.4.4-gis-breaker-candidate"
+APP_VERSION = "V0.4.5-gis-review-correction"
 BASE_DIR = Path(__file__).resolve().parent
 CONTROLLER_COMMAND_HEADER = "X-MSB-Controller-Command"
-app = Flask(__name__)
+app = Flask(__name__, root_path=str(BASE_DIR))
+# Bind to this host: the disposable combined preview also imports Setup.backend.
+app.config["POWER_REPOSITORY_FACTORY"] = lambda: repository()
 from power_capture import power_api
 app.register_blueprint(power_api)
 

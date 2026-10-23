@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from site_source_db import (bootstrap_expertgps, ingest_linkiq,
-                            export_map_projection, export_waypoint_projection, restore_gpx_source)
+                            export_map_projection, export_waypoint_projection, restore_gpx_source, seed_gpx_panels)
 from site_source_sync import sha256, extract_gpx, gpx_roundtrip
 
 
@@ -87,6 +87,8 @@ def main():
         require(conn.info.dbname == 'msb_setup_browser_preview',
                 'Real-source gate requires the governed disposable database')
         accepted = bootstrap_expertgps(conn, args.gpx, args.actor, args.gpx_sha)
+        panels = seed_gpx_panels(conn, args.gpx_sha, args.operator_email)
+        require(seed_gpx_panels(conn, args.gpx_sha, args.operator_email)['created'] == 0, 'Panel seed replay duplicated records')
         replay = bootstrap_expertgps(conn, args.gpx, args.actor, args.gpx_sha)
         require(replay['status'] == 'ALREADY_ACCEPTED', 'GPX replay failed')
         first = second = {'status': 'NOT_REQUESTED', 'counts': {}}
@@ -115,7 +117,7 @@ def main():
         require(restored_path.read_bytes() == args.gpx.read_bytes(), 'Database GPX archive lost source bytes')
         exported = gpx_roundtrip(restored_path, projection, args.output / 'database-export.gpx')
         consumers = validate_shared_consumers(conn, args.operator_email)
-        report = dict(shared_consumers=consumers, gpx=accepted, gpx_replay=replay, gpx_archive=restored,
+        report = dict(panel_seed=panels, shared_consumers=consumers, gpx=accepted, gpx_replay=replay, gpx_archive=restored,
                       first_import=first, replay_import=second, gpx_export=exported,
                       map_revision=dataset['revision'])
         (args.output / 'acceptance.json').write_text(json.dumps(report, indent=2), encoding='utf-8')

@@ -21,6 +21,7 @@ def setup_gate(monkeypatch, sample_gpx, tmp_path, dbname='msb_setup_browser_prev
     conn = SimpleNamespace(info=SimpleNamespace(dbname=dbname))
     monkeypatch.setattr(site_db_connection, 'connect', lambda dsn: nullcontext(conn))
     monkeypatch.setattr(gate, 'validate_shared_consumers', lambda c, e: {'status': 'PASS'})
+    monkeypatch.setattr(gate, 'seed_gpx_panels', lambda *args: {'created': 0})
     calls = []
     def bootstrap(*args):
         calls.append(args)

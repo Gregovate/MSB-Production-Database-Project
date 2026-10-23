@@ -337,6 +337,36 @@ def bootstrap_expertgps(conn, source: Path, actor: str, expected_sha: str) -> di
             'waypoints': len(points), 'tracks': len(lines), 'incomplete_track_ordinals': incomplete}
 
 
+def seed_gpx_panels(conn, source_sha, operator_email):
+    """Initialize explicitly typed GPX panels through existing governed commands.
+
+    This does not infer breakers/circuits or physical verification. Existing or
+    retired panel associations are preserved; replay creates no duplicates.
+    """
+    import uuid
+    created = 0
+    with conn.transaction(), conn.cursor() as cur:
+        cur.execute("SELECT pg_advisory_xact_lock(hashtext('MSB:#171:gpx-panel-seed'))")
+        cur.execute('SELECT revision FROM ref.site_power_revision WHERE singleton FOR UPDATE')
+        revision = cur.fetchone()[0]
+        cur.execute("""SELECT w.site_waypoint_id,w.canonical_label
+            FROM ref.site_waypoint w JOIN ref.site_waypoint_source_binding b USING(site_waypoint_id)
+            WHERE b.source_sha256=%s AND b.accepted_at IS NOT NULL
+            AND lower(btrim(w.waypoint_type))='panel'
+            AND NOT EXISTS(SELECT 1 FROM ref.site_panel p WHERE p.site_waypoint_id=w.site_waypoint_id)
+            ORDER BY w.site_waypoint_id""", (source_sha,))
+        for waypoint_id, name in cur.fetchall():
+            request = str(uuid.uuid5(uuid.NAMESPACE_URL, 'msb:gpx-panel:'+source_sha+':'+str(waypoint_id)))
+            fields = dict(panel_name=name, site_waypoint_id=waypoint_id,
+                          source_evidence='Approved GPX Panel waypoint; SHA256 '+source_sha,
+                          verification_status='UNVERIFIED')
+            cur.execute("SELECT ref.site_power_command(%s,%s::uuid,%s,'panel',NULL,%s::jsonb)",
+                        (operator_email, request, revision, _jsonb(fields)))
+            revision = cur.fetchone()[0]['revision']
+            created += 1
+    return {'created':created, 'source_sha256':source_sha}
+
+
 def export_waypoint_projection(conn, baseline_source_sha: str) -> dict:
     """Export accepted waypoint edits AND reviewed GPX track-name corrections.
 

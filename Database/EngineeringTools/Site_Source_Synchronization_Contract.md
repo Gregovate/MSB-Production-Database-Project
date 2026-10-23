@@ -1,5 +1,23 @@
 # MSB #171 / #319 / #230 — Site-source synchronization implementation contract
 
+## October 23 — operator review rejected; shared-host correction
+
+Greg reports nonfunctional circuit buttons, absent preloaded panels and a map
+that appears to show an older GPX. Treat the prior candidate as REVIEW FAILED,
+not accepted. The shared host must serve FieldWiring static resources using its
+explicit application root and resolve its repository from the owning Flask app,
+not the already-loaded Setup backend module. Shared-host tests must GET the
+actual circuit JS/CSS and exercise both power read and command endpoints.
+
+Initial intake must create unverified panel references for accepted GPX waypoints
+explicitly typed Panel, retaining the waypoint IDs and source SHA. Use the existing
+power command for role enforcement and audit. Preserve existing/retired records
+on replay; do not infer breaker numbers, amps, circuits or topology from labels.
+The map's About source label must reflect the successfully rendered database GPX
+hash and counts; the embedded older GPX remains visibly fallback-only. The actual
+operator map mismatch still requires the failed preview status/report evidence;
+correcting the misleading source label alone does not prove its root cause.
+
 ## October 23 — combined implementation test checkpoint
 
 One candidate combines #319 and #454. The existing power schema now owns breaker

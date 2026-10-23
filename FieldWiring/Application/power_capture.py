@@ -5,7 +5,7 @@ import json
 from contextlib import closing
 
 import psycopg2
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 
 from controller_access import cloudflare_operator_email
 from repository import ConfigError, PostgresRepository
@@ -14,9 +14,8 @@ power_api = Blueprint('power_api', __name__)
 
 
 def _repo():
-    # Lazy import avoids a second Flask host and preserves existing test injection.
-    from backend import repository
-    repo = repository()
+    # Resolve through the owning Flask app, never the ambiguous global backend module.
+    repo = current_app.config["POWER_REPOSITORY_FACTORY"]()
     if not isinstance(repo, PostgresRepository):
         raise ConfigError('Circuit capture requires PostgreSQL')
     return repo

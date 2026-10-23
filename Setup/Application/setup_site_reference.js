@@ -638,6 +638,9 @@
       + (drift ? ' · NEW GPX STAGED / NOT ACCEPTED — reconcile before export' : '');
     renderDb(snapshot);
     renderNetworks(snapshot);
+    const sourceIdentity = document.getElementById('gis-source-identity');
+    if (sourceIdentity) sourceIdentity.textContent = 'Database GPX SHA256 ' + accepted
+      + ' · ' + snapshot.waypoints.length + ' waypoints · ' + snapshot.tracks.length + ' tracks';
     return snapshot;
   }
   window.siteReferenceReady = refresh().catch(async error => {

@@ -156,3 +156,13 @@ def test_ephemeral_postgis_document_restore_and_replay(sample_gpx, tmp_path):
         with conn.cursor() as cur:
             cur.execute('SELECT count(*) FROM ref.site_power_breaker')
             assert cur.fetchone()[0] == 0, 'Acceptance fixtures leaked'
+
+        from site_source_db import seed_gpx_panels
+        with conn.cursor() as cur:
+            cur.execute("UPDATE ref.site_waypoint SET waypoint_type='Panel'")
+        assert seed_gpx_panels(conn,digest,'gis-ci@example.invalid')['created']==1
+        assert seed_gpx_panels(conn,digest,'gis-ci@example.invalid')['created']==0
+        with conn.cursor() as cur:
+            cur.execute("SELECT p.panel_name,p.verification_status,w.canonical_label FROM ref.site_panel p JOIN ref.site_waypoint w USING(site_waypoint_id)")
+            name,status,current=cur.fetchone()
+            assert name==current and status=='UNVERIFIED'

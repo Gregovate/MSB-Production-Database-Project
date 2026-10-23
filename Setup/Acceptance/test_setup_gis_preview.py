@@ -61,6 +61,29 @@ field_version = next(
 )
 assert field_health.json['version'] == field_version, (field_health.json, field_version)
 assert client.get('/setup/api/health').json['version'] == PRODUCTION_VERSION
+# Exercise real mounted static routing; the independent Node fixture cannot catch
+# Flask root_path errors caused by loading the second host under an alias.
+for asset in ['power_capture.js','power_capture.css']:
+    response=client.get('/fieldwiring/static/'+asset)
+    assert response.status_code==200, (asset,response.status_code)
+# Setup already owns sys.modules['backend']; power must use its own host factory.
+from unittest.mock import MagicMock
+import power_capture
+conn=MagicMock()
+conn.cursor.return_value.__enter__.return_value.fetchone.return_value=({'revision':0},)
+def connect(dsn):
+    assert dsn=='disposable-clone-test'
+    return conn
+power_capture.psycopg2.connect=connect
+response=client.get('/fieldwiring/api/power',headers={'Cf-Access-Authenticated-User-Email':'fixture@example.invalid'})
+assert response.status_code==200, (response.status_code,response.text)
+assert response.json['revision']==0
+conn.cursor.return_value.__enter__.return_value.fetchone.return_value=({'revision':1,'target_id':1},)
+response=client.post('/fieldwiring/api/power/commands',headers={
+ 'Cf-Access-Authenticated-User-Email':'fixture@example.invalid','X-MSB-Power-Command':'1'},
+ json={'revision':0,'commands':[{'request_id':'00000000-0000-0000-0000-000000000001','kind':'panel','id':None,'fields':{}}]})
+assert response.status_code==200, (response.status_code,response.text)
+conn.commit.assert_called_once()
 assert client.post('/setup/locate/').status_code == 405
 '''
     result = subprocess.run([sys.executable, '-c', program], cwd=ROOT, capture_output=True, text=True)
