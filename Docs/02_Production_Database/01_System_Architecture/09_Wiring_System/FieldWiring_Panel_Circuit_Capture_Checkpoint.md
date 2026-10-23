@@ -2,7 +2,7 @@
 
 | Document control | Value |
 |---|---|
-| Status | RECON — live-schema prerequisite outstanding; no implementation candidate |
+| Status | SOURCE CANDIDATE — live catalog received; integrated release acceptance pending |
 | Owner | #171 / #230 under #122 |
 | Reviewed | 2026-10-22 |
 
@@ -58,25 +58,26 @@ and audit records. These are reuse candidates, not verified live contracts.
   Search current labels and retained accepted aliases; selection stores stable IDs.
   Renaming a waypoint must not break relationships or change circuit identity.
 
-## Immediate prerequisite and continuation
+## Live inventory received and implementation continuation
 
-#230 requires inventory of current live schema, constraints, grants, triggers and
-runtime before application/schema changes. This workspace has no configured
-Production database connection. Repository snapshots and draft SQL cannot prove
-which objects the parallel GIS work has installed or populated.
+The operator supplied the complete read-only inventory from `msb`, captured
+2026-10-22T23:45:38.139501-05:00: PostgreSQL 16.9/PostGIS 3.5.2; only `ref.season`
+and `ref.site_network` among the queried relations; the three existing Directus
+capability/actor functions returned. No waypoint/panel/circuit tables were present.
+This resolves the initial catalog prerequisite, without establishing GPX data or
+an installed circuit editor. The original [inventory query](Queries/02_Panel_Circuit_Schema_Inventory.sql)
+is retained for repeatable comparison.
 
-Run [read-only schema inventory](Queries/02_Panel_Circuit_Schema_Inventory.sql) as a
-whole script in the existing DBeaver connection and retain its one JSON result.
-It reads PostgreSQL catalogs in a read-only transaction, tolerates absent proposed
-tables, and does not query private operator records or mutate equipment data.
-Syntax parsing is a source check, not live execution or current-schema acceptance.
+[Panel Circuit Design](FieldWiring_Panel_Circuit_Design.md) now controls the source
+candidate. Existing FieldWiring hosts `/circuits` and guarded `/api/power` routes.
+The candidate migration requires #319's waypoint/alias foundation. It replaces
+the uninstalled draft POWER definitions, not the source synchronization work.
+The two migration paths must be reconciled before combined disposable/Production
+release; do not apply both proposed power schemas.
 
-Then reconcile installed objects with the GIS synchronization thread's accepted
-schema/source identity and current FieldWiring deployment; establish required
-additive changes in this owning engineering document before implementing them.
-Continue on the existing `engineering/171-230-circuit-capture` branch after
-refreshing main and checking concurrent work. No replacement GIS source/importer,
-free-form waypoint foreign keys, or independent user-role store.
+Continue on `engineering/171-230-circuit-capture`. Refreshed #319 head during this
+implementation: `ac7b6933af9acb2f97d91012e7385948cca83a75`, now reconciled with
+main by that owning thread; its recurring source promotion remains incomplete.
 
 Required subsequent acceptance: real PostgreSQL command/authorization and audit
 regression, concurrent correction protection, multiple destinations and networks,
@@ -90,3 +91,27 @@ candidate and governing Server Management procedure/authorization.
 - [Wiring System](README.md)
 - [FieldWiring Application](../../../../FieldWiring/Application/README.md)
 - [Reference-data issue #230](https://github.com/Gregovate/MSB-Production-Database-Project/issues/230)
+
+## Source acceptance — October 22 candidate
+
+- Shared FieldWiring/Procedures: **274 passed**, including 11 new transport/atomicity checks.
+- Isolated PGlite PostgreSQL: **43 command/denial checks passed**, plus snapshot,
+  audit, seasonal separation, prerequisite, replay and transaction rollback assertions.
+  This uses synthetic waypoint/Directus fixtures and actual repository capability/
+  actor SQL; it is not a PostgreSQL 16 current-Production-clone acceptance run.
+- Actual Chromium page: panel/circuit creation, retained-alias search, multiple
+  waypoint selection, assignment retirement, two networks on one waypoint,
+  utility request without fabricated confirmation, retry after committed save/lost
+  confirmation, read-only user and 390px mobile width passed. Mobile screenshot
+  inspected; no horizontal overflow. This is local fixture browser acceptance,
+  not protected Production or real crew/operator acceptance.
+- SQL syntax, JavaScript syntax, affected documentation links and diff whitespace
+  checks passed. Existing CI FieldWiring job now runs the new isolated checks;
+  remote CI status must be recorded separately.
+
+**Still open:** combine the approved #319 waypoint/source foundation with the
+single power schema and update its old map/operations power consumers; current
+PostgreSQL 16 Production-clone migration/grant checks; protected role and operator
+review; release approval; governed migration/source deployment; live field check.
+No schema migration has been run on Production, no GPX source was changed, and
+no issue is closed. No operator deployment command is ready yet.

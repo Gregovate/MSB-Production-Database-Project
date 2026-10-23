@@ -1,0 +1,107 @@
+.power-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(0, 3fr);
+  gap: 1rem;
+}
+.power-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: end;
+  margin: 1rem 0;
+}
+.power-toolbar label {
+  flex: 1;
+  min-width: 180px;
+}
+.power-record {
+  border-bottom: 1px solid #a8b3bf;
+  padding: 1rem 0;
+}
+.power-record p {
+  margin: 0.4rem 0;
+  overflow-wrap: anywhere;
+}
+.power-record button {
+  margin: 0.25rem;
+}
+.power-selected {
+  border-left: 5px solid #1464a5;
+  padding-left: 0.7rem;
+}
+dialog {
+  width: min(650px, 94vw);
+  max-height: 90vh;
+  overflow: auto;
+  border-radius: 10px;
+  border: 1px solid #607085;
+  padding: 1.3rem;
+}
+dialog::backdrop {
+  background: #0008;
+}
+#edit-fields label {
+  display: block;
+  margin: 0.75rem 0;
+}
+#edit-fields input:not([type="checkbox"]),
+#edit-fields select,
+#edit-fields textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem;
+  font: inherit;
+}
+#edit-fields textarea {
+  min-height: 85px;
+}
+#edit-fields select[multiple] {
+  min-height: 160px;
+}
+#status,
+#save-status {
+  font-weight: 600;
+}
+#status[data-error="true"],
+#save-status {
+  color: #a12323;
+}
+.power-choices {
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid #a8b3bf;
+  padding: 0.5rem;
+}
+.power-choices label {
+  padding: 0.25rem;
+}
+.power-badge {
+  font-size: 0.9em;
+  font-weight: 600;
+}
+summary {
+  cursor: pointer;
+}
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+button {
+  min-height: 42px;
+}
+#panels button {
+  width: 100%;
+  text-align: left;
+}
+@media (max-width: 700px) {
+  .power-layout {
+    grid-template-columns: 1fr;
+  }
+  .brand {
+    flex-wrap: wrap;
+  }
+  dialog {
+    padding: 1rem;
+  }
+}
